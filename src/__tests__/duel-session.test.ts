@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { PROTOCOL_VERSION, encodeMessage, type DuelSettings } from '../app/duel-protocol'
 import { saveOf } from '../app/duel-save'
-import { EMOTE_GAP_MS, createDuel, type Duel } from '../app/duel-session'
+import { EMOTE_GAP_MS, PHASE_WAIT_MS, createDuel, type Duel } from '../app/duel-session'
 import { timerElapsed } from '../app/life-calculator'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { createMatState, type MatState } from '../app/practice-mat'
@@ -408,6 +408,145 @@ describe('las mesas', () => {
       // Cada uno ve lo suyo al instante y lo del otro al llegar: el orden entre los dos puede cambiar, lo que llega no.
       expect([...texts(game.host)].sort()).toEqual(['¿Jugás ya?', 'Hola, ya entro', '👍', '👍'].sort())
       expect([...texts(game.guest)].sort()).toEqual(['¿Jugás ya?', 'Hola, ya entro', '👍', '👍'].sort())
+    })
+  })
+
+  describe('pasar de fase le pregunta al rival si no va a hacer nada más', () => {
+    const MAIN1 = { type: 'phase', phase: 'main1', skipDraw: true } as const
+    const phaseOf = (game: Game) => ({ mine: game.host.getSnapshot().mine?.phase, seen: game.guest.getSnapshot().theirs?.state.phase })
+
+    it('hasta que el rival contesta la fase no pasa: quien pasa espera y el otro ve la pregunta; si lo deja pasar, pasa en las dos mesas', () => {
+      const game = setup()
+      startBoth(game)
+
+      game.host.askPhase(MAIN1)
+      game.room.flush()
+
+      expect(game.host.getSnapshot().pass).toMatchObject({ asking: 'main1', asked: null })
+      expect(game.guest.getSnapshot().pass).toMatchObject({ asking: null, asked: { phase: 'main1', endsTurn: false } })
+      expect(phaseOf(game)).toEqual({ mine: 'draw', seen: 'draw' })
+
+      game.guest.answerPhase(true)
+      game.room.flush()
+
+      expect(phaseOf(game)).toEqual({ mine: 'main1', seen: 'main1' })
+      expect(game.host.getSnapshot().pass).toMatchObject({ asking: null, result: null })
+      expect(game.guest.getSnapshot().pass.asked).toBeNull()
+    })
+
+    it('si el rival quiere jugar antes, la fase no pasa y quien pasaba se entera (cada vez cuenta aparte)', () => {
+      const game = setup()
+      startBoth(game)
+
+      game.host.askPhase(MAIN1)
+      game.room.flush()
+      game.guest.answerPhase(false)
+      game.room.flush()
+
+      expect(phaseOf(game)).toEqual({ mine: 'draw', seen: 'draw' })
+      expect(game.host.getSnapshot().pass).toMatchObject({ asking: null, result: { n: 1 } })
+      expect(game.guest.getSnapshot().pass.asked).toBeNull()
+
+      // Puede volver a pasar, y el resultado nuevo cuenta aparte.
+      game.host.askPhase(MAIN1)
+      game.room.flush()
+      game.guest.answerPhase(false)
+      game.room.flush()
+      expect(game.host.getSnapshot().pass.result).toEqual({ n: 2 })
+    })
+
+    it('sin respuesta la fase pasa sola a los 6 segundos y el cartel del rival se va', () => {
+      vi.useFakeTimers()
+
+      try {
+        const game = setup()
+        startBoth(game)
+
+        game.host.askPhase(MAIN1)
+        game.room.flush()
+        vi.advanceTimersByTime(PHASE_WAIT_MS - 1)
+        game.room.flush()
+        expect(phaseOf(game)).toEqual({ mine: 'draw', seen: 'draw' })
+        expect(game.guest.getSnapshot().pass.asked).not.toBeNull()
+
+        vi.advanceTimersByTime(1)
+        game.room.flush()
+        expect(phaseOf(game)).toEqual({ mine: 'main1', seen: 'main1' })
+        expect(game.host.getSnapshot().pass.asking).toBeNull()
+        expect(game.guest.getSnapshot().pass.asked).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('si el rival juega algo mientras le pregunto, no había terminado: la fase no pasa y me entero', () => {
+      const game = setup()
+      startBoth(game)
+
+      game.host.askPhase(MAIN1)
+      game.room.flush()
+      game.guest.play({ type: 'move', id: 'card-5001-1', to: 'gy' })
+      game.room.flush()
+
+      expect(phaseOf(game)).toEqual({ mine: 'draw', seen: 'draw' })
+      expect(game.host.getSnapshot().pass).toMatchObject({ asking: null, result: { n: 1 } })
+      expect(game.guest.getSnapshot().pass.asked).toBeNull()
+    })
+
+    it('hacer otra jugada mientras espera cancela la pregunta (la fase no pasa por una respuesta tardía)', () => {
+      const game = setup()
+      startBoth(game)
+
+      game.host.askPhase(MAIN1)
+      game.room.flush()
+      game.host.play({ type: 'move', id: 'card-1001-1', to: 'gy' })
+      game.room.flush()
+
+      expect(game.host.getSnapshot().pass.asking).toBeNull()
+      expect(game.guest.getSnapshot().pass.asked).toBeNull()
+      game.guest.answerPhase(true)
+      game.room.flush()
+      expect(phaseOf(game)).toEqual({ mine: 'draw', seen: 'draw' })
+    })
+
+    it('terminar el turno (de la End Phase a la Draw Phase) se lo dice al rival como tal', () => {
+      const game = setup()
+      startBoth(game)
+      game.host.play({ type: 'phase', phase: 'end', skipDraw: true })
+      game.room.flush()
+
+      game.host.askPhase({ type: 'phase', phase: 'draw', skipDraw: true })
+      game.room.flush()
+      expect(game.guest.getSnapshot().pass.asked).toMatchObject({ phase: 'draw', endsTurn: true })
+    })
+
+    it('sin el rival en la sala, o si se va con la pregunta en el aire, la fase pasa de una', () => {
+      const alone = setup()
+      startBoth(alone)
+      alone.guestEnd.disconnect()
+      alone.room.flush()
+      alone.host.askPhase(MAIN1)
+      expect(alone.host.getSnapshot().mine?.phase).toBe('main1')
+
+      const leaving = setup()
+      startBoth(leaving)
+      leaving.host.askPhase(MAIN1)
+      leaving.room.flush()
+      expect(leaving.guest.getSnapshot().pass.asked).not.toBeNull()
+      leaving.guestEnd.disconnect()
+      leaving.room.flush()
+      expect(leaving.host.getSnapshot().mine?.phase).toBe('main1')
+      expect(leaving.host.getSnapshot().pass.asking).toBeNull()
+    })
+
+    it('«pasar» a la fase en que ya está no pregunta nada', () => {
+      const game = setup()
+      startBoth(game)
+      const sent = game.room.sent.length
+
+      game.host.askPhase({ type: 'phase', phase: 'draw', skipDraw: true })
+      expect(game.host.getSnapshot().pass.asking).toBeNull()
+      expect(game.room.sent.slice(sent).some((frame) => String(frame).includes('phaseAsk'))).toBe(false)
     })
   })
 

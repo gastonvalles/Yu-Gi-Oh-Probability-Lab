@@ -107,12 +107,23 @@ const openGames = (view: RenderResult) => {
   fireEvent.click(screen.getByRole('menuitem', { name: 'Moneda, dado y más' }))
 }
 const closeMore = () => fireEvent.keyDown(document, { key: 'Escape' })
+/** Pasar de fase le pregunta al rival si no va a hacer nada más: acá lo deja pasar (si no hay pregunta, no hace nada). */
+const letPass = () => {
+  flush()
+
+  const allow = screen.queryByRole('button', { name: 'Dejar pasar' })
+
+  if (allow) {
+    fireEvent.click(allow)
+    flush()
+  }
+}
 const PHASE_NAMES = ['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase']
 /** El botón de la fase de ahora (en el centro del campo): al tocarlo muestra las fases. */
 const phaseChip = (view: RenderResult) => within(view.container).getByRole('button', { name: /^Fases:/ })
 const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') =>
   typeof name === 'string' && role === 'button' && PHASE_NAMES.includes(name)
-    ? (fireEvent.click(phaseChip(view)), fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })))
+    ? (fireEvent.click(phaseChip(view)), fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })), letPass())
     : fireEvent.click(typeof name === 'string' && role === 'button' && MORE_OPTIONS.includes(name) ? moreButton(view, name) : within(view.container).getByRole(role, { name }))
 const typeInto = (view: RenderResult, label: string, value: string) => fireEvent.change(within(view.container).getByLabelText(label), { target: { value } })
 /** La hoja «Reglas del duelo» (está en un portal, fuera de la pantalla): se abre desde el renglón de las reglas del inicio de Jugar. */
@@ -163,7 +174,7 @@ const changeLife = (view: RenderResult, keys: string[], apply: RegExp = /^Aplica
 /** En el celular, el botón de la End Phase pregunta si se termina el turno: «Terminar turno» lo pasa. */
 const confirmEndTurn = () => {
   fireEvent.click(within(screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })).getByRole('button', { name: 'Terminar turno' }))
-  flush()
+  letPass()
 }
 /** Pasar el turno como se hace: llegar a la End Phase y, en escritorio, tocar «Pasar turno» (aparece ahí, debajo del botón de las fases); en el celular, contestar la pregunta. */
 const passTurn = (view: RenderResult) => {
@@ -173,7 +184,7 @@ const passTurn = (view: RenderResult) => {
 
   if (pass) {
     fireEvent.click(pass)
-    flush()
+    letPass()
   } else {
     confirmEndTurn()
   }
@@ -184,7 +195,7 @@ const passTurnFromEnd = (view: RenderResult) => {
 
   if (pass) {
     fireEvent.click(pass)
-    flush()
+    letPass()
   } else {
     fireEvent.click(phaseChip(view))
     confirmEndTurn()
@@ -2278,6 +2289,44 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('button', { name: 'Ventana grande' })).not.toBeInTheDocument()
   })
 
+  it('pasar de fase le pregunta al rival si no va a hacer nada más: él ve el aviso sobre la línea del registro y deja pasar o juega antes, y quien pasa espera con la fase sin cambiar', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+    const chip = (view: RenderResult) => within(view.container).getByRole('button', { name: /^Fases:/ })
+
+    // Ana toca la Battle Phase: la fase no cambia hasta que Beto conteste; él ve la pregunta (sin diálogo que tape la mesa).
+    fireEvent.click(phaseChip(host))
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
+    flush()
+    expect(chip(host)).toHaveAccessibleName(/Main Phase 1|Draw Phase|Standby Phase/)
+    expect(lane(host, 'passAsking')).toHaveTextContent('Le preguntás a Beto si no hace nada más…')
+    expect(lane(guest, 'passAsked')).toHaveTextContent('Ana quiere pasar a la Battle Phase. ¿Hacés algo antes?')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+
+    // Beto quiere jugar antes: la fase no pasa y Ana se entera un rato.
+    fireEvent.click(within(lane(guest, 'passAsked')!).getByRole('button', { name: 'Jugar antes' }))
+    flush()
+    expect(lane(guest, 'passAsked')).toBeNull()
+    expect(lane(host, 'passHeld')).toHaveTextContent('Beto quiere jugar antes de que pases de fase.')
+    expect(chip(host)).not.toHaveAccessibleName(/Battle Phase/)
+    act(() => {
+      vi.advanceTimersByTime(4500)
+    })
+    expect(lane(host, 'passHeld')).toBeNull()
+
+    // Lo vuelve a intentar y Beto lo deja pasar: la fase pasa en las dos pantallas.
+    fireEvent.click(phaseChip(host))
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
+    flush()
+    fireEvent.click(within(lane(guest, 'passAsked')!).getByRole('button', { name: 'Dejar pasar' }))
+    flush()
+    expect(chip(host)).toHaveAccessibleName(/Battle Phase/)
+    expect(chip(guest)).toHaveAccessibleName(/Battle Phase/)
+    expect(lane(host, 'passAsking')).toBeNull()
+  })
+
   it('las fases son un solo botón en el centro del campo (la fase de ahora): al tocarlo muestra las seis y elegir una pasa a ella; sin el turno no abre', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
@@ -2294,7 +2343,7 @@ describe('la pantalla del duelo', () => {
     expect(screen.getByRole('menuitem', { name: 'Battle Phase' })).not.toHaveAttribute('aria-current')
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'Battle Phase' }))
-    flush()
+    letPass()
     expect(phaseChip(host)).toHaveTextContent('BP')
     expect(phaseChip(guest)).toHaveTextContent('BP')
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
@@ -2362,7 +2411,7 @@ describe('la pantalla del duelo', () => {
     expect(within(within(host.container).getByRole('toolbar')).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
 
     fireEvent.click(pass(host)!)
-    flush()
+    letPass()
     expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
     expect(pass(host)).not.toBeInTheDocument()
   })

@@ -11,7 +11,7 @@ import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { PHASES } from '../../app/practice-mat'
+import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { MatViewToggle } from '../probability/MatViewToggle'
 import { useAnimatedNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
@@ -101,6 +101,9 @@ export type LaneNotice =
   | { kind: 'undoAsked'; onAllow: () => void; onDeny: () => void }
   | { kind: 'undoAsking' }
   | { kind: 'undoResult'; result: 'denied' | 'expired' }
+  | { kind: 'passAsked'; phase: MatPhase; endsTurn: boolean; onAllow: () => void; onDeny: () => void }
+  | { kind: 'passAsking' }
+  | { kind: 'passHeld' }
 
 /**
  * Lo de arriba de la mesa en un duelo, que es lo del rival y lo que se mira sin tocar: sus puntos de vida, el reloj de la ronda (tocarlo lo pausa),
@@ -116,7 +119,25 @@ const LOOK_TEXT = {
   choosing: 'duel.look.choosing',
 } as const satisfies Record<Activity, string>
 
-/** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo) y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
+/** Lo que dice cada aviso de permiso (volver atrás, pasar de fase), según de quién y cómo vaya. */
+function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string): string {
+  switch (lane.kind) {
+    case 'undoAsked':
+      return t('duel.undo.askShort', { name })
+    case 'undoAsking':
+      return t('duel.undo.asking', { name })
+    case 'undoResult':
+      return t(lane.result === 'denied' ? 'duel.undo.denied' : 'duel.undo.expired', { name })
+    case 'passAsked':
+      return t(lane.endsTurn ? 'duel.pass.askEnd' : 'duel.pass.ask', { name, phase: PHASES.find((entry) => entry.id === lane.phase)?.name ?? lane.phase })
+    case 'passAsking':
+      return t('duel.pass.asking', { name })
+    case 'passHeld':
+      return t('duel.pass.held', { name })
+  }
+}
+
+/** El aviso sobre la línea del registro: el pedido de volver atrás o de pasar de fase (del rival, o el tuyo) y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
 function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
   const place = rail ? 'flex-wrap py-2' : 'absolute inset-0'
   const clamp = rail ? '' : 'line-clamp-2'
@@ -130,20 +151,20 @@ function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rival
     )
   }
 
-  const asked = lane.kind === 'undoAsked'
+  const asked = lane.kind === 'undoAsked' || lane.kind === 'passAsked'
 
   return (
     <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
       <span className={cx(clamp, 'min-w-0 flex-1')}>
-        {lane.kind === 'undoAsked' ? t('duel.undo.askShort', { name: rivalName }) : lane.kind === 'undoAsking' ? t('duel.undo.asking', { name: rivalName }) : t(lane.result === 'denied' ? 'duel.undo.denied' : 'duel.undo.expired', { name: rivalName })}
+        {laneText(lane, rivalName)}
       </span>
-      {lane.kind === 'undoAsked' ? (
+      {lane.kind === 'undoAsked' || lane.kind === 'passAsked' ? (
         <>
           <Button variant="tertiary" size="sm" className="px-2" onClick={lane.onDeny}>
-            {t('duel.undo.deny')}
+            {t(lane.kind === 'undoAsked' ? 'duel.undo.deny' : 'duel.pass.deny')}
           </Button>
           <Button variant="primary" size="sm" className="px-3" onClick={lane.onAllow}>
-            {t('duel.undo.allow')}
+            {t(lane.kind === 'undoAsked' ? 'duel.undo.allow' : 'duel.pass.allow')}
           </Button>
         </>
       ) : null}

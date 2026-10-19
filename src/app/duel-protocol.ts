@@ -3,7 +3,7 @@ import { MAX_MESSAGE_BYTES } from './duel-relay-rules'
 import type { DeckFormat } from '../types'
 import { MAX_LP, STARTING_LP } from './life-calculator'
 import type { WireAct } from './mat-public'
-import { PHASES, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type Placed } from './practice-mat'
+import { PHASES, type MatAction, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type Placed } from './practice-mat'
 import { isRecord } from './utils'
 
 /**
@@ -96,6 +96,8 @@ interface ClockWire {
  * - `undoAsk` / `undoPull` / `undoAnswer` / `undoCancel`: Deshacer vuelve atrás la última jugada de la mesa, sea de quien sea, y antes se le pide permiso al otro (`id` cuenta mis pedidos).
  *   `undoAsk`: la última jugada es mía; él contesta con `ok` y, si lo permite, recién ahí mando el `undo`. `undoPull`: la última jugada es suya; si lo permite, él la deshace y me manda su `undo`, y me confirma con `ok`.
  *   Si me arrepiento (o pasa mucho sin respuesta) lo cancelo y su cartel se va.
+ * - `phaseAsk` / `phaseAnswer` / `phaseCancel`: antes de pasar de fase (`phase` es a la que quiero pasar) le pregunto al otro si no va a hacer nada más en la que dejo (`id` cuenta mis preguntas): él contesta con `ok`
+ *   (pasá, o no: voy a jugar) y, si me deja, recién ahí juego el `act` de la fase; si no contesta a tiempo lo juego igual y, si me arrepiento, lo cancelo; en los dos casos su cartel se va.
  * - `life` / `clock`: mis puntos de vida (siempre el valor, no el cambio) y el reloj compartido.
  * - `turnClock`: lo que me queda en el reloj de turnos al pasar el turno (ver `duel-clock.ts`): mi palabra corrige la cuenta que el otro lado hace por su cuenta.
  * - `game`: moneda, dado, piedra-papel-tijera o quién va primero (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
@@ -117,6 +119,9 @@ export type DuelMessage =
   | { t: 'undoPull'; id: number }
   | { t: 'undoAnswer'; id: number; ok: boolean }
   | { t: 'undoCancel'; id: number }
+  | { t: 'phaseAsk'; id: number; phase: MatPhase }
+  | { t: 'phaseAnswer'; id: number; ok: boolean }
+  | { t: 'phaseCancel'; id: number }
   | { t: 'life'; n: number; lp: number }
   | { t: 'clock'; n: number; running: boolean; elapsedMs: number }
   | { t: 'turnClock'; bank: number }
@@ -467,6 +472,15 @@ export function parseMessage(text: unknown): DuelMessage | null {
 
     case 'undoCancel':
       return isInt(raw.id, 1, MAX_COUNT) ? { t: 'undoCancel', id: raw.id } : null
+
+    case 'phaseAsk':
+      return isInt(raw.id, 1, MAX_COUNT) && isPhase(raw.phase) ? { t: 'phaseAsk', id: raw.id, phase: raw.phase } : null
+
+    case 'phaseAnswer':
+      return isInt(raw.id, 1, MAX_COUNT) && typeof raw.ok === 'boolean' ? { t: 'phaseAnswer', id: raw.id, ok: raw.ok } : null
+
+    case 'phaseCancel':
+      return isInt(raw.id, 1, MAX_COUNT) ? { t: 'phaseCancel', id: raw.id } : null
 
     case 'life':
       return isInt(raw.n, 1, MAX_COUNT) && isInt(raw.lp, 0, MAX_LP) ? { t: 'life', n: raw.n, lp: raw.lp } : null
