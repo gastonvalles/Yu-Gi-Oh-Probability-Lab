@@ -21,6 +21,7 @@ export const meta: Translated<typeof es> = {
   'meta.updated': '<lead>Updated</lead>{date}',
   'meta.filter.clear': 'Remove the {name} filter',
   'meta.showMore': 'Show {count} more',
+  'meta.tournaments.loading': 'Loading decks…',
   'meta.deck.players': '({players} players)',
   'meta.deck.ofPlayers': 'of <b>{players}</b> players',
   'meta.deck.kindHandtraps': 'hand traps',

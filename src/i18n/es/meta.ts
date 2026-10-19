@@ -19,6 +19,7 @@ export const meta = {
   'meta.updated': '<lead>Actualizado el</lead>{date}',
   'meta.filter.clear': 'Quitar el filtro {name}',
   'meta.showMore': 'Ver {count} más',
+  'meta.tournaments.loading': 'Buscando decks…',
   'meta.deck.players': '({players} jugadores)',
   'meta.deck.ofPlayers': 'de <b>{players}</b> jugadores',
   'meta.deck.kindHandtraps': 'hand traps',
