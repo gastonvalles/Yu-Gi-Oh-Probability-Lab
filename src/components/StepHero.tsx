@@ -39,7 +39,7 @@ const sideStyle = variants({
 /** Encabezado de cada vista: ícono + título + una línea de contexto + ayuda a pedido + acciones. */
 export function StepHero({ title, icon, subtitle, help, titleAction, side, sideVariant = 'actions' }: StepHeroProps) {
   return (
-    <header className="relative flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
+    <header className="relative z-20 flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 items-center gap-3">
         <Icon name={icon} size={28} className="shrink-0 text-primary-soft" />
         <div className="grid min-w-0">
