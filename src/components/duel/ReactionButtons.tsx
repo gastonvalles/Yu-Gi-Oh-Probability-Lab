@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
-import { GOOD_MESSAGE, thinkingMessage } from './signals'
+import { GOOD_MESSAGE, thinkingMessage } from '../../app/duel-signals'
 
 /**
  * Los mensajes rápidos del duelo, sólo con su emoji (🤔 pensando, 👍 continuá): sin texto, grandes y al alcance del pulgar.
@@ -24,13 +24,26 @@ interface ReactionButtonsProps {
   onSend: (text: string) => void
   /** Sin el rival en la sala no hay a quién avisarle. */
   disabled?: boolean
+  /** Cuándo se puede mandar la próxima (`DuelSnapshot.emoteReadyAt`): hasta entonces las dos quedan apagadas (una señal cada 3 segundos, así no se spamean). */
+  readyAt?: number
   className?: string
   set?: keyof typeof SETS
 }
 
-export function ReactionButtons({ onSend, disabled = false, className, set = 'chat' }: ReactionButtonsProps) {
+export function ReactionButtons({ onSend, disabled = false, readyAt = 0, className, set = 'chat' }: ReactionButtonsProps) {
   // Cuántas veces se apretó cada una: cambiar la clave de los dos spans vuelve a correr su animación.
   const [bursts, setBursts] = useState<Record<string, number>>({})
+  const [, repaint] = useState(0)
+  const waiting = readyAt > Date.now()
+
+  // Al cumplirse el plazo las botoneras se vuelven a encender solas.
+  useEffect(() => {
+    if (readyAt <= Date.now()) return
+
+    const id = setTimeout(() => repaint((count) => count + 1), readyAt - Date.now())
+
+    return () => clearTimeout(id)
+  }, [readyAt])
 
   return (
     <span role="group" aria-label={t('duel.chat.quickTitle')} className={cx('flex items-center gap-1', className)}>
@@ -43,7 +56,7 @@ export function ReactionButtons({ onSend, disabled = false, className, set = 'ch
             type="button"
             aria-label={label()}
             title={label()}
-            disabled={disabled}
+            disabled={disabled || waiting}
             className={cx(
               'relative grid cursor-pointer place-items-center border px-0 leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40',
               // La botonera de abajo: cajas oscuras de 44 px con el emoji a 24 px (como el resto de la botonera); el chat, grandes (56 px, emoji de 33).

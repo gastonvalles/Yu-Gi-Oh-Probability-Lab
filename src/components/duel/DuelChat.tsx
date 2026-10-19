@@ -11,7 +11,7 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { PLAYER_COLOR } from './player-color'
 import { ReactionButtons } from './ReactionButtons'
-import { isEmojiSignal, isSignal } from './signals'
+import { isEmojiSignal, isSignal } from '../../app/duel-signals'
 import type { FeedEntry } from './use-duel-feed'
 
 /** Lo que llega al chat sube un poco y se asienta (con movimiento reducido, aparece sin más). */
@@ -97,7 +97,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelC
 
       <div className="grid gap-2">
         {/* Los dos mensajes rápidos, sólo con su emoji. */}
-        <ReactionButtons onSend={send} disabled={!peerPresent} />
+        <ReactionButtons onSend={send} disabled={!peerPresent} readyAt={snapshot.emoteReadyAt} />
 
         <form
           className="flex items-center gap-2"

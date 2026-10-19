@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { GOOD_MESSAGE, isEmojiSignal, isSignal, thinkingMessage } from '../components/duel/signals'
+import { GOOD_MESSAGE, isEmojiSignal, isSignal, thinkingMessage } from '../app/duel-signals'
 
 describe('las señales rápidas del duelo', () => {
   it('son sólo el emoji, sin texto', () => {

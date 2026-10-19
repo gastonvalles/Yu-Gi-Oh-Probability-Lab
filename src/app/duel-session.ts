@@ -5,6 +5,7 @@ import { RateLimiter } from './duel-relay-rules'
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, type Activity, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { duelTurnNumber, whoseTurn } from './duel-turn'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
+import { isEmojiSignal } from './duel-signals'
 import { CONTROL_ACTIONS, controlReactions } from './mat-control'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
 import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatPile, type MatState } from './practice-mat'
@@ -87,6 +88,8 @@ export interface DuelSnapshot {
   peerLook: Activity | null
   /** Lo que se escribieron los dos, de más viejo a más nuevo. */
   chat: readonly ChatLine[]
+  /** Cuándo (reloj del dispositivo, en ms) puedo mandar otra señal rápida (🤔, 👍): una cada `EMOTE_GAP_MS`, para que nadie las spamee. 0 si todavía no mandé ninguna. */
+  emoteReadyAt: number
   /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
   watchers: number
   /**
@@ -169,6 +172,8 @@ const UNDO_WAIT_MS = 30_000
 type Mover = 'me' | 'peer'
 /** Quién deshace: `push`, quien pide (la última jugada es suya); `pull`, quien contesta. */
 type UndoKind = 'push' | 'pull'
+/** Cada cuánto puedo mandar una señal rápida (un emote: 🤔, 👍): las que lleguen antes no salen. */
+export const EMOTE_GAP_MS = 3000
 /** Cuánto dura un objetivo que marqué del lado del rival: pasado el plazo se quita solo (en los dos lados). */
 const MARK_MS = 5000
 /**
@@ -226,6 +231,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let chat: ChatLine[] = []
   let chatId = 0
   let chatN = 0
+  let emoteAt: number | null = null
   let watchers = 0
   // Lo que se señala: los míos (para no repetir uno), el último que le oí y el último que se muestra (el mío o el suyo). Nada de esto se guarda ni se repone.
   let pingN = 0
@@ -281,7 +287,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -1303,6 +1309,15 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
       if (line === '' || !peerPresent) {
         return
+      }
+
+      // Las señales rápidas no se spamean: una cada `EMOTE_GAP_MS` (lo que se escribe a mano no tiene tope, salvo el del relay).
+      if (isEmojiSignal(line)) {
+        if (emoteAt !== null && now() - emoteAt < EMOTE_GAP_MS) {
+          return
+        }
+
+        emoteAt = now()
       }
 
       chatN += 1
