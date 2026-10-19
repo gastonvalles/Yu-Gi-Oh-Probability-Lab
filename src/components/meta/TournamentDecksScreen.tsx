@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { META_DECKS, buildTournamentsHash, countPlacements, filterMetaDecks, metaPlacements, readTournamentsHash, type MetaDeck, type MetaDeckFilter } from '../../app/meta'
+import { META_DECKS, buildTournamentsHash, countPlacements, filterMetaDecks, metaMonth, metaPlacements, readTournamentsHash, type MetaDeck, type MetaDeckFilter } from '../../app/meta'
+import { deckIdsWithReplay } from '../../app/replays'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useAppSelector } from '../../app/store-hooks'
 import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
@@ -43,6 +44,9 @@ export function TournamentDecksScreen() {
   const [filter, setFilter] = useState<MetaDeckFilter | null>(link.filter)
   const [query, setQuery] = useState('')
   const [placements, setPlacements] = useState<string[]>([])
+  // «Este mes» y «Con replay»: se pueden encender los dos y se suman a lo demás.
+  const [thisMonth, setThisMonth] = useState(false)
+  const [withReplay, setWithReplay] = useState(false)
   const [deckLimit, setDeckLimit] = useState(DECKS_PER_PAGE)
   const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(link.deck)
 
@@ -93,8 +97,25 @@ export function TournamentDecksScreen() {
   // Los chips de puesto son siempre los mismos (los de todos los decks): la fila no cambia de forma al buscar. Cada uno cuenta lo que daría con lo demás que está filtrado.
   const allPlacements = useMemo(() => metaPlacements(META_DECKS.decks), [])
   const matching = useMemo(() => filterMetaDecks(META_DECKS.decks, { ...filter, region, text: query }), [filter, region, query])
-  const placementCounts = useMemo(() => countPlacements(matching), [matching])
-  const decks = useMemo(() => filterMetaDecks(matching, { placements }), [matching, placements])
+  const month = useMemo(() => metaMonth(), [])
+  const replayIds = useMemo(() => deckIdsWithReplay(), [])
+  // Cada chip cuenta lo que daría con lo demás que está encendido (menos él mismo): «Este mes» con replay, y al revés.
+  const monthOnly = useMemo(() => (thisMonth ? filterMetaDecks(matching, { month }) : matching), [matching, thisMonth, month])
+  const flagged = useMemo(() => (withReplay ? filterMetaDecks(monthOnly, { ids: replayIds }) : monthOnly), [monthOnly, withReplay, replayIds])
+  const placementCounts = useMemo(() => countPlacements(flagged), [flagged])
+  const decks = useMemo(() => filterMetaDecks(flagged, { placements }), [flagged, placements])
+  const monthCount = useMemo(
+    () => filterMetaDecks(withReplay ? filterMetaDecks(matching, { ids: replayIds }) : matching, { placements, month }).length,
+    [matching, placements, month, withReplay, replayIds],
+  )
+  const replayCount = useMemo(
+    () => filterMetaDecks(thisMonth ? filterMetaDecks(matching, { month }) : matching, { placements, ids: replayIds }).length,
+    [matching, placements, month, thisMonth, replayIds],
+  )
+  const toggleExtra = (set: (update: (current: boolean) => boolean) => void) => {
+    set((current) => !current)
+    setDeckLimit(DECKS_PER_PAGE)
+  }
   const togglePlacement = (placement: string) => {
     setPlacements((current) => (current.includes(placement) ? current.filter((item) => item !== placement) : [...current, placement]))
     setDeckLimit(DECKS_PER_PAGE)
@@ -171,8 +192,15 @@ export function TournamentDecksScreen() {
             }))}
           />
         ) : null}
+        <FilterChips
+          label={t('meta.tournaments.extrasLabel')}
+          chips={[
+            { key: 'month', name: t('meta.tournaments.thisMonth'), count: monthCount, active: thisMonth, onToggle: () => toggleExtra(setThisMonth), disabled: !thisMonth && monthCount === 0 },
+            { key: 'replay', name: t('meta.tournaments.withReplay'), count: replayCount, active: withReplay, onToggle: () => toggleExtra(setWithReplay), disabled: !withReplay && replayCount === 0 },
+          ]}
+        />
         <p className="m-0 text-body text-muted">
-          {t(filterLabel || placements.length > 0 ? 'meta.tournaments.decksFiltered' : 'meta.tournaments.decksAll', {
+          {t(filterLabel || placements.length > 0 || thisMonth || withReplay ? 'meta.tournaments.decksFiltered' : 'meta.tournaments.decksAll', {
             count: decks.length,
             n: formatInteger(decks.length),
             region: region.toUpperCase(),

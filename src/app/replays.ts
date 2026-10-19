@@ -229,6 +229,11 @@ export function getReplayEntries(): ReplayEntry[] {
   return cached.entries
 }
 
+/** Los ids de los decks de torneo que tienen al menos un replay (el filtro «Con replay»). */
+export function deckIdsWithReplay(): Set<number> {
+  return new Set(getReplayEntries().flatMap((entry) => entry.players.flatMap((player) => (player.deck ? [player.deck.id] : []))))
+}
+
 /** Los replays de los duelos de un deck de torneo (se ven en su detalle). */
 export const replaysOfDeck = (deckId: number) => getReplayEntries().filter((entry) => playsDeck(entry, deckId))
 

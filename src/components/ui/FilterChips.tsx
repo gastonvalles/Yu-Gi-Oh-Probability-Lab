@@ -16,10 +16,10 @@ export interface FilterChip {
 interface FilterChipsProps {
   /** El nombre del grupo para lectores de pantalla. */
   label: string
-  /** El chip que apaga los filtros («Todas», «Todos»). */
-  all: string
-  allActive: boolean
-  onAll: () => void
+  /** El chip que apaga los filtros («Todas», «Todos»). Sin él (`all` no se pasa), la fila son sólo interruptores independientes. */
+  all?: string
+  allActive?: boolean
+  onAll?: () => void
   chips: FilterChip[]
 }
 
@@ -34,9 +34,11 @@ export function FilterChips({ label, all, allActive, onAll, chips }: FilterChips
   // El `py-1` con `-my-1` deja lugar al anillo de foco, que el `overflow` de la fila deslizable recortaría.
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-1.5 max-[1100px]:-my-1 max-[1100px]:flex-nowrap max-[1100px]:overflow-x-auto max-[1100px]:py-1 max-[1100px]:[scrollbar-width:none] max-[1100px]:[&::-webkit-scrollbar]:hidden">
-      <button type="button" aria-pressed={allActive} className={chipClass} onClick={onAll}>
-        {all}
-      </button>
+      {all !== undefined && onAll ? (
+        <button type="button" aria-pressed={allActive} className={chipClass} onClick={onAll}>
+          {all}
+        </button>
+      ) : null}
       {chips.map((chip) => (
         <button key={chip.key} type="button" aria-pressed={chip.active} aria-label={`${chip.name} ${chip.count}`} disabled={chip.disabled} className={chipClass} onClick={chip.onToggle}>
           {chip.name}

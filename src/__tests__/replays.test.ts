@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MetaDeck } from '../app/meta'
-import { buildReplaysHash, hasMetaDeck, matchReplays, parseReplayTitle, playsDeck, readReplaysHash, readStage, samePlayer, type ReplayVideo } from '../app/replays'
+import { META_DECKS, type MetaDeck } from '../app/meta'
+import { buildReplaysHash, countReplaysOfDeck, deckIdsWithReplay, hasMetaDeck, matchReplays, parseReplayTitle, playsDeck, readReplaysHash, readStage, samePlayer, type ReplayVideo } from '../app/replays'
 
 const deck = (id: number, tournament: string, player: string, name: string, placement = 'Top 8'): MetaDeck => ({
   id,
@@ -163,5 +163,15 @@ describe('los links a un replay y a los de un deck', () => {
   it('ignoran lo raro y lo que es de otra pestaña', () => {
     expect(readReplaysHash('#replays?video=<script>&deck=-3')).toEqual({ video: null, deck: null })
     expect(readReplaysHash('#meta?deck=5&video=0yJYrr_QlbU')).toEqual({ video: null, deck: null })
+  })
+})
+
+describe('deckIdsWithReplay', () => {
+  it('son los decks de torneo que tienen replay: los mismos para los que countReplaysOfDeck da algo', () => {
+    const ids = deckIdsWithReplay()
+
+    for (const metaDeck of META_DECKS.decks) {
+      expect(ids.has(metaDeck.id), String(metaDeck.id)).toBe(countReplaysOfDeck(metaDeck.id) > 0)
+    }
   })
 })
