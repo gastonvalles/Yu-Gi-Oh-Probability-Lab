@@ -285,7 +285,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           <div
             ref={cardRef}
             className={cx(
-              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden [perspective:900px] shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
+              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
               // El dedo es de la carta en los dos sentidos (nada de la pantalla se desplaza desde acá): de costado desliza a la de al lado y hacia arriba o abajo la da vuelta.
               'touch-none',
             )}
@@ -339,7 +339,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
               setZoomed((current) => !current)
             }}
           >
-            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef}>
+            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack}>
               <CardArt
                 remoteUrl={art?.imageUrl ?? card?.imageUrl ?? card?.imageUrlSmall ?? null}
                 fallbackUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}

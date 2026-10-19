@@ -34,6 +34,8 @@ export const PILE_LAYER_DIM = 0.07
  * demás (`card-image-source`).
  */
 export const CARD_BACK_URL = '/api/card-image/cards/back.jpg'
+/** El dorso en alta (927 × 1353, WebP): para la carta grande dada vuelta, donde el de YGOPRODeck (428 × 614, JPEG) se ve borroso y a bloques. Es una copia del dorso de Yugipedia, en `public/`. */
+export const CARD_BACK_HD_URL = '/card-back.webp'
 
 /**
  * Dorso de carta: la imagen de `CARD_BACK_URL` (un violeta oscuro debajo mientras carga). Lo comparten el mazo, el Extra, las cartas
