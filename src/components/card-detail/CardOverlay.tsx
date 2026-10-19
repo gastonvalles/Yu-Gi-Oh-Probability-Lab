@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { CardNavigation } from '../../app/card-neighbors'
@@ -19,6 +19,8 @@ import { PrintingInfo, SelectedPrintingContext, useSelectedPrinting } from './Pr
 import { CardGlare, levelOut, tiltHandlers } from './card-tilt'
 
 const CLOSE_MS = 180
+/** Cómo se abren los precios desde adentro del panel: el pie con botones (Anterior / Siguiente) lleva el $ en su misma fila y avisa que está para que el panel no dibuje otro. */
+const PricesContext = createContext<{ openPrices: () => void; registerFooter: (mounted: boolean) => void } | null>(null)
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 /** Lo que la carta nueva tarda en aparecer al pasar a otra, y cuánto se desliza desde el lado de donde viene. */
 const SWITCH_MS = 180
@@ -98,6 +100,9 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   const wide = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Tocar la carta la agranda al máximo; tocarla de nuevo (o el fondo) vuelve al panel.
   const [zoomed, setZoomed] = useState(false)
+  // Un pie con botones lleva el $ en su fila; sin pie, el $ va solo abajo a la derecha del texto.
+  const [hasFooter, setHasFooter] = useState(false)
+  const pricesSlot = useMemo(() => (onOpenPrices ? { openPrices: onOpenPrices, registerFooter: setHasFooter } : null), [onOpenPrices])
   const animationsRef = useRef<Animation[]>([])
   // Los artes de la carta (los de YGOPRODeck y las impresiones: llegan después de abrir) y cuál se ve.
   const cardId = card?.ygoprodeckId ?? null
@@ -348,9 +353,11 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           onClick={(event) => event.stopPropagation()}
         >
           {/* El panel dice de qué impresión es el arte que se ve: al cambiar de arte (otra rareza, otro set) cambia también lo que dice. */}
-          <SelectedPrintingContext.Provider value={(art as ArtChoice | undefined)?.printing}>{children}</SelectedPrintingContext.Provider>
-          {/* El $ de los precios, en la esquina de abajo a la derecha del texto de la carta: en el flujo, abajo del todo, así no tapa el texto ni las acciones. */}
-          {onOpenPrices ? (
+          <PricesContext.Provider value={pricesSlot}>
+            <SelectedPrintingContext.Provider value={(art as ArtChoice | undefined)?.printing}>{children}</SelectedPrintingContext.Provider>
+          </PricesContext.Provider>
+          {/* El $ de los precios, en la esquina de abajo a la derecha del texto de la carta: en el flujo, abajo del todo, así no tapa el texto. Si el panel tiene un pie con botones, el $ va en la fila de esos botones (no pasa su línea) y éste no se dibuja. */}
+          {onOpenPrices && !hasFooter ? (
             <div className="-mb-2 -mr-2 flex flex-none justify-end">
               <CardPricesButton onClick={onOpenPrices} />
             </div>
@@ -430,7 +437,21 @@ export function CardPanelBody({ label, className, children }: { label: string; c
   )
 }
 
-/** Pie del panel: las acciones, separadas por una línea fina. */
+/** Pie del panel: las acciones, separadas por una línea fina, y a la derecha de la última fila el $ de los precios (en la misma línea que los botones). */
 export function CardPanelFooter({ children }: { children: ReactNode }) {
-  return <footer className="grid flex-none gap-2 border-t border-tint/10 pt-[0.65rem]">{children}</footer>
+  const prices = useContext(PricesContext)
+  const registerFooter = prices?.registerFooter
+
+  useLayoutEffect(() => {
+    registerFooter?.(true)
+
+    return () => registerFooter?.(false)
+  }, [registerFooter])
+
+  return (
+    <footer className="flex flex-none items-end gap-2 border-t border-tint/10 pt-[0.65rem]">
+      <div className="grid min-w-0 flex-1 gap-2">{children}</div>
+      {prices ? <CardPricesButton className="-mr-2" onClick={prices.openPrices} /> : null}
+    </footer>
+  )
 }
