@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
 
 import { NO_SHELL_INSETS, readSidebarCollapsed, setShellInsets, shellInsetsFor, writeSidebarCollapsed } from '../../app/shell-layout'
+import { useDuelFullscreen } from '../../app/duel-fullscreen'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
@@ -38,6 +39,8 @@ interface AppShellProps {
  */
 export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false, onSheetOpen, searchAvailable = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
+  // Con el duelo en ventana grande, el menú lateral no está (el duelo ocupa toda la pantalla).
+  const bigWindow = useDuelFullscreen()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null)
   const toggleCollapsed = useCallback(() => {
@@ -75,13 +78,13 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   // Los botones flotantes (y las mascotas, mientras nadie las mueva) dejan libres el menú lateral (con su ancho de ahora) y el pie. En el celular no hay menú fijo.
   // Va en un layout effect para que el cambio (contraer el menú, girar la pantalla) se vea en el mismo cuadro; el valor del primer cuadro ya lo trae el módulo.
   useLayoutEffect(() => {
-    setShellInsets(shellInsetsFor(collapsed, isDesktop, !immersive))
+    setShellInsets(shellInsetsFor(collapsed, isDesktop && !bigWindow, !immersive))
 
     return () => setShellInsets(NO_SHELL_INSETS)
-  }, [collapsed, isDesktop, immersive])
+  }, [collapsed, isDesktop, bigWindow, immersive])
 
   return (
-    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:grid-cols-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden', immersive ? 'max-[1100px]:h-dvh max-[1100px]:overflow-hidden' : 'max-[1100px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
+    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', immersive ? 'max-[1100px]:h-dvh max-[1100px]:overflow-hidden' : 'max-[1100px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
       {/* Es un botón y no un enlace: las rutas viajan en el hash, y un `href="#contenido"` cambiaría de pantalla. */}
       <button
         type="button"
@@ -90,7 +93,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
       >
         {t('shell.skipToContent')}
       </button>
-      <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} className="max-[1100px]:hidden" />
+      {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} className="max-[1100px]:hidden" />}
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', ownMenu && 'max-[1100px]:pt-[env(safe-area-inset-top,0px)]')}>
         {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onSearch={searchAvailable ? openSearch : undefined} className="min-[1101px]:hidden" />}
         <div

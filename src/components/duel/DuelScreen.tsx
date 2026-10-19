@@ -21,6 +21,7 @@ import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign } from '../../app/mat-control'
 import { createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
+import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { useChatSound } from '../../app/use-chat-sound'
 import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
@@ -354,6 +355,12 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     onImmersiveChange?.(onTable)
   }, [onTable, onImmersiveChange])
   useEffect(() => () => onImmersiveChange?.(false), [onImmersiveChange])
+
+  // La ventana grande es de la mesa: al salir de ella (a la sala, al lobby, a otra pantalla) se apaga.
+  useEffect(() => {
+    if (!onTable) setDuelFullscreen(false)
+  }, [onTable])
+  useEffect(() => () => setDuelFullscreen(false), [])
 
   // Sin sala es el lobby; con sala (también mirando, en pausa o entre dos duelos de un Match) ya es un duelo. En un layout effect: el menú no muestra el buscador ni un cuadro de más.
   useLayoutEffect(() => {
