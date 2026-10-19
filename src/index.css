@@ -1444,9 +1444,9 @@
     color: inherit;
   }
 
-  /* Seleccionar texto: verde flúor sobre el fondo violeta, para que resalte. */
+  /* Seleccionar texto: ámbar sobre el fondo violeta, para que resalte (y un enlace seleccionado sigue siendo ámbar: el verde es sólo de lo que salió bien). */
   ::selection {
-    background: var(--success);
+    background: var(--info);
     color: var(--background);
   }
 

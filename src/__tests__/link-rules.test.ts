@@ -60,6 +60,12 @@ describe('los hipervínculos', () => {
     expect(old.map((file) => path.relative(ROOT, file))).toEqual([])
   })
 
+  it('un enlace seleccionado también es ámbar: el texto seleccionado (::selection) es ámbar, no verde', () => {
+    const css = readFileSync(path.join(process.cwd(), 'src', 'index.css'), 'utf8')
+
+    expect(css).toMatch(/::selection\s*\{\s*background: var\(--info\);/)
+  })
+
   it('el enlace de la sala del duelo (el que se copia para invitar) también es ámbar', () => {
     const source = readFileSync(path.join(ROOT, 'duel', 'DuelScreen.tsx'), 'utf8')
 
