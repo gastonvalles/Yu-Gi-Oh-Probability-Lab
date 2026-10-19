@@ -148,11 +148,11 @@ describe('las filas del buscador de escritorio', () => {
 
     fireEvent.click(addButton(desktopRow('Carta 2')))
     expect(renders.byName).toEqual(ONCE('Carta 2'))
-    expect(addButton(desktopRow('Carta 2'))).toHaveClass('bg-success')
+    expect(addButton(desktopRow('Carta 2'))).toHaveClass('bg-success-solid')
 
     act(() => void vi.advanceTimersByTime(900))
     expect(renders.byName).toEqual({ 'Carta 2': 2 })
-    expect(addButton(desktopRow('Carta 2'))).not.toHaveClass('bg-success')
+    expect(addButton(desktopRow('Carta 2'))).not.toHaveClass('bg-success-solid')
   })
 })
 

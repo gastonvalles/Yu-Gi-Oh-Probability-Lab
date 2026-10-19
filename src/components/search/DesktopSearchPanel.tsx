@@ -52,7 +52,7 @@ const ADD_REVEAL =
 function addButton(state: 'idle' | 'added' | 'maxed'): string {
   return cx(
     'absolute bottom-2 right-2 grid h-8 min-w-8 place-items-center rounded-full border px-2 font-bold leading-none transition-[opacity,transform,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92]',
-    state === 'added' && 'border-success/80 bg-success text-lead text-accent-foreground opacity-100',
+    state === 'added' && 'border-success-solid bg-success-solid text-lead text-white opacity-100',
     state === 'idle' && ['border-primary/60 bg-primary text-lead text-white hover:bg-primary-hover', ADD_REVEAL],
     state === 'maxed' && ['border-border-subtle bg-card-background text-micro text-soft', ADD_REVEAL],
   )

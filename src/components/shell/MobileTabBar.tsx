@@ -17,12 +17,12 @@ interface MobileTabBarProps {
 
 /**
  * La barra de abajo del celular: un botón por grupo (Tu deck · Jugar · Descubrir · Cartas). Tocar uno abre su hoja (`GroupSheet`) con las
- * opciones. Es índigo y el grupo del destino abierto va en ámbar, igual que el menú lateral. Mide 64 px (más el borde seguro del teléfono):
+ * opciones, que se prolonga desde la barra (el mismo índigo; con la hoja abierta, la línea de arriba de la barra se apaga para que no las separe). Es índigo y el grupo del destino abierto va en ámbar, igual que el menú lateral. Mide 64 px (más el borde seguro del teléfono):
  * `AppShell` deja ese espacio libre abajo y se lo avisa a los botones flotantes (`TAB_BAR_PX` en `app/shell-layout.ts`).
  */
 export function MobileTabBar({ groups, activeKey, openKey, onOpen, placement = 'fixed', className }: MobileTabBarProps) {
   return (
-    <nav aria-label={t('shell.nav.main')} className={cx('flex border-t border-nav-raised bg-nav pb-[env(safe-area-inset-bottom,0px)]', placement === 'fixed' && 'fixed inset-x-0 bottom-0 z-40', className)}>
+    <nav aria-label={t('shell.nav.main')} className={cx('flex border-t bg-nav pb-[env(safe-area-inset-bottom,0px)]', openKey === null ? 'border-nav-raised' : 'border-transparent', placement === 'fixed' && 'fixed inset-x-0 bottom-0 z-40', className)}>
       {groups.map((group) => {
         const open = openKey === group.key
         // Con una hoja abierta el ámbar es del grupo de esa hoja; sin hoja, del grupo de la pantalla en que estás.

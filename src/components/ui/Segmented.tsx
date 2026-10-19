@@ -36,7 +36,7 @@ const GROUP: Record<SegmentedVariant, string> = {
 
 /** Opción elegida con color propio (verde / rojo) en lugar del violeta de la marca. */
 const TONE_ON = {
-  success: 'bg-success text-background shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)]',
+  success: 'bg-success-solid text-white shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)]',
   danger: 'bg-danger text-white shadow-[0_6px_16px_rgb(var(--danger-rgb)/0.35)]',
 } as const
 
