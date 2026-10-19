@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -40,7 +40,7 @@ import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
-import { DuelRailsContext, railsFit } from '../../app/duel-rails'
+import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
@@ -207,10 +207,10 @@ const FIRST_DEAL_MS = 90
 const NEXT_DEAL_MS = 55
 
 /**
- * El borde y el velo de una casilla vacía: una línea fina de un gris sutil (`field-line`) con un velo parejo, para que la zona se lea como un lugar y no como un hueco.
+ * El borde y el velo de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) con un velo parejo, para que la zona se lea como un lugar y no como un hueco.
  * Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: no hay zonas de otro color; el color queda para lo que pasa (elegir, soltar una carta).
  */
-const CELL_LOOK = 'border border-solid border-field-line/30 bg-field-line/[0.06]'
+const CELL_LOOK = 'border border-solid border-field-line/55 bg-field-line/[0.05]'
 
 /**
  * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_LOOK`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
@@ -488,6 +488,7 @@ export function PracticeMat({
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
   const view = useMatView()
+  const isDuel = Boolean(duel)
 
   useEscapeKey(() => setPicking(null), picking !== null)
   useEscapeKey(() => setCounterMode(null), counterMode !== null)
@@ -588,9 +589,63 @@ export function PracticeMat({
   const [shuffleKey, setShuffleKey] = useState(0)
   const deckRef = useRef<HTMLDivElement | null>(null)
   const fieldRef = useRef<HTMLDivElement | null>(null)
+  // El campo se dibuja cuando ya hay mano repartida: el efecto de abajo lo espera (por eso es estado y no sólo una referencia).
+  const [fieldNode, setFieldNode] = useState<HTMLDivElement | null>(null)
   const setField = useCallback((node: HTMLDivElement | null) => {
     fieldRef.current = node
+    setFieldNode(node)
   }, [])
+
+  // La vista 3D se agranda hasta ocupar el lugar que tiene (la inclinación le quita alto y la perspectiva, fondo): el campo con la mano del rival crece parejo desde su borde de abajo (que no se mueve, así la mano
+  // y todo lo de abajo siguen en su lugar) hasta donde entra a lo ancho y hasta la barra de arriba. Se mide a tamaño natural y se le avisa al CSS con `--field-zoom`; no cambia el diseño (la grilla ni el scroll).
+  useLayoutEffect(() => {
+    const field = fieldNode
+    const column = columnRef.current
+
+    if (!field || !column) {
+      return
+    }
+
+    if (view !== '3d' || !isDesktop) {
+      field.style.removeProperty('--field-zoom')
+
+      return
+    }
+
+    const measure = () => {
+      field.style.setProperty('--field-zoom', '1')
+
+      const box = field.getBoundingClientRect()
+      const hand = field.querySelector('[data-rival-drop="hand"]')?.getBoundingClientRect()
+      const area = column.getBoundingClientRect()
+      // Con la barra de arriba dentro de la columna (sin laterales) el campo no puede subir más que ella; con laterales, la barra está a los costados.
+      const headerBottom = isDuel && !rails ? (column.firstElementChild?.getBoundingClientRect().bottom ?? area.top) : area.top
+      // El ancho del campo son sus casillas (la grilla se centra y puede ser más angosta que su caja).
+      const style = getComputedStyle(field)
+      const tracks = style.gridTemplateColumns.split(' ').map(parseFloat).filter(Number.isFinite)
+      const tracksWidth = tracks.reduce((sum, track) => sum + track, 0) + (parseFloat(style.columnGap) || 0) * Math.max(0, tracks.length - 1)
+      const zoom = fieldZoom({
+        width: tracksWidth || box.width,
+        height: box.bottom - Math.min(box.top, hand?.top ?? box.top),
+        availWidth: area.width - (rails ? RAILS_SIDE_RESERVE_PX : 32),
+        availHeight: box.bottom - Math.max(area.top, headerBottom) - 8,
+      })
+
+      field.style.setProperty('--field-zoom', String(Math.round(zoom * 1000) / 1000))
+    }
+
+    measure()
+
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+
+    observer?.observe(column)
+    observer?.observe(field)
+
+    return () => {
+      observer?.disconnect()
+      field.style.removeProperty('--field-zoom')
+    }
+  }, [fieldNode, view, isDesktop, isDuel, rails])
   useEffect(() => {
     setHandOrder([])
     setDealt(0)
@@ -1554,7 +1609,7 @@ export function PracticeMat({
           ref={setField}
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-22rem)/3.2),15rem))]', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
+          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-22rem)/3.2),15rem))]', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
           style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null) } as CSSProperties) : undefined}

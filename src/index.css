@@ -1063,7 +1063,7 @@
  */
 /* Una casilla vacía con una X de trazos finos (las zonas del rival y las Zonas Extra, como en el diseño de la mesa): la carta que se apoya encima la tapa. */
 @utility cell-cross {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0L100 100M100 0L0 100' fill='none' stroke='%23a8a6bb' stroke-opacity='.55' stroke-width='1' stroke-dasharray='3 3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0L100 100M100 0L0 100' fill='none' stroke='%23ffffff' stroke-opacity='.6' stroke-width='1' stroke-dasharray='3 3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
   background-size: 100% 100%;
 }
 
@@ -1428,8 +1428,8 @@
     --danger-soft: #ff4d4d;
     --info-soft: #ffd84d;
     /* El gris sutil de las líneas que delimitan las casillas de la mesa (todas iguales, sin zonas de otro color). */
-    --field-line: #a8a6bb;
-    --field-line-rgb: 168 166 187;
+    --field-line: #ffffff;
+    --field-line-rgb: 255 255 255;
 
     /* El Extra Deck y los monstruos Sincro y Enlace: el azul de siempre (las zonas del deck son categorías y se distinguen por color). */
     --handtrap: #3b82f6;

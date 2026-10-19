@@ -3458,13 +3458,13 @@ describe('la pantalla del duelo', () => {
 
       // El tuyo, verde: la casilla de tus vidas (borde y número) y tu globo, con tu nombre.
       expect(mineLife).toHaveClass('border-accent/50')
-      expect(mineLife.querySelector('span.tabular-nums')).toHaveClass('text-accent')
+      expect(mineLife.querySelector('span.font-extrabold.tabular-nums')).toHaveClass('text-accent')
       expect(mineLine).toHaveClass('bg-accent/20')
       expect(mineLine.querySelector('span')).toHaveClass('text-accent')
 
       // El del rival, celeste, también en sus dos lugares.
       expect(theirLife).toHaveClass('border-info/50')
-      expect(theirLife.querySelector('span.tabular-nums')).toHaveClass('text-info-soft')
+      expect(theirLife.querySelector('span.font-extrabold.tabular-nums')).toHaveClass('text-info-soft')
       expect(theirLine).toHaveClass('bg-info/20')
       expect(theirLine.querySelector('span')).toHaveClass('text-info-soft')
     }

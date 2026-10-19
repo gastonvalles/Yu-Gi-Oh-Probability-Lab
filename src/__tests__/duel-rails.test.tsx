@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { classicCell, railsFit } from '../app/duel-rails'
+import { FIELD_ZOOM_MAX, classicCell, fieldZoom, railsFit } from '../app/duel-rails'
 import { useHostToasts } from '../app/toast-box'
 import { AppToaster } from '../components/ui/AppToaster'
 
@@ -34,6 +34,19 @@ describe('cuándo hay laterales', () => {
     expect(railsFit(1349, 800)).toBe(true)
     expect(railsFit(1349, 1300)).toBe(false)
     expect(railsFit(1700, 1300)).toBe(true)
+  })
+})
+
+describe('cuánto se agranda la vista 3D', () => {
+  it('crece parejo hasta donde entra a lo ancho o a lo alto (lo que se acaba primero), sin pasar del máximo', () => {
+    expect(fieldZoom({ width: 570, height: 435, availWidth: 840, availHeight: 570 })).toBeCloseTo(1.31, 2)
+    expect(fieldZoom({ width: 900, height: 580, availWidth: 940, availHeight: 840 })).toBeCloseTo(1.044, 2)
+    expect(fieldZoom({ width: 300, height: 300, availWidth: 3000, availHeight: 3000 })).toBe(FIELD_ZOOM_MAX)
+  })
+
+  it('nunca lo achica ni se rompe sin medidas', () => {
+    expect(fieldZoom({ width: 900, height: 600, availWidth: 500, availHeight: 400 })).toBe(1)
+    expect(fieldZoom({ width: 0, height: 0, availWidth: 800, availHeight: 600 })).toBe(1)
   })
 })
 

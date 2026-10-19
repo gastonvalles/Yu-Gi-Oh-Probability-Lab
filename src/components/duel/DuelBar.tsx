@@ -9,7 +9,7 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
-import { duelClockMs, formatClock } from '../../app/life-calculator'
+import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { PHASES } from '../../app/practice-mat'
 import { MatViewToggle } from '../probability/MatViewToggle'
@@ -22,8 +22,10 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { ProgressRing } from '../ui/ProgressRing'
 import { SideDrawer } from '../ui/SideDrawer'
 import { Switch } from '../ui/Switch'
+import type { Tone } from '../ui/tone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
 import type { FeedEntry } from './use-duel-feed'
@@ -512,8 +514,9 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null }: DuelLifePr
 }
 
 /**
- * Los puntos de vida de uno: su nombre y el número grande, que se mueve hasta el valor nuevo y se pinta un momento de verde (subió) o rojo (bajó) con cuánto cambió al lado del nombre; en cero, rojo.
- * Tocarlos (los tuyos o los del rival) abre la calculadora de vidas del duelo.
+ * Las vidas de un jugador (Gastón, 2026-10-19: «la vida de ambos jugadores puede mejorarse mucho»): un **anillo** con la inicial del jugador que se vacía con las vidas y cambia de color con la salud (verde con más
+ * de la mitad, ámbar desde ahí hasta un cuarto y rojo debajo: es una estadística), el nombre arriba y el número grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al subir o bajar) con
+ * la diferencia («−1000») saliendo al lado. El borde de la tarjeta es de su dueño (violeta el tuyo, ámbar el del rival). Tocarla abre la calculadora. Las dos miden lo mismo de alto.
  */
 export function LifeTile({ name, label, life, mine = false, color, bubble = null, onClick, big = false }: {
   /** El de la botonera de abajo (tus vidas): más ancho y con el número más grande. */
@@ -525,18 +528,27 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   const shown = useAnimatedNumber(life)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const ratio = Math.min(1, Math.max(0, life / STARTING_LP))
+  const health: Tone = ratio > 0.5 ? 'success' : ratio > 0.25 ? 'warning' : 'danger'
+  const initial = Array.from((name || label || '?').trim())[0]?.toUpperCase() ?? '?'
   const body = (
     <>
-      <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
-        <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
-        {change ? (
-          <span key={change.key} aria-hidden="true" className={cx('shrink-0 animate-pop text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
-            {change.delta < 0 ? '−' : '+'}
-            {Math.abs(change.delta)}
-          </span>
-        ) : null}
+      <ProgressRing value={ratio} tone={health} size={desktop ? 52 : 42} strokeWidth={desktop ? 5 : 4.5} label={t('duel.bar.lifeMeter', { name, percent: Math.round(ratio * 100) })}>
+        <span className="text-body font-bold leading-none text-white">{initial}</span>
+      </ProgressRing>
+      <span className="grid min-w-0 flex-1 content-center gap-1">
+        <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
+          <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
+          {change ? (
+            <span key={change.key} aria-hidden="true" className={cx('shrink-0 animate-pop text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
+              {change.delta < 0 ? '−' : '+'}
+              {Math.abs(change.delta)}
+            </span>
+          ) : null}
+        </span>
+        <span className={cx('max-w-full shrink-0 truncate font-extrabold leading-none tabular-nums transition-colors duration-200', big ? 'text-stat' : 'text-title', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : tone.text)}>{shown}</span>
       </span>
-      <span className={cx('max-w-full shrink-0 truncate font-extrabold leading-none tabular-nums transition-colors duration-200', big ? 'text-stat' : 'text-title', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : tone.text)}>{shown}</span>
       {bubble ? (
         <span role="status" className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-pop rounded-card border bg-card-background normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', isEmojiSignal(bubble) ? 'px-3 py-1 text-display leading-none' : 'truncate px-2.5 py-1 text-body font-semibold', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
           {bubble}
@@ -544,12 +556,11 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
       ) : null}
     </>
   )
-  // Las dos vidas miden lo mismo (la del rival arriba, la tuya abajo).
-  // El nombre arriba y el número abajo (apilados): la casilla ocupa lo justo y deja lugar a los íconos de al lado.
-  const style = cx('relative flex h-14 shrink-0 flex-col items-start justify-center gap-1 rounded-card border bg-card-background px-3 text-left max-[339px]:px-2', big ? 'min-w-28' : 'min-w-20 max-[339px]:min-w-16', tone.border)
+  // Las dos vidas miden lo mismo de alto (la del rival arriba, la tuya abajo).
+  const style = cx('relative flex h-[4.5rem] shrink-0 items-center gap-3 rounded-card border bg-card-background px-3 text-left max-[339px]:gap-2 max-[339px]:px-2', big ? 'min-w-40' : 'min-w-32 max-[339px]:min-w-28', tone.border)
 
   return onClick ? (
-    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus active:opacity-80')} onClick={onClick}>
+    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
