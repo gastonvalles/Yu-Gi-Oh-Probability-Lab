@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MAX_SPECTATORS, SPECTATOR_RESYNC, encodeRelayFrame, encodeSpectatorText, parseRelayFrame, parseSpectatorText } from '../app/duel-relay-rules'
+import { TURN_BANK_MS, TURN_BONUS_MS, turnTimeLeft } from '../app/duel-clock'
 import { createDuel } from '../app/duel-session'
 import { createSpectator } from '../app/duel-spectator'
 import { createMatState } from '../app/practice-mat'
@@ -376,5 +377,29 @@ describe('cómo termina el duelo para quien mira', () => {
     game.guest.concede()
     game.room.flush()
     expect(spectator.getSnapshot().end).toMatchObject({ winner: 0, wins: [2, 0], over: true, matchWinner: 0 })
+  })
+})
+
+describe('el reloj de turnos que ve quien mira', () => {
+  it('lleva la cuenta de los dos jugadores: corre el de quien tiene el turno, y al pasarlo se suman 2 minutos al otro', () => {
+    const game = startedDuel()
+    const { spectator } = watch(game)
+    const left = (who: 0 | 1) => turnTimeLeft(spectator.getSnapshot().turnClock, who, game.clock.t)
+
+    expect(left(0)).toBe(TURN_BANK_MS)
+    expect(left(1)).toBe(TURN_BANK_MS)
+
+    // El anfitrión (que empieza) piensa 45 s y pasa el turno.
+    game.clock.t += 45_000
+    expect(left(0)).toBe(TURN_BANK_MS - 45_000)
+    game.host.play({ type: 'phase', phase: 'end' })
+    game.host.play({ type: 'phase', phase: 'draw' })
+    game.room.flush()
+    expect(left(0)).toBe(TURN_BANK_MS - 45_000)
+    expect(left(1)).toBe(TURN_BANK_MS + TURN_BONUS_MS)
+
+    game.clock.t += 30_000
+    expect(left(1)).toBe(TURN_BANK_MS + TURN_BONUS_MS - 30_000)
+    expect(left(0)).toBe(TURN_BANK_MS - 45_000)
   })
 })

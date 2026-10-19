@@ -82,6 +82,7 @@ interface ClockWire {
  * - `undoAsk` / `undoAnswer` / `undoCancel`: antes de volver atrás una jugada se le pide permiso al otro (`id` cuenta mis pedidos): él contesta con `ok` y, si lo permite, recién ahí mando el `undo`;
  *   si me arrepiento (o pasa mucho sin respuesta) lo cancelo y su cartel se va.
  * - `life` / `clock`: mis puntos de vida (siempre el valor, no el cambio) y el reloj compartido.
+ * - `turnClock`: lo que me queda en el reloj de turnos al pasar el turno (ver `duel-clock.ts`): mi palabra corrige la cuenta que el otro lado hace por su cuenta.
  * - `game`: moneda, dado, piedra-papel-tijera o quién va primero (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
  * - `ready`: estoy listo (o ya no) para empezar el duelo; también viaja en el `sync`.
  * - `chat`: una línea del chat (`n` cuenta las mías para no repetir ninguna).
@@ -93,7 +94,7 @@ interface ClockWire {
 export type DuelMessage =
   | { t: 'hello'; v: number; sid: string; role: 'host' | 'guest'; name: string; settings?: DuelSettings }
   /** `ready`, `order` (quién empieza, si ya se eligió) y `opening` (cómo va la tirada que lo define) hacen que quien vuelve a entrar, o perdió un mensaje, sepa en qué punto va el otro. */
-  | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire; ready?: boolean; order?: 0 | 1; opening?: OpeningWire; series?: Series }
+  | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire; /** Lo que le queda a cada uno en el reloj de turnos (0 = anfitrión, 1 = invitado), como lo ve quien manda el `sync`. */ turnBanks?: readonly [number, number]; ready?: boolean; order?: 0 | 1; opening?: OpeningWire; series?: Series }
   | { t: 'act'; n: number; wire: WireAct }
   | { t: 'undo'; n: number }
   | { t: 'undoAsk'; id: number }
@@ -101,6 +102,7 @@ export type DuelMessage =
   | { t: 'undoCancel'; id: number }
   | { t: 'life'; n: number; lp: number }
   | { t: 'clock'; n: number; running: boolean; elapsedMs: number }
+  | { t: 'turnClock'; bank: number }
   | { t: 'game'; n: number; game: DuelGame }
   | { t: 'ready'; ready: boolean }
   | { t: 'chat'; n: number; text: string }
@@ -357,6 +359,10 @@ function parseOpening(value: unknown): OpeningWire | null {
   }
 }
 
+function parseBanks(value: unknown): readonly [number, number] | null {
+  return Array.isArray(value) && value.length === 2 && isInt(value[0], 0, MAX_CLOCK_MS) && isInt(value[1], 0, MAX_CLOCK_MS) ? [value[0], value[1]] : null
+}
+
 function parseClock(value: unknown): ClockWire | null {
   return isPlain(value) && typeof value.running === 'boolean' && isInt(value.elapsedMs, 0, MAX_CLOCK_MS) ? { running: value.running, elapsedMs: value.elapsedMs } : null
 }
@@ -396,12 +402,13 @@ export function parseMessage(text: unknown): DuelMessage | null {
       const state = raw.state === undefined ? undefined : parseState(raw.state)
       const known = parseKnown(raw.known, MAX_CARDS)
       const clock = raw.clock === undefined ? undefined : parseClock(raw.clock)
+      const turnBanks = raw.turnBanks === undefined ? undefined : parseBanks(raw.turnBanks)
 
       const series = raw.series === undefined ? undefined : parseSeries(raw.series)
       const orderOk = raw.order === undefined || raw.order === 0 || raw.order === 1
       const opening = raw.opening === undefined ? undefined : parseOpening(raw.opening)
 
-      if (state === null || !known || clock === null || !isInt(raw.n, 0, MAX_COUNT) || !isInt(raw.lp, 0, MAX_LP) || !isInt(raw.lifeN, 0, MAX_COUNT) || !optional(raw.ready, (v) => typeof v === 'boolean') || !orderOk || opening === null || series === null) {
+      if (state === null || !known || clock === null || turnBanks === null || !isInt(raw.n, 0, MAX_COUNT) || !isInt(raw.lp, 0, MAX_LP) || !isInt(raw.lifeN, 0, MAX_COUNT) || !optional(raw.ready, (v) => typeof v === 'boolean') || !orderOk || opening === null || series === null) {
         return null
       }
 
@@ -413,6 +420,7 @@ export function parseMessage(text: unknown): DuelMessage | null {
         lifeN: raw.lifeN,
         ...(state ? { state } : {}),
         ...(clock ? { clock } : {}),
+        ...(turnBanks ? { turnBanks } : {}),
         ...(typeof raw.ready === 'boolean' ? { ready: raw.ready } : {}),
         ...(raw.order === 0 || raw.order === 1 ? { order: raw.order } : {}),
         ...(opening && Object.keys(opening).length > 0 ? { opening } : {}),
@@ -442,6 +450,9 @@ export function parseMessage(text: unknown): DuelMessage | null {
 
     case 'clock':
       return isInt(raw.n, 1, MAX_COUNT) && typeof raw.running === 'boolean' && isInt(raw.elapsedMs, 0, MAX_CLOCK_MS) ? { t: 'clock', n: raw.n, running: raw.running, elapsedMs: raw.elapsedMs } : null
+
+    case 'turnClock':
+      return isInt(raw.bank, 0, MAX_CLOCK_MS) ? { t: 'turnClock', bank: raw.bank } : null
 
     case 'game': {
       const game = parseGame(raw.game)

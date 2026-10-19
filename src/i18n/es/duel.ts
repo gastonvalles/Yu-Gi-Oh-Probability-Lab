@@ -363,6 +363,7 @@ export const duel = {
   'duel.chat.quickTitle': 'Mensajes rápidos',
   'duel.signal.thinking': 'Pensando…',
   'duel.signal.good': 'Continuá',
+  'duel.turnClock.label': 'Reloj de turnos: a {turn} le quedan {left}; a {other}, {otherLeft}',
 
   // El turno y las fases del rival.
 

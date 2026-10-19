@@ -356,6 +356,7 @@ export const duel: Translated<typeof es> = {
   'duel.chat.quickTitle': 'Quick messages',
   'duel.signal.thinking': 'Thinking…',
   'duel.signal.good': 'Go ahead',
+  'duel.turnClock.label': 'Turn clock: {turn} has {left} left; {other}, {otherLeft}',
 
   // The turn and the rival's phases.
 

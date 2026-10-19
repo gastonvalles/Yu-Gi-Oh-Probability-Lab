@@ -58,6 +58,7 @@ import { DuelSiding } from './DuelSiding'
 import { SpectatorScreen } from './SpectatorScreen'
 import { TossOverlay } from './toss-views'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
+import { TurnDial } from './TurnDial'
 
 const NAME_KEY = 'ygo-lab:duel-name'
 /** Quién creó cada sala (por pestaña): si se recarga la página, sigue siendo el anfitrión. */
@@ -1708,6 +1709,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       rivalFlights: { state: opponent.state, artOf: opponent.artOf },
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
+      clock: <TurnDial clock={snapshot.turnClock} owner={turn === 'mine' ? snapshot.me : snapshot.me === 0 ? 1 : 0} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} />,
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
       myTurn: turn === 'mine',
       tools: (

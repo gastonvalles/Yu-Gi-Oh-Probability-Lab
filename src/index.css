@@ -88,6 +88,8 @@
   /* Los mensajes rápidos del duelo (🤔 y 👍): el botón rebota al apretarlo y su emoji sube y se desvanece. */
   --animate-reaction-press: reaction-press 350ms cubic-bezier(0.25, 1, 0.5, 1);
   --animate-reaction-rise: reaction-rise 800ms ease-out forwards;
+  /* El número del reloj de turnos parpadea en rojo cuando falta poco. */
+  --animate-turn-blink: turn-blink 1s ease-in-out infinite;
   /* Un mensaje que llega al chat (o una jugada en el registro): sube un poco desde su lado y se asienta. */
   --animate-message-in: message-in 240ms cubic-bezier(0.25, 1, 0.5, 1) both;
   --animate-sheet-in: sheet-in var(--motion-duration) ease-out both;
@@ -327,6 +329,17 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+
+  @keyframes turn-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.2;
     }
   }
 
