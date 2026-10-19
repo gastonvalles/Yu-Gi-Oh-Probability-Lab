@@ -1012,8 +1012,8 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
 
-    expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Invocar' })).toBeDisabled()
+    expect(within(status()).getByText('Materiales (opcionales): tocalos en el campo (0) y confirmá, o tocá una casilla para invocar')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Invocar' })).toBeEnabled()
     tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom (Material)' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Invocar' }))
@@ -1023,6 +1023,59 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+  })
+
+  describe('los materiales de una Invocación desde el Extra son una opción, no un requisito', () => {
+    /** Ash en la zona 1 y, del Extra, Zeus en ataque: queda eligiendo materiales (o una casilla). */
+    const startSummon = () => {
+      render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+    }
+
+    it('sin elegir ninguno, Invocar sigue: se eligen las casillas iluminadas y los monstruos del campo se quedan', () => {
+      startSummon()
+
+      // Las casillas libres están encendidas para elegir dónde (la de Ash, ocupada, no).
+      expect(screen.getByRole('button', { name: 'Zona de monstruo 2: elegir' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Zona de monstruo 1: elegir' })).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Invocar' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 4: elegir' }))
+
+      expect(within(zone('Zona de monstruo 4')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+      expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+      expect(within(status()).getByText('Invocación Especial de Zeus (sin materiales)')).toBeInTheDocument()
+    })
+
+    it('tocar una casilla iluminada invoca ahí mismo, sin pasar por el botón', () => {
+      startSummon()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
+
+      expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+      expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Invocar' })).not.toBeInTheDocument()
+    })
+
+    it('con un material elegido y una casilla tocada, se usa el material y la carta sale en esa casilla', () => {
+      startSummon()
+
+      tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
+
+      expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+      expect(within(zone('Zona de monstruo 1')).queryByRole('button', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+      expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
+    })
   })
 
   it('con las cinco zonas de monstruo y una Extra ocupadas, la Invocación del Extra con materiales deja elegir entre las zonas que se liberan: no se cae sola en la Extra libre', () => {
@@ -1164,7 +1217,7 @@ describe('la mesa de práctica', () => {
         tap(ash())
 
         expect(isMaterial(ash())).toBe(false)
-        expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
+        expect(within(status()).getByText('Materiales (opcionales): tocalos en el campo (0) y confirmá, o tocá una casilla para invocar')).toBeInTheDocument()
       } finally {
         now.mockRestore()
         window.matchMedia = matchMedia
@@ -1189,7 +1242,7 @@ describe('la mesa de práctica', () => {
 
         // Con Ash ya elegida, otro toque rápido a Maxx C (el mismo del toque anterior) la suma: son dos y nada se confirma.
         tap(maxx())
-        expect(within(status()).getByText('Tocá los materiales en el campo (2) y confirmá')).toBeInTheDocument()
+        expect(within(status()).getByText('Materiales (opcionales): tocalos en el campo (2) y confirmá, o tocá una casilla para invocar')).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Invocar' })).toBeEnabled()
       } finally {
         window.matchMedia = matchMedia
@@ -1210,7 +1263,7 @@ describe('la mesa de práctica', () => {
         tap(ash())
 
         expect(isMaterial(ash())).toBe(false)
-        expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
+        expect(within(status()).getByText('Materiales (opcionales): tocalos en el campo (0) y confirmá, o tocá una casilla para invocar')).toBeInTheDocument()
       } finally {
         window.matchMedia = matchMedia
       }
@@ -1219,11 +1272,11 @@ describe('la mesa de práctica', () => {
     it('en el celular dos toques seguidos no confirman', () => {
       startXyz()
       tap(ash())
-      expect(within(status()).getByText('Tocá los materiales en el campo (1) y confirmá')).toBeInTheDocument()
+      expect(within(status()).getByText('Materiales (opcionales): tocalos en el campo (1) y confirmá, o tocá una casilla para invocar')).toBeInTheDocument()
       tap(ash())
 
       expect(isMaterial(ash())).toBe(false)
-      expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
+      expect(within(status()).getByText('Materiales (opcionales): tocalos en el campo (0) y confirmá, o tocá una casilla para invocar')).toBeInTheDocument()
     })
   })
 

@@ -282,8 +282,9 @@ describe('la mesa de práctica', () => {
     expect([link.mz[0]?.id, link.gy]).toEqual(['x2', ['a1']])
     expect(describeMatAction(two, linkSummon, nameOf)).toBe('Invocación de Enlace de X2 (materiales: A1)')
 
-    // Sin materiales, con una carta que no está en el Extra o con una ficha como material Xyz no pasa nada; una ficha sí sirve de material de Enlace.
-    expect(matReducer(two, { ...xyzSummon, materials: [] })).toBe(two)
+    // Con una carta que no está en el Extra o con una ficha como material Xyz no pasa nada; una ficha sí sirve de material de Enlace.
+    // Sin materiales también se invoca (son una opción, no un requisito): sale sola, sin nada debajo.
+    expect(matReducer(two, { ...xyzSummon, materials: [] }).emz[0]).toMatchObject({ id: 'x1', materials: [] })
     expect(matReducer(two, { ...xyzSummon, id: 'a1', materials: ['a2'] })).toBe(two)
     const withToken = matReducer(two, { type: 'token', zone: 'mz', index: 2 })
     expect(matReducer(withToken, { ...xyzSummon, materials: ['token-1'] })).toBe(withToken)
