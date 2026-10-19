@@ -24,6 +24,7 @@ export const shell = {
   'shell.blurb.mascots': 'Apagadas por defecto en el celular',
   'shell.blurb.search': 'Buscá una carta sin salir de esta pantalla. Atajo: /',
   'shell.search.title': 'Buscar cartas',
+  'shell.nav.searchShort': 'Buscar',
   'shell.blurb.meta': 'Hand traps y boardbreakers de los torneos',
   'shell.blurb.tournaments': 'Los que llegaron al top, completos',
   'shell.blurb.replays': 'Los duelos de esos decks, en video',

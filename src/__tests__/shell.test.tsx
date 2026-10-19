@@ -134,15 +134,41 @@ describe('el menú de la app', () => {
     expect(onSelect).toHaveBeenCalledWith('export')
   })
 
-  it('contraído, sólo se ven los íconos: el nombre queda para los lectores de pantalla y el tooltip, y el rótulo sigue en el DOM (sólo se desvanece)', () => {
-    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={() => {}} />)
+  it('contraído es una mini guía, como la de YouTube: pocos botones con su nombre debajo (los cuatro grupos y las mascotas), no una fila de íconos sin rótulo', () => {
+    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={() => {}} searchAvailable />)
 
-    const button = screen.getByRole('button', { name: /^Exportar deck/ })
-    expect(button).toHaveAttribute('title', expect.stringContaining('Exportar deck'))
-    // El rótulo no se quita (si no, el ancho no se podría animar sin que todo salte): se oculta a los lectores y se desvanece con el menú.
-    const [label] = within(button).getAllByText('Exportar')
-    expect(label.closest('[aria-hidden="true"]')).not.toBeNull()
-    expect(label.closest('.grid')).toHaveClass('group-data-[collapsed=true]/sidebar:opacity-0')
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
+    const buttons = within(nav).getAllByRole('button')
+
+    // Buscar, los cuatro grupos y las mascotas (y no los trece destinos), cada uno con su nombre a la vista.
+    expect(buttons.map((button) => button.textContent)).toEqual(['Buscar', 'Tu deck', 'Jugar', 'Descubrir', 'Cartas', 'Mascotas'])
+    // El grupo en el que estás (Exportar es de Jugar) va marcado.
+    expect(within(nav).getByRole('button', { name: 'Jugar' })).toHaveAttribute('aria-current', 'true')
+    expect(within(nav).getByRole('button', { name: 'Tu deck' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('tocar un grupo de la mini guía abre sus destinos al costado: elegir uno va a él y cierra la lista, y Escape también', () => {
+    const onSelect = vi.fn()
+    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={onSelect} collapsed onToggleCollapsed={() => {}} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Descubrir' }))
+    const menu = screen.getByRole('menu', { name: 'Descubrir' })
+    expect(within(menu).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([expect.stringMatching(/^Tier lists/), expect.stringMatching(/^Decks de torneo/), expect.stringMatching(/^Replays/)])
+
+    fireEvent.click(within(menu).getByRole('button', { name: /^Replays/ }))
+    expect(onSelect).toHaveBeenCalledWith('replays')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cartas' }))
+    expect(screen.getByRole('menu', { name: 'Cartas' })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('la hamburguesa se ilumina en ámbar (el color de la navegación) al pasar el mouse', () => {
+    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed={false} onToggleCollapsed={() => {}} />)
+
+    expect(screen.getByRole('button', { name: 'Contraer menú' })).toHaveClass('hover:text-nav-active!')
   })
 })
 
@@ -161,8 +187,8 @@ describe('el menú lateral', () => {
 
     rerender(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={onToggle} />)
     expect(aside).toHaveAttribute('data-collapsed', 'true')
-    // Contraído el idioma se desvanece y no se puede tocar ni enfocar (el renglón conserva su alto); la hamburguesa sigue a la vista.
-    expect(screen.getByRole('group', { name: 'Idioma' }).parentElement).toHaveClass('group-data-[collapsed=true]/sidebar:invisible', 'group-data-[collapsed=true]/sidebar:opacity-0')
+    // Contraído no hay idioma (es una mini guía con lo principal); la hamburguesa sigue a la vista.
+    expect(screen.queryByRole('group', { name: 'Idioma' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Expandir menú' })).toHaveAttribute('aria-expanded', 'false')
   })
 })

@@ -26,6 +26,7 @@ export const shell: Translated<typeof es> = {
   'shell.blurb.mascots': 'Off by default on phones',
   'shell.blurb.search': 'Look up a card without leaving this screen. Shortcut: /',
   'shell.search.title': 'Search cards',
+  'shell.nav.searchShort': 'Search',
   'shell.blurb.meta': 'Hand traps and boardbreakers from tournaments',
   'shell.blurb.tournaments': 'The ones that made the top, complete',
   'shell.blurb.replays': 'The duels of those decks, on video',
