@@ -42,11 +42,11 @@ const fakeRooms = (list: PublicRoom[] = [], live: LiveDuel[] = []) => ({
 /** Cada pantalla en su propio contenedor: las dos conviven en el mismo documento, como dos pestañas. */
 const render = (ui: ReactElement): RenderResult => renderBare(<Provider store={store}>{ui}</Provider>, { container: document.body.appendChild(document.createElement('div')) })
 
-const asSocket = (end: MemoryEnd): SocketTransport =>
+const asSocket = (end: MemoryEnd, status: SocketStatus = 'open'): SocketTransport =>
   Object.assign(end, {
-    status: 'open' as SocketStatus,
+    status,
     onStatus: (listener: (status: SocketStatus) => void) => {
-      listener('open')
+      listener(status)
       return () => {}
     },
   })
@@ -613,6 +613,122 @@ describe('la pantalla del duelo', () => {
     expect(hasSave('guest')).toBe(false)
     expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
     expect(within(host.container).getByRole('dialog', { name: '¡Ganaste!' })).toBeInTheDocument()
+  })
+
+  it('terminado el duelo y con el rival afuera, avisa con una cuenta de 5 segundos y la sala se cierra del todo: se vuelve al inicio y nadie más entra', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+    expect(within(host.container).getByRole('dialog', { name: '¡Ganaste!' })).toBeInTheDocument()
+    // Con el rival todavía adentro no hay aviso.
+    expect(within(host.container).queryByTestId('room-closing')).not.toBeInTheDocument()
+
+    // El rival se va (cierra la pestaña): el que se queda se entera de que la sala va a desaparecer, con la cuenta.
+    guest.unmount()
+    flush()
+    expect(within(host.container).getByTestId('room-closing')).toHaveTextContent('Beto se fue: la sala desaparece en 5 segundos.')
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(within(host.container).getByTestId('room-closing')).toHaveTextContent('la sala desaparece en 3 segundos.')
+    expect(memory.ended).toBe(false)
+
+    // A los 5 segundos la sala se da por terminada del todo y se vuelve al inicio.
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    expect(memory.ended).toBe(true)
+    expect(within(host.container).queryByTestId('room-closing')).not.toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#duel')
+  })
+
+  it('si el rival vuelve antes de los 5 segundos, el aviso se va y la sala sigue abierta', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+
+    // Se le cae la conexión (no sale de la sala): el aviso arranca, y al volver se cancela.
+    const rivalEnd = memory.ends[1]!
+    rivalEnd.disconnect()
+    flush()
+    expect(within(host.container).getByTestId('room-closing')).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    rivalEnd.reconnect()
+    flush()
+    expect(within(host.container).queryByTestId('room-closing')).not.toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(10_000)
+    })
+    expect(memory.ended).toBe(false)
+    expect(within(host.container).getByRole('dialog', { name: '¡Ganaste!' })).toBeInTheDocument()
+  })
+
+  it('con el duelo en curso no hay cuenta: un rival que se cae deja la mesa en pausa como siempre', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    memory.ends[1]!.disconnect()
+    flush()
+    act(() => {
+      vi.advanceTimersByTime(10_000)
+    })
+
+    expect(within(host.container).queryByTestId('room-closing')).not.toBeInTheDocument()
+    expect(memory.ended).toBe(false)
+    expect(within(host.container).getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeInTheDocument()
+  })
+
+  it('una sala pública no vuelve a la lista de las que esperan rival cuando el duelo terminó y el rival se fue (ahí un tercero entraría a ver la mesa del que se quedó)', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const rooms = fakeRooms()
+    const host = render(<DuelScreen {...screenProps({ rooms })} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    openRules(host)
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    joinByLink(guest, link)
+    flush()
+    openTable(host, guest)
+    expect(rooms.register).toHaveBeenCalledTimes(1)
+    rooms.unlist.mockClear()
+
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+    guest.unmount()
+    flush()
+
+    // Se baja de la lista y no se vuelve a anotar como si esperara rival.
+    expect(rooms.unlist).toHaveBeenCalled()
+    expect(rooms.register).toHaveBeenCalledTimes(1)
+  })
+
+  it('quien llega a una sala que ya se cerró ve que ya no funciona, sin ver nada de ella', () => {
+    connect = () => asSocket(memory.join(), 'gone')
+    const view = render(<DuelScreen {...screenProps()} />)
+    typeInto(view, 'Tu nombre', 'Cami')
+    joinByLink(view, 'https://app.test/#duel?room=ABCD2345')
+
+    expect(within(view.container).getByText('Ese enlace ya no funciona')).toBeInTheDocument()
+    expect(within(view.container).queryByRole('button', { name: 'Estoy listo' })).not.toBeInTheDocument()
   })
 
   it('una sala pública se anota mientras espera; al llegar el rival pasa a «en vivo» (se avisa cada minuto, con cuántos la miran) y sólo se baja al salir', async () => {

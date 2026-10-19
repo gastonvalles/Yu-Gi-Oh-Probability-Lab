@@ -2,7 +2,9 @@ import { DurableObject } from 'cloudflare:workers'
 
 import {
   CLOSE_FULL,
+  CLOSE_GONE,
   CLOSE_REPLACED,
+  CLOSE_ROOM_OVER,
   MAX_MESSAGE_BYTES,
   MAX_PARTICIPANTS,
   MAX_SPECTATORS,
@@ -30,6 +32,10 @@ import {
  * o sale (con mensajes binarios, que los jugadores no pueden mandar) y se encarga de los límites: tamaño, ritmo, orígenes y sala llena.
  * No tiene base de datos: la sala existe mientras haya conexiones.
  *
+ * Una sala **se cierra del todo** cuando un jugador cierra su conexión con `CLOSE_ROOM_OVER` (el duelo terminó y el otro se fue: la app lo hace a los 5 segundos de quedarse solo): se
+ * avisa y se corta a todos los que quedaban (jugadores y espectadores), y quien llegue después recibe `gone` y no entra: el que se quedó no puede dejar la sala abierta para que un tercero
+ * se siente en el lugar del que se fue. Sólo se guarda que se cerró (una marca, sin datos de nadie, que se borra sola a la hora).
+ *
  * Un espectador no puede hacer nada: lo que mande se descarta y lo desconecta, salvo pedir que los jugadores repitan su estado
  * (`resync`, como mucho cada dos segundos), que es lo único que necesita para ponerse al día. Ningún mensaje suyo llega a los jugadores.
  * Y entre todos los espectadores de una sala hay un tope de entradas y de pedidos de estado: un enlace de espectador usado en bucle no hace trabajar ni a los jugadores ni al relay.
@@ -55,6 +61,12 @@ interface RoomState {
   acceptWebSocket(socket: Socket): void
   getWebSockets(): Socket[]
   setWebSocketAutoResponse(pair: unknown): void
+  storage: {
+    get<T>(key: string): Promise<T | undefined>
+    put(key: string, value: unknown): Promise<void>
+    setAlarm(time: number): Promise<void>
+    deleteAll(): Promise<void>
+  }
 }
 
 interface Env {
@@ -63,6 +75,10 @@ interface Env {
   /** Orígenes permitidos, separados por comas (`*` vale por letras, números y guiones). */
   ALLOWED_ORIGINS: string
 }
+
+/** Cuánto se recuerda que una sala se cerró (el código son 8 letras al azar: no vuelve a usarse, la marca sólo evita que alguien con el enlace entre un rato después). */
+const ROOM_OVER_TTL_MS = 60 * 60 * 1000
+const ROOM_OVER_KEY = 'over'
 
 /** Cuántos pedidos de estado de más tolera de un espectador antes de desconectarlo (un cliente de verdad pide cada dos segundos; uno que se pasa por un instante no se corta). */
 const MAX_SPECTATOR_STRIKES = 10
@@ -159,6 +175,32 @@ export class DuelRoom extends DurableObject {
     }
   }
 
+  /** ¿La sala se cerró (un jugador la dio por terminada)? La marca vence sola a la hora. */
+  private async isOver(): Promise<boolean> {
+    const at = await this.state.storage.get<number>(ROOM_OVER_KEY)
+
+    return at !== undefined && Date.now() - at < ROOM_OVER_TTL_MS
+  }
+
+  /** Cerrar la sala del todo: se recuerda (para que no entre nadie más) y se avisa y se corta a todos los que estaban. */
+  private async closeRoom() {
+    // Primero se corta a todos (sin esperar al almacenamiento) y después se deja la marca.
+    for (const socket of this.state.getWebSockets()) {
+      if (!this.closing.has(socket)) {
+        this.deliver(socket, encodeRelayFrame({ kind: 'gone' }))
+        this.end(socket, CLOSE_GONE, 'gone')
+      }
+    }
+
+    await this.state.storage.put(ROOM_OVER_KEY, Date.now())
+    await this.state.storage.setAlarm(Date.now() + ROOM_OVER_TTL_MS)
+  }
+
+  /** Pasada la hora, no queda ni la marca de que la sala se cerró. */
+  async alarm() {
+    await this.state.storage.deleteAll()
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
     const participant = url.searchParams.get('pid') ?? ''
@@ -166,6 +208,16 @@ export class DuelRoom extends DurableObject {
 
     if (request.headers.get('Upgrade') !== 'websocket' || !PARTICIPANT_ID_PATTERN.test(participant)) {
       return new Response('Bad request', { status: 400 })
+    }
+
+    // Una sala que se cerró no existe más: quien llega (a jugar o a mirar) recibe el aviso y se lo corta, sin ver nada.
+    if (await this.isOver()) {
+      const { 0: gone, 1: goneServer } = new WebSocketPair()
+
+      goneServer.accept()
+      goneServer.send(encodeRelayFrame({ kind: 'gone' }))
+      goneServer.close(CLOSE_GONE, 'gone')
+      return new Response(null, { status: 101, webSocket: gone } as ResponseInit)
     }
 
     if (role === 'spectator' && !this.joins.allow(Date.now())) {
@@ -297,8 +349,15 @@ export class DuelRoom extends DurableObject {
     }
   }
 
-  webSocketClose(socket: Socket, code: number, reason: string) {
+  async webSocketClose(socket: Socket, code: number, reason: string) {
     const role = attachmentOf(socket).role ?? 'player'
+
+    // Un jugador que cierra con `CLOSE_ROOM_OVER` dice que el duelo terminó y no queda nada que hacer en la sala: se cierra para todos. Un espectador no puede cerrarla.
+    if (role === 'player' && code === CLOSE_ROOM_OVER) {
+      this.end(socket, 1000, 'over')
+      await this.closeRoom()
+      return
+    }
 
     // 1005 y 1006 son "sin código" y no se pueden enviar de vuelta.
     this.end(socket, code === 1005 || code === 1006 ? 1000 : code, reason)

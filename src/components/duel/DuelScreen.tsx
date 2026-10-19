@@ -13,7 +13,7 @@ import type { RoomsApi } from '../../app/duel-rooms'
 import { validGenesysCap, type RoomOptions } from '../../app/duel-prefs'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
-import { duelResult, rpsOutcome } from '../../app/duel-games'
+import { duelFinished, duelResult, rpsOutcome } from '../../app/duel-games'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
@@ -274,7 +274,9 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   // Una sala pública está en la lista de salas abiertas mientras espera rival (se anota al crearla). Cuando llega el rival pasa a la de los duelos en vivo y su anfitrión lo avisa cada minuto,
   // con cuántos lo miran; si el relay no lo entiende (uno de antes), se baja como siempre al llegar el rival. Se baja al salir o al cerrar la pestaña, y una sala privada nunca se anota.
-  const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic ? intent.room : null
+  // Terminado el duelo y con el rival ya afuera, la sala no espera a nadie: no vuelve a la lista de las que esperan rival (ahí un tercero entraría a ver la mesa de quien se quedó) y se cierra sola.
+  const rivalLeft = snapshot ? !snapshot.peerPresent && duelFinished(duelResult(snapshot.life.lp, snapshot.conceded), snapshot.series.match, snapshot.series.winner) : false
+  const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic && !rivalLeft ? intent.room : null
   const awaitingRival = !snapshot?.peerPresent
   const watchers = snapshot?.watchers ?? 0
   const guestName = snapshot?.peerName ?? undefined
@@ -465,6 +467,14 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     leave()
   }
 
+  // El duelo terminó y el rival se fue: a los ROOM_CLOSE_S segundos la sala se da por terminada del todo (se corta para todos y no entra nadie más) y se vuelve al inicio.
+  const closeRoom = useCallback(() => {
+    duel?.endRoom()
+    leave()
+  }, [duel, leave])
+  // Sólo cuenta si la conexión de uno anda: si la que se cayó es la propia, no se puede decir que el rival se fue.
+  const closingIn = useRoomClosing(rivalLeft && status === 'open', closeRoom)
+
   // El duelo en pausa de este navegador (si salió de uno), para volver desde el inicio del duelo.
   const [paused, setPaused] = useState<PausedDuel | null>(findPausedDuel)
   // «Crear una sala» desde la pantalla de un enlace que no funciona: vuelve al lobby ya en ese paso.
@@ -527,6 +537,15 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     return (
       <Screen>
         <RoomFull onWatch={() => enter(intent.room, 'guest', true)} onRetry={leave} />
+      </Screen>
+    )
+  }
+
+  // La sala se cerró (el duelo terminó y alguno la dio por terminada): ya no existe, y quien llega tarde no ve nada de ella.
+  if (status === 'gone') {
+    return (
+      <Screen>
+        <LinkGone onRetry={leave} onCreate={leaveToCreate} />
       </Screen>
     )
   }
@@ -616,7 +635,56 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     }
   }
 
-  return <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onRematch={rematch} onLeave={leave} onAbandon={abandon} />
+  return (
+    <>
+      <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onRematch={rematch} onLeave={leave} onAbandon={abandon} />
+      {closingIn === null ? null : <RoomClosing name={snapshot.peerName ?? t('duel.bar.rival')} seconds={closingIn} />}
+    </>
+  )
+}
+
+/** Cuánto falta para que la sala se cierre cuando el duelo terminó y el rival se fue. */
+const ROOM_CLOSE_S = 5
+
+/**
+ * Los segundos que le quedan a la sala antes de cerrarse (`null` si no se cierra). Arranca cuando `active` (el duelo terminó y el rival se fue), se cancela si el rival vuelve y, al llegar a cero,
+ * llama a `onClose` una sola vez.
+ */
+function useRoomClosing(active: boolean, onClose: () => void): number | null {
+  const [left, setLeft] = useState<number | null>(null)
+  const close = useRef(onClose)
+
+  close.current = onClose
+
+  useEffect(() => {
+    if (!active) {
+      setLeft(null)
+      return
+    }
+
+    setLeft(ROOM_CLOSE_S)
+
+    const id = window.setInterval(() => setLeft((current) => (current === null ? null : current - 1)), 1000)
+
+    return () => window.clearInterval(id)
+  }, [active])
+
+  useEffect(() => {
+    if (left !== null && left <= 0) {
+      close.current()
+    }
+  }, [left])
+
+  return left === null || left <= 0 ? null : left
+}
+
+/** El aviso de que la sala va a desaparecer, con la cuenta: arriba y al centro, sobre la tarjeta del resultado. */
+function RoomClosing({ name, seconds }: { name: string; seconds: number }) {
+  return (
+    <div role="status" aria-live="polite" data-testid="room-closing" className="pointer-events-none fixed inset-x-0 top-3 z-70 grid justify-items-center px-4">
+      <p className="m-0 max-w-md rounded-card border border-warning/60 bg-surface-raised px-4 py-3 text-center text-body font-semibold text-foreground shadow-overlay">{t('duel.room.closing', { name, count: seconds })}</p>
+    </div>
+  )
 }
 
 /** Lo que no es la mesa: una columna que scrollea, con el ancho de una pantalla de lectura. */

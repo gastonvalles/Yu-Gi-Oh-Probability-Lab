@@ -6,7 +6,7 @@
 import { beforeAll, describe as rawDescribe, expect, it } from 'vitest'
 
 import { createDuel } from '../app/duel-session'
-import { CLOSE_FULL, MAX_MESSAGE_BYTES, PING, PONG, SPECTATOR_RESYNC, createParticipantId, createRoomCode, parseRelayFrame, type ParticipantRole, type RelayFrame } from '../app/duel-relay-rules'
+import { CLOSE_FULL, CLOSE_GONE, CLOSE_ROOM_OVER, MAX_MESSAGE_BYTES, PING, PONG, SPECTATOR_RESYNC, createParticipantId, createRoomCode, parseRelayFrame, type ParticipantRole, type RelayFrame } from '../app/duel-relay-rules'
 import { createSocketTransport, type SocketLike } from '../app/duel-socket'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { createMatState } from '../app/practice-mat'
@@ -14,7 +14,7 @@ import { createMatState } from '../app/practice-mat'
 const RELAY = process.env.DUEL_RELAY_E2E_URL ?? ''
 const ORIGIN = 'http://localhost:5173'
 // Por internet cada conexión tarda cientos de milisegundos (y la primera de una sala, más): los tiempos son de red real, no de laboratorio.
-const describe = (name: string, body: () => void) => rawDescribe.skipIf(!RELAY)(name, { timeout: 30_000 }, body)
+const describe = (name: string, body: () => void) => rawDescribe.skipIf(!RELAY)(name, { timeout: 40_000 }, body)
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 async function until(check: () => boolean, ms = 10_000, what = 'condición') {
@@ -104,6 +104,37 @@ describe('el relay real', () => {
     expect(c.texts).toEqual([])
     a.ws.close(1000)
     b.ws.close(1000)
+  })
+
+  it('una sala se cierra del todo: quien cierra con el código de sala terminada corta a los demás, y nadie vuelve a entrar (ni a jugar ni a mirar)', async () => {
+    const room = createRoomCode()
+    const a = raw(room)
+    const b = raw(room)
+    const watcher = raw(room, undefined, ORIGIN, 'spectator')
+    await until(() => a.frames.some((frame) => frame.kind === 'peer' && frame.present) && watcher.frames.length > 0, 10_000, 'los dos jugadores y el espectador adentro')
+
+    // Un espectador no puede cerrarla.
+    watcher.ws.close(CLOSE_ROOM_OVER)
+    await until(() => watcher.closed !== undefined, 10_000, 'el espectador cierra')
+    const stillThere = raw(room, undefined, ORIGIN, 'spectator')
+    await until(() => stillThere.opened, 10_000, 'otro espectador entra')
+    expect(stillThere.frames.some((frame) => frame.kind === 'gone')).toBe(false)
+
+    // Un jugador sí: el otro y el espectador reciben el aviso de que ya no existe y los cortan.
+    b.ws.close(CLOSE_ROOM_OVER)
+    // El aviso llega enseguida (la app no espera el cierre); el cierre mismo, cuando el relay y el cliente terminan de despedirse.
+    await until(() => a.frames.at(-1)?.kind === 'gone' && stillThere.frames.at(-1)?.kind === 'gone', 10_000, 'el aviso de sala cerrada')
+    await until(() => a.closed !== undefined && stillThere.closed !== undefined, 20_000, 'el relay corta a los que quedaban')
+    expect(a.frames.at(-1)).toEqual({ kind: 'gone' })
+    expect(a.closed).toBe(CLOSE_GONE)
+    expect(stillThere.frames.at(-1)).toEqual({ kind: 'gone' })
+
+    // Quien llega después, como jugador o como espectador, recibe el aviso y no ve nada.
+    for (const role of ['player', 'spectator'] as const) {
+      const late = raw(room, undefined, ORIGIN, role)
+      await until(() => late.frames.length > 0, 10_000, 'el que llega tarde recibe gone')
+      expect(late.frames).toEqual([{ kind: 'gone' }])
+    }
   })
 
   it('una conexión nueva del mismo jugador reemplaza a la vieja', async () => {

@@ -5,6 +5,7 @@ El duelo por enlace junta a dos jugadores, cada uno en su dispositivo, por un **
 ## Qué hace y qué no
 
 - Una sala por código de 8 letras, de **dos** jugadores y hasta **dos espectadores**. El tercer jugador, o el tercer espectador, recibe "sala llena" (un jugador no ocupa el lugar de un espectador ni al revés).
+- **Una sala se cierra del todo** cuando un jugador cierra su conexión con el código `CLOSE_ROOM_OVER` (4400): el relay avisa a los que quedaban (un aviso binario `gone`) y los corta con `CLOSE_GONE` (4002), y a quien llegue después —a jugar o a mirar— le manda el mismo aviso y lo corta, sin dejarlo ver nada. Sólo guarda una marca de que la sala se cerró (sin datos de nadie), que se borra sola a la hora (una alarma del Durable Object). Un espectador no puede cerrar una sala. Es lo que usa la app cuando el duelo terminó y el rival se fue (ver `docs/duelo.md`): sin esto, el que se queda dejaba la sala abierta con un solo jugador y un tercero con el enlace entraba y veía su mesa. Quien cierra una sala ajena con ese código sólo cierra una sala en la que ya estaba.
 - Reenvía cada mensaje de texto sin leerlo ni guardarlo. **No hay base de datos**: la sala existe mientras haya conexiones.
 - Avisa a cada jugador cuando el otro entra o sale, y cuántos espectadores hay, con mensajes binarios (los jugadores no pueden mandar binarios, así nadie puede hacerse pasar por el relay).
 - **Espectadores** (`?role=spectator` en la conexión): reciben el texto de los dos jugadores, cada mensaje precedido de quién lo mandó (un `0` o un `1` que asigna el relay por orden de llegada; un jugador que reconecta con su identidad conserva el suyo) y un aviso binario de cuántos jugadores hay. **No pueden hacer nada**: lo que manden no llega a ningún jugador y los desconecta (código 1008), salvo la palabra `resync`, que pide a los jugadores que repitan su estado (los jugadores lo reciben como un aviso binario de espectadores con `sync`; el relay lo deja pasar como mucho cada dos segundos por espectador). Al entrar uno, los jugadores reciben ese mismo aviso para que lo pongan al día.
@@ -19,6 +20,8 @@ El duelo por enlace junta a dos jugadores, cada uno en su dispositivo, por un **
 El código de la app que lo usa está en `src/app/duel-socket.ts` (cliente con reconexión) y `src/app/duel-relay-rules.ts` (lo que comparten los dos lados).
 
 ## Estado
+
+**Hay un cambio sin publicar** (2026-10-19): el cierre de la sala (`CLOSE_ROOM_OVER` / `gone`, arriba). Hasta que se publique el Worker (`cd duel-relay && npx wrangler@4 deploy`, con `wrangler login`), la app igual avisa los 5 segundos, vuelve al inicio y no le muestra su mesa a un tercero (eso lo resuelve el cliente), pero el relay viejo no corta a los demás ni rechaza entradas a la sala cerrada: publicalo antes que el sitio no hace falta, no se rompe nada en ningún orden.
 
 Publicado el 2026-10-16 en `https://ygo-lab-duel-relay.gastonvallesyeou.workers.dev` con la lista de salas públicas (migración `v2`, PR #270); el sitio lo usa con `VITE_DUEL_RELAY_URL` cargada en Vercel (todos los entornos). Desde entonces `duel-relay/` no cambió: sólo hay que volver a publicarlo (`npx wrangler@4 deploy`) cuando cambie.
 

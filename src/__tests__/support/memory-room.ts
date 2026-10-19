@@ -74,6 +74,12 @@ export class MemoryEnd implements DuelTransport {
     this.room.leave(this)
   }
 
+  /** El duelo terminó y alguien da la sala por terminada: se va y la sala queda cerrada (ver `MemoryRoom.ended`). */
+  endRoom() {
+    this.room.ended = true
+    this.close()
+  }
+
   deliver(text: string) {
     if (this.connected) {
       this.messageListeners.forEach((listener) => listener(text))
@@ -133,7 +139,10 @@ export class MemoryRoom {
   readonly spectators: MemorySpectator[] = []
   /** Todo lo que se mandó (llegara o no), para revisar qué viajó por la red. */
   readonly sent: string[] = []
-  private readonly ends: MemoryEnd[] = []
+  /** Los jugadores que están en la sala, en el orden en que entraron. */
+  readonly ends: MemoryEnd[] = []
+  /** Algún jugador la dio por terminada (`endRoom`): el relay de verdad no deja entrar a nadie más. */
+  ended = false
 
   join(): MemoryEnd {
     if (this.ends.length >= 2) {
