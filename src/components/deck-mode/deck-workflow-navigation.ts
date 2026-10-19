@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'duel' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'duel' | 'life' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -43,6 +43,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'export',
   'practice',
   'duel',
+  'life',
   'meta',
   'tournaments',
   'replays',
