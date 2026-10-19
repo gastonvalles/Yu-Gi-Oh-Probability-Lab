@@ -14,6 +14,9 @@ import { ReactionButtons } from './ReactionButtons'
 import { isEmojiSignal, isHold, isSignal } from './signals'
 import type { FeedEntry } from './use-duel-feed'
 
+/** Lo que llega al chat sube un poco y se asienta (con movimiento reducido, aparece sin más). */
+const ENTER = 'motion-safe:animate-message-in'
+
 /** Un mensaje que es sólo emojis se ve grande, como una reacción. */
 const onlyEmoji = (text: string) => /^[\p{Extended_Pictographic}\s]+$/u.test(text)
 
@@ -40,6 +43,9 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding
   const rows: readonly FeedEntry[] = feed ?? chat.map((line) => ({ id: `c${line.id}`, kind: 'chat' as const, line }))
   const lastId = rows.at(-1)?.id
   const listRef = useRef<HTMLOListElement | null>(null)
+  // Lo que ya estaba al abrir el chat aparece quieto; lo que llega después entra con su animación.
+  const settled = useRef<ReadonlySet<string>>(new Set(rows.map((row) => row.id)))
+  const enters = (id: string) => !settled.current.has(id)
 
   // Siempre se ve lo último.
   useEffect(() => {
@@ -64,7 +70,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding
           rows.map((entry) => {
             if (entry.kind === 'turn') {
               return (
-                <li key={entry.id} className="flex items-center gap-2 py-1 text-micro font-semibold uppercase tracking-[0.08em] text-soft before:h-px before:flex-1 before:bg-border-subtle after:h-px after:flex-1 after:bg-border-subtle">
+                <li key={entry.id} className={cx('flex items-center gap-2 py-1 text-micro font-semibold uppercase tracking-[0.08em] text-soft before:h-px before:flex-1 before:bg-border-subtle after:h-px after:flex-1 after:bg-border-subtle', enters(entry.id) && ENTER)}>
                   {entry.text}
                 </li>
               )
@@ -72,7 +78,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding
 
             if (entry.kind === 'event') {
               return (
-                <li key={entry.id} data-event={entry.side} className="flex items-start gap-2 text-micro text-muted">
+                <li key={entry.id} data-event={entry.side} className={cx('flex items-start gap-2 text-micro text-muted', enters(entry.id) && ENTER)}>
                   <i aria-hidden="true" className={cx('mt-1.5 size-1.5 shrink-0 rounded-full', entry.side === 'mine' ? 'bg-accent' : 'bg-info')} />
                   <span className="min-w-0 break-words">{entry.text}</span>
                 </li>
@@ -82,7 +88,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding
             const line = entry.line
 
             return (
-              <li key={line.id} data-from={line.from === me ? 'mine' : 'theirs'} className={cx('max-w-[88%] break-words rounded-card px-2.5 py-1 text-body text-foreground', onlyEmoji(line.text) && 'text-display leading-tight', line.from === me ? 'ml-auto' : 'mr-auto', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].bubble)}>
+              <li key={line.id} data-from={line.from === me ? 'mine' : 'theirs'} className={cx('max-w-[88%] break-words rounded-card px-2.5 py-1 text-body text-foreground', onlyEmoji(line.text) && 'text-display leading-tight', line.from === me ? 'ml-auto origin-bottom-right' : 'mr-auto origin-bottom-left', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].bubble, enters(entry.id) && (onlyEmoji(line.text) ? 'motion-safe:animate-pop' : ENTER))}>
                 <span className={cx('block text-micro font-semibold', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].text)}>{line.from === me ? myName : rival}</span>
                 {line.text}
               </li>

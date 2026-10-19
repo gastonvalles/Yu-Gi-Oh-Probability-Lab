@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
+import { unlockAudio } from '../../app/audio'
 import { currentCoin } from '../../app/cosmetics'
 import {
   ROUND_LIMIT_MS,
@@ -11,7 +12,7 @@ import {
   timerRemaining,
   type Duelist,
 } from '../../app/life-calculator'
-import { dispatchLife, playCue, unlockAudio, useClock, useLifeState, type RoundCue } from '../../app/life-store'
+import { dispatchLife, playCue, useClock, useLifeState, type RoundCue } from '../../app/life-store'
 import { prefersReducedMotion } from '../../app/motion'
 import { useToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'

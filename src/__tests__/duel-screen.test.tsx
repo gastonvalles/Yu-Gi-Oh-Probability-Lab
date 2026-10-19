@@ -2062,6 +2062,34 @@ describe('la pantalla del duelo', () => {
     expect(within(screen.getAllByRole('dialog', { name: 'Chat con Ana' }).at(-1)!).getByText('¿Respondés a mi invocación?')).toBeInTheDocument()
   })
 
+  it('el chat: lo que llega entra con su animación y lo que ya estaba al abrirlo se ve quieto', () => {
+    const { host, guest } = startDuel()
+    const closeChat = () => fireEvent.keyDown(document, { key: 'Escape' })
+    const write = (view: RenderResult, text: string) => {
+      click(view, 'Chat')
+      const dialog = within(screen.getByRole('dialog', { name: 'Chat' }))
+      fireEvent.change(dialog.getByLabelText('Escribí un mensaje'), { target: { value: text } })
+      fireEvent.click(dialog.getByRole('button', { name: 'Enviar' }))
+      flush()
+
+      return dialog
+    }
+    const bubble = (dialog: ReturnType<typeof within>, text: string) => dialog.getByText(text, { exact: false }).closest('li')!
+
+    write(guest, 'Primero')
+    closeChat()
+
+    // Al abrir el chat, lo escrito antes está quieto; lo que se escribe con él abierto entra con su animación.
+    click(host, 'Chat')
+    const hostChat = within(screen.getByRole('dialog', { name: 'Chat' }))
+    expect(bubble(hostChat, 'Primero')).not.toHaveClass('motion-safe:animate-message-in')
+    fireEvent.change(hostChat.getByLabelText('Escribí un mensaje'), { target: { value: 'Segundo' } })
+    fireEvent.click(hostChat.getByRole('button', { name: 'Enviar' }))
+    flush()
+    expect(bubble(hostChat, 'Segundo')).toHaveClass('motion-safe:animate-message-in', 'origin-bottom-right')
+    expect(bubble(hostChat, 'Primero')).not.toHaveClass('motion-safe:animate-message-in')
+  })
+
   it('las fases y el turno: los dos ven en qué fase va quien juega, el rival ve el cartel de cada fase y, al terminar el turno, el de "Tu turno"', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)

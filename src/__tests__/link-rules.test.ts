@@ -59,4 +59,10 @@ describe('los hipervínculos', () => {
 
     expect(old.map((file) => path.relative(ROOT, file))).toEqual([])
   })
+
+  it('el enlace de la sala del duelo (el que se copia para invitar) también es ámbar', () => {
+    const source = readFileSync(path.join(ROOT, 'duel', 'DuelScreen.tsx'), 'utf8')
+
+    expect(source).toMatch(/text-info-soft[^>]*data-testid="duel-link"/)
+  })
 })
