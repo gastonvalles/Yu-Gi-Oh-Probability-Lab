@@ -98,7 +98,7 @@ export function WatchResultBanner({ end, nameOf, onLeave, onClose }: { end: Spec
 
   const winner = end.matchWinner ?? end.winner
   const title = winner === null ? t('duel.watch.end.draw') : end.matchWinner !== null ? t('duel.watch.end.matchWinner', { name: nameOf(winner) }) : t('duel.watch.end.winner', { name: nameOf(winner) })
-  const why = end.loser === null ? t('duel.watch.end.drawReason') : end.reason === 'conceded' ? t('duel.watch.end.conceded', { name: nameOf(end.loser) }) : t('duel.watch.end.life', { name: nameOf(end.loser) })
+  const why = end.loser === null ? t('duel.watch.end.drawReason') : end.reason === 'conceded' ? t('duel.watch.end.conceded', { name: nameOf(end.loser) }) : end.reason === 'time' ? t('duel.watch.end.time', { name: nameOf(end.loser) }) : t('duel.watch.end.life', { name: nameOf(end.loser) })
   const score = end.match ? ` ${t('duel.watch.end.score', { a: end.wins[0], b: end.wins[1] })}${end.over ? '' : ` ${t('duel.watch.end.next')}`}` : ''
 
   return (

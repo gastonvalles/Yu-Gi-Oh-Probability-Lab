@@ -52,7 +52,7 @@ function viewOf(result: DuelResult, snapshot: DuelSnapshot, rival: string): Resu
 
 /** Cómo terminó el duelo contado para quien lo mira: ganó, perdió o empató, y por qué (puntos de vida o rendición). */
 function gameViewOf(result: DuelResult, snapshot: DuelSnapshot, rival: string): ResultView {
-  const { me, conceded, rematch } = snapshot
+  const { me, conceded, rematch, timeUp } = snapshot
   const note = rematch.mine ? t('duel.result.rematchWaiting', { name: rival }) : rematch.theirs ? t('duel.result.rematchOffered', { name: rival }) : null
 
   if (result.kind === 'draw') {
@@ -60,11 +60,11 @@ function gameViewOf(result: DuelResult, snapshot: DuelSnapshot, rival: string): 
   }
 
   if (result.loser !== me) {
-    return { tone: 'win', icon: 'trophy', title: t('duel.result.title.win'), reason: conceded !== null ? t('duel.result.reason.winConceded', { name: rival }) : t('duel.result.reason.winLife', { name: rival }), note }
+    return { tone: 'win', icon: 'trophy', title: t('duel.result.title.win'), reason: conceded !== null ? t(timeUp ? 'duel.result.reason.winTime' : 'duel.result.reason.winConceded', { name: rival }) : t('duel.result.reason.winLife', { name: rival }), note }
   }
 
   return conceded === me
-    ? { tone: 'lose', icon: 'flag', title: t('duel.result.title.lose'), reason: t('duel.result.reason.loseConceded'), note }
+    ? { tone: 'lose', icon: timeUp ? 'timer' : 'flag', title: t('duel.result.title.lose'), reason: t(timeUp ? 'duel.result.reason.loseTime' : 'duel.result.reason.loseConceded'), note }
     : { tone: 'lose', icon: 'heart', title: t('duel.result.title.lose'), reason: t('duel.result.reason.loseLife'), note }
 }
 

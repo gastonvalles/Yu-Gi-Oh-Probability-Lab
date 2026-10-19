@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
-import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE, MAX_NAME_LENGTH } from '../../app/duel-protocol'
+import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE, MAX_NAME_LENGTH, TURN_BONUS_RANGE, TURN_MIN_RANGE } from '../../app/duel-protocol'
 import { MAX_SPECTATORS, type LiveDuel, type PublicRoom } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
 import type { PausedDuel } from '../../app/duel-save'
@@ -527,6 +527,30 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
               options={DUEL_LIMIT_CHOICES.map((min) => ({ value: String(min), label: min === 0 ? t('duel.play.timeNone') : t('duel.play.timeMin', { min }) }))}
             />
           </RuleField>
+        )}
+
+        {solo ? null : (
+          <div className="grid gap-3 sm:col-span-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="grid min-w-0 gap-0.5">
+                <span className="text-body font-semibold text-foreground">{t('duel.create.turn')}</span>
+                <span className="text-micro text-soft">{t('duel.create.turnHint')}</span>
+              </span>
+              <Switch checked={draft.turnLimit} onChange={(turnLimit) => set({ turnLimit })} label={t('duel.create.turn')} />
+            </div>
+            {draft.turnLimit ? (
+              <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-body text-muted">{t('duel.create.turnBank')}</span>
+                  <Stepper label={t('duel.create.turnBank')} value={draft.turnMin} min={TURN_MIN_RANGE.min} max={TURN_MIN_RANGE.max} step={1} onChange={(value) => set({ turnMin: value })} />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-body text-muted">{t('duel.create.turnBonus')}</span>
+                  <Stepper label={t('duel.create.turnBonus')} value={draft.turnBonusMin} min={TURN_BONUS_RANGE.min} max={TURN_BONUS_RANGE.max} step={1} onChange={(value) => set({ turnBonusMin: value })} />
+                </div>
+              </div>
+            ) : null}
+          </div>
         )}
 
         {draft.match && !solo ? (

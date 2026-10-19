@@ -23,8 +23,8 @@ export type DuelGame =
   | { kind: 'rps'; pick: RpsPick | null }
   /** Quién va primero (0 = anfitrión, 1 = invitado). */
   | { kind: 'order'; first: Duelist }
-  /** Me rindo: el duelo termina y gana el otro. */
-  | { kind: 'concede' }
+  /** Me rindo: el duelo termina y gana el otro. Con `timeout`, es porque se me acabó el tiempo del reloj de turnos (lo manda mi dispositivo solo). */
+  | { kind: 'concede'; timeout?: boolean }
   /** Quiero la revancha: cuando los dos la piden, los dos vuelven a repartir mano con los puntos de vida del principio. */
   | { kind: 'rematch' }
 

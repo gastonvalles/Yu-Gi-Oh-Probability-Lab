@@ -10,7 +10,7 @@ import { fetchCardsByIds } from '../../ygoprodeck'
 import { clearDuelSave, findPausedDuel, readDuelSave, readSidingSave, savedRole, writeSidingSave, type PausedDuel, type SidingDraft } from '../../app/duel-save'
 import { createParticipantId, createRoomCode, LIVE_HEARTBEAT_MS } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
-import { validGenesysCap, type RoomOptions } from '../../app/duel-prefs'
+import { validGenesysCap, validTurnBonusMin, validTurnMin, type RoomOptions } from '../../app/duel-prefs'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelFinished, duelResult, rpsOutcome } from '../../app/duel-games'
@@ -128,6 +128,9 @@ function optionsFor(room: string | undefined): RoomOptions {
   return {
     // Cualquier reloj que el protocolo acepta (una sala de antes pudo tener otro); lo que se ofrece hoy son 50 minutos o sin tiempo.
     limitMin: typeof stored.limitMin === 'number' && Number.isInteger(stored.limitMin) && stored.limitMin >= 0 && stored.limitMin <= 180 ? stored.limitMin : DEFAULT_LIMIT_MIN,
+    turnLimit: stored.turnLimit !== false,
+    turnMin: validTurnMin(stored.turnMin),
+    turnBonusMin: validTurnBonusMin(stored.turnBonusMin),
     format: (DUEL_FORMATS as readonly unknown[]).includes(stored.format) ? (stored.format as DeckFormat) : DEFAULT_DUEL_FORMAT,
     match: stored.match === true,
     siding: stored.match === true && stored.siding === true,
@@ -240,7 +243,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
   const settings = useMemo(
-    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding }),
+    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding }),
     [handSize, options],
   )
   const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
@@ -1085,12 +1088,12 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
       {!peerPresent ? (
         <>
           <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
-            <li className="grid min-w-0 content-start gap-1.5 rounded-card border border-accent/60 bg-card-background p-3">
-              <span className="flex items-center gap-1.5">
+            <li className="grid min-h-24 min-w-0 content-center justify-items-center gap-1.5 rounded-card border border-accent/60 bg-card-background p-3 text-center">
+              <span className="flex items-center justify-center gap-1.5">
                 <i aria-hidden="true" className="size-2.5 rounded-full bg-accent" />
                 <span className="text-micro font-semibold uppercase tracking-[0.04em] text-accent">{t('duel.opening.you')}</span>
               </span>
-              <strong className="truncate text-lead font-semibold text-foreground">{myName || t('duel.opening.you')}</strong>
+              <strong className="max-w-full truncate text-lead font-semibold text-foreground">{myName || t('duel.opening.you')}</strong>
             </li>
             <li className="grid min-h-24 content-center justify-items-center gap-2 rounded-card border border-dashed border-border p-3 text-center">
               <p className="m-0 text-body text-muted" role="status">
@@ -1709,7 +1712,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       rivalFlights: { state: opponent.state, artOf: opponent.artOf },
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
-      clock: <TurnDial clock={snapshot.turnClock} owner={turn === 'mine' ? snapshot.me : snapshot.me === 0 ? 1 : 0} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} />,
+      clock: (snapshot.settings.turnMin ?? 0) > 0 ? <TurnDial clock={snapshot.turnClock} owner={turn === 'mine' ? snapshot.me : snapshot.me === 0 ? 1 : 0} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} /> : undefined,
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
       myTurn: turn === 'mine',
       tools: (

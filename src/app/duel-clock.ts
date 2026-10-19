@@ -1,14 +1,14 @@
 import type { Duelist } from './life-calculator'
 
 /**
- * El reloj de turnos: cada jugador tiene una reserva de tiempo que sólo corre mientras es su turno. Arranca en 5 minutos y, cada vez que el rival pasa el turno (te toca a vos),
- * se suman 2 minutos a lo que te quede. Es público: los dos (y quien mira) ven cuánto le queda a cada uno.
+ * El reloj de turnos: cada jugador tiene una reserva de tiempo que sólo corre mientras es su turno. Arranca en 7 minutos y, cada vez que el rival pasa el turno (te toca a vos),
+ * se suman 3 minutos a lo que te quede. Es público: los dos (y quien mira) ven cuánto le queda a cada uno.
  *
- * Es una cuenta, como el turno mismo: llegar a cero no hace nada (ni pierde ni pasa el turno solo), sólo se ve. Cada dispositivo cuenta con su reloj; lo que viaja es lo que le
+ * Quien se queda en cero pierde el duelo: su propio dispositivo se rinde por él (`concede` con `timeout`) y los dos ven que fue por el tiempo. Cada dispositivo cuenta con su reloj; lo que viaja es lo que le
  * queda a quien termina su turno (la reserva de cada uno la corrige su dueño al pasar), así que las dos pantallas se parecen a menos de la demora de la red.
  */
-export const TURN_BANK_MS = 5 * 60_000
-export const TURN_BONUS_MS = 2 * 60_000
+export const TURN_BANK_MS = 7 * 60_000
+export const TURN_BONUS_MS = 3 * 60_000
 /** Con cuánto tiempo por delante el número empieza a parpadear en rojo. */
 export const TURN_WARNING_MS = 30_000
 
@@ -19,11 +19,12 @@ export interface TurnClock {
   running: Duelist | null
   /** Cuándo se anotaron `banks` (ms de reloj de este dispositivo). */
   at: number
-  /** Lo que tenía quien corre al empezar su turno (con los 2 minutos de más): el anillo se vacía desde ahí. */
+  /** Lo que tenía quien corre al empezar su turno (con los 3 minutos de más): el anillo se vacía desde ahí. */
   span: number
 }
 
-export const freshTurnClock = (): TurnClock => ({ banks: [TURN_BANK_MS, TURN_BANK_MS], running: null, at: 0, span: TURN_BANK_MS })
+/** El reloj de antes de empezar: la reserva de cada uno (por defecto, la de siempre). */
+export const freshTurnClock = (bankMs: number = TURN_BANK_MS): TurnClock => ({ banks: [bankMs, bankMs], running: null, at: 0, span: bankMs })
 
 const other = (who: Duelist): Duelist => (who === 0 ? 1 : 0)
 
@@ -44,14 +45,12 @@ export function runTurnClock(clock: TurnClock, who: Duelist | null, now: number)
   return { ...settled(clock, now), running: who }
 }
 
-/** Empieza el turno de `who`. Si lo pasó el rival se le suman los 2 minutos de más; el primer turno del duelo, o volver atrás un pase, no suma nada. */
-export function startTurn(clock: TurnClock, who: Duelist, now: number, bonus: boolean): TurnClock {
+/** Empieza el turno de `who`. Si lo pasó el rival se le suman `bonusMs` de más (los minutos de la sala); el primer turno del duelo, o volver atrás un pase, no suma nada (0). */
+export function startTurn(clock: TurnClock, who: Duelist, now: number, bonusMs: number): TurnClock {
   const next = settled(clock, now)
   const banks: [number, number] = [next.banks[0], next.banks[1]]
 
-  if (bonus) {
-    banks[who] += TURN_BONUS_MS
-  }
+  banks[who] += bonusMs
 
   return { banks, running: who, at: now, span: Math.max(banks[who], 1) }
 }
