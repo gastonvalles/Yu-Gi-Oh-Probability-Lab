@@ -44,10 +44,13 @@ function Options({ items }: { items: readonly MenuItem[] }) {
           aria-current={item.current ? 'true' : undefined}
           variant={item.current ? 'primary' : 'secondary'}
           className={cx('min-w-0 px-2!', items.length % 2 === 1 && index === items.length - 1 && 'col-span-2')}
+          aria-disabled={item.disabled || undefined}
+          disabled={item.disabled}
           data-initial-focus={index === 0 ? '' : undefined}
           onClick={item.onSelect}
         >
           {item.label}
+          {item.hint ? <span className="block text-micro font-normal opacity-70">{item.hint}</span> : null}
         </Button>
       ))}
     </div>

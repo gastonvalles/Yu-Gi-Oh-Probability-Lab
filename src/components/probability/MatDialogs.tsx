@@ -48,6 +48,9 @@ export interface MenuItem {
   utility?: boolean
   /** La opción que ya está elegida (la fase de ahora): se marca, sin repetirla en otro lado. */
   current?: boolean
+  /** Se ve pero no se puede elegir todavía (los contadores sin una carta en el campo); `hint` dice qué falta. */
+  disabled?: boolean
+  hint?: string
 }
 
 interface CardMenuProps {
@@ -140,8 +143,18 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
           ) : null}
         </div>
         {items.map((item, index) => (
-          <button key={item.label} type="button" role="menuitem" aria-current={item.current ? 'true' : undefined} className={cx(MENU_ITEM, item.current && 'font-bold text-info!')} data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
+          <button
+            key={item.label}
+            type="button"
+            role="menuitem"
+            aria-current={item.current ? 'true' : undefined}
+            aria-disabled={item.disabled || undefined}
+            className={cx(MENU_ITEM, item.current && 'font-bold text-info!', item.disabled && 'cursor-default text-muted hover:bg-transparent')}
+            data-initial-focus={index === 0 ? '' : undefined}
+            onClick={item.disabled ? undefined : item.onSelect}
+          >
             {item.label}
+            {item.hint ? <span className="block text-micro font-normal text-soft">{item.hint}</span> : null}
           </button>
         ))}
         {items.length === 0 ? <p className="m-0 px-3 py-1.5 text-micro text-muted">{t('practice.dialog.empty')}</p> : null}

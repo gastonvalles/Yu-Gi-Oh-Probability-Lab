@@ -630,9 +630,9 @@ describe('la mesa de práctica', () => {
     // El menú se fue pero la carta sigue en la zona, esperando los Sacrificios.
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(within(status()).getByText('Tocá 2 monstruos para sacrificar (0/2)')).toBeInTheDocument()
-    // Eligiendo, lo que falta sí se ve y se apoya sobre la fila de abajo (que conserva su alto: no se corre nada).
+    // Eligiendo, lo que falta sí se ve y se apoya sobre el borde de abajo, arriba de la mano (la práctica ya no reserva una fila: ese alto es del campo).
     expect(status()).not.toHaveClass('sr-only')
-    expect(status()).toHaveClass('absolute', 'inset-0')
+    expect(status()).toHaveClass('absolute', 'inset-x-0', 'bottom-0')
     expect(waitingIn(mz3)).toHaveAttribute('data-card-id', 'card-8-1')
     expect(within(hand()).queryByRole('listitem', { name: 'Blue-Eyes' })).not.toBeInTheDocument()
 
@@ -1906,6 +1906,27 @@ describe('la mesa de práctica', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
       return within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })
     }
+
+    it('«Poner contadores» se ve siempre en el +: sin ninguna carta en el campo dice qué falta (no se esconde) y no se puede elegir; con una carta, sí', () => {
+      render(<Harness />)
+
+      tap(plusButton())
+      const menu = within(screen.getByRole('menu', { name: 'Agregar' }))
+      const counters = menu.getByRole('menuitem', { name: /Poner contadores/ })
+
+      expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Ficha', 'Poner contadoresPoné una carta en el campo primero'])
+      expect(counters).toHaveAttribute('aria-disabled', 'true')
+
+      // Tocarla no hace nada: el menú sigue y no se entra en el modo de elegir carta.
+      fireEvent.click(counters)
+      expect(screen.getByRole('menu', { name: 'Agregar' })).toBeInTheDocument()
+      expect(screen.queryByText('Tocá una carta para ponerle un contador')).not.toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: "Escape" })
+      summon()
+      tap(plusButton())
+      expect(screen.getByRole('menuitem', { name: 'Poner contadores' })).not.toHaveAttribute('aria-disabled')
+    })
 
     it('el botón + los pone y los quita, tocando cartas hasta "Listo"; el menú de la carta no tiene contadores', () => {
       render(<Harness />)

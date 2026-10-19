@@ -45,15 +45,18 @@ export const DECK_CARD_CLASSIC = [
   'data-[dragging=true]:[&_[data-card-art]]:opacity-0 data-[dragging=true]:[&_[data-card-limit]]:opacity-0',
 ].join(' ')
 
-/** Color del cuadradito de cada tipo de carta en el encabezado de la zona. */
+/**
+ * Color del punto de cada tipo de carta en el encabezado de la zona: los del marco de la carta (Gastón, 2026-10-19: «la idea es respetar los colores de las cartas para los puntos»). Los del Extra Deck van cada uno
+ * del suyo —Fusión violeta, Sincronía blanca, Xyz negra y Enlace azul—; la Xyz lleva un aro claro porque el negro solo se pierde en el fondo oscuro. El export a imagen usa los mismos (`TYPE_SWATCH` en `deck-image-export-render.ts`).
+ */
 export const ZONE_TYPE_SWATCH: Record<string, string> = {
   monster: 'bg-warning',
   spell: 'bg-success',
   trap: 'bg-[rgb(236_72_153)]',
-  fusion: 'bg-[rgb(148_163_184)]',
-  xyz: 'bg-[rgb(148_163_184)]',
-  synchro: 'bg-handtrap',
-  link: 'bg-handtrap',
+  fusion: 'bg-[rgb(167_110_205)]',
+  synchro: 'bg-[rgb(245_245_250)]',
+  xyz: 'bg-[rgb(12_10_18)] ring-1 ring-foreground/60',
+  link: 'bg-[rgb(37_99_235)]',
 }
 
 /** Superficie de una zona en la vista mobile (grilla de cartas con el color de la zona). */

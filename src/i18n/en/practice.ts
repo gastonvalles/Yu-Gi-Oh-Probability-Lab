@@ -58,6 +58,7 @@ export const practice: Translated<typeof es> = {
   'practice.token.plusTitle': 'Add',
   'practice.menu.plusToken': 'Token',
   'practice.menu.plusCounter': 'Place counters',
+  'practice.menu.counterNeedsCard': 'Put a card on the field first',
   'practice.menu.minusCounter': 'Remove counters',
   'practice.menu.removeToken': 'Remove the Token',
   'practice.menu.reveal': 'Reveal',

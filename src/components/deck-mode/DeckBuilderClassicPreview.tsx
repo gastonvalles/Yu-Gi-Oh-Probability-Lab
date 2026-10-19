@@ -15,7 +15,7 @@ import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
 import { CardArtPicker } from '../card-detail/CardArtPicker'
 import { CardPricesButton, CardPricesModal } from '../card-detail/CardPrices'
 import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
-import { CardFlip, CardFlipButton } from '../card-detail/CardFlip'
+import { CardFlip, useCardFlip } from '../card-detail/CardFlip'
 import { CardZoom } from '../card-detail/CardZoom'
 import { PrintingInfo } from '../card-detail/PrintingInfo'
 import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
@@ -52,12 +52,12 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
   const [zoomed, setZoomed] = useState(false)
   const [pricesOpen, setPricesOpen] = useState(false)
   // Dar vuelta la carta para ver el dorso: vuelve al frente con otra carta.
-  const [flipped, setFlipped] = useState(false)
+  const flip = useCardFlip()
   const [flippedFor, setFlippedFor] = useState(card?.ygoprodeckId)
 
   if (flippedFor !== card?.ygoprodeckId) {
     setFlippedFor(card?.ygoprodeckId)
-    setFlipped(false)
+    flip.reset()
   }
   // Los artes alternativos de la carta (llegan después de elegirla) y cuál se ve: la elección vale sólo para esa carta.
   const arts = useCardArtOptions(card?.ygoprodeckId ?? null, card?.name ?? '')
@@ -99,20 +99,36 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                 TILT_PERSPECTIVE,
               )}
             >
-              <div className={cx('relative aspect-[421/614] [perspective:900px]', TILT_ART)} {...tiltHandlers}>
-                <CardFlip flipped={flipped}>
+              <div
+                className={cx('relative aspect-[421/614] [perspective:900px]', TILT_ART)}
+                title={t('search.flip.title')}
+                onPointerDown={(event) => {
+                  tiltHandlers.onPointerDown(event)
+                  flip.onPointerDown(event)
+                }}
+                onPointerMove={(event) => {
+                  tiltHandlers.onPointerMove(event)
+                  flip.onPointerMove(event)
+                }}
+                onPointerLeave={tiltHandlers.onPointerLeave}
+                onPointerUp={flip.onPointerUp}
+                onPointerCancel={flip.onPointerCancel}
+              >
+                <CardFlip turns={flip.turns} flipperRef={flip.flipperRef}>
                   <button
                     type="button"
                     aria-label={t('deck.classic.zoom')}
                     title={t('deck.classic.zoom')}
                     className="block size-full cursor-zoom-in rounded-none bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
-                    onClick={() => setZoomed(true)}
+                    onClick={() => {
+                      // Lo que deja un arrastre (dar vuelta la carta) no es un toque: no la agranda.
+                      if (!flip.consumeClick()) setZoomed(true)
+                    }}
                   >
                     <CardArt remoteUrl={artUrl} fallbackUrl={card.imageUrl} name={card.name} className="h-full w-full bg-transparent object-contain shadow-none" limitCard={card} limitBadgeSize="lg" />
                   </button>
                 </CardFlip>
                 <CardGlare />
-                <CardFlipButton flipped={flipped} onToggle={() => setFlipped((current) => !current)} />
               </div>
             </div>
             </div>

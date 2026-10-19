@@ -19,18 +19,18 @@ export function DeckZoneHeader({ zone, title, cards, count = cards.length, class
   const zoneTypeCounts = buildDeckZoneTypeCounts(zone, cards)
 
   return (
-    <div className={cx('flex min-w-0 items-center justify-between gap-3 px-0.5', className)}>
+    <div className={cx('flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-0.5', className)}>
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="size-2.5 shrink-0 rounded-full" style={{ background: ZONE_STYLES[zone].dot }} aria-hidden="true" />
         <Heading level="section" className="whitespace-nowrap">
           {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{formatInteger(count)}]</span>
         </Heading>
       </div>
-      <div className="ml-auto flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         {zoneTypeCounts.length > 0 ? (
-          <div className="flex flex-none items-center gap-3">
+          <div className="flex flex-none items-center gap-2.5">
             {zoneTypeCounts.map((entry) => (
-              <span key={entry.kind} className="inline-flex items-center gap-1.5 text-body font-semibold text-muted tabular-nums" title={`${formatInteger(entry.count)} ${entry.label}`}>
+              <span key={entry.kind} className="inline-flex items-center gap-1 text-body font-semibold text-muted tabular-nums" title={`${formatInteger(entry.count)} ${entry.label}`}>
                 <span className={cx('size-2.5 rounded-tag', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
                 {formatInteger(entry.count)}
               </span>
