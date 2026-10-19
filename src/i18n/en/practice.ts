@@ -86,6 +86,7 @@ export const practice: Translated<typeof es> = {
   'practice.mat.passTurn': 'Pass turn',
   'practice.mat.endTurnTitle': 'End your turn?',
   'practice.mat.endTurnText': 'The turn goes to {name}.',
+  'practice.mat.endTurnSolo': 'You move on to the next turn.',
   'practice.mat.endTurnConfirm': 'End turn',
   'practice.step.andShuffle': '{text} and shuffle',
   'practice.step.draw': 'You draw {card}',

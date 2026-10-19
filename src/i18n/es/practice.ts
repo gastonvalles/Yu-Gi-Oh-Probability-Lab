@@ -90,6 +90,7 @@ export const practice = {
   'practice.mat.passTurn': 'Pasar turno',
   'practice.mat.endTurnTitle': '¿Terminar tu turno?',
   'practice.mat.endTurnText': 'El turno pasa a {name}.',
+  'practice.mat.endTurnSolo': 'Pasás al turno siguiente.',
   'practice.mat.endTurnConfirm': 'Terminar turno',
   'practice.step.andShuffle': '{text} y barajás',
   'practice.step.draw': 'Robás {card}',

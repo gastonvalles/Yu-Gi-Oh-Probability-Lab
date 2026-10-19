@@ -1172,7 +1172,7 @@ export function PracticeMat({
           setMenu(null)
           play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })
           // En el celular no hay «Pasar turno»: llegar a la End Phase pregunta si se termina el turno.
-          if (duel && !isDesktop && phase.id === 'end') setEndingTurn(true)
+          if (!isDesktop && phase.id === 'end') setEndingTurn(true)
         },
       }))
     }
@@ -1507,28 +1507,12 @@ export function PracticeMat({
     </IconButton>
   )
 
-  // Las seis fases y, pegado a la End Phase, Pasar turno: se enciende al llegar a ella y de un toque vuelve a la Draw Phase (ahí sube la cuenta de turnos y el otro roba solo). Sólo lo toca quien tiene el turno.
-  // En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien tiene el turno.
+  // La fase de ahora y de quién es el turno: el botón de las fases (`p3`, en el medio del campo) es el mismo en un duelo y en la práctica; al tocarlo muestra las seis y elegir una pasa a ella (la Draw Phase
+  // después de la End Phase pasa el turno: ahí sube la cuenta de turnos). En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien
+  // tiene el turno; en la práctica el turno siempre es tuyo.
   const phaseNow = duel ? duel.phase : state.phase
-  const passTurn = (
-    <Button
-      variant="primary"
-      size={duel ? 'md' : 'sm'}
-      iconEnd="arrow-right"
-      disabled={phaseNow !== 'end' || (duel ? !duel.myTurn : false)}
-      onClick={() => play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) })}
-    >
-      {t('practice.mat.passTurn')}
-    </Button>
-  )
-  const phaseButtons = (
-    <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[14.5rem] max-w-[calc(100%-9.5rem)] flex-none grid-cols-6 gap-1">
-      {PHASES.map((phase) => (
-        <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={phaseNow === phase.id} rival={duel ? !duel.myTurn : false} disabled={duel ? !duel.myTurn : false} passes={duel?.myTurn === true && phase.id === 'draw' && state.phase === 'end'} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
-      ))}
-    </div>
-  )
-
+  const myTurn = duel ? duel.myTurn : true
+  const passTurn = () => play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) })
   // El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos).
   // Eligiendo se apoya sobre la fila de abajo que ese momento no se usa (`absolute inset-0`): no suma ni quita alto. En un duelo de escritorio es una cápsula centrada que sí recibe toques (la barra de abajo no los ataja: el medio es de la mano).
   const status = (
@@ -1638,18 +1622,17 @@ export function PracticeMat({
           {/* La fila del medio, de izquierda a derecha: el reloj de turnos (`p1`, entre el Banish del rival y la Zona Extra de monstruos), el + al medio del campo (`p2`, entre las dos Zonas Extra; también en la práctica) y el botón de la fase de ahora (`p3`), que al tocarlo muestra todas (Gastón, 2026-10-19). */}
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
           <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{tokenButton}</div>
-          {duel ? (
-            <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
+          <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
               <button
                 type="button"
                 aria-label={`${t('practice.mat.phases')}: ${PHASES.find((phase) => phase.id === phaseNow)?.name ?? ''}`}
                 aria-haspopup="menu"
                 aria-expanded={menu?.kind === 'phases'}
-                disabled={!duel.myTurn}
+                disabled={!myTurn}
                 className={cx(
                   'grid size-11 place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
                   // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
-                  duel.myTurn ? 'cursor-pointer border-info bg-info text-accent-foreground hover:bg-info-soft' : 'border-accent bg-accent text-accent-foreground',
+                  myTurn ? 'cursor-pointer border-info bg-info text-accent-foreground hover:bg-info-soft' : 'border-accent bg-accent text-accent-foreground',
                 )}
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
@@ -1660,19 +1643,18 @@ export function PracticeMat({
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </button>
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
-              {isDesktop && duel.myTurn && phaseNow === 'end' ? (
+              {isDesktop && myTurn && phaseNow === 'end' ? (
                 <Button
                   variant="primary"
                   size="sm"
                   iconEnd="arrow-right"
                   className="absolute left-1/2 top-[calc(50%+1.75rem)] z-20 -translate-x-1/2 whitespace-nowrap"
-                  onClick={() => play({ type: 'phase', phase: 'draw', skipDraw: true })}
+                  onClick={passTurn}
                 >
                   {t('practice.mat.passTurn')}
                 </Button>
               ) : null}
-            </div>
-          ) : null}
+          </div>
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
@@ -1837,13 +1819,7 @@ export function PracticeMat({
               {status}
             </div>
           ) : (
-            <div className="relative">
-              <div inert={choosing} className={cx('flex items-center justify-center gap-2', choosing && 'invisible')}>
-                {phaseButtons}
-                {passTurn}
-              </div>
-              {status}
-            </div>
+            <div className="relative h-10">{status}</div>
           )}
         </div>
       </div>
@@ -1884,20 +1860,18 @@ export function PracticeMat({
       ) : null}
 
       {/* Celular: sin «Pasar turno», la End Phase pregunta si se termina el turno. «Seguir jugando» deja todo como está; para pasar el turno hay que volver a tocar el botón de la End Phase. */}
-      {duel ? (
-        <ConfirmDialog
-          isOpen={endingTurn && !isDesktop && !covered && duel.myTurn && phaseNow === 'end'}
+      <ConfirmDialog
+          isOpen={endingTurn && !isDesktop && !covered && myTurn && phaseNow === 'end'}
           title={t('practice.mat.endTurnTitle')}
-          description={t('practice.mat.endTurnText', { name: duel.control?.rival ?? t('duel.bar.rival') })}
+          description={duel ? t('practice.mat.endTurnText', { name: duel.control?.rival ?? t('duel.bar.rival') }) : t('practice.mat.endTurnSolo')}
           confirmLabel={t('practice.mat.endTurnConfirm')}
           cancelLabel={t('duel.bar.keepPlaying')}
           onCancel={() => setEndingTurn(false)}
           onConfirm={() => {
             setEndingTurn(false)
-            play({ type: 'phase', phase: 'draw', skipDraw: true })
+            passTurn()
           }}
         />
-      ) : null}
 
       <CardMenu
         anchor={covered || sheeted ? null : (menu?.rect ?? null)}
@@ -1979,32 +1953,6 @@ function parseDrop(value: string): MatDropTarget | null {
   const at = Number(index)
 
   return (zone === 'mz' || zone === 'emz' || zone === 'st') && Number.isInteger(at) ? { kind: 'spot', spot: zone, index: at } : null
-}
-
-/** Botón redondo de una fase (DP, SP, M1, BP, M2, EP): la actual encendida en el color de quien tiene el turno (violeta claro, el tuyo; ámbar, el del rival). */
-function PhaseButton({ short, name, active, rival = false, disabled = false, passes = false, onPick }: { short: string; name: string; active: boolean; /** La fase es de quien tiene el turno y no sos vos: va en el color del rival. */ rival?: boolean; /** En un duelo, fuera de tu turno las fases no se tocan. */ disabled?: boolean; /** La Draw Phase desde tu End Phase: pasa el turno (se dice en el título y late un poco). */ passes?: boolean; onPick: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label={name}
-      aria-pressed={active}
-      title={passes ? t('duel.turn.passHint') : name}
-      disabled={disabled}
-      className={cx(
-        // Círculos de hasta 36 px (la activa, un cuadrado redondeado violeta); `before`: el área que se toca crece 4 px por lado, a 44 px de alto, sin agrandar lo que se ve.
-        'relative grid aspect-square w-full max-w-9 min-w-0 place-items-center justify-self-center border text-[0.55rem] before:absolute before:-inset-x-0.5 before:-inset-y-1.5 font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
-        active
-          ? rival
-            ? 'rounded-control border-info bg-info text-accent-foreground'
-            : 'rounded-control border-accent bg-accent text-accent-foreground'
-          : 'rounded-full border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground disabled:hover:bg-transparent disabled:hover:text-soft',
-        passes && 'border-accent/80 text-foreground motion-safe:animate-fx-pick',
-      )}
-      onClick={onPick}
-    >
-      {short}
-    </button>
-  )
 }
 
 function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {

@@ -77,6 +77,20 @@ const tap = (element: HTMLElement) => {
 const hand = () => screen.getByRole('list', { name: 'Mano' })
 const zone = (name: string) => screen.getByRole('group', { name })
 const status = () => screen.getByRole('status', { name: 'Paso actual' })
+/** La fase de ahora: un solo botón en el medio del campo (el mismo que en un duelo); al tocarlo muestra las seis y elegir una pasa a ella. */
+const phaseButton = () => screen.getByRole('button', { name: /^Fases:/ })
+const goToPhase = (name: string) => {
+  fireEvent.click(phaseButton())
+  fireEvent.click(screen.getByRole('menuitem', { name }))
+}
+/** Pasar el turno, como se pueda: en el celular la End Phase pregunta si se termina; en escritorio aparece «Pasar turno» pegado al botón. */
+const endTurn = () => {
+  goToPhase('End Phase')
+  const ask = screen.queryByRole('alertdialog', { name: '¿Terminar tu turno?' })
+
+  if (ask) fireEvent.click(within(ask).getByRole('button', { name: 'Terminar turno' }))
+  else fireEvent.click(screen.getByRole('button', { name: 'Pasar turno' }))
+}
 
 beforeEach(() => {
   localStorage.clear()
@@ -279,40 +293,38 @@ describe('la mesa de práctica', () => {
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(4)
   })
 
-  it('las seis fases van arriba del campo; tocar una la enciende y queda anotada, y de la End Phase a la Draw Phase cambia el turno', () => {
+  it('la fase de ahora es un solo botón en el medio del campo (como en un duelo): tocarlo muestra las seis, elegir una la anota y de la End Phase a la Draw Phase cambia el turno', () => {
     render(<Harness />)
 
-    expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
+    expect(phaseButton()).toHaveAccessibleName('Fases: Draw Phase')
     expect(screen.getByLabelText('Turno 1')).toBeInTheDocument()
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
-    expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'false')
+    goToPhase('Battle Phase')
+    expect(phaseButton()).toHaveAccessibleName('Fases: Battle Phase')
     expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
 
     // Turno nuevo: Draw Phase y se roba sola la carta del tope.
-    fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
+    endTurn()
     expect(screen.getByLabelText('Turno 2')).toBeInTheDocument()
     expect(within(status()).getByText('Turno 2: Draw Phase, robás Imperm')).toBeInTheDocument()
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(6)
     expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
   })
 
-  it('en el celular las fases van abajo, solas y centradas (sin texto al lado: ya están Deshacer arriba y la lista de pasos); el campo no las lleva', () => {
+  it('el botón de las fases está en el medio del campo, en el mismo lugar que en un duelo, y las seis fases sueltas ya no están abajo; el estado queda sólo para el lector de pantalla', () => {
     render(<Harness />)
 
-    const phases = screen.getByRole('group', { name: 'Fases' })
-
-    expect(within(screen.getByLabelText('Campo')).queryByRole('button', { name: 'Battle Phase' })).not.toBeInTheDocument()
-    expect(within(phases).getAllByRole('button')).toHaveLength(6)
-    expect(within(phases).getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
-    // La barra las centra y el estado (la pista, la última jugada) queda sólo para el lector de pantalla: a la vista no hay nada más que las fases.
-    expect(phases.parentElement).toHaveClass('justify-center')
+    expect(screen.queryByRole('group', { name: 'Fases' })).not.toBeInTheDocument()
+    expect(phaseButton().parentElement).toHaveStyle({ gridArea: 'p3' })
+    // Es parte del campo (la fila del medio), como en un duelo.
+    expect(within(screen.getByLabelText('Campo')).getByRole('button', { name: /^Fases:/ })).toBe(phaseButton())
+    expect(phaseButton()).toHaveTextContent('DP')
     expect(status()).toHaveClass('sr-only')
 
-    fireEvent.click(within(phases).getByRole('button', { name: 'Battle Phase' }))
+    fireEvent.click(phaseButton())
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Battle Phase' }))
     expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
     // En vivo no hay Anterior ni Siguiente: se vuelve con Deshacer, arriba.
     expect(screen.queryByRole('button', { name: 'Anterior' })).not.toBeInTheDocument()
@@ -322,48 +334,45 @@ describe('la mesa de práctica', () => {
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
   })
 
-  it('en escritorio las fases también van abajo, en un solo grupo, y el campo no las lleva', () => {
+  it('en escritorio, Pasar turno aparece pegado al botón de las fases recién en la End Phase y de un toque abre el turno siguiente', () => {
     const matchMedia = window.matchMedia
     window.matchMedia = ((query: string) => ({ ...matchMedia(query), matches: query.includes('1101') })) as typeof window.matchMedia
 
     try {
       render(<Harness />)
 
-      expect(within(screen.getByLabelText('Campo')).queryByRole('button', { name: /Phase( \d)?$/ })).not.toBeInTheDocument()
-      expect(within(screen.getByRole('group', { name: 'Fases' })).getAllByRole('button')).toHaveLength(6)
-
-      fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
-      expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
+      goToPhase('Battle Phase')
+      expect(screen.queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
+      goToPhase('End Phase')
+      expect(phaseButton().nextElementSibling).toBe(screen.getByRole('button', { name: 'Pasar turno' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Pasar turno' }))
+      expect(screen.getByLabelText('Turno 2')).toBeInTheDocument()
+      expect(phaseButton()).toHaveAccessibleName('Fases: Draw Phase')
+      expect(screen.queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
     } finally {
       window.matchMedia = matchMedia
     }
   })
 
-  it('Pasar turno va pegado a las fases y se enciende recién en la End Phase: ahí un solo toque abre el turno siguiente', () => {
+  it('en el celular no hay Pasar turno: llegar a la End Phase pregunta si se termina el turno y, confirmado, se abre el siguiente', () => {
     render(<Harness />)
 
-    const pass = () => screen.getByRole('button', { name: 'Pasar turno' })
-
-    expect(pass().previousElementSibling).toBe(screen.getByRole('group', { name: 'Fases' }))
-    expect(pass()).toBeDisabled()
-    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
-    expect(pass()).toBeDisabled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
-    expect(pass()).toBeEnabled()
-    fireEvent.click(pass())
+    expect(screen.queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
+    goToPhase('End Phase')
+    expect(screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })).toBeInTheDocument()
+    expect(screen.getByText('Pasás al turno siguiente.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Terminar turno' }))
     expect(screen.getByLabelText('Turno 2')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
-    expect(pass()).toBeDisabled()
+    expect(phaseButton()).toHaveAccessibleName('Fases: Draw Phase')
   })
-
   it('la lista de pasos no repite nada: los cambios de fase hacen de separador y abajo no sobran ni Anterior / Siguiente ni el contador ni la frase de la última jugada', () => {
     render(<Harness />)
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    goToPhase('Battle Phase')
 
     const list = within(screen.getByRole('region', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
     const rows = within(list).getAllByRole('button')
@@ -418,10 +427,10 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('toolbar', { name: 'Mesa' }).className).toContain('max-[379px]:[&>button]:size-9!')
   })
 
-  it('las fases y los botones de abajo van arriba de la mano: una carta seleccionada o recién robada (z 50) no los tapa', () => {
+  it('la barra de abajo va arriba de la mano: una carta seleccionada o recién robada (z 50) no la tapa', () => {
     render(<Harness />)
 
-    const dock = screen.getByRole('group', { name: 'Fases' }).closest('[class*="sticky"]')
+    const dock = status().closest('[class*="sticky"]')
 
     expect(dock).toHaveClass('z-55')
   })
@@ -621,10 +630,9 @@ describe('la mesa de práctica', () => {
     // El menú se fue pero la carta sigue en la zona, esperando los Sacrificios.
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(within(status()).getByText('Tocá 2 monstruos para sacrificar (0/2)')).toBeInTheDocument()
-    // Eligiendo, lo que falta sí se ve y se apoya sobre las fases, que no se van (siguen ocupando su lugar, quietas y sin recibir toques): el alto de la barra no cambia.
+    // Eligiendo, lo que falta sí se ve y se apoya sobre la fila de abajo (que conserva su alto: no se corre nada).
     expect(status()).not.toHaveClass('sr-only')
     expect(status()).toHaveClass('absolute', 'inset-0')
-    expect(screen.getByRole('group', { name: 'Fases' }).closest('[inert]')).not.toBeNull()
     expect(waitingIn(mz3)).toHaveAttribute('data-card-id', 'card-8-1')
     expect(within(hand()).queryByRole('listitem', { name: 'Blue-Eyes' })).not.toBeInTheDocument()
 
@@ -1395,10 +1403,9 @@ describe('la mesa de práctica', () => {
       expect(zone('Zona de monstruo 2').querySelector('[data-fx="landing"]')).toBeNull()
 
       // Una fase nueva: el cartel con su nombre y nada más (sin los círculos de las seis fases, que ya están en los botones); y de la End Phase a la Draw Phase, con el turno.
-      fireEvent.click(screen.getByRole('button', { name: 'Main Phase 1' }))
+      goToPhase('Main Phase 1')
       expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Main Phase 1')
-      fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
+      endTurn()
       expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Turno 2Draw Phase')
 
       act(() => {
@@ -1844,7 +1851,7 @@ describe('la mesa de práctica', () => {
     expect(screen.queryByRole('menuitem', { name: 'Ataque directo' })).not.toBeInTheDocument()
     fireEvent.keyDown(document, { key: 'Escape' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    goToPhase('Battle Phase')
     tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
     // Sin rival (la práctica) no hay a quién elegir: sólo el directo, y primero.
     expect(screen.queryByRole('menuitem', { name: 'Atacar' })).not.toBeInTheDocument()
@@ -1864,7 +1871,7 @@ describe('la mesa de práctica', () => {
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    goToPhase('Battle Phase')
     const attackDirectly = () => {
       tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
       fireEvent.click(screen.getByRole('menuitem', { name: 'Ataque directo' }))
