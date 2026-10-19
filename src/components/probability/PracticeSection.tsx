@@ -217,6 +217,10 @@ export function PracticeSection(props: PracticeSectionProps) {
       onSeek={props.onSeek}
       onLoadCombo={props.onLoadCombo}
       onNewHand={props.onNewHand}
+      // Se entra a la práctica desde «Entrenar solo» (el inicio de Jugar): la flecha de la barra vuelve ahí.
+      onExit={() => {
+        window.location.hash = '#duel'
+      }}
       footer={started ? null : footer}
       highlighted={started ? EMPTY_IDS : highlighted}
       highlightKind={started ? null : (activeMatch?.kind ?? null)}

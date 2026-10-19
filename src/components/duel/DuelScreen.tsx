@@ -35,6 +35,7 @@ import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { TONE } from '../ui/tone'
 import { Modal } from '../ui/Modal'
 import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardSheet } from '../probability/CardSheet'
@@ -54,6 +55,7 @@ import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './D
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
+import { LobbyBanner } from './LobbyBanner'
 import { TurnOrderBanner } from './DuelBanner'
 import { RoomRules } from './RoomRules'
 import { PlayHome } from './PlayHome'
@@ -1054,44 +1056,47 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
         ) : undefined
       }
     >
-      <div className="flex items-center justify-between gap-3">
-        <Heading level="section">{t('duel.room.title')}</Heading>
-        <div className="flex items-center gap-2">
-          {docked ? null : (
-            <Button variant="secondary" icon="chat" aria-haspopup="dialog" onClick={() => setChatOpen(true)}>
-              {t('duel.chat.open')}
-            </Button>
-          )}
-          <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />
-        </div>
-      </div>
-
-      {role === 'guest' && peerName ? <p className="m-0 text-lead font-semibold text-foreground">{t('duel.room.invitedBy', { name: peerName })}</p> : null}
-
-      <RoomSteps step={step} />
-
-      {role === 'host' ? (
-        <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-4">
-          <p className="m-0 text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.room.link')}</p>
-          <p className="m-0 break-all text-body font-semibold text-info-soft" data-testid="duel-link">{link}</p>
-          <p className="m-0 text-micro text-soft">{t('duel.room.code', { code: room })}</p>
-          <p className="m-0 text-micro text-soft">{t('duel.room.watchHint')}</p>
-          {/* Lo alternativo primero y la principal al final; el enlace para mirar, sin caja, a un costado. */}
-          <div className="flex flex-wrap items-center gap-2">
-            {canShare ? (
-              <Button variant="secondary" icon="upload" onClick={share}>
-                {t('duel.room.share')}
+      {/* La portada de la sala, la misma del inicio de Jugar: el titular con el chat y salir, los pasos y, para el anfitrión, el enlace con sus botones (lo alternativo primero y la principal al final). */}
+      <LobbyBanner
+        art={false}
+        title={t('duel.room.title')}
+        actions={
+          <>
+            {docked ? null : (
+              <Button variant="secondary" icon="chat" aria-haspopup="dialog" onClick={() => setChatOpen(true)}>
+                {t('duel.chat.open')}
               </Button>
-            ) : null}
-            <Button variant={peerPresent ? 'secondary' : 'primary'} icon="link" onClick={() => void copy()}>
-              {t('duel.room.copy')}
-            </Button>
-            <Button variant="tertiary" icon="eye" className="min-[700px]:ml-auto" onClick={() => void copy(true)}>
-              {t('duel.room.copyWatch')}
-            </Button>
+            )}
+            <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />
+          </>
+        }
+      >
+        {role === 'guest' && peerName ? <p className="m-0 text-lead font-semibold text-foreground">{t('duel.room.invitedBy', { name: peerName })}</p> : null}
+
+        <RoomSteps step={step} />
+
+        {role === 'host' ? (
+          <div className="grid gap-2">
+            <p className="m-0 text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.room.link')}</p>
+            <p className="m-0 break-all text-body font-semibold text-info-soft" data-testid="duel-link">{link}</p>
+            <p className="m-0 text-micro text-soft">{t('duel.room.code', { code: room })}</p>
+            <p className="m-0 text-micro text-soft">{t('duel.room.watchHint')}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {canShare ? (
+                <Button variant="secondary" icon="upload" onClick={share}>
+                  {t('duel.room.share')}
+                </Button>
+              ) : null}
+              <Button variant={peerPresent ? 'secondary' : 'primary'} icon="link" onClick={() => void copy()}>
+                {t('duel.room.copy')}
+              </Button>
+              <Button variant="tertiary" icon="eye" className="min-[700px]:ml-auto" onClick={() => void copy(true)}>
+                {t('duel.room.copyWatch')}
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </LobbyBanner>
 
       {status !== 'open' ? <Callout tone="warning" icon="alert">{status === 'connecting' ? t('duel.status.connecting') : t('duel.status.reconnecting')}</Callout> : null}
       {incompatible ? <Callout tone="danger">{t('duel.room.incompatible')}</Callout> : null}
@@ -1100,7 +1105,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
       {!peerPresent ? (
         <>
           <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
-            <li className="grid min-h-24 min-w-0 content-center justify-items-center gap-1.5 rounded-card border border-accent/60 bg-card-background p-3 text-center">
+            <li className={cx('grid min-h-24 min-w-0 content-center justify-items-center gap-1.5 rounded-card border p-3 text-center', TONE.brand.wash)}>
               <span className="flex items-center justify-center gap-1.5">
                 <i aria-hidden="true" className="size-2.5 rounded-full bg-accent" />
                 <span className="text-micro font-semibold uppercase tracking-[0.04em] text-accent">{t('duel.opening.you')}</span>
@@ -1126,7 +1131,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
       {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
 
       {/* Tu deck: el del builder o el que pegaste (quien llega por un enlace no pasó por el lobby). Se cambia en la hoja «Tu deck» mientras no estés listo; si no cumple, lo que falta se dice acá. */}
-      <section aria-label={t('duel.room.deckTitle')} className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
+      <section aria-label={t('duel.room.deckTitle')} className={cx('grid gap-2 rounded-card border p-3', TONE.brand.wash)}>
         <div className="flex items-center justify-between gap-3">
           <span className="grid min-w-0 gap-0.5">
             <span className="text-micro font-semibold uppercase text-soft">{t('duel.room.deckTitle')}</span>

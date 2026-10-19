@@ -23,6 +23,7 @@ import { TONE, type Tone } from '../ui/tone'
 import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
 import { DuelDeckPicker, type DuelDeck } from './DuelDeckPicker'
+import { LobbyBanner } from './LobbyBanner'
 import { formatName, REFRESH_MS, roomChips } from './room-chips'
 
 /** Cuántas salas o duelos se ven antes de «Ver las N» (la pantalla se entiende en tres segundos: lo demás está a un toque). */
@@ -255,21 +256,14 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
       </div>
 
       {/* La portada, como el banner de un lobby de juego: el titular, lo que va a pasar y la acción principal (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
-      <section aria-label={t('duel.play.subtitle')} className={cx('relative isolate grid gap-3 overflow-hidden rounded-panel border p-4 min-[1101px]:p-5', TONE.brand.wash)}>
-        {/* Tres cartas en abanico, de adorno: lo que se juega, sin ocupar lugar. */}
-        <span aria-hidden="true" className="pointer-events-none absolute -right-3 -top-2 -z-10 flex h-full items-center opacity-60">
-          <i className="-mr-8 h-24 w-16 -rotate-12 rounded-tag border border-primary/50 bg-primary/20" />
-          <i className="-mr-8 h-24 w-16 rotate-0 rounded-tag border border-info/50 bg-info/15" />
-          <i className="h-24 w-16 rotate-12 rounded-tag border border-success/50 bg-success/15" />
-        </span>
-        <h2 className="m-0 max-w-[16rem] text-title font-extrabold leading-tight text-foreground">{t('duel.play.subtitle')}</h2>
+      <LobbyBanner title={t('duel.play.subtitle')}>
         <p className="m-0 min-h-5 max-w-[18rem] text-body text-muted" role="status" aria-live="polite">
           {deckReady ? statusText : ''}
         </p>
         <Button variant={paused ? 'secondary' : 'primary'} size="lg" icon="play" className="w-fit max-[420px]:w-full" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
           {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
         </Button>
-      </section>
+      </LobbyBanner>
 
       {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). */}
       <div className="grid grid-cols-2 gap-3">
