@@ -263,6 +263,8 @@ export const deck: Translated<typeof es> = {
   'deck.export.modal.downloadAll': 'Download everything',
   'deck.export.modal.downloadSome': 'Download {files}',
   'deck.export.modal.emptyHint': 'Add cards to the Main Deck to be able to download.',
+  'deck.export.modal.selectAll': 'Select all',
+  'deck.export.modal.selectNone': 'Clear all',
 
   // --- Export: errors while building the files
   'deck.export.error.image': "Couldn't generate the deck image.",
