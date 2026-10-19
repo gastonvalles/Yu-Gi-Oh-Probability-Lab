@@ -1519,6 +1519,28 @@ describe('la mesa de práctica', () => {
     expect(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' })).toHaveClass('rounded-none')
   })
 
+  it('las zonas del centro llevan las líneas de la carta, como el tapete: las de monstruos la parada y la acostada en cruz, las de Mágicas y Trampas sólo la parada; la de campo y las pilas no (ya son una carta)', () => {
+    render(<Harness />)
+
+    // Las líneas son decoración (`aria-hidden`, sin toques) adentro de la casilla; el borde de la casilla cuadrada no se ve (se enciende al elegir o soltar).
+    const lines = (name: string) => zone(name).querySelectorAll(':scope > span[aria-hidden="true"].pointer-events-none > span')
+
+    for (const name of ['Zona de monstruo 1', 'Zona de monstruo 5', 'Zona extra de monstruo 1']) {
+      expect(lines(name)).toHaveLength(2)
+    }
+
+    for (const name of ['Zona de magia y trampa 1', 'Zona de magia y trampa 3']) {
+      expect(lines(name)).toHaveLength(1)
+    }
+
+    const [standing, lying] = Array.from(lines('Zona de monstruo 1'))
+
+    expect(standing).toHaveClass('inset-y-0', 'w-[68.57%]', 'border-field-line/70')
+    expect(lying).toHaveClass('inset-x-0', 'h-[68.57%]', 'border-field-line/70')
+    expect(zone('Zona de monstruo 1')).toHaveClass('border-transparent')
+    expect(zone('Zona de campo').querySelectorAll(':scope > span.pointer-events-none > span')).toHaveLength(0)
+  })
+
   it('las zonas del centro son cuadradas y las de los costados, de carta: acostada en defensa, la carta mide lo mismo que parada y no pisa a la vecina', () => {
     const initial = replayMat(INITIAL, [
       { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'def' },
