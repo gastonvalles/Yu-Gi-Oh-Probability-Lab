@@ -69,13 +69,10 @@ export const deck: Translated<typeof es> = {
   'deck.price.noPrice': 'No price',
   'deck.price.footnote': 'TCGplayer market price, in dollars, as of {date}.',
   'deck.builder.clearAll': 'Clear all',
-  'deck.builder.search': 'Search cards',
-  'deck.builder.next': 'Next: Roles',
   'deck.builder.backToPlay': 'Back to Play',
   'deck.builder.emptyTitle': 'Build your first deck',
   'deck.builder.emptyText': 'Search for cards or load one that already won a tournament.',
   'deck.builder.emptyTournament': 'Load a tournament deck',
-  'deck.builder.mainCount': { one: '{count} card', other: '{count} cards' },
   'deck.builder.clearAllTitle': 'Clear the whole deck',
   'deck.builder.clearConfirm': {
     one: "{count} card will be removed from the deck. This action can't be undone.",

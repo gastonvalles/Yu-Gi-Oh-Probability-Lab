@@ -15,12 +15,10 @@ import type { CardSearchFilters } from '../../app/card-search'
 import { DeckZone } from '../DeckZone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DesktopSearchPanel } from '../search/DesktopSearchPanel'
-import { MobileCardSearch } from '../search/MobileCardSearch'
 import { buildCardSearchProps } from '../search/search-model'
 import type { CardNavigation } from '../../app/card-neighbors'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { StepHero } from '../StepHero'
-import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { EmptyState } from '../ui/EmptyState'
@@ -39,7 +37,6 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
   /** Pasa al paso siguiente (Roles): el botón de abajo del celular. */
-  onNextStep?: () => void
   /** Se llegó desde Jugar (el lobby o la sala): vuelve a donde se estaba. */
   onBackToPlay?: () => void
   /** Va a los decks de torneo: la salida del deck vacío en el celular. */
@@ -110,7 +107,6 @@ const DECK_ZONE_ITEMS: Array<{
 
 export function DeckBuilderStep({
   deckBuilder,
-  onNextStep,
   onBackToPlay,
   onBrowseTournaments,
   deckFormat,
@@ -155,14 +151,13 @@ export function DeckBuilderStep({
   onClearSearchFilters,
   onLoadMoreResults,
 }: DeckBuilderStepProps) {
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
   const [priceOpen, setPriceOpen] = useState(false)
   const [pendingClearAll, setPendingClearAll] = useState(false)
   const isDesktopDeckBuilder = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const formatLabel = getDeckFormatLabel(deckFormat)
 
-  useBodyScrollLock(mobileSearchOpen || importDrawerOpen)
+  useBodyScrollLock(importDrawerOpen)
 
   const visibleFormatIssues = formatIssues.slice(0, 2)
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
@@ -450,6 +445,11 @@ export function DeckBuilderStep({
 
   return (
     <section id="step1" className="grid w-full gap-4 px-gutter pb-6 pt-4">
+      {onBackToPlay ? (
+        <Button variant="secondary" size="sm" icon="chevron-left" className="justify-self-start" onClick={onBackToPlay}>
+          {t('deck.builder.backToPlay')}
+        </Button>
+      ) : null}
       <StepHero
         title={t('deck.builder.title')}
         icon="cards"
@@ -466,9 +466,6 @@ export function DeckBuilderStep({
                 placeholder={t('deck.builder.deckName')}
                 className={fieldInline}
               />
-              <Badge tone="neutral" size="sm" className="ml-2">
-                {t('deck.builder.mainCount', { count: deckBuilder.main.length })}
-              </Badge>
             </FieldBox>
             <FieldBox>
               <select
@@ -579,38 +576,6 @@ export function DeckBuilderStep({
           </div>
         </article>
       </div>
-
-      {/* Abajo, al alcance del pulgar: seguir al paso siguiente y buscar cartas (la principal, a la derecha). Queda fija sobre la barra de abajo. */}
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background px-gutter py-3 min-[1101px]:hidden">
-        {onBackToPlay ? (
-          <Button variant="secondary" size="md" icon="chevron-left" className="min-w-0 flex-1 whitespace-nowrap" onClick={onBackToPlay}>
-            {t('deck.builder.backToPlay')}
-          </Button>
-        ) : onNextStep ? (
-          <Button variant="secondary" size="md" className="min-w-0 flex-1" disabled={deckBuilder.main.length === 0} onClick={onNextStep}>
-            {t('deck.builder.next')}
-          </Button>
-        ) : null}
-        <Button variant="primary" size="md" icon="search" className="min-w-0 flex-1" onClick={() => setMobileSearchOpen(true)}>
-          {t('deck.builder.search')}
-        </Button>
-      </div>
-
-      {mobileSearchOpen ? (
-        <MobileCardSearch
-          search={search}
-          actions={searchActions}
-          deckCopyCounts={deckCopyCounts}
-          zoneCounts={{
-            main: deckBuilder.main.length,
-            extra: deckBuilder.extra.length,
-            side: deckBuilder.side.length,
-          }}
-          onAddCard={onAddSearchResultToDefaultZone}
-          onOpenDetail={onSearchResultClick}
-          onClose={() => setMobileSearchOpen(false)}
-        />
-      ) : null}
 
       <DeckImportDrawer
         isOpen={importDrawerOpen}
