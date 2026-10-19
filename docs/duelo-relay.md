@@ -21,7 +21,7 @@ El código de la app que lo usa está en `src/app/duel-socket.ts` (cliente con r
 
 ## Estado
 
-**Hay un cambio sin publicar** (2026-10-19): el cierre de la sala (`CLOSE_ROOM_OVER` / `gone`, arriba). Hasta que se publique el Worker (`cd duel-relay && npx wrangler@4 deploy`, con `wrangler login`), la app igual avisa los 5 segundos, vuelve al inicio y no le muestra su mesa a un tercero (eso lo resuelve el cliente), pero el relay viejo no corta a los demás ni rechaza entradas a la sala cerrada: publicalo antes que el sitio no hace falta, no se rompe nada en ningún orden.
+**Publicado de nuevo el 2026-10-19** (versión `467ef51c`) con el cierre de la sala (`CLOSE_ROOM_OVER` / `gone`, arriba): la prueba de integración `duel-relay.e2e` (el caso de la sala que se cierra, el de unir a dos jugadores y el de la sala llena) pasó contra `wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev`. Un cliente anterior al cierre sigue andando con este relay (para él es un cierre más), y este cliente con un relay anterior también (lo único que no hace el relay viejo es cortar a los demás y rechazar entradas a la sala cerrada).
 
 Publicado el 2026-10-16 en `https://ygo-lab-duel-relay.gastonvallesyeou.workers.dev` con la lista de salas públicas (migración `v2`, PR #270); el sitio lo usa con `VITE_DUEL_RELAY_URL` cargada en Vercel (todos los entornos). Desde entonces `duel-relay/` no cambió: sólo hay que volver a publicarlo (`npx wrangler@4 deploy`) cuando cambie.
 
