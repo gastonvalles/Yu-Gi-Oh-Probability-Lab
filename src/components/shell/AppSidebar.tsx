@@ -4,6 +4,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
+import { MiniGuide } from './MiniGuide'
 import { AppBrand } from './AppBrand'
 import { mascotsNavItem, searchNavItem, type NavGroup } from './nav-model'
 import { RAIL_SLOT } from './rail'
@@ -55,6 +56,8 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
             aria-expanded={!collapsed}
             aria-label={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
             title={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
+            // El ámbar es de la navegación: se ilumina así, como el destino abierto del menú.
+            className="hover:text-nav-active! focus-visible:text-nav-active!"
             onClick={onToggleCollapsed}
           >
             <Icon name="menu" size={22} />
@@ -65,20 +68,26 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
       </div>
       {/* Lo que scrollea. `scroll-yt` reserva a la derecha el lugar de la barra (12 px: lo que queda de los 76 px del menú contraído), así el ancho de las filas no cambia cuando la barra aparece. */}
       <div className="scroll-yt flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pl-3">
-        {searchAvailable ? (
-          <div className="shrink-0 pb-2">
-            <NavButton item={searchNavItem()} active={false} onSelect={onSelect} />
-          </div>
-        ) : null}
-        <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="shrink-0 pb-3" />
-        {/* Las preferencias, bajo una sola línea: las mascotas (una fila como las de los destinos, que se queda en la columna de íconos al contraer) y el idioma. */}
-        <div className="shrink-0 border-t border-nav-raised pb-3 pt-2">
-          <NavButton item={mascotsNavItem()} active={false} onSelect={onSelect} />
-          {/* Contraído, el idioma se desvanece y no se puede tocar ni enfocar; el renglón conserva su alto. */}
-          <MenuTools className="pt-2 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none" />
-        </div>
-        {/* Al final del todo (si el menú sobra de alto, pegado abajo; si no, al final del scroll). */}
-        <SidebarLegal className="mt-auto" />
+        {collapsed ? (
+          <MiniGuide groups={groups} activeKey={activeKey} onSelect={onSelect} searchAvailable={searchAvailable} />
+        ) : (
+          <>
+            {searchAvailable ? (
+              <div className="shrink-0 pb-2">
+                <NavButton item={searchNavItem()} active={false} onSelect={onSelect} />
+              </div>
+            ) : null}
+            <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="shrink-0 pb-3" />
+            {/* Las preferencias, bajo una sola línea: las mascotas (una fila como las de los destinos, que se queda en la columna de íconos al contraer) y el idioma. */}
+            <div className="shrink-0 border-t border-nav-raised pb-3 pt-2">
+              <NavButton item={mascotsNavItem()} active={false} onSelect={onSelect} />
+              {/* Contraído, el idioma se desvanece y no se puede tocar ni enfocar; el renglón conserva su alto. */}
+              <MenuTools className="pt-2 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none" />
+            </div>
+            {/* Al final del todo (si el menú sobra de alto, pegado abajo; si no, al final del scroll). */}
+            <SidebarLegal className="mt-auto" />
+          </>
+        )}
       </div>
     </aside>
   )
