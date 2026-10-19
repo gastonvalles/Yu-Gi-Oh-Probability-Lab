@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { extractRoomCode } from '../app/duel-link'
+import { createDuel } from '../app/duel-session'
 import { RIFFLE_MS } from '../app/shuffle-fx'
 import type { SocketStatus, SocketTransport, SpectatorSocket } from '../app/duel-socket'
 import type { DuelConnect } from '../app/use-duel'
@@ -674,6 +675,36 @@ describe('la pantalla del duelo', () => {
     })
     expect(memory.ended).toBe(false)
     expect(within(host.container).getByRole('dialog', { name: '¡Ganaste!' })).toBeInTheDocument()
+  })
+
+  it('un tercero que llega durante la cuenta no la reinicia ni la cancela: sigue bajando y la sala se cierra a los 5 segundos del rival que se fue', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+    guest.unmount()
+    flush()
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(within(host.container).getByTestId('room-closing')).toHaveTextContent('en 3 segundos')
+
+    // Llega alguien con otra identidad: para la cuenta es como si nadie hubiera llegado.
+    createDuel(asSocket(memory.join()), { role: 'guest', name: 'Cami', sid: 'third-1' })
+    flush()
+    expect(within(host.container).getByTestId('room-closing')).toHaveTextContent('en 3 segundos')
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(within(host.container).getByTestId('room-closing')).toHaveTextContent('en 2 segundos')
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(memory.ended).toBe(true)
   })
 
   it('con el duelo en curso no hay cuenta: un rival que se cae deja la mesa en pausa como siempre', () => {

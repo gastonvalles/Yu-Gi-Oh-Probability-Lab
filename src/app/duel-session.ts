@@ -184,6 +184,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let peerSid: string | null = null
   /** Un tercero ocupó el lugar del rival cuando el duelo ya terminó: no es quien jugó, y no se le manda nada (ni mi mesa) ni se lo cuenta como rival. */
   let stranger = false
+  /** Quien está en el lugar del rival ya se anunció con su saludo (sin eso, terminado el duelo, todavía no se sabe si es el rival que volvió o un tercero). */
+  let peerGreeted = false
   let incompatible = false
 
   // Mi lado.
@@ -259,7 +261,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, ping: lastPing })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -667,6 +669,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         }
 
         incompatible = false
+        peerGreeted = true
 
         if (peerSid !== message.sid) {
           forgetPeer()
@@ -901,8 +904,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     peerPresent = present
     awaitingSync = false
 
-    // Si el lugar quedó libre, el tercero se fue: el siguiente que llegue se vuelve a mirar.
-    if (!present) stranger = false
+    // Si el lugar quedó libre, el tercero se fue: el siguiente que llegue se vuelve a mirar (y hasta que se anuncie, terminado el duelo, no cuenta como el rival: así su llegada no cancela ni reinicia la cuenta de cierre).
+    if (!present) {
+      stranger = false
+      peerGreeted = false
+    }
     // Un pedido de volver atrás no sobrevive a que el otro salga o vuelva.
     undoAsked = null
     dropUndoAsk(false)

@@ -1023,6 +1023,23 @@ describe('el cierre de la sala', () => {
     expect(third.getSnapshot().chat).toEqual([])
   })
 
+  it('la llegada de un tercero no hace parpadear al rival que se fue: nunca figura presente (la cuenta de cierre no se cancela ni se reinicia)', () => {
+    const game = finishedGame()
+
+    game.guestEnd.close()
+    game.room.flush()
+
+    const seen: boolean[] = []
+    const stop = game.host.subscribe(() => seen.push(game.host.getSnapshot().peerPresent))
+
+    createDuel(game.room.join(), { role: 'guest', name: 'Cami', now: () => game.clock.t, sid: 'third-1' })
+    game.room.flush()
+    stop()
+
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen).not.toContain(true)
+  })
+
   it('el rival que vuelve con su identidad después de terminar sigue siendo el rival', () => {
     const game = finishedGame()
 
