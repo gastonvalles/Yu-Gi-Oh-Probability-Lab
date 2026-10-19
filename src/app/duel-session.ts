@@ -90,10 +90,10 @@ export interface DuelSnapshot {
   /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
   watchers: number
   /**
-   * El permiso para volver atrás una jugada: `asking`, pedí deshacer la mía y espero la respuesta del rival; `asked`, el rival pide deshacer la suya y tengo que contestar;
-   * `result`, cómo terminó mi último pedido si no se permitió (`n` cuenta los resultados, para avisar una sola vez cada uno).
+   * Deshacer vuelve atrás la última jugada de la mesa, sea de quien sea, y antes se le pide permiso al rival: `asking`, pedí deshacerla y espero la respuesta; `asked`, el rival pide deshacerla y tengo que contestar;
+   * `result`, cómo terminó mi último pedido si no se permitió (`n` cuenta los resultados, para avisar una sola vez cada uno); `available`, hay una jugada que deshacer (la última de los dos).
    */
-  undo: { asking: boolean; asked: boolean; result: { n: number; kind: 'denied' | 'expired' } | null; /** Mi última jugada cambió el control de un monstruo: la otra mesa ya la completó y no se puede deshacer. */ blocked: boolean }
+  undo: { asking: boolean; asked: boolean; result: { n: number; kind: 'denied' | 'expired' } | null; available: boolean; /** La última jugada cambió el control de un monstruo: la otra mesa ya la completó y no se puede deshacer. */ blocked: boolean }
   /** Lo marcado como objetivo: `mine`, lo que el rival marcó de mi lado (con mis ids reales); `theirs`, lo que yo marqué del suyo (con los ids que él les dio). */
   marks: { mine: Marks; theirs: Marks }
   /**
@@ -109,9 +109,9 @@ export interface Duel {
   /** Mi mesa de arranque (deck mezclado y mano repartida); se la mando al rival ya enmascarada. */
   start(initial: MatState): void
   play(action: MatAction): void
-  /** Volver atrás mi última jugada: si el rival está, primero se le pide permiso (si lo permite, se deshace; si no, no). */
+  /** Volver atrás la última jugada de la mesa, sea mía o del rival: si el rival está, primero se le pide permiso (si lo permite, se deshace; si no, no). */
   undo(): void
-  /** Contestar el pedido del rival de volver atrás su jugada. */
+  /** Contestar el pedido del rival de volver atrás la última jugada. */
   answerUndo(allow: boolean): void
   changeLife(delta: number): void
   halveLife(): void
@@ -165,6 +165,10 @@ interface DuelOptions {
 
 /** Cuánto espera mi pedido de volver atrás una respuesta del rival antes de cancelarse. */
 const UNDO_WAIT_MS = 30_000
+/** De quién es una jugada de la mesa, vista desde acá. */
+type Mover = 'me' | 'peer'
+/** Quién deshace: `push`, quien pide (la última jugada es suya); `pull`, quien contesta. */
+type UndoKind = 'push' | 'pull'
 /** Cuánto dura un objetivo que marqué del lado del rival: pasado el plazo se quita solo (en los dos lados). */
 const MARK_MS = 5000
 /**
@@ -243,6 +247,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let undoTimer: ReturnType<typeof setTimeout> | null = null
   let undoAsked: number | null = null
   let undoResult: { n: number; kind: 'denied' | 'expired' } | null = null
+  // Con `push` la jugada a deshacer es de quien pide; con `pull`, de quien contesta (la última de la mesa es suya).
+  let undoAskingKind: UndoKind = 'push'
+  let undoAskedKind: UndoKind = 'push'
+  // Quién hizo cada jugada de la mesa, en el orden en que pasaron: Deshacer vuelve atrás la última de cualquiera (ver `playOrder`).
+  let order: Mover[] = []
 
   // El lado del rival: lo último que le oí, para descartar repetidos y detectar lo que falta.
   let theirs: Mirror | null = null
@@ -272,7 +281,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -594,11 +603,62 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
   }
 
-  /** Mi última jugada pasó un monstruo de una mesa a la otra: no se deshace (la otra mesa ya la completó por su cuenta). */
-  const lastIsControl = () => {
-    const last = actions.at(-1)
+  /**
+   * Las jugadas de los dos, en el orden en que pasaron. Se anota cada una al jugarla o recibirla; si lo anotado no coincide con cuántas tiene cada uno (se recargó la página, el rival empezó de cero, llegó un `sync`),
+   * se ajusta: lo que sobra es lo más viejo y lo que falta se supone anterior a todo, con las del rival antes que las mías (así, sin saber, Deshacer vuelve atrás la mía, como antes).
+   */
+  const playOrder = (): Mover[] => {
+    const want = { me: actions.length, peer: peerSeq }
+    const seen = { me: 0, peer: 0 }
+    const kept: Mover[] = []
+
+    for (let at = order.length - 1; at >= 0; at -= 1) {
+      const who = order[at]!
+
+      if (seen[who] < want[who]) {
+        seen[who] += 1
+        kept.push(who)
+      }
+    }
+
+    return [...Array<Mover>(want.peer - seen.peer).fill('peer'), ...Array<Mover>(want.me - seen.me).fill('me'), ...kept.reverse()]
+  }
+
+  /** Anota una jugada nueva de `who`; va antes de contarla en `actions` (o `peerSeq`). */
+  const notePlay = (who: Mover) => {
+    order = [...playOrder(), who]
+  }
+
+  /** Anota que `who` deshizo su última jugada; también va antes de contarlo. */
+  const noteUndo = (who: Mover) => {
+    const current = playOrder()
+    const at = current.lastIndexOf(who)
+
+    order = at < 0 ? current : [...current.slice(0, at), ...current.slice(at + 1)]
+  }
+
+  /** La última jugada de `who` pasó un monstruo de una mesa a la otra: no se deshace (la otra mesa ya la completó por su cuenta). Del rival sólo se sabe si ya me llegó su jugada. */
+  const lastIsControl = (who: Mover = 'me') => {
+    const last = who === 'me' ? actions.at(-1) : theirs?.acts.at(-1)
 
     return last !== undefined && CONTROL_ACTIONS.has(last.type)
+  }
+
+  /** De quién es la última jugada de la mesa y se puede pedir deshacer; null si no hay ninguna (o la del rival, con él fuera de la sala: no hay a quién pedírsela). */
+  const undoTarget = (): Mover | null => {
+    const last = playOrder().at(-1)
+
+    if (last === 'me') {
+      return initial && actions.length > 0 ? 'me' : null
+    }
+
+    return last === 'peer' && peerPresent ? 'peer' : null
+  }
+
+  const undoBlocked = () => {
+    const target = undoTarget()
+
+    return target !== null && lastIsControl(target)
   }
 
   /** Juega una jugada en mi mesa y se la cuenta al rival (la usan `play` y las respuestas automáticas del control de un monstruo). */
@@ -607,23 +667,33 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       return
     }
 
+    // Si el rival me pedía deshacer mi última jugada y yo ya jugué otra, el pedido quedó viejo: no se le deshace nada y se entera.
+    if (undoAsked !== null && undoAskedKind === 'pull') {
+      send({ t: 'undoAnswer', id: undoAsked, ok: false })
+      undoAsked = null
+    }
+
     const sent = encodeAct(sender, mine, action)
 
+    notePlay('me')
     sender = sent.sender
     mine = matReducer(mine, action)
     actions = [...actions, action]
     send({ t: 'act', n: actions.length, wire: sent.wire })
   }
 
-  /** Deshace mi última jugada y se lo cuenta al rival. */
-  const applyUndo = () => {
+  /** Deshace mi última jugada y se lo cuenta al rival; dice si pudo. */
+  const applyUndo = (): boolean => {
     if (!initial || actions.length === 0 || lastIsControl()) {
-      return
+      return false
     }
 
+    noteUndo('me')
     actions = actions.slice(0, -1)
     mine = replayMat(initial, actions)
     send({ t: 'undo', n: actions.length })
+
+    return true
   }
 
   /** Dejo de esperar la respuesta a mi pedido de volver atrás (si le había preguntado al rival, se lo aviso: su cartel se va). */
@@ -794,6 +864,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         } else if (message.n === peerSeq + 1) {
           const previous = theirs.state
 
+          notePlay('peer')
           theirs = mirrorApply(theirs, message.wire)
           peerSeq = message.n
           pruneMarks()
@@ -811,6 +882,10 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
 
       case 'undo':
+        if (message.n === peerSeq - 1) {
+          noteUndo('peer')
+        }
+
         if (!theirs) {
           requestSync()
         } else if (message.n === peerSeq - 1 && theirs.acts.length > 0) {
@@ -824,19 +899,24 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
 
       case 'undoAsk':
+      case 'undoPull':
         undoAsked = message.id
+        undoAskedKind = message.t === 'undoPull' ? 'pull' : 'push'
         return
 
       case 'undoAnswer':
         // Sólo vale la respuesta a mi pedido de ahora: una vieja (cancelado, o ya jugué otra cosa) no deshace nada.
         if (message.id === undoAsking) {
+          const pulled = undoAskingKind === 'pull'
+
           dropUndoAsk(false)
 
-          if (message.ok) {
-            applyUndo()
-          } else {
+          if (!message.ok) {
             undoResult = { n: (undoResult?.n ?? 0) + 1, kind: 'denied' }
+          } else if (!pulled) {
+            applyUndo()
           }
+          // Si pedí deshacer la suya y lo permitió, ya la deshizo él: su `undo` llegó antes que esta respuesta.
         }
 
         return
@@ -1072,7 +1152,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     },
 
     undo() {
-      if (!initial || actions.length === 0 || undoAsking !== null || lastIsControl()) {
+      const target = undoTarget()
+
+      if (target === null || undoAsking !== null || lastIsControl(target)) {
         return
       }
 
@@ -1088,7 +1170,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       const id = undoAskN
 
       undoAsking = id
-      send({ t: 'undoAsk', id })
+      // La última jugada es mía: pido permiso para deshacerla. Es del rival: le pido que la deshaga él (su mesa es suya).
+      undoAskingKind = target === 'me' ? 'push' : 'pull'
+      send({ t: target === 'me' ? 'undoAsk' : 'undoPull', id })
       undoTimer = setTimeout(() => {
         if (undoAsking === id) {
           dropUndoAsk(true)
@@ -1104,8 +1188,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
-      send({ t: 'undoAnswer', id: undoAsked, ok: allow })
+      const id = undoAsked
+
       undoAsked = null
+
+      // Si me piden deshacer mi última jugada y lo permito, la deshago yo (le llega mi `undo`) y se lo confirmo; si ya no se puede, se lo digo.
+      send({ t: 'undoAnswer', id, ok: undoAskedKind === 'pull' && allow ? applyUndo() : allow })
       emit()
     },
 

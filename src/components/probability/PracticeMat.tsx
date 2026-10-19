@@ -149,9 +149,11 @@ export interface DuelMatLink {
   rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
   /** Cuenta las veces que el rival tocó su deck o sumó una carta a su mano: cada vez que sube, su deck y su mano se barajan a la vista. */
   rivalShuffle?: number
-  /** Pedí volver atrás mi jugada y espero que el rival la permita: Deshacer queda apagado hasta que conteste. */
+  /** Pedí volver atrás la última jugada de la mesa y espero que el rival la permita: Deshacer queda apagado hasta que conteste. */
   undoPending?: boolean
-  /** Mi última jugada cambió de manos un monstruo (el rival ya la completó en su mesa): no se deshace. */
+  /** Hay una jugada que deshacer: la última de la mesa, sea mía o del rival (sin esto, vale la cuenta de mis jugadas). */
+  undoAvailable?: boolean
+  /** La última jugada de la mesa cambió de manos un monstruo (la otra mesa ya la completó): no se deshace. */
   undoBlocked?: boolean
   /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
   control?: ControlOffer
@@ -1511,7 +1513,7 @@ export function PracticeMat({
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, arriba, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
   const undoButton = (
-    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
       <Icon name="undo" />
     </IconButton>
   )

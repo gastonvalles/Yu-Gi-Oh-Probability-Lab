@@ -257,6 +257,116 @@ describe('las mesas', () => {
     })
   })
 
+  describe('Deshacer vuelve atrás la última jugada de la mesa, sea de quien sea', () => {
+    const played = () => {
+      const game = setup()
+      startBoth(game)
+      game.host.play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
+      game.room.flush()
+      game.guest.play({ type: 'move', id: 'card-5001-1', to: 'gy' })
+      game.room.flush()
+      return game
+    }
+
+    it('con la última jugada del rival, quien toca Deshacer le pide al rival que la deshaga: si la permite, vuelve atrás la suya (y la mía queda)', () => {
+      const game = played()
+
+      expect(game.host.getSnapshot().undo).toMatchObject({ available: true, blocked: false })
+      game.host.undo()
+      game.room.flush()
+
+      expect(game.host.getSnapshot().undo).toMatchObject({ asking: true, asked: false })
+      expect(game.guest.getSnapshot().undo).toMatchObject({ asking: false, asked: true })
+      // Hasta que contesta no se deshace nada.
+      expect(game.guest.getSnapshot().mine?.gy).toHaveLength(1)
+
+      game.guest.answerUndo(true)
+      game.room.flush()
+
+      expect(game.guest.getSnapshot().moves).toBe(0)
+      expect(game.guest.getSnapshot().mine?.gy).toEqual([])
+      expect(game.host.getSnapshot().moves).toBe(1)
+      expect(game.host.getSnapshot().undo).toMatchObject({ asking: false, result: null })
+      expect(game.guest.getSnapshot().undo.asked).toBe(false)
+      expectSameTables(game)
+    })
+
+    it('es lo mismo para los dos: el invitado también deshace la última jugada del anfitrión, y después la anterior (la suya)', () => {
+      const game = setup()
+      startBoth(game)
+      game.guest.play({ type: 'move', id: 'card-5001-1', to: 'gy' })
+      game.room.flush()
+      game.host.play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
+      game.room.flush()
+
+      undoAllowed(game, game.guest, game.host)
+      expect(game.host.getSnapshot().moves).toBe(0)
+      expect(game.guest.getSnapshot().moves).toBe(1)
+      expectSameTables(game)
+
+      // Ahora la última de la mesa es la del invitado: es la suya y la deshace con el permiso del anfitrión.
+      undoAllowed(game, game.guest, game.host)
+      expect(game.guest.getSnapshot().moves).toBe(0)
+      expectSameTables(game)
+      expect(game.guest.getSnapshot().undo.available).toBe(false)
+      expect(game.host.getSnapshot().undo.available).toBe(false)
+    })
+
+    it('el que no hizo ninguna jugada también puede deshacer la del rival (sin nada propio que deshacer)', () => {
+      const game = setup()
+      startBoth(game)
+
+      expect(game.host.getSnapshot().undo.available).toBe(false)
+      game.guest.play({ type: 'move', id: 'card-5001-1', to: 'gy' })
+      game.room.flush()
+      expect(game.host.getSnapshot().moves).toBe(0)
+      expect(game.host.getSnapshot().undo.available).toBe(true)
+
+      undoAllowed(game, game.host, game.guest)
+      expect(game.guest.getSnapshot().moves).toBe(0)
+      expectSameTables(game)
+    })
+
+    it('si no la permite, no pasa nada y quien pidió se entera', () => {
+      const game = played()
+
+      game.host.undo()
+      game.room.flush()
+      game.guest.answerUndo(false)
+      game.room.flush()
+
+      expect(game.guest.getSnapshot().moves).toBe(1)
+      expect(game.host.getSnapshot().undo).toMatchObject({ asking: false, result: { n: 1, kind: 'denied' } })
+      expectSameTables(game)
+    })
+
+    it('si el dueño de la jugada hace otra antes de contestar, el pedido quedó viejo: no se deshace nada y se entera como si no la hubiera permitido', () => {
+      const game = played()
+
+      game.host.undo()
+      game.room.flush()
+      game.guest.play({ type: 'move', id: 'card-5002-1', to: 'gy' })
+      game.room.flush()
+
+      expect(game.guest.getSnapshot().undo.asked).toBe(false)
+      expect(game.host.getSnapshot().undo).toMatchObject({ asking: false, result: { n: 1, kind: 'denied' } })
+      expect(game.guest.getSnapshot().moves).toBe(2)
+      expectSameTables(game)
+    })
+
+    it('quien pide cancela su pedido al hacer otra jugada: el cartel del rival se va', () => {
+      const game = played()
+
+      game.host.undo()
+      game.room.flush()
+      game.host.play({ type: 'move', id: 'card-1001-1', to: 'gy' })
+      game.room.flush()
+
+      expect(game.host.getSnapshot().undo.asking).toBe(false)
+      expect(game.guest.getSnapshot().undo.asked).toBe(false)
+    })
+  })
+
   it('empezar otra vez (una revancha) reemplaza la mesa del rival', () => {
     const game = setup()
     startBoth(game)
