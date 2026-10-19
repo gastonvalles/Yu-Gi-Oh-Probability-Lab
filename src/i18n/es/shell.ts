@@ -226,4 +226,9 @@ export const shell = {
   'shell.legal.label': 'Privacidad y aviso legal',
   'shell.legal.page': '/privacidad.html',
   'shell.disclaimer': 'Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.',
+  'shell.step.tierMaker.label': 'Crear tier list',
+  'shell.step.tierMaker.title': 'Crear tu propia tier list',
+  'shell.step.tierMaker.detail': 'Repartí las cartas que quieras en filas y bajala como imagen.',
+  'shell.blurb.tierMaker': 'Armá la tuya con las cartas que quieras',
+  'shell.find.kw.tier-maker': 'crear armar hacer propia tier list tierlist ranking filas cartas imagen',
 } as const

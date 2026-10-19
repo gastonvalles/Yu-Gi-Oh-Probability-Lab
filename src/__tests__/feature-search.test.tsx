@@ -22,7 +22,7 @@ describe('qué se puede buscar', () => {
   it('todo lo del menú, también lo que el menú esconde o sólo trae la hoja del celular, más las mascotas y, donde hay buscador, las cartas', () => {
     const keys = buildFindEntries(GROUPS, { cards: true }).map((entry) => entry.key)
 
-    expect(keys).toEqual(expect.arrayContaining(['deck-builder', 'categorization', 'probability-lab', 'workspace', 'practice', 'duel', 'duel-watch', 'duel-join', 'life', 'export', 'meta', 'tournaments', 'replays', 'expansions', 'banlists', 'search', 'mascots']))
+    expect(keys).toEqual(expect.arrayContaining(['deck-builder', 'categorization', 'probability-lab', 'workspace', 'practice', 'duel', 'duel-watch', 'duel-join', 'life', 'export', 'meta', 'tier-maker', 'tournaments', 'replays', 'expansions', 'banlists', 'search', 'mascots']))
     // Sin buscador de cartas en la pantalla (el builder, la práctica) no se ofrece.
     expect(buildFindEntries(GROUPS, { cards: false }).map((entry) => entry.key)).not.toContain('search')
   })

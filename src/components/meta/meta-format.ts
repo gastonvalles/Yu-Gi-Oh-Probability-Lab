@@ -23,11 +23,6 @@ export function tierColor(tier: MetaTier): string {
   return TIER_COLOR[tier]
 }
 
-/** El color del rótulo sobre ese fondo: oscuro (todos los fondos son claros). */
-export function tierTextClass(): string {
-  return 'text-accent-foreground'
-}
-
 /** Qué pide un tier: sus pisos son los de la lista (los decks se reparten el meta en porcentajes mucho más bajos que las cartas). */
 export function tierHint(tier: MetaTier, floors: ReadonlyArray<readonly [MetaTier, number]> = TIER_FLOORS): string {
   const floor = floors.find(([key]) => key === tier)?.[1]

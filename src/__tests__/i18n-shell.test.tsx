@@ -24,7 +24,7 @@ describe('el armazón de la app en inglés', () => {
 
     applyLocale('en')
 
-    expect(buildDeckWorkflowNavigationItems(snapshot).map((item) => item.label)).toEqual(['Deck', 'Roles', 'Lab', 'Compare', 'Export', 'Tier lists', 'Tournament decks', 'Replays', 'Expansions', 'Banlists'])
+    expect(buildDeckWorkflowNavigationItems(snapshot).map((item) => item.label)).toEqual(['Deck', 'Roles', 'Lab', 'Compare', 'Export', 'Tier lists', 'Make a tier list', 'Tournament decks', 'Replays', 'Expansions', 'Banlists'])
     expect(buildDeckWorkflowNavigationItems(snapshot)[0]).toMatchObject({ detail: '12 more to reach 40.' })
     expect(buildDeckWorkflowNavigationItems(snapshot)[1]).toMatchObject({ detail: '3 still open.' })
     expect(navToneLabel('complete')).toBe('Done')

@@ -228,4 +228,9 @@ export const shell: Translated<typeof es> = {
   'shell.legal.label': 'Privacy and legal notice',
   'shell.legal.page': '/privacy.html',
   'shell.disclaimer': 'Unofficial site. Yu-Gi-Oh! is a trademark of Konami.',
+  'shell.step.tierMaker.label': 'Make a tier list',
+  'shell.step.tierMaker.title': 'Make your own tier list',
+  'shell.step.tierMaker.detail': 'Sort any cards you like into rows and download it as an image.',
+  'shell.blurb.tierMaker': 'Build yours with any cards you like',
+  'shell.find.kw.tier-maker': 'create make build own tier list tierlist ranking rows cards image',
 }

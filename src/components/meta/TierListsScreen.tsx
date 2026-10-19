@@ -117,7 +117,14 @@ export function TierListsScreen() {
         icon="chart"
         subtitle={t('meta.screen.subtitle')}
         help={<TierListHelp list={list} floors={floors} totalWeeks={totalWeeks} />}
-        side={<MetaHeroSide region={region} onRegionChange={setMetaRegion} />}
+        side={
+          <div className="flex flex-wrap items-center gap-2 max-[1100px]:w-full">
+            <MetaHeroSide region={region} onRegionChange={setMetaRegion} />
+            <Button variant="secondary" size="sm" icon="sort" className="max-[1100px]:w-full" onClick={() => goTo('#tier-maker')}>
+              {t('meta.maker.makeYours')}
+            </Button>
+          </div>
+        }
       />
 
       <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} fullWidth={!isDesktop} className="min-[1101px]:min-w-[26rem]" />
