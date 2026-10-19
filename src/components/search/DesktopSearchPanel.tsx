@@ -302,6 +302,7 @@ const SearchResultRow = memo(function SearchResultRow({
     >
       <div className="relative w-[4.2rem]" data-drag-preview-source="true">
         <CardArt
+          tilt
           remoteUrl={card.imageUrlSmall ?? card.imageUrl}
           name={card.name}
           className="aspect-[0.72] w-[4.2rem]"

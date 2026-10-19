@@ -484,6 +484,7 @@ function HandCard({
       onContextMenu={(event) => event.preventDefault()}
     >
       <CardArt
+        tilt
         remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
         name={card.name}
         className="block h-full w-full bg-input object-cover"

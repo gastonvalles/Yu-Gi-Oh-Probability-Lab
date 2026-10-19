@@ -163,6 +163,8 @@ export const search = {
   'search.detail.next': 'Carta siguiente',
   'search.overlay.backToDetail': 'Volver al detalle',
   'search.overlay.zoomIn': 'Ver la carta en grande',
+  'search.flip.back': 'Dar vuelta: ver el dorso',
+  'search.flip.front': 'Dar vuelta: ver el frente',
   'search.zoom.aria': '{name} en grande',
   'search.arts.label': 'Artes de la carta',
   'search.arts.pick': 'Arte {n} de {count}',

@@ -4,6 +4,7 @@ import { cardImageSrc } from '../app/card-image-source'
 import { buildInitials } from '../app/utils'
 import type { ApiCardReference } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
+import { CardGlare, TILT_IN_PLACE, tiltInPlaceHandlers } from './card-detail/card-tilt'
 import { CardLimitBadge, type CardLimitBadgeSize } from './CardLimitBadge'
 import { Skeleton } from './ui/Skeleton'
 
@@ -15,6 +16,8 @@ interface CardArtProps {
   className?: string
   limitCard?: ApiCardReference | ApiCardSearchResult | null
   limitBadgeSize?: CardLimitBadgeSize
+  /** La carta se inclina en 3D hacia el puntero (el mouse al pasar, el dedo al tocarla) y lleva su brillo, como la del detalle: en toda grilla o lista donde las cartas se ven una al lado de otra. */
+  tilt?: boolean
 }
 
 /**
@@ -29,7 +32,10 @@ export const CardArt = memo(function CardArt({
   className = '',
   limitCard = null,
   limitBadgeSize = 'md',
+  tilt = false,
 }: CardArtProps) {
+  const frame = ['relative block h-full w-full', tilt ? TILT_IN_PLACE : ''].join(' ').trim()
+  const frameProps = tilt ? tiltInPlaceHandlers : {}
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const [hasImageError, setHasImageError] = useState(false)
   // Si el proxy falla, se prueba una vez con la URL original de YGOPRODeck antes de darla por perdida.
@@ -51,7 +57,7 @@ export const CardArt = memo(function CardArt({
 
   if (src && !hasImageError) {
     return (
-      <div className="relative block h-full w-full">
+      <div className={frame} {...frameProps}>
         {!isImageLoaded ? (
           <Skeleton
             radius="none"
@@ -85,12 +91,13 @@ export const CardArt = memo(function CardArt({
           }}
         />
         <CardLimitBadge card={limitCard} size={limitBadgeSize} />
+        {tilt ? <CardGlare /> : null}
       </div>
     )
   }
 
   return (
-    <div className="relative block h-full w-full">
+    <div className={frame} {...frameProps}>
       <div
         data-card-art
         className={[
@@ -102,6 +109,7 @@ export const CardArt = memo(function CardArt({
         <span>{buildInitials(name)}</span>
       </div>
       <CardLimitBadge card={limitCard} size={limitBadgeSize} />
+      {tilt ? <CardGlare /> : null}
     </div>
   )
 })
