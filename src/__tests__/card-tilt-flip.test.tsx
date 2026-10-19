@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { CardArt } from '../components/CardArt'
-import { CardFlip, CardFlipButton } from '../components/card-detail/CardFlip'
+import { CardFlip, FlipHint, useCardFlip } from '../components/card-detail/CardFlip'
 import { tiltHandlers, tiltInPlaceHandlers } from '../components/card-detail/card-tilt'
 
 // El aviso de la banlist lee el store: acá sólo importa cómo se mueve la carta.
@@ -103,49 +103,133 @@ describe('la carta se inclina en 3D', () => {
   })
 })
 
-describe('dar vuelta la carta', () => {
-  it('muestra el dorso del otro lado: el frente se esconde a los lectores de pantalla al darla vuelta', () => {
+/** Una carta que se da vuelta con un gesto: arrastrada hacia arriba o abajo. Alta de 200 px (el giro entero pide 160 px de arrastre). */
+let consumeClick: () => boolean
+
+function FlippableCard() {
+  const flip = useCardFlip()
+
+  consumeClick = flip.consumeClick
+
+  return (
+    <div
+      data-testid="carta"
+      ref={(element) => {
+        if (element) element.getBoundingClientRect = () => ({ height: 200, width: 140, top: 0, left: 0, right: 140, bottom: 200, x: 0, y: 0, toJSON: () => ({}) })
+      }}
+      onPointerDown={flip.onPointerDown}
+      onPointerMove={flip.onPointerMove}
+      onPointerUp={flip.onPointerUp}
+      onPointerCancel={flip.onPointerCancel}
+    >
+      <CardFlip turns={flip.turns} flipperRef={flip.flipperRef}>
+        <span>frente</span>
+      </CardFlip>
+    </div>
+  )
+}
+
+const flipper = () => screen.getByTestId("carta").firstElementChild as HTMLElement
+
+const drag = (from: number, to: number, x = 70) => {
+  const carta = screen.getByTestId("carta")
+
+  fireEvent.pointerDown(carta, { pointerId: 1, pointerType: "touch", clientX: x, clientY: from })
+  fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: x, clientY: to })
+  fireEvent.pointerUp(carta, { pointerId: 1, pointerType: "touch", clientX: x, clientY: to })
+}
+
+describe('dar vuelta la carta, con un gesto', () => {
+  it('el dorso va del otro lado: el frente se esconde a los lectores de pantalla al darla vuelta', () => {
+    const ref = { current: null }
     const { container, rerender } = render(
-      <CardFlip flipped={false}>
+      <CardFlip turns={0} flipperRef={ref}>
         <span>frente</span>
       </CardFlip>,
     )
-    const flipper = container.firstElementChild as HTMLElement
-    const [front, back] = Array.from(flipper.children)
+    const flipperElement = container.firstElementChild as HTMLElement
+    const [front, back] = Array.from(flipperElement.children)
 
-    expect(flipper).toHaveAttribute('data-flipped', 'false')
+    expect(flipperElement).toHaveAttribute('data-flipped', 'false')
     expect(front).not.toHaveAttribute('aria-hidden')
     expect(back).toHaveAttribute('aria-hidden', 'true')
 
     rerender(
-      <CardFlip flipped>
+      <CardFlip turns={1} flipperRef={ref}>
         <span>frente</span>
       </CardFlip>,
     )
-    expect(flipper).toHaveAttribute('data-flipped', 'true')
-    expect(flipper.style.transform).toBe('rotateY(180deg)')
+    expect(flipperElement).toHaveAttribute('data-flipped', 'true')
+    expect(flipperElement.style.transform).toBe('rotateX(180deg)')
     expect(front).toHaveAttribute('aria-hidden', 'true')
     expect(back).not.toHaveAttribute('aria-hidden')
   })
 
-  it('el botón dice qué hace, avisa si está dada vuelta y no agranda la carta que tiene debajo', () => {
-    const onToggle = vi.fn()
-    const onParentClick = vi.fn()
-    const { rerender } = render(
-      <div onClick={onParentClick}>
-        <CardFlipButton flipped={false} onToggle={onToggle} />
-      </div>,
-    )
+  it('arrastrarla hacia arriba la gira siguiendo al dedo y, al soltarla de la mitad en adelante, queda del otro lado', () => {
+    render(<FlippableCard />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Dar vuelta: ver el dorso' }))
-    expect(onToggle).toHaveBeenCalledTimes(1)
-    expect(onParentClick).not.toHaveBeenCalled()
+    const carta = screen.getByTestId("carta")
 
-    rerender(
-      <div onClick={onParentClick}>
-        <CardFlipButton flipped onToggle={onToggle} />
-      </div>,
-    )
-    expect(screen.getByRole('button', { name: 'Dar vuelta: ver el frente' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 180 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 100 })
+    // A mitad de arrastre (80 de 160 px) va a medio giro y sin transición: sigue al dedo.
+    expect(flipper().style.transform).toBe('rotateX(90deg)')
+    expect(flipper().style.transition).toBe('none')
+
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 20 })
+    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 20 })
+    expect(flipper()).toHaveAttribute('data-flipped', 'true')
+    expect(flipper().style.transform).toBe('rotateX(180deg)')
+    expect(flipper().style.transition).toBe('')
+  })
+
+  it('hacia abajo la da vuelta hacia el otro lado; un arrastre corto la deja como estaba; un tirón rápido la da vuelta aunque sea corto', () => {
+    render(<FlippableCard />)
+
+    drag(20, 180)
+    expect(flipper()).toHaveAttribute('data-flipped', 'true')
+    expect(flipper().style.transform).toBe('rotateX(-180deg)')
+
+    // De vuelta al frente con otro arrastre hacia abajo… y uno corto no la mueve.
+    drag(20, 180)
+    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+    drag(100, 80)
+    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+
+    // Un tirón de 50 px (menos de un tercio de giro) pero en un instante: la da vuelta.
+    drag(150, 100)
+    expect(flipper()).toHaveAttribute('data-flipped', 'true')
+  })
+
+  it('de costado no es el gesto (es de deslizar a la carta de al lado), un toque tampoco, y el clic que deja un arrastre no cuenta como toque', () => {
+    render(<FlippableCard />)
+
+    const carta = screen.getByTestId("carta")
+
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: "touch", clientX: 20, clientY: 100 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 120, clientY: 108 })
+    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: "touch", clientX: 120, clientY: 108 })
+    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+    expect(consumeClick()).toBe(false)
+
+    drag(180, 20)
+    expect(flipper()).toHaveAttribute('data-flipped', 'true')
+    expect(consumeClick()).toBe(true)
+    // Una sola vez: el toque siguiente sí cuenta.
+    expect(consumeClick()).toBe(false)
+  })
+
+  it('la pista del gesto sale las primeras tres veces y después ya no', () => {
+    window.localStorage.clear()
+
+    for (let time = 0; time < 3; time += 1) {
+      const { unmount } = render(<FlipHint />)
+
+      expect(screen.getByText('↕ Deslizá para dar vuelta')).toBeInTheDocument()
+      unmount()
+    }
+
+    render(<FlipHint />)
+    expect(screen.queryByText(/Deslizá para dar vuelta/)).not.toBeInTheDocument()
   })
 })

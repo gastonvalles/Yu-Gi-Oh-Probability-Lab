@@ -43,6 +43,7 @@ import { matStepCards } from '../../app/mat-steps'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import { playSfx } from '../../app/sfx'
+import { setDuelFullscreen, toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
@@ -490,6 +491,14 @@ export function PracticeMat({
   const sectionRef = useRef<HTMLElement | null>(null)
   const view = useMatView()
   const isDuel = Boolean(duel)
+  // Ventana grande (Gastón, 2026-10-19: «la práctica no tiene modo pantalla completa y debería»): la práctica ocupa toda la pantalla, sin el menú lateral, como la mesa de un duelo. Es de la mesa: se apaga al salir.
+  const bigWindow = useDuelFullscreen()
+
+  useEffect(() => {
+    if (isDuel) return
+
+    return () => setDuelFullscreen(false)
+  }, [isDuel])
 
   useEscapeKey(() => setPicking(null), picking !== null)
   useEscapeKey(() => setCounterMode(null), counterMode !== null)
@@ -1101,7 +1110,7 @@ export function PracticeMat({
       if (source.id === NEW_TOKEN) {
         setPicking(null)
         setCounterMode(null)
-        if (freeTargets(state, monsterZones(false)).length > 0 || fieldCards(state).length > 0 || (duel?.plusItems?.length ?? 0) > 0) setMenu({ kind: 'token', rect, root: true })
+        setMenu({ kind: 'token', rect, root: true })
         return
       }
 
@@ -1113,7 +1122,7 @@ export function PracticeMat({
 
       openCard(source.id, rect)
     },
-    [state, openCard, duel?.plusItems?.length],
+    [openCard],
   )
 
   // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.
@@ -1182,7 +1191,10 @@ export function PracticeMat({
       const root: MenuItem[] = []
 
       if (freeTargets(state, monsterZones(false)).length > 0) root.push({ label: t('practice.menu.plusToken'), onSelect: () => setMenu({ kind: 'token', rect: menu.rect }) })
-      if (fieldCards(state).length > 0) root.push({ label: t('practice.menu.plusCounter'), onSelect: () => { setMenu(null); setCounterMode(1) } })
+      // Poner contadores se ve siempre (Gastón, 2026-10-19: «falta la posibilidad de poner contadores a una carta»): tocarlo pide tocar la carta; sin ninguna en el campo, dice qué falta en vez de esconderse.
+      const onField = fieldCards(state).length > 0
+
+      root.push({ label: t('practice.menu.plusCounter'), onSelect: () => { setMenu(null); setCounterMode(1) }, disabled: !onField, hint: onField ? undefined : t('practice.menu.counterNeedsCard') })
       if (fieldCards(state).some((placed) => placed.counters > 0)) root.push({ label: t('practice.menu.minusCounter'), onSelect: () => { setMenu(null); setCounterMode(-1) } })
       for (const item of duel?.plusItems ?? []) root.push({ label: item.label, onSelect: () => { setMenu(null); item.onSelect() } })
 
@@ -1519,7 +1531,7 @@ export function PracticeMat({
     <div
       className={cx(
         'flex min-w-0 items-center gap-2 px-1 text-micro text-muted',
-        choosing ? 'pointer-events-auto absolute inset-0 z-10' : 'sr-only',
+        choosing ? (duel ? 'pointer-events-auto absolute inset-0 z-10' : 'pointer-events-auto absolute inset-x-0 bottom-0 z-10 h-10 bg-background') : 'sr-only',
         choosing && duel && 'max-[1100px]:bg-background min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
       )}
       role="status"
@@ -1574,6 +1586,12 @@ export function PracticeMat({
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
           <MatViewToggle className="ml-auto" />
+          {/* Ventana grande: sin el menú lateral y, si el navegador deja, en pantalla completa. Sólo en escritorio: en el celular la mesa ya ocupa todo. */}
+          {isDesktop ? (
+            <IconButton tone="flat" size="sm" aria-label={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} title={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} aria-pressed={bigWindow} onClick={toggleDuelFullscreen}>
+              <Icon name={bigWindow ? 'minimize' : 'maximize'} />
+            </IconButton>
+          ) : null}
           <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} onClick={onNewHand}>
             <Icon name="refresh" />
           </IconButton>
@@ -1606,7 +1624,7 @@ export function PracticeMat({
           ref={setField}
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-22rem)/3.2),15rem))]', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
+          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
           style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null) } as CSSProperties) : undefined}
@@ -1819,7 +1837,7 @@ export function PracticeMat({
               {status}
             </div>
           ) : (
-            <div className="relative h-10">{status}</div>
+            <div className="relative">{status}</div>
           )}
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
@@ -7,7 +7,7 @@ import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
-import { CardFlip, CardFlipButton } from './CardFlip'
+import { CardFlip, FlipHint, useCardFlip } from './CardFlip'
 import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from './card-tilt'
 
 interface CardZoomProps {
@@ -25,7 +25,19 @@ interface CardZoomProps {
 export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomProps) {
   useBodyScrollLock(true)
   useEscapeKey(onClose)
-  const [flipped, setFlipped] = useState(false)
+  const flip = useCardFlip()
+  const { flip: turnOver } = flip
+
+  // F da vuelta la carta, como arrastrarla hacia arriba o abajo.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === 'f' && !event.altKey && !event.ctrlKey && !event.metaKey) turnOver()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [turnOver])
 
   return createPortal(
     <div
@@ -36,14 +48,30 @@ export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomPr
       onClick={onClose}
     >
       <div
-        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full overflow-hidden [perspective:900px] shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]', TILT_ART)}
-        {...tiltHandlers}
+        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full touch-none overflow-hidden [perspective:900px] shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]', TILT_ART)}
+        title={t('search.flip.title')}
+        aria-keyshortcuts="F"
+        onPointerDown={(event) => {
+          tiltHandlers.onPointerDown(event)
+          flip.onPointerDown(event)
+        }}
+        onPointerMove={(event) => {
+          tiltHandlers.onPointerMove(event)
+          flip.onPointerMove(event)
+        }}
+        onPointerLeave={tiltHandlers.onPointerLeave}
+        onPointerUp={flip.onPointerUp}
+        onPointerCancel={flip.onPointerCancel}
+        // Lo que deja un arrastre (dar vuelta la carta) no es un toque: no cierra el zoom.
+        onClick={(event) => {
+          if (flip.consumeClick()) event.stopPropagation()
+        }}
       >
-        <CardFlip flipped={flipped}>
+        <CardFlip turns={flip.turns} flipperRef={flip.flipperRef}>
           <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} fallbackUrl={fallbackUrl} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />
         </CardFlip>
         <CardGlare />
-        <CardFlipButton flipped={flipped} onToggle={() => setFlipped((current) => !current)} />
+        <FlipHint />
       </div>
       <CloseButton
         tone="flat"

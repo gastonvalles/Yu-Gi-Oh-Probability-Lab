@@ -20,11 +20,14 @@ const TYPE_SWATCH: Record<string, string> = {
   monster: '#ff9142',
   spell: '#00ffa3',
   trap: 'rgb(236, 72, 153)',
-  fusion: 'rgb(148, 163, 184)',
-  xyz: 'rgb(148, 163, 184)',
-  synchro: '#3b82f6',
-  link: '#3b82f6',
+  // Los colores del marco de la carta (los mismos que los puntos del builder, `ZONE_TYPE_SWATCH`).
+  fusion: 'rgb(167, 110, 205)',
+  synchro: 'rgb(245, 245, 250)',
+  xyz: 'rgb(12, 10, 18)',
+  link: 'rgb(37, 99, 235)',
 }
+/** El punto negro de la Xyz lleva un borde claro: sobre el fondo oscuro, solo se pierde. */
+const OUTLINED_TYPES = new Set(['xyz'])
 const PAGE_BACKGROUND = '#150a24'
 const SURFACE_BASE = 'rgba(35, 18, 56, 0.6)'
 const TEXT_MAIN = '#fdffff'
@@ -151,6 +154,12 @@ function drawZoneHeader(context: CanvasRenderingContext2D, { zone, header }: Zon
     context.fillStyle = TYPE_SWATCH[entry.kind] ?? TEXT_MUTED
     roundedRectPath(context, { x: right - 10, y: centerY - 5, width: 10, height: 10 }, 3)
     context.fill()
+
+    if (OUTLINED_TYPES.has(entry.kind)) {
+      context.strokeStyle = 'rgba(253, 255, 255, 0.6)'
+      context.lineWidth = 1
+      context.stroke()
+    }
     right -= 10 + 14
   }
 

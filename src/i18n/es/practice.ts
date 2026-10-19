@@ -60,6 +60,7 @@ export const practice = {
   'practice.token.plusTitle': 'Agregar',
   'practice.menu.plusToken': 'Ficha',
   'practice.menu.plusCounter': 'Poner contadores',
+  'practice.menu.counterNeedsCard': 'Poné una carta en el campo primero',
   'practice.menu.minusCounter': 'Quitar contadores',
   'practice.menu.removeToken': 'Quitar la ficha',
   'practice.menu.reveal': 'Revelar',

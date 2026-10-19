@@ -81,6 +81,8 @@
   --animate-pop: pop var(--motion-duration) cubic-bezier(0.25, 1, 0.5, 1) both;
   /* Una carta que se suma a una zona del deck: sube un poco y se asienta (sin relleno hacia adelante: no deja un contexto de apilado detrás). */
   --animate-card-in: card-in 240ms var(--ease-out-soft) backwards;
+  /* La pista de «deslizá para dar vuelta»: entra, se queda un rato y se va sola. */
+  --animate-flip-hint: flip-hint 3600ms var(--ease-out-soft) 700ms both;
   /* El resultado de la moneda o el dado aparece cuando terminan de girar. */
   --animate-reveal: pop var(--motion-duration) cubic-bezier(0.25, 1, 0.5, 1) 1.4s both;
   --animate-toss-hop: toss-hop 1.4s linear both;
@@ -166,6 +168,24 @@
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+
+  @keyframes flip-hint {
+    0% {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    10%,
+    80% {
+      opacity: 1;
+      transform: none;
+    }
+
+    100% {
+      opacity: 0;
+      transform: none;
     }
   }
 
