@@ -29,12 +29,19 @@ describe('la mano del rival', () => {
     // Cerca del tamaño de la nuestra (que mide hasta 100 px), pero más chica: 68 px de ancho, con su alto de carta.
     expect(cards[0]).toHaveStyle({ width: `${THEIR_HAND.desktop.cardWidth}px` })
     expect(Number.parseFloat(cards[0]!.style.height)).toBeGreaterThan(THEIR_HAND.desktop.cardWidth * 1.4)
-    // El centro del abanico es lo más cercano al campo y los extremos suben (espejado respecto del nuestro).
-    const lift = (card: HTMLElement) => Number.parseFloat(/translate\([^,]+,\s*(-?[\d.]+)px\)/.exec(card.style.transform)?.[1] ?? '0')
+    // El abanico es ascendente, como el nuestro (Gastón, 2026-10-19): el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
+    const lift = (card: HTMLElement) => -Number.parseFloat(/translate\([^,]+,\s*(-?[\d.]+)px\)/.exec(card.style.transform)?.[1] ?? '0')
+    const angle = (card: HTMLElement) => Number.parseFloat(/rotate\((-?[\d.]+)deg\)/.exec(card.style.transform)?.[1] ?? '0')
 
-    expect(lift(cards[2]!)).toBeCloseTo(0)
-    expect(lift(cards[0]!)).toBeLessThan(lift(cards[2]!))
-    expect(lift(cards[4]!)).toBeLessThan(lift(cards[2]!))
+    expect(lift(cards[0]!)).toBeCloseTo(0)
+    expect(lift(cards[4]!)).toBeCloseTo(0)
+    expect(lift(cards[2]!)).toBeGreaterThan(lift(cards[0]!))
+    expect(lift(cards[1]!)).toBeGreaterThan(lift(cards[0]!))
+    expect(lift(cards[1]!)).toBeCloseTo(lift(cards[3]!))
+    // Las puntas se abren hacia afuera: la izquierda gira a la izquierda y la derecha a la derecha, y el centro queda derecho.
+    expect(angle(cards[0]!)).toBeLessThan(0)
+    expect(angle(cards[4]!)).toBeGreaterThan(0)
+    expect(angle(cards[2]!)).toBeCloseTo(0)
   })
 
   it('en el celular es un poco más chica, y nunca se dibujan más de 12 dorsos', () => {

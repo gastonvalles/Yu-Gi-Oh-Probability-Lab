@@ -39,7 +39,7 @@ interface TurnDialProps {
 
 /**
  * El reloj de turnos, en el centro de la mesa (entre las dos Zonas Extra): un círculo que se va vaciando con el tiempo que le queda a quien tiene el turno, y el tiempo en el medio;
- * debajo, lo que le queda al otro (público: lo ven los dos). Cuando faltan 30 segundos el número parpadea en rojo y, en cero, el círculo desaparece y queda el 0:00 en rojo.
+ * debajo, lo que le queda al otro (público: lo ven los dos). **El círculo es ámbar siempre** (Gastón, 2026-10-19: de quien sea el turno y falte lo que falte). Cuando faltan 30 segundos el número parpadea en rojo y, en cero, el círculo desaparece y queda el 0:00 en rojo.
  */
 export function TurnDial({ clock, owner, me, names }: TurnDialProps) {
   const now = useSecondTick(clock.running !== null)
@@ -67,7 +67,7 @@ export function TurnDial({ clock, owner, me, names }: TurnDialProps) {
               strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE}
               strokeDashoffset={CIRCUMFERENCE * (1 - fraction)}
-              className={cx('transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none', urgent ? 'stroke-danger' : mine ? 'stroke-accent' : 'stroke-info')}
+              className="stroke-info transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
             />
           )}
         </svg>

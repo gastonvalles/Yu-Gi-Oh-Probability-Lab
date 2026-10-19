@@ -1529,7 +1529,6 @@ export function PracticeMat({
           <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
             <Icon name="save" />
           </IconButton>
-          {tokenButton}
           {stepsButton}
         </div>
       )}
@@ -1568,9 +1567,9 @@ export function PracticeMat({
           ) : null}
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
-          {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel.clock}</div> : null}
-          {/* El +: a la altura del reloj de turnos, entre el Banish del rival y la Zona Extra de monstruos (la casilla `p1`); del otro lado del reloj, el botón de la fase de ahora, que al tocarlo muestra todas (`p3`, entre la otra Zona Extra y tu Banish). */}
-          {duel ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{tokenButton}</div> : null}
+          {/* La fila del medio, de izquierda a derecha: el reloj de turnos (`p1`, entre el Banish del rival y la Zona Extra de monstruos), el + al medio del campo (`p2`, entre las dos Zonas Extra; también en la práctica) y el botón de la fase de ahora (`p3`), que al tocarlo muestra todas (Gastón, 2026-10-19). */}
+          {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
+          <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{tokenButton}</div>
           {duel ? (
             <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
               <button

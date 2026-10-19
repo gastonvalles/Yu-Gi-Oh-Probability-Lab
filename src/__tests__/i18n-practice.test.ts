@@ -198,7 +198,9 @@ describe('la mesa dibujada en inglés', () => {
     const hand = () => screen.getByRole('list', { name: 'Hand' })
     const zone = (name: string) => screen.getByRole('group', { name })
 
-    expect(within(toolbar).getByRole('button', { name: 'Token' })).toHaveAttribute('title', 'Create a Token')
+    // El + está al medio del campo, no en la barra de arriba.
+    expect(within(toolbar).queryByRole('button', { name: 'Token' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Token' })).toHaveAttribute('title', 'Create a Token')
     expect(within(toolbar).getByRole('button', { name: 'Undo' })).toBeDisabled()
     expect(screen.getByLabelText('Turn 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')

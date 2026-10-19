@@ -124,7 +124,7 @@ function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) 
 }
 
 /**
- * La mano del rival: sólo se ve cuántas cartas tiene, de dorso, en abanico y encimadas como las nuestras pero espejadas (el centro más cerca del campo y los extremos más lejos). `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
+ * La mano del rival: sólo se ve cuántas cartas tiene, de dorso, en abanico y encimadas como las nuestras (ascendente: el centro más alto y los extremos más cerca del campo). `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
  * como la mano reserva su alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
  */
 export function TheirHand({ count, marked = false, pointed = false, onMark }: { count: number; /** El otro jugador la marcó como objetivo. */ marked?: boolean; /** Se la está señalando ahora (late un rato). */ pointed?: boolean; /** Tocarla para marcarla (sólo quien juega contra ese rival). */ onMark?: (rect: DOMRect) => void }) {
@@ -140,13 +140,14 @@ export function TheirHand({ count, marked = false, pointed = false, onMark }: { 
     <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className="relative shrink-0" style={{ width: Math.max(span, layout.cardWidth), height: room }}>
       <div role="img" aria-label={t('duel.hand.theirs', { count })} className="absolute inset-0">
         {Array.from({ length: shown }, (_, index) => {
-          const arch = Math.abs(index - (shown - 1) / 2) ** 2 * THEIR_FAN_RISE
+          // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
+          const raise = (((shown - 1) / 2) ** 2 - Math.abs(index - (shown - 1) / 2) ** 2) * THEIR_FAN_RISE
 
           return (
             <span
               key={index}
               className={cx('absolute bottom-0 left-0 block overflow-hidden', CARD_SHADOW)}
-              style={{ width: layout.cardWidth, height, transform: `translate(${index * layout.step}px, ${-arch}px) rotate(${-fanAngle(index, shown, 2.2)}deg)` }}
+              style={{ width: layout.cardWidth, height, transform: `translate(${index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
             >
               <CardBack className="h-full" />
             </span>
@@ -279,8 +280,8 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
 
   return (
     <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
-      {/* El grosor del deck y del Extra (los de arriba, del rival, hacia arriba: del lado de afuera del campo). */}
-      {pile === 'deck' || pile === 'extra' ? <PileStack count={cards.length} up={owner === 'theirs'} /> : null}
+      {/* El grosor del deck y del Extra, en perspectiva con el campo: el canto que se ve es el de abajo (el que mira a quien juega), también en las pilas del rival. */}
+      {pile === 'deck' || pile === 'extra' ? <PileStack count={cards.length} /> : null}
       {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}
       <span className="absolute inset-0 overflow-hidden">
       {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}
