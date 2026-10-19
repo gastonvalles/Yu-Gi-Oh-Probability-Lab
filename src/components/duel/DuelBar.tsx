@@ -1,11 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
 import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
+import { useDuelRails } from '../../app/duel-rails'
 import type { Activity } from '../../app/duel-protocol'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
+import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { duelClockMs, formatClock, interpretAmount } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -113,12 +115,15 @@ const LOOK_TEXT = {
 } as const satisfies Record<Activity, string>
 
 /** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo) y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
-function LaneBanner({ lane, rivalName }: { lane: LaneNotice; rivalName: string }) {
+function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
+  const place = rail ? 'flex-wrap py-2' : 'absolute inset-0'
+  const clamp = rail ? '' : 'line-clamp-2'
+
   if (lane.kind === 'looking') {
     return (
-      <div role="status" data-lane="looking" className="absolute inset-0 flex items-center gap-2 rounded-card border border-border-subtle bg-card-background px-3 text-micro font-semibold leading-tight text-muted">
+      <div role="status" data-lane="looking" className={cx(place, 'flex items-center gap-2 rounded-card border border-border-subtle bg-card-background px-3 text-micro font-semibold leading-tight text-muted')}>
         <Icon name="eye" size={16} className="shrink-0 text-info-soft" />
-        <span className="line-clamp-2 min-w-0 flex-1">{t(LOOK_TEXT[lane.what], { name: rivalName })}</span>
+        <span className={cx(clamp, 'min-w-0 flex-1')}>{t(LOOK_TEXT[lane.what], { name: rivalName })}</span>
       </div>
     )
   }
@@ -126,8 +131,8 @@ function LaneBanner({ lane, rivalName }: { lane: LaneNotice; rivalName: string }
   const asked = lane.kind === 'undoAsked'
 
   return (
-    <div role="status" data-lane={lane.kind} className={cx('absolute inset-0 flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
-      <span className="line-clamp-2 min-w-0 flex-1">
+    <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
+      <span className={cx(clamp, 'min-w-0 flex-1')}>
         {lane.kind === 'undoAsked' ? t('duel.undo.askShort', { name: rivalName }) : lane.kind === 'undoAsking' ? t('duel.undo.asking', { name: rivalName }) : t(lane.result === 'denied' ? 'duel.undo.denied' : 'duel.undo.expired', { name: rivalName })}
       </span>
       {lane.kind === 'undoAsked' ? (
@@ -158,6 +163,11 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const bigWindow = useDuelFullscreen()
   const sounds = useSoundsOn()
+  const rails = useDuelRails()
+  // Con laterales, los avisos de toda la app se apoyan en el medio del lateral izquierdo.
+  const toastHost = useRef<HTMLDivElement | null>(null)
+
+  useHostToasts(toastHost, rails)
   const [moreOpen, setMoreOpen] = useState(false)
   // Con un aviso puesto sobre la línea del registro, esa línea no se ve (la misma fila: el campo no se mueve).
   const laneOpen = lane !== null
@@ -173,106 +183,8 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   const phaseId = (turn === 'mine' ? snapshot.mine : snapshot.theirs?.state)?.phase
   const phase = PHASES.find((entry) => entry.id === phaseId)?.name
 
-  return (
-    // Celular: tres filas que no se parten (vidas + reloj + íconos; turno + señales; la mano del rival): si algo no entra, se achica en su fila en vez de caerse a otra. Escritorio: una sola fila con las vidas del rival
-    // y el reloj arriba a la izquierda, su mano en el centro (el del campo) y, arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
-    <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5 min-[1101px]:flex-nowrap">
-      {/* `contents` en escritorio: sus piezas se acomodan en la fila de todo el ancho (`order`). En celular la vida es la que cede lugar si no entran los íconos. */}
-      <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink min-[1101px]:[&>[data-lp]]:shrink-0">
-        {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
-        <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
-        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
-        <button
-          type="button"
-          aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
-          title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-          className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
-          onClick={onToggleClock}
-        >
-          {/* El cronómetro; en pausa, la pausa (el estado se ve sin tocar). */}
-          <Icon name={running ? 'timer' : 'pause'} size={18} />
-          <span data-testid="round-clock" className={roundClockClass(roundLeft, snapshot.settings.limitMin > 0, running)}>
-            {clock}
-          </span>
-        </button>
-        <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-3 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
-          {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
-          <MatViewToggle className={HEADER_ICON} />
-          {/* Ventana grande: el duelo ocupa toda la pantalla (sin el menú lateral; y, si el navegador deja, en pantalla completa). Sólo en escritorio: en el celular la mesa ya ocupa todo. */}
-          {docked ? (
-            <IconButton tone="flat" size="sm" aria-label={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} title={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} aria-pressed={bigWindow} className={HEADER_ICON} onClick={toggleDuelFullscreen}>
-              <Icon name={bigWindow ? 'minimize' : 'maximize'} />
-            </IconButton>
-          ) : null}
-          {/* Rendirse queda a la vista, junto a salir (arriba, lejos de donde se juega) y pide confirmar. Terminado el duelo, o sin rival, no hay a quién rendirse. */}
-          <IconButton tone="flat" size="sm" aria-label={t('duel.bar.concede')} title={t('duel.bar.concede')} className={cx(HEADER_ICON, 'disabled:opacity-35')} disabled={Boolean(result) || !peerPresent} onClick={() => setConceding(true)}>
-            <Icon name="flag" />
-          </IconButton>
-          {/* El engranaje: lo que se toca poco (reconectar). */}
-          <IconButton tone="flat" size="sm" aria-label={t('duel.bar.more')} title={t('duel.bar.more')} aria-haspopup="dialog" aria-expanded={moreOpen} className={HEADER_ICON} onClick={() => setMoreOpen(true)}>
-            <Icon name="gear" />
-          </IconButton>
-          <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className={HEADER_ICON} onClick={() => setLeaving(true)}>
-            <Icon name="x" />
-          </IconButton>
-        </span>
-      </div>
-
-      {/* Escritorio: el turno a la derecha, pegado a los íconos. Celular: el turno y las señales en su fila, sin partirse (la fase se corta con puntos suspensivos si no entra). */}
-      <div className="order-2 flex min-w-0 basis-full items-center gap-1.5 min-[1101px]:order-2 min-[1101px]:ml-auto min-[1101px]:basis-auto">
-        {snapshot.watchers > 0 ? (
-          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
-            <Icon name="eye" size={14} />
-            {snapshot.watchers}
-          </span>
-        ) : null}
-        {snapshot.series.match ? (
-          <span className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" data-testid="duel-series">
-            {t('duel.series.chip', { game: snapshot.series.game, mine: snapshot.series.wins[me], theirs: snapshot.series.wins[me === 0 ? 1 : 0] })}
-          </span>
-        ) : null}
-        {/* El número del turno lo dice el lector de pantalla (y el registro, en cada separador): a la vista, el turno de quién es y la fase. */}
-        <span className="sr-only">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
-        <span className="min-w-0 truncate text-lead font-bold">
-          <span className={turn === 'mine' ? 'text-accent' : 'text-info-soft'}>{turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}</span>
-          {phase ? <span data-testid="duel-phase" className="text-info">{` · ${phase}`}</span> : null}
-        </span>
-      </div>
-
-      {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). */}
-      {log ? (
-        <div className="relative order-3 basis-full min-[1101px]:hidden">
-          <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
-            {log}
-          </div>
-          {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
-        </div>
-      ) : null}
-      {/* Escritorio (sin línea del registro): el mismo cartel, centrado debajo de la barra. */}
-      {docked && laneOpen ? (
-        <div className="absolute left-1/2 top-full z-20 mt-1 h-11 w-[min(24rem,100%)] -translate-x-1/2">
-          {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
-        </div>
-      ) : null}
-
-      {/* Escritorio: en el centro de lo que queda libre de la fila de arriba (entre el reloj y el turno), con su ancho reservado: si la columna se angosta, el turno se corta con puntos suspensivos y no se pisan. En el celular la mano del rival va pegada arriba del campo (la pone la mesa: `rivalHand`). */}
-      {docked ? (
-        <div className="relative order-1 min-w-0 flex-1 self-stretch">
-        </div>
-      ) : null}
-
-      {status !== 'open' ? (
-        <Callout className={ALERT_OVERLAY} tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
-      ) : !peerPresent ? (
-        <Callout className={ALERT_OVERLAY} tone="info">{t('duel.peer.absent')}</Callout>
-      ) : null}
-
-      {result && !resultOpen ? (
-        <div className="order-4 basis-full min-[1101px]:order-2 min-[1101px]:min-w-0 min-[1101px]:basis-auto min-[1101px]:shrink">
-          <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} />
-        </div>
-      ) : null}
-
+  const dialogs = (
+    <>
       <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
         <div className="grid gap-4">
           {/* Los sonidos del duelo (jugadas, vidas, chat): se recuerdan en este navegador. */}
@@ -321,6 +233,162 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
           else onLeave()
         }}
       />
+    </>
+  )
+  // Los íconos de la barra (la vista, la ventana grande, rendirse, el engranaje y salir): en una fila arriba a la derecha, o en el lateral derecho.
+  const actions = (
+    <>
+      {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
+      <MatViewToggle className={HEADER_ICON} />
+      {/* Ventana grande: el duelo ocupa toda la pantalla (sin el menú lateral; y, si el navegador deja, en pantalla completa). Sólo en escritorio: en el celular la mesa ya ocupa todo. */}
+      {docked ? (
+        <IconButton tone="flat" size="sm" aria-label={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} title={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} aria-pressed={bigWindow} className={HEADER_ICON} onClick={toggleDuelFullscreen}>
+          <Icon name={bigWindow ? 'minimize' : 'maximize'} />
+        </IconButton>
+      ) : null}
+      {/* Rendirse queda a la vista, junto a salir (arriba, lejos de donde se juega) y pide confirmar. Terminado el duelo, o sin rival, no hay a quién rendirse. */}
+      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.concede')} title={t('duel.bar.concede')} className={cx(HEADER_ICON, 'disabled:opacity-35')} disabled={Boolean(result) || !peerPresent} onClick={() => setConceding(true)}>
+        <Icon name="flag" />
+      </IconButton>
+      {/* El engranaje: lo que se toca poco (reconectar). */}
+      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.more')} title={t('duel.bar.more')} aria-haspopup="dialog" aria-expanded={moreOpen} className={HEADER_ICON} onClick={() => setMoreOpen(true)}>
+        <Icon name="gear" />
+      </IconButton>
+      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className={HEADER_ICON} onClick={() => setLeaving(true)}>
+        <Icon name="x" />
+      </IconButton>
+    </>
+  )
+  // El reloj de la ronda: tocarlo lo pausa.
+  const clockButton = (
+    <button
+      type="button"
+      aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
+      title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
+      className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
+      onClick={onToggleClock}
+    >
+      {/* El cronómetro; en pausa, la pausa (el estado se ve sin tocar). */}
+      <Icon name={running ? 'timer' : 'pause'} size={18} />
+      <span data-testid="round-clock" className={roundClockClass(roundLeft, snapshot.settings.limitMin > 0, running)}>
+        {clock}
+      </span>
+    </button>
+  )
+  // Cuántos miran y cómo va el Match.
+  const chips = (
+    <>
+      {snapshot.watchers > 0 ? (
+        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
+          <Icon name="eye" size={14} />
+          {snapshot.watchers}
+        </span>
+      ) : null}
+      {snapshot.series.match ? (
+        <span className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" data-testid="duel-series">
+          {t('duel.series.chip', { game: snapshot.series.game, mine: snapshot.series.wins[me], theirs: snapshot.series.wins[me === 0 ? 1 : 0] })}
+        </span>
+      ) : null}
+    </>
+  )
+
+  // Con laterales (escritorio ancho): la barra se reparte a los costados del campo. Izquierda: las vidas del rival, el reloj de la ronda y, en el medio, los avisos (lo que hace el rival, un pedido de volver atrás, la conexión) y los
+  // avisos de toda la app (`useHostToasts`). Derecha: los íconos, de quién es el turno y en qué fase va, y el resultado. Sus piezas se acomodan en la grilla de la mesa (`col-start` / `row-start`).
+  if (rails) {
+    return (
+      <>
+        <div className="col-start-1 row-start-1 flex min-w-0 flex-col items-start gap-2">
+          <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
+          {clockButton}
+          <span className="flex flex-wrap items-center gap-1.5 empty:hidden">{chips}</span>
+        </div>
+        <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
+          <span className="-mr-2 flex flex-wrap items-center justify-end">{actions}</span>
+          <span className="sr-only">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
+          <span className="grid justify-items-end text-right text-lead font-bold leading-tight">
+            <span className={turn === 'mine' ? 'text-accent' : 'text-info-soft'}>{turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}</span>
+            {phase ? <span data-testid="duel-phase" className="text-info">{phase}</span> : null}
+          </span>
+        </div>
+        <div ref={toastHost} data-testid="duel-rail-notices" className="relative col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4">
+          {lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}
+          {status !== 'open' ? (
+            <Callout tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
+          ) : !peerPresent ? (
+            <Callout tone="info">{t('duel.peer.absent')}</Callout>
+          ) : null}
+        </div>
+        {result && !resultOpen ? (
+          <div className="col-start-3 row-start-2 flex min-h-0 flex-col items-stretch pt-4">
+            <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} rail />
+          </div>
+        ) : null}
+        {dialogs}
+      </>
+    )
+  }
+
+  return (
+    // Celular: tres filas que no se parten (vidas + reloj + íconos; turno + señales; la mano del rival): si algo no entra, se achica en su fila en vez de caerse a otra. Escritorio: una sola fila con las vidas del rival
+    // y el reloj arriba a la izquierda, su mano en el centro (el del campo) y, arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
+    <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5 min-[1101px]:flex-nowrap">
+      {/* `contents` en escritorio: sus piezas se acomodan en la fila de todo el ancho (`order`). En celular la vida es la que cede lugar si no entran los íconos. */}
+      <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink min-[1101px]:[&>[data-lp]]:shrink-0">
+        {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
+        <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
+        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
+        {clockButton}
+        <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-3 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
+          {actions}
+        </span>
+      </div>
+
+      {/* Escritorio: el turno a la derecha, pegado a los íconos. Celular: el turno y las señales en su fila, sin partirse (la fase se corta con puntos suspensivos si no entra). */}
+      <div className="order-2 flex min-w-0 basis-full items-center gap-1.5 min-[1101px]:order-2 min-[1101px]:ml-auto min-[1101px]:basis-auto">
+        {chips}
+        {/* El número del turno lo dice el lector de pantalla (y el registro, en cada separador): a la vista, el turno de quién es y la fase. */}
+        <span className="sr-only">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
+        <span className="min-w-0 truncate text-lead font-bold">
+          <span className={turn === 'mine' ? 'text-accent' : 'text-info-soft'}>{turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}</span>
+          {phase ? <span data-testid="duel-phase" className="text-info">{` · ${phase}`}</span> : null}
+        </span>
+      </div>
+
+      {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). */}
+      {log ? (
+        <div className="relative order-3 basis-full min-[1101px]:hidden">
+          <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
+            {log}
+          </div>
+          {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
+        </div>
+      ) : null}
+      {/* Escritorio (sin línea del registro): el mismo cartel, centrado debajo de la barra. */}
+      {docked && laneOpen ? (
+        <div className="absolute left-1/2 top-full z-20 mt-1 h-11 w-[min(24rem,100%)] -translate-x-1/2">
+          {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
+        </div>
+      ) : null}
+
+      {/* Escritorio: en el centro de lo que queda libre de la fila de arriba (entre el reloj y el turno), con su ancho reservado: si la columna se angosta, el turno se corta con puntos suspensivos y no se pisan. En el celular la mano del rival va pegada arriba del campo (la pone la mesa: `rivalHand`). */}
+      {docked ? (
+        <div className="relative order-1 min-w-0 flex-1 self-stretch">
+        </div>
+      ) : null}
+
+      {status !== 'open' ? (
+        <Callout className={ALERT_OVERLAY} tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
+      ) : !peerPresent ? (
+        <Callout className={ALERT_OVERLAY} tone="info">{t('duel.peer.absent')}</Callout>
+      ) : null}
+
+      {result && !resultOpen ? (
+        <div className="order-4 basis-full min-[1101px]:order-2 min-[1101px]:min-w-0 min-[1101px]:basis-auto min-[1101px]:shrink">
+          <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} />
+        </div>
+      ) : null}
+
+      {dialogs}
     </div>
   )
 }

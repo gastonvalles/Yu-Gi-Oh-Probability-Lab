@@ -29,6 +29,10 @@ vi.mock('../ygoprodeck', () => ({
   fetchCardArts: vi.fn(async () => []),
 }))
 
+const { railsOn } = vi.hoisted(() => ({ railsOn: { value: false } }))
+
+vi.mock('../app/duel-rails', async (importOriginal) => ({ ...(await importOriginal<typeof import('../app/duel-rails')>()), railsFit: () => railsOn.value }))
+
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 
 /** Las salas públicas del relay, de mentira: lo que esperan, lo que se juega y cada aviso del anfitrión. */
@@ -188,6 +192,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  railsOn.value = false
   vi.useRealTimers()
   vi.restoreAllMocks()
   cleanup()
@@ -3519,4 +3524,49 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(within(guest.container).getByRole('button', { name: 'Estoy listo' })).toBeEnabled()
   })
+
+  it('sin laterales la barra es la de siempre: el turno y la fase en una línea arriba', () => {
+    asDesktop()
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    expect(within(host.container).queryByTestId('duel-rail-notices')).not.toBeInTheDocument()
+    expect(within(host.container).getByTestId('duel-phase')).toHaveTextContent('· Draw Phase')
+  })
+
+  it('con laterales (escritorio ancho) la barra se reparte a los costados del campo: vidas y reloj a la izquierda; íconos, turno y Pasar turno a la derecha', () => {
+    asDesktop()
+    railsOn.value = true
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    const view = host
+    const notices = within(view.container).getByTestId('duel-rail-notices')
+
+    // Lo que rodea al campo está en la misma grilla que él, en las columnas de los costados.
+    expect(notices).toHaveClass('col-start-1')
+    expect(view.container.querySelector('[data-lp="theirs"]')?.parentElement).toHaveClass('col-start-1', 'row-start-1')
+    expect(within(view.container).getByRole('button', { name: 'Rendirme' }).closest('.col-start-3')).not.toBeNull()
+    expect(within(view.container).getByTestId('duel-phase')).toHaveTextContent(/^Draw Phase$/)
+    expect(within(view.container).getByRole('button', { name: 'Pasar turno' }).closest('.col-start-3')).not.toBeNull()
+    expect(view.container.querySelector('[data-lp="mine"]')?.closest('.col-start-3')).not.toBeNull()
+  })
+
+  it('con laterales, el resultado queda en el lateral derecho, con la revancha apilada abajo del texto', () => {
+    asDesktop()
+    railsOn.value = true
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+    fireEvent.click(within(within(host.container).getByRole('dialog')).getByRole('button', { name: 'Ver la mesa' }))
+
+    const rematch = within(host.container).getByRole('button', { name: 'Revancha' })
+
+    expect(rematch).toHaveClass('w-full')
+    expect(rematch.closest('.col-start-3')).not.toBeNull()
+  })
+
 })

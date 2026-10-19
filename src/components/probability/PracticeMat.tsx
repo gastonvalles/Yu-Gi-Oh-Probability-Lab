@@ -40,10 +40,12 @@ import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
+import { DuelRailsContext, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
+import { useElementSize } from '../../app/use-element-width'
 import { useFieldCell } from '../../app/use-grid-cell'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -345,6 +347,10 @@ export function PracticeMat({
   duel,
 }: PracticeMatProps) {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // Laterales: en un duelo de escritorio, si la columna de la mesa tiene ancho de sobra, lo que rodea al campo va a sus costados (ver `duel-rails.ts`).
+  const columnRef = useRef<HTMLDivElement | null>(null)
+  const columnSize = useElementSize(columnRef)
+  const rails = Boolean(duel) && isDesktop && railsFit(columnSize.width, columnSize.height)
   // La mesa (la práctica y la del duelo) mantiene la pantalla encendida: se piensa y se espera sin tocarla.
   useWakeLock(true)
 
@@ -1522,10 +1528,18 @@ export function PracticeMat({
         </div>
       )}
 
-      <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
-        {duel?.header}
+      <div
+        ref={columnRef}
+        // Con laterales: una grilla de tres columnas (lateral, campo, lateral) y tres filas (arriba, el medio que se estira y abajo); el campo ocupa las tres. `--cell-h` es la casilla que deja el alto: sin la barra de arriba ni la de abajo sobran 17,25 rem.
+        style={rails ? ({ '--cell-h': 'max(3.5rem, min(9.5rem, calc((100dvh - 17.25rem) / 5)))' } as CSSProperties) : undefined}
+        className={cx(
+          'col-start-1 row-start-2 min-h-0 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2',
+          rails ? 'grid grid-cols-[minmax(13rem,1fr)_minmax(0,calc(var(--cell-h)*6.3714+3rem))_minmax(13rem,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] gap-x-4' : 'flex flex-col gap-2',
+        )}
+      >
+        <DuelRailsContext.Provider value={rails}>{duel?.header}</DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        <div className={cx(duel ? 'my-auto flex flex-col gap-2' : 'contents')}>
+        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'my-auto flex flex-col gap-2') : 'contents')}>
         {/* Celular: la mano del rival y el campo van juntos y centrados: el alto que sobra se reparte arriba y abajo (ni pegado a la barra ni un hueco antes de tu mano). Escritorio: sin envoltorio y el campo se centra. */}
         <div className={cx('flex flex-col gap-2 min-[1101px]:contents', !duel && 'max-[1100px]:my-auto')}>
         {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio.
@@ -1537,7 +1551,7 @@ export function PracticeMat({
           className={cx(!duel && 'min-[1101px]:my-auto', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(9.5rem, calc((100dvh - 24.75rem) / 5)))', ...(duel.rivalHand ? { marginTop: Math.max(0, (isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room) - rivalHandOverlap) } : null) } as CSSProperties) : undefined}
+          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(9.5rem, calc((100dvh - 24.75rem) / 5)))', ...(duel.rivalHand ? { marginTop: Math.max(0, (isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room) - rivalHandOverlap) } : null) } as CSSProperties) : undefined}
         >
           {/* La mano del rival se apoya en el borde de arriba del campo (inclinada con él en la vista 3D), tapando hasta el 28 % de su zona de magias y trampas. */}
           {duel?.rivalHand ? (
@@ -1707,7 +1721,7 @@ export function PracticeMat({
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* La barra tiene su propia fila abajo de la mano, también en escritorio: antes subía sobre la franja de abajo de la mano, y con la mano ancha de una notebook (1280–1440 px, con el menú y el chat abiertos) las fases y Pasar turno quedaban encima de las cartas, entre el 55 y el 75 % de su área. */}
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
-        <div className="sticky bottom-0 z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1100px]:bg-background">
+        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1100px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y las reacciones). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
               con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
           {duel && !isDesktop ? (
@@ -1724,16 +1738,20 @@ export function PracticeMat({
                 role="toolbar"
                 aria-label={t('practice.mat.name')}
                 inert={choosing}
-                className={cx('flex items-center justify-between max-[1100px]:flex-row-reverse', choosing && 'max-[1100px]:opacity-35 min-[1101px]:invisible')}
+                className={cx('flex items-center justify-between max-[1100px]:flex-row-reverse', rails && 'flex-col! items-end! gap-2', choosing && 'max-[1100px]:opacity-35 min-[1101px]:invisible')}
               >
                 <span className="pointer-events-auto flex items-center">
                   {isDesktop ? null : undoButton}
                   {duel.tools}
                 </span>
-                <span className="pointer-events-auto flex items-center gap-2">
-                  {/* Deshacer y Pasar turno, juntos abajo a la derecha (las fases están en el botón del centro del campo; en el celular, Deshacer queda en la botonera de abajo y Pasar turno en su fila). */}
-                  {isDesktop ? undoButton : null}
-                  {isDesktop ? passTurn : null}
+                <span className={cx('pointer-events-auto flex items-center gap-2', rails && 'flex-col-reverse items-end')}>
+                  {/* Deshacer y Pasar turno, juntos abajo a la derecha (las fases están en el botón del centro del campo; en el celular, Deshacer queda en la botonera de abajo y Pasar turno en su fila). Con laterales, tus vidas arriba de los dos. */}
+                  {isDesktop ? (
+                    <span className="flex items-center gap-2">
+                      {undoButton}
+                      {passTurn}
+                    </span>
+                  ) : null}
                   {duel.life}
                 </span>
               </div>
