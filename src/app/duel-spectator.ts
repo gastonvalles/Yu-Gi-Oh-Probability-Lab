@@ -1,6 +1,7 @@
 import { addChat, addGame, advanceSeries, duelResult, NEW_SERIES, seriesScore, type ChatLine, type DuelGame, type GameEntry, type Series } from './duel-games'
 import { PROTOCOL_VERSION, parseMessage, type DuelMessage, type DuelSettings } from './duel-protocol'
-import { sharedPhase, whoseTurn } from './duel-turn'
+import { freshTurnClock, runTurnClock, setTurnBank, startTurn, type TurnClock } from './duel-clock'
+import { duelTurnNumber, sharedPhase, whoseTurn } from './duel-turn'
 import type { Duelist, LifeTimer } from './life-calculator'
 import { mirrorApply, mirrorUndo, openMirror, type Mirror } from './mat-public'
 import type { MatPhase } from './practice-mat'
@@ -73,6 +74,8 @@ export interface SpectatorSnapshot {
   /** De quién es el turno (0 = anfitrión, 1 = invitado) y en qué fase va, mientras haya mesas. */
   turn: Duelist | null
   phase: MatPhase | null
+  /** El reloj de turnos (público): lo que le queda a cada jugador, con `turnTimeLeft`. */
+  turnClock: TurnClock
 }
 
 /** Lo que el espectador necesita de su conexión (el socket de verdad, o uno falso en las pruebas). */
@@ -130,6 +133,10 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
   let series: Series = NEW_SERIES
   const rematch: [boolean, boolean] = [false, false]
   let lastRequest = -Infinity
+  // El reloj de turnos (ver `duel-clock.ts`): lo lleva igual que los jugadores, con lo que cada uno dice que le queda al pasar el turno.
+  let turnClock: TurnClock = freshTurnClock()
+  let clockTurnNo: number | null = null
+  let pendingBanks: readonly [number, number] | null = null
 
   const listeners = new Set<() => void>()
   let snapshot: SpectatorSnapshot
@@ -181,11 +188,49 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
       end: endOf(),
       live,
       turn,
+      turnClock,
       phase: live && turn !== null ? (sharedPhase(turn === 0 ? 'mine' : 'theirs', host.mirror!.state, guest.mirror!.state) ?? null) : null,
     }
   }
 
+  /** Pone el reloj de turnos al día con las dos mesas: cuándo cambia el turno, de quién corre y si está parado (sin los dos jugadores o con el duelo terminado no corre). */
+  const tickTurnClock = () => {
+    const [host, guest] = sides
+
+    if (!host.mirror || !guest.mirror) {
+      if (clockTurnNo !== null) {
+        turnClock = freshTurnClock()
+        clockTurnNo = null
+        pendingBanks = null
+      }
+
+      return
+    }
+
+    const at = now()
+    const no = duelTurnNumber(host.mirror.state, guest.mirror.state)
+    const owner: Duelist = whoseTurn(0, host.mirror.state, guest.mirror.state, starter) === 'mine' ? 0 : 1
+
+    if (clockTurnNo === null) {
+      turnClock = startTurn({ ...turnClock, banks: pendingBanks ?? turnClock.banks, running: null, at }, owner, at, false)
+    } else if (no > clockTurnNo) {
+      turnClock = startTurn(turnClock, owner, at, true)
+    } else if (no < clockTurnNo) {
+      turnClock = startTurn(no === 1 ? freshTurnClock() : turnClock, owner, at, false)
+    }
+
+    clockTurnNo = no
+    pendingBanks = null
+
+    const running = players === 2 && endOf() === null ? owner : null
+
+    if (turnClock.running !== running) {
+      turnClock = runTurnClock(turnClock, running, at)
+    }
+  }
+
   const emit = () => {
+    tickTurnClock()
     snapshot = build()
     listeners.forEach((listener) => listener())
   }
@@ -295,6 +340,12 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
         }
 
         mine.lifeN = message.lifeN
+
+        // El reloj de turnos, si llega antes que las mesas: lo que anotó quien lo mandó.
+        if (message.turnBanks && clockTurnNo === null) {
+          pendingBanks = message.turnBanks
+        }
+
         setSide(role, { lp: message.lp, ...(message.ready === undefined ? {} : { ready: message.ready }) })
 
         // El reloj de la ronda es el del anfitrión.
@@ -343,6 +394,11 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
           setSide(role, { lp: message.lp })
         }
 
+        return
+
+      case 'turnClock':
+        // Lo que le queda a quien pasó el turno: corrige la cuenta.
+        turnClock = setTurnBank(turnClock, role, message.bank, now())
         return
 
       case 'clock':

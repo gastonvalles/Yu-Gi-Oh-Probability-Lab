@@ -145,6 +145,8 @@ export interface DuelMatLink {
   cover?: ReactNode
   /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
   aside?: ReactNode
+  /** El reloj de turnos: va en el centro del campo, entre las dos Zonas Extra (la casilla `p2`, que en un duelo no lleva nada). */
+  clock?: ReactNode
 }
 
 interface PracticeMatProps {
@@ -1483,6 +1485,7 @@ export function PracticeMat({
           {!isDesktop && view === '3d' && duel?.rivalHand ? <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2">{duel.rivalHand}</div> : null}
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
+          {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel.clock}</div> : null}
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}

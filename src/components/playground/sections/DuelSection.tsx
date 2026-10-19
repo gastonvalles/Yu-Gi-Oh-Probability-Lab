@@ -5,6 +5,8 @@ import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
+import { TurnDial } from '../../duel/TurnDial'
+import { TURN_BANK_MS, type TurnClock } from '../../../app/duel-clock'
 import { CardArt } from '../../CardArt'
 import { Icon } from '../../ui/Icon'
 import { Segmented } from '../../ui/Segmented'
@@ -60,8 +62,49 @@ export function DuelSection() {
         <DuelTable mine={duel.mine} theirs={duel.theirs} show={view} turn={view} />
       </Specimen>
 
+      <TurnDialSamples />
+
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+/** Los estados del reloj de turnos, quietos (sin correr): lo que se ve con cada tiempo y de quién es el turno. */
+const DIAL_SAMPLES: Array<{ label: string; owner: 0 | 1; left: number; other: number }> = [
+  { label: 'Tu turno, entero', owner: 0, left: TURN_BANK_MS, other: TURN_BANK_MS },
+  { label: 'Turno del rival, a la mitad', owner: 1, left: TURN_BANK_MS / 2, other: 270_000 },
+  { label: 'Faltan 20 s: parpadea en rojo', owner: 0, left: 20_000, other: 150_000 },
+  { label: 'En cero: sin círculo, 0:00 en rojo', owner: 0, left: 0, other: 90_000 },
+]
+
+/** El reloj de turnos: el círculo que se vacía (violeta si el turno es tuyo, ámbar si es del rival), el tiempo del otro debajo, y el parpadeo rojo del final. */
+function TurnDialSamples() {
+  return (
+    <Specimen
+      title="E · Reloj de turnos"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          5 minutos por jugador, y 2 más cada vez que el rival pasa el turno. Va en el centro del campo, entre las dos Zonas Extra (<Tag>duel.clock</Tag> de <Tag>PracticeMat</Tag>). Archivo: <Tag>duel/TurnDial.tsx</Tag>; la cuenta, <Tag>app/duel-clock.ts</Tag>.
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-start justify-center gap-8 py-4">
+        {DIAL_SAMPLES.map((sample) => {
+          const clock: TurnClock = { banks: sample.owner === 0 ? [sample.left, sample.other] : [sample.other, sample.left], running: null, at: 0, span: TURN_BANK_MS }
+
+          return (
+            <div key={sample.label} className="grid w-36 justify-items-center gap-2 text-center">
+              <div className="size-28 rounded-card border border-border-subtle">
+                <TurnDial clock={clock} owner={sample.owner} me={0} names={['Vos', 'Rival']} />
+              </div>
+              <Tag>{sample.label}</Tag>
+            </div>
+          )
+        })}
+      </div>
+    </Specimen>
   )
 }
 

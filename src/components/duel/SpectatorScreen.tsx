@@ -20,6 +20,7 @@ import { WatchResultBanner } from './DuelBanner'
 import { LifeTile } from './DuelBar'
 import { PLAYER_COLOR } from './player-color'
 import { artOfDrawId } from './duel-art'
+import { TURN_WARNING_MS, formatTurnTime, turnTimeLeft } from '../../app/duel-clock'
 import { DuelTable, TheirHand, type DuelSideView } from './DuelTable'
 import { gameText } from './game-text'
 import { RoomRules } from './RoomRules'
@@ -271,6 +272,24 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
               <span className="min-w-0 truncate rounded-full bg-accent/20 px-2.5 py-1 text-micro font-semibold text-accent">
                 {t('duel.watch.turnOf', { name: nameOf(snapshot.turn) })}
                 {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="flex min-w-0 items-center gap-1.5 empty:hidden">
+            {/* El reloj de turnos es público: lo que le queda a cada jugador; el que corre, resaltado (y en rojo cuando falta poco). */}
+            {snapshot.turn !== null ? (
+              <span role="timer" aria-label={t('duel.turnClock.label', { turn: nameOf(snapshot.turn), left: formatTurnTime(turnTimeLeft(snapshot.turnClock, snapshot.turn, now)), other: nameOf(snapshot.turn === 0 ? 1 : 0), otherLeft: formatTurnTime(turnTimeLeft(snapshot.turnClock, snapshot.turn === 0 ? 1 : 0, now)) })} data-testid="turn-times" className="inline-flex min-w-0 items-center gap-1 text-micro font-semibold tabular-nums">
+                {([0, 1] as const).map((side) => {
+                  const left = turnTimeLeft(snapshot.turnClock, side, now)
+                  const active = snapshot.turn === side && snapshot.turnClock.running === side
+
+                  return (
+                    <span key={side} data-active={active ? 'true' : undefined} className={cx('min-w-0 truncate rounded-full px-2 py-1', active ? (left <= TURN_WARNING_MS ? 'bg-danger/20 text-danger-soft' : 'bg-tint/12 text-foreground') : 'text-muted')}>
+                      {`${nameOf(side)} ${formatTurnTime(left)}`}
+                    </span>
+                  )
+                })}
               </span>
             ) : null}
           </div>

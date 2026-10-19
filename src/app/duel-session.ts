@@ -1,7 +1,9 @@
 import type { DuelSave } from './duel-save'
 import { addChat, addGame, advanceSeries, cleanChat, coinWinner, dieWinner, duelFinished, duelResult, rpsOutcome, type ChatLine, NEW_SERIES, seriesScore, type DuelGame, type GameEntry, type Series, type RpsPick, type TossMethod } from './duel-games'
+import { freshTurnClock, runTurnClock, setTurnBank, startTurn, turnTimeLeft, type TurnClock } from './duel-clock'
 import { RateLimiter } from './duel-relay-rules'
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
+import { duelTurnNumber, whoseTurn } from './duel-turn'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { CONTROL_ACTIONS, controlReactions } from './mat-control'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
@@ -77,6 +79,8 @@ export interface DuelSnapshot {
    * y si ya eligió (`ordered`, y entonces cada uno reparte su mano). En una revancha elige quien perdió, sin tirar nada.
    */
   opening: { method: TossMethod | null; caller: Duelist | null; dice: { mine: number | null; theirs: number | null }; chooser: Duelist | null; ordered: boolean }
+  /** El reloj de turnos (5 minutos por jugador y 2 más cada vez que el rival pasa el turno): público, lo que le queda a cada uno sale de `turnTimeLeft`. */
+  turnClock: TurnClock
   /** Lo que se escribieron los dos, de más viejo a más nuevo. */
   chat: readonly ChatLine[]
   /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
@@ -240,6 +244,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let peerChatN = 0
   let peerPingN = 0
   let awaitingSync = false
+  // El reloj de turnos (ver `duel-clock.ts`): en qué turno lo vio por última vez (null hasta que hay dos mesas) y, si llegó antes que las mesas, lo que el rival tenía anotado.
+  let turnClock: TurnClock = freshTurnClock()
+  let clockTurnNo: number | null = null
+  let clockOwner: Duelist = 0
+  let pendingBanks: readonly [number, number] | null = null
 
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
@@ -250,9 +259,55 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, ping: lastPing })
+
+  /**
+   * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
+   * (sin dos mesas, sin el rival o con el duelo terminado no corre nada). Una mesa nueva (revancha) lo empieza de cero.
+   */
+  const tickTurnClock = () => {
+    if (!mine || !theirs) {
+      if (clockTurnNo !== null) {
+        turnClock = freshTurnClock()
+        clockTurnNo = null
+        pendingBanks = null
+      }
+
+      return
+    }
+
+    const at = now()
+    const no = duelTurnNumber(mine, theirs.state)
+    const owner: Duelist = whoseTurn(me, mine, theirs.state, starter) === 'mine' ? me : peer
+
+    if (clockTurnNo === null) {
+      turnClock = startTurn({ ...turnClock, banks: pendingBanks ?? turnClock.banks, running: null, at }, owner, at, false)
+    } else if (no > clockTurnNo) {
+      // Pasó el turno: quien lo pasó dice lo que le queda (corrige la cuenta del otro lado) y a quien le toca se le suman los 2 minutos.
+      if (clockOwner === me) {
+        send({ t: 'turnClock', bank: Math.round(turnTimeLeft(turnClock, me, at)) })
+      }
+
+      turnClock = startTurn(turnClock, owner, at, true)
+    } else if (no < clockTurnNo) {
+      // Una mesa nueva (el turno vuelve a 1) empieza de cero; volver atrás un pase sólo devuelve el turno (sin sumar nada).
+      turnClock = startTurn(no === 1 ? freshTurnClock() : turnClock, owner, at, false)
+    }
+
+    clockTurnNo = no
+    clockOwner = owner
+    pendingBanks = null
+
+    const playing = peerPresent && !stranger && duelResult(life.lp, conceded) === null
+    const running = playing ? owner : null
+
+    if (turnClock.running !== running) {
+      turnClock = runTurnClock(turnClock, running, at)
+    }
+  }
 
   const emit = () => {
+    tickTurnClock()
     snapshot = build()
     listeners.forEach((listener) => listener())
   }
@@ -334,7 +389,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     // Cómo va la tirada de quién empieza, para que un mensaje que se perdió (un celular en segundo plano) no la deje trabada.
     const opening: OpeningWire = ordered ? {} : { ...(method ? { method } : {}), ...(caller !== null ? { caller } : {}), ...(dice.mine !== null ? { die: dice.mine } : {}), ...(chooser !== null ? { chooser } : {}) }
 
-    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(Object.keys(opening).length > 0 ? { opening } : {}), ...(settings.match ? { series } : {}), ...(role === 'host' ? { clock } : {}) })
+    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(Object.keys(opening).length > 0 ? { opening } : {}), ...(settings.match ? { series } : {}), ...(role === 'host' ? { clock } : {}), ...(clockTurnNo !== null ? { turnBanks: [Math.round(turnTimeLeft(turnClock, 0, now())), Math.round(turnTimeLeft(turnClock, 1, now()))] as const } : {}) })
 
     // Lo que marqué de su lado se repone junto con mi mesa (si recargó, no se acuerda).
     if (marksOnTheirs.cards.length > 0 || marksOnTheirs.piles.length > 0) {
@@ -645,6 +700,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         awaitingSync = false
         setPeerLp(message.lp)
 
+        // Si recargué, el reloj de turnos sigue desde lo que el rival tenía anotado (si ya tengo el mío, no se pisa).
+        if (message.turnBanks && clockTurnNo === null) {
+          pendingBanks = message.turnBanks
+        }
+
         if (message.ready !== undefined) {
           ready = { ...ready, theirs: message.ready }
         }
@@ -750,6 +810,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
           setPeerLp(message.lp)
         }
 
+        return
+
+      case 'turnClock':
+        // Lo que el rival dice que le queda al pasar el turno: su palabra corrige mi cuenta.
+        turnClock = setTurnBank(turnClock, peer, message.bank, now())
         return
 
       case 'clock':
