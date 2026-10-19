@@ -53,7 +53,7 @@ playground lo muestra con los mismos componentes). Si algo del menú, del cajón
 - `MobileTopBar` + `NavDrawer` (`DrawerPanel` por dentro): el nombre de la pantalla con la hamburguesa y el cajón de ajustes del lienzo: idioma (`LanguageSwitcher variant="segmented"`, Español | English), «Tus datos» (`BackupActions variant="list"`) y abajo las redes (`SocialLinks size="lg"`), la privacidad y la autoría; foco atrapado, Escape, velo.
 - `SidebarLegal`: el final del menú lateral (redes arriba, privacidad debajo, autoría y aviso de sitio no oficial); reemplazó al pie `AppFooter`, que ya no existe: ninguna pantalla lleva pie.
 - `nav-model.ts`: los tipos (`NavGroup`, `NavItem`) y `buildAppNavGroups` (en `deck-workflow-navigation.ts`) arma los grupos de la app:
-  **Tu deck** (el recorrido del Lab: Deck · Roles · Lab · Comparar), **Jugar** (Práctica · Duelo con un amigo · Calculadora de LP · Exportar, que es sacar el deck para el torneo o el simulador), **Descubrir** (Tier lists · Decks de torneo · Replays) y **Cartas** (Expansiones · Banlists).
+  **Tu deck** (el recorrido del Lab: Deck · Roles · Lab · Comparar), **Jugar** (Práctica · Duelo con un amigo · Calculadora de LP · Exportar, que es sacar el deck para el torneo o el simulador), **Descubrir** (Tier lists · Crear tier list · Decks de torneo · Replays) y **Cartas** (Expansiones · Banlists).
   Las mascotas (`mascotsNavItem`) no están en un grupo: van abajo del menú lateral y en el cajón del celular, y abren su panel.
   Lo mismo la búsqueda de cartas (`searchNavItem`, `onSelect('search')`): una fila arriba de los grupos del menú lateral y del cajón, y un botón de 44 px a la derecha de `MobileTopBar` (`onSearch`); el armazón la muestra con `searchAvailable`.
 

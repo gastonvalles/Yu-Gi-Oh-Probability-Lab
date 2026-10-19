@@ -16,7 +16,7 @@ const stat = (patch: Partial<MetaCardStat> = {}) =>
   ({ id: 1, name: 'Ash', image: null, decks: 4, share: 0.25, tier: 'B', main: { decks: 0, copies: 0 }, side: { decks: 0, copies: 0 }, weekly: [], projectedShare: 0.25, projectedTier: 'B', trend: 'flat', archetypes: [], ...patch }) as MetaCardStat
 
 describe('la tier list', () => {
-  it('cada tier es un bloque con su nombre, cuántas cartas tiene y qué pide a la vista (en el celular el tooltip no se ve)', () => {
+  it('cada tier es una fila como la de siempre: el recuadro de color con la letra a la izquierda y las cartas pegadas a su lado; las vacías también se dibujan', () => {
     render(
       <TierBoard
         floors={TIER_FLOORS}
@@ -29,14 +29,18 @@ describe('la tier list', () => {
 
     const best = within(screen.getByRole('region', { name: `${tierLabel('S')}: ${tierHint('S', TIER_FLOORS)}` }))
 
-    // El nombre, la cuenta y el piso están escritos (no sólo en un `title`), y los tiers vacíos también se dibujan.
-    expect(best.getAllByText(tierLabel('S')).length).toBeGreaterThan(0)
-    expect(best.getByText('2')).toBeInTheDocument()
-    expect(best.getAllByText(tierHint('S', TIER_FLOORS)).length).toBeGreaterThan(0)
-    expect(within(screen.getByRole('region', { name: new RegExp(`^${tierLabel('A')}`) })).getByText('0')).toBeInTheDocument()
+    // La letra va escrita en el recuadro de color; lo que pide el tier y cuántas cartas tiene, en su tooltip (la ayuda de la pantalla lo explica).
+    expect(best.getByText('S')).toHaveStyle({ backgroundColor: 'rgb(255, 127, 127)' })
+    expect(best.getByText('S')).toHaveAttribute('title', `${tierHint('S', TIER_FLOORS)} · 2`)
+    expect(best.getByText('uno')).toBeInTheDocument()
+    expect(best.getByText('dos')).toBeInTheDocument()
+
+    const empty = within(screen.getByRole('region', { name: new RegExp(`^${tierLabel('A')}`) }))
+
+    expect(empty.getByText('A')).toHaveAttribute('title', `${tierHint('A', TIER_FLOORS)} · 0`)
   })
 
-  it('una carta que sube o baja dice cuántos puntos, con ▲ / ▼, y una estable no dice nada', () => {
+  it('una carta que sube o baja lo dice con su flecha y, en el tooltip, cuántos puntos; una estable no dice nada', () => {
     const up = stat({ trend: 'up', share: 0.25, projectedShare: 0.264 })
     const down = stat({ id: 2, name: 'Maxx', trend: 'down', share: 0.3, projectedShare: 0.285 })
 
@@ -50,12 +54,12 @@ describe('la tier list', () => {
 
     const [rising, falling, steady] = screen.getAllByRole('button')
 
-    expect(rising).toHaveTextContent('▲')
-    expect(rising).toHaveTextContent(trendPoints(up))
-    expect(rising).toHaveTextContent('Sube')
-    expect(falling).toHaveTextContent('▼')
-    expect(falling).toHaveTextContent('Baja')
+    expect(within(rising as HTMLElement).getByRole('img', { name: 'Sube' })).toBeInTheDocument()
+    expect(rising).toHaveAttribute('title', expect.stringContaining(`Sube ${trendPoints(up)}`))
+    expect(within(falling as HTMLElement).getByRole('img', { name: 'Baja' })).toBeInTheDocument()
+    expect(falling).toHaveAttribute('title', expect.stringContaining('Baja'))
     expect(trendPoints(up)).toBe('1,4')
-    expect(steady).not.toHaveTextContent(/[▲▼]/)
+    expect(within(steady as HTMLElement).queryByRole('img')).not.toBeInTheDocument()
+    expect(steady).toHaveAttribute('title', expect.not.stringContaining('Sube'))
   })
 })

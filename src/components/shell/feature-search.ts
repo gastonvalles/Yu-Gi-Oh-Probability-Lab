@@ -27,6 +27,7 @@ const KEYWORD_KEYS = {
   'duel-join': 'shell.find.kw.duel-join',
   life: 'shell.find.kw.life',
   meta: 'shell.find.kw.meta',
+  'tier-maker': 'shell.find.kw.tier-maker',
   tournaments: 'shell.find.kw.tournaments',
   replays: 'shell.find.kw.replays',
   expansions: 'shell.find.kw.expansions',

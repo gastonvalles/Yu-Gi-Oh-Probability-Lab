@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'duel' | 'life' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'duel' | 'life' | 'meta' | 'tier-maker' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -45,6 +45,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'duel',
   'life',
   'meta',
+  'tier-maker',
   'tournaments',
   'replays',
   'expansions',
@@ -164,6 +165,18 @@ export function buildDeckWorkflowNavigationItems({
       tone: 'pending',
       disabled: false,
     },
+    // Y la herramienta para armar las propias: cartas repartidas en filas, guardadas en el navegador y bajadas como imagen.
+    {
+      key: 'tier-maker',
+      blurb: t('shell.blurb.tierMaker'),
+      step: '6b',
+      label: t('shell.step.tierMaker.label'),
+      title: t('shell.step.tierMaker.title'),
+      icon: 'sort',
+      detail: t('shell.step.tierMaker.detail'),
+      tone: 'pending',
+      disabled: false,
+    },
     // También es referencia, y va aparte de las tier lists: los decks que llegaron al top de los torneos, completos.
     {
       key: 'tournaments',
@@ -266,7 +279,7 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
           }
         : undefined,
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'compass' as const, sheet: 'description' as const, items: pick('meta', 'tournaments', 'replays') },
+    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'compass' as const, sheet: 'description' as const, items: pick('meta', 'tier-maker', 'tournaments', 'replays') },
     { key: 'cards', label: t('shell.nav.group.cards'), icon: 'package' as const, sheet: 'description' as const, items: pick('expansions', 'banlists') },
   ].filter((group) => group.items.length > 0)
 }

@@ -39,7 +39,7 @@ describe('el menú de la app', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
       ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace']],
       ['Jugar', ['practice', 'life', 'export']],
-      ['Descubrir', ['meta', 'tournaments', 'replays']],
+      ['Descubrir', ['meta', 'tier-maker', 'tournaments', 'replays']],
       ['Cartas', ['expansions', 'banlists']],
     ])
     // Las mascotas son una preferencia, no un destino: no están en ningún grupo.
@@ -146,7 +146,7 @@ describe('el menú de la app', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Descubrir' }))
     const menu = screen.getByRole('menu', { name: 'Descubrir' })
-    expect(within(menu).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([expect.stringMatching(/^Tier lists/), expect.stringMatching(/^Decks de torneo/), expect.stringMatching(/^Replays/)])
+    expect(within(menu).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([expect.stringMatching(/^Tier lists/), expect.stringMatching(/^Crear tu propia tier list/), expect.stringMatching(/^Decks de torneo/), expect.stringMatching(/^Replays/)])
 
     fireEvent.click(within(menu).getByRole('button', { name: /^Replays/ }))
     expect(onSelect).toHaveBeenCalledWith('replays')
