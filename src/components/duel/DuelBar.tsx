@@ -53,7 +53,6 @@ interface DuelBarProps {
   status: SocketStatus
   turn: 'mine' | 'theirs'
   /** La mano del rival (sus dorsos): en el celular va abajo de los datos; en escritorio, en el medio de la misma fila. */
-  theirHand: ReactNode
   onToggleClock: () => void
   onRematch: () => void
   onLeave: () => void
@@ -116,7 +115,7 @@ const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
-export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -212,8 +211,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
 
       {/* Escritorio: en el centro de lo que queda libre de la fila de arriba (entre el reloj y el turno), con su ancho reservado: si la columna se angosta, el turno se corta con puntos suspensivos y no se pisan. En el celular la mano del rival va pegada arriba del campo (la pone la mesa: `rivalHand`). */}
       {docked ? (
-        <div className="relative order-1 min-w-28 flex-1 self-stretch">
-          <div className="absolute left-1/2 top-0 -translate-x-1/2">{theirHand}</div>
+        <div className="relative order-1 min-w-60 flex-1 self-stretch">
         </div>
       ) : null}
 
