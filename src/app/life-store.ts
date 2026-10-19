@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 
+import { audioContext } from './audio'
 import {
   formatClock,
   lifeReducer,
@@ -25,7 +26,6 @@ let endAlarm: ReturnType<typeof setInterval> | null = null
 const END_ALARM_EVERY_MS = 3000
 /** Cuántas veces suena en total (la primera y las repeticiones): un teléfono que vibra sin parar es insoportable. */
 const END_ALARM_TIMES = 3
-let audio: AudioContext | null = null
 
 export type RoundCue = 'ten' | 'five' | 'end'
 
@@ -121,16 +121,6 @@ export function useRoundCountdownLabel(): string | null {
   return timer.running ? formatClock(timerRemaining(timer, now)) : null
 }
 
-/** El audio se desbloquea con un toque (iOS lo exige): así los avisos pueden sonar solos durante la ronda. */
-export function unlockAudio(): void {
-  if (typeof AudioContext === 'undefined') {
-    return
-  }
-
-  audio ??= new AudioContext()
-  void audio.resume()
-}
-
 /** Sonido, vibración y aviso de uno de los tres momentos de la ronda (también sirve para probarlos). */
 export function playCue(kind: RoundCue): void {
   soundCue(kind)
@@ -140,6 +130,7 @@ export function playCue(kind: RoundCue): void {
 /** Sólo el sonido y la vibración (la alarma final los repite sin volver a avisar). */
 function soundCue(kind: RoundCue): void {
   const cue = ROUND_CUES[kind]
+  const audio = audioContext()
 
   if (audio) {
     let at = audio.currentTime + 0.02

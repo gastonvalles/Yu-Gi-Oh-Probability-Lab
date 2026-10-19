@@ -21,6 +21,7 @@ import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign } from '../../app/mat-control'
 import { createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
+import { useChatSound } from '../../app/use-chat-sound'
 import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -358,6 +359,9 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   // Con sala (la sala, la mesa, mirando, el siding, la pausa) la pantalla no se apaga: se espera al rival sin tocar nada. En el lobby sí puede apagarse.
   useWakeLock(intent !== null)
+
+  // Cada mensaje de los jugadores, tuyo o del rival, hace un sonido sutil (quien mira no lo escucha).
+  useChatSound(intent?.watch ? undefined : snapshot?.chat, snapshot?.me)
 
   // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue (no antes: al recargar, la mesa tarda en volver y no por eso se sale).
   const hadTable = useRef(false)
@@ -1017,16 +1021,20 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
   const bothReady = snapshot.ready.mine && snapshot.ready.theirs
   const step = !peerPresent ? 0 : bothReady ? 2 : 1
   // En escritorio el chat va al costado, siempre a la vista (sin el rival adentro explica que se habla cuando entre); en el celular, abajo, una vez que entró.
-  const chat = <DuelChat snapshot={snapshot} myName={myName} onSend={duel.sendChat} />
+  // En el costado ocupa todo el alto de la tarjeta: lo escrito arriba (scrollea) y los mensajes rápidos con el campo para escribir al pie.
+  const chat = <DuelChat snapshot={snapshot} myName={myName} onSend={duel.sendChat} fill={docked} />
 
   return (
     <Screen
       aside={
         docked ? (
-          <section aria-label={t('duel.chat.open')} className="grid min-h-[24rem] content-start gap-3 rounded-card border border-border-subtle bg-card-background p-4">
-            <Heading level="card">{t('duel.chat.open')}</Heading>
-            {peerPresent && !incompatible ? chat : <p className="m-0 py-8 text-center text-body text-muted">{t('duel.room.chatWaiting')}</p>}
-          </section>
+          // La tarjeta mide lo que la columna de al lado (no crece con lo escrito: la lista scrollea por dentro), de ahí el `absolute`.
+          <div className="relative min-h-[24rem]">
+            <section aria-label={t('duel.chat.open')} className="absolute inset-0 grid grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-border-subtle bg-card-background p-4">
+              <Heading level="card">{t('duel.chat.open')}</Heading>
+              {peerPresent && !incompatible ? chat : <p className="m-0 py-8 text-center text-body text-muted">{t('duel.room.chatWaiting')}</p>}
+            </section>
+          </div>
         ) : undefined
       }
     >
@@ -1049,7 +1057,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
       {role === 'host' ? (
         <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-4">
           <p className="m-0 text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.room.link')}</p>
-          <p className="m-0 break-all text-body font-semibold text-accent" data-testid="duel-link">{link}</p>
+          <p className="m-0 break-all text-body font-semibold text-info-soft" data-testid="duel-link">{link}</p>
           <p className="m-0 text-micro text-soft">{t('duel.room.code', { code: room })}</p>
           <p className="m-0 text-micro text-soft">{t('duel.room.watchHint')}</p>
           {/* Lo alternativo primero y la principal al final; el enlace para mirar, sin caja, a un costado. */}
