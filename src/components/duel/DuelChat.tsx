@@ -11,7 +11,7 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { PLAYER_COLOR } from './player-color'
 import { ReactionButtons } from './ReactionButtons'
-import { isEmojiSignal, isHold, isSignal } from './signals'
+import { isEmojiSignal, isSignal } from './signals'
 import type { FeedEntry } from './use-duel-feed'
 
 /** Lo que llega al chat sube un poco y se asienta (con movimiento reducido, aparece sin más). */
@@ -28,15 +28,13 @@ interface DuelChatProps {
   fill?: boolean
   /** El registro del duelo mezclado con lo escrito, en orden (en la mesa). Sin él (la sala) sólo se ve lo escrito. */
   feed?: readonly FeedEntry[]
-  /** Pediste esperar y sigue pedido (ver `useHolds`): ✋ queda apretado. */
-  holding?: boolean
 }
 
 /**
  * El chat entre los dos: lo escrito (lo tuyo a la derecha) y, en la mesa, lo que hizo cada jugador entre medio (una línea con su punto de color y un separador por turno),
  * los mensajes rápidos y el campo para escribir. Sin el rival en la sala no se puede escribir.
  */
-export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding = false }: DuelChatProps) {
+export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelChatProps) {
   const { chat, peerPresent, peerName, me } = snapshot
   const rival = peerName ?? t('duel.bar.rival')
   const [text, setText] = useState('')
@@ -99,7 +97,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding
 
       <div className="grid gap-2">
         {/* Los dos mensajes rápidos, sólo con su emoji. */}
-        <ReactionButtons set={feed ? 'chat' : 'room'} onSend={send} disabled={!peerPresent} holding={holding} />
+        <ReactionButtons onSend={send} disabled={!peerPresent} />
 
         <form
           className="flex items-center gap-2"
@@ -122,14 +120,14 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding
 }
 
 /** El chat fijo a la derecha de la mesa en escritorio: siempre abierto, con su título, a todo el alto. Siempre se lee (no hay contador ni avisos aparte). */
-export function DuelChatPanel({ snapshot, myName, onSend, feed, holding }: Omit<DuelChatProps, 'fill'>) {
+export function DuelChatPanel({ snapshot, myName, onSend, feed }: Omit<DuelChatProps, 'fill'>) {
   useChatUnread(snapshot, true)
 
   return (
     <section aria-label={t('duel.chat.title', { name: snapshot.peerName ?? t('duel.bar.rival') })} className="flex h-full min-h-0 flex-col gap-2">
       <Heading level="card">{t('duel.chat.title', { name: snapshot.peerName ?? t('duel.bar.rival') })}</Heading>
       <div className="min-h-0 flex-1">
-        <DuelChat snapshot={snapshot} myName={myName} onSend={onSend} feed={feed} holding={holding} fill />
+        <DuelChat snapshot={snapshot} myName={myName} onSend={onSend} feed={feed} fill />
       </div>
     </section>
   )
@@ -154,8 +152,8 @@ export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
     }
 
     for (const line of chat) {
-      // Las reacciones del rival (🤔 y 👍) salen como un mensaje más; ✋ no: tiene su propio cartel.
-      if (line.id > seen.current && line.from !== me && (!isSignal(line.text) || (isEmojiSignal(line.text) && !isHold(line.text)))) {
+      // Las reacciones del rival (🤔 y 👍) salen como un mensaje más.
+      if (line.id > seen.current && line.from !== me && (!isSignal(line.text) || isEmojiSignal(line.text))) {
         showRivalToast(rival, line.text)
       }
     }

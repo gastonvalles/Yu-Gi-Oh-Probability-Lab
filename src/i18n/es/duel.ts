@@ -363,10 +363,6 @@ export const duel = {
   'duel.chat.quickTitle': 'Mensajes rápidos',
   'duel.signal.thinking': 'Pensando…',
   'duel.signal.good': 'Continuá',
-  'duel.signal.hold': 'Esperá',
-  'duel.hold.theirs': '{name} pide que esperes',
-  'duel.hold.mine': 'Pediste esperar',
-  'duel.hold.release': 'Soltar la espera',
 
   // El turno y las fases del rival.
 
