@@ -2124,14 +2124,15 @@ describe('la pantalla del duelo', () => {
       expect(button).toHaveClass('h-14', 'w-14', 'text-stat')
     }
     fireEvent.click(within(quick).getByRole('button', { name: 'Pensando…' }))
-    fireEvent.click(within(quick).getByRole('button', { name: 'Continuá' }))
     flush()
+    // Una señal cada 3 segundos: tras mandar una, las dos quedan apagadas hasta que pase el plazo (así no se spamean).
+    expect(within(quick).getByRole('button', { name: 'Continuá' })).toBeDisabled()
+    expect(within(quick).getByRole('button', { name: 'Pensando…' })).toBeDisabled()
     closeChat()
 
     const hostLog = roomChat(host).getByRole('log', { name: 'Chat con Beto' })
     // Un emoji solo se ve grande, como una reacción.
     expect(within(hostLog).getByText('🤔', { exact: false })).toHaveClass('text-display')
-    expect(within(hostLog).getAllByText('👍', { exact: false }).at(-1)).toHaveClass('text-display')
     closeChat()
 
     openTable(host, guest)
@@ -3403,7 +3404,7 @@ describe('la pantalla del duelo', () => {
   })
 
   it('en escritorio el emoji del rival sale grande en el medio de la pantalla, no tapa la mesa y desaparece al tocarlo (o solo, a los pocos segundos)', () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
     asDesktop()
     const { host, guest } = startDuel()
     openTable(host, guest)
@@ -3429,7 +3430,10 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(emoji)
     expect(rivalEmoji(host)).toBeNull()
 
-    // Otro, que nadie toca, se va solo.
+    // Otro (pasados los 3 segundos que hay entre una señal y la siguiente), que nadie toca, se va solo.
+    act(() => {
+      vi.advanceTimersByTime(3100)
+    })
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))
     flush()
     expect(rivalEmoji(host)).toHaveTextContent('👍')

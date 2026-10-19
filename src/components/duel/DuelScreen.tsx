@@ -45,7 +45,7 @@ import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/Prac
 import { DuelCalculator } from './DuelCalculator'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
 import { ReactionButtons } from './ReactionButtons'
-import { isEmojiSignal, isSignal } from './signals'
+import { isEmojiSignal, isSignal } from '../../app/duel-signals'
 import { useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
@@ -1712,7 +1712,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ),
       plusItems: [{ label: t('duel.games.open'), onSelect: () => setGamesOpen(true) }],
       // Celular: las dos reacciones, centradas debajo de la mano (en escritorio están en el chat).
-      reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} />,
+      reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} readyAt={snapshot.emoteReadyAt} />,
       // En escritorio el chat está siempre abierto a la derecha (en el celular, un panel que se abre desde el botón de abajo).
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
       life: <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} />,

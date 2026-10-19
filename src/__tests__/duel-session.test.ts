@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { PROTOCOL_VERSION, encodeMessage, type DuelSettings } from '../app/duel-protocol'
 import { saveOf } from '../app/duel-save'
-import { createDuel, type Duel } from '../app/duel-session'
+import { EMOTE_GAP_MS, createDuel, type Duel } from '../app/duel-session'
 import { timerElapsed } from '../app/life-calculator'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { createMatState, type MatState } from '../app/practice-mat'
@@ -364,6 +364,50 @@ describe('las mesas', () => {
 
       expect(game.host.getSnapshot().undo.asking).toBe(false)
       expect(game.guest.getSnapshot().undo.asked).toBe(false)
+    })
+  })
+
+  describe('los emotes no se spamean', () => {
+    it('una señal rápida (🤔, 👍) sale cada 3 segundos como mucho: las de antes no llegan al rival, y pasado el plazo vuelve a salir', () => {
+      const game = setup()
+      const texts = () => game.guest.getSnapshot().chat.map((line) => line.text)
+
+      expect(game.host.getSnapshot().emoteReadyAt).toBe(0)
+      game.host.sendChat('👍')
+      game.room.flush()
+      expect(game.host.getSnapshot().emoteReadyAt).toBe(game.clock.t + EMOTE_GAP_MS)
+
+      // Apretar de nuevo (la misma o la otra) antes de los 3 segundos no manda nada.
+      game.clock.t += EMOTE_GAP_MS - 1
+      game.host.sendChat('👍')
+      game.host.sendChat('🤔')
+      game.room.flush()
+      expect(texts()).toEqual(['👍'])
+      expect(game.host.getSnapshot().chat.map((line) => line.text)).toEqual(['👍'])
+
+      // Cumplidos los 3 segundos, sale otra; y el plazo vuelve a contar desde ahí.
+      game.clock.t += 1
+      game.host.sendChat('🤔')
+      game.room.flush()
+      expect(texts()).toEqual(['👍', '🤔'])
+      game.host.sendChat('👍')
+      game.room.flush()
+      expect(texts()).toEqual(['👍', '🤔'])
+    })
+
+    it('el plazo es de cada uno y no frena lo que se escribe a mano', () => {
+      const game = setup()
+      const texts = (duel: Duel) => duel.getSnapshot().chat.map((line) => line.text)
+
+      game.host.sendChat('👍')
+      game.guest.sendChat('👍')
+      game.host.sendChat('Hola, ya entro')
+      game.host.sendChat('¿Jugás ya?')
+      game.room.flush()
+
+      // Cada uno ve lo suyo al instante y lo del otro al llegar: el orden entre los dos puede cambiar, lo que llega no.
+      expect([...texts(game.host)].sort()).toEqual(['¿Jugás ya?', 'Hola, ya entro', '👍', '👍'].sort())
+      expect([...texts(game.guest)].sort()).toEqual(['¿Jugás ya?', 'Hola, ya entro', '👍', '👍'].sort())
     })
   })
 

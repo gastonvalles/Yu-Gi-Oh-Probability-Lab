@@ -31,7 +31,7 @@ import type { FeedEntry } from './use-duel-feed'
 import { DuelGames, type GameActions } from './DuelGames'
 import { ResultStrip } from './DuelResult'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
-import { isEmojiSignal, isSignal } from './signals'
+import { isEmojiSignal, isSignal } from '../../app/duel-signals'
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
 function useTick(ms: number): number {
