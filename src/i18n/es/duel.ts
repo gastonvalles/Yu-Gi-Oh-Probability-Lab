@@ -254,7 +254,6 @@ export const duel = {
   'duel.bar.yourTurn': 'Tu turno',
   'duel.bar.theirTurn': 'Turno de {name}',
   'duel.bar.lifeOf': 'Puntos de vida de {name}',
-  'duel.bar.lifeMeter': 'Vidas de {name}: {percent} % de las iniciales',
   'duel.bar.openCalculator': 'Abrir la calculadora de vidas',
   'duel.bar.clock': 'Reloj de la ronda: {time}',
   'duel.bar.clockStart': 'Iniciar el reloj',

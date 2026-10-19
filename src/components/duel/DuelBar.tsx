@@ -22,10 +22,9 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
-import { ProgressRing } from '../ui/ProgressRing'
 import { SideDrawer } from '../ui/SideDrawer'
 import { Switch } from '../ui/Switch'
-import type { Tone } from '../ui/tone'
+import { TONE, type Tone } from '../ui/tone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
 import type { FeedEntry } from './use-duel-feed'
@@ -514,9 +513,10 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null }: DuelLifePr
 }
 
 /**
- * Las vidas de un jugador (Gastón, 2026-10-19: «la vida de ambos jugadores puede mejorarse mucho»): un **anillo** con la inicial del jugador que se vacía con las vidas y cambia de color con la salud (verde con más
- * de la mitad, ámbar desde ahí hasta un cuarto y rojo debajo: es una estadística), el nombre arriba y el número grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al subir o bajar) con
- * la diferencia («−1000») saliendo al lado. El borde de la tarjeta es de su dueño (violeta el tuyo, ámbar el del rival). Tocarla abre la calculadora. Las dos miden lo mismo de alto.
+ * Las vidas de un jugador (Gastón, 2026-10-19: «la vida de ambos jugadores puede mejorarse mucho»; el anillo se probó y no le gustó): en escritorio, un **corazón** que cambia de color con la salud (verde con más
+ * de la mitad, ámbar desde ahí hasta un cuarto y rojo debajo: es una estadística) y late al cambiar; el nombre arriba y el número grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al
+ * subir o bajar) con la diferencia («−1000») saliendo al lado. En el celular, sin corazón: la fila no se parte. El borde de la tarjeta es de su dueño (violeta el tuyo, ámbar el del rival). Tocarla abre la calculadora.
+ * Las dos miden lo mismo de alto.
  */
 export function LifeTile({ name, label, life, mine = false, color, bubble = null, onClick, big = false }: {
   /** El de la botonera de abajo (tus vidas): más ancho y con el número más grande. */
@@ -528,16 +528,14 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   const shown = useAnimatedNumber(life)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
-  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const ratio = Math.min(1, Math.max(0, life / STARTING_LP))
   const health: Tone = ratio > 0.5 ? 'success' : ratio > 0.25 ? 'warning' : 'danger'
-  const initial = Array.from((name || label || '?').trim())[0]?.toUpperCase() ?? '?'
   const body = (
     <>
-      <ProgressRing value={ratio} tone={health} size={desktop ? 52 : 42} strokeWidth={desktop ? 5 : 4.5} label={t('duel.bar.lifeMeter', { name, percent: Math.round(ratio * 100) })}>
-        <span className="text-body font-bold leading-none text-white">{initial}</span>
-      </ProgressRing>
-      <span className="grid min-w-0 flex-1 content-center gap-1">
+      <span key={change?.key ?? 'idle'} aria-hidden="true" className={cx('shrink-0 max-[1100px]:hidden', TONE[health].text, change && 'animate-pop motion-reduce:animate-none')}>
+        <Icon name="heart" size={big ? 32 : 28} variant="bold" />
+      </span>
+      <span className="grid min-w-0 content-center gap-1 min-[1101px]:flex-1">
         <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
           <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
           {change ? (
@@ -557,7 +555,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
     </>
   )
   // Las dos vidas miden lo mismo de alto (la del rival arriba, la tuya abajo).
-  const style = cx('relative flex h-[4.5rem] shrink-0 items-center gap-3 rounded-card border bg-card-background px-3 text-left max-[339px]:gap-2 max-[339px]:px-2', big ? 'min-w-40' : 'min-w-32 max-[339px]:min-w-28', tone.border)
+  const style = cx('relative flex h-14 shrink-0 items-center gap-3 rounded-card border bg-card-background px-2 text-left min-[1101px]:h-[4.5rem] min-[1101px]:px-3', big ? 'min-w-28 min-[1101px]:min-w-44' : 'min-w-[5.25rem] min-[1101px]:min-w-36 max-[339px]:min-w-16', tone.border)
 
   return onClick ? (
     <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
