@@ -1,6 +1,6 @@
 /** Duelo por enlace: el menú, la sala, la mesa con los dos campos, la barra de puntos de vida y la conexión. */
 export const duel = {
-  'duel.nav.title': 'Jugar online',
+  'duel.nav.title': 'Jugar',
   'duel.unavailable': 'El duelo con un amigo todavía no está disponible en esta versión de la app.',
 
   // La mesa con los dos campos.
@@ -181,6 +181,7 @@ export const duel = {
   'duel.rooms.limit': '{min} min',
   'duel.rooms.noLimit': 'Sin tiempo',
   'duel.rooms.genesysCap': '{points} pts',
+  'duel.room.closing': { one: '{name} se fue: la sala desaparece en {count} segundo.', other: '{name} se fue: la sala desaparece en {count} segundos.' },
   'duel.room.leave': 'Salir',
   'duel.gone.title': 'Ese enlace ya no funciona',
   'duel.gone.text': 'La sala se cerró o ya tiene a sus dos jugadores. Pedile un enlace nuevo a quien te invitó.',
@@ -232,6 +233,7 @@ export const duel = {
   'duel.status.open': 'Conectado',
   'duel.status.reconnecting': 'Reconectando…',
   'duel.status.full': 'Esa sala ya tiene dos jugadores.',
+  'duel.status.gone': 'La sala se cerró.',
   'duel.status.closed': 'Sin conexión',
   'duel.status.unsupported': 'Esta sala todavía no admite espectadores.',
   'duel.peer.absent': 'Tu rival se desconectó. Cuando vuelva, la mesa se repone sola.',

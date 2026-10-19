@@ -980,3 +980,137 @@ describe('señalar', () => {
     expect(reloaded.getSnapshot().ping).toBeNull()
   })
 })
+
+describe('el cierre de la sala', () => {
+  /** Los dos juegan y el invitado se rinde: el duelo terminó para siempre. */
+  function finishedGame() {
+    const game = setup()
+
+    startBoth(game)
+    game.guest.concede()
+    game.room.flush()
+    return game
+  }
+
+  /** Lo que `from` manda a partir de ahora, por tipo de mensaje. */
+  const sentTypes = (end: MemoryEnd) => {
+    const spy = vi.spyOn(end, 'send')
+
+    return () => spy.mock.calls.map(([text]) => (JSON.parse(text) as { t: string }).t)
+  }
+
+  it('terminado el duelo y con el rival afuera, un tercero que llega no ve la mesa del que se quedó: no recibe su estado ni figura como su rival', () => {
+    const game = finishedGame()
+
+    game.guestEnd.close()
+    game.room.flush()
+    expect(game.host.getSnapshot().peerPresent).toBe(false)
+
+    const sent = sentTypes(game.hostEnd)
+    const thirdEnd = game.room.join()
+    const third = createDuel(thirdEnd, { role: 'guest', name: 'Cami', now: () => game.clock.t, sid: 'third-1' })
+
+    game.room.flush()
+
+    // El que se quedó no le manda su mesa ni sus jugadas (el único mensaje es el saludo con que se anuncia quien entra), y el tercero no la ve.
+    expect(sent()).not.toContain('sync')
+    expect(third.getSnapshot().theirs).toBeNull()
+    expect(game.host.getSnapshot()).toMatchObject({ peerPresent: false, peerName: 'Beto' })
+
+    // Y no le manda nada más: ni el chat.
+    game.host.sendChat('hola')
+    game.room.flush()
+    expect(third.getSnapshot().chat).toEqual([])
+  })
+
+  it('el rival que vuelve con su identidad después de terminar sigue siendo el rival', () => {
+    const game = finishedGame()
+
+    game.guestEnd.disconnect()
+    game.room.flush()
+    expect(game.host.getSnapshot().peerPresent).toBe(false)
+
+    game.guestEnd.reconnect()
+    game.room.flush()
+    expect(game.host.getSnapshot()).toMatchObject({ peerPresent: true, peerName: 'Beto' })
+  })
+
+  it('un tercero que se va deja el lugar libre: el rival de verdad, al volver, es visto otra vez', () => {
+    const game = finishedGame()
+
+    game.guestEnd.close()
+    game.room.flush()
+
+    const thirdEnd = game.room.join()
+
+    createDuel(thirdEnd, { role: 'guest', name: 'Cami', now: () => game.clock.t, sid: 'third-1' })
+    game.room.flush()
+    expect(game.host.getSnapshot().peerPresent).toBe(false)
+
+    thirdEnd.close()
+    game.room.flush()
+    expect(game.host.getSnapshot().peerPresent).toBe(false)
+  })
+
+  it('con el duelo en curso un jugador nuevo ocupa el lugar del que se cayó como siempre: la regla sólo vale cuando ya terminó', () => {
+    const game = setup()
+
+    startBoth(game)
+    game.guestEnd.close()
+    game.room.flush()
+
+    const sent = sentTypes(game.hostEnd)
+    const thirdEnd = game.room.join()
+
+    createDuel(thirdEnd, { role: 'guest', name: 'Cami', now: () => game.clock.t, sid: 'third-1' })
+    game.room.flush()
+
+    expect(sent()).toContain('sync')
+    expect(game.host.getSnapshot()).toMatchObject({ peerPresent: true, peerName: 'Cami' })
+  })
+
+  it('un Match que no terminó (queda otro duelo) tampoco aplica: terminado un duelo del Match el rival nuevo se atiende como siempre', () => {
+    const game = setup({ lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: true, siding: false })
+
+    startBoth(game)
+    game.guest.concede()
+    game.room.flush()
+    expect(game.host.getSnapshot().series).toMatchObject({ match: true, winner: null })
+
+    game.guestEnd.close()
+    game.room.flush()
+
+    const sent = sentTypes(game.hostEnd)
+    const thirdEnd = game.room.join()
+
+    createDuel(thirdEnd, { role: 'guest', name: 'Cami', now: () => game.clock.t, sid: 'third-1' })
+    game.room.flush()
+
+    expect(sent()).toContain('sync')
+  })
+
+  it('endRoom cierra la conexión dando la sala por terminada; close, no', () => {
+    const ended = finishedGame()
+
+    ended.host.endRoom()
+    expect(ended.room.ended).toBe(true)
+
+    const left = finishedGame()
+
+    left.host.close()
+    expect(left.room.ended).toBe(false)
+  })
+
+  it('con un transporte que no sabe cerrar la sala, endRoom cierra la conexión como siempre', () => {
+    const game = setup()
+    const close = vi.fn()
+    const duel = createDuel(
+      { send: (text) => game.hostEnd.send(text), onMessage: (listener) => game.hostEnd.onMessage(listener), onPeer: (listener) => game.hostEnd.onPeer(listener), close },
+      { role: 'host', name: 'Ana', now: () => game.clock.t, sid: 'host-2' },
+    )
+
+    duel.endRoom()
+
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+})

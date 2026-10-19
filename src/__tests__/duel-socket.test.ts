@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { CLOSE_FULL, PING, PONG, encodeRelayFrame, type RelayFrame } from '../app/duel-relay-rules'
+import { CLOSE_FULL, CLOSE_GONE, CLOSE_ROOM_OVER, PING, PONG, encodeRelayFrame, type RelayFrame } from '../app/duel-relay-rules'
 import { createSocketTransport, type SocketLike, type SocketStatus, type SocketTransport, type SpectatorSocket } from '../app/duel-socket'
 
 class FakeSocket implements SocketLike {
@@ -194,6 +194,54 @@ describe('cuando se corta', () => {
 
     expect(transport.status).toBe('full')
     expect(FakeSocket.all).toHaveLength(1)
+  })
+
+  it('una sala que se cerró no se reintenta: el aviso (o el cierre) del relay deja el estado en «gone»', () => {
+    const transport = connect()
+    current().open()
+
+    current().frame({ kind: 'gone' })
+    expect(transport.status).toBe('gone')
+    expect(current().readyState).toBe(3)
+
+    current().serverClose(CLOSE_GONE)
+    vi.advanceTimersByTime(60_000)
+
+    expect(transport.status).toBe('gone')
+    expect(FakeSocket.all).toHaveLength(1)
+
+    // Ni al volver la pestaña ni al pedir reconectar.
+    transport.reconnect()
+    expect(FakeSocket.all).toHaveLength(1)
+  })
+
+  it('el cierre con el código de sala cerrada también alcanza, aunque el aviso no llegue', () => {
+    const transport = connect()
+    current().open()
+    current().serverClose(CLOSE_GONE)
+    vi.advanceTimersByTime(60_000)
+
+    expect(transport.status).toBe('gone')
+    expect(FakeSocket.all).toHaveLength(1)
+  })
+
+  it('endRoom cierra la conexión con el código de sala terminada (el relay la cierra para todos) y no reintenta; close, con el de siempre', () => {
+    const ended = connect()
+    current().open()
+    const endedSocket = current()
+
+    ended.endRoom?.()
+    expect(endedSocket.closedWith).toBe(CLOSE_ROOM_OVER)
+    expect(ended.status).toBe('closed')
+    vi.advanceTimersByTime(60_000)
+    expect(FakeSocket.all).toHaveLength(1)
+
+    const left = connect()
+    current().open()
+    const leftSocket = current()
+
+    left.close()
+    expect(leftSocket.closedWith).toBe(1000)
   })
 
   it('los eventos de una conexión vieja no pisan a la nueva', () => {

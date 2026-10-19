@@ -1,5 +1,5 @@
 import type { DuelSave } from './duel-save'
-import { addChat, addGame, advanceSeries, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, NEW_SERIES, seriesScore, type DuelGame, type GameEntry, type Series, type RpsPick, type TossMethod } from './duel-games'
+import { addChat, addGame, advanceSeries, cleanChat, coinWinner, dieWinner, duelFinished, duelResult, rpsOutcome, type ChatLine, NEW_SERIES, seriesScore, type DuelGame, type GameEntry, type Series, type RpsPick, type TossMethod } from './duel-games'
 import { RateLimiter } from './duel-relay-rules'
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
@@ -30,6 +30,8 @@ export interface DuelTransport {
   onWatchers?(listener: (count: number, needSync: boolean) => void): () => void
   /** Tirar la conexión de ahora y abrir otra ya (sin esperar el reintento): así el relay vuelve a decir si el rival está. Una sala en memoria no la necesita. */
   reconnect?(): void
+  /** El duelo terminó y no queda nada que hacer en la sala: cerrar la conexión avisándole al relay que se la da por terminada (la corta para todos y no deja entrar a nadie). Sin esto, `close`. */
+  endRoom?(): void
   close(): void
 }
 
@@ -131,6 +133,8 @@ export interface Duel {
   ping(target: MarkTarget, at: 'mine' | 'theirs'): void
   /** Volver a conectarme a la sala ya: lo que sigue en pausa por un aviso que no llegó se resuelve sin salir del duelo. */
   reconnect(): void
+  /** Dar la sala por terminada (el duelo acabó y el rival se fue): se cierra del todo, para todos. */
+  endRoom(): void
   close(): void
 }
 
@@ -174,6 +178,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let peerPresent = false
   let peerName: string | null = null
   let peerSid: string | null = null
+  /** Un tercero ocupó el lugar del rival cuando el duelo ya terminó: no es quien jugó, y no se le manda nada (ni mi mesa) ni se lo cuenta como rival. */
+  let stranger = false
   let incompatible = false
 
   // Mi lado.
@@ -244,14 +250,23 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, ping: lastPing })
 
   const emit = () => {
     snapshot = build()
     listeners.forEach((listener) => listener())
   }
 
-  const send = (message: DuelMessage) => transport.send(encodeMessage(message))
+  /** El duelo terminó para siempre: uno solo, o un Match ya ganado. Nadie tiene nada más que hacer en la sala. */
+  const finishedForGood = () => {
+    const result = duelResult(life.lp, conceded)
+
+    return duelFinished(result, settings.match, seriesScore(series, result).winner)
+  }
+
+  const send = (message: DuelMessage) => {
+    if (!stranger) transport.send(encodeMessage(message))
+  }
 
   const sendHello = () => send({ t: 'hello', v: PROTOCOL_VERSION, sid, role, name, ...(role === 'host' ? { settings } : {}) })
 
@@ -590,6 +605,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
           return
         }
 
+        // Terminado el duelo, quien llega con otra identidad no es el rival que se fue (que volvería con la suya): no se le cuenta nada de mi mesa.
+        if (peerSid !== null && message.sid !== peerSid && finishedForGood()) {
+          stranger = true
+          return
+        }
+
         incompatible = false
 
         if (peerSid !== message.sid) {
@@ -814,6 +835,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const stopPeer = transport.onPeer((present) => {
     peerPresent = present
     awaitingSync = false
+
+    // Si el lugar quedó libre, el tercero se fue: el siguiente que llegue se vuelve a mirar.
+    if (!present) stranger = false
     // Un pedido de volver atrás no sobrevive a que el otro salga o vuelva.
     undoAsked = null
     dropUndoAsk(false)
@@ -875,6 +899,23 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   }
 
   snapshot = build()
+
+  /** Cierra todo: deja de escuchar y suelta la conexión; con `endRoom`, avisándole al relay que la sala se da por terminada (se cierra para todos). */
+  const shutdown = (endRoom: boolean) => {
+    markTimers.forEach((timer) => clearTimeout(timer))
+    markTimers.clear()
+    dropUndoAsk(false)
+    stopMessages()
+    stopPeer()
+    stopWatchers?.()
+    listeners.clear()
+
+    if (endRoom && transport.endRoom) {
+      transport.endRoom()
+    } else {
+      transport.close()
+    }
+  }
 
   return {
     getSnapshot: () => snapshot,
@@ -1112,15 +1153,13 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       markTimers.set(key, setTimeout(() => dropMark(target), MARK_MS))
     },
 
+    endRoom() {
+      shutdown(true)
+    },
+
     close() {
-      markTimers.forEach((timer) => clearTimeout(timer))
-      markTimers.clear()
-      dropUndoAsk(false)
-      stopMessages()
-      stopPeer()
-      stopWatchers?.()
-      listeners.clear()
-      transport.close()
+      shutdown(false)
     },
   }
+
 }

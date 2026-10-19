@@ -311,7 +311,7 @@ describe('las hojas del celular, como en el lienzo', () => {
     const { dialog, onSelect } = sheet(groups, 'duel', 'duel')
 
     expect(within(dialog).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'Jugar onlineEntrá a una sala, retá a un amigo o mirá un duelo',
+      'JugarEntrá a una sala, retá a un amigo o mirá un duelo',
       'Mirar un dueloPegá el enlace para mirar',
       'Entrar con un enlacePegá el enlace que te mandaron',
       'Calculadora de LPVidas, reloj de ronda, moneda y dado',
@@ -326,7 +326,7 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(onSelect).toHaveBeenCalledWith('duel-watch')
     fireEvent.click(within(dialog).getByRole('button', { name: /^Entrar con un enlace/ }))
     expect(onSelect).toHaveBeenCalledWith('duel-join')
-    fireEvent.click(within(dialog).getByRole('button', { name: /^Jugar online/ }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Jugar/ }))
     expect(onSelect).toHaveBeenCalledWith('duel')
     fireEvent.click(within(dialog).getByRole('button', { name: /^Calculadora de LP/ }))
     expect(onSelect).toHaveBeenCalledWith('life')

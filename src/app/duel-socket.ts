@@ -1,4 +1,4 @@
-import { CLOSE_FULL, PING, PONG, SPECTATOR_RESYNC, parseRelayFrame, parseSpectatorText, type ParticipantRole } from './duel-relay-rules'
+import { CLOSE_FULL, CLOSE_GONE, CLOSE_ROOM_OVER, PING, PONG, SPECTATOR_RESYNC, parseRelayFrame, parseSpectatorText, type ParticipantRole } from './duel-relay-rules'
 import type { DuelTransport } from './duel-session'
 
 /**
@@ -18,7 +18,8 @@ import type { DuelTransport } from './duel-session'
  *   los jugadores repitan su estado (`requestSync`). Un relay que no conoce a los espectadores (anterior) se detecta y no se intenta de nuevo.
  */
 
-export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'full' | 'closed' | 'unsupported'
+/** `gone`: la sala se cerró (se dio por terminada) y ya no existe: no se reintenta. */
+export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'full' | 'gone' | 'closed' | 'unsupported'
 
 export interface SocketTransport extends DuelTransport {
   readonly status: SocketStatus
@@ -88,6 +89,7 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
   let attempt = 0
   let stopped = false
   let full = false
+  let gone = false
   /** Un espectador que se encontró con un relay anterior a los espectadores: ahí no se puede mirar. */
   let unsupported = false
   /** Si alguna vez estuvo abierta: volver a conectar es "reconectando", no "conectando". */
@@ -132,6 +134,11 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
 
     if (code === CLOSE_FULL || full) {
       setStatus('full')
+      return
+    }
+
+    if (code === CLOSE_GONE || gone) {
+      setStatus('gone')
       return
     }
 
@@ -212,6 +219,11 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
           playerListeners.forEach((listener) => listener(frame.count))
         } else if (frame?.kind === 'watchers') {
           watcherListeners.forEach((listener) => listener(frame.count, frame.sync))
+        } else if (frame?.kind === 'gone') {
+          // La sala se cerró: no hay a qué volver. Tampoco se espera el cierre del relay.
+          gone = true
+          setStatus('gone')
+          ws.close()
         } else if (frame?.kind === 'full') {
           // La sala está llena: no se reintenta. No se espera el cierre del relay, que puede no llegar.
           full = true
@@ -234,7 +246,7 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
 
   /** Volvió la pestaña o la red: si la conexión no está, se reconecta ya; si parece estar, se comprueba. */
   const wake = () => {
-    if (stopped || status === 'full' || unsupported) {
+    if (stopped || status === 'full' || status === 'gone' || unsupported) {
       return
     }
 
@@ -261,6 +273,27 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
   }
 
   connect()
+
+  /** Cierra para siempre (la pantalla se va, o el duelo terminó): deja de escuchar, de latir y de reintentar, y cierra la conexión con ese código. */
+  const shutdown = (code: number) => {
+    stopped = true
+    clearTimeout(retryTimer)
+    stopHeartbeat()
+
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', wake)
+    }
+
+    const current = socket
+    socket = null
+    current?.close(code)
+    setPeer(false)
+    setStatus('closed')
+  }
 
   return {
     get status() {
@@ -313,7 +346,7 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
     },
 
     reconnect() {
-      if (stopped || status === 'full' || unsupported) {
+      if (stopped || status === 'full' || status === 'gone' || unsupported) {
         return
       }
 
@@ -329,23 +362,12 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
     },
 
     close() {
-      stopped = true
-      clearTimeout(retryTimer)
-      stopHeartbeat()
+      shutdown(1000)
+    },
 
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', onVisibility)
-      }
-
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('online', wake)
-      }
-
-      const current = socket
-      socket = null
-      current?.close(1000)
-      setPeer(false)
-      setStatus('closed')
+    /** El duelo terminó y no queda nada que hacer: cierra la conexión diciéndole al relay que la sala se da por terminada (la corta para todos y no deja entrar a nadie). Un relay anterior sólo ve un cierre más. */
+    endRoom() {
+      shutdown(CLOSE_ROOM_OVER)
     },
   }
 }

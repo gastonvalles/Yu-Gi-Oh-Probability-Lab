@@ -129,6 +129,9 @@ export function addChat(log: readonly ChatLine[], line: ChatLine): ChatLine[] {
   return [...log, line].slice(-MAX_CHAT_LOG)
 }
 
+/** El duelo terminó para siempre: alguien ganó y no sigue un Match (un duelo solo, o un Match que ya tiene ganador). Nadie tiene más nada que hacer en la sala. */
+export const duelFinished = (result: DuelResult | null, match: boolean, matchWinner: Duelist | null): boolean => result !== null && (!match || matchWinner !== null)
+
 /** Quién gana al tirar el dado: el número más alto; con el mismo número no gana nadie y hay que volver a tirar. */
 export function dieWinner(host: number, guest: number): Duelist | null {
   return host === guest ? null : host > guest ? 0 : 1

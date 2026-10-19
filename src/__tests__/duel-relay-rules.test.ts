@@ -117,7 +117,7 @@ describe('los orígenes permitidos', () => {
 })
 
 describe('los avisos del relay', () => {
-  it.each<RelayFrame>([{ kind: 'peer', present: true }, { kind: 'peer', present: false }, { kind: 'full' }])('%j va y vuelve', (frame) => {
+  it.each<RelayFrame>([{ kind: 'peer', present: true }, { kind: 'peer', present: false }, { kind: 'full' }, { kind: 'gone' }])('%j va y vuelve', (frame) => {
     expect(parseRelayFrame(encodeRelayFrame(frame).buffer as ArrayBuffer)).toEqual(frame)
   })
 

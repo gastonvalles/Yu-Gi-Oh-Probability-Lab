@@ -66,6 +66,16 @@ export function SpectatorScreen({ room, connect, onLeave }: SpectatorScreenProps
     )
   }
 
+  if (status === 'gone') {
+    return (
+      <Screen>
+        <Callout tone="warning" icon="alert" action={<CloseButton size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />}>
+          {t('duel.status.gone')}
+        </Callout>
+      </Screen>
+    )
+  }
+
   if (status === 'unsupported') {
     return (
       <Screen>

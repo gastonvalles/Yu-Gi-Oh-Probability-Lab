@@ -59,11 +59,13 @@ export const byteLength = (text: string) => new TextEncoder().encode(text).lengt
 
 /**
  * Lo que el relay avisa: a un jugador, si el otro está (`peer`), cuántos espectadores hay y si alguno pide el estado (`watchers`: `sync` es que quien entró o se perdió
- * algo necesita que repitas lo tuyo); a un espectador, cuántos jugadores hay (`players`); y a quien sobra, que la sala está llena (`full`).
+ * algo necesita que repitas lo tuyo); a un espectador, cuántos jugadores hay (`players`); a quien sobra, que la sala está llena (`full`); y a quien llega a una sala que ya
+ * se cerró, o a quien estaba adentro cuando se cerró, que ya no existe (`gone`).
  */
 export type RelayFrame =
   | { kind: 'peer'; present: boolean }
   | { kind: 'full' }
+  | { kind: 'gone' }
   | { kind: 'players'; count: number }
   | { kind: 'watchers'; count: number; sync: boolean }
 
@@ -71,11 +73,14 @@ const FRAME_PEER = 1
 const FRAME_FULL = 2
 const FRAME_PLAYERS = 3
 const FRAME_WATCHERS = 4
+const FRAME_GONE = 5
 
 export function encodeRelayFrame(frame: RelayFrame): Uint8Array {
   switch (frame.kind) {
     case 'full':
       return Uint8Array.of(FRAME_FULL)
+    case 'gone':
+      return Uint8Array.of(FRAME_GONE)
     case 'peer':
       return Uint8Array.of(FRAME_PEER, frame.present ? 1 : 0)
     case 'players':
@@ -100,6 +105,10 @@ export function parseRelayFrame(data: ArrayBuffer): RelayFrame | null {
     return { kind: 'watchers', count: bytes[1]!, sync: bytes[2] === 1 }
   }
 
+  if (bytes.length === 1 && bytes[0] === FRAME_GONE) {
+    return { kind: 'gone' }
+  }
+
   return bytes.length === 1 && bytes[0] === FRAME_FULL ? { kind: 'full' } : null
 }
 
@@ -119,6 +128,10 @@ export function parseSpectatorText(raw: string): { tag: 0 | 1; text: string } | 
 /** Códigos con que el relay cierra una conexión (y que la app entiende). */
 export const CLOSE_REPLACED = 4000
 export const CLOSE_FULL = 4001
+/** El relay cierra una sala que ya no existe (la dio por terminada alguno de los jugadores): quien estaba adentro, o llega después, no reintenta. */
+export const CLOSE_GONE = 4002
+/** Lo que un jugador manda al cerrar su conexión cuando el duelo terminó y la sala no tiene más para hacer: el relay la cierra para todos y no deja entrar a nadie más. */
+export const CLOSE_ROOM_OVER = 4400
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 

@@ -43,6 +43,7 @@ const STATUS_TEXT: Record<Exclude<SocketStatus, 'open'>, () => string> = {
   connecting: () => t('duel.status.connecting'),
   reconnecting: () => t('duel.status.reconnecting'),
   full: () => t('duel.status.full'),
+  gone: () => t('duel.status.gone'),
   closed: () => t('duel.status.closed'),
   unsupported: () => t('duel.status.unsupported'),
 }

@@ -2,7 +2,7 @@ import type { duel as es } from '../es/duel'
 import type { Translated } from '../types'
 
 export const duel: Translated<typeof es> = {
-  'duel.nav.title': 'Play online',
+  'duel.nav.title': 'Play',
   'duel.unavailable': "Dueling a friend isn't available in this version of the app yet.",
 
   'duel.table.label': 'Duel table',
@@ -178,6 +178,7 @@ export const duel: Translated<typeof es> = {
   'duel.rooms.limit': '{min} min',
   'duel.rooms.noLimit': 'No time',
   'duel.rooms.genesysCap': '{points} pts',
+  'duel.room.closing': { one: '{name} left: the room disappears in {count} second.', other: '{name} left: the room disappears in {count} seconds.' },
   'duel.room.leave': 'Leave',
   'duel.gone.title': "That link doesn't work anymore",
   'duel.gone.text': 'The room was closed or already has both players. Ask whoever invited you for a new link.',
@@ -228,6 +229,7 @@ export const duel: Translated<typeof es> = {
   'duel.status.open': 'Connected',
   'duel.status.reconnecting': 'Reconnecting…',
   'duel.status.full': 'That room already has two players.',
+  'duel.status.gone': 'The room has closed.',
   'duel.status.closed': 'Offline',
   'duel.status.unsupported': 'This room does not support spectators yet.',
   'duel.peer.absent': 'Your opponent disconnected. When they come back, the table restores itself.',
