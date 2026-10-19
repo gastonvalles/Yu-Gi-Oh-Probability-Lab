@@ -186,7 +186,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
   return (
     <>
       <div className="grid items-start gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
+        <div className="stagger grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
           {paused ? (
             <div className="grid gap-2 rounded-card border border-primary/40 bg-card-background p-3">
               <p className="m-0 flex items-center gap-2 text-body font-semibold text-foreground" role="status">
@@ -227,7 +227,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
           </LobbyBanner>
 
           {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="stagger grid grid-cols-2 gap-3">
             <LobbyTile tone="brand" icon="link" title={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={challenge} />
             <LobbyTile tone="info" icon="tag" title={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
             <LobbyTile tone="success" icon="hand" title={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={onTrain} />

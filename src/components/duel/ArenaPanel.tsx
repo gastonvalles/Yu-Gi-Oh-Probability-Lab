@@ -101,7 +101,7 @@ export function ArenaPanel({ rooms, busy, deckReady, onJoin }: ArenaPanelProps) 
           </p>
 
           {shownWaiting.length > 0 ? (
-            <ul className="m-0 grid list-none gap-3 p-0">
+            <ul className="stagger m-0 grid list-none gap-3 p-0">
               {shownWaiting.map((room) => (
                 <ArenaCard key={room.code}>
                   <span className="flex items-center gap-3">
@@ -135,7 +135,7 @@ export function ArenaPanel({ rooms, busy, deckReady, onJoin }: ArenaPanelProps) 
           {shownLive.length > 0 ? (
             <div className="grid gap-3">
               <Heading level="card" as="h2" className="px-1">{t('duel.arena.live')}</Heading>
-              <ul className="m-0 grid list-none gap-3 p-0">
+              <ul className="stagger m-0 grid list-none gap-3 p-0">
                 {shownLive.map((duel) => {
                   const full = duel.watchers >= MAX_SPECTATORS
 

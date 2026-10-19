@@ -100,7 +100,7 @@ describe('el aro de los botones flotantes', () => {
     const { button } = mount()
     const css = readFileSync('src/index.css', 'utf8')
 
-    expect(css).toMatch(/--animate-fab-pulse:\s*fab-pulse 700ms ease-out;/)
+    expect(css).toContain('--animate-fab-pulse: fab-pulse 700ms cubic-bezier(0.2, 0, 0, 1);')
     expect(css).not.toMatch(/--animate-fab-pulse:[^;]*infinite/)
     expect(button.className).toContain('motion-safe:data-pulse:not-data-[dragging=true]:after:animate-fab-pulse')
     expect(button.className).not.toMatch(/(?<![:\w-])after:animate-fab-pulse/)
