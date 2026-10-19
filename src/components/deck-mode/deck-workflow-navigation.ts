@@ -265,7 +265,7 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
           }
         : undefined,
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'search' as const, sheet: 'description' as const, items: pick('meta', 'tournaments', 'replays') },
+    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'compass' as const, sheet: 'description' as const, items: pick('meta', 'tournaments', 'replays') },
     { key: 'cards', label: t('shell.nav.group.cards'), icon: 'package' as const, sheet: 'description' as const, items: pick('expansions', 'banlists') },
   ].filter((group) => group.items.length > 0)
 }

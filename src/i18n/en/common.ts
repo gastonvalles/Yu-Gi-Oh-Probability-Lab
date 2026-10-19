@@ -2,6 +2,8 @@ import type { common as es } from '../es/common'
 import type { Translated } from '../types'
 
 export const common: Translated<typeof es> = {
+  'common.scrollBack': 'Show previous',
+  'common.scrollForward': 'Show next',
   'common.cancel': 'Cancel',
   'common.close': 'Close',
   'common.delete': 'Delete',

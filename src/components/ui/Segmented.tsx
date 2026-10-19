@@ -11,8 +11,8 @@ export interface SegmentedOption<T extends string> {
   tone?: 'success' | 'danger'
 }
 
-/** track: pista lavanda con la opción elegida en violeta · chips: pastillas sueltas · cards: tarjetas (como las fechas del diseño). */
-type SegmentedVariant = 'track' | 'chips' | 'cards'
+/** track: pista lavanda con la opción elegida en violeta · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) · cards: tarjetas (como las fechas del diseño). */
+type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards'
 
 interface SegmentedProps<T extends string> {
   value: T
@@ -30,6 +30,7 @@ interface SegmentedProps<T extends string> {
 const GROUP: Record<SegmentedVariant, string> = {
   track: 'grid auto-cols-fr grid-flow-col gap-1 rounded-control bg-lavender p-1',
   chips: 'flex flex-wrap gap-2',
+  scroll: 'flex gap-2',
   cards: 'grid auto-cols-fr grid-flow-col gap-2',
 }
 
@@ -50,6 +51,11 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
     on: 'bg-primary text-primary-foreground',
     off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
+  scroll: {
+    base: 'shrink-0 rounded-control px-4',
+    on: 'bg-primary text-primary-foreground',
+    off: 'bg-lavender text-foreground hover:bg-lavender-hover',
+  },
   cards: {
     base: 'rounded-card border px-3',
     on: 'border-transparent bg-primary text-primary-foreground',
@@ -62,7 +68,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
   const look = ITEM[variant]
 
   return (
-    <div role="radiogroup" aria-label={label} className={cx(GROUP[variant], fullWidth ? 'w-full' : 'w-fit max-w-full', className)}>
+    <div role="radiogroup" aria-label={label} className={cx(GROUP[variant], variant === 'scroll' ? 'w-max' : fullWidth ? 'w-full' : 'w-fit max-w-full', className)}>
       {options.map((option) => {
         const active = option.value === value
 

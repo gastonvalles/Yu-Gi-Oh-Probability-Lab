@@ -343,6 +343,13 @@ const PATHS = {
     </>
   ),
   /** Banlists: un círculo tachado. */
+  /** Descubrir: una brújula (círculo con la aguja). No es una lupa: la lupa es de buscar. */
+  compass: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path data-fill d="m15.6 8.4-2.1 5.1-5.1 2.1 2.1-5.1z" />
+    </>
+  ),
   ban: (
     <>
       <circle cx="12" cy="12" r="9" />
