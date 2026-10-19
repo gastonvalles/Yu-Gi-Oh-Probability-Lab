@@ -11,6 +11,11 @@ const rules = (JSON.parse(text('vercel.json')) as { headers: Rule[] }).headers
 const cacheControl = (source: string) => rules.find((rule) => rule.source === source)?.headers.find((header) => header.key === 'Cache-Control')?.value
 
 describe('caché y headers del hosting (vercel.json)', () => {
+  it('sólo se despliega main: las ramas de PR no gastan despliegues (el plan gratis tiene un tope diario; el 2026-10-19 se agotó y producción quedó atrás)', () => {
+    // Vercel salta el despliegue cuando el comando sale con 0: true para cualquier rama que no sea main.
+    expect((JSON.parse(text('vercel.json')) as { ignoreCommand?: string }).ignoreCommand).toBe('[ "$VERCEL_GIT_COMMIT_REF" != "main" ]')
+  })
+
   it('lo que lleva hash en /assets se cachea un año, y el HTML y los datos siguen revalidándose', () => {
     expect(cacheControl('/assets/(.*)')).toBe('public, max-age=31536000, immutable')
 
