@@ -14,10 +14,10 @@ afterEach(() => {
 })
 
 describe('cuándo hay laterales', () => {
-  it('la casilla sin laterales sale del alto: 24,75 rem de lo que no es campo, entre 3,5 y 9,5 rem', () => {
-    expect(classicCell(1000)).toBeCloseTo((1000 - 396) / 5)
+  it('la casilla sin laterales sale del alto: 30,45 rem de lo que no es campo (las manos incluidas, sin tapar el campo), entre 3,5 y 12 rem', () => {
+    expect(classicCell(1000)).toBeCloseTo((1000 - 487.2) / 5)
     expect(classicCell(300)).toBe(56)
-    expect(classicCell(3000)).toBe(152)
+    expect(classicCell(3000)).toBe(192)
   })
 
   it('hay laterales sólo si entran los dos sin achicar el campo', () => {

@@ -1362,6 +1362,7 @@
     /* La mesa vista desde arriba: el campo se inclina hacia atrás (lo lejano se achica) con una perspectiva suave; en escritorio, menos. */
     --field-tilt: 26deg;
     --field-perspective: 900px;
+    --field-stretch: 1;
     /* El menú lateral al contraerse o abrirse: el ancho, los rótulos y lo flotante que lo sigue (mascota, botones) van con la misma duración y curva. */
     --sidebar-duration: 280ms;
     --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -1382,8 +1383,10 @@
 @layer theme {
   @media (min-width: 1101px) {
     :root {
-      --field-tilt: 20deg;
-      --field-perspective: 1300px;
+      /* Escritorio: más inclinada y con la perspectiva más cerca (lo lejano se achica de verdad), y estirada a lo alto lo que la inclinación le come (1 / cos) para que no quede un hueco arriba. */
+      --field-tilt: 30deg;
+      --field-perspective: 1100px;
+      --field-stretch: calc(1 / cos(var(--field-tilt)));
     }
   }
 }

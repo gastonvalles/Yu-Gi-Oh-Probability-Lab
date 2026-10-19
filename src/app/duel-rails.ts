@@ -18,10 +18,10 @@ const FIELD_CELLS = 5 + 2 * 0.6857
 const FIELD_GAPS_PX = 6 * 8
 /** El aire de los costados de la columna de la mesa (`px-4`). */
 const COLUMN_PAD_PX = 32
-/** Lo que no es campo en la mesa con la barra de arriba y la de abajo (24,75 rem): de ahí sale el tamaño de la casilla sin laterales. */
-const CLASSIC_CHROME_PX = 24.75 * REM_PX
+/** Lo que no es campo en la mesa con la barra de arriba y la de abajo (30,45 rem: la barra de arriba, las dos manos —que no tapan el campo— y la de abajo): de ahí sale el tamaño de la casilla sin laterales. */
+const CLASSIC_CHROME_PX = 30.45 * REM_PX
 const CELL_MIN_PX = 3.5 * REM_PX
-const CELL_MAX_PX = 9.5 * REM_PX
+const CELL_MAX_PX = 12 * REM_PX
 
 /** Cuánto mide la casilla del campo con la barra arriba y abajo, en una columna de ese alto (px). */
 export function classicCell(height: number): number {
