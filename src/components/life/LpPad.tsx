@@ -9,6 +9,12 @@ export const PRESSABLE =
   'touch-manipulation select-none rounded-control font-semibold text-foreground transition-[background-color,transform,color] duration-100 focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:opacity-35 [-webkit-tap-highlight-color:transparent]'
 
 /** Lo que se aprieta en el teclado: un dígito, el signo (restar o sumar), la mitad o borrar el último dígito. «=» no es una tecla: se aplica con `onApply`. */
+/** El color de la operación elegida (rojo al restar, verde al sumar): lo mismo en el signo y en «=». El violeta es de lo tuyo, no de toda la calculadora. */
+const OPERATOR_LOOK = {
+  '-': 'border-danger bg-danger text-white active:bg-danger/85',
+  '+': 'border-success bg-success-solid text-white active:bg-success-solid/85',
+} as const
+
 export type PadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '+' | '-' | '÷2' | 'back'
 
 const KEY = cx(PRESSABLE, 'min-h-14 border border-border bg-input active:bg-surface-hover')
@@ -27,7 +33,7 @@ interface LpPadProps {
 
 /**
  * El teclado de la calculadora de LP, igual en la herramienta y en la hoja de vidas de un duelo: tres columnas de dígitos (7-8-9, 4-5-6, 1-2-3, y la mitad, el 0 y borrar) y una de
- * operaciones a la derecha (restar, sumar y «=», que ocupa dos filas). El signo elegido va en violeta; con menos de tres cifras el monto se entiende en centenas.
+ * operaciones a la derecha (restar, sumar y «=», que ocupa dos filas). El signo elegido y «=» van en rojo al restar y en verde al sumar; con menos de tres cifras el monto se entiende en centenas.
  */
 export function LpPad({ operator, name, amount, applyLabel, onKey, onApply }: LpPadProps) {
   const digit = (key: PadKey) => (
@@ -39,7 +45,7 @@ export function LpPad({ operator, name, amount, applyLabel, onKey, onApply }: Lp
     <button
       key={key}
       type="button"
-      className={cx(KEY, 'text-stat', operator === key && 'border-primary bg-primary text-primary-foreground active:bg-primary-hover')}
+      className={cx(KEY, 'text-stat', operator === key && OPERATOR_LOOK[key])}
       aria-label={t(key === '-' ? 'shell.life.key.subtract' : 'shell.life.key.add')}
       aria-pressed={operator === key}
       onClick={() => onKey(key)}
@@ -64,7 +70,7 @@ export function LpPad({ operator, name, amount, applyLabel, onKey, onApply }: Lp
       {digit('3')}
       <button
         type="button"
-        className={cx(PRESSABLE, 'row-span-2 border border-primary bg-primary text-stat text-primary-foreground active:bg-primary-hover')}
+        className={cx(PRESSABLE, 'row-span-2 border text-stat', OPERATOR_LOOK[operator])}
         disabled={amount === 0}
         aria-label={applyLabel}
         onClick={onApply}

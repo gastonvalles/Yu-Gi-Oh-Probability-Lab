@@ -116,14 +116,15 @@ export function ResultStrip({ result, snapshot, rival, onRematch }: ResultProps)
   const tone = TONE[view.tone]
 
   return (
-    <div className={cx('flex items-center gap-2 rounded-card border px-2.5 py-1.5', tone.card)}>
-      <span className={cx('grid size-7 shrink-0 place-items-center rounded-full', tone.badge)}>
-        <Icon name={view.icon} size={16} />
+    // En escritorio es una pastilla de una línea dentro de la barra (no una franja que le saca el lugar a las vidas); en el celular, una fila propia.
+    <div className={cx('flex items-center gap-2 rounded-card border px-2.5 py-1 min-[1101px]:max-w-[28rem]', tone.card)}>
+      <span className={cx('grid size-6 shrink-0 place-items-center rounded-full', tone.badge)}>
+        <Icon name={view.icon} size={14} />
       </span>
-      <p className="m-0 min-w-0 flex-1 text-body">
+      <p className="m-0 min-w-0 flex-1 text-body leading-tight min-[1101px]:truncate" title={`${view.title} ${view.reason}${view.note ? ` ${view.note}` : ''}`}>
         <strong className={cx('font-extrabold', tone.text)}>{view.title}</strong>
         <span role="status" className="text-muted">{` ${view.reason}`}</span>
-        {view.note ? <span className="block text-micro text-soft">{view.note}</span> : null}
+        {view.note ? <span className="block text-micro text-soft min-[1101px]:hidden">{view.note}</span> : null}
       </p>
       {snapshot.rematch.mine ? null : (
         <Button variant="primary" size="sm" disabled={!snapshot.peerPresent} onClick={onRematch}>

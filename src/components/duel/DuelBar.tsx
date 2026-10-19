@@ -40,6 +40,18 @@ function useTick(ms: number): number {
   return now
 }
 
+/** Con cuánto tiempo por delante el reloj del duelo se pone rojo, y cuándo además titila (igual que el número del reloj de turnos). */
+const ROUND_LOW_MS = 5 * 60_000
+const ROUND_URGENT_MS = 60_000
+
+/** Cómo se ve el número del reloj del duelo: rojo con 5 minutos o menos y titilando con 1 o menos, mientras corre (con un reloj que cuenta para adelante, sin límite, nunca). */
+export function roundClockClass(remainingMs: number, limited: boolean, running: boolean): string {
+  const low = limited && remainingMs <= ROUND_LOW_MS
+  const urgent = limited && running && remainingMs <= ROUND_URGENT_MS
+
+  return cx('tabular-nums', low ? 'text-danger-soft' : 'text-foreground', urgent && 'motion-safe:animate-turn-blink')
+}
+
 const STATUS_TEXT: Record<Exclude<SocketStatus, 'open'>, () => string> = {
   connecting: () => t('duel.status.connecting'),
   reconnecting: () => t('duel.status.reconnecting'),
@@ -147,7 +159,8 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
-  const clock = formatClock(duelClockMs(life.timer, now, snapshot.settings.limitMin))
+  const roundLeft = duelClockMs(life.timer, now, snapshot.settings.limitMin)
+  const clock = formatClock(roundLeft)
   const result = duelResult(life.lp, snapshot.conceded)
   // Con el rival presente y el duelo sin terminar, salir es abandonar: se pierde. Con el rival ausente (se cayó) o el duelo terminado, sólo se sale.
   const abandoning = result === null && peerPresent && onAbandon !== undefined
@@ -160,7 +173,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
     // y el reloj arriba a la izquierda, su mano en el centro (el del campo) y, arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
     <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5 min-[1101px]:flex-nowrap">
       {/* `contents` en escritorio: sus piezas se acomodan en la fila de todo el ancho (`order`). En celular la vida es la que cede lugar si no entran los íconos. */}
-      <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink">
+      <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink min-[1101px]:[&>[data-lp]]:shrink-0">
         {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
         <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
         <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
@@ -168,12 +181,14 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
           type="button"
           aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
           title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-          className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
+          className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
           onClick={onToggleClock}
         >
           {/* El cronómetro; en pausa, la pausa (el estado se ve sin tocar). */}
-          <Icon name={running ? 'timer' : 'pause'} size={16} />
-          {clock}
+          <Icon name={running ? 'timer' : 'pause'} size={18} />
+          <span data-testid="round-clock" className={roundClockClass(roundLeft, snapshot.settings.limitMin > 0, running)}>
+            {clock}
+          </span>
         </button>
         <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-3 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
           {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
@@ -231,7 +246,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
 
       {/* Escritorio: en el centro de lo que queda libre de la fila de arriba (entre el reloj y el turno), con su ancho reservado: si la columna se angosta, el turno se corta con puntos suspensivos y no se pisan. En el celular la mano del rival va pegada arriba del campo (la pone la mesa: `rivalHand`). */}
       {docked ? (
-        <div className="relative order-1 min-w-60 flex-1 self-stretch">
+        <div className="relative order-1 min-w-0 flex-1 self-stretch">
         </div>
       ) : null}
 
@@ -242,7 +257,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       ) : null}
 
       {result && !resultOpen ? (
-        <div className="order-4 basis-full">
+        <div className="order-4 basis-full min-[1101px]:order-2 min-[1101px]:min-w-0 min-[1101px]:basis-auto min-[1101px]:shrink">
           <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} />
         </div>
       ) : null}

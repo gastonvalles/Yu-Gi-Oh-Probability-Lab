@@ -17,7 +17,7 @@ import { Icon } from '../ui/Icon'
 import { CloseButton, IconButton } from '../ui/IconButton'
 import { SideDrawer } from '../ui/SideDrawer'
 import { WatchResultBanner } from './DuelBanner'
-import { LifeTile } from './DuelBar'
+import { LifeTile, roundClockClass } from './DuelBar'
 import { PLAYER_COLOR } from './player-color'
 import { artOfDrawId } from './duel-art'
 import { TURN_WARNING_MS, formatTurnTime, turnTimeLeft } from '../../app/duel-clock'
@@ -221,7 +221,9 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
   const nameOf = (player: Duelist) => snapshot.sides[player].name ?? (player === 0 ? t('duel.watch.host') : t('duel.watch.guest'))
   const unread = chatOpen ? 0 : Math.max(0, snapshot.feed.length - read)
   const phase = PHASES.find((entry) => entry.id === snapshot.phase)?.name
-  const clock = formatClock(duelClockMs(snapshot.clock, now, snapshot.settings?.limitMin ?? DEFAULT_LIMIT_MIN))
+  const roundLimit = snapshot.settings?.limitMin ?? DEFAULT_LIMIT_MIN
+  const roundLeft = duelClockMs(snapshot.clock, now, roundLimit)
+  const clock = formatClock(roundLeft)
   const result = snapshot.sides[0].lp !== null && snapshot.sides[1].lp !== null ? duelResult([snapshot.sides[0].lp, snapshot.sides[1].lp], snapshot.conceded) : null
 
   useGameToasts(snapshot)
@@ -254,9 +256,11 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
           <div className="flex items-center gap-1.5 [&>[data-lp]]:shrink">
             <ShellMenuButton className="-ml-2" />
             <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
-            <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground" aria-label={t('duel.bar.clock', { time: clock })}>
-              <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={14} />
-              {clock}
+            <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold" aria-label={t('duel.bar.clock', { time: clock })}>
+              <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={16} />
+              <span data-testid="round-clock" className={roundClockClass(roundLeft, roundLimit > 0, snapshot.clock.running)}>
+                {clock}
+              </span>
             </span>
             <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} className="-mr-2 ml-auto shrink-0" onClick={onLeave}>
               <Icon name="x" />
