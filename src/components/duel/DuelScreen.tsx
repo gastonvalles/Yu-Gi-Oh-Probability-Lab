@@ -24,6 +24,7 @@ import { createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, sh
 import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
+import { useWakeLock } from '../../app/use-wake-lock'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
@@ -353,6 +354,9 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [intent, onLobbyChange])
   useEffect(() => () => onLobbyChange?.(false), [onLobbyChange])
 
+  // Con sala (la sala, la mesa, mirando, el siding, la pausa) la pantalla no se apaga: se espera al rival sin tocar nada. En el lobby sí puede apagarse.
+  useWakeLock(intent !== null)
+
   // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue (no antes: al recargar, la mesa tarda en volver y no por eso se sale).
   const hadTable = useRef(false)
 
@@ -620,7 +624,8 @@ function Screen({ children, wide = false, aside }: { children: React.ReactNode; 
   return (
     <div className="h-full min-h-0 overflow-y-auto max-[1100px]:overflow-visible">
       {aside ? (
-        <div className="mx-auto grid w-full max-w-5xl content-start items-start gap-6 px-8 py-6 min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]">
+        /* Las dos columnas miden lo mismo de alto (la del costado se estira hasta donde llega la otra): si no, el chat termina a la mitad de la columna de al lado. */
+        <div className="mx-auto grid w-full max-w-5xl content-start items-stretch gap-6 px-8 py-6 min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">{children}</div>
           {aside}
         </div>

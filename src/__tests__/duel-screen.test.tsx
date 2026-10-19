@@ -208,6 +208,40 @@ describe('la pantalla del duelo', () => {
     expect(screen.getByRole('dialog', { name: 'Tu deck' })).toBeInTheDocument()
   })
 
+  it('al crear una sala se elige Single, Match o Solo; Solo esconde lo del rival y entra a la mesa sin crear sala', () => {
+    const view = render(<DuelScreen {...screenProps()} />)
+
+    openRules(view)
+    expect(within(rulesDialog()).getAllByRole('radio').slice(0, 3).map((radio) => radio.getAttribute('aria-label') ?? radio.textContent)).toEqual(['Single', 'Match · mejor de 3', 'Solo'])
+    expect(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' })).toBeInTheDocument()
+
+    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Solo' }))
+
+    // Sin rival no hay tiempo, formato ni quién entra, ni se abre una sala: la acción es jugar solo.
+    expect(within(rulesDialog()).queryByRole('radio', { name: '50 min' })).not.toBeInTheDocument()
+    expect(within(rulesDialog()).queryByLabelText('Formato')).not.toBeInTheDocument()
+    expect(within(rulesDialog()).queryByRole('button', { name: 'Abrir duelo' })).not.toBeInTheDocument()
+    expect(within(rulesDialog()).queryByRole('button', { name: 'Guardar reglas' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Jugar solo' }))
+
+    expect(window.location.hash).toBe('#practice')
+    expect(extractRoomCode(window.location.hash)).toBeNull()
+  })
+
+  it('Solo no se recuerda: al volver a abrir las reglas vuelve el tipo de antes, y sin deck armado no se puede jugar solo', () => {
+    const view = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 3) })} />)
+
+    openRules(view)
+    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Solo' }))
+    expect(within(rulesDialog()).getByRole('button', { name: 'Jugar solo' })).toBeDisabled()
+    expect(within(rulesDialog()).getByText(/hace falta un deck armado en el builder/)).toBeInTheDocument()
+    closeMore()
+
+    openRules(view)
+    expect(within(rulesDialog()).getByRole('radio', { name: 'Single' })).toBeChecked()
+  })
+
   it('Entrenar solo lleva a la mesa de práctica sin crear sala', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 
@@ -686,6 +720,8 @@ describe('la pantalla del duelo', () => {
     }
     expect(summary.getByText('0 de 2')).toBeInTheDocument()
     expect(summary.getByText('8000')).toBeInTheDocument()
+    // Todo lo de quien mira lleva un ojo: la fila de los espectadores también.
+    expect(summary.getByText('Mirando').querySelector('svg')).not.toBeNull()
   })
 
   it('una sala privada no se anota', () => {
@@ -1875,9 +1911,9 @@ describe('la pantalla del duelo', () => {
     inChat = roomChat(guest)
     expect(inChat.getByText('Hola, ya entro')).toBeInTheDocument()
 
-    // Un mensaje rápido va con un toque. Las señales, sólo con su emoji (🤔 pensando, ✋ esperá, 👍 continuá): nada de una lista larga ni de texto.
+    // Un mensaje rápido va con un toque. Las señales, sólo con su emoji (🤔 pensando, 👍 continuá): nada de una lista larga ni de texto. En la sala no está ✋ esperá (antes de empezar no hay nada que esperar): sólo en la mesa.
     const quick = inChat.getByRole('group', { name: 'Mensajes rápidos' })
-    expect(within(quick).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(['Pensando…', 'Esperá', 'Continuá'])
+    expect(within(quick).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(['Pensando…', 'Continuá'])
     for (const button of within(quick).getAllByRole('button')) {
       // Sin texto: sólo el emoji (y, tras apretarlo, su copia que sube).
       expect(button.textContent).toMatch(/^\p{Extended_Pictographic}+$/u)

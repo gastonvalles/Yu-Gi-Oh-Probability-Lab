@@ -47,6 +47,7 @@ import { useMatView } from '../../app/mat-view'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
+import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
 import { t } from '../../i18n'
@@ -328,6 +329,8 @@ export function PracticeMat({
   duel,
 }: PracticeMatProps) {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // La mesa (la práctica y la del duelo) mantiene la pantalla encendida: se piensa y se espera sin tocarla.
+  useWakeLock(true)
 
   // Las cartas de un combo guardado pueden no estar más en el deck: se buscan por carta (otra copia) o se bajan.
   const byCardId = useMemo(() => {
