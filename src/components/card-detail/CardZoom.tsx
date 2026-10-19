@@ -48,7 +48,7 @@ export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomPr
       onClick={onClose}
     >
       <div
-        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full touch-none shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]', TILT_ART)}
+        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full touch-pan-y', TILT_ART)}
         title={t('search.flip.title')}
         aria-keyshortcuts="F"
         onPointerDown={(event) => {

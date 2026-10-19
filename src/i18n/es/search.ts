@@ -164,7 +164,7 @@ export const search = {
   'search.overlay.backToDetail': 'Volver al detalle',
   'search.overlay.zoomIn': 'Ver la carta en grande',
   'search.flip.hint': 'Deslizá para dar vuelta',
-  'search.flip.title': 'Arrastrala hacia arriba o abajo (o apretá F) para darla vuelta',
+  'search.flip.title': 'Arrastrala de costado (o apretá F) para darla vuelta',
   'search.zoom.aria': '{name} en grande',
   'search.arts.label': 'Artes de la carta',
   'search.arts.pick': 'Arte {n} de {count}',

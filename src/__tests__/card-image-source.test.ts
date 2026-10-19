@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { GET } from '../../api/card-image'
 import { cardImageSrc, cardImageWidthOf, resolveCardImageUpstream } from '../app/card-image-source'
-import { CARD_BACK, CARD_BACK_URL } from '../components/probability/practice-styles'
+import { CARD_BACK, CARD_BACK_HD_URL, CARD_BACK_URL } from '../components/probability/practice-styles'
 
 describe('las imágenes de las cartas pasan por el proxy', () => {
   it('reescribe las de YGOPRODeck a /api/card-image y deja el resto como está', () => {
@@ -39,9 +39,10 @@ describe('las imágenes de las cartas pasan por el proxy', () => {
     for (const path of bad) expect(resolveCardImageUpstream(`/api/card-image/${path}`), path).toBeNull()
   })
 
-  it('el dorso de las cartas que dibuja la mesa (CARD_BACK_URL) pasa por el proxy: si lo rechazara, el deck y el Extra se verían vacíos en producción (en desarrollo Vite no filtra rutas)', () => {
-    expect(resolveCardImageUpstream(CARD_BACK_URL)).toBe('https://images.ygoprodeck.com/images/cards/back.jpg')
+  it('el dorso de las cartas que dibuja la mesa es un archivo propio con los logos de una carta real (no pasa por el proxy) y las clases dicen lo mismo que la constante', () => {
+    expect(CARD_BACK_URL).toBe('/card-back-sm.webp')
     expect(CARD_BACK).toContain(`bg-[url(${CARD_BACK_URL})]`)
+    expect(CARD_BACK_HD_URL).toBe('/card-back.webp')
   })
 
   it('el proxy sólo pide a YGOPRODeck rutas de imagen válidas', () => {

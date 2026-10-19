@@ -52,9 +52,10 @@ const next = () => screen.getByRole('button', { name: 'Carta siguiente' })
 const art = () => screen.getByRole('button', { name: /Ver la carta en grande|Volver al detalle/ })
 const opened = (name: string) => expect(screen.getByRole('dialog', { name: `Detalle de ${name}` })).toBeInTheDocument()
 
-function swipe(from: [number, number], to: [number, number], pointerType = 'touch') {
-  fireEvent.pointerDown(art(), { pointerType, clientX: from[0], clientY: from[1] })
-  fireEvent.pointerUp(art(), { pointerType, clientX: to[0], clientY: to[1] })
+/** Deslizar el fondo del detalle (afuera de la carta: la carta se arrastra de costado para darla vuelta). */
+function swipe(from: [number, number], to: [number, number], pointerType = 'touch', target: () => HTMLElement = () => screen.getByRole('dialog')) {
+  fireEvent.pointerDown(target(), { pointerType, clientX: from[0], clientY: from[1] })
+  fireEvent.pointerUp(target(), { pointerType, clientX: to[0], clientY: to[1] })
 }
 
 describe('el detalle pasa a la carta anterior y a la siguiente', () => {
@@ -133,16 +134,27 @@ describe('el detalle pasa a la carta anterior y a la siguiente', () => {
     expect(previous()).toHaveFocus()
   })
 
-  it('con el dedo, deslizar la carta de costado pasa a la siguiente o a la anterior, sin agrandarla', () => {
-    render(<Harness start={1} />)
+  it('con el dedo, deslizar el fondo de costado pasa a la siguiente o a la anterior, sin agrandar la carta ni cerrar', () => {
+    const onClose = vi.fn()
+
+    render(<Harness start={1} onClose={onClose} />)
 
     swipe([220, 100], [120, 106])
     opened('Gamma')
-    // El clic que deja el deslizamiento no es un toque: no agranda la carta.
-    fireEvent.click(art())
+    // El clic que deja el deslizamiento no es un toque: no cierra el detalle.
+    fireEvent.click(screen.getByRole('dialog'))
+    expect(onClose).not.toHaveBeenCalled()
     expect(art()).toHaveAttribute('aria-label', 'Ver la carta en grande')
 
     swipe([120, 100], [220, 94])
+    opened('Beta')
+  })
+
+  it('arrastrar la carta de costado no pasa de carta (la da vuelta), ni tocar un botón o un campo', () => {
+    render(<Harness start={1} />)
+
+    swipe([220, 100], [100, 100], 'touch', art)
+    swipe([220, 100], [100, 100], 'touch', next)
     opened('Beta')
   })
 

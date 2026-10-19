@@ -161,7 +161,7 @@ export const search: Translated<typeof es> = {
   'search.overlay.backToDetail': 'Back to details',
   'search.overlay.zoomIn': 'View card larger',
   'search.flip.hint': 'Swipe to flip',
-  'search.flip.title': 'Drag it up or down (or press F) to flip it',
+  'search.flip.title': 'Drag it sideways (or press F) to flip it',
   'search.zoom.aria': 'Large view of {name}',
   'search.arts.label': 'Card artworks',
   'search.arts.pick': 'Artwork {n} of {count}',
