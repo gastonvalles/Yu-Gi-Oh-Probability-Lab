@@ -107,7 +107,7 @@ export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick, a
                     <span
                       className={cx(
                         'pointer-events-none absolute left-0.5 top-0.5 z-20 rounded-full px-1.5 text-micro font-bold leading-4 tabular-nums shadow-[0_1px_4px_rgba(0,0,0,0.6)]',
-                        change === 'added' ? 'bg-success text-background' : 'bg-danger text-white',
+                        change === 'added' ? 'bg-success-solid text-white' : 'bg-danger text-white',
                       )}
                     >
                       {change === 'added' ? '+' : '−'}

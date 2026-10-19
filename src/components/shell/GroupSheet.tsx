@@ -18,9 +18,9 @@ interface GroupSheetProps {
   onClose: () => void
 }
 
-/** El estado a la derecha de un paso del deck: «Listo · 40» en verde, «23 sin confirmar», «Estás acá». */
+/** El estado a la derecha de un paso del deck: «Listo · 40» en verde, «23 sin confirmar», «Estás acá». Siempre texto blanco (el verde es el oscuro de los rellenos: el blanco sobre el claro no se lee). */
 function Pill({ label, ok = false }: { label: string; ok?: boolean }) {
-  return <span className={cx('ml-auto inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-micro font-semibold', ok ? 'bg-success text-background' : 'bg-surface-raised text-muted')}>{label}</span>
+  return <span className={cx('ml-auto inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 text-micro font-semibold text-white', ok ? 'bg-success-solid' : 'bg-nav-raised')}>{label}</span>
 }
 
 function SheetRow({ item, status, active, onSelect }: { item: NavItem; status: boolean; active: boolean; onSelect: (key: string) => void }) {
@@ -48,8 +48,9 @@ function SheetRow({ item, status, active, onSelect }: { item: NavItem; status: b
 }
 
 /**
- * La hoja que sube desde la barra de abajo del celular al tocar un grupo, como en el lienzo: se apoya sobre la barra (que queda a la vista y a mano: tocar otro grupo
- * cambia de hoja y tocar el mismo la cierra) y el velo cubre sólo lo de arriba. Los pasos del deck llevan su ícono y su estado a la derecha; el duelo, las herramientas y
+ * La hoja que sube desde la barra de abajo del celular al tocar un grupo, **como la prolongación de la barra** (Gastón, 2026-10-19: «no continúan la barra sino que se separa y la oscurece con una sombra»):
+ * el mismo índigo y sin la línea que las separaba, sin velo ni sombra (lo de arriba se ve igual; tocarlo cierra la hoja). La barra queda a la vista y a mano: tocar otro grupo
+ * cambia de hoja y tocar el mismo la cierra. La hoja mide lo que mide su contenido (cada grupo es un submenú con sus propias filas) y, si no entra, se desplaza. Los pasos del deck llevan su ícono y su estado a la derecha; el duelo, las herramientas y
  * Descubrir, el nombre con una línea que explica y, en el duelo, el aviso de una sala en pausa para volver a ella. Elegir una abre su pantalla y cierra la hoja
  * (también el velo y Escape). El destino abierto va en ámbar, como en el menú lateral.
  */
@@ -73,17 +74,17 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
   return createPortal(
     // Sólo en celular y tableta: si la ventana se ensancha con la hoja abierta, el menú lateral toma su lugar. Termina arriba de la barra de abajo (4 rem), que no se tapa.
     <div className="fixed inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-150 min-[1101px]:hidden">
-      <div aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/55 motion-reduce:animate-none" onClick={onClose} />
+      <div aria-hidden="true" className="absolute inset-0" onClick={onClose} />
       <div
         ref={panelRef}
         role="dialog"
         aria-label={group.label}
         tabIndex={-1}
-        className="absolute inset-x-0 bottom-0 grid animate-sheet-up gap-1 rounded-t-panel border-t border-border bg-card-background px-4 pb-3.5 pt-2.5 shadow-overlay outline-none motion-reduce:animate-none"
+        className="absolute inset-x-0 bottom-0 grid max-h-full animate-sheet-up gap-1 overflow-y-auto overscroll-contain rounded-t-panel border-t border-nav-raised bg-nav px-4 pb-3.5 pt-2.5 outline-none motion-reduce:animate-none"
       >
-        <span aria-hidden="true" className="mx-auto mb-1.5 block h-1 w-9 rounded-full bg-border" />
+        <span aria-hidden="true" className="mx-auto mb-1.5 block h-1 w-9 rounded-full bg-nav-raised" />
         {notice ? (
-          <div className="mb-1.5 flex items-center gap-2.5 rounded-card bg-surface-hover px-3 py-2.5" role="status">
+          <div className="mb-1.5 flex items-center gap-2.5 rounded-card bg-nav-raised px-3 py-2.5" role="status">
             <span className="grid min-w-0 flex-1 text-body leading-tight">
               <strong className="font-semibold text-foreground">{notice.title}</strong>
               <span className="text-muted">{notice.text}</span>
@@ -97,7 +98,7 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
         ) : null}
         <ul className="m-0 grid list-none p-0">
           {rows.map((item, index) => (
-            <li key={item.key} className={cx('min-w-0', index > 0 && 'border-t border-border-subtle')}>
+            <li key={item.key} className={cx('min-w-0', index > 0 && 'border-t border-nav-raised/60')}>
               <SheetRow item={item} status={status} active={item.key === activeKey} onSelect={onSelect} />
             </li>
           ))}

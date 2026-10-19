@@ -346,14 +346,31 @@ describe('las hojas del celular, como en el lienzo', () => {
     return { dialog: screen.getByRole('dialog'), onSelect }
   }
 
+  it('la hoja prolonga la barra: el mismo índigo, sin velo que oscurezca lo de arriba ni sombra, y la barra apaga la línea que las separaba', () => {
+    const { dialog } = sheet(GROUPS, 'deck', 'probability-lab')
+
+    expect(dialog).toHaveClass('bg-nav', 'overflow-y-auto')
+    expect(dialog).not.toHaveClass('shadow-overlay')
+    // El único hermano de la hoja es el que atrapa el toque de afuera: transparente.
+    expect(dialog.previousElementSibling).not.toHaveClass('bg-background/55')
+    expect(dialog.previousElementSibling?.className).not.toContain('bg-')
+    cleanup()
+
+    render(<MobileTabBar groups={GROUPS} activeKey="probability-lab" openKey="deck" onOpen={() => {}} />)
+    expect(screen.getByRole('navigation')).toHaveClass('border-transparent')
+    cleanup()
+    render(<MobileTabBar groups={GROUPS} activeKey="probability-lab" openKey={null} onOpen={() => {}} />)
+    expect(screen.getByRole('navigation')).toHaveClass('border-nav-raised')
+  })
+
   it('«Tu deck»: cada paso con su ícono y su estado a la derecha («Listo · 42» en verde, «3 sin clasificar», «Estás acá»), y el destino abierto en ámbar', () => {
     const { dialog } = sheet(GROUPS, 'deck', 'probability-lab')
     const row = (name: RegExp) => within(dialog).getByRole('button', { name })
 
     expect(row(/^Deck Builder/)).toHaveTextContent('Listo · 42')
-    expect(within(row(/^Deck Builder/)).getByText('Listo · 42')).toHaveClass('bg-success')
+    expect(within(row(/^Deck Builder/)).getByText('Listo · 42')).toHaveClass('bg-success-solid', 'text-white')
     expect(row(/^Categorización de roles/)).toHaveTextContent('3 sin clasificar')
-    expect(within(row(/^Categorización de roles/)).getByText('3 sin clasificar')).not.toHaveClass('bg-success')
+    expect(within(row(/^Categorización de roles/)).getByText('3 sin clasificar')).not.toHaveClass('bg-success-solid')
     expect(row(/^Probability Lab/)).toHaveTextContent('Estás acá')
     expect(row(/^Probability Lab/)).toHaveClass('text-nav-active')
     expect(row(/^Comparar/)).toHaveTextContent('0 builds')

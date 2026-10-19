@@ -137,7 +137,7 @@ export function NavigationSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Un botón por grupo; tocarlo abre una hoja que se apoya sobre la barra (el velo cubre sólo lo de arriba): «Tu deck» con el estado de cada paso a la derecha, «Duelo» con el aviso de la sala en pausa y las demás con una línea que explica cada destino. Con una hoja abierta sólo su grupo va en ámbar; tocar el mismo grupo la cierra. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
+        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Un botón por grupo; tocarlo abre una hoja que prolonga la barra (el mismo índigo, sin velo ni sombra; mide lo que mide su contenido): «Tu deck» con el estado de cada paso a la derecha, «Duelo» con el aviso de la sala en pausa y las demás con una línea que explica cada destino. Con una hoja abierta sólo su grupo va en ámbar; tocar el mismo grupo la cierra. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
           <div className="grid gap-4">
             <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle">
               <MobileTabBar groups={groups} activeKey={active} openKey={sheetKey} onOpen={setSheetKey} placement="inline" />
