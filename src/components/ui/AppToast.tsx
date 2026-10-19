@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { toast } from 'react-hot-toast'
 
+import { useToastBox } from '../../app/toast-box'
 import type { ToastTone } from '../../app/use-toast-message'
 import { PLAYER_COLOR } from '../duel/player-color'
 import { cx } from './cx'
@@ -42,6 +43,8 @@ export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
   const [offset, setOffset] = useState(0)
   const [dismissed, setDismissed] = useState(false)
   const startRef = useRef<number | null>(null)
+  // En el lateral del duelo el aviso ocupa el ancho de la columna (no pasa de ahí).
+  const inRail = useToastBox() !== null
 
   const handleDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     startRef.current = event.clientX
@@ -80,7 +83,7 @@ export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={rival === undefined ? TOAST_BASE : TOAST_RIVAL}
+      className={cx(rival === undefined ? TOAST_BASE : TOAST_RIVAL, inRail && 'max-w-full!')}
       data-visible={visible && !dismissed ? 'true' : 'false'}
       data-dragging={startRef.current !== null ? 'true' : 'false'}
       style={{ transform: `translateX(${gone}px)`, opacity: dismissed ? 0 : Math.max(0.25, 1 - Math.abs(offset) / 220) }}

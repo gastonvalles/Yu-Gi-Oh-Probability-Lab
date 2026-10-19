@@ -110,24 +110,24 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
   )
 }
 
-/** Con la tarjeta cerrada, el resultado queda arriba en una línea: cómo te fue, por qué y la revancha a mano. */
-export function ResultStrip({ result, snapshot, rival, onRematch }: ResultProps) {
+/** Con la tarjeta cerrada, el resultado queda arriba en una línea: cómo te fue, por qué y la revancha a mano. En un lateral del campo (`rail`) se apila: el texto completo y la revancha debajo. */
+export function ResultStrip({ result, snapshot, rival, onRematch, rail = false }: ResultProps & { rail?: boolean }) {
   const view = viewOf(result, snapshot, rival)
   const tone = TONE[view.tone]
 
   return (
     // En escritorio es una pastilla de una línea dentro de la barra (no una franja que le saca el lugar a las vidas); en el celular, una fila propia.
-    <div className={cx('flex items-center gap-2 rounded-card border px-2.5 py-1 min-[1101px]:max-w-[28rem]', tone.card)}>
+    <div className={cx('flex gap-2 rounded-card border px-2.5', rail ? 'flex-col py-2' : 'items-center py-1 min-[1101px]:max-w-[28rem]', tone.card)}>
       <span className={cx('grid size-6 shrink-0 place-items-center rounded-full', tone.badge)}>
         <Icon name={view.icon} size={14} />
       </span>
-      <p className="m-0 min-w-0 flex-1 text-body leading-tight min-[1101px]:truncate" title={`${view.title} ${view.reason}${view.note ? ` ${view.note}` : ''}`}>
+      <p className={cx('m-0 min-w-0 flex-1 text-body leading-tight', !rail && 'min-[1101px]:truncate')} title={`${view.title} ${view.reason}${view.note ? ` ${view.note}` : ''}`}>
         <strong className={cx('font-extrabold', tone.text)}>{view.title}</strong>
         <span role="status" className="text-muted">{` ${view.reason}`}</span>
-        {view.note ? <span className="block text-micro text-soft min-[1101px]:hidden">{view.note}</span> : null}
+        {view.note ? <span className={cx('block text-micro text-soft', !rail && 'min-[1101px]:hidden')}>{view.note}</span> : null}
       </p>
       {snapshot.rematch.mine ? null : (
-        <Button variant="primary" size="sm" disabled={!snapshot.peerPresent} onClick={onRematch}>
+        <Button variant="primary" size="sm" fullWidth={rail} disabled={!snapshot.peerPresent} onClick={onRematch}>
           {rematchLabel(snapshot)}
         </Button>
       )}
