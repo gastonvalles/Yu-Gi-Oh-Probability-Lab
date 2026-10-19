@@ -1311,12 +1311,12 @@ describe('la pantalla del duelo', () => {
     click(host, 'Battle Phase')
     flush()
 
-    // Atacar al monstruo de Beto: el menú lista a los del rival por su zona y Beto lee el nombre de SU carta.
+    // Atacar al monstruo de Beto: el menú lista a los del rival sólo por el nombre de su carta y Beto lee el nombre de SU carta.
     tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Atacar' }))
     const choices = screen.getAllByRole('menuitem').map((item) => item.textContent)
     expect(choices).toHaveLength(1)
-    expect(choices[0]).toMatch(/^Rival, Zona de monstruo 1: Monstruo \d+$/)
+    expect(choices[0]).toMatch(/^Monstruo \d+$/)
     fireEvent.click(screen.getAllByRole('menuitem')[0]!)
     flush()
     expect(attackBanner(guest, `Ana ataca a ${betoCard}`)).toBeDefined()
@@ -1326,6 +1326,37 @@ describe('la pantalla del duelo', () => {
     expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,150px', '50px,350px'] })
     expect(host.container.querySelector('[data-rival-card-id]')).not.toBeNull()
     expect(document.querySelector('[data-kind="attack"]')).toBeNull()
+  })
+
+  it('al atacar, el monstruo del rival se elige tocándolo en el campo: el menú no tapa la mesa y sólo dice el nombre, y los que se pueden atacar laten', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    // Cada uno invoca un monstruo y Ana pasa a la Battle Phase.
+    const betoCard = summonFirst(guest)
+    flush()
+    summonFirst(host)
+    flush()
+    click(host, 'Battle Phase')
+    flush()
+
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Atacar' }))
+
+    // El menú dice sólo el nombre (sin la zona) y el fondo deja pasar los toques; el monstruo del rival late como una zona que se puede elegir.
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([expect.stringMatching(/^Monstruo \d+$/)])
+    expect(screen.getByRole('menu').parentElement).toHaveClass('pointer-events-none')
+    const rivalCard = host.container.querySelector('[data-rival-card-id]')!
+    expect(rivalCard).toHaveAttribute('data-attack-target', 'true')
+
+    // Tocarlo en el campo ataca: se va el menú y deja de latir, y Beto ve el ataque a su carta.
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    flush()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(rivalCard).not.toHaveAttribute('data-attack-target')
+    expect(within(guest.container).queryAllByText(`Ana ataca a ${betoCard}`).some((element) => element.getAttribute('role') === 'status')).toBe(true)
+    // No se abrió el menú de Señalar y Target de su carta: el toque fue de atacar.
+    expect(screen.queryByRole('menuitem', { name: 'Señalar' })).not.toBeInTheDocument()
   })
 
   it('lo que el rival activa y es público se queda tres segundos con el nombre de la carta, en el cartel y en el registro (una línea, corregida); lo que no es público no se nombra', async () => {

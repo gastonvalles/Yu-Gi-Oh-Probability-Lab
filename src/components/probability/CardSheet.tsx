@@ -30,6 +30,8 @@ interface CardSheetProps {
   onInspect?: () => void
   /** Sin carta: sólo el encabezado con el título (las fases). */
   plain?: boolean
+  /** La hoja no tapa la mesa: el fondo deja pasar los toques (se elige tocando una carta del campo, p. ej. a quién atacar) y no se lleva el foco. */
+  passThrough?: boolean
   onClose: () => void
 }
 
@@ -63,7 +65,7 @@ function Options({ items }: { items: readonly MenuItem[] }) {
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
  * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
  */
-export function CardSheet({ name, kicker, art, back = false, apiCard = null, items, asking, onInspect, plain = false, onClose }: CardSheetProps) {
+export function CardSheet({ name, kicker, art, back = false, apiCard = null, items, asking, onInspect, plain = false, passThrough = false, onClose }: CardSheetProps) {
   const ref = useRef<HTMLElement | null>(null)
   const openedAtRef = useRef(performance.now())
   // La hoja se abre al levantar el dedo de la carta (el `pointerup`) y sale justo debajo del dedo: el click que el celular manda después caería en una de sus jugadas y la haría sin querer
@@ -73,7 +75,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
   const support = items.filter((item) => item.utility)
 
   useEscapeKey(onClose)
-  useFocusTrap(ref)
+  useFocusTrap(ref, !passThrough)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setArmed(true), GHOST_CLICK_MS)
@@ -94,7 +96,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
 
   return createPortal(
     <>
-      <div aria-hidden="true" className="fixed inset-0 z-210" onClick={closeFromBackdrop} />
+      <div aria-hidden="true" className={cx('fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop} />
       <section
         ref={ref}
         aria-label={name}

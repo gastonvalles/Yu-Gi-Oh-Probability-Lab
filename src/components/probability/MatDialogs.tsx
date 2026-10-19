@@ -62,6 +62,8 @@ interface CardMenuProps {
   items: MenuItem[]
   /** "Ver carta": abre el detalle (va al final, aparte de las jugadas). */
   onInspect?: () => void
+  /** El menú no tapa la mesa: el fondo deja pasar los toques (se elige tocando una carta del campo, p. ej. a quién atacar) y no se lleva el foco. Se cierra con Escape, la jugada o al tocar otra carta. */
+  passThrough?: boolean
   onClose: () => void
 }
 
@@ -78,7 +80,7 @@ export const GHOST_CLICK_MS = 350
  * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
  * medio. Se cierra al elegir, al tocar afuera o con Escape.
  */
-export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: CardMenuProps) {
+export function CardMenu({ anchor, kicker, title, items, onInspect, passThrough = false, onClose }: CardMenuProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const openedAtRef = useRef(0)
   // La carta a la que se acomodó el menú la última vez: si cambia sólo lo que dice (el segundo paso, "¿En ataque o en defensa?") y no la carta, se queda donde estaba.
@@ -87,7 +89,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
   const open = anchor !== null
 
   useEscapeKey(onClose, open)
-  useFocusTrap(ref, open)
+  useFocusTrap(ref, open && !passThrough)
 
   useLayoutEffect(() => {
     const menu = ref.current
@@ -124,7 +126,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-210" onClick={closeFromBackdrop}>
+    <div className={cx('fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop}>
       <div
         ref={ref}
         role="menu"
