@@ -26,7 +26,7 @@ const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 /** Lo que la carta nueva tarda en aparecer al pasar a otra, y cuánto se desliza desde el lado de donde viene. */
 const SWITCH_MS = 180
 const SWITCH_SLIDE_PX = 28
-/** Cuánto hay que arrastrar el dedo de costado sobre la carta para que cuente como deslizar, y cuánto más ancho que alto tiene que ser. */
+/** Cuánto hay que arrastrar el dedo de costado, fuera de la carta, para que cuente como deslizar a la de al lado, y cuánto más ancho que alto tiene que ser. */
 const SWIPE_MIN_PX = 48
 const SWIPE_RATIO = 1.5
 
@@ -239,7 +239,38 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
-      onClick={() => (zoomed ? setZoomed(false) : close())}
+      onPointerDown={(event) => {
+        swipedRef.current = false
+        // Sólo con el dedo, con vecinos y fuera de la carta (esa se arrastra para darla vuelta) y de lo que se toca (botones, campos).
+        const onCard = event.target instanceof HTMLElement && event.target.closest('[aria-keyshortcuts="F"], button, a, input, textarea, select')
+
+        swipeRef.current = hasNavigation && event.pointerType === 'touch' && !onCard ? { x: event.clientX, y: event.clientY } : null
+      }}
+      onPointerUp={(event) => {
+        const start = swipeRef.current
+        swipeRef.current = null
+
+        if (!start) return
+        const dx = event.clientX - start.x
+        const dy = event.clientY - start.y
+
+        if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return
+        swipedRef.current = true
+        goTo(dx < 0 ? 'next' : 'previous')
+      }}
+      onPointerCancel={() => {
+        swipeRef.current = null
+      }}
+      onClick={() => {
+        // Lo que deja un deslizamiento no es un toque: no cierra.
+        if (swipedRef.current) {
+          swipedRef.current = false
+          return
+        }
+
+        if (zoomed) setZoomed(false)
+        else close()
+      }}
       onKeyDown={(event) => {
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
           // Con una tecla de edición o dentro de un campo de texto, las flechas son del cursor.
@@ -285,9 +316,9 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           <div
             ref={cardRef}
             className={cx(
-              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
-              // El dedo es de la carta en los dos sentidos (nada de la pantalla se desplaza desde acá): de costado desliza a la de al lado y hacia arriba o abajo la da vuelta.
-              'touch-none',
+              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
+              // El dedo de costado es de la carta (la da vuelta); lo vertical queda para el navegador.
+              'touch-pan-y',
             )}
             role="button"
             tabIndex={-1}
@@ -303,37 +334,14 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
             onPointerDown={(event) => {
               tiltHandlers.onPointerDown(event)
               flip.onPointerDown(event)
-              swipedRef.current = false
-              swipeRef.current = hasNavigation && event.pointerType === 'touch' ? { x: event.clientX, y: event.clientY } : null
             }}
-            onPointerUp={(event) => {
-              flip.onPointerUp(event)
-
-              const start = swipeRef.current
-              swipeRef.current = null
-
-              if (!start) return
-              const dx = event.clientX - start.x
-              const dy = event.clientY - start.y
-
-              if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return
-              swipedRef.current = true
-              goTo(dx < 0 ? 'next' : 'previous')
-            }}
-            onPointerCancel={(event) => {
-              flip.onPointerCancel(event)
-              swipeRef.current = null
-            }}
+            onPointerUp={flip.onPointerUp}
+            onPointerCancel={flip.onPointerCancel}
             onClick={(event) => {
               event.stopPropagation()
 
-              // Lo que deja un arrastre (dar vuelta la carta) o un deslizamiento no es un toque: no agranda la carta.
+              // Lo que deja un arrastre (dar vuelta la carta) no es un toque: no agranda la carta.
               if (flip.consumeClick()) return
-
-              if (swipedRef.current) {
-                swipedRef.current = false
-                return
-              }
 
               levelOut(event.currentTarget)
               setZoomed((current) => !current)

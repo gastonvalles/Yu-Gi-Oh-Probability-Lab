@@ -4,20 +4,20 @@ import { t } from '../../i18n'
 import { CARD_BACK, CARD_BACK_HD_URL } from '../probability/practice-styles'
 import { levelOut } from './card-tilt'
 
-/** Cuánto hay que arrastrar la carta, en partes de su alto, para darla vuelta entera (medio giro por cada 0,8 de alto). */
+/** Cuánto hay que arrastrar la carta, en partes de su ancho, para darla vuelta entera (medio giro por cada 0,8 de ancho). */
 const SPAN = 0.8
 /** Un tirón corto y rápido (más de 36 px a más de 0,6 px/ms) la da vuelta aunque no llegue a la mitad. */
 const FLICK_PX = 36
 const FLICK_SPEED = 0.6
-/** Lo que hay que arrastrar antes de que cuente como el gesto (y no como un toque), y cuánto más vertical que horizontal tiene que ser (la horizontal es de deslizar a la carta de al lado). */
+/** Lo que hay que arrastrar antes de que cuente como el gesto (y no como un toque), y cuánto más horizontal que vertical tiene que ser (lo vertical es de desplazar la pantalla). */
 const START_PX = 10
-const VERTICAL_RATIO = 1.3
+const HORIZONTAL_RATIO = 1.3
 /**
  * La perspectiva del giro (px), propia de la carta (`perspective()` dentro del mismo `transform`): grande, para que al inclinarse la parte que se acerca a la cámara no se agrande de más (con 900 px la carta a 45° crecía
- * un 80 % y se cortaba contra el borde de su marco).
+ * un 80 % y se cortaba contra el borde de su marco; con 3000, de canto, el borde cercano crece un 10 %).
  */
-const FLIP_PERSPECTIVE = 2200
-const flipTransform = (degrees: number) => `perspective(${FLIP_PERSPECTIVE}px) rotateX(${degrees}deg)`
+const FLIP_PERSPECTIVE = 3000
+const flipTransform = (degrees: number) => `perspective(${FLIP_PERSPECTIVE}px) rotateY(${degrees}deg)`
 /** Cuántas veces se avisa del gesto con una pista (después ya se sabe). */
 const HINT_TIMES = 3
 const HINT_KEY = 'ygo-lab:flip-hint'
@@ -27,16 +27,16 @@ interface Drag {
   x: number
   y: number
   at: number
-  height: number
+  width: number
   active: boolean
-  /** Cuánto giró en lo que va del gesto (grados; hacia arriba, positivo). */
+  /** Cuánto giró en lo que va del gesto (grados; hacia la derecha, positivo). */
   angle: number
 }
 
 /**
- * Dar vuelta la carta grande con un gesto, sin botón (Gastón, 2026-10-19: «para dar vuelta la carta debo hacer un gesto o movimiento»): **arrastrarla hacia arriba o abajo** (con el dedo o con el mouse) la
- * gira en 3D siguiendo el movimiento, y al soltar termina de darse vuelta hacia el lado más cercano (o hacia donde iba, si fue un tirón rápido); la **tecla F** hace lo mismo desde el teclado. El
- * arrastre de costado no es de esto: en el detalle desliza a la carta anterior o a la siguiente. Devuelve los giros dados (cada uno son 180°: impar es el dorso), `flipperRef` para el elemento
+ * Dar vuelta la carta grande con un gesto, sin botón (Gastón, 2026-10-19: «para dar vuelta la carta debo hacer un gesto o movimiento» y «que sea horizontal»): **arrastrarla de costado** (con el dedo o con el mouse) la
+ * gira en 3D sobre su eje vertical siguiendo el movimiento, y al soltar termina de darse vuelta hacia el lado más cercano (o hacia donde iba, si fue un tirón rápido); la **tecla F** hace lo mismo desde el teclado. Lo
+ * vertical no es de esto (desplaza la pantalla). Devuelve los giros dados (cada uno son 180°: impar es el dorso), `flipperRef` para el elemento
  * que gira (`CardFlip`) y los eventos del elemento que se arrastra (se suman a los suyos); `consumeClick` dice si el clic que sigue a un arrastre hay que ignorarlo (no es un toque).
  */
 export function useCardFlip() {
@@ -67,10 +67,10 @@ export function useCardFlip() {
       draggedRef.current = false
     }, 80)
 
-    const dy = event.clientY - drag.y
+    const dx = event.clientX - drag.x
     const elapsed = Math.max(1, event.timeStamp - drag.at)
-    const flick = Math.abs(dy) >= FLICK_PX && Math.abs(dy) / elapsed >= FLICK_SPEED
-    const delta = cancelled ? 0 : Math.round(drag.angle / 180) || (flick ? (dy < 0 ? 1 : -1) : 0)
+    const flick = Math.abs(dx) >= FLICK_PX && Math.abs(dx) / elapsed >= FLICK_SPEED
+    const delta = cancelled ? 0 : Math.round(drag.angle / 180) || (flick ? (dx > 0 ? 1 : -1) : 0)
     const next = turnsRef.current + delta
     const flipper = flipperRef.current
 
@@ -106,7 +106,7 @@ export function useCardFlip() {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
       if (event.pointerType === 'mouse' && event.button !== 0) return
 
-      dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, at: event.timeStamp, height: Math.max(1, event.currentTarget.getBoundingClientRect().height), active: false, angle: 0 }
+      dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, at: event.timeStamp, width: Math.max(1, event.currentTarget.getBoundingClientRect().width), active: false, angle: 0 }
     },
     onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
       const drag = dragRef.current
@@ -117,7 +117,7 @@ export function useCardFlip() {
       const dy = event.clientY - drag.y
 
       if (!drag.active) {
-        if (Math.abs(dy) < START_PX || Math.abs(dy) < Math.abs(dx) * VERTICAL_RATIO) return
+        if (Math.abs(dx) < START_PX || Math.abs(dx) < Math.abs(dy) * HORIZONTAL_RATIO) return
 
         drag.active = true
         setBackNeeded(true)
@@ -133,7 +133,7 @@ export function useCardFlip() {
         if (flipperRef.current) flipperRef.current.style.transition = 'none'
       }
 
-      drag.angle = (-dy / (drag.height * SPAN)) * 180
+      drag.angle = (dx / (drag.width * SPAN)) * 180
 
       if (flipperRef.current) flipperRef.current.style.transform = flipTransform(turnsRef.current * 180 + drag.angle)
     },
@@ -143,11 +143,15 @@ export function useCardFlip() {
 }
 
 /**
- * La carta grande, dada vuelta: el frente y, del otro lado, el dorso (el de YGOPRODeck, y en alta apenas se empieza a dar vuelta). Gira en 3D sobre su eje horizontal con su propia perspectiva (`FLIP_PERSPECTIVE`:
+ * La carta grande, dada vuelta: el frente y, del otro lado, el dorso con los logos de una carta real (el chico, y en alta apenas se empieza a dar vuelta). Gira en 3D sobre su eje vertical con su propia perspectiva (`FLIP_PERSPECTIVE`:
  * el marco que la contiene no la recorta, cada cara se recorta a sí misma), `turns` medios giros; el gesto que la mueve es `useCardFlip`. No tiene tamaño propio: llena a quien la contiene.
  */
-export function CardFlip({ turns, flipperRef, loadBack = false, children }: { turns: number; flipperRef: RefObject<HTMLDivElement | null>; /** Bajar el dorso en alta (`useCardFlip().loadBack`). */ loadBack?: boolean; children: ReactNode }) {
+/** El resplandor y el aro de la carta grande: van en las dos caras (no en el marco, que se queda quieto y se vería como un panel fantasma mientras la carta gira). */
+const FACE_SHADOW = 'shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]'
+
+export function CardFlip({ turns, flipperRef, loadBack = false, shadow = true, children }: { turns: number; flipperRef: RefObject<HTMLDivElement | null>; /** Bajar el dorso en alta (`useCardFlip().loadBack`). */ loadBack?: boolean; /** Con el resplandor de la carta grande (por defecto). */ shadow?: boolean; children: ReactNode }) {
   const flipped = Math.abs(turns) % 2 === 1
+  const face = shadow ? FACE_SHADOW : ''
 
   return (
     <div
@@ -156,10 +160,10 @@ export function CardFlip({ turns, flipperRef, loadBack = false, children }: { tu
       style={{ transform: flipTransform(turns * 180) }}
       data-flipped={flipped ? 'true' : 'false'}
     >
-      <div className="absolute inset-0 overflow-hidden [backface-visibility:hidden]" aria-hidden={flipped || undefined}>
+      <div className={`absolute inset-0 overflow-hidden [backface-visibility:hidden] ${face}`} aria-hidden={flipped || undefined}>
         {children}
       </div>
-      <div className="absolute inset-0 overflow-hidden [backface-visibility:hidden] [transform:rotateX(180deg)]" aria-hidden={flipped ? undefined : true}>
+      <div className={`absolute inset-0 overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)] ${face}`} aria-hidden={flipped ? undefined : true}>
         <span className={`${CARD_BACK} z-0`} />
         {/* El dorso en alta se funde encima del de siempre cuando termina de bajar. */}
         {loadBack ? (
@@ -210,7 +214,7 @@ export function FlipHint() {
       aria-hidden="true"
       className="pointer-events-none absolute inset-x-0 bottom-3 z-2 mx-auto w-max whitespace-nowrap max-w-[90%] animate-flip-hint rounded-full bg-background/80 px-3 py-1 text-micro font-semibold text-foreground backdrop-blur-sm motion-reduce:animate-none"
     >
-      ↕ {t('search.flip.hint')}
+      ↔ {t('search.flip.hint')}
     </span>
   )
 }

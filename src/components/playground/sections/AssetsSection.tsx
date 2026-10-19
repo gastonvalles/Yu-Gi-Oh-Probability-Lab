@@ -28,7 +28,7 @@ export function AssetsSection() {
         <Specimen title="Cartas" note={<>El dorso es el de YGOPRODeck, por el proxy de imágenes; las cartas, por <Tag>CardArt</Tag> (esqueleto, iniciales si no hay imagen y esquinas rectas).</>}>
           <div className="grid gap-1 text-center text-micro text-soft">
             <img src={CARD_BACK_URL} alt="Dorso de una carta" className="h-36 w-auto" />
-            <Tag>cards/back.jpg</Tag>
+            <Tag>card-back-sm.webp</Tag>
           </div>
           <div className="grid gap-1 text-center text-micro text-soft">
             <div className="h-36 w-[6.2rem]">

@@ -33,8 +33,8 @@ export const PILE_LAYER_DIM = 0.07
  * El dorso por defecto de una carta de Yu-Gi-Oh!: la imagen `cards/back.jpg` de YGOPRODeck, que sale por el mismo proxy que las
  * demás (`card-image-source`).
  */
-export const CARD_BACK_URL = '/api/card-image/cards/back.jpg'
-/** El dorso en alta (927 × 1353, WebP): para la carta grande dada vuelta, donde el de YGOPRODeck (428 × 614, JPEG) se ve borroso y a bloques. Es una copia del dorso de Yugipedia, en `public/`. */
+export const CARD_BACK_URL = '/card-back-sm.webp'
+/** El dorso en alta (927 × 1353, WebP, ~220 KB): para la carta grande dada vuelta. `CARD_BACK_URL` es el mismo en 428 × 625 (~50 KB) para todo lo demás. Los dos son una copia del dorso de Yugipedia, en `public/`, con los logos de una carta real: KONAMI arriba a la izquierda y Yu-Gi-Oh! abajo a la derecha (el de YGOPRODeck no los tiene y en grande se ve a bloques). */
 export const CARD_BACK_HD_URL = '/card-back.webp'
 
 /**
@@ -42,4 +42,4 @@ export const CARD_BACK_HD_URL = '/card-back.webp'
  * boca abajo, los fantasmas de los vuelos y las cartas que se dan vuelta. Tiene que decir lo mismo que `CARD_BACK_URL`: Tailwind sólo
  * ve las clases escritas completas.
  */
-export const CARD_BACK = 'absolute inset-0 z-1 overflow-hidden bg-[#1d1033] bg-cover bg-center bg-[url(/api/card-image/cards/back.jpg)]'
+export const CARD_BACK = 'absolute inset-0 z-1 overflow-hidden bg-[#1d1033] bg-cover bg-center bg-[url(/card-back-sm.webp)]'
