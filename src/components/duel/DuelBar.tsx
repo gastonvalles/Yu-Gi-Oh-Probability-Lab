@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
+import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import type { Activity } from '../../app/duel-protocol'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
@@ -153,6 +154,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   const [conceding, setConceding] = useState(false)
   // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const bigWindow = useDuelFullscreen()
   const [moreOpen, setMoreOpen] = useState(false)
   // Con un aviso puesto sobre la línea del registro, esa línea no se ve (la misma fila: el campo no se mueve).
   const laneOpen = lane !== null
@@ -193,6 +195,12 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
         <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-3 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
           {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
           <MatViewToggle className={HEADER_ICON} />
+          {/* Ventana grande: el duelo ocupa toda la pantalla (sin el menú lateral; y, si el navegador deja, en pantalla completa). Sólo en escritorio: en el celular la mesa ya ocupa todo. */}
+          {docked ? (
+            <IconButton tone="flat" size="sm" aria-label={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} title={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} aria-pressed={bigWindow} className={HEADER_ICON} onClick={toggleDuelFullscreen}>
+              <Icon name={bigWindow ? 'minimize' : 'maximize'} />
+            </IconButton>
+          ) : null}
           {/* Rendirse queda a la vista, junto a salir (arriba, lejos de donde se juega) y pide confirmar. Terminado el duelo, o sin rival, no hay a quién rendirse. */}
           <IconButton tone="flat" size="sm" aria-label={t('duel.bar.concede')} title={t('duel.bar.concede')} className={cx(HEADER_ICON, 'disabled:opacity-35')} disabled={Boolean(result) || !peerPresent} onClick={() => setConceding(true)}>
             <Icon name="flag" />

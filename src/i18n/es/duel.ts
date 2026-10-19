@@ -372,6 +372,8 @@ export const duel = {
   'duel.chat.quickTitle': 'Mensajes rápidos',
   'duel.signal.thinking': 'Pensando…',
   'duel.signal.good': 'Continuá',
+  'duel.bar.bigWindowOn': 'Ventana grande',
+  'duel.bar.bigWindowOff': 'Salir de la ventana grande',
   'duel.look.deck': '{name} está buscando en su Deck',
   'duel.look.extra': '{name} está mirando su Extra Deck',
   'duel.look.gy': '{name} está mirando su cementerio',

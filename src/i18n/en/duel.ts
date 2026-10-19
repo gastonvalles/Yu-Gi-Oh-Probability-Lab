@@ -365,6 +365,8 @@ export const duel: Translated<typeof es> = {
   'duel.chat.quickTitle': 'Quick messages',
   'duel.signal.thinking': 'Thinking…',
   'duel.signal.good': 'Go ahead',
+  'duel.bar.bigWindowOn': 'Big window',
+  'duel.bar.bigWindowOff': 'Leave big window',
   'duel.look.deck': '{name} is searching their Deck',
   'duel.look.extra': '{name} is looking at their Extra Deck',
   'duel.look.gy': '{name} is looking at their Graveyard',

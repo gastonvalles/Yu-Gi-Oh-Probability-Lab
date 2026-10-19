@@ -2225,6 +2225,27 @@ describe('la pantalla del duelo', () => {
     expect(phaseChip(host)).toHaveAccessibleName('Fases: Battle Phase')
   })
 
+  it('en escritorio la barra tiene un botón de ventana grande (el duelo en toda la pantalla), que se apaga al tocarlo otra vez', () => {
+    asDesktop()
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    const on = within(host.container).getByRole('button', { name: 'Ventana grande' })
+    expect(on).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(on)
+    expect(within(host.container).getByRole('button', { name: 'Salir de la ventana grande' })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Salir de la ventana grande' }))
+    expect(within(host.container).getByRole('button', { name: 'Ventana grande' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('en el celular no hay botón de ventana grande: la mesa ya ocupa toda la pantalla', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    expect(within(host.container).queryByRole('button', { name: 'Ventana grande' })).not.toBeInTheDocument()
+  })
+
   it('las fases son un solo botón en el centro del campo (la fase de ahora): al tocarlo muestra las seis y elegir una pasa a ella; sin el turno no abre', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
