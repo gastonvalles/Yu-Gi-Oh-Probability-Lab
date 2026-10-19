@@ -302,6 +302,12 @@ describe('la barra de abajo del celular y su hoja', () => {
 
     fireEvent.click(within(bar).getByRole('button', { name: 'Descubrir' }))
     expect(onOpen).toHaveBeenCalledWith('discover')
+    expect(bar).toHaveClass('z-40', 'border-nav-raised')
+
+    // Con una hoja abierta la barra pasa por encima de ella y su línea se apaga.
+    cleanup()
+    render(<MobileTabBar groups={GROUPS} activeKey="categorization" openKey="discover" onOpen={onOpen} />)
+    expect(screen.getByRole('navigation', { name: 'Navegación principal' })).toHaveClass('z-160', 'border-transparent')
   })
 
   it('la hoja cerrada no existe; abierta es un diálogo con las opciones del grupo, elegir una avisa cuál y se cierra con Escape y con el velo', () => {
@@ -313,9 +319,10 @@ describe('la barra de abajo del celular y su hoja', () => {
 
     rerender(<GroupSheet group={discover} activeKey="replays" onSelect={onSelect} onClose={onClose} />)
     const dialog = screen.getByRole('dialog', { name: 'Descubrir' })
-    // No es modal: la barra de abajo queda a la vista y a mano (el velo y la hoja terminan arriba de ella).
+    // No es modal: la barra de abajo queda a la vista y a mano. La hoja sigue por debajo de la barra (que se pone arriba de ella con la hoja abierta): sin borde contra borde, no hay línea entre las dos.
     expect(dialog).not.toHaveAttribute('aria-modal')
-    expect(dialog.parentElement).toHaveClass('bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]')
+    expect(dialog.parentElement).toHaveClass('inset-0')
+    expect(dialog).toHaveClass('pb-[calc(4rem+env(safe-area-inset-bottom,0px)+0.875rem)]')
     // Sin X: se cierra con Escape, con el velo o tocando de nuevo el grupo. Cada destino lleva su nombre y una línea que explica.
     expect(within(dialog).queryByRole('button', { name: 'Cerrar' })).not.toBeInTheDocument()
     expect(dialog).toHaveTextContent('Los duelos de esos decks, en video')
