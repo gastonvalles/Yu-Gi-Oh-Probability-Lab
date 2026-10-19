@@ -9,11 +9,11 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
-import { duelClockMs, formatClock, interpretAmount } from '../../app/life-calculator'
+import { duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { PHASES } from '../../app/practice-mat'
 import { MatViewToggle } from '../probability/MatViewToggle'
-import { LpPad, MAX_DIGITS, type PadKey } from '../life/LpPad'
+import { useAnimatedNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -87,6 +87,8 @@ interface DuelBarProps {
   rivalSignal?: string | null
   /** Lo que se apoya sobre la línea del registro (la misma fila, sin sumar alto: el campo no se mueve): un pedido de volver atrás, o cómo terminó el tuyo. */
   lane?: LaneNotice | null
+  /** Tocar las vidas del rival abre la calculadora de vidas del duelo (como tocar las propias). */
+  onOpenLife?: () => void
 }
 
 /**
@@ -154,7 +156,7 @@ const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
-export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null, onOpenLife }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -297,7 +299,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
     return (
       <>
         <div className="col-start-1 row-start-1 flex min-w-0 flex-col items-start gap-2">
-          <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
+          <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} onClick={onOpenLife} />
           {clockButton}
           <span className="flex flex-wrap items-center gap-1.5 empty:hidden">{chips}</span>
         </div>
@@ -335,7 +337,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink min-[1101px]:[&>[data-lp]]:shrink-0">
         {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
         <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
-        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
+        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} onClick={onOpenLife} />
         {clockButton}
         <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-3 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
           {actions}
@@ -498,39 +500,21 @@ export function DuelLogTicker({ snapshot, myName, feed, onOpen }: DuelLogTickerP
 interface DuelLifeProps {
   snapshot: DuelSnapshot
   myName: string
-  onChangeLife: (delta: number) => void
-  onHalve: () => void
+  /** Abre la calculadora de vidas del duelo. */
+  onOpen: () => void
   /** Lo que acabás de avisar (pensando, todo bien): sale como un globo junto a tus vidas. */
   signal?: string | null
 }
 
-/** Tus puntos de vida, abajo junto a las fases: se tocan para cambiarlos. */
-export function DuelLife({ snapshot, myName, onChangeLife, onHalve, signal = null }: DuelLifeProps) {
-  const [open, setOpen] = useState(false)
-  const lp = snapshot.life.lp[snapshot.me]
-
-  return (
-    <>
-      <LifeTile name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={lp} mine big bubble={signal} onClick={() => setOpen(true)} />
-      <LifeDialog
-        isOpen={open}
-        life={lp}
-        name={myName || t('duel.bar.you')}
-        onClose={() => setOpen(false)}
-        onChange={(delta) => {
-          onChangeLife(delta)
-          setOpen(false)
-        }}
-        onHalve={() => {
-          onHalve()
-          setOpen(false)
-        }}
-      />
-    </>
-  )
+/** Tus puntos de vida, abajo junto a las fases: se tocan para abrir la calculadora (sincronizada con el duelo, sin salir de él). */
+export function DuelLife({ snapshot, myName, onOpen, signal = null }: DuelLifeProps) {
+  return <LifeTile name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={snapshot.life.lp[snapshot.me]} mine big bubble={signal} onClick={onOpen} />
 }
 
-/** Los puntos de vida de uno: su nombre y el número grande. Los propios son un botón que abre el cambio. */
+/**
+ * Los puntos de vida de uno: su nombre y el número grande, que se mueve hasta el valor nuevo y se pinta un momento de verde (subió) o rojo (bajó) con cuánto cambió al lado del nombre; en cero, rojo.
+ * Tocarlos (los tuyos o los del rival) abre la calculadora de vidas del duelo.
+ */
 export function LifeTile({ name, label, life, mine = false, color, bubble = null, onClick, big = false }: {
   /** El de la botonera de abajo (tus vidas): más ancho y con el número más grande. */
   big?: boolean
@@ -538,10 +522,21 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
   const tone = PLAYER_COLOR[color ?? side]
+  const shown = useAnimatedNumber(life)
+  const flash = useLpFlash(life)
+  const change = useLpDelta(life)
   const body = (
     <>
-      <span className={cx('max-w-full truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
-      <span className={cx('max-w-full shrink-0 truncate font-extrabold leading-none tabular-nums', big ? 'text-stat' : 'text-title', tone.text)}>{life}</span>
+      <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
+        <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
+        {change ? (
+          <span key={change.key} aria-hidden="true" className={cx('shrink-0 animate-pop text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
+            {change.delta < 0 ? '−' : '+'}
+            {Math.abs(change.delta)}
+          </span>
+        ) : null}
+      </span>
+      <span className={cx('max-w-full shrink-0 truncate font-extrabold leading-none tabular-nums transition-colors duration-200', big ? 'text-stat' : 'text-title', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : tone.text)}>{shown}</span>
       {bubble ? (
         <span role="status" className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-pop rounded-card border bg-card-background normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', isEmojiSignal(bubble) ? 'px-3 py-1 text-display leading-none' : 'truncate px-2.5 py-1 text-body font-semibold', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
           {bubble}
@@ -554,76 +549,12 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   const style = cx('relative flex h-14 shrink-0 flex-col items-start justify-center gap-1 rounded-card border bg-card-background px-3 text-left max-[339px]:px-2', big ? 'min-w-28' : 'min-w-20 max-[339px]:min-w-16', tone.border)
 
   return onClick ? (
-    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus active:opacity-80')} onClick={onClick}>
       {body}
     </button>
   ) : (
     <div role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}`} className={style}>
       {body}
-    </div>
-  )
-}
-
-/**
- * Cambiar los puntos de vida propios con el teclado de la calculadora de LP (la misma disposición): se teclea el monto (con menos de tres cifras se entiende en
- * centenas), se elige restar o sumar, la mitad se aplica sola y "=" lo confirma. Sale de abajo en el celular, donde llega el pulgar, y muestra cómo quedan los puntos.
- */
-function LifeDialog({ isOpen, life, name, onClose, onChange, onHalve }: { isOpen: boolean; life: number; name: string; onClose: () => void; onChange: (delta: number) => void; onHalve: () => void }) {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} size="keypad" title={t('duel.life.title')} ariaLabel={t('duel.life.title')}>
-      <LifeKeypad life={life} name={name} onChange={onChange} onHalve={onHalve} />
-    </Modal>
-  )
-}
-
-function LifeKeypad({ life, name, onChange, onHalve }: { life: number; name: string; onChange: (delta: number) => void; onHalve: () => void }) {
-  const [digits, setDigits] = useState('')
-  const [operator, setOperator] = useState<'-' | '+'>('-')
-  const amount = interpretAmount(digits)
-  const delta = operator === '-' ? -amount : amount
-  const result = Math.max(0, life + delta)
-
-  const press = (key: PadKey) => {
-    if (key === 'back') {
-      setDigits((current) => current.slice(0, -1))
-    } else if (key === '+' || key === '-') {
-      setOperator(key)
-    } else if (key === '÷2') {
-      onHalve()
-    } else {
-      setDigits((current) => (current + key).slice(0, MAX_DIGITS))
-    }
-  }
-
-  // Con teclado físico (escritorio): números, borrar, signo y Enter.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey || event.altKey) return
-
-      if (/^\d$/.test(event.key)) setDigits((current) => (current + event.key).slice(0, MAX_DIGITS))
-      else if (event.key === 'Backspace') setDigits((current) => current.slice(0, -1))
-      else if (event.key === '+' || event.key === '-') setOperator(event.key)
-      else if (event.key === 'Enter' && amount > 0) onChange(delta)
-      else return
-
-      event.preventDefault()
-    }
-
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [amount, delta, onChange])
-
-  return (
-    <div className="grid gap-3">
-      {/* Cómo queda: a la izquierda la cuenta («8000 − 1800»), a la derecha el resultado. */}
-      <div role="status" aria-live="polite" className="flex min-h-16 items-center justify-between gap-3 rounded-control border border-border bg-input px-3.5">
-        <span className="min-w-0 truncate text-body text-muted tabular-nums">{digits ? `${life} ${operator === '-' ? '−' : '+'} ${amount}` : t('duel.life.empty')}</span>
-        <strong className={cx('shrink-0 text-stat font-bold leading-none tabular-nums', digits ? (operator === '-' ? 'text-danger-soft' : 'text-success-soft') : 'text-accent')}>{digits ? result : life}</strong>
-      </div>
-
-      <LpPad operator={operator} name={name} amount={amount} applyLabel={t(operator === '-' ? 'duel.life.applySubtract' : 'duel.life.applyAdd', { amount })} onKey={press} onApply={() => onChange(delta)} />
-
-      <p className="m-0 text-center text-micro text-soft">{t('duel.life.footnote')}</p>
     </div>
   )
 }

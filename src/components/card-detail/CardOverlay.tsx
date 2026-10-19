@@ -260,7 +260,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       }}
     >
       <div
-        className={cx('group pointer-events-none relative flex max-h-full [perspective:900px]', wide ? 'w-[min(100%,66rem)] flex-row items-center gap-14' : cx('flex-col items-center gap-3 [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]'), 'data-[zoomed=true]:w-full')}
+        className={cx('group pointer-events-none relative flex max-h-full [perspective:900px]', wide ? 'w-[min(100%,66rem)] flex-row items-center gap-14' : cx('flex-col items-center gap-3 [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]'), 'data-[zoomed=true]:w-full data-[zoomed=true]:justify-center')}
         data-zoomed={zoomed ? 'true' : 'false'}
       >
         {/* El envoltorio no se inclina ni vuela: lo que va al costado de la carta (artes y precios) queda quieto mientras ella se mueve. */}

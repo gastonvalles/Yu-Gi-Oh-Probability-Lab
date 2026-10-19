@@ -33,6 +33,9 @@ const { railsOn } = vi.hoisted(() => ({ railsOn: { value: false } }))
 
 vi.mock('../app/duel-rails', async (importOriginal) => ({ ...(await importOriginal<typeof import('../app/duel-rails')>()), railsFit: () => railsOn.value }))
 
+// La calculadora de vidas se carga a pedido (`lazy`): en las pruebas llega al instante.
+vi.mock('../components/deck-mode/lazy-steps', async (importOriginal) => ({ ...(await importOriginal<typeof import('../components/deck-mode/lazy-steps')>()), LazyLifeCalculatorScreen: (await import('../components/life/LifeCalculatorScreen')).LifeCalculatorScreen }))
+
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 
 /** Las salas públicas del relay, de mentira: lo que esperan, lo que se juega y cada aviso del anfitrión. */
@@ -137,6 +140,25 @@ const joinByLink = (view: RenderResult, link: string) => {
 
   typeInto(view, 'Enlace o código', link)
   click(view, 'Unirme')
+}
+/** Tus vidas (la casilla de abajo): tocarla abre la calculadora de vidas del duelo. */
+const myLife = (view: RenderResult) => view.container.querySelector<HTMLElement>('[data-lp="mine"]')!
+const openCalculator = (view: RenderResult) => fireEvent.click(myLife(view))
+const calculator = () => within(screen.getByRole('dialog', { name: 'Calculadora de LP' }))
+const closeCalculator = () => {
+  const close = screen.queryByRole('button', { name: 'Cerrar la calculadora' })
+
+  if (close) fireEvent.click(close)
+}
+/** Cambiar mis vidas con la calculadora: se tocan las teclas, se aplica con «=» y se cierra (con las vidas en cero la mesa la cierra sola). */
+const changeLife = (view: RenderResult, keys: string[], apply: RegExp = /^Aplicar: restar/) => {
+  openCalculator(view)
+  const pad = within(screen.getByRole('group', { name: 'Teclado' }))
+
+  for (const key of keys) fireEvent.click(pad.getByRole('button', { name: key }))
+  fireEvent.click(screen.getByRole('button', { name: apply }))
+  flush()
+  closeCalculator()
 }
 /** En el celular, el botón de la End Phase pregunta si se termina el turno: «Terminar turno» lo pasa. */
 const confirmEndTurn = () => {
@@ -1138,15 +1160,11 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByText('Turno de Ana')).toBeInTheDocument()
 
     // El anfitrión pierde 1000: el invitado lo ve en la tarjeta del rival.
-    click(host, /Cambiar mis puntos de vida/)
-    // Con menos de tres cifras se entiende en centenas: "10" es 1000. Restar es lo que viene elegido.
-    fireEvent.click(screen.getByRole('button', { name: '1' }))
-    fireEvent.click(screen.getByRole('button', { name: '0' }))
-    fireEvent.click(screen.getByRole('button', { name: /^Restar [0-9]/ }))
-    flush()
+    // Con menos de tres cifras se entiende en centenas: "10" es 1000.
+    changeLife(host, ['1', '0'])
 
     expect(within(host.container).getByRole('button', { name: /Puntos de vida de Ana: 7000/ })).toBeInTheDocument()
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 7000/ })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Ana: 7000/ })).toBeInTheDocument()
   })
 
   it('salir del duelo pide confirmación y vuelve al lobby', () => {
@@ -1836,8 +1854,8 @@ describe('la pantalla del duelo', () => {
     }
 
     openTable(host, guest)
-    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/8000/)
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
+    expect(myLife(host)).toHaveAccessibleName(/8000/)
+    expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
   })
 
   it('puntos de vida: se escriben sin separador de miles en inglés también (12000, no 12,000)', () => {
@@ -1893,7 +1911,7 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
     expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
     expect(within(guest.container).queryByText('Te rendiste.')).not.toBeInTheDocument()
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
     // La revancha empieza con el reloj de nuevo: se reinició y vuelve a arrancar solo.
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     flush()
@@ -2037,52 +2055,60 @@ describe('la pantalla del duelo', () => {
     expect(overlay()?.textContent).toMatch(/Ana: (Cara|Cruz)/)
   })
 
-  it('puntos de vida: el teclado muestra cómo quedan antes de aplicar, resta o suma, y la mitad se aplica sola', () => {
+  it('puntos de vida: la calculadora del duelo muestra cómo quedan antes de aplicar, resta o suma, la mitad se aplica sola y las del rival se ven pero no se eligen', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
-    const sheet = () => within(screen.getByRole('dialog', { name: 'Mis puntos de vida' }))
-    const key = (name: string | RegExp) => fireEvent.click(sheet().getByRole('button', { name }))
-    const lifeOfAna = (view: RenderResult) => within(view.container).getByRole('group', { name: /Puntos de vida de Ana/ })
+    const key = (name: string | RegExp) => fireEvent.click(within(screen.getByRole('group', { name: 'Teclado' })).getByRole('button', { name }))
+    const apply = (name: RegExp) => fireEvent.click(screen.getByRole('button', { name }))
+    const lifeOfAna = (view: RenderResult) => within(view.container).getByRole('button', { name: /Puntos de vida de Ana/ })
 
-    // "8" es 800: se ve cómo quedaría (8000 − 800 = 7200) y recién al confirmar cambia (y el rival lo ve).
-    click(host, /Cambiar mis puntos de vida/)
-    expect(sheet().getByText('Tecleá el monto')).toBeInTheDocument()
+    // Las dos vidas abren la calculadora: la tuya (elegida) y la del rival, que se ve pero no se elige. Es la misma de la herramienta, sin salir del duelo.
+    openCalculator(host)
+    expect(calculator().getByRole('button', { name: /^Ana: 8000 LP\. Elegido/ })).toHaveAttribute('aria-pressed', 'true')
+    const rivalPanel = calculator().getByRole('button', { name: 'Beto: 8000 LP' })
+    expect(rivalPanel).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(rivalPanel)
+    expect(calculator().getByRole('button', { name: /^Ana: 8000 LP\. Elegido/ })).toBeInTheDocument()
+    // Sin reiniciar, deshacer, moneda y dado (el duelo trae los suyos) ni reiniciar el reloj.
+    expect(calculator().queryByRole('button', { name: 'Reiniciar' })).not.toBeInTheDocument()
+    expect(calculator().queryByRole('button', { name: 'Deshacer' })).not.toBeInTheDocument()
+
+    // "8" es 800: se ve cómo quedaría (8000 − 800) y recién al aplicar cambia (y el rival lo ve).
     key('8')
-    expect(sheet().getByText(/8000 − 800/)).toBeInTheDocument()
-    expect(sheet().getByRole('status')).toHaveTextContent(/7200/)
-    expect(sheet().getByRole('button', { name: /^Restar 800/ })).toBeEnabled()
+    expect(calculator().getByRole('status', { name: 'Ana: 8000 menos 800' })).toBeInTheDocument()
     flush()
     expect(lifeOfAna(guest)).toHaveAccessibleName(/8000/)
-    key(/^Restar 800/)
+    apply(/^Aplicar: restar 800/)
     flush()
     expect(lifeOfAna(guest)).toHaveAccessibleName(/7200/)
+    expect(calculator().getByRole('button', { name: /^Ana: 7200 LP/ })).toBeInTheDocument()
 
-    // Sumar: "+" y un monto; borrar deja el monto en cero y "=" deshabilitado.
-    click(host, /Cambiar mis puntos de vida/)
+    // Sumar: "+" y un monto; sin monto «=» está apagado.
+    expect(screen.getByRole('button', { name: /^Aplicar: restar 0/ })).toBeDisabled()
     key('Sumar')
     key('5')
-    expect(sheet().getByRole('button', { name: /^Sumar 500/ })).toBeEnabled()
-    // Borrar saca de a un dígito: 18 es 1800 y, sin el 8, 100.
-    key('Borrar el último dígito')
-    expect(sheet().getByText('Tecleá el monto')).toBeInTheDocument()
-    expect(sheet().getByRole('button', { name: /^Sumar 0/ })).toBeDisabled()
-    key('1')
-    key('8')
-    expect(sheet().getByText('7200 + 1800')).toBeInTheDocument()
-    key('Borrar el último dígito')
-    expect(sheet().getByText('7200 + 100')).toBeInTheDocument()
-    key('Borrar el último dígito')
-    key('5')
-    key(/^Sumar 500/)
+    apply(/^Aplicar: sumar 500/)
     flush()
     expect(lifeOfAna(guest)).toHaveAccessibleName(/7700/)
 
-    // La mitad se aplica sola y cierra.
-    click(host, /Cambiar mis puntos de vida/)
-    key(/con la mitad/)
+    // La mitad se aplica sola y la calculadora sigue abierta, con el número nuevo.
+    key(/Dejar a Ana con la mitad/)
     flush()
     expect(lifeOfAna(guest)).toHaveAccessibleName(/3850/)
-    expect(screen.queryByRole('dialog', { name: 'Mis puntos de vida' })).not.toBeInTheDocument()
+    expect(calculator().getByRole('button', { name: /^Ana: 3850 LP/ })).toBeInTheDocument()
+
+    // Lo que cambia el rival se ve en mi calculadora en el momento (sincronizada con el duelo).
+    closeCalculator()
+    openCalculator(guest)
+    key('1')
+    key('0')
+    apply(/^Aplicar: restar 1000/)
+    flush()
+    closeCalculator()
+    openCalculator(host)
+    expect(calculator().getByRole('button', { name: 'Beto: 7000 LP' })).toBeInTheDocument()
+    closeCalculator()
+    expect(screen.queryByRole('dialog', { name: 'Calculadora de LP' })).not.toBeInTheDocument()
   })
 
   it('el chat: desde la sala y desde la mesa, con un contador de lo que no leíste', () => {
@@ -2505,7 +2531,7 @@ describe('la pantalla del duelo', () => {
 
     // Nada que tocar: ni jugadas, ni deshacer, ni listo, ni dados, ni un campo para escribir.
     expect(view.queryByRole('textbox')).not.toBeInTheDocument()
-    for (const name of [/Deshacer/, /Moneda, dado y más/, /Estoy listo/, /Cambiar mis puntos de vida/, /Draw Phase$/, /Main Phase 1$/, /Ficha/]) {
+    for (const name of [/Deshacer/, /Moneda, dado y más/, /Estoy listo/, /Abrir la calculadora de vidas/, /Draw Phase$/, /Main Phase 1$/, /Ficha/]) {
       expect(view.queryByRole('button', { name })).not.toBeInTheDocument()
     }
     expect(view.queryAllByRole('listitem', { name: /Mano/ })).toHaveLength(0)
@@ -2945,11 +2971,8 @@ describe('la pantalla del duelo', () => {
     expect(savedActions()).toBe(1)
     flush()
 
-    click(guest, /Cambiar mis puntos de vida/)
-    fireEvent.click(screen.getByRole('button', { name: '1' }))
-    fireEvent.click(screen.getByRole('button', { name: '0' }))
-    fireEvent.click(screen.getByRole('button', { name: /^Restar [0-9]/ }))
-    flush()
+    // Con menos de tres cifras se entiende en centenas: "10" es 1000.
+    changeLife(guest, ['1', '0'])
     expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
 
     const hand = cardsOf(guest)
@@ -2970,7 +2993,7 @@ describe('la pantalla del duelo', () => {
     // El anfitrión sigue con su mano y ve la de quien recargó, con la carta invocada y las vidas de antes.
     expect(handOf(host).getAllByRole('listitem')).toHaveLength(5)
     expect(within(host.container).getAllByRole('img', { name: 'Mano del rival: 4' })).toHaveLength(1)
-    expect(within(host.container).getByRole('group', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
   })
 
   /** Sale del duelo desde la mesa (con la confirmación): en un duelo en curso es abandonarlo; terminado, sólo salir. */
@@ -3119,7 +3142,7 @@ describe('la pantalla del duelo', () => {
 
     // Vida, reloj, la vista, rendirse, el engranaje (reconectar) y salir: la misma fila, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
-    expect(top.contains(bar.getByRole('group', { name: /^Puntos de vida de / }))).toBe(true)
+    expect(bar.getAllByRole('button', { name: /^Puntos de vida de / }).some((tile) => top.contains(tile))).toBe(true)
     for (const name of ['Cambiar a la vista superior', 'Rendirme', 'Más opciones del duelo', 'Salir del duelo']) {
       expect(top).toBe(rowOf(name))
     }
@@ -3315,12 +3338,7 @@ describe('la pantalla del duelo', () => {
     openTable(host, guest)
 
     // Beto se queda sin puntos de vida: 80 es 8000.
-    click(guest, /Cambiar mis puntos de vida/)
-    const sheet = () => within(screen.getByRole('dialog', { name: 'Mis puntos de vida' }))
-    fireEvent.click(sheet().getByRole('button', { name: '8' }))
-    fireEvent.click(sheet().getByRole('button', { name: '0' }))
-    fireEvent.click(sheet().getByRole('button', { name: /^Restar 8000/ }))
-    flush()
+    changeLife(guest, ['8', '0'], /^Aplicar: restar 8000/)
 
     const lost = within(guest.container).getByRole('dialog', { name: 'Perdiste' })
     expect(within(lost).getByText('Te quedaste sin puntos de vida.')).toBeInTheDocument()
@@ -3352,11 +3370,12 @@ describe('la pantalla del duelo', () => {
     expect(rivalEmoji(host)).toBeNull()
     // Abajo, con el pulgar: deshacer y el chat (a la derecha del todo); las dos reacciones van centradas debajo de la mano, en su propia fila. El + (la ficha, los contadores y los juegos) ya no está en la botonera: va en el campo, a la altura del reloj de turnos, entre el Banish del rival y la Zona Extra de monstruos; del otro lado del reloj, el botón de la fase.
     const toolbar = within(guest.container).getByRole('toolbar')
-    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Chat', expect.stringMatching(/^Puntos de vida de/)])
+    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Chat', 'Pensando…', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
+    // Las dos reacciones van en la misma fila que tus vidas y los botones, en el medio (la columna del centro).
     const reactions = within(guest.container).getByRole('group', { name: 'Mensajes rápidos' })
     expect(within(reactions).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Pensando…', 'Continuá'])
-    expect(toolbar).not.toContainElement(reactions)
-    expect(reactions.parentElement).toHaveClass('justify-center')
+    expect(toolbar).toContainElement(reactions)
+    expect(reactions.parentElement).toHaveClass('col-start-2', 'row-start-1')
     expect(within(guest.container).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
     const plus = within(guest.container).getByRole('button', { name: 'Ficha' })
     expect(toolbar).not.toContainElement(plus)

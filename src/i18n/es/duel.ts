@@ -252,7 +252,7 @@ export const duel = {
   'duel.bar.yourTurn': 'Tu turno',
   'duel.bar.theirTurn': 'Turno de {name}',
   'duel.bar.lifeOf': 'Puntos de vida de {name}',
-  'duel.bar.changeLife': 'Cambiar mis puntos de vida',
+  'duel.bar.openCalculator': 'Abrir la calculadora de vidas',
   'duel.bar.clock': 'Reloj de la ronda: {time}',
   'duel.bar.clockStart': 'Iniciar el reloj',
   'duel.bar.clockPause': 'Pausar el reloj',
@@ -285,11 +285,6 @@ export const duel = {
   'duel.watch.paused': 'En pausa',
 
   // Cambiar los puntos de vida.
-  'duel.life.title': 'Mis puntos de vida',
-  'duel.life.empty': 'Tecleá el monto',
-  'duel.life.footnote': 'Con menos de tres cifras se entiende en centenas (18 = 1800).',
-  'duel.life.applySubtract': 'Restar {amount}',
-  'duel.life.applyAdd': 'Sumar {amount}',
 
   // Moneda, dado, piedra-papel-tijera, quién va primero y señales (y su registro).
   'duel.games.open': 'Moneda, dado y más',

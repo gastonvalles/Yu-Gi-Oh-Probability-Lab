@@ -40,6 +40,7 @@ import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardSheet } from '../probability/CardSheet'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
+import { DuelCalculator } from './DuelCalculator'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
 import { ReactionButtons } from './ReactionButtons'
 import { isEmojiSignal, isSignal } from './signals'
@@ -1666,6 +1667,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
     if (covered) {
       setMarkMenu(null)
       setRivalInspected(null)
+      setLifeOpen(false)
     }
   }, [covered])
   useClockPause(duel, snapshot, paused)
@@ -1674,6 +1676,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const [chatOpen, setChatOpen] = useState(false)
   // La moneda, el dado y los juegos: se abren desde el + de la mesa.
   const [gamesOpen, setGamesOpen] = useState(false)
+  // La calculadora de vidas (sincronizada con el duelo): se abre al tocar las vidas de cualquiera de los dos; con la pausa o el resultado encima se cierra.
+  const [lifeOpen, setLifeOpen] = useState(false)
   const rivalCaptions = useMemo(() => [rivalEffect, announcement], [rivalEffect, announcement])
   const feed = useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber: duelTurnNumber(mine, theirs!.state), rivalName: snapshot.peerName ?? t('duel.bar.rival'), myName })
   const signals = useSignals(snapshot)
@@ -1744,13 +1748,13 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} />,
       // En escritorio el chat está siempre abierto a la derecha (en el celular, un panel que se abre desde el botón de abajo).
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
-      life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} signal={signals.mine} />,
+      life: <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} />,
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} lane={lane} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} lane={lane} />,
       }
     },
     [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen],
@@ -1841,6 +1845,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         anonymous
       />
       {rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}
+      <DuelCalculator isOpen={lifeOpen} snapshot={snapshot} myName={myName} duel={duel} onClose={() => setLifeOpen(false)} />
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
       <TossOverlay snapshot={snapshot} myName={myName} />
       {firstBanner !== null ? <TurnOrderBanner key={snapshot.starter + '-' + snapshot.series.game} first={firstBanner} rival={rivalName} onDone={hideBanner} /> : null}

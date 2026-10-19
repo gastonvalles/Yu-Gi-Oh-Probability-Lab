@@ -247,7 +247,7 @@ export const duel: Translated<typeof es> = {
   'duel.bar.yourTurn': 'Your turn',
   'duel.bar.theirTurn': "{name}'s turn",
   'duel.bar.lifeOf': "{name}'s life points",
-  'duel.bar.changeLife': 'Change my life points',
+  'duel.bar.openCalculator': 'Open the life calculator',
   'duel.bar.clock': 'Round clock: {time}',
   'duel.bar.clockStart': 'Start the clock',
   'duel.bar.clockPause': 'Pause the clock',
@@ -279,11 +279,6 @@ export const duel: Translated<typeof es> = {
   'duel.lobby.dropPaused': 'Drop that duel',
   'duel.watch.paused': 'Paused',
 
-  'duel.life.title': 'My life points',
-  'duel.life.footnote': 'With fewer than three digits it reads as hundreds (18 = 1800).',
-  'duel.life.empty': 'Type the amount',
-  'duel.life.applySubtract': 'Subtract {amount}',
-  'duel.life.applyAdd': 'Add {amount}',
 
   'duel.games.open': 'Coin, die and more',
   'duel.games.title': 'Games',
