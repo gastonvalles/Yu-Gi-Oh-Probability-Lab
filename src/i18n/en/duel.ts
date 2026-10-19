@@ -356,10 +356,6 @@ export const duel: Translated<typeof es> = {
   'duel.chat.quickTitle': 'Quick messages',
   'duel.signal.thinking': 'Thinking…',
   'duel.signal.good': 'Go ahead',
-  'duel.signal.hold': 'Wait',
-  'duel.hold.theirs': '{name} asks you to wait',
-  'duel.hold.mine': 'You asked to wait',
-  'duel.hold.release': 'Release the hold',
 
   // The turn and the rival's phases.
 

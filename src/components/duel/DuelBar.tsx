@@ -67,18 +67,17 @@ interface DuelBarProps {
   onReconnect: () => void
   /** La tarjeta del resultado está abierta sobre la mesa: la línea de arriba no la repite. */
   resultOpen?: boolean
-  /** La señal del rival que está a la vista (pensando, continuá, esperá): sale como un globo junto a sus vidas. */
+  /** La señal del rival que está a la vista (pensando, continuá): sale como un globo junto a sus vidas. */
   rivalSignal?: string | null
-  /** Lo que se apoya sobre la línea del registro (la misma fila, sin sumar alto: el campo no se mueve): un pedido de esperar o de volver atrás, o cómo terminó el tuyo. */
+  /** Lo que se apoya sobre la línea del registro (la misma fila, sin sumar alto: el campo no se mueve): un pedido de volver atrás, o cómo terminó el tuyo. */
   lane?: LaneNotice | null
 }
 
 /**
  * Los avisos de atención entre los dos jugadores, que nunca bloquean nada (antes el permiso para volver atrás era un diálogo que tapaba la mesa). Uno a la vez, el más urgente primero:
- * el pedido del rival de volver atrás (hay que contestar), el tuyo (esperando), cómo terminó, y los «Esperá».
+ * el pedido del rival de volver atrás (hay que contestar), el tuyo (esperando) y cómo terminó.
  */
 export type LaneNotice =
-  | { kind: 'hold'; mine: boolean; theirs: boolean; onRelease: () => void }
   | { kind: 'undoAsked'; onAllow: () => void; onDeny: () => void }
   | { kind: 'undoAsking' }
   | { kind: 'undoResult'; result: 'denied' | 'expired' }
@@ -88,13 +87,8 @@ export type LaneNotice =
  * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
  * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
-/**
- * El cartel de «Esperá»: el del rival (ámbar, lleno: hay que atenderlo) o el tuyo (violeta claro, con cómo soltarlo). Es un aviso entre dos personas: no tapa el campo ni la mano,
- * no se cierra solo antes de tiempo (dura hasta que se suelta, ver `useHolds`) y no bloquea nada.
- */
+/** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo) y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
 function LaneBanner({ lane, rivalName }: { lane: LaneNotice; rivalName: string }) {
-  if (lane.kind === 'hold') return <HoldBanner hold={lane} rivalName={rivalName} />
-
   const asked = lane.kind === 'undoAsked'
 
   return (
@@ -116,29 +110,6 @@ function LaneBanner({ lane, rivalName }: { lane: LaneNotice; rivalName: string }
   )
 }
 
-function HoldBanner({ hold, rivalName }: { hold: Extract<LaneNotice, { kind: 'hold' }>; rivalName: string }) {
-  const rival = hold.theirs
-
-  return (
-    <div
-      role="status"
-      data-hold={rival ? 'theirs' : 'mine'}
-      className={cx('absolute inset-0 flex items-center gap-2 rounded-card border px-3 text-body font-bold', rival ? 'border-info bg-info text-accent-foreground' : 'border-accent/60 bg-accent/15 text-accent')}
-    >
-      {/* El emoji en un círculo oscuro: sobre el ámbar lleno no se ve. */}
-      <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-background text-lead leading-none">
-        ✋
-      </span>
-      <span className="min-w-0 flex-1 truncate">{rival ? t('duel.hold.theirs', { name: rivalName }) : t('duel.hold.mine')}</span>
-      {rival ? null : (
-        <Button variant="tertiary" size="sm" onClick={hold.onRelease}>
-          {t('duel.hold.release')}
-        </Button>
-      )}
-    </div>
-  )
-}
-
 /** Los íconos sueltos de la barra de arriba (la vista, rendirse, el engranaje y salir): 40 px cada uno (36 en un celular angosto, 32 en uno de 320 px) para que entren con la hamburguesa, las vidas y el reloj. */
 const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
 
@@ -152,8 +123,8 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
   // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [moreOpen, setMoreOpen] = useState(false)
-  // Si los dos pidieron esperar se ve el del rival (el que hay que atender); el tuyo queda apretado abajo.
-  const holding = lane !== null
+  // Con un aviso puesto sobre la línea del registro, esa línea no se ve (la misma fila: el campo no se mueve).
+  const laneOpen = lane !== null
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
@@ -223,17 +194,17 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
         </span>
       </div>
 
-      {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un pedido de esperar se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). */}
+      {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). */}
       {log ? (
         <div className="relative order-3 basis-full min-[1101px]:hidden">
-          <div inert={holding} className={cx(holding && 'invisible')}>
+          <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
             {log}
           </div>
           {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
         </div>
       ) : null}
       {/* Escritorio (sin línea del registro): el mismo cartel, centrado debajo de la barra. */}
-      {docked && holding ? (
+      {docked && laneOpen ? (
         <div className="absolute left-1/2 top-full z-20 mt-1 h-11 w-[min(24rem,100%)] -translate-x-1/2">
           {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
         </div>
@@ -309,8 +280,6 @@ interface DuelToolsProps {
   onSendChat: Duel['sendChat']
   /** El chat está fijo al costado (escritorio): las reacciones están en el chat y no se repiten abajo. */
   chatDocked?: boolean
-  /** Pediste esperar y sigue pedido: ✋ queda apretado. */
-  holding?: boolean
   /** El botón del chat (sólo en el celular, donde no está a la vista): va entre el + y las señales, al alcance del pulgar. */
   chat?: ReactNode
   /** La hoja de la moneda, el dado y los juegos (la abre el + de la mesa). */
@@ -319,14 +288,14 @@ interface DuelToolsProps {
 }
 
 /**
- * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): el chat y las dos señales (✋ Esperá y 👍 Continuá), que son de lo más a mano.
+ * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): el chat y la señal 👍 Continuá, que es de lo más a mano.
  * En escritorio el chat está fijo a la derecha de la mesa y las señales van en él. La moneda, el dado y los juegos están dentro del + (su hoja se arma acá).
  */
-export function DuelTools({ snapshot, myName, games, onSendChat, chatDocked = false, holding = false, chat, gamesOpen, onGamesClose }: DuelToolsProps) {
+export function DuelTools({ snapshot, myName, games, onSendChat, chatDocked = false, chat, gamesOpen, onGamesClose }: DuelToolsProps) {
   return (
     <>
       {chat}
-      {chatDocked ? null : <ReactionButtons set="dock" onSend={onSendChat} disabled={!snapshot.peerPresent} holding={holding} />}
+      {chatDocked ? null : <ReactionButtons set="dock" onSend={onSendChat} disabled={!snapshot.peerPresent} />}
 
       <DuelGames isOpen={gamesOpen} onClose={onGamesClose} snapshot={snapshot} myName={myName} actions={games} />
     </>
@@ -343,12 +312,10 @@ interface DuelChatToggleProps {
   open: boolean
   onOpen: () => void
   onClose: () => void
-  /** Pediste esperar y sigue pedido: ✋ queda apretado. */
-  holding?: boolean
 }
 
 /** El botón del chat del celular, con un contador de lo que no leíste, y el panel que se abre por la derecha (con el registro de jugadas). */
-export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpen, onClose, holding }: DuelChatToggleProps) {
+export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpen, onClose }: DuelChatToggleProps) {
   const unread = useChatUnread(snapshot, open)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
 
@@ -366,7 +333,7 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
       </span>
 
       <SideDrawer isOpen={open} onClose={onClose} title={t('duel.chat.title', { name: rivalName })}>
-        <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} feed={feed} holding={holding} fill />
+        <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} feed={feed} fill />
       </SideDrawer>
     </>
   )

@@ -2027,7 +2027,7 @@ describe('la pantalla del duelo', () => {
     inChat = roomChat(guest)
     expect(inChat.getByText('Hola, ya entro')).toBeInTheDocument()
 
-    // Un mensaje rápido va con un toque. Las señales, sólo con su emoji (🤔 pensando, 👍 continuá): nada de una lista larga ni de texto. En la sala no está ✋ esperá (antes de empezar no hay nada que esperar): sólo en la mesa.
+    // Un mensaje rápido va con un toque. Las señales, sólo con su emoji (🤔 pensando, 👍 continuá): nada de una lista larga ni de texto.
     const quick = inChat.getByRole('group', { name: 'Mensajes rápidos' })
     expect(within(quick).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(['Pensando…', 'Continuá'])
     for (const button of within(quick).getAllByRole('button')) {
@@ -3164,7 +3164,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
   })
 
-  it('las señales de abajo (✋ esperá y 👍 continuá) están a mano del pulgar; las tuyas salen como un globo junto a tus vidas y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {
+  it('la señal de abajo (👍 continuá) está a mano del pulgar; las tuyas salen como un globo junto a tus vidas y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel()
     openTable(host, guest)
@@ -3173,9 +3173,9 @@ describe('la pantalla del duelo', () => {
     const rivalEmoji = (view: RenderResult) => within(view.container).queryByTestId('rival-emoji')
 
     expect(rivalEmoji(host)).toBeNull()
-    // Abajo, con el pulgar: deshacer, el + (la ficha, los contadores y los juegos), el chat y las dos señales. Los dados ya no tienen botón: están dentro del +.
+    // Abajo, con el pulgar: deshacer, el + (la ficha, los contadores y los juegos), el chat y la señal. Los dados ya no tienen botón: están dentro del +.
     const toolbar = within(guest.container).getByRole('toolbar')
-    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Chat', 'Esperá', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
+    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Chat', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
     expect(within(toolbar).queryByRole('button', { name: 'Moneda, dado y más' })).not.toBeInTheDocument()
 
     // Beto avisa que continúa: lo suyo se ve como un globo junto a sus vidas; en el celular el de su rival (Ana) sale como un mensaje entrante (el aviso de abajo a la derecha, con su nombre), no en toda la pantalla.
@@ -3206,13 +3206,9 @@ describe('la pantalla del duelo', () => {
     expect(incoming().at(-1)).toMatchObject({ message: '👍', rival: 'Ana' })
     expect(within(guest.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
 
-    // ✋ no avisa así: tiene su propio cartel.
-    const before = custom.mock.calls.length
-
-    fireEvent.click(within(guest.container).getByRole('button', { name: 'Esperá' }))
-    flush()
-    expect(custom.mock.calls).toHaveLength(before)
-    expect(host.container.querySelector('[data-hold]')).not.toBeNull()
+    // No hay ✋ «Esperá»: ni botón ni cartel.
+    expect(within(guest.container).queryByRole('button', { name: 'Esperá' })).not.toBeInTheDocument()
+    expect(host.container.querySelector('[data-hold]')).toBeNull()
   })
 
   it('en escritorio el emoji del rival sale grande en el medio de la pantalla, no tapa la mesa y desaparece al tocarlo (o solo, a los pocos segundos)', () => {
@@ -3243,7 +3239,6 @@ describe('la pantalla del duelo', () => {
     expect(rivalEmoji(host)).toBeNull()
 
     // Otro, que nadie toca, se va solo.
-    fireEvent.click(within(guest.container).getByRole('button', { name: 'Esperá' }))
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))
     flush()
     expect(rivalEmoji(host)).toHaveTextContent('👍')
@@ -3251,91 +3246,6 @@ describe('la pantalla del duelo', () => {
       vi.advanceTimersByTime(3000)
     })
     expect(rivalEmoji(host)).toBeNull()
-  })
-
-  it('✋ Esperá es un pedido de atención y no una reacción: el rival ve un cartel hasta que se suelta, jugar no lo cancela y 👍 o tocar ✋ otra vez lo suelta', () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const { host, guest } = startDuel({ cardsById: monsters })
-    openTable(host, guest)
-    const banner = (view: RenderResult) => view.container.querySelector('[data-hold]')
-
-    expect(banner(host)).toBeNull()
-    const hold = within(guest.container).getByRole('button', { name: 'Esperá' })
-    expect(hold).toHaveAttribute('aria-pressed', 'false')
-    fireEvent.click(hold)
-    flush()
-
-    // Ana ve el cartel del rival (ámbar, lleno), con su nombre; Beto ve el suyo, con cómo soltarlo, y ✋ queda apretado.
-    expect(banner(host)).toHaveAttribute('data-hold', 'theirs')
-    expect(banner(host)).toHaveTextContent('Beto pide que esperes')
-    expect(banner(host)).toHaveClass('bg-info')
-    expect(banner(guest)).toHaveAttribute('data-hold', 'mine')
-    expect(banner(guest)).toHaveTextContent('Pediste esperar')
-    expect(within(guest.container).getByRole('button', { name: 'Esperá' })).toHaveAttribute('aria-pressed', 'true')
-    // El cartel se apoya sobre la línea del registro (la misma fila): no suma alto, y no tiene botones de más para quien lo recibe.
-    expect(banner(host)!.parentElement).toHaveClass('relative', 'basis-full')
-    expect(within(banner(host) as HTMLElement).queryByRole('button')).not.toBeInTheDocument()
-
-    // No dura sólo un instante ni se cancela por jugar (quien la pidió decide cuándo seguir): pasan los segundos y ella misma juega.
-    act(() => {
-      vi.advanceTimersByTime(30_000)
-    })
-    summonFirst(guest)
-    flush()
-    expect(banner(host)).toHaveAttribute('data-hold', 'theirs')
-    expect(banner(guest)).toHaveAttribute('data-hold', 'mine')
-
-    // Soltarla: tocar ✋ otra vez manda 👍 (continuá) y los dos carteles se van.
-    fireEvent.click(within(guest.container).getByRole('button', { name: 'Esperá' }))
-    flush()
-    expect(banner(host)).toBeNull()
-    expect(banner(guest)).toBeNull()
-    expect(within(guest.container).getByRole('button', { name: 'Esperá' })).toHaveAttribute('aria-pressed', 'false')
-
-    // También se suelta desde el cartel propio, y 👍 (continuá) de la misma persona la suelta.
-    fireEvent.click(within(guest.container).getByRole('button', { name: 'Esperá' }))
-    flush()
-    expect(banner(host)).not.toBeNull()
-    fireEvent.click(within(banner(guest) as HTMLElement).getByRole('button', { name: 'Soltar la espera' }))
-    flush()
-    expect(banner(host)).toBeNull()
-    expect(banner(guest)).toBeNull()
-  })
-
-  it('una espera que nadie soltó se vence sola (tope de seguridad de un minuto), y si el rival se va no queda colgada', () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const { host, guest } = startDuel()
-    openTable(host, guest)
-    const banner = (view: RenderResult) => view.container.querySelector('[data-hold]')
-
-    fireEvent.click(within(host.container).getByRole('button', { name: 'Esperá' }))
-    flush()
-    expect(banner(guest)).toHaveAttribute('data-hold', 'theirs')
-
-    act(() => {
-      vi.advanceTimersByTime(59_000)
-    })
-    expect(banner(guest)).not.toBeNull()
-    act(() => {
-      vi.advanceTimersByTime(2_000)
-    })
-    expect(banner(guest)).toBeNull()
-    expect(banner(host)).toBeNull()
-    expect(within(host.container).getByRole('button', { name: 'Esperá' })).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  it('el 👍 del rival no suelta mi espera: sólo la suelta quien la pidió', () => {
-    const { host, guest } = startDuel()
-    openTable(host, guest)
-    const banner = (view: RenderResult) => view.container.querySelector('[data-hold]')
-
-    fireEvent.click(within(guest.container).getByRole('button', { name: 'Esperá' }))
-    flush()
-    fireEvent.click(within(host.container).getByRole('button', { name: 'Continuá' }))
-    flush()
-
-    expect(banner(guest)).toHaveAttribute('data-hold', 'mine')
-    expect(banner(host)).toHaveAttribute('data-hold', 'theirs')
   })
 
   it('en escritorio el chat está siempre abierto a la derecha: se escribe sin abrir nada y no hay botón para abrirlo', () => {
