@@ -108,7 +108,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
   }
 
   return (
-    <div className="grid gap-0.5">
+    <div className="stagger grid gap-0.5 [--stagger-step:60ms]">
       {list.tiers.map((tier) => {
         const to: Place = { kind: 'tier', id: tier.id }
 
