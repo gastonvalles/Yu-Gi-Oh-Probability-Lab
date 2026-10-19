@@ -3,6 +3,7 @@ import type { DuelSettings } from '../../app/duel-protocol'
 import { MAX_SPECTATORS } from '../../app/duel-relay-rules'
 import { GENESYS_POINT_CAP } from '../../app/genesys-format'
 import { t } from '../../i18n'
+import { Icon, type IconName } from '../ui/Icon'
 
 interface RoomRulesProps {
   settings: DuelSettings
@@ -17,7 +18,8 @@ interface RoomRulesProps {
  * Reemplaza a las pastillas y a las frases sueltas de antes: cada dato se dice una sola vez.
  */
 export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
-  const rows: ReadonlyArray<readonly [string, string]> = [
+  // Lo que tiene que ver con quien mira lleva un ojo (el tercer dato de la fila).
+  const rows: ReadonlyArray<readonly [string, string, IconName?]> = [
     [t('duel.rules.type'), settings.match ? t('duel.rooms.match') : t('duel.rooms.single')],
     ...(settings.match && settings.siding ? ([[t('duel.rules.siding'), t('duel.rules.yes')]] as const) : []),
     [t('duel.rules.format'), getDeckFormatLabel(settings.format)],
@@ -26,16 +28,19 @@ export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
     [t('duel.rules.life'), String(settings.lp)],
     [t('duel.rules.hand'), String(settings.hand)],
     ...(isPublic === null ? [] : ([[t('duel.create.visibility'), isPublic ? t('duel.create.public') : t('duel.create.private')]] as const)),
-    ...(watchers === undefined ? [] : ([[t('duel.rules.watching'), t('duel.rules.watchingValue', { count: watchers, max: MAX_SPECTATORS })]] as const)),
+    ...(watchers === undefined ? [] : ([[t('duel.rules.watching'), t('duel.rules.watchingValue', { count: watchers, max: MAX_SPECTATORS }), 'eye']] as const)),
   ]
 
   return (
     <section aria-label={t('duel.rules.title')} data-testid="room-summary" className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
       <h3 className="m-0 text-micro font-semibold uppercase text-soft">{t('duel.rules.title')}</h3>
       <dl className="m-0 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-        {rows.map(([label, value]) => (
+        {rows.map(([label, value, icon]) => (
           <div key={label} className="flex items-baseline justify-between gap-3">
-            <dt className="text-body text-muted">{label}</dt>
+            <dt className="inline-flex items-center gap-1.5 text-body text-muted">
+              {icon ? <Icon name={icon} size={14} /> : null}
+              {label}
+            </dt>
             <dd className="m-0 truncate text-right text-body font-semibold text-foreground">{value}</dd>
           </div>
         ))}

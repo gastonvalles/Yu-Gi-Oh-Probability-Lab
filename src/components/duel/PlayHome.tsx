@@ -356,7 +356,10 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
                                   {chip}
                                 </Badge>
                               ))}
-                              <span className="text-micro text-soft">{t('duel.arena.watchers', { count: duel.watchers, max: MAX_SPECTATORS })}</span>
+                              <span className="inline-flex items-center gap-1 text-micro text-soft">
+                                <Icon name="eye" size={14} />
+                                {t('duel.arena.watchers', { count: duel.watchers, max: MAX_SPECTATORS })}
+                              </span>
                             </span>
                           </span>
                           <Button variant="secondary" size="sm" icon="eye" aria-label={t('duel.arena.watchLabel', { name: duel.host })} disabled={full} onClick={() => onJoin(duel.code, true)}>
@@ -391,7 +394,12 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
         prefs={prefs}
         canPublish={Boolean(rooms)}
         canOpen={deckReady}
+        canTrain={trainReady}
         onClose={() => setRulesOpen(false)}
+        onTrain={() => {
+          setRulesOpen(false)
+          onTrain()
+        }}
         onSave={(next) => {
           setPrefs(next)
           writePrefs(next)
@@ -419,10 +427,16 @@ interface RulesSheetProps {
   canPublish: boolean
   /** Hay deck para repartir la mano: sin eso no se abre el duelo (las reglas sí se guardan). */
   canOpen: boolean
+  /** Hay un deck armado en el builder: «Solo» juega con ése. */
+  canTrain: boolean
   onClose: () => void
   onSave: (prefs: DuelPrefs) => void
   onOpen: (prefs: DuelPrefs, isPublic: boolean) => void
+  onTrain: () => void
 }
+
+/** Los tres modos de una sala: un solo duelo, un Match, o Solo (la mesa sin rival ni sala: no es una regla que se guarde sino otra forma de entrar). */
+type RoomMode = 'single' | 'match' | 'solo'
 
 /** Un campo de la hoja: su nombre en mayúsculas chicas arriba y el control abajo (con una línea que aclara, sólo si hace falta). */
 function RuleField({ label, hint, className, children }: { label: string; hint?: string | null; className?: string; children: ReactNode }) {
@@ -440,19 +454,22 @@ function RuleField({ label, hint, className, children }: { label: string; hint?:
  * (tipo y tiempo, formato y quién entra) donde hay lugar y en una columna en el celular; cada uno con una sola línea de ayuda, y sólo cuando aclara algo. El tiempo es de 50 minutos o ninguno;
  * en Genesys aparece el tope de puntos del deck.
  */
-function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpen }: RulesSheetProps) {
+function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onSave, onOpen, onTrain }: RulesSheetProps) {
   const [draft, setDraft] = useState<DuelPrefs>(prefs)
   const [isPublic, setIsPublic] = useState(true)
+  const [solo, setSolo] = useState(false)
   const set = (patch: Partial<DuelPrefs>) => setDraft((current) => ({ ...current, ...patch }))
 
-  // Cada vez que se abre arranca de lo que está guardado.
+  // Cada vez que se abre arranca de lo que está guardado (y en un duelo con rival: «Solo» no se recuerda).
   useEffect(() => {
     if (isOpen) {
       setDraft(prefs)
+      setSolo(false)
     }
   }, [isOpen, prefs])
 
   const genesys = draft.format === 'genesys'
+  const mode: RoomMode = solo ? 'solo' : draft.match ? 'match' : 'single'
 
   return (
     <Modal
@@ -462,40 +479,57 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpe
       title={t('duel.play.rules')}
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="secondary" onClick={() => onSave(draft)}>
-            {t('duel.play.rulesSave')}
-          </Button>
-          <Button variant="primary" disabled={!canOpen} onClick={() => onOpen(draft, canPublish && isPublic)}>
-            {t('duel.play.rulesOpen')}
-          </Button>
+          {solo ? (
+            <Button variant="primary" icon="hand" disabled={!canTrain} onClick={onTrain}>
+              {t('duel.play.rulesSolo')}
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => onSave(draft)}>
+                {t('duel.play.rulesSave')}
+              </Button>
+              <Button variant="primary" disabled={!canOpen} onClick={() => onOpen(draft, canPublish && isPublic)}>
+                {t('duel.play.rulesOpen')}
+              </Button>
+            </>
+          )}
         </div>
       }
     >
       <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
-        <RuleField label={t('duel.create.type')} hint={draft.match ? t('duel.create.matchHint') : null}>
-          <Segmented<'single' | 'match'>
+        <RuleField label={t('duel.create.type')} hint={solo ? (canTrain ? t('duel.create.soloHint') : t('duel.play.trainNeedDeck')) : draft.match ? t('duel.create.matchHint') : null} className="sm:col-span-2">
+          <Segmented<RoomMode>
             label={t('duel.create.type')}
             fullWidth
-            value={draft.match ? 'match' : 'single'}
-            onChange={(value) => set({ match: value === 'match', siding: value === 'match' && draft.siding })}
+            value={mode}
+            onChange={(value) => {
+              setSolo(value === 'solo')
+
+              if (value !== 'solo') {
+                set({ match: value === 'match', siding: value === 'match' && draft.siding })
+              }
+            }}
             options={[
               { value: 'single', label: t('duel.create.single') },
               { value: 'match', label: t('duel.create.match') },
+              { value: 'solo', label: t('duel.create.solo') },
             ]}
           />
         </RuleField>
 
-        <RuleField label={t('duel.create.time')}>
-          <Segmented<string>
-            label={t('duel.create.time')}
-            fullWidth
-            value={String(draft.limitMin)}
-            onChange={(value) => set({ limitMin: Number(value) })}
-            options={DUEL_LIMIT_CHOICES.map((min) => ({ value: String(min), label: min === 0 ? t('duel.play.timeNone') : t('duel.play.timeMin', { min }) }))}
-          />
-        </RuleField>
+        {solo ? null : (
+          <RuleField label={t('duel.create.time')} className="sm:col-span-2">
+            <Segmented<string>
+              label={t('duel.create.time')}
+              fullWidth
+              value={String(draft.limitMin)}
+              onChange={(value) => set({ limitMin: Number(value) })}
+              options={DUEL_LIMIT_CHOICES.map((min) => ({ value: String(min), label: min === 0 ? t('duel.play.timeNone') : t('duel.play.timeMin', { min }) }))}
+            />
+          </RuleField>
+        )}
 
-        {draft.match ? (
+        {draft.match && !solo ? (
           <div className="flex items-center justify-between gap-3 sm:col-span-2">
             <span className="grid min-w-0 gap-0.5">
               <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
@@ -505,52 +539,56 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpe
           </div>
         ) : null}
 
-        <RuleField label={t('duel.create.format')}>
-          <FieldBox>
-            <select aria-label={t('duel.create.format')} value={draft.format} onChange={(event) => set({ format: event.target.value as DeckFormat })} className={fieldInline}>
-              {DUEL_FORMATS.map((value) => (
-                <option key={value} value={value}>
-                  {getDeckFormatLabel(value)}
-                </option>
-              ))}
-            </select>
-          </FieldBox>
-        </RuleField>
+        {solo ? null : (
+          <>
+            <RuleField label={t('duel.create.format')}>
+              <FieldBox>
+                <select aria-label={t('duel.create.format')} value={draft.format} onChange={(event) => set({ format: event.target.value as DeckFormat })} className={fieldInline}>
+                  {DUEL_FORMATS.map((value) => (
+                    <option key={value} value={value}>
+                      {getDeckFormatLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </FieldBox>
+            </RuleField>
 
-        {canPublish ? (
-          <RuleField label={t('duel.create.visibility')} hint={isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
-            <Segmented<'public' | 'private'>
-              label={t('duel.create.visibility')}
-              fullWidth
-              value={isPublic ? 'public' : 'private'}
-              onChange={(value) => setIsPublic(value === 'public')}
-              options={[
-                { value: 'public', label: t('duel.create.public') },
-                { value: 'private', label: t('duel.create.private') },
-              ]}
-            />
-          </RuleField>
-        ) : null}
+            {canPublish ? (
+              <RuleField label={t('duel.create.visibility')} hint={isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
+                <Segmented<'public' | 'private'>
+                  label={t('duel.create.visibility')}
+                  fullWidth
+                  value={isPublic ? 'public' : 'private'}
+                  onChange={(value) => setIsPublic(value === 'public')}
+                  options={[
+                    { value: 'public', label: t('duel.create.public') },
+                    { value: 'private', label: t('duel.create.private') },
+                  ]}
+                />
+              </RuleField>
+            ) : null}
 
-        {genesys ? (
-          <div className="flex items-center justify-between gap-3 sm:col-span-2">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-semibold text-foreground">{t('duel.create.genesysCap')}</span>
-              <span className="text-micro text-soft">{t('duel.create.genesysCapHint')}</span>
-            </span>
-            <Stepper
-              label={t('duel.create.genesysCap')}
-              value={draft.genesysCap}
-              min={GENESYS_CAP_RANGE.min}
-              max={GENESYS_CAP_RANGE.max}
-              step={10}
-              onChange={(value) => set({ genesysCap: value })}
-            />
-          </div>
-        ) : null}
+            {genesys ? (
+              <div className="flex items-center justify-between gap-3 sm:col-span-2">
+                <span className="grid min-w-0 gap-0.5">
+                  <span className="text-body font-semibold text-foreground">{t('duel.create.genesysCap')}</span>
+                  <span className="text-micro text-soft">{t('duel.create.genesysCapHint')}</span>
+                </span>
+                <Stepper
+                  label={t('duel.create.genesysCap')}
+                  value={draft.genesysCap}
+                  min={GENESYS_CAP_RANGE.min}
+                  max={GENESYS_CAP_RANGE.max}
+                  step={10}
+                  onChange={(value) => set({ genesysCap: value })}
+                />
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
 
-      <p className="m-0 mt-4 text-micro text-soft">{draft.format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>
+      {solo ? null : <p className="m-0 mt-4 text-micro text-soft">{draft.format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>}
     </Modal>
   )
 }

@@ -17,10 +17,14 @@ const REACTIONS = {
   good: { emoji: '👍', label: () => t('duel.signal.good'), text: () => GOOD_MESSAGE },
 } as const
 
-/** La botonera de abajo lleva sólo lo que se necesita ya (esperá y continuá); el chat, los tres. */
+/**
+ * La botonera de abajo lleva sólo lo que se necesita ya (esperá y continuá); el chat de la mesa, los tres; el de la sala, sin ✋: antes de empezar no hay nada que pedir que esperen
+ * (Gastón, 2026-10-18: «esto no es necesario, eliminalo»).
+ */
 const SETS = {
   dock: ['hold', 'good'],
   chat: ['thinking', 'hold', 'good'],
+  room: ['thinking', 'good'],
 } as const satisfies Record<string, readonly (keyof typeof REACTIONS)[]>
 
 interface ReactionButtonsProps {

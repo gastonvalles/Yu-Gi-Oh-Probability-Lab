@@ -8,6 +8,8 @@ import { Icon, type IconName } from './Icon'
 import { TONE, type Tone } from './tone'
 
 const SWIPE_DISMISS_PX = 70
+/** Un toque es un gesto que casi no se mueve: se va el aviso (como el clic sobre el emoji grande del rival en escritorio). */
+const TAP_MAX_PX = 8
 
 const TOAST_TONE: Record<ToastTone, { tone: Tone; icon: IconName }> = {
   info: { tone: 'brand', icon: 'info' },
@@ -35,7 +37,7 @@ interface AppToastProps {
   rival?: string
 }
 
-/** Aviso único de la app: con color según el tipo y se descarta deslizándolo hacia un costado. */
+/** Aviso único de la app: con color según el tipo y se descarta con un toque o deslizándolo hacia un costado. */
 export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
   const [offset, setOffset] = useState(0)
   const [dismissed, setDismissed] = useState(false)
@@ -52,12 +54,19 @@ export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
     }
   }
 
-  const handleUp = () => {
+  const dismiss = () => {
+    setDismissed(true)
+    window.setTimeout(() => toast.remove(id), 160)
+  }
+
+  const handleUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pressed = startRef.current !== null
+
     startRef.current = null
 
-    if (Math.abs(offset) >= SWIPE_DISMISS_PX) {
-      setDismissed(true)
-      window.setTimeout(() => toast.remove(id), 160)
+    // Deslizarlo o tocarlo (un solo toque) lo descarta; cancelado por el sistema (el gesto se lo llevó otro), no.
+    if (Math.abs(offset) >= SWIPE_DISMISS_PX || (pressed && event.type === 'pointerup' && Math.abs(offset) < TAP_MAX_PX)) {
+      dismiss()
       return
     }
 

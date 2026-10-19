@@ -93,7 +93,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding
 
       <div className="grid gap-2">
         {/* Los dos mensajes rápidos, sólo con su emoji. */}
-        <ReactionButtons onSend={send} disabled={!peerPresent} holding={holding} />
+        <ReactionButtons set={feed ? 'chat' : 'room'} onSend={send} disabled={!peerPresent} holding={holding} />
 
         <form
           className="flex items-center gap-2"
