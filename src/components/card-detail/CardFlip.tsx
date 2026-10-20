@@ -31,6 +31,14 @@ export interface FlipTurns {
 
 const FRONT: FlipTurns = { x: 0, y: 0 }
 
+/** Lo que hace falta de un evento de puntero para terminar el gesto (sirve el de React y el de la ventana). */
+interface DragEnd {
+  pointerId: number
+  clientX: number
+  clientY: number
+  timeStamp: number
+}
+
 interface Drag {
   id: number
   x: number
@@ -68,17 +76,28 @@ export function useCardFlip() {
   const turnsRef = useRef(FRONT)
   const dragRef = useRef<Drag | null>(null)
   const draggedRef = useRef(false)
+  // Quita lo que se escucha en la ventana mientras dura el gesto.
+  const detachRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     turnsRef.current = turns
   }, [turns])
 
-  const finish = useCallback((event: ReactPointerEvent<HTMLElement>, cancelled: boolean) => {
+  useEffect(() => () => detachRef.current?.(), [])
+
+  const finish = useCallback((event: DragEnd, cancelled: boolean) => {
     const drag = dragRef.current
 
-    dragRef.current = null
+    // Otro dedo (u otro puntero) no termina el gesto: sólo el que lo empezó. Antes lo cerraba igual y la carta se quedaba trabada a medio giro.
+    if (!drag || drag.id !== event.pointerId) {
+      return
+    }
 
-    if (!drag?.active || drag.id !== event.pointerId) {
+    dragRef.current = null
+    detachRef.current?.()
+    detachRef.current = null
+
+    if (!drag.active) {
       return
     }
 
@@ -128,15 +147,40 @@ export function useCardFlip() {
     },
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
       if (event.pointerType === 'mouse' && event.button !== 0) return
+      // Un segundo dedo (u otro puntero) no cambia el gesto que ya está en curso.
+      if (dragRef.current) return
 
       const box = event.currentTarget.getBoundingClientRect()
 
       dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, at: event.timeStamp, width: Math.max(1, box.width), height: Math.max(1, box.height), active: false, angle: { x: 0, y: 0 } }
+
+      // Si se pierde el «soltar» (otro elemento se queda con el puntero, el dedo sale de la pantalla, la ventana pierde el foco), el gesto termina igual: la carta nunca se queda trabada a medio giro.
+      const stop = (end: PointerEvent) => finish(end, end.type === 'pointercancel')
+      const blur = () => {
+        const drag = dragRef.current
+
+        if (drag) finish({ pointerId: drag.id, clientX: drag.x, clientY: drag.y, timeStamp: drag.at + 1 }, true)
+      }
+
+      window.addEventListener('pointerup', stop)
+      window.addEventListener('pointercancel', stop)
+      window.addEventListener('blur', blur)
+      detachRef.current = () => {
+        window.removeEventListener('pointerup', stop)
+        window.removeEventListener('pointercancel', stop)
+        window.removeEventListener('blur', blur)
+      }
     },
     onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
       const drag = dragRef.current
 
       if (!drag || drag.id !== event.pointerId) return
+
+      // El mouse se movió sin tener el botón apretado: el «soltar» se perdió (se soltó fuera de la ventana, por ejemplo). El gesto terminó.
+      if (event.pointerType === 'mouse' && event.buttons === 0) {
+        finish(event, false)
+        return
+      }
 
       const dx = event.clientX - drag.x
       const dy = event.clientY - drag.y
