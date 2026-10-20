@@ -41,8 +41,8 @@ describe('la carta en grande', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Maxx en grande' })
 
-    // La carta (con su hijo) se toca sin cerrar el zoom.
-    fireEvent.click(dialog.firstElementChild!)
+    // La carta se toca sin cerrar el zoom.
+    fireEvent.click(screen.getByTitle(/Arrastrala/))
     expect(onClose).not.toHaveBeenCalled()
 
     // Afuera de la carta, el fondo, sí.
@@ -117,5 +117,144 @@ describe('la carta en grande', () => {
       </Provider>,
     )
     expect(flipped()).toBe('false')
+  })
+})
+
+const effectCard = { ...card, description: 'When this card is Special Summoned: You can discard 1 card; draw 2 cards. You can only use this effect of "Maxx" once per turn.' } as ApiCardReference
+
+describe('la barra de abajo de la carta en grande', () => {
+  const open = (props: Partial<Parameters<typeof CardZoom>[0]> = {}) =>
+    render(
+      <Provider store={store}>
+        <CardZoom card={effectCard} name="Maxx" onClose={vi.fn()} {...props} />
+      </Provider>,
+    )
+  const frame = () => screen.getByTitle(/Arrastrala/)
+
+  it('acerca y aleja de a un paso (100, 150, 200, 300 %), el porcentaje lo vuelve al 100 % y en las puntas el botón queda apagado', () => {
+    open()
+    const zoomIn = screen.getByRole('button', { name: 'Acercar' })
+    const zoomOut = screen.getByRole('button', { name: 'Alejar' })
+    const reset = screen.getByRole('button', { name: 'Volver al 100 %' })
+
+    expect(reset).toHaveTextContent('100%')
+    expect(zoomOut).toBeDisabled()
+    expect(reset).toBeDisabled()
+
+    fireEvent.click(zoomIn)
+    expect(reset).toHaveTextContent('150%')
+    fireEvent.click(zoomIn)
+    fireEvent.click(zoomIn)
+    expect(reset).toHaveTextContent('300%')
+    expect(zoomIn).toBeDisabled()
+
+    fireEvent.click(zoomOut)
+    expect(reset).toHaveTextContent('200%')
+    fireEvent.click(reset)
+    expect(reset).toHaveTextContent('100%')
+  })
+
+  it('las teclas + − 0 cambian el zoom; más grande que la pantalla ya no se gira (arrastrar desplaza) y al volver al 100 % sí', () => {
+    open()
+    const reset = screen.getByRole('button', { name: 'Volver al 100 %' })
+
+    expect(frame().className).toContain('touch-none')
+    fireEvent.keyDown(window, { key: '+' })
+    fireEvent.keyDown(window, { key: '=' })
+    expect(reset).toHaveTextContent('200%')
+    expect(screen.queryByTitle(/Arrastrala/)).not.toBeInTheDocument()
+    fireEvent.keyDown(window, { key: '-' })
+    expect(reset).toHaveTextContent('150%')
+    fireEvent.keyDown(window, { key: '0' })
+    expect(reset).toHaveTextContent('100%')
+    expect(frame().className).toContain('touch-none')
+  })
+
+  it('«Leer texto de efecto» muestra el texto de la carta con sus partes resaltadas sobre la imagen, y se esconde con el mismo botón; leerlo no cierra el zoom', () => {
+    const onClose = vi.fn()
+    open({ onClose })
+    const read = screen.getByRole('button', { name: 'Leer texto de efecto' })
+
+    expect(read).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('region', { name: 'Texto de la carta' })).not.toBeInTheDocument()
+
+    fireEvent.click(read)
+    const panel = screen.getByRole('region', { name: 'Texto de la carta' })
+
+    expect(read).toHaveAttribute('aria-pressed', 'true')
+    expect(panel).toHaveTextContent('When this card is Special Summoned')
+    expect(panel.querySelector('[data-tone="condition"]')).toHaveTextContent('When this card is Special Summoned')
+    expect(panel.querySelector('[data-tone="limit"]')).not.toBeNull()
+    fireEvent.click(panel)
+    fireEvent.click(read)
+    expect(screen.queryByRole('region', { name: 'Texto de la carta' })).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+describe('la impresión de la carta en grande', () => {
+  const edition = (market: number) => [{ edition: '1st Edition', market }]
+  const arts = [
+    { id: 'art-1', imageUrl: 'a', imageUrlSmall: null, label: '' },
+    { id: 'print-1', imageUrl: 'b', imageUrlSmall: null, label: '', printing: { set: 'Beyond the Brave', code: 'BETB-EN044', rarity: 'Starlight Rare', variant: 'Extended Art', editions: edition(107.11) } },
+    { id: 'print-2', imageUrl: 'c', imageUrlSmall: null, label: '', printing: { set: 'Beyond the Brave', code: 'BETB-EN044', rarity: 'Ultra Rare', variant: '', editions: edition(0.47) } },
+  ]
+
+  it('arriba a la izquierda dice cuál es (código, rareza, arte especial y precio) y la lista deja pasar a otra sin salir del zoom', () => {
+    const onArtChange = vi.fn()
+    const onClose = vi.fn()
+
+    render(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" arts={arts} artId="print-1" onArtChange={onArtChange} onClose={onClose} />
+      </Provider>,
+    )
+
+    const chip = screen.getByRole('button', { name: 'Impresiones' })
+
+    expect(chip).toHaveTextContent('BETB-EN044')
+    expect(chip).toHaveTextContent('Starlight Rare')
+    expect(chip).toHaveTextContent('Extended Art')
+    expect(chip).toHaveTextContent('107')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    fireEvent.click(chip)
+    const options = screen.getAllByRole('option')
+
+    expect(options).toHaveLength(2)
+    expect(options[0]).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(options[1]!)
+    expect(onArtChange).toHaveBeenCalledWith('print-2')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('Escape y el fondo cierran primero la lista y después el zoom; sin impresiones o sin con qué cambiarlas, no hay chip', () => {
+    const onClose = vi.fn()
+    const view = render(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" arts={arts} artId="print-1" onArtChange={vi.fn()} onClose={onClose} />
+      </Provider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Impresiones' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Impresiones' }))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Maxx en grande' }))
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    view.unmount()
+
+    render(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" arts={[arts[0]!]} artId="art-1" onArtChange={vi.fn()} onClose={onClose} />
+      </Provider>,
+    )
+    expect(screen.queryByRole('button', { name: 'Impresiones' })).not.toBeInTheDocument()
   })
 })

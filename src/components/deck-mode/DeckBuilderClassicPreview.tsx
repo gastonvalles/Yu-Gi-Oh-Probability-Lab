@@ -177,7 +177,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
               ) : null}
             </div>
           ) : null}
-          {zoomed ? <CardZoom card={{ ...card, imageUrl: artUrl }} fallbackUrl={card.imageUrl} name={card.name} navigation={navigation} onClose={() => setZoomed(false)} /> : null}
+          {zoomed ? <CardZoom card={{ ...card, imageUrl: art?.imageUrlLarge ?? artUrl }} fallbackUrl={art?.imageUrl ?? card.imageUrl} name={card.name} navigation={navigation} arts={arts} artId={art?.id ?? null} onArtChange={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} onClose={() => setZoomed(false)} /> : null}
           <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} onGoToPrint={() => setPricesOpen(false)} />
         </>
       ) : (
