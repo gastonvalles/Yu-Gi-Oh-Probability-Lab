@@ -7,7 +7,7 @@ import { replaceDeckBuilder } from './app/deck-builder-slice'
 import { loadFormatData } from './app/format-data'
 import { refreshStoredGenesysPoints } from './app/genesys-format'
 import { UI_ANIMATION_MS } from './app/motion'
-import { syncSiteMeta } from './i18n'
+import { getLocale, loadLocale, syncSiteMeta } from './i18n'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { store } from './app/store'
 import './index.css'
@@ -19,20 +19,26 @@ if (!appRoot) {
 }
 
 document.documentElement.style.setProperty('--motion-duration', `${UI_ANIMATION_MS}ms`)
-syncSiteMeta()
 
 const root = createRoot(appRoot)
 
+// Los textos del idioma de la página: el español viene con el archivo principal (listo al instante); el inglés es otro archivo chico que se baja antes de pintar. Si no se pudo bajar, la página sale en español.
+// Sin un `await` de nivel superior: en un módulo que llega al build fragmentaría el archivo principal.
+const localeReady = loadLocale(getLocale()).catch(() => {})
+
 const start = () =>
-  root.render(
-    <StrictMode>
-      <ErrorBoundary>
-        <Provider store={store}>
-          <App />
-        </Provider>
-      </ErrorBoundary>
-    </StrictMode>,
-  )
+  void localeReady.then(() => {
+    syncSiteMeta()
+    root.render(
+      <StrictMode>
+        <ErrorBoundary>
+          <Provider store={store}>
+            <App />
+          </Provider>
+        </ErrorBoundary>
+      </StrictMode>,
+    )
+  })
 
 // Leer el deck guardado no espera las tablas de Genesys y Edison: los puntos que quedaron sin resolver (la mayoría de los decks tiene alguna carta así) se completan apenas llegan.
 // Nunca rechaza: sin tablas el deck queda como estaba, y el próximo `loadFormatData` vuelve a intentar.

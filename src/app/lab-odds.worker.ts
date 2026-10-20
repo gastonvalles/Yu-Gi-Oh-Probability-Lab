@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { detectLocale, loadLocale } from '../i18n'
 import type { CardEntry, HandPattern, TurnView } from '../types'
 import { computeLabOdds, type LabOddsInput } from './lab-odds'
 import { calculateLabView } from './probability-lab'
@@ -18,8 +19,13 @@ export interface ViewRequest {
   view: Exclude<TurnView, 'average'>
 }
 
+// Los textos que arma el cálculo salen en el idioma de la página (el worker lo recibe por su nombre): el español viene con el worker; el inglés se baja antes de contestar el primer pedido.
+const localeReady = loadLocale(detectLocale()).catch(() => {})
+
 // El cálculo exacto es pesado: corre acá para no trabar la pantalla.
-self.onmessage = (event: MessageEvent<OddsRequest | ViewRequest>) => {
+self.onmessage = async (event: MessageEvent<OddsRequest | ViewRequest>) => {
+  await localeReady
+
   const request = event.data
 
   if (request.kind === 'view') {

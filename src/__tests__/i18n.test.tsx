@@ -169,3 +169,25 @@ describe('el idioma de la persona', () => {
     expect(document.querySelector('meta[property="og:locale"]')?.getAttribute('content')).toBe('en_US')
   })
 })
+
+describe('el inglés se baja aparte', () => {
+  it('con el módulo recién armado (sin el inglés bajado) el idioma inglés dice el español hasta que llega; después, inglés; y bajarlo otra vez no hace nada', async () => {
+    vi.resetModules()
+
+    const fresh = await import('../i18n')
+
+    fresh.applyLocale('en')
+    expect(fresh.t('common.close')).toBe('Cerrar')
+
+    await fresh.loadLocale('en')
+    expect(fresh.t('common.close')).toBe('Close')
+
+    // Ya está: otra vez es inmediato; y el español no se baja (viene con el archivo principal).
+    await fresh.loadLocale('en')
+    await fresh.loadLocale('es')
+    expect(fresh.t('common.close')).toBe('Close')
+
+    fresh.applyLocale('es')
+    expect(fresh.t('common.close')).toBe('Cerrar')
+  })
+})

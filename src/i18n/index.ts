@@ -1,4 +1,3 @@
-import { en } from './en'
 import { es } from './es'
 import type { MessageArgs, MessageKey, Messages, PluralMessage } from './types'
 
@@ -8,7 +7,12 @@ export type Locale = 'es' | 'en'
 export const LOCALES: readonly Locale[] = ['es', 'en']
 export const LOCALE_STORAGE_KEY = 'ygo-lab:locale'
 
-const MESSAGES: Record<Locale, Messages> = { es, en }
+/**
+ * Los textos de cada idioma. El español (el de siempre, el de quien llega sin elegir) viene con el archivo principal; el inglés es **otro archivo** que se baja sólo si es el idioma de la página (`loadLocale`): la
+ * mitad de los textos de la app no viaja a quien no la usa. Hasta que llega, `t()` dice el español (la página no se pinta antes: `main.tsx` espera `loadLocale`).
+ */
+const MESSAGES: Partial<Record<Locale, Messages>> = { es }
+const LOADERS: Partial<Record<Locale, () => Promise<Messages>>> = { en: () => import('./en').then((module) => module.en) }
 const PLURAL_RULES: Record<Locale, Intl.PluralRules> = { es: new Intl.PluralRules('es'), en: new Intl.PluralRules('en') }
 
 /** Etiquetas de `Intl` de cada idioma: números y fechas del español como estaban antes de traducir (coma decimal; día/mes/año). */
@@ -50,6 +54,13 @@ export function detectLocale(): Locale {
 }
 
 let current: Locale = detectLocale()
+
+/** Baja los textos de un idioma (el español ya está; el inglés es un archivo aparte). Antes de pintar, el de la página: `main.tsx` y el worker del Lab lo esperan. */
+export async function loadLocale(locale: Locale): Promise<void> {
+  const load = MESSAGES[locale] === undefined ? LOADERS[locale] : undefined
+
+  if (load) MESSAGES[locale] = await load()
+}
 
 export function getLocale(): Locale {
   return current
@@ -157,7 +168,8 @@ export function formatMessage(message: string | PluralMessage, params: Record<st
  * Se llama al dibujar, nunca al evaluar un módulo: las tablas guardan claves, no textos.
  */
 export function t<K extends MessageKey>(key: K, ...args: MessageArgs<K>): string {
-  return formatMessage(MESSAGES[current][key] as string | PluralMessage, args[0] as Record<string, string | number> | undefined, current)
+  // Si el idioma todavía no llegó (o no se pudo bajar), se dice en español: nunca una clave suelta.
+  return formatMessage((MESSAGES[current] ?? es)[key] as string | PluralMessage, args[0] as Record<string, string | number> | undefined, current)
 }
 
 /** Los textos de `index.html` que ven los buscadores y los links compartidos quedan en español; en el navegador se pasan al idioma elegido. */
