@@ -141,7 +141,7 @@ function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string):
 
 /** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo), tu pregunta de pasar de fase y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
 function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
-  const place = rail ? 'flex-wrap py-2' : 'absolute inset-0'
+  const place = rail ? 'flex-wrap py-2' : 'absolute inset-0 max-sm:pointer-events-auto'
   const clamp = rail ? '' : 'line-clamp-2'
 
   if (lane.kind === 'looking') {
@@ -379,9 +379,11 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
         </span>
       </div>
 
-      {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). */}
+      {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve).
+          En un celular en vertical la línea no ocupa lugar (`-mb-11`): flota sobre el borde de arriba de la mano del rival, así no queda una franja vacía cuando todavía no pasó nada (Gastón, 2026-10-20: «evita el espacio muerto»). */}
       {log ? (
-        <div className="relative order-3 basis-full min-[1101px]:hidden">
+        // Con el resultado puesto, en el celular la tira ocupa este mismo lugar (abajo): la mesa no se corre cuando termina el duelo.
+        <div className={cx('relative order-3 basis-full max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11 min-[1101px]:hidden', Boolean(result) && !resultOpen && 'max-[1100px]:hidden')}>
           <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
             {log}
           </div>
@@ -408,7 +410,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       ) : null}
 
       {result && !resultOpen ? (
-        <div className="order-4 basis-full min-[1101px]:order-2 min-[1101px]:min-w-0 min-[1101px]:basis-auto min-[1101px]:shrink">
+        <div className="order-3 basis-full max-sm:relative max-sm:z-20 max-sm:-mb-11 min-[1101px]:order-2 min-[1101px]:min-w-0 min-[1101px]:basis-auto min-[1101px]:shrink">
           <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} />
         </div>
       ) : null}
@@ -507,7 +509,7 @@ export function DuelLogTicker({ snapshot, myName, feed, onOpen }: DuelLogTickerP
   if (lines.length === 0) return <div aria-hidden="true" className="min-h-11" />
 
   return (
-    <button type="button" aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`} className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
+    <button type="button" aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`} className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left focus-visible:outline-none focus-visible:shadow-focus max-sm:pointer-events-auto max-sm:bg-background/85" onClick={onOpen}>
       <span className="grid min-w-0 flex-1 gap-0.5">
         {lines.map((line) => (
           <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
