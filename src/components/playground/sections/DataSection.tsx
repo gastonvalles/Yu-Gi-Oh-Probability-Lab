@@ -1,3 +1,8 @@
+import { useState } from 'react'
+
+import type { ArtChoice } from '../../../app/use-card-art-options'
+import { CardArt } from '../../CardArt'
+import { CardArtPicker } from '../../card-detail/CardArtPicker'
 import { CardEffectText } from '../../card-detail/CardEffectText'
 import { CardEffectTraits } from '../../card-detail/CardEffectTraits'
 import { InfoTip } from '../../ui/InfoTip'
@@ -16,6 +21,31 @@ const TRAIT_SAMPLES = [
   { name: 'Fiendsmith Engraver', id: 60764609 },
   { name: 'Dotscaper', id: 18789533 },
 ]
+
+// Una carta con muchas impresiones: la galería no le pide nada a TCGplayer, las miniaturas son imágenes de cartas de YGOPRODeck.
+const ART_CARDS = [63288573, 14558127, 38814750, 24224830, 60764609, 18789533]
+const MANY_ARTS: readonly ArtChoice[] = Array.from({ length: 14 }, (_, index) => {
+  const card = ART_CARDS[index % ART_CARDS.length]!
+
+  return { id: String(index), label: `Impresión ${index + 1}`, imageUrl: `https://images.ygoprodeck.com/images/cards/${card}.jpg`, imageUrlSmall: `https://images.ygoprodeck.com/images/cards_small/${card}.jpg` }
+})
+
+/** La galería en columna al costado de una carta, como en el builder y en el detalle: la caja de la galería mide lo que la fila (la carta) y la galería va adentro. */
+function ArtGallerySample() {
+  const [picked, setPicked] = useState<string | null>(null)
+  const art = MANY_ARTS.find((option) => option.id === picked) ?? MANY_ARTS[0]!
+
+  return (
+    <div className="flex gap-1">
+      <div className="relative w-10 self-stretch">
+        <CardArtPicker arts={MANY_ARTS} selectedId={art.id} onSelect={setPicked} direction="column" />
+      </div>
+      <div className="aspect-[421/614] w-36">
+        <CardArt remoteUrl={art.imageUrl} name="Carta de muestra" className="block h-full w-full object-contain" />
+      </div>
+    </div>
+  )
+}
 
 const ASH_BLOSSOM = 'When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card, then target 1 card on the field; negate that effect. You can only use this effect of "Ash Blossom & Joyous Spring" once per turn.'
 const BULLETS =
@@ -62,6 +92,10 @@ export function DataSection() {
             </div>
           ))}
         </div>
+      </Specimen>
+
+      <Specimen title="CardArtPicker (en columna)" note={<>Los artes de una carta con muchas impresiones, al costado de la carta: la galería tiene <b>el alto de la carta</b> (va <Tag>absolute inset-0</Tag> dentro de una caja <Tag>relative</Tag> que mide lo que la fila) y lo que no entra se recorre por dentro —rueda, dedo o arrastrando con el mouse—, con la barra escondida. Con un solo arte no muestra nada. Archivo: <Tag>card-detail/CardArtPicker.tsx</Tag></>}>
+        <ArtGallerySample />
       </Specimen>
 
       <Specimen title="InfoTip" note={<>La explicación larga, sólo a pedido. Archivo: <Tag>ui/InfoTip.tsx</Tag></>}>

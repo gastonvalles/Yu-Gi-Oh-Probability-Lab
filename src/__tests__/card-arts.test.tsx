@@ -83,6 +83,23 @@ describe('el detalle de la carta con artes alternativos', () => {
     expect(tilting.contains(screen.getByRole('group', { name: 'Artes de la carta' }))).toBe(false)
   })
 
+  it('la galería va adentro de una caja del alto de la carta: en el detalle (absolute inset-y-0, como la carta) y en el builder (relative, estirada al alto de la fila que marca la carta)', () => {
+    const detail = open()
+
+    const inDetail = screen.getByRole('group', { name: 'Artes de la carta' })
+
+    expect(inDetail).toHaveClass('absolute', 'inset-0')
+    expect(inDetail.parentElement).toHaveClass('absolute', 'inset-y-0')
+    detail.unmount()
+
+    render(<DeckBuilderClassicPreview card={card} source="search" deckCopy={null} onAddToZone={() => {}} />)
+
+    const inBuilder = screen.getByRole('group', { name: 'Artes de la carta' })
+
+    expect(inBuilder).toHaveClass('absolute', 'inset-0')
+    expect(inBuilder.parentElement).toHaveClass('relative', 'self-stretch')
+  })
+
   it('tocar una miniatura no cierra el detalle', () => {
     const onClose = vi.fn()
 
@@ -220,6 +237,18 @@ describe('el selector de artes de una carta con muchos', () => {
     const list = screen.getByRole('group', { name: /artes/i })
 
     expect(list).toHaveClass('flex-col', 'overflow-x-hidden', '[scrollbar-width:none]', '[&::-webkit-scrollbar]:hidden')
+  })
+
+  it('en columna llena la caja de la carta (absolute inset-0) y no suma alto a la fila: con muchos artes mediría lo que las miniaturas, no lo que la carta, y no scrollearía', () => {
+    render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} direction="column" />)
+
+    expect(screen.getByRole('group', { name: /artes/i })).toHaveClass('absolute', 'inset-0', 'overflow-auto')
+  })
+
+  it('en fila no es absolute: mide lo que sus miniaturas y scrollea de costado', () => {
+    render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} />)
+
+    expect(screen.getByRole('group', { name: /artes/i })).not.toHaveClass('absolute')
   })
 
   describe('arrastrar con el mouse', () => {
