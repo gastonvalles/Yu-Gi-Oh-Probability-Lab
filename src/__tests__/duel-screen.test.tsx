@@ -1628,6 +1628,48 @@ describe('la pantalla del duelo', () => {
     expect(within(screen.getByRole('dialog', { name: 'Banish · 0' })).getByText('No hay cartas acá.')).toBeInTheDocument()
   })
 
+  it('Beto toma el control de una carta del cementerio o del destierro de Ana desde el visor: pasa a su campo y sale de la pila de ella', async () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    flush()
+
+    // Cementerio: se abre el visor, se toca la carta (se pide cuál es por su número) y se la toma.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'GY: marcar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'GY · 1' })).getByRole('button', { name: 'Carta del rival' }))
+    expect(screen.queryByRole('menuitem', { name: 'Tomar el control' })).not.toBeInTheDocument()
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Tomar el control' }))
+    flush()
+
+    expect(zoneOf(guest, 'Zona de monstruo 1').queryAllByRole('button').length).toBeGreaterThan(0)
+    expect(host.container.querySelector('[data-drop="gy"]')?.textContent).not.toMatch(/[1-9]/)
+    // El visor se cierra solo: la carta ya está en el campo de Beto.
+    expect(screen.queryByRole('dialog', { name: /^GY/ })).not.toBeInTheDocument()
+
+    // Destierro: una carta de Ana que está a la vista se toma igual, a la siguiente zona libre.
+    tap(handOf(host).getAllByRole('listitem')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+    flush()
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Desterrar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Boca arriba' }))
+    flush()
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Banish: marcar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Carta del rival' }))
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Tomar el control' }))
+    flush()
+
+    expect(zoneOf(guest, 'Zona de monstruo 2').queryAllByRole('button').length).toBeGreaterThan(0)
+  })
+
   it('cuando Ana agrega a su mano una carta de su deck (la busca), Beto la ve de frente en la animación y no de dorso', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)

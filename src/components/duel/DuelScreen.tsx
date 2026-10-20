@@ -19,7 +19,7 @@ import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
-import { firstFreeMonsterZone, foreignOf, opaqueOfForeign } from '../../app/mat-control'
+import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
 import { createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { useChatSound } from '../../app/use-chat-sound'
@@ -51,7 +51,7 @@ import { useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
 import { DuelPause } from './DuelPause'
-import { RivalCardDetail } from './RivalCardDetail'
+import { RivalCardDetail, useRivalCard } from './RivalCardDetail'
 import { ResultCard } from './DuelResult'
 import type { DuelDeck } from './duel-deck-type'
 import { gameText, outcomeText, rpsName } from './game-text'
@@ -1771,16 +1771,20 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const markTarget = markMenu?.target
   const marked = markTarget ? ('card' in markTarget ? snapshot.marks.theirs.cards.includes(markTarget.card) : snapshot.marks.theirs.piles.includes(markTarget.pile)) : false
   const markPile = markTarget && 'pile' in markTarget && (markTarget.pile === 'gy' || markTarget.pile === 'banished') ? markTarget.pile : null
-  // Un monstruo del rival boca arriba en su zona de monstruo se puede tomar (o, si es mío, recuperar) si tengo una zona libre: el monstruo pasa a mi campo y el rival lo ve irse.
-  const rivalMonster = markTarget && 'card' in markTarget ? [...theirs!.state.mz, ...theirs!.state.emz].find((placed) => placed?.id === markTarget.card && placed.pos !== 'set') : undefined
-  const myFreeZone = firstFreeMonsterZone(mine!)
-  const ownCard = markTarget && 'card' in markTarget && isForeignId(markTarget.card) ? snapshot.ownIds[opaqueOfForeign(markTarget.card)] : undefined
+  const markedId = markTarget && 'card' in markTarget ? markTarget.card : undefined
+  const ownCard = markedId !== undefined && isForeignId(markedId) ? snapshot.ownIds[opaqueOfForeign(markedId)] : undefined
+  // De una carta del rival que ya mostró (a la vista en su campo, en su cementerio o destierro, o revelada) se puede ver el detalle.
+  const markedDrawId = markedId !== undefined ? (ownCard ?? theirs!.known[markedId]) : undefined
+  const markedCard = useRivalCard(markedDrawId)
+  // Una carta del rival a la vista —en su campo, su cementerio o su destierro— se puede tomar (o, si es mía, recuperar) si tengo un lugar libre de su tipo: pasa a mi campo y el rival la ve irse.
+  const takeKind: TakenKind | null = markedCard ? (markedCard.cardType.toLowerCase().includes('monster') ? 'monster' : 'spellTrap') : null
+  const offer = markedId !== undefined ? takeOffer(theirs!.state, mine!, markedId, takeKind) : null
   const controlItems =
-    rivalMonster && myFreeZone !== null
+    markedId !== undefined && offer
       ? [
           ownCard !== undefined
-            ? { label: t('duel.mark.regainControl'), onSelect: () => { duel.play({ type: 'regain', id: ownCard, to: 'mz', index: myFreeZone, pos: rivalMonster.pos }); setMarkMenu(null) } }
-            : { label: t('duel.mark.takeControl'), onSelect: () => { duel.play({ type: 'take', id: foreignOf(rivalMonster.id), zone: 'mz', index: myFreeZone, pos: rivalMonster.pos }); setMarkMenu(null) } },
+            ? { label: t('duel.mark.regainControl'), onSelect: () => { duel.play({ type: 'regain', id: ownCard, to: offer.zone, index: offer.index, pos: offer.pos }); setMarkMenu(null); setRivalViewer(null) } }
+            : { label: t('duel.mark.takeControl'), onSelect: () => { duel.play({ type: 'take', id: foreignOf(markedId), zone: offer.zone, index: offer.index, pos: offer.pos }); setMarkMenu(null); setRivalViewer(null) } },
         ]
       : []
   const markItems = markTarget
@@ -1799,8 +1803,6 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         ...controlItems,
       ]
     : []
-  // De una carta del rival que ya mostró (a la vista en su campo, en su cementerio o destierro, o revelada) se puede ver el detalle.
-  const markedDrawId = markTarget && 'card' in markTarget ? (ownCard ?? theirs!.known[markTarget.card]) : undefined
   const rivalCardName = t('duel.mark.rivalCard')
   const markedIsCard = Boolean(markTarget && 'card' in markTarget)
 

@@ -14,10 +14,10 @@ interface RivalCardDetailProps {
   onClose: () => void
 }
 
-/** La carta real de lo que el rival ya mostró (`card-123-2`): se pide por su número de YGOPRODeck y, hasta que llega, es null. */
-export function useRivalCard(drawId: string): ApiCardSearchResult | null {
-  const ygoId = parseDerivedCardId(cardIdOfDrawId(drawId))
-  const [card, setCard] = useState<ApiCardSearchResult | null>(null)
+/** La carta real de lo que el rival ya mostró (`card-123-2`): se pide por su número de YGOPRODeck y, hasta que llega (o sin `drawId`, o con otra carta que la anterior), es null. */
+export function useRivalCard(drawId: string | undefined): ApiCardSearchResult | null {
+  const ygoId = drawId === undefined ? null : parseDerivedCardId(cardIdOfDrawId(drawId))
+  const [loaded, setLoaded] = useState<{ ygoId: number; card: ApiCardSearchResult | null } | null>(null)
 
   useEffect(() => {
     if (ygoId === null) return
@@ -26,7 +26,7 @@ export function useRivalCard(drawId: string): ApiCardSearchResult | null {
 
     fetchCardsByIds([ygoId])
       .then((cards) => {
-        if (alive) setCard(cards[0] ?? null)
+        if (alive) setLoaded({ ygoId, card: cards[0] ?? null })
       })
       .catch(() => {})
 
@@ -35,7 +35,7 @@ export function useRivalCard(drawId: string): ApiCardSearchResult | null {
     }
   }, [ygoId])
 
-  return card
+  return loaded !== null && loaded.ygoId === ygoId ? loaded.card : null
 }
 
 /** El detalle de una carta del rival que ya está a la vista: se pide por su número de YGOPRODeck, y hasta que llega se ve sólo "Carta del rival". */

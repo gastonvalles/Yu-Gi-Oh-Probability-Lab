@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createDuel } from '../app/duel-session'
 import { parseMessage } from '../app/duel-protocol'
-import { CONTROL_ACTIONS, controlReactions, firstFreeMonsterZone, foreignOf, opaqueOfForeign } from '../app/mat-control'
+import { CONTROL_ACTIONS, controlReactions, firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer } from '../app/mat-control'
 import { mapActionIds, mapMatIds } from '../app/mat-public'
 import { createMatState, describeMatAction, isForeignId, matReducer, type MatAction, type MatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
@@ -15,16 +15,38 @@ const play = (state: MatState, ...actions: MatAction[]) => actions.reduce(matRed
 const summoned = (state: MatState, id: string, index = 0) => play(state, { type: 'place', id, zone: 'mz', index, pos: 'atk' })
 
 describe('las jugadas de control en una mesa', () => {
-  it('dar saca el monstruo del campo (y manda sus materiales al cementerio); no se da lo que no es un monstruo del campo', () => {
+  it('dar saca la carta de la mesa: del campo (y manda sus materiales al cementerio), del cementerio o del destierro; no de la mano, el deck ni el Extra', () => {
     const base = play(hostTable, { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'attach', id: 'card-1001-1', to: 'card-1000-1' })
     const given = matReducer(base, { type: 'give', id: 'card-1000-1' })
 
     expect(given.mz[0]).toBeNull()
     expect(given.gy).toContain('card-1001-1')
     expect(given.hand).not.toContain('card-1000-1')
-    // Una carta de la mano o un hechizo no se dan.
+    // Una carta de la mano, del deck o del Extra no se da; una Mágica del campo, una del cementerio y una del destierro sí (las toma el rival).
     expect(matReducer(hostTable, { type: 'give', id: hostTable.hand[0]! })).toBe(hostTable)
-    expect(matReducer(play(hostTable, { type: 'place', id: 'card-1002-1', zone: 'st', index: 0, pos: 'atk' }), { type: 'give', id: 'card-1002-1' }).st[0]?.id).toBe('card-1002-1')
+    expect(matReducer(hostTable, { type: 'give', id: hostTable.deck[0]! })).toBe(hostTable)
+    expect(matReducer(hostTable, { type: 'give', id: hostTable.extra[0]! })).toBe(hostTable)
+    expect(matReducer(play(hostTable, { type: 'place', id: 'card-1002-1', zone: 'st', index: 0, pos: 'atk' }), { type: 'give', id: 'card-1002-1' }).st[0]).toBeNull()
+    expect(matReducer(play(hostTable, { type: 'move', id: 'card-1003-1', to: 'gy' }), { type: 'give', id: 'card-1003-1' }).gy).toEqual([])
+    expect(matReducer(play(hostTable, { type: 'move', id: 'card-1004-1', to: 'banished' }), { type: 'give', id: 'card-1004-1' }).banished).toEqual([])
+  })
+
+  it('tomar y recuperar también sirven en Mágicas y Trampas y en la zona de Campo (con su lugar libre y bien dicho)', () => {
+    const spell = matReducer(guestTable, { type: 'take', id: 'f.c3', zone: 'st', index: 1, pos: 'atk' })
+    const field = matReducer(guestTable, { type: 'take', id: 'f.c5', zone: 'field', index: 0, pos: 'atk' })
+
+    expect(spell.st[1]).toEqual({ id: 'f.c3', pos: 'atk', counters: 0, materials: [] })
+    expect(matReducer(spell, { type: 'take', id: 'f.c4', zone: 'st', index: 1, pos: 'atk' })).toBe(spell)
+    expect(field.field?.id).toBe('f.c5')
+    expect(matReducer(field, { type: 'take', id: 'f.c6', zone: 'field', index: 0, pos: 'atk' })).toBe(field)
+    expect(matReducer(guestTable, { type: 'take', id: 'f.c5', zone: 'field', index: 1, pos: 'atk' })).toBe(guestTable)
+    expect(matReducer(guestTable, { type: 'take', id: 'f.c5', zone: 'st', index: 5, pos: 'atk' })).toBe(guestTable)
+
+    const away = play(hostTable, { type: 'place', id: 'card-1002-1', zone: 'st', index: 0, pos: 'atk' }, { type: 'give', id: 'card-1002-1' })
+
+    expect(matReducer(away, { type: 'regain', id: 'card-1002-1', to: 'st', index: 2, pos: 'set' }).st[2]).toMatchObject({ id: 'card-1002-1', pos: 'set' })
+    expect(matReducer(away, { type: 'regain', id: 'card-1002-1', to: 'field', index: 0 }).field?.id).toBe('card-1002-1')
+    expect(matReducer(away, { type: 'regain', id: 'card-1002-1', to: 'st' })).toBe(away)
   })
 
   it('tomar pone una carta del rival en una zona de monstruo libre, con su posición; no en una ocupada ni una carta propia', () => {
@@ -93,6 +115,10 @@ describe('las jugadas de control en una mesa', () => {
     expect(wire({ type: 'take', id: 'f.c3', zone: 'mz', index: 0, pos: 'def' })).not.toBeNull()
     expect(wire({ type: 'regain', id: 'c1', to: 'mz', index: 2, pos: 'atk', auto: true })).not.toBeNull()
     expect(wire({ type: 'regain', id: 'c1', to: 'banished', faceDown: true })).not.toBeNull()
+    expect(wire({ type: 'take', id: 'f.c3', zone: 'st', index: 4, pos: 'atk' })).not.toBeNull()
+    expect(wire({ type: 'take', id: 'f.c3', zone: 'field', index: 0, pos: 'atk' })).not.toBeNull()
+    expect(wire({ type: 'regain', id: 'c1', to: 'st', index: 1 })).not.toBeNull()
+    expect(wire({ type: 'regain', id: 'c1', to: 'field', index: 0 })).not.toBeNull()
     expect(wire({ type: 'give', id: 'f.__proto__' })).toBeNull()
     expect(wire({ type: 'take', id: 'f.c3', zone: 'emz', index: 0, pos: 'atk' })).toBeNull()
     expect(wire({ type: 'regain', id: 'c1', to: 'hell' })).toBeNull()
@@ -149,6 +175,87 @@ describe('cómo responde una mesa a una jugada de control de la otra', () => {
     expect(controlReactions({ mine, ownIds, before: guestTable, after: held, action: { type: 'take', id: 'f.c1', zone: 'mz', index: 0, pos: 'atk', auto: true } })).toEqual([])
     expect(controlReactions({ mine, ownIds: {}, before: held, after: matReducer(held, { type: 'move', id: 'f.c1', to: 'gy' }), action: { type: 'move', id: 'f.c1', to: 'gy' } })).toEqual([])
     expect(firstFreeMonsterZone(summoned(mine, 'card-5000-1', 0))).toBe(1)
+  })
+})
+
+describe('qué ofrece «Tomar el control» de una carta del rival', () => {
+  const rival = (...actions: MatAction[]) => play(hostTable, ...actions)
+  const mineEmpty = guestTable
+
+  it('de su campo: lo que está a la vista, en su zona y con su posición; una carta boca abajo, no', () => {
+    const field = rival(
+      { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'def' },
+      { type: 'place', id: 'card-1001-1', zone: 'emz', index: 1, pos: 'atk' },
+      { type: 'place', id: 'card-1002-1', zone: 'st', index: 2, pos: 'atk' },
+      { type: 'place', id: 'card-1003-1', zone: 'st', index: 3, pos: 'set' },
+      { type: 'place', id: 'card-1004-1', zone: 'field', index: 0, pos: 'atk' },
+    )
+
+    expect(takeOffer(field, mineEmpty, 'card-1000-1', null)).toEqual({ zone: 'mz', index: 0, pos: 'def' })
+    expect(takeOffer(field, mineEmpty, 'card-1001-1', null)).toEqual({ zone: 'mz', index: 0, pos: 'atk' })
+    expect(takeOffer(field, mineEmpty, 'card-1002-1', null)).toEqual({ zone: 'st', index: 0, pos: 'atk' })
+    expect(takeOffer(field, mineEmpty, 'card-1004-1', null)).toEqual({ zone: 'field', index: 0, pos: 'atk' })
+    expect(takeOffer(field, mineEmpty, 'card-1003-1', null)).toBeNull()
+    expect(takeOffer(field, mineEmpty, 'card-1005-1', null)).toBeNull()
+  })
+
+  it('de su cementerio o su destierro: un monstruo a una zona de monstruo en ataque y una Mágica o Trampa a una de Mágicas y Trampas; sin saber qué es, o boca abajo, no', () => {
+    const piles = rival({ type: 'move', id: 'card-1000-1', to: 'gy' }, { type: 'move', id: 'card-1001-1', to: 'banished' }, { type: 'move', id: 'card-1002-1', to: 'banished', faceDown: true })
+
+    expect(takeOffer(piles, mineEmpty, 'card-1000-1', 'monster')).toEqual({ zone: 'mz', index: 0, pos: 'atk' })
+    expect(takeOffer(piles, mineEmpty, 'card-1000-1', 'spellTrap')).toEqual({ zone: 'st', index: 0, pos: 'atk' })
+    expect(takeOffer(piles, mineEmpty, 'card-1001-1', 'monster')).toEqual({ zone: 'mz', index: 0, pos: 'atk' })
+    expect(takeOffer(piles, mineEmpty, 'card-1000-1', null)).toBeNull()
+    expect(takeOffer(piles, mineEmpty, 'card-1002-1', 'monster')).toBeNull()
+    // Lo que no está a la vista (la mano, el deck) no se ofrece.
+    expect(takeOffer(piles, mineEmpty, 'card-1003-1', 'monster')).toBeNull()
+    expect(takeOffer(piles, mineEmpty, hostTable.deck[0]!, 'monster')).toBeNull()
+  })
+
+  it('va a la primera zona libre de su tipo; sin ninguna en mi campo, no se ofrece', () => {
+    const piles = rival({ type: 'move', id: 'card-1000-1', to: 'gy' })
+    const busy = summoned(mineEmpty, 'card-5000-1', 0)
+    const full = { ...mineEmpty, st: mineEmpty.st.map((_, index) => ({ id: 'token-' + index, pos: 'atk' as const, counters: 0, materials: [] })) }
+
+    expect(takeOffer(piles, busy, 'card-1000-1', 'monster')).toEqual({ zone: 'mz', index: 1, pos: 'atk' })
+    expect(takeOffer(piles, full, 'card-1000-1', 'spellTrap')).toBeNull()
+    expect(takeOffer(piles, full, 'card-1000-1', 'monster')).toEqual({ zone: 'mz', index: 0, pos: 'atk' })
+  })
+})
+
+describe('cómo responde una mesa cuando le toman una carta del cementerio o del destierro, o una Mágica del campo', () => {
+  const ownIds = { c1: 'card-1000-1', c2: 'card-1001-1', c3: 'card-1002-1' }
+  const theirs = guestTable
+  const take = (id: string, zone: 'mz' | 'st' | 'field' = 'mz'): MatAction => ({ type: 'take', id, zone, index: 0, pos: 'atk' })
+
+  it('el rival toma una carta mía del cementerio, del destierro o una Mágica del campo: la suelto', () => {
+    const inGy = play(hostTable, { type: 'move', id: 'card-1000-1', to: 'gy' })
+    const inBanish = play(hostTable, { type: 'move', id: 'card-1001-1', to: 'banished', faceDown: true })
+    const inSt = play(hostTable, { type: 'place', id: 'card-1002-1', zone: 'st', index: 0, pos: 'atk' })
+
+    expect(controlReactions({ mine: inGy, ownIds, before: theirs, after: theirs, action: take('f.c1') })).toEqual([{ type: 'give', id: 'card-1000-1', auto: true }])
+    expect(controlReactions({ mine: inBanish, ownIds, before: theirs, after: theirs, action: take('f.c2') })).toEqual([{ type: 'give', id: 'card-1001-1', auto: true }])
+    expect(controlReactions({ mine: inSt, ownIds, before: theirs, after: theirs, action: take('f.c3', 'st') })).toEqual([{ type: 'give', id: 'card-1002-1', auto: true }])
+    // De mi mano o mi deck no hay nada que soltar.
+    expect(controlReactions({ mine: hostTable, ownIds, before: theirs, after: theirs, action: take('f.c1') })).toEqual([])
+  })
+
+  it('el rival me da una Mágica o una de Campo: la tomo en una zona de su tipo; sin lugar, se la devuelvo', () => {
+    const before = play(hostTable, { type: 'place', id: 'card-1002-1', zone: 'st', index: 0, pos: 'atk' }, { type: 'place', id: 'card-1003-1', zone: 'field', index: 0, pos: 'atk' })
+    const after = matReducer(matReducer(before, { type: 'give', id: 'card-1002-1' }), { type: 'give', id: 'card-1003-1' })
+    const fieldBusy = play(guestTable, { type: 'place', id: 'card-5001-1', zone: 'field', index: 0, pos: 'atk' })
+
+    expect(controlReactions({ mine: guestTable, ownIds: {}, before, after, action: { type: 'give', id: 'card-1002-1' } })).toEqual([{ type: 'take', id: 'f.card-1002-1', zone: 'st', index: 0, pos: 'atk', auto: true }])
+    expect(controlReactions({ mine: guestTable, ownIds: {}, before, after, action: { type: 'give', id: 'card-1003-1' } })).toEqual([{ type: 'take', id: 'f.card-1003-1', zone: 'field', index: 0, pos: 'atk', auto: true }])
+    expect(controlReactions({ mine: fieldBusy, ownIds: {}, before, after, action: { type: 'give', id: 'card-1003-1' } })).toEqual([{ type: 'give', id: 'f.card-1003-1' }])
+  })
+
+  it('una Mágica mía que el rival devuelve vuelve a mi zona de Mágicas y Trampas, no a una de monstruo', () => {
+    const held = play(guestTable, { type: 'take', id: 'f.c3', zone: 'st', index: 2, pos: 'set' })
+    const gave = matReducer(held, { type: 'give', id: 'f.c3' })
+    const away = play(hostTable, { type: 'place', id: 'card-1002-1', zone: 'st', index: 0, pos: 'atk' }, { type: 'give', id: 'card-1002-1' })
+
+    expect(controlReactions({ mine: away, ownIds, before: held, after: gave, action: { type: 'give', id: 'f.c3' } })).toEqual([{ type: 'regain', id: 'card-1002-1', to: 'st', index: 0, pos: 'set', auto: true }])
   })
 })
 
@@ -251,6 +358,57 @@ describe('el control de un monstruo entre dos jugadores', () => {
     expect(host.getSnapshot().mine!.mz[3]?.id).toBe('card-1000-1')
     expect(foreignIn(guest.getSnapshot().mine!)).toEqual([])
     expect(host.getSnapshot().theirs!.state.mz.filter(Boolean)).toEqual([])
+  })
+
+  it('Beto toma un monstruo del cementerio de Ana: sale de su cementerio, queda en el campo de Beto, y al mandarlo al cementerio vuelve al de Ana', () => {
+    const { room, host, guest } = started()
+
+    host.play({ type: 'move', id: 'card-1000-1', to: 'gy' })
+    room.flush()
+
+    const inGy = guest.getSnapshot().theirs!.state.gy[0]!
+
+    guest.play({ type: 'take', id: foreignOf(inGy), zone: 'mz', index: 0, pos: 'atk' })
+    room.flush()
+
+    expect(host.getSnapshot().mine!.gy).toEqual([])
+    expect(guest.getSnapshot().mine!.mz[0]?.id).toBe('f.' + inGy)
+    expect(guest.getSnapshot().theirs!.state.gy).toEqual([])
+    expect(host.getSnapshot().theirs!.state.mz[0]?.id).toBe('f.' + inGy)
+
+    guest.play({ type: 'move', id: 'f.' + inGy, to: 'gy' })
+    room.flush()
+    expect(guest.getSnapshot().mine!.mz.filter(Boolean)).toEqual([])
+    expect(host.getSnapshot().mine!.gy).toEqual(['card-1000-1'])
+  })
+
+  it('Beto toma una carta del destierro de Ana y una Mágica de su campo: cada una a la zona de su tipo, y las dos mesas coinciden', () => {
+    const { room, host, guest } = started()
+
+    host.play({ type: 'move', id: 'card-1001-1', to: 'banished' })
+    host.play({ type: 'place', id: 'card-1002-1', zone: 'st', index: 1, pos: 'atk' })
+    room.flush()
+
+    const banished = guest.getSnapshot().theirs!.state.banished[0]!
+    const spell = guest.getSnapshot().theirs!.state.st[1]!
+
+    guest.play({ type: 'take', id: foreignOf(banished), zone: 'mz', index: 0, pos: 'atk' })
+    guest.play({ type: 'take', id: foreignOf(spell.id), zone: 'st', index: 0, pos: spell.pos })
+    room.flush()
+
+    expect(host.getSnapshot().mine!.banished).toEqual([])
+    expect(host.getSnapshot().mine!.st[1]).toBeNull()
+    expect(guest.getSnapshot().mine!.mz[0]?.id).toBe('f.' + banished)
+    expect(guest.getSnapshot().mine!.st[0]?.id).toBe('f.' + spell.id)
+    expect(host.getSnapshot().theirs!.state.st[0]?.id).toBe('f.' + spell.id)
+    // Nada se puede deshacer: la otra mesa ya lo completó.
+    expect(guest.getSnapshot().undo.blocked).toBe(true)
+
+    // Beto devuelve la Mágica: vuelve a la zona de Mágicas y Trampas de Ana.
+    guest.play({ type: 'give', id: 'f.' + spell.id })
+    room.flush()
+    expect(host.getSnapshot().mine!.st[0]).toMatchObject({ id: 'card-1002-1', pos: 'atk' })
+    expect(guest.getSnapshot().mine!.st.filter(Boolean)).toEqual([])
   })
 
   it('si Beto no tiene una zona libre, la carta vuelve a Ana (queda donde estaba) en vez de perderse', () => {
