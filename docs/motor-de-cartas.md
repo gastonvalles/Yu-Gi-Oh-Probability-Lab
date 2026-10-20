@@ -10,7 +10,7 @@ catálogo entero antes de pasar a la siguiente.
 | --- | --- | --- |
 | 0 · Resaltar | Colorea el texto de la carta: condición, efecto rápido, costo, objetivo y límite. No decide nada del juego. | **Hecha** |
 | 1 · Hechos confirmados | Lo que el script de EDOPro **y** el texto de la carta dicen los dos de sus efectos: rápido, una vez por turno (con o sin nombre), una vez por Duelo, costo y objetivo. | **Hecha** (a nivel de carta) |
-| 2 · Asistente de reglas | La mesa avisa, no decide: «este efecto es rápido», «ya lo usaste este turno». | Pendiente |
+| 2 · Asistente de la mesa | La mesa **avisa, no decide**: muestra los rasgos confirmados de la carta donde se decide jugarla y avisa si se activa otra vez una de «una vez por turno». | **Empezada** (rasgos y aviso de uso) |
 | 3 · Automatización parcial | Efectos simples, de a una carta, cada una probada contra su script. | Pendiente |
 | 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) compilado a WebAssembly, detrás de una bandera. | Evaluar (licencia) |
 
@@ -94,10 +94,23 @@ continuo con `SetCountLimit(1)` para no dispararse dos veces). Quedan, entre otr
 **Lo que esta capa NO hace:** no dice **cuál** efecto tiene cada hecho (alinear cada frase del texto con cada efecto del script es el siguiente paso), no sabe cuántos cupos por nombre tiene una carta, ni desde qué zona se activa, ni qué evento lo
 dispara; esos datos están en el script (`range`, `code`) pero sin segunda fuente que los confirme todavía. Y **nada de la app lo usa aún**: la capa 2 (el asistente de la mesa) es la que lo va a leer.
 
-## Capas 2 a 4 (ideas, sin diseño todavía)
+## Capa 2 · Asistente de la mesa (empezada)
 
-- **2 · Asistente.** La mesa avisa y no decide: el efecto rápido de una carta en la mano, el contador de usos por turno de los efectos con límite (los de la Capa 1), el recordatorio de «¿lo activás?».
-  Nunca mueve cartas por su cuenta.
+**Regla:** avisa, no decide. Nunca frena una jugada, nunca la deshace, nunca mueve una carta. Sólo dice algo que es verdad y que quien juega puede haber olvidado, con los hechos confirmados de la capa 1 (`card-effect-facts.ts`).
+
+**Lo que hace hoy:**
+1. **Rasgos confirmados a primera vista** (`CardEffectTraits`, `app/use-card-effect-facts.ts`): fichitas con los hechos de la capa 1 —**efecto rápido** (ámbar), **1 vez por turno** (o **por nombre**), **1 vez por duelo**, **con costo** (rojo) y **apunta** (violeta), los mismos colores del texto resaltado— donde se decide jugar la carta: la hoja del celular y el menú de escritorio de la mesa (`CardSheet`, `CardMenu`, también con las cartas del rival que ya mostró), el detalle de la carta (`CardDetailOverlay`), el detalle fijo del duelo (`DuelCardDock`), la barra del builder (`DeckBuilderClassicPreview`) y el texto del zoom. Cada una explica qué es en su `title`. Los datos (82 KB) se bajan la primera vez que se piden. Sin nada confirmado, no se muestra nada.
+2. **Aviso de uso** (`app/mat-assistant.ts`, en `PracticeMat`): al **activar el efecto** de una carta con un límite de uso confirmado, la mesa se acuerda de la activación y, si ya activaste esa carta en el mismo turno (o en el mismo duelo, si es de una vez por duelo), muestra un aviso **sin frenar nada**: «Ya activaste X este turno y tiene un efecto de «una vez por turno»: fijate que no sea el mismo efecto». Es por nombre si el límite es por nombre (una segunda copia comparte el límite), y por carta si no. El turno es el del duelo entero (`duelTurnNumber`: cuenta los dos jugadores; en la práctica, el de la mesa). **Sólo cuenta lo que se vio hacer acá:** nunca inventa un uso (si se recarga la página o se deshace la jugada, el uso deja de contar, y el aviso se queda corto, no de más).
+
+**Por qué el aviso no dice «no podés»:** los hechos de la capa 1 son de la **carta entera**, no de cada efecto. Una carta con dos efectos de una vez por turno puede usar uno y después el otro, y la mesa no sabe cuál es cuál (el `activate` de la mesa tampoco dice qué efecto). Por eso avisa y deja decidir.
+
+**Lo que falta** (y qué hace falta para hacerlo con certeza):
+- **«Podés responder con…»** (resaltar las cartas que se pueden activar en respuesta cuando el rival pregunta «¿Hacés algo antes?»): hace falta saber **desde dónde** se activa cada efecto rápido (mano, campo, cementerio). Está en el script (`range`) pero sin segunda fuente que lo confirme; un efecto rápido sólo del campo no sirve desde la mano. Las Trampas y las Mágicas de Juego Rápido boca abajo sí se saben por su tipo.
+- **Contador por efecto** (cuál de los dos efectos se usó): hace falta **alinear cada frase del texto con cada efecto del script** y que la jugada `activate` diga cuál se activa.
+- El aviso de **una Invocación de Péndulo por turno** y otras reglas de turno (no son de una carta, son del juego).
+
+## Capas 3 y 4 (ideas, sin diseño todavía)
+
 - **3 · Automatización parcial.** Una carta a la vez, sólo efectos que el script describe sin ambigüedad (robar, buscar, invocar de la mano), cada una con su prueba contra el script y un freno que vuelve a la
   mesa manual ante cualquier cosa que no se entienda.
 - **4 · Núcleo de reglas.** `@n1xx1/ocgcore-wasm` (JSR) es el motor de EDOPro compilado a WebAssembly. **Su licencia es AGPL-3.0**: usarlo obliga a publicar el código de lo que lo enlaza, así que antes de tocarlo

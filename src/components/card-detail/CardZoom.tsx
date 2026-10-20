@@ -12,6 +12,7 @@ import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { CloseButton } from '../ui/IconButton'
 import { CardEffectText } from './CardEffectText'
+import { CardEffectTraits } from './CardEffectTraits'
 import { CardFlip, FlipHint, useCardFlip } from './CardFlip'
 import { CardStepButton } from './CardOverlay'
 import { CardZoomBar, stepZoom, type ZoomStep } from './CardZoomBar'
@@ -146,6 +147,7 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
             <Heading level="card">{name}</Heading>
             <p className="m-0 text-body text-muted [overflow-wrap:anywhere]">{`${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}`}</p>
           </header>
+          <CardEffectTraits ygoprodeckId={card.ygoprodeckId} />
           <CardEffectText text={card.description?.trim() || t('search.detail.noText')} className="text-lead" />
         </section>
       ) : null}

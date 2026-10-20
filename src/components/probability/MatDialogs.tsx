@@ -7,6 +7,7 @@ import { normalizeSearchText } from '../../app/utils'
 import type { MatPile } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { CardEffectTraits } from '../card-detail/CardEffectTraits'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -64,6 +65,8 @@ interface CardMenuProps {
   items: MenuItem[]
   /** "Ver carta": abre el detalle (va al final, aparte de las jugadas). */
   onInspect?: () => void
+  /** El número de la carta en YGOPRODeck: con él, el menú dice sus rasgos confirmados (efecto rápido, una vez por turno, costo…). */
+  ygoprodeckId?: number | null
   /** El menú no tapa la mesa: el fondo deja pasar los toques (se elige tocando una carta del campo, p. ej. a quién atacar) y no se lleva el foco. Se cierra con Escape, la jugada o al tocar otra carta. */
   passThrough?: boolean
   onClose: () => void
@@ -82,7 +85,7 @@ export const GHOST_CLICK_MS = 350
  * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
  * medio. Se cierra al elegir, al tocar afuera o con Escape.
  */
-export function CardMenu({ anchor, kicker, title, items, onInspect, passThrough = false, onClose }: CardMenuProps) {
+export function CardMenu({ anchor, kicker, title, items, onInspect, ygoprodeckId, passThrough = false, onClose }: CardMenuProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const openedAtRef = useRef(0)
   // La carta a la que se acomodó el menú la última vez: si cambia sólo lo que dice (el segundo paso, "¿En ataque o en defensa?") y no la carta, se queda donde estaba.
@@ -145,6 +148,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, passThrough 
               {title}
             </p>
           ) : null}
+          <CardEffectTraits ygoprodeckId={ygoprodeckId} />
         </div>
         {items.map((item, index) => (
           <button

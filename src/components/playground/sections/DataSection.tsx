@@ -1,4 +1,5 @@
 import { CardEffectText } from '../../card-detail/CardEffectText'
+import { CardEffectTraits } from '../../card-detail/CardEffectTraits'
 import { InfoTip } from '../../ui/InfoTip'
 import { ProgressRing } from '../../ui/ProgressRing'
 import { SegmentedRing } from '../../ui/SegmentedRing'
@@ -6,6 +7,15 @@ import { TONE, type Tone } from '../../ui/tone'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const TONES = Object.keys(TONE) as Tone[]
+
+// Cartas reales con rasgos confirmados distintos (por su número de YGOPRODeck).
+const TRAIT_SAMPLES = [
+  { name: 'Ash Blossom & Joyous Spring', id: 14558127 },
+  { name: 'Effect Veiler', id: 38814750 },
+  { name: 'Called by the Grave', id: 24224830 },
+  { name: 'Fiendsmith Engraver', id: 60764609 },
+  { name: 'Dotscaper', id: 18789533 },
+]
 
 const ASH_BLOSSOM = 'When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card, then target 1 card on the field; negate that effect. You can only use this effect of "Ash Blossom & Joyous Spring" once per turn.'
 const BULLETS =
@@ -40,6 +50,17 @@ export function DataSection() {
         <div className="grid gap-3 text-body text-foreground">
           <CardEffectText text={ASH_BLOSSOM} />
           <CardEffectText text={BULLETS} />
+        </div>
+      </Specimen>
+
+      <Specimen title="CardEffectTraits" note={<>Lo que se sabe con certeza de los efectos de una carta, a primera vista: sólo lo que su script de EDOPro <b>y</b> su texto dicen los dos (capa 1 del motor de cartas). Los mismos colores que el texto resaltado. Sin nada confirmado no muestra nada. Archivo: <Tag>card-detail/CardEffectTraits.tsx</Tag></>}>
+        <div className="grid gap-3">
+          {TRAIT_SAMPLES.map(({ name, id }) => (
+            <div key={id} className="grid gap-1">
+              <span className="text-body font-semibold text-foreground">{name}</span>
+              <CardEffectTraits ygoprodeckId={id} />
+            </div>
+          ))}
         </div>
       </Specimen>
 

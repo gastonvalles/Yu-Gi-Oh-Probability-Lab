@@ -6,6 +6,7 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
+import { CardEffectTraits } from '../card-detail/CardEffectTraits'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -125,6 +126,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
             {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>
             {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{apiCard.cardType}</p> : null}
+            <CardEffectTraits ygoprodeckId={apiCard?.ygoprodeckId} className="mt-1" />
           </div>
         </div>
 

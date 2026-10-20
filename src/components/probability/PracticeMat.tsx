@@ -51,6 +51,8 @@ import { useElementSize } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
+import { getCardEffectFacts, loadCardEffects } from '../../app/card-effect-data'
+import { LIMIT_FACTS, limitKey, usageReminder, type Activation } from '../../app/mat-assistant'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
@@ -157,6 +159,8 @@ export interface DuelMatLink {
   undoBlocked?: boolean
   /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
   control?: ControlOffer
+  /** En qué turno del duelo van los dos juntos (`duelTurnNumber`): con él el asistente sabe si una activación es del mismo turno. Sin duelo, el turno de la mesa. */
+  turnNumber?: number
   /** Qué Zonas Extra ocupa el rival, cada una por su número (la 0 suya es la 1 de acá): una que ocupa él no se puede usar, ni la otra si ya hay un monstruo propio en una. */
   rivalEmz: readonly boolean[]
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
@@ -842,12 +846,42 @@ export function PracticeMat({
     [viewer, state.deck],
   )
 
+  // El asistente de la mesa (`app/mat-assistant.ts`): se acuerda de lo que se activó acá y avisa, sin frenar nada, si se vuelve a activar una carta con un efecto de una vez por turno (o por duelo).
+  const activationsRef = useRef<Activation[]>([])
+  const turnNumber = duel?.turnNumber ?? state.turn
+
+  useEffect(() => {
+    void loadCardEffects()
+  }, [])
+
+  const remindUsage = useCallback(
+    (action: Extract<MatAction, { type: 'activate' }>) => {
+      const card = cardOf(action.id)
+      const passcode = card.apiCard?.ygoprodeckId
+      const facts = passcode === undefined || isForeignId(action.id) ? 0 : (getCardEffectFacts(passcode) ?? 0)
+
+      if (passcode === undefined || (facts & LIMIT_FACTS) === 0) return
+
+      // Sólo cuentan las activaciones que siguen en el registro: si se deshizo una, no cuenta.
+      const live = new Set<MatAction>(session.actions)
+      const past = activationsRef.current.filter((activation) => live.has(activation.action))
+      const key = limitKey(facts, passcode, action.id)
+      const reminder = usageReminder(facts, past, key, turnNumber)
+
+      activationsRef.current = [...past, { action, turn: turnNumber, key }]
+
+      if (reminder) showToastMessage(t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name }), 'warning')
+    },
+    [cardOf, session.actions, turnNumber],
+  )
+
   const play = useCallback(
     (action: MatAction) => {
       const searched = searching(action)
       const played: MatAction = searched ? { ...action, shuffle: randomSeed() } : action
 
       onDispatch(played)
+      if (played.type === 'activate') remindUsage(played)
       setMenu(null)
       setPicking(null)
       setAutoplay(false)
@@ -863,7 +897,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer, searching],
+    [onDispatch, viewer, closeViewer, searching, remindUsage],
   )
 
   // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).
@@ -1979,6 +2013,7 @@ export function PracticeMat({
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
+        ygoprodeckId={menuCard?.apiCard?.ygoprodeckId}
         onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
         passThrough={attackAsk !== null}
         onClose={() => setMenu(null)}

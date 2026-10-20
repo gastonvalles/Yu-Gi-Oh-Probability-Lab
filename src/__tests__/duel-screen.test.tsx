@@ -7,6 +7,8 @@ import { Provider } from 'react-redux'
 import { toast } from 'react-hot-toast'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { loadCardEffects } from '../app/card-effect-data'
+import CARD_EFFECTS from '../data/card-effects.json'
 import { extractRoomCode } from '../app/duel-link'
 import { readPlayReturn } from '../app/play-return'
 import { createDuel } from '../app/duel-session'
@@ -1668,6 +1670,32 @@ describe('la pantalla del duelo', () => {
     flush()
 
     expect(zoneOf(guest, 'Zona de monstruo 2').queryAllByRole('button').length).toBeGreaterThan(0)
+  })
+
+  it('el asistente: si Ana activa dos veces en el mismo turno una carta de una vez por turno por nombre, la pantalla le avisa; la jugada se hace igual', async () => {
+    // Cada carta del deck lleva el número de una carta real con «una vez por turno, por nombre» confirmado (distintos: un deck de 40 copias de la misma no es legal).
+    const limited = Object.entries(CARD_EFFECTS.cards).filter(([facts]) => (Number(facts) & 6) === 6).flatMap(([, ids]) => ids)
+    const ash = new Map([...monsters].map(([id, entry], index) => [id, { ...entry, name: 'Limitada ' + index, apiCard: { ...entry.apiCard, ygoprodeckId: limited[index]! } as unknown as ApiCardReference }]))
+    const { host, guest } = startDuel({ cardsById: ash })
+    openTable(host, guest)
+    const custom = vi.spyOn(toast, 'custom').mockReturnValue('t')
+    const messages = () => custom.mock.calls.map(([render]) => ((render as (instance: { id: string; visible: boolean }) => ReactElement)({ id: 't', visible: true }).props as { message: string }).message)
+    await act(async () => {
+      await loadCardEffects()
+    })
+
+    const activateFirstInHand = () => {
+      tap(handOf(host).getAllByRole('listitem')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      flush()
+    }
+
+    // La misma carta de la mano dos veces (queda en la mano: sólo se anota la activación).
+    activateFirstInHand()
+    expect(messages().filter((message) => /Ya activaste/.test(message))).toEqual([])
+
+    activateFirstInHand()
+    expect(messages().filter((message) => /Ya activaste/.test(message))).toEqual([expect.stringMatching(/Ya activaste Limitada \d+ este turno.*por nombre/)])
   })
 
   it('cuando Ana agrega a su mano una carta de su deck (la busca), Beto la ve de frente en la animación y no de dorso', () => {
