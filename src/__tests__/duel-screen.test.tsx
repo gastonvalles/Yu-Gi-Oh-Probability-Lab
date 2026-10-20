@@ -21,6 +21,7 @@ import { LifeTile } from '../components/duel/DuelBar'
 import type { RoomsApi } from '../app/duel-rooms'
 import type { LiveDuel, PublicRoom } from '../app/duel-relay-rules'
 import { DuelScreen } from '../components/duel/DuelScreen'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../components/probability/compact-field'
 import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom, type MemorySpectator } from './support/memory-room'
@@ -3692,6 +3693,34 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(lost).getByRole('button', { name: 'Salir del duelo' }))
     expect(within(guest.container).queryByRole('dialog', { name: 'Perdiste' })).not.toBeInTheDocument()
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
+  })
+
+  it('en un celular en vertical (menos de 640 px) el campo se ajusta al alto de la pantalla y la línea de jugadas flota sobre la mano del rival (no ocupa lugar): al terminar el duelo la tira del resultado ocupa su lugar y tampoco suma alto', () => {
+    window.matchMedia = ((query: string) => ({ matches: query === COMPACT_FIELD_MEDIA_QUERY, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} })) as unknown as typeof window.matchMedia
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    // El campo: la casilla sale del alto de la pantalla (3D, lo de siempre) y la mano del rival se acomoda con ella.
+    const field = within(host.container).getByLabelText('Campo')
+    expect(field.style.getPropertyValue('--cell-m')).toContain('calc((100dvh - 30.9rem) / 5.2)')
+
+    // La línea de jugadas: sin lugar en el celular (flota), arriba del campo.
+    const floating = () => Array.from(host.container.querySelectorAll<HTMLElement>('[class~="max-sm:-mb-11"]'))
+    expect(floating()).toHaveLength(1)
+    expect(floating()[0]).toHaveClass('order-3', 'max-sm:z-20', 'max-sm:pointer-events-none')
+    expect(floating()[0]).not.toHaveClass('max-[1100px]:hidden')
+
+    // Termina el duelo y se cierra la tarjeta: la tira del resultado ocupa ese mismo lugar (la línea se esconde) y flota igual.
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+    fireEvent.click(within(within(host.container).getByRole('dialog', { name: '¡Ganaste!' })).getByRole('button', { name: 'Ver la mesa' }))
+
+    const rows = floating()
+    expect(rows).toHaveLength(2)
+    expect(rows.filter((row) => row.classList.contains('max-[1100px]:hidden'))).toHaveLength(1)
+    const strip = rows.find((row) => within(row).queryByRole('button', { name: 'Revancha' }))
+    expect(strip).toHaveClass('order-3', 'max-sm:relative', 'max-sm:z-20')
   })
 
   it('la señal de abajo (👍 continuá) está a mano del pulgar; las tuyas salen como un globo junto a tus vidas y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {

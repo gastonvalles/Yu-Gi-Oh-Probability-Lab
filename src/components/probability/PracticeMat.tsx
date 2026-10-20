@@ -75,6 +75,7 @@ import { Modal } from '../ui/Modal'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { THEIR_HAND } from '../duel/their-hand'
+import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { MatPlate, MatScene, PickMarks } from './MatArena'
 import { MatViewToggle } from './MatViewToggle'
@@ -415,6 +416,8 @@ export function PracticeMat({
   // Con el panel de la derecha (los pasos de la práctica o el chat de un duelo) y el detalle a la izquierda, la mesa queda entre los dos.
   const sidePanel = !duel || Boolean(duel.aside)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // Celular en vertical: el campo del duelo se ajusta al alto de la pantalla para que se vea tu mano (ver `compact-field.ts`).
+  const compact = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   // Laterales: en un duelo de escritorio, si la columna de la mesa tiene ancho de sobra, lo que rodea al campo va a sus costados (ver `duel-rails.ts`).
   const columnRef = useRef<HTMLDivElement | null>(null)
   const columnSize = useElementSize(columnRef)
@@ -1869,7 +1872,7 @@ export function PracticeMat({
           )}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null) } as CSSProperties) : undefined}
+          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d') : null) } as CSSProperties) : undefined}
         >
           {/* La placa de la arena, debajo de todo el campo (decoración). */}
           <MatPlate />

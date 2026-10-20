@@ -317,8 +317,9 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
             </Callout>
           ) : null}
 
-          {/* En escritorio las cartas se achican hasta que entran las cinco filas, las dos manos y las barras en la pantalla (en el celular el ancho las fija). */}
-          <DuelTable mine={bottomView} theirs={topView} turn={snapshot.turn === bottom ? 'mine' : 'theirs'} className="[--cell:max(3rem,min(7rem,calc((100dvh-17rem)/5.2)))]" />
+          {/* En escritorio las cartas se achican hasta que entran las cinco filas, las dos manos y las barras en la pantalla. En un celular en vertical (menos de 640 px) son siete filas de cinco columnas: la casilla es la que deja ver las dos manos y tus vidas sin scrollear
+              (el alto de la pantalla menos 28,9 rem —lo de arriba, las dos manos y la fila de abajo—, en siete; nunca menos de 3 rem) y, si el ancho no alcanza, la del ancho. */}
+          <DuelTable mine={bottomView} theirs={topView} turn={snapshot.turn === bottom ? 'mine' : 'theirs'} className="[--cell:max(3rem,min(7rem,calc((100dvh-17rem)/5.2)))] max-sm:mx-auto max-sm:w-[min(100%,calc(5*max(3rem,(100dvh_-_28.9rem)/7)_+_1rem))]" />
           <TheirHand count={bottomView.handCount ?? 0} />
 
           <div className="flex items-center justify-between gap-2">
