@@ -3,12 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { requestLabOdds } from '../../app/lab-odds-client'
 import { reactMascot } from '../../app/mascot'
+import { DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import type { LabOdds } from '../../app/lab-odds'
 import type { MatAction, MatState } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import type { MatSession } from '../../app/use-mat-session'
 import { t } from '../../i18n'
 import type { CardEntry, HandPattern } from '../../types'
+import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
 import { Callout } from '../ui/Callout'
 import {
   buildPracticeDeck,
@@ -63,6 +65,9 @@ export function PracticeSection(props: PracticeSectionProps) {
   const deck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
   const blockedMessage = getBlockedMessage(props)
+  // El detalle fijo de la izquierda (como en un duelo): la última carta que se tocó, siempre a la vista en pantallas anchas.
+  const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
+  const [peek, setPeek] = useState<CardPeek | null>(null)
 
   // Mano inicial: la de la mesa al empezar y, si la primera jugada fue robar una carta, esa también (se fue 2º).
   // Sólo importa si se fue 2º (no las jugadas): así cada jugada no vuelve a evaluar la mano.
@@ -225,6 +230,8 @@ export function PracticeSection(props: PracticeSectionProps) {
       highlighted={started ? EMPTY_IDS : highlighted}
       highlightKind={started ? null : (activeMatch?.kind ?? null)}
       muted={isUnplayable && !started}
+      detail={wide ? <DuelCardDock peek={peek} /> : undefined}
+      onPeek={setPeek}
     />
   )
 }
