@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { CardPeek } from './DuelCardDock'
 
-/** Lo que no desbloquea el detalle al tocarlo: el detalle mismo (se puede leer y desplazar) y cualquier carta (que lo fija por su cuenta). */
-const KEEPS_LOCK = '[data-card-dock], [data-card-id], [data-rival-card-id]'
+/** Lo que no desbloquea el detalle al tocarlo: el detalle mismo (se puede leer y desplazar), la carta en grande que se abre desde él (`CardZoom`: está afuera del detalle, en el cuerpo de la página) y cualquier carta (que lo fija por su cuenta). */
+const KEEPS_LOCK = '[data-card-dock], [data-card-zoom], [data-card-id], [data-rival-card-id]'
 
 /** Si dos carteles son de la misma carta (para no volver a dibujar el detalle por pasar el mouse sobre la misma). */
 function samePeek(left: CardPeek | null, right: CardPeek | null): boolean {

@@ -75,6 +75,21 @@ describe('el detalle fijo: la carta del mouse, y la del click mientras no se hag
     expect(nameOf(result.current.shown)).toBe('Carta 1')
   })
 
+  it('tocar la carta en grande que se abre desde el detalle (está afuera del panel, en el cuerpo de la página) no la suelta', () => {
+    const zoom = document.body.appendChild(document.createElement('div'))
+    const inZoom = zoom.appendChild(document.createElement('img'))
+
+    zoom.setAttribute('data-card-zoom', '')
+
+    const { result } = renderHook(() => useDockPeek())
+
+    act(() => result.current.lock(peekOf(1)))
+    fireEvent.pointerDown(inZoom)
+    fireEvent.pointerDown(zoom)
+    expect(result.current.locked).toBe(true)
+    expect(nameOf(result.current.shown)).toBe('Carta 1')
+  })
+
   it('un click en otra carta la fija a ésa; y la del rival (por su id real, o boca abajo) funciona igual', () => {
     const { result } = renderHook(() => useDockPeek())
 

@@ -105,6 +105,8 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
       role="dialog"
       aria-modal="true"
       aria-label={t('search.zoom.aria', { name })}
+      // Para el detalle fijo del duelo: tocar adentro de la carta en grande no le suelta la carta fija (`use-dock-peek`).
+      data-card-zoom=""
       className="fixed inset-0 z-250 cursor-zoom-out bg-background/90 animate-dialog-enter motion-reduce:animate-none"
       onClick={() => (menuOpen ? setMenuOpen(false) : onClose())}
     >
