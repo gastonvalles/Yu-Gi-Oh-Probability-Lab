@@ -2432,11 +2432,13 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('button', { name: 'Ventana grande' })).not.toBeInTheDocument()
   })
 
-  it('pasar de fase le pregunta al rival si no va a hacer nada más: él ve el aviso sobre la línea del registro y deja pasar o juega antes, y quien pasa espera con la fase sin cambiar', () => {
+  it('pasar de fase le pregunta al rival si no va a hacer nada más: él ve la pregunta en el medio de la pantalla y deja pasar o juega antes, y quien pasa espera con la fase sin cambiar', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel()
     openTable(host, guest)
     const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+    /** La pregunta del rival de pasar de fase: va en el medio de la mesa, no con los avisos de arriba. */
+    const prompt = (view: RenderResult) => view.container.querySelector<HTMLElement>('[data-prompt="passAsked"]')
     const chip = (view: RenderResult) => within(view.container).getByRole('button', { name: /^Fases:/ })
 
     // Ana toca la Battle Phase: la fase no cambia hasta que Beto conteste; él ve la pregunta (sin diálogo que tape la mesa).
@@ -2445,13 +2447,17 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(chip(host)).toHaveAccessibleName(/Main Phase 1|Draw Phase|Standby Phase/)
     expect(lane(host, 'passAsking')).toHaveTextContent('Le preguntás a Beto si no hace nada más…')
-    expect(lane(guest, 'passAsked')).toHaveTextContent('Ana quiere pasar a la Battle Phase. ¿Hacés algo antes?')
+    expect(prompt(guest)).toHaveTextContent('Ana quiere pasar a la Battle Phase. ¿Hacés algo antes?')
+    // En el medio de la pantalla (la capa de la mesa que centra), no sobre la línea del registro de arriba; ni Ana la ve.
+    expect(prompt(guest)!.closest('[data-testid="duel-prompt-layer"]')).toHaveClass('place-items-center')
+    expect(lane(guest, 'passAsked')).toBeNull()
+    expect(prompt(host)).toBeNull()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 
     // Beto quiere jugar antes: la fase no pasa y Ana se entera un rato.
-    fireEvent.click(within(lane(guest, 'passAsked')!).getByRole('button', { name: 'Jugar antes' }))
+    fireEvent.click(within(prompt(guest)!).getByRole('button', { name: 'Jugar antes' }))
     flush()
-    expect(lane(guest, 'passAsked')).toBeNull()
+    expect(prompt(guest)).toBeNull()
     expect(lane(host, 'passHeld')).toHaveTextContent('Beto quiere jugar antes de que pases de fase.')
     expect(chip(host)).not.toHaveAccessibleName(/Battle Phase/)
     act(() => {
@@ -2463,7 +2469,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(phaseChip(host))
     fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
     flush()
-    fireEvent.click(within(lane(guest, 'passAsked')!).getByRole('button', { name: 'Dejar pasar' }))
+    fireEvent.click(within(prompt(guest)!).getByRole('button', { name: 'Dejar pasar' }))
     flush()
     expect(chip(host)).toHaveAccessibleName(/Battle Phase/)
     expect(chip(guest)).toHaveAccessibleName(/Battle Phase/)
@@ -2480,7 +2486,7 @@ describe('la pantalla del duelo', () => {
       const quick = new Map([...monsters].map(([id, entry]) => [id, { ...entry, apiCard: quickMonster }]))
       const { host, guest } = startDuel({ cardsById: quick })
       openTable(host, guest)
-      const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+      const prompt = (view: RenderResult) => view.container.querySelector<HTMLElement>('[data-prompt="passAsked"]')
       const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="respond"]').length
 
       expect(glowing(guest)).toBe(0)
@@ -2489,12 +2495,12 @@ describe('la pantalla del duelo', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
       flush()
       // La mano de Beto (cinco cartas distintas por nombre) brilla y el aviso nombra a dos y «y 3 más».
-      expect(lane(guest, 'passAsked')).toHaveTextContent(/^Ana quiere pasar a la Battle Phase\. Podés responder con Monstruo \d+, Monstruo \d+ y 3 más\./)
+      expect(prompt(guest)).toHaveTextContent(/^Ana quiere pasar a la Battle Phase\. Podés responder con Monstruo \d+, Monstruo \d+ y 3 más\./)
       expect(glowing(guest)).toBe(5)
       // Ana no recibe la pregunta: no se le resalta nada.
       expect(glowing(host)).toBe(0)
 
-      fireEvent.click(within(lane(guest, 'passAsked')!).getByRole('button', { name: 'Dejar pasar' }))
+      fireEvent.click(within(prompt(guest)!).getByRole('button', { name: 'Dejar pasar' }))
       flush()
       expect(glowing(guest)).toBe(0)
     } finally {
