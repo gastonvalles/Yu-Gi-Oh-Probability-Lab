@@ -258,3 +258,44 @@ describe('la impresión de la carta en grande', () => {
     expect(screen.queryByRole('button', { name: 'Impresiones' })).not.toBeInTheDocument()
   })
 })
+
+describe('el brillo de la rareza en la carta en grande', () => {
+  const printing = (rarity: string) => ({ set: 'Set', code: 'XXXX-EN001', rarity, variant: '', editions: [] })
+  const arts = [
+    { id: 'art-1', imageUrl: 'a', imageUrlSmall: null, label: '' },
+    { id: 'print-common', imageUrl: 'b', imageUrlSmall: null, label: '', printing: printing('Common') },
+    { id: 'print-star', imageUrl: 'c', imageUrlSmall: null, label: '', printing: printing('Starlight Rare') },
+    { id: 'print-ultra', imageUrl: 'd', imageUrlSmall: null, label: '', printing: printing('Ultra Rare') },
+  ]
+  const ui = (artId: string | null, frameType = 'effect') => (
+    <Provider store={store}>
+      <CardZoom card={{ ...card, frameType }} name="Maxx" arts={arts} artId={artId} onArtChange={vi.fn()} onClose={vi.fn()} />
+    </Provider>
+  )
+  const foil = () => document.querySelector('.rarity-foil')
+
+  it('lleva el efecto de la rareza de la impresión que se ve, pegado al frente de la carta, y cambia (o se va) con ella', () => {
+    const view = render(ui('print-star'))
+
+    expect(foil()).toHaveAttribute('data-foil', 'starlight')
+    expect(foil()).toHaveAttribute('data-frame', 'monster')
+    expect(foil()).toHaveAttribute('aria-hidden', 'true')
+    // Va adentro del frente: la cara que se esconde al dar vuelta la carta.
+    expect(foil()!.parentElement!.className).toContain('[backface-visibility:hidden]')
+
+    view.rerender(ui('print-ultra'))
+    expect(foil()).toHaveAttribute('data-foil', 'holo')
+    view.rerender(ui('print-common'))
+    expect(foil()).toBeNull()
+  })
+
+  it('un arte que no es de una impresión (los de YGOPRODeck) o sin arte elegido no brilla; el marco del brillo sigue al de la carta', () => {
+    const view = render(ui('art-1'))
+
+    expect(foil()).toBeNull()
+    view.rerender(ui(null))
+    expect(foil()).toBeNull()
+    view.rerender(ui('print-star', 'pendulum_effect'))
+    expect(foil()).toHaveAttribute('data-frame', 'pendulum')
+  })
+})

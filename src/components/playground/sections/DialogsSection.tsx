@@ -5,8 +5,12 @@ import { printImageUrl } from '../../../app/card-prices'
 import type { ArtChoice } from '../../../app/use-card-art-options'
 import { showToastMessage, type ToastTone } from '../../../app/use-toast-message'
 import type { ApiCardReference } from '../../../types'
+import { foilKindOf, type FoilKind } from '../../../app/card-foil'
+import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../../card-detail/card-tilt'
 import { CardZoom } from '../../card-detail/CardZoom'
+import { RarityFoil } from '../../card-detail/RarityFoil'
 import { Button } from '../../ui/Button'
+import { cx } from '../../ui/cx'
 import { Modal } from '../../ui/Modal'
 import { LabScoreSheet } from '../../probability/LabScoreSheet'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
@@ -46,13 +50,30 @@ const ZOOM_CARD = {
   banlist: { tcg: null, ocg: null, goat: null },
   genesys: { points: null },
 } as ApiCardReference
+// Una rareza de cada efecto, para ver todos los brillos de una vez.
+const FOIL_SAMPLES: ReadonlyArray<{ rarity: string; kind: FoilKind }> = [
+  'Rare',
+  'Super Rare',
+  'Ultra Rare',
+  'Secret Rare',
+  'Gold Rare',
+  'Ghost Rare',
+  'Platinum Secret Rare',
+  'Prismatic Secret Rare',
+  'Starlight Rare',
+].flatMap((rarity) => {
+  const kind = foilKindOf(rarity)
+
+  return kind ? [{ rarity, kind }] : []
+})
+
 const ZOOM_ARTS: ArtChoice[] = [
   {
     id: 'print-1',
     imageUrl: printImageUrl(ZOOM_PRODUCT, '400w'),
     imageUrlSmall: null,
     label: '',
-    printing: { set: 'Ignition Assault', code: 'IGAS-EN013', rarity: 'Rare', variant: '', editions: [{ edition: '1st Edition', market: 0.29 }] },
+    printing: { set: 'Ignition Assault', code: 'IGAS-EN013', rarity: 'Ultra Rare', variant: '', editions: [{ edition: '1st Edition', market: 0.29 }] },
   },
   {
     id: 'print-2',
@@ -95,6 +116,23 @@ export function DialogsSection() {
           Abrir la carta en grande
         </Button>
         {zoomOpen ? <CardZoom card={ZOOM_CARD} name="Ancient Warriors - Valiant Zhang De" arts={ZOOM_ARTS} artId={zoomArt} onArtChange={setZoomArt} onClose={() => setZoomOpen(false)} /> : null}
+      </Specimen>
+
+      <Specimen title="Foil de rareza" note={<>El brillo que simula el papel de la carta impresa, según la rareza de la impresión que se ve: pasá el mouse (o el dedo) por encima y la luz la sigue; sin tocar, se mueve sola. Va adentro del frente de <Tag>CardFlip</Tag>. Archivos: <Tag>app/card-foil.ts</Tag> <Tag>card-detail/RarityFoil.tsx</Tag> <Tag>index.css</Tag></>}>
+        <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-4">
+          {FOIL_SAMPLES.map(({ rarity, kind }) => (
+            <figure key={rarity} className="m-0 grid gap-2 text-center">
+              <div className={cx('mx-auto w-full max-w-[9.5rem]', TILT_PERSPECTIVE)}>
+                <div className={cx('relative aspect-[421/614] overflow-hidden', TILT_ART)} {...tiltHandlers}>
+                  <img src={printImageUrl(ZOOM_PRODUCT, '400w')} alt="" draggable={false} className="block size-full object-cover" />
+                  <RarityFoil kind={kind} frame="monster" />
+                  <CardGlare />
+                </div>
+              </div>
+              <figcaption className="text-micro text-muted">{rarity}</figcaption>
+            </figure>
+          ))}
+        </div>
       </Specimen>
 
       <Specimen title="Avisos (toast)" note={<>Aparecen abajo y se descartan deslizándolos. Archivos: <Tag>ui/AppToast.tsx</Tag> <Tag>app/use-toast-message.ts</Tag></>}>

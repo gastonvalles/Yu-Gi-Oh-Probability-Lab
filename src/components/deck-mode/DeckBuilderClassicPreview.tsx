@@ -7,6 +7,7 @@ import {
   buildClassicCardStatLine,
 } from '../../app/deck-builder-classic'
 import type { DeckZone } from '../../app/model'
+import { foilOf } from '../../app/card-foil'
 import { useCardArtOptions } from '../../app/use-card-art-options'
 import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -120,7 +121,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                 onPointerUp={flip.onPointerUp}
                 onPointerCancel={flip.onPointerCancel}
               >
-                <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} shadow={false}>
+                <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} shadow={false} foil={foilOf(art?.printing?.rarity, card.frameType)}>
                   <button
                     type="button"
                     aria-label={t('deck.classic.zoom')}

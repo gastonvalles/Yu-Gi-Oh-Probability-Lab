@@ -41,6 +41,10 @@ function tiltTowards(art: HTMLElement, event: ReactPointerEvent<HTMLElement>, ap
   apply(art, -y, x, strength < 0.01 ? 0 : strength * TILT_DEGREES)
   art.style.setProperty('--glare-x', `${(x + 1) * 50}%`)
   art.style.setProperty('--glare-y', `${(y + 1) * 50}%`)
+  // La luz del foil de rareza (`RarityFoil`): dónde está el puntero y qué tan lejos del centro.
+  art.style.setProperty('--foil-px', `${(x + 1) * 50}%`)
+  art.style.setProperty('--foil-py', `${(y + 1) * 50}%`)
+  art.style.setProperty('--foil-d', String(strength))
   art.dataset.tilting = 'true'
 }
 
@@ -56,6 +60,10 @@ const applyTransform: Apply = (art, axisX, axisY, degrees) => {
 export function levelOut(art: HTMLElement) {
   art.style.rotate = ''
   art.style.transform = ''
+  // El foil vuelve a moverse solo.
+  art.style.removeProperty('--foil-px')
+  art.style.removeProperty('--foil-py')
+  art.style.removeProperty('--foil-d')
   art.dataset.tilting = 'false'
 }
 

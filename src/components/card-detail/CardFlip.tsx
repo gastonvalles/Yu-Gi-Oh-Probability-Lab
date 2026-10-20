@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 
+import type { CardFoil } from '../../app/card-foil'
 import { t } from '../../i18n'
 import { CARD_BACK, CARD_BACK_HD_URL } from '../probability/practice-styles'
 import { CardGlare, levelOut } from './card-tilt'
+import { RarityFoil } from './RarityFoil'
 
 /** Cuánto hay que arrastrar la carta, en partes de su ancho (o de su alto), para darla vuelta entera (medio giro por cada 0,8). */
 const SPAN = 0.8
@@ -172,7 +174,7 @@ const FACE_SHADOW = 'shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_25
  * La carta grande, dada vuelta: el frente y, del otro lado, el dorso con los logos de una carta real (el chico, y en alta apenas se empieza a dar vuelta). Gira en 3D sobre los dos ejes con su propia perspectiva (`FLIP_PERSPECTIVE`:
  * el marco que la contiene no la recorta, cada cara se recorta a sí misma), `turns` medios giros en cada uno; el gesto que la mueve es `useCardFlip`. No tiene tamaño propio: llena a quien la contiene.
  */
-export function CardFlip({ turns, flipperRef, loadBack = false, shadow = true, children }: { turns: FlipTurns; flipperRef: RefObject<HTMLDivElement | null>; /** Bajar el dorso en alta (`useCardFlip().loadBack`). */ loadBack?: boolean; /** Con el resplandor de la carta grande (por defecto). */ shadow?: boolean; children: ReactNode }) {
+export function CardFlip({ turns, flipperRef, loadBack = false, shadow = true, foil = null, children }: { turns: FlipTurns; flipperRef: RefObject<HTMLDivElement | null>; /** Bajar el dorso en alta (`useCardFlip().loadBack`). */ loadBack?: boolean; /** Con el resplandor de la carta grande (por defecto). */ shadow?: boolean; /** El brillo de la rareza de la impresión que se ve (`foilKindOf`), pegado al frente; sin él, la carta no brilla. */ foil?: CardFoil | null; children: ReactNode }) {
   const flipped = (Math.abs(turns.x) + Math.abs(turns.y)) % 2 === 1
   const face = shadow ? FACE_SHADOW : ''
 
@@ -185,6 +187,7 @@ export function CardFlip({ turns, flipperRef, loadBack = false, shadow = true, c
     >
       <div className={`absolute inset-0 overflow-hidden [backface-visibility:hidden] ${face}`} aria-hidden={flipped || undefined}>
         {children}
+        {foil ? <RarityFoil kind={foil.kind} frame={foil.frame} /> : null}
         {/* El brillo que sigue al puntero va pegado al frente (gira con él y se esconde con el dorso): afuera quedaba flotando, plano, donde estaba la carta. */}
         <CardGlare />
       </div>
