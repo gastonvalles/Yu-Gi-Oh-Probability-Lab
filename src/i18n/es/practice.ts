@@ -45,7 +45,6 @@ export const practice = {
   'practice.menu.flipSummon': 'Invocación por Volteo',
   'practice.menu.activate': 'Activar',
   'practice.menu.activateEffect': 'Activar efecto',
-  'practice.menu.otherEffect': 'Otro efecto',
   'practice.menu.effectLead': 'Efecto {n}',
   'practice.menu.asScale': 'Activar como escala',
   'practice.menu.set': 'Colocar',

@@ -44,7 +44,6 @@ export const practice: Translated<typeof es> = {
   'practice.menu.flipSummon': 'Flip Summon',
   'practice.menu.activate': 'Activate',
   'practice.menu.activateEffect': 'Activate effect',
-  'practice.menu.otherEffect': 'Another effect',
   'practice.menu.effectLead': 'Effect {n}',
   'practice.menu.asScale': 'Activate as Scale',
   'practice.menu.set': 'Set',

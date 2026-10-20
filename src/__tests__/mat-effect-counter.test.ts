@@ -59,20 +59,18 @@ describe('effectKey: la clave del uso de un efecto', () => {
 describe('effectChoices: el segundo paso de «Activar efecto»', () => {
   const effects = effectsOf(DUSK_CROW, ONCE | EFFECT_FACT.cost, ONCE)
 
-  it('un renglón por efecto: lo que hace, textual (arriba su número y cuándo se activa, abajo sus rasgos confirmados), y «Otro efecto» al final, sin efecto elegido', () => {
+  it('un renglón por efecto, ni uno más (son todos los de la carta: no hay un «otro»): lo que hace, textual, con arriba su número y cuándo se activa y abajo sus rasgos confirmados', () => {
     const choices = effectChoices('c1', 10808715, effects, [], 3)
 
-    expect(choices.map((choice) => choice.lead)).toEqual(['Efecto 1 · If this card is in your hand', 'Efecto 2 · If this card is Normal or Special Summoned', undefined])
+    expect(choices.map((choice) => choice.lead)).toEqual(['Efecto 1 · If this card is in your hand', 'Efecto 2 · If this card is Normal or Special Summoned'])
     expect(choices.map((choice) => choice.label)).toEqual([
       'You can banish 1 "HERO" monster from your GY; Special Summon this card.',
       'You can add 1 "Masked HERO" monster from your Deck or GY to your hand.',
-      'Otro efecto',
     ])
-    expect(choices.map((choice) => choice.hint)).toEqual(['1 vez por turno, por nombre · Con costo', '1 vez por turno, por nombre', undefined])
+    expect(choices.map((choice) => choice.hint)).toEqual(['1 vez por turno, por nombre · Con costo', '1 vez por turno, por nombre'])
     expect(choices.map((choice) => choice.action)).toEqual([
       { type: 'activate', id: 'c1', effect: 0 },
       { type: 'activate', id: 'c1', effect: 1 },
-      { type: 'activate', id: 'c1' },
     ])
   })
 
@@ -89,8 +87,6 @@ describe('effectChoices: el segundo paso de «Activar efecto»', () => {
       expect(choice.preview).toEqual({ start: effect.start, end: effect.start + effect.sentence.text.length })
       expect(DUSK_CROW.slice(choice.preview!.start, choice.preview!.end)).toBe(effect.sentence.text)
     })
-
-    expect(choices[2]!.preview).toBeUndefined()
   })
 
   it('un efecto sin encabezado no lleva «cuándo»: arriba sólo su número, y lo que hace es la frase entera', () => {
