@@ -88,7 +88,8 @@ describe('el arranque con las tablas de Genesys y Edison bajo demanda', () => {
 
     const { formatDataLoaded, pointsOfSavedCard } = await boot()
 
-    expect(render).toHaveBeenCalledTimes(1)
+    // Pinta sin esperar las tablas: sólo espera los textos del idioma de la página (el español ya viene con el archivo principal: son un par de microtareas).
+    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1))
     expect(formatDataLoaded()).toBe(false)
     expect(idle).toHaveLength(1)
 
