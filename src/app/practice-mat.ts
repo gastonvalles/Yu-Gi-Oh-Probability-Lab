@@ -12,6 +12,8 @@ import type { ApiCardReference } from '../types'
 export type MatPos = 'atk' | 'def' | 'set'
 type MatZone = 'mz' | 'emz' | 'st'
 export type MatSpot = MatZone | 'field'
+/** Dónde puede quedar una carta cuyo control cambia de manos: una zona de monstruo, de Mágicas y Trampas o la de Campo (la Extra Monster Zone cuenta como de monstruo). */
+export type MatTakeZone = 'mz' | 'st' | 'field'
 export type MatPile = 'deck' | 'extra' | 'hand' | 'gy' | 'banished'
 
 export interface Placed {
@@ -99,13 +101,13 @@ export type MatAction =
    */
   | { type: 'phase'; phase: MatPhase; skipDraw?: true }
   /**
-   * Control de un monstruo (duelo): `give` lo saca de mi campo (los materiales van a mi cementerio) para que lo tenga el rival, o lo devuelve si era de él (su id lleva `f.`);
-   * `take` pone en mi campo una carta de él (con su id `f.…`); `regain` me devuelve una carta mía que el rival tenía (al campo o a una pila). Lo que hace uno, el otro lo
+   * Control de una carta (duelo): `give` la saca de mi mesa —del campo (los materiales van a mi cementerio), del cementerio o del destierro— para que la tenga el rival, o la devuelve si era de él (su id lleva `f.`);
+   * `take` pone en mi campo una carta de él (con su id `f.…`), venga de su campo, de su cementerio o de su destierro; `regain` me devuelve una carta mía que el rival tenía (al campo o a una pila). Lo que hace uno, el otro lo
    * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). Ver `mat-control.ts`.
    */
   | { type: 'give'; id: string; auto?: true }
-  | { type: 'take'; id: string; zone: 'mz'; index: number; pos: MatPos; auto?: true }
-  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | 'mz'; index?: number; pos?: MatPos; faceDown?: boolean; auto?: true }
+  | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; auto?: true }
+  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; auto?: true }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
@@ -208,6 +210,15 @@ export function allMatIds(state: MatState): string[] {
 
 export function placedAt(state: MatState, spot: MatSpot, index: number): Placed | null {
   return spot === 'field' ? state.field : (state[spot][index] ?? null)
+}
+
+export const isTakeZone = (value: unknown): value is MatTakeZone => value === 'mz' || value === 'st' || value === 'field'
+
+/** Una zona (de monstruo, de Mágicas y Trampas o de Campo) con ese lugar libre y bien dicho. */
+export function isFreeTakeZone(state: MatState, zone: MatTakeZone, index: number): boolean {
+  const size = zone === 'field' ? 1 : ZONE_SIZES[zone]
+
+  return Number.isInteger(index) && index >= 0 && index < size && placedAt(state, zone, index) === null
 }
 
 function withPlaced(state: MatState, spot: MatSpot, index: number, placed: Placed | null): MatState {
@@ -447,8 +458,8 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     case 'give': {
       const where = locateCard(state, action.id)
 
-      // Sólo se da un monstruo del campo (una ficha tampoco).
-      if (where?.kind !== 'spot' || (where.spot !== 'mz' && where.spot !== 'emz') || isToken(action.id)) {
+      // Se da (o se le suelta al rival) una carta del campo, del cementerio o del destierro: la mano, el deck, el Extra, un material o una ficha no.
+      if ((where?.kind !== 'spot' && !(where?.kind === 'pile' && (where.pile === 'gy' || where.pile === 'banished'))) || isToken(action.id)) {
         return state
       }
 
@@ -458,13 +469,11 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     }
 
     case 'take': {
-      const free = action.zone === 'mz' && Number.isInteger(action.index) && action.index >= 0 && action.index < ZONE_SIZES.mz && !state.mz[action.index]
-
-      if (!isForeignId(action.id) || !free || locateCard(state, action.id)) {
+      if (!isForeignId(action.id) || !isFreeTakeZone(state, action.zone, action.index) || locateCard(state, action.id)) {
         return state
       }
 
-      return withPlaced(state, 'mz', action.index, { id: action.id, pos: action.pos, counters: 0, materials: [] })
+      return withPlaced(state, action.zone, action.index, { id: action.id, pos: action.pos, counters: 0, materials: [] })
     }
 
     case 'regain': {
@@ -473,14 +482,14 @@ export function matReducer(state: MatState, action: MatAction): MatState {
         return state
       }
 
-      if (action.to === 'mz') {
+      if (isTakeZone(action.to)) {
         const index = action.index
 
-        if (index === undefined || !Number.isInteger(index) || index < 0 || index >= ZONE_SIZES.mz || state.mz[index]) {
+        if (index === undefined || !isFreeTakeZone(state, action.to, index)) {
           return state
         }
 
-        return withPlaced(state, 'mz', index, { id: action.id, pos: action.pos ?? 'atk', counters: 0, materials: [] })
+        return withPlaced(state, action.to, index, { id: action.id, pos: action.pos ?? 'atk', counters: 0, materials: [] })
       }
 
       if (action.to === 'deck') {
@@ -665,7 +674,7 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       return t(action.auto ? 'practice.step.receive' : 'practice.step.take', { card: name(action.id) })
 
     case 'regain':
-      return t(action.to === 'mz' && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) })
+      return t(isTakeZone(action.to) && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) })
 
     case 'counter': {
       const from = locateCard(before, action.id)
@@ -936,8 +945,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       return items
     }
 
-    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre.
-    if (control?.rivalHasRoom && (spot === 'mz' || spot === 'emz')) {
+    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre. Una Mágica o Trampa del rival que tomé se devuelve siempre (sin lugar, vuelve a su cementerio).
+    if (control && (spot === 'mz' || spot === 'emz' ? control.rivalHasRoom : isForeignId(id))) {
       add(t(isForeignId(id) ? 'practice.menu.returnControl' : 'practice.menu.giveControl', { name: control.rival }), { type: 'give', id })
     }
 

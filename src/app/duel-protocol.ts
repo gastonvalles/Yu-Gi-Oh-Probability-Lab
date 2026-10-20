@@ -3,7 +3,7 @@ import { MAX_MESSAGE_BYTES } from './duel-relay-rules'
 import type { DeckFormat } from '../types'
 import { MAX_LP, STARTING_LP } from './life-calculator'
 import type { WireAct } from './mat-public'
-import { PHASES, type MatAction, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type Placed } from './practice-mat'
+import { isTakeZone, PHASES, type MatAction, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type Placed } from './practice-mat'
 import { isRecord } from './utils'
 
 /**
@@ -209,9 +209,9 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   attack: (a) => isCardId(a.id) && optional(a.target, isCardId),
   phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true),
   give: (a) => isCardId(a.id) && optional(a.auto, (v) => v === true),
-  take: (a) => isCardId(a.id) && a.zone === 'mz' && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.auto, (v) => v === true),
+  take: (a) => isCardId(a.id) && isTakeZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.auto, (v) => v === true),
   regain: (a) =>
-    isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || a.to === 'mz') && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
+    isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || isTakeZone(a.to)) && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
 }
 
 function parseAction(value: unknown): MatAction | null {
