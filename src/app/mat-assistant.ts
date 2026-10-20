@@ -61,8 +61,9 @@ export const effectKey = (facts: number, passcode: number, cardId: string, effec
 
 /**
  * El segundo paso de «Activar efecto» en una carta con efectos que se cuentan uno por uno: un renglón por efecto con lo que **hace**, **textual** (la frase del efecto, sin recortar: la precisión es de la frase), con su número y
- * cuándo se activa arriba y, debajo, si ya se usó, desde dónde se activa y sus rasgos confirmados; y «Otro efecto», una activación sin efecto elegido que no cuenta contra ninguno. Cada renglón sabe qué pedazo del texto
- * de la carta es (`preview`). Elegir uno que ya se usó no se frena: la mesa avisa, no decide.
+ * cuándo se activa arriba y, debajo, si ya se usó, desde dónde se activa y sus rasgos confirmados. Son **todos** los efectos que se activan de la carta (la carta sólo se cuenta por efecto si el texto y el script tienen la
+ * misma cantidad y se emparejan sin dudas: `alignEffects`), así que no hay un «otro»: no queda ningún efecto afuera de la lista. Cada renglón sabe qué pedazo del texto de la carta es (`preview`). Elegir uno que ya se usó
+ * no se frena: la mesa avisa, no decide.
  */
 export function effectChoices(id: string, passcode: number, effects: readonly CardEffectOfText[], past: readonly Activation[], turn: number): MatMenuItem[] {
   const choices = effects.map((effect, index): MatMenuItem => {
@@ -83,5 +84,5 @@ export function effectChoices(id: string, passcode: number, effects: readonly Ca
     }
   })
 
-  return [...choices, { label: t('practice.menu.otherEffect'), action: { type: 'activate', id } }]
+  return choices
 }

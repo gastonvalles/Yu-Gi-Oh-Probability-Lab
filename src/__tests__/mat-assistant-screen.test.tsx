@@ -187,10 +187,11 @@ describe('el contador por efecto: una carta con varios efectos pregunta cuál se
     tap(crow(0))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
 
-    // El segundo paso: un renglón por efecto, y «Otro efecto» para lo que no está en la lista.
+    // El segundo paso: un renglón por efecto y nada más (son todos los de la carta: no hay un «otro»).
     expect(screen.getByRole('menuitem', { name: /^Efecto 1 · If this card is in your hand.*You can banish 1 "HERO" monster from your GY; Special Summon this card\..*1 vez por turno, por nombre.*Con costo/ })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /^Efecto 2 · If this card is Normal or Special Summoned.*You can add 1 "Masked HERO" monster from your Deck or GY to your hand.*1 vez por turno, por nombre/ })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'Otro efecto' })).toBeInTheDocument()
+    expect(screen.getAllByRole('menuitem', { name: /^Efecto \d · / })).toHaveLength(2)
+    expect(screen.queryByRole('menuitem', { name: 'Otro efecto' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('menuitem', { name: /^Efecto 2 · / }))
     expect(screen.getAllByText('Activás el efecto 2 de Cuervo').length).toBeGreaterThanOrEqual(1)
@@ -224,32 +225,13 @@ describe('el contador por efecto: una carta con varios efectos pregunta cuál se
     expect(screen.getByRole('menuitem', { name: /^Efecto 1 · / })).not.toHaveAccessibleName(/Ya lo usaste/)
   })
 
-  it('«Otro efecto» activa sin elegir cuál: no cuenta contra ningún efecto; la carta entera sí avisa si se repite', () => {
-    render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
-
-    effect(0, 0)
-    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
-    tap(crow(0))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Otro efecto' }))
-    expect(showToastMessage).not.toHaveBeenCalled()
-    expect(screen.getAllByText('Activás el efecto de Cuervo').length).toBeGreaterThanOrEqual(1)
-
-    // Otra vez sin elegir: es la carta entera la que se cuenta (como antes de contar por efecto).
-    tap(crow(1))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Otro efecto' }))
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste Cuervo este turno.*fijate que no sea el mismo efecto/)
-  })
-
   it('una carta con varios efectos pero sin ningún límite confirmado se activa directo, sin preguntar', () => {
     setCardEffectMapForTests(new Map([[CROW_ID, effectSentences(CROW_TEXT).map((sentence) => [sentence.start, EFFECT_FACT.cost, 0] as [number, number, number])]]))
     render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
 
     tap(crow(0))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
-    expect(screen.queryByRole('menuitem', { name: 'Otro efecto' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /^Efecto \d · / })).not.toBeInTheDocument()
     expect(screen.getAllByText('Activás el efecto de Cuervo').length).toBeGreaterThanOrEqual(1)
   })
 })
@@ -379,13 +361,6 @@ describe('al elegir el efecto en escritorio, el detalle de la carta (a la izquie
     fireEvent.focus(row(1))
     expect(marked()).toBe(SECOND!.text)
     fireEvent.blur(row(1))
-    expect(marked()).toBe('')
-  })
-
-  it('«Otro efecto» no resalta nada: no es una frase del texto', () => {
-    render(<WithDock />)
-    openEffects()
-    fireEvent.mouseEnter(screen.getByRole('menuitem', { name: 'Otro efecto' }))
     expect(marked()).toBe('')
   })
 })
