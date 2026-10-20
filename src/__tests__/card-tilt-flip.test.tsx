@@ -349,3 +349,101 @@ describe('girar la carta, con un gesto, en todas las direcciones', () => {
     expect(screen.queryByText(/Arrastrá para girarla/)).not.toBeInTheDocument()
   })
 })
+
+describe('la carta nunca se queda trabada a medio giro (Gastón, 2026-10-20: «volvimos a tener este problema»: la carta quedó de canto)', () => {
+  const touch = (pointerId: number, clientX: number, clientY: number, extra: Record<string, unknown> = {}) => ({ pointerId, pointerType: 'touch', clientX, clientY, ...extra })
+  /** Un giro cabal: el medio giro más cercano, sin quedar a medias (múltiplo de 180°). */
+  const settled = () => {
+    const [x, y] = [...flipper().style.transform.matchAll(/rotate[XY]\((-?[\d.]+)deg\)/g)].map((match) => Number(match[1]))
+
+    return Math.abs(x! % 180) < 0.01 && Math.abs(y! % 180) < 0.01
+  }
+
+  it('con dos dedos: el segundo no pisa al primero y, al soltar el primero, el giro termina en un medio giro', () => {
+    render(<FlippableCard />)
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, touch(11, 20, 100))
+    fireEvent.pointerMove(carta, touch(11, 90, 100))
+    expect(settled()).toBe(false)
+
+    // Baja un segundo dedo: no cambia el gesto en curso.
+    fireEvent.pointerDown(carta, touch(12, 30, 150))
+    fireEvent.pointerMove(carta, touch(11, 110, 100))
+    fireEvent.pointerUp(carta, touch(11, 110, 100, { buttons: 0 }))
+    expect(settled()).toBe(true)
+
+    // Y el «soltar» del segundo dedo ya no cambia nada.
+    const after = flipper().style.transform
+
+    fireEvent.pointerUp(carta, touch(12, 30, 150, { buttons: 0 }))
+    expect(flipper().style.transform).toBe(after)
+  })
+
+  it('el «soltar» de otro dedo no termina el giro del primero (sigue girando) y el del primero sí', () => {
+    render(<FlippableCard />)
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, touch(21, 70, 20))
+    fireEvent.pointerMove(carta, touch(21, 70, 100))
+    fireEvent.pointerDown(carta, touch(22, 30, 30))
+    fireEvent.pointerUp(carta, touch(22, 30, 30, { buttons: 0 }))
+    expect(settled()).toBe(false)
+
+    fireEvent.pointerMove(carta, touch(21, 70, 120))
+    expect(settled()).toBe(false)
+    fireEvent.pointerUp(carta, touch(21, 70, 120, { buttons: 0 }))
+    expect(settled()).toBe(true)
+  })
+
+  it('si el «soltar» cae en otro lado (otro elemento se quedó con el puntero), la ventana lo ve y el giro termina', () => {
+    render(<FlippableCard />)
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, touch(31, 70, 20))
+    fireEvent.pointerMove(carta, touch(31, 70, 100))
+    expect(settled()).toBe(false)
+
+    fireEvent.pointerUp(window, touch(31, 70, 100, { buttons: 0 }))
+    expect(settled()).toBe(true)
+    // El gesto terminó: un movimiento más no vuelve a girarla.
+    const after = flipper().style.transform
+
+    fireEvent.pointerMove(carta, touch(31, 70, 180))
+    expect(flipper().style.transform).toBe(after)
+  })
+
+  it('si el navegador cancela el toque o la ventana pierde el foco a mitad del gesto, la carta vuelve a su medio giro de antes', () => {
+    render(<FlippableCard />)
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, touch(41, 70, 20))
+    fireEvent.pointerMove(carta, touch(41, 70, 100))
+    fireEvent.pointerCancel(window, touch(41, 70, 100))
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(0deg)')
+
+    fireEvent.pointerDown(carta, touch(42, 20, 100))
+    fireEvent.pointerMove(carta, touch(42, 90, 100))
+    expect(settled()).toBe(false)
+    fireEvent.blur(window)
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(0deg)')
+  })
+
+  it('el mouse que se movió sin el botón apretado (el «soltar» se perdió fuera de la ventana) ya no sigue girando la carta', () => {
+    render(<FlippableCard />)
+    const carta = screen.getByTestId('carta')
+    const mouse = (clientX: number, buttons: number) => ({ pointerId: 1, pointerType: 'mouse', button: 0, buttons, clientX, clientY: 100 })
+
+    fireEvent.pointerDown(carta, mouse(20, 1))
+    fireEvent.pointerMove(carta, mouse(90, 1))
+    expect(settled()).toBe(false)
+
+    fireEvent.pointerMove(carta, mouse(110, 0))
+    expect(settled()).toBe(true)
+
+    const after = flipper().style.transform
+
+    fireEvent.pointerMove(carta, mouse(40, 0))
+    expect(flipper().style.transform).toBe(after)
+  })
+})
