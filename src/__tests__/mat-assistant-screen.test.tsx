@@ -364,3 +364,81 @@ describe('al elegir el efecto en escritorio, el detalle de la carta (a la izquie
     expect(marked()).toBe('')
   })
 })
+
+// Pot of Desires: una Mágica con «una vez por turno, por nombre» confirmado (activar 1 por turno). Para una Mágica activar es dejarla boca arriba en su zona, no una jugada «activar efecto».
+const POT_ID = 35261759
+const POTS: ReadonlyMap<string, MatCard> = new Map([
+  ['card-35261759-1', { name: 'Pot of Desires', apiCard: card(POT_ID, 'spell') }],
+  ['card-35261759-2', { name: 'Pot of Desires', apiCard: card(POT_ID, 'spell') }],
+  ['card-3-1', { name: 'Relleno A', apiCard: card(3, 'effect') }],
+  ['card-4-1', { name: 'Relleno B', apiCard: card(4, 'effect') }],
+  ['card-5-1', { name: 'Relleno C', apiCard: card(5, 'effect') }],
+  ['card-6-1', { name: 'Relleno D', apiCard: card(6, 'effect') }],
+])
+const POT_INITIAL = createMatState(['card-35261759-1', 'card-35261759-2', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], [], 5)
+
+describe('el asistente de la mesa: también cuenta las Mágicas y las Trampas (activar es dejarlas boca arriba)', () => {
+  const pot = () => within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem', { name: 'Pot of Desires' })[0]!
+  /** De la mano a una zona de Mágicas y Trampas, boca arriba (activar) o boca abajo (colocar). */
+  const fromHand = (option: 'Activar' | 'Colocar', zone: number) => {
+    tap(pot())
+    fireEvent.click(screen.getByRole('menuitem', { name: option }))
+    fireEvent.click(screen.getByRole('button', { name: `Zona de magia y trampa ${zone}: elegir` }))
+  }
+
+  beforeEach(() => {
+    vi.mocked(showToastMessage).mockClear()
+    localStorage.clear()
+    HTMLElement.prototype.setPointerCapture = () => {}
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.requestAnimationFrame = (callback) => {
+      callback(0)
+      return 1
+    }
+    window.cancelAnimationFrame = () => {}
+  })
+
+  it('una segunda Pot of Desires activada en el mismo turno avisa, y la jugada se hace igual', async () => {
+    render(<Harness cards={POTS} initial={POT_INITIAL} />)
+    await act(async () => {
+      await loadCardEffects()
+    })
+
+    fromHand('Activar', 1)
+    expect(showToastMessage).not.toHaveBeenCalled()
+
+    fromHand('Activar', 2)
+    expect(showToastMessage).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste Pot of Desires este turno.*por nombre.*otra copia comparte el límite/)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![1]).toBe('warning')
+    expect(screen.getAllByText('Activás Pot of Desires').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('Colocar boca abajo no es activar: avisa recién al darla vuelta', async () => {
+    render(<Harness cards={POTS} initial={POT_INITIAL} />)
+    await act(async () => {
+      await loadCardEffects()
+    })
+
+    fromHand('Activar', 1)
+    fromHand('Colocar', 2)
+    expect(showToastMessage).not.toHaveBeenCalled()
+
+    tap(screen.getByRole('button', { name: 'Pot of Desires, boca abajo' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
+    expect(showToastMessage).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste Pot of Desires este turno/)
+  })
+
+  it('si se deshace la primera activación, la segunda ya no avisa', async () => {
+    render(<Harness cards={POTS} initial={POT_INITIAL} />)
+    await act(async () => {
+      await loadCardEffects()
+    })
+
+    fromHand('Activar', 1)
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    fromHand('Activar', 2)
+    expect(showToastMessage).not.toHaveBeenCalled()
+  })
+})

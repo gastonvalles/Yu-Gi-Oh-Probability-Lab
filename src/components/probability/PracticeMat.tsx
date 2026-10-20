@@ -53,7 +53,7 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
 import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, getCardEffectMap, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
-import { LIMIT_FACTS, countableEffects, effectChoices, effectKey, limitKey, usageReminder, type Activation } from '../../app/mat-assistant'
+import { LIMIT_FACTS, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, usageReminder, type Activation } from '../../app/mat-assistant'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
@@ -880,16 +880,18 @@ export function PracticeMat({
     void loadCardEffectMap().then(() => setEffectsReady(true))
   }, [])
 
+  // `action` es la jugada que activa la carta `id`: `activate` (el efecto de una carta boca arriba, de una de la mano o del Cementerio) o, en una Mágica o una Trampa, la carta que queda boca arriba (`spellTrapActivation`).
   const remindUsage = useCallback(
-    (action: Extract<MatAction, { type: 'activate' }>) => {
-      const card = cardOf(action.id)
+    (action: MatAction, id: string) => {
+      const card = cardOf(id)
       const api = card.apiCard
       const passcode = api?.ygoprodeckId
+      const effectIndex = action.type === 'activate' ? action.effect : undefined
 
-      if (passcode === undefined || isForeignId(action.id)) return
+      if (passcode === undefined || isForeignId(id)) return
 
       // Con el efecto elegido (en una carta que se cuenta por efecto) vale el límite de **ese** efecto; si no, el de la carta entera.
-      const effect = action.effect === undefined ? undefined : countableEffects(getCardEffectMap(passcode, api?.description ?? ''))?.[action.effect]
+      const effect = effectIndex === undefined ? undefined : countableEffects(getCardEffectMap(passcode, api?.description ?? ''))?.[effectIndex]
       const facts = effect ? effect.facts : (getCardEffectFacts(passcode) ?? 0)
 
       if ((facts & LIMIT_FACTS) === 0) return
@@ -897,7 +899,7 @@ export function PracticeMat({
       // Sólo cuentan las activaciones que siguen en el registro: si se deshizo una, no cuenta.
       const live = new Set<MatAction>(session.actions)
       const past = activationsRef.current.filter((activation) => live.has(activation.action))
-      const key = effect && action.effect !== undefined ? effectKey(facts, passcode, action.id, action.effect) : limitKey(facts, passcode, action.id)
+      const key = effect && effectIndex !== undefined ? effectKey(facts, passcode, id, effectIndex) : limitKey(facts, passcode, id)
       const reminder = usageReminder(facts, past, key, turnNumber)
 
       activationsRef.current = [...past, { action, turn: turnNumber, key }]
@@ -905,7 +907,7 @@ export function PracticeMat({
       if (!reminder) return
 
       const message = effect
-        ? t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n: (action.effect ?? 0) + 1 })
+        ? t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n: (effectIndex ?? 0) + 1 })
         : t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name })
 
       showToastMessage(message, 'warning')
@@ -917,9 +919,10 @@ export function PracticeMat({
     (action: MatAction) => {
       const searched = searching(action)
       const played: MatAction = searched ? { ...action, shuffle: randomSeed() } : action
+      const activated = played.type === 'activate' ? played.id : spellTrapActivation(state, played, kindOf)
 
       onDispatch(played)
-      if (played.type === 'activate') remindUsage(played)
+      if (activated !== null) remindUsage(played, activated)
       setMenu(null)
       setPicking(null)
       setAutoplay(false)
@@ -935,7 +938,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer, searching, remindUsage],
+    [onDispatch, viewer, closeViewer, searching, remindUsage, state, kindOf],
   )
 
   // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).

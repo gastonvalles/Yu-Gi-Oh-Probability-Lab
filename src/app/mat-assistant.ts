@@ -3,7 +3,7 @@ import type { CardEffectOfText } from './card-effect-data'
 import { EFFECT_FACT, effectFactNames, visibleFactNames } from './card-effect-facts'
 import { EFFECT_PLACE } from './card-effect-map'
 import { effectParts } from './card-text'
-import type { MatAction, MatMenuItem } from './practice-mat'
+import { isForeignId, isToken, locateCard, type MatAction, type MatCardKind, type MatMenuItem, type MatState } from './practice-mat'
 
 /**
  * El asistente de la mesa, capa 2 del motor de cartas (`docs/motor-de-cartas.md`): **avisa, no decide**. Nunca frena una jugada ni la deshace: sólo dice algo que es verdad y que quien juega puede haber olvidado.
@@ -21,6 +21,28 @@ export interface Activation {
 }
 
 export type UsageReminder = 'turn' | 'turnByName' | 'duel'
+
+/**
+ * La Mágica o la Trampa que activa esta jugada, o null si no activa ninguna. Para ellas la mesa no tiene una jugada «activar»: la activación **es** la carta que queda boca arriba en su zona (desde la mano, el Deck,
+ * el Cementerio o el destierro; o dada vuelta si estaba Colocada). Es la misma lectura del registro de pasos («Activás X», `describeMatAction`), sólo de cartas que son Mágica o Trampa: un monstruo que va a la zona de
+ * Mágicas y Trampas, una escala de Péndulo (`how: 'scale'`), Colocar boca abajo y cambiar de zona una carta que ya estaba en el campo no son activaciones. El efecto de una carta boca arriba ya es una jugada `activate`.
+ */
+export function spellTrapActivation(before: MatState, action: MatAction, kindOf: (id: string) => MatCardKind): string | null {
+  if (action.type !== 'place' && action.type !== 'position') return null
+  if (isToken(action.id) || isForeignId(action.id) || action.pos === 'set') return null
+
+  const where = locateCard(before, action.id)
+  const kind = kindOf(action.id)
+
+  if (!kind.spell && !kind.trap) return null
+
+  if (action.type === 'place') {
+    return (action.zone === 'st' || action.zone === 'field') && action.how !== 'scale' && where?.kind === 'pile' ? action.id : null
+  }
+
+  // Dar vuelta una carta Colocada en su zona.
+  return where?.kind === 'spot' && (where.spot === 'st' || where.spot === 'field') && where.placed.pos === 'set' ? action.id : null
+}
 
 /** Los hechos de la capa 1 que tienen un límite de uso. */
 export const LIMIT_FACTS = EFFECT_FACT.once | EFFECT_FACT.hardOnce | EFFECT_FACT.perDuel
