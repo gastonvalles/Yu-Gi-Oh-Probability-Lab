@@ -2,14 +2,17 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { act, fireEvent, render as renderBare, screen, within, type RenderResult } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { Provider } from 'react-redux'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { loadCardEffects } from '../app/card-effect-data'
+import { loadCardEffectMap, loadCardEffects, setCardEffectMapForTests } from '../app/card-effect-data'
+import { EFFECT_FACT } from '../app/card-effect-facts'
+import { effectSentences, type CardTextHighlight } from '../app/card-text'
 import { createMatState, type MatAction } from '../app/practice-mat'
 import { showToastMessage } from '../app/use-toast-message'
 import { useMatSession } from '../app/use-mat-session'
+import { DuelCardDock, type CardPeek } from '../components/duel/DuelCardDock'
 import { PracticeMat, type MatCard } from '../components/probability/PracticeMat'
 import type { ApiCardReference } from '../types'
 
@@ -32,17 +35,17 @@ const INITIAL = createMatState(['card-14558127-1', 'card-14558127-2', 'card-3-1'
 const NO_ACTIONS: MatAction[] = []
 const NO_NAMES: Record<string, string> = {}
 
-function Harness() {
+function Harness({ cards = CARDS, initial = INITIAL }: { cards?: ReadonlyMap<string, MatCard>; initial?: typeof INITIAL }) {
   const mat = useMatSession()
   const { start } = mat
 
   useEffect(() => {
-    start(INITIAL, NO_ACTIONS, NO_NAMES)
-  }, [start])
+    start(initial, NO_ACTIONS, NO_NAMES)
+  }, [start, initial])
 
   if (!mat.session || !mat.state) return null
 
-  return <PracticeMat session={mat.session} state={mat.state} cardsById={CARDS} deckName="Test" onDispatch={mat.dispatch} onUndo={mat.undo} onSeek={mat.seek} onLoadCombo={() => {}} onNewHand={() => start(INITIAL)} />
+  return <PracticeMat session={mat.session} state={mat.state} cardsById={cards} deckName="Test" onDispatch={mat.dispatch} onUndo={mat.undo} onSeek={mat.seek} onLoadCombo={() => {}} onNewHand={() => start(initial)} />
 }
 
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
@@ -118,5 +121,271 @@ describe('el asistente de la mesa: avisa si se activa otra vez una carta de una 
     tap(filler())
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
     expect(showToastMessage).not.toHaveBeenCalled()
+  })
+})
+
+// Masked HERO Dusk Crow: dos efectos de «una vez por turno» por nombre; el texto, con las dos frases en el orden del mapa.
+const CROW_ID = 10808715
+const CROW_TEXT =
+  'If this card is in your hand: You can banish 1 "HERO" monster from your GY; Special Summon this card. If this card is Normal or Special Summoned: You can add 1 "Masked HERO" monster from your Deck or GY to your hand. You can only use each effect of "Masked HERO Dusk Crow" once per turn.'
+const ONCE_BY_NAME = EFFECT_FACT.once | EFFECT_FACT.hardOnce
+const CROWS: ReadonlyMap<string, MatCard> = new Map([
+  ['card-10808715-1', { name: 'Cuervo', apiCard: { ...card(CROW_ID, 'effect'), description: CROW_TEXT } }],
+  ['card-10808715-2', { name: 'Cuervo', apiCard: { ...card(CROW_ID, 'effect'), description: CROW_TEXT } }],
+  ['card-3-1', { name: 'Relleno A', apiCard: card(3, 'effect') }],
+  ['card-4-1', { name: 'Relleno B', apiCard: card(4, 'effect') }],
+  ['card-5-1', { name: 'Relleno C', apiCard: card(5, 'effect') }],
+  ['card-6-1', { name: 'Relleno D', apiCard: card(6, 'effect') }],
+])
+const CROW_INITIAL = createMatState(['card-10808715-1', 'card-10808715-2', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], [], 5)
+
+describe('el contador por efecto: una carta con varios efectos pregunta cuál se activa y cuenta cada uno por separado', () => {
+  const crow = (index: number) => within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem', { name: 'Cuervo' })[index]!
+  const open = (index: number) => {
+    tap(crow(index))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+  }
+  const effect = (index: number, copy = 0) => {
+    open(copy)
+    fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^Efecto ${index + 1} · `) }))
+  }
+
+  beforeEach(async () => {
+    vi.mocked(showToastMessage).mockClear()
+    localStorage.clear()
+    HTMLElement.prototype.setPointerCapture = () => {}
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.requestAnimationFrame = (callback) => {
+      callback(0)
+      return 1
+    }
+    window.cancelAnimationFrame = () => {}
+    // Los datos de verdad primero (la carga es una sola vez); después, el mapa de esta prueba.
+    await loadCardEffects()
+    await loadCardEffectMap()
+    const [first, second] = effectSentences(CROW_TEXT)
+    setCardEffectMapForTests(
+      new Map([
+        [
+          CROW_ID,
+          [
+            [first!.start, ONCE_BY_NAME | EFFECT_FACT.cost, 0],
+            [second!.start, ONCE_BY_NAME, 0],
+          ],
+        ],
+      ]),
+    )
+  })
+
+  afterEach(() => {
+    setCardEffectMapForTests(null)
+  })
+
+  it('«Activar efecto» pregunta cuál (cada efecto con sus rasgos confirmados), y elegir uno lo activa y lo anota con su número', () => {
+    render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
+
+    tap(crow(0))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+
+    // El segundo paso: un renglón por efecto, y «Otro efecto» para lo que no está en la lista.
+    expect(screen.getByRole('menuitem', { name: /^Efecto 1 · If this card is in your hand.*You can banish 1 "HERO" monster from your GY; Special Summon this card\..*1 vez por turno, por nombre.*Con costo/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /^Efecto 2 · If this card is Normal or Special Summoned.*You can add 1 "Masked HERO" monster from your Deck or GY to your hand.*1 vez por turno, por nombre/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Otro efecto' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Efecto 2 · / }))
+    expect(screen.getAllByText('Activás el efecto 2 de Cuervo').length).toBeGreaterThanOrEqual(1)
+    expect(showToastMessage).not.toHaveBeenCalled()
+  })
+
+  it('cada efecto cuenta lo suyo: usar el 1 y después el 2 no avisa; repetir el 1 (con otra copia: el límite es por nombre) sí, y dice cuál', () => {
+    render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
+
+    effect(0, 0)
+    effect(1, 0)
+    expect(showToastMessage).not.toHaveBeenCalled()
+
+    effect(0, 1)
+    expect(showToastMessage).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste el efecto 1 de Cuervo este turno y es de «una vez por turno» por nombre \(otra copia comparte el límite\)\./)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![1]).toBe('warning')
+  })
+
+  it('la lista dice cuál ya se usó este turno (y lo sigue ofreciendo); al deshacer, deja de decirlo', () => {
+    render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
+
+    effect(0, 0)
+    open(1)
+    expect(screen.getByRole('menuitem', { name: /^Efecto 1 · .*Ya lo usaste este turno/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /^Efecto 2 · / })).not.toHaveAccessibleName(/Ya lo usaste/)
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    open(1)
+    expect(screen.getByRole('menuitem', { name: /^Efecto 1 · / })).not.toHaveAccessibleName(/Ya lo usaste/)
+  })
+
+  it('«Otro efecto» activa sin elegir cuál: no cuenta contra ningún efecto; la carta entera sí avisa si se repite', () => {
+    render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
+
+    effect(0, 0)
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    tap(crow(0))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Otro efecto' }))
+    expect(showToastMessage).not.toHaveBeenCalled()
+    expect(screen.getAllByText('Activás el efecto de Cuervo').length).toBeGreaterThanOrEqual(1)
+
+    // Otra vez sin elegir: es la carta entera la que se cuenta (como antes de contar por efecto).
+    tap(crow(1))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Otro efecto' }))
+    expect(showToastMessage).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste Cuervo este turno.*fijate que no sea el mismo efecto/)
+  })
+
+  it('una carta con varios efectos pero sin ningún límite confirmado se activa directo, sin preguntar', () => {
+    setCardEffectMapForTests(new Map([[CROW_ID, effectSentences(CROW_TEXT).map((sentence) => [sentence.start, EFFECT_FACT.cost, 0] as [number, number, number])]]))
+    render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
+
+    tap(crow(0))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    expect(screen.queryByRole('menuitem', { name: 'Otro efecto' })).not.toBeInTheDocument()
+    expect(screen.getAllByText('Activás el efecto de Cuervo').length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('al elegir el efecto en escritorio, el detalle de la carta (a la izquierda) resalta la frase de cada opción', () => {
+  /** La mesa con el detalle fijo a la izquierda, como en la práctica: la carta que se tocó y el pedazo de su texto que se resalta. */
+  function WithDock() {
+    const mat = useMatSession()
+    const { start } = mat
+    const [peek, setPeek] = useState<CardPeek | null>(null)
+    const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
+
+    useEffect(() => {
+      start(CROW_INITIAL, NO_ACTIONS, NO_NAMES)
+    }, [start])
+
+    if (!mat.session || !mat.state) return null
+
+    return (
+      <PracticeMat
+        session={mat.session}
+        state={mat.state}
+        cardsById={CROWS}
+        deckName="Test"
+        onDispatch={mat.dispatch}
+        onUndo={mat.undo}
+        onSeek={mat.seek}
+        onLoadCombo={() => {}}
+        onNewHand={() => start(CROW_INITIAL)}
+        detail={<DuelCardDock peek={peek} highlight={highlight} />}
+        onPeek={setPeek}
+        onHighlight={setHighlight}
+      />
+    )
+  }
+
+  const [FIRST, SECOND] = effectSentences(CROW_TEXT)
+  const dock = () => screen.getByRole('region', { name: 'Detalle de la carta' })
+  const marked = () => [...dock().querySelectorAll('mark[data-highlight]')].map((node) => node.textContent).join('')
+  const row = (index: number) => screen.getByRole('menuitem', { name: new RegExp(`^Efecto ${index + 1} · `) })
+
+  beforeEach(async () => {
+    vi.mocked(showToastMessage).mockClear()
+    localStorage.clear()
+    HTMLElement.prototype.setPointerCapture = () => {}
+    // Escritorio (el menú pegado a la carta, no la hoja del celular) con el detalle fijo: más de 1101 y de 1440 px.
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce') || query.includes('1101') || query.includes('1440'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.requestAnimationFrame = (callback) => {
+      callback(0)
+      return 1
+    }
+    window.cancelAnimationFrame = () => {}
+    await loadCardEffects()
+    await loadCardEffectMap()
+    setCardEffectMapForTests(
+      new Map([
+        [
+          CROW_ID,
+          [
+            [FIRST!.start, ONCE_BY_NAME | EFFECT_FACT.cost, 0],
+            [SECOND!.start, ONCE_BY_NAME, 0],
+          ],
+        ],
+      ]),
+    )
+  })
+
+  afterEach(() => {
+    setCardEffectMapForTests(null)
+    vi.restoreAllMocks()
+  })
+
+  const openEffects = () => {
+    tap(within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem', { name: 'Cuervo' })[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+  }
+
+  it('al pasar el mouse por una opción se resalta, a la izquierda, la frase de ese efecto (entera, tal cual) y al irse se apaga', () => {
+    render(<WithDock />)
+    openEffects()
+
+    // Antes de pasar el mouse, nada resaltado.
+    expect(marked()).toBe('')
+
+    fireEvent.mouseEnter(row(1))
+    expect(marked()).toBe(SECOND!.text)
+
+    // Pasar a la otra opción cambia el resaltado.
+    fireEvent.mouseLeave(row(1))
+    fireEvent.mouseEnter(row(0))
+    expect(marked()).toBe(FIRST!.text)
+
+    fireEvent.mouseLeave(row(0))
+    expect(marked()).toBe('')
+  })
+
+  it('el resaltado se apaga al elegir el efecto y al cerrar el menú (el mouse se va sin avisar)', () => {
+    render(<WithDock />)
+    openEffects()
+    fireEvent.mouseEnter(row(0))
+    expect(marked()).toBe(FIRST!.text)
+
+    fireEvent.click(row(0))
+    expect(marked()).toBe('')
+
+    openEffects()
+    fireEvent.mouseEnter(row(1))
+    expect(marked()).toBe(SECOND!.text)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(marked()).toBe('')
+  })
+
+  it('con el teclado también (al enfocar una opción), pero el foco que se lleva el menú al abrirse con el mouse no resalta nada', () => {
+    render(<WithDock />)
+    openEffects()
+
+    // El foco inicial (sin teclado): no resalta.
+    fireEvent.focus(row(0))
+    expect(marked()).toBe('')
+
+    // Con el teclado (`:focus-visible`): sí.
+    const matches = Element.prototype.matches
+
+    vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selector: string) {
+      return selector === ':focus-visible' || matches.call(this, selector)
+    })
+    fireEvent.focus(row(1))
+    expect(marked()).toBe(SECOND!.text)
+    fireEvent.blur(row(1))
+    expect(marked()).toBe('')
+  })
+
+  it('«Otro efecto» no resalta nada: no es una frase del texto', () => {
+    render(<WithDock />)
+    openEffects()
+    fireEvent.mouseEnter(screen.getByRole('menuitem', { name: 'Otro efecto' }))
+    expect(marked()).toBe('')
   })
 })

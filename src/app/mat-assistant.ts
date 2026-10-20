@@ -1,5 +1,9 @@
-import { EFFECT_FACT } from './card-effect-facts'
-import type { MatAction } from './practice-mat'
+import { t } from '../i18n'
+import type { CardEffectOfText } from './card-effect-data'
+import { EFFECT_FACT, effectFactNames, visibleFactNames } from './card-effect-facts'
+import { EFFECT_PLACE } from './card-effect-map'
+import { effectParts } from './card-text'
+import type { MatAction, MatMenuItem } from './practice-mat'
 
 /**
  * El asistente de la mesa, capa 2 del motor de cartas (`docs/motor-de-cartas.md`): **avisa, no decide**. Nunca frena una jugada ni la deshace: sólo dice algo que es verdad y que quien juega puede haber olvidado.
@@ -42,4 +46,42 @@ export function usageReminder(facts: number, past: readonly Activation[], key: s
   }
 
   return null
+}
+
+/**
+ * Los efectos de una carta que la mesa puede contar **uno por uno** (capa 1b del motor de cartas): la carta tiene varios efectos alineados con su texto y al menos uno con un límite de uso confirmado. Si no (un solo efecto,
+ * o varios sin ningún límite que contar), no hay nada que llevar por separado y la carta se activa directo, como siempre.
+ */
+export function countableEffects(effects: readonly CardEffectOfText[] | undefined): readonly CardEffectOfText[] | null {
+  return effects !== undefined && effects.length >= 2 && effects.some((effect) => (effect.facts & LIMIT_FACTS) !== 0) ? effects : null
+}
+
+/** La clave del uso de **un efecto**: la de su límite (por nombre o por carta) y el lugar del efecto entre los de la carta. */
+export const effectKey = (facts: number, passcode: number, cardId: string, effect: number): string => `${limitKey(facts, passcode, cardId)}#${effect}`
+
+/**
+ * El segundo paso de «Activar efecto» en una carta con efectos que se cuentan uno por uno: un renglón por efecto con lo que **hace**, **textual** (la frase del efecto, sin recortar: la precisión es de la frase), con su número y
+ * cuándo se activa arriba y, debajo, si ya se usó, desde dónde se activa y sus rasgos confirmados; y «Otro efecto», una activación sin efecto elegido que no cuenta contra ninguno. Cada renglón sabe qué pedazo del texto
+ * de la carta es (`preview`). Elegir uno que ya se usó no se frena: la mesa avisa, no decide.
+ */
+export function effectChoices(id: string, passcode: number, effects: readonly CardEffectOfText[], past: readonly Activation[], turn: number): MatMenuItem[] {
+  const choices = effects.map((effect, index): MatMenuItem => {
+    const used = usageReminder(effect.facts, past, effectKey(effect.facts, passcode, id, index), turn)
+    // Desde dónde se activa: la mano y el Cementerio, que las dos fuentes confirman (el campo no se dice: sólo lo confirma el script).
+    const places = [EFFECT_PLACE.hand, EFFECT_PLACE.grave].filter((place) => (effect.places & place) !== 0).map((place) => t(place === EFFECT_PLACE.hand ? 'practice.assistant.place.hand' : 'practice.assistant.place.grave'))
+    const traits = visibleFactNames(effectFactNames(effect.facts)).map((fact) => t(`search.traits.${fact}`))
+    const hint = [used === null ? '' : t(used === 'duel' ? 'practice.assistant.usedHint.duel' : 'practice.assistant.usedHint.turn'), ...places, ...traits].filter(Boolean).join(' · ')
+    const { when, what } = effectParts(effect.sentence)
+    const number = t('practice.menu.effectLead', { n: index + 1 })
+
+    return {
+      lead: when === '' ? number : `${number} · ${when}`,
+      label: what,
+      hint: hint === '' ? undefined : hint,
+      preview: { start: effect.start, end: effect.start + effect.sentence.text.length },
+      action: { type: 'activate', id, effect: index },
+    }
+  })
+
+  return [...choices, { label: t('practice.menu.otherEffect'), action: { type: 'activate', id } }]
 }

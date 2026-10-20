@@ -22,6 +22,7 @@ import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
 import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
+import type { CardTextHighlight } from '../../app/card-text'
 import { respondersOf, type Responder, type ResponderCard } from '../../app/mat-responders'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { useChatSound } from '../../app/use-chat-sound'
@@ -1660,6 +1661,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const [rivalViewer, setRivalViewer] = useState<'gy' | 'banished' | 'extra' | null>(null)
   // El detalle fijo de la izquierda (escritorio): la última carta que se tocó, tuya o del rival.
   const [peek, setPeek] = useState<CardPeek | null>(null)
+  // El pedazo del texto de esa carta que se resalta mientras se elige uno de sus efectos en el menú.
+  const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
   // El detalle de una carta del rival que ya está a la vista (su id real, lo único que se sabe de ella).
   const [rivalInspected, setRivalInspected] = useState<{ drawId: string; rect: DOMRect } | null>(null)
 
@@ -1771,8 +1774,9 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       opponent: <SideCells side={opponent} owner="theirs" />,
       sharedZone: (index) => sharedZoneCard(opponent, index),
       attackTargets,
-      detail: wide ? <DuelCardDock peek={peek} /> : undefined,
+      detail: wide ? <DuelCardDock peek={peek} highlight={highlight} /> : undefined,
       onPeek: setPeek,
+      onHighlight: setHighlight,
       undoPending: snapshot.undo.asking,
       undoAvailable: snapshot.undo.available,
       undoBlocked: snapshot.undo.blocked,
@@ -1819,7 +1823,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} lane={lane} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, peek, wide, respondIds, prompt],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, peek, highlight, wide, respondIds, prompt],
   )
 
   const markTarget = markMenu?.target

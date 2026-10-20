@@ -86,8 +86,11 @@ export type MatAction =
   | { type: 'counter'; id: string; delta: number }
   /** Una ficha en una zona de monstruo, en ataque o en defensa (las fichas guardadas antes de elegir la posición no tienen `pos` y salen en ataque). */
   | { type: 'token'; zone: MatZone; index: number; pos?: Exclude<MatPos, 'set'> }
-  /** Activar el efecto de una carta (queda anotado); con costo, la carta se descarta o se destierra. */
-  | { type: 'activate'; id: string; cost?: 'discard' | 'banish' }
+  /**
+   * Activar el efecto de una carta (queda anotado); con costo, la carta se descarta o se destierra. `effect` dice cuál efecto, por su lugar entre los efectos del texto (el orden de `getCardEffectMap`): sólo cuando la carta tiene
+   * varios que la mesa sabe contar uno por uno (`countableEffects` en `mat-assistant.ts`); sin él, la activación no dice cuál efecto es.
+   */
+  | { type: 'activate'; id: string; cost?: 'discard' | 'banish'; effect?: number }
   /** Mostrar una carta (de la mano, en general): sólo queda anotado. */
   | { type: 'reveal'; id: string }
   /** Declarar el nombre de una carta (para efectos que lo piden): sólo queda anotado. */
@@ -648,6 +651,7 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       const card = name(action.id)
       if (action.cost === 'discard') return t('practice.step.effectDiscard', { card })
       if (action.cost === 'banish') return t('practice.step.effectBanish', { card })
+      if (action.effect !== undefined) return t('practice.step.effectNumber', { card, n: action.effect + 1 })
       return t('practice.step.effect', { card })
     }
 
@@ -811,6 +815,12 @@ export interface MatMenuItem {
   tributes?: number
   /** Segundo paso del menú (p. ej. "¿En ataque o en defensa?"): la jugada es la del hijo elegido. */
   choices?: MatMenuItem[]
+  /** Una línea chica arriba de la opción (en el segundo paso de «Activar efecto»: el número del efecto y cuándo se activa). */
+  lead?: string
+  /** Una línea chica debajo de la opción (en el segundo paso de «Activar efecto»: si ya se usó, desde dónde se activa y sus rasgos). */
+  hint?: string
+  /** El pedazo del texto de la carta que dice esta opción (la frase del efecto): en escritorio, al pasar el mouse el detalle de la carta, a la izquierda, lo resalta. */
+  preview?: { start: number; end: number }
   /** Invocación desde el Extra: se pueden elegir materiales en el campo (los que sean, o ninguno) y se confirma con un botón, o se toca una casilla libre para invocar ahí. */
   materials?: true
   /** Mandar la carta al deck "al azar": la mesa le pone la semilla al elegirla (se pone y se baraja todo el deck). */

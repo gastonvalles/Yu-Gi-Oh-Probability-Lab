@@ -1,4 +1,4 @@
-import type { EffectFactName } from '../../app/card-effect-facts'
+import { visibleFactNames, type EffectFactName } from '../../app/card-effect-facts'
 import { useCardEffectFacts } from '../../app/use-card-effect-facts'
 import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
@@ -14,9 +14,11 @@ const TRAITS: ReadonlyArray<{ fact: EffectFactName; tone: Tone }> = [
   { fact: 'target', tone: 'brand' },
 ]
 
-/** Los rasgos que se muestran de una lista de hechos confirmados: «por nombre» ya dice «una vez por turno», así que no se repite. */
+/** Los rasgos que se muestran de una lista de hechos confirmados, con su color (cuáles y en qué orden: `visibleFactNames`, que también usa la lista de efectos de la mesa). */
 export function visibleTraits(facts: readonly EffectFactName[]): ReadonlyArray<{ fact: EffectFactName; tone: Tone }> {
-  return TRAITS.filter(({ fact }) => facts.includes(fact) && !(fact === 'once' && facts.includes('hardOnce')))
+  const shown = visibleFactNames(facts)
+
+  return TRAITS.filter(({ fact }) => shown.includes(fact))
 }
 
 /**

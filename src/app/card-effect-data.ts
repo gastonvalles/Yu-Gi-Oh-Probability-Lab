@@ -76,6 +76,9 @@ export function indexCardEffectMap(data: CardEffectMapData): Map<number, Array<[
   return new Map(Object.entries(data.cards).map(([id, effects]) => [Number(id), effects]))
 }
 
+/** Si los efectos de cada carta ya llegaron (para no esperar de más cuando otra pantalla ya los bajó). */
+export const cardEffectMapLoaded = (): boolean => mapById !== null
+
 export function loadCardEffectMap(): Promise<void> {
   mapLoading ??= import('../data/card-effect-map.json')
     .then((module) => {

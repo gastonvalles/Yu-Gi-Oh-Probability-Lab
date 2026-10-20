@@ -1,7 +1,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
-import { effectSentences, segmentCardText, type TextTone } from '../app/card-text'
+import { effectParts, effectSentences, segmentCardText, type TextTone } from '../app/card-text'
 
 /** Los pedazos marcados de un texto, como pares [tipo, texto]. */
 function marked(text: string): [TextTone, string][] {
@@ -211,5 +211,42 @@ describe('effectSentences: las oraciones del texto que son efectos que se activa
     it('un efecto que no es rápido no lleva ventana', () => {
       expect(effectSentences('If this card is sent to the GY: You can draw 1 card.')[0]?.window).toBeNull()
     })
+  })
+})
+
+describe('effectParts: un efecto partido en cuándo y qué hace, textual', () => {
+  const parts = (text: string) => effectParts(effectSentences(text)[0]!)
+
+  it('lo de antes de los dos puntos (tal cual, con el «Once per turn» y la etiqueta de velocidad) y lo que sigue', () => {
+    expect(parts('If this card is in your hand: You can banish 1 "HERO" monster from your GY; Special Summon this card.')).toEqual({
+      when: 'If this card is in your hand',
+      what: 'You can banish 1 "HERO" monster from your GY; Special Summon this card.',
+    })
+    expect(parts("Once per turn, during your opponent's Main Phase (Quick Effect): You can target 1 monster; destroy it.")).toEqual({
+      when: "Once per turn, during your opponent's Main Phase (Quick Effect)",
+      what: 'You can target 1 monster; destroy it.',
+    })
+    expect(parts('(Quick Effect): You can discard this card; draw 1 card.')).toEqual({ when: '(Quick Effect)', what: 'You can discard this card; draw 1 card.' })
+    expect(parts('Once per turn: You can draw 1 card.')).toEqual({ when: 'Once per turn', what: 'You can draw 1 card.' })
+  })
+
+  it('sin encabezado: no hay «cuándo» y lo que hace es la frase entera', () => {
+    expect(parts('You can discard 1 card; draw 1 card.')).toEqual({ when: '', what: 'You can discard 1 card; draw 1 card.' })
+  })
+
+  it('no recorta ni cambia nada: cuándo y qué hace, juntos, son la frase', () => {
+    for (const text of [
+      'If this card is in your hand: You can banish 1 "HERO" monster from your GY; Special Summon this card.',
+      "If a monster(s) you control is destroyed by battle or by an opponent's card effect while this card is in your hand: You can Special Summon this card, and if you do, draw 1 card.",
+      'You can discard 1 card; draw 1 card.',
+    ]) {
+      const { when, what } = parts(text)
+
+      expect(when === '' ? what : `${when}: ${what}`).toBe(text)
+    }
+  })
+
+  it('un «:» dentro de comillas (el nombre de una carta) no corta el encabezado', () => {
+    expect(parts('If "Number 39: Utopia" is on the field: You can draw 1 card.')).toEqual({ when: 'If "Number 39: Utopia" is on the field', what: 'You can draw 1 card.' })
   })
 })
