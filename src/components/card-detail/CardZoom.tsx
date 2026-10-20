@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 
+import { foilOf } from '../../app/card-foil'
 import type { CardNavigation } from '../../app/card-neighbors'
 import type { ArtChoice } from '../../app/use-card-art-options'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
@@ -61,6 +62,8 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
   // Más grande que la pantalla, arrastrar desplaza la carta: el giro y la inclinación sólo van al 100 %.
   const inspecting = scale === 1
   const summary = buildCardSummary(card)
+  // El brillo de la rareza de la impresión que se ve.
+  const foil = foilOf(arts.find((art) => art.id === artId)?.printing?.rarity, card.frameType)
 
   // Al pasar a otra carta vuelve al frente.
   const [shownId, setShownId] = useState(card.ygoprodeckId)
@@ -125,7 +128,7 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
               flip.consumeClick()
             }}
           >
-            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack}>
+            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} foil={foil}>
               <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} fallbackUrl={fallbackUrl} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />
             </CardFlip>
             {inspecting ? <FlipHint /> : null}

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import type { CardNavigation } from '../../app/card-neighbors'
 import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
+import { foilOf } from '../../app/card-foil'
 import { useCardArtOptions, type ArtChoice } from '../../app/use-card-art-options'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
@@ -348,7 +349,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
               setZoomed((current) => !current)
             }}
           >
-            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack}>
+            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} foil={card ? foilOf((art as ArtChoice | undefined)?.printing?.rarity, card.frameType) : null}>
               <CardArt
                 remoteUrl={art?.imageUrl ?? card?.imageUrl ?? card?.imageUrlSmall ?? null}
                 fallbackUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}
