@@ -145,6 +145,8 @@ export interface DuelMatLink {
   marksOnMine?: Marks
   /** Mis cartas que pueden responder ahora (el rival preguntó si hacés algo antes de pasar de fase): brillan en ámbar, y la casilla del cementerio lleva un aro si hay una adentro. */
   respond?: ReadonlySet<string>
+  /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
+  prompt?: ReactNode
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
   /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
@@ -2082,6 +2084,13 @@ export function PracticeMat({
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
 
       {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
+      {/* La pregunta del rival (pasar de fase): en el medio de la pantalla, centrada en la columna de la mesa (sin el chat ni el detalle). La capa deja pasar los toques; sólo la pregunta los recibe. */}
+      {duel?.prompt ? (
+        <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>
+          <div className="pointer-events-auto w-[min(24rem,100%)]">{duel.prompt}</div>
+        </div>
+      ) : null}
+
       {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>{duel.cover}</div> : null}
 
       {drag

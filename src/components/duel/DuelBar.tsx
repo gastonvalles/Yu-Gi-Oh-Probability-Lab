@@ -11,7 +11,7 @@ import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { PHASES, type MatPhase } from '../../app/practice-mat'
+import { PHASES } from '../../app/practice-mat'
 import { MatViewToggle } from '../probability/MatViewToggle'
 import { useAnimatedNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
@@ -101,7 +101,6 @@ export type LaneNotice =
   | { kind: 'undoAsked'; onAllow: () => void; onDeny: () => void }
   | { kind: 'undoAsking' }
   | { kind: 'undoResult'; result: 'denied' | 'expired' }
-  | { kind: 'passAsked'; phase: MatPhase; endsTurn: boolean; /** Los nombres de mis cartas que pueden responder (`app/mat-responders.ts`): el aviso los nombra y las cartas brillan en la mesa. */ responders?: readonly string[]; onAllow: () => void; onDeny: () => void }
   | { kind: 'passAsking' }
   | { kind: 'passHeld' }
 
@@ -119,18 +118,7 @@ const LOOK_TEXT = {
   choosing: 'duel.look.choosing',
 } as const satisfies Record<Activity, string>
 
-/** Las cartas que pueden responder, por nombre y sin repetir: hasta dos y «y N más» (el aviso es de una o dos líneas; la mesa muestra cuáles brillan). */
-export function respondersText(names: readonly string[]): string {
-  const unique = [...new Set(names)]
-
-  if (unique.length === 0) return ''
-  if (unique.length === 1) return unique[0]!
-  if (unique.length === 2) return t('practice.list.two', { head: unique[0]!, last: unique[1]! })
-
-  return t('duel.pass.cardsMore', { list: unique.slice(0, 2).join(', '), count: unique.length - 2 })
-}
-
-/** Lo que dice cada aviso de permiso (volver atrás, pasar de fase), según de quién y cómo vaya. */
+/** Lo que dice cada aviso de la línea (volver atrás, pasar de fase), según de quién y cómo vaya. La pregunta del rival de pasar de fase no va acá: va en el medio de la pantalla (`PassPrompt`). */
 function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string): string {
   switch (lane.kind) {
     case 'undoAsked':
@@ -139,14 +127,6 @@ function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string):
       return t('duel.undo.asking', { name })
     case 'undoResult':
       return t(lane.result === 'denied' ? 'duel.undo.denied' : 'duel.undo.expired', { name })
-    case 'passAsked': {
-      const phase = PHASES.find((entry) => entry.id === lane.phase)?.name ?? lane.phase
-      const cards = respondersText(lane.responders ?? [])
-
-      if (cards !== '') return t(lane.endsTurn ? 'duel.pass.askEndWith' : 'duel.pass.askWith', { name, phase, cards })
-
-      return t(lane.endsTurn ? 'duel.pass.askEnd' : 'duel.pass.ask', { name, phase })
-    }
     case 'passAsking':
       return t('duel.pass.asking', { name })
     case 'passHeld':
@@ -154,7 +134,7 @@ function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string):
   }
 }
 
-/** El aviso sobre la línea del registro: el pedido de volver atrás o de pasar de fase (del rival, o el tuyo) y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
+/** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo), tu pregunta de pasar de fase y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
 function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
   const place = rail ? 'flex-wrap py-2' : 'absolute inset-0'
   const clamp = rail ? '' : 'line-clamp-2'
@@ -168,20 +148,20 @@ function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rival
     )
   }
 
-  const asked = lane.kind === 'undoAsked' || lane.kind === 'passAsked'
+  const asked = lane.kind === 'undoAsked'
 
   return (
     <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
       <span className={cx(clamp, 'min-w-0 flex-1')} title={laneText(lane, rivalName)}>
         {laneText(lane, rivalName)}
       </span>
-      {lane.kind === 'undoAsked' || lane.kind === 'passAsked' ? (
+      {lane.kind === 'undoAsked' ? (
         <>
           <Button variant="tertiary" size="sm" className="px-2" onClick={lane.onDeny}>
-            {t(lane.kind === 'undoAsked' ? 'duel.undo.deny' : 'duel.pass.deny')}
+            {t('duel.undo.deny')}
           </Button>
           <Button variant="primary" size="sm" className="px-3" onClick={lane.onAllow}>
-            {t(lane.kind === 'undoAsked' ? 'duel.undo.allow' : 'duel.pass.allow')}
+            {t('duel.undo.allow')}
           </Button>
         </>
       ) : null}
