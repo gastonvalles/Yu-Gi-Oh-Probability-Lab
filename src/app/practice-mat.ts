@@ -64,8 +64,8 @@ export interface MatState {
   targeted: string[]
 }
 
-/** Cómo llega la carta al campo (sólo cambia el texto de la jugada): Invocación Normal, Especial, o como escala de péndulo. */
-type MatSummon = 'normal' | 'special' | 'scale'
+/** Cómo llega la carta al campo (sólo cambia el texto de la jugada): Invocación Normal, Especial, de Péndulo (desde el Extra Deck boca arriba), o como escala de péndulo. */
+export type MatSummon = 'normal' | 'special' | 'pendulum' | 'scale'
 /** Invocación desde el Extra Deck: con qué se hace (y a dónde van los materiales). */
 type ExtraSummon = 'fusion' | 'synchro' | 'xyz' | 'link'
 
@@ -613,6 +613,7 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       if (action.pos === 'set') return t('practice.step.setFaceDown', { card })
       if (action.how === 'normal') return t('practice.step.normalSummon', { card })
       if (action.how === 'special') return t('practice.step.specialSummon', { card, position })
+      if (action.how === 'pendulum') return t('practice.step.pendulumSummon', { card, position })
       return t('practice.step.enters', { card, position })
     }
 
@@ -878,6 +879,28 @@ export function freeTargets(state: MatState, zones: readonly MatSpot[], rivalEmz
 }
 
 /**
+ * Si la carta es un **Monstruo de Péndulo en el campo**: en una zona de monstruo o en una zona de Péndulo (las zonas 0 y 4 de Mágicas y Trampas, `MatState.st`). Uno en otra zona de Mágicas y Trampas se trata como una Mágica Continua
+ * y no es un monstruo mientras esté ahí: no cuenta.
+ */
+export function pendulumOnField(state: MatState, id: string, kindOf: (id: string) => MatCardKind): boolean {
+  const where = locateCard(state, id)
+
+  if (where?.kind !== 'spot' || isToken(id) || isForeignId(id)) return false
+
+  const kind = kindOf(id)
+
+  return kind.monster && kind.pendulum && (where.spot === 'mz' || where.spot === 'emz' || (where.spot === 'st' && (where.index === 0 || where.index === 4)))
+}
+
+/**
+ * La jugada de mandar una carta a una pila. Un Monstruo de Péndulo que **sale del campo al cementerio** (destruido, mandado, usado como Sacrificio) va, por regla, al Extra Deck boca arriba: es la misma jugada con ese destino. Lo demás
+ * (otra pila, o una carta que no estaba en el campo) va adonde se dijo.
+ */
+export function pileAction(state: MatState, id: string, to: MatPile, kindOf: (id: string) => MatCardKind): MatAction {
+  return to === 'gy' && pendulumOnField(state, id, kindOf) ? { type: 'move', id, to: 'extra', faceUp: true } : { type: 'move', id, to }
+}
+
+/**
  * Lo que se puede hacer con una carta desde donde está: el menú al tocarla (cubre todo lo que hace el arrastre),
  * con las jugadas del juego: Invocación Normal y Colocar desde la mano, Invocación Especial (que pregunta la posición) desde cualquier lado,
  * Invocación por Volteo de un monstruo boca abajo, Activar efecto (con descarte como costo si está en la mano),
@@ -917,9 +940,11 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (!attack || !defense) return
     items.push(kind.link ? { ...attack, label } : askItem(label, [attack, defense]))
   }
-  const specialSummon = (label?: string) => specialSummonItem(placeItem(t('practice.menu.attack'), zones, 'atk', 'special'), placeItem(t('practice.menu.defense'), zones, 'def', 'special'), label)
+  const specialSummon = (label?: string, how: MatSummon = 'special') => specialSummonItem(placeItem(t('practice.menu.attack'), zones, 'atk', how), placeItem(t('practice.menu.defense'), zones, 'def', how), label)
   /** Una carta boca arriba en el Extra Deck (un Monstruo de Péndulo): se invoca por Péndulo, no con materiales. */
   const faceUpExtra = pile === 'extra' && state.extraUp.includes(id)
+  /** Un Monstruo de Péndulo en el campo (una zona de monstruo o una zona de Péndulo): si sale al cementerio, va al Extra Deck boca arriba. */
+  const leavesToExtra = where.kind === 'spot' && pendulumOnField(state, id, kindOf)
 
   if (where.kind === 'spot') {
     const { placed, spot } = where
@@ -1052,7 +1077,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
       specialSummonItem(summonItem(t('practice.menu.attack'), 'atk'), summonItem(t('practice.menu.defense'), 'def'))
     } else if (kind.monster) {
-      specialSummon(faceUpExtra ? t('practice.menu.pendulumSummon') : undefined)
+      if (faceUpExtra) specialSummon(t('practice.menu.pendulumSummon'), 'pendulum')
+      else specialSummon()
     }
     if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn(t('practice.menu.toSpellTrapZone'), ['st'], 'atk')
     if (pile === 'gy' || pile === 'banished') {
@@ -1068,13 +1094,15 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   } else {
     // En el campo.
     add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
-    add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
+    // Un Monstruo de Péndulo que sale del campo al cementerio va, por regla, al Extra Deck boca arriba: la jugada ya lo hace sola.
+    if (leavesToExtra) add(t('practice.menu.toGyPendulum'), pileAction(state, id, 'gy', kindOf))
+    else add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
     banish()
   }
 
   if (pile !== 'extra') {
-    // Un Monstruo de Péndulo va al Extra Deck boca arriba (destruido o mandado desde el campo, o de cualquier lado por un efecto): ahí se ve y se puede volver a invocar por Péndulo.
-    if (kind.pendulum) add(t('practice.menu.toExtraFaceUp'), { type: 'move', id, to: 'extra', faceUp: true })
+    // Un Monstruo de Péndulo va al Extra Deck boca arriba (de cualquier lado por un efecto; del campo, el cementerio ya lo manda ahí): ahí se ve y se puede volver a invocar por Péndulo.
+    if (kind.pendulum && !leavesToExtra) add(t('practice.menu.toExtraFaceUp'), { type: 'move', id, to: 'extra', faceUp: true })
     if (kind.extra) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
   } else if (faceUpExtra) {
     addUtility(t('practice.menu.extraFaceDown'), { type: 'move', id, to: 'extra' })

@@ -25,6 +25,9 @@ import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom, type MemorySpectator } from './support/memory-room'
 
+// La pantalla del duelo arma dos mesas completas por prueba: sola cada una tarda un par de segundos, pero con toda la suite corriendo a la vez alguna pasaba los 5 s de siempre (la de «atacar» fallaba una de cada tantas corridas).
+vi.setConfig({ testTimeout: 20_000 })
+
 // Las cartas de un deck pegado se piden por su número: acá salen todas menos la 999 (que no existe).
 vi.mock('../ygoprodeck', () => ({
   fetchCardsByIds: vi.fn(async (ids: number[]) =>

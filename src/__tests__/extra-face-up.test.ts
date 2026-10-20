@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createDuel } from '../app/duel-session'
 import { parseMessage } from '../app/duel-protocol'
 import { mapMatIds, publicIds } from '../app/mat-public'
-import { createMatState, describeMatAction, listCardActions, matReducer, replayMat, TOKEN_KIND, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
+import { createMatState, describeMatAction, listCardActions, matReducer, pendulumOnField, pileAction, replayMat, TOKEN_KIND, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
 
 const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
@@ -71,6 +71,12 @@ describe('el Extra Deck con cartas boca arriba (Monstruos de Péndulo)', () => {
     expect(matReducer(away, { type: 'regain', id: 'p1', to: 'extra' }).extraUp).toEqual([])
   })
 
+  it('el registro cuenta la Invocación de Péndulo como tal, no como Especial', () => {
+    expect(describeMatAction(start(), { type: 'place', id: 'p1', zone: 'mz', index: 0, pos: 'atk', how: 'pendulum' }, nameOf)).toBe('Invocación de Péndulo de P1 en ataque')
+    expect(describeMatAction(start(), { type: 'place', id: 'p1', zone: 'mz', index: 0, pos: 'def', how: 'pendulum' }, nameOf)).toBe('Invocación de Péndulo de P1 en defensa')
+    expect(describeMatAction(start(), { type: 'place', id: 'p1', zone: 'mz', index: 0, pos: 'atk', how: 'special' }, nameOf)).toBe('Invocación Especial de P1 en ataque')
+  })
+
   it('el registro lo cuenta: «va al Extra Deck boca arriba»', () => {
     expect(describeMatAction(start(), { type: 'move', id: 'p1', to: 'extra', faceUp: true }, nameOf)).toBe('P1 va al Extra Deck boca arriba')
     expect(describeMatAction(start(), { type: 'move', id: 'p1', to: 'extra' }, nameOf)).toBe('P1 vuelve al Extra Deck')
@@ -78,19 +84,53 @@ describe('el Extra Deck con cartas boca arriba (Monstruos de Péndulo)', () => {
 })
 
 describe('el menú de una carta con el Extra boca arriba', () => {
-  it('un Monstruo de Péndulo ofrece «Al Extra Deck boca arriba» desde el campo, la mano, el cementerio y el destierro; uno común, no', () => {
-    expect(labels(onField('p1'), 'p1')).toContain('Al Extra Deck boca arriba')
+  it('un Monstruo de Péndulo ofrece «Al Extra Deck boca arriba» desde la mano, el cementerio y el destierro; uno común, no; y desde el campo su «Al cementerio» ya lo manda al Extra (regla de Péndulo)', () => {
     expect(labels(start(), 'p2')).toContain('Al Extra Deck boca arriba')
     expect(labels(run([{ type: 'move', id: 'p2', to: 'gy' }]), 'p2')).toContain('Al Extra Deck boca arriba')
     expect(labels(run([{ type: 'move', id: 'p2', to: 'banished' }]), 'p2')).toContain('Al Extra Deck boca arriba')
     expect(labels(onField('a1'), 'a1')).not.toContain('Al Extra Deck boca arriba')
+
+    // Desde el campo no hay dos opciones que hagan lo mismo: «Al cementerio» dice a dónde va de verdad, y uno común sigue con el suyo.
+    expect(labels(onField('p1'), 'p1')).toContain('Al cementerio (al Extra Deck)')
+    expect(labels(onField('p1'), 'p1')).not.toContain('Al cementerio')
+    expect(labels(onField('p1'), 'p1')).not.toContain('Al Extra Deck boca arriba')
+    expect(labels(onField('a1'), 'a1')).toContain('Al cementerio')
+    expect(listCardActions(onField('p1'), 'p1', kindOf, nameOf).find((item) => item.label === 'Al cementerio (al Extra Deck)')?.action).toEqual({ type: 'move', id: 'p1', to: 'extra', faceUp: true })
+  })
+
+  it('pendulumOnField y pileAction: un Péndulo en una zona de monstruo o de Péndulo que va al cementerio va al Extra boca arriba; en otro lugar, o a otra pila, no', () => {
+    const scale = run([{ type: 'place', id: 'p1', zone: 'st', index: 0, pos: 'atk', how: 'scale' }])
+    const middle = run([{ type: 'place', id: 'p1', zone: 'st', index: 2, pos: 'atk' }])
+    const toExtra = { type: 'move', id: 'p1', to: 'extra', faceUp: true }
+
+    expect(pendulumOnField(onField('p1'), 'p1', kindOf)).toBe(true)
+    expect(pendulumOnField(scale, 'p1', kindOf)).toBe(true)
+    // Una zona de Mágicas y Trampas del medio la trata como Mágica Continua; en la mano, el cementerio o un monstruo común, no.
+    expect(pendulumOnField(middle, 'p1', kindOf)).toBe(false)
+    expect(pendulumOnField(start(), 'p1', kindOf)).toBe(false)
+    expect(pendulumOnField(onField('a1'), 'a1', kindOf)).toBe(false)
+
+    expect(pileAction(onField('p1'), 'p1', 'gy', kindOf)).toEqual(toExtra)
+    expect(pileAction(scale, 'p1', 'gy', kindOf)).toEqual(toExtra)
+    expect(pileAction(middle, 'p1', 'gy', kindOf)).toEqual({ type: 'move', id: 'p1', to: 'gy' })
+    expect(pileAction(start(), 'p1', 'gy', kindOf)).toEqual({ type: 'move', id: 'p1', to: 'gy' })
+    expect(pileAction(onField('p1'), 'p1', 'banished', kindOf)).toEqual({ type: 'move', id: 'p1', to: 'banished' })
+    expect(pileAction(onField('p1'), 'p1', 'hand', kindOf)).toEqual({ type: 'move', id: 'p1', to: 'hand' })
+    expect(pileAction(onField('a1'), 'a1', 'gy', kindOf)).toEqual({ type: 'move', id: 'a1', to: 'gy' })
+
+    // Y el resultado: boca arriba en el Extra, no en el cementerio.
+    const after = matReducer(onField('p1'), pileAction(onField('p1'), 'p1', 'gy', kindOf))
+
+    expect(after.gy).toEqual([])
+    expect(after.extraUp).toEqual(['p1'])
   })
 
   it('uno del Extra Deck (Fusión de Péndulo) puede volver boca abajo o boca arriba; uno que no es de Péndulo, sólo boca abajo', () => {
     const fused = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk', how: 'special' }])
     const link = run([{ type: 'place', id: 'x2', zone: 'emz', index: 0, pos: 'atk', how: 'special' }])
 
-    expect(labels(fused, 'x1')).toEqual(expect.arrayContaining(['Al Extra Deck', 'Al Extra Deck boca arriba']))
+    // En el campo: volver boca abajo, o («Al cementerio») boca arriba por la regla de Péndulo.
+    expect(labels(fused, 'x1')).toEqual(expect.arrayContaining(['Al Extra Deck', 'Al cementerio (al Extra Deck)']))
     expect(labels(link, 'x2')).toContain('Al Extra Deck')
     expect(labels(link, 'x2')).not.toContain('Al Extra Deck boca arriba')
   })
@@ -106,6 +146,9 @@ describe('el menú de una carta con el Extra boca arriba', () => {
     const summon = listCardActions(up, 'p1', kindOf, nameOf).find((item) => item.label === 'Invocación de Péndulo')!
 
     expect(summon.choices?.map((choice) => choice.action.type)).toEqual(['place', 'place'])
+    // La jugada dice que es de Péndulo: así el registro la cuenta como tal. Una Invocación Especial de la mano sigue siendo Especial.
+    expect(summon.choices?.map((choice) => choice.action.type === 'place' && choice.action.how)).toEqual(['pendulum', 'pendulum'])
+    expect(listCardActions(up, 'b1', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')?.choices?.map((choice) => choice.action.type === 'place' && choice.action.how)).toEqual(['special', 'special'])
     expect(summon.choices?.every((choice) => !choice.materials)).toBe(true)
 
     // Boca abajo en el Extra: lo de siempre (revelar; el Fusión pide materiales).
@@ -124,6 +167,9 @@ describe('lo que viaja y lo que se guarda', () => {
     expect(wire({ type: 'move', id: 'c1', to: 'extra', faceUp: true })).not.toBeNull()
     expect(wire({ type: 'regain', id: 'c1', to: 'extra', faceUp: true, auto: true })).not.toBeNull()
     expect(wire({ type: 'move', id: 'c1', to: 'extra', faceUp: 'sí' })).toBeNull()
+    // La Invocación de Péndulo también (`how: 'pendulum'`).
+    expect(wire({ type: 'place', id: 'c1', zone: 'mz', index: 0, pos: 'atk', how: 'pendulum' })).not.toBeNull()
+    expect(wire({ type: 'place', id: 'c1', zone: 'mz', index: 0, pos: 'atk', how: 'raro' })).toBeNull()
 
     // Por la red las cartas van con ids opacos (`c1`…).
     const wireTable = createMatState(['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7'], ['c8', 'c9'], 5)

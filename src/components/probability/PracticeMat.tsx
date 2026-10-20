@@ -23,6 +23,7 @@ import {
   monstersOnField,
   monsterZones,
   PHASES,
+  pileAction,
   placedAt,
   randomSeed,
   replayMat,
@@ -55,6 +56,7 @@ import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, getCardEffectMap, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
 import { EFFECT_FACT } from '../../app/card-effect-facts'
 import { LIMIT_FACTS, activationFacts, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, usageReminder, type Activation } from '../../app/mat-assistant'
+import { repeatedTurnRule } from '../../app/turn-rules'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
@@ -928,9 +930,12 @@ export function PracticeMat({
       const searched = searching(action)
       const played: MatAction = searched ? { ...action, shuffle: randomSeed() } : action
       const activated = played.type === 'activate' ? played.id : spellTrapActivation(state, played, kindOf)
+      // Las reglas de turno (una Invocación Normal, una de Péndulo): avisa, no frena.
+      const repeated = repeatedTurnRule(session.initial, session.actions.slice(0, session.cursor), played)
 
       onDispatch(played)
       if (activated !== null) remindUsage(played, activated)
+      if (repeated !== null) showToastMessage(t(repeated === 'normalSummon' ? 'practice.assistant.normalAgain' : 'practice.assistant.pendulumAgain'), 'warning')
       setMenu(null)
       setPicking(null)
       setAutoplay(false)
@@ -946,7 +951,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer, searching, remindUsage, state, kindOf],
+    [onDispatch, viewer, closeViewer, searching, remindUsage, state, kindOf, session.initial, session.actions, session.cursor],
   )
 
   // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).
@@ -1232,7 +1237,8 @@ export function PracticeMat({
 
       if (target.kind === 'pile') {
         if (where.kind === 'pile' && where.pile === target.pile) return
-        onDispatch({ type: 'move', id: source.id, to: target.pile })
+        // Un Monstruo de Péndulo del campo soltado en el cementerio va al Extra Deck boca arriba (regla de Péndulo).
+        onDispatch(pileAction(state, source.id, target.pile, kindOf))
         return
       }
 

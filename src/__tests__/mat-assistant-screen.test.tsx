@@ -501,3 +501,47 @@ describe('el asistente de la mesa: también cuenta las Mágicas y las Trampas (a
     expect(showToastMessage).not.toHaveBeenCalled()
   })
 })
+
+describe('las reglas de turno: una Invocación Normal por turno (avisa, no frena)', () => {
+  /** Invocación Normal de una carta de la mano a una zona de monstruo. */
+  const summon = (name: string, zone: number) => {
+    tap(within(screen.getByRole('list', { name: 'Mano' })).getByRole('listitem', { name }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: `Zona de monstruo ${zone}: elegir` }))
+  }
+
+  beforeEach(() => {
+    vi.mocked(showToastMessage).mockClear()
+    localStorage.clear()
+    HTMLElement.prototype.setPointerCapture = () => {}
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.requestAnimationFrame = (callback) => {
+      callback(0)
+      return 1
+    }
+    window.cancelAnimationFrame = () => {}
+  })
+
+  it('la segunda Invocación Normal del mismo turno avisa que es una por turno (salvo un efecto que dé otra), y la jugada se hace igual', () => {
+    render(<Harness />)
+
+    summon('Relleno A', 1)
+    expect(showToastMessage).not.toHaveBeenCalled()
+
+    summon('Relleno B', 2)
+    expect(showToastMessage).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/^Ya hiciste una Invocación Normal \(o Colocaste un monstruo\) este turno: sólo se puede una por turno, salvo que un efecto te dé otra\.$/)
+    expect(vi.mocked(showToastMessage).mock.calls[0]![1]).toBe('warning')
+    // La jugada se hizo igual: las dos cartas están en el campo.
+    expect(within(screen.getByRole('group', { name: 'Zona de monstruo 2' })).getByRole('button', { name: 'Relleno B' })).toBeInTheDocument()
+  })
+
+  it('si se deshace la primera, la segunda ya no avisa; una Invocación Especial no cuenta', () => {
+    render(<Harness />)
+
+    summon('Relleno A', 1)
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    summon('Relleno B', 1)
+    expect(showToastMessage).not.toHaveBeenCalled()
+  })
+})

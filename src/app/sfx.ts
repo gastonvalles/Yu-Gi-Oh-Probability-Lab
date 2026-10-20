@@ -25,7 +25,7 @@ export function sfxOfAction(action: MatAction): Sfx | null {
     case 'move':
       return action.to === 'gy' ? 'grave' : action.to === 'banished' ? 'banish' : action.to === 'hand' ? 'draw' : 'shuffle'
     case 'place':
-      return action.pos === 'set' ? 'set' : action.how === 'special' ? 'special' : action.zone === 'mz' || action.zone === 'emz' ? 'summon' : 'activate'
+      return action.pos === 'set' ? 'set' : action.how === 'special' || action.how === 'pendulum' ? 'special' : action.zone === 'mz' || action.zone === 'emz' ? 'summon' : 'activate'
     case 'tribute':
       return action.pos === 'set' ? 'set' : 'summon'
     case 'summon':
