@@ -1318,6 +1318,14 @@
   }
 }
 
+/* «Podés responder con…»: la casilla del cementerio con una carta que puede responder lleva un aro ámbar quieto (las cartas sueltas llevan el brillo ámbar de la mano y del campo). */
+[data-respond='true'] {
+  z-index: 6;
+  box-shadow:
+    0 0 0 3px rgb(var(--warning-rgb) / 0.95),
+    0 0 18px 4px rgb(var(--warning-rgb) / 0.6);
+}
+
 @utility fx-frame {
   position: absolute;
   inset: 0;

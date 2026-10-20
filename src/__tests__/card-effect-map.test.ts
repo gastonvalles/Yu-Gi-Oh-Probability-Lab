@@ -209,9 +209,24 @@ describe('verifiedEffects: lo que las dos fuentes dicen de cada efecto', () => {
     expect(verifiedEffects(script, text)?.map((one) => one.facts & (EFFECT_FACT.once | EFFECT_FACT.hardOnce))).toEqual([0, 0])
   })
 
-  it('una carta con un solo efecto o que no se alinea no tiene mapa (los hechos de la carta entera ya son los de su efecto)', () => {
-    expect(verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)')), 'Once per turn: You can draw 1 card.')).toBeNull()
+  it('el campo se confirma con el script y sin que la frase nombre otro lugar; la mano y el Cementerio, con las dos fuentes', () => {
+    const fromField = verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_QUICK_O)', 'SetRange(LOCATION_MZONE)', 'SetCountLimit(1)')), 'Once per turn (Quick Effect): You can draw 1 card.')
+    // Rango de la mano y del campo, pero la frase dice «discard this card»: sólo se confirma la mano.
+    const fromHand = verifiedEffects(
+      lua(effect('e1', 'SetType(EFFECT_TYPE_QUICK_O)', 'SetRange(LOCATION_MZONE+LOCATION_HAND)', 'SetCost(Cost.SelfDiscard)')),
+      '(Quick Effect): You can discard this card; draw 1 card.',
+    )
+    const fromGrave = verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_GRAVE)', 'SetCost(s.cost)')), 'If this card is in your GY: You can banish this card from your GY; draw 1 card.')
+
+    expect(fromField?.map((one) => one.places)).toEqual([EFFECT_PLACE.field])
+    expect(fromHand?.map((one) => one.places)).toEqual([EFFECT_PLACE.hand])
+    expect(fromGrave?.map((one) => one.places)).toEqual([EFFECT_PLACE.grave])
+  })
+
+  it('una carta que no se alinea no tiene mapa', () => {
     expect(verifiedEffects('', DUSK_CROW_TEXT)).toBeNull()
+    // Un costo en la frase que el script no declara: contradicción, no se alinea.
+    expect(verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)')), 'You can discard 1 card; draw 1 card.')).toBeNull()
   })
 })
 
@@ -221,12 +236,12 @@ describe('src/data/card-effect-map.json (lo que escribe scripts/build-card-effec
   const FACTS = Object.values(EFFECT_FACT).reduce((all, bit) => all | bit, 0)
   const PLACES = Object.values(EFFECT_PLACE).reduce((all, bit) => all | bit, 0)
 
-  it('guarda el commit de los scripts y las cartas alineadas: todas con varios efectos, en orden y con máscaras válidas', () => {
+  it('guarda el commit de los scripts y las cartas alineadas: de varios efectos, o de uno solo si es rápido; en orden y con máscaras válidas', () => {
     expect(data.scripts).toMatch(/^[0-9a-f]{7,}$/)
     expect(index.size).toBeGreaterThan(1_000)
 
     for (const [id, effects] of index) {
-      expect(effects.length, String(id)).toBeGreaterThanOrEqual(2)
+      expect(effects.length >= 2 || ((effects[0]![1] ?? 0) & EFFECT_FACT.quick) !== 0, String(id)).toBe(true)
       expect(effects.map(([start]) => start), String(id)).toEqual([...effects.map(([start]) => start)].sort((left, right) => left - right))
 
       for (const [start, facts, places] of effects) {

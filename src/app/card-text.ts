@@ -264,6 +264,38 @@ export interface EffectSentence {
   target: boolean
   /** Dice «Once per turn» (al abrir o adentro). */
   once: boolean
+  /** Sólo en un efecto rápido: cuándo se activa sin que antes pase algo; null si lleva una condición o no se sabe. */
+  window: EffectWindow | null
+}
+
+/** Lo que queda del encabezado (lo de antes de los dos puntos) sin el límite de «Once per turn» ni la etiqueta de velocidad: la condición, si hay. */
+const headerBase = (header: string) => header.replace(ONCE_PER, '').replace(/^[,\s]+/, '').replace(SPEED, '').trim()
+
+/**
+ * Cuándo se puede activar un efecto rápido **sin que antes pase algo** (el rival te pregunta si hacés algo antes de pasar de fase: no hay cadena ni suceso a los que responder). `turn`: en el turno de quién
+ * (`opponent` = el del rival de quien tiene la carta, `self` = el propio, `any` = de cualquiera); `phases`: en cuáles, o `null` en cualquiera. Sólo hay ventana si el encabezado es **sólo** eso:
+ * `During your opponent's Main Phase (Quick Effect)`, `During the Main or Battle Phase`, `(Quick Effect)` solo. Con una condición (`When a card is activated`, `During the Battle Phase, if …`,
+ * `If you control …`) o con algo que no se sabe leer, no hay ventana: no se sabe si se cumple.
+ */
+export interface EffectWindow {
+  turn: 'any' | 'opponent' | 'self'
+  phases: ReadonlyArray<'draw' | 'standby' | 'main' | 'battle' | 'end'> | null
+}
+
+const PHASE_WORD = '(?:Draw|Standby|Main|Battle|End)(?: Phase)?'
+const WINDOW = new RegExp(`^During (your opponent's|either player's|the|your) (?:turn|(${PHASE_WORD}(?:,? (?:or|and) ${PHASE_WORD})*))$`, 'i')
+
+function effectWindow(base: string): EffectWindow | null {
+  if (base === '') return { turn: 'any', phases: null }
+
+  const match = WINDOW.exec(base)
+
+  if (match === null) return null
+
+  const owner = match[1]!.toLowerCase()
+  const phases = match[2] === undefined ? null : (['draw', 'standby', 'main', 'battle', 'end'] as const).filter((phase) => new RegExp(`\\b${phase}\\b`, 'i').test(match[2]!))
+
+  return { turn: owner === 'your opponent\'s' ? 'opponent' : owner === 'your' ? 'self' : 'any', phases }
 }
 
 /** Si `body` es un efecto que se activa y cómo abre; null si no lo es (una regla, un límite, una oración suelta). */
@@ -276,7 +308,7 @@ function effectOpening(body: string): EffectOpening | null {
   if (colon > 0) {
     if (header.includes(';') || !(ONCE_PER.test(header) || CONDITION_OPENERS.test(header) || SPEED_ONLY.test(header.trim()))) return null
 
-    const base = header.replace(ONCE_PER, '').replace(/^[,\s]+/, '').replace(SPEED, '').trim()
+    const base = headerBase(header)
 
     if (SPEED.test(header)) return 'quick'
     if (base === '') return 'once'
@@ -308,7 +340,7 @@ export function effectSentences(text: string): EffectSentence[] {
 
         const tones = new Set(segmentCardText(body).map((segment) => segment.tone))
 
-        out.push({ start: offset + bullet.length + start, text: body, opening, quick: opening === 'quick', cost: tones.has('cost'), target: tones.has('target'), once: ONCE_PER.test(body) || /\bonce per turn\b/i.test(body) })
+        out.push({ start: offset + bullet.length + start, text: body, opening, quick: opening === 'quick', cost: tones.has('cost'), target: tones.has('target'), once: ONCE_PER.test(body) || /\bonce per turn\b/i.test(body), window: opening === 'quick' ? effectWindow(headerBase(body.slice(0, topLevelIndex(body, ':')))) : null })
       }
     }
 

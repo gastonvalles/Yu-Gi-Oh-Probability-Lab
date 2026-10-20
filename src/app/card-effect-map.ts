@@ -169,6 +169,8 @@ export const EFFECT_PLACE = {
   hand: 1 << 0,
   /** Desde el Cementerio (`If this card is in your GY`, `banish this card from your GY`). */
   grave: 1 << 1,
+  /** Desde el campo (`SetRange(LOCATION_MZONE)`) y la frase no nombra otro lugar para esta carta: acá la segunda fuente es la **ausencia** de otro lugar, no una frase que diga «on the field». */
+  field: 1 << 2,
 } as const
 
 export type EffectPlaceName = keyof typeof EFFECT_PLACE
@@ -179,7 +181,18 @@ const TEXT_GRAVE = /^[^:]*\bthis card (?:is |was )?in (?:your|the) (?:GY|Graveya
 
 /** Los lugares que declara el script (`SetRange`). */
 function scriptPlaces(effect: LogicalEffect): number {
-  return (/\bLOCATION_HAND\b/.test(effect.ranges) ? EFFECT_PLACE.hand : 0) | (/\bLOCATION_GRAVE\b/.test(effect.ranges) ? EFFECT_PLACE.grave : 0)
+  return (
+    (/\bLOCATION_HAND\b/.test(effect.ranges) ? EFFECT_PLACE.hand : 0) |
+    (/\bLOCATION_GRAVE\b/.test(effect.ranges) ? EFFECT_PLACE.grave : 0) |
+    (/\bLOCATION_(?:MZONE|ONFIELD)\b/.test(effect.ranges) ? EFFECT_PLACE.field : 0)
+  )
+}
+
+/** Los lugares confirmados: la mano y el Cementerio, los que el script declara y la frase nombra; el campo, el que el script declara cuando la frase no nombra la mano ni el Cementerio para esta carta. */
+function confirmedPlaces(text: number, script: number): number {
+  const named = text & script
+
+  return text === 0 ? named | (script & EFFECT_PLACE.field) : named
 }
 
 /** Los lugares que dice la frase. */
@@ -196,12 +209,12 @@ export interface VerifiedEffect {
 
 /**
  * Los efectos de una carta alineados con su texto y, de cada uno, lo que **las dos fuentes dicen de ese efecto** (la misma regla de `card-effect-facts.ts`, ahora por efecto y no por carta). `null` si la carta no se puede
- * alinear con certeza o tiene un solo efecto (para esas, los hechos de la carta entera ya son los del efecto).
+ * alinear con certeza (con uno o con varios efectos: lo que se guarda de las de un solo efecto lo decide el generador).
  */
 export function verifiedEffects(lua: string, text: string): VerifiedEffect[] | null {
   const sentences = effectSentences(text)
   const effects = logicalEffects(readCardScript(lua, 'all').effects)
-  const pairs = sentences.length >= 2 ? alignEffects(sentences, effects) : null
+  const pairs = alignEffects(sentences, effects)
 
   if (pairs === null) return null
 
@@ -212,6 +225,6 @@ export function verifiedEffects(lua: string, text: string): VerifiedEffect[] | n
     const said = textEffectFacts(sentence.text) | (each ? EFFECT_FACT.once | EFFECT_FACT.hardOnce : 0)
     const declared = effect.members.reduce((facts, member) => facts | effectFactsOf(member), 0)
 
-    return { start: sentence.start, facts: said & declared, places: textPlaces(sentence) & scriptPlaces(effect) }
+    return { start: sentence.start, facts: said & declared, places: confirmedPlaces(textPlaces(sentence), scriptPlaces(effect)) }
   })
 }
