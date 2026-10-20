@@ -23,8 +23,8 @@ interface CardZoomProps {
 }
 
 /**
- * La carta en grande, sola sobre el fondo (como al tocarla en el detalle del celular). Se cierra sólo con la X o con Escape
- * (un clic suelto no la cierra, para poder inspeccionarla en 3D); si hay un modal abajo, Escape cierra primero este.
+ * La carta en grande, sola sobre el fondo (como al tocarla en el detalle del celular). Se cierra con la X, con Escape o al tocar afuera de la carta (en el fondo);
+ * la carta en sí no cierra nada: se gira y se arrastra para inspeccionarla en 3D. Si hay un modal abajo, Escape cierra primero este.
  */
 export function CardZoom({ card, name, fallbackUrl = null, navigation = null, onClose }: CardZoomProps) {
   useBodyScrollLock(true)
@@ -62,10 +62,11 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, on
       role="dialog"
       aria-modal="true"
       aria-label={t('search.zoom.aria', { name })}
-      className={cx('fixed inset-0 z-250 grid place-items-center bg-background/90 p-4 animate-dialog-enter motion-reduce:animate-none', TILT_PERSPECTIVE)}
+      className={cx('fixed inset-0 z-250 grid cursor-zoom-out place-items-center bg-background/90 p-4 animate-dialog-enter motion-reduce:animate-none', TILT_PERSPECTIVE)}
+      onClick={onClose}
     >
       <div
-        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full touch-none', TILT_ART)}
+        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full cursor-grab touch-none active:cursor-grabbing', TILT_ART)}
         title={t('search.flip.title')}
         aria-keyshortcuts="F"
         onPointerDown={(event) => {
@@ -79,6 +80,11 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, on
         onPointerLeave={tiltHandlers.onPointerLeave}
         onPointerUp={flip.onPointerUp}
         onPointerCancel={flip.onPointerCancel}
+        // Tocar o arrastrar la carta no cierra el zoom (sólo el fondo); lo que deja un arrastre se descarta.
+        onClick={(event) => {
+          event.stopPropagation()
+          flip.consumeClick()
+        }}
       >
         <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack}>
           <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} fallbackUrl={fallbackUrl} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />

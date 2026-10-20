@@ -31,7 +31,7 @@ const card = {
 } as ApiCardReference
 
 describe('la carta en grande', () => {
-  it('se cierra sólo con la X o con Escape: un clic suelto no la cierra', () => {
+  it('se cierra con la X, con Escape o al tocar el fondo; tocar la carta no cierra nada', () => {
     const onClose = vi.fn()
     render(
       <Provider store={store}>
@@ -41,15 +41,19 @@ describe('la carta en grande', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Maxx en grande' })
 
-    fireEvent.click(dialog)
+    // La carta (con su hijo) se toca sin cerrar el zoom.
     fireEvent.click(dialog.firstElementChild!)
     expect(onClose).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    // Afuera de la carta, el fondo, sí.
+    fireEvent.click(dialog)
     expect(onClose).toHaveBeenCalledTimes(1)
 
-    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
     expect(onClose).toHaveBeenCalledTimes(2)
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(3)
   })
 
   it('con vecinos lleva las flechas a los costados (y ← → también); hacia el lado donde no hay carta la flecha no se muestra, y ninguna cierra el zoom', () => {

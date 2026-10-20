@@ -62,12 +62,12 @@ describe('detalle compartido de cartas', () => {
     expect(art.dataset.tilting).toBe('false')
   })
 
-  it.each(['fondo', 'espacio entre carta y texto'])('no cierra al tocar el %s: sólo la X o Escape (para inspeccionar la carta en 3D)', (area) => {
+  it.each(['fondo', 'espacio entre carta y texto'])('cierra al tocar el %s (afuera de la carta y del panel)', (area) => {
     const onClose = vi.fn()
     render(modal(onClose))
     const dialog = screen.getByRole('dialog', { name: `Detalle de ${card.name}` })
     fireEvent.click(area === 'fondo' ? dialog : dialog.firstElementChild!)
-    expect(onClose).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('cierra con la X blanca de arriba a la derecha', () => {
@@ -143,7 +143,7 @@ describe('detalle compartido de cartas', () => {
     render(<CardDetailOverlay name="Carta manual" card={null} origin={null} onClose={onClose} />)
     expect(screen.getByRole('dialog', { name: 'Detalle de Carta manual' })).toBeInTheDocument()
     expect(screen.getByText('Sin texto disponible.')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    fireEvent.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 

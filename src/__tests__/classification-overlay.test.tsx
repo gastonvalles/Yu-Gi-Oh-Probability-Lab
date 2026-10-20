@@ -116,6 +116,7 @@ describe('modal de clasificación (mismo marco que el detalle)', () => {
   it.each([
     ['la X blanca', () => fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))],
     ['Escape', () => fireEvent.keyDown(window, { key: 'Escape' })],
+    ['el fondo', () => fireEvent.click(screen.getByRole('dialog'))],
   ])('se cierra con %s', (_, close) => {
     const onClose = vi.fn()
     render(editor({ onClose }))
@@ -124,13 +125,6 @@ describe('modal de clasificación (mismo marco que el detalle)', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('no se cierra al tocar el fondo (sólo la X o Escape)', () => {
-    const onClose = vi.fn()
-    render(editor({ onClose }))
-
-    fireEvent.click(screen.getByRole('dialog'))
-    expect(onClose).not.toHaveBeenCalled()
-  })
 
   it('pide confirmar una clasificación sugerida', () => {
     const onConfirm = vi.fn()
