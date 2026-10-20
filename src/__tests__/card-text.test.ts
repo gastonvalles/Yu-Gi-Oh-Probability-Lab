@@ -62,6 +62,15 @@ describe('segmentCardText: lo que marca', () => {
     ])
   })
 
+  it('la etiqueta de velocidad sola, sin condición delante, también se marca', () => {
+    expect(marked('If this card is Fusion Summoned: You can Set 1 card. (Quick Effect): You can pay 1000 LP, then target 1 monster; destroy it.')).toEqual([
+      ['condition', 'If this card is Fusion Summoned'],
+      ['speed', '(Quick Effect)'],
+      ['cost', 'pay 1000 LP'],
+      ['target', 'target 1 monster'],
+    ])
+  })
+
   it('los dos puntos o el punto y coma entre comillas o paréntesis no cortan nada', () => {
     expect(marked('If you control "Number 39: Utopia": You can destroy 1 card.')).toEqual([['condition', 'If you control "Number 39: Utopia"']])
     expect(marked('Banish 1 card (this is a cost; it is not optional): draw 1 card.')).toEqual([])

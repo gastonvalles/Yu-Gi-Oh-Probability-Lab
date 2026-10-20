@@ -9,7 +9,7 @@ catálogo entero antes de pasar a la siguiente.
 | Capa | Qué hace | Estado |
 | --- | --- | --- |
 | 0 · Resaltar | Colorea el texto de la carta: condición, efecto rápido, costo, objetivo y límite. No decide nada del juego. | **Hecha** |
-| 1 · Datos de los scripts | Por cada efecto: su límite de uso, su costo, su velocidad y su disparador, leídos del script y cruzados con el texto. | Pendiente |
+| 1 · Hechos confirmados | Lo que el script de EDOPro **y** el texto de la carta dicen los dos de sus efectos: rápido, una vez por turno (con o sin nombre), una vez por Duelo, costo y objetivo. | **Hecha** (a nivel de carta) |
 | 2 · Asistente de reglas | La mesa avisa, no decide: «este efecto es rápido», «ya lo usaste este turno». | Pendiente |
 | 3 · Automatización parcial | Efectos simples, de a una carta, cada una probada contra su script. | Pendiente |
 | 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) compilado a WebAssembly, detrás de una bandera. | Evaluar (licencia) |
@@ -53,11 +53,46 @@ sin dos puntos, los textos de invocación (`You can Ritual Summon this card with
 **Cómo se parece y se distingue de Dueling Nexus:** allá la condición es verde, «(Quick Effect)» amarillo, el costo rosa y la restricción subrayada; acá lo mismo con la paleta propia (rojo en vez de rosa) y el objetivo
 en violeta. No se revisó el código de ellos: es una lectura de lo que se ve.
 
-## Capa 1 · Datos de los scripts (pendiente, el siguiente paso)
+## Capa 1 · Hechos confirmados por dos fuentes
 
-Hoy ya se leen los scripts de EDOPro (`ProjectIgnis/CardScripts`) con `scripts/sync-meta-decks.mjs` y salen **20 bits por carta** (`src/app/card-script-rules.ts`, `src/data/card-rules.json`: «se activa desde la mano»,
-«busca», «niega»…). Lo que falta leer **por efecto**: el límite de uso (una vez por turno, una vez por duelo, por nombre de carta), el costo, la velocidad, el evento que lo dispara y desde qué zona se activa.
-Cada dato se **cruza con el texto**: si el script y el texto no coinciden, no se muestra (regla de oro). La Capa 0 es el control: lo que el texto dice con la plantilla y el script confirma, queda; el resto, no.
+**Idea:** el script de EDOPro dice lo que el motor del juego hace de verdad y el texto dice lo que la carta imprime; no se conocen entre sí. Un hecho que **las dos fuentes afirman** es cierto; uno que afirma una sola puede ser una forma
+de escribir distinta (las cartas viejas no llevan «(Quick Effect)») o un detalle interno del motor (un efecto continuo con límite para no repetirse). La capa 1 se queda sólo con la intersección.
+
+**Dónde vive:** `src/app/card-effect-facts.ts` (puro: `scriptEffectFacts`, `textEffectFacts`, `verifiedEffectFacts`, la máscara `EFFECT_FACT`), el lector de scripts ampliado (`card-script-rules.ts`: `SetCountLimit`, `SetCost`,
+`SetCondition`, `SetProperty` y `scope: 'all'`, que también lee los efectos que una carta se da a sí misma fuera de `initial_effect`), el generador `scripts/build-card-effects.mjs` (`npm run sync:effects`: baja el texto de las
+cartas de YGOPRODeck, actualiza el clon de los scripts y escribe `src/data/card-effects.json`, agrupado por máscara como `card-rules.json`) y el lector de la app `src/app/card-effect-data.ts` (`loadCardEffects`, `getCardEffectFacts`).
+Se corre a mano cuando conviene (salen cartas nuevas): no forma parte del sync diario.
+
+**Los seis hechos** (`EFFECT_FACT`; son de la **carta entera**, no de cada efecto: «tiene al menos un efecto…»):
+
+| Hecho | El script dice | El texto dice |
+| --- | --- | --- |
+| `quick` | un efecto `EFFECT_TYPE_QUICK_O` o `QUICK_F` | `(Quick Effect)` (la capa 0 lo marca como `speed`) |
+| `once` | `SetCountLimit(1, …)` que no es por Duelo, por cadena ni «mientras está boca arriba» | «once per turn» o la forma por nombre de abajo |
+| `hardOnce` | lo mismo con el id de la carta como código (`id`, `{id,1}`, `OATH`): por nombre | «You can only use … "Nombre" … once per turn», «You can only use 1 "Nombre" per turn», «You can only activate 1 "Nombre" per turn», «"Nombre" can only be activated once per turn» (se mira con cada nombre reemplazado por `"N"`: llevan puntos y comillas) |
+| `perDuel` | `EFFECT_COUNT_CODE_DUEL` | «once per Duel» |
+| `cost` | `SetCost(…)` | un costo antes del `;` (capa 0, `cost`) |
+| `target` | `EFFECT_FLAG_CARD_TARGET` | `target 1 …` antes del `;` (capa 0, `target`) |
+
+**Qué significa un bit:** encendido = confirmado por las dos fuentes; apagado = **no dice nada** (no que no sea cierto). Una carta sin script (monstruos normales, cartas nuevas) o sin hechos confirmados no está en el JSON.
+
+**Medido contra el catálogo** (YGOPRODeck y los scripts del 2026-10-19: 10.266 cartas con algún hecho en el script; **9.182** llevan al menos uno confirmado). Por hecho, las cartas donde los dos coinciden / sólo lo dice el script / sólo lo dice el texto:
+
+| Hecho | Los dos (confirmado) | Sólo el script | Sólo el texto |
+| --- | ---: | ---: | ---: |
+| `quick` | 1.029 | 938 | 21 |
+| `once` | 7.235 | 399 | 123 |
+| `hardOnce` | 5.528 | 25 | 84 |
+| `perDuel` | 58 | 3 | 3 |
+| `cost` | 3.936 | 877 | 61 |
+| `target` | 4.398 | 654 | 64 |
+
+Lo que se descarta tiene causas conocidas, que se fueron corrigiendo al medir: el texto viejo sin «(Quick Effect)» (el script dice rápido: **no se confirma**, por diseño), una etiqueta de velocidad sola sin condición (`(Quick Effect): …`, arreglada
+en la capa 0), los nombres con puntos o con comillas anidadas (`"Maxx "C""`, arreglado), los efectos que una carta se da a sí misma en otra función (arreglado con `scope: 'all'`) y los límites que el motor impone sin que el texto los diga (un efecto
+continuo con `SetCountLimit(1)` para no dispararse dos veces). Quedan, entre otros, los límites de «You can only Special Summon "X" once per turn» (el script los pone con una bandera, no con `SetCountLimit`), que no se confirman.
+
+**Lo que esta capa NO hace:** no dice **cuál** efecto tiene cada hecho (alinear cada frase del texto con cada efecto del script es el siguiente paso), no sabe cuántos cupos por nombre tiene una carta, ni desde qué zona se activa, ni qué evento lo
+dispara; esos datos están en el script (`range`, `code`) pero sin segunda fuente que los confirme todavía. Y **nada de la app lo usa aún**: la capa 2 (el asistente de la mesa) es la que lo va a leer.
 
 ## Capas 2 a 4 (ideas, sin diseño todavía)
 

@@ -58,6 +58,14 @@ interface CardEffect {
   /** Nombres de las funciones del script (`s.target`), o '' si van en línea o son de utilidades. */
   target: string
   operation: string
+  /** Lo que dice `SetCountLimit` (`1`, `1,id`, `1,{id,1}`, `1,id,EFFECT_COUNT_CODE_DUEL`…), sin interpretar; '' si el efecto no tiene límite. */
+  countLimit: string
+  /** El costo: `s.cost`, `Cost.SelfBanish`…; '' si no tiene. */
+  cost: string
+  /** La condición de activación (`s.condition`…); '' si no tiene. */
+  condition: string
+  /** Las banderas del efecto (`EFFECT_FLAG_CARD_TARGET+…`); '' si no tiene. */
+  property: string
 }
 
 export interface CardScript {
@@ -71,7 +79,7 @@ export interface CardScript {
   listedNames: string[]
 }
 
-const EMPTY_EFFECT: CardEffect = { type: '', range: '', code: '', category: '', targetRange: '', target: '', operation: '' }
+const EMPTY_EFFECT: CardEffect = { type: '', range: '', code: '', category: '', targetRange: '', target: '', operation: '', countLimit: '', cost: '', condition: '', property: '' }
 /** Las fusiones se crean con una utilidad que ya implica la categoría; el script sólo la ajusta y la registra. */
 const FUSION_EFFECT: CardEffect = { ...EMPTY_EFFECT, type: 'EFFECT_TYPE_ACTIVATE', category: 'CATEGORY_SPECIAL_SUMMON+CATEGORY_FUSION_SUMMON' }
 
@@ -81,7 +89,7 @@ const CREATE = /^(?:local\s+)?(\w+)\s*=\s*Effect\.CreateEffect\(/
 const CREATE_FUSION = /^(?:local\s+)?(\w+)\s*=\s*Fusion\.CreateSummonEff\(/
 const LISTED_NAMES = /^s\.listed_names\s*=\s*\{([^}]*)\}/
 const CLONE = /^(?:local\s+)?(\w+)\s*=\s*(\w+):Clone\(\)/
-const SETTER = /^(\w+):Set(Type|Range|Code|Category|TargetRange|Target|Operation)\((.*)\)$/
+const SETTER = /^(\w+):Set(Type|Range|Code|Category|TargetRange|Target|Operation|CountLimit|Cost|Condition|Property)\((.*)\)$/
 const REGISTER = /^c:RegisterEffect\((\w+)/
 const GIVES_PROCEDURE = /aux\.Add(?:Kaiju|Lava)Procedure\(/
 const LISTED = /^s\.listed_(?:series|names)\s*=\s*\{([^}]*)\}/
@@ -172,14 +180,17 @@ function readFunctions(lua: string): Map<string, string> {
   return functions
 }
 
-/** Los efectos propios de la carta: los que `initial_effect` registra sobre ella con `c:RegisterEffect`. */
-export function readCardScript(lua: string): CardScript {
+/**
+ * Los efectos propios de la carta: los que `initial_effect` registra sobre ella con `c:RegisterEffect`. Con `scope: 'all'` también los que se registran en cualquier otra función (un efecto que la carta se da a sí misma
+ * al equiparse o al invocarse): para saber qué efectos puede llegar a tener, no sólo los de siempre.
+ */
+export function readCardScript(lua: string, scope: 'initial' | 'all' = 'initial'): CardScript {
   const functions = readFunctions(lua)
   const effects: CardEffect[] = []
   const drafts = new Map<string, CardEffect>()
   let givesToOpponent = false
   let mentions = false
-  let inside = false
+  let inside = scope === 'all'
   const listedNames: string[] = []
 
   for (const rawLine of lua.split('\n')) {
@@ -203,7 +214,7 @@ export function readCardScript(lua: string): CardScript {
     }
 
     // El `end` sin sangría cierra initial_effect; los anidados van con tabulación.
-    if (/^end\b/.test(rawLine)) {
+    if (scope === 'initial' && /^end\b/.test(rawLine)) {
       inside = false
       continue
     }
@@ -245,7 +256,7 @@ export function readCardScript(lua: string): CardScript {
         if (property === 'Target' || property === 'Operation') {
           draft[property === 'Target' ? 'target' : 'operation'] = FUNCTION_NAME.test(value) ? value : ''
         } else {
-          draft[(property.charAt(0).toLowerCase() + property.slice(1)) as 'type' | 'range' | 'code' | 'category' | 'targetRange'] = value
+          draft[(property.charAt(0).toLowerCase() + property.slice(1)) as 'type' | 'range' | 'code' | 'category' | 'targetRange' | 'countLimit' | 'cost' | 'condition' | 'property'] = value
         }
       }
 
@@ -267,7 +278,7 @@ export function readCardScript(lua: string): CardScript {
 }
 
 /** Los argumentos de una llamada, respetando paréntesis anidados; `text` empieza justo después del `(`. */
-function readArguments(text: string): string[] {
+export function readArguments(text: string): string[] {
   const args: string[] = []
   let depth = 0
   let current = ''

@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "sync:genesys": "node scripts/sync-genesys-card-data.mjs",
     "sync:banlists": "node scripts/sync-banlists.mjs",
+    "sync:effects": "node scripts/build-card-effects.mjs",
     "sync:meta": "node scripts/sync-meta-decks.mjs",
     "sync:prices": "node scripts/sync-card-prices.mjs",
     "sync:replays": "node scripts/sync-replays.mjs",

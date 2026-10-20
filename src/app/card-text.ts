@@ -28,6 +28,9 @@ const ONCE_PER = /^Once per (?:turn|Chain)/
 /** La etiqueta de velocidad: `(Quick Effect)` o `(This is a Quick Effect)`. */
 const SPEED = /\((?:This is a )?Quick Effect\)/
 
+/** Un efecto que abre con la etiqueta sola, sin condición delante: `(Quick Effect): You can …`. */
+const SPEED_ONLY = /^\((?:This is a )?Quick Effect\)$/
+
 /** Los verbos con que empieza un costo (lo que va antes del `;`): se paga al activar. Se compara sin mirar mayúsculas. */
 const COST_VERB = /^(?:discard|send|banish|tribute|detach|pay|remove|reveal|shuffle|return|release)\b/i
 
@@ -195,7 +198,7 @@ function pushSentence(out: TextSegment[], sentence: string) {
   const header = colon > 0 ? body.slice(0, colon) : ''
 
   // «Condición (Quick Effect): …»: la condición, la velocidad y los dos puntos.
-  if (colon > 0 && (ONCE_PER.test(header) || CONDITION_OPENERS.test(header)) && !header.includes(';')) {
+  if (colon > 0 && (ONCE_PER.test(header) || CONDITION_OPENERS.test(header) || SPEED_ONLY.test(header.trim())) && !header.includes(';')) {
     pushHeader(out, header)
     push(out, ':', 'plain')
     rest = body.slice(colon + 1)
