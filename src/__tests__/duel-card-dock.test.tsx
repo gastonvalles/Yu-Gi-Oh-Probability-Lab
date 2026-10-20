@@ -42,14 +42,34 @@ const ash = cardOf(14558127, 'Ash Blossom & Joyous Spring')
 const peek = (card: ApiCardSearchResult) => ({ name: card.name, card })
 
 const ZOOM = 'Ver la carta en grande'
-const art = () => screen.getByTestId('duel-dock-art').firstElementChild as HTMLElement
+const art = () => screen.getByTitle(/^Arrastrala hacia donde quieras/)
 const flipper = () => art().querySelector('[data-flipped]') as HTMLElement
 
 describe('el detalle fijo de la izquierda: la carta se ve como en cualquier detalle', () => {
-  it('no queda pegada al borde de arriba: empieza más abajo, a una altura que no depende del texto de la carta', () => {
+  it('es un lector: el título del panel arriba y la carta grande dentro de su marco, del ancho que deja el alto de la ventana', () => {
     render(<DuelCardDock peek={peek(blue)} />)
 
-    expect(screen.getByTestId('duel-dock-art').parentElement).toHaveClass('pt-[clamp(0.5rem,12dvh,8rem)]')
+    expect(screen.getByText('Detalle de la carta')).toBeInTheDocument()
+    expect(screen.getByTestId('duel-dock-art')).toHaveClass('w-[min(100%,15.5rem,24dvh)]')
+    // El marco (el bisel) rodea el hueco donde se inclina la carta.
+    expect(art().parentElement?.parentElement).toHaveClass('p-1.5')
+  })
+
+  it('el tipo va solo y los números aparte, rotulados: nivel (rango en una Xyz), ATK y DEF; un Link lleva su valor y no tiene DEF; una Mágica, ninguno', () => {
+    const stats = () => Array.from(document.querySelectorAll('dl > div')).map((element) => element.textContent)
+    const view = render(<DuelCardDock peek={peek(blue)} />)
+
+    expect(screen.getByText('[Normal Monster] Dragon/LIGHT')).toBeInTheDocument()
+    expect(stats()).toEqual(['Nivel8', 'ATK3000', 'DEF2500'])
+
+    view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 1, cardType: 'XYZ Monster' })} />)
+    expect(stats()).toEqual(['Rango8', 'ATK3000', 'DEF2500'])
+
+    view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 2, cardType: 'Link Monster', level: null, linkValue: 2, def: null })} />)
+    expect(stats()).toEqual(['Link2', 'ATK3000'])
+
+    view.rerender(<DuelCardDock peek={peek({ ...blue, ygoprodeckId: 3, cardType: 'Spell Card', race: 'Field', attribute: null, level: null, atk: null, def: null })} />)
+    expect(stats()).toEqual([])
   })
 
   it('se inclina en 3D hacia el mouse y vuelve al irse', () => {
@@ -126,7 +146,7 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
   it('lo que no se conoce (boca abajo, o la carta que todavía no llegó) se ve quieto y no se agranda', () => {
     const view = render(<DuelCardDock peek={{ faceDown: true }} />)
 
-    expect(screen.getByTestId('duel-dock-art').parentElement).toHaveClass('pt-[clamp(0.5rem,12dvh,8rem)]')
+    expect(screen.getByTestId('duel-dock-art')).toHaveClass('w-[min(100%,15.5rem,24dvh)]')
     expect(screen.queryByRole('button', { name: ZOOM })).not.toBeInTheDocument()
 
     view.rerender(<DuelCardDock peek={{ name: 'Carta sin datos', card: null }} />)
