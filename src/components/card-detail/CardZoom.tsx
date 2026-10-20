@@ -1,7 +1,8 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 
 import { foilOf } from '../../app/card-foil'
+import { cardImageSrc } from '../../app/card-image-source'
 import type { CardNavigation } from '../../app/card-neighbors'
 import type { ArtChoice } from '../../app/use-card-art-options'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
@@ -19,6 +20,7 @@ import { CardZoomBar, stepZoom, type ZoomStep } from './CardZoomBar'
 import { buildCardSummary } from './card-summary'
 import { TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from './card-tilt'
 import { PrintingMenu } from './PrintingMenu'
+import { usePinchZoom } from './use-pinch-zoom'
 
 interface CardZoomProps {
   card: ApiCardReference
@@ -46,8 +48,8 @@ function onScrollbar(event: MouseEvent<HTMLElement>): boolean {
 /**
  * La carta en grande, sola sobre el fondo (como al tocarla en el detalle del celular). Se cierra con la X, con Escape o al tocar afuera de la carta (en el fondo);
  * la carta en sí no cierra nada: se gira y se arrastra para inspeccionarla en 3D. Si hay un modal abajo, Escape cierra primero este.
- * Abajo, la barra con el zoom (100 %, 150 %, 200 %, 300 %: más grande que la pantalla, se desplaza con el dedo, la rueda o las barras; el giro 3D sólo va al 100 %) y «Leer texto de efecto», que muestra
- * el texto resaltado sobre la carta; arriba a la izquierda, la impresión (ver `PrintingMenu`). Teclas: F da vuelta la carta, + y − cambian el zoom, 0 vuelve al 100 %, ← y → pasan de carta.
+ * Abajo, la barra con el zoom (100 %, 150 %, 200 %, 300 %: más grande que la pantalla, se desplaza con el dedo, la rueda o las barras; el giro 3D sólo va al 100 %; también se cambia con Ctrl + la rueda y pellizcando con dos dedos, `usePinchZoom`) y «Leer texto de efecto», que muestra
+ * el texto resaltado sobre la carta; detrás, la misma carta agrandada y desenfocada, como en la referencia; arriba a la izquierda, la impresión (ver `PrintingMenu`). Teclas: F da vuelta la carta, + y − cambian el zoom, 0 vuelve al 100 %, ← y → pasan de carta.
  */
 export function CardZoom({ card, name, fallbackUrl = null, navigation = null, arts = NO_ARTS, artId = null, onArtChange, onClose }: CardZoomProps) {
   useBodyScrollLock(true)
@@ -60,9 +62,15 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
   const next = navigation?.onNext ?? null
   const [scale, setScale] = useState<ZoomStep>(1)
   const [reading, setReading] = useState(false)
+  const canvasRef = useRef<HTMLDivElement | null>(null)
+  const stepZoomBy = useCallback((by: 1 | -1) => setScale((current) => stepZoom(current, by)), [])
+  // Ctrl + la rueda (o el pellizco del trackpad) y dos dedos cambian el zoom; el segundo dedo cancela el giro que había empezado el primero.
+  usePinchZoom(canvasRef, stepZoomBy, flip.cancel)
   // Más grande que la pantalla, arrastrar desplaza la carta: el giro y la inclinación sólo van al 100 %.
   const inspecting = scale === 1
   const summary = buildCardSummary(card)
+  // La carta de fondo, desenfocada: la chica alcanza.
+  const backdrop = card.imageUrlSmall ?? card.imageUrl ?? fallbackUrl
   // El brillo de la rareza de la impresión que se ve.
   const foil = foilOf(arts.find((art) => art.id === artId)?.printing?.rarity, card.frameType)
 
@@ -100,8 +108,14 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
       className="fixed inset-0 z-250 cursor-zoom-out bg-background/90 animate-dialog-enter motion-reduce:animate-none"
       onClick={() => (menuOpen ? setMenuOpen(false) : onClose())}
     >
-      {/* El lienzo se desplaza cuando la carta es más grande que la pantalla; `m-auto` la centra mientras entra (con `place-items-center` las puntas quedarían cortadas, sin forma de llegar a ellas). */}
-      <div className="absolute inset-0 overflow-auto overscroll-contain" onClick={(event) => onScrollbar(event) && event.stopPropagation()}>
+      {/* La misma carta, agrandada y desenfocada, de fondo: no es contenido (sin texto alternativo ni toques) y con movimiento reducido no se dibuja. */}
+      {backdrop ? (
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden motion-reduce:hidden">
+          <img src={cardImageSrc(backdrop)} alt="" draggable={false} className="block size-full scale-125 object-cover opacity-35 blur-3xl" />
+        </span>
+      ) : null}
+      {/* El lienzo se desplaza cuando la carta es más grande que la pantalla; `m-auto` la centra mientras entra (con `place-items-center` las puntas quedarían cortadas, sin forma de llegar a ellas). Un pellizco no acerca la página: lo toma `usePinchZoom`. */}
+      <div ref={canvasRef} className="absolute inset-0 overflow-auto overscroll-contain [touch-action:pan-x_pan-y]" onClick={(event) => onScrollbar(event) && event.stopPropagation()}>
         <div className={cx('flex min-h-full min-w-full p-4', TILT_PERSPECTIVE)}>
           <div
             className={cx(

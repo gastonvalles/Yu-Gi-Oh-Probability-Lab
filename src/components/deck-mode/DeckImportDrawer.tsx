@@ -112,7 +112,7 @@ function CollapsibleSection({
         <div className="grid gap-0.5 min-w-0">
           <div className="flex items-center gap-2">
             <small className={cx(overline, accent)}>{title}</small>
-            <Badge tone="brand" size="sm">{count}</Badge>
+            <Badge tone="neutral" size="sm">{count}</Badge>
           </div>
           {!isExpanded ? (
             <p className="m-0 text-micro text-muted truncate">{subtitle}</p>

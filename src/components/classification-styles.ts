@@ -11,7 +11,7 @@ type StatusTone = 'warning' | 'primary' | 'success'
 
 const STATUS_TONE: Record<StatusTone, Tone> = {
   warning: 'warning',
-  primary: 'brand',
+  primary: 'info',
   success: 'success',
 }
 

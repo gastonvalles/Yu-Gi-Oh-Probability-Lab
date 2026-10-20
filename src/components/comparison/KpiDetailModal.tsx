@@ -59,7 +59,7 @@ export function KpiDetailModal({
               {roles.length > 1 ? (
                 <Heading level="card" as="h4" className="flex items-center gap-2">
                   {getCardRoleDefinition(group.role).label}
-                  <Badge tone="brand" size="sm">{formatInteger(group.cards.reduce((total, card) => total + card.copies, 0))}</Badge>
+                  <Badge tone="neutral" size="sm">{formatInteger(group.cards.reduce((total, card) => total + card.copies, 0))}</Badge>
                 </Heading>
               ) : null}
               <div className="grid grid-cols-1 gap-2 min-[540px]:grid-cols-2">

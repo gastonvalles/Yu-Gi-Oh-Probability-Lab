@@ -19,7 +19,7 @@ function PrintingLine({ printing }: { printing: ArtPrinting }) {
   return (
     <>
       <span className="font-semibold text-foreground">{printing.code}</span>
-      <Badge size="sm" tone="brand">
+      <Badge size="sm" tone="neutral">
         {printing.rarity}
       </Badge>
       {printing.variant ? <span className="text-muted">· {printing.variant}</span> : null}
