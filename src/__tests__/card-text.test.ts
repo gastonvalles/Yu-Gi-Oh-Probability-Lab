@@ -1,7 +1,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
-import { segmentCardText, type TextTone } from '../app/card-text'
+import { effectSentences, segmentCardText, type TextTone } from '../app/card-text'
 
 /** Los pedazos marcados de un texto, como pares [tipo, texto]. */
 function marked(text: string): [TextTone, string][] {
@@ -148,5 +148,43 @@ describe('segmentCardText: garantías', () => {
       }),
       { numRuns: 400 },
     )
+  })
+})
+
+describe('effectSentences: las oraciones del texto que son efectos que se activan', () => {
+  const opening = (text: string) => effectSentences(text).map((sentence) => sentence.opening)
+
+  it('cómo abre cada una: condición, «During», «Once per turn:», «(Quick Effect)» y «You can …;» sin encabezado', () => {
+    expect(opening('If this card is sent to the GY: You can draw 1 card.')).toEqual(['trigger'])
+    expect(opening('During your Main Phase: You can Special Summon this card.')).toEqual(['during'])
+    expect(opening('Once per turn: You can draw 1 card.')).toEqual(['once'])
+    expect(opening('When a card or effect is activated (Quick Effect): You can discard this card; negate that effect.')).toEqual(['quick'])
+    expect(opening('You can discard 1 card; draw 1 card.')).toEqual(['plain'])
+  })
+
+  it('las reglas, los límites y los efectos continuos no cuentan', () => {
+    const text = 'Cannot be Normal Summoned/Set. This card gains 500 ATK. You can only use each effect of "X" once per turn. You can discard 1 card; draw 1 card.'
+
+    expect(opening(text)).toEqual(['plain'])
+    // «You can» sin `;` es una frase sin costo ni objetivo que separe: no se sabe que sea un efecto.
+    expect(opening('You can draw 1 card.')).toEqual([])
+  })
+
+  it('dónde empieza cada una en el texto entero, también después de un salto de línea o de una viñeta', () => {
+    const text = 'Cannot be Normal Summoned.\n● If this card is sent to the GY: You can draw 1 card.\n● Once per turn: You can discard 1 card; draw 1 card.'
+    const [first, second] = effectSentences(text)
+
+    expect(text.slice(first!.start, first!.start + 7)).toBe('If this')
+    expect(text.slice(second!.start, second!.start + 13)).toBe('Once per turn')
+  })
+
+  it('lo que lleva: la velocidad, el costo, el objetivo y el «una vez por turno»', () => {
+    const [quick] = effectSentences('During the Battle Phase (Quick Effect): You can discard this card; negate the attack.')
+    const [target] = effectSentences('You can target 1 monster in your GY; Special Summon it.')
+    const [once] = effectSentences('Once per turn: You can draw 1 card.')
+
+    expect([quick?.quick, quick?.cost, quick?.target, quick?.once]).toEqual([true, true, false, false])
+    expect([target?.quick, target?.cost, target?.target]).toEqual([false, false, true])
+    expect(once?.once).toBe(true)
   })
 })
