@@ -1670,6 +1670,14 @@
 }
 
 @layer theme {
+  @media (max-width: 639.98px) {
+    :root {
+      /* Celular en vertical: la vista 3D se inclina poco (14° en vez de 26°) y se estira lo que la inclinación le come (1 / cos), como en escritorio: el campo usa casi todo el alto que tiene en vez de quedar chico con un hueco enorme arriba. */
+      --field-tilt: 14deg;
+      --field-stretch: calc(1 / cos(var(--field-tilt)));
+    }
+  }
+
   @media (min-width: 1101px) {
     :root {
       /* Escritorio: más inclinada y con la perspectiva más cerca (lo lejano se achica de verdad), y estirada a lo alto lo que la inclinación le come (1 / cos) para que no quede un hueco arriba. */

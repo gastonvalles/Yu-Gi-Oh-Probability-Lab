@@ -34,7 +34,7 @@ describe('la mesa del duelo', () => {
   it('el campo del rival va espejado: su zona 1 queda a la derecha, su Main a la izquierda y su Extra a la derecha', () => {
     render(<DuelTable mine={side(start)} theirs={side(start)} />)
 
-    const rows = grid().style.gridTemplateAreas
+    const rows = grid().style.getPropertyValue('--areas')
     expect(rows).toContain("'tdeck ts5 ts4 ts3 ts2 ts1 textra'")
     expect(rows).toContain("'tgy tm5 tm4 tm3 tm2 tm1 tfld'")
     expect(rows).toContain("'fld m1 m2 m3 m4 m5 gy'")
@@ -43,6 +43,21 @@ describe('la mesa del duelo', () => {
     // La zona 1 del rival y la mía no son la misma área, y cada una lleva su nombre.
     expect(zone('Rival, Zona de monstruo 1').style.gridArea).toBe('tm1')
     expect(zone('Zona de monstruo 1').style.gridArea).toBe('m1')
+  })
+
+  it('en un celular en vertical (menos de 640 px) son cinco columnas y una fila de pilas por jugador: el Extra y el Deck en los extremos y la Zona de campo en el medio, y la del rival espejada', () => {
+    render(<DuelTable mine={side(start)} theirs={side(start)} />)
+
+    const compact = grid().style.getPropertyValue('--areas-compact')
+
+    // La del rival arriba (Deck a la izquierda y Extra a la derecha: espejada) y la mía abajo (Extra a la izquierda y Deck a la derecha).
+    expect(compact).toBe(
+      ["'tdeck tgy tfld tban textra'", "'ts5 ts4 ts3 ts2 ts1'", "'tm5 tm4 tm3 tm2 tm1'", "'p1 emz1 p2 emz2 p3'", "'m1 m2 m3 m4 m5'", "'s1 s2 s3 s4 s5'", "'extra ban fld gy deck'"].join(' '),
+    )
+    // Las cinco columnas del centro, y las áreas de siempre en escritorio (son clases: cada una con su medio).
+    expect(grid()).toHaveClass('max-sm:grid-cols-[repeat(5,minmax(0,1fr))]', 'max-sm:[grid-template-areas:var(--areas-compact)]', '[grid-template-areas:var(--areas)]')
+    // Sólo un campo: la fila del medio y la de pilas de ese lado.
+    expect(zone('Zona de monstruo 1')).toBeInTheDocument()
   })
 
   it('una pila del rival lleva la mira si adentro hay una carta marcada como objetivo, o si el otro la marcó entera, y el aro cuando algo suyo destella ahí', () => {
@@ -176,13 +191,21 @@ describe('la mesa del duelo', () => {
   it('se puede mostrar un solo campo: el propio o el del rival, con las Zonas Extra en el medio', () => {
     const { rerender } = render(<DuelTable mine={side(start)} theirs={side(start)} show="mine" />)
 
-    expect(grid().style.gridTemplateAreas).not.toContain('tgy')
-    expect(grid().style.gridTemplateAreas).toContain("'. p1 emz1 p2 emz2 p3 ban'")
+    const areas = () => grid().style.getPropertyValue('--areas')
+    const compact = () => grid().style.getPropertyValue('--areas-compact')
+
+    expect(areas()).not.toContain('tgy')
+    expect(areas()).toContain("'. p1 emz1 p2 emz2 p3 ban'")
+    // En un celular en vertical (cinco columnas) también: sin las filas del rival, y la fila del medio sin sus pilas.
+    expect(compact()).not.toContain('tgy')
+    expect(compact()).toBe(["'p1 emz1 p2 emz2 p3'", "'m1 m2 m3 m4 m5'", "'s1 s2 s3 s4 s5'", "'extra ban fld gy deck'"].join(' '))
     expect(screen.queryByRole('group', { name: 'Rival, Zona de monstruo 1' })).toBeNull()
 
     rerender(<DuelTable mine={side(start)} theirs={side(start)} show="theirs" />)
-    expect(grid().style.gridTemplateAreas).not.toContain("'fld")
-    expect(grid().style.gridTemplateAreas).toContain("'tban p1 emz1 p2 emz2 p3 .'")
+    expect(areas()).not.toContain("'fld")
+    expect(areas()).toContain("'tban p1 emz1 p2 emz2 p3 .'")
+    expect(compact()).not.toContain("'fld")
+    expect(compact()).toBe(["'tdeck tgy tfld tban textra'", "'ts5 ts4 ts3 ts2 ts1'", "'tm5 tm4 tm3 tm2 tm1'", "'p1 emz1 p2 emz2 p3'"].join(' '))
     expect(screen.queryByRole('group', { name: 'Zona de monstruo 1' })).toBeNull()
     expect(screen.getByRole('group', { name: 'Rival, Zona de monstruo 1' })).toBeInTheDocument()
   })
