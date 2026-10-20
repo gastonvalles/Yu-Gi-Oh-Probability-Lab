@@ -39,6 +39,8 @@ interface MatCardInfo {
   art: string | null
   /** Desterrada boca abajo: se muestra de dorso. */
   faceDown?: boolean
+  /** Boca arriba en el Extra Deck (un Monstruo de Péndulo): se muestra primero y con su etiqueta. */
+  faceUp?: boolean
 }
 
 export interface MenuItem {
@@ -191,7 +193,8 @@ interface PileViewerProps {
 export function PileViewer({ pile, ids, info, targeted, onPick, onClose, anonymous = false }: PileViewerProps) {
   const [query, setQuery] = useState('')
   const cards = ids.map((id) => ({ id, ...info(id) }))
-  const ordered = pile === 'deck' || pile === 'extra' ? cards : [...cards].reverse()
+  // El Extra se muestra en su orden, pero las cartas boca arriba (las que se ven y se invocan por Péndulo) van primero.
+  const ordered = pile === 'extra' ? [...cards.filter((card) => card.faceUp), ...cards.filter((card) => !card.faceUp)] : pile === 'deck' ? cards : [...cards].reverse()
   const words = normalizeSearchText(query).split(' ').filter(Boolean)
   const visible = words.length === 0 ? ordered : ordered.filter((card) => words.every((word) => normalizeSearchText(card.name).includes(word)))
   const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''
@@ -220,7 +223,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose, anonymo
         <ul className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label={t('practice.dialog.cards')}>
           {visible.map((card) => {
             // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
-            const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.name
+            const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.faceUp ? t('practice.dialog.cardFaceUp', { name: card.name }) : card.name
 
             return (
               <li key={card.id}>
@@ -237,6 +240,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose, anonymo
                   >
                     {card.faceDown ? <span className={CARD_BACK} /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                     {targeted.has(card.id) ? <TargetMark /> : null}
+                    {card.faceUp ? <span className="absolute inset-x-0 bottom-0 z-2 bg-background/85 px-1 py-px text-center text-micro font-bold leading-tight text-white">{t('practice.dialog.faceUpTag')}</span> : null}
                   </span>
                   {anonymous ? null : <span className="truncate text-micro text-foreground">{label}</span>}
                 </button>

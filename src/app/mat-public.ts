@@ -45,6 +45,7 @@ export function mapMatIds(state: MatState, map: IdMap): MatState {
     st: state.st.map((placed) => mapPlaced(placed, map)),
     field: mapPlaced(state.field, map),
     facedown: state.facedown.map(map),
+    extraUp: state.extraUp.map(map),
     targeted: state.targeted.map(map),
   }
 }
@@ -100,7 +101,8 @@ export function mapActionIds(action: MatAction, map: IdMap): MatAction {
 
 /** Las cartas que el rival puede ver en la mesa: lo que no es secreto sin que nadie lo muestre. */
 export function publicIds(state: MatState): Set<string> {
-  const seen = new Set<string>([...state.gy, ...state.banished.filter((id) => !state.facedown.includes(id))])
+  // Lo que está a la vista: el cementerio, el destierro boca arriba y las cartas boca arriba del Extra Deck (los Monstruos de Péndulo).
+  const seen = new Set<string>([...state.gy, ...state.banished.filter((id) => !state.facedown.includes(id)), ...state.extraUp])
 
   for (const placed of [...state.mz, ...state.emz, ...state.st, state.field]) {
     // Boca abajo (y lo que tenga debajo) sigue siendo secreto.

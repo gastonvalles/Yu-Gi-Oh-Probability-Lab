@@ -164,7 +164,7 @@ export function controlReactions({ mine, ownIds, before, after, action }: Contro
 
       reactions.push(index === undefined ? { type: 'regain', id: real, to: 'gy', auto: true } : { type: 'regain', id: real, to: zone, index, pos: returned?.placed.pos ?? 'atk', auto: true })
     } else if (action.type === 'move' && action.id === id) {
-      reactions.push({ type: 'regain', id: real, to: action.to, faceDown: action.faceDown, auto: true })
+      reactions.push({ type: 'regain', id: real, to: action.to, faceDown: action.faceDown, faceUp: action.faceUp, auto: true })
     } else {
       // Como sacrificio o material, o de cualquier otra forma: al cementerio de su dueño.
       reactions.push({ type: 'regain', id: real, to: 'gy', auto: true })

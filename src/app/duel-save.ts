@@ -104,7 +104,8 @@ export function parseSave(raw: string | null, role: 'host' | 'guest', now: numbe
       return null
     }
 
-    return save as DuelSave
+    // Una mesa guardada antes de que el Extra Deck pudiera tener cartas boca arriba no las trae: ninguna.
+    return { ...save, initial: { ...table, facedown: table.facedown ?? [], extraUp: table.extraUp ?? [] } } as DuelSave
   } catch {
     return null
   }

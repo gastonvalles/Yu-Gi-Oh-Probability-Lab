@@ -194,7 +194,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   draw: (a) => isInt(a.count, 0, MAX_CARDS),
   mill: (a) => isInt(a.count, 0, MAX_CARDS),
   shuffle: (a) => isSeed(a.seed),
-  move: (a) => isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom') && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.shuffle, isSeed),
+  move: (a) => isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom') && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.faceUp, (v) => typeof v === 'boolean') && optional(a.shuffle, isSeed),
   place: (a) => isCardId(a.id) && isSpot(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.how, oneOf(['normal', 'special', 'scale'])) && optional(a.shuffle, isSeed),
   tribute: (a) => isCardId(a.id) && isCardIds(a.tributes, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
   summon: (a) => isCardId(a.id) && oneOf(['fusion', 'synchro', 'xyz', 'link'])(a.how) && isCardIds(a.materials, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
@@ -211,7 +211,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   give: (a) => isCardId(a.id) && optional(a.auto, (v) => v === true),
   take: (a) => isCardId(a.id) && isTakeZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.auto, (v) => v === true),
   regain: (a) =>
-    isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || isTakeZone(a.to)) && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
+    isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || isTakeZone(a.to)) && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.faceUp, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
 }
 
 function parseAction(value: unknown): MatAction | null {
@@ -308,7 +308,10 @@ function parseState(value: unknown): MatState | null {
   const parsedSt = parseSpots(st, 5)
   const parsedField = field === null ? null : parsePlaced(field)
 
-  if (!parsedMz || !parsedEmz || !parsedSt || (field !== null && !parsedField) || !isCardIds(facedown) || !isCardIds(targeted)) {
+  // Una versión anterior no manda las cartas boca arriba del Extra Deck: ninguna. Las que manda tienen que estar en el Extra.
+  const extraUp = value.extraUp === undefined ? [] : value.extraUp
+
+  if (!parsedMz || !parsedEmz || !parsedSt || (field !== null && !parsedField) || !isCardIds(facedown) || !isCardIds(targeted) || !isCardIds(extraUp) || !(extraUp as string[]).every((id) => (extra as string[]).includes(id))) {
     return null
   }
 
@@ -330,6 +333,7 @@ function parseState(value: unknown): MatState | null {
     phase: value.phase,
     turn: value.turn,
     facedown: [...facedown],
+    extraUp: [...(extraUp as string[])],
     targeted: [...targeted],
   }
 }

@@ -1614,7 +1614,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const [markMenu, setMarkMenu] = useState<{ target: MarkTarget; rect: DOMRect; place: string } | null>(null)
   const openMark = useCallback((target: MarkTarget, rect: DOMRect, place: string) => setMarkMenu({ target, rect, place }), [])
   // El cementerio y el destierro del rival son públicos: se pueden desplegar para ver (y marcar) sus cartas.
-  const [rivalViewer, setRivalViewer] = useState<'gy' | 'banished' | null>(null)
+  const [rivalViewer, setRivalViewer] = useState<'gy' | 'banished' | 'extra' | null>(null)
   // El detalle fijo de la izquierda (escritorio): la última carta que se tocó, tuya o del rival.
   const [peek, setPeek] = useState<CardPeek | null>(null)
   // El detalle de una carta del rival que ya está a la vista (su id real, lo único que se sabe de ella).
@@ -1770,7 +1770,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
 
   const markTarget = markMenu?.target
   const marked = markTarget ? ('card' in markTarget ? snapshot.marks.theirs.cards.includes(markTarget.card) : snapshot.marks.theirs.piles.includes(markTarget.pile)) : false
-  const markPile = markTarget && 'pile' in markTarget && (markTarget.pile === 'gy' || markTarget.pile === 'banished') ? markTarget.pile : null
+  // Del cementerio y del destierro se ve todo; del Extra, sólo las cartas boca arriba (los Monstruos de Péndulo), si hay.
+  const markPile = markTarget && 'pile' in markTarget && (markTarget.pile === 'gy' || markTarget.pile === 'banished' || (markTarget.pile === 'extra' && theirs!.state.extraUp.length > 0)) ? markTarget.pile : null
   const markedId = markTarget && 'card' in markTarget ? markTarget.card : undefined
   const ownCard = markedId !== undefined && isForeignId(markedId) ? snapshot.ownIds[opaqueOfForeign(markedId)] : undefined
   // De una carta del rival que ya mostró (a la vista en su campo, en su cementerio o destierro, o revelada) se puede ver el detalle.
@@ -1850,11 +1851,11 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       <PileViewer
         key={rivalViewer ?? 'closed'}
         pile={covered ? null : rivalViewer}
-        ids={rivalViewer ? theirs!.state[rivalViewer] : []}
+        ids={rivalViewer ? (rivalViewer === 'extra' ? theirs!.state.extraUp : theirs!.state[rivalViewer]) : []}
         info={(id) => {
           const art = opponent.artOf(id)
 
-          return { name: rivalCardName, art, faceDown: theirs!.state.facedown.includes(id) || art === null }
+          return { name: rivalCardName, art, faceDown: theirs!.state.facedown.includes(id) || art === null, faceUp: theirs!.state.extraUp.includes(id) }
         }}
         targeted={viewerTargeted}
         onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
