@@ -50,12 +50,12 @@ function homeOf(root: HTMLElement, state: MatState, id: string, side: Side): HTM
   return null
 }
 
-/** Boca abajo a donde va: al deck, al Extra, desterrada boca abajo o como material. */
+/** Boca abajo a donde va: al deck, al Extra (salvo boca arriba, un Monstruo de Péndulo), desterrada boca abajo o como material. */
 function hiddenAt(state: MatState, id: string): boolean {
   const where = locateCard(state, id)
 
   if (where?.kind === 'material') return true
-  return where?.kind === 'pile' && (where.pile === 'deck' || where.pile === 'extra' || (where.pile === 'banished' && state.facedown.includes(id)))
+  return where?.kind === 'pile' && (where.pile === 'deck' || (where.pile === 'extra' && !state.extraUp.includes(id)) || (where.pile === 'banished' && state.facedown.includes(id)))
 }
 
 const centerX = (rect: DOMRect) => rect.left + rect.width / 2

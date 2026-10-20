@@ -56,6 +56,10 @@ export interface MatState {
   turn: number
   /** Las cartas del destierro que están boca abajo. */
   facedown: string[]
+  /**
+   * Las cartas del Extra Deck que están boca arriba (un Monstruo de Péndulo que llegó ahí del campo, de la mano o del cementerio): el rival las ve, y se pueden invocar por Péndulo. Siempre son un subconjunto de `extra`.
+   */
+  extraUp: string[]
   /** Cartas marcadas como objetivo de un efecto (la marca se va al cambiar de lugar). */
   targeted: string[]
 }
@@ -70,7 +74,7 @@ export type MatAction =
   | { type: 'mill'; count: number }
   | { type: 'shuffle'; seed: number }
   /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. `shuffle`: la carta salió mirando el deck y el resto se baraja con esa semilla en la misma jugada. */
-  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; shuffle?: number }
+  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; faceUp?: boolean; shuffle?: number }
   | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon; shuffle?: number }
   /** Invocación Normal (o Colocar) de un monstruo de Nivel 5+: los sacrificios van al cementerio y la carta sale a la zona. */
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
@@ -107,7 +111,7 @@ export type MatAction =
    */
   | { type: 'give'; id: string; auto?: true }
   | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; auto?: true }
-  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; auto?: true }
+  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; faceUp?: boolean; auto?: true }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
@@ -135,6 +139,7 @@ export function createMatState(deck: readonly string[], extra: readonly string[]
     phase: 'draw',
     turn: 1,
     facedown: [],
+    extraUp: [],
     targeted: [],
   }
 }
@@ -245,7 +250,8 @@ function removeEverywhere(source: MatState, id: string): { state: MatState; plac
 
   if (where.kind === 'pile') {
     const facedown = where.pile === 'banished' ? state.facedown.filter((card) => card !== id) : state.facedown
-    return { state: { ...state, [where.pile]: state[where.pile].filter((card) => card !== id), facedown }, placed: null }
+    const extraUp = where.pile === 'extra' ? state.extraUp.filter((card) => card !== id) : state.extraUp
+    return { state: { ...state, [where.pile]: state[where.pile].filter((card) => card !== id), facedown, extraUp }, placed: null }
   }
 
   if (where.kind === 'material') {
@@ -323,7 +329,9 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
       const pile = action.to === 'deck-bottom' ? 'deck' : action.to
       const facedown = action.to === 'banished' && action.faceDown ? [...next.facedown, action.id] : next.facedown
-      const grown = { ...next, [pile]: [...next[pile], action.id], facedown }
+      // Al Extra Deck puede llegar boca arriba (un Monstruo de Péndulo); de lo contrario, boca abajo como siempre.
+      const extraUp = action.to === 'extra' && action.faceUp ? [...next.extraUp, action.id] : next.extraUp
+      const grown = { ...next, [pile]: [...next[pile], action.id], facedown, extraUp }
       return mixIn ? { ...grown, deck: shuffleWithSeed(grown.deck, action.shuffle!) } : grown
     }
 
@@ -498,8 +506,9 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
       const pile = action.to === 'deck-bottom' ? 'deck' : action.to
       const facedown = action.to === 'banished' && action.faceDown ? [...state.facedown, action.id] : state.facedown
+      const extraUp = action.to === 'extra' && action.faceUp ? [...state.extraUp, action.id] : state.extraUp
 
-      return { ...state, [pile]: [...state[pile], action.id], facedown }
+      return { ...state, [pile]: [...state[pile], action.id], facedown, extraUp }
     }
 
     case 'phase': {
@@ -573,7 +582,7 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
         case 'banished':
           return action.faceDown ? t('practice.step.banishFaceDown', { card }) : t('practice.step.banish', { card })
         case 'extra':
-          return t('practice.step.toExtra', { card })
+          return t(action.faceUp ? 'practice.step.toExtraFaceUp' : 'practice.step.toExtra', { card })
         case 'deck':
           return t('practice.step.deckTop', { card })
         case 'deck-bottom':
@@ -894,11 +903,13 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (item) items.push(item)
   }
   /** Invocación Especial: pregunta la posición después de elegirla (un Link sale en ataque, no tiene defensa). */
-  const specialSummonItem = (attack: MatMenuItem | null, defense: MatMenuItem | null) => {
+  const specialSummonItem = (attack: MatMenuItem | null, defense: MatMenuItem | null, label = t('practice.menu.specialSummon')) => {
     if (!attack || !defense) return
-    items.push(kind.link ? { ...attack, label: t('practice.menu.specialSummon') } : askItem(t('practice.menu.specialSummon'), [attack, defense]))
+    items.push(kind.link ? { ...attack, label } : askItem(label, [attack, defense]))
   }
-  const specialSummon = () => specialSummonItem(placeItem(t('practice.menu.attack'), zones, 'atk', 'special'), placeItem(t('practice.menu.defense'), zones, 'def', 'special'))
+  const specialSummon = (label?: string) => specialSummonItem(placeItem(t('practice.menu.attack'), zones, 'atk', 'special'), placeItem(t('practice.menu.defense'), zones, 'def', 'special'), label)
+  /** Una carta boca arriba en el Extra Deck (un Monstruo de Péndulo): se invoca por Péndulo, no con materiales. */
+  const faceUpExtra = pile === 'extra' && state.extraUp.includes(id)
 
   if (where.kind === 'spot') {
     const { placed, spot } = where
@@ -1010,14 +1021,14 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     banish()
   } else if (pile) {
     // Deck, Extra, cementerio o destierro.
-    if (pile === 'deck') add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
+    if (pile === 'deck' || faceUpExtra) add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
     // Las Mágicas de Campo se activan directo desde el Deck (hay efectos que lo piden).
     if (pile === 'deck' && kind.fieldSpell) placeIn(t('practice.menu.activate'), ['field'], 'atk')
     // Colocar boca abajo directo desde el Deck (hay efectos que piden "Colocar 1 carta de tu Deck"): Mágicas y Trampas a su zona (la de Campo, a la suya) y monstruos a una Zona de Monstruo.
     if (pile === 'deck' && (kind.spell || kind.trap)) placeIn(t('practice.menu.set'), kind.fieldSpell ? ['field'] : ['st'], 'set')
     else if (pile === 'deck' && kind.monster) placeIn(t('practice.menu.set'), zones, 'set')
 
-    const how = pile === 'extra' ? extraSummonOf(kind) : null
+    const how = pile === 'extra' && !faceUpExtra ? extraSummonOf(kind) : null
 
     if (kind.monster && how && monstersOnField(state).length > 0) {
       // Desde el Extra: posición, después los materiales en el campo (con confirmación) y al final la zona (contando las que se liberan).
@@ -1031,7 +1042,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
       specialSummonItem(summonItem(t('practice.menu.attack'), 'atk'), summonItem(t('practice.menu.defense'), 'def'))
     } else if (kind.monster) {
-      specialSummon()
+      specialSummon(faceUpExtra ? t('practice.menu.pendulumSummon') : undefined)
     }
     if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn(t('practice.menu.toSpellTrapZone'), ['st'], 'atk')
     if (pile === 'gy' || pile === 'banished') {
@@ -1041,7 +1052,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       target()
     }
     // Del Deck o del Extra (que nadie ve) se puede mostrar una carta al rival sin moverla.
-    if (pile === 'deck' || pile === 'extra') addUtility(t('practice.menu.reveal'), { type: 'reveal', id })
+    if (pile === 'deck' || (pile === 'extra' && !faceUpExtra)) addUtility(t('practice.menu.reveal'), { type: 'reveal', id })
     if (pile !== 'gy') add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
     if (pile !== 'banished') banish()
   } else {
@@ -1051,7 +1062,13 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     banish()
   }
 
-  if (kind.extra && pile !== 'extra') addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
+  if (pile !== 'extra') {
+    // Un Monstruo de Péndulo va al Extra Deck boca arriba (destruido o mandado desde el campo, o de cualquier lado por un efecto): ahí se ve y se puede volver a invocar por Péndulo.
+    if (kind.pendulum) add(t('practice.menu.toExtraFaceUp'), { type: 'move', id, to: 'extra', faceUp: true })
+    if (kind.extra) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
+  } else if (faceUpExtra) {
+    addUtility(t('practice.menu.extraFaceDown'), { type: 'move', id, to: 'extra' })
+  }
 
   // Arriba/abajo del deck desde cualquier lado (mano, campo, cementerio, destierro): los mismos nombres en todos los menús.
   if (!kind.extra) {

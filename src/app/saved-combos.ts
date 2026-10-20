@@ -31,7 +31,7 @@ export function readSavedCombos(): SavedCombo[] {
 
 /** Combos guardados antes de que la mesa tuviera fases y destierro boca abajo: arrancan en la Draw Phase del turno 1. */
 function migrateSavedCombo(combo: SavedCombo): SavedCombo {
-  const initial: MatState = { ...combo.initial, phase: combo.initial.phase ?? 'draw', turn: combo.initial.turn ?? 1, facedown: combo.initial.facedown ?? [], targeted: combo.initial.targeted ?? [] }
+  const initial: MatState = { ...combo.initial, phase: combo.initial.phase ?? 'draw', turn: combo.initial.turn ?? 1, facedown: combo.initial.facedown ?? [], extraUp: combo.initial.extraUp ?? [], targeted: combo.initial.targeted ?? [] }
   return { ...combo, initial }
 }
 

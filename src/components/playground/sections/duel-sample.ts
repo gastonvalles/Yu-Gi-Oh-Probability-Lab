@@ -33,6 +33,8 @@ const MY_PLAYS: MatAction[] = [
   { type: 'move', id: 'card-24094653-1', to: 'gy' },
   { type: 'move', id: 'card-44095762-1', to: 'banished' },
   { type: 'place', id: 'card-53582587-1', zone: 'field', index: 0, pos: 'atk' },
+  // Un Monstruo de Péndulo en el Extra Deck, boca arriba.
+  { type: 'move', id: 'card-10045474-1', to: 'extra', faceUp: true },
 ]
 
 const THEIR_PLAYS: MatAction[] = [
@@ -44,6 +46,7 @@ const THEIR_PLAYS: MatAction[] = [
   { type: 'place', id: 'card-4280258-1', zone: 'emz', index: 0, pos: 'atk' },
   { type: 'move', id: 'card-83764718-2', to: 'gy' },
   { type: 'move', id: 'card-24094653-2', to: 'banished' },
+  { type: 'move', id: 'card-10045474-2', to: 'extra', faceUp: true },
   { type: 'draw', count: 1 },
 ]
 

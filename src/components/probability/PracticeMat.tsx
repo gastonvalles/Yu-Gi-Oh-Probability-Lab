@@ -1463,10 +1463,11 @@ export function PracticeMat({
 
   const topOf = (pile: MatPile) => state[pile][state[pile].length - 1] ?? null
   const pileCell = (pile: 'extra' | 'gy' | 'banished', area: string) => {
-    const top = pile === 'extra' ? null : topOf(pile)
+    // El Extra se ve de dorso, salvo que tenga cartas boca arriba (Monstruos de Péndulo): ahí se ve la última que llegó. Una carta desterrada boca abajo también va de dorso (el visor de la pila la muestra igual).
+    const up = pile === 'extra' ? state.extraUp : []
+    const top = pile === 'extra' ? (up[up.length - 1] ?? null) : topOf(pile)
     const count = state[pile].length
-    // El Extra se ve de dorso; una carta desterrada boca abajo también (el visor de la pila la muestra igual).
-    const back = pile === 'extra' ? count > 0 : top !== null && state.facedown.includes(top)
+    const back = pile === 'extra' ? count > 0 && up.length === 0 : top !== null && state.facedown.includes(top)
     // Una carta marcada como objetivo adentro (se vea o no: no es siempre la de arriba) lleva la mira sobre la casilla.
     const marked = state[pile].some((id) => targetedIds.has(id)) || (rivalMarks?.piles.includes(pile) ?? false)
 
@@ -1474,7 +1475,7 @@ export function PracticeMat({
       <button
         key={pile}
         type="button"
-        aria-label={`${PILE_TITLES[pile]}: ${count}`}
+        aria-label={`${PILE_TITLES[pile]}: ${count}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`}
         title={PILE_TITLES[pile]}
         data-drop={pile}
         data-over="false"
@@ -1988,7 +1989,7 @@ export function PracticeMat({
         key={viewer ?? 'closed'}
         pile={covered ? null : viewer}
         ids={viewer ? state[viewer] : []}
-        info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id) })}
+        info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
         targeted={targetedIds}
         onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
         onClose={closeViewer}
