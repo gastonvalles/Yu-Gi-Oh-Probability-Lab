@@ -76,6 +76,7 @@ import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackF
 import { CardSheet } from './CardSheet'
 import { THEIR_HAND } from '../duel/their-hand'
 import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { MatPlate, MatScene, PickMarks } from './MatArena'
 import { MatViewToggle } from './MatViewToggle'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
@@ -244,9 +245,11 @@ const NEXT_DEAL_MS = 105
  * El borde y el velo de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) con un velo parejo, para que la zona se lea como un lugar y no como un hueco.
  * Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: no hay zonas de otro color; el color queda para lo que pasa (elegir, soltar una carta).
  */
-const CELL_LOOK = 'border border-solid border-field-line/55 bg-field-line/[0.05]'
+/** El hueco de una casilla: más oscuro arriba y con una sombra hacia adentro, como una casilla grabada en la placa (la luz viene de arriba). */
+const SLOT = 'bg-linear-to-b from-black/45 to-field-line/[0.05] shadow-[inset_0_3px_12px_rgb(0_0_0/0.65),inset_0_-1px_0_rgb(var(--field-line-rgb)/0.1)]'
+const CELL_LOOK = `border border-solid border-field-line/50 ${SLOT}`
 /** Las zonas del centro no se dibujan con el borde de su casilla cuadrada sino con las líneas de la carta (`ZoneLines`, como el tapete): el borde queda invisible (y se enciende al elegir o soltar una carta) y las de monstruos llevan el velo en toda la casilla. */
-const CELL_LOOK_MONSTER = 'border border-solid border-transparent bg-field-line/[0.05]'
+const CELL_LOOK_MONSTER = `border border-solid border-transparent ${SLOT}`
 const CELL_LOOK_SPELL = 'border border-solid border-transparent'
 
 /**
@@ -257,12 +260,10 @@ const cellLook = (look: string = CELL_LOOK) => [
   'relative min-w-0 transition-[color,background-color,border-color,box-shadow] duration-150',
   look,
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
-  'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
-  // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
-  'data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-accent data-[pick=true]:bg-accent/15 motion-safe:data-[pick=true]:animate-fx-pick data-[pick=true]:hover:bg-accent/25',
-  'data-[pick=true]:after:pointer-events-none data-[pick=true]:after:absolute data-[pick=true]:after:-inset-1 motion-safe:data-[pick=true]:after:animate-fx-ripple data-[pick=true]:after:border-2 data-[pick=true]:after:border-accent',
-  'data-[chosen=true]:bg-accent/40',
-  'motion-reduce:animate-none motion-reduce:after:hidden motion-reduce:data-[pick=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)/0.75),0_0_16px_rgb(var(--accent-rgb)/0.45)]',
+  'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-none data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
+  // Una zona que se puede elegir: relleno claro y, encima, las esquinas y el rombo de `PickMarks` (las marcas de un visor).
+  'data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-accent/45 data-[pick=true]:bg-none data-[pick=true]:bg-accent/15 data-[pick=true]:hover:bg-accent/25',
+  'data-[chosen=true]:bg-none data-[chosen=true]:bg-accent/40',
 ].join(' ')
 
 /**
@@ -1584,6 +1585,7 @@ export function PracticeMat({
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
       >
         {spot === 'field' ? null : <ZoneLines kind={spot === 'st' ? 'spell' : 'monster'} />}
+        {pickableZone || pickableTribute ? <PickMarks diamond={pickableZone && !shown} /> : null}
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
         {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
         {shown ? (
@@ -1756,7 +1758,7 @@ export function PracticeMat({
     <div
       className={cx(
         'flex min-w-0 items-center gap-2 px-1 text-micro text-muted',
-        choosing ? (duel ? 'pointer-events-auto absolute inset-0 z-10' : 'pointer-events-auto absolute inset-x-0 bottom-0 z-10 h-10 bg-background') : 'sr-only',
+        choosing ? (duel ? 'pointer-events-auto absolute inset-0 z-10' : 'pointer-events-auto absolute inset-x-0 bottom-0 z-10 h-10 border-t border-primary-hover/30 bg-background/80') : 'sr-only',
         choosing && duel && 'max-[1100px]:bg-background min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
       )}
       role="status"
@@ -1800,6 +1802,8 @@ export function PracticeMat({
         Boolean(detail) && (sidePanel ? 'min-[1440px]:grid-cols-[20rem_minmax(0,1fr)_20rem]' : 'min-[1440px]:grid-cols-[20rem_minmax(0,1fr)]'),
       )}
     >
+      {/* El fondo de la mesa (la arena): la columna de la mesa, a todo el alto. Es decoración: va detrás de todo y no ocupa lugar en la grilla. */}
+      <MatScene className={cx('absolute inset-0 -z-10 col-start-1 row-span-2 row-start-1', Boolean(detail) && 'min-[1440px]:col-start-2')} />
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
       {duel ? null : (
         // En un celular angosto los 7 botones (de 44 px) y el turno no entran en una fila: se achican (40 px hasta 419 px de ancho, 36 hasta 379 px) y, en uno muy chico (menos de 340 px), el turno se esconde.
@@ -1854,11 +1858,13 @@ export function PracticeMat({
           ref={setField}
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
+          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]', "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
           style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null) } as CSSProperties) : undefined}
         >
+          {/* La placa de la arena, debajo de todo el campo (decoración). */}
+          <MatPlate />
           {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. */}
           {duel?.rivalHand ? (
             <div className="absolute bottom-full left-1/2 z-10 -translate-x-1/2" style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
@@ -2079,7 +2085,7 @@ export function PracticeMat({
 
       {/* El detalle fijo (la carta que se tocó) de un duelo y de la práctica, a la izquierda y a todo el alto, sólo en escritorio: la columna está siempre (vacía hasta la primera carta), así la mesa no se corre. */}
       {detail ? (
-        <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-border-subtle px-3 pb-3 pt-3 min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
+        <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-primary/30 bg-linear-to-b from-card-background to-background px-4 pb-4 pt-4 shadow-[inset_0_1px_0_rgb(var(--foreground-rgb)/0.06),10px_0_28px_-14px_rgb(0_0_0/0.7)] min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
       ) : null}
 
       {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}

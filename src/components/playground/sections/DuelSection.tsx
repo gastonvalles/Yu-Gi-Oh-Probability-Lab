@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
+import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
+import { CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
@@ -62,10 +64,55 @@ export function DuelSection() {
         <DuelTable mine={duel.mine} theirs={duel.theirs} show={view} turn={view} />
       </Specimen>
 
+      <ArenaSamples />
+
       <TurnDialSamples />
 
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+/** Las casillas de la arena en sus estados: vacía, que se puede elegir (con rombo), una carta que se elige (un Sacrificio: sin rombo) y con una carta arrastrada encima. */
+const ARENA_CELLS: Array<{ label: string; pick?: boolean; diamond?: boolean; over?: boolean }> = [
+  { label: 'Vacía' },
+  { label: 'Se puede elegir', pick: true, diamond: true },
+  { label: 'Un Sacrificio', pick: true },
+  { label: 'Carta encima', over: true },
+  { label: 'Vacía' },
+]
+
+/** La arena de la mesa: el fondo con luz y viñeta, la placa del campo con su marco y las casillas hundidas; todo es decoración y no cambia el tamaño de nada. Mismos componentes y estilos que la mesa de verdad. */
+function ArenaSamples() {
+  return (
+    <Specimen
+      title="La arena de la mesa"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          El fondo (<Tag>MatScene</Tag>), la placa que va debajo del campo (<Tag>MatPlate</Tag>: sombra con desplazamiento, enrejado, anillos y un marco con esquinas y rombos), las casillas hundidas (<Tag>CELL_MONSTER</Tag>) y las marcas de una casilla que se puede elegir (<Tag>PickMarks</Tag>). Archivos: <Tag>probability/MatArena.tsx</Tag> y <Tag>mat-*</Tag> en <Tag>index.css</Tag>.
+        </>
+      }
+    >
+      <div className="relative isolate grid min-h-[18rem] place-items-center overflow-hidden rounded-card border border-border-subtle px-8 py-10">
+        <MatScene className="absolute inset-0 -z-10" />
+        <div className="relative isolate grid w-full max-w-2xl grid-cols-5 gap-2 [transform:perspective(900px)_rotateX(28deg)]">
+          <MatPlate />
+          {ARENA_CELLS.map(({ label, pick, diamond, over }, index) => (
+            <div key={index} role="group" aria-label={label} data-over={over ? 'true' : 'false'} data-pick={pick ? 'true' : 'false'} data-chosen="false" className={CELL_MONSTER}>
+              <ZoneLines kind="monster" />
+              {pick ? <PickMarks diamond={Boolean(diamond)} /> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+      <ul className="m-0 grid list-none grid-cols-5 gap-2 p-0 text-center text-micro text-soft">
+        {ARENA_CELLS.map(({ label }, index) => (
+          <li key={index}>{label}</li>
+        ))}
+      </ul>
+    </Specimen>
   )
 }
 

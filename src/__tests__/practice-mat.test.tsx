@@ -104,6 +104,18 @@ beforeEach(() => {
 })
 
 describe('la mesa de práctica', () => {
+  it('la mesa es una escena: el fondo de la arena y, detrás de las casillas del campo, su placa (decoración escondida a los lectores de pantalla)', () => {
+    render(<Harness />)
+
+    expect(document.querySelector('.mat-scene')).toHaveAttribute('aria-hidden', 'true')
+
+    const plate = document.querySelector('.mat-plate') as HTMLElement
+
+    expect(plate).toHaveAttribute('aria-hidden', 'true')
+    // La placa está adentro del campo (toma su perspectiva), junto a las casillas.
+    expect(plate.parentElement).toContainElement(zone('Zona de monstruo 1'))
+  })
+
   it('tocar una carta de la mano abre el menú, e invocarla la pone en la primera zona de monstruo', () => {
     render(<Harness />)
 
@@ -120,7 +132,11 @@ describe('la mesa de práctica', () => {
     expect(screen.getAllByRole('button', { name: /: elegir$/ }).map((cell) => cell.getAttribute('aria-label'))).toEqual(
       ['Zona de monstruo 1: elegir', 'Zona de monstruo 2: elegir', 'Zona de monstruo 3: elegir', 'Zona de monstruo 4: elegir', 'Zona de monstruo 5: elegir'],
     )
+    // Cada zona libre que se puede elegir lleva las marcas de un visor (esquinas y un rombo en el medio); las demás, ninguna.
+    expect(document.querySelectorAll('.mat-pick-marks')).toHaveLength(5)
+    expect(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }).querySelector('.mat-pick-diamond')).not.toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+    expect(document.querySelector('.mat-pick-marks')).toBeNull()
 
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(within(hand()).queryByRole('listitem', { name: 'Ash Blossom' })).not.toBeInTheDocument()
@@ -1966,6 +1982,10 @@ describe('la mesa de práctica', () => {
       expect(within(status()).getByText('Tocá una carta para ponerle un contador')).toBeInTheDocument()
       expect(zone('Zona de monstruo 1')).toHaveAttribute('data-pick', 'true')
       expect(zone('Zona de monstruo 2')).toHaveAttribute('data-pick', 'false')
+      // La carta que se elige lleva las esquinas del visor pero no el rombo (taparía la carta); la zona vacía de al lado, nada.
+      expect(zone('Zona de monstruo 1').querySelector('.mat-pick-marks')).not.toBeNull()
+      expect(zone('Zona de monstruo 1').querySelector('.mat-pick-diamond')).toBeNull()
+      expect(zone('Zona de monstruo 2').querySelector('.mat-pick-marks')).toBeNull()
 
       // Cada toque suma uno y el modo sigue; una carta de la mano no hace nada.
       const before = rows().length
