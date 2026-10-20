@@ -23,6 +23,7 @@ export const duel = {
   'duel.dock.empty': 'Tocá una carta para ver su detalle acá.',
   'duel.dock.faceDown': 'Carta boca abajo',
   'duel.dock.faceDownText': 'El rival no la mostró: no se sabe qué carta es.',
+  'duel.dock.zoom': 'Ver la carta en grande',
   'duel.undo.askTitle': '¿Permitís que {name} vuelva atrás la última jugada?',
   'duel.undo.askText': '{name} quiere deshacer la última jugada de la mesa, sea de quien sea. Si la permitís, esa mesa vuelve a como estaba antes.',
   'duel.undo.askShort': '{name} quiere volver atrás la última jugada',
