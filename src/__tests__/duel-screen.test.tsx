@@ -25,6 +25,9 @@ import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom, type MemorySpectator } from './support/memory-room'
 
+// La pantalla del duelo arma dos mesas completas por prueba: sola cada una tarda un par de segundos, pero con toda la suite corriendo a la vez alguna pasaba los 5 s de siempre (la de «atacar» fallaba una de cada tantas corridas).
+vi.setConfig({ testTimeout: 20_000 })
+
 // Las cartas de un deck pegado se piden por su número: acá salen todas menos la 999 (que no existe).
 vi.mock('../ygoprodeck', () => ({
   fetchCardsByIds: vi.fn(async (ids: number[]) =>
@@ -1773,6 +1776,67 @@ describe('la pantalla del duelo', () => {
     expect(within(dock(guest)).getByRole('heading', { name: 'Carta boca abajo' })).toBeInTheDocument()
   })
 
+  it('en escritorio el detalle fijo sigue al mouse (carta tuya, del rival a la vista o boca abajo); un click la fija hasta un click afuera o en otra carta', async () => {
+    asDesktop()
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    const dock = (view: RenderResult) => within(view.container).getByRole('region', { name: 'Detalle de la carta' })
+    const shown = (view: RenderResult) => within(dock(view)).queryByRole('heading')?.textContent ?? null
+    const rivalCardIn = (zone: number) => within(guest.container).getByRole('group', { name: `Rival, Zona de monstruo ${zone}` }).querySelector<HTMLElement>('[data-rival-card-id]')!
+    const ownCardIn = (zone: number) => zoneOf(host, `Zona de monstruo ${zone}`).getAllByRole('button')[0]!
+    const mouse = { pointerType: 'mouse' }
+
+    // Ana invoca una carta boca arriba (zona 1) y pone otra boca abajo (zona 2).
+    summonFirst(host)
+    flush()
+    tap(handOf(host).getAllByRole('listitem')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
+    flush()
+    // Tocar la carta de la mano para ponerla la dejó fija en el detalle; un toque en un lugar vacío de la mesa (como el que sigue a elegir la zona) la suelta.
+    fireEvent.pointerDown(within(host.container).getByRole('group', { name: 'Zona de monstruo 5' }))
+
+    // El mouse sobre una carta propia del campo la muestra, sin abrir ningún menú, y al pasar a otra, la otra (también una boca abajo: la tuya sabés cuál es).
+    fireEvent.pointerOver(ownCardIn(1), mouse)
+    const faceUp = shown(host)
+
+    expect(faceUp).toMatch(/^Monstruo \d+$/)
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
+    fireEvent.pointerOver(ownCardIn(2), mouse)
+
+    const faceDown = shown(host)
+
+    expect(faceDown).toMatch(/^Monstruo \d+$/)
+    expect(faceDown).not.toBe(faceUp)
+
+    // Beto pasa el mouse por las cartas de Ana: la boca arriba es pública (se pide por su número); la boca abajo no se sabe cuál es, y se dice así sin inventar nada.
+    fireEvent.pointerOver(rivalCardIn(1), mouse)
+    await act(async () => {})
+    expect(shown(guest)).toMatch(/^Carta \d+$/)
+    fireEvent.pointerOver(rivalCardIn(2), mouse)
+    expect(shown(guest)).toBe('Carta boca abajo')
+
+    // Un click en una carta de Ana la fija a la izquierda de Ana: el mouse por la otra no la cambia (ni abrir su menú).
+    tap(ownCardIn(1))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(shown(host)).toBe(faceUp)
+    fireEvent.pointerOver(ownCardIn(2), mouse)
+    expect(shown(host)).toBe(faceUp)
+
+    // Un click en la otra la fija a ésa.
+    tap(ownCardIn(2))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(shown(host)).toBe(faceDown)
+    fireEvent.pointerOver(ownCardIn(1), mouse)
+    expect(shown(host)).toBe(faceDown)
+
+    // Un click afuera de las cartas y del panel (un lugar vacío de la mesa) la suelta: vuelve a seguir al mouse, empezando por la última a la que se le pasó.
+    fireEvent.pointerDown(within(host.container).getByRole('group', { name: 'Zona de monstruo 5' }))
+    expect(shown(host)).toBe(faceUp)
+    fireEvent.pointerOver(ownCardIn(2), mouse)
+    expect(shown(host)).toBe(faceDown)
+  })
+
   it('en el celular no hay detalle fijo a la izquierda (la hoja de la carta ya la muestra)', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
@@ -2502,6 +2566,61 @@ describe('la pantalla del duelo', () => {
 
       fireEvent.click(within(prompt(guest)!).getByRole('button', { name: 'Dejar pasar' }))
       flush()
+      expect(glowing(guest)).toBe(0)
+    } finally {
+      setCardEffectMapForTests(null)
+    }
+  })
+
+  it('cuando el rival activa una carta, las cartas tuyas cuyo efecto rápido esperaba una activación brillan en ámbar y un aviso sobre la línea del registro las nombra, un rato; si jugás algo, se va', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    // Todas las cartas tienen un efecto rápido confirmado que se activa desde la mano y que espera que el rival active una carta o un efecto.
+    await loadCardEffectMap()
+    setCardEffectMapForTests(new Map([[2, [[0, EFFECT_FACT.quick | EFFECT_FACT.cost, EFFECT_PLACE.hand]]]]))
+
+    try {
+      const waiting = { ...effectMonster, ygoprodeckId: 2, description: 'When your opponent activates a card or effect (Quick Effect): You can discard this card; negate that effect.' } as unknown as ApiCardReference
+      const cards = new Map([...monsters].map(([id, entry]) => [id, { ...entry, apiCard: waiting }]))
+      const { host, guest } = startDuel({ cardsById: cards })
+      openTable(host, guest)
+      const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+      const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="respond"]').length
+
+      summonFirst(host)
+      flush()
+      // Invocar no es activar: no hay a qué responder.
+      await act(async () => {})
+      expect(lane(guest, 'chain')).toBeNull()
+      expect(glowing(guest)).toBe(0)
+
+      // Ana activa el efecto de su monstruo (y la carta pasa a ser pública): Beto puede responder con las cinco de su mano.
+      tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      flush()
+      await act(async () => {})
+      expect(lane(guest, 'chain')).toHaveTextContent(/^Ana activó Carta \d+\. Podés responder con Monstruo \d+, Monstruo \d+ y 3 más\./)
+      expect(glowing(guest)).toBe(5)
+      // Ana (quien activó) no recibe nada.
+      expect(lane(host, 'chain')).toBeNull()
+      expect(glowing(host)).toBe(0)
+
+      // Se va solo a los ocho segundos.
+      act(() => {
+        vi.advanceTimersByTime(8100)
+      })
+      expect(lane(guest, 'chain')).toBeNull()
+      expect(glowing(guest)).toBe(0)
+
+      // Otra activación y Beto juega algo (roba): la ventana se cierra.
+      tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      flush()
+      await act(async () => {})
+      expect(lane(guest, 'chain')).not.toBeNull()
+      tap(within(guest.container).getByRole('button', { name: /^Main: \d+/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+      flush()
+      expect(lane(guest, 'chain')).toBeNull()
       expect(glowing(guest)).toBe(0)
     } finally {
       setCardEffectMapForTests(null)

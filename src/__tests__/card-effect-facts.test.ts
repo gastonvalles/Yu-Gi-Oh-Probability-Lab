@@ -1,7 +1,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
-import { effectFactNames, EFFECT_FACT, scriptEffectFacts, textEffectFacts, verifiedEffectFacts } from '../app/card-effect-facts'
+import { effectFactNames, EFFECT_FACT, limitCode, scriptEffectFacts, textEffectFacts, textSharedLimit, verifiedEffectFacts } from '../app/card-effect-facts'
 
 const lua = (...lines: string[]) => ['local s,id=GetID()', 'function s.initial_effect(c)', ...lines, 'end'].join('\n')
 const effect = (...setters: string[]) => [
@@ -20,8 +20,15 @@ describe('scriptEffectFacts: lo que declara el script', () => {
 
   it('el segundo cupo por nombre (`{id,1}`), el de la activación (`OATH`) y sin código (por efecto, no por nombre)', () => {
     expect(names(scriptEffectFacts(lua(effect('SetType(EFFECT_TYPE_IGNITION)', 'SetCountLimit(1,{id,1})'))))).toEqual(['once', 'hardOnce'])
-    expect(names(scriptEffectFacts(lua(effect('SetType(EFFECT_TYPE_ACTIVATE)', 'SetCountLimit(1,id,EFFECT_COUNT_CODE_OATH)'))))).toEqual(['once', 'hardOnce'])
+    expect(names(scriptEffectFacts(lua(effect('SetType(EFFECT_TYPE_ACTIVATE)', 'SetCountLimit(1,id,EFFECT_COUNT_CODE_OATH)'))))).toEqual(['once', 'hardOnce', 'activation'])
     expect(names(scriptEffectFacts(lua(effect('SetType(EFFECT_TYPE_IGNITION)', 'SetCountLimit(1)'))))).toEqual(['once'])
+  })
+
+  it('el límite de la activación de una Mágica o Trampa (activation) es de su efecto de activar, no el de un efecto que se usa después', () => {
+    // Activar es el efecto EFFECT_TYPE_ACTIVATE; el límite de uno de ignición (una Mágica Continua) es de ese efecto, no de la activación.
+    expect(names(scriptEffectFacts(lua(effect('SetType(EFFECT_TYPE_ACTIVATE)', 'SetCode(EVENT_FREE_CHAIN)'), effect('SetType(EFFECT_TYPE_IGNITION)', 'SetCountLimit(1,id)'))))).toEqual(['once', 'hardOnce'])
+    expect(names(scriptEffectFacts(lua(effect('SetType(EFFECT_TYPE_ACTIVATE)', 'SetCountLimit(1)'))))).toEqual(['once', 'activation'])
+    expect(names(scriptEffectFacts(lua(effect('SetType(EFFECT_TYPE_ACTIVATE)', 'SetCountLimit(2,id)'))))).toEqual([])
   })
 
   it('una vez por Duelo no es una vez por turno; por cadena o mientras está boca arriba tampoco; dos veces por turno tampoco', () => {
@@ -68,15 +75,54 @@ describe('textEffectFacts: lo que dice el texto', () => {
   it('los nombres con puntos o con comillas adentro no cortan la oración', () => {
     expect(names(textEffectFacts('You can only use this effect of "R.B. Lambda Blade" once per turn.'))).toEqual(['once', 'hardOnce'])
     expect(names(textEffectFacts('You can only use 1 "Maxx "C"" per turn.'))).toEqual(['once', 'hardOnce'])
-    expect(names(textEffectFacts('You can only activate 1 "A.I. Contact" per turn.'))).toEqual(['once', 'hardOnce'])
+    expect(names(textEffectFacts('You can only activate 1 "A.I. Contact" per turn.'))).toEqual(['once', 'hardOnce', 'activation'])
     expect(names(textEffectFacts('You can only use 1 of the following effects of "Salamangreat Wolvie" per turn, and only once that turn.'))).toEqual(['once', 'hardOnce'])
     expect(names(textEffectFacts('The effect of "Mystic Piper" can only be activated once per turn.'))).toEqual(['once', 'hardOnce'])
+  })
+
+  it('«1 of these effects» también es una vez por turno por nombre (igual que «1 of the following effects»)', () => {
+    expect(names(textEffectFacts('You can only use 1 of these effects of "Alich, Malebranche of the Burning Abyss" per turn, and only once that turn.'))).toEqual(['once', 'hardOnce'])
+  })
+
+  it('el límite de la activación (activation): «activate 1», «can only be activated once per turn» y el límite compartido de todos los efectos; el de un efecto, no', () => {
+    expect(names(textEffectFacts('"Pot of Desires" can only be activated once per turn.'))).toEqual(['once', 'hardOnce', 'activation'])
+    expect(names(textEffectFacts('You can only use 1 "Altergeist Revitalization" effect per turn, and only once that turn.'))).toEqual(['once', 'hardOnce', 'activation'])
+    expect(names(textEffectFacts('You can only use this effect of "Ash Blossom & Joyous Spring" once per turn.'))).toEqual(['once', 'hardOnce'])
+    expect(names(textEffectFacts('You can only use 1 of the following effects of "Aileron" per turn, and only once that turn.'))).toEqual(['once', 'hardOnce'])
   })
 
   it('una vez por Duelo, el objetivo y lo que no dice nada', () => {
     expect(names(textEffectFacts('If this card is Special Summoned: You can target 1 monster in your GY; Special Summon it. You can only use this effect once per Duel.'))).toEqual(['perDuel', 'target'])
     expect(textEffectFacts('This card gains 500 ATK for each monster you control.')).toBe(0)
     expect(textEffectFacts("''Imprisoned after a showdown, this master schemer escaped.''")).toBe(0)
+  })
+})
+
+describe('textSharedLimit y limitCode: el límite compartido entre efectos', () => {
+  it('el texto lo dice con «1 of the following effects», «1 of these effects» o «1 "X" effect» (todos los efectos y la activación)', () => {
+    expect(textSharedLimit('You can only use 1 of the following effects of "Aileron" per turn, and only once that turn.')).toBe(true)
+    expect(textSharedLimit('You can only use 1 of these effects of "Alich, Malebranche of the Burning Abyss" per turn, and only once that turn.')).toBe(true)
+    expect(textSharedLimit('You can only use 1 "Altergeist Revitalization" effect per turn, and only once that turn.')).toBe(true)
+  })
+
+  it('«cada efecto» y el límite de un solo efecto no son compartidos', () => {
+    expect(textSharedLimit('You can only use each effect of "Maxx "C"" once per turn.')).toBe(false)
+    expect(textSharedLimit('You can only use this effect of "Ash Blossom & Joyous Spring" once per turn.')).toBe(false)
+    expect(textSharedLimit('Once per turn: You can draw 1 card.')).toBe(false)
+  })
+
+  it('el código de un límite: el mismo código es el mismo límite; sin código, por duelo, por cadena o más de una vez no hay', () => {
+    expect(limitCode('1,id')).toBe('id,')
+    expect(limitCode('1, id')).toBe('id,')
+    expect(limitCode('1,{id,1}')).toBe('{id,1},')
+    expect(limitCode('1,id,EFFECT_COUNT_CODE_OATH')).toBe('id,EFFECT_COUNT_CODE_OATH')
+    expect(limitCode('1,{id,1}')).not.toBe(limitCode('1,id'))
+    expect(limitCode('1')).toBeNull()
+    expect(limitCode('1,0')).toBeNull()
+    expect(limitCode('')).toBeNull()
+    expect(limitCode('1,id,EFFECT_COUNT_CODE_DUEL')).toBeNull()
+    expect(limitCode('1,id,EFFECT_COUNT_CODE_CHAIN')).toBeNull()
+    expect(limitCode('2,id')).toBeNull()
   })
 })
 

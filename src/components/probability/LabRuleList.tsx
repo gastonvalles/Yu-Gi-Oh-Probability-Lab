@@ -218,7 +218,7 @@ function RuleTier({
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
           <Heading level="card" as="h4" className="flex items-center gap-2">
             {title}
-            {count !== undefined ? <Badge tone="brand" size="sm">{formatInteger(count)}</Badge> : null}
+            {count !== undefined ? <Badge tone="neutral" size="sm">{formatInteger(count)}</Badge> : null}
           </Heading>
           {badge}
         </div>

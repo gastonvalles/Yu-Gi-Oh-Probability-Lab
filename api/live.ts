@@ -1,4 +1,4 @@
-import { LIVE_CHANNELS, byViewers, extractInitialData, readLiveStreams, scanVideos, streamsPageUrl, type LiveStream, type LiveStreams } from '../src/app/live-streams'
+import { LIVE_CHANNELS, byViewers, extractInitialData, readLiveStreams, readPastStreams, scanVideos, streamsPageUrl, type LiveStream, type LiveStreams, type PastStream } from '../src/app/live-streams'
 
 /** Lo más que se espera a YouTube por canal: la función no puede quedarse colgada si no contesta. */
 const UPSTREAM_TIMEOUT_MS = 6000
@@ -18,22 +18,22 @@ const HEADERS = {
   Cookie: 'SOCS=CAI; CONSENT=YES+1',
 }
 
-/** Lo que está al aire en un canal; `ok` es false si la página no era la lista de videos del canal (no se pudo mirar, que no es lo mismo que no haber nada). */
-async function readChannel({ key, handle }: (typeof LIVE_CHANNELS)[number]): Promise<{ ok: boolean; streams: LiveStream[] }> {
+/** Lo que está al aire en un canal y las últimas que ya terminaron; `ok` es false si la página no era la lista de videos del canal (no se pudo mirar, que no es lo mismo que no haber nada). */
+async function readChannel({ key, handle }: (typeof LIVE_CHANNELS)[number]): Promise<{ ok: boolean; streams: LiveStream[]; past: PastStream[] }> {
   try {
     const response = await fetch(streamsPageUrl(handle), { headers: HEADERS, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) })
 
     if (!response.ok) {
-      return { ok: false, streams: [] }
+      return { ok: false, streams: [], past: [] }
     }
 
     const html = await response.text()
     const data = html.length > MAX_PAGE_CHARS ? null : extractInitialData(html)
 
     // Un canal tiene muchos videos: si la página no trae ninguno, es otra cosa (un aviso de cookies, un bloqueo, un cambio de formato).
-    return data !== null && scanVideos(data).length > 0 ? { ok: true, streams: readLiveStreams(data, key) } : { ok: false, streams: [] }
+    return data !== null && scanVideos(data).length > 0 ? { ok: true, streams: readLiveStreams(data, key), past: readPastStreams(data, key) } : { ok: false, streams: [], past: [] }
   } catch {
-    return { ok: false, streams: [] }
+    return { ok: false, streams: [], past: [] }
   }
 }
 
@@ -52,6 +52,7 @@ export async function GET(request: Request): Promise<Response> {
     ok: results.every((result) => result.ok),
     checkedAt: new Date().toISOString(),
     streams: results.flatMap((result) => result.streams).sort(byViewers),
+    past: results.flatMap((result) => result.past),
   }
 
   return new Response(JSON.stringify(body), {

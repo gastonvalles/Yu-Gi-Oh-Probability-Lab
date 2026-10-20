@@ -1,4 +1,4 @@
-import { EFFECT_FACT, effectFactsOf, textEachEffectOnce, textEffectFacts } from './card-effect-facts'
+import { EFFECT_FACT, effectFactsOf, limitCode, textEachEffectOnce, textEffectFacts, textSharedLimit } from './card-effect-facts'
 import { readCardScript, type CardEffect } from './card-script-rules'
 import { effectSentences, type EffectSentence } from './card-text'
 
@@ -93,8 +93,8 @@ export function allowedClasses(sentence: EffectSentence): readonly EffectClass[]
 const CARD_TARGET = /\bEFFECT_FLAG_CARD_TARGET\b/
 
 /**
- * Cuántas de las señales de la frase **contradice** el efecto (0 a 4): la clase (por cómo abre y qué dice el encabezado), el costo, el objetivo y el «Once per turn:» de apertura. Todo lo que la frase dice tiene que estar
- * en el efecto (no al revés: el texto viejo no lleva «(Quick Effect)» ni todo lo que el script declara).
+ * Cuántas de las señales de la frase **contradice** el efecto (0 a 5): la clase (por cómo abre y qué dice el encabezado), el costo, el objetivo, el «Once per turn:» de apertura y el lugar desde donde se activa (la mano o
+ * el Cementerio, si la frase lo nombra para esta carta). Todo lo que la frase dice tiene que estar en el efecto (no al revés: el texto viejo no lleva «(Quick Effect)» ni todo lo que el script declara).
  */
 export function mismatches(sentence: EffectSentence, effect: LogicalEffect): number {
   let count = 0
@@ -104,6 +104,8 @@ export function mismatches(sentence: EffectSentence, effect: LogicalEffect): num
   if (sentence.target && !CARD_TARGET.test(effect.property)) count += 1
   // «Once per turn:» al abrir es el límite del efecto: el script lo tiene que tener.
   if (sentence.opening === 'once' && effect.countLimit === '') count += 1
+  // La frase nombra un lugar de esta carta (`If this card is in your GY`) y el efecto declara rangos sin él. Un efecto sin ningún `SetRange` (un disparo) no dice nada del lugar.
+  if ((textPlaces(sentence) & ~scriptPlaces(effect)) !== 0 && /\bLOCATION_/.test(effect.ranges)) count += 1
 
   return count
 }
@@ -171,33 +173,96 @@ export const EFFECT_PLACE = {
   grave: 1 << 1,
   /** Desde el campo (`SetRange(LOCATION_MZONE)`) y la frase no nombra otro lugar para esta carta: acá la segunda fuente es la **ausencia** de otro lugar, no una frase que diga «on the field». */
   field: 1 << 2,
+  /** Desde la zona de Mágicas y Trampas o la de Campo (`SetRange(LOCATION_SZONE)`, `LOCATION_FZONE`: una Mágica Continua o de Campo, una Trampa Continua) y la frase no nombra otro lugar: como el campo, por la ausencia de otro lugar. */
+  spellTrap: 1 << 3,
+  /** Desde la Zona de Péndulo (`SetRange(LOCATION_PZONE)`) y la frase está en la parte «Pendulum Effect» del texto: ahí la segunda fuente es la **sección** del texto, que dice cuál efecto vale en la Zona de Péndulo. */
+  pendulum: 1 << 4,
 } as const
 
 export type EffectPlaceName = keyof typeof EFFECT_PLACE
 
 /** El lugar que nombra la frase **de esta carta** (no el de otras: «from your hand» a secas puede ser lo que se busca, no desde dónde se activa). */
-const TEXT_HAND = /^[^:]*\bthis card (?:is )?in your hand\b|\b(?:discard|reveal) this card\b|\bthis card from your hand\b/i
+const TEXT_HAND = /^[^:]*\bthis card (?:is )?in your hand\b|\b(?:discard|reveal) this card\b/i
+const THIS_CARD_FROM_HAND = /\bthis card from your hand\b/gi
 const TEXT_GRAVE = /^[^:]*\bthis card (?:is |was )?in (?:your|the) (?:GY|Graveyard)\b|\b(?:banish|return|shuffle) this card from your (?:GY|Graveyard)\b/i
+
+/** «… this card from your hand» es el lugar de esta carta (`Special Summon this card from your hand`), salvo cuando «this card» es sólo con lo que se compara (`the same Level as this card from your hand`, `lower than this card`). */
+function namesHand(text: string): boolean {
+  if (TEXT_HAND.test(text)) return true
+
+  return [...text.matchAll(THIS_CARD_FROM_HAND)].some((match) => !/\b(?:as|than)\s*$/i.test(text.slice(0, match.index)))
+}
 
 /** Los lugares que declara el script (`SetRange`). */
 function scriptPlaces(effect: LogicalEffect): number {
   return (
     (/\bLOCATION_HAND\b/.test(effect.ranges) ? EFFECT_PLACE.hand : 0) |
     (/\bLOCATION_GRAVE\b/.test(effect.ranges) ? EFFECT_PLACE.grave : 0) |
-    (/\bLOCATION_(?:MZONE|ONFIELD)\b/.test(effect.ranges) ? EFFECT_PLACE.field : 0)
+    (/\bLOCATION_(?:MZONE|ONFIELD)\b/.test(effect.ranges) ? EFFECT_PLACE.field : 0) |
+    (/\bLOCATION_(?:SZONE|FZONE|ONFIELD)\b/.test(effect.ranges) ? EFFECT_PLACE.spellTrap : 0) |
+    (/\bLOCATION_PZONE\b/.test(effect.ranges) ? EFFECT_PLACE.pendulum : 0)
   )
 }
 
-/** Los lugares confirmados: la mano y el Cementerio, los que el script declara y la frase nombra; el campo, el que el script declara cuando la frase no nombra la mano ni el Cementerio para esta carta. */
-function confirmedPlaces(text: number, script: number): number {
+/**
+ * Los lugares confirmados: la mano y el Cementerio, los que el script declara y la frase nombra; el campo y la zona de Mágicas y Trampas, los que el script declara cuando la frase no nombra la mano ni el Cementerio para esta carta;
+ * la Zona de Péndulo, la que el script declara cuando la frase está en la parte «Pendulum Effect» del texto (y entonces no vale otro lugar: es el efecto de la escala).
+ */
+function confirmedPlaces(text: number, script: number, pendulumSection: boolean): number {
+  if (pendulumSection) return script & EFFECT_PLACE.pendulum
+
   const named = text & script
 
-  return text === 0 ? named | (script & EFFECT_PLACE.field) : named
+  return text === 0 ? named | (script & (EFFECT_PLACE.field | EFFECT_PLACE.spellTrap)) : named
+}
+
+const TEXT_SECTION = /\[\s*(Pendulum|Monster) Effect\s*\]/gi
+
+/** Si la frase que empieza en `start` está en la parte «Pendulum Effect» del texto de la carta (la que vale en la Zona de Péndulo): lo dice la marca del texto que la precede. */
+function inPendulumSection(text: string, start: number): boolean {
+  let pendulum = false
+
+  for (const match of text.matchAll(TEXT_SECTION)) {
+    if (match.index > start) break
+
+    pendulum = /^\[\s*Pendulum/i.test(match[0])
+  }
+
+  return pendulum
 }
 
 /** Los lugares que dice la frase. */
 function textPlaces(sentence: EffectSentence): number {
-  return (TEXT_HAND.test(sentence.text) ? EFFECT_PLACE.hand : 0) | (TEXT_GRAVE.test(sentence.text) ? EFFECT_PLACE.grave : 0)
+  return (namesHand(sentence.text) ? EFFECT_PLACE.hand : 0) | (TEXT_GRAVE.test(sentence.text) ? EFFECT_PLACE.grave : 0)
+}
+
+/**
+ * Cuántos efectos de la carta usan cada límite de «una vez por turno» por código: los efectos que se activan (con sus clones juntos) y la activación de una Mágica o una Trampa (que no es un efecto del texto pero
+ * comparte el límite: «You can only use 1 "X" effect per turn»). Dos o más con el mismo código lo comparten.
+ */
+function limitUsers(script: readonly CardEffect[], effects: readonly LogicalEffect[]): Map<string, number> {
+  const users = new Map<string, number>()
+  const count = (countLimit: string) => {
+    const code = limitCode(countLimit)
+
+    if (code !== null) users.set(code, (users.get(code) ?? 0) + 1)
+  }
+
+  for (const effect of effects) count(effect.countLimit)
+
+  const activations = new Set<number>()
+
+  script.forEach((effect, index) => {
+    // Una activación con clones es una sola (los clones comparten el origen).
+    const origin = effect.origin >= 0 ? effect.origin : -1 - index
+
+    if (/EFFECT_TYPE_ACTIVATE\b/.test(effect.type) && !activations.has(origin)) {
+      activations.add(origin)
+      count(effect.countLimit)
+    }
+  })
+
+  return users
 }
 
 /** Lo confirmado de un efecto: dónde empieza su frase en el texto y los hechos (`EFFECT_FACT`) y los lugares (`EFFECT_PLACE`) que el script y esa frase dicen los dos. */
@@ -213,18 +278,24 @@ export interface VerifiedEffect {
  */
 export function verifiedEffects(lua: string, text: string): VerifiedEffect[] | null {
   const sentences = effectSentences(text)
-  const effects = logicalEffects(readCardScript(lua, 'all').effects)
+  const script = readCardScript(lua, 'all').effects
+  const effects = logicalEffects(script)
   const pairs = alignEffects(sentences, effects)
 
   if (pairs === null) return null
 
   const each = textEachEffectOnce(text)
+  const sharing = textSharedLimit(text)
+  const users = limitUsers(script, effects)
 
   return pairs.map(({ sentence, effect }) => {
+    // El límite compartido lo dice el texto (en una frase que no es de ningún efecto) y lo declara el script (el mismo código en más de un efecto): lo comparte, y para cada uno vale «una vez por turno por nombre».
+    const code = limitCode(effect.countLimit)
+    const shared = sharing && code !== null && (users.get(code) ?? 0) >= 2
     // El texto dice «una vez por turno por nombre» en la frase o para cada efecto (en otra frase). El rápido, el costo y el objetivo salen de la frase.
-    const said = textEffectFacts(sentence.text) | (each ? EFFECT_FACT.once | EFFECT_FACT.hardOnce : 0)
+    const said = textEffectFacts(sentence.text) | (each || shared ? EFFECT_FACT.once | EFFECT_FACT.hardOnce : 0)
     const declared = effect.members.reduce((facts, member) => facts | effectFactsOf(member), 0)
 
-    return { start: sentence.start, facts: said & declared, places: confirmedPlaces(textPlaces(sentence), scriptPlaces(effect)) }
+    return { start: sentence.start, facts: (said & declared) | (shared ? EFFECT_FACT.shared : 0), places: confirmedPlaces(textPlaces(sentence), scriptPlaces(effect), inPendulumSection(text, sentence.start)) }
   })
 }

@@ -56,6 +56,32 @@ const applyTransform: Apply = (art, axisX, axisY, degrees) => {
   art.style.transform = degrees === 0 ? '' : `perspective(${PERSPECTIVE_PX}px) rotate3d(${axisX}, ${axisY}, 0, ${degrees}deg)`
 }
 
+/** Un medio giro (180°) deja la carta como estaba: de −90° a 90° es cuánto está inclinada respecto de plana (de frente o de dorso). */
+const halfTurn = (degrees: number) => ((((degrees + 90) % 180) + 180) % 180) - 90
+
+/** Con cuántos grados de inclinación la luz del foil llega al borde de la carta. */
+const FOIL_EDGE_DEGREES = 70
+
+/**
+ * Mientras se gira la carta con el gesto (`useCardFlip`), la luz del foil sigue su **orientación**, como el brillo de una carta de verdad al darla vuelta: va hacia el lado que se hunde y, casi de canto, está en el borde
+ * (antes se soltaba y el foil volvía a moverse solo mientras se giraba). Se escribe en el elemento que gira: el frente, que lleva el foil, lo hereda. `foilReleased` lo suelta al terminar.
+ */
+export function foilFollowsTurn(element: HTMLElement, xDegrees: number, yDegrees: number) {
+  const x = Math.max(-1, Math.min(1, halfTurn(yDegrees) / FOIL_EDGE_DEGREES))
+  const y = Math.max(-1, Math.min(1, -halfTurn(xDegrees) / FOIL_EDGE_DEGREES))
+
+  element.style.setProperty('--foil-px', `${(x + 1) * 50}%`)
+  element.style.setProperty('--foil-py', `${(y + 1) * 50}%`)
+  element.style.setProperty('--foil-d', String(Math.min(1, Math.hypot(x, y))))
+}
+
+/** El foil vuelve a moverse solo (termina el giro). */
+export function foilReleased(element: HTMLElement) {
+  element.style.removeProperty('--foil-px')
+  element.style.removeProperty('--foil-py')
+  element.style.removeProperty('--foil-d')
+}
+
 /** Vuelve la carta a su lugar (al irse el puntero o al soltarla). */
 export function levelOut(art: HTMLElement) {
   art.style.rotate = ''

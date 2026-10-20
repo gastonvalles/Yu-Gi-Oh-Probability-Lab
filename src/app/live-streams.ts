@@ -4,7 +4,7 @@ import type { ReplayChannel } from './replays'
  * Las transmisiones en vivo de los canales oficiales de YouTube donde se juegan los torneos (los mismos de los replays).
  * No hay API ni key: la función `api/live.ts` lee la pestaña «En vivo» de cada canal como la lee el sitio de YouTube y devuelve sólo lo que está al aire;
  * esta parte (pura, sin red) lee esa página y valida lo que vuelve a la app. Es un formato interno de YouTube que puede cambiar: si pasa, la función dice
- * `ok: false` en vez de decir que no hay nada en vivo.
+ * `ok: false` en vez de decir que no hay nada en vivo. De la misma página salen las **últimas transmisiones que ya terminaron** (torneos enteros, día por día), que se pueden ver después de que se van del aire.
  */
 
 /** Los canales, en el orden en que se leen. `handle` es el @ del canal. */
@@ -28,6 +28,17 @@ export interface LiveStream {
   viewers: number | null
 }
 
+/** Una transmisión que ya terminó (un torneo entero, de un día), de uno de los canales. */
+export interface PastStream {
+  id: string
+  channel: ReplayChannel
+  title: string
+  /** «5:42:32»; null si no se pudo leer. */
+  duration: string | null
+  /** Lo que dice YouTube de cuándo fue, en inglés («Streamed 2 days ago»); `parseAgo` lo entiende. */
+  published: string | null
+}
+
 export interface LiveStreams {
   /** Se pudieron leer los canales. Con `false` una lista vacía no quiere decir que no haya nada en vivo: no se pudo mirar. */
   ok: boolean
@@ -35,11 +46,18 @@ export interface LiveStreams {
   checkedAt: string
   /** Lo que está al aire, lo más visto primero. */
   streams: LiveStream[]
+  /** Las últimas que ya terminaron, de cada canal en el orden en que las lista YouTube (la más nueva primero). */
+  past: PastStream[]
 }
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 const MAX_TITLE_LENGTH = 200
 const MAX_STREAMS = 12
+/** Cuántas transmisiones ya terminadas se toman de cada canal, y cuántas como mucho llegan a la app. */
+const PAST_PER_CHANNEL = 3
+const MAX_PAST = 8
+const DURATION = /^\d{1,2}(?::\d{2}){1,2}$/
+const PUBLISHED = /^(?:Streamed|Premiered)\b.*\bago$/i
 const CHANNEL_KEYS: readonly string[] = LIVE_CHANNELS.map((channel) => channel.key)
 const UNITS: Record<string, number> = { k: 1e3, m: 1e6 }
 
@@ -49,6 +67,10 @@ export interface ScannedVideo {
   title: string
   live: boolean
   viewers: number | null
+  /** «5:42:32» (lo ya transmitido lo lleva en la miniatura); null si no está. */
+  duration: string | null
+  /** «Streamed 2 days ago»; null si no está. */
+  published: string | null
 }
 
 /** «6.7K watching», «1,234 watching», «1.2M watching» → 6700, 1234, 1200000; null si no es una cantidad de gente. */
@@ -131,6 +153,26 @@ function findViewers(root: unknown): number | null {
   return found
 }
 
+/** El primer texto de un pedazo de JSON que cumpla `pattern` (un texto suelto o el de un `{ content }`, `{ simpleText }` o `{ runs }`); null si ninguno. */
+function findText(root: unknown, pattern: RegExp): string | null {
+  let found: string | null = null
+
+  someNode(root, (node) => {
+    for (const value of Object.values(node)) {
+      const text = typeof value === 'string' ? value : isObject(value) ? textOf(value) : ''
+
+      if (pattern.test(text.trim())) {
+        found = text.trim()
+        return true
+      }
+    }
+
+    return false
+  })
+
+  return found
+}
+
 /** `lockupViewModel` es el formato nuevo de la lista de videos y `videoRenderer` el viejo. */
 function scanLockup(node: Record<string, unknown>): ScannedVideo | null {
   const id = node.contentId
@@ -146,6 +188,8 @@ function scanLockup(node: Record<string, unknown>): ScannedVideo | null {
     // La insignia «LIVE» de la miniatura: lo que está al aire la lleva y lo ya transmitido muestra su duración.
     live: someNode(node.contentImage, (badge) => badge.badgeStyle === 'THUMBNAIL_OVERLAY_BADGE_STYLE_LIVE'),
     viewers: findViewers(metadata.metadata),
+    duration: findText(node.contentImage, DURATION),
+    published: findText(metadata.metadata, PUBLISHED),
   }
 }
 
@@ -163,6 +207,8 @@ function scanRenderer(node: Record<string, unknown>): ScannedVideo | null {
       someNode(node.badges, (badge) => badge.style === 'BADGE_STYLE_TYPE_LIVE_NOW') ||
       someNode(node.thumbnailOverlays, (overlay) => overlay.style === 'LIVE'),
     viewers: parseViewers(textOf(node.viewCountText)),
+    duration: findText(node.lengthText, DURATION),
+    published: findText(node.publishedTimeText, PUBLISHED),
   }
 }
 
@@ -201,6 +247,27 @@ export function readLiveStreams(root: unknown, channel: ReplayChannel): LiveStre
     .map((video) => ({ id: video.id, channel, title: video.title.trim().slice(0, MAX_TITLE_LENGTH), viewers: video.viewers }))
 }
 
+/** Las últimas transmisiones que ya terminaron de la página de un canal, en el orden en que las lista YouTube (la más nueva primero). Sin título no hay con qué mostrarla. */
+export function readPastStreams(root: unknown, channel: ReplayChannel): PastStream[] {
+  return scanVideos(root)
+    .filter((video) => !video.live && video.title.trim() !== '')
+    .slice(0, PAST_PER_CHANNEL)
+    .map((video) => ({ id: video.id, channel, title: video.title.trim().slice(0, MAX_TITLE_LENGTH), duration: video.duration, published: video.published }))
+}
+
+export type AgoUnit = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
+
+/** Cómo escribe YouTube cada unidad: completa («2 days ago») o abreviada («2d ago», la forma que usa la lista de transmisiones de un canal). */
+const AGO_UNITS: Readonly<Record<string, AgoUnit>> = { s: 'second', sec: 'second', second: 'second', m: 'minute', min: 'minute', minute: 'minute', h: 'hour', hr: 'hour', hour: 'hour', d: 'day', day: 'day', w: 'week', wk: 'week', week: 'week', mo: 'month', month: 'month', y: 'year', yr: 'year', year: 'year' }
+
+/** «Streamed 2 days ago» y «Streamed 2d ago» → `{ value: 2, unit: 'day' }` (para decirlo en el idioma de quien mira); null si no se entiende. */
+export function parseAgo(text: string | null): { value: number; unit: AgoUnit } | null {
+  const match = typeof text === 'string' ? /(\d+)\s*(second|sec|s|minute|min|mo|month|m|hour|hr|h|day|d|week|wk|w|year|yr|y)s?\s+ago\b/i.exec(text) : null
+  const unit = match ? AGO_UNITS[match[2]!.toLowerCase()] : undefined
+
+  return match && unit ? { value: Number(match[1]), unit } : null
+}
+
 /** Los más vistos primero; con la misma cantidad (o sin dato), por id para que el orden no cambie de un pedido a otro. */
 export const byViewers = (a: LiveStream, b: LiveStream) => (b.viewers ?? -1) - (a.viewers ?? -1) || a.id.localeCompare(b.id)
 
@@ -230,10 +297,37 @@ export function parseLiveResponse(value: unknown): LiveStreams {
     }
   }
 
+  const past: PastStream[] = []
+
+  if (isObject(value) && Array.isArray(value.past)) {
+    for (const entry of value.past) {
+      if (
+        isObject(entry) &&
+        typeof entry.id === 'string' &&
+        VIDEO_ID.test(entry.id) &&
+        typeof entry.channel === 'string' &&
+        CHANNEL_KEYS.includes(entry.channel) &&
+        typeof entry.title === 'string' &&
+        entry.title.trim() !== '' &&
+        !past.some((stream) => stream.id === entry.id) &&
+        !streams.some((stream) => stream.id === entry.id)
+      ) {
+        past.push({
+          id: entry.id,
+          channel: entry.channel as ReplayChannel,
+          title: entry.title.trim().slice(0, MAX_TITLE_LENGTH),
+          duration: typeof entry.duration === 'string' && DURATION.test(entry.duration) ? entry.duration : null,
+          published: typeof entry.published === 'string' && PUBLISHED.test(entry.published) ? entry.published : null,
+        })
+      }
+    }
+  }
+
   return {
     ok: isObject(value) && value.ok === true,
     checkedAt: isObject(value) && typeof value.checkedAt === 'string' ? value.checkedAt : '',
     streams: streams.sort(byViewers).slice(0, MAX_STREAMS),
+    past: past.slice(0, MAX_PAST),
   }
 }
 

@@ -230,6 +230,99 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(dock).getByRole('heading', { name: 'Brick' })).toBeInTheDocument()
   })
 
+  describe('el menú de una carta en escritorio', () => {
+    /** Escritorio (desde 1101 px) con o sin el detalle fijo a la izquierda (desde 1440 px). */
+    const desktop = (docked: boolean) => {
+      window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || (docked && query.includes('1440')) || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    }
+
+    it('con el detalle fijo a la izquierda no lleva «Ver carta» ni rasgos (ya está ahí); con menos ancho, «Ver carta» queda: es la forma de verlo', () => {
+      desktop(true)
+      const wide = render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
+      expect(screen.getByRole('menu', { name: 'Starter' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Ver carta' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('list', { name: 'Rasgos confirmados de los efectos' })).not.toBeInTheDocument()
+      wide.unmount()
+
+      desktop(false)
+      render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
+      expect(screen.getByRole('menuitem', { name: 'Ver carta' })).toBeInTheDocument()
+    })
+
+    it('una carta elegida en el visor del Deck también se muestra en el detalle fijo (sin «Ver carta» tiene que verse ahí)', () => {
+      desktop(true)
+      render(<Harness />)
+
+      const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
+
+      tap(screen.getByRole('button', { name: /^Main: \d+/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+      fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getAllByRole('button', { name: /Brick/ })[0]!)
+      expect(within(dock).getByRole('heading', { name: 'Brick' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Ver carta' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('el detalle fijo muestra la carta a la que se le pasa el mouse; un click la deja fija hasta un click afuera o en otra carta', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('1440') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<Harness />)
+
+    const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
+    const shown = () => within(dock).queryByRole('heading')?.textContent ?? null
+    const over = (name: string) => fireEvent.pointerOver(within(hand()).getByRole('listitem', { name }), { pointerType: 'mouse' })
+
+    expect(dock).toHaveTextContent('Tocá una carta para ver su detalle acá.')
+
+    // El mouse sobre una carta la muestra; sobre otra, la otra; al sacarlo queda la última.
+    over('Starter')
+    expect(shown()).toBe('Starter')
+    over('Brick')
+    expect(shown()).toBe('Brick')
+    fireEvent.pointerOver(screen.getByRole('group', { name: 'Zona de monstruo 1' }), { pointerType: 'mouse' })
+    expect(shown()).toBe('Brick')
+
+    // Un click la fija: el mouse por otras cartas ya no la cambia.
+    tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
+    expect(shown()).toBe('Starter')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    over('Brick')
+    expect(shown()).toBe('Starter')
+
+    // Tocar el panel no la suelta (se puede leer y desplazar el texto).
+    fireEvent.pointerDown(dock)
+    over('Brick')
+    expect(shown()).toBe('Starter')
+
+    // Un click en otra carta la fija a ésa.
+    tap(within(hand()).getByRole('listitem', { name: 'Brick' }))
+    expect(shown()).toBe('Brick')
+    over('Starter')
+    expect(shown()).toBe('Brick')
+
+    // Un click afuera (el campo, un lugar vacío) la suelta: vuelve a seguir al mouse, empezando por la última carta a la que se le pasó.
+    fireEvent.pointerDown(screen.getByRole('group', { name: 'Zona de monstruo 1' }))
+    expect(shown()).toBe('Starter')
+    over('Brick')
+    expect(shown()).toBe('Brick')
+  })
+
+  it('con el dedo no hay mouse que pasar: tocar la carta la muestra y la fija', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('1440') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<Harness />)
+
+    const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
+
+    fireEvent.pointerOver(within(hand()).getByRole('listitem', { name: 'Brick' }), { pointerType: 'touch' })
+    expect(dock).toHaveTextContent('Tocá una carta para ver su detalle acá.')
+
+    tap(within(hand()).getByRole('listitem', { name: 'Brick' }))
+    expect(within(dock).getByRole('heading', { name: 'Brick' })).toBeInTheDocument()
+  })
+
   it('las jugadas que no cambian la mano inicial no la vuelven a evaluar; robar la carta de ir 2º, sí', () => {
     render(<Harness />)
 

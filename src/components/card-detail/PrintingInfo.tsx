@@ -21,7 +21,7 @@ export function PrintingInfo({ printing, className }: { printing: ArtPrinting | 
       {printing ? (
         <>
           <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Badge size="sm" tone="brand">
+            <Badge size="sm" tone="neutral">
               {printing.rarity}
             </Badge>
             {printing.variant ? (

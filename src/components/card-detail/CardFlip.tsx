@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import type { CardFoil } from '../../app/card-foil'
 import { t } from '../../i18n'
 import { CARD_BACK, CARD_BACK_HD_URL } from '../probability/practice-styles'
-import { CardGlare, levelOut } from './card-tilt'
+import { CardGlare, foilFollowsTurn, foilReleased, levelOut } from './card-tilt'
 import { RarityFoil } from './RarityFoil'
 
 /** Cuánto hay que arrastrar la carta, en partes de su ancho (o de su alto), para darla vuelta entera (medio giro por cada 0,8). */
@@ -119,6 +119,8 @@ export function useCardFlip() {
     if (flipper) {
       flipper.style.transition = ''
       flipper.style.transform = flipTransform(next.x * 180, next.y * 180)
+      // Terminó el giro: el foil vuelve a moverse solo.
+      foilReleased(flipper)
     }
 
     turnsRef.current = next
@@ -138,6 +140,12 @@ export function useCardFlip() {
     }, []),
     /** Vuelve al frente (al pasar a otra carta). */
     reset: useCallback(() => setTurns(FRONT), []),
+    /** Cancela el gesto en curso sin dar la vuelta (un segundo dedo que viene a pellizcar para el zoom): la carta queda como estaba. */
+    cancel: useCallback(() => {
+      const drag = dragRef.current
+
+      if (drag) finish({ pointerId: drag.id, clientX: drag.x, clientY: drag.y, timeStamp: drag.at + 1 }, true)
+    }, [finish]),
     consumeClick: () => {
       const dragged = draggedRef.current
 
@@ -204,7 +212,14 @@ export function useCardFlip() {
       levelOut(event.currentTarget)
       drag.angle = { x: -(dy / (drag.height * SPAN)) * 180, y: (dx / (drag.width * SPAN)) * 180 }
 
-      if (flipperRef.current) flipperRef.current.style.transform = flipTransform(turnsRef.current.x * 180 + drag.angle.x, turnsRef.current.y * 180 + drag.angle.y)
+      if (flipperRef.current) {
+        const x = turnsRef.current.x * 180 + drag.angle.x
+        const y = turnsRef.current.y * 180 + drag.angle.y
+
+        flipperRef.current.style.transform = flipTransform(x, y)
+        // La luz del foil acompaña al giro (no se suelta a la deriva mientras se gira).
+        foilFollowsTurn(flipperRef.current, x, y)
+      }
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => finish(event, false),
     onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => finish(event, true),

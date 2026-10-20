@@ -11,7 +11,8 @@ import type { SavedCombo } from '../../app/saved-combos'
 import type { MatSession } from '../../app/use-mat-session'
 import { t } from '../../i18n'
 import type { CardEntry, HandPattern } from '../../types'
-import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
+import { DuelCardDock } from '../duel/DuelCardDock'
+import { useDockPeek } from '../duel/use-dock-peek'
 import { Callout } from '../ui/Callout'
 import {
   buildPracticeDeck,
@@ -66,9 +67,9 @@ export function PracticeSection(props: PracticeSectionProps) {
   const deck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
   const blockedMessage = getBlockedMessage(props)
-  // El detalle fijo de la izquierda (como en un duelo): la última carta que se tocó, siempre a la vista en pantallas anchas.
+  // El detalle fijo de la izquierda (como en un duelo): la carta a la que se le pasa el mouse, o la que se tocó (queda fija hasta un click afuera o en otra), siempre a la vista en pantallas anchas.
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
-  const [peek, setPeek] = useState<CardPeek | null>(null)
+  const dock = useDockPeek()
   // El pedazo del texto de esa carta que se resalta mientras se elige uno de sus efectos en el menú.
   const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
 
@@ -233,8 +234,9 @@ export function PracticeSection(props: PracticeSectionProps) {
       highlighted={started ? EMPTY_IDS : highlighted}
       highlightKind={started ? null : (activeMatch?.kind ?? null)}
       muted={isUnplayable && !started}
-      detail={wide ? <DuelCardDock peek={peek} highlight={highlight} /> : undefined}
-      onPeek={setPeek}
+      detail={wide ? <DuelCardDock peek={dock.shown} highlight={highlight} /> : undefined}
+      onPeek={dock.lock}
+      onHover={dock.hover}
       onHighlight={setHighlight}
     />
   )

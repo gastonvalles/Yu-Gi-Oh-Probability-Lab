@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
@@ -152,6 +152,78 @@ describe('la barra de abajo de la carta en grande', () => {
     expect(reset).toHaveTextContent('200%')
     fireEvent.click(reset)
     expect(reset).toHaveTextContent('100%')
+  })
+
+  it('Ctrl + la rueda (o el pellizco del trackpad) cambia el zoom de a un paso y no acerca la página; la rueda sola no hace nada (desplaza la carta)', () => {
+    open()
+    const reset = screen.getByRole('button', { name: 'Volver al 100 %' })
+    const canvas = screen.getByRole('dialog').querySelector('.overflow-auto')!
+    const wheel = (init: WheelEventInit) => {
+      const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init })
+
+      act(() => {
+        canvas.dispatchEvent(event)
+      })
+
+      return event
+    }
+
+    // Sin Ctrl no hay zoom (y no se frena: la rueda desplaza).
+    expect(wheel({ deltaY: -120 }).defaultPrevented).toBe(false)
+    expect(reset).toHaveTextContent('100%')
+
+    // Con Ctrl, hacia arriba acerca (y el navegador no acerca la página); un movimiento chico no alcanza para un paso; sumados, sí.
+    expect(wheel({ deltaY: -120, ctrlKey: true }).defaultPrevented).toBe(true)
+    expect(reset).toHaveTextContent('150%')
+    wheel({ deltaY: -10, ctrlKey: true })
+    expect(reset).toHaveTextContent('150%')
+    wheel({ deltaY: -35, ctrlKey: true })
+    expect(reset).toHaveTextContent('200%')
+
+    // Hacia abajo aleja, de a un paso, también con Cmd.
+    wheel({ deltaY: 120, metaKey: true })
+    expect(reset).toHaveTextContent('150%')
+  })
+
+  it('pellizcar con dos dedos acerca o aleja de a un paso (no la página) y cancela el giro que había empezado el primer dedo', () => {
+    open()
+    const reset = screen.getByRole('button', { name: 'Volver al 100 %' })
+    const canvas = screen.getByRole('dialog').querySelector('.overflow-auto')!
+    const touches = (distance: number) => [{ clientX: 100 - distance / 2, clientY: 200 }, { clientX: 100 + distance / 2, clientY: 200 }]
+
+    expect(canvas.className).toContain('[touch-action:pan-x_pan-y]')
+
+    // El primer dedo ya empezó a girar la carta.
+    fireEvent.pointerDown(frame(), { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100 })
+    fireEvent.pointerMove(frame(), { pointerId: 1, pointerType: 'touch', clientX: 80, clientY: 100 })
+    expect(frame().querySelector('[data-flipped]')!.getAttribute('style')).not.toContain('rotateY(0deg)')
+
+    fireEvent.touchStart(canvas, { touches: touches(100) })
+    expect(frame().querySelector('[data-flipped]')!.getAttribute('style')).toContain('rotateY(0deg)')
+
+    // Abrir los dedos acerca un paso; un poco más no (hace falta otro 25 % desde ahí); cerrarlos aleja.
+    fireEvent.touchMove(canvas, { touches: touches(130) })
+    expect(reset).toHaveTextContent('150%')
+    fireEvent.touchMove(canvas, { touches: touches(140) })
+    expect(reset).toHaveTextContent('150%')
+    fireEvent.touchMove(canvas, { touches: touches(80) })
+    expect(reset).toHaveTextContent('100%')
+
+    // Con un solo dedo no pasa nada.
+    fireEvent.touchEnd(canvas, { touches: [] })
+    fireEvent.touchStart(canvas, { touches: touches(100).slice(0, 1) })
+    fireEvent.touchMove(canvas, { touches: touches(300).slice(0, 1) })
+    expect(reset).toHaveTextContent('100%')
+  })
+
+  it('detrás de la carta va la misma carta agrandada y desenfocada (sólo decoración: sin texto alternativo)', () => {
+    open({ card: { ...card, imageUrlSmall: 'https://images.ygoprodeck.com/images/cards_small/1.jpg' } })
+
+    const backdrop = screen.getByRole('dialog').querySelector('img[aria-hidden="true"], span[aria-hidden="true"] > img')
+
+    expect(backdrop).not.toBeNull()
+    expect(backdrop).toHaveAttribute('alt', '')
+    expect(backdrop!.className).toContain('blur')
   })
 
   it('las teclas + − 0 cambian el zoom; más grande que la pantalla ya no se gira (arrastrar desplaza) y al volver al 100 % sí', () => {

@@ -4,7 +4,7 @@ import type { CardEffectOfText } from '../app/card-effect-data'
 import { EFFECT_FACT, effectFactNames, visibleFactNames } from '../app/card-effect-facts'
 import { effectParts, effectSentences } from '../app/card-text'
 import { EFFECT_PLACE } from '../app/card-effect-map'
-import { countableEffects, effectChoices, effectKey, usageReminder, type Activation } from '../app/mat-assistant'
+import { activationFacts, countableEffects, effectChoices, effectKey, LIMIT_FACTS, usageReminder, type Activation } from '../app/mat-assistant'
 import type { MatAction } from '../app/practice-mat'
 import { visibleTraits } from '../components/card-detail/CardEffectTraits'
 
@@ -41,6 +41,19 @@ describe('effectKey: la clave del uso de un efecto', () => {
     expect(effectKey(ONCE, 10808715, 'card-10808715-1', 0)).toBe('n:10808715#0')
     expect(effectKey(ONCE, 10808715, 'card-10808715-2', 1)).toBe('n:10808715#1')
     expect(effectKey(EFFECT_FACT.once, 10808715, 'card-10808715-1', 1)).toBe('i:card-10808715-1#1')
+  })
+
+  it('dos efectos que comparten el límite (shared) tienen la clave de la carta entera, la misma de la activación: usar uno avisa al usar el otro', () => {
+    const SHARED = ONCE | EFFECT_FACT.shared
+    const first = effectKey(SHARED, 10808715, 'a', 0)
+    const second = effectKey(SHARED, 10808715, 'a', 1)
+
+    expect(first).toBe('n:10808715')
+    expect(second).toBe(first)
+    // La activación de la carta (que comparte el límite) cuenta con la clave de la carta: es la misma.
+    expect(first).toBe(effectKey(SHARED, 10808715, 'a', 7))
+    expect(usageReminder(SHARED, [used('a', 5, first)], second, 5)).toBe('turnByName')
+    expect(usageReminder(SHARED, [used('a', 5, first)], second, 6)).toBeNull()
   })
 
   it('cada efecto cuenta lo suyo: usar el primero no avisa al activar el segundo, y repetir el primero sí', () => {
@@ -97,13 +110,37 @@ describe('effectChoices: el segundo paso de «Activar efecto»', () => {
     expect(choices[1]!.label).toBe('You can discard 1 card; draw 1 card.')
   })
 
-  it('dice desde dónde se activa cuando las dos fuentes lo confirman (la mano o el Cementerio): el campo no se dice', () => {
+  it('dice desde dónde se activa cada efecto cuando las dos fuentes lo confirman y la carta tiene efectos de lugares distintos: la mano, el Cementerio, el campo o la Zona de Péndulo', () => {
     const where = effectsAt(DUSK_CROW, [ONCE, EFFECT_PLACE.hand], [ONCE, EFFECT_PLACE.field])
     const choices = effectChoices('c1', 10808715, where, [], 3)
 
     expect(choices[0]!.hint).toBe('Desde la mano · 1 vez por turno, por nombre')
-    expect(choices[1]!.hint).toBe('1 vez por turno, por nombre')
+    expect(choices[1]!.hint).toBe('Desde el campo · 1 vez por turno, por nombre')
     expect(effectChoices('c1', 10808715, effectsAt(DUSK_CROW, [ONCE, EFFECT_PLACE.grave], [ONCE, 0]), [], 3)[0]!.hint).toBe('Desde el Cementerio · 1 vez por turno, por nombre')
+    expect(effectChoices('c1', 10808715, effectsAt(DUSK_CROW, [ONCE, EFFECT_PLACE.pendulum], [ONCE, EFFECT_PLACE.field]), [], 3).map((choice) => choice.hint)).toEqual(['Desde la Zona de Péndulo · 1 vez por turno, por nombre', 'Desde el campo · 1 vez por turno, por nombre'])
+    // Una Mágica o Trampa Continua con dos efectos: la zona de Mágicas y Trampas es parte del campo, y se dice igual.
+    expect(effectChoices('c1', 10808715, effectsAt(DUSK_CROW, [ONCE, EFFECT_PLACE.spellTrap], [ONCE, EFFECT_PLACE.grave]), [], 3).map((choice) => choice.hint)).toEqual(['Desde el campo · 1 vez por turno, por nombre', 'Desde el Cementerio · 1 vez por turno, por nombre'])
+  })
+
+  it('si todos los efectos son del mismo lugar (el campo) no dice nada: no hay nada que distinguir', () => {
+    const sameField = effectsAt(DUSK_CROW, [ONCE, EFFECT_PLACE.field], [ONCE, EFFECT_PLACE.field])
+
+    expect(effectChoices('c1', 10808715, sameField, [], 3).map((choice) => choice.hint)).toEqual(['1 vez por turno, por nombre', '1 vez por turno, por nombre'])
+  })
+
+  it('un efecto que comparte el límite dice que lo comparte, y si se usó otro de los efectos que lo comparten, que ya se usó', () => {
+    const SHARED = ONCE | EFFECT_FACT.shared
+    const sharing = effectsOf(DUSK_CROW, SHARED, SHARED)
+
+    expect(effectChoices('c1', 10808715, sharing, [], 3).map((choice) => choice.hint)).toEqual(['1 vez por turno, por nombre · Límite compartido', '1 vez por turno, por nombre · Límite compartido'])
+
+    const past = [used('c1', 3, effectKey(SHARED, 10808715, 'c1', 0))]
+
+    expect(effectChoices('c1', 10808715, sharing, past, 3).map((choice) => choice.hint)).toEqual([
+      'Ya usaste un efecto que comparte este límite · 1 vez por turno, por nombre · Límite compartido',
+      'Ya usaste un efecto que comparte este límite · 1 vez por turno, por nombre · Límite compartido',
+    ])
+    expect(effectChoices('c1', 10808715, sharing, past, 4).map((choice) => choice.hint)[1]).toBe('1 vez por turno, por nombre · Límite compartido')
   })
 
   it('dice si ya se usó este turno (sólo ese efecto) y sigue ofreciéndolo: avisa, no frena', () => {
@@ -139,5 +176,16 @@ describe('visibleFactNames: los rasgos que se muestran, los mismos en el detalle
   it('«por nombre» ya dice «una vez por turno»: no se repite', () => {
     expect(visibleFactNames(['once', 'hardOnce', 'cost'])).toEqual(['hardOnce', 'cost'])
     expect(visibleFactNames(['once'])).toEqual(['once'])
+  })
+})
+
+describe('activationFacts: al activar una Mágica o una Trampa sólo vale el límite de la activación', () => {
+  it('con el límite de la activación confirmado (activation) valen los límites de la carta; sin él, ninguno (el límite de un efecto que se usa después no frena activar otra copia)', () => {
+    const limited = EFFECT_FACT.once | EFFECT_FACT.hardOnce | EFFECT_FACT.cost | EFFECT_FACT.activation
+
+    expect(activationFacts(limited)).toBe(EFFECT_FACT.once | EFFECT_FACT.hardOnce)
+    expect(activationFacts(limited) & LIMIT_FACTS).not.toBe(0)
+    expect(activationFacts(EFFECT_FACT.once | EFFECT_FACT.hardOnce | EFFECT_FACT.cost)).toBe(0)
+    expect(activationFacts(0)).toBe(0)
   })
 })

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -23,6 +23,7 @@ import {
   monstersOnField,
   monsterZones,
   PHASES,
+  pileAction,
   placedAt,
   randomSeed,
   replayMat,
@@ -53,7 +54,9 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
 import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, getCardEffectMap, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
-import { LIMIT_FACTS, countableEffects, effectChoices, effectKey, limitKey, usageReminder, type Activation } from '../../app/mat-assistant'
+import { EFFECT_FACT } from '../../app/card-effect-facts'
+import { LIMIT_FACTS, activationFacts, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, usageReminder, type Activation } from '../../app/mat-assistant'
+import { repeatedTurnRule } from '../../app/turn-rules'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
@@ -174,8 +177,12 @@ export interface DuelMatLink {
   aside?: ReactNode
   /** Un panel fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`: el detalle de la carta que se tocó): la mesa le deja 20rem y no se mueve cuando cambia. */
   detail?: ReactNode
-  /** Se tocó una carta tuya (de la mano o del campo): de ahí sale lo que muestra `detail`. */
+  /** Se hizo click en una carta tuya (de la mano, del campo o de un visor de pila): `detail` la muestra y queda fija hasta un click afuera o en otra carta. */
   onPeek?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** Se pasó el mouse por una carta tuya (de la mano o del campo): `detail` la muestra mientras no haya otra fija por un click. */
+  onHover?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** Lo mismo con una carta del rival a la vista (su id opaco, el que él le dio): de ahí sale lo que muestra `detail` si él la mostró. */
+  onRivalHover?: (id: string) => void
   /** Se está eligiendo un efecto en el menú (pasar el mouse por una opción): el pedazo del texto de esa carta que `detail` tiene que resaltar; `null` al irse o al cerrar el menú. */
   onHighlight?: (highlight: CardTextHighlight | null) => void
   /** Lo que estoy haciendo y el rival tiene que ver (mirar mi deck, mi Extra Deck, mi cementerio o lo desterrado; elegir cómo jugar una carta); `null` si nada. Se llama sólo cuando cambia. */
@@ -208,8 +215,10 @@ interface PracticeMatProps {
   duel?: DuelMatLink
   /** El detalle fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`), para la práctica: en un duelo lo trae `duel.detail`. */
   detail?: ReactNode
-  /** Se tocó una carta de la mesa (de la práctica): de ahí sale lo que muestra `detail`. En un duelo es `duel.onPeek`. */
+  /** Se hizo click en una carta de la mesa (de la práctica): `detail` la muestra y queda fija. En un duelo es `duel.onPeek`. */
   onPeek?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** Se pasó el mouse por una carta de la mesa (de la práctica): `detail` la muestra mientras no haya otra fija. En un duelo es `duel.onHover`. */
+  onHover?: (peek: { name: string; card: ApiCardReference | null }) => void
   /** El pedazo del texto que `detail` resalta mientras se elige un efecto (en la práctica; en un duelo es `duel.onHighlight`). */
   onHighlight?: (highlight: CardTextHighlight | null) => void
 }
@@ -391,11 +400,14 @@ export function PracticeMat({
   duel,
   detail: practiceDetail,
   onPeek: practicePeek,
+  onHover: practiceHover,
   onHighlight: practiceHighlight,
 }: PracticeMatProps) {
   // El detalle fijo de la izquierda y la carta que se tocó: de un duelo, o de la práctica.
   const detail = duel?.detail ?? practiceDetail
   const onPeek = duel?.onPeek ?? practicePeek
+  const onHover = duel?.onHover ?? practiceHover
+  const onRivalHover = duel?.onRivalHover
   const onHighlight = duel?.onHighlight ?? practiceHighlight
   // Con el panel de la derecha (los pasos de la práctica o el chat de un duelo) y el detalle a la izquierda, la mesa queda entre los dos.
   const sidePanel = !duel || Boolean(duel.aside)
@@ -880,33 +892,42 @@ export function PracticeMat({
     void loadCardEffectMap().then(() => setEffectsReady(true))
   }, [])
 
+  // `action` es la jugada que activa la carta `id`: `activate` (el efecto de una carta boca arriba, de una de la mano o del Cementerio) o, en una Mágica o una Trampa, la carta que queda boca arriba (`spellTrapActivation`).
   const remindUsage = useCallback(
-    (action: Extract<MatAction, { type: 'activate' }>) => {
-      const card = cardOf(action.id)
+    (action: MatAction, id: string) => {
+      const card = cardOf(id)
       const api = card.apiCard
       const passcode = api?.ygoprodeckId
+      const effectIndex = action.type === 'activate' ? action.effect : undefined
 
-      if (passcode === undefined || isForeignId(action.id)) return
+      if (passcode === undefined || isForeignId(id)) return
 
-      // Con el efecto elegido (en una carta que se cuenta por efecto) vale el límite de **ese** efecto; si no, el de la carta entera.
-      const effect = action.effect === undefined ? undefined : countableEffects(getCardEffectMap(passcode, api?.description ?? ''))?.[action.effect]
-      const facts = effect ? effect.facts : (getCardEffectFacts(passcode) ?? 0)
+      // Con el efecto elegido (en una carta que se cuenta por efecto) vale el límite de **ese** efecto; si no, el de la carta entera. Al activar una Mágica o una Trampa (dejarla boca arriba) vale sólo el límite de la activación.
+      const effect = effectIndex === undefined ? undefined : countableEffects(getCardEffectMap(passcode, api?.description ?? ''))?.[effectIndex]
+      const activation = action.type !== 'activate'
+      const cardFacts = getCardEffectFacts(passcode) ?? 0
+      const facts = effect ? effect.facts : activation ? activationFacts(cardFacts) : cardFacts
 
       if ((facts & LIMIT_FACTS) === 0) return
 
       // Sólo cuentan las activaciones que siguen en el registro: si se deshizo una, no cuenta.
       const live = new Set<MatAction>(session.actions)
       const past = activationsRef.current.filter((activation) => live.has(activation.action))
-      const key = effect && action.effect !== undefined ? effectKey(facts, passcode, action.id, action.effect) : limitKey(facts, passcode, action.id)
+      const key = effect && effectIndex !== undefined ? effectKey(facts, passcode, id, effectIndex) : limitKey(facts, passcode, id)
       const reminder = usageReminder(facts, past, key, turnNumber)
 
       activationsRef.current = [...past, { action, turn: turnNumber, key }]
 
       if (!reminder) return
 
+      const n = (effectIndex ?? 0) + 1
       const message = effect
-        ? t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n: (action.effect ?? 0) + 1 })
-        : t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name })
+        ? (effect.facts & EFFECT_FACT.shared) !== 0
+          ? t('practice.assistant.effectShared', { card: card.name, n })
+          : t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n })
+        : activation
+          ? t(reminder === 'duel' ? 'practice.assistant.activationUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.activationUsedTurnByName' : 'practice.assistant.activationUsedTurn', { card: card.name })
+          : t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name })
 
       showToastMessage(message, 'warning')
     },
@@ -917,9 +938,13 @@ export function PracticeMat({
     (action: MatAction) => {
       const searched = searching(action)
       const played: MatAction = searched ? { ...action, shuffle: randomSeed() } : action
+      const activated = played.type === 'activate' ? played.id : spellTrapActivation(state, played, kindOf)
+      // Las reglas de turno (una Invocación Normal, una de Péndulo): avisa, no frena.
+      const repeated = repeatedTurnRule(session.initial, session.actions.slice(0, session.cursor), played)
 
       onDispatch(played)
-      if (played.type === 'activate') remindUsage(played)
+      if (activated !== null) remindUsage(played, activated)
+      if (repeated !== null) showToastMessage(t(repeated === 'normalSummon' ? 'practice.assistant.normalAgain' : 'practice.assistant.pendulumAgain'), 'warning')
       setMenu(null)
       setPicking(null)
       setAutoplay(false)
@@ -935,7 +960,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer, searching, remindUsage],
+    [onDispatch, viewer, closeViewer, searching, remindUsage, state, kindOf, session.initial, session.actions, session.cursor],
   )
 
   // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).
@@ -1118,9 +1143,33 @@ export function PracticeMat({
     [state, play],
   )
 
+  // El mouse sobre una carta (la propia, o la del rival a la vista) la muestra en el detalle fijo de la izquierda; al sacarlo, queda la última. Un solo oyente en la mesa: las cartas no llevan uno cada una (y quien lo recibe no vuelve a dibujar
+  // si es la misma carta: `useDockPeek`).
+  const showHovered = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      // El dedo no pasa el mouse por encima: tocar una carta ya la fija.
+      if (event.pointerType === 'touch' || !(event.target instanceof Element)) return
+
+      const own = event.target.closest<HTMLElement>('[data-card-id]')?.dataset.cardId
+      const rival = own === undefined ? event.target.closest<HTMLElement>('[data-rival-card-id]')?.dataset.rivalCardId : undefined
+      const id = own ?? rival
+
+      if (id === undefined) return
+
+      if (own !== undefined) {
+        const { name, apiCard } = cardOf(own)
+
+        onHover?.({ name, card: apiCard })
+      } else if (rival !== undefined) {
+        onRivalHover?.(rival)
+      }
+    },
+    [cardOf, onHover, onRivalHover],
+  )
+
   const openCard = useCallback(
     (id: string, rect: DOMRect) => {
-      // Tocar una carta (la que sea y para lo que sea) también la muestra en el detalle fijo de la izquierda.
+      // Tocar una carta (la que sea y para lo que sea) también la muestra, fija, en el detalle de la izquierda.
       if (onPeek) {
         const { name, apiCard } = cardOf(id)
 
@@ -1221,7 +1270,8 @@ export function PracticeMat({
 
       if (target.kind === 'pile') {
         if (where.kind === 'pile' && where.pile === target.pile) return
-        onDispatch({ type: 'move', id: source.id, to: target.pile })
+        // Un Monstruo de Péndulo del campo soltado en el cementerio va al Extra Deck boca arriba (regla de Péndulo).
+        onDispatch(pileAction(state, source.id, target.pile, kindOf))
         return
       }
 
@@ -1738,6 +1788,7 @@ export function PracticeMat({
     <section
       ref={sectionRef}
       aria-label={t('practice.mat.label')}
+      onPointerOver={detail ? showHovered : undefined}
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
@@ -2028,7 +2079,7 @@ export function PracticeMat({
 
       {/* El detalle fijo (la carta que se tocó) de un duelo y de la práctica, a la izquierda y a todo el alto, sólo en escritorio: la columna está siempre (vacía hasta la primera carta), así la mesa no se corre. */}
       {detail ? (
-        <section aria-label={t('duel.dock.label')} className="hidden min-h-0 border-r border-border-subtle px-3 pb-3 pt-3 min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
+        <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-border-subtle px-3 pb-3 pt-3 min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
       ) : null}
 
       {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
@@ -2083,9 +2134,9 @@ export function PracticeMat({
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
-        ygoprodeckId={choosingEffect ? null : menuCard?.apiCard?.ygoprodeckId}
         wide={choosingEffect}
-        onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
+        onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
         passThrough={attackAsk !== null}
         onClose={() => setMenu(null)}
       />
@@ -2097,7 +2148,16 @@ export function PracticeMat({
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
         targeted={targetedIds}
-        onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
+        onPick={(id, rect) => {
+          // Elegir una carta del visor también la muestra en el detalle fijo de la izquierda (como tocar una de la mano o del campo).
+          if (onPeek) {
+            const { name, apiCard } = cardOf(id)
+
+            onPeek({ name, card: apiCard })
+          }
+
+          setMenu({ kind: 'card', id, rect })
+        }}
         onClose={closeViewer}
       />
 

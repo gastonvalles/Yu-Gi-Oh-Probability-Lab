@@ -36,6 +36,10 @@ describe('src/data/card-effects.json (lo que escribe scripts/build-card-effects.
       expect(getCardEffectFactNames(23434538)).toEqual(['once', 'hardOnce', 'cost'])
       // Effect Veiler: tiene un efecto rápido.
       expect(getCardEffectFactNames(38814750)).toContain('quick')
+      // Pot of Desires (una Mágica): su activación es de una vez por turno por nombre («You can only activate 1 "Pot of Desires" per turn»), y la activación tiene su propio hecho.
+      expect(getCardEffectFactNames(35261759)).toEqual(['once', 'hardOnce', 'cost', 'activation'])
+      // Starlight Junktion (Mágica de Campo): los límites son de sus efectos, no de la activación: activar otra copia no tiene límite.
+      expect(getCardEffectFactNames(1003840)).toEqual(['once', 'hardOnce', 'cost', 'target'])
       // Una carta sin script o un monstruo normal no tiene nada confirmado.
       expect(getCardEffectFactNames(89631139)).toEqual([])
       expect(getCardEffectFactNames(-1)).toEqual([])

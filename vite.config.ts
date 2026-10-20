@@ -110,6 +110,8 @@ export default defineConfig({
         }
       : undefined,
   },
+  // El worker del Lab se arma como módulo (como ya se lo crea: `type: 'module'`): así puede bajar el inglés aparte, sin llevarlo adentro (con el formato de siempre, `iife`, un `import()` se pega en el mismo archivo).
+  worker: { format: 'es' },
   build: {
     rollupOptions: {
       output: {

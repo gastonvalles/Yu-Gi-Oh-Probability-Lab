@@ -10,6 +10,7 @@ const TRAITS: ReadonlyArray<{ fact: EffectFactName; tone: Tone }> = [
   { fact: 'hardOnce', tone: 'neutral' },
   { fact: 'once', tone: 'neutral' },
   { fact: 'perDuel', tone: 'neutral' },
+  { fact: 'shared', tone: 'neutral' },
   { fact: 'cost', tone: 'danger' },
   { fact: 'target', tone: 'brand' },
 ]

@@ -42,11 +42,14 @@ describe('los rasgos confirmados de una carta salen donde se decide jugarla', ()
     expect(screen.getByText('Con costo')).toBeInTheDocument()
   })
 
-  it('en el menú pegado a la carta (escritorio), debajo del nombre', async () => {
-    inStore(<CardMenu anchor={new DOMRect(100, 100, 60, 90)} kicker="Mano" title="Ash Blossom" ygoprodeckId={14558127} items={[]} onClose={vi.fn()} />)
+  it('el menú pegado a la carta (escritorio) no los repite: el detalle de la carta (fijo a la izquierda, o «Ver carta») ya los dice', async () => {
+    inStore(<CardMenu anchor={new DOMRect(100, 100, 60, 90)} kicker="Mano" title="Ash Blossom" items={[]} onClose={vi.fn()} />)
+    // Se da tiempo a que lleguen los datos.
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
-    expect(await screen.findByText('Efecto rápido')).toBeInTheDocument()
-    expect(screen.getByText('Con costo')).toBeInTheDocument()
+    expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
+    expect(screen.queryByText('Efecto rápido')).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Rasgos confirmados de los efectos' })).not.toBeInTheDocument()
   })
 
   it('en el detalle fijo del duelo, arriba del texto; una carta boca abajo no lleva nada', async () => {
@@ -63,7 +66,7 @@ describe('los rasgos confirmados de una carta salen donde se decide jugarla', ()
   })
 
   it('una carta sin nada confirmado no suma ningún rasgo', async () => {
-    inStore(<CardMenu anchor={new DOMRect(100, 100, 60, 90)} kicker="Mano" title="Blue-Eyes" ygoprodeckId={89631139} items={[]} onClose={vi.fn()} />)
+    inStore(<CardSheet name="Blue-Eyes" kicker="Mano" art={null} apiCard={{ ...ash, ygoprodeckId: 89631139, description: 'This legendary dragon is a powerful engine of destruction.' }} items={[]} onClose={vi.fn()} />)
     // Se da tiempo a que lleguen los datos.
     await new Promise((resolve) => setTimeout(resolve, 50))
 

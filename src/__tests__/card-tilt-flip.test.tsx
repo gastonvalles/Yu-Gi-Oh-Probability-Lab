@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { CardArt } from '../components/CardArt'
 import { CardFlip, FlipHint, useCardFlip } from '../components/card-detail/CardFlip'
-import { tiltHandlers, tiltInPlaceHandlers } from '../components/card-detail/card-tilt'
+import { foilFollowsTurn, foilReleased, tiltHandlers, tiltInPlaceHandlers } from '../components/card-detail/card-tilt'
 
 // El aviso de la banlist lee el store: acá sólo importa cómo se mueve la carta.
 vi.mock('../components/CardLimitBadge', () => ({ CardLimitBadge: () => null }))
@@ -333,6 +333,97 @@ describe('girar la carta, con un gesto, en todas las direcciones', () => {
     fireEvent.pointerUp(carta, { ...mouse, buttons: 0, clientX: 120, clientY: 106 })
     fireEvent.pointerMove(carta, { ...mouse, buttons: 0, clientX: 90, clientY: 100 })
     expect(carta.dataset.tilting).toBe('true')
+  })
+
+  it('mientras se gira, la luz del foil sigue la orientación de la carta (no vuelve a la deriva), y al terminar se suelta', () => {
+    render(<FlippableCard />)
+
+    const carta = screen.getByTestId('carta')
+    const light = () => [flipper().style.getPropertyValue('--foil-px'), flipper().style.getPropertyValue('--foil-py'), flipper().style.getPropertyValue('--foil-d')]
+
+    expect(light()).toEqual(['', '', ''])
+
+    // Arrastrada hacia la derecha (medio giro por 112 px): la luz va hacia la derecha a medida que se hunde ese lado, y llega al borde casi de canto.
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 40, clientY: 100 })
+    const [slightX, slightY, slightD] = light()
+
+    expect(parseFloat(slightX!)).toBeGreaterThan(50)
+    expect(slightY).toBe('50%')
+    expect(Number(slightD)).toBeGreaterThan(0)
+
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 70, clientY: 100 })
+    const [farX, , farD] = light()
+
+    expect(parseFloat(farX!)).toBeGreaterThan(parseFloat(slightX!))
+    expect(Number(farD)).toBeGreaterThan(Number(slightD))
+
+    // De arriba abajo, la luz va hacia abajo; hacia la izquierda, hacia la izquierda.
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 140 })
+    expect(parseFloat(flipper().style.getPropertyValue('--foil-py'))).toBeGreaterThan(50)
+    expect(flipper().style.getPropertyValue('--foil-px')).toBe('50%')
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: -20, clientY: 100 })
+    expect(parseFloat(flipper().style.getPropertyValue('--foil-px'))).toBeLessThan(50)
+
+    // Al soltar, el foil vuelve a moverse solo.
+    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: 'touch', clientX: -20, clientY: 100 })
+    expect(light()).toEqual(['', '', ''])
+  })
+
+  it('foilFollowsTurn: plana la luz está en el centro; con medio giro (de frente o de dorso) vuelve a estar plana; foilReleased la suelta', () => {
+    const element = document.createElement('div')
+    const read = () => [element.style.getPropertyValue('--foil-px'), element.style.getPropertyValue('--foil-py'), element.style.getPropertyValue('--foil-d')]
+
+    foilFollowsTurn(element, 0, 0)
+    expect(read()).toEqual(['50%', '50%', '0'])
+    foilFollowsTurn(element, 0, 180)
+    expect(read()).toEqual(['50%', '50%', '0'])
+    foilFollowsTurn(element, 360, -180)
+    expect(read()).toEqual(['50%', '50%', '0'])
+
+    // Casi de canto (80°): la luz llega al borde derecho; de canto del otro lado (−80°), al izquierdo.
+    foilFollowsTurn(element, 0, 80)
+    expect(read()).toEqual(['100%', '50%', '1'])
+    foilFollowsTurn(element, 0, -80)
+    expect(read()).toEqual(['0%', '50%', '1'])
+
+    foilReleased(element)
+    expect(read()).toEqual(['', '', ''])
+  })
+
+  it('cancelar el gesto (un segundo dedo que viene a pellizcar) deja la carta como estaba y suelta el foil', () => {
+    let cancel = () => {}
+
+    function Cancelable() {
+      const flip = useCardFlip()
+
+      cancel = flip.cancel
+
+      return (
+        <div data-testid="carta" onPointerDown={flip.onPointerDown} onPointerMove={flip.onPointerMove} onPointerUp={flip.onPointerUp}>
+          <CardFlip turns={flip.turns} flipperRef={flip.flipperRef}>
+            <span>frente</span>
+          </CardFlip>
+        </div>
+      )
+    }
+
+    render(<Cancelable />)
+
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 70, clientY: 100 })
+    expect(flipper().style.transform).not.toBe('perspective(3000px) rotateX(0deg) rotateY(0deg)')
+
+    act(() => cancel())
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(0deg)')
+    expect(flipper().style.getPropertyValue('--foil-px')).toBe('')
+    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+
+    // Sin gesto en curso no hace nada.
+    act(() => cancel())
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(0deg)')
   })
 
   it('la pista del gesto sale las primeras tres veces y después ya no', () => {
