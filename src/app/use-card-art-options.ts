@@ -25,6 +25,8 @@ export interface ArtChoice {
   id: string
   imageUrl: string
   imageUrlSmall: string | null
+  /** El mismo arte en grande (~1000 px de alto), para la carta en pantalla completa; sin él (los de YGOPRODeck), `imageUrl`. */
+  imageUrlLarge?: string
   /** Qué es, para el tooltip ("Magnificent Monsters · MAMO-EN003 · Ultra Rare · Extended Art"); vacío en los de YGOPRODeck. */
   label: string
   /** La impresión de la que sale el escaneo; sin ella en los de YGOPRODeck (son sólo otro dibujo de la misma carta). */
@@ -65,6 +67,7 @@ export function useCardArtOptions(cardId: number | null, name: string): readonly
       options.push({
         id: printArtId(printing.productId),
         imageUrl: printImageUrl(printing.productId, '400w'),
+        imageUrlLarge: printImageUrl(printing.productId, 'in_1000x1000'),
         imageUrlSmall: printImageUrl(printing.productId),
         label: [printing.set, printing.code, printing.rarity, printing.variant].filter(Boolean).join(' · '),
         printing: { set: printing.set, code: printing.code, rarity: printing.rarity, variant: printing.variant, editions },

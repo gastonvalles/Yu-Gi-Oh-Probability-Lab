@@ -20,7 +20,7 @@ La regla de trabajo: **se prueba primero en el playground y recién después se 
 | Tarjetas, avisos y campos | `Card`, `Callout`, `EmptyState`, `Skeleton`, campos, sombras | `ui/` y `ui/surfaces.ts` |
 | Datos | `ProgressRing`, `SegmentedRing`, `CardEffectText`, `InfoTip` | `ui/` (y `card-detail/` para `CardEffectText`) |
 | Duelo por enlace | los dos campos del duelo (el del rival espejado, las Zonas Extra compartidas) y tres formas de verlos en el celular | `duel/DuelTable.tsx` |
-| Diálogos y avisos | `Modal` en todos sus tamaños y los toasts | `ui/Modal.tsx`, `app/use-toast-message.ts` |
+| Diálogos y avisos | `Modal` en todos sus tamaños, la ficha del Lab, la carta en grande y los toasts | `ui/Modal.tsx`, `card-detail/CardZoom.tsx`, `app/use-toast-message.ts` |
 | Íconos | todo el set en `linear` / `bulk` / `bold`, con buscador | `ICON_NAMES` (sale de `ui/Icon.tsx`: un ícono nuevo aparece solo) |
 | Assets | los archivos de `public/` por carpeta, la marca, las fuentes y las imágenes de cartas | módulo `virtual:public-assets` (plugin de `vite.config.ts`: lee la carpeta; una imagen nueva aparece sola) |
 | Tokens del diseño | colores, radios, tamaños de texto, tipografías, medidas y animaciones | se leen de las hojas de estilo (`:root`): una variable nueva de `index.css` aparece sola |

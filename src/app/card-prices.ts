@@ -233,9 +233,10 @@ export async function findCardsByCode(expansions: Expansion[], query: string, ge
 
 /**
  * La imagen de una impresión: la del producto en TCGplayer, que es el escaneo de esa carta tal cual salió (las overframe, las de arte extendido y las
- * alternativas se ven distintas; YGOPRODeck sólo tiene el arte de siempre). 200 px de ancho para las grillas, 400 para la carta grande.
+ * alternativas se ven distintas; YGOPRODeck sólo tiene el arte de siempre). 200 px de ancho para las grillas, 400 para la carta grande y `in_1000x1000` (la carta entera a ~1000 px de alto, ~200 KB)
+ * para la carta en pantalla completa, donde los 400 se ven borrosos.
  */
-export const printImageUrl = (productId: number, size: '200w' | '400w' = '200w') => `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_${size}.jpg`
+export const printImageUrl = (productId: number, size: '200w' | '400w' | 'in_1000x1000' = '200w') => `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_${size}.jpg`
 
 /** Link a una impresión en la vista de Expansiones: `#expansions?set=<expansión>&print=<producto>` abre esa expansión con la carta iluminada. */
 export const buildExpansionsHash = ({ expansion, print }: { expansion: number; print: number }) => `#expansions?set=${expansion}&print=${print}`
