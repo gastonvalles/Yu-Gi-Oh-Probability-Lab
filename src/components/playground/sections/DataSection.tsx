@@ -1,3 +1,4 @@
+import { CardEffectText } from '../../card-detail/CardEffectText'
 import { InfoTip } from '../../ui/InfoTip'
 import { ProgressRing } from '../../ui/ProgressRing'
 import { SegmentedRing } from '../../ui/SegmentedRing'
@@ -6,7 +7,11 @@ import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const TONES = Object.keys(TONE) as Tone[]
 
-/** Cómo se muestran los datos: anillos de progreso y repartidos, y la explicación a pedido (“i”). */
+const ASH_BLOSSOM = 'When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card, then target 1 card on the field; negate that effect. You can only use this effect of "Ash Blossom & Joyous Spring" once per turn.'
+const BULLETS =
+  'Once per turn, during your Standby Phase: You can pay 500 LP; draw 1 card.\n● If this card is Special Summoned from the GY: You can send 1 monster from your hand to the GY; add 1 card from your Deck to your hand.\nThis card gains 500 ATK for each monster you control.'
+
+/** Cómo se muestran los datos: anillos de progreso y repartidos, el texto de una carta con sus partes resaltadas y la explicación a pedido (“i”). */
 export function DataSection() {
   return (
     <SpecimenGrid min="22rem">
@@ -29,6 +34,13 @@ export function DataSection() {
             { key: 'none', value: 0.15, color: 'var(--warning-rgb)' },
           ]}
         />
+      </Specimen>
+
+      <Specimen title="CardEffectText" note={<>El efecto de una carta con sus partes marcadas: verde la condición, ámbar «(Quick Effect)», rojo el costo, violeta el objetivo y subrayado el límite; lo que no es seguro queda común. Capa 0 del motor de cartas (<Tag>docs/motor-de-cartas.md</Tag>). Archivo: <Tag>card-detail/CardEffectText.tsx</Tag></>}>
+        <div className="grid gap-3 text-body text-foreground">
+          <CardEffectText text={ASH_BLOSSOM} />
+          <CardEffectText text={BULLETS} />
+        </div>
       </Specimen>
 
       <Specimen title="InfoTip" note={<>La explicación larga, sólo a pedido. Archivo: <Tag>ui/InfoTip.tsx</Tag></>}>

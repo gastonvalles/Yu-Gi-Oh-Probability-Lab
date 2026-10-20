@@ -1,6 +1,7 @@
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
+import { CardEffectText } from '../card-detail/CardEffectText'
 import { CardPanelBody } from '../card-detail/CardOverlay'
 import { buildCardSummary } from '../card-detail/card-summary'
 import { CARD_BACK } from '../probability/practice-styles'
@@ -46,7 +47,7 @@ function CardPeekView({ name, card, back = false }: { name: string; card: ApiCar
         {typeLine ? <p className="m-0 text-body text-white/66 [overflow-wrap:anywhere]">{typeLine}</p> : null}
       </header>
       <CardPanelBody label={t('search.detail.effect')} className="text-body">
-        <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{back ? t('duel.dock.faceDownText') : card?.description?.trim() || t('search.detail.noText')}</p>
+        <CardEffectText text={back ? t('duel.dock.faceDownText') : card?.description?.trim() || t('search.detail.noText')} />
       </CardPanelBody>
     </div>
   )
