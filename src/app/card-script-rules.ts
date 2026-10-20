@@ -49,7 +49,9 @@ export const CARD_RULE = {
   onSummon: 1 << 19,
 } as const
 
-interface CardEffect {
+export interface CardEffect {
+  /** De qué efecto creado con `Effect.CreateEffect` viene (un `Clone` comparte el origen de su original): los clones son el mismo efecto con otro rango o evento. */
+  origin: number
   type: string
   range: string
   code: string
@@ -79,7 +81,7 @@ export interface CardScript {
   listedNames: string[]
 }
 
-const EMPTY_EFFECT: CardEffect = { type: '', range: '', code: '', category: '', targetRange: '', target: '', operation: '', countLimit: '', cost: '', condition: '', property: '' }
+const EMPTY_EFFECT: CardEffect = { origin: -1, type: '', range: '', code: '', category: '', targetRange: '', target: '', operation: '', countLimit: '', cost: '', condition: '', property: '' }
 /** Las fusiones se crean con una utilidad que ya implica la categoría; el script sólo la ajusta y la registra. */
 const FUSION_EFFECT: CardEffect = { ...EMPTY_EFFECT, type: 'EFFECT_TYPE_ACTIVATE', category: 'CATEGORY_SPECIAL_SUMMON+CATEGORY_FUSION_SUMMON' }
 
@@ -191,6 +193,7 @@ export function readCardScript(lua: string, scope: 'initial' | 'all' = 'initial'
   let givesToOpponent = false
   let mentions = false
   let inside = scope === 'all'
+  let origins = 0
   const listedNames: string[] = []
 
   for (const rawLine of lua.split('\n')) {
@@ -226,14 +229,14 @@ export function readCardScript(lua: string, scope: 'initial' | 'all' = 'initial'
     const created = CREATE.exec(line)
 
     if (created) {
-      drafts.set(created[1], { ...EMPTY_EFFECT })
+      drafts.set(created[1], { ...EMPTY_EFFECT, origin: origins++ })
       continue
     }
 
     const fusion = CREATE_FUSION.exec(line)
 
     if (fusion) {
-      drafts.set(fusion[1], { ...FUSION_EFFECT })
+      drafts.set(fusion[1], { ...FUSION_EFFECT, origin: origins++ })
       continue
     }
 

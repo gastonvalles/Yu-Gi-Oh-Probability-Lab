@@ -1,4 +1,4 @@
-import { readArguments, readCardScript } from './card-script-rules'
+import { readArguments, readCardScript, type CardEffect } from './card-script-rules'
 import { segmentCardText } from './card-text'
 
 /**
@@ -32,32 +32,32 @@ const COUNT_DUEL = /\bEFFECT_COUNT_CODE_DUEL\b/
 /** Los límites que no son «por turno»: por cadena y mientras la carta está boca arriba. */
 const COUNT_OTHER = /\bEFFECT_COUNT_CODE_(?:CHAIN|SINGLE)\b/
 
-/** Los hechos que declara el script de la carta (sin cruzarlos con el texto). */
-export function scriptEffectFacts(lua: string): number {
+/** Los hechos que declara **un** efecto del script (sin cruzarlos con el texto). */
+export function effectFactsOf(effect: Pick<CardEffect, 'type' | 'cost' | 'property' | 'countLimit'>): number {
   let facts = 0
 
-  // Los efectos de toda la carta, también los que se da a sí misma en otra función (equiparse, invocarse): el texto los cuenta como efectos suyos.
-  for (const effect of readCardScript(lua, 'all').effects) {
-    if (QUICK.test(effect.type)) facts |= EFFECT_FACT.quick
-    if (effect.cost !== '') facts |= EFFECT_FACT.cost
-    if (CARD_TARGET.test(effect.property)) facts |= EFFECT_FACT.target
+  if (QUICK.test(effect.type)) facts |= EFFECT_FACT.quick
+  if (effect.cost !== '') facts |= EFFECT_FACT.cost
+  if (CARD_TARGET.test(effect.property)) facts |= EFFECT_FACT.target
 
-    if (effect.countLimit === '') continue
+  if (effect.countLimit === '') return facts
 
-    // `SetCountLimit(veces, código?, tipo?)`: con `1` y sin código es por efecto; con el id de la carta (`id`, `{id,1}`) es por nombre.
-    const [times, code = '', kind = ''] = readArguments(effect.countLimit)
-    const whole = `${code} ${kind}`
+  // `SetCountLimit(veces, código?, tipo?)`: con `1` y sin código es por efecto; con el id de la carta (`id`, `{id,1}`) es por nombre.
+  const [times, code = '', kind = ''] = readArguments(effect.countLimit)
+  const whole = `${code} ${kind}`
 
-    if (COUNT_DUEL.test(whole)) {
-      facts |= EFFECT_FACT.perDuel
-    } else if (times === '1' && !COUNT_OTHER.test(whole)) {
-      facts |= EFFECT_FACT.once
-      if (code !== '' && code !== '0') facts |= EFFECT_FACT.hardOnce
-    }
+  if (COUNT_DUEL.test(whole)) {
+    facts |= EFFECT_FACT.perDuel
+  } else if (times === '1' && !COUNT_OTHER.test(whole)) {
+    facts |= EFFECT_FACT.once
+    if (code !== '' && code !== '0') facts |= EFFECT_FACT.hardOnce
   }
 
   return facts
 }
+
+/** Los hechos que declara el script de la carta (sin cruzarlos con el texto): los de todos sus efectos, también los que se da a sí misma en otra función (equiparse, invocarse): el texto los cuenta como efectos suyos. */
+export const scriptEffectFacts = (lua: string): number => readCardScript(lua, 'all').effects.reduce((facts, effect) => facts | effectFactsOf(effect), 0)
 
 const ONCE_PER_TURN = /\bonce per turn\b/i
 /**
@@ -70,6 +70,11 @@ const HARD_ONCE =
 
 const sinNombres = (text: string) => text.replace(/"[^"]*"/g, '"N"')
 const ONCE_PER_DUEL = /\bonce per Duel\b/i
+/** «You can only use each effect of "X" once per turn»: cada efecto de la carta, por separado, es una vez por turno por nombre. */
+const EACH_EFFECT_ONCE = /You can only use each effect of "N" once per turn/i
+
+/** Si el texto dice que **cada** efecto de la carta es de una vez por turno por nombre (vale para todos sus efectos, no sólo para la oración que lo dice). */
+export const textEachEffectOnce = (text: string): boolean => EACH_EFFECT_ONCE.test(sinNombres(text))
 
 /** Los hechos que dice el texto de la carta (el efecto rápido, el costo y el objetivo salen de `segmentCardText`, la capa 0). */
 export function textEffectFacts(text: string): number {

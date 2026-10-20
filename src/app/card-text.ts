@@ -245,3 +245,75 @@ export function segmentCardText(text: string): TextSegment[] {
 
   return out
 }
+
+/**
+ * Cómo abre una oración que es un efecto que se activa (para alinearla con los efectos del script, ver `card-effect-map.ts`): `trigger` (`If … : …`, `When … : …`), `during` (`During …: …`), `quick` (lleva `(Quick Effect)`),
+ * `once` (`Once per turn: …` solo) o `plain` (`You can …; …`, sin encabezado).
+ */
+export type EffectOpening = 'trigger' | 'during' | 'once' | 'quick' | 'plain'
+
+/** Una oración que es un efecto que se activa: dónde está en el texto, cómo abre y qué lleva (la velocidad, el costo, el objetivo, si dice «una vez por turno»). */
+export interface EffectSentence {
+  /** Dónde empieza en el texto entero. */
+  start: number
+  /** La oración, sin el espacio que la sigue. */
+  text: string
+  opening: EffectOpening
+  quick: boolean
+  cost: boolean
+  target: boolean
+  /** Dice «Once per turn» (al abrir o adentro). */
+  once: boolean
+}
+
+/** Si `body` es un efecto que se activa y cómo abre; null si no lo es (una regla, un límite, una oración suelta). */
+function effectOpening(body: string): EffectOpening | null {
+  if (/^You can only /.test(body)) return null
+
+  const colon = topLevelIndex(body, ':')
+  const header = colon > 0 ? body.slice(0, colon) : ''
+
+  if (colon > 0) {
+    if (header.includes(';') || !(ONCE_PER.test(header) || CONDITION_OPENERS.test(header) || SPEED_ONLY.test(header.trim()))) return null
+
+    const base = header.replace(ONCE_PER, '').replace(/^[,\s]+/, '').replace(SPEED, '').trim()
+
+    if (SPEED.test(header)) return 'quick'
+    if (base === '') return 'once'
+
+    return /^(?:During|While)\b/i.test(base) ? 'during' : 'trigger'
+  }
+
+  return /^(?:You can|You may)\b/.test(body) && topLevelIndex(body, ';') >= 0 ? 'plain' : null
+}
+
+/**
+ * Las oraciones del texto que son efectos que se activan, en orden: las que abren con una condición (`If …:`), con `During …:`, con `Once per turn:` o con `(Quick Effect):`, y las que empiezan con `You can` y llevan un
+ * costo o un objetivo antes del `;`. Las reglas (`Cannot be Normal Summoned`), los límites (`You can only …`) y los efectos continuos no cuentan.
+ */
+export function effectSentences(text: string): EffectSentence[] {
+  const out: EffectSentence[] = []
+  let offset = 0
+
+  for (const line of text.split(/(\r?\n)/)) {
+    if (line !== '' && !/^\r?\n$/.test(line)) {
+      const bullet = /^(?:●|•)\s*/.exec(line)?.[0] ?? ''
+      const content = line.slice(bullet.length)
+
+      for (const { start, end } of sentences(content)) {
+        const body = content.slice(start, end).trimEnd()
+        const opening = effectOpening(body)
+
+        if (opening === null) continue
+
+        const tones = new Set(segmentCardText(body).map((segment) => segment.tone))
+
+        out.push({ start: offset + bullet.length + start, text: body, opening, quick: opening === 'quick', cost: tones.has('cost'), target: tones.has('target'), once: ONCE_PER.test(body) || /\bonce per turn\b/i.test(body) })
+      }
+    }
+
+    offset += line.length
+  }
+
+  return out
+}

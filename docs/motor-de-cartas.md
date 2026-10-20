@@ -10,6 +10,7 @@ catálogo entero antes de pasar a la siguiente.
 | --- | --- | --- |
 | 0 · Resaltar | Colorea el texto de la carta: condición, efecto rápido, costo, objetivo y límite. No decide nada del juego. | **Hecha** |
 | 1 · Hechos confirmados | Lo que el script de EDOPro **y** el texto de la carta dicen los dos de sus efectos: rápido, una vez por turno (con o sin nombre), una vez por Duelo, costo y objetivo. | **Hecha** (a nivel de carta) |
+| 1b · Alinear frase y efecto | Qué frase del texto es qué efecto del script, y de **cada** efecto: sus hechos y desde dónde se activa (mano, Cementerio). Sólo lo que las señales obligan, con margen. | **Hecha** (1.471 cartas; la app todavía no la lee) |
 | 2 · Asistente de la mesa | La mesa **avisa, no decide**: muestra los rasgos confirmados de la carta donde se decide jugarla y avisa si se activa otra vez una de «una vez por turno». | **Empezada** (rasgos y aviso de uso) |
 | 3 · Automatización parcial | Efectos simples, de a una carta, cada una probada contra su script. | Pendiente |
 | 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) compilado a WebAssembly, detrás de una bandera. | Evaluar (licencia) |
@@ -91,8 +92,42 @@ Lo que se descarta tiene causas conocidas, que se fueron corrigiendo al medir: e
 en la capa 0), los nombres con puntos o con comillas anidadas (`"Maxx "C""`, arreglado), los efectos que una carta se da a sí misma en otra función (arreglado con `scope: 'all'`) y los límites que el motor impone sin que el texto los diga (un efecto
 continuo con `SetCountLimit(1)` para no dispararse dos veces). Quedan, entre otros, los límites de «You can only Special Summon "X" once per turn» (el script los pone con una bandera, no con `SetCountLimit`), que no se confirman.
 
-**Lo que esta capa NO hace:** no dice **cuál** efecto tiene cada hecho (alinear cada frase del texto con cada efecto del script es el siguiente paso), no sabe cuántos cupos por nombre tiene una carta, ni desde qué zona se activa, ni qué evento lo
+**Lo que esta capa NO hace:** no dice **cuál** efecto tiene cada hecho (eso lo hace la capa 1b, abajo: alinear cada frase del texto con cada efecto del script), no sabe cuántos cupos por nombre tiene una carta, ni desde qué zona se activa, ni qué evento lo
 dispara; esos datos están en el script (`range`, `code`) pero sin segunda fuente que los confirme todavía. Y **nada de la app lo usa aún**: la capa 2 (el asistente de la mesa) es la que lo va a leer.
+
+## Capa 1b · Alinear cada frase del texto con su efecto del script
+
+**Idea:** la capa 1 dice hechos de la **carta entera**. Para que la mesa sepa «este efecto es rápido, aquel apunta, el otro se usa desde la mano» hace falta saber **qué frase del texto es qué efecto del script** (Gastón: «seguí con la alineación frase↔efecto»). La misma regla de oro: **sólo se alinea lo que las señales obligan**; ante la duda, la carta no se alinea y queda como estaba (hechos de la carta entera).
+
+**Dónde vive:** `src/app/card-effect-map.ts` (puro), `effectSentences` en `src/app/card-text.ts` (las oraciones del texto que son efectos), `origin` en `CardEffect` (`card-script-rules.ts`: un `Clone` comparte el origen de su original), `effectFactsOf` en `card-effect-facts.ts` (los hechos de **un** efecto del script), el mismo generador de la capa 1 (`npm run sync:effects` escribe también `src/data/card-effect-map.json`, 57 KB) y el lector `getCardEffectMap` en `src/app/card-effect-data.ts`.
+
+**Cómo se alinea:**
+1. **Las frases** (`effectSentences`): las oraciones que abren con una condición (`If …:`, `When …:`), con `During …:`, con `Once per turn:`, con `(Quick Effect):` o que empiezan con `You can` y llevan un `;`. Las reglas, los límites («You can only use each effect…») y los efectos continuos no cuentan. Cada una sabe cómo abre, dónde empieza en el texto y si lleva velocidad, costo, objetivo o «una vez por turno».
+2. **Los efectos** (`logicalEffects`): los efectos del script que se activan (rápidos, de disparo, de ignición), con sus **clones juntos**: `e2=e1:Clone()` que sólo cambia el rango o el evento es el mismo efecto (el texto lo dice una vez: «If this card is Normal or Special Summoned»). Los continuos, las reglas de invocación y las activaciones de Mágicas y Trampas no cuentan.
+3. **Cuatro señales** (`mismatches` cuenta cuántas contradice un par frase↔efecto): la **clase** (una frase que dice «(Quick Effect)» es un efecto rápido; un suceso —«is sent to the GY»— es un disparo o un rápido; un estado —«is in your GY», «you control»— es una ignición o un rápido; un «while …» agrega un estado a un suceso y no cuenta), el **costo** (si la frase paga algo antes del `;`, el efecto tiene `SetCost`), el **objetivo** (`target 1 …` ⇒ `EFFECT_FLAG_CARD_TARGET`) y el **«Once per turn:» de apertura** (⇒ `SetCountLimit`). Todo lo que la frase dice tiene que estar en el efecto, no al revés (el texto viejo no lleva «(Quick Effect)»).
+4. **La carta se alinea si, y sólo si:** tiene el **mismo número** de frases que de efectos, hay una forma de armar los pares **sin ninguna contradicción** y **todas las demás formas tienen al menos 2 contradicciones más**. Esa última condición (`MARGEN`) es lo que cuida la regla de oro: una alineación que se sostiene por **una sola** señal cambiaría si esa señal estuviera mal leída (las señales de la clase, el costo, el objetivo y el «una vez» se equivocan en 0,4 a 1,4 % de los pares seguros, ver abajo), así que no se publica.
+
+**Qué se guarda de cada efecto** (`verifiedEffects`; `[dónde empieza la frase, hechos, lugares]`): los **hechos** de la capa 1 (`EFFECT_FACT`) pero **por efecto** —lo que declara ese efecto del script **y** dice esa frase— y los **lugares** (`EFFECT_PLACE`: `hand`, `grave`) desde donde se activa —el `SetRange` del efecto y la frase que dice «this card is in your hand», «discard this card», «banish this card from your GY»…—. Una frase que habla de «cada efecto» («You can only use each effect of "X" once per turn») le da `once` y `hardOnce` a todas; un límite **compartido** («You can only use 1 of the following effects…») no es el de ningún efecto. Un bit apagado **no dice nada**.
+
+**Qué carta sale:** sólo las de **varios** efectos (para una de un solo efecto, los hechos de la carta entera ya son los de su efecto) y sólo monstruos con efecto (lo que se midió). El lector (`getCardEffectMap(id, texto)`) vuelve a leer las frases del texto que recibe y **no dice nada si ya no empiezan donde estaban** cuando se generó (el texto cambió): el orden no sería de fiar.
+
+**Medido contra el catálogo** (YGOPRODeck y los scripts del 2026-10-19: 8.559 monstruos con efecto en el script):
+
+| | Cartas |
+| --- | ---: |
+| Con efectos en el script **y** frases de efecto en el texto | 6.763 |
+| …con el mismo número de frases que de efectos | 6.362 |
+| …de las cuales con un solo efecto | 3.030 |
+| …con **varios** efectos (2 a 5) | 3.332 |
+| …**alineadas con certeza** (en `card-effect-map.json`: 2.967 efectos) | **1.471** |
+| Distinto número de frases que de efectos (no se alinea) | 401 |
+
+**Cómo se comprobó que no se equivoca:**
+- **Pares seguros** (una frase y un efecto: no hay con qué confundir): se midió con qué frecuencia cada señal es falsa para el par verdadero: la clase de disparo 7 de 1.675 (0,4 %), el costo 14 de 995 (1,4 %), el objetivo 5 de 969 (0,5 %), el «una vez» 3 de 372 (0,8 %), la clase rápida 1 de 234. Son raras pero existen (un costo que el script paga dentro de otra función, un `while` que se lee como estado): de ahí el margen de 2.
+- **Un oráculo independiente** que no se usa para alinear: de las frases alineadas que dicen que **esta carta** se activa desde la mano (435) o el Cementerio (255), el script de su efecto declara ese lugar en 682 de 690. Las 8 que no coinciden se revisaron a mano: **ninguna es una mala alineación**, son frases cuyo «this card» es el objeto de una acción y no el lugar de activación («banish this card from your Graveyard» como costo de un disparo, «Special Summon … with a Level lower than this card from your hand»).
+- Primera versión (sin margen, sólo «una sola forma posible»): 2.400 cartas con varios efectos; con el margen quedaron 1.471 (se pierden las que sólo se distinguían por una señal) y el oráculo no cambió.
+
+**Lo que esta capa NO hace:** no dice nada de las 401 cartas con distinto número de frases (efectos que el texto dice en una sola frase o que el script parte en dos, como `Kuriboh - Multiply!`), de las 1.861 con varios efectos que no se distinguen con certeza, ni de las cartas nuevas sin script. **Nada de la app lo lee todavía**: es la base del contador por efecto y de «podés responder con…» (capa 2).
 
 ## Capa 2 · Asistente de la mesa (empezada)
 
@@ -105,8 +140,8 @@ dispara; esos datos están en el script (`range`, `code`) pero sin segunda fuent
 **Por qué el aviso no dice «no podés»:** los hechos de la capa 1 son de la **carta entera**, no de cada efecto. Una carta con dos efectos de una vez por turno puede usar uno y después el otro, y la mesa no sabe cuál es cuál (el `activate` de la mesa tampoco dice qué efecto). Por eso avisa y deja decidir.
 
 **Lo que falta** (y qué hace falta para hacerlo con certeza):
-- **«Podés responder con…»** (resaltar las cartas que se pueden activar en respuesta cuando el rival pregunta «¿Hacés algo antes?»): hace falta saber **desde dónde** se activa cada efecto rápido (mano, campo, cementerio). Está en el script (`range`) pero sin segunda fuente que lo confirme; un efecto rápido sólo del campo no sirve desde la mano. Las Trampas y las Mágicas de Juego Rápido boca abajo sí se saben por su tipo.
-- **Contador por efecto** (cuál de los dos efectos se usó): hace falta **alinear cada frase del texto con cada efecto del script** y que la jugada `activate` diga cuál se activa.
+- **«Podés responder con…»** (resaltar las cartas que se pueden activar en respuesta cuando el rival pregunta «¿Hacés algo antes?»): hace falta saber **desde dónde** se activa cada efecto rápido (mano, campo, cementerio). La capa 1b ya lo confirma por efecto para la mano y el Cementerio (`EFFECT_PLACE`, en las 1.471 cartas alineadas); el campo y las cartas que no se alinean quedan sin confirmar, y un efecto rápido sólo del campo no sirve desde la mano. Las Trampas y las Mágicas de Juego Rápido boca abajo sí se saben por su tipo.
+- **Contador por efecto** (cuál de los dos efectos se usó): la alineación de la capa 1b ya dice qué frase es qué efecto y cuáles son de una vez por turno por nombre; falta que la jugada `activate` diga **cuál** efecto se activa (hoy sólo dice qué carta).
 - El aviso de **una Invocación de Péndulo por turno** y otras reglas de turno (no son de una carta, son del juego).
 
 ## Capas 3 y 4 (ideas, sin diseño todavía)
