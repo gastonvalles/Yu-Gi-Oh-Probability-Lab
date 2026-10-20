@@ -127,6 +127,25 @@ describe('la mesa de práctica', () => {
     expect(field.className).toContain("[grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck']")
   })
 
+  it('pasar el mouse por una carta de la mano o del campo la eleva un poco y enciende su borde en blanco, tenue; arrastrada o sin movimiento no se mueve', () => {
+    render(<Harness />)
+
+    // La de la mano sube 8 px y crece un 6 %, por delante de las vecinas (el abanico las encima).
+    const handCard = within(hand()).getByRole('listitem', { name: 'Ash Blossom' })
+    expect(handCard).toHaveClass('hover:-translate-y-2', 'hover:scale-[1.06]', 'hover:z-40!', '[box-shadow:var(--card-shadow)]')
+    expect(handCard.className).toContain('hover:[--card-shadow:0_10px_20px_rgba(0,0,0,0.5),0_0_0_1px_rgb(255_255_255/0.6),0_0_12px_rgb(255_255_255/0.2)]')
+    expect(handCard).toHaveClass('motion-reduce:hover:translate-y-0', 'motion-reduce:hover:scale-100', 'data-[state=dragging]:hover:translate-y-0', 'data-[state=dragging]:hover:scale-100')
+
+    // La del campo, lo justo para no salirse de su casilla.
+    tap(handCard)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+    const placed = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })
+    expect(placed).toHaveClass('hover:-translate-y-0.5', 'hover:scale-105', 'hover:z-10', '[box-shadow:var(--card-shadow)]')
+    expect(placed).toHaveClass('motion-reduce:hover:translate-y-0', 'motion-reduce:hover:scale-100', 'data-[dragging=true]:hover:translate-y-0', 'data-[dragging=true]:hover:scale-100')
+  })
+
   it('tocar una carta de la mano abre el menú, e invocarla la pone en la primera zona de monstruo', () => {
     render(<Harness />)
 

@@ -164,6 +164,24 @@ describe('la mesa del duelo', () => {
     expect(zone('Rival, Zona de monstruo 3').querySelector('[data-card-id]')).toBeNull()
   })
 
+  it('pasar el mouse por una carta del campo, propia o del rival, la eleva un poco y enciende su borde en blanco, tenue (el borde sale de --card-shadow, así un destaque de color no lo pisa)', () => {
+    const mine = play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
+    const theirs = play({ type: 'place', id: 'card-1001-1', zone: 'mz', index: 2, pos: 'atk' })
+    render(<DuelTable mine={side(mine)} theirs={side(theirs)} />)
+
+    for (const card of [zone('Zona de monstruo 1').querySelector('[data-card-id]'), zone('Rival, Zona de monstruo 3').querySelector('[data-rival-card-id]')]) {
+      // Sube lo justo (2 px, un poco más grande) y por delante de las vecinas.
+      expect(card).toHaveClass('hover:-translate-y-0.5', 'hover:scale-105', 'hover:z-10')
+      // El borde: un aro blanco al 60 % y un resplandor tenue, con la sombra que se agranda y baja.
+      expect(card!.className).toContain('hover:[--card-shadow:0_10px_20px_rgba(0,0,0,0.5),0_0_0_1px_rgb(255_255_255/0.6),0_0_12px_rgb(255_255_255/0.2)]')
+      expect(card).toHaveClass('[box-shadow:var(--card-shadow)]')
+      // Sin movimiento (preferencia del sistema) la carta no se mueve y queda sólo el borde.
+      expect(card).toHaveClass('motion-reduce:hover:translate-y-0', 'motion-reduce:hover:scale-100')
+      // Se mueve con `translate` y `scale` (no con `transform`: el de la rotación de una carta en defensa y los vuelos siguen igual), y lo anima.
+      expect(card!.className).toContain('translate_var(--motion-duration)')
+    }
+  })
+
   it('las pilas muestran su cantidad, con la carta de arriba en el cementerio y el dorso en el Banish boca abajo', () => {
     const cards = play(
       { type: 'move', id: 'card-1000-1', to: 'gy' },
