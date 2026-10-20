@@ -203,6 +203,29 @@ describe('la práctica integrada en la mesa', () => {
     expect(overlay?.parentElement).toContainElement(hand())
   })
 
+  it('en una pantalla angosta no hay panel de detalle: la carta se ve desde su menú', () => {
+    render(<Harness />)
+
+    expect(screen.queryByRole('region', { name: 'Detalle de la carta' })).not.toBeInTheDocument()
+  })
+
+  it('en pantalla ancha el detalle de la carta que se toca queda fijo a la izquierda de la mesa (como en un duelo)', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1440') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<Harness />)
+
+    // La columna está desde el principio (vacía hasta la primera carta): la mesa no se corre cuando se llena.
+    const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
+
+    expect(dock).toHaveTextContent('Tocá una carta para ver su detalle acá.')
+
+    tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
+    expect(within(dock).getByRole('heading', { name: 'Starter' })).toBeInTheDocument()
+    expect(dock).not.toHaveTextContent('Tocá una carta para ver su detalle acá.')
+
+    tap(within(hand()).getByRole('listitem', { name: 'Brick' }))
+    expect(within(dock).getByRole('heading', { name: 'Brick' })).toBeInTheDocument()
+  })
+
   it('las jugadas que no cambian la mano inicial no la vuelven a evaluar; robar la carta de ir 2º, sí', () => {
     render(<Harness />)
 
