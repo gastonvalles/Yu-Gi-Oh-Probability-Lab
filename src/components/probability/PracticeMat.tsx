@@ -110,6 +110,8 @@ const MOBILE_HAND_GAP = 14
 export interface DuelMatLink {
   /** Las áreas de la grilla con los dos campos. */
   areas: string
+  /** Las mismas áreas en un celular en vertical (menos de 640 px): cinco columnas y una fila de pilas por jugador. */
+  areasCompact: string
   /** Las casillas del rival (zonas, pilas y su Banish en el medio), ya con su `gridArea`. */
   opponent: ReactNode
   /** La carta del rival que ocupa, vista desde acá, la Zona Extra `index` (0 = izquierda); null si no hay. */
@@ -270,7 +272,7 @@ const cellLook = (look: string = CELL_LOOK) => [
  * La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. Son angostas (38 px en un celular chico): el área que se toca crece 4 px a cada lado
  * (`before`, justo hasta la casilla vecina, que está a 4 px) sin agrandar lo que se ve.
  */
-export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook()}`
+export const CELL = `aspect-[421/614] max-sm:w-[68.57%] max-sm:justify-self-center before:absolute before:-inset-1 ${cellLook()}`
 /**
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
@@ -1858,10 +1860,16 @@ export function PracticeMat({
           ref={setField}
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]', "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
+          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]', "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:grid-cols-[repeat(5,minmax(0,1fr))] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
+            // Las áreas: en la práctica, escritas acá; en un duelo las arma la pantalla (`duel.areas` y `duel.areasCompact`, por variables: el estilo en línea no se puede cambiar con un medio).
+            // En un celular en vertical (menos de 640 px) son cinco columnas y una fila de pilas abajo —el Extra Deck a la izquierda y el Deck a la derecha, en los extremos, la Zona de campo en el medio, el Banish a su izquierda y el Cementerio a su derecha—: las casillas pasan de 55 a 72 px.
+            duel
+              ? '[grid-template-areas:var(--areas)] max-sm:[grid-template-areas:var(--areas-compact)]'
+              : "[grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] max-sm:[grid-template-areas:'p1_emz1_p2_emz2_p3'_'m1_m2_m3_m4_m5'_'s1_s2_s3_s4_s5'_'extra_ban_fld_gy_deck']",
+          )}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null) } as CSSProperties) : undefined}
+          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null) } as CSSProperties) : undefined}
         >
           {/* La placa de la arena, debajo de todo el campo (decoración). */}
           <MatPlate />

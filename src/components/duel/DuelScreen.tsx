@@ -70,7 +70,7 @@ import { formatName } from './room-chips'
 import { DuelSiding } from './DuelSiding'
 import { SpectatorScreen } from './SpectatorScreen'
 import { TossOverlay } from './toss-views'
-import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
+import { DUEL_AREAS, DUEL_AREAS_COMPACT, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
 import { TurnDial } from './TurnDial'
 
 const NAME_KEY = 'ygo-lab:duel-name'
@@ -1874,6 +1874,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
 
       return {
       areas: DUEL_AREAS,
+      areasCompact: DUEL_AREAS_COMPACT,
       rivalHand,
       opponent: <SideCells side={opponent} owner="theirs" />,
       sharedZone: (index) => sharedZoneCard(opponent, index),
