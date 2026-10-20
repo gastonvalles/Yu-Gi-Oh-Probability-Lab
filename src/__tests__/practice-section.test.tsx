@@ -207,6 +207,8 @@ describe('la práctica integrada en la mesa', () => {
     render(<Harness />)
 
     expect(screen.queryByRole('region', { name: 'Detalle de la carta' })).not.toBeInTheDocument()
+    // La barra de arriba (turno, nueva mano, deshacer, guardar) queda en la primera columna: no hay otra.
+    expect(screen.getByRole('toolbar', { name: 'Mesa' })).not.toHaveClass('min-[1440px]:col-start-2')
   })
 
   it('en pantalla ancha el detalle de la carta que se toca queda fijo a la izquierda de la mesa (como en un duelo)', () => {
@@ -217,6 +219,8 @@ describe('la práctica integrada en la mesa', () => {
     const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
 
     expect(dock).toHaveTextContent('Tocá una carta para ver su detalle acá.')
+    // La barra de arriba va sobre la mesa (columna 2), no encima del detalle (columna 1): un día se la vio apilada sobre la carta.
+    expect(screen.getByRole('toolbar', { name: 'Mesa' })).toHaveClass('min-[1440px]:col-start-2')
 
     tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
     expect(within(dock).getByRole('heading', { name: 'Starter' })).toBeInTheDocument()

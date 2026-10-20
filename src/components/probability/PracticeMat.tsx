@@ -1703,7 +1703,8 @@ export function PracticeMat({
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
       {duel ? null : (
         // En un celular angosto los 7 botones (de 44 px) y el turno no entran en una fila: se achican (40 px hasta 419 px de ancho, 36 hasta 379 px) y, en uno muy chico (menos de 340 px), el turno se esconde.
-        <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 max-[419px]:gap-0.5 max-[419px]:px-1 max-[419px]:[&>button]:size-10! max-[379px]:[&>button]:size-9! min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+        // Con el detalle fijo a la izquierda (columna 1), la barra va arriba de la mesa (columna 2), no encima del detalle.
+        <div className={cx('col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 max-[419px]:gap-0.5 max-[419px]:px-1 max-[419px]:[&>button]:size-10! max-[379px]:[&>button]:size-9! min-[1101px]:px-4 min-[1101px]:pt-3', Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
           {onExit ? (
             <IconButton tone="flat" size="sm" aria-label={t('practice.mat.exit')} title={t('practice.mat.exit')} onClick={onExit}>
