@@ -230,6 +230,43 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(dock).getByRole('heading', { name: 'Brick' })).toBeInTheDocument()
   })
 
+  describe('el menú de una carta en escritorio', () => {
+    /** Escritorio (desde 1101 px) con o sin el detalle fijo a la izquierda (desde 1440 px). */
+    const desktop = (docked: boolean) => {
+      window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || (docked && query.includes('1440')) || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    }
+
+    it('con el detalle fijo a la izquierda no lleva «Ver carta» ni rasgos (ya está ahí); con menos ancho, «Ver carta» queda: es la forma de verlo', () => {
+      desktop(true)
+      const wide = render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
+      expect(screen.getByRole('menu', { name: 'Starter' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Ver carta' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('list', { name: 'Rasgos confirmados de los efectos' })).not.toBeInTheDocument()
+      wide.unmount()
+
+      desktop(false)
+      render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
+      expect(screen.getByRole('menuitem', { name: 'Ver carta' })).toBeInTheDocument()
+    })
+
+    it('una carta elegida en el visor del Deck también se muestra en el detalle fijo (sin «Ver carta» tiene que verse ahí)', () => {
+      desktop(true)
+      render(<Harness />)
+
+      const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
+
+      tap(screen.getByRole('button', { name: /^Main: \d+/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+      fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getAllByRole('button', { name: /Brick/ })[0]!)
+      expect(within(dock).getByRole('heading', { name: 'Brick' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Ver carta' })).not.toBeInTheDocument()
+    })
+  })
+
   it('las jugadas que no cambian la mano inicial no la vuelven a evaluar; robar la carta de ir 2º, sí', () => {
     render(<Harness />)
 

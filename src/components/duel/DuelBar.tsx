@@ -29,6 +29,7 @@ import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
 import type { FeedEntry } from './use-duel-feed'
 import { DuelGames, type GameActions } from './DuelGames'
+import { respondersText } from './PassPrompt'
 import { ResultStrip } from './DuelResult'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
 import { isEmojiSignal, isSignal } from '../../app/duel-signals'
@@ -103,6 +104,8 @@ export type LaneNotice =
   | { kind: 'undoResult'; result: 'denied' | 'expired' }
   | { kind: 'passAsking' }
   | { kind: 'passHeld' }
+  /** El rival activó una carta o un efecto y estas cartas mías podrían responder (`app/mat-responders.ts`: avisa, no decide). */
+  | { kind: 'chain'; card: string; names: readonly string[] }
 
 /**
  * Lo de arriba de la mesa en un duelo, que es lo del rival y lo que se mira sin tocar: sus puntos de vida, el reloj de la ronda (tocarlo lo pausa),
@@ -131,6 +134,8 @@ function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string):
       return t('duel.pass.asking', { name })
     case 'passHeld':
       return t('duel.pass.held', { name })
+    case 'chain':
+      return t('duel.chain.hint', { name, card: lane.card, cards: respondersText(lane.names) })
   }
 }
 

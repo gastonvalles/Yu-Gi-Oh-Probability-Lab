@@ -266,6 +266,8 @@ export interface EffectSentence {
   once: boolean
   /** Sólo en un efecto rápido: cuándo se activa sin que antes pase algo; null si lleva una condición o no se sabe. */
   window: EffectWindow | null
+  /** Sólo en un efecto rápido: a qué activación responde, si su condición es **sólo** esa; null si lleva otra condición o no se sabe. */
+  chain: EffectChain | null
 }
 
 /** Lo que queda del encabezado (lo de antes de los dos puntos) sin el límite de «Once per turn» ni la etiqueta de velocidad: la condición, si hay. */
@@ -296,6 +298,37 @@ function effectWindow(base: string): EffectWindow | null {
   const phases = match[2] === undefined ? null : (['draw', 'standby', 'main', 'battle', 'end'] as const).filter((phase) => new RegExp(`\\b${phase}\\b`, 'i').test(match[2]!))
 
   return { turn: owner === 'your opponent\'s' ? 'opponent' : owner === 'your' ? 'self' : 'any', phases }
+}
+
+/**
+ * A qué activación responde un efecto rápido cuya condición es **sólo** esa (`When your opponent activates a card or effect`, `When a monster effect is activated`, `When a Spell Card is activated`…): quién la activa
+ * (`opponent`: el rival de quien tiene la carta; `any`: cualquiera), qué se activa (`what`: cualquier carta, un monstruo, una Mágica, una Trampa o una Mágica o Trampa) y si es la carta que se pone boca arriba o su efecto
+ * (`via`). Con algo más en la condición (`that targets`, `while you control`, `on the field`, `that includes any of these effects`) no hay respuesta: no se sabe si se cumple.
+ */
+export interface EffectChain {
+  by: 'opponent' | 'any'
+  what: 'any' | 'monster' | 'spell' | 'trap' | 'spellTrap'
+  via: 'any' | 'card' | 'effect'
+}
+
+/** Lo que se activa, como lo dice el texto, con qué es y si es la carta o su efecto. */
+const CHAIN_ACTIVATED = [
+  ['card or effect', 'any', 'any'],
+  ['monster effect', 'monster', 'effect'],
+  ['Spell/Trap Card or effect', 'spellTrap', 'any'],
+  ['Spell Card', 'spell', 'card'],
+  ['Trap Card', 'trap', 'card'],
+  ['Spell/Trap Card', 'spellTrap', 'card'],
+] as const
+
+/** Cada condición posible entera (`^…$`): la que activa el rival y la que activa cualquiera. */
+const CHAIN_HEADERS: ReadonlyArray<{ pattern: RegExp; chain: EffectChain }> = CHAIN_ACTIVATED.flatMap(([phrase, what, via]) => [
+  { pattern: new RegExp(`^When your opponent activates an? ${phrase}$`, 'i'), chain: { by: 'opponent' as const, what, via } },
+  { pattern: new RegExp(`^When an? ${phrase} is activated$`, 'i'), chain: { by: 'any' as const, what, via } },
+])
+
+function effectChain(base: string): EffectChain | null {
+  return CHAIN_HEADERS.find(({ pattern }) => pattern.test(base))?.chain ?? null
 }
 
 /** Si `body` es un efecto que se activa y cómo abre; null si no lo es (una regla, un límite, una oración suelta). */
@@ -340,7 +373,7 @@ export function effectSentences(text: string): EffectSentence[] {
 
         const tones = new Set(segmentCardText(body).map((segment) => segment.tone))
 
-        out.push({ start: offset + bullet.length + start, text: body, opening, quick: opening === 'quick', cost: tones.has('cost'), target: tones.has('target'), once: ONCE_PER.test(body) || /\bonce per turn\b/i.test(body), window: opening === 'quick' ? effectWindow(headerBase(body.slice(0, topLevelIndex(body, ':')))) : null })
+        out.push({ start: offset + bullet.length + start, text: body, opening, quick: opening === 'quick', cost: tones.has('cost'), target: tones.has('target'), once: ONCE_PER.test(body) || /\bonce per turn\b/i.test(body), window: opening === 'quick' ? effectWindow(headerBase(body.slice(0, topLevelIndex(body, ':')))) : null, chain: opening === 'quick' ? effectChain(headerBase(body.slice(0, topLevelIndex(body, ':')))) : null })
       }
     }
 

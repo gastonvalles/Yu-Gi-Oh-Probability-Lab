@@ -37,6 +37,7 @@ export const duel: Translated<typeof es> = {
   'duel.pass.askWith': '{name} wants to move to the {phase}. You can respond with {cards}.',
   'duel.pass.askEndWith': '{name} wants to end their turn. You can respond with {cards}.',
   'duel.pass.cardsMore': '{list} and {count} more',
+  'duel.chain.hint': '{name} activated {card}. You can respond with {cards}.',
   'duel.pass.allow': 'Let it pass',
   'duel.pass.deny': 'Play first',
   'duel.pass.asking': 'You asked {name} if they have nothing else to do…',

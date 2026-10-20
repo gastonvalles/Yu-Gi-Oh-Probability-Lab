@@ -23,7 +23,7 @@ import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type Taken
 import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
 import type { CardTextHighlight } from '../../app/card-text'
-import { respondersOf, type Responder, type ResponderCard } from '../../app/mat-responders'
+import { respondersOf, type ChainEvent, type Responder, type ResponderCard } from '../../app/mat-responders'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { useChatSound } from '../../app/use-chat-sound'
 import { useDuelSounds } from '../../app/use-duel-sounds'
@@ -1281,6 +1281,94 @@ function useResponders(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, Ma
   )
 }
 
+/** Cuánto se queda el aviso de lo que se puede responder a lo que el rival activó. */
+const CHAIN_HINT_MS = 8000
+
+/**
+ * Lo que el rival acaba de **activar** (una Mágica o Trampa que dejó boca arriba, o el efecto de una carta) y mis cartas que podrían responderle (`respondersOf` con `ChainEvent`: además de lo que responde siempre, los efectos
+ * rápidos cuya condición es sólo esa activación): un aviso sobre la línea del registro y el brillo en la mesa un rato. Sólo si la carta es pública (la mostró al activarla) y se sabe qué clase es; lo que ya había al abrir la
+ * pantalla, o deshacer, no cuenta. El aviso se va solo, o cuando juego algo o el rival hace otra cosa. Avisa, no decide (como la pregunta de pasar de fase).
+ */
+function useChainHint(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): { card: string; responders: Responder[] } | null {
+  const { theirs, mine, me, starter, moves } = snapshot
+  const acts = theirs?.acts
+  const seen = useRef(acts?.length ?? 0)
+  // Cada pedido de la carta que se activó lleva su número: llega el último y los viejos se descartan.
+  const request = useRef(0)
+  const movesNow = useRef(moves)
+  const [loaded, setLoaded] = useState(false)
+  const [open, setOpen] = useState<{ name: string; event: ChainEvent; moves: number; acts: number } | null>(null)
+
+  useEffect(() => {
+    movesNow.current = moves
+  }, [moves])
+
+  useEffect(() => {
+    let alive = true
+
+    void loadCardEffectMap().then(() => {
+      if (alive) setLoaded(true)
+    })
+
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const before = seen.current
+
+    seen.current = acts?.length ?? 0
+
+    if (!theirs || !acts || acts.length !== before + 1) return
+
+    const action = acts[acts.length - 1]!
+    const { spotlight } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
+    // Sólo se sabe qué es si la mostró al activarla.
+    const real = spotlight?.kind === 'activate' && !isToken(spotlight.id) ? theirs.known[spotlight.id] : undefined
+    const passcode = real ? passcodeOfDrawId(real) : null
+    const id = (request.current += 1)
+
+    if (passcode === null) return
+
+    fetchCardsByIds([passcode])
+      .then((cards) => {
+        const api = cards[0]
+
+        if (id !== request.current || !api) return
+
+        const kind = cardKindOf(api)
+
+        setOpen({ name: api.name, event: { card: kind.monster ? 'monster' : kind.spell ? 'spell' : 'trap', via: action.type === 'activate' ? 'effect' : 'card' }, moves: movesNow.current, acts: acts.length })
+      })
+      .catch(() => {})
+  }, [acts, theirs])
+
+  useEffect(() => {
+    if (!open) return
+
+    const id = setTimeout(() => setOpen(null), CHAIN_HINT_MS)
+
+    return () => clearTimeout(id)
+  }, [open])
+
+  // Vale mientras no jugué nada ni el rival hizo otra cosa.
+  const active = open && open.moves === moves && open.acts === (acts?.length ?? 0) ? open : null
+
+  return useMemo(() => {
+    if (!active || !loaded || !mine || !theirs) return null
+
+    const turn = whoseTurn(me, mine, theirs.state, starter)
+    const phase = sharedPhase(turn, mine, theirs.state)
+
+    if (phase === undefined) return null
+
+    const responders = respondersOf(mine, phase, turn === 'mine', (id) => responderCard(cardsById.get(id)), active.event)
+
+    return responders.length > 0 ? { card: active.name, responders } : null
+  }, [active, loaded, mine, theirs, me, starter, cardsById])
+}
+
 /** Cuánto se queda el cartel del ataque del rival arriba de la mesa. */
 const ANNOUNCE_MS = 4000
 
@@ -1730,8 +1818,11 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const passHeld = usePassHeld(snapshot)
   // Las cartas mías que pueden responder cuando el rival pregunta si hacés algo antes: brillan en la mesa y el aviso las nombra.
   const responders = useResponders(snapshot, cardsById)
-  const respondIds = useMemo(() => new Set(responders.map((responder) => responder.id)), [responders])
+  // Y las que pueden responder a lo que el rival acaba de activar: el aviso sobre la línea del registro las nombra, y brillan igual.
+  const chain = useChainHint(snapshot, cardsById)
+  const respondIds = useMemo(() => new Set([...responders, ...(chain?.responders ?? [])].map((responder) => responder.id)), [responders, chain])
   const respondNames = useMemo(() => responders.flatMap((responder) => cardsById.get(responder.id)?.name ?? []), [responders, cardsById])
+  const chainNames = useMemo(() => chain?.responders.flatMap((responder) => cardsById.get(responder.id)?.name ?? []) ?? [], [chain, cardsById])
   // Pasar de fase le pregunta al rival si no va a hacer nada más: lo que se juega en el medio de la mesa va por `askPhase`; el resto, directo.
   const dispatch = useCallback((action: Parameters<Duel['play']>[0]) => (action.type === 'phase' ? duel.askPhase(action) : duel.play(action)), [duel])
   // El aviso de atención que se apoya sobre la línea del registro, uno a la vez y el más urgente primero: el pedido del rival de volver atrás (sin diálogo: no tapa la mesa), el tuyo, cómo terminó y, lo último, lo que está haciendo el rival (mira una pila, elige cómo jugar).
@@ -1747,10 +1838,12 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
               ? { kind: 'undoResult', result: undoResult.kind }
               : passHeld
                 ? { kind: 'passHeld' }
-                : snapshot.peerLook !== null
-                  ? { kind: 'looking', what: snapshot.peerLook }
-                  : null,
-    [snapshot.undo.asked, snapshot.undo.asking, snapshot.pass.asking, undoResult, passHeld, snapshot.peerLook, duel],
+                : chain
+                  ? { kind: 'chain', card: chain.card, names: chainNames }
+                  : snapshot.peerLook !== null
+                    ? { kind: 'looking', what: snapshot.peerLook }
+                    : null,
+    [snapshot.undo.asked, snapshot.undo.asking, snapshot.pass.asking, undoResult, passHeld, chain, chainNames, snapshot.peerLook, duel],
   )
   // La pregunta del rival de pasar de fase va en el medio de la pantalla (`PassPrompt`, que la pone la mesa encima del campo): es lo único que hay que contestar, así que no va arriba con los demás avisos.
   const passAsked = snapshot.pass.asked
@@ -1904,7 +1997,6 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         kicker={rivalName}
         title={markMenu?.place ?? ''}
         items={markItems}
-        ygoprodeckId={markedCard?.ygoprodeckId}
         onInspect={markMenu && markedDrawId !== undefined ? () => { setRivalInspected({ drawId: markedDrawId, rect: markMenu.rect }); setMarkMenu(null) } : undefined}
         onClose={() => setMarkMenu(null)}
       />

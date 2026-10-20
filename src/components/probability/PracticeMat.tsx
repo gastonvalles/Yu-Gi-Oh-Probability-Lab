@@ -2094,9 +2094,9 @@ export function PracticeMat({
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
-        ygoprodeckId={choosingEffect ? null : menuCard?.apiCard?.ygoprodeckId}
         wide={choosingEffect}
-        onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
+        onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
         passThrough={attackAsk !== null}
         onClose={() => setMenu(null)}
       />
@@ -2108,7 +2108,16 @@ export function PracticeMat({
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
         targeted={targetedIds}
-        onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
+        onPick={(id, rect) => {
+          // Elegir una carta del visor también la muestra en el detalle fijo de la izquierda (como tocar una de la mano o del campo).
+          if (onPeek) {
+            const { name, apiCard } = cardOf(id)
+
+            onPeek({ name, card: apiCard })
+          }
+
+          setMenu({ kind: 'card', id, rect })
+        }}
         onClose={closeViewer}
       />
 

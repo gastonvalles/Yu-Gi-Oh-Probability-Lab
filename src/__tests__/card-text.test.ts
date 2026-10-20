@@ -250,3 +250,40 @@ describe('effectParts: un efecto partido en cuándo y qué hace, textual', () =>
     expect(parts('If "Number 39: Utopia" is on the field: You can draw 1 card.')).toEqual({ when: 'If "Number 39: Utopia" is on the field', what: 'You can draw 1 card.' })
   })
 })
+
+describe('effectSentences: a qué activación responde un efecto rápido (chain)', () => {
+  const chainOf = (text: string) => effectSentences(text)[0]!.chain
+  const QUICK_TAIL = 'You can discard this card; negate that effect.'
+
+  it('«When your opponent activates a card or effect» y «When a card or effect is activated»: cualquier activación (la del rival, o de cualquiera)', () => {
+    expect(chainOf(`When your opponent activates a card or effect (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'opponent', what: 'any', via: 'any' })
+    expect(chainOf(`When a card or effect is activated (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'any', what: 'any', via: 'any' })
+  })
+
+  it('un efecto de monstruo, una Mágica, una Trampa o una Mágica o Trampa: lo que se activa y si es la carta o su efecto', () => {
+    expect(chainOf(`When your opponent activates a monster effect (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'opponent', what: 'monster', via: 'effect' })
+    expect(chainOf(`When a monster effect is activated (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'any', what: 'monster', via: 'effect' })
+    expect(chainOf(`When your opponent activates a Spell/Trap Card or effect (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'opponent', what: 'spellTrap', via: 'any' })
+    expect(chainOf(`When a Spell/Trap Card or effect is activated (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'any', what: 'spellTrap', via: 'any' })
+    expect(chainOf(`When your opponent activates a Spell Card (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'opponent', what: 'spell', via: 'card' })
+    expect(chainOf(`When a Trap Card is activated (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'any', what: 'trap', via: 'card' })
+    expect(chainOf(`When your opponent activates a Spell/Trap Card (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'opponent', what: 'spellTrap', via: 'card' })
+  })
+
+  it('con «Once per turn,» delante sigue siendo sólo esa condición', () => {
+    expect(chainOf(`Once per turn, when your opponent activates a card or effect (Quick Effect): ${QUICK_TAIL}`)).toEqual({ by: 'opponent', what: 'any', via: 'any' })
+  })
+
+  it('con otra condición («that targets», «while you control», «on the field», «that includes any of these effects») no hay respuesta: no se sabe si se cumple', () => {
+    expect(chainOf(`When your opponent activates a card or effect that targets this card (Quick Effect): ${QUICK_TAIL}`)).toBeNull()
+    expect(chainOf(`When your opponent activates a card or effect, while you control a WIND monster (Quick Effect): ${QUICK_TAIL}`)).toBeNull()
+    expect(chainOf(`When your opponent activates a monster effect on the field (Quick Effect): ${QUICK_TAIL}`)).toBeNull()
+    expect(chainOf(`When a card or effect is activated that includes any of these effects (Quick Effect): ${QUICK_TAIL}`)).toBeNull()
+  })
+
+  it('sin «(Quick Effect)» (no es rápido en el texto) o con una ventana sin condición, no hay', () => {
+    expect(chainOf(`When your opponent activates a card or effect: ${QUICK_TAIL}`)).toBeNull()
+    expect(chainOf(`(Quick Effect): ${QUICK_TAIL}`)).toBeNull()
+    expect(chainOf(`During your opponent's Main Phase (Quick Effect): ${QUICK_TAIL}`)).toBeNull()
+  })
+})

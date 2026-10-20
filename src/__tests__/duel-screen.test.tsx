@@ -2508,6 +2508,61 @@ describe('la pantalla del duelo', () => {
     }
   })
 
+  it('cuando el rival activa una carta, las cartas tuyas cuyo efecto rápido esperaba una activación brillan en ámbar y un aviso sobre la línea del registro las nombra, un rato; si jugás algo, se va', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    // Todas las cartas tienen un efecto rápido confirmado que se activa desde la mano y que espera que el rival active una carta o un efecto.
+    await loadCardEffectMap()
+    setCardEffectMapForTests(new Map([[2, [[0, EFFECT_FACT.quick | EFFECT_FACT.cost, EFFECT_PLACE.hand]]]]))
+
+    try {
+      const waiting = { ...effectMonster, ygoprodeckId: 2, description: 'When your opponent activates a card or effect (Quick Effect): You can discard this card; negate that effect.' } as unknown as ApiCardReference
+      const cards = new Map([...monsters].map(([id, entry]) => [id, { ...entry, apiCard: waiting }]))
+      const { host, guest } = startDuel({ cardsById: cards })
+      openTable(host, guest)
+      const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+      const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="respond"]').length
+
+      summonFirst(host)
+      flush()
+      // Invocar no es activar: no hay a qué responder.
+      await act(async () => {})
+      expect(lane(guest, 'chain')).toBeNull()
+      expect(glowing(guest)).toBe(0)
+
+      // Ana activa el efecto de su monstruo (y la carta pasa a ser pública): Beto puede responder con las cinco de su mano.
+      tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      flush()
+      await act(async () => {})
+      expect(lane(guest, 'chain')).toHaveTextContent(/^Ana activó Carta \d+\. Podés responder con Monstruo \d+, Monstruo \d+ y 3 más\./)
+      expect(glowing(guest)).toBe(5)
+      // Ana (quien activó) no recibe nada.
+      expect(lane(host, 'chain')).toBeNull()
+      expect(glowing(host)).toBe(0)
+
+      // Se va solo a los ocho segundos.
+      act(() => {
+        vi.advanceTimersByTime(8100)
+      })
+      expect(lane(guest, 'chain')).toBeNull()
+      expect(glowing(guest)).toBe(0)
+
+      // Otra activación y Beto juega algo (roba): la ventana se cierra.
+      tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      flush()
+      await act(async () => {})
+      expect(lane(guest, 'chain')).not.toBeNull()
+      tap(within(guest.container).getByRole('button', { name: /^Main: \d+/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+      flush()
+      expect(lane(guest, 'chain')).toBeNull()
+      expect(glowing(guest)).toBe(0)
+    } finally {
+      setCardEffectMapForTests(null)
+    }
+  })
+
   it('las fases son un solo botón en el centro del campo (la fase de ahora): al tocarlo muestra las seis y elegir una pasa a ella; sin el turno no abre', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
