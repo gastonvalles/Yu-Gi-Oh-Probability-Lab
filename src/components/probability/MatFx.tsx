@@ -42,6 +42,26 @@ export const FX_CARD = [
   'motion-reduce:data-[targeted=true]:[box-shadow:var(--card-shadow),0_0_0_2px_rgb(var(--fx-rgb)),0_0_18px_rgb(var(--fx-rgb)/0.7)]',
 ].join(' ')
 
+/**
+ * Pasar el mouse por una carta del duelo (Gastón, 2026-10-20: «al hacer hover sobre una carta en un duelo la misma debe tener el borde iluminado en blanco de forma tenue y debe elevarse un poco»):
+ * el borde se enciende en blanco, tenue, y la carta se eleva (sube un poco, crece apenas y su sombra se agranda y baja). El aro va por `--card-shadow`, la base de todos los aros de color
+ * (`FX_CARD`): una carta que destella, está marcada o tiene el menú abierto lleva el borde blanco debajo de su aro y no se pisan. `hover:` ya viene dentro de `@media (hover: hover)`: en el celular no queda pegado.
+ * Sin movimiento (`motion-reduce`) la carta no se mueve y queda sólo el borde. Arrastrada no se eleva. La carta del campo sube lo justo para no perderse de la casilla; la de la mano, más (`HAND_CARD_HOVER`).
+ * Las dos piden `--card-shadow` y una lista de transiciones con `translate` y `scale` (`CARD_TRANSITION`, completa: Tailwind sólo lee clases literales).
+ */
+const HOVER_RING = 'hover:[--card-shadow:0_10px_20px_rgba(0,0,0,0.5),0_0_0_1px_rgb(255_255_255/0.6),0_0_12px_rgb(255_255_255/0.2)]'
+const NO_LIFT = 'motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 data-[dragging=true]:hover:translate-y-0 data-[dragging=true]:hover:scale-100 data-[state=dragging]:hover:translate-y-0 data-[state=dragging]:hover:scale-100'
+
+export const CARD_HOVER = [HOVER_RING, 'hover:z-10 hover:-translate-y-0.5 hover:scale-105', NO_LIFT].join(' ')
+export const HAND_CARD_HOVER = [HOVER_RING, 'hover:z-40! hover:-translate-y-2 hover:scale-[1.06]', NO_LIFT].join(' ')
+
+/**
+ * Las transiciones de una carta de la mesa: el giro al cambiar de posición, el brillo, la sombra y, para elevarse, `translate` y `scale` (propiedades individuales: no pisan el `transform` de la rotación de una carta
+ * en defensa ni los vuelos). Quien sabe qué más anima (la mano tiene su propio ritmo) escribe la suya entera.
+ */
+export const CARD_TRANSITION =
+  '[transition:transform_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),translate_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),scale_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]'
+
 interface FxFrameProps {
   tone: FxTone
   /** La luz que le da la vuelta al marco (por defecto sí; las cartas que brillan por una regla sólo llevan el marco). */

@@ -22,7 +22,7 @@ import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from './MatFx'
+import { FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, fxVars } from './MatFx'
 import { CARD_BACK, GLOW_TONE } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
@@ -40,8 +40,11 @@ const HAND_CARD = [
   'pointer-events-auto absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden outline-none will-change-transform',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
   '[--card-shadow:0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
-  'shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
-  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  // La sombra sale de `--card-shadow`: así el borde blanco de pasar el mouse y los aros de color se suman sin pisarse.
+  '[box-shadow:var(--card-shadow)]',
+  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),translate_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),scale_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  // Pasar el mouse: se eleva y su borde se enciende en blanco, tenue.
+  HAND_CARD_HOVER,
   // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.
   '[&>:not([data-back])]:pointer-events-none [&>:not([data-back])]:[-webkit-user-drag:none]',
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover',

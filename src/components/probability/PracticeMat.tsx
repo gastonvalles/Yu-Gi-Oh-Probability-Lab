@@ -80,7 +80,7 @@ import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialo
 import { MatPlate, MatScene, PickMarks } from './MatArena'
 import { MatViewToggle } from './MatViewToggle'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
+import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
@@ -305,9 +305,11 @@ const MAT_CARD = [
   'block cursor-grab touch-none select-none overflow-hidden bg-input outline-none',
   '[-webkit-touch-callout:none] [-webkit-user-select:none] [&>*]:pointer-events-none [&_img]:[-webkit-user-drag:none]',
   '[--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
-  'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
-  // Al cambiar de posición la carta se acuesta (o se para) pasándose un poco y volviendo.
-  '[transition:transform_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  // La sombra sale de `--card-shadow`: así el borde blanco de pasar el mouse y los aros de color se suman sin pisarse.
+  '[box-shadow:var(--card-shadow)]',
+  // Al cambiar de posición la carta se acuesta (o se para) pasándose un poco y volviendo; al pasar el mouse se eleva.
+  CARD_TRANSITION,
+  CARD_HOVER,
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
