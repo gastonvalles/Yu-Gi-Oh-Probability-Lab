@@ -23,7 +23,7 @@ export function useLiveStreams(load: () => Promise<LiveStreams> = fetchLiveStrea
           if (!cancelled) setState({ status: 'ready', ...result })
         },
         () => {
-          if (!cancelled) setState((current) => (current.status === 'ready' ? { ...current, ok: false } : { status: 'ready', ok: false, checkedAt: '', streams: [] }))
+          if (!cancelled) setState((current) => (current.status === 'ready' ? { ...current, ok: false } : { status: 'ready', ok: false, checkedAt: '', streams: [], past: [] }))
         },
       )
     }

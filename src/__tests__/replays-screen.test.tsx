@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -250,6 +250,11 @@ const LIVE = {
     { id: 'c_qNh337rxA', channel: 'tcg', title: 'Yu-Gi-Oh! Championship Series - Houston, TX - Advanced ATTACK OF THE GIANT CARD!! - Day One', viewers: 1400 },
   ],
 }
+// Lo que ya terminó de transmitirse: torneos enteros, de cada canal.
+const PAST = [
+  { id: 'unumK2yU-ks', channel: 'tcg', title: 'Livestream | WORLD CHAMPIONSHIP 2026 | Day 3', duration: '5:42:32', published: 'Streamed 1d ago' },
+  { id: 'AAAAAAAAAA1', channel: 'eu', title: 'YCS Paris - Day 2', duration: '8:12:33', published: 'Streamed 3w ago' },
+]
 const stubLive = (body: unknown) => vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })))
 
 describe('las transmisiones en vivo', () => {
@@ -288,6 +293,49 @@ describe('las transmisiones en vivo', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /^Reproducir en vivo: / }))
 
     expect(dialog.querySelector('iframe')?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/NlQJc1ExxSA?autoplay=1&rel=0&playsinline=1')
+  })
+
+  it('debajo van las últimas que ya terminaron, con cuánto duran y cuándo fueron (en el idioma de quien mira), también si no hay nada al aire; se ven acá mismo', async () => {
+    stubLive({ ...LIVE, streams: [], past: PAST })
+    renderScreen()
+
+    const recent = within(await screen.findByRole('region', { name: 'Transmisiones recientes' }))
+
+    expect(screen.queryByText('En vivo ahora')).not.toBeInTheDocument()
+    expect(recent.getAllByRole('button', { name: /^Ver la transmisión: / }).map((button) => button.getAttribute('aria-label'))).toEqual(PAST.map((stream) => `Ver la transmisión: ${stream.title}`))
+    expect(recent.getByText('5:42:32')).toBeInTheDocument()
+    expect(recent.getByText('hace 1 día')).toBeInTheDocument()
+    expect(recent.getByText('hace 3 semanas')).toBeInTheDocument()
+    expect(recent.getAllByRole('button', { name: 'Ver' })).toHaveLength(2)
+
+    // Se mira acá mismo, sin la insignia de «en vivo», con el reproductor recién al reproducir y el link a YouTube.
+    fireEvent.click(recent.getAllByRole('button', { name: /^Ver la transmisión: / })[0]!)
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(within(dialog).getByText('Transmisión · Yu-Gi-Oh! TCG')).toBeInTheDocument()
+    expect(within(dialog).queryByText('En vivo')).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/5:42:32 · hace 1 día/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: /Ver en YouTube/ })).toHaveAttribute('href', 'https://www.youtube.com/watch?v=unumK2yU-ks')
+    expect(dialog.querySelector('iframe')).toBeNull()
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Reproducir: / }))
+    expect(dialog.querySelector('iframe')?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/unumK2yU-ks?autoplay=1&rel=0&playsinline=1')
+  })
+
+  it('lo que está al aire va primero y lo que ya terminó, debajo; sin nada de lo ya terminado no hay sección', async () => {
+    stubLive({ ...LIVE, past: PAST })
+    renderScreen()
+
+    const live = await screen.findByRole('region', { name: 'En vivo ahora' })
+    const recent = screen.getByRole('region', { name: 'Transmisiones recientes' })
+
+    expect(live.compareDocumentPosition(recent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    cleanup()
+    stubLive(LIVE)
+    renderScreen()
+    await screen.findByRole('region', { name: 'En vivo ahora' })
+    expect(screen.queryByRole('region', { name: 'Transmisiones recientes' })).not.toBeInTheDocument()
   })
 
   it('sin nada al aire no se dibuja nada (ni un aviso): no es un error', async () => {

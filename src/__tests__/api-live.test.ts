@@ -46,11 +46,27 @@ describe('GET /api/live', () => {
     expect(fetchMock.mock.calls.map(([url]) => url).sort()).toEqual(['https://www.youtube.com/@OfficialYuGiOhTCG/streams', 'https://www.youtube.com/@YuGiOhCardEU/streams'])
   })
 
+  it('trae también las últimas que ya terminaron de cada canal (con su duración y cuándo fue), aparte de lo que está al aire', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => (url.includes('OfficialYuGiOhTCG') ? respond(page([{ id: 'NlQJc1ExxSA', title: 'YCS Houston', watching: '100 watching' }])) : respond(page([])))),
+    )
+    const body = await (await GET(request())).json()
+
+    expect(body.streams.map((stream: { id: string }) => stream.id)).toEqual(['NlQJc1ExxSA'])
+    expect(body.past).toEqual([
+      { id: 'ZZZZZZZZZZ9', channel: 'tcg', title: 'Ya transmitido', duration: '1:00:00', published: 'Streamed 2 days ago' },
+      { id: 'ZZZZZZZZZZ9', channel: 'eu', title: 'Ya transmitido', duration: '1:00:00', published: 'Streamed 2 days ago' },
+    ])
+  })
+
   it('sin nada al aire dice ok con la lista vacía (no es un error)', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => respond(page([]))))
     const body = await (await GET(request())).json()
 
     expect(body).toMatchObject({ ok: true, streams: [] })
+    // Lo ya transmitido sigue ahí.
+    expect(body.past).toHaveLength(2)
   })
 
   it('si un canal no se puede leer (cookies, bloqueo, caída) lo dice con ok: false, sin tapar lo que sí se leyó, y se vuelve a intentar pronto', async () => {
@@ -71,7 +87,7 @@ describe('GET /api/live', () => {
     const response = await GET(request())
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ ok: false, streams: [] })
+    expect(await response.json()).toMatchObject({ ok: false, streams: [], past: [] })
   })
 
   it('rechaza los parámetros: cada valor distinto sería una copia nueva en el CDN y un pedido más a YouTube', async () => {

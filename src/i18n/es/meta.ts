@@ -211,6 +211,12 @@ export const meta = {
   'meta.live.watchLabel': 'Mirar en vivo: {title}',
   'meta.live.modal.kicker': 'En vivo · {channel}',
   'meta.live.modal.play': 'Reproducir en vivo: {title}',
+  'meta.live.past.title': 'Transmisiones recientes',
+  'meta.live.past.description': 'Lo último que terminó de transmitirse en los canales oficiales: torneos enteros, día por día.',
+  'meta.live.past.watch': 'Ver',
+  'meta.live.past.watchLabel': 'Ver la transmisión: {title}',
+  'meta.live.past.modal.kicker': 'Transmisión · {channel}',
+  'meta.live.past.modal.play': 'Reproducir: {title}',
   'meta.live.unavailable': 'No pude revisar las transmisiones en vivo ahora. Mirá los canales <tcg>{tcg}</tcg> y <eu>{eu}</eu> en YouTube.',
 
   // Comparar builds

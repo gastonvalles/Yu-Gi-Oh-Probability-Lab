@@ -214,6 +214,12 @@ export const meta: Translated<typeof es> = {
   'meta.live.watchLabel': 'Watch live: {title}',
   'meta.live.modal.kicker': 'Live · {channel}',
   'meta.live.modal.play': 'Play live: {title}',
+  'meta.live.past.title': 'Recent broadcasts',
+  'meta.live.past.description': 'The latest broadcasts that ended on the official channels: whole tournaments, day by day.',
+  'meta.live.past.watch': 'Watch',
+  'meta.live.past.watchLabel': 'Watch the broadcast: {title}',
+  'meta.live.past.modal.kicker': 'Broadcast · {channel}',
+  'meta.live.past.modal.play': 'Play: {title}',
   'meta.live.unavailable': "Couldn't check the live streams right now. Check the <tcg>{tcg}</tcg> and <eu>{eu}</eu> channels on YouTube.",
 
   // Comparar builds
