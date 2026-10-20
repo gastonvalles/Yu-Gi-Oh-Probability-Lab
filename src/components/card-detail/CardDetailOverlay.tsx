@@ -4,6 +4,7 @@ import type { ArtChoice } from '../../app/use-card-art-options'
 import type { CardNavigation } from '../../app/card-neighbors'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
+import { CardEffectText } from './CardEffectText'
 import { CardOverlay, CardPanelBody, CardPanelFooter, CardPanelHeader } from './CardOverlay'
 import { buildCardSummary } from './card-summary'
 
@@ -28,7 +29,7 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
     <CardOverlay ariaLabel={t('search.detail.aria', { name })} panelLabel={t('search.detail.panel')} name={name} card={card} origin={origin} initialArt={initialArt} navigation={navigation} onClose={onClose}>
       <CardPanelHeader title={name} lines={[summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : null, metadata]} />
       <CardPanelBody label={t('search.detail.effect')} className="text-lead">
-        <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{card?.description?.trim() || t('search.detail.noText')}</p>
+        <CardEffectText text={card?.description?.trim() || t('search.detail.noText')} />
       </CardPanelBody>
       {actions ? <CardPanelFooter>{actions}</CardPanelFooter> : null}
     </CardOverlay>

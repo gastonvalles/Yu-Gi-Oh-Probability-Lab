@@ -159,6 +159,12 @@ export const search = {
   'search.detail.panel': 'Texto de la carta',
   'search.detail.effect': 'Efecto',
   'search.detail.noText': 'Sin texto disponible.',
+  // Partes resaltadas del efecto (`CardEffectText`).
+  'search.cardText.condition': 'Condición: cuándo se activa',
+  'search.cardText.speed': 'Efecto rápido: se puede activar en respuesta',
+  'search.cardText.cost': 'Costo: lo que pagás al activarlo',
+  'search.cardText.target': 'Objetivo: a qué carta apunta',
+  'search.cardText.limit': 'Límite: cuántas veces se puede usar',
   'search.detail.previous': 'Carta anterior',
   'search.detail.next': 'Carta siguiente',
   'search.overlay.backToDetail': 'Volver al detalle',

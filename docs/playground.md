@@ -18,7 +18,7 @@ La regla de trabajo: **se prueba primero en el playground y recién después se 
 | Navegación | el menú lateral (abierto y contraído), la barra de arriba del celular, la barra de abajo con sus hojas, el cajón y el pie, y el armazón completo a pantalla completa | `components/shell/` |
 | Títulos | `Heading` (4 niveles), `StepHero`, `SectionHeader`, el encabezado de un `Modal` | `ui/Heading.tsx`, `ui/typography.ts` |
 | Tarjetas, avisos y campos | `Card`, `Callout`, `EmptyState`, `Skeleton`, campos, sombras | `ui/` y `ui/surfaces.ts` |
-| Datos | `ProgressRing`, `SegmentedRing`, `InfoTip` | `ui/` |
+| Datos | `ProgressRing`, `SegmentedRing`, `CardEffectText`, `InfoTip` | `ui/` (y `card-detail/` para `CardEffectText`) |
 | Duelo por enlace | los dos campos del duelo (el del rival espejado, las Zonas Extra compartidas) y tres formas de verlos en el celular | `duel/DuelTable.tsx` |
 | Diálogos y avisos | `Modal` en todos sus tamaños y los toasts | `ui/Modal.tsx`, `app/use-toast-message.ts` |
 | Íconos | todo el set en `linear` / `bulk` / `bold`, con buscador | `ICON_NAMES` (sale de `ui/Icon.tsx`: un ícono nuevo aparece solo) |

@@ -1,0 +1,143 @@
+import fc from 'fast-check'
+import { describe, expect, it } from 'vitest'
+
+import { segmentCardText, type TextTone } from '../app/card-text'
+
+/** Los pedazos marcados de un texto, como pares [tipo, texto]. */
+function marked(text: string): [TextTone, string][] {
+  return segmentCardText(text)
+    .filter((segment) => segment.tone !== 'plain')
+    .map((segment) => [segment.tone, segment.text])
+}
+
+describe('segmentCardText: lo que marca', () => {
+  it('condición, velocidad, costo, objetivo y límite de un efecto rápido', () => {
+    const text =
+      'When your opponent activates a card or effect (Quick Effect): You can discard this card, then target 1 monster your opponent controls; destroy it. You can only use this effect of "Ash Blossom" once per turn.'
+
+    expect(marked(text)).toEqual([
+      ['condition', 'When your opponent activates a card or effect'],
+      ['speed', '(Quick Effect)'],
+      ['cost', 'discard this card'],
+      ['target', 'target 1 monster your opponent controls'],
+      ['limit', 'You can only use this effect of "Ash Blossom" once per turn.'],
+    ])
+  })
+
+  it('«Once per turn» delante de los dos puntos es un límite, y lo que sigue puede ser la condición', () => {
+    expect(marked('Once per turn: You can draw 1 card.')).toEqual([['limit', 'Once per turn']])
+    expect(marked('Once per turn, during your Standby Phase: You can gain 500 LP.')).toEqual([
+      ['limit', 'Once per turn'],
+      ['condition', 'during your Standby Phase'],
+    ])
+    expect(marked('Once per turn (Quick Effect): You can negate it.')).toEqual([
+      ['limit', 'Once per turn'],
+      ['speed', '(Quick Effect)'],
+    ])
+    // Lo que sigue no abre una condición: sólo el límite.
+    expect(marked('Once per turn, you can either:\n● Draw 1 card.')).toEqual([['limit', 'Once per turn']])
+  })
+
+  it('un objetivo solo, y «You can» queda sin marcar', () => {
+    expect(marked('Target 1 face-up monster on the field; destroy it.')).toEqual([['target', 'Target 1 face-up monster on the field']])
+    expect(marked('If this card is Special Summoned: You can target 1 monster in your GY; add it to your hand.')).toEqual([
+      ['condition', 'If this card is Special Summoned'],
+      ['target', 'target 1 monster in your GY'],
+    ])
+  })
+
+  it('un costo con «to target»: el «to» no es parte del costo', () => {
+    expect(marked('You can banish this card from your GY to target 1 monster; Special Summon it.')).toEqual([
+      ['cost', 'banish this card from your GY'],
+      ['target', 'target 1 monster'],
+    ])
+  })
+
+  it('«FLIP:» es una condición y cada viñeta se lee por separado', () => {
+    expect(marked('FLIP: You can add 1 monster from your Deck to your hand.')).toEqual([['condition', 'FLIP']])
+    expect(marked('● If this card is Special Summoned from the GY: You can discard 1 card; draw 2 cards.\n● Once per turn: You can destroy 1 card.')).toEqual([
+      ['condition', 'If this card is Special Summoned from the GY'],
+      ['cost', 'discard 1 card'],
+      ['limit', 'Once per turn'],
+    ])
+  })
+
+  it('los dos puntos o el punto y coma entre comillas o paréntesis no cortan nada', () => {
+    expect(marked('If you control "Number 39: Utopia": You can destroy 1 card.')).toEqual([['condition', 'If you control "Number 39: Utopia"']])
+    expect(marked('Banish 1 card (this is a cost; it is not optional): draw 1 card.')).toEqual([])
+  })
+
+  it('los dos puntos que no abren una condición (una lista, un encabezado) no marcan nada', () => {
+    expect(marked('You can activate 1 of these effects:\n● Draw 1 card.\n● Destroy 1 card.')).toEqual([])
+    expect(marked('Effect: Discard 1 card; draw 1 card.')).toEqual([])
+  })
+
+  it('sin comillas ni paréntesis que cierren, no interpreta nada', () => {
+    expect(marked('If you control "Number 39: Utopia: You can destroy 1 card; draw 1 card.')).toEqual([])
+    expect(marked('If this card (is destroyed: You can discard 1 card; draw 1 card.')).toEqual([])
+  })
+
+  it('la letra suelta, el flavor y las oraciones sin plantilla quedan sin marcar', () => {
+    expect(marked('This card gains 500 ATK for each monster you control.')).toEqual([])
+    expect(marked("''Imprisoned after a showdown, this master schemer escaped: and then he returned; nobody knows why.''")).toEqual([])
+    expect(marked('Each time a monster is Tributed, you can Tribute 1 monster; draw 1 card.')).toEqual([])
+    expect(marked('')).toEqual([])
+  })
+
+  it('los verbos de costo sólo cuentan al frente: «Draw 1 card, then discard 1 card;» no es un costo', () => {
+    expect(marked('When this card is Normal Summoned: Draw 1 card, then discard 1 card; gain 500 LP.')).toEqual([['condition', 'When this card is Normal Summoned']])
+  })
+
+  it('un texto de monstruo con su ficha de materiales, línea por línea', () => {
+    const text = '2 Level 4 monsters\r\nIf this card is Xyz Summoned: You can detach 1 material from this card; add 1 monster from your Deck to your hand.'
+
+    expect(marked(text)).toEqual([
+      ['condition', 'If this card is Xyz Summoned'],
+      ['cost', 'detach 1 material from this card'],
+    ])
+  })
+})
+
+describe('segmentCardText: garantías', () => {
+  const PIECES = [
+    'If ', 'When ', 'During ', 'Once per turn', ', ', ': ', '; ', '. ', ' ', '\r\n', '\n', '● ', '"', '(', ')', '(Quick Effect)', 'You can ', 'You can only ', 'target ', 'Target ', 'discard ', 'Tribute ',
+    '1 monster', 'this card', 'then ', ' to ', ' and ', 'FLIP', 'Number 39: Utopia', 'a', 'é', "''",
+  ]
+
+  it('los pedazos, pegados, dan exactamente el texto; ninguno está vacío y dos vecinos nunca repiten tipo', () => {
+    fc.assert(
+      fc.property(fc.array(fc.constantFrom(...PIECES), { maxLength: 40 }), (parts) => {
+        const text = parts.join('')
+        const segments = segmentCardText(text)
+
+        expect(segments.map((segment) => segment.text).join('')).toBe(text)
+        expect(segments.every((segment) => segment.text !== '')).toBe(true)
+        expect(segments.every((segment, index) => index === 0 || segments[index - 1]!.tone !== segment.tone)).toBe(true)
+      }),
+      { numRuns: 400 },
+    )
+  })
+
+  it('con cualquier cadena (no sólo la gramática) cumple lo mismo', () => {
+    fc.assert(
+      fc.property(fc.string({ maxLength: 120 }), (text) => {
+        expect(segmentCardText(text).map((segment) => segment.text).join('')).toBe(text)
+      }),
+      { numRuns: 300 },
+    )
+  })
+
+  it('un cost, un target, una condición o una velocidad nunca llevan espacios de borde ni el signo que los cierra', () => {
+    fc.assert(
+      fc.property(fc.array(fc.constantFrom(...PIECES), { maxLength: 40 }), (parts) => {
+        for (const segment of segmentCardText(parts.join(''))) {
+          if (segment.tone === 'cost' || segment.tone === 'target' || segment.tone === 'condition') {
+            expect(segment.text).toBe(segment.text.trim())
+            expect(segment.text.endsWith(';') || segment.text.endsWith(':')).toBe(false)
+          }
+        }
+      }),
+      { numRuns: 400 },
+    )
+  })
+})
