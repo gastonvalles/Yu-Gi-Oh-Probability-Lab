@@ -20,7 +20,9 @@ import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
-import { createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
+import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
+import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
+import { respondersOf, type Responder, type ResponderCard } from '../../app/mat-responders'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { useChatSound } from '../../app/use-chat-sound'
 import { useDuelSounds } from '../../app/use-duel-sounds'
@@ -1237,6 +1239,46 @@ function useGameToasts(snapshot: DuelSnapshot, myName: string) {
   }, [outcome, rps.mine, rps.theirs])
 }
 
+/** Lo que la mesa sabe de una carta mía para ver si puede responder: de qué clase es y sus efectos confirmados (sin los datos del catálogo, nada). */
+function responderCard(card: MatCard | undefined): ResponderCard | null {
+  const api = card?.apiCard
+
+  if (!api) return null
+
+  return { kind: cardKindOf(api), quickPlay: (api.race ?? '').toLowerCase() === 'quick-play', effects: getCardEffectMap(api.ygoprodeckId, api.description ?? '') }
+}
+
+/**
+ * Mis cartas que pueden responder mientras el rival pregunta si hacés algo antes de pasar de fase (`app/mat-responders.ts`: avisa, no decide). Sólo con la pregunta en pie; sin ella, ninguna. Los efectos
+ * confirmados de cada carta (un archivo aparte) se bajan al abrir la mesa, así ya están cuando llega la pregunta.
+ */
+function useResponders(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): Responder[] {
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+
+    void loadCardEffectMap().then(() => {
+      if (alive) setLoaded(true)
+    })
+
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const asked = snapshot.pass.asked !== null
+  // Quien pregunta es quien tiene el turno: la fase en que va es la suya.
+  const phase = snapshot.theirs?.state.phase
+
+  return useMemo(
+    () => (asked && phase !== undefined && snapshot.mine !== null ? respondersOf(snapshot.mine, phase, false, (id) => responderCard(cardsById.get(id))) : []),
+    // `loaded`: cuando llegan los datos, se vuelve a mirar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [asked, phase, snapshot.mine, cardsById, loaded],
+  )
+}
+
 /** Cuánto se queda el cartel del ataque del rival arriba de la mesa. */
 const ANNOUNCE_MS = 4000
 
@@ -1682,6 +1724,10 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const undoResult = useUndoResult(snapshot)
   const passHeld = usePassHeld(snapshot)
+  // Las cartas mías que pueden responder cuando el rival pregunta si hacés algo antes: brillan en la mesa y el aviso las nombra.
+  const responders = useResponders(snapshot, cardsById)
+  const respondIds = useMemo(() => new Set(responders.map((responder) => responder.id)), [responders])
+  const respondNames = useMemo(() => responders.flatMap((responder) => cardsById.get(responder.id)?.name ?? []), [responders, cardsById])
   // Pasar de fase le pregunta al rival si no va a hacer nada más: lo que se juega en el medio de la mesa va por `askPhase`; el resto, directo.
   const dispatch = useCallback((action: Parameters<Duel['play']>[0]) => (action.type === 'phase' ? duel.askPhase(action) : duel.play(action)), [duel])
   // El aviso de atención que se apoya sobre la línea del registro, uno a la vez y el más urgente primero: el permiso que el rival pide (sin diálogo: no tapa la mesa), el tuyo, cómo terminó y, lo último, lo que está haciendo el rival (mira una pila, elige cómo jugar).
@@ -1690,7 +1736,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       snapshot.undo.asked
         ? { kind: 'undoAsked', onAllow: () => duel.answerUndo(true), onDeny: () => duel.answerUndo(false) }
         : snapshot.pass.asked
-          ? { kind: 'passAsked', phase: snapshot.pass.asked.phase, endsTurn: snapshot.pass.asked.endsTurn, onAllow: () => duel.answerPhase(true), onDeny: () => duel.answerPhase(false) }
+          ? { kind: 'passAsked', phase: snapshot.pass.asked.phase, endsTurn: snapshot.pass.asked.endsTurn, responders: respondNames, onAllow: () => duel.answerPhase(true), onDeny: () => duel.answerPhase(false) }
           : snapshot.undo.asking
             ? { kind: 'undoAsking' }
             : snapshot.pass.asking
@@ -1702,7 +1748,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
                   : snapshot.peerLook !== null
                     ? { kind: 'looking', what: snapshot.peerLook }
                     : null,
-    [snapshot.undo.asked, snapshot.undo.asking, snapshot.pass.asked, snapshot.pass.asking, undoResult, passHeld, snapshot.peerLook, duel],
+    [snapshot.undo.asked, snapshot.undo.asking, snapshot.pass.asked, snapshot.pass.asking, undoResult, passHeld, snapshot.peerLook, duel, respondNames],
   )
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
@@ -1732,6 +1778,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       announcement,
       rivalEffect,
       marksOnMine: snapshot.marks.mine,
+      respond: respondIds,
       pointed: pointed.mine,
       point: (id: string) => duel.ping({ card: id }, 'mine'),
       rivalShuffle,
@@ -1766,7 +1813,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} lane={lane} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, peek, wide],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, peek, wide, respondIds],
   )
 
   const markTarget = markMenu?.target

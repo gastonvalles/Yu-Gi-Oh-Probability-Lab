@@ -19,11 +19,11 @@ import {
 import type { SpotlightKind } from '../../app/mat-effects'
 import { useElementWidth } from '../../app/use-element-width'
 import { t } from '../../i18n'
-import type { ApiCardReference, PatternKind } from '../../types'
+import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from './MatFx'
-import { CARD_BACK } from './practice-styles'
+import { CARD_BACK, GLOW_TONE } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
 const TOP_ROOM = 8
@@ -49,8 +49,8 @@ const HAND_CARD = [
   'data-[state=dragging]:[transition:filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
   'data-[muted=true]:grayscale data-[muted=true]:brightness-70',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
-  // Salidas en verde, problemas en rojo.
-  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
+  // Salidas en verde, problemas en rojo, y en un duelo las cartas que pueden responder en ámbar.
+  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)] data-[glow-kind=respond]:[--glow-rgb:var(--warning-rgb)]!',
   'data-[glow=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
   // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
   FX_CARD,
@@ -71,7 +71,7 @@ interface PracticeHandProps {
   fanDegrees: number
   highlighted: ReadonlySet<string>
   /** Tipo de la regla que ilumina las cartas: las salidas brillan en verde y los problemas en rojo. */
-  highlightKind: PatternKind | null
+  highlightKind: GlowKind | null
   /** Mano no jugable: las cartas se ven grises. */
   muted: boolean
   /** Carta que acaba de destacarse (destella), una clave que cambia en cada destaque y para qué fue. */
@@ -138,7 +138,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
   layoutRef.current = layout
 
   const ids = cards.map((card) => card.id)
-  const hasHighlight = highlighted.size > 0
+  // Las que brillan por una salida o un problema oscurecen al resto de la mano; las que pueden responder, no (la mano sigue a la vista).
+  const hasHighlight = highlighted.size > 0 && highlightKind !== 'respond'
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>, id: string) => {
     if (event.button !== 0 || !containerRef.current) {
@@ -357,7 +358,7 @@ interface HandCardProps {
   zIndex: number
   state: 'rest' | 'dragging'
   glow: boolean
-  glowKind: PatternKind | null
+  glowKind: GlowKind | null
   muted: boolean
   dim: boolean
   flash: { key: number; kind: SpotlightKind } | null
@@ -499,7 +500,7 @@ function HandCard({
       />
       <div ref={backRef} data-back className={CARD_BACK} aria-hidden="true" />
       {selected ? <FxFrame tone="cyan" /> : null}
-      {glow ? <FxFrame tone={glowKind === 'problem' ? 'red' : 'green'} orbit={false} /> : null}
+      {glow ? <FxFrame tone={GLOW_TONE[glowKind ?? 'opening']} orbit={false} /> : null}
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}
     </div>

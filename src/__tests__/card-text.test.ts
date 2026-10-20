@@ -187,4 +187,29 @@ describe('effectSentences: las oraciones del texto que son efectos que se activa
     expect([target?.quick, target?.cost, target?.target]).toEqual([false, false, true])
     expect(once?.once).toBe(true)
   })
+
+  describe('la ventana de un efecto rápido: cuándo se activa sin que antes pase algo', () => {
+    const windowOf = (header: string) => effectSentences(`${header}: You can discard this card; draw 1 card.`)[0]?.window
+
+    it('sin condición: la etiqueta sola, con «Once per turn» o con «During…» de un turno o de fases', () => {
+      expect(windowOf('(Quick Effect)')).toEqual({ turn: 'any', phases: null })
+      expect(windowOf('Once per turn (Quick Effect)')).toEqual({ turn: 'any', phases: null })
+      expect(windowOf("During your opponent's turn (Quick Effect)")).toEqual({ turn: 'opponent', phases: null })
+      expect(windowOf("During your opponent's Main Phase (Quick Effect)")).toEqual({ turn: 'opponent', phases: ['main'] })
+      expect(windowOf('During the Main or Battle Phase (Quick Effect)')).toEqual({ turn: 'any', phases: ['main', 'battle'] })
+      expect(windowOf("Once per turn, during either player's turn (Quick Effect)")).toEqual({ turn: 'any', phases: null })
+      expect(windowOf('During your Main Phase (Quick Effect)')).toEqual({ turn: 'self', phases: ['main'] })
+    })
+
+    it('con una condición, o con algo que no se sabe leer, no hay ventana', () => {
+      expect(windowOf('When a card or effect is activated (Quick Effect)')).toBeNull()
+      expect(windowOf('During the Battle Phase, if your monster attacked (Quick Effect)')).toBeNull()
+      expect(windowOf('If you control a "Blue-Eyes" monster (Quick Effect)')).toBeNull()
+      expect(windowOf('During the Damage Step (Quick Effect)')).toBeNull()
+    })
+
+    it('un efecto que no es rápido no lleva ventana', () => {
+      expect(effectSentences('If this card is sent to the GY: You can draw 1 card.')[0]?.window).toBeNull()
+    })
+  })
 })

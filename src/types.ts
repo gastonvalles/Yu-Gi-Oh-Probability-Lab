@@ -22,6 +22,8 @@ export type GroupKey =
 export type CardGroupKey = GroupKey
 export type CardAttribute = 'DARK' | 'DIVINE' | 'EARTH' | 'FIRE' | 'LIGHT' | 'WATER' | 'WIND'
 export type PatternKind = 'opening' | 'problem'
+/** Por qué brilla una carta de la mesa: una salida o un problema de la mano (Lab) o, en un duelo, que puede responder (`respond`). */
+export type GlowKind = PatternKind | 'respond'
 export type PatternLogic = 'all' | 'any'
 export type ReusePolicy = 'allow' | 'forbid'
 export type TurnContext = 'first' | 'second' | 'either'

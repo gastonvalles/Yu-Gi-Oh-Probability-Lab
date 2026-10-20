@@ -57,7 +57,7 @@ import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
 import { t } from '../../i18n'
-import type { ApiCardReference, PatternKind } from '../../types'
+import type { ApiCardReference, GlowKind, PatternKind } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
@@ -80,7 +80,7 @@ import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { PileStack } from './PileStack'
-import { CARD_BACK, CARD_BACK_URL } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL, GLOW_TONE } from './practice-styles'
 
 export interface MatCard {
   name: string
@@ -143,6 +143,8 @@ export interface DuelMatLink {
   rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
+  /** Mis cartas que pueden responder ahora (el rival preguntó si hacés algo antes de pasar de fase): brillan en ámbar, y la casilla del cementerio lleva un aro si hay una adentro. */
+  respond?: ReadonlySet<string>
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
   /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
@@ -285,7 +287,7 @@ const MAT_CARD = [
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
-  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
+  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)] data-[glow-kind=respond]:[--glow-rgb:var(--warning-rgb)]!',
   'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
   // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
   FX_CARD,
@@ -1433,6 +1435,10 @@ export function PracticeMat({
   const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
   // Las cartas con la mira: las que marqué yo y las que marcó el rival (de las pilas enteras y de la mano, también se marca lo de adentro).
   const rivalMarks = duel?.marksOnMine
+  // Las cartas que brillan: cuando el rival pregunta si hacés algo antes, las que pueden responder (ámbar); si no, las de la salida o el problema del Lab.
+  const responders = duel?.respond
+  const glowing = responders && responders.size > 0 ? responders : highlighted
+  const glowKind: GlowKind | null = responders && responders.size > 0 ? 'respond' : highlightKind
   const targetedIds = useMemo(() => new Set([...state.targeted, ...(rivalMarks?.cards ?? [])]), [state.targeted, rivalMarks])
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
   // En el celular la hoja tapa la mano: una carta de la mano no se levanta (quedaba encima de los botones); la del campo sí lleva el marco.
@@ -1479,9 +1485,9 @@ export function PracticeMat({
             pending={waiting !== null}
             dragging={drag?.source.id === shown.id}
             flash={flash?.id === shown.id ? flash : null}
-            glow={highlighted.has(shown.id)}
-            glowKind={highlightKind}
-            dim={highlighted.size > 0 && !highlighted.has(shown.id)}
+            glow={glowing.has(shown.id)}
+            glowKind={glowKind}
+            dim={glowKind !== 'respond' && glowing.size > 0 && !glowing.has(shown.id)}
             chosen={chosen ? chosenLabel : null}
             targeted={targetedIds.has(shown.id)}
             selected={selectedId === shown.id}
@@ -1514,6 +1520,7 @@ export function PracticeMat({
         data-drop={pile}
         data-over="false"
         data-targeted={marked ? 'true' : 'false'}
+        data-respond={pile === 'gy' && state.gy.some((id) => responders?.has(id)) ? 'true' : undefined}
         data-pointed={duel?.pointed?.pile === pile ? 'true' : undefined}
         // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
         className={cx(CELL, 'cursor-pointer rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
@@ -1870,8 +1877,8 @@ export function PracticeMat({
             sizeSlots={Math.max(session.initial.hand.length, 1)}
             maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
-            highlighted={highlighted}
-            highlightKind={highlightKind}
+            highlighted={glowing}
+            highlightKind={glowKind}
             muted={muted}
             flash={flash}
             targeted={targetedIds}
@@ -2118,7 +2125,7 @@ interface PlacedCardProps {
   /** El destaque en curso (activar, mostrar, declarar o marcar como objetivo), con su clave; null = quieta. */
   flash: { key: number; kind: SpotlightKind } | null
   glow: boolean
-  glowKind: PatternKind | null
+  glowKind: GlowKind | null
   dim: boolean
   /** Elegida como Sacrificio o como material (la etiqueta que lleva), o null. */
   chosen: string | null
@@ -2194,7 +2201,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
       {placed.materials.length > 0 ? <span key={placed.materials.length} className="absolute bottom-0.5 right-0.5 z-2 animate-pop rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground motion-reduce:animate-none">+{placed.materials.length}</span> : null}
       {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
       {framed ? <FxFrame tone="cyan" /> : null}
-      {glow ? <FxFrame tone={glowKind === 'problem' ? 'red' : 'green'} orbit={false} /> : null}
+      {glow ? <FxFrame tone={GLOW_TONE[glowKind ?? 'opening']} orbit={false} /> : null}
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}
     </div>

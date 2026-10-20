@@ -58,7 +58,10 @@ async function main() {
         if (/Monster/.test(card.type) && !(/Normal/.test(card.type) && !/Effect/.test(card.type))) {
           const effects = verifiedEffects(lua, card.desc)
 
-          if (effects !== null) effectMap.set(id, effects.map(({ start, facts, places }) => [start, facts, places]))
+          // Las de varios efectos siempre; las de uno solo (los hechos de la carta entera ya son los de su efecto) sólo si es rápido: de ahí sale desde dónde se puede responder.
+          if (effects !== null && (effects.length >= 2 || effects.some((effect) => effect.facts & EFFECT_FACT.quick))) {
+            effectMap.set(id, effects.map(({ start, facts, places }) => [start, facts, places]))
+          }
         }
 
         withScript += 1
@@ -90,7 +93,7 @@ async function main() {
     const mapLines = [...effectMap].sort((left, right) => left[0] - right[0]).map(([id, effects]) => `    "${id}": ${JSON.stringify(effects)}`)
 
     writeFileSync(MAP_OUTPUT_PATH, `{\n  "scripts": ${JSON.stringify(scripts.commit)},\n  "cards": {\n${mapLines.join(',\n')}\n  }\n}\n`)
-    console.log(`${effectMap.size} cartas con varios efectos alineados con certeza frase por frase (${MAP_OUTPUT_PATH}).`)
+    console.log(`${effectMap.size} cartas alineadas con certeza frase por frase: las de varios efectos y las de uno solo rápido (${MAP_OUTPUT_PATH}).`)
     console.table(stats)
   } finally {
     await engine.close()

@@ -1,3 +1,5 @@
+import type { GlowKind } from '../../types'
+
 /**
  * Colores de los efectos de la mesa, como `r g b` para `rgb(var(--fx-rgb) / alfa)`: dorado para activar y para la Invocación Normal,
  * celeste para lo que se muestra y la Invocación Especial, rojo para el objetivo, violeta para declarar, la Fusión y el cementerio.
@@ -15,6 +17,9 @@ export const FX_RGB = {
 } as const
 
 export type FxTone = keyof typeof FX_RGB
+
+/** El color del marco de una carta que brilla: una salida en verde, un problema en rojo y, en un duelo, una carta que puede responder en ámbar (el color del efecto rápido). */
+export const GLOW_TONE = { opening: 'green', problem: 'red', respond: 'amber' } as const satisfies Record<GlowKind, FxTone>
 
 /** Color de una salida (verde) o de un problema (rojo): lo heredan los botones y la explicación. */
 export const RULE_COLOR = {

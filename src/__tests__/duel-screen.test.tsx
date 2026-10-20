@@ -7,7 +7,9 @@ import { Provider } from 'react-redux'
 import { toast } from 'react-hot-toast'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { loadCardEffects } from '../app/card-effect-data'
+import { loadCardEffectMap, loadCardEffects, setCardEffectMapForTests } from '../app/card-effect-data'
+import { EFFECT_FACT } from '../app/card-effect-facts'
+import { EFFECT_PLACE } from '../app/card-effect-map'
 import CARD_EFFECTS from '../data/card-effects.json'
 import { extractRoomCode } from '../app/duel-link'
 import { readPlayReturn } from '../app/play-return'
@@ -2466,6 +2468,38 @@ describe('la pantalla del duelo', () => {
     expect(chip(host)).toHaveAccessibleName(/Battle Phase/)
     expect(chip(guest)).toHaveAccessibleName(/Battle Phase/)
     expect(lane(host, 'passAsking')).toBeNull()
+  })
+
+  it('cuando el rival pregunta si hacés algo antes, las cartas tuyas que pueden responder brillan en ámbar y el aviso las nombra; sin la pregunta, nada brilla', async () => {
+    // Todas las cartas de Beto tienen un efecto rápido confirmado que se activa desde la mano y sin condición.
+    await loadCardEffectMap()
+    setCardEffectMapForTests(new Map([[2, [[0, EFFECT_FACT.quick | EFFECT_FACT.cost, EFFECT_PLACE.hand]]]]))
+
+    try {
+      const quickMonster = { ...effectMonster, ygoprodeckId: 2, description: '(Quick Effect): You can discard this card; draw 1 card.' } as unknown as ApiCardReference
+      const quick = new Map([...monsters].map(([id, entry]) => [id, { ...entry, apiCard: quickMonster }]))
+      const { host, guest } = startDuel({ cardsById: quick })
+      openTable(host, guest)
+      const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+      const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="respond"]').length
+
+      expect(glowing(guest)).toBe(0)
+
+      fireEvent.click(phaseChip(host))
+      fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
+      flush()
+      // La mano de Beto (cinco cartas distintas por nombre) brilla y el aviso nombra a dos y «y 3 más».
+      expect(lane(guest, 'passAsked')).toHaveTextContent(/^Ana quiere pasar a la Battle Phase\. Podés responder con Monstruo \d+, Monstruo \d+ y 3 más\./)
+      expect(glowing(guest)).toBe(5)
+      // Ana no recibe la pregunta: no se le resalta nada.
+      expect(glowing(host)).toBe(0)
+
+      fireEvent.click(within(lane(guest, 'passAsked')!).getByRole('button', { name: 'Dejar pasar' }))
+      flush()
+      expect(glowing(guest)).toBe(0)
+    } finally {
+      setCardEffectMapForTests(null)
+    }
   })
 
   it('las fases son un solo botón en el centro del campo (la fase de ahora): al tocarlo muestra las seis y elegir una pasa a ella; sin el turno no abre', () => {
