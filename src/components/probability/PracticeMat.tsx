@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -177,8 +177,12 @@ export interface DuelMatLink {
   aside?: ReactNode
   /** Un panel fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`: el detalle de la carta que se tocó): la mesa le deja 20rem y no se mueve cuando cambia. */
   detail?: ReactNode
-  /** Se tocó una carta tuya (de la mano o del campo): de ahí sale lo que muestra `detail`. */
+  /** Se hizo click en una carta tuya (de la mano, del campo o de un visor de pila): `detail` la muestra y queda fija hasta un click afuera o en otra carta. */
   onPeek?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** Se pasó el mouse por una carta tuya (de la mano o del campo): `detail` la muestra mientras no haya otra fija por un click. */
+  onHover?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** Lo mismo con una carta del rival a la vista (su id opaco, el que él le dio): de ahí sale lo que muestra `detail` si él la mostró. */
+  onRivalHover?: (id: string) => void
   /** Se está eligiendo un efecto en el menú (pasar el mouse por una opción): el pedazo del texto de esa carta que `detail` tiene que resaltar; `null` al irse o al cerrar el menú. */
   onHighlight?: (highlight: CardTextHighlight | null) => void
   /** Lo que estoy haciendo y el rival tiene que ver (mirar mi deck, mi Extra Deck, mi cementerio o lo desterrado; elegir cómo jugar una carta); `null` si nada. Se llama sólo cuando cambia. */
@@ -211,8 +215,10 @@ interface PracticeMatProps {
   duel?: DuelMatLink
   /** El detalle fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`), para la práctica: en un duelo lo trae `duel.detail`. */
   detail?: ReactNode
-  /** Se tocó una carta de la mesa (de la práctica): de ahí sale lo que muestra `detail`. En un duelo es `duel.onPeek`. */
+  /** Se hizo click en una carta de la mesa (de la práctica): `detail` la muestra y queda fija. En un duelo es `duel.onPeek`. */
   onPeek?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** Se pasó el mouse por una carta de la mesa (de la práctica): `detail` la muestra mientras no haya otra fija. En un duelo es `duel.onHover`. */
+  onHover?: (peek: { name: string; card: ApiCardReference | null }) => void
   /** El pedazo del texto que `detail` resalta mientras se elige un efecto (en la práctica; en un duelo es `duel.onHighlight`). */
   onHighlight?: (highlight: CardTextHighlight | null) => void
 }
@@ -394,11 +400,14 @@ export function PracticeMat({
   duel,
   detail: practiceDetail,
   onPeek: practicePeek,
+  onHover: practiceHover,
   onHighlight: practiceHighlight,
 }: PracticeMatProps) {
   // El detalle fijo de la izquierda y la carta que se tocó: de un duelo, o de la práctica.
   const detail = duel?.detail ?? practiceDetail
   const onPeek = duel?.onPeek ?? practicePeek
+  const onHover = duel?.onHover ?? practiceHover
+  const onRivalHover = duel?.onRivalHover
   const onHighlight = duel?.onHighlight ?? practiceHighlight
   // Con el panel de la derecha (los pasos de la práctica o el chat de un duelo) y el detalle a la izquierda, la mesa queda entre los dos.
   const sidePanel = !duel || Boolean(duel.aside)
@@ -1134,9 +1143,33 @@ export function PracticeMat({
     [state, play],
   )
 
+  // El mouse sobre una carta (la propia, o la del rival a la vista) la muestra en el detalle fijo de la izquierda; al sacarlo, queda la última. Un solo oyente en la mesa: las cartas no llevan uno cada una (y quien lo recibe no vuelve a dibujar
+  // si es la misma carta: `useDockPeek`).
+  const showHovered = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      // El dedo no pasa el mouse por encima: tocar una carta ya la fija.
+      if (event.pointerType === 'touch' || !(event.target instanceof Element)) return
+
+      const own = event.target.closest<HTMLElement>('[data-card-id]')?.dataset.cardId
+      const rival = own === undefined ? event.target.closest<HTMLElement>('[data-rival-card-id]')?.dataset.rivalCardId : undefined
+      const id = own ?? rival
+
+      if (id === undefined) return
+
+      if (own !== undefined) {
+        const { name, apiCard } = cardOf(own)
+
+        onHover?.({ name, card: apiCard })
+      } else if (rival !== undefined) {
+        onRivalHover?.(rival)
+      }
+    },
+    [cardOf, onHover, onRivalHover],
+  )
+
   const openCard = useCallback(
     (id: string, rect: DOMRect) => {
-      // Tocar una carta (la que sea y para lo que sea) también la muestra en el detalle fijo de la izquierda.
+      // Tocar una carta (la que sea y para lo que sea) también la muestra, fija, en el detalle de la izquierda.
       if (onPeek) {
         const { name, apiCard } = cardOf(id)
 
@@ -1755,6 +1788,7 @@ export function PracticeMat({
     <section
       ref={sectionRef}
       aria-label={t('practice.mat.label')}
+      onPointerOver={detail ? showHovered : undefined}
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
@@ -2045,7 +2079,7 @@ export function PracticeMat({
 
       {/* El detalle fijo (la carta que se tocó) de un duelo y de la práctica, a la izquierda y a todo el alto, sólo en escritorio: la columna está siempre (vacía hasta la primera carta), así la mesa no se corre. */}
       {detail ? (
-        <section aria-label={t('duel.dock.label')} className="hidden min-h-0 border-r border-border-subtle px-3 pb-3 pt-3 min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
+        <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-border-subtle px-3 pb-3 pt-3 min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
       ) : null}
 
       {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
