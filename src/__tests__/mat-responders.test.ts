@@ -7,19 +7,21 @@ import { effectSentences } from '../app/card-text'
 import { respondersOf, windowOpen, type ResponderCard } from '../app/mat-responders'
 import { createMatState, type MatPhase, type MatState, type Placed } from '../app/practice-mat'
 
-const kindOf = (frame: 'monster' | 'spell' | 'trap') => ({ monster: frame === 'monster', spell: frame === 'spell', trap: frame === 'trap' })
+const kindOf = (frame: 'monster' | 'spell' | 'trap' | 'pendulum') => ({ monster: frame === 'monster' || frame === 'pendulum', spell: frame === 'spell', trap: frame === 'trap', pendulum: frame === 'pendulum' })
 
-/** Un monstruo con un efecto del texto y lo confirmado de él (lo que daría `getCardEffectMap`). */
-function monster(text: string, facts: number, places: number): ResponderCard {
+/** Una carta con un efecto del texto y lo confirmado de él (lo que daría `getCardEffectMap`). */
+function withEffect(frame: 'monster' | 'spell' | 'trap' | 'pendulum', text: string, facts: number, places: number): ResponderCard {
   const [sentence] = effectSentences(text)
 
-  return { kind: kindOf('monster'), quickPlay: false, effects: [{ start: 0, facts, places, sentence: sentence! } satisfies CardEffectOfText] }
+  return { kind: kindOf(frame), quickPlay: false, effects: [{ start: 0, facts, places, sentence: sentence! } satisfies CardEffectOfText] }
 }
+
+const monster = (text: string, facts: number, places: number) => withEffect('monster', text, facts, places)
 
 const placed = (id: string, pos: Placed['pos'] = 'atk'): Placed => ({ id, pos, counters: 0, materials: [] })
 
 /** Una mesa con lo que se pide (el resto vacío). */
-function table(parts: Partial<Pick<MatState, 'hand' | 'gy'>> & { mz?: Array<Placed | null>; st?: Array<Placed | null> }): MatState {
+function table(parts: Partial<Pick<MatState, 'hand' | 'gy' | 'field'>> & { mz?: Array<Placed | null>; st?: Array<Placed | null> }): MatState {
   const state = createMatState([], [], 0)
 
   return {
@@ -28,6 +30,7 @@ function table(parts: Partial<Pick<MatState, 'hand' | 'gy'>> & { mz?: Array<Plac
     gy: parts.gy ?? [],
     mz: parts.mz ?? state.mz,
     st: parts.st ?? state.st,
+    field: parts.field ?? null,
   }
 }
 
@@ -44,6 +47,11 @@ const cards: Record<string, ResponderCard> = {
   'field-free': monster(FREE, QUICK, EFFECT_PLACE.field),
   'field-opponent-main': monster(OPPONENT_MAIN, QUICK, EFFECT_PLACE.field),
   'grave-free': monster(FREE, QUICK, EFFECT_PLACE.grave),
+  'continuous-quick': withEffect('trap', FREE, QUICK, EFFECT_PLACE.spellTrap),
+  'continuous-no-quick': withEffect('spell', 'Once per turn: You can draw 1 card.', 0, EFFECT_PLACE.spellTrap),
+  'field-spell-quick': withEffect('spell', FREE, QUICK, EFFECT_PLACE.spellTrap),
+  'scale-quick': withEffect('pendulum', FREE, QUICK, EFFECT_PLACE.pendulum),
+  'grave-trap': withEffect('trap', '(Quick Effect): You can banish this card from your GY; draw 1 card.', QUICK, EFFECT_PLACE.grave),
   trap: { kind: kindOf('trap'), quickPlay: false, effects: undefined },
   'quick-play': { kind: kindOf('spell'), quickPlay: true, effects: undefined },
   'normal-spell': { kind: kindOf('spell'), quickPlay: false, effects: undefined },
@@ -116,6 +124,28 @@ describe('respondersOf: las cartas mías que pueden responder cuando el rival pr
       { id: 'trap', kind: 'set' },
       { id: 'quick-play', kind: 'set' },
     ])
+  })
+
+  it('una Mágica o Trampa Continua boca arriba con un efecto rápido, la Mágica de Campo y una escala de Péndulo (zonas 0 y 4) responden desde donde están; una Continua sin efecto rápido, no', () => {
+    const state = table({
+      st: [placed('scale-quick'), placed('continuous-quick'), placed('continuous-no-quick'), placed('scale-quick'), placed('scale-quick')],
+      field: placed('field-spell-quick'),
+    })
+
+    expect(respondersOf(state, 'main1', false, cardOf)).toEqual([
+      { id: 'scale-quick', kind: 'field' },
+      { id: 'continuous-quick', kind: 'field' },
+      { id: 'scale-quick', kind: 'field' },
+      { id: 'field-spell-quick', kind: 'field' },
+    ])
+  })
+
+  it('una escala de Péndulo en una zona del medio no es una escala: no responde con su efecto de Péndulo', () => {
+    expect(respondersOf(table({ st: [null, placed('scale-quick'), null, null, null] }), 'main1', false, cardOf)).toEqual([])
+  })
+
+  it('una Mágica o Trampa en el Cementerio con un efecto rápido que se activa desde ahí responde', () => {
+    expect(respondersOf(table({ gy: ['grave-trap'] }), 'main1', false, cardOf)).toEqual([{ id: 'grave-trap', kind: 'grave' }])
   })
 
   it('la fase y el turno cuentan: un efecto «During your opponent\'s Main Phase» no responde en la Battle Phase', () => {

@@ -3,8 +3,8 @@
  * Capa 1 del motor de cartas (docs/motor-de-cartas.md): los hechos de los efectos de cada carta que **su script de EDOPro y su texto dicen los dos** (src/app/card-effect-facts.ts), en
  * src/data/card-effects.json. Agrupado por valor de bits (como card-rules.json): pesa menos y el diff se lee.
  *
- * De paso, en la misma pasada, escribe src/data/card-effect-map.json: de las cartas con varios efectos, la frase del texto alineada con cada efecto del script y lo que las dos fuentes dicen de **cada** efecto
- * (src/app/card-effect-map.ts). Sólo las que se alinean con certeza; las demás no salen.
+ * De paso, en la misma pasada, escribe src/data/card-effect-map.json: de las cartas con varios efectos (monstruos, Mágicas y Trampas), la frase del texto alineada con cada efecto del script y lo que las dos fuentes
+ * dicen de **cada** efecto (src/app/card-effect-map.ts). Sólo las que se alinean con certeza; las demás no salen.
  *
  * Hace falta el texto de todas las cartas (YGOPRODeck, una sola pedida) y los scripts de Project Ignis (un clon superficial en una carpeta temporal; CARD_SCRIPTS_DIR la cambia). Se corre a mano
  * cuando conviene refrescarlo (salen cartas nuevas con efectos): `npm run sync:effects`. No forma parte del sync diario.
@@ -54,8 +54,8 @@ async function main() {
 
         if (script === 0) continue
 
-        // Sólo los monstruos con efecto (los que se midieron: ver docs/motor-de-cartas.md, «Alinear cada frase con su efecto»).
-        if (/Monster/.test(card.type) && !(/Normal/.test(card.type) && !/Effect/.test(card.type))) {
+        // Los monstruos con efecto, las Mágicas y las Trampas (un monstruo Normal no tiene efectos que alinear). Ver docs/motor-de-cartas.md, «Alinear cada frase con su efecto».
+        if (/Monster|Spell|Trap/.test(card.type) && !(/Monster/.test(card.type) && /Normal/.test(card.type) && !/Effect/.test(card.type))) {
           const effects = verifiedEffects(lua, card.desc)
 
           // Las de varios efectos siempre; las de uno solo (los hechos de la carta entera ya son los de su efecto) sólo si es rápido: de ahí sale desde dónde se puede responder.

@@ -53,7 +53,8 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
 import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, getCardEffectMap, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
-import { LIMIT_FACTS, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, usageReminder, type Activation } from '../../app/mat-assistant'
+import { EFFECT_FACT } from '../../app/card-effect-facts'
+import { LIMIT_FACTS, activationFacts, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, usageReminder, type Activation } from '../../app/mat-assistant'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
@@ -890,9 +891,11 @@ export function PracticeMat({
 
       if (passcode === undefined || isForeignId(id)) return
 
-      // Con el efecto elegido (en una carta que se cuenta por efecto) vale el límite de **ese** efecto; si no, el de la carta entera.
+      // Con el efecto elegido (en una carta que se cuenta por efecto) vale el límite de **ese** efecto; si no, el de la carta entera. Al activar una Mágica o una Trampa (dejarla boca arriba) vale sólo el límite de la activación.
       const effect = effectIndex === undefined ? undefined : countableEffects(getCardEffectMap(passcode, api?.description ?? ''))?.[effectIndex]
-      const facts = effect ? effect.facts : (getCardEffectFacts(passcode) ?? 0)
+      const activation = action.type !== 'activate'
+      const cardFacts = getCardEffectFacts(passcode) ?? 0
+      const facts = effect ? effect.facts : activation ? activationFacts(cardFacts) : cardFacts
 
       if ((facts & LIMIT_FACTS) === 0) return
 
@@ -906,9 +909,14 @@ export function PracticeMat({
 
       if (!reminder) return
 
+      const n = (effectIndex ?? 0) + 1
       const message = effect
-        ? t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n: (effectIndex ?? 0) + 1 })
-        : t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name })
+        ? (effect.facts & EFFECT_FACT.shared) !== 0
+          ? t('practice.assistant.effectShared', { card: card.name, n })
+          : t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n })
+        : activation
+          ? t(reminder === 'duel' ? 'practice.assistant.activationUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.activationUsedTurnByName' : 'practice.assistant.activationUsedTurn', { card: card.name })
+          : t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name })
 
       showToastMessage(message, 'warning')
     },

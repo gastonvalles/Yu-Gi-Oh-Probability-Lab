@@ -123,6 +123,34 @@ describe('mismatches: cuántas señales de la frase contradice el efecto', () =>
   })
 })
 
+describe('mismatches: el lugar desde donde se activa', () => {
+  const sentence = (text: string) => effectSentences(text)[0]!
+  const [fromField] = logical(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)')))
+  const [fromGrave] = logical(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_GRAVE)')))
+  const [noRange] = logical(lua(effect('e1', 'SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)', 'SetCode(EVENT_TO_GRAVE)')))
+
+  it('si la frase dice que se activa desde el Cementerio o la mano y el efecto declara otro rango, es una contradicción más', () => {
+    expect(mismatches(sentence('If this card is in your GY: You can draw 1 card.'), fromField!)).toBe(1)
+    expect(mismatches(sentence('If this card is in your GY: You can draw 1 card.'), fromGrave!)).toBe(0)
+    expect(mismatches(sentence('If this card is in your hand: You can draw 1 card.'), fromField!)).toBe(1)
+  })
+
+  it('un efecto sin ningún rango (un disparo) no dice nada del lugar: no contradice', () => {
+    expect(mismatches(sentence('If this card is in your GY: You can draw 1 card.'), noRange!)).toBe(1 /* la clase: un estado no es un disparo */)
+    expect(mismatches(sentence('If this card is sent to the GY: You can draw 1 card.'), noRange!)).toBe(0)
+  })
+
+  it('«this card from your hand» es el lugar de la carta salvo cuando es con lo que se compara («the same Level as this card», «lower than this card»)', () => {
+    const summon = 'You can Special Summon this card from your hand; draw 1 card.'
+    const compare = 'During your Main Phase: You can Special Summon 1 monster with the same Attribute and Level as this card from your hand.'
+    const lower = 'During your Main Phase: You can Special Summon 1 Fiend monster with a Level lower than this card from your hand.'
+
+    expect(verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE+LOCATION_HAND)', 'SetCountLimit(1)')), summon)?.map((one) => one.places)).toEqual([EFFECT_PLACE.hand])
+    expect(verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)', 'SetCountLimit(1)')), compare)?.map((one) => one.places)).toEqual([EFFECT_PLACE.field])
+    expect(verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)', 'SetCountLimit(1)')), lower)?.map((one) => one.places)).toEqual([EFFECT_PLACE.field])
+  })
+})
+
 describe('alignEffects: sólo lo que las señales obligan', () => {
   it('Dusk Crow: la ignición desde la mano con costo y el disparo con clon, cada frase con su efecto', () => {
     const pairs = alignEffects(effectSentences(DUSK_CROW_TEXT), logical(DUSK_CROW_SCRIPT))
@@ -198,15 +226,40 @@ describe('verifiedEffects: lo que las dos fuentes dicen de cada efecto', () => {
     expect(verifiedEffects(script, text)?.map((one) => one.facts)).toEqual([0, EFFECT_FACT.cost | EFFECT_FACT.target])
   })
 
-  it('el límite compartido («1 of the following effects») no es un límite de cada efecto', () => {
-    const text =
-      'If this card is sent to the GY: You can draw 1 card. You can discard 1 card, then target 1 monster in your GY; Special Summon it. You can only use 1 of the following effects of "X" per turn, and only once that turn.'
-    const script = lua(
+  const SHARING_TEXT =
+    'If this card is sent to the GY: You can draw 1 card. You can discard 1 card, then target 1 monster in your GY; Special Summon it. You can only use 1 of the following effects of "X" per turn, and only once that turn.'
+  const sharing = (second: string) =>
+    lua(
       effect('e1', 'SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)', 'SetCode(EVENT_TO_GRAVE)', 'SetCountLimit(1,id)'),
-      effect('e2', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)', 'SetCost(s.cost)', 'SetProperty(EFFECT_FLAG_CARD_TARGET)', 'SetCountLimit(1,id)'),
+      effect('e2', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)', 'SetCost(s.cost)', 'SetProperty(EFFECT_FLAG_CARD_TARGET)', second),
     )
 
-    expect(verifiedEffects(script, text)?.map((one) => one.facts & (EFFECT_FACT.once | EFFECT_FACT.hardOnce))).toEqual([0, 0])
+  it('el límite compartido («1 of the following effects») lo dicen el texto y el script (el mismo código en los dos efectos): los dos lo comparten y para cada uno vale «una vez por turno por nombre»', () => {
+    const effects = verifiedEffects(sharing('SetCountLimit(1,id)'), SHARING_TEXT)
+
+    expect(effects?.map((one) => effectFactNames(one.facts))).toEqual([
+      ['once', 'hardOnce', 'shared'],
+      ['once', 'hardOnce', 'cost', 'target', 'shared'],
+    ])
+  })
+
+  it('con códigos distintos en el script, o sin la frase en el texto, el límite no se comparte (el texto y el script no lo dicen los dos)', () => {
+    // Códigos distintos: cada efecto tiene el suyo (y el texto, que dice que se comparte, no lo confirma el script).
+    expect(verifiedEffects(sharing('SetCountLimit(1,{id,1})'), SHARING_TEXT)?.map((one) => one.facts & EFFECT_FACT.shared)).toEqual([0, 0])
+    // El mismo código pero el texto no dice que se comparta: el motor lo comparte, la carta no lo dice.
+    const quiet = SHARING_TEXT.replace(' You can only use 1 of the following effects of "X" per turn, and only once that turn.', '')
+
+    expect(verifiedEffects(sharing('SetCountLimit(1,id)'), quiet)?.map((one) => one.facts & (EFFECT_FACT.shared | EFFECT_FACT.hardOnce))).toEqual([0, 0])
+  })
+
+  it('un efecto y la activación de la Mágica comparten el límite («1 "X" effect per turn»): la activación no es un efecto del texto pero cuenta como quien lo usa', () => {
+    const text = 'Activate this card by targeting 1 monster; destroy it. If this card is in your GY: You can banish this card; draw 1 card. You can only use 1 "X" effect per turn, and only once that turn.'
+    const script = lua(
+      effect('e1', 'SetType(EFFECT_TYPE_ACTIVATE)', 'SetCode(EVENT_FREE_CHAIN)', 'SetCountLimit(1,id)', 'SetOperation(s.activate)'),
+      effect('e2', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_GRAVE)', 'SetCountLimit(1,id)', 'SetCost(Cost.SelfBanish)'),
+    )
+
+    expect(verifiedEffects(script, text)?.map((one) => [effectFactNames(one.facts), one.places])).toEqual([[['once', 'hardOnce', 'cost', 'shared'], EFFECT_PLACE.grave]])
   })
 
   it('el campo se confirma con el script y sin que la frase nombre otro lugar; la mano y el Cementerio, con las dos fuentes', () => {
@@ -221,6 +274,28 @@ describe('verifiedEffects: lo que las dos fuentes dicen de cada efecto', () => {
     expect(fromField?.map((one) => one.places)).toEqual([EFFECT_PLACE.field])
     expect(fromHand?.map((one) => one.places)).toEqual([EFFECT_PLACE.hand])
     expect(fromGrave?.map((one) => one.places)).toEqual([EFFECT_PLACE.grave])
+  })
+
+  it('la zona de Mágicas y Trampas se confirma con el script y sin que la frase nombre otro lugar; la Zona de Péndulo, con el script y la sección «Pendulum Effect» del texto', () => {
+    const continuous = verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_SZONE)', 'SetCountLimit(1)')), 'Once per turn: You can draw 1 card.')
+    const field = verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_FZONE)', 'SetCountLimit(1)')), 'Once per turn: You can draw 1 card.')
+    const pendulumText = '[ Pendulum Effect ] \nOnce per turn: You can draw 1 card.\n\n[ Monster Effect ] \nIf this card is in your hand: You can discard this card; draw 1 card.'
+    const pendulum = verifiedEffects(
+      lua(
+        effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_PZONE)', 'SetCountLimit(1)'),
+        effect('e2', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_HAND)', 'SetCost(Cost.SelfDiscard)'),
+      ),
+      pendulumText,
+    )
+
+    expect(continuous?.map((one) => one.places)).toEqual([EFFECT_PLACE.spellTrap])
+    expect(field?.map((one) => one.places)).toEqual([EFFECT_PLACE.spellTrap])
+    // El efecto de Péndulo es el de la escala; el del monstruo, desde la mano.
+    expect(pendulum?.map((one) => one.places)).toEqual([EFFECT_PLACE.pendulum, EFFECT_PLACE.hand])
+    // La Zona de Péndulo que sólo declara el script, con la frase en la parte del monstruo, no se confirma.
+    const monsterPart = verifiedEffects(lua(effect('e1', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_PZONE)', 'SetCountLimit(1)')), '[ Monster Effect ] \nOnce per turn: You can draw 1 card.')
+
+    expect(monsterPart?.map((one) => one.places & EFFECT_PLACE.pendulum)).toEqual([0])
   })
 
   it('una carta que no se alinea no tiene mapa', () => {
@@ -250,6 +325,20 @@ describe('src/data/card-effect-map.json (lo que escribe scripts/build-card-effec
         expect(places & ~PLACES, String(id)).toBe(0)
       }
     }
+  })
+
+  it('también hay Mágicas y Trampas, escalas de Péndulo y límites compartidos', () => {
+    // Starlight Junktion (Mágica de Campo): dos efectos que se activan desde la zona de Mágicas y Trampas.
+    expect(index.get(1003840)?.map(([, , places]) => places)).toEqual([EFFECT_PLACE.spellTrap, EFFECT_PLACE.spellTrap])
+    // Code Hack (una Trampa): el efecto de la Trampa desde la zona de Mágicas y Trampas y el rápido desde el Cementerio.
+    expect(index.get(33750856)?.map(([, , places]) => places)).toEqual([EFFECT_PLACE.spellTrap, EFFECT_PLACE.grave])
+    // Twilight Ninja Kagen (Péndulo): el efecto de la escala se activa desde la Zona de Péndulo; el del monstruo, desde el campo.
+    expect(index.get(6830480)?.map(([, , places]) => places)).toEqual([EFFECT_PLACE.pendulum, EFFECT_PLACE.field])
+    // Aileron: sus dos efectos comparten el límite («1 of the following effects»), y para cada uno vale una vez por turno por nombre.
+    expect(index.get(96084564)?.map(([, facts]) => [(facts & EFFECT_FACT.shared) !== 0, (facts & EFFECT_FACT.hardOnce) !== 0])).toEqual([
+      [true, true],
+      [true, true],
+    ])
   })
 
   it('Dusk Crow sale con lo suyo, y si el texto cambió (las frases ya no empiezan donde estaban) no se dice nada', () => {

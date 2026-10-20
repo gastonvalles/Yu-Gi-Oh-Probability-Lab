@@ -8,12 +8,12 @@ import type { MatCardKind, MatPhase, MatState } from './practice-mat'
  * «Podés responder con…» (capa 2 del motor de cartas, `docs/motor-de-cartas.md`): cuando el rival pregunta «¿Hacés algo antes?» antes de pasar de fase, qué cartas **tuyas** podrían responder. **Avisa, no decide**: no
  * sabe si se cumple lo que pide cada carta (tener un objetivo, cierta cantidad de cartas…); sólo dice lo que se puede **confirmar**:
  * - una **Trampa** o una **Mágica de Juego Rápido boca abajo** (por su tipo; en el turno del rival ya pasó la fase en que se puso);
- * - un **monstruo con un efecto rápido** que las dos fuentes confirman (`quick`, capa 1b), que se activa desde **donde está** la carta (la mano, el campo boca arriba o el Cementerio, `EFFECT_PLACE`) y que **no
- *   espera ningún suceso**: su encabezado es sólo «During your opponent's Main Phase (Quick Effect)», «(Quick Effect)» solo… (`EffectWindow`) y la fase en que va el rival está dentro. Un efecto rápido que dice
+ * - una **carta con un efecto rápido** que las dos fuentes confirman (`quick`, capa 1b), que se activa desde **donde está** la carta (la mano, el campo boca arriba, la zona de Mágicas y Trampas o la Zona de Péndulo boca
+ *   arriba, o el Cementerio, `EFFECT_PLACE`) y que **no espera ningún suceso**: su encabezado es sólo «During your opponent's Main Phase (Quick Effect)», «(Quick Effect)» solo… (`EffectWindow`) y la fase en que va el rival está dentro. Un efecto rápido que dice
  *   «When a card or effect is activated» no se ofrece: ahora no hay nada a lo que responder.
  */
 
-/** De dónde sale la respuesta: una carta boca abajo, la mano, un monstruo en el campo o el Cementerio. */
+/** De dónde sale la respuesta: una carta boca abajo, la mano, una carta boca arriba en el campo (un monstruo, una Mágica o Trampa Continua, una escala de Péndulo) o el Cementerio. */
 export type ResponderKind = 'set' | 'hand' | 'field' | 'grave'
 
 export interface Responder {
@@ -23,7 +23,7 @@ export interface Responder {
 
 /** Lo que la mesa sabe de una carta suya: de qué clase es y sus efectos del texto con lo confirmado de cada uno (`getCardEffectMap`). */
 export interface ResponderCard {
-  kind: Pick<MatCardKind, 'monster' | 'spell' | 'trap'>
+  kind: Pick<MatCardKind, 'monster' | 'spell' | 'trap' | 'pendulum'>
   /** Es una Mágica de Juego Rápido. */
   quickPlay: boolean
   effects: readonly CardEffectOfText[] | undefined
@@ -56,7 +56,7 @@ export function respondersOf(state: MatState, phase: MatPhase, myTurn: boolean, 
     for (const id of ids) {
       const card = cardOf(id)
 
-      if (card?.kind.monster && respondsFrom(card, place, phase, myTurn)) out.push({ id, kind })
+      if (card && respondsFrom(card, place, phase, myTurn)) out.push({ id, kind })
     }
   }
 
@@ -64,11 +64,26 @@ export function respondersOf(state: MatState, phase: MatPhase, myTurn: boolean, 
   // Boca arriba: un monstruo boca abajo (Colocado) no activa efectos.
   fromPlace([...state.mz, ...state.emz].flatMap((placed) => (placed && placed.pos !== 'set' ? [placed.id] : [])), EFFECT_PLACE.field, 'field')
 
-  for (const placed of state.st) {
-    const card = placed?.pos === 'set' ? cardOf(placed.id) : null
+  state.st.forEach((placed, index) => {
+    const card = placed ? cardOf(placed.id) : null
 
-    if (placed && card && (card.kind.trap || (card.kind.spell && card.quickPlay))) out.push({ id: placed.id, kind: 'set' })
-  }
+    if (!placed || !card) return
+
+    if (placed.pos === 'set') {
+      if (card.kind.trap || (card.kind.spell && card.quickPlay)) out.push({ id: placed.id, kind: 'set' })
+      return
+    }
+
+    // Boca arriba: una escala de Péndulo (las zonas 0 y 4: su efecto de escala) o una Mágica o Trampa Continua con un efecto rápido.
+    const scale = card.kind.pendulum && card.kind.monster && (index === 0 || index === 4)
+
+    if (respondsFrom(card, scale ? EFFECT_PLACE.pendulum : EFFECT_PLACE.spellTrap, phase, myTurn)) out.push({ id: placed.id, kind: 'field' })
+  })
+
+  // La Mágica de Campo boca arriba.
+  const fieldCard = state.field && state.field.pos !== 'set' ? cardOf(state.field.id) : null
+
+  if (state.field && fieldCard && respondsFrom(fieldCard, EFFECT_PLACE.spellTrap, phase, myTurn)) out.push({ id: state.field.id, kind: 'field' })
 
   fromPlace(state.gy, EFFECT_PLACE.grave, 'grave')
 
