@@ -1726,6 +1726,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       undoAvailable: snapshot.undo.available,
       undoBlocked: snapshot.undo.blocked,
       control: { rival: rivalName, rivalHasRoom: firstFreeMonsterZone(theirs!.state) !== null },
+      turnNumber: duelTurnNumber(mine, theirs!.state),
       rivalEmz: theirs!.state.emz.map(Boolean),
       foreignKnown: theirs!.known,
       announcement,
@@ -1834,6 +1835,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
           name={markMenu.place}
           kicker={rivalName}
           art={markedDrawId !== undefined ? artOfDrawId(markedDrawId) : null}
+          apiCard={markedCard}
           back={markedDrawId === undefined || artOfDrawId(markedDrawId) === null}
           items={markItems}
           onInspect={markedDrawId !== undefined ? () => { setRivalInspected({ drawId: markedDrawId, rect: markMenu.rect }); setMarkMenu(null) } : undefined}
@@ -1845,6 +1847,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         kicker={rivalName}
         title={markMenu?.place ?? ''}
         items={markItems}
+        ygoprodeckId={markedCard?.ygoprodeckId}
         onInspect={markMenu && markedDrawId !== undefined ? () => { setRivalInspected({ drawId: markedDrawId, rect: markMenu.rect }); setMarkMenu(null) } : undefined}
         onClose={() => setMarkMenu(null)}
       />

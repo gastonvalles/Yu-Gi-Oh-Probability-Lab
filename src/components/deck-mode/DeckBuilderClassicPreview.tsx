@@ -15,6 +15,7 @@ import { CardArt } from '../CardArt'
 import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
 import { CardArtPicker } from '../card-detail/CardArtPicker'
 import { CardEffectText } from '../card-detail/CardEffectText'
+import { CardEffectTraits } from '../card-detail/CardEffectTraits'
 import { CardPricesButton, CardPricesModal } from '../card-detail/CardPrices'
 import { TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
 import { CardFlip, useCardFlip } from '../card-detail/CardFlip'
@@ -158,6 +159,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
           <article className="grid min-h-48 flex-[1_0_auto] content-start gap-2 border-t border-border-subtle pt-3 text-foreground">
             {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
             {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
+            <CardEffectTraits ygoprodeckId={card.ygoprodeckId} />
             {card.description ? <CardEffectText text={card.description} className="text-body text-foreground" /> : null}
           </article>
 
