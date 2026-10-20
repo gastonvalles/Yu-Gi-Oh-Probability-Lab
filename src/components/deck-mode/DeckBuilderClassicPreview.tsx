@@ -93,9 +93,9 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
               </div>
             ) : null}
 
-            {/* Las miniaturas de los artes, en una franja de 2,5 rem pegada a la carta: la elección vale sólo para esta carta. Afuera de la carta que se inclina, así no se mueve con ella. */}
-            <div className="flex min-h-0 w-10 flex-col self-stretch">
-              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} fallbackUrl={card.imageUrlSmall ?? card.imageUrl} direction="column" className="max-h-full" />
+            {/* Las miniaturas de los artes, en una franja de 2,5 rem pegada a la carta: la elección vale sólo para esta carta. Afuera de la carta que se inclina, así no se mueve con ella. La caja no tiene alto propio (la galería va `absolute` adentro): mide lo que la fila, o sea la carta, y con muchos artes la galería scrollea por dentro. */}
+            <div className="relative w-10 self-stretch">
+              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} fallbackUrl={card.imageUrlSmall ?? card.imageUrl} direction="column" />
             </div>
 
             {/* La carta se inclina en 3D hacia el mouse (como en el detalle): la perspectiva va en el contenedor y la inclinación en la carta. */}

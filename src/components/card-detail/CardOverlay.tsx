@@ -364,8 +364,8 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
             <FlipHint />
           </div>
           {arts.length > 1 ? (
-            <div className="pointer-events-auto absolute inset-y-0 -left-12 flex w-10 flex-col justify-start group-data-[zoomed=true]:hidden">
-              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={setArtId} fallbackUrl={card?.imageUrlSmall ?? card?.imageUrl ?? null} direction="column" className="max-h-full" />
+            <div className="pointer-events-auto absolute inset-y-0 -left-12 w-10 group-data-[zoomed=true]:hidden">
+              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={setArtId} fallbackUrl={card?.imageUrlSmall ?? card?.imageUrl ?? null} direction="column" />
             </div>
           ) : null}
           {/* Las flechas van afuera de la carta y de lo que va a sus costados (artes y precios), en el centro del alto de la carta: en el celular, en los bordes de la pantalla. */}

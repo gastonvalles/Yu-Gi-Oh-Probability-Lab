@@ -23,7 +23,9 @@ interface CardArtPickerProps {
  * Si son más de los que entran, la tira scrollea. En fila (bajo la carta) con su barra fina a la vista, para que se note y se pueda arrastrar con el mouse,
  * y se centra sólo mientras entra, con `auto` en los márgenes de las puntas: con `justify-center` las primeras quedarían cortadas a la izquierda, sin forma
  * de llegar a ellas; con el mouse, la rueda la recorre de costado. En columna (al costado de la carta, en una franja de 2.5 rem) la barra va escondida: una
- * barra de verdad le come el ancho a las miniaturas y las tapa; se recorre con el dedo o con la rueda.
+ * barra de verdad le come el ancho a las miniaturas y las tapa; se recorre con el dedo o con la rueda. **Tiene el alto de la carta y nada más:** en columna
+ * es `absolute inset-0` dentro de una caja `relative` del alto de la carta (quien la usa la pone), así sus miniaturas no cuentan para el alto de la fila (si
+ * contaran, con once artes la fila medía 640 px y la carta, que se calcula con lo que queda de la pantalla, se achicaba) y lo que no entra se recorre por dentro.
  * Con el mouse también se recorre arrastrando (como con el dedo): sin eso, en una ventana angosta o con el celular emulado no quedaba cómo moverla, y el
  * clic que deja el arrastre caía en el fondo del detalle y lo cerraba.
  */
@@ -99,7 +101,8 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
       }}
       className={cx(
         'flex gap-1.5 overflow-auto overscroll-contain p-0.5',
-        direction === 'column' ? 'flex-col overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
+        // En columna llena la caja que la contiene (la del alto de la carta): así no aporta alto a la fila y, con muchos artes, scrollea por dentro.
+        direction === 'column' ? 'absolute inset-0 flex-col overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
         className,
       )}
     >
