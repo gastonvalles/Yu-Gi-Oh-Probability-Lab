@@ -100,3 +100,10 @@ export const verifiedEffectFacts = (lua: string, text: string): number => script
 export function effectFactNames(facts: number): EffectFactName[] {
   return (Object.keys(EFFECT_FACT) as EffectFactName[]).filter((name) => (facts & EFFECT_FACT[name]) !== 0)
 }
+
+/** Los rasgos que se muestran de una lista de hechos confirmados, en este orden: «por nombre» ya dice «una vez por turno», así que `once` no se repite. */
+const TRAIT_ORDER: readonly EffectFactName[] = ['quick', 'hardOnce', 'once', 'perDuel', 'cost', 'target']
+
+export function visibleFactNames(facts: readonly EffectFactName[]): EffectFactName[] {
+  return TRAIT_ORDER.filter((fact) => facts.includes(fact) && !(fact === 'once' && facts.includes('hardOnce')))
+}

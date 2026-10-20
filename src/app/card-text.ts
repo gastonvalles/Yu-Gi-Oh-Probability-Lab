@@ -349,3 +349,24 @@ export function effectSentences(text: string): EffectSentence[] {
 
   return out
 }
+
+/**
+ * Un efecto partido en **cuándo** y **qué hace**, **textual**: no se recorta ni se reescribe nada, porque la precisión es de la frase. `when` es lo de antes de los dos puntos («If this card is in your hand», «Once per turn»,
+ * «(Quick Effect)»; vacío si el efecto no lleva encabezado) y `what` lo que sigue («You can banish 1 "HERO" monster from your GY; Special Summon this card.»), o la frase entera si no hay encabezado.
+ */
+export function effectParts(sentence: EffectSentence): { when: string; what: string } {
+  const colon = topLevelIndex(sentence.text, ':')
+
+  return colon > 0 ? { when: sentence.text.slice(0, colon).trim(), what: sentence.text.slice(colon + 1).trim() } : { when: '', what: sentence.text }
+}
+
+/** Un pedazo del texto de una carta (desde `start` hasta `end`, sin incluirlo), para resaltarlo: la frase de un efecto. */
+export interface TextRange {
+  start: number
+  end: number
+}
+
+/** Un pedazo del texto de **una** carta (por su número de YGOPRODeck): lo que la mesa le pide al detalle de la carta que resalte. */
+export interface CardTextHighlight extends TextRange {
+  ygoprodeckId: number
+}

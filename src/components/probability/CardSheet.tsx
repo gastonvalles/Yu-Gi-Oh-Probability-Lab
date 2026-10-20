@@ -23,6 +23,10 @@ interface CardSheetProps {
   /** Sin imagen (el deck, una carta del rival que no mostró): se dibuja el dorso. */
   back?: boolean
   apiCard?: ApiCardReference | null
+  /** Con los rasgos confirmados de la carta entera debajo del nombre (por defecto sí; la lista de efectos de «Activar efecto» los dice de cada efecto y no los repite). */
+  traits?: boolean
+  /** Las opciones van de a una por fila, no de a dos (la lista de efectos de «Activar efecto»). */
+  stacked?: boolean
   /** Las jugadas de la carta, en el orden del menú de siempre: las que no son de apoyo (`utility`) son las jugadas del juego; las de apoyo, lo de abajo. */
   items: readonly MenuItem[]
   /** El segundo paso de una jugada («¿En ataque o en defensa?»): sus opciones salen en lugar de las jugadas. */
@@ -36,24 +40,34 @@ interface CardSheetProps {
   onClose: () => void
 }
 
-/** Una sola grilla de dos columnas de botones iguales (mismo estilo, mismo alto) y siempre el mismo aire entre todos (`gap-2`, también entre las jugadas y las de apoyo); si sobra uno, ocupa la fila entera. */
-function Options({ items }: { items: readonly MenuItem[] }) {
+/**
+ * Una sola grilla de dos columnas de botones iguales (mismo estilo, mismo alto) y siempre el mismo aire entre todos (`gap-2`, también entre las jugadas y las de apoyo); si sobra uno, ocupa la fila entera. Con `stacked`
+ * (la lista de efectos de «Activar efecto»: frases largas, cada una con su línea chica debajo) van de a una por fila. Una opción con `hint` lleva el texto arriba y la línea chica debajo.
+ */
+function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: boolean }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className={cx('grid gap-2', stacked ? 'grid-cols-1' : 'grid-cols-2')}>
       {items.map((item, index) => (
         <Button
-          key={item.label}
+          key={`${item.lead ?? ''}|${item.label}`}
           role="menuitem"
           aria-current={item.current ? 'true' : undefined}
           variant={item.current ? 'primary' : 'secondary'}
-          className={cx('min-w-0 px-2!', items.length % 2 === 1 && index === items.length - 1 && 'col-span-2')}
+          className={cx('min-w-0 px-2!', !stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left')}
           aria-disabled={item.disabled || undefined}
           disabled={item.disabled}
           data-initial-focus={index === 0 ? '' : undefined}
           onClick={item.onSelect}
         >
-          {item.label}
-          {item.hint ? <span className="block text-micro font-normal opacity-70">{item.hint}</span> : null}
+          {item.hint || item.lead ? (
+            <span className="grid min-w-0 gap-0.5">
+              {item.lead ? <span className="block text-micro font-semibold opacity-70">{item.lead}</span> : null}
+              <span className={cx(item.lead && 'font-normal')}>{item.label}</span>
+              {item.hint ? <span className="block text-micro font-normal opacity-70">{item.hint}</span> : null}
+            </span>
+          ) : (
+            item.label
+          )}
         </Button>
       ))}
     </div>
@@ -66,7 +80,7 @@ function Options({ items }: { items: readonly MenuItem[] }) {
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
  * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
  */
-export function CardSheet({ name, kicker, art, back = false, apiCard = null, items, asking, onInspect, plain = false, passThrough = false, onClose }: CardSheetProps) {
+export function CardSheet({ name, kicker, art, back = false, apiCard = null, traits = true, stacked = false, items, asking, onInspect, plain = false, passThrough = false, onClose }: CardSheetProps) {
   const ref = useRef<HTMLElement | null>(null)
   const openedAtRef = useRef(performance.now())
   // La hoja se abre al levantar el dedo de la carta (el `pointerup`) y sale justo debajo del dedo: el click que el celular manda después caería en una de sus jugadas y la haría sin querer
@@ -126,13 +140,13 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
             {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>
             {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{apiCard.cardType}</p> : null}
-            <CardEffectTraits ygoprodeckId={apiCard?.ygoprodeckId} className="mt-1" />
+            {traits ? <CardEffectTraits ygoprodeckId={apiCard?.ygoprodeckId} className="mt-1" /> : null}
           </div>
         </div>
 
         {/* Las jugadas, `role="menu"`, y cada una un `menuitem`, como en el menú pegado a la carta: las del juego primero y las de apoyo después, todas en la misma grilla. */}
-        <div role="menu" aria-label={name} className="mt-3">
-          <Options items={asking !== undefined ? items : [...plays, ...support]} />
+        <div role="menu" aria-label={name} className={cx('mt-3', stacked && 'max-h-[min(55dvh,28rem)] overflow-y-auto')}>
+          <Options items={asking !== undefined ? items : [...plays, ...support]} stacked={stacked} />
         </div>
       </section>
     </>,

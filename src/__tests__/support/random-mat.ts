@@ -55,6 +55,7 @@ export function randomAction(state: MatState, next: () => number): MatAction {
         { type: 'activate', id: pick(ids) },
         { type: 'activate', id: pick(ids), cost: 'discard' },
         { type: 'activate', id: pick(ids), cost: 'banish' },
+        { type: 'activate', id: pick(ids), effect: Math.floor(next() * 4) },
         { type: 'reveal', id: pick(ids) },
         { type: 'declare', id: pick(ids) },
         { type: 'target', id: pick(ids) },

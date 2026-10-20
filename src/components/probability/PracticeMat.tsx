@@ -51,8 +51,9 @@ import { useElementSize } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
-import { getCardEffectFacts, loadCardEffects } from '../../app/card-effect-data'
-import { LIMIT_FACTS, limitKey, usageReminder, type Activation } from '../../app/mat-assistant'
+import type { CardTextHighlight } from '../../app/card-text'
+import { cardEffectMapLoaded, getCardEffectFacts, getCardEffectMap, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
+import { LIMIT_FACTS, countableEffects, effectChoices, effectKey, limitKey, usageReminder, type Activation } from '../../app/mat-assistant'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
@@ -175,6 +176,8 @@ export interface DuelMatLink {
   detail?: ReactNode
   /** Se tocó una carta tuya (de la mano o del campo): de ahí sale lo que muestra `detail`. */
   onPeek?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** Se está eligiendo un efecto en el menú (pasar el mouse por una opción): el pedazo del texto de esa carta que `detail` tiene que resaltar; `null` al irse o al cerrar el menú. */
+  onHighlight?: (highlight: CardTextHighlight | null) => void
   /** Lo que estoy haciendo y el rival tiene que ver (mirar mi deck, mi Extra Deck, mi cementerio o lo desterrado; elegir cómo jugar una carta); `null` si nada. Se llama sólo cuando cambia. */
   onActivity?: (activity: Activity | null) => void
   /** El reloj de turnos: va en el centro del campo, entre las dos Zonas Extra (la casilla `p2`, que en un duelo no lleva nada). */
@@ -207,6 +210,8 @@ interface PracticeMatProps {
   detail?: ReactNode
   /** Se tocó una carta de la mesa (de la práctica): de ahí sale lo que muestra `detail`. En un duelo es `duel.onPeek`. */
   onPeek?: (peek: { name: string; card: ApiCardReference | null }) => void
+  /** El pedazo del texto que `detail` resalta mientras se elige un efecto (en la práctica; en un duelo es `duel.onHighlight`). */
+  onHighlight?: (highlight: CardTextHighlight | null) => void
 }
 
 /** Fuentes de arrastre que no son cartas: el tope del deck y la ficha. */
@@ -386,10 +391,12 @@ export function PracticeMat({
   duel,
   detail: practiceDetail,
   onPeek: practicePeek,
+  onHighlight: practiceHighlight,
 }: PracticeMatProps) {
   // El detalle fijo de la izquierda y la carta que se tocó: de un duelo, o de la práctica.
   const detail = duel?.detail ?? practiceDetail
   const onPeek = duel?.onPeek ?? practicePeek
+  const onHighlight = duel?.onHighlight ?? practiceHighlight
   // Con el panel de la derecha (los pasos de la práctica o el chat de un duelo) y el detalle a la izquierda, la mesa queda entre los dos.
   const sidePanel = !duel || Boolean(duel.aside)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -861,31 +868,47 @@ export function PracticeMat({
     [viewer, state.deck],
   )
 
-  // El asistente de la mesa (`app/mat-assistant.ts`): se acuerda de lo que se activó acá y avisa, sin frenar nada, si se vuelve a activar una carta con un efecto de una vez por turno (o por duelo).
+  // El asistente de la mesa (`app/mat-assistant.ts`): se acuerda de lo que se activó acá y avisa, sin frenar nada, si se vuelve a activar un efecto de una vez por turno (o por duelo): de la carta entera o, si tiene varios
+  // efectos que sabe contar, de cada uno (el menú pregunta cuál se activa).
   const activationsRef = useRef<Activation[]>([])
   const turnNumber = duel?.turnNumber ?? state.turn
+  // Los efectos de cada carta, por separado, llegan en un archivo aparte: cuando llegan, el menú de una carta se vuelve a armar.
+  const [effectsReady, setEffectsReady] = useState(cardEffectMapLoaded)
 
   useEffect(() => {
     void loadCardEffects()
+    void loadCardEffectMap().then(() => setEffectsReady(true))
   }, [])
 
   const remindUsage = useCallback(
     (action: Extract<MatAction, { type: 'activate' }>) => {
       const card = cardOf(action.id)
-      const passcode = card.apiCard?.ygoprodeckId
-      const facts = passcode === undefined || isForeignId(action.id) ? 0 : (getCardEffectFacts(passcode) ?? 0)
+      const api = card.apiCard
+      const passcode = api?.ygoprodeckId
 
-      if (passcode === undefined || (facts & LIMIT_FACTS) === 0) return
+      if (passcode === undefined || isForeignId(action.id)) return
+
+      // Con el efecto elegido (en una carta que se cuenta por efecto) vale el límite de **ese** efecto; si no, el de la carta entera.
+      const effect = action.effect === undefined ? undefined : countableEffects(getCardEffectMap(passcode, api?.description ?? ''))?.[action.effect]
+      const facts = effect ? effect.facts : (getCardEffectFacts(passcode) ?? 0)
+
+      if ((facts & LIMIT_FACTS) === 0) return
 
       // Sólo cuentan las activaciones que siguen en el registro: si se deshizo una, no cuenta.
       const live = new Set<MatAction>(session.actions)
       const past = activationsRef.current.filter((activation) => live.has(activation.action))
-      const key = limitKey(facts, passcode, action.id)
+      const key = effect && action.effect !== undefined ? effectKey(facts, passcode, action.id, action.effect) : limitKey(facts, passcode, action.id)
       const reminder = usageReminder(facts, past, key, turnNumber)
 
       activationsRef.current = [...past, { action, turn: turnNumber, key }]
 
-      if (reminder) showToastMessage(t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name }), 'warning')
+      if (!reminder) return
+
+      const message = effect
+        ? t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n: (action.effect ?? 0) + 1 })
+        : t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name })
+
+      showToastMessage(message, 'warning')
     },
     [cardOf, session.actions, turnNumber],
   )
@@ -1337,7 +1360,16 @@ export function PracticeMat({
     if (ask?.choices) {
       const dropped = menu.kind === 'card' ? menu.drop : undefined
 
-      return ask.choices.map((choice) => ({ label: choice.label, onSelect: () => choose({ ...choice, label: `${ask.label}: ${choice.label.toLowerCase()}` }, dropped) }))
+      const passcode = menu.kind === 'card' ? cardOf(menu.id).apiCard?.ygoprodeckId : undefined
+
+      return ask.choices.map((choice) => ({
+        label: choice.label,
+        lead: choice.lead,
+        hint: choice.hint,
+        // Al pasar el mouse por un efecto, el detalle de la carta resalta su frase (donde hay detalle a la izquierda).
+        onPreview: choice.preview && passcode !== undefined && onHighlight ? (active: boolean) => onHighlight(active ? { ygoprodeckId: passcode, ...choice.preview! } : null) : undefined,
+        onSelect: () => choose({ ...choice, label: `${ask.label}: ${choice.label.toLowerCase()}` }, dropped),
+      }))
     }
 
     if (menu.kind === 'deck') {
@@ -1356,7 +1388,13 @@ export function PracticeMat({
       ]
     }
 
-    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz, duel?.control)
+    const listed = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz, duel?.control)
+    // «Activar efecto» de una carta con varios efectos que la mesa cuenta uno por uno (`countableEffects`) pregunta cuál: la pregunta va en el segundo paso, como el resto (la posición, a quién se ataca).
+    const api = cardOf(menu.id).apiCard
+    const effects = !effectsReady || menu.drop || !api || isForeignId(menu.id) ? null : countableEffects(getCardEffectMap(api.ygoprodeckId, api.description ?? ''))
+    const live = new Set<MatAction>(session.actions)
+    const past = activationsRef.current.filter((activation) => live.has(activation.action))
+    const items = !api || !effects ? listed : listed.map((item) => (item.action.type === 'activate' && !item.choices ? { ...item, choices: effectChoices(menu.id, api.ygoprodeckId, effects, past, turnNumber) } : item))
 
     const mapped: MenuItem[] = items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility }))
     const point = duel?.point
@@ -1370,10 +1408,19 @@ export function PracticeMat({
     }
 
     return mapped
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
+  // En la lista de efectos de «Activar efecto» cada uno lleva sus rasgos: los de la carta entera no se repiten arriba (cada dato se dice una sola vez).
+  const choosingEffect = menu?.kind === 'card' && menu.ask?.choices?.some((choice) => choice.action.type === 'activate' && choice.action.effect !== undefined) === true
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
+
+  // El resaltado del detalle vale mientras se elige el efecto: al cerrar el menú, elegir uno o volver, se apaga (el `mouseleave` no llega si el menú desaparece).
+  useEffect(() => {
+    if (!choosingEffect || !onHighlight) return
+
+    return () => onHighlight(null)
+  }, [choosingEffect, onHighlight])
   const menuKicker =
     menu?.kind === 'phases'
       ? t('practice.mat.phases')
@@ -2008,6 +2055,8 @@ export function PracticeMat({
           back={menuCard === null}
           apiCard={menuCard?.apiCard ?? null}
           items={menuItems}
+          traits={!choosingEffect}
+          stacked={choosingEffect}
           asking={menu.kind !== 'token' && menu.kind !== 'phases' ? menu.ask?.label : undefined}
           onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
           passThrough={attackAsk !== null}
@@ -2034,7 +2083,8 @@ export function PracticeMat({
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
-        ygoprodeckId={menuCard?.apiCard?.ygoprodeckId}
+        ygoprodeckId={choosingEffect ? null : menuCard?.apiCard?.ygoprodeckId}
+        wide={choosingEffect}
         onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
         passThrough={attackAsk !== null}
         onClose={() => setMenu(null)}

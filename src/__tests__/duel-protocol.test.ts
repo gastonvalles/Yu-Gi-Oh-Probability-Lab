@@ -240,6 +240,16 @@ describe('contra un rival malicioso', () => {
     }
   })
 
+  it('activar un efecto puede decir cuál (su lugar entre los efectos de la carta): un entero chico, nada más; sin él, como siempre', () => {
+    expect(message(wire({ type: 'activate', id: 'c1' }))).not.toBeNull()
+    expect(message(wire({ type: 'activate', id: 'c1', effect: 0 }))).toMatchObject({ t: 'act', wire: { action: { type: 'activate', id: 'c1', effect: 0 } } })
+    expect(message(wire({ type: 'activate', id: 'c1', effect: 9, cost: 'discard' }))).not.toBeNull()
+
+    for (const effect of [-1, 10, 1.5, '1', null, true, Number.NaN]) {
+      expect(message(wire({ type: 'activate', id: 'c1', effect })), String(effect)).toBeNull()
+    }
+  })
+
   it('lo revelado: la clave es un id opaco y el valor, una carta real (card-123-2); nada más', () => {
     const known = (entries: Record<string, string>) => message({ t: 'sync', n: 0, known: entries, lp: 8000, lifeN: 0 })
 

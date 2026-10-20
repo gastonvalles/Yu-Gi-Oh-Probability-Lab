@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { requestLabOdds } from '../../app/lab-odds-client'
 import { reactMascot } from '../../app/mascot'
+import type { CardTextHighlight } from '../../app/card-text'
 import { DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import type { LabOdds } from '../../app/lab-odds'
 import type { MatAction, MatState } from '../../app/practice-mat'
@@ -68,6 +69,8 @@ export function PracticeSection(props: PracticeSectionProps) {
   // El detalle fijo de la izquierda (como en un duelo): la última carta que se tocó, siempre a la vista en pantallas anchas.
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   const [peek, setPeek] = useState<CardPeek | null>(null)
+  // El pedazo del texto de esa carta que se resalta mientras se elige uno de sus efectos en el menú.
+  const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
 
   // Mano inicial: la de la mesa al empezar y, si la primera jugada fue robar una carta, esa también (se fue 2º).
   // Sólo importa si se fue 2º (no las jugadas): así cada jugada no vuelve a evaluar la mano.
@@ -230,8 +233,9 @@ export function PracticeSection(props: PracticeSectionProps) {
       highlighted={started ? EMPTY_IDS : highlighted}
       highlightKind={started ? null : (activeMatch?.kind ?? null)}
       muted={isUnplayable && !started}
-      detail={wide ? <DuelCardDock peek={peek} /> : undefined}
+      detail={wide ? <DuelCardDock peek={peek} highlight={highlight} /> : undefined}
       onPeek={setPeek}
+      onHighlight={setHighlight}
     />
   )
 }

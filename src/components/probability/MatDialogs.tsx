@@ -53,7 +53,11 @@ export interface MenuItem {
   current?: boolean
   /** Se ve pero no se puede elegir todavía (los contadores sin una carta en el campo); `hint` dice qué falta. */
   disabled?: boolean
+  /** Una línea chica arriba de la opción (el número del efecto y cuándo se activa). */
+  lead?: string
   hint?: string
+  /** Se llama con `true` al pasar el mouse por la opción (o al enfocarla con el teclado) y con `false` al irse: la mesa lo usa para resaltar, en el detalle de la carta, el texto que dice esa opción. */
+  onPreview?: (active: boolean) => void
 }
 
 interface CardMenuProps {
@@ -67,9 +71,20 @@ interface CardMenuProps {
   onInspect?: () => void
   /** El número de la carta en YGOPRODeck: con él, el menú dice sus rasgos confirmados (efecto rápido, una vez por turno, costo…). */
   ygoprodeckId?: number | null
+  /** Más ancho (la lista de efectos de «Activar efecto»: cada opción es la frase entera de un efecto, sin recortar). */
+  wide?: boolean
   /** El menú no tapa la mesa: el fondo deja pasar los toques (se elige tocando una carta del campo, p. ej. a quién atacar) y no se lleva el foco. Se cierra con Escape, la jugada o al tocar otra carta. */
   passThrough?: boolean
   onClose: () => void
+}
+
+/** Si el foco llegó por el teclado (`:focus-visible`): un foco que se llevó el menú al abrirse con el mouse no cuenta. Donde el navegador no sabe el selector, no. */
+const keyboardFocus = (element: HTMLElement): boolean => {
+  try {
+    return element.matches(':focus-visible')
+  } catch {
+    return false
+  }
 }
 
 const MENU_ITEM =
@@ -85,7 +100,7 @@ export const GHOST_CLICK_MS = 350
  * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
  * medio. Se cierra al elegir, al tocar afuera o con Escape.
  */
-export function CardMenu({ anchor, kicker, title, items, onInspect, ygoprodeckId, passThrough = false, onClose }: CardMenuProps) {
+export function CardMenu({ anchor, kicker, title, items, onInspect, ygoprodeckId, wide = false, passThrough = false, onClose }: CardMenuProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const openedAtRef = useRef(0)
   // La carta a la que se acomodó el menú la última vez: si cambia sólo lo que dice (el segundo paso, "¿En ataque o en defensa?") y no la carta, se queda donde estaba.
@@ -117,8 +132,12 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, ygoprodeckId
 
     placedForRef.current = anchor
     // El segundo paso aparece en el mismo lugar que el menú que se acaba de tocar (si es más corto o más largo "pegado a la carta" lo movía de lugar): misma esquina de arriba a la izquierda, sin salirse de la pantalla.
-    setPosition((current) => (sameCard && current ? { left: current.left, top: Math.min(Math.max(current.top, margin), Math.max(margin, window.innerHeight - height - margin)) } : { left, top }))
-  }, [anchor, items.length])
+    setPosition((current) =>
+      sameCard && current
+        ? { left: Math.min(Math.max(current.left, margin), Math.max(margin, window.innerWidth - width - margin)), top: Math.min(Math.max(current.top, margin), Math.max(margin, window.innerHeight - height - margin)) }
+        : { left, top },
+    )
+  }, [anchor, items.length, wide])
 
   if (!open || typeof document === 'undefined') {
     return null
@@ -137,7 +156,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, ygoprodeckId
         role="menu"
         aria-label={title || kicker}
         tabIndex={-1}
-        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] w-[13rem] overflow-y-auto py-1 outline-none animate-pop motion-reduce:animate-none', position ? 'visible' : 'invisible')}
+        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto py-1 outline-none animate-pop motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -152,15 +171,21 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, ygoprodeckId
         </div>
         {items.map((item, index) => (
           <button
-            key={item.label}
+            key={`${item.lead ?? ''}|${item.label}`}
             type="button"
             role="menuitem"
             aria-current={item.current ? 'true' : undefined}
             aria-disabled={item.disabled || undefined}
-            className={cx(MENU_ITEM, item.current && 'font-bold text-info!', item.disabled && 'cursor-default text-muted hover:bg-transparent')}
+            className={cx(MENU_ITEM, item.lead && 'font-normal', item.current && 'font-bold text-info!', item.disabled && 'cursor-default text-muted hover:bg-transparent')}
             data-initial-focus={index === 0 ? '' : undefined}
             onClick={item.disabled ? undefined : item.onSelect}
+            onMouseEnter={item.onPreview ? () => item.onPreview?.(true) : undefined}
+            onMouseLeave={item.onPreview ? () => item.onPreview?.(false) : undefined}
+            // Con el teclado también (no al abrir con el mouse: el foco que se lleva el primero sin que nadie lo apunte no resalta nada).
+            onFocus={item.onPreview ? (event) => item.onPreview?.(keyboardFocus(event.currentTarget)) : undefined}
+            onBlur={item.onPreview ? () => item.onPreview?.(false) : undefined}
           >
+            {item.lead ? <span className="block text-micro font-semibold text-soft">{item.lead}</span> : null}
             {item.label}
             {item.hint ? <span className="block text-micro font-normal text-soft">{item.hint}</span> : null}
           </button>

@@ -202,7 +202,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   position: (a) => isCardId(a.id) && isPos(a.pos),
   counter: (a) => isCardId(a.id) && isInt(a.delta, -1000, 1000),
   token: (a) => isZone(a.zone) && isInt(a.index, 0, 4) && optional(a.pos, oneOf(['atk', 'def'])),
-  activate: (a) => isCardId(a.id) && optional(a.cost, oneOf(['discard', 'banish'])),
+  activate: (a) => isCardId(a.id) && optional(a.cost, oneOf(['discard', 'banish'])) && optional(a.effect, (v) => isInt(v, 0, 9)),
   reveal: (a) => isCardId(a.id),
   declare: (a) => isCardId(a.id),
   target: (a) => isCardId(a.id),
