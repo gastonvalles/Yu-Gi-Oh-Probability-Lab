@@ -12,6 +12,9 @@ import type { DuelSideView } from '../../duel/DuelTable'
 
 const MAIN = [14558127, 59438930, 27204311, 5318639, 53129443, 83764718, 24094653, 44095762, 53582587, 10045474]
 const EXTRA = [86066372, 4280258, 38342335]
+/** Number 39: Utopia, un Xyz: en el duelo de muestra cada uno tiene uno con materiales (el tuyo en ataque con tres, el del rival en defensa con dos). */
+const XYZ = 84013237
+const DUEL_EXTRA = [...EXTRA, XYZ]
 
 const deck = (passcodes: readonly number[], copies: number) => passcodes.flatMap((passcode) => Array.from({ length: copies }, (_, copy) => `card-${passcode}-${copy + 1}`))
 
@@ -39,6 +42,11 @@ const MY_PLAYS: MatAction[] = [
   { type: 'place', id: MY_FIELD, zone: 'field', index: 0, pos: 'atk' },
   // Un Monstruo de Péndulo en el Extra Deck, boca arriba.
   { type: 'move', id: 'card-10045474-1', to: 'extra', faceUp: true },
+  // Un Xyz en ataque con tres materiales.
+  { type: 'place', id: `card-${XYZ}-1`, zone: 'mz', index: 4, pos: 'atk' },
+  { type: 'attach', id: 'card-14558127-2', to: `card-${XYZ}-1` },
+  { type: 'attach', id: 'card-59438930-2', to: `card-${XYZ}-1` },
+  { type: 'attach', id: 'card-27204311-2', to: `card-${XYZ}-1` },
 ]
 
 const THEIR_PLAYS: MatAction[] = [
@@ -53,6 +61,10 @@ const THEIR_PLAYS: MatAction[] = [
   { type: 'move', id: 'card-10045474-2', to: 'extra', faceUp: true },
   { type: 'place', id: THEIR_FIELD, zone: 'field', index: 0, pos: 'atk' },
   { type: 'draw', count: 1 },
+  // Su Xyz, en defensa con dos materiales.
+  { type: 'place', id: `card-${XYZ}-1`, zone: 'mz', index: 4, pos: 'def' },
+  { type: 'attach', id: 'card-59438930-1', to: `card-${XYZ}-1` },
+  { type: 'attach', id: 'card-27204311-1', to: `card-${XYZ}-1` },
 ]
 
 /** Los nombres de las cartas de la muestra (los de YGOPRODeck), para la lista de pasos: el catálogo no baja datos de cartas. */
@@ -154,10 +166,10 @@ export function sampleArrowCombo() {
 
 export function sampleDuel(): { mine: DuelSideView; theirs: DuelSideView } {
   // Las magias de campo van al fondo del deck: la mano de cada uno es la de siempre.
-  const myStart = createMatState([...deck(MAIN, 2), MY_FIELD], deck(EXTRA, 1), 5)
+  const myStart = createMatState([...deck(MAIN, 2), MY_FIELD], deck(DUEL_EXTRA, 1), 5)
   const mine = replayMat(myStart, MY_PLAYS)
 
-  const theirStart = createMatState([...deck(MAIN, 2).reverse(), THEIR_FIELD], deck(EXTRA, 1).reverse(), 5)
+  const theirStart = createMatState([...deck(MAIN, 2).reverse(), THEIR_FIELD], deck(DUEL_EXTRA, 1).reverse(), 5)
   const open = openPublic(theirStart)
   let sender = open.sender
   let state = theirStart

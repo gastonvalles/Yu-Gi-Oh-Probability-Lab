@@ -1163,7 +1163,7 @@ describe('la mesa de práctica', () => {
 
     // Quedan varias zonas para elegir, incluida la de Ash (que se va como material y sigue marcada): tocar a Ash elige esa zona.
     tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
-    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus, con 1 material' })).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
   })
@@ -1214,7 +1214,7 @@ describe('la mesa de práctica', () => {
       tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
       fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
 
-      expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+      expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Zeus, con 1 material' })).toBeInTheDocument()
       expect(within(zone('Zona de monstruo 1')).queryByRole('button', { name: 'Ash Blossom' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
       expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
@@ -1238,9 +1238,9 @@ describe('la mesa de práctica', () => {
 
     // Antes: la única zona libre de ese momento (la Extra 2) se elegía sola. Ahora se elige: la de Ash, que se libera, y la Extra libre.
     const freeExtra = screen.getByRole('button', { name: 'Zona extra de monstruo 2: elegir' })
-    expect(within(freeExtra).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
+    expect(within(freeExtra).queryByRole('button', { name: /^Zeus/ })).not.toBeInTheDocument()
     tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
-    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus, con 1 material' })).toBeInTheDocument()
   })
 
   describe('Desacoplar y Adjuntar: con varias cartas, una sola opción que abre la lista', () => {
@@ -1269,7 +1269,7 @@ describe('la mesa de práctica', () => {
           if (device === 'escritorio') asDesktop()
           render(<Harness initial={table} cards={cards} />)
 
-          tap(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: 'Zeus' }))
+          tap(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: /^Zeus/ }))
           expect(items().filter((label) => label?.startsWith('Desacoplar'))).toEqual(['Desacoplar'])
           fireEvent.click(screen.getByRole('menuitem', { name: 'Desacoplar' }))
           expect(items()).toEqual(['Ash Blossom', 'Ash Blossom', 'Maxx C'])
@@ -1280,7 +1280,7 @@ describe('la mesa de práctica', () => {
           expect(screen.getByRole('button', { name: 'GY: 2' })).toBeInTheDocument()
 
           // Quedan los dos Ash Blossom: sigue siendo una sola opción con la lista.
-          tap(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: 'Zeus' }))
+          tap(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: /^Zeus/ }))
           fireEvent.click(screen.getByRole('menuitem', { name: 'Desacoplar' }))
           expect(items()).toEqual(['Ash Blossom', 'Ash Blossom'])
           expect(keyWarnings(errors)).toEqual([])
@@ -1347,7 +1347,7 @@ describe('la mesa de práctica', () => {
 
         // Se siguió como al confirmar: confirma el material pero no invoca solo, la mesa espera que se toque la casilla (también la de Ash, que se liberó).
         expect(within(status()).getByText(/^Tocá la zona para/)).toBeInTheDocument()
-        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
+        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: /^Zeus/ })).not.toBeInTheDocument()
         tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
         expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
       } finally {
@@ -1367,12 +1367,12 @@ describe('la mesa de práctica', () => {
         // El segundo toque confirmó y la mesa ya pide zona: el click que le sigue cae en la carta (dentro de su casilla) y no tiene que invocar ahí.
         fireEvent.click(material)
 
-        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
+        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: /^Zeus/ })).not.toBeInTheDocument()
         expect(within(status()).getByText(/^Tocá la zona para/)).toBeInTheDocument()
 
         // Elegir a mano otra casilla sí invoca ahí.
         fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
-        expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+        expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Zeus, con 1 material' })).toBeInTheDocument()
         expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
       } finally {
         window.matchMedia = matchMedia
@@ -1403,9 +1403,9 @@ describe('la mesa de práctica', () => {
 
         // Antes se invocaba solo en la única casilla libre (la del material).
         expect(within(status()).getByText(/^Tocá la zona para/)).toBeInTheDocument()
-        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
+        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: /^Zeus/ })).not.toBeInTheDocument()
         tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
-        expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+        expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus, con 1 material' })).toBeInTheDocument()
       } finally {
         window.matchMedia = matchMedia
       }
@@ -1801,6 +1801,75 @@ describe('la mesa de práctica', () => {
     expect(upright).not.toHaveClass('[transform:rotate(90deg)]')
     // La casilla de campo tiene el tamaño de la carta: la llena.
     expect(within(zone('Zona de campo')).getByRole('button', { name: 'Called by the Grave' })).toHaveClass('w-full')
+  })
+
+  describe('los materiales de un Xyz, sobre el campo', () => {
+    const xyzWith = (materials: string[], pos: 'atk' | 'def' = 'atk') =>
+      replayMat(INITIAL, [{ type: 'place', id: 'card-7-1', zone: 'mz', index: 0, pos }, ...materials.map((id): MatAction => ({ type: 'attach', id, to: 'card-7-1' }))])
+    const stackIn = (name: string) => zone(name).querySelector<HTMLElement>('[data-material-stack]')
+
+    it('sin materiales, el Xyz no lleva pila ni contador', () => {
+      render(<Harness initial={xyzWith([])} />)
+
+      expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+      expect(stackIn('Zona de monstruo 1')).toBeNull()
+      expect(within(zone('Zona de monstruo 1')).queryByRole('img', { name: /material/ })).not.toBeInTheDocument()
+    })
+
+    it('con uno, una capa de dorso detrás de la carta y el aro con «1 material»; el nombre de la carta lo dice', () => {
+      render(<Harness initial={xyzWith(['card-1-1'])} />)
+
+      const card = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus, con 1 material' })
+      const stack = stackIn('Zona de monstruo 1')!
+
+      expect(stack.children).toHaveLength(1)
+      // La pila va antes que la carta (queda detrás) y es decoración: no se toca, no la leen y no es una carta para los vuelos.
+      expect(stack.nextElementSibling).toBe(card)
+      expect(stack).toHaveAttribute('aria-hidden', 'true')
+      expect(stack).toHaveClass('pointer-events-none', 'absolute')
+      expect(stack).not.toHaveAttribute('data-card-id')
+      expect(stack.querySelector('[data-card-id]')).toBeNull()
+      // El contador es de la carta (viaja con ella) y tampoco recibe toques.
+      const ring = within(card).getByRole('img', { name: '1 material' })
+      expect(ring.parentElement).toHaveClass('pointer-events-none', 'absolute')
+      expect(ring).toHaveTextContent('1')
+    })
+
+    it('con tres, tres capas y el aro en tres tramos; con más, la pila no crece (lo dice el número)', () => {
+      const { unmount } = render(<Harness initial={xyzWith(['card-1-1', 'card-2-1', 'card-4-1'])} />)
+
+      const card = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus, con 3 materiales' })
+      expect(stackIn('Zona de monstruo 1')!.children).toHaveLength(3)
+      // Un tramo por material, más el fondo del aro.
+      expect(within(card).getByRole('img', { name: '3 materiales' }).querySelectorAll('circle')).toHaveLength(4)
+      unmount()
+
+      render(<Harness initial={xyzWith(['card-1-1', 'card-2-1', 'card-4-1', 'card-5-1'])} />)
+      expect(stackIn('Zona de monstruo 1')!.children).toHaveLength(3)
+      expect(within(zone('Zona de monstruo 1')).getByRole('img', { name: '4 materiales' })).toHaveTextContent('4')
+    })
+
+    it('en defensa la pila se acuesta con la carta y el número queda derecho', () => {
+      render(<Harness initial={xyzWith(['card-1-1', 'card-2-1'], 'def')} />)
+
+      const card = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus, en defensa, con 2 materiales' })
+      expect(card).toHaveClass('[transform:rotate(90deg)]')
+      expect(stackIn('Zona de monstruo 1')).toHaveClass('[transform:rotate(90deg)]')
+      expect(within(card).getByRole('img', { name: '2 materiales' }).parentElement).toHaveClass('-rotate-90')
+    })
+
+    it('una carta que no es Xyz no muestra nada aunque tenga materiales', () => {
+      const initial = replayMat(INITIAL, [
+        { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'atk' },
+        { type: 'attach', id: 'card-2-1', to: 'card-1-1' },
+      ])
+      expect(initial.mz[0]!.materials).toEqual(['card-2-1'])
+      render(<Harness initial={initial} />)
+
+      expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+      expect(stackIn('Zona de monstruo 1')).toBeNull()
+      expect(within(zone('Zona de monstruo 1')).queryByRole('img', { name: /material/ })).not.toBeInTheDocument()
+    })
   })
 
   describe('los controles del replay (como los de YGOPocket)', () => {

@@ -25,11 +25,13 @@ interface SegmentedRingProps {
   activeKey?: string | null
   /** Se llama al pasar el mouse (o tocar) un tramo del anillo. */
   onSegmentSelect?: (key: string) => void
+  /** Ocupa todo su contenedor (un cuadrado) en vez de medir `size` px: `size` queda como la escala del dibujo (y del grosor). Lo usa el aro de los materiales de un Xyz, que crece con la carta. */
+  fluid?: boolean
   children?: ReactNode
 }
 
 /** Anillo que reparte un total entre varios tramos (limpias / con problema / sin salida). Los tramos se llenan en orden, como una aguja. */
-export function SegmentedRing({ segments, size = 160, strokeWidth, label, activeKey = null, onSegmentSelect, children }: SegmentedRingProps) {
+export function SegmentedRing({ segments, size = 160, strokeWidth, label, activeKey = null, onSegmentSelect, fluid = false, children }: SegmentedRingProps) {
   const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
   const { ref, revealed, settled, delayMs, instant: unseen } = useRingReveal<HTMLDivElement>()
   const total = segments.reduce((sum, segment) => sum + clamp01(segment.value), 0) || 1
@@ -40,8 +42,8 @@ export function SegmentedRing({ segments, size = 160, strokeWidth, label, active
   let start = 0
 
   return (
-    <div ref={ref} className={cx('relative inline-grid shrink-0 place-items-center', !settled && 'will-change-transform')} style={{ width: size, height: size }} role="img" aria-label={label}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden="true">
+    <div ref={ref} className={cx('relative inline-grid shrink-0 place-items-center', fluid && 'size-full', !settled && 'will-change-transform')} style={fluid ? undefined : { width: size, height: size }} role="img" aria-label={label}>
+      <svg width={fluid ? '100%' : size} height={fluid ? '100%' : size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden="true">
         <circle cx={center} cy={center} r={radius} fill="none" strokeWidth={stroke} className="stroke-tint/10" />
         {segments.map((segment) => {
           const share = clamp01(segment.value) / total

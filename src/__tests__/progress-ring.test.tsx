@@ -162,4 +162,16 @@ describe('SegmentedRing', () => {
     flushFrames()
     expect(Number(arc().getAttribute('stroke-dasharray')?.split(' ')[0])).toBeGreaterThan(200)
   })
+
+  it('`fluid` ocupa su contenedor: `size` queda como la escala del dibujo', () => {
+    mockReducedMotion(true)
+    render(<SegmentedRing fluid size={100} strokeWidth={8} label="2 materiales" segments={[{ key: 'a', value: 1, color: '0 255 0' }, { key: 'b', value: 1, color: '0 255 0' }]} />)
+    const ring = screen.getByRole('img', { name: '2 materiales' })
+    const svg = ring.querySelector('svg')!
+
+    expect(ring).toHaveClass('size-full')
+    expect(ring.style.width).toBe('')
+    expect(svg).toHaveAttribute('width', '100%')
+    expect(svg).toHaveAttribute('viewBox', '0 0 100 100')
+  })
 })
