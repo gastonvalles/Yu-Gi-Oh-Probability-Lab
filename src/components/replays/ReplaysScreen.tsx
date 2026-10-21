@@ -46,7 +46,7 @@ type Topic = 'meta' | 'all' | `event:${string}`
 const REPLAYS_PER_PAGE = 12
 const CHANNEL_BADGE: Record<ReplayChannel, string> = { eu: 'EU', tcg: 'TCG' }
 /** El círculo del canal (como el avatar del canal en YouTube): un color por canal. */
-const CHANNEL_AVATAR: Record<ReplayChannel, string> = { eu: 'bg-info/20 text-info-soft', tcg: 'bg-primary/25 text-primary-soft' }
+const CHANNEL_AVATAR: Record<ReplayChannel, string> = { eu: 'bg-info/20 text-info-soft', tcg: 'bg-primary/25 text-foreground' }
 
 /** El nombre de un canal, como link a su página de YouTube. */
 const channelLink = (key: ReplayChannel) => (text: string) => (
@@ -280,7 +280,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
         {/* La miniatura de YouTube es 4:3 con barras negras arriba y abajo: `object-cover` en 16:9 las recorta. */}
         <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="parallax-media size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
-          <span className="grid size-12 scale-90 place-items-center rounded-full bg-primary/90 text-primary-foreground opacity-0 transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none">
+          <span className="grid size-12 scale-90 place-items-center rounded-full bg-info text-info-foreground opacity-0 transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none">
             <Icon name="play" size={22} variant="bold" />
           </span>
         </span>
