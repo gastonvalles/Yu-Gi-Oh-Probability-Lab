@@ -592,7 +592,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   const style = cx('relative flex h-14 shrink-0 items-center gap-3 rounded-card border bg-card-background px-2 text-left min-[1101px]:h-[4.5rem] min-[1101px]:px-3', big ? 'min-w-28 min-[1101px]:min-w-44' : 'min-w-[5.25rem] min-[1101px]:min-w-36 max-[339px]:min-w-16', tone.border)
 
   return onClick ? (
-    <button ref={setTile} type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button ref={setTile} type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-info/60 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (

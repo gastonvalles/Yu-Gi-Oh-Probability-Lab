@@ -60,7 +60,7 @@ export function ReactionButtons({ onSend, disabled = false, readyAt = 0, classNa
             className={cx(
               'relative grid cursor-pointer place-items-center border px-0 leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40',
               // La botonera de abajo: cajas oscuras de 44 px con el emoji a 24 px (como el resto de la botonera); el chat, grandes (56 px, emoji de 33).
-              set === 'dock' ? 'size-11 rounded-card bg-card-background text-title hover:border-tint/40' : 'h-14 w-14 rounded-control bg-input text-stat hover:bg-surface-hover',
+              set === 'dock' ? 'size-11 rounded-card bg-card-background text-title hover:border-info/60' : 'h-14 w-14 rounded-control bg-input text-stat hover:bg-surface-hover',
               set === 'dock' ? 'border-border-subtle' : 'border-border',
             )}
             onClick={() => {
