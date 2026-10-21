@@ -100,7 +100,7 @@ function FieldArtSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSide
       className="col-span-full"
       note={
         <>
-          Con la magia de campo boca arriba, su arte recortado (<Tag>cards_cropped</Tag>) va de fondo de la mitad de quien la activó: tenue (45 %), sin desenfoque, y se desvanece hacia los costados y hacia la fila del medio (las Zonas Extra no son de nadie). Boca abajo o sin carta, nada; del rival, sólo si se sabe cuál es. Va derecho para los dos. Archivos: <Tag>probability/MatArena.tsx</Tag> (<Tag>FieldArt</Tag>, <Tag>fieldArtSrc</Tag>) y <Tag>mat-field-art</Tag> en <Tag>index.css</Tag>.
+          Con la magia de campo boca arriba, su arte recortado (<Tag>cards_cropped</Tag>) va de fondo de la mitad de quien la activó: bien visible (60 %), sin desenfoque, y se desvanece hacia los costados y hacia la fila del medio (las Zonas Extra no son de nadie). Boca abajo o sin carta, nada; del rival, sólo si se sabe cuál es. Va derecho para los dos. Archivos: <Tag>probability/MatArena.tsx</Tag> (<Tag>FieldArt</Tag>, <Tag>fieldArtSrc</Tag>) y <Tag>mat-field-art</Tag> en <Tag>index.css</Tag>.
         </>
       }
     >
