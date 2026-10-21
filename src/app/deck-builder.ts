@@ -495,6 +495,7 @@ function cloneApiCardReference(card: ApiCardReference | ApiCardSearchResult): Ap
     attribute: card.attribute,
     level: card.level,
     linkValue: card.linkValue,
+    ...(card.scale !== undefined ? { scale: card.scale } : {}),
     atk: card.atk,
     def: card.def,
     archetype: card.archetype,

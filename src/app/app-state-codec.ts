@@ -212,6 +212,9 @@ function parseApiCardReference(value: unknown, fieldName: string, cardName: stri
     throw new Error(t('deck.codec.fieldNotObject', { field: fieldName }))
   }
 
+  // Sólo los Péndulos la traen: si no viene, la carta queda sin el campo (como en el parser de YGOPRODeck).
+  const scale = parseNullableInteger(value.scale)
+
   return {
     ygoprodeckId: parseRequiredInteger(value.ygoprodeckId, `${fieldName}.ygoprodeckId`),
     cardType: parseRequiredString(value.cardType, `${fieldName}.cardType`),
@@ -221,6 +224,7 @@ function parseApiCardReference(value: unknown, fieldName: string, cardName: stri
     attribute: parseNullableString(value.attribute),
     level: parseNullableInteger(value.level),
     linkValue: parseNullableInteger(value.linkValue),
+    ...(scale !== null ? { scale } : {}),
     atk: parseNullableDisplayString(value.atk),
     def: parseNullableDisplayString(value.def),
     archetype: parseNullableString(value.archetype),
