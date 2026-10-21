@@ -24,7 +24,7 @@ import { Segmented } from '../../ui/Segmented'
 import { StepHero } from '../../StepHero'
 import { StepPage } from '../../ui/StepPage'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
-import { sampleCombo } from './duel-sample'
+import { sampleArrowCombo, sampleCombo } from './duel-sample'
 
 /** Los colores de un replay, uno por cada cosa que puede hacer un paso (el del destello que hace en la mesa). */
 const DEMO_TONES: Array<FxTone | null> = ['cyan', 'gold', 'gold', 'violet', null, 'amber', 'red', 'indigo', 'teal', 'white', 'cyan', null]
@@ -152,12 +152,59 @@ function StepListSamples() {
           ].map((width) => (
             <div key={width.label} className={cx('grid gap-2', width.className)}>
               <Tag>{width.label}</Tag>
-              <Card padding="sm">{snapshot ? <MatSnapshot state={snapshot.after} change={snapshot.info.change} artOf={combo.artOf} /> : <MatSnapshot state={combo.initial} artOf={combo.artOf} />}</Card>
+              <Card padding="sm">{snapshot ? <MatSnapshot state={snapshot.after} change={snapshot.info.change} arrows={snapshot.arrows} artOf={combo.artOf} /> : <MatSnapshot state={combo.initial} artOf={combo.artOf} />}</Card>
             </div>
           ))}
         </div>
       </Specimen>
+
+      <ArrowSamples />
     </>
+  )
+}
+
+/** Los anchos del tablero en la muestra de las flechas (la frase del paso se parte a ese ancho): el de la columna de la mesa, el del diálogo del celular y uno libre (las flechas se ubican con el ancho medido). */
+const ARROW_WIDTHS = {
+  column: { label: 'Columna de la mesa · 232 px', box: 'w-[calc(14.5rem+1.625rem)]' },
+  dialog: { label: 'Diálogo del celular · 278 px', box: 'w-[calc(17.375rem+1.625rem)]' },
+  free: { label: 'Ancho libre', box: 'min-w-0 flex-1 basis-96' },
+} as const
+
+type ArrowWidth = keyof typeof ARROW_WIDTHS
+
+/** Un tablero chico por cada camino que dibujan las flechas (`sampleArrowCombo`), con la frase de su paso, a tres anchos. */
+function ArrowSamples() {
+  const combo = useMemo(sampleArrowCombo, [])
+  const steps = useMemo(() => panelStepsOf(combo.initial, combo.actions, describeMatSteps(combo.initial, combo.actions, combo.nameOf), combo.nameOf, combo.artOf), [combo])
+  const [width, setWidth] = useState<ArrowWidth>('column')
+
+  return (
+    <Specimen
+      title="Flechas de movimiento"
+      layout="column"
+      note={
+        <>
+          Sobre el tablero chico de cada paso, una flecha blanca por camino: de la casilla o la pila de donde salió la carta a donde llegó (la mano es «Mano N»; debajo de un Xyz, su casilla). Finas, con la cabeza abierta y un halo tenue del fondo para leerse sobre el arte; se curvan hacia arriba (hacia el medio si son verticales) y salen y entran por el borde, sin tapar el marco ámbar. Lo que hizo el mismo camino va en una sola, con la cantidad (<Tag>×5</Tag>); una ficha que aparece no lleva. Hasta seis por paso (las primeras, empezando por la carta de la jugada). Son un dibujo: la frase y «Qué se mueve» ya lo dicen. Archivos: <Tag>app/mat-arrows.ts</Tag> (qué flechas) y <Tag>probability/MatSnapshot.tsx</Tag> (cómo se dibujan)
+        </>
+      }
+    >
+      <Segmented label="Ancho de los tableros" variant="chips" size="sm" value={width} onChange={setWidth} options={(Object.keys(ARROW_WIDTHS) as ArrowWidth[]).map((key) => ({ value: key, label: ARROW_WIDTHS[key].label }))} />
+      <div className="flex flex-wrap items-start gap-4">
+        {combo.cases.map(({ name, step }) => {
+          const shown = steps[step]!
+
+          return (
+            <div key={name} className={cx('grid gap-2', ARROW_WIDTHS[width].box)}>
+              <Tag>{name}</Tag>
+              <Card padding="sm" className="grid gap-2">
+                <p className="m-0 text-micro text-muted">{shown.label}</p>
+                <MatSnapshot state={shown.after} change={shown.info.change} arrows={shown.arrows} artOf={combo.artOf} />
+              </Card>
+            </div>
+          )
+        })}
+      </div>
+    </Specimen>
   )
 }
 

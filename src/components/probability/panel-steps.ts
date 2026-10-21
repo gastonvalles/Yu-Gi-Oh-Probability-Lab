@@ -1,3 +1,4 @@
+import { matArrows, type MatArrow } from '../../app/mat-arrows'
 import { describeSteps, matStates, type StepInfo } from '../../app/mat-step-info'
 import { matStepCards } from '../../app/mat-steps'
 import type { MatAction, MatState } from '../../app/practice-mat'
@@ -13,13 +14,16 @@ export interface PanelStep {
   after: MatState
   /** La clase de la jugada (el chip), de dónde sale la carta, qué se mueve y qué casillas cambian (`mat-step-info`). */
   info: StepInfo
+  /** Las flechas de su tablero: de dónde a dónde fue cada carta (`matArrows`). */
+  arrows: MatArrow[]
   /** El color del paso, el de su destello en la mesa (el mismo de su pastilla en el reproductor); `null`, gris. */
   tone: FxTone | null
 }
 
 /**
  * Lo que la lista de pasos muestra de cada jugada (`labels` son sus frases, de `describeMatSteps`): las miniaturas (hasta tres, las que tienen imagen), la mesa de después
- * (`matStates`, un solo recorrido), la clase y lo que se mueve (`describeSteps`) y el color (`stepTone`). Se calcula una vez por combo, no por paso: avanzar no recalcula nada.
+ * (`matStates`, un solo recorrido), la clase y lo que se mueve (`describeSteps`), sus flechas (`matArrows`) y el color (`stepTone`). Se calcula una vez por combo, no por paso:
+ * avanzar no recalcula nada.
  */
 export function panelStepsOf(initial: MatState, actions: readonly MatAction[], labels: readonly string[], nameOf: (id: string) => string, artOf: (id: string) => string | null): PanelStep[] {
   const states = matStates(initial, actions)
@@ -36,6 +40,7 @@ export function panelStepsOf(initial: MatState, actions: readonly MatAction[], l
     }),
     after: states[index + 1]!,
     info: infos[index]!,
+    arrows: matArrows(infos[index]!.moves, states[index + 1]!),
     tone: stepTone(states[index]!, action),
   }))
 }

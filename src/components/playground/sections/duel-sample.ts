@@ -107,6 +107,46 @@ export function sampleCombo() {
   return { initial, actions, nameOf, artOf }
 }
 
+/**
+ * Un combo para la muestra de las flechas del tablero chico, con la misma mano que `sampleCombo`: un paso por cada camino que se dibuja (de una pila a una casilla y al revés,
+ * de la mano y a la mano, debajo de un Xyz y de ahí al cementerio, varias cartas juntas, casillas vecinas) y uno con más caminos que el tope. `cases` dice qué paso es cada
+ * caso (los demás sólo arman la mesa).
+ */
+export function sampleArrowCombo() {
+  const { initial, nameOf, artOf } = sampleCombo()
+  const plays: Array<[string | null, MatAction]> = [
+    ['Deck → mano, cinco juntas', { type: 'draw', count: 5 }],
+    ['Mano → zona de monstruo', { type: 'place', id: card(14558127), zone: 'mz', index: 1, pos: 'atk', how: 'normal' }],
+    [null, { type: 'place', id: card(59438930), zone: 'mz', index: 2, pos: 'def', how: 'special' }],
+    ['Debajo de un Xyz', { type: 'summon', id: card(38342335), how: 'xyz', materials: [card(14558127), card(59438930)], zone: 'emz', index: 0, pos: 'atk' }],
+    ['Un material → cementerio', { type: 'move', id: card(14558127), to: 'gy' }],
+    ['Mano → Mágicas y Trampas', { type: 'place', id: card(5318639), zone: 'st', index: 1, pos: 'atk' }],
+    ['Zona → cementerio', { type: 'move', id: card(5318639), to: 'gy' }],
+    ['Cementerio → mano', { type: 'move', id: card(14558127), to: 'hand' }],
+    ['Deck → cementerio (vecinas), tres juntas', { type: 'mill', count: 3 }],
+    ['Cementerio → destierro (vecinas)', { type: 'move', id: card(5318639), to: 'banished' }],
+    ['Cementerio → zona', { type: 'place', id: card(59438930, 2), zone: 'mz', index: 0, pos: 'def', how: 'special' }],
+    ['Mano → Zona de campo', { type: 'place', id: card(53129443), zone: 'field', index: 0, pos: 'atk' }],
+    [null, { type: 'place', id: card(27204311), zone: 'mz', index: 1, pos: 'atk' }],
+    [null, { type: 'place', id: card(53582587), zone: 'mz', index: 2, pos: 'atk' }],
+    [null, { type: 'place', id: card(10045474), zone: 'mz', index: 3, pos: 'atk' }],
+    [null, { type: 'place', id: card(83764718), zone: 'mz', index: 4, pos: 'atk' }],
+    ['Siete caminos: se ven seis', { type: 'summon', id: card(86066372), how: 'link', materials: [card(59438930, 2), card(27204311), card(53582587), card(10045474), card(83764718), card(38342335)], zone: 'emz', index: 1, pos: 'atk' }],
+    [null, { type: 'place', id: card(44095762), zone: 'st', index: 1, pos: 'atk' }],
+    [null, { type: 'place', id: card(24094653), zone: 'st', index: 2, pos: 'atk' }],
+    [null, { type: 'place', id: card(14558127), zone: 'mz', index: 3, pos: 'atk' }],
+    ['Sobre cartas boca arriba', { type: 'move', id: card(59438930, 2), to: 'hand' }],
+  ]
+
+  return {
+    initial,
+    actions: plays.map(([, action]) => action),
+    cases: plays.flatMap(([name], step) => (name === null ? [] : [{ name, step }])),
+    nameOf,
+    artOf,
+  }
+}
+
 export function sampleDuel(): { mine: DuelSideView; theirs: DuelSideView } {
   const myStart = createMatState(deck(MAIN, 2), deck(EXTRA, 1), 5)
   const mine = replayMat(myStart, MY_PLAYS)
