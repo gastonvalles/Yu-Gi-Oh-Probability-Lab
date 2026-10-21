@@ -72,10 +72,10 @@ export const deck = {
   'deck.builder.emptyTitle': 'Armá tu primer deck',
   'deck.builder.emptyText': 'Buscá cartas o cargá uno que ya ganó un torneo.',
   'deck.builder.emptyTournament': 'Cargar un deck de torneo',
-  'deck.builder.clearAllTitle': 'Vaciar todo el deck',
+  'deck.builder.clearAllTitle': '¿Vaciar el deck?',
   'deck.builder.clearConfirm': {
-    one: 'Se va a quitar {count} carta del deck. Esta acción no se puede deshacer.',
-    other: 'Se van a quitar {count} cartas del deck. Esta acción no se puede deshacer.',
+    one: 'Se quita {count} carta. No se puede deshacer.',
+    other: 'Se quitan {count} cartas. No se puede deshacer.',
   },
   'deck.builder.clearConfirmYes': 'Vaciar deck',
   'deck.builder.genesys.title': 'Puntos Genesys',
@@ -172,16 +172,13 @@ export const deck = {
     one: '{count} línea inválida',
     other: '{count} líneas inválidas',
   },
-  'deck.import.replace.current': {
-    one: 'Tu deck actual tiene {count} carta.',
-    other: 'Tu deck actual tiene {count} cartas.',
+  'deck.import.replace.title': '¿Reemplazar tu deck?',
+  // `count` son las cartas del deck de ahora (eligen la forma); `incoming`, las del import que las reemplazan.
+  'deck.import.replace.description': {
+    one: 'Tu deck tiene {count} carta. Se cambia por {incoming} del import. No se puede deshacer.',
+    other: 'Tu deck tiene {count} cartas. Se cambian por {incoming} del import. No se puede deshacer.',
   },
-  // "carta resueltas" en singular: así estaba antes de traducir.
-  'deck.import.replace.incoming': {
-    one: 'Si confirmás, se reemplaza por {count} carta resuelta del import.',
-    other: 'Si confirmás, se reemplaza por {count} cartas resueltas del import.',
-  },
-  'deck.import.replace.back': 'Volver',
+  'deck.import.replace.keep': 'Mantener mi deck',
   'deck.import.replace.confirm': 'Reemplazar deck',
   'deck.import.line': 'Línea {number}',
   'deck.import.ignored': 'Ignorada',
@@ -312,8 +309,7 @@ export const deck = {
   'deck.backup.fileName': 'ygo-probability-lab-copia-{date}',
   'deck.backup.readFailed': 'No pude leer la copia.',
   'deck.backup.confirmTitle': '¿Restaurar la copia?',
-  'deck.backup.confirmText': 'Lo que trae la copia reemplaza lo que hay en este navegador: deck, roles, reglas, builds y combos. La página se recarga.',
-  'deck.backup.confirmTextDated':
-    'Lo que trae la copia (del {date}) reemplaza lo que hay en este navegador: deck, roles, reglas, builds y combos. La página se recarga.',
+  'deck.backup.confirmText': 'Tu deck, roles, reglas, builds y combos de este navegador se cambian por los de la copia. La página se recarga.',
+  'deck.backup.confirmTextDated': 'Tu deck, roles, reglas, builds y combos de este navegador se cambian por la copia del {date}. La página se recarga.',
   'deck.backup.confirmButton': 'Restaurar',
 } as const

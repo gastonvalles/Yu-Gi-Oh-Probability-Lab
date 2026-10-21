@@ -32,7 +32,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'titulos', title: 'Títulos', icon: 'tag', description: 'Heading, el encabezado de cada pantalla, el de una tarjeta y el de un diálogo.', Component: TitlesSection },
   { id: 'superficies', title: 'Tarjetas, avisos y campos', icon: 'layers', description: 'Card, Callout, EmptyState, Skeleton y los campos de texto.', Component: SurfacesSection },
   { id: 'datos', title: 'Datos', icon: 'chart', description: 'Anillos de progreso y repartidos, y la explicación a pedido.', Component: DataSection },
-  { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños y los avisos (toast).', Component: DialogsSection },
+  { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños, las confirmaciones y los avisos (toast).', Component: DialogsSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
   { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
   { id: 'assets', title: 'Assets', icon: 'image', description: 'Los archivos de public/, la marca, las fuentes y las imágenes de cartas.', Component: AssetsSection },

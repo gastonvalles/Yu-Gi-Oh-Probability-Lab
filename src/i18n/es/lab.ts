@@ -15,12 +15,9 @@ export const lab = {
   'lab.panel.discard.description': 'Los cambios de esta regla no se guardaron. Si salís ahora se pierden.',
   'lab.panel.discard.keepEditing': 'Seguir editando',
   'lab.panel.discard.confirm': 'Descartar',
-  'lab.panel.delete.title': 'Borrar regla',
-  'lab.panel.delete.description': 'Se va a quitar esta regla del análisis y el resultado se recalculará en el momento.',
+  'lab.panel.delete.title': '¿Borrar la regla?',
+  'lab.panel.delete.description': 'Sale del análisis y el resultado se recalcula. No se puede deshacer.',
   'lab.panel.delete.confirm': 'Borrar regla',
-
-  'lab.confirm.kicker': 'Confirmación',
-  'lab.confirm.confirm': 'Confirmar',
 
   'lab.disclaimer.kicker': 'Antes de empezar',
   'lab.disclaimer.title': 'Cómo leer estos porcentajes',

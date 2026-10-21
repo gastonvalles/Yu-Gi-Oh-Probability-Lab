@@ -88,6 +88,7 @@ export function BackupActions({ variant = 'buttons' }: { variant?: 'buttons' | '
         title={t('deck.backup.confirmTitle')}
         description={pendingBackup?.savedAt ? t('deck.backup.confirmTextDated', { date: formatDay(pendingBackup.savedAt) }) : t('deck.backup.confirmText')}
         confirmLabel={t('deck.backup.confirmButton')}
+        confirmColor="danger"
         onCancel={() => setPendingBackup(null)}
         onConfirm={restorePendingBackup}
       />

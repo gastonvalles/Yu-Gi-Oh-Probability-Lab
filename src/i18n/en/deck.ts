@@ -73,10 +73,10 @@ export const deck: Translated<typeof es> = {
   'deck.builder.emptyTitle': 'Build your first deck',
   'deck.builder.emptyText': 'Search for cards or load one that already won a tournament.',
   'deck.builder.emptyTournament': 'Load a tournament deck',
-  'deck.builder.clearAllTitle': 'Clear the whole deck',
+  'deck.builder.clearAllTitle': 'Clear the deck?',
   'deck.builder.clearConfirm': {
-    one: "{count} card will be removed from the deck. This action can't be undone.",
-    other: "{count} cards will be removed from the deck. This action can't be undone.",
+    one: "{count} card is removed. This can't be undone.",
+    other: "{count} cards are removed. This can't be undone.",
   },
   'deck.builder.clearConfirmYes': 'Clear deck',
   'deck.builder.genesys.title': 'Genesys points',
@@ -173,15 +173,12 @@ export const deck: Translated<typeof es> = {
     one: '{count} invalid line',
     other: '{count} invalid lines',
   },
-  'deck.import.replace.current': {
-    one: 'Your current deck has {count} card.',
-    other: 'Your current deck has {count} cards.',
+  'deck.import.replace.title': 'Replace your deck?',
+  'deck.import.replace.description': {
+    one: "Your deck has {count} card. It's swapped for {incoming} from the import. This can't be undone.",
+    other: "Your deck has {count} cards. They're swapped for {incoming} from the import. This can't be undone.",
   },
-  'deck.import.replace.incoming': {
-    one: 'If you confirm, it will be replaced by {count} resolved card from the import.',
-    other: 'If you confirm, it will be replaced by {count} resolved cards from the import.',
-  },
-  'deck.import.replace.back': 'Back',
+  'deck.import.replace.keep': 'Keep my deck',
   'deck.import.replace.confirm': 'Replace deck',
   'deck.import.line': 'Line {number}',
   'deck.import.ignored': 'Ignored',
@@ -312,8 +309,7 @@ export const deck: Translated<typeof es> = {
   'deck.backup.fileName': 'ygo-probability-lab-backup-{date}',
   'deck.backup.readFailed': "Couldn't read the backup.",
   'deck.backup.confirmTitle': 'Restore the backup?',
-  'deck.backup.confirmText': 'What the backup holds replaces what is in this browser: deck, roles, rules, builds and combos. The page reloads.',
-  'deck.backup.confirmTextDated':
-    'What the backup holds (from {date}) replaces what is in this browser: deck, roles, rules, builds and combos. The page reloads.',
+  'deck.backup.confirmText': 'Your deck, roles, rules, builds and combos in this browser are swapped for the ones in the backup. The page reloads.',
+  'deck.backup.confirmTextDated': 'Your deck, roles, rules, builds and combos in this browser are swapped for the backup from {date}. The page reloads.',
   'deck.backup.confirmButton': 'Restore',
 }

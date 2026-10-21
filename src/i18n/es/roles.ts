@@ -107,7 +107,10 @@ export const roles = {
     other: '{count} cartas con la sugerencia de hoy. Revisalas una por una.',
   },
   'roles.panel.confirmTitle': '¿Reclasificar todo el deck?',
-  'roles.panel.confirmText': 'Todas las cartas vuelven a la sugerencia de hoy, leída de las reglas de cada carta. Se pierden las confirmaciones y las correcciones a mano de estas cartas; después las revisás una por una.',
+  'roles.panel.confirmText': {
+    one: 'La carta vuelve a la sugerencia automática y se pierde lo que confirmaste o corregiste a mano.',
+    other: 'Las {count} cartas vuelven a la sugerencia automática y se pierde lo que confirmaste o corregiste a mano.',
+  },
   'roles.panel.confirmAction': 'Reclasificar',
 
   // Vistas (filtros) de la lista: nombre y descripción.

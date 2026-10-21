@@ -714,8 +714,9 @@ export function DeckRolesPanel({
       <ConfirmDialog
         isOpen={confirmResuggest}
         title={t('roles.panel.confirmTitle')}
-        description={t('roles.panel.confirmText')}
+        description={t('roles.panel.confirmText', { count: cards.length })}
         confirmLabel={t('roles.panel.confirmAction')}
+        confirmColor="danger"
         onCancel={() => setConfirmResuggest(false)}
         onConfirm={resuggestAll}
       />
