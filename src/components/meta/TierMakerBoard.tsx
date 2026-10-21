@@ -1,6 +1,7 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
 
 import { placeOf, type MakerCard, type MakerList, type Place } from '../../app/tierlist-maker'
+import { useTierFlights } from '../../app/use-tier-flights'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -48,13 +49,17 @@ function keepFocus(tile: HTMLElement) {
  * El tablero del creador: las filas de la tier list (con el recuadro de color a la izquierda, que abre el editor de la fila) y, abajo, la bandeja de las cartas sin clasificar, todo con el mismo aspecto que
  * las tier lists del meta. Las cartas se **arrastran** (a una fila o entre las de una fila, para ordenarlas) o se **tocan** para elegirlas: con una elegida aparece una barra con un botón por fila, y tocar una
  * fila vacía también la manda ahí. Así se arma igual con el mouse, con el dedo y con el teclado (Tab, Enter y los botones de la barra). **El clic derecho (o Supr) saca de a un paso:** de una fila, la carta
- * vuelve a «Sin clasificar»; de «Sin clasificar», sale de la lista (Gastón, 2026-10-21).
+ * vuelve a «Sin clasificar»; de «Sin clasificar», sale de la lista (Gastón, 2026-10-21). Lo que cambia de lugar vuela hasta su lugar nuevo (`app/use-tier-flights.ts`).
  */
 export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCard, onEditTier, children }: TierMakerBoardProps) {
   const [dragId, setDragId] = useState<number | null>(null)
   const [over, setOver] = useState<string | null>(null)
   // Con qué se tocó la última carta: el toque largo de Android también dispara el clic derecho (`contextmenu`), y ahí no tiene que sacar nada.
   const lastPointer = useRef('mouse')
+  // Cada cambio de lugar se mide: lo que cambia de fila vuela hasta su lugar nuevo (`app/use-tier-flights.ts`).
+  const boardRef = useRef<HTMLDivElement>(null)
+
+  useTierFlights(boardRef, list)
   const selected = selectedId === null ? undefined : list.cards[selectedId]
   const selectedPlace = selected ? placeOf(list, selected.id) : null
   const currentTierId = selectedPlace?.kind === 'tier' ? selectedPlace.id : null
@@ -98,7 +103,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
     const takeOut = () => (to.kind === 'pool' ? onRemoveCard(card.id) : onMove(card.id, { kind: 'pool' }))
 
     return (
-      <li key={card.id} className={cx('min-w-0', TILE_WIDTH)} onDragOver={dragOver(placeKey(to))} onDrop={drop(to, card.id)}>
+      <li key={card.id} data-tier-card-id={card.id} className={cx('min-w-0', TILE_WIDTH)} onDragOver={dragOver(placeKey(to))} onDrop={drop(to, card.id)}>
         {/* Un div con rol de botón y no un <button>: Firefox no deja arrastrar un botón (ni lo que tiene adentro). Enter y Espacio lo eligen, como a un botón; Supr y Retroceso lo sacan, como el clic derecho. */}
         <div
           role="button"
@@ -150,7 +155,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
   }
 
   return (
-    <div className="stagger grid gap-0.5 [--stagger-step:60ms]">
+    <div ref={boardRef} className="stagger relative grid gap-0.5 [--stagger-step:60ms]">
       {list.tiers.map((tier) => {
         const to: Place = { kind: 'tier', id: tier.id }
 
