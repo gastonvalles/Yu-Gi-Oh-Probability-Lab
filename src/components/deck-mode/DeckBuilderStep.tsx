@@ -329,7 +329,7 @@ export function DeckBuilderStep({
                     onClick={() => setPriceOpen(true)}
                     disabled={totalDeckCardCount === 0}
                   >
-                    <Icon name="dollar" />
+                    <Icon name="dollar-sign" />
                   </IconButton>
 
                   <IconButton
@@ -530,7 +530,7 @@ export function DeckBuilderStep({
                 <Icon name="upload" size={20} />
               </IconButton>
               <IconButton tone="ghost" size="md" aria-label={t('deck.price.open')} title={t('deck.price.open')} disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={() => setPriceOpen(true)}>
-                <Icon name="dollar" size={20} />
+                <Icon name="dollar-sign" size={20} />
               </IconButton>
               <IconButton tone="ghost" size="md" aria-label={t('deck.builder.sortAll')} title={t('deck.builder.sortAll')} disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
                 <Icon name="sort" size={20} />
