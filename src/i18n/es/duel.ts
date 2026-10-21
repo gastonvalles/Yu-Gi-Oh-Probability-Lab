@@ -350,6 +350,7 @@ export const duel = {
   // La sala antes de la mesa: estar listos y definir quién empieza.
   'duel.opening.you': 'Vos',
   'duel.opening.rival': 'Rival',
+  'duel.opening.versus': 'VS',
   'duel.opening.ready': 'Listo',
   'duel.opening.notReady': 'Todavía no',
   'duel.opening.readyAction': 'Estoy listo',

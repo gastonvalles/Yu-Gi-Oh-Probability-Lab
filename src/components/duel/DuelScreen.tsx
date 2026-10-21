@@ -44,6 +44,7 @@ import { TONE } from '../ui/tone'
 import { Modal } from '../ui/Modal'
 import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardSheet } from '../probability/CardSheet'
+import { MatScene } from '../probability/MatArena'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
@@ -62,9 +63,11 @@ import { ResultCard } from './DuelResult'
 import type { DuelDeck } from './duel-deck-type'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
-import { DuelOpening } from './DuelOpening'
-import { LobbyBanner } from './LobbyBanner'
+import { DuelOpening, PlayerCard, VersusMark } from './DuelOpening'
 import { TurnOrderBanner } from './DuelBanner'
+import { InviteButtons, InviteLink } from './RoomInvite'
+import { RoomDeck } from './RoomDeck'
+import { STAGE_CARD, STAGE_INNER } from './room-stage'
 import { RoomRules } from './RoomRules'
 import { PlayHome } from './PlayHome'
 import { formatName } from './room-chips'
@@ -684,18 +687,18 @@ function RoomClosing({ name, seconds }: { name: string; seconds: number }) {
 }
 
 /** Lo que no es la mesa: una columna que scrollea, con el ancho de una pantalla de lectura. */
-function Screen({ children, wide = false, aside }: { children: React.ReactNode; /** Más ancha, para lo que lleva grillas de cartas (el siding). */ wide?: boolean; /** Una columna al costado (el chat de la sala, sólo en escritorio): las dos van lado a lado. */ aside?: React.ReactNode }) {
+function Screen({ children, wide = false, tight = false, aside }: { children: React.ReactNode; /** Más ancha, para lo que lleva grillas de cartas (el siding). */ wide?: boolean; /** Menos aire y, con `aside`, más ancha: la sala tiene que entrar en la pantalla sin scroll. */ tight?: boolean; /** Una columna al costado (el chat de la sala, sólo en escritorio): las dos van lado a lado. */ aside?: React.ReactNode }) {
   return (
     <div className="h-full min-h-0 overflow-y-auto max-[1100px]:overflow-visible">
       {aside ? (
         /* Las dos columnas miden lo mismo de alto (la del costado se estira hasta donde llega la otra): si no, el chat termina a la mitad de la columna de al lado. */
-        <div className="mx-auto grid w-full max-w-5xl content-start items-stretch gap-6 px-8 py-6 min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">{children}</div>
+        <div className={cx('mx-auto grid w-full content-start items-stretch px-8 min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]', tight ? 'max-w-[90rem] gap-5 py-4 min-[1101px]:h-full min-[1101px]:grid-rows-[minmax(0,1fr)]' : 'max-w-5xl gap-6 py-6')}>
+          <div className={cx('grid min-w-0 grid-cols-[minmax(0,1fr)] content-start', tight ? 'gap-3 min-[1101px]:grid-rows-[minmax(0,1fr)]' : 'gap-4')}>{children}</div>
           {aside}
         </div>
       ) : (
         /* Una sola columna que se puede achicar (`minmax(0, 1fr)`): con la pista automática, un botón que no cabe a 320 px ensancha toda la columna y se corta del lado derecho. */
-        <div className={cx('mx-auto grid w-full grid-cols-[minmax(0,1fr)] content-start gap-4 px-4 py-6', wide ? 'max-w-5xl' : 'max-w-xl')}>{children}</div>
+        <div className={cx('mx-auto grid w-full grid-cols-[minmax(0,1fr)] content-start px-4', wide ? 'max-w-5xl' : 'max-w-xl', tight ? 'gap-3 py-3' : 'gap-4 py-6')}>{children}</div>
       )}
     </div>
   )
@@ -704,9 +707,9 @@ function Screen({ children, wide = false, aside }: { children: React.ReactNode; 
 const ROOM_STEPS = ['duel.room.step.invite', 'duel.room.step.ready', 'duel.room.step.start'] as const
 
 /** Dónde va la sala: invitar al rival, los dos listos, y quién empieza. Lo que ya pasó queda lleno; el paso en el que está, en negrita. */
-function RoomSteps({ step }: { step: number }) {
+function RoomSteps({ step, className }: { step: number; className?: string }) {
   return (
-    <ol aria-label={t('duel.room.steps')} className="m-0 grid max-w-lg list-none grid-cols-3 gap-2 p-0">
+    <ol aria-label={t('duel.room.steps')} className={cx('m-0 grid max-w-lg list-none grid-cols-3 gap-2 p-0', className)}>
       {ROOM_STEPS.map((key, index) => (
         <li key={key} aria-current={index === step ? 'step' : undefined} className={cx('grid gap-1.5 text-micro', index === step ? 'font-semibold text-foreground' : 'text-soft')}>
           <i aria-hidden="true" className={cx('block h-1 rounded-full', index <= step ? 'bg-primary' : 'bg-surface-hover')} />
@@ -1016,6 +1019,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
 
   return (
     <Screen
+      tight
       aside={
         docked ? (
           // La tarjeta mide lo que la columna de al lado (no crece con lo escrito: la lista scrollea por dentro), de ahí el `absolute`.
@@ -1028,114 +1032,94 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
         ) : undefined
       }
     >
-      {/* La portada de la sala, la misma del inicio de Jugar: el titular con el chat y salir, los pasos y, para el anfitrión, el enlace con sus botones (lo alternativo primero y la principal al final). */}
-      <LobbyBanner
-        art={false}
-        title={t('duel.room.title')}
-        actions={
-          <>
-            {docked ? null : (
-              <Button variant="secondary" icon="chat" aria-haspopup="dialog" onClick={() => setChatOpen(true)}>
-                {t('duel.chat.open')}
-              </Button>
-            )}
-            <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />
-          </>
-        }
-      >
-        {role === 'guest' && peerName ? <p className="m-0 text-lead font-semibold text-foreground">{t('duel.room.invitedBy', { name: peerName })}</p> : null}
-
-        <RoomSteps step={step} />
-
-        {role === 'host' ? (
-          <div className="grid gap-2">
-            <p className="m-0 text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.room.link')}</p>
-            <p className="m-0 break-all text-body font-semibold text-info-soft" data-testid="duel-link">{link}</p>
-            <p className="m-0 text-micro text-soft">{t('duel.room.code', { code: room })}</p>
-            <p className="m-0 text-micro text-soft">{t('duel.room.watchHint')}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              {canShare ? (
-                <Button variant="secondary" icon="upload" onClick={share}>
-                  {t('duel.room.share')}
+      {/* La sala como la de otro simulador de referencia (Gastón, 2026-10-20: «no debe haber scroll en esta pantalla nunca y las cosas están mal ordenadas»): las reglas y el deck a la izquierda, el escenario en el medio —los dos jugadores y lo
+          que toca hacer— y el chat a la derecha, todo en el alto de la pantalla. Las medidas `@[46rem]` son las de este contenedor: con el menú lateral abierto, o en el celular, las reglas y el deck pasan debajo del escenario. */}
+      <div className="@container min-h-0 min-w-0 min-[1101px]:h-full">
+        <div className="grid min-w-0 gap-3 [grid-template-areas:'head'_'stage'_'info'] @[46rem]:h-full @[46rem]:grid-cols-[19rem_minmax(0,1fr)] @[46rem]:grid-rows-[auto_minmax(0,1fr)] @[46rem]:gap-4 @[46rem]:[grid-template-areas:'head_head'_'info_stage']">
+          {/* El encabezado: el titular, los pasos y, en el celular, el chat; salir es una X. */}
+          <header className="flex flex-wrap items-center gap-x-5 gap-y-2 [grid-area:head]">
+            <h2 className="m-0 text-title font-extrabold leading-tight text-foreground">{t('duel.room.title')}</h2>
+            <RoomSteps step={step} className="order-last w-full max-[1100px]:[@media(max-height:760px)]:hidden @[46rem]:order-none @[46rem]:w-80" />
+            <div className="ml-auto flex items-center gap-2">
+              {docked ? null : (
+                <Button variant="secondary" icon="chat" aria-haspopup="dialog" onClick={() => setChatOpen(true)}>
+                  {t('duel.chat.open')}
                 </Button>
-              ) : null}
-              <Button variant={peerPresent ? 'secondary' : 'primary'} icon="link" onClick={() => void copy()}>
-                {t('duel.room.copy')}
-              </Button>
-              <Button variant="tertiary" icon="eye" className="min-[700px]:ml-auto" onClick={() => void copy(true)}>
-                {t('duel.room.copyWatch')}
-              </Button>
+              )}
+              <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />
             </div>
+            {role === 'guest' && peerName ? <p className="m-0 w-full text-lead font-semibold text-foreground">{t('duel.room.invitedBy', { name: peerName })}</p> : null}
+            {status !== 'open' ? <Callout tone="warning" icon="alert" className="w-full">{status === 'connecting' ? t('duel.status.connecting') : t('duel.status.reconnecting')}</Callout> : null}
+            {incompatible ? <Callout tone="danger" className="w-full">{t('duel.room.incompatible')}</Callout> : null}
+          </header>
+
+          {/* El escenario: los dos jugadores y lo que toca hacer en este paso —invitar, estar listo o definir quién empieza—, sobre la arena. */}
+          <div className="grid min-h-0 min-w-0 [grid-area:stage] @[46rem]:[&>*]:h-full">
+            {!peerPresent ? (
+              <section aria-label={t('duel.room.title')} className={STAGE_CARD}>
+                <MatScene className="absolute inset-0 -z-10" />
+                <div className={STAGE_INNER}>
+                  {/* Los dos jugadores desde el principio: con el rival adentro la tarjeta de cada uno es la de DuelOpening; antes, la tuya, un lugar que espera y, para el anfitrión, el enlace para mandarle. */}
+                  <ul className="m-0 grid list-none grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 p-0 @[46rem]:gap-4">
+                    <PlayerCard side="mine" caption={t('duel.opening.you')} name={myName || t('duel.opening.you')} ready={false} showReady={false} />
+                    <VersusMark />
+                    <li className="grid min-h-24 content-center justify-items-center gap-2 rounded-card border border-dashed border-border bg-card-background/40 p-3 text-center backdrop-blur-sm @[46rem]:min-h-40">
+                      <p className="m-0 text-body text-muted" role="status">
+                        {t('duel.room.waitingPeer')}
+                      </p>
+                      <span aria-hidden="true" className="flex gap-1">
+                        <i className="size-2.5 rounded-full bg-border" />
+                        <i className="size-2.5 rounded-full bg-border" />
+                        <i className="size-2.5 rounded-full bg-border" />
+                      </span>
+                    </li>
+                  </ul>
+                  {role === 'host' ? (
+                    <div className="grid justify-items-center gap-3">
+                      <InviteLink link={link} room={room} peerPresent={false} />
+                      <InviteButtons peerPresent={false} canShare={canShare} onShare={share} onCopy={(watch) => void copy(watch)} />
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            ) : !settingsKnown ? (
+              <p className="m-0 self-center text-center text-micro text-soft">{t('duel.room.guestWaits')}</p>
+            ) : null}
+
+            {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
           </div>
-        ) : null}
-      </LobbyBanner>
 
-      {status !== 'open' ? <Callout tone="warning" icon="alert">{status === 'connecting' ? t('duel.status.connecting') : t('duel.status.reconnecting')}</Callout> : null}
-      {incompatible ? <Callout tone="danger">{t('duel.room.incompatible')}</Callout> : null}
+          {/* La columna de la izquierda: las reglas, tu deck (el del builder o el que pegaste: quien llega por un enlace no pasó por el lobby; se cambia en la hoja «Tu deck» mientras no estés listo y, si no cumple, lo que falta
+              se dice acá) y, para el anfitrión con el rival adentro, los botones para invitar a quien quiera mirar. Una sola caja, con líneas finas entre una cosa y otra. */}
+          <div className={cx('flex min-h-0 flex-col gap-3 rounded-card border p-3 [grid-area:info] @[46rem]:gap-4 @[46rem]:p-4', TONE.neutral.wash)}>
+            <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} bare />
 
-      {/* Los dos jugadores desde el principio: con el rival adentro la tarjeta de cada uno es la de DuelOpening; antes, la tuya y un lugar que espera. */}
-      {!peerPresent ? (
-        <>
-          <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
-            <li className={cx('grid min-h-24 min-w-0 content-center justify-items-center gap-1.5 rounded-card border p-3 text-center', TONE.brand.wash)}>
-              <span className="flex items-center justify-center gap-1.5">
-                <i aria-hidden="true" className="size-2.5 rounded-full bg-accent" />
-                <span className="text-micro font-semibold uppercase tracking-[0.04em] text-accent">{t('duel.opening.you')}</span>
-              </span>
-              <strong className="max-w-full truncate text-lead font-semibold text-foreground">{myName || t('duel.opening.you')}</strong>
-            </li>
-            <li className="grid min-h-24 content-center justify-items-center gap-2 rounded-card border border-dashed border-border p-3 text-center">
-              <p className="m-0 text-body text-muted" role="status">
-                {t('duel.room.waitingPeer')}
-              </p>
-              <span aria-hidden="true" className="flex gap-1">
-                <i className="size-2.5 rounded-full bg-border" />
-                <i className="size-2.5 rounded-full bg-border" />
-                <i className="size-2.5 rounded-full bg-border" />
-              </span>
-            </li>
-          </ul>
-        </>
-      ) : !settingsKnown ? (
-        <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p>
-      ) : null}
+            <div className="mt-auto border-t border-border-subtle pt-3 @[46rem]:pt-4">
+              <RoomDeck deck={deckReady ? { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length } : null} locked={snapshot.ready.mine} onOpenBuilder={deckInfo.onOpenBuilder}>
+                {!snapshot.ready.mine && issues.length > 0 ? (
+                  <Callout tone="warning" icon="alert">
+                    <span className="grid gap-1">
+                      <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
+                      {issues.map((issue) => (
+                        <span key={issue}>{issue}</span>
+                      ))}
+                    </span>
+                  </Callout>
+                ) : null}
+                {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
+                {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
+              </RoomDeck>
+            </div>
 
-      {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
-
-      {/* Tu deck: el del builder o el que pegaste (quien llega por un enlace no pasó por el lobby). Se cambia en la hoja «Tu deck» mientras no estés listo; si no cumple, lo que falta se dice acá. */}
-      <section aria-label={t('duel.room.deckTitle')} className={cx('grid gap-2 rounded-card border p-3', TONE.brand.wash)}>
-        <div className="flex items-center justify-between gap-3">
-          <span className="grid min-w-0 gap-0.5">
-            <span className="text-micro font-semibold uppercase text-soft">{t('duel.room.deckTitle')}</span>
-            <span className="truncate text-body font-semibold text-foreground">
-              {deckReady ? t('duel.room.deckLine', { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length }) : t('duel.play.deckNone')}
-            </span>
-          </span>
-          {snapshot.ready.mine ? null : deckReady ? (
-            <Button variant="secondary" size="sm" icon="cards" onClick={deckInfo.onOpenBuilder}>
-              {t('duel.room.deckChange')}
-            </Button>
-          ) : (
-            <Button variant="primary" icon="cards" onClick={deckInfo.onOpenBuilder}>
-              {t('duel.room.deckChoose')}
-            </Button>
-          )}
+            {role === 'host' && peerPresent ? (
+              <div className="border-t border-border-subtle pt-3 @[46rem]:pt-4">
+                <InviteLink link={link} room={room} peerPresent />
+                <InviteButtons peerPresent stacked canShare={canShare} onShare={share} onCopy={(watch) => void copy(watch)} />
+              </div>
+            ) : null}
+          </div>
         </div>
-        {!snapshot.ready.mine && issues.length > 0 ? (
-          <Callout tone="warning" icon="alert">
-            <span className="grid gap-1">
-              <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
-              {issues.map((issue) => (
-                <span key={issue}>{issue}</span>
-              ))}
-            </span>
-          </Callout>
-        ) : null}
-        {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
-        {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
-      </section>
-
-      <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} />
+      </div>
 
       {/* El chat en el celular: siempre a un toque (también antes de que entre el rival), en una hoja. */}
       {docked ? null : (
