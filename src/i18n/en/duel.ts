@@ -56,6 +56,7 @@ export const duel: Translated<typeof es> = {
   'duel.point.noticeTheirs': '{name} points at something on their side',
   'duel.mark.notice.card': '{name} targets one of your cards',
   'duel.announce.yourCard': 'one of your cards',
+  'duel.announce.rivalCard': "an opponent's card",
   'duel.announce.show.gy': { one: '{name} sends a card to the GY', other: '{name} sends {count} cards to the GY' },
   'duel.announce.show.banish': { one: '{name} banishes a card', other: '{name} banishes {count} cards' },
   'duel.announce.show.hand': { one: '{name} adds a card to their hand', other: '{name} adds {count} cards to their hand' },
