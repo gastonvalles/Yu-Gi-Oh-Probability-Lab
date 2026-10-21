@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { cx } from './cx'
 import { Heading } from './Heading'
@@ -37,18 +38,16 @@ interface SideDrawerProps {
  */
 export function SideDrawer({ isOpen, onClose, title, children, size = 'half' }: SideDrawerProps) {
   const titleId = useId()
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
 
   useEscapeKey(onClose, isOpen)
   useFocusTrap(panelRef, isOpen)
   useBodyScrollLock(isOpen)
 
-  if (!isOpen || typeof document === 'undefined') {
-    return null
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-180 flex justify-end">
+  // Al cerrarse sale por donde entró (`usePresence`): el panel vuelve a la derecha y el velo se funde.
+  return usePresence(isOpen, isOpen && typeof document !== 'undefined' ? createPortal(
+    <div ref={rootRef} className="fixed inset-0 z-180 flex justify-end">
       <div aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/45 motion-reduce:animate-none" onClick={onClose} />
       <div
         ref={panelRef}
@@ -68,5 +67,5 @@ export function SideDrawer({ isOpen, onClose, title, children, size = 'half' }: 
       </div>
     </div>,
     document.body,
-  )
+  ) : null, () => [rootRef.current])
 }

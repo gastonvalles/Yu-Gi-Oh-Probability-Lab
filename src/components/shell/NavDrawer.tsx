@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
@@ -106,6 +107,7 @@ interface NavDrawerProps {
 
 /** El cajón del menú del celular (los destinos y los ajustes): sale desde la izquierda sobre un velo; se cierra con la X, el velo y Escape. */
 export function NavDrawer({ isOpen, onClose, nav }: NavDrawerProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   // En escritorio el cajón no existe: abierto y oculto atraparía el foco y bloquearía el scroll.
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -115,18 +117,15 @@ export function NavDrawer({ isOpen, onClose, nav }: NavDrawerProps) {
   useEscapeKey(onClose, active)
   useBodyScrollLock(active)
 
-  if (!active || typeof document === 'undefined') {
-    return null
-  }
-
-  return createPortal(
+  // Al cerrarse vuelve a la izquierda y el velo se funde (`usePresence`).
+  return usePresence(active, active && typeof document !== 'undefined' ? createPortal(
     // Sólo en celular y tableta: si la ventana se ensancha con el cajón abierto, el menú lateral toma su lugar.
-    <div className="fixed inset-0 z-150 min-[1101px]:hidden">
+    <div ref={rootRef} className="fixed inset-0 z-150 min-[1101px]:hidden">
       <div aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/70 motion-reduce:animate-none" onClick={onClose} />
       <div ref={panelRef} role="dialog" aria-modal="true" aria-label={t('shell.settings.title')} tabIndex={-1} className="relative h-full w-[min(20rem,78vw)] animate-nav-drawer outline-none motion-reduce:animate-none">
         <DrawerPanel onClose={onClose} nav={nav} />
       </div>
     </div>,
     document.body,
-  )
+  ) : null, () => [rootRef.current])
 }

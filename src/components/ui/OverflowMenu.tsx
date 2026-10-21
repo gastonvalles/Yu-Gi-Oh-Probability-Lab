@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { usePresence } from '../../app/use-presence'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
 import { IconButton } from './IconButton'
@@ -24,6 +25,7 @@ interface OverflowMenuProps {
 export function OverflowMenu({ label, items, className }: OverflowMenuProps) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -49,30 +51,37 @@ export function OverflowMenu({ label, items, className }: OverflowMenuProps) {
     }
   }, [open])
 
+  // Al cerrarse se achica y se funde, la inversa de su entrada (`usePresence`).
+  const menu = usePresence(
+    open,
+    open ? (
+      <div ref={menuRef} role="menu" aria-label={label} className="absolute right-0 top-full z-30 mt-1 grid min-w-48 animate-pop gap-0.5 rounded-control border border-border bg-surface-raised p-1 shadow-overlay motion-reduce:animate-none">
+        {items.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            role="menuitem"
+            className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-tag border-0 bg-transparent px-3 text-left text-body font-medium text-foreground transition-colors duration-100 hover:bg-tint/12 focus-visible:bg-tint/12 focus-visible:outline-none pointer-coarse:min-h-11"
+            onClick={() => {
+              setOpen(false)
+              item.onSelect()
+            }}
+          >
+            {item.icon ? <Icon name={item.icon} size={18} /> : null}
+            {item.label}
+          </button>
+        ))}
+      </div>
+    ) : null,
+    () => [menuRef.current],
+  )
+
   return (
     <div ref={root} className={cx('relative', className)}>
       <IconButton tone="ghost" size="sm" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
         <Icon name="more" size={20} />
       </IconButton>
-      {open ? (
-        <div role="menu" aria-label={label} className="absolute right-0 top-full z-30 mt-1 grid min-w-48 animate-pop gap-0.5 rounded-control border border-border bg-surface-raised p-1 shadow-overlay motion-reduce:animate-none">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-tag border-0 bg-transparent px-3 text-left text-body font-medium text-foreground transition-colors duration-100 hover:bg-tint/12 focus-visible:bg-tint/12 focus-visible:outline-none pointer-coarse:min-h-11"
-              onClick={() => {
-                setOpen(false)
-                item.onSelect()
-              }}
-            >
-              {item.icon ? <Icon name={item.icon} size={18} /> : null}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {menu}
     </div>
   )
 }

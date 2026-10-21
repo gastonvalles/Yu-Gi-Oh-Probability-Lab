@@ -3,6 +3,7 @@ import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { normalizeSearchText } from '../../app/utils'
 import type { MatPile } from '../../app/practice-mat'
 import { t } from '../../i18n'
@@ -96,14 +97,16 @@ export const GHOST_CLICK_MS = 350
 
 /**
  * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
- * medio. Se cierra al elegir, al tocar afuera o con Escape.
+ * medio. Nace de la carta (crece desde su lado, de 0,96 a 1) y, al cerrarse, vuelve a ella. Se cierra al elegir, al tocar afuera o con Escape.
  */
 export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false, passThrough = false, onClose }: CardMenuProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const ref = useRef<HTMLDivElement | null>(null)
   const openedAtRef = useRef(0)
   // La carta a la que se acomodó el menú la última vez: si cambia sólo lo que dice (el segundo paso, "¿En ataque o en defensa?") y no la carta, se queda donde estaba.
   const placedForRef = useRef<DOMRect | null>(null)
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
+  // `transformOrigin`: el punto del borde del menú que da a la carta (frente a su centro, abajo si el menú va arriba de ella): de ahí crece al abrirse y ahí vuelve al cerrarse.
+  const [position, setPosition] = useState<{ left: number; top: number; transformOrigin: string } | null>(null)
   const open = anchor !== null
 
   useEscapeKey(onClose, open)
@@ -121,25 +124,22 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
     openedAtRef.current = performance.now()
 
     const margin = 8
-    // Medidas de layout, no del rect: la animación de entrada arranca en escala 0.7 y el rect daba un menú más chico del real (se salía de la pantalla).
+    // Medidas de layout, no del rect: la animación de entrada arranca en escala 0,96 y el rect daba un menú más chico del real (se salía de la pantalla).
     const { offsetWidth: width, offsetHeight: height } = menu
     const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), Math.max(margin, window.innerWidth - width - margin))
     const above = anchor.top - height - 6
     const top = above >= margin ? above : Math.min(anchor.bottom + 6, Math.max(margin, window.innerHeight - height - margin))
+    const transformOrigin = `${Math.round(Math.min(Math.max(anchor.left + anchor.width / 2 - left, 0), width))}px ${above >= margin ? '100%' : '0%'}`
     const sameCard = placedForRef.current === anchor
 
     placedForRef.current = anchor
     // El segundo paso aparece en el mismo lugar que el menú que se acaba de tocar (si es más corto o más largo "pegado a la carta" lo movía de lugar): misma esquina de arriba a la izquierda, sin salirse de la pantalla.
     setPosition((current) =>
       sameCard && current
-        ? { left: Math.min(Math.max(current.left, margin), Math.max(margin, window.innerWidth - width - margin)), top: Math.min(Math.max(current.top, margin), Math.max(margin, window.innerHeight - height - margin)) }
-        : { left, top },
+        ? { left: Math.min(Math.max(current.left, margin), Math.max(margin, window.innerWidth - width - margin)), top: Math.min(Math.max(current.top, margin), Math.max(margin, window.innerHeight - height - margin)), transformOrigin: current.transformOrigin }
+        : { left, top, transformOrigin },
     )
   }, [anchor, items.length, wide])
-
-  if (!open || typeof document === 'undefined') {
-    return null
-  }
 
   const closeFromBackdrop = () => {
     if (performance.now() - openedAtRef.current >= GHOST_CLICK_MS) {
@@ -147,14 +147,15 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
     }
   }
 
-  return createPortal(
-    <div className={cx('fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop}>
+  // Al cerrarse sigue montado mientras vuelve a la carta (`usePresence`): sin atajar el toque siguiente.
+  return usePresence(open, open && typeof document !== 'undefined' ? createPortal(
+    <div ref={rootRef} className={cx('fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop}>
       <div
         ref={ref}
         role="menu"
         aria-label={title || kicker}
         tabIndex={-1}
-        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto py-1 outline-none animate-pop motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
+        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -198,7 +199,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
       </div>
     </div>,
     document.body,
-  )
+  ) : null, () => [rootRef.current])
 }
 
 /** Elegir varias cartas de la pila para una misma jugada (enviarlas a un lugar, barajarlas, adjuntarlas, Target). */

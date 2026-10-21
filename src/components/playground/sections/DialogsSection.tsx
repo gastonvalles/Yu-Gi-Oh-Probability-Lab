@@ -5,6 +5,7 @@ import { printImageUrl } from '../../../app/card-prices'
 import type { MatPile } from '../../../app/practice-mat'
 import type { ArtChoice } from '../../../app/use-card-art-options'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
+import { Presence } from '../../../app/use-presence'
 import { showToastMessage, type ToastTone } from '../../../app/use-toast-message'
 import { formatDay, t } from '../../../i18n'
 import type { ApiCardReference } from '../../../types'
@@ -269,7 +270,7 @@ export function DialogsSection() {
           onClose={() => setPileSample(null)}
         />
       ) : null}
-      {pileMenu && !isDesktop ? <CardSheet name={pileMenu.title} kicker={pileMenu.kicker} plain={pileMenu.card === undefined} art={pileMenu.card ? artOf(pileMenu.card) : null} items={pileMenu.items} onClose={() => setPileMenu(null)} /> : null}
+      <Presence>{pileMenu && !isDesktop ? <CardSheet name={pileMenu.title} kicker={pileMenu.kicker} plain={pileMenu.card === undefined} art={pileMenu.card ? artOf(pileMenu.card) : null} items={pileMenu.items} onClose={() => setPileMenu(null)} /> : null}</Presence>
       <CardMenu anchor={isDesktop ? (pileMenu?.rect ?? null) : null} kicker={pileMenu?.kicker ?? ''} title={pileMenu?.title ?? ''} items={pileMenu?.items ?? []} onClose={() => setPileMenu(null)} />
 
       <Specimen title="Ficha «Cómo se calcula»" note={<>Lo que abre la ⓘ de la tarjeta del resultado del Lab: una mano buena, las cuentas por turno y lo que el número no dice. Archivo: <Tag>probability/LabScoreSheet.tsx</Tag></>}>

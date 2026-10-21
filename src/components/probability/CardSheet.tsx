@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useEscapeKey } from '../../app/use-overlay'
+import { useLeaving, usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
@@ -79,25 +80,37 @@ function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: bool
  * El menú de una carta en el celular (en escritorio es `CardMenu`, pegado a la carta): una hoja que sale de abajo con la carta (su texto está en la lupa), su nombre y dónde está, y **todas las jugadas a un toque,
  * sin menús que abrir**, en botones todos iguales, de a dos por fila y siempre con el mismo aire entre ellos: primero las del juego (Invocación Normal, Colocar, Activar…) y a continuación las de apoyo (revelar, target, descartar, desterrar, al deck).
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
- * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
+ * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen. Quien la monta sólo abierta la envuelve en un `Presence` y así, al cerrarse, baja y se funde.
  */
 export function CardSheet({ name, kicker, art, back = false, apiCard = null, traits = true, stacked = false, items, asking, onInspect, plain = false, passThrough = false, onClose }: CardSheetProps) {
+  const backdropRef = useRef<HTMLDivElement | null>(null)
   const ref = useRef<HTMLElement | null>(null)
   const openedAtRef = useRef(performance.now())
   // La hoja se abre al levantar el dedo de la carta (el `pointerup`) y sale justo debajo del dedo: el click que el celular manda después caería en una de sus jugadas y la haría sin querer
   // («la primera vez que toco una carta me ofrece una acción rápida»). Un instante no atiende toques; el click fantasma pasa de largo (al fondo, que tampoco lo atiende todavía).
   const [armed, setArmed] = useState(false)
+  // Ya cerrada, mientras baja (`Presence`): lo que se ata a «abierta» (Escape, el foco) se suelta enseguida.
+  const leaving = useLeaving()
+  // Si se vuelve a abrir mientras bajaba es la misma hoja: vuelve a arrancar sin atender toques ya en este dibujo (el click fantasma llega a los pocos ms, antes que un efecto).
+  const [wasLeaving, setWasLeaving] = useState(leaving)
   const plays = items.filter((item) => !item.utility)
   const support = items.filter((item) => item.utility)
 
-  useEscapeKey(onClose)
-  useFocusTrap(ref, !passThrough)
+  if (wasLeaving !== leaving) {
+    setWasLeaving(leaving)
+    if (!leaving) setArmed(false)
+  }
+
+  useEscapeKey(onClose, !leaving)
+  useFocusTrap(ref, !passThrough && !leaving)
 
   useEffect(() => {
+    if (leaving) return
+    openedAtRef.current = performance.now()
     const timer = window.setTimeout(() => setArmed(true), GHOST_CLICK_MS)
 
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [leaving])
 
   // El click que el celular manda al soltar el dedo sobre la carta llega después de abrir la hoja y cae en el fondo recién montado: un instante no lo cierra.
   const closeFromBackdrop = () => {
@@ -106,13 +119,9 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
     }
   }
 
-  if (typeof document === 'undefined') {
-    return null
-  }
-
-  return createPortal(
+  return usePresence(!leaving, typeof document !== 'undefined' ? createPortal(
     <>
-      <div aria-hidden="true" className={cx('fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop} />
+      <div ref={backdropRef} aria-hidden="true" className={cx('fixed inset-0 z-210', passThrough && 'pointer-events-none')} onClick={closeFromBackdrop} />
       <section
         ref={ref}
         aria-label={name}
@@ -152,5 +161,5 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
       </section>
     </>,
     document.body,
-  )
+  ) : null, () => [backdropRef.current, ref.current])
 }
