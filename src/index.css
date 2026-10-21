@@ -544,10 +544,11 @@
     }
   }
 
+  /* La carta grande del centro entra al 55 % y se funde; si sale de su carta en la mesa (`Spotlight` le pone `--stage-entered: 1`), el viaje es la entrada y acá queda sólo la espera y la salida. */
   @keyframes card-activate-linger {
     0% {
-      opacity: 0;
-      transform: scale(0.55);
+      opacity: var(--stage-entered, 0);
+      transform: scale(calc(0.55 + 0.45 * var(--stage-entered, 0)));
     }
 
     8% {
@@ -568,8 +569,8 @@
 
   @keyframes card-activate-center {
     0% {
-      opacity: 0;
-      transform: scale(0.55);
+      opacity: var(--stage-entered, 0);
+      transform: scale(calc(0.55 + 0.45 * var(--stage-entered, 0)));
     }
 
     22% {

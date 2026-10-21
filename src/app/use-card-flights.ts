@@ -350,7 +350,8 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
   const top = centerY(from) - height / 2 - origin.y
   const element = document.createElement('div')
   element.className = GHOST_CLASS
-  element.dataset.flightGhost = ''
+  // Con su id: la carta grande del centro sale de ella si la carta se muestra mientras vuela a su pila (`cardPose`).
+  element.dataset.flightGhost = ghost.id
   element.setAttribute('aria-hidden', 'true')
   element.style.width = `${width}px`
   element.style.height = `${height}px`
@@ -474,6 +475,71 @@ function flyAbove(element: HTMLElement, id: string, layer: HTMLElement, keyframe
   const remove = () => holder.remove()
   hidden.onfinish = remove
   hidden.oncancel = remove
+}
+
+/** Una carta como se ve en la pantalla: su centro, su ancho y su alto sin el giro, y cuánto está girada (en grados). */
+export interface CardPose {
+  x: number
+  y: number
+  width: number
+  height: number
+  angle: number
+}
+
+/**
+ * La carta girada `angle` grados que encierra el rectángulo `rect` (el de `getBoundingClientRect`, que con el giro es más grande que la carta): se despejan su ancho
+ * y su alto. Cerca de 45° no se puede, y no pasa (las cartas van derechas, de costado o apenas giradas en el abanico de la mano): se queda con el rectángulo.
+ */
+export function poseIn(rect: Box, angle: number): CardPose {
+  const radians = (angle * Math.PI) / 180
+  const cos = Math.abs(Math.cos(radians))
+  const sin = Math.abs(Math.sin(radians))
+  const det = cos * cos - sin * sin
+  const solvable = Math.abs(det) > 0.25
+
+  return {
+    x: centerX(rect),
+    y: centerY(rect),
+    width: solvable ? (cos * rect.width - sin * rect.height) / det : rect.width,
+    height: solvable ? (cos * rect.height - sin * rect.width) / det : rect.height,
+    angle,
+  }
+}
+
+/** Cuánto está girado un elemento por su propia transformación (la de costado, la del abanico, la de un vuelo), en grados. */
+function angleOf(element: Element): number {
+  const { transform } = getComputedStyle(element)
+
+  if (!transform || transform === 'none' || typeof DOMMatrixReadOnly !== 'function') return 0
+
+  const matrix = new DOMMatrixReadOnly(transform)
+
+  return (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI
+}
+
+/**
+ * Dónde se ve ahora una carta de la mesa, para que algo salga de ella (la carta grande del centro, `Spotlight`): su elemento (en su lugar o arrancando su vuelo:
+ * la que se jugó desde la mano o sale del Extra se ve todavía ahí), la copia que viaja a una pila (`fly`) o, si no se ve, su pila o el Xyz del que es material; en
+ * la mano del rival, el medio de sus dorsos. Las del rival miran hacia él: media vuelta más (la copia que vuela ya la lleva). Sin mesa o sin estado, null.
+ * ponytail: sin copia que vuele (más de `PILE_FLIGHT_LIMIT` cartas en una jugada) una carta que se fue a una pila sale de esa pila y no de donde estaba; para eso
+ * habría que guardar dónde estaba cada carta antes de la jugada.
+ */
+export function cardPose(root: HTMLElement | null, state: MatState | null, id: string, side: Side): CardPose | null {
+  if (!root || !state) return null
+
+  const card = root.querySelector<HTMLElement>(`[${SIDES[side].card}="${quoted(id)}"]`)
+  // La última: una copia anterior de la misma carta (la de `flyAbove`, que se va sola) puede seguir en la capa.
+  const ghost = card ? null : ([...root.querySelectorAll<HTMLElement>(`[data-flight-ghost="${quoted(id)}"]`)].at(-1) ?? null)
+  const element = card ?? ghost
+  const home = element ? null : homeOf(root, state, id, side)
+  const seen = element ?? home
+
+  if (!seen) return null
+
+  const rect = element ? element.getBoundingClientRect() : boxOf(home!, side, { width: home!.offsetWidth, height: home!.offsetHeight })
+  const turn = side === 'theirs' && !ghost ? 180 : 0
+
+  return poseIn(rect, angleOf(seen) + turn)
 }
 
 /**

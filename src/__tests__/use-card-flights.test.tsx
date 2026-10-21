@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatState, matReducer, type MatAction, type MatState } from '../app/practice-mat'
 import { DuelTable } from '../components/duel/DuelTable'
 import { EASE_IN_OUT } from '../app/motion'
-import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs, useCardFlights } from '../app/use-card-flights'
+import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, cardPose, flightMs, poseIn, useCardFlights } from '../app/use-card-flights'
 
 interface Box {
   left: number
@@ -123,6 +123,53 @@ function RivalMat({ state }: { state: MatState }) {
     </div>
   )
 }
+
+describe('de dónde sale la carta grande del centro (`cardPose`)', () => {
+  it('de su carta a la vista; si no se ve, de la copia que vuela o de su pila; las del rival, de cabeza, y las de su mano, del medio de sus dorsos', () => {
+    // a en la zona de monstruo 1, b en la mano, c y d en el deck.
+    const state = matReducer(createMatState(['a', 'b', 'c', 'd'], [], 2), { type: 'place', id: 'a', zone: 'mz', index: 0, pos: 'atk', how: 'normal' })
+    const root = document.createElement('div')
+
+    root.innerHTML = '<div data-card-id="a"></div><div data-drop="deck"></div><div data-rival-card-id="a"></div><div data-rival-drop="hand"><div role="img"><span data-box="dorso"></span></div></div><div data-flight-ghost="d" data-box="copia"></div>'
+    document.body.append(root)
+    boxes.set('a', at(100, 200))
+    boxes.set('mine-deck', at(600, 400))
+    boxes.set('rival-hand', { left: 300, top: 0, width: 200, height: 120 })
+    boxes.set('dorso', { left: 300, top: 10, width: 60, height: 88 })
+    boxes.set('copia', at(20, 30))
+
+    expect(cardPose(root, state, 'a', 'mine')).toEqual({ x: 140, y: 258, width: 80, height: 116, angle: 0 })
+    expect(cardPose(root, state, 'c', 'mine')).toEqual({ x: 640, y: 458, width: 80, height: 116, angle: 0 })
+    expect(cardPose(root, state, 'd', 'mine')).toEqual({ x: 60, y: 88, width: 80, height: 116, angle: 0 })
+    expect(cardPose(root, state, 'a', 'theirs')).toMatchObject({ x: 140, y: 258, angle: 180 })
+    const hand = cardPose(root, state, 'b', 'theirs')!
+
+    expect(hand).toMatchObject({ x: 400, y: 60, angle: 180 })
+    expect(hand.width).toBeCloseTo(60, 6)
+    expect(hand.height).toBeCloseTo(88, 6)
+    // La copia que vuela ya viaja de cabeza: no se le suma otra media vuelta.
+    expect(cardPose(root, state, 'd', 'theirs')?.angle).toBe(0)
+    expect(cardPose(root, state, 'zz', 'mine')).toBeNull()
+    expect(cardPose(null, state, 'a', 'mine')).toBeNull()
+    root.remove()
+  })
+
+  it('una carta girada se mide sin su giro: de costado, el rectángulo que la encierra se da vuelta; un poco girada (el abanico), es más chica que él', () => {
+    const sideways = poseIn({ left: 0, top: 0, width: 116, height: 80 }, 90)
+
+    expect(sideways.width).toBeCloseTo(80, 6)
+    expect(sideways.height).toBeCloseTo(116, 6)
+    expect(sideways).toMatchObject({ x: 58, y: 40, angle: 90 })
+
+    const radians = (4.4 * Math.PI) / 180
+    const fan = poseIn({ left: 0, top: 0, width: 80 * Math.cos(radians) + 116 * Math.sin(radians), height: 80 * Math.sin(radians) + 116 * Math.cos(radians) }, -4.4)
+
+    expect(fan.width).toBeCloseTo(80, 6)
+    expect(fan.height).toBeCloseTo(116, 6)
+    // A 45° no se puede despejar: queda el rectángulo.
+    expect(poseIn({ left: 0, top: 0, width: 140, height: 140 }, 45)).toMatchObject({ width: 140, height: 140 })
+  })
+})
 
 describe('las cartas del rival vuelan como las propias', () => {
   it('una carta suya que sale del campo viaja hasta su cementerio', () => {

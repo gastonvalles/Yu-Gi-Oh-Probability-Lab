@@ -49,7 +49,7 @@ import { playSfx } from '../../app/sfx'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { setDuelFullscreen, toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
-import { useCardFlights } from '../../app/use-card-flights'
+import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
 import { useElementSize } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -2238,7 +2238,7 @@ export function PracticeMat({
 
       {inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
-      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
+      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
       {stage ? (
         <Spotlight
           key={stage.key}
@@ -2246,11 +2246,12 @@ export function PracticeMat({
           cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
           caption={steps[stage.step - 1] ?? null}
           flip={stage.flip}
+          origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}
         />
       ) : null}
 
-      {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. */}
+      {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. Salen de su carta (de cabeza, como se ven) o del medio de su mano y se enderezan en el camino. */}
       {duel?.rivalEffect && !duel.rivalEffect.quiet ? (
         <Spotlight
           key={duel.rivalEffect.key}
@@ -2260,6 +2261,7 @@ export function PracticeMat({
           linger={duel.rivalEffect.linger}
           caption={duel.rivalEffect.caption}
           detail={duel.rivalEffect.detail}
+          origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}
         />
       ) : null}
