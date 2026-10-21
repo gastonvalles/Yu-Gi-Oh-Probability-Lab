@@ -100,6 +100,18 @@ describe('el detalle de la carta con artes alternativos', () => {
     expect(inBuilder.parentElement).toHaveClass('relative', 'self-stretch')
   })
 
+  it('la barra de «Quitar una / Sumar una» del builder queda pegada al borde de abajo del panel que se desplaza: -bottom-4 (el relleno del panel) y no bottom-0, que dejaba 16 px de hueco por donde se veía pasar el texto', () => {
+    render(<DeckBuilderClassicPreview card={card} source="deck" deckCopy={{ zoneLabel: 'Main Deck', copies: 2, canAddCopy: true, onRemoveCopy: () => {}, onAddCopy: () => {} }} onAddToZone={() => {}} />)
+
+    const bar = screen.getByRole('button', { name: 'Quitar una' }).closest('.sticky')!
+    const panel = bar.parentElement!
+
+    // El navegador pega una barra `sticky` al borde del CONTENIDO del panel, no al de su relleno: se compensa con el mismo valor (`pb-4` ↔ `-bottom-4`).
+    expect(panel).toHaveClass('overflow-y-auto', 'pb-4')
+    expect(bar).toHaveClass('-bottom-4', '-mb-4')
+    expect(bar).not.toHaveClass('bottom-0')
+  })
+
   it('tocar una miniatura no cierra el detalle', () => {
     const onClose = vi.fn()
 
