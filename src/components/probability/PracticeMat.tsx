@@ -5,7 +5,7 @@ import { parseDerivedCardId } from '../../app/calculator-state'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import { opaqueOfForeign } from '../../app/mat-control'
 import { isOpaqueId } from '../../app/mat-public'
-import { EASE_OUT } from '../../app/motion'
+import { EASE_IN_OUT } from '../../app/motion'
 import {
   allMatIds,
   type AttackTarget,
@@ -335,13 +335,14 @@ const BANNER_MS = 1100
 const HAND_FLASH_MS = 900
 
 /**
- * Dar vuelta una carta (boca abajo ↔ boca arriba), en 3D: gira hasta quedar de canto (ahí cambia la cara) y se abre del otro lado.
- * Se suma (`composite: 'add'`) a la `transform` que ya tiene la carta (su rotación de costado, el vuelo entre zonas) sin pisarla.
+ * Dar vuelta una carta (boca abajo ↔ boca arriba), en 3D: gira hasta quedar de canto y se abre del otro lado. Todo el giro va con una sola curva
+ * (`EASE_IN_OUT`, en la llamada, de punta a punta): así pasa por el canto a velocidad y no se queda ahí (con una curva por mitad frenaba en el canto,
+ * unos 115 ms de «rayita»). Se suma (`composite: 'add'`) a la `transform` que ya tiene la carta (su rotación de costado, el vuelo entre zonas) sin pisarla.
  */
 const FLIP_FRAMES = [
-  { transform: 'perspective(700px) rotateY(0deg)', easing: EASE_OUT },
+  { transform: 'perspective(700px) rotateY(0deg)' },
   { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
-  { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: EASE_OUT },
+  { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5 },
   { transform: 'perspective(700px) rotateY(0deg)' },
 ]
 const FLIP_MS = 380
@@ -2368,7 +2369,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
 
     if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion() || !supportsAdditiveAnimation()) return
 
-    cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, composite: 'add' })
+    cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, easing: EASE_IN_OUT, composite: 'add' })
   }, [placed.pos])
 
   return (
@@ -2403,7 +2404,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
         onContextMenu={(event) => event.preventDefault()}
       >
         {/* El cambio de brillo (boca abajo se ve atenuada) espera a que la carta, al darse vuelta, esté de canto. */}
-        <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[115ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none')}>
+        <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[135ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none')}>
           <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
         </span>
         {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}

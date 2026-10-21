@@ -17,7 +17,7 @@ import {
   type HandLayout,
 } from '../../app/practice-hand-layout'
 import type { SpotlightKind } from '../../app/mat-effects'
-import { EASE_OUT } from '../../app/motion'
+import { EASE_IN_OUT, EASE_OUT, supportsAdditiveAnimation } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
@@ -424,9 +424,9 @@ function HandCard({
     const target = /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/.exec(finalTransform)
     const toX = target ? Number(target[1]) : fromX
     const toY = target ? Number(target[2]) : fromY
-    // La carta se da vuelta en el aire, en 3D: sale mostrando el dorso, a mitad de camino queda de canto (ahí se cambia el dorso por la cara)
-    // y termina de abrirse del otro lado. Todos los pasos llevan las mismas funciones, en el mismo orden, para que se interpolen una por una.
-    const spin = (position: string, degrees: number) => `perspective(700px) ${position} rotateY(${degrees}deg)`
+    // El camino va con `perspective` y sin el giro: el giro es otra animación (abajo), con su propio reloj. Sólo el primer tramo (del mazo al centro)
+    // lleva la curva de los vuelos; el resto conserva el arco y el rebote de cómo cae.
+    const perspective = (position: string) => `perspective(700px) ${position}`
     // Arriba, a mitad de camino: más alta y un poco más grande (se acerca a la cámara al darse vuelta).
     const midPosition = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 34}px, 0) rotate(-4deg) scale(1.12)`
     // Aterriza con un rebote: pasa un poco de su lugar (más abajo-arriba y con un grado más de giro) y se asienta. Sin el giro del abanico (no parsea), llega directo.
@@ -435,21 +435,30 @@ function HandCard({
 
     const flight = element.animate(
       [
-        { transform: spin(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-16deg) scale(${startScale})`, 0), opacity: 0.9, boxShadow: '0 0 0 rgb(0 0 0 / 0)', easing: EASE_OUT },
-        { transform: spin(midPosition, 90), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)' },
-        { transform: spin(midPosition, -90), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)', easing: EASE_OUT },
-        { transform: spin(bounce, 0), opacity: 1, offset: 0.82, boxShadow: '0 12px 20px rgb(0 0 0 / 0.4)', easing: EASE_OUT },
-        { transform: spin(`${finalTransform} scale(1)`, 0), opacity: 1 },
+        { transform: perspective(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-16deg) scale(${startScale})`), opacity: 0.9, boxShadow: '0 0 0 rgb(0 0 0 / 0)', easing: EASE_IN_OUT },
+        { transform: perspective(midPosition), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)', easing: EASE_OUT },
+        { transform: perspective(bounce), opacity: 1, offset: 0.82, boxShadow: '0 12px 20px rgb(0 0 0 / 0.4)', easing: EASE_OUT },
+        { transform: perspective(`${finalTransform} scale(1)`), opacity: 1 },
       ],
       { duration: DEAL_MS, fill: 'backwards' },
     )
+    // La carta se da vuelta en el aire, en 3D: sale mostrando el dorso, a mitad de camino queda de canto y termina de abrirse del otro lado. Va aparte
+    // y con la curva de los vuelos de punta a punta (como `fly`): se suma al camino. Sin esa suma (un navegador viejo) llega sin girar.
+    const turn = supportsAdditiveAnimation()
+      ? element.animate(
+          [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)', offset: 0.5 }, { transform: 'rotateY(-90deg)', offset: 0.5 }, { transform: 'rotateY(0deg)' }],
+          { duration: DEAL_MS, easing: EASE_IN_OUT, composite: 'add' },
+        )
+      : null
+    // El dorso se cambia por la cara justo al quedar de canto: a mitad de la curva, con el mismo reloj que el giro.
     const flip = back.animate(
-      [{ opacity: 1 }, { opacity: 1, offset: 0.41 }, { opacity: 0, offset: 0.42 }, { opacity: 0 }],
-      { duration: DEAL_MS, fill: 'both' },
+      [{ opacity: 1 }, { opacity: 1, offset: 0.5 }, { opacity: 0, offset: 0.5 }, { opacity: 0 }],
+      { duration: DEAL_MS, easing: EASE_IN_OUT, fill: 'both' },
     )
 
     return () => {
       flight.cancel()
+      turn?.cancel()
       flip.cancel()
     }
     // Sólo al montarse: reordenar o redimensionar no debe volver a repartir.
