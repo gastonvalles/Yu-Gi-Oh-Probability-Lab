@@ -1,10 +1,14 @@
 /** @vitest-environment jsdom */
+import { configureStore } from '@reduxjs/toolkit'
 import { act, render } from '@testing-library/react'
 import { useRef } from 'react'
+import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMatState, matReducer, type MatAction, type MatState } from '../app/practice-mat'
-import { FLIGHT_MS, FLIGHT_STAGGER_MS, useCardFlights } from '../app/use-card-flights'
+import { DuelTable } from '../components/duel/DuelTable'
+import { EASE_IN_OUT } from '../app/motion'
+import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, flightMs, useCardFlights } from '../app/use-card-flights'
 
 interface Box {
   left: number
@@ -63,7 +67,7 @@ beforeEach(() => {
   Element.prototype.getAnimations = () => []
   Element.prototype.animate = function (this: Element, keyframes: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
     if (this instanceof HTMLElement && (this.dataset.cardId ?? this.dataset.rivalCardId) && Array.isArray(keyframes)) flights.push({ card: this.dataset.cardId ?? this.dataset.rivalCardId, from: String(keyframes[0]?.transform ?? '') })
-    if (this instanceof HTMLElement && this.classList.contains('z-200') && Array.isArray(keyframes)) ghostLandings.push(String(keyframes[1]?.transform ?? ''))
+    if (this instanceof HTMLElement && 'flightGhost' in this.dataset && Array.isArray(keyframes) && keyframes[0]?.transform !== undefined && (typeof options !== 'object' || options.composite !== 'add')) ghostLandings.push(String(keyframes.at(-1)?.transform ?? ''))
     if (Array.isArray(keyframes)) calls.push({ element: this, keyframes, options: typeof options === 'object' ? options : {} })
 
     return {} as Animation
@@ -73,12 +77,13 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
   HTMLElement.prototype.getBoundingClientRect = original.getBoundingClientRect
   Element.prototype.animate = original.animate
   Element.prototype.getAnimations = original.getAnimations
   window.matchMedia = original.matchMedia
   // Los fantasmas se quitan solos al terminar su vuelo, que acá nunca corre.
-  document.body.querySelectorAll('div.fixed.z-200').forEach((ghost) => ghost.remove())
+  document.querySelectorAll('[data-flight-ghost]').forEach((ghost) => ghost.remove())
 })
 
 /** La mesa mínima: las cartas de la mano y las de la zona de Mágicas y Trampas, cada una con su `data-card-id`. */
@@ -128,7 +133,7 @@ describe('las cartas del rival vuelan como las propias', () => {
 
     rerender(<RivalMat state={matReducer(start, { type: 'move', id: 'a', to: 'gy' })} />)
 
-    expect(document.body.querySelectorAll('div.fixed.z-200')).toHaveLength(1)
+    expect(document.querySelectorAll('[data-flight-ghost]')).toHaveLength(1)
     // Aterriza en el centro de su cementerio (el fantasma no tiene tamaño en jsdom, así que se centra sumando la mitad de la pila).
     expect(ghostLandings).toHaveLength(1)
     expect(ghostLandings[0]).toContain('translate(540px, 158px)')
@@ -212,6 +217,9 @@ describe('de dónde sale volando una carta que se juega desde la mano', () => {
   })
 })
 
+/** `CardArt` (en la mesa del duelo) lee el formato del deck del store: uno mínimo. */
+const WATCH_STORE = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
+
 /** El arte de una carta de la mesa de pilas: su id es su número de YGOPRODeck. */
 const ygoArt = (id: string) => `https://images.ygoprodeck.com/images/cards/${id}.jpg`
 
@@ -223,8 +231,15 @@ function PileMat({ state }: { state: MatState }) {
 
   return (
     <div ref={ref}>
+      {/* Cada pila muestra su carta de arriba (con su imagen, que `CardArt` deja transparente hasta que carga) y su contador, como en la mesa. */}
       {(['deck', 'extra', 'gy', 'banished'] as const).map((pile) => (
-        <div key={pile} data-drop={pile} />
+        <div key={pile} data-drop={pile}>
+          <span>
+            {state[pile].at(-1) ?? '-'}
+            {state[pile].length > 0 ? <img alt="" loading="lazy" style={{ opacity: 0 }} /> : null}
+          </span>
+          <b>{state[pile].length}</b>
+        </div>
       ))}
       {state.mz.map((placed, index) => (
         <div key={index} data-drop={`mz:${index}`}>
@@ -257,8 +272,8 @@ function RivalPiles({ state }: { state: MatState }) {
 /** Los fantasmas, en el orden en que salieron: de dónde, a dónde, cuánto esperan y su elemento. */
 const ghosts = () =>
   calls
-    .filter(({ element, options }) => element instanceof HTMLElement && element.classList.contains('z-200') && options.composite !== 'add')
-    .map(({ element, keyframes, options }) => ({ element: element as HTMLElement, from: String(keyframes[0]?.transform), to: String(keyframes[1]?.transform), delay: options.delay ?? 0 }))
+    .filter(({ element, keyframes, options }) => element instanceof HTMLElement && 'flightGhost' in element.dataset && keyframes[0]?.transform !== undefined && options.composite !== 'add')
+    .map(({ element, keyframes, options }) => ({ element: element as HTMLElement, from: String(keyframes[0]?.transform), to: String(keyframes.at(-1)?.transform), delay: options.delay ?? 0, duration: Number(options.duration), easing: options.easing }))
 /** Cómo cambia el dorso de un fantasma en el camino (de qué opacidad a cuál); null si no cambia. */
 const backFade = (ghost: HTMLElement) => {
   const fade = calls.find(({ element }) => element.parentElement === ghost && element.tagName === 'SPAN')
@@ -375,7 +390,8 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     // Los materiales salen de donde estaba el Xyz (ya no está en la mesa).
     expect(ghosts().every((ghost) => ghost.from === 'translate(400px, 300px)')).toBe(true)
     expect(impacts(gy())).toHaveLength(1)
-    expect(impacts(gy())[0]!.options.delay).toBe(FLIGHT_MS - 100)
+    // El golpe, cuando la primera toca el cementerio (del Xyz, en 440, 358, al cementerio, en 740, 408).
+    expect(impacts(gy())[0]!.options.delay).toBe(Math.round(flightMs(Math.hypot(300, 50)) * LANDING_AT))
   })
 
   it('las que salen de lugares distintos (los materiales de una Invocación Xyz) no se tapan: salen juntas, como siempre', () => {
@@ -420,6 +436,148 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect(ghosts().every((ghost) => ghost.from === 'translate(700px, 500px)' && ghost.to === 'translate(700px, 200px) scale(1)')).toBe(true)
     // El destierro da un solo golpe.
     expect(impacts(document.querySelector('[data-drop="banished"]')!)).toHaveLength(1)
+  })
+
+  it('un salto corto dura menos que uno largo: del deck al cementerio de al lado, 300 ms; del Extra al cementerio, cruzando la mesa, lo más (FLIGHT_MS)', () => {
+    const start = fresh()
+    const first = render(<PileMat state={start} />)
+
+    first.rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
+    expect(ghosts().map((ghost) => ghost.duration)).toEqual([flightMs(150)])
+    expect(flightMs(150)).toBe(300)
+    first.unmount()
+
+    calls = []
+    const second = render(<PileMat state={start} />)
+    second.rerender(<PileMat state={play(start, { type: 'move', id: '901', to: 'gy' })} />)
+    expect(ghosts().map((ghost) => ghost.duration)).toEqual([FLIGHT_MS])
+  })
+
+  it('el giro y el cambio de cara van con el vuelo (la misma duración, la misma espera y la misma curva): de canto justo a mitad de camino', () => {
+    // El giro en 3D se suma al vuelo: hace falta que el navegador sepa sumar animaciones.
+    vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
+    const start = fresh()
+    const { rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
+
+    const [ghost] = ghosts()
+    const turn = calls.find(({ element, options }) => element === ghost!.element && options.composite === 'add')
+    const face = calls.find(({ element }) => element.parentElement === ghost!.element && element.tagName === 'SPAN')
+    expect(ghost!.easing).toBe(EASE_IN_OUT)
+
+    for (const call of [turn, face]) {
+      expect(call!.options).toMatchObject({ duration: ghost!.duration, delay: ghost!.delay, easing: EASE_IN_OUT })
+      // De canto (90°) y el cambio de cara en la mitad del camino, que es la mitad de la curva del vuelo.
+      expect(call!.keyframes.filter((frame) => frame.offset === 0.5)).toHaveLength(2)
+    }
+  })
+
+  it('la pila no se adelanta: muestra su carta de arriba y su contador de antes hasta que la carta llega, y ahí da el golpe', () => {
+    const milled = play(fresh(), { type: 'mill', count: 1 })
+    const { rerender } = render(<PileMat state={milled} />)
+
+    rerender(<PileMat state={play(milled, { type: 'mill', count: 1 })} />)
+
+    const touch = Math.round(flightMs(150) * LANDING_AT)
+    const hold = gy().querySelector<HTMLElement>('[data-flight-hold]')
+    // La copia de lo que mostraba (el 103 arriba, 1 carta), encima y sin tocarse ni leerse; lo nuevo (el 104, 2 cartas) queda escondido hasta que la carta llega.
+    expect(hold?.textContent).toBe('1031')
+    expect(hold?.getAttribute('aria-hidden')).toBe('true')
+    expect(hold?.hasAttribute('inert')).toBe(true)
+    expect(hold?.className).toContain('pointer-events-none')
+    // Su imagen se ve aunque la de la mesa todavía estuviera cargando, y se pide ya.
+    expect(hold?.querySelector('img')?.style.opacity).toBe('1')
+    expect(hold?.querySelector('img')?.loading).toBe('eager')
+    const hidden = calls.filter(({ element, keyframes }) => element.parentElement === gy() && keyframes[0]?.opacity === 0)
+    expect(hidden.map(({ element }) => element.textContent)).toEqual(['104', '2'])
+    expect(hidden.every(({ options }) => options.duration === touch)).toBe(true)
+    // El golpe, cuando la toca; el fantasma se funde con ella desde ese momento.
+    expect(impacts(gy())[0]!.options.delay).toBe(touch)
+    const fade = calls.find(({ element, keyframes }) => element === ghosts()[0]!.element && keyframes[0]?.opacity === 1 && keyframes[0]?.transform === undefined)
+    expect(fade!.options.delay).toBe(touch)
+  })
+
+  it('varias a la misma pila: la pila se pone al día cuando llega la última y los fantasmas se funden juntos con ella', () => {
+    const start = fresh()
+    const { rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'mill', count: 3 })} />)
+
+    const first = Math.round(flightMs(150) * LANDING_AT)
+    const last = 2 * FLIGHT_STAGGER_MS + first
+    const fades = calls.filter(({ element, keyframes }) => 'flightGhost' in (element as HTMLElement).dataset && keyframes[0]?.opacity === 1 && keyframes[0]?.transform === undefined)
+    expect(fades.map(({ options }) => options.delay)).toEqual([last, last, last])
+    expect(calls.filter(({ element, keyframes }) => element.parentElement === gy() && keyframes[0]?.opacity === 0).every(({ options }) => options.duration === last)).toBe(true)
+    // El golpe, con la primera.
+    expect(impacts(gy())[0]!.options.delay).toBe(first)
+  })
+
+  it('otra jugada con la carta todavía en el aire suelta la pila: muestra ya lo suyo', () => {
+    const start = fresh()
+    const { rerender } = render(<PileMat state={start} />)
+    const milled = play(start, { type: 'mill', count: 1 })
+
+    rerender(<PileMat state={milled} />)
+    expect(gy().querySelector('[data-flight-hold]')).not.toBeNull()
+
+    rerender(<PileMat state={play(milled, { type: 'draw', count: 1 })} />)
+    expect(gy().querySelector('[data-flight-hold]')).toBeNull()
+  })
+
+  it('el fantasma vuela dentro de la mesa, debajo de las cartas grandes del centro (z 110 < 120), y no ataja el puntero ni se lee', () => {
+    const start = fresh()
+    const { container, rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
+
+    const ghost = document.querySelector<HTMLElement>('[data-flight-ghost]')
+    expect(ghost?.parentElement).toBe(container.firstElementChild)
+    expect(ghost?.className).toContain('z-110')
+    expect(ghost?.className).toContain('pointer-events-none')
+    expect(ghost?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('con el movimiento reducido no vuela nada y las pilas cambian de una', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    const start = fresh()
+    const { rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
+
+    expect(ghosts()).toHaveLength(0)
+    expect(document.querySelector('[data-flight-hold]')).toBeNull()
+    expect(gy().textContent).toBe('1031')
+  })
+
+  it('quien mira un duelo también ve volar las cartas: las del de abajo por las marcas propias de la mesa del duelo y las del de arriba por las del rival', () => {
+    // Así lo arma la pantalla de quien mira (`WatchFlights`): un vuelo por jugador sobre la misma mesa.
+    function Watch({ bottom, top }: { bottom: MatState; top: MatState }) {
+      const ref = useRef<HTMLDivElement>(null)
+
+      useCardFlights(ref, bottom, ygoArt, 'watch')
+      useCardFlights(ref, top, () => null, 'watch', 'theirs')
+
+      return (
+        <Provider store={WATCH_STORE}>
+          <div ref={ref}>
+            <DuelTable mine={{ state: bottom, artOf: ygoArt }} theirs={{ state: top, artOf: () => null, handCount: top.hand.length }} />
+          </div>
+        </Provider>
+      )
+    }
+    boxes.set('rival-deck', at(20, 20))
+    boxes.set('rival-gy', at(20, 170))
+    const bottom = fresh()
+    const top = createMatState(['c1', 'c2', 'c3', 'c4'], [], 2)
+    const { rerender } = render(<Watch bottom={bottom} top={top} />)
+
+    rerender(<Watch bottom={play(bottom, { type: 'mill', count: 1 })} top={play(top, { type: 'mill', count: 1 })} />)
+
+    expect(ghosts().map((ghost) => [ghost.from, ghost.to])).toEqual([
+      ['translate(700px, 500px)', 'translate(700px, 350px) scale(1)'],
+      ['translate(20px, 20px) rotate(180deg)', 'translate(20px, 170px) scale(1) rotate(180deg)'],
+    ])
   })
 
   it('de la mano del rival a su cementerio: sale del medio de su mano, de dorso y de cabeza', () => {

@@ -64,6 +64,9 @@
   /* El movimiento de toda la app (Gastón, 2026-10-19, tres referencias: easing, offset y delay, parallax). Nada va en `linear` (se siente robótico): lo que entra desacelera, con una curva fuerte
      al principio y suave al llegar, y las transiciones de Tailwind ya la usan (`--default-transition-timing-function`, más abajo). Sólo lo que cuenta tiempo de verdad (el reloj, un anillo que se barre) es lineal. */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  /* Lo que viaja de un lugar a otro de la pantalla (los vuelos de las cartas de la mesa) y el barajado: arranca suave y llega suave, sin el golpe del principio de `--ease-out`
+     (es el `ease-in-out` de Tailwind; en el JS, `EASE_IN_OUT` de `app/motion.ts`). */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   --animate-shimmer: shimmer 1.2s ease-in-out infinite;
   --animate-dialog-enter: dialog-enter 150ms cubic-bezier(0.2, 0, 0, 1);
@@ -111,9 +114,9 @@
   --animate-card-activate-read: card-activate-linger 7000ms cubic-bezier(0.2, 0, 0, 1) both;
   /* El mazo de la mesa: tirón de la carta de arriba al repartir y barajado (las dos de abajo se abren a los costados). */
   --animate-pile-draw: pile-draw 200ms cubic-bezier(0.2, 0, 0, 1);
-  --animate-riffle-left: riffle-left 640ms cubic-bezier(0.4, 0, 0.2, 1);
-  --animate-riffle-right: riffle-right 640ms cubic-bezier(0.4, 0, 0.2, 1);
-  --animate-riffle-lift: riffle-lift 640ms cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-riffle-left: riffle-left 640ms var(--ease-in-out);
+  --animate-riffle-right: riffle-right 640ms var(--ease-in-out);
+  --animate-riffle-lift: riffle-lift 640ms var(--ease-in-out);
   /* Efectos de la mesa de práctica (MatFx.tsx): marcos de colores con una luz que les da la vuelta, mira de objetivo, destello de invocación, cartel de fase y zonas que se ofrecen. `--fx-rgb` (r g b) es el color de cada uno. */
   --animate-fx-frame-in: fx-frame-in 200ms cubic-bezier(0.2, 0, 0, 1) both;
   --animate-fx-orbit: fx-orbit 1.2s linear infinite;

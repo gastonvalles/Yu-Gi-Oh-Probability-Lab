@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { EASE_OUT, EASE_OUT_SOFT } from '../app/motion'
+import { EASE_IN_OUT, EASE_OUT, EASE_OUT_SOFT } from '../app/motion'
 
 // Las curvas del JS (la Web Animations API) son las de los tokens de index.css, y ningún movimiento de la interfaz usa la palabra `ease-out` de esa API
 // (es otra curva). Esta regla mira el código, como `link-rules.test.ts`.
@@ -26,6 +26,14 @@ describe('las curvas de movimiento', () => {
   it('son las de los tokens de index.css', () => {
     expect(EASE_OUT).toBe(token('ease-out'))
     expect(EASE_OUT_SOFT).toBe(token('ease-out-soft'))
+    expect(EASE_IN_OUT).toBe(token('ease-in-out'))
+  })
+
+  it('el barajado del mazo (CSS) va con la misma curva que el de la mano (JS)', () => {
+    const css = readFileSync(path.join(SRC, 'index.css'), 'utf8')
+
+    expect(css.match(/--animate-riffle-[a-z]+:[^;]+;/g)?.every((rule) => rule.includes('var(--ease-in-out)'))).toBe(true)
+    expect(readFileSync(path.join(SRC, 'app', 'shuffle-fx.ts'), 'utf8')).toContain('easing: EASE_IN_OUT')
   })
 
   it('ningún movimiento usa la palabra ease-out de la Web Animations API', () => {

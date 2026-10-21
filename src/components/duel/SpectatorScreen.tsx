@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { duelResult } from '../../app/duel-games'
 import { DEFAULT_LIMIT_MIN } from '../../app/duel-protocol'
@@ -8,6 +8,7 @@ import { isToken, PHASES } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSpectator, type SpectatorConnect } from '../../app/use-duel'
+import { useCardFlights } from '../../app/use-card-flights'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Callout } from '../ui/Callout'
@@ -204,12 +205,24 @@ function WatchChat({ snapshot, nameOf }: { snapshot: SpectatorSnapshot; nameOf: 
   )
 }
 
+/**
+ * Las cartas vuelan también para quien mira, como para los que juegan: las del de abajo con las marcas propias de la mesa y las del de arriba con las del rival. Se
+ * monta de nuevo al dar vuelta la mesa (`key`): ahí no vuela nada, sólo se mide de nuevo. La mano del de abajo es de dorsos sin marca: lo que entra o sale de ella no vuela.
+ */
+function WatchFlights({ containerRef, bottom, top }: { containerRef: RefObject<HTMLElement | null>; bottom: DuelSideView; top: DuelSideView }) {
+  useCardFlights(containerRef, bottom.state, bottom.artOf, 'watch')
+  useCardFlights(containerRef, top.state, top.artOf, 'watch', 'theirs')
+
+  return null
+}
+
 function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot; online: boolean; onLeave: () => void }) {
   const now = useTick(1000)
   // En escritorio el chat va fijo al costado (como el de los jugadores); en el celular, en una hoja que se abre con el ícono.
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Desde qué lado se mira: abajo, el anfitrión (o el invitado, dando vuelta la mesa).
   const [flipped, setFlipped] = useState(false)
+  const tableRef = useRef<HTMLDivElement | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [read, setRead] = useState(snapshot.feed.length)
   const bottom: Duelist = flipped ? 1 : 0
@@ -251,7 +264,8 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
     <div className={cx("h-full min-h-0", docked ? "flex" : "overflow-y-auto")}>
       {snapshot.end && !endSeen ? <WatchResultBanner end={snapshot.end} nameOf={nameOf} onLeave={onLeave} onClose={closeEnd} /> : null}
       <div className={cx(docked && "min-w-0 flex-1 overflow-y-auto")}>
-        <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
+        {/* `isolate`: las cartas que vuelan quedan dentro de la mesa, debajo del cartel del final. */}
+        <div ref={tableRef} className="isolate mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
           {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. Tres filas que no se parten (vida + reloj + salir; lo que se mira + el turno; avisos): si algo no entra se achica en su fila en vez de caerse a otra. */}
           <div className="flex items-center gap-1.5 [&>[data-lp]]:shrink">
             <ShellMenuButton className="-ml-2" />
@@ -344,6 +358,8 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
           </div>
         </div>
       </div>
+      {/* Después de la mesa: al montarse ya la encuentra (`tableRef`). */}
+      <WatchFlights key={String(flipped)} containerRef={tableRef} bottom={bottomView} top={topView} />
 
       {docked ? (
         <aside aria-label={t("duel.watch.chat")} className="flex w-80 shrink-0 flex-col border-l border-border-subtle bg-card-background">

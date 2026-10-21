@@ -296,7 +296,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   )
 }
 
-/** Una pila: Main y Extra de dorso; GY y Banish con su carta de arriba (de dorso si está boca abajo); siempre la cantidad. */
+/** Una pila: Main y Extra de dorso; GY y Banish con su carta de arriba (de dorso si está boca abajo); siempre la cantidad. Lleva la marca de su lado (`data-drop` o `data-rival-drop`): de ahí salen y ahí llegan las cartas que vuelan (también para quien mira). */
 function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile, 'hand'>; side: DuelSideView; owner: Owner }) {
   const cards = side.state[pile]
   // El Extra se ve de dorso, salvo que tenga cartas boca arriba (Monstruos de Péndulo): ahí se ve la última que llegó.
@@ -313,7 +313,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`} title={PILE_TITLES[pile]} data-drop={owner === 'mine' ? pile : undefined} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {/* El grosor del deck y del Extra, en perspectiva con el campo: el canto que se ve es el de abajo (el que mira a quien juega), también en las pilas del rival. */}
       {pile === 'deck' || pile === 'extra' ? <PileStack count={cards.length} /> : null}
       {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}
