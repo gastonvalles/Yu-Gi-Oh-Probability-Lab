@@ -40,6 +40,8 @@ const FLIGHT_ID = 'mat-flight'
 const PILES = new Set(['deck', 'extra', 'gy', 'banished'])
 /** Los fantasmas vuelan dentro de la mesa, debajo de las cartas grandes del centro (`Spotlight`, z 120), la pregunta y la pausa del duelo, y encima del campo y la mano. */
 const GHOST_CLASS = 'pointer-events-none fixed left-0 top-0 z-110 overflow-hidden bg-input shadow-overlay'
+/** La capa de los fantasmas sin la caja de un fantasma: ahí vuela la copia de una carta que sale de la mano (`flyAbove`), que ya trae la suya. */
+const GHOST_LAYER = 'pointer-events-none fixed left-0 top-0 z-110'
 
 /** Un rectángulo en la pantalla: el de un elemento o uno armado a mano (el lugar de una carta en la mano). */
 type Box = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>
@@ -415,12 +417,73 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
 }
 
 /**
+ * Una carta que sale de la mano al campo (una invocación, una magia que se activa o se coloca) pasa por encima de sus vecinas. La carta de la zona está
+ * dentro del campo, que es su propio contexto de apilado (`isolate` y, en la vista 3D, su inclinación), y las cartas de la mano se pintan encima del campo
+ * entero: volando, pasaba por debajo de ellas. Subir el campo de `z-index` mientras vuela no alcanza: en un duelo la mano sube contra el campo, y la placa
+ * (que sobresale abajo, con su sombra) taparía la franja de arriba de toda la mano. Vuela entonces una copia de la carta en la capa de los fantasmas, con el
+ * mismo vuelo (`keyframes`, `options`) y en el mismo plano (en la vista 3D, con la inclinación del campo), mientras la carta, transparente, hace el suyo; cuando
+ * toca su zona (`LANDING_AT`) la copia se va y la carta se ve en el mismo lugar, a tiempo para el destello de la invocación, que va encima de ella. Otra jugada
+ * a mitad de camino corta su transparencia (es un vuelo, `FLIGHT_ID`) y con ella la copia.
+ */
+function flyAbove(element: HTMLElement, id: string, layer: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions): void {
+  const field = element.closest<HTMLElement>('[data-tilted]')
+  const tilt = field ? { transform: getComputedStyle(field).transform, origin: getComputedStyle(field).transformOrigin } : null
+  // Dónde está la carta en su plano: en la vista 3D, dentro del campo sin inclinar (se le saca un instante para medir; no tiene transición); si no, en la pantalla.
+  let frame = { left: 0, top: 0 }
+  let rect: DOMRect
+
+  if (field) {
+    const inline = field.style.transform
+    field.style.transform = 'none'
+    frame = field.getBoundingClientRect()
+    rect = element.getBoundingClientRect()
+    field.style.transform = inline
+  } else {
+    rect = element.getBoundingClientRect()
+  }
+
+  const origin = originOf(layer)
+  const holder = document.createElement('div')
+  holder.className = GHOST_LAYER
+  holder.dataset.flightGhost = id
+  holder.setAttribute('aria-hidden', 'true')
+  holder.setAttribute('inert', '')
+  holder.style.transform = `translate(${frame.left - origin.x}px, ${frame.top - origin.y}px)${tilt ? ` ${tilt.transform}` : ''}`
+  if (tilt) holder.style.transformOrigin = tilt.origin
+
+  // La copia es la carta tal cual se ve (su cara o atenuada, acostada, sus marcos), sin su marca y con su imagen a la vista: la carta recién montada todavía
+  // la funde y le pone encima el esqueleto de la carga (`Skeleton`), que en la copia no se iría nunca.
+  const copy = element.cloneNode(true) as HTMLElement
+  // Su tamaño exacto (`offsetWidth` lo redondea, y el vuelo lo agranda: la copia salía corrida 1 px).
+  const size = getComputedStyle(element)
+  const width = parseFloat(size.width) || element.offsetWidth
+  const height = parseFloat(size.height) || element.offsetHeight
+  copy.removeAttribute('data-card-id')
+  Object.assign(copy.style, { left: `${centerX(rect) - width / 2 - frame.left}px`, top: `${centerY(rect) - height / 2 - frame.top}px`, right: 'auto', width: `${width}px`, height: `${height}px`, margin: '0' })
+  for (const placeholder of copy.querySelectorAll('[class*="animate-shimmer"]')) placeholder.remove()
+  for (const image of copy.querySelectorAll('img')) {
+    image.loading = 'eager'
+    image.style.opacity = '1'
+  }
+  holder.append(copy)
+  layer.append(holder)
+
+  copy.animate(keyframes, options)
+  // Transparente y sin atajar el puntero: la que aterriza bajo el mouse (se tocó la zona) no se eleva mientras la copia vuela, que si no al aparecer saltaba.
+  const hidden = element.animate([{ opacity: 0, pointerEvents: 'none' }, { opacity: 0, pointerEvents: 'none' }], { id: FLIGHT_ID, duration: Math.round(FLIGHT_MS * LANDING_AT) })
+  const remove = () => holder.remove()
+  hidden.onfinish = remove
+  hidden.oncancel = remove
+}
+
+/**
  * Las cartas vuelan de un lugar a otro cuando cambia el estado de la mesa (jugadas, deshacer, reproducir un combo): cada carta a la vista (`data-card-id`) se
  * anima desde donde estaba (FLIP) o desde la pila de la que salió; una que se va a una pila (o abajo de un Xyz) viaja hasta ahí como un fantasma, y también la
  * que pasa de una pila a otra sin estar nunca a la vista (del deck al cementerio, del cementerio al destierro, un material que se desprende, lo que entra o sale
  * de la mano del rival). El fantasma se da vuelta si llega boca abajo o si sale de dorso y llega a la vista, las que salen del mismo lugar en una jugada salen
- * escalonadas, y la pila las recibe con un golpe y sin adelantarse: su carta de arriba y su contador cambian cuando la carta llega. La mano reparte (desde el
- * mazo) y reacomoda sus propias cartas. Todo vuela con la curva de lo que viaja (`EASE_IN_OUT`), y un fantasma dura según cuánto viaja (`flightMs`).
+ * escalonadas, y la pila las recibe con un golpe y sin adelantarse: su carta de arriba y su contador cambian cuando la carta llega. La que sale de tu mano al
+ * campo pasa por encima de sus vecinas (`flyAbove`). La mano reparte (desde el mazo) y reacomoda sus propias cartas. Todo vuela con la curva de lo que viaja
+ * (`EASE_IN_OUT`), y un fantasma dura según cuánto viaja (`flightMs`).
  * `layoutKey` cambia cuando las cartas se mueven sin jugada (reparto, reordenar la mano): se vuelve a medir.
  * Con `side: 'theirs'` es lo mismo con las cartas y pilas del rival (la mesa del duelo se las dibuja con sus propias marcas); sin estado todavía, no hace nada.
  */
@@ -483,8 +546,12 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       // ponytail: dura siempre `FLIGHT_MS` (sea corto o largo) porque el destello de una invocación (`LandingBurst`) y la pila de materiales de un Xyz (`MaterialStack`)
       // esperan eso para aparecer; para que un salto corto de una carta con elemento dure menos, esos dos tendrían que recibir cuándo aterriza.
       const start = element.closest('[data-tilted]') ? tiltedOffset(element, before, rect, own) : offset(before, rect)
+      const flight = [{ transform: `${start}${own}` }, { transform: base }]
+      const timing = { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASE_IN_OUT }
 
-      element.animate([{ transform: `${start}${own}` }, { transform: base }], { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASE_IN_OUT })
+      // De tu mano (la carta tenía elemento ahí) al campo: lo que se ve volar es una copia, por encima de las vecinas.
+      if (previous.state.hand.includes(id) && previous.cards.get(id)?.pending === false) flyAbove(element, id, root, flight, timing)
+      element.animate(flight, timing)
     }
 
     // Las que salen del mismo lugar (varias del deck, un Xyz con sus materiales) se taparían: salen una tras otra, en el orden en que quedan en su pila (la
