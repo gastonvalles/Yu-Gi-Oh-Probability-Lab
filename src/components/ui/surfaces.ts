@@ -7,7 +7,7 @@ import { TONE } from './tone'
  * `cx()` o se interpolan en un className. Para bloques nuevos preferí <Card>, <Callout> y <Badge>.
  *
  * Jerarquía: lienzo (fondo) < card < inset (hundido dentro de una card). Las sombras son
- * parejas y suaves; sólo la acción principal y el foco llevan brillo violeta.
+ * parejas y suaves; sólo la acción principal lleva brillo violeta y el foco, un aro ámbar.
  */
 export const surface = {
   /** Contenedor flotante grande (modal, drawer). */
@@ -22,7 +22,7 @@ export const surface = {
 
 /** Campo de texto, select y textarea: lavanda como los demás controles, con borde fino que se enciende al enfocar. */
 export const field =
-  'rounded-control border border-tint/12 bg-input text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-tint/20 hover:bg-input-hover focus:border-primary/70 focus:shadow-[0_0_0_3px_rgb(var(--primary-rgb)/0.18)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
+  'rounded-control border border-tint/12 bg-input text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-tint/20 hover:bg-input-hover focus:border-info/70 focus:shadow-[0_0_0_3px_rgb(var(--info-rgb)/0.18)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
 
 /** Chips informativos (no interactivos). */
 export const chip = {

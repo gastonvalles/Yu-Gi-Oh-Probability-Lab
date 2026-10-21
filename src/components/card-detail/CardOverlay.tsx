@@ -463,7 +463,7 @@ export function CardPanelBody({ label, className, children }: { label: string; c
     <div
       data-initial-focus
       className={cx(
-        'min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-tint/10 pr-[0.2rem] pt-[0.55rem] text-white outline-none focus-visible:border-t-primary/65',
+        'min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-tint/10 pr-[0.2rem] pt-[0.55rem] text-white outline-none focus-visible:border-t-info/65',
         className,
       )}
       tabIndex={0}

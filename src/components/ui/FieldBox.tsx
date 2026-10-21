@@ -19,7 +19,7 @@ export const fieldInline =
  */
 export function FieldBox({ children, className, multiline }: FieldBoxProps) {
   return (
-    <label className={cx('flex min-h-11 min-w-0 rounded-card border border-border-subtle bg-card-background px-4 shadow-card transition-[border-color,box-shadow] duration-150 focus-within:border-primary/60 focus-within:shadow-focus', multiline ? 'items-start py-2' : 'h-10 items-center', className)}>
+    <label className={cx('flex min-h-11 min-w-0 rounded-card border border-border-subtle bg-card-background px-4 shadow-card transition-[border-color,box-shadow] duration-150 focus-within:border-info/60 focus-within:shadow-focus', multiline ? 'items-start py-2' : 'h-10 items-center', className)}>
       {children}
     </label>
   )

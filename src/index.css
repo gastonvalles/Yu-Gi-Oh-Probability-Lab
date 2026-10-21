@@ -50,7 +50,7 @@
   /* Elevación: tres niveles (tarjeta, flotante, overlay) y el brillo de marca. */
   --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04);
   --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
-  --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--primary-rgb) / 0.6);
+  --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--info-rgb) / 0.6);
 
   /* Margen lateral del contenido en mobile (22 px, como el diseño). */
   --spacing-gutter: 1.375rem;
