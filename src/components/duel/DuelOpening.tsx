@@ -146,7 +146,7 @@ function NameInput({ value, onCommit }: { value: string; onCommit: (name: string
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur()
       }}
-      className="w-full min-w-0 rounded-input border border-border-subtle bg-transparent px-2 py-1 text-center text-body font-bold text-foreground outline-none placeholder:font-normal placeholder:text-soft focus:border-primary"
+      className="w-full min-w-0 rounded-input border border-border-subtle bg-transparent px-2 py-1 text-center text-body font-bold text-foreground outline-none placeholder:font-normal placeholder:text-soft focus:border-info"
     />
   )
 }

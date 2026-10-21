@@ -312,7 +312,7 @@ const MAT_CARD = [
   // Al cambiar de posición la carta se acuesta (o se para) pasándose un poco y volviendo; al pasar el mouse se eleva.
   CARD_TRANSITION,
   CARD_HOVER,
-  'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover',
+  'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)] data-[glow-kind=respond]:[--glow-rgb:var(--warning-rgb)]!',
