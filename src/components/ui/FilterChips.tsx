@@ -26,8 +26,8 @@ interface FilterChipsProps {
 }
 
 /**
- * La fila de chips para filtrar: uno que apaga los filtros y después un chip por cada valor, cada uno con su cuenta. Elegir uno lo enciende (`aria-pressed`) y
- * tocarlo de nuevo lo apaga; si se pueden elegir varios lo decide quien la usa. Lo usan Expansiones (rarezas y artes) y los decks de torneo (puestos).
+ * La fila de chips para filtrar: uno que apaga los filtros y después un chip por cada valor, cada uno con su cuenta. Elegir uno lo enciende (`aria-pressed`: ámbar, como
+ * todo lo elegido) y tocarlo de nuevo lo apaga; si se pueden elegir varios lo decide quien la usa. Lo usan Expansiones (rarezas y artes) y los decks de torneo (puestos).
  * En escritorio los chips se acomodan en los renglones que hagan falta; hasta 1100 px van en una sola fila que se desliza (con 44 px de alto, en tres renglones ocuparían media pantalla).
  */
 export function FilterChips({ label, all, allActive, onAll, chips, variant = 'wrap' }: FilterChipsProps) {
@@ -63,7 +63,8 @@ export function FilterChips({ label, all, allActive, onAll, chips, variant = 'wr
       {chips.map((chip) => (
         <button key={chip.key} type="button" aria-pressed={chip.active} aria-label={`${chip.name} ${chip.count}`} disabled={chip.disabled} className={chipClass} onClick={chip.onToggle}>
           {chip.name}
-          <span className="text-soft tabular-nums">{formatInteger(chip.count)}</span>
+          {/* La cuenta, un poco más tenue que el nombre: con la opacidad se lee sobre la lavanda (8,2:1) y sobre el ámbar del elegido (5,9:1). */}
+          <span className="tabular-nums opacity-70">{formatInteger(chip.count)}</span>
         </button>
       ))}
     </div>

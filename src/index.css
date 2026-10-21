@@ -1568,6 +1568,8 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
+  /* El texto (y el pulgar del interruptor) sobre un relleno ámbar: el índigo del fondo (12,3:1; el blanco sobre ámbar no se lee, 1,5:1). */
+  --color-info-foreground: var(--accent-foreground);
   --color-field-line: var(--field-line);
   --color-handtrap: var(--handtrap);
   --color-nav: var(--nav);
