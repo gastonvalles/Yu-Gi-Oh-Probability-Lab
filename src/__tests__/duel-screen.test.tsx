@@ -1774,6 +1774,49 @@ describe('la pantalla del duelo', () => {
     expect(stage.querySelector('img')).not.toBeNull()
   })
 
+  it('lo que Ana suma a su mano sin robar, Beto lo ve con su nombre y queda fijo en su detalle hasta que toque otra carta; robar no se ve', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    asDesktop()
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    const dock = (view: RenderResult) => within(view.container).getByRole('region', { name: 'Detalle de la carta' })
+    const shown = (view: RenderResult) => within(dock(view)).queryByRole('heading')?.textContent ?? null
+    const stage = () => guest.container.querySelector('[data-activation]')
+    const mouse = { pointerType: 'mouse' }
+
+    // Ana busca una carta en su deck y la agrega a su mano (no es un robo).
+    tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getAllByRole('button', { name: /^Monstruo/ })[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
+    flush()
+    await act(async () => {})
+
+    // Beto ve cuál es: su nombre en el cartel (que se queda para leerlo) y la carta a la izquierda.
+    expect(stage()).toHaveTextContent(/^Ana lleva Carta \d+ a su mano/)
+    expect(shown(guest)).toMatch(/^Carta \d+$/)
+    const added = shown(guest)
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    expect(stage()).not.toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(stage()).toBeNull()
+
+    // El cartel se fue y el detalle sigue: pasar el mouse por otra carta no la cambia (queda fija)…
+    const own = handOf(guest).getAllByRole('listitem')[0]!
+    fireEvent.pointerOver(own, mouse)
+    expect(shown(guest)).toBe(added)
+
+    // …hasta que Beto toca otra carta.
+    tap(own)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(shown(guest)).toMatch(/^Monstruo \d+$/)
+    expect(shown(guest)).not.toBe(added)
+  })
+
   it('Beto puede ver el detalle de una carta de Ana que ya está a la vista (y de una boca abajo, no)', async () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)

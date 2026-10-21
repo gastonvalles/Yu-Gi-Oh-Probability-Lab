@@ -116,13 +116,14 @@ export function publicIds(state: MatState): Set<string> {
 }
 
 /**
- * Cartas que se muestran aunque la mesa no cambie: la jugada sólo queda anotada. Agregar a la mano una carta que estaba en el deck (buscarla) también la muestra:
- * el rival la ve entrar en la animación (robar sigue siendo secreto, no es una jugada de `move`).
+ * Cartas que se muestran aunque la mesa no cambie: la jugada sólo queda anotada. Agregar a la mano una carta que no estaba en ella —buscarla en el deck, devolverla del campo (también boca abajo), traerla del cementerio o del
+ * destierro— también la muestra (Gastón, 2026-10-20: «si el oponente añade algo a la mano el oponente debe verlo, solo no lo ve si es un robo»): el rival la ve entrar, con su nombre, y queda en su detalle. Robar sigue siendo
+ * secreto (no es una jugada de `move`) y una carta que ya estaba en la mano no se muestra al «agregarla» de nuevo.
  */
 function shownBy(before: MatState, action: MatAction): string[] {
   if (action.type === 'reveal' || action.type === 'declare' || action.type === 'activate') return [action.id]
 
-  return action.type === 'move' && action.to === 'hand' && before.deck.includes(action.id) ? [action.id] : []
+  return action.type === 'move' && action.to === 'hand' && !before.hand.includes(action.id) ? [action.id] : []
 }
 
 /** Lado de quien juega: qué id opaco tiene cada carta y qué cartas ya conoce el rival. */

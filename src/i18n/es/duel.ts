@@ -75,6 +75,7 @@ export const duel = {
   'duel.announce.named.activate': '{name} activa {card}',
   'duel.announce.named.activateEffect': '{name} activa el efecto {n} de {card}',
   'duel.announce.named.reveal': '{name} revela {card}',
+  'duel.announce.named.hand': '{name} lleva {card} a su mano',
   'duel.announce.named.declare': '{name} declara {card}',
 
   // Antes de entrar a una sala.

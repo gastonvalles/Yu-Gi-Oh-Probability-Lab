@@ -75,6 +75,7 @@ export const duel: Translated<typeof es> = {
   'duel.announce.named.activate': '{name} activates {card}',
   'duel.announce.named.activateEffect': '{name} activates effect {n} of {card}',
   'duel.announce.named.reveal': '{name} reveals {card}',
+  'duel.announce.named.hand': '{name} adds {card} to their hand',
   'duel.announce.named.declare': '{name} declares {card}',
 
   'duel.play.subtitle': 'Jump into a duel in seconds.',
