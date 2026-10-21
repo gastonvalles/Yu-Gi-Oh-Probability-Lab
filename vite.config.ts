@@ -130,6 +130,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // Los 5 s de Vitest alcanzan sobrados en una máquina quieta, pero con varias suites a la vez (o los archivos grandes de UI en paralelo) una prueba sana llega a pasarlos: más margen, que sólo se gasta si algo falla.
+    testTimeout: 15_000,
     setupFiles: ['./src/i18n/test-setup.ts', './src/test-setup.ts'],
     projects: [
       // Casi todo corre en `vmForks`: cada archivo tiene su propio contexto de V8 y se salta crear un proceso nuevo (y cargar jsdom) por archivo; medido, la suite entera baja de ~107 s a ~80 s

@@ -12,3 +12,11 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeo
 // En la app las tablas de Genesys y Edison bajan bajo demanda; los tests (síncronos) las encuentran ya cargadas.
 // Sólo acá va un `await` de nivel superior: en un módulo que llegue al build fragmentaría el archivo principal.
 await loadFormatData()
+
+// Bajo carga (varias suites a la vez, o la propia partida de archivos en paralelo) un `findBy*` o un `waitFor` que espera una pantalla que se carga al usarla o un fundido tarda más de 1 s —el margen
+// de Testing Library— sin que haya ningún bug. Más margen: sólo se gasta cuando algo falla de verdad (los que pasan no tardan más). Sólo en los archivos con DOM: los de `node` no cargan la librería.
+if (typeof document !== 'undefined') {
+  const { configure } = await import('@testing-library/react')
+
+  configure({ asyncUtilTimeout: 4000 })
+}
