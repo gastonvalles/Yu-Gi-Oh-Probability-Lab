@@ -3,8 +3,8 @@ import { act, render } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createMatState, matReducer, type MatState } from '../app/practice-mat'
-import { FLIGHT_MS, useCardFlights } from '../app/use-card-flights'
+import { createMatState, matReducer, type MatAction, type MatState } from '../app/practice-mat'
+import { FLIGHT_MS, FLIGHT_STAGGER_MS, useCardFlights } from '../app/use-card-flights'
 
 interface Box {
   left: number
@@ -19,9 +19,15 @@ const boxes = new Map<string, Box>()
 let flights: Array<{ card: string | undefined; from: string }> = []
 /** Los fantasmas que vuelan hasta una pila (una carta que se fue del campo): a dónde llegan. */
 let ghostLandings: string[] = []
+/** Todo lo que se animó: el elemento, sus cuadros y sus opciones. */
+let calls: Array<{ element: Element; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = []
 
-/** Con qué nombre se mide cada elemento: la carta propia o del rival por su id, y las pilas del rival como `rival-<pila>`. */
-const keyOf = (element: HTMLElement) => element.dataset.cardId ?? element.dataset.rivalCardId ?? (element.dataset.rivalDrop ? `rival-${element.dataset.rivalDrop}` : '')
+/**
+ * Con qué nombre se mide cada elemento: la carta propia o del rival por su id, las pilas propias como `mine-<pila>`, las del rival como `rival-<pila>` y
+ * cualquier otro por su `data-box`.
+ */
+const keyOf = (element: HTMLElement) =>
+  element.dataset.cardId ?? element.dataset.rivalCardId ?? element.dataset.box ?? (element.dataset.rivalDrop ? `rival-${element.dataset.rivalDrop}` : element.dataset.drop ? `mine-${element.dataset.drop}` : '')
 
 const original = {
   getBoundingClientRect: HTMLElement.prototype.getBoundingClientRect,
@@ -48,15 +54,17 @@ beforeEach(() => {
   boxes.clear()
   flights = []
   ghostLandings = []
+  calls = []
   HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
     const box = boxes.get(keyOf(this)) ?? { left: 0, top: 0, width: 0, height: 0 }
 
     return { ...box, right: box.left + box.width, bottom: box.top + box.height, x: box.left, y: box.top, toJSON: () => ({}) }
   }
   Element.prototype.getAnimations = () => []
-  Element.prototype.animate = function (this: Element, keyframes: Keyframe[] | PropertyIndexedKeyframes | null) {
+  Element.prototype.animate = function (this: Element, keyframes: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
     if (this instanceof HTMLElement && (this.dataset.cardId ?? this.dataset.rivalCardId) && Array.isArray(keyframes)) flights.push({ card: this.dataset.cardId ?? this.dataset.rivalCardId, from: String(keyframes[0]?.transform ?? '') })
     if (this instanceof HTMLElement && this.classList.contains('z-200') && Array.isArray(keyframes)) ghostLandings.push(String(keyframes[1]?.transform ?? ''))
+    if (Array.isArray(keyframes)) calls.push({ element: this, keyframes, options: typeof options === 'object' ? options : {} })
 
     return {} as Animation
   }
@@ -69,6 +77,8 @@ afterEach(() => {
   Element.prototype.animate = original.animate
   Element.prototype.getAnimations = original.getAnimations
   window.matchMedia = original.matchMedia
+  // Los fantasmas se quitan solos al terminar su vuelo, que acá nunca corre.
+  document.body.querySelectorAll('div.fixed.z-200').forEach((ghost) => ghost.remove())
 })
 
 /** La mesa mínima: las cartas de la mano y las de la zona de Mágicas y Trampas, cada una con su `data-card-id`. */
@@ -199,5 +209,232 @@ describe('de dónde sale volando una carta que se juega desde la mano', () => {
     rerender(<Mat state={matReducer(first, { type: 'place', id: 'b', zone: 'st', index: 1, pos: 'atk' })} />)
 
     expect(flightOrigin('b')).toEqual(centerOf(at(100, 600)))
+  })
+})
+
+/** El arte de una carta de la mesa de pilas: su id es su número de YGOPRODeck. */
+const ygoArt = (id: string) => `https://images.ygoprodeck.com/images/cards/${id}.jpg`
+
+/** La mesa con sus pilas (`data-drop`) y las cartas de las zonas de monstruo: las cartas de las pilas no tienen elemento propio. */
+function PileMat({ state }: { state: MatState }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useCardFlights(ref, state, ygoArt, 'fijo')
+
+  return (
+    <div ref={ref}>
+      {(['deck', 'extra', 'gy', 'banished'] as const).map((pile) => (
+        <div key={pile} data-drop={pile} />
+      ))}
+      {state.mz.map((placed, index) => (
+        <div key={index} data-drop={`mz:${index}`}>
+          {placed ? <div data-card-id={placed.id} /> : null}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** La mesa del rival con su mano de dorsos (una fila de cartas sin id), su cementerio y su campo. */
+function RivalPiles({ state }: { state: MatState }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useCardFlights(ref, state, () => null, 'fijo', 'theirs')
+
+  return (
+    <div ref={ref}>
+      <div data-rival-drop="hand">
+        <div role="img">
+          <span data-box="rival-hand-card" />
+        </div>
+      </div>
+      <div data-rival-drop="gy" />
+      {state.mz.map((placed, index) => (placed ? <div key={index} data-rival-card-id={placed.id} /> : null))}
+    </div>
+  )
+}
+
+/** Los fantasmas, en el orden en que salieron: de dónde, a dónde, cuánto esperan y su elemento. */
+const ghosts = () =>
+  calls
+    .filter(({ element, options }) => element instanceof HTMLElement && element.classList.contains('z-200') && options.composite !== 'add')
+    .map(({ element, keyframes, options }) => ({ element: element as HTMLElement, from: String(keyframes[0]?.transform), to: String(keyframes[1]?.transform), delay: options.delay ?? 0 }))
+/** Cómo cambia el dorso de un fantasma en el camino (de qué opacidad a cuál); null si no cambia. */
+const backFade = (ghost: HTMLElement) => {
+  const fade = calls.find(({ element }) => element.parentElement === ghost && element.tagName === 'SPAN')
+
+  return fade ? [fade.keyframes[0]?.opacity, fade.keyframes.at(-1)?.opacity] : null
+}
+/** Los golpes de color (`impact`) que dio cada lugar: su elemento y cuándo. */
+const impacts = (element: Element) => calls.filter((call) => call.element === element && 'boxShadow' in (call.keyframes[0] ?? {}))
+
+// Mano: 101 y 102. Deck: 103 a 112 (el tope, 103). Extra: 901 (un Xyz).
+const DECK = ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112']
+const fresh = () => createMatState(DECK, ['901'], 2)
+const play = (state: MatState, ...actions: MatAction[]) => actions.reduce(matReducer, state)
+
+describe('las cartas que van de una pila a otra vuelan (no tienen elemento propio)', () => {
+  const offsets = { width: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth'), height: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight') }
+
+  beforeEach(() => {
+    // El tamaño de layout de cada elemento medido: el de su caja.
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get(this: HTMLElement) { return boxes.get(keyOf(this))?.width ?? 0 } })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return boxes.get(keyOf(this))?.height ?? 0 } })
+    boxes.set('mine-deck', at(700, 500))
+    boxes.set('mine-extra', at(20, 500))
+    boxes.set('mine-gy', at(700, 350))
+    boxes.set('mine-banished', at(700, 200))
+  })
+
+  afterEach(() => {
+    for (const [name, descriptor] of [['offsetWidth', offsets.width], ['offsetHeight', offsets.height]] as const) {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor)
+      else Reflect.deleteProperty(HTMLElement.prototype, name)
+    }
+  })
+
+  const gy = () => document.querySelector<HTMLElement>('[data-drop="gy"]')!
+
+  it('del deck al cementerio: sale del deck de dorso, se da vuelta en el camino y el cementerio da su golpe violeta', () => {
+    const start = fresh()
+    const { rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
+
+    expect(ghosts()).toHaveLength(1)
+    const [ghost] = ghosts()
+    expect(ghost!.from).toBe('translate(700px, 500px)')
+    expect(ghost!.to).toBe('translate(700px, 350px) scale(1)')
+    expect(ghost!.delay).toBe(0)
+    // La cara por el proxy de imágenes (no la de YGOPRODeck directa) y el dorso encima, que se va a mitad de camino.
+    expect(ghost!.element.querySelector('img')?.getAttribute('src')).toBe('/api/card-image/cards/103.jpg')
+    expect(backFade(ghost!.element)).toEqual([1, 0])
+    expect(impacts(gy())).toHaveLength(1)
+    expect(String(impacts(gy())[0]!.keyframes[0]!.boxShadow)).toContain('192 132 252')
+  })
+
+  it('del cementerio al destierro: viaja de cara (no hay dorso que dar vuelta) y el destierro da su golpe ámbar', () => {
+    const milled = play(fresh(), { type: 'mill', count: 1 })
+    const { rerender } = render(<PileMat state={milled} />)
+
+    rerender(<PileMat state={play(milled, { type: 'move', id: '103', to: 'banished' })} />)
+
+    const [ghost] = ghosts()
+    expect(ghosts()).toHaveLength(1)
+    expect(ghost!.from).toBe('translate(700px, 350px)')
+    expect(ghost!.to).toBe('translate(700px, 200px) scale(1)')
+    expect(ghost!.element.querySelector('span')).toBeNull()
+    expect(String(impacts(document.querySelector('[data-drop="banished"]')!)[0]!.keyframes[0]!.boxShadow)).toContain('251 191 36')
+  })
+
+  it('del Extra al cementerio: sale del Extra de dorso y llega de cara', () => {
+    const start = fresh()
+    const { rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'move', id: '901', to: 'gy' })} />)
+
+    const [ghost] = ghosts()
+    expect(ghost!.from).toBe('translate(20px, 500px)')
+    expect(ghost!.to).toBe('translate(700px, 350px) scale(1)')
+    expect(backFade(ghost!.element)).toEqual([1, 0])
+  })
+
+  /** Un Xyz (901) en la zona 3 con 101 y 102 de materiales. */
+  const withXyz = () =>
+    play(
+      fresh(),
+      { type: 'place', id: '101', zone: 'mz', index: 0, pos: 'atk' },
+      { type: 'place', id: '102', zone: 'mz', index: 1, pos: 'atk' },
+      { type: 'summon', id: '901', how: 'xyz', materials: ['101', '102'], zone: 'mz', index: 2, pos: 'atk' },
+    )
+
+  it('un material que se desprende sale de debajo de su Xyz, de dorso, hasta el cementerio', () => {
+    const xyz = withXyz()
+    boxes.set('901', at(400, 300))
+    const { rerender } = render(<PileMat state={xyz} />)
+
+    rerender(<PileMat state={play(xyz, { type: 'move', id: '101', to: 'gy' })} />)
+
+    const [ghost] = ghosts()
+    expect(ghosts()).toHaveLength(1)
+    expect(ghost!.from).toBe('translate(400px, 300px)')
+    expect(ghost!.to).toBe('translate(700px, 350px) scale(1)')
+    expect(backFade(ghost!.element)).toEqual([1, 0])
+  })
+
+  it('varias cartas de una jugada salen escalonadas, en el orden en que quedan en la pila, y la pila da un solo golpe', () => {
+    const xyz = withXyz()
+    boxes.set('901', at(400, 300))
+    const { rerender } = render(<PileMat state={xyz} />)
+
+    // El Xyz se va al cementerio y sus materiales con él: primero los materiales (quedan debajo) y al final el Xyz, la carta de arriba.
+    rerender(<PileMat state={play(xyz, { type: 'move', id: '901', to: 'gy' })} />)
+
+    expect(ghosts().map((ghost) => ghost.delay)).toEqual([0, FLIGHT_STAGGER_MS, 2 * FLIGHT_STAGGER_MS])
+    expect(ghosts().map((ghost) => ghost.element.querySelector('img')?.getAttribute('src'))).toEqual(['101', '102', '901'].map((id) => `/api/card-image/cards/${id}.jpg`))
+    // Los materiales salen de donde estaba el Xyz (ya no está en la mesa).
+    expect(ghosts().every((ghost) => ghost.from === 'translate(400px, 300px)')).toBe(true)
+    expect(impacts(gy())).toHaveLength(1)
+    expect(impacts(gy())[0]!.options.delay).toBe(FLIGHT_MS - 100)
+  })
+
+  it('las que salen de lugares distintos (los materiales de una Invocación Xyz) no se tapan: salen juntas, como siempre', () => {
+    const field = play(fresh(), { type: 'place', id: '101', zone: 'mz', index: 0, pos: 'atk' }, { type: 'place', id: '102', zone: 'mz', index: 1, pos: 'atk' })
+    boxes.set('101', at(200, 300))
+    boxes.set('102', at(300, 300))
+    const { rerender } = render(<PileMat state={field} />)
+
+    boxes.set('901', at(400, 300))
+    rerender(<PileMat state={play(field, { type: 'summon', id: '901', how: 'xyz', materials: ['101', '102'], zone: 'mz', index: 2, pos: 'atk' })} />)
+
+    expect(ghosts().map((ghost) => [ghost.from, ghost.to, ghost.delay])).toEqual([
+      ['translate(200px, 300px)', 'translate(400px, 300px) scale(1)', 0],
+      ['translate(300px, 300px)', 'translate(400px, 300px) scale(1)', 0],
+    ])
+  })
+
+  it('mandar tres del deck sale de a una; un cambio de muchas cartas a la vez (otra mano, un salto de pasos) no hace volar las pilas', () => {
+    const start = fresh()
+    const first = render(<PileMat state={start} />)
+
+    first.rerender(<PileMat state={play(start, { type: 'mill', count: 3 })} />)
+    expect(ghosts().map((ghost) => [ghost.from, ghost.delay])).toEqual([0, 1, 2].map((index) => ['translate(700px, 500px)', index * FLIGHT_STAGGER_MS]))
+    first.unmount()
+
+    calls = []
+    const second = render(<PileMat state={start} />)
+    second.rerender(<PileMat state={play(start, { type: 'mill', count: 9 })} />)
+    expect(ghosts()).toHaveLength(0)
+  })
+
+  it('de la mano del rival a su cementerio: sale del medio de su mano, de dorso y de cabeza', () => {
+    boxes.set('rival-hand', { left: 300, top: 20, width: 240, height: 110 })
+    boxes.set('rival-hand-card', { left: 390, top: 25, width: 60, height: 88 })
+    boxes.set('rival-gy', at(500, 100))
+    const start = createMatState(['c1', 'c2', 'c3', 'c4'], [], 3)
+    const { rerender } = render(<RivalPiles state={start} />)
+
+    rerender(<RivalPiles state={play(start, { type: 'move', id: 'c2', to: 'gy' })} />)
+
+    const [ghost] = ghosts()
+    expect(ghosts()).toHaveLength(1)
+    // Del tamaño de la pila a la que va, centrado en la mano (420, 75).
+    expect(ghost!.from).toBe('translate(380px, 17px) rotate(180deg)')
+    expect(ghost!.to).toBe('translate(500px, 100px) scale(1) rotate(180deg)')
+    // No se sabe qué carta es: dorso todo el camino, sin darse vuelta.
+    expect(ghost!.element.querySelector('img')).toBeNull()
+    expect(backFade(ghost!.element)).toBeNull()
+  })
+
+  it('una carta del rival que vuelve a su mano llega del tamaño de una carta de la mano, no del de toda la mano', () => {
+    boxes.set('rival-hand', { left: 300, top: 20, width: 240, height: 110 })
+    boxes.set('rival-hand-card', { left: 390, top: 25, width: 60, height: 88 })
+    boxes.set('a', at(100, 300))
+    const start = play(createMatState(['a', 'b', 'c'], [], 3), { type: 'place', id: 'a', zone: 'mz', index: 0, pos: 'atk' })
+    const { rerender } = render(<RivalPiles state={start} />)
+
+    rerender(<RivalPiles state={play(start, { type: 'move', id: 'a', to: 'hand' })} />)
+
+    expect(ghosts().map((ghost) => ghost.to)).toEqual(['translate(380px, 17px) scale(0.75) rotate(180deg)'])
   })
 })
