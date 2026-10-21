@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { EASE_IN_OUT, EASE_OUT, EASE_SNAP } from '../app/motion'
+import { EASE_IN_OUT, EASE_OUT, EASE_SNAP, easeSnap } from '../app/motion'
 
 // Las curvas del JS (la Web Animations API) son las de los tokens de index.css, y ningún movimiento de la interfaz usa la palabra `ease-out` de esa API
 // (es otra curva). Esta regla mira el código, como `link-rules.test.ts`.
@@ -33,6 +33,20 @@ describe('las curvas de movimiento', () => {
     expect(EASE_OUT).toBe(token('ease-out'))
     expect(EASE_IN_OUT).toBe(token('ease-in-out'))
     expect(EASE_SNAP).toBe(token('ease-snap'))
+  })
+
+  it('easeSnap (JS) es EASE_SNAP: el tiempo recorrido se convierte en camino como lo hace el navegador', () => {
+    // Referencia por fuerza bruta, sin bisección: barre la curva en 20 001 puntos y toma el más cercano en tiempo.
+    const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = EASE_SNAP.match(/-?[\d.]+/g)?.map(Number) ?? []
+    const at = (p1: number, p2: number, t: number) => 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3
+    const curve = Array.from({ length: 20001 }, (_, index) => ({ x: at(x1, x2, index / 20000), y: at(y1, y2, index / 20000) }))
+    const reference = (time: number) => curve.reduce((best, point) => (Math.abs(point.x - time) < Math.abs(best.x - time) ? point : best)).y
+
+    for (const time of [0.1, 0.25, 0.5, 0.75, 0.9]) {
+      expect(easeSnap(time)).toBeCloseTo(reference(time), 3)
+    }
+    expect(easeSnap(0)).toBe(0)
+    expect(easeSnap(1)).toBe(1)
   })
 
   it('el barajado del mazo (CSS) va con la misma curva que el de la mano (JS)', () => {

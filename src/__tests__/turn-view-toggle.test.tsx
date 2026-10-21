@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 import type { LabResults, LabViewResult } from '../app/probability-lab'
@@ -96,13 +96,14 @@ describe('TurnViewToggle (isolation)', () => {
 })
 
 describe('LabScoreCard', () => {
-  it('muestra el KPI de la vista activa y, en promedio, el detalle por turno', () => {
+  it('muestra el KPI de la vista activa y, en promedio, el detalle por turno', async () => {
     const { rerender } = render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
 
     // El número es «de cada 100», entero y sin %: el grande es el promedio y cada turno lleva el suyo en su anillo.
     expect(screen.getByText('de cada 100 manos son buenas')).toBeInTheDocument()
     expect(screen.getByText('Arrancan y no se traban, según tus reglas.')).toBeInTheDocument()
-    expect(screen.getByRole('meter', { name: /^Manos limpias: 57.0%/ })).toHaveTextContent('57')
+    // El 57 del anillo grande cuenta de 0 junto con el arco (900 ms): se espera a que llegue al valor.
+    await waitFor(() => expect(screen.getByRole('meter', { name: /^Manos limpias: 57.0%/ })).toHaveTextContent('57'), { timeout: 2000 })
     expect(screen.getByRole('meter', { name: /^Yendo 1º: 41.0%/ })).toHaveTextContent('41')
     expect(screen.getByRole('meter', { name: /^Yendo 2º: 73.0%/ })).toHaveTextContent('73')
 

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
+import { easeSnap } from '../app/motion'
 import { formatWholePercent } from '../app/utils'
 import { ProgressRing } from '../components/ui/ProgressRing'
 import { SegmentedRing } from '../components/ui/SegmentedRing'
@@ -11,14 +12,21 @@ function mockReducedMotion(reduced: boolean) {
   window.matchMedia = vi.fn().mockReturnValue({ matches: reduced }) as unknown as typeof window.matchMedia
 }
 
+/**
+ * Si el anillo se ve. El observador que simulamos queda guardado en el módulo de los anillos (como en la app), así que lee esta bandera cada vez que mira
+ * un anillo: si fuera fija, un test que dijo «fuera de pantalla» dejaría así a todos los siguientes.
+ */
+let visibleNow = true
+
 /** jsdom no trae IntersectionObserver: se simula uno que informa si el anillo se ve. */
 function mockVisibility(visible: boolean) {
+  visibleNow = visible
   vi.stubGlobal(
     'IntersectionObserver',
     class {
       constructor(private callback: (entries: Array<{ target: Element; isIntersecting: boolean }>) => void) {}
       observe(target: Element) {
-        this.callback([{ target, isIntersecting: visible }])
+        this.callback([{ target, isIntersecting: visibleNow }])
       }
       unobserve() {}
     },
@@ -173,5 +181,116 @@ describe('SegmentedRing', () => {
     expect(ring.style.width).toBe('')
     expect(svg).toHaveAttribute('width', '100%')
     expect(svg).toHaveAttribute('viewBox', '0 0 100 100')
+  })
+})
+
+describe('ProgressRing: el número cuenta junto con el arco', () => {
+  beforeEach(() => {
+    mockVisibility(true)
+  })
+
+  /** Cuadros a mano: cada `tick(tiempo)` corre los cuadros que pidió el anillo con ese tiempo, así se sabe en qué punto del recorrido va el conteo. */
+  function manualFrames() {
+    const pending = new Map<number, FrameRequestCallback>()
+    let nextId = 1
+
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      pending.set(nextId, callback)
+      return nextId++
+    })
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      pending.delete(id)
+    })
+
+    return (time: number) => {
+      const callbacks = [...pending.values()]
+
+      pending.clear()
+      act(() => {
+        callbacks.forEach((callback) => callback(time))
+      })
+    }
+  }
+
+  const meterOf = (name: string) => screen.getByRole('meter', { name })
+  const centerOf = (name: string) => meterOf(name).querySelector('span')?.textContent
+
+  it('desde 64 px cuenta de 0 al valor, con la curva del arco, y llega exacto', () => {
+    mockReducedMotion(false)
+    const tick = manualFrames()
+    render(<ProgressRing value={0.81} size={168} strokeWidth={14} label="Lab" format={formatWholePercent} />)
+
+    expect(centerOf('Lab')).toBe('0%')
+    tick(0)
+    tick(16)
+    tick(100)
+    expect(centerOf('Lab')).toBe('0%')
+
+    tick(100 + 225)
+    expect(centerOf('Lab')).toBe(formatWholePercent(0.81 * easeSnap(0.25)))
+    tick(100 + 450)
+    expect(centerOf('Lab')).toBe(formatWholePercent(0.81 * easeSnap(0.5)))
+    tick(100 + 675)
+    expect(centerOf('Lab')).toBe(formatWholePercent(0.81 * easeSnap(0.75)))
+
+    tick(100 + 900)
+    expect(centerOf('Lab')).toBe('81%')
+  })
+
+  it('el número sube sin retroceder y termina en el valor exacto', () => {
+    mockReducedMotion(false)
+    const tick = manualFrames()
+    render(<ProgressRing value={0.81} size={168} strokeWidth={14} label="Lab" format={formatWholePercent} />)
+    tick(0)
+    tick(16)
+
+    const shownAt: number[] = []
+
+    for (let elapsed = 0; elapsed <= 1000; elapsed += 20) {
+      tick(100 + elapsed)
+      shownAt.push(Number.parseFloat(centerOf('Lab') ?? ''))
+    }
+
+    expect(shownAt[0]).toBe(0)
+    expect(shownAt[shownAt.length - 1]).toBe(81)
+    expect(shownAt.every((value, index) => index === 0 || value >= shownAt[index - 1]!)).toBe(true)
+  })
+
+  it('`aria-valuenow` lleva el valor real desde el primer cuadro: el conteo es sólo visual', () => {
+    mockReducedMotion(false)
+    const tick = manualFrames()
+    render(<ProgressRing value={0.81} size={168} strokeWidth={14} label="Lab" format={formatWholePercent} />)
+
+    expect(meterOf('Lab')).toHaveAttribute('aria-valuenow', '81')
+    tick(0)
+    tick(16)
+    tick(100)
+    expect(meterOf('Lab')).toHaveAttribute('aria-valuenow', '81')
+    expect(centerOf('Lab')).toBe('0%')
+  })
+
+  it('con "reducir movimiento" el número aparece ya en su valor', () => {
+    mockReducedMotion(true)
+    render(<ProgressRing value={0.81} size={168} strokeWidth={14} label="Lab" format={formatWholePercent} />)
+
+    expect(centerOf('Lab')).toBe('81%')
+  })
+
+  it('por debajo de 64 px no cuenta: las listas muestran su valor de una', () => {
+    mockReducedMotion(false)
+    render(<ProgressRing value={0.81} size={56} label="Lista" format={formatWholePercent} />)
+
+    expect(centerOf('Lista')).toBe('81%')
+  })
+
+  it('fuera de pantalla aparece lleno de una, como su arco', () => {
+    mockReducedMotion(false)
+    mockVisibility(false)
+    const tick = manualFrames()
+    render(<ProgressRing value={0.81} size={168} strokeWidth={14} label="Lab" format={formatWholePercent} />)
+    tick(0)
+    tick(16)
+
+    expect(centerOf('Lab')).toBe('81%')
   })
 })

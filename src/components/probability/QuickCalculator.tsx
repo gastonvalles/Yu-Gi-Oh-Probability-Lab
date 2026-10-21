@@ -85,9 +85,13 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
 
             return (
               <li key={atLeast} className="grid justify-items-center gap-1.5 text-center">
-                <ProgressRing value={probability} size={84} strokeWidth={9} label={`${t('lab.quick.atLeast', { n: formatInteger(atLeast) })}: ${formatShortPercent(probability)}`}>
-                  <span className="text-body font-semibold">{formatShortPercent(probability)}</span>
-                </ProgressRing>
+                <ProgressRing
+                  value={probability}
+                  size={84}
+                  strokeWidth={9}
+                  format={(value) => <span className="text-body font-semibold">{formatShortPercent(value)}</span>}
+                  label={`${t('lab.quick.atLeast', { n: formatInteger(atLeast) })}: ${formatShortPercent(probability)}`}
+                />
                 <span className="text-micro text-muted">{t('lab.quick.atLeast', { n: formatInteger(atLeast) })}</span>
               </li>
             )

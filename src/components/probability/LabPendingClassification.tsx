@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { isCardFullyClassified } from '../../app/role-step'
-import { formatInteger } from '../../app/utils'
+import { formatInteger, formatWholePercent } from '../../app/utils'
 import { t } from '../../i18n'
 import type { CardEntry, CardOrigin, CardRole } from '../../types'
 import { ClassificationEditor } from '../classification/ClassificationEditor'
@@ -70,7 +70,7 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
               : t('lab.pending.closeEditor')}
           </p>
         </div>
-        <ProgressRing value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size={76} strokeWidth={8} label={t('lab.pending.ringLabel')} />
+        <ProgressRing value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size={76} strokeWidth={8} format={formatWholePercent} label={t('lab.pending.ringLabel')} />
       </Card>
 
       {suggestions > 0 && !isEditing ? (

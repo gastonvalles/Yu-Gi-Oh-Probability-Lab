@@ -1,4 +1,5 @@
 import type { BuildComparison } from '../../app/build-comparison'
+import { formatWholePercent } from '../../app/utils'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -50,7 +51,7 @@ export function DeckResults({ side, comparison }: DeckResultsProps) {
   return (
     <div className="grid min-w-0 gap-5">
       <div className={cx('flex items-center gap-4 rounded-card border p-4', wins ? TONE.success.wash : TONE.neutral.wash)}>
-        <ProgressRing value={clean.average[mine]} tone={wins ? 'success' : 'brand'} size={120} strokeWidth={12} label={t('meta.compare.goodOutOf100')} />
+        <ProgressRing value={clean.average[mine]} tone={wins ? 'success' : 'brand'} size={120} strokeWidth={12} format={formatWholePercent} label={t('meta.compare.goodOutOf100')} />
         <div className="grid min-w-0 justify-items-start gap-2">
           <span className="text-body font-semibold text-foreground">{t('meta.compare.goodOutOf100')}</span>
           <span className="flex flex-wrap items-center gap-2">
@@ -155,7 +156,7 @@ function ResultCard({ row, side }: { row: DiffRowData; side: Side }) {
 
   return (
     <li className={cx('flex min-w-0 items-center gap-3 rounded-card border p-3', wins ? TONE.success.tint : 'border-border-subtle bg-card-background')}>
-      {value === null ? null : <ProgressRing value={value} tone={wins ? 'success' : row.higherIsBetter ? 'brand' : 'warning'} size={64} label={row.label}>{per100(value)}</ProgressRing>}
+      {value === null ? null : <ProgressRing value={value} tone={wins ? 'success' : row.higherIsBetter ? 'brand' : 'warning'} size={64} format={per100} label={row.label} />}
       <div className="grid min-w-0 flex-1 gap-1">
         <span className="min-w-0">
           <span className="text-body font-semibold text-foreground">{row.label}</span>

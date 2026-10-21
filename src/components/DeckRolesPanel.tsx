@@ -568,12 +568,20 @@ export function DeckRolesPanel({
           >
             {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje. En celular las acciones van abajo, en una fila. En escritorio es un banner de todo el ancho: aro, mensaje y acciones a la derecha, y los filtros (si hay) en una segunda fila. */}
             <div className={cx(filtersInCard && 'min-[1101px]:row-span-2')}>
-              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedShare} label={t('roles.panel.ringLabel')}>
-                <span className="grid justify-items-center leading-none">
-                  <span className="text-lead font-bold tracking-[-0.02em] text-info-soft min-[1101px]:text-title">{formatWholePercent(classifiedShare)}</span>
-                  <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75 min-[1101px]:mt-1 min-[1101px]:text-micro">{hasCardsNeedingClassification ? t('roles.panel.ringPartial') : t('roles.panel.ringDone')}</span>
-                </span>
-              </ProgressRing>
+              <ProgressRing
+                tone="onBrand"
+                color="var(--success-rgb)"
+                size={isDesktop ? 112 : 76}
+                strokeWidth={isDesktop ? 10 : 8}
+                value={classifiedShare}
+                format={(value) => (
+                  <span className="grid justify-items-center leading-none">
+                    <span className="text-lead font-bold tracking-[-0.02em] text-info-soft min-[1101px]:text-title">{formatWholePercent(value)}</span>
+                    <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75 min-[1101px]:mt-1 min-[1101px]:text-micro">{hasCardsNeedingClassification ? t('roles.panel.ringPartial') : t('roles.panel.ringDone')}</span>
+                  </span>
+                )}
+                label={t('roles.panel.ringLabel')}
+              />
             </div>
             <p className="m-0 min-w-0 text-lead leading-snug min-[1101px]:text-title min-[1101px]:leading-tight">
                 {unclassifiedCards.length > 0

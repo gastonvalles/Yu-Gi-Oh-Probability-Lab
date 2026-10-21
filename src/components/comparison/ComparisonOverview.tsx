@@ -35,9 +35,7 @@ export function ComparisonOverview({ comparison }: { comparison: BuildComparison
           return (
             <Card key={side} padding="sm" tone={winner === side ? 'success' : 'neutral'} className="grid justify-items-center gap-2">
               <SideBadge side={side} />
-              <ProgressRing value={clean.average[key]} tone={winner === side ? 'success' : 'brand'} size={88} strokeWidth={9} label={t('meta.compare.overview.ring', { side, value: per100(clean.average[key]) })}>
-                {per100(clean.average[key])}
-              </ProgressRing>
+              <ProgressRing value={clean.average[key]} tone={winner === side ? 'success' : 'brand'} size={88} strokeWidth={9} format={per100} label={t('meta.compare.overview.ring', { side, value: per100(clean.average[key]) })} />
               <span className="text-center text-micro text-muted">{t('meta.compare.overview.turns', { first: per100(clean.first[key]), second: per100(clean.second[key]) })}</span>
             </Card>
           )

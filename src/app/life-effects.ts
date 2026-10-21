@@ -1,28 +1,46 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { prefersReducedMotion } from './motion'
 
+interface AnimatedNumberOptions {
+  /** Cuánto dura el recorrido (ms). Por defecto, 320: el de las vidas. */
+  ms?: number
+  /** Cuánto espera antes de arrancar (ms), para escalonar varios números. */
+  delay?: number
+  /** De 0 a 1 el tiempo recorrido, de 0 a 1 el camino hecho. Por defecto, la que frena. */
+  ease?: (progress: number) => number
+  /** Redondea a entero (las vidas). Sin esto el valor pasa por los decimales (el porcentaje de un anillo) y llega exacto al final. */
+  round?: boolean
+}
+
+const easeOutCubic = (progress: number) => 1 - (1 - progress) ** 3
+
 /** El número de LP se mueve hasta el valor nuevo en vez de saltar (salvo con movimiento reducido). */
-export function useAnimatedNumber(target: number): number {
+export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = easeOutCubic, round = true }: AnimatedNumberOptions = {}): number {
   const [shown, setShown] = useState(target)
   const shownRef = useRef(target)
 
-  useEffect(() => {
+  // Layout, no passive: el primer cuadro se pide en el mismo commit que el cambio, así el número arranca en el mismo cuadro que la transición del arco.
+  useLayoutEffect(() => {
     const from = shownRef.current
 
-    if (from === target || prefersReducedMotion()) {
+    if (from === target || ms <= 0 || prefersReducedMotion()) {
       shownRef.current = target
       setShown(target)
       return
     }
 
-    const start = performance.now()
-    const duration = 320
+    // El recorrido arranca en el primer cuadro (el reloj de rAF, el mismo que el de la transición del arco), no en el efecto.
+    let start: number | undefined
     let frame = 0
     const step = (time: number) => {
-      const progress = Math.min(1, (time - start) / duration)
-      const eased = 1 - (1 - progress) ** 3
-      const value = Math.round(from + (target - from) * eased)
+      if (start === undefined) {
+        start = time + delay
+      }
+
+      const progress = Math.min(1, Math.max(0, (time - start) / ms))
+      const next = progress >= 1 ? target : from + (target - from) * ease(progress)
+      const value = round ? Math.round(next) : next
 
       shownRef.current = value
       setShown(value)
@@ -35,7 +53,7 @@ export function useAnimatedNumber(target: number): number {
     frame = requestAnimationFrame(step)
 
     return () => cancelAnimationFrame(frame)
-  }, [target])
+  }, [target, ms, delay, ease, round])
 
   return shown
 }
