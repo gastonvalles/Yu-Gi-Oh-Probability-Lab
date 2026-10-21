@@ -940,10 +940,12 @@ export function PracticeMat({
         setShuffleKey((key) => key + 1)
       }
 
-      if (searched) {
+      // Marcar un target desde el visor de una pila lo cierra: la mira cae sobre la casilla, que ya muestra esa carta, y se ve. Quitarlo deja el visor como está.
+      const marking = played.type === 'target' && !state.targeted.includes(played.id)
+
+      if (searched || (viewer && marking)) {
         setViewer(null)
       } else if (viewer && played.type !== 'target') {
-        // Poner un target no mueve la carta: el visor sigue abierto (para elegir otra y ver la mira caer sobre ella).
         closeViewer()
       }
     },
@@ -1609,7 +1611,11 @@ export function PracticeMat({
     const up = pile === 'extra' ? state.extraUp : []
     const top = pile === 'extra' ? (up[up.length - 1] ?? null) : topOf(pile)
     const count = state[pile].length
-    const back = pile === 'extra' ? count > 0 && up.length === 0 : top !== null && state.facedown.includes(top)
+    // La casilla muestra la última carta marcada como objetivo que se ve adentro (en el Extra, las boca arriba): la mira cae sobre esa, no sobre cualquiera. Si no hay ninguna, la de arriba.
+    const seen = pile === 'extra' ? up : state[pile]
+    const shown = [...targetedIds].filter((id) => seen.includes(id)).at(-1) ?? top
+    const swapped = shown !== top
+    const back = pile === 'extra' ? count > 0 && up.length === 0 : shown !== null && state.facedown.includes(shown)
     // Una carta marcada como objetivo adentro (se vea o no: no es siempre la de arriba) lleva la mira sobre la casilla.
     const marked = state[pile].some((id) => targetedIds.has(id)) || (rivalMarks?.piles.includes(pile) ?? false)
 
@@ -1632,9 +1638,9 @@ export function PracticeMat({
         {pile === 'extra' ? <PileStack count={count} /> : null}
         {/* El recorte va en un contenedor aparte: el botón no recorta, así el área que se toca (`before` de `CELL`) puede salirse 4 px de la casilla. */}
         <span className="absolute inset-0 overflow-hidden">
-          {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
+          {back ? <span key={shown} className={cx(CARD_BACK, swapped && 'animate-pop motion-reduce:animate-none')} /> : shown ? <CardArt key={shown} remoteUrl={artOf(cardOf(shown))} name={cardOf(shown).name} className={cx('block h-full w-full object-cover', swapped && 'animate-pop motion-reduce:animate-none')} /> : null}
           <PileBadge label={PILE_SHORT[pile]} count={count} />
-          {marked ? <TargetMark /> : null}
+          {marked ? <TargetMark key={shown} /> : null}
         </span>
       </button>
     )

@@ -80,6 +80,16 @@ describe('la mesa del duelo', () => {
     expect(document.querySelector('[data-rival-drop="banished"]')).toHaveAttribute('data-flash', 'false')
   })
 
+  it('una pila del rival muestra la carta marcada como objetivo aunque no sea la de arriba, con la mira encima', () => {
+    // Dos cartas en el cementerio del rival: la de arriba es la última que llegó; la marcada es la de abajo.
+    const theirs = play({ type: 'move', id: 'card-1000-1', to: 'gy' }, { type: 'move', id: 'card-1001-1', to: 'gy' }, { type: 'target', id: 'card-1000-1' })
+    render(<DuelTable mine={side(start)} theirs={side(theirs)} />)
+
+    const gy = screen.getByRole('group', { name: 'GY: 2' })
+    expect(images(gy)[0]!.getAttribute('src')).toContain('10001.jpg')
+    expect(gy.querySelector('[data-fx="target"]')).not.toBeNull()
+  })
+
   it('las cartas del rival miran hacia él (de cabeza) y las propias hacia vos, con los contadores derechos', () => {
     const placed = (id: string) => play({ type: 'place', id, zone: 'mz', index: 0, pos: 'atk', how: 'normal' }, { type: 'counter', id, delta: 2 })
     const theirs = replayMat(placed('card-1000-1'), [{ type: 'move', id: 'card-1001-1', to: 'gy' }])

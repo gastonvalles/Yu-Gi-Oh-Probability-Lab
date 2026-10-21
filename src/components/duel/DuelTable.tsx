@@ -292,8 +292,12 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   // El Extra se ve de dorso, salvo que tenga cartas boca arriba (Monstruos de Péndulo): ahí se ve la última que llegó.
   const up = pile === 'extra' ? side.state.extraUp : []
   const top = pile === 'gy' || pile === 'banished' ? (cards[cards.length - 1] ?? null) : (up[up.length - 1] ?? null)
-  const back = pile === 'deck' ? cards.length > 0 : pile === 'extra' ? cards.length > 0 && up.length === 0 : top !== null && side.state.facedown.includes(top)
-  const art = top !== null && !back ? side.artOf(top) : null
+  // La casilla muestra la última carta marcada como objetivo que se ve adentro (en el Extra, las boca arriba); si no hay ninguna, la de arriba.
+  const seen = pile === 'extra' ? up : cards
+  const shown = [...side.state.targeted, ...(side.marks?.cards ?? [])].filter((id) => seen.includes(id)).at(-1) ?? top
+  const swapped = shown !== top
+  const back = pile === 'deck' ? cards.length > 0 : pile === 'extra' ? cards.length > 0 && up.length === 0 : shown !== null && side.state.facedown.includes(shown)
+  const art = shown !== null && !back ? side.artOf(shown) : null
   // La pila entera marcada, o una carta de adentro marcada como objetivo (se vea o no): la mira queda sobre la pila. Y lo que destella (activar, marcar) adentro, también.
   const marked = (side.marks?.piles.includes(pile) ?? false) || cards.some((id) => side.state.targeted.includes(id) || (side.marks?.cards.includes(id) ?? false))
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
@@ -318,10 +322,10 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
             <CardBack className="h-full" />
           </span>
         </>
-      ) : cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180')} /> : <CardBack className={cx('h-full', owner === 'theirs' && 'rotate-180')} />) : null}
+      ) : cards.length > 0 ? (art ? <CardArt key={shown} remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none')} /> : <CardBack key={shown} className={cx('h-full', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none')} />) : null}
       <PileBadge label={PILE_SHORT[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
-      {marked ? <TargetMark /> : null}
+      {marked ? <TargetMark key={shown} /> : null}
       </span>
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
     </div>
