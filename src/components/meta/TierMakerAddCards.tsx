@@ -126,7 +126,8 @@ export function TierMakerAddCards({ list, onAdd }: TierMakerAddCardsProps) {
                   onClick={() => onAdd([fromResult(card)])}
                 >
                   <CardArt tilt remoteUrl={card.imageUrlSmall ?? card.imageUrl ?? null} name={card.name} className={cx('h-full w-full object-cover transition-opacity duration-150 motion-reduce:transition-none', inList && 'opacity-40')} />
-                  <span aria-hidden="true" className={cx('absolute right-1 top-1 grid size-6 place-items-center rounded-full text-white', inList ? 'bg-success-solid' : 'bg-primary')}>
+                  {/* El «+» es decorativo (la carta entera es el botón): oscuro con el ícono blanco, que se enciende en ámbar al apuntarla o con el foco; ya en la lista, verde. */}
+                  <span aria-hidden="true" className={cx('absolute right-1 top-1 grid size-6 place-items-center rounded-full transition-colors duration-150 motion-reduce:transition-none', inList ? 'bg-success-solid text-white' : cx('bg-background/85 text-foreground', !full && 'group-hover:text-info group-focus-visible:text-info'))}>
                     <Icon name={inList ? 'check' : 'plus'} size={14} />
                   </span>
                 </button>
