@@ -30,3 +30,12 @@ Decisión de Gastón (2026-10-20): el chat principal es el **orquestador**. Repa
 - **En paralelo sólo lo que no toca los mismos archivos;** si no, uno atrás del otro.
 - **Un mismo test que se reintenta 2 veces, se frena** (Gastón, 2026-10-21): si el orquestador o un agente corre de nuevo el mismo test dos veces porque falla o se comporta distinto, para y reporta en resumen el problema (qué test, qué dice el fallo, qué se probó) en vez de seguir reintentando; si no, sigue. Va en el brief de todo agente.
 - **Cuántas PR lo dice Gastón en cada pedido:** «hace una sola pr» (2026-10-21, con dos ramas de agentes listas) = se juntan en una rama y se sube una única PR; «hacelo de más barato a más caro y mergeá cada PR por separado» (2026-10-21, las animaciones) = una PR por pieza, de la más barata a la más cara, cada una mergeada por separado. Sin indicación, una PR por tarea.
+
+## Notas del parche: cada cosa que se termina se le explica a los usuarios
+
+Gastón (2026-10-21): siempre que se termina algo (una PR mergeada o una tanda), además del reporte técnico, el orquestador escribe una **explicación instructiva y resumida, como las notas de un parche de un juego**, dirigida a los **usuarios de la página** (no a quien programa): qué hay de nuevo o cambió, dónde se ve y cómo se usa.
+
+- **Tono:** voseo, directo, en segunda persona («ahora podés…», «tocá…»), como si le hablaras a quien juega o arma su deck. Nada de nombres de archivos, componentes, tokens ni números de PR.
+- **Formato:** un título con el nombre de la novedad y, debajo, **Novedades** (lo que ahora se puede hacer, en viñetas cortas), **Cómo se usa** (2 a 4 pasos, sólo si hay algo que aprender), **Cambios y arreglos** (lo que ya andaba y ahora anda mejor) y **Ojo** (límites conocidos, sólo si los hay). Una novedad = unas pocas líneas; si son varias, un parche con un bloque por cada una.
+- **Dónde va:** en el reporte final a Gastón y arriba del cuerpo de la PR bajo el título «Notas del parche». Lo técnico (archivos, decisiones, pruebas) sigue aparte, debajo.
+- **Verdad antes que brillo:** sólo se cuenta lo que se verificó que anda; los límites van en «Ojo». Un arreglo interno que el usuario no nota (un test, un refactor) se menciona en una línea o no se menciona.
