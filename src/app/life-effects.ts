@@ -78,8 +78,8 @@ export function useLpFlash(lp: number): 'up' | 'down' | null {
   return flash
 }
 
-/** Cuánto se queda a la vista lo que cambió (el «−1000» junto a las vidas). */
-const DELTA_MS = 1600
+/** Cuánto se queda a la vista lo que cambió (el «−1000» junto a las vidas): la barra lo usa para que el fundido termine cuando el aviso se quita. */
+export const DELTA_MS = 1600
 
 /**
  * Lo último que cambió de unas vidas (`delta`, negativo si bajó) durante un momento, y una clave que cambia con cada cambio (para que la animación vuelva a correr). Lo que ya estaba al abrir no cuenta.

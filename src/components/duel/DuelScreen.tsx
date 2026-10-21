@@ -48,7 +48,7 @@ import { MatScene } from '../probability/MatArena'
 import { CardMenu, PILE_TITLES, PileViewer, type PileMany } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice, SIGNAL_MS } from './DuelBar'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
 import { useDockPeek } from './use-dock-peek'
 import { ReactionButtons } from './ReactionButtons'
@@ -1577,9 +1577,6 @@ function usePassHeld(snapshot: DuelSnapshot): boolean {
   return shown
 }
 
-/** Cuánto se queda el globo de "pensando" o "todo bien" junto a las vidas. */
-const SIGNAL_MS = 3500
-
 /** La última señal (pensando, todo bien) de cada jugador, que se ve un rato junto a sus vidas. Lo que ya estaba escrito al abrir la pantalla no cuenta. */
 /** Cuánto late lo que se señala antes de irse solo. */
 const POINT_MS = 2500
@@ -1617,11 +1614,11 @@ function usePointed(snapshot: DuelSnapshot): { mine: Pointed; theirs: Pointed } 
 /** Lo último que tocó el rival (cualquier emoji de señal): en escritorio se muestra grande en el medio de la pantalla un momento (o hasta que se lo toca). */
 const BURST_MS = 2200
 
-function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null; burst: { emoji: string; key: number } | null; dismissBurst: () => void } {
+function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null; mineKey: number; theirsKey: number; burst: { emoji: string; key: number } | null; dismissBurst: () => void } {
   const { chat, me } = snapshot
   const last = chat.at(-1)?.id ?? 0
   const seen = useRef(last)
-  const [shown, setShown] = useState<{ mine: string | null; theirs: string | null; key: number }>({ mine: null, theirs: null, key: 0 })
+  const [shown, setShown] = useState<{ mine: string | null; theirs: string | null; mineKey: number; theirsKey: number }>({ mine: null, theirs: null, mineKey: 0, theirsKey: 0 })
   const [burst, setBurst] = useState<{ emoji: string; key: number } | null>(null)
 
   useEffect(() => {
@@ -1637,7 +1634,8 @@ function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: stri
     if (fresh.length > 0) {
       const line = fresh[fresh.length - 1]!
 
-      setShown((current) => ({ ...current, [line.from === me ? 'mine' : 'theirs']: line.text, key: line.id }))
+      // Cada señal lleva el número de su línea: el globo de ese lado vuelve a entrar aunque diga lo mismo que el anterior (cae dentro de su fundido).
+      setShown((current) => (line.from === me ? { ...current, mine: line.text, mineKey: line.id } : { ...current, theirs: line.text, theirsKey: line.id }))
     }
   }, [chat, last, me])
 
@@ -1669,7 +1667,7 @@ function RivalEmoji({ burst, name, onDismiss }: { burst: { emoji: string; key: n
 
   return (
     <div key={burst.key} data-testid="rival-emoji" aria-live="polite" className="pointer-events-none fixed inset-0 z-60 grid place-items-center">
-      <button type="button" aria-label={t('duel.emoji.close', { name, emoji: burst.emoji })} className="pointer-events-auto grid cursor-pointer justify-items-center gap-1 rounded-card animate-pop focus-visible:outline-none focus-visible:shadow-focus motion-reduce:animate-none" onClick={onDismiss}>
+      <button type="button" aria-label={t('duel.emoji.close', { name, emoji: burst.emoji })} className="pointer-events-auto grid cursor-pointer justify-items-center gap-1 rounded-card animate-linger focus-visible:outline-none focus-visible:shadow-focus motion-reduce:animate-none" style={{ animationDuration: `${BURST_MS}ms` }} onClick={onDismiss}>
         <span aria-hidden="true" style={{ fontSize: 'clamp(7rem, 38vw, 12rem)' }} className="leading-none drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
           {burst.emoji}
         </span>
@@ -1932,13 +1930,13 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} readyAt={snapshot.emoteReadyAt} />,
       // En escritorio el chat está siempre abierto a la derecha (en el celular, un panel que se abre desde el botón de abajo).
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
-      life: <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} />,
+      life: <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} />,
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} lane={lane} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} rivalSignalKey={signals.theirsKey} lane={lane} />,
       }
     },
     [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt],
