@@ -63,7 +63,7 @@ export const HAND_CARD_HOVER = [HOVER_RING, 'hover:z-40! hover:-translate-y-3.5'
  * en defensa ni los vuelos). Quien sabe qué más anima (la mano tiene su propio ritmo) escribe la suya entera.
  */
 export const CARD_TRANSITION =
-  '[transition:transform_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),translate_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),scale_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]'
+  '[transition:transform_var(--motion-duration)_var(--ease-snap),translate_var(--motion-duration)_var(--ease-snap),scale_var(--motion-duration)_var(--ease-snap),filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]'
 
 interface FxFrameProps {
   tone: FxTone

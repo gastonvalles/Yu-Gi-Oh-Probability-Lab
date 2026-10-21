@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AttackFx, measureStrike, type Strike } from '../components/probability/AttackFx'
+import { EASE_OUT } from '../app/motion'
 
 /** jsdom no tiene layout (todo mide 0): cada elemento dice dónde está. */
 function place(element: Element, left: number, top: number, width: number, height: number) {
@@ -207,7 +208,7 @@ describe('AttackFx', () => {
       expect(target.animate).toHaveBeenCalledTimes(1)
       const [frames, options] = vi.mocked(target.animate).mock.calls[0]!
       expect(frames).toHaveLength(5)
-      expect(options).toEqual({ duration: 360, delay: 300, composite: 'add' })
+      expect(options).toEqual({ duration: 360, delay: 300, easing: EASE_OUT, composite: 'add' })
 
       view.unmount()
       expect(cancel).toHaveBeenCalledTimes(1)

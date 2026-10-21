@@ -61,98 +61,108 @@
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
 
-  /* El movimiento de toda la app (Gastón, 2026-10-19, tres referencias: easing, offset y delay, parallax). Nada va en `linear` (se siente robótico): lo que entra desacelera, con una curva fuerte
-     al principio y suave al llegar, y las transiciones de Tailwind ya la usan (`--default-transition-timing-function`, más abajo). Sólo lo que cuenta tiempo de verdad (el reloj, un anillo que se barre) es lineal. */
+  /* El movimiento de toda la app (Gastón, 2026-10-19: easing, offset y delay, parallax; 2026-10-21: tres curvas con nombre). Nada va en `linear` (se siente robótico): lo que
+     entra desacelera. Sólo lo que cuenta tiempo de verdad (el reloj, un anillo que se barre) es lineal. En el JS (`app/motion.ts`) las mismas tres están espejadas y un test
+     las mantiene iguales; el criterio está en docs/design-system.md, «Movimiento». */
+  /* Lo que entra o se queda: desacelera. También es el default de las transiciones de Tailwind. */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
-  /* Lo que viaja de un lugar a otro de la pantalla (los vuelos de las cartas de la mesa) y el barajado: arranca suave y llega suave, sin el golpe del principio de `--ease-out`
-     (es el `ease-in-out` de Tailwind; en el JS, `EASE_IN_OUT` de `app/motion.ts`). */
+  /* Lo que viaja de un lugar a otro (los vuelos de las cartas, el barajado, la espada del ataque): arranca suave y llega suave. */
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Lo que arranca ya en movimiento y se asienta (pops, lo que suelta un gesto, estallidos, la moneda, las medallas). */
+  --ease-snap: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Excepciones con nombre, a propósito fuera de las tres: la gravedad de la moneda y el dado (sube frenando, cae acelerando). La sombra en el piso usa las mismas para acompañar el salto. */
+  --ease-gravedad-subida: cubic-bezier(0.2, 0.7, 0.4, 1);
+  --ease-gravedad-caida: cubic-bezier(0.6, 0, 0.8, 0.5);
+  /* Sin curva con nombre, a propósito: los bucles (respiran, van y vienen) usan la palabra `ease-in-out` de CSS, que es simétrica (el token no lo es).
+     `linear` queda para el reloj (la cuenta del turno, la moneda como tiempo base, el anillo que se barre), para lo que gira sin fin y para el parallax (ahí el avance lo marca el scroll). */
 
   --animate-shimmer: shimmer 1.2s ease-in-out infinite;
-  --animate-dialog-enter: dialog-enter 150ms cubic-bezier(0.2, 0, 0, 1);
-  --animate-toast-in: toast-in var(--motion-duration) cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-toast-out: toast-out var(--motion-duration) ease-in both;
-  --animate-fab-pulse: fab-pulse 700ms cubic-bezier(0.2, 0, 0, 1);
-  --animate-mascot-drop: mascot-drop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* El pulso de Tailwind (`animate-pulse`: los puntos en vivo y los esqueletos de carga) trae su propia curva: se pasa a la palabra `ease-in-out`, como los demás bucles. */
+  --animate-pulse: pulse 2s ease-in-out infinite;
+  --animate-dialog-enter: dialog-enter 150ms var(--ease-out);
+  --animate-toast-in: toast-in var(--motion-duration) var(--ease-out) both;
+  --animate-toast-out: toast-out var(--motion-duration) var(--ease-out) both;
+  --animate-fab-pulse: fab-pulse 700ms var(--ease-out);
+  --animate-mascot-drop: mascot-drop 420ms var(--ease-snap) both;
   --animate-marching-ants: marching-ants var(--motion-duration) linear infinite;
-  --animate-card-armed: card-armed 160ms cubic-bezier(0.2, 0, 0, 1);
-  --animate-step-in: step-in 150ms cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-drawer-enter: drawer-enter 150ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-card-armed: card-armed 160ms var(--ease-out);
+  --animate-step-in: step-in 150ms var(--ease-out) both;
+  --animate-drawer-enter: drawer-enter 150ms var(--ease-out) both;
   /* El cajón del menú en el celular: sale desde la izquierda sobre un velo que se oscurece. */
-  --animate-nav-drawer: nav-drawer 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-side-drawer: side-drawer 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-nav-scrim: nav-scrim 200ms cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-pop: pop var(--motion-duration) cubic-bezier(0.25, 1, 0.5, 1) both;
+  --animate-nav-drawer: nav-drawer 200ms var(--ease-out) both;
+  --animate-side-drawer: side-drawer 200ms var(--ease-out) both;
+  --animate-nav-scrim: nav-scrim 200ms var(--ease-out) both;
+  --animate-pop: pop var(--motion-duration) var(--ease-snap) both;
   /* Una carta que se suma a una zona del deck: sube un poco y se asienta (sin relleno hacia adelante: no deja un contexto de apilado detrás). */
-  --animate-card-in: card-in 240ms var(--ease-out-soft) backwards;
+  --animate-card-in: card-in 240ms var(--ease-out) backwards;
   /* La pista de «deslizá para dar vuelta»: entra, se queda un rato y se va sola. */
-  --animate-flip-hint: flip-hint 3600ms var(--ease-out-soft) 700ms both;
+  --animate-flip-hint: flip-hint 3600ms var(--ease-out) 700ms both;
   /* El resultado de la moneda o el dado aparece cuando terminan de girar. */
-  --animate-reveal: pop var(--motion-duration) cubic-bezier(0.25, 1, 0.5, 1) 1.4s both;
+  --animate-reveal: pop var(--motion-duration) var(--ease-snap) 1.4s both;
   --animate-toss-hop: toss-hop 1.4s linear both;
   --animate-toss-shadow: toss-shadow 1.4s linear both;
-  --animate-coin-spin: coin-spin 1.4s cubic-bezier(0.15, 0.75, 0.3, 1) both;
+  --animate-coin-spin: coin-spin 1.4s var(--ease-snap) both;
   /* Piedra, papel o tijera: las dos manos se sacuden tres veces y aparece lo que eligió cada uno. */
-  --animate-rps-reveal: rps-reveal 1.2s cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-die-spin: die-spin 1.4s cubic-bezier(0.15, 0.75, 0.3, 1) both;
-  --animate-rule-in: rule-in var(--motion-duration) cubic-bezier(0.25, 1, 0.5, 1) both;
-  --animate-sheet-up: sheet-up var(--motion-duration) cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-rps-reveal: rps-reveal 1.2s var(--ease-out) both;
+  --animate-die-spin: die-spin 1.4s var(--ease-snap) both;
+  --animate-rule-in: rule-in var(--motion-duration) var(--ease-snap) both;
+  --animate-sheet-up: sheet-up var(--motion-duration) var(--ease-out) both;
   /* Los mensajes rápidos del duelo (🤔 y 👍): el botón rebota al apretarlo y su emoji sube y se desvanece. */
-  --animate-reaction-press: reaction-press 350ms cubic-bezier(0.25, 1, 0.5, 1);
-  --animate-reaction-rise: reaction-rise 800ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  --animate-reaction-press: reaction-press 350ms var(--ease-snap);
+  --animate-reaction-rise: reaction-rise 800ms var(--ease-out) forwards;
   /* El número del reloj de turnos parpadea en rojo cuando falta poco. */
   --animate-turn-blink: turn-blink 1s ease-in-out infinite;
   /* Un mensaje que llega al chat (o una jugada en el registro): sube un poco desde su lado y se asienta. */
-  --animate-message-in: message-in 240ms cubic-bezier(0.25, 1, 0.5, 1) both;
-  --animate-sheet-in: sheet-in var(--motion-duration) cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-card-glow: card-glow var(--motion-duration) cubic-bezier(0.2, 0, 0, 1);
+  --animate-message-in: message-in 240ms var(--ease-snap) both;
+  --animate-sheet-in: sheet-in var(--motion-duration) var(--ease-out) both;
+  --animate-card-glow: card-glow var(--motion-duration) var(--ease-out);
   /* Activar una carta o efecto en la mesa de práctica: la carta aparece grande en el centro de la pantalla, con brillo amarillo, y se desvanece (como en DuelingBook). */
-  --animate-card-activate-center: card-activate-center 950ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-card-activate-center: card-activate-center 950ms var(--ease-out) both;
   /* Lo que el rival activa, revela o declara y es público: la carta entra rápido y se queda 3 s para leerla (y su nombre) antes de irse; no ataja toques. */
-  --animate-card-activate-linger: card-activate-linger 3000ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-card-activate-linger: card-activate-linger 3000ms var(--ease-out) both;
   /* Lo mismo, con el efecto que activó escrito debajo de la carta: 7 s, lo que lleva leer una frase de una carta (y decidir si se responde). */
-  --animate-card-activate-read: card-activate-linger 7000ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-card-activate-read: card-activate-linger 7000ms var(--ease-out) both;
   /* El mazo de la mesa: tirón de la carta de arriba al repartir y barajado (las dos de abajo se abren a los costados). */
-  --animate-pile-draw: pile-draw 200ms cubic-bezier(0.2, 0, 0, 1);
+  --animate-pile-draw: pile-draw 200ms var(--ease-out);
   --animate-riffle-left: riffle-left 640ms var(--ease-in-out);
   --animate-riffle-right: riffle-right 640ms var(--ease-in-out);
   --animate-riffle-lift: riffle-lift 640ms var(--ease-in-out);
   /* Efectos de la mesa de práctica (MatFx.tsx): marcos de colores con una luz que les da la vuelta, mira de objetivo, destello de invocación, cartel de fase y zonas que se ofrecen. `--fx-rgb` (r g b) es el color de cada uno. */
-  --animate-fx-frame-in: fx-frame-in 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-fx-frame-in: fx-frame-in 200ms var(--ease-out) both;
   --animate-fx-orbit: fx-orbit 1.2s linear infinite;
-  --animate-fx-shine: fx-shine 850ms cubic-bezier(0.2, 0, 0, 1) 100ms both;
-  --animate-fx-halo: fx-halo 950ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-fx-shine: fx-shine 850ms var(--ease-out) 100ms both;
+  --animate-fx-halo: fx-halo 950ms var(--ease-out) both;
   --animate-fx-target-glow: fx-target-glow 1.5s ease-in-out infinite;
-  --animate-fx-lock: fx-lock 480ms cubic-bezier(0.25, 1, 0.5, 1) both;
-  --animate-fx-ping: fx-ping 750ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-fx-lock: fx-lock 480ms var(--ease-snap) both;
+  --animate-fx-ping: fx-ping 750ms var(--ease-out) both;
   --animate-fx-spin: fx-spin 6s linear infinite;
   /* El destello de una invocación espera (`animation-delay` en línea) a que la carta aterrice: una variable con `var()` en el token se resolvería en la raíz, no en el elemento. Las ondas y las chispas empiezan en `opacity: 1`, así que van sin relleno hacia atrás (`forwards`) y con `opacity-0` de base: no se ven durante la espera. */
-  --animate-fx-flash: fx-flash 560ms cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-fx-shock: fx-shock 720ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
-  --animate-fx-spark: fx-spark 680ms cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  --animate-fx-flash: fx-flash 560ms var(--ease-out) both;
+  --animate-fx-shock: fx-shock 720ms var(--ease-snap) forwards;
+  --animate-fx-spark: fx-spark 680ms var(--ease-snap) forwards;
   /* Un ataque (AttackFx.tsx): el rayo y la espada salen del atacante hacia el objetivo (la distancia, `--len`, la pone el componente) y el impacto, con las ondas y chispas de arriba, empieza cuando llegan. */
-  --animate-fx-beam: fx-beam 900ms cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-fx-blade: fx-blade 900ms cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-fx-banner: fx-banner 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  --animate-fx-banner-text: fx-banner-text 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  --animate-fx-stage: fx-stage 950ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-fx-beam: fx-beam 900ms var(--ease-out) both;
+  --animate-fx-blade: fx-blade 900ms var(--ease-out) both;
+  --animate-fx-banner: fx-banner 1100ms var(--ease-out) both;
+  --animate-fx-banner-text: fx-banner-text 1100ms var(--ease-out) both;
+  --animate-fx-stage: fx-stage 950ms var(--ease-out) both;
   /* Una carta que sale del deck o del Extra aparece de dorso y se da vuelta en 3D. */
-  --animate-fx-flip-in: fx-flip-in 520ms cubic-bezier(0.25, 0.8, 0.25, 1) 60ms both;
+  --animate-fx-flip-in: fx-flip-in 520ms var(--ease-snap) 60ms both;
   /* El marco de la mano cuando recibe una carta. */
-  --animate-fx-zone: fx-zone 900ms cubic-bezier(0.2, 0, 0, 1) both;
+  --animate-fx-zone: fx-zone 900ms var(--ease-out) both;
   /* El rombo del medio de una zona que se puede elegir (`mat-pick-diamond`): late despacio. */
   --animate-mat-diamond: mat-diamond 1.6s ease-in-out infinite;
   /* Las medallas 3D de los carteles del duelo (DuelMedal): la que gana entra girando y aterriza, la que pierde cae y rebota, la del turno entra de costado. */
-  --animate-medal-win: medal-win 1.9s cubic-bezier(0.18, 0.8, 0.25, 1) both;
-  --animate-medal-lose: medal-lose 1.4s cubic-bezier(0.3, 0.7, 0.3, 1) both;
-  --animate-medal-shake: medal-shake 1.4s linear both;
-  --animate-medal-side: medal-side 1.1s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  --animate-medal-win: medal-win 1.9s var(--ease-snap) both;
+  --animate-medal-lose: medal-lose 1.4s var(--ease-snap) both;
+  --animate-medal-shake: medal-shake 1.4s var(--ease-out) both;
+  --animate-medal-side: medal-side 1.1s var(--ease-snap) both;
   --animate-medal-idle: medal-idle 6s ease-in-out 1.9s infinite;
   --animate-medal-rays: medal-rays 16s linear infinite;
-  --animate-medal-crack: medal-crack 600ms cubic-bezier(0.2, 0, 0, 1) 700ms both;
-  --animate-confetti: confetti 2.2s cubic-bezier(0.1, 0.8, 0.3, 1) both;
-  --animate-banner-veil: banner-veil 2.8s cubic-bezier(0.2, 0, 0, 1) both;
-  --animate-banner-rise: banner-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 350ms both;
+  --animate-medal-crack: medal-crack 600ms var(--ease-out) 700ms both;
+  --animate-confetti: confetti 2.2s var(--ease-snap) both;
+  --animate-banner-veil: banner-veil 2.8s var(--ease-out) both;
+  --animate-banner-rise: banner-rise 600ms var(--ease-out) 350ms both;
 
   /* Brillo de carga: sólo se mueve un degradé con transform (compuesto en la GPU, sin repintar). */
   @keyframes shimmer {
@@ -255,6 +265,7 @@
     }
   }
 
+  /* En un @keyframes el navegador ignora var() en la curva de cada cuadro: aquí van los valores de sus tokens (`--ease-gravedad-*`, `--ease-in-out`), y `__tests__/motion-curves.test.ts` verifica que sean esos. */
   @keyframes toss-hop {
     0% {
       transform: translateY(0);
@@ -286,25 +297,25 @@
     0% {
       transform: scale(1);
       opacity: 0.55;
-      animation-timing-function: ease-out;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
     }
 
     45% {
       transform: scale(0.5);
       opacity: 0.2;
-      animation-timing-function: ease-in;
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
     }
 
     72% {
       transform: scale(1);
       opacity: 0.55;
-      animation-timing-function: ease-out;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
     }
 
     86% {
       transform: scale(0.85);
       opacity: 0.4;
-      animation-timing-function: ease-in;
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
     }
 
     100% {
@@ -705,7 +716,7 @@
     6% {
       opacity: 1;
       transform: translateX(0) scale(1);
-      animation-timing-function: cubic-bezier(0.55, 0, 0.25, 1);
+      animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     33% {
@@ -1150,7 +1161,7 @@
  */
 @utility stagger {
   & > * {
-    animation: stagger-in 380ms var(--ease-out-soft) backwards;
+    animation: stagger-in 380ms var(--ease-out) backwards;
   }
   & > :nth-child(2) {
     animation-delay: calc(1 * var(--stagger-step));
@@ -1286,7 +1297,7 @@
 /* Lo que se señala (no es un objetivo: ése lleva la mira roja y se queda): un aro claro que late un rato y se va solo; con movimiento reducido, un aro quieto mientras dura. */
 [data-pointed='true'] {
   z-index: 6;
-  animation: point-pulse 2500ms ease-out both;
+  animation: point-pulse 2500ms var(--ease-out) both;
 }
 
 @keyframes point-pulse {
@@ -1398,7 +1409,7 @@
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
-  transition: opacity var(--motion-duration) var(--ease-out-soft);
+  transition: opacity var(--motion-duration) var(--ease-out);
   mask-image:
     linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent),
     linear-gradient(var(--art-fade, to top), transparent, #000 10%, #000 78%, transparent);
@@ -1576,7 +1587,7 @@
 
 @theme inline {
   --default-transition-duration: 160ms;
-  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --default-transition-timing-function: var(--ease-out);
   --animate-spin: spin 700ms linear infinite;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -1697,12 +1708,11 @@
     --field-tilt: 26deg;
     --field-perspective: 900px;
     --field-stretch: 1;
-    /* La misma curva para el CSS propio (los `@utility` de abajo) y el escalón entre un elemento y el siguiente cuando entran uno tras otro. */
-    --ease-out-soft: cubic-bezier(0.2, 0, 0, 1);
+    /* El escalón entre un elemento y el siguiente cuando entran uno tras otro (`stagger`, con `--ease-out`). */
     --stagger-step: 70ms;
     /* El menú lateral al contraerse o abrirse: el ancho, los rótulos y lo flotante que lo sigue (mascota, botones) van con la misma duración y curva. */
     --sidebar-duration: 280ms;
-    --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --sidebar-ease: var(--ease-snap);
     --app-scrollbar-track: #1c0f30;
     --app-scrollbar-thumb: #45296b;
     --app-scrollbar-thumb-hover: #6a4b96;

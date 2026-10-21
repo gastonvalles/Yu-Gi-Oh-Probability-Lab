@@ -17,10 +17,10 @@ const PERSPECTIVE_PX = 900
 export const TILT_PERSPECTIVE = '[perspective:900px]'
 
 /** El elemento que se inclina (va por `rotate`, aparte de `transform`, que usa el vuelo al abrir y cerrar el detalle) y marca a su brillo. */
-export const TILT_ART = 'group/art transition-[rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)]'
+export const TILT_ART = 'group/art transition-[rotate] duration-(--motion-duration) ease-(--ease-snap)'
 
 /** Lo mismo para una carta con su propio contenedor: se inclina por `transform` (con su perspectiva adentro), así no necesita nada afuera. */
-export const TILT_IN_PLACE = 'group/art transition-[transform] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)]'
+export const TILT_IN_PLACE = 'group/art transition-[transform] duration-(--motion-duration) ease-(--ease-snap)'
 
 type Apply = (art: HTMLElement, axisX: number, axisY: number, degrees: number) => void
 

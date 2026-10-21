@@ -240,7 +240,7 @@ export function CardFlip({ turns, flipperRef, loadBack = false, shadow = true, f
   return (
     <div
       ref={flipperRef}
-      className="absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.2,0.9,0.25,1)] [transform-style:preserve-3d] motion-reduce:transition-none"
+      className="absolute inset-0 transition-transform duration-500 ease-(--ease-snap) [transform-style:preserve-3d] motion-reduce:transition-none"
       style={{ transform: flipTransform(turns.x * 180, turns.y * 180) }}
       data-flipped={flipped ? 'true' : 'false'}
     >

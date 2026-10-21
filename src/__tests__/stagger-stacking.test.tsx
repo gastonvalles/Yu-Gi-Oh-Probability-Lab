@@ -13,7 +13,7 @@ describe('los globos de ayuda no quedan debajo del bloque que sigue', () => {
     const css = readFileSync('src/index.css', 'utf8')
     const rule = css.match(/@utility stagger \{[\s\S]*?\n\}/)?.[0] ?? ''
 
-    expect(rule).toContain('animation: stagger-in 380ms var(--ease-out-soft) backwards;')
+    expect(rule).toContain('animation: stagger-in 380ms var(--ease-out) backwards;')
     expect(rule).not.toMatch(/animation: stagger-in[^;]*\b(both|forwards)\b/)
   })
 
