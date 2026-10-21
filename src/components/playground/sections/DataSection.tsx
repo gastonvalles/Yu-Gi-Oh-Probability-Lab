@@ -1,11 +1,14 @@
 import { useState } from 'react'
 
+import { addCards, moveCard, moveTierTo, newList, removeCard, type MakerList } from '../../../app/tierlist-maker'
 import type { ArtChoice } from '../../../app/use-card-art-options'
 import { formatWholePercent } from '../../../app/utils'
 import { CardArt } from '../../CardArt'
 import { CardArtPicker } from '../../card-detail/CardArtPicker'
 import { CardEffectText } from '../../card-detail/CardEffectText'
 import { CardEffectTraits } from '../../card-detail/CardEffectTraits'
+import { TierMakerBoard } from '../../meta/TierMakerBoard'
+import { TILE_WIDTH, TierStrip } from '../../meta/TierStrip'
 import { InfoTip } from '../../ui/InfoTip'
 import { ProgressRing } from '../../ui/ProgressRing'
 import { SegmentedRing } from '../../ui/SegmentedRing'
@@ -45,6 +48,38 @@ function ArtGallerySample() {
         <CardArt remoteUrl={art.imageUrl} name="Carta de muestra" className="block h-full w-full object-contain" />
       </div>
     </div>
+  )
+}
+
+const smallImage = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
+
+/** Tres filas (S, A y B, la B en el gris oscuro de la letra clara) con una carta en S y otra en A, y el resto en «Sin clasificar». */
+function sampleTierList(): MakerList {
+  const base = newList('Muestra', 'muestra')
+  const tiers = base.tiers.slice(0, 3).map((tier, index) => (index === 2 ? { ...tier, color: '#3b3b3b' } : tier))
+  const list = addCards({ ...base, tiers }, TRAIT_SAMPLES.map(({ name, id }) => ({ id, name, image: smallImage(id) })))
+
+  return [0, 1].reduce((current, index) => moveCard(current, TRAIT_SAMPLES[index]!.id, { kind: 'tier', id: tiers[index]!.id }), list)
+}
+
+/** El tablero del creador de verdad: las cartas y las filas se arrastran (las filas, por su agarre o con ↑ ↓); el engranaje acá no abre nada (en la app abre el menú de la fila). */
+function TierMakerSample() {
+  const [list, setList] = useState(sampleTierList)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+
+  return (
+    <TierMakerBoard
+      list={list}
+      selectedId={selectedId}
+      onSelect={setSelectedId}
+      onMove={(cardId, to, before) => {
+        setList((current) => moveCard(current, cardId, to, before))
+        setSelectedId(null)
+      }}
+      onRemoveCard={(cardId) => setList((current) => removeCard(current, cardId))}
+      onEditTier={() => {}}
+      onMoveTier={(tierId, index) => setList((current) => moveTierTo(current, tierId, index))}
+    />
   )
 }
 
@@ -97,6 +132,24 @@ export function DataSection() {
 
       <Specimen title="CardArtPicker (en columna)" note={<>Los artes de una carta con muchas impresiones, al costado de la carta: la galería tiene <b>el alto de la carta</b> (va <Tag>absolute inset-0</Tag> dentro de una caja <Tag>relative</Tag> que mide lo que la fila) y lo que no entra se recorre por dentro —rueda, dedo o arrastrando con el mouse—, con la barra escondida. Con un solo arte no muestra nada. Archivo: <Tag>card-detail/CardArtPicker.tsx</Tag></>}>
         <ArtGallerySample />
+      </Specimen>
+
+      <Specimen
+        title="TierStrip y el tablero del creador"
+        className="col-span-full"
+        layout="column"
+        note={
+          <>
+            Arriba, la fila de las tier lists del meta (sólo se lee: recuadro y cartas). Abajo, el creador: cada fila lleva <b>al final</b> (<Tag>trailing</Tag>) el engranaje, que abre el menú de la fila, y el agarre <b>▲▼</b>, que la arrastra entera con el mouse, con el dedo (sólo el agarre es <Tag>touch-none</Tag>) o con ↑ ↓; las demás se corren para dejarle el hueco y, al soltarla, vuela a su lugar. Íconos blancos que se ponen ámbar al apuntarlos; la fila levantada lleva el aro ámbar. Archivos: <Tag>meta/TierStrip.tsx</Tag>, <Tag>meta/TierMakerBoard.tsx</Tag>, <Tag>app/use-tier-row-drag.ts</Tag>, <Tag>app/use-tier-flights.ts</Tag>
+          </>
+        }
+      >
+        <TierStrip label="S" color="#ff7f7f" ariaLabel="Fila de sólo lectura">
+          <li className={TILE_WIDTH}>
+            <CardArt tilt remoteUrl={smallImage(14558127)} name="Ash Blossom & Joyous Spring" className="block aspect-[421/614] w-full object-cover" />
+          </li>
+        </TierStrip>
+        <TierMakerSample />
       </Specimen>
 
       <Specimen title="InfoTip" note={<>La explicación larga, sólo a pedido. Archivo: <Tag>ui/InfoTip.tsx</Tag></>}>

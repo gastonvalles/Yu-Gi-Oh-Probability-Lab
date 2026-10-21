@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { prefersLightText } from '../../../app/tierlist-maker'
+import { labelInk } from '../../meta/TierStrip'
 import { CARD_BACK, FX_RGB, type FxTone } from '../../probability/practice-styles'
 import { Badge } from '../../ui/Badge'
 import { Button, type ButtonVariant } from '../../ui/Button'
@@ -22,6 +24,8 @@ import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary', 'outline']
 const SIZES = ['sm', 'md', 'lg'] as const
 const ICON_TONES = ['raised', 'close', 'ghost', 'flat', 'outline', 'tile'] as const
+/** `swatch`: un pastel elegido, otro sin elegir y el gris oscuro elegido (con la tilde clara). */
+const SWATCHES = ['#ff7f7f', '#7fbfff', '#3b3b3b'] as const
 const TONES = Object.keys(TONE) as Tone[]
 /** Los chips de muestra de `FilterChips`: los puestos de los decks de torneo (uno sin decks, apagado) y las rarezas de una expansión. */
 const PLACEMENTS = [
@@ -148,6 +152,15 @@ export function ButtonsSection() {
           <div className="flex items-center gap-3">
             <span className="w-14"><Tag>close</Tag></span>
             <CloseButton aria-label="Cerrar" />
+          </div>
+          {/* El color de una fila de tier list (el menú de la fila): el elegido, con el aro ámbar y la tilde; el gris oscuro, con la tilde clara y un filo lavanda. */}
+          <div className="flex items-center gap-3">
+            <span className="w-14"><Tag>swatch</Tag></span>
+            {SWATCHES.map((color, index) => (
+              <IconButton key={color} tone="swatch" aria-pressed={index !== 1} aria-label={`Color ${color}`} className={cx(labelInk(color), prefersLightText(color) && 'inset-ring inset-ring-tint/50')} style={{ backgroundColor: color }}>
+                {index !== 1 ? <Icon name="check" strokeWidth={2.5} /> : null}
+              </IconButton>
+            ))}
           </div>
         </Specimen>
 

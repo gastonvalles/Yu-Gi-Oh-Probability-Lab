@@ -25,7 +25,8 @@ const TOUCH_SCROLL_SLOP_PX = 10
 const AUTO_SCROLL_EDGE_PX = 72
 const AUTO_SCROLL_MAX_STEP_PX = 14
 
-function findScrollParent(element: HTMLElement): HTMLElement {
+/** Lo que scrollea alrededor de un elemento (en escritorio, la columna del armazón; en el celular, la página). Lo usan también las filas de la tier list al arrastrarlas. */
+export function findScrollParent(element: HTMLElement): HTMLElement {
   let current = element.parentElement
 
   while (current) {

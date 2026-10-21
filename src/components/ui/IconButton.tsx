@@ -12,8 +12,9 @@ type IconButtonSize = 'sm' | 'md' | 'lg'
  * raised: el de las barras de herramientas (por defecto) · close: la X de los encabezados · ghost: el de las zonas del deck (papelera, ordenar) ·
  * flat: el grande de la práctica · outline: redondo con borde, que también se enciende en ámbar (volver al principio de un replay) · tile: en una caja oscura de 44 px y sin borde, el de la botonera de la mesa del duelo.
  * primary y play son la excepción: redondos y con relleno, la acción principal de una barra: primary, violeta (enviar un mensaje); play, ámbar (reproducir un replay: el ámbar es lo que se toca, como el botón de la fase de ahora).
+ * swatch: un círculo que es su color (`style={{ backgroundColor }}`; el color del ícono lo pone quien lo usa, para que contraste): el color de una fila de tier list. El elegido (`aria-pressed`) lleva el aro ámbar.
  */
-type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'tile' | 'primary' | 'play'
+type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'tile' | 'primary' | 'play' | 'swatch'
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: IconButtonSize
@@ -37,6 +38,7 @@ const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
   tile: { sm: 'size-11 [&_svg]:size-5', md: 'size-11 [&_svg]:size-5', lg: 'size-12 [&_svg]:size-6' },
   primary: { sm: 'size-10 [&_svg]:size-[1.125rem]', md: 'size-12 [&_svg]:size-5', lg: 'size-14 [&_svg]:size-6' },
   play: { sm: 'size-10 [&_svg]:size-[1.125rem]', md: 'size-12 [&_svg]:size-5', lg: 'size-14 [&_svg]:size-6' },
+  swatch: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
 }
 
 const toneStyle = variants({
@@ -51,6 +53,7 @@ const toneStyle = variants({
       tile: cx('rounded-card bg-card-background [&_svg]:stroke-[1.5]', BARE),
       primary: 'rounded-full bg-primary text-primary-foreground hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
       play: 'rounded-full bg-info text-accent-foreground hover:bg-info-soft active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
+      swatch: 'rounded-full active:opacity-70 disabled:pointer-events-none disabled:opacity-40 aria-pressed:shadow-focus',
     },
   },
   defaults: { tone: 'raised' },

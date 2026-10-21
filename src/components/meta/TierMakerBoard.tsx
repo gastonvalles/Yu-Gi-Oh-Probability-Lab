@@ -1,13 +1,14 @@
-import { useRef, useState, type DragEvent, type ReactNode } from 'react'
+import { useId, useRef, useState, type DragEvent, type ReactNode } from 'react'
 
 import { placeOf, type MakerCard, type MakerList, type Place } from '../../app/tierlist-maker'
-import { useTierFlights } from '../../app/use-tier-flights'
+import { useTierFlights, type Point } from '../../app/use-tier-flights'
+import { useTierRowDrag } from '../../app/use-tier-row-drag'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { CloseButton, IconButton } from '../ui/IconButton'
-import { TILE_WIDTH, TierStrip } from './TierStrip'
+import { TILE_WIDTH, TierStrip, labelInk } from './TierStrip'
 
 interface TierMakerBoardProps {
   list: MakerList
@@ -17,7 +18,10 @@ interface TierMakerBoardProps {
   /** Mueve una carta a una fila o a la bandeja, antes de otra carta si se la nombra. */
   onMove: (cardId: number, to: Place, before?: number) => void
   onRemoveCard: (cardId: number) => void
+  /** Abre el menú de la fila (el engranaje del final y el recuadro de color de la izquierda). */
   onEditTier: (tierId: string) => void
+  /** Lleva una fila al lugar `index` (arrastrándola por su agarre, o con ↑ y ↓). */
+  onMoveTier: (tierId: string, index: number) => void
   /** Lo que va entre la última fila y «Sin clasificar»: los botones para agregar y quitar filas. */
   children?: ReactNode
 }
@@ -46,20 +50,39 @@ function keepFocus(tile: HTMLElement) {
 }
 
 /**
- * El tablero del creador: las filas de la tier list (con el recuadro de color a la izquierda, que abre el editor de la fila) y, abajo, la bandeja de las cartas sin clasificar, todo con el mismo aspecto que
- * las tier lists del meta. Las cartas se **arrastran** (a una fila o entre las de una fila, para ordenarlas) o se **tocan** para elegirlas: con una elegida aparece una barra con un botón por fila, y tocar una
- * fila vacía también la manda ahí. Así se arma igual con el mouse, con el dedo y con el teclado (Tab, Enter y los botones de la barra). **El clic derecho (o Supr) saca de a un paso:** de una fila, la carta
- * vuelve a «Sin clasificar»; de «Sin clasificar», sale de la lista (Gastón, 2026-10-21). Lo que cambia de lugar vuela hasta su lugar nuevo (`app/use-tier-flights.ts`).
+ * El tablero del creador: las filas de la tier list (con el recuadro de color a la izquierda y, al final, el engranaje y el agarre de la fila) y, abajo, la bandeja de las cartas sin clasificar, todo con el
+ * mismo aspecto que las tier lists del meta. Las cartas se **arrastran** (a una fila o entre las de una fila, para ordenarlas) o se **tocan** para elegirlas: con una elegida aparece una barra con un botón por
+ * fila, y tocar una fila vacía también la manda ahí. Así se arma igual con el mouse, con el dedo y con el teclado (Tab, Enter y los botones de la barra). **El clic derecho (o Supr) saca de a un paso:** de una
+ * fila, la carta vuelve a «Sin clasificar»; de «Sin clasificar», sale de la lista (Gastón, 2026-10-21). **Las filas** (Gastón, 2026-10-21: «en las tierlists nos faltan esas opciones al final») se editan con el
+ * engranaje (o con su recuadro de color) y se **arrastran enteras** por su agarre, con el mouse, con el dedo o con ↑ y ↓ (`app/use-tier-row-drag.ts`). Lo que cambia de lugar vuela hasta su lugar nuevo, filas
+ * y cartas (`app/use-tier-flights.ts`).
  */
-export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCard, onEditTier, children }: TierMakerBoardProps) {
+export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCard, onEditTier, onMoveTier, children }: TierMakerBoardProps) {
   const [dragId, setDragId] = useState<number | null>(null)
   const [over, setOver] = useState<string | null>(null)
   // Con qué se tocó la última carta: el toque largo de Android también dispara el clic derecho (`contextmenu`), y ahí no tiene que sacar nada.
   const lastPointer = useRef('mouse')
-  // Cada cambio de lugar se mide: lo que cambia de fila vuela hasta su lugar nuevo (`app/use-tier-flights.ts`).
+  // Cada cambio de lugar se mide: lo que cambia de fila vuela hasta su lugar nuevo (`app/use-tier-flights.ts`). `lift` es dónde quedó la fila que se soltó, para que vuele desde ahí.
   const boardRef = useRef<HTMLDivElement>(null)
+  const lift = useRef<Map<string, Point> | null>(null)
+  // La entrada escalonada (`stagger`) se repite en la fila que React vuelve a insertar al reordenar (medido: quedaba transparente y volvía a entrar). Desde la primera fila movida, no hay entrada.
+  const [reordered, setReordered] = useState(false)
+  const [announcement, setAnnouncement] = useState('')
+  const hintId = useId()
 
-  useTierFlights(boardRef, list)
+  useTierFlights(boardRef, list, lift)
+
+  const moveTier = (tierId: string, index: number) => {
+    const tier = list.tiers.find((candidate) => candidate.id === tierId)
+
+    if (!tier) return
+
+    setReordered(true)
+    onMoveTier(tierId, index)
+    // Para el lector de pantalla: dónde quedó (el foco se queda en el agarre de la fila movida).
+    setAnnouncement(t('meta.maker.tierMoved', { label: tier.label, position: index + 1, total: list.tiers.length }))
+  }
+  const rowDrag = useTierRowDrag(boardRef, { ids: list.tiers.map((tier) => tier.id), onMove: moveTier, lift })
   const selected = selectedId === null ? undefined : list.cards[selectedId]
   const selectedPlace = selected ? placeOf(list, selected.id) : null
   const currentTierId = selectedPlace?.kind === 'tier' ? selectedPlace.id : null
@@ -155,34 +178,64 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
   }
 
   return (
-    <div ref={boardRef} className="stagger relative grid gap-0.5 [--stagger-step:60ms]">
-      {list.tiers.map((tier) => {
+    // Cada fila va en su caja (`data-tier-row`): es lo que se levanta al arrastrarla y lo que vuela a su lugar; los botones de abajo y la bandeja también, porque se corren cuando entra o sale una fila.
+    <div ref={boardRef} className={cx('relative grid gap-0.5', !reordered && 'stagger [--stagger-step:60ms]', rowDrag.draggingId && 'select-none')}>
+      {list.tiers.map((tier, index) => {
         const to: Place = { kind: 'tier', id: tier.id }
 
         return (
-          <TierStrip
-            key={tier.id}
-            label={tier.label}
-            color={tier.color}
-            ariaLabel={tier.label}
-            title={t('meta.maker.editTier', { label: tier.label })}
-            labelAriaLabel={t('meta.maker.editTier', { label: tier.label })}
-            onLabel={() => onEditTier(tier.id)}
-            highlighted={over === tier.id}
-            dropProps={dropProps(tier.id, to)}
-          >
-            {tier.cards.map((id) => list.cards[id]).filter((card): card is MakerCard => Boolean(card)).map((card) => tile(card, to))}
-          </TierStrip>
+          // La fila que se arrastra va por encima de las demás (con el fondo de la página, para que no se vea lo de abajo por la columna del agarre) y con el aro ámbar de toda la fila.
+          <div key={tier.id} data-tier-row={tier.id} className={cx(rowDrag.draggingId === tier.id && 'relative z-10 bg-background shadow-focus')}>
+            <TierStrip
+              label={tier.label}
+              color={tier.color}
+              ariaLabel={tier.label}
+              title={t('meta.maker.editTier', { label: tier.label })}
+              labelAriaLabel={t('meta.maker.editTier', { label: tier.label })}
+              onLabel={() => onEditTier(tier.id)}
+              highlighted={over === tier.id}
+              dropProps={dropProps(tier.id, to)}
+              trailing={
+                <>
+                  <IconButton tone="ghost" aria-label={t('meta.maker.tierSettings', { label: tier.label })} title={t('meta.maker.tierSettings', { label: tier.label })} className="focus-visible:text-info" onClick={() => onEditTier(tier.id)}>
+                    <Icon name="gear" />
+                  </IconButton>
+                  {/* `touch-none` sólo en el agarre: sobre el resto de la fila el dedo sigue desplazando la página. */}
+                  <IconButton
+                    tone="ghost"
+                    aria-label={t('meta.maker.tierMove', { label: tier.label })}
+                    aria-describedby={hintId}
+                    title={t('meta.maker.tierMoveHint')}
+                    // Mientras se arrastra queda ámbar (`data-active`), como un ícono elegido.
+                    data-active={rowDrag.draggingId === tier.id ? 'true' : undefined}
+                    className={cx('touch-none focus-visible:text-info', rowDrag.draggingId === tier.id ? 'cursor-grabbing' : 'cursor-grab')}
+                    {...rowDrag.gripProps(tier.id, index)}
+                  >
+                    <Icon name="chevrons-up-down" />
+                  </IconButton>
+                </>
+              }
+            >
+              {tier.cards.map((id) => list.cards[id]).filter((card): card is MakerCard => Boolean(card)).map((card) => tile(card, to))}
+            </TierStrip>
+          </div>
         )
       })}
 
-      {children}
+      <div data-tier-row="actions">{children}</div>
 
-      <div className="mt-3 grid gap-0.5">
+      <div data-tier-row={POOL_KEY} className="mt-3 grid gap-0.5">
         <TierStrip neutral label={t('meta.maker.pool')} ariaLabel={t('meta.maker.pool')} highlighted={over === POOL_KEY} dropProps={dropProps(POOL_KEY, { kind: 'pool' })}>
           {list.pool.map((id) => list.cards[id]).filter((card): card is MakerCard => Boolean(card)).map((card) => tile(card, { kind: 'pool' }))}
         </TierStrip>
       </div>
+
+      <p id={hintId} className="sr-only">
+        {t('meta.maker.tierMoveHint')}
+      </p>
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
 
       {selected ? (
         <div
@@ -203,7 +256,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
                 type="button"
                 aria-label={t('meta.maker.moveTo', { name: selected.name, tier: tier.label })}
                 aria-current={currentTierId === tier.id ? 'true' : undefined}
-                className="h-10 min-w-10 max-w-24 cursor-pointer truncate rounded-control border-0 px-2 text-body font-bold text-accent-foreground focus-visible:outline-none focus-visible:shadow-focus aria-[current=true]:shadow-focus"
+                className={cx('h-10 min-w-10 max-w-24 cursor-pointer truncate rounded-control border-0 px-2 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus aria-[current=true]:shadow-focus', labelInk(tier.color))}
                 style={{ backgroundColor: tier.color }}
                 onClick={() => onMove(selected.id, { kind: 'tier', id: tier.id })}
               >

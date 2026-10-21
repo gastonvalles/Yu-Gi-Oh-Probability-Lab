@@ -6,12 +6,15 @@ import {
   TIER_PALETTE,
   addCards,
   addTier,
+  addTierAt,
+  clearTier,
   countCards,
   moveCard,
-  moveTier,
+  moveTierTo,
   newList,
   parseStore,
   placeOf,
+  prefersLightText,
   removeCard,
   removeTier,
   resetPlacements,
@@ -109,7 +112,7 @@ describe('las filas', () => {
     expect(list.tiers).toHaveLength(MAX_TIERS)
   })
 
-  it('se renombran, se pintan, suben y bajan (en las puntas no pasa nada) y, al borrarlas, sus cartas vuelven a la bandeja', () => {
+  it('se renombran, se pintan, suben y bajan de a un lugar (en las puntas no pasa nada) y, al borrarlas, sus cartas vuelven a la bandeja', () => {
     let list = withCards()
     const s = tierId(list, 'S')
     const f = tierId(list, 'F')
@@ -118,14 +121,100 @@ describe('las filas', () => {
     expect(list.tiers[0]?.label).toHaveLength(14)
     expect(list.tiers[0]?.color).toBe('#7fffbf')
 
-    expect(moveTier(list, s, -1)).toBe(list)
-    expect(moveTier(list, f, 1)).toBe(list)
-    expect(moveTier(list, s, 1).tiers.map((tier) => tier.label).slice(0, 2)).toEqual(['A', list.tiers[0]?.label])
+    // Lo que hacen ↑ y ↓ en el agarre: un lugar más arriba o más abajo.
+    expect(moveTierTo(list, s, -1)).toBe(list)
+    expect(moveTierTo(list, f, 7)).toBe(list)
+    expect(moveTierTo(list, s, 1).tiers.map((tier) => tier.label).slice(0, 2)).toEqual(['A', list.tiers[0]?.label])
 
     list = moveCard(list, 2, { kind: 'tier', id: s })
     list = removeTier(list, s)
     expect(list.tiers).toHaveLength(6)
     expect(list.pool).toContain(2)
+  })
+
+  it('una fila va a cualquier lugar (soltarla al arrastrar), con sus cartas; fuera de la lista va a la punta, y una que no existe o que ya está ahí no cambia nada', () => {
+    const start = withCards()
+    const b = tierId(start, 'B')
+    const list = moveCard(start, 1, { kind: 'tier', id: b })
+    const labels = (next: typeof list) => next.tiers.map((tier) => tier.label).join('')
+
+    expect(labels(moveTierTo(list, b, 0))).toBe('BSACDEF')
+    expect(labels(moveTierTo(list, b, 5))).toBe('SACDEBF')
+    expect(labels(moveTierTo(list, b, 99))).toBe('SACDEFB')
+    expect(labels(moveTierTo(list, b, -3))).toBe('BSACDEF')
+    expect(moveTierTo(list, b, 0).tiers[0]?.cards).toEqual([1])
+    expect(moveTierTo(list, b, 2)).toBe(list)
+    expect(moveTierTo(list, 'no-existe', 0)).toBe(list)
+  })
+
+  it('vaciar una fila manda sus cartas al final de la bandeja, en su orden, y la fila queda con su nombre y su color', () => {
+    let list = withCards()
+    const a = tierId(list, 'A')
+
+    list = moveCard(moveCard(list, 3, { kind: 'tier', id: a }), 1, { kind: 'tier', id: a })
+
+    const cleared = clearTier(list, a)
+
+    expect(cleared.tiers.find((tier) => tier.id === a)).toMatchObject({ label: 'A', color: list.tiers[1]?.color, cards: [] })
+    expect(cleared.pool).toEqual([2, 3, 1])
+    expect(cleared.tiers).toHaveLength(7)
+    expect(clearTier(cleared, a)).toBe(cleared)
+    expect(clearTier(list, 'no-existe')).toBe(list)
+  })
+
+  it('se agrega una fila arriba o abajo de otra (o en las puntas), vacía y con el siguiente color, hasta el tope', () => {
+    const list = newList('x')
+    const labels = (next: typeof list) => next.tiers.map((tier) => tier.label).join(' ')
+
+    expect(labels(addTierAt(list, 1, ' Nueva '))).toBe('S Nueva A B C D E F')
+    expect(labels(addTierAt(list, 0, 'Nueva'))).toBe('Nueva S A B C D E F')
+    expect(labels(addTierAt(list, 7, 'Nueva'))).toBe('S A B C D E F Nueva')
+    expect(labels(addTierAt(list, 40, 'Nueva'))).toBe('S A B C D E F Nueva')
+    expect(addTierAt(list, 1, 'Nueva').tiers[1]).toMatchObject({ color: TIER_PALETTE[7], cards: [] })
+
+    let full = list
+
+    for (let index = 0; index < MAX_TIERS; index += 1) full = addTierAt(full, 0, 'X')
+
+    expect(full.tiers).toHaveLength(MAX_TIERS)
+    expect(addTierAt(full, 3, 'Una más')).toBe(full)
+  })
+})
+
+describe('los colores de las filas', () => {
+  // Contraste WCAG entre dos `#rrggbb`, para comprobar la letra de cada color.
+  const channel = (value: number) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  const luminance = (hex: string) => [1, 3, 5].map((at) => channel(Number.parseInt(hex.slice(at, at + 2), 16) / 255)).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index]!, 0)
+  const ratio = (a: string, b: string) => {
+    const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number]
+
+    return (high + 0.05) / (low + 0.05)
+  }
+
+  it('son catorce (dos renglones de siete), distintos y válidos, y siguen los ocho de antes', () => {
+    expect(TIER_PALETTE).toHaveLength(14)
+    expect(new Set(TIER_PALETTE).size).toBe(14)
+    expect(TIER_PALETTE.every((color) => /^#[0-9a-f]{6}$/.test(color))).toBe(true)
+
+    for (const old of ['#ff7f7f', '#ffbf7f', '#ffdf7f', '#ffff7f', '#bfff7f', '#7fffbf', '#7fbfff', '#ff7fff']) expect(TIER_PALETTE).toContain(old)
+  })
+
+  it('la letra de la fila se lee (AA, 4,5:1) sobre cada color: oscura sobre los pasteles y clara sólo sobre el gris oscuro', () => {
+    for (const color of TIER_PALETTE) {
+      const ink = prefersLightText(color) ? '#fdffff' : '#150a24'
+
+      expect(ratio(color, ink), color).toBeGreaterThanOrEqual(4.5)
+    }
+
+    expect(TIER_PALETTE.filter(prefersLightText)).toEqual(['#3b3b3b'])
+  })
+
+  it('lo guardado con los colores de antes y con los nuevos se lee igual; uno que no es `#rrggbb` vuelve al rojo de la S', () => {
+    const list = newList('Mía', 'l1')
+    const colors = ['#ff7fff', '#3b3b3b', '#f7f7f7', 'violeta']
+    const raw = JSON.stringify({ version: 1, activeId: 'l1', lists: [{ ...list, tiers: list.tiers.slice(0, 4).map((tier, index) => ({ ...tier, color: colors[index] })) }] })
+
+    expect(parseStore(raw, 'Nueva').lists[0]?.tiers.map((tier) => tier.color)).toEqual(['#ff7fff', '#3b3b3b', '#f7f7f7', TIER_PALETTE[0]])
   })
 })
 
