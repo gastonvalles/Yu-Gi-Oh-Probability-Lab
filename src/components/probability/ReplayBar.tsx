@@ -1,28 +1,40 @@
-import { Fragment, memo, useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { Fragment, memo, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { numberLocale, t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
+import { FX_RGB, type FxTone } from './practice-styles'
 
 /** Las velocidades del replay, como en YGOPocket: la mitad, normal, una vez y media y el doble. */
 export type ReplaySpeed = 0.5 | 1 | 1.5 | 2
 const REPLAY_SPEEDS: readonly ReplaySpeed[] = [0.5, 1, 1.5, 2]
 
-/** Una marca por jugada: la que cambia de fase lleva una rayita arriba y la que empieza un turno, una línea que la separa de la anterior. */
+/** Una marca por jugada: la que cambia de fase lleva una rayita arriba y la que empieza un turno, una línea que la separa de la anterior; `tone` es el color de lo que hace (`stepTone`), sin color (`null`) va en gris. */
 export interface ReplayMark {
   phase: boolean
   turnStart: boolean
+  tone?: FxTone | null
 }
 
 const formatSpeed = (speed: number) => `${new Intl.NumberFormat(numberLocale()).format(speed)}×`
 
-/** Los pasos ya vistos en violeta, el actual en verde y más alto, los que faltan apagados. */
+/** La mano inicial, verde: el principio. */
+const START_TONE: FxTone = 'green'
+
+/** Cada paso con el color de lo que hace (`--pill`, el de su destello en la mesa): los ya vistos, vivos; el actual, ámbar y más alto (como el botón de reproducir) y con un resplandor; los que faltan, apagados. */
 const PILL = {
-  done: 'h-2.5 bg-primary',
-  current: 'h-3.5 bg-accent shadow-[0_0_10px_rgb(var(--accent-rgb)/0.75)]',
-  upcoming: 'h-2.5 bg-tint/25',
+  done: 'h-2.5 bg-[rgb(var(--pill)/0.95)]',
+  current: 'h-3.5 bg-info shadow-[0_0_10px_rgb(var(--info-rgb)/0.75)]',
+  upcoming: 'h-2.5 bg-[rgb(var(--pill)/0.3)]',
+} as const
+
+/** Un paso sin color (colocar boca abajo, cambiar de posición, un contador): gris. */
+const PILL_PLAIN = {
+  done: 'h-2.5 bg-tint/60',
+  current: PILL.current,
+  upcoming: 'h-2.5 bg-tint/22',
 } as const
 
 interface TimelineProps {
@@ -106,6 +118,7 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
       {Array.from({ length: total + 1 }, (_, index) => {
         const mark = index > 0 ? marks[index - 1] : undefined
         const state = index === cursor ? 'current' : index < cursor ? 'done' : 'upcoming'
+        const tone = index === 0 ? START_TONE : (mark?.tone ?? null)
 
         return (
           <Fragment key={index}>
@@ -113,10 +126,12 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
             <span
               aria-hidden="true"
               data-state={state}
+              data-tone={tone ?? 'none'}
               data-phase={mark?.phase ? 'true' : undefined}
+              style={tone ? ({ '--pill': FX_RGB[tone] } as CSSProperties) : undefined}
               className={cx(
                 'relative min-w-[3px] flex-1 rounded-full transition-[height,background-color,box-shadow] duration-150 motion-reduce:transition-none',
-                PILL[state],
+                tone ? PILL[state] : PILL_PLAIN[state],
                 mark?.phase && 'before:absolute before:inset-x-0 before:-top-1.5 before:h-0.5 before:rounded-full before:bg-warning',
               )}
             />
@@ -226,7 +241,7 @@ export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playL
           <IconButton tone="raised" size="sm" aria-label={t('practice.mat.previous')} title={t('practice.mat.previous')} className="disabled:opacity-40" disabled={cursor === 0} onClick={onPrevious}>
             <Icon name="chevron-left" strokeWidth={2.2} />
           </IconButton>
-          <IconButton tone="primary" size="md" aria-label={playLabel} title={playLabel} onClick={onTogglePlay}>
+          <IconButton tone="play" size="md" aria-label={playLabel} title={playLabel} onClick={onTogglePlay}>
             <Icon name={playing ? 'pause' : 'play'} variant="bold" />
           </IconButton>
           <IconButton tone="raised" size="sm" aria-label={t('practice.mat.next')} title={t('practice.mat.next')} className="disabled:opacity-40" disabled={cursor >= marks.length} onClick={onNext}>

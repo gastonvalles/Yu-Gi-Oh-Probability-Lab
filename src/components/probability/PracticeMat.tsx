@@ -76,6 +76,7 @@ import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackF
 import { CardSheet } from './CardSheet'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
+import { stepTone } from './step-tone'
 import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { MatPlate, MatScene, PickMarks } from './MatArena'
 import { MatViewToggle } from './MatViewToggle'
@@ -1708,7 +1709,7 @@ export function PracticeMat({
       const before = current
       current = matReducer(current, action)
 
-      return { phase: action.type === 'phase', turnStart: current.turn !== before.turn }
+      return { phase: action.type === 'phase', turnStart: current.turn !== before.turn, tone: stepTone(before, action) }
     })
   }, [session.replay, session.initial, session.actions])
   const pickingText =
