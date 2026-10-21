@@ -146,6 +146,21 @@ const PATHS = {
       <path d="M12 2.5v3.5" />
     </>
   ),
+  /** Sonido prendido: el parlante con dos ondas. */
+  volume: (
+    <>
+      <path data-fill d="M4 9.5v5h3.2l4.3 3.6a.6.6 0 0 0 1-.46V6.36a.6.6 0 0 0-1-.46L7.2 9.5z" />
+      <path d="M16 9.2a4 4 0 0 1 0 5.6" />
+      <path d="M18.8 6.6a8 8 0 0 1 0 10.8" />
+    </>
+  ),
+  /** Sonido apagado: el parlante con una cruz. */
+  'volume-off': (
+    <>
+      <path data-fill d="M4 9.5v5h3.2l4.3 3.6a.6.6 0 0 0 1-.46V6.36a.6.6 0 0 0-1-.46L7.2 9.5z" />
+      <path d="m16.5 9.5 5 5M21.5 9.5l-5 5" />
+    </>
+  ),
   columns: (
     <>
       <rect data-fill x="3" y="4" width="7.5" height="16" rx="2.2" />

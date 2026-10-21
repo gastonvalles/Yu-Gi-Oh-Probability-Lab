@@ -8,11 +8,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMatState, replayMat, type MatAction, type MatState } from '../app/practice-mat'
 import { RIFFLE_MS } from '../app/shuffle-fx'
+import { setSoundsOn, soundsOn } from '../app/sound-prefs'
 import { useMatSession } from '../app/use-mat-session'
 import { PracticeMat, type MatCard } from '../components/probability/PracticeMat'
 import type { ApiCardReference } from '../types'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
+
+const { playSfx } = vi.hoisted(() => ({ playSfx: vi.fn() }))
+
+vi.mock('../app/sfx', async () => ({ ...(await vi.importActual<typeof import('../app/sfx')>('../app/sfx')), playSfx }))
 
 const card = (ygoprodeckId: number, frameType: string): ApiCardReference =>
   ({ ygoprodeckId, frameType, race: null, cardType: 'x', description: null, attribute: null, level: null, linkValue: null, atk: null, def: null, archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null }) as unknown as ApiCardReference
@@ -443,6 +448,38 @@ describe('la mesa de práctica', () => {
     expect(toolbar.firstElementChild).toBe(screen.getByLabelText('Turno 1'))
     // Los botones de la barra van a la derecha: el primero es el de la vista (superior o 3D).
     expect(screen.getByRole('button', { name: 'Cambiar a la vista superior' })).toHaveClass('ml-auto')
+  })
+
+  it('las jugadas de la práctica suenan como las del duelo (Gastón: «en la práctica no suenan los efectos»): una fase nueva, y deshacer', () => {
+    render(<Harness />)
+    playSfx.mockClear()
+
+    goToPhase('Battle Phase')
+    expect(playSfx).toHaveBeenLastCalledWith('phase')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(playSfx).toHaveBeenLastCalledWith('undo')
+    expect(playSfx).toHaveBeenCalledTimes(2)
+  })
+
+  it('el botón «Sonidos» de la barra los apaga y los vuelve a prender (el mismo ajuste que «Más opciones» de un duelo), y se recuerda', () => {
+    render(<Harness />)
+
+    const button = screen.getByRole('button', { name: 'Sonidos' })
+
+    try {
+      expect(soundsOn()).toBe(true)
+      expect(button).toHaveAttribute('aria-pressed', 'true')
+      expect(button).toHaveAttribute('title', 'Silenciar los sonidos')
+
+      fireEvent.click(button)
+      expect(button).toHaveAttribute('aria-pressed', 'false')
+      expect(button).toHaveAttribute('title', 'Activar los sonidos')
+      expect(soundsOn()).toBe(false)
+      expect(localStorage.getItem('ygo-lab:duel-sounds')).toBe('off')
+    } finally {
+      setSoundsOn(true)
+    }
   })
 
   it('la vista de la mesa: en 3D el campo va inclinado; con «Cambiar a la vista superior» queda plano y el botón dice a cuál vuelve; se recuerda', () => {

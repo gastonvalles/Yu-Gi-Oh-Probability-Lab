@@ -44,6 +44,7 @@ import { matStepCards } from '../../app/mat-steps'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import { playSfx } from '../../app/sfx'
+import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { setDuelFullscreen, toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
@@ -56,6 +57,7 @@ import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
 import { LIMIT_FACTS, activationFacts, cardEffects, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, type Activation } from '../../app/mat-assistant'
 import { repeatedTurnRule } from '../../app/turn-rules'
+import { usePracticeSounds } from '../../app/use-practice-sounds'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
@@ -559,6 +561,9 @@ export function PracticeMat({
   const sectionRef = useRef<HTMLElement | null>(null)
   const view = useMatView()
   const isDuel = Boolean(duel)
+  // Los sonidos de la práctica (Gastón, 2026-10-20: «en la práctica no suenan los efectos del duelo»): cada jugada, deshacer y los pasos de un combo. En un duelo suenan con `useDuelSounds`, las de los dos.
+  usePracticeSounds(isDuel ? null : session)
+  const sounds = useSoundsOn()
   // Ventana grande (Gastón, 2026-10-19: «la práctica no tiene modo pantalla completa y debería»): la práctica ocupa toda la pantalla, sin el menú lateral, como la mesa de un duelo. Es de la mesa: se apaga al salir.
   const bigWindow = useDuelFullscreen()
 
@@ -1813,6 +1818,10 @@ export function PracticeMat({
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
           <MatViewToggle className="ml-auto" />
+          {/* Los sonidos de las jugadas: el mismo ajuste que «Más opciones» de un duelo (se recuerda en el navegador). */}
+          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.sounds')} title={t(sounds ? 'practice.mat.soundsOff' : 'practice.mat.soundsOn')} aria-pressed={sounds} onClick={() => setSoundsOn(!sounds)}>
+            <Icon name={sounds ? 'volume' : 'volume-off'} />
+          </IconButton>
           {/* Ventana grande: sin el menú lateral y, si el navegador deja, en pantalla completa. Sólo en escritorio: en el celular la mesa ya ocupa todo. */}
           {isDesktop ? (
             <IconButton tone="flat" size="sm" aria-label={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} title={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} aria-pressed={bigWindow} onClick={toggleDuelFullscreen}>
