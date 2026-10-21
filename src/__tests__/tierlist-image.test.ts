@@ -21,6 +21,10 @@ describe('dónde va cada fila en la imagen de la tier list', () => {
     expect(layout.height).toBeGreaterThan((last?.top ?? 0) + (last?.height ?? 0))
   })
 
+  it('sin encabezado: la primera fila arranca en el margen de arriba (24 px, donde iba el título)', () => {
+    expect(computeTierImageLayout([1]).rows[0]?.top).toBe(24)
+  })
+
   it('una fila con más cartas de las que entran en un renglón crece un renglón por cada tanda', () => {
     const perRow = computeTierImageLayout([0]).rows[0]?.perRow ?? 0
     const one = computeTierImageLayout([perRow]).rows[0]?.height ?? 0

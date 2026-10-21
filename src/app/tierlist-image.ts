@@ -7,7 +7,6 @@ const LABEL_WIDTH = 140
 const CARD_WIDTH = 104
 const CARD_HEIGHT = Math.round((CARD_WIDTH * 614) / 421)
 const GAP = 2
-const TITLE_HEIGHT = 84
 const MARGIN = 24
 const SCALE = 2
 
@@ -32,7 +31,7 @@ export interface TierImageLayout {
 /** Dónde va cada fila en la imagen, según cuántas cartas tiene: todas miden al menos una carta de alto y crecen un renglón por cada tanda de cartas que no entra. Puro (se prueba sin dibujar). */
 export function computeTierImageLayout(counts: readonly number[]): TierImageLayout {
   const perRow = Math.max(1, Math.floor((WIDTH - 2 * MARGIN - LABEL_WIDTH - GAP) / (CARD_WIDTH + GAP)))
-  let top = MARGIN + TITLE_HEIGHT
+  let top = MARGIN
   const rows = counts.map<TierImageRow>((count) => {
     const lines = Math.max(1, Math.ceil(count / perRow))
     const height = lines * (CARD_HEIGHT + GAP) + GAP
@@ -64,16 +63,6 @@ async function loadCardImages(cards: readonly MakerCard[]): Promise<Map<number, 
   return new Map(entries)
 }
 
-function fit(context: CanvasRenderingContext2D, text: string, maxWidth: number): string {
-  if (context.measureText(text).width <= maxWidth) return text
-
-  let shorter = text
-
-  while (shorter.length > 1 && context.measureText(`${shorter}…`).width > maxWidth) shorter = shorter.slice(0, -1)
-
-  return `${shorter}…`
-}
-
 /** Las palabras de un nombre repartidas en renglones que entran en el ancho (para el recuadro de la fila: «Muy buenas» no cabe en uno). */
 function wrap(context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const lines: string[] = []
@@ -95,7 +84,7 @@ function wrap(context: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines.length > 0 ? lines : ['']
 }
 
-/** La tier list dibujada como imagen (sin la bandeja de «sin clasificar»): el título, y una fila por tier con su color y sus cartas. */
+/** La tier list dibujada como imagen (sin la bandeja de «sin clasificar»): una fila por tier con su color y sus cartas. */
 export async function renderTierListImage(list: MakerList): Promise<HTMLCanvasElement> {
   const cards = list.tiers.flatMap((tier) => tier.cards.map((id) => list.cards[id]).filter((card): card is MakerCard => Boolean(card)))
   const [images] = await Promise.all([loadCardImages(cards), typeof document !== 'undefined' && document.fonts ? document.fonts.ready.catch(() => undefined) : Promise.resolve()])
@@ -114,11 +103,8 @@ export async function renderTierListImage(list: MakerList): Promise<HTMLCanvasEl
   context.fillStyle = BACKGROUND
   context.fillRect(0, 0, layout.width, layout.height)
 
-  context.fillStyle = TEXT
-  context.font = `700 40px ${FONT}`
   context.textBaseline = 'middle'
   context.textAlign = 'left'
-  context.fillText(fit(context, list.title, layout.width - 2 * MARGIN), MARGIN, MARGIN + TITLE_HEIGHT / 2 - 4)
 
   list.tiers.forEach((tier, index) => {
     const row = layout.rows[index]

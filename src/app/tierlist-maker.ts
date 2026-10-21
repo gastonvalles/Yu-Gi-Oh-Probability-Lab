@@ -184,25 +184,6 @@ export function removeTier(list: MakerList, tierId: string): MakerList {
   return { ...list, pool: [...list.pool, ...tier.cards], tiers: list.tiers.filter((candidate) => candidate.id !== tierId) }
 }
 
-export function renameList(list: MakerList, title: string): MakerList {
-  return { ...list, title: title.slice(0, MAX_TITLE) }
-}
-
-/** Una copia con otro id (y otros ids de fila: dos listas nunca comparten ids). */
-export function duplicateList(list: MakerList, title: string): MakerList {
-  return { ...list, id: newId(), title: title.slice(0, MAX_TITLE), tiers: list.tiers.map((tier) => ({ ...tier, id: newId(), cards: [...tier.cards] })), pool: [...list.pool], cards: { ...list.cards } }
-}
-
-/** La lista como texto para pegar donde sea: el título y una línea por fila («S: Ash Blossom, Maxx "C"»), con la bandeja al final si tiene algo. */
-export function listToText(list: MakerList, poolLabel: string): string {
-  const names = (ids: readonly number[]) => ids.map((id) => list.cards[id]?.name).filter(Boolean).join(', ')
-  const lines = list.tiers.map((tier) => `${tier.label}: ${names(tier.cards)}`.trimEnd())
-
-  if (list.pool.length > 0) lines.push(`${poolLabel}: ${names(list.pool)}`)
-
-  return [list.title, ...lines].join('\n')
-}
-
 // ---- Lo guardado ----
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)

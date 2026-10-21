@@ -1,24 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { canvasToPngBlob, renderTierListImage } from '../../app/tierlist-image'
 import {
   MAX_LABEL,
-  MAX_LISTS,
   MAX_TIERS,
-  MAX_TITLE,
   TIER_PALETTE,
   addCards,
   addTier,
   countCards,
-  duplicateList,
-  listToText,
   moveCard,
   moveTier,
-  newList,
   readStore,
   removeCard,
   removeTier,
-  renameList,
   resetPlacements,
   updateTier,
   writeStore,
@@ -31,9 +25,7 @@ import { downloadBlob } from '../../app/deck-image-export-download'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { StepHero } from '../StepHero'
-import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
-import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
@@ -42,21 +34,18 @@ import { StepPage } from '../ui/StepPage'
 import { TierMakerAddCards } from './TierMakerAddCards'
 import { TierMakerBoard } from './TierMakerBoard'
 
-interface TierMakerScreenProps {
-  /** Las cartas del deck armado en el builder (sin repetir), para sumarlas de un toque. */
-  deckCards: readonly MakerCard[]
-}
+/** El nombre de la imagen descargada: `downloadBlob` le pone la extensión, así que sale `tier-list.png`. */
+const IMAGE_NAME = 'tier-list'
 
 /**
  * El creador de tier lists propias (Gastón, 2026-10-19: «debe haber una herramienta para hacer nuestras propias tierlists»): una lista con filas de nombre y color (S a F de arranque), las cartas que se eligen
- * (buscador, deck o meta) repartidas entre ellas arrastrando o tocando, varias listas guardadas en el navegador, y salida como imagen (PNG) o como texto. La lógica (filas, movimientos, lo guardado) es
+ * (buscador o meta) repartidas entre ellas arrastrando o tocando, guardada en el navegador, y salida como imagen (PNG). La pantalla muestra y edita sólo la lista activa. La lógica (filas, movimientos, lo guardado) es
  * de `app/tierlist-maker.ts`; esto es la pantalla.
  */
-export function TierMakerScreen({ deckCards }: TierMakerScreenProps) {
+export function TierMakerScreen() {
   const [store, setStore] = useState<MakerStore>(() => readStore(t('meta.maker.defaultTitle')))
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [editingTier, setEditingTier] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState(false)
   const [busy, setBusy] = useState(false)
   const list = store.lists.find((candidate) => candidate.id === store.activeId) ?? (store.lists[0] as MakerList)
 
@@ -64,42 +53,6 @@ export function TierMakerScreen({ deckCards }: TierMakerScreenProps) {
 
   const update = (change: (current: MakerList) => MakerList) =>
     setStore((current) => ({ ...current, lists: current.lists.map((candidate) => (candidate.id === list.id ? change(candidate) : candidate)) }))
-  const select = (id: string) => {
-    setSelectedId(null)
-    setStore((current) => ({ ...current, activeId: id }))
-  }
-  const create = () => {
-    if (store.lists.length >= MAX_LISTS) return
-
-    const next = newList(t('meta.maker.defaultTitle'))
-
-    setSelectedId(null)
-    setStore((current) => ({ ...current, activeId: next.id, lists: [...current.lists, next] }))
-  }
-  const duplicate = () => {
-    if (store.lists.length >= MAX_LISTS) return
-
-    const copy = duplicateList(list, t('meta.maker.copyTitle', { title: list.title || t('meta.maker.defaultTitle') }))
-
-    setSelectedId(null)
-    setStore((current) => ({ ...current, activeId: copy.id, lists: [...current.lists, copy] }))
-  }
-  const remove = () => {
-    setDeleting(false)
-    setSelectedId(null)
-    setStore((current) => {
-      const lists = current.lists.filter((candidate) => candidate.id !== list.id)
-
-      if (lists.length === 0) {
-        const fresh = newList(t('meta.maker.defaultTitle'))
-
-        return { ...current, activeId: fresh.id, lists: [fresh] }
-      }
-
-      return { ...current, activeId: lists[0]?.id ?? current.activeId, lists }
-    })
-  }
-
   const add = (cards: MakerCard[]) => {
     const before = countCards(list)
     const next = addCards(list, cards)
@@ -131,25 +84,16 @@ export function TierMakerScreen({ deckCards }: TierMakerScreenProps) {
     try {
       const blob = await canvasToPngBlob(await renderTierListImage(list))
 
-      downloadBlob(blob, list.title || t('meta.maker.defaultTitle'), 'png')
+      downloadBlob(blob, IMAGE_NAME, 'png')
     } catch {
       showToastMessage(t('meta.maker.downloadFailed'), 'error')
     } finally {
       setBusy(false)
     }
   }
-  const copyText = async () => {
-    try {
-      await navigator.clipboard.writeText(listToText(list, t('meta.maker.pool')))
-      showToastMessage(t('meta.maker.copied'), 'success')
-    } catch {
-      showToastMessage(t('meta.maker.copyFailed'), 'error')
-    }
-  }
 
   const editing = list.tiers.find((tier) => tier.id === editingTier) ?? null
   const tierIndex = editing ? list.tiers.indexOf(editing) : -1
-  const listOptions = useMemo(() => store.lists.map((candidate) => ({ id: candidate.id, title: candidate.title || t('meta.maker.defaultTitle') })), [store.lists])
 
   return (
     <StepPage as="article" wide>
@@ -167,53 +111,15 @@ export function TierMakerScreen({ deckCards }: TierMakerScreenProps) {
             </ul>
           </div>
         }
-        side={
-          <Button variant="secondary" size="sm" icon="plus" disabled={store.lists.length >= MAX_LISTS} onClick={create}>
-            {t('meta.maker.new')}
-          </Button>
-        }
       />
 
-      <div className="grid gap-3 min-[1101px]:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-        <FieldBox>
-          <select aria-label={t('meta.maker.listLabel')} value={list.id} className={cx(fieldInline, 'cursor-pointer')} onChange={(event) => select(event.target.value)}>
-            {listOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.title}
-              </option>
-            ))}
-          </select>
-        </FieldBox>
-        <FieldBox>
-          <input
-            aria-label={t('meta.maker.titleField')}
-            placeholder={t('meta.maker.titlePlaceholder')}
-            maxLength={MAX_TITLE}
-            value={list.title}
-            className={fieldInline}
-            onChange={(event) => update((current) => renameList(current, event.target.value))}
-          />
-        </FieldBox>
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="tertiary" size="sm" disabled={store.lists.length >= MAX_LISTS} onClick={duplicate}>
-          {t('meta.maker.duplicate')}
-        </Button>
-        <Button variant="tertiary" size="sm" color="danger" onClick={() => setDeleting(true)}>
-          {t('meta.maker.delete')}
-        </Button>
         <Button variant="tertiary" size="sm" disabled={ranked === 0} onClick={() => update(resetPlacements)}>
           {t('meta.maker.resetTiers')}
         </Button>
-        <span className="ml-auto flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" icon="list" onClick={() => void copyText()}>
-            {t('meta.maker.copyText')}
-          </Button>
-          <Button variant="primary" size="sm" icon="download" aria-busy={busy} disabled={busy} onClick={() => void download()}>
-            {t('meta.maker.download')}
-          </Button>
-        </span>
+        <Button variant="primary" size="sm" icon="download" className="ml-auto" aria-busy={busy} disabled={busy} onClick={() => void download()}>
+          {t('meta.maker.download')}
+        </Button>
       </div>
 
       <div>
@@ -224,7 +130,7 @@ export function TierMakerScreen({ deckCards }: TierMakerScreenProps) {
         </Button>
       </div>
 
-      <TierMakerAddCards list={list} deckCards={deckCards} onAdd={add} />
+      <TierMakerAddCards list={list} onAdd={add} />
 
       <Modal
         isOpen={editing !== null}
@@ -293,16 +199,6 @@ export function TierMakerScreen({ deckCards }: TierMakerScreenProps) {
           </div>
         ) : null}
       </Modal>
-
-      <ConfirmDialog
-        isOpen={deleting}
-        title={t('meta.maker.deleteTitle', { title: list.title || t('meta.maker.defaultTitle') })}
-        description={t('meta.maker.deleteText')}
-        confirmLabel={t('meta.maker.deleteConfirm')}
-        confirmColor="danger"
-        onCancel={() => setDeleting(false)}
-        onConfirm={remove}
-      />
     </StepPage>
   )
 }
