@@ -18,7 +18,7 @@ interface MetaHeroSideProps {
 /** Lo que va a la derecha del encabezado de los tier lists y de los decks de torneo: de cuándo son los datos y de qué región. */
 export function MetaHeroSide({ region, onRegionChange }: MetaHeroSideProps) {
   return (
-    // En celular, un solo renglón: la región ocupa lo que sobra y la fecha va compacta al lado.
+    // En celular, un solo renglón: la región ocupa lo que sobra y la fecha va compacta al lado. Desde 560 px (tableta) la región va a su ancho.
     <div className="flex w-full items-center gap-2 min-[1101px]:w-auto">
       <Badge icon="refresh" title={t('meta.screen.updatedTitle')} className="min-[1101px]:order-first">
         {tRich(
@@ -33,7 +33,7 @@ export function MetaHeroSide({ region, onRegionChange }: MetaHeroSideProps) {
         options={REGION_OPTIONS}
         label={t('meta.screen.regionLabel')}
         size="sm"
-        className="min-w-0 max-[1101px]:order-first max-[1101px]:flex-1"
+        className="min-w-0 max-[1101px]:order-first max-[560px]:flex-1"
       />
     </div>
   )
