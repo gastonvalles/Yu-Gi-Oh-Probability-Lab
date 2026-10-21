@@ -379,6 +379,7 @@ export const duel: Translated<typeof es> = {
   // The chat between the two.
   'duel.log.turn': 'Turn {turn} · {name}',
   'duel.log.open': 'Open the play log',
+  'duel.log.dismiss': 'Swipe sideways to dismiss',
   'duel.chat.open': 'Chat',
   'duel.chat.title': 'Chat with {name}',
   'duel.chat.empty': 'Write to your rival to let them know something or that you can respond.',
