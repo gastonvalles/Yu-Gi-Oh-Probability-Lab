@@ -14,6 +14,7 @@ import { FieldArt, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
 import { PileStack } from '../probability/PileStack'
+import { MaterialCount, MaterialStack } from '../probability/MaterialStack'
 
 /**
  * La mesa del duelo: los dos campos en una sola grilla, como la mesa real. El rival arriba y espejado (su
@@ -263,28 +264,35 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   const faceDown = placed.pos === 'set'
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
   const back = (owner === 'theirs' && faceDown) || art === null
+  // De una carta de esta mesa se sabe su arte, no si es un Xyz; los materiales sólo se ponen debajo de uno (Invocación Xyz o «Adjuntar» a un Xyz), así que se muestran los que tenga. Boca abajo también: siguen debajo, a la vista.
+  const materials = placed.materials.length
 
   return (
-    <div
-      data-card-id={owner === 'mine' ? placed.id : undefined}
-      // La carta del rival, por el id (opaco) que él le dio: de ahí sale y a ahí llega la espada de un ataque.
-      data-rival-card-id={owner === 'theirs' ? placed.id : undefined}
-      // El aro de lo que acaba de hacer (activar, mostrar, declarar, marcar como objetivo) y la mira de lo que está marcado: igual que en las cartas propias.
-      style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
-      data-flash={flash ? 'true' : 'false'}
-      data-flash-kind={flash?.kind}
-      data-targeted={targeted ? 'true' : 'false'}
-      className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
-    >
-      <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180')}>
-        {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={label} className="block h-full w-full object-cover" />}
-      </span>
-      {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
-      {targeted ? <TargetMark /> : null}
-      {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: label })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
-      {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
-      {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
-    </div>
+    <>
+      {/* Antes de la carta, así queda detrás. La del rival, de media vuelta como su carta. */}
+      <MaterialStack count={materials} sideways={sideways} rival={owner === 'theirs'} />
+      <div
+        data-card-id={owner === 'mine' ? placed.id : undefined}
+        // La carta del rival, por el id (opaco) que él le dio: de ahí sale y a ahí llega la espada de un ataque.
+        data-rival-card-id={owner === 'theirs' ? placed.id : undefined}
+        // El aro de lo que acaba de hacer (activar, mostrar, declarar, marcar como objetivo) y la mira de lo que está marcado: igual que en las cartas propias.
+        style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
+        data-flash={flash ? 'true' : 'false'}
+        data-flash-kind={flash?.kind}
+        data-targeted={targeted ? 'true' : 'false'}
+        className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
+      >
+        <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180')}>
+          {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={label} className="block h-full w-full object-cover" />}
+        </span>
+        {/* La cantidad queda derecha, como los contadores: es para leerla desde acá. */}
+        <MaterialCount count={materials} sideways={sideways} />
+        {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
+        {targeted ? <TargetMark /> : null}
+        {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: label })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
+        {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
+      </div>
+    </>
   )
 }
 

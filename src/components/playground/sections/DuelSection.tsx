@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
 import { Spotlight } from '../../probability/MatFx'
+import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
@@ -68,6 +69,7 @@ export function DuelSection() {
       </Specimen>
 
       <FieldArtSample duel={duel} />
+      <MaterialSamples />
 
       <ArenaSamples />
 
@@ -117,6 +119,71 @@ function FieldArtSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSide
       />
       <DuelTable mine={mine} theirs={duel.theirs} />
     </Specimen>
+  )
+}
+
+/** Cuántos materiales lleva cada muestra: sin ninguno (no se ve nada), uno, dos, tres (la pila más alta) y cinco (la pila ya no crece; el aro, sí). */
+const MATERIAL_COUNTS = [0, 1, 2, 3, 5]
+const MATERIAL_ROWS: Array<{ label: string; sideways: boolean; rival: boolean }> = [
+  { label: 'Tuyo, en ataque', sideways: false, rival: false },
+  { label: 'Tuyo, en defensa', sideways: true, rival: false },
+  { label: 'Del rival, en ataque (media vuelta)', sideways: false, rival: true },
+  { label: 'Del rival, en defensa', sideways: true, rival: true },
+]
+const UTOPIA_ART = 'https://images.ygoprodeck.com/images/cards_small/84013237.jpg'
+
+/** Los materiales de un Xyz con las casillas del celular a tres anchos de pantalla: la casilla es la pantalla menos sus orillas (28 px) en cinco, como en «Jugar solo» (66, 72 y 80 px, medidas). */
+function MaterialSamples() {
+  return (
+    <Specimen
+      title="Materiales de un Xyz"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          Detrás de la carta asoman sus materiales de dorso, por el costado izquierdo (<Tag>MaterialStack</Tag>: una capa por material, hasta tres, que gira con la carta), y en el medio va la cantidad en grande dentro de un aro ámbar con un tramo por material (<Tag>MaterialCount</Tag>, hija de la carta: siempre derecha). Sin materiales no hay nada. Nada de esto recibe toques ni cambia el tamaño de la casilla. Archivo: <Tag>probability/MaterialStack.tsx</Tag>
+        </>
+      }
+    >
+      {/* Cada marco mide lo que la pantalla de su nombre: en una ventana más angosta, se desliza de costado (no desborda la muestra). */}
+      <div className="flex flex-wrap items-start gap-6 overflow-x-auto">
+        {[360, 390, 430].map((width) => {
+          const cell = (width - 28) / 5
+
+          return (
+            <figure key={width} className="m-0 grid shrink-0 gap-3" style={{ width }}>
+              <figcaption>
+                <Tag>{width} px</Tag>
+              </figcaption>
+              {MATERIAL_ROWS.map((row) => (
+                <div key={row.label} className="grid gap-1">
+                  <span className="text-micro text-soft">{row.label}</span>
+                  <div className="grid justify-center gap-1" style={{ gridTemplateColumns: `repeat(5, ${cell}px)` }}>
+                    {MATERIAL_COUNTS.map((count) => (
+                      <SampleXyz key={count} count={count} sideways={row.sideways} rival={row.rival} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </figure>
+          )
+        })}
+      </div>
+    </Specimen>
+  )
+}
+
+/** Una casilla de monstruo con un Xyz, armada como en la mesa (`CardOnZone`): la pila antes de la carta, y la cantidad adentro de ella. */
+function SampleXyz({ count, sideways, rival }: { count: number; sideways: boolean; rival: boolean }) {
+  return (
+    <div role="group" aria-label={`${count} materiales`} className={CELL_MONSTER}>
+      <ZoneLines kind="monster" />
+      <MaterialStack count={count} sideways={sideways} rival={rival} />
+      <div className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] w-[68.57%] overflow-hidden bg-input shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]', sideways && '[transform:rotate(90deg)]')}>
+        <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className={cx('block h-full w-full object-cover', rival && 'rotate-180')} />
+        <MaterialCount count={count} sideways={sideways} />
+      </div>
+    </div>
   )
 }
 

@@ -226,6 +226,8 @@ export const practice: Translated<typeof es> = {
   'practice.mat.cardFaceDown': '{name}, face-down',
   'practice.mat.cardDefense': '{name}, Defense Position',
   'practice.mat.cardChosen': '{label} ({chosen})',
+  'practice.mat.materialCount': { one: '{count} material', other: '{count} materials' },
+  'practice.mat.cardMaterials': { one: '{label}, with {count} material', other: '{label}, with {count} materials' },
 
   'practice.hand.label': 'Hand',
   'practice.hand.empty': 'No cards in hand',

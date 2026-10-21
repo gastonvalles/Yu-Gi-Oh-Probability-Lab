@@ -162,6 +162,35 @@ describe('la mesa del duelo', () => {
     expect(rotated('Zona de magia y trampa 2')).toBe(false)
   })
 
+  it('el Xyz del rival muestra sus materiales: la pila de dorso detrás, de media vuelta como su carta, y el contador derecho', () => {
+    const xyz = (pos: 'atk' | 'def') =>
+      play({ type: 'place', id: 'card-9001-1', zone: 'mz', index: 0, pos }, { type: 'attach', id: 'card-1000-1', to: 'card-9001-1' }, { type: 'attach', id: 'card-1001-1', to: 'card-9001-1' })
+    const { rerender: rerenderBare } = render(<DuelTable mine={side(start)} theirs={side(xyz('atk'))} />)
+    const rerender = (ui: ReactElement) => rerenderBare(<Provider store={store}>{ui}</Provider>)
+    const rival = () => zone('Rival, Zona de monstruo 1')
+
+    const stack = rival().querySelector<HTMLElement>('[data-material-stack]')!
+    expect(stack.children).toHaveLength(2)
+    expect(stack).toHaveClass('[transform:rotate(180deg)]', 'pointer-events-none')
+    expect(stack).toHaveAttribute('aria-hidden', 'true')
+    // Sólo la carta lleva el id que buscan la espada y los vuelos; la pila va antes (detrás).
+    expect(rival().querySelectorAll('[data-rival-card-id]')).toHaveLength(1)
+    expect(stack.nextElementSibling).toHaveAttribute('data-rival-card-id', 'card-9001-1')
+    const ring = within(rival()).getByRole('img', { name: '2 materiales' })
+    expect(ring.parentElement).not.toHaveClass('rotate-180')
+    expect(ring.parentElement).not.toHaveClass('-rotate-90')
+
+    // En defensa: la pila gira con su carta (acostada y de cabeza); el número, al revés que la carta, queda derecho.
+    rerender(<DuelTable mine={side(start)} theirs={side(xyz('def'))} />)
+    expect(rival().querySelector('[data-material-stack]')).toHaveClass('[transform:rotate(270deg)]')
+    expect(within(rival()).getByRole('img', { name: '2 materiales' }).parentElement).toHaveClass('-rotate-90')
+
+    // Sin materiales, nada.
+    rerender(<DuelTable mine={side(start)} theirs={side(play({ type: 'place', id: 'card-9001-1', zone: 'mz', index: 0, pos: 'atk' }))} />)
+    expect(rival().querySelector('[data-material-stack]')).toBeNull()
+    expect(within(rival()).queryByRole('img', { name: /material/ })).not.toBeInTheDocument()
+  })
+
   it('cada carta lleva el id con el que la busca la espada de un ataque: la propia por el suyo y la del rival por el que él le dio', () => {
     const mine = play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
     // El id que le dio el rival a su carta (en un duelo es opaco: `c3`) es el que lleva la zona; acá, como el resto de la prueba, uno de las cartas armadas.

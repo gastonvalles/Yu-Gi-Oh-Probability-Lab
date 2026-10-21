@@ -89,6 +89,7 @@ import { PracticeMatPanel } from './PracticeMatPanel'
 import { panelStepsOf } from './panel-steps'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { PileStack } from './PileStack'
+import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, GLOW_TONE } from './practice-styles'
 
 export interface MatCard {
@@ -2288,11 +2289,14 @@ interface PlacedCardProps {
 /**
  * Carta en una zona del campo: es tuya, así que boca abajo se ve su imagen atenuada (como en DuelingBook); en defensa o
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
- * de al lado; contadores, materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
+ * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
 function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, bind, onOpen }: PlacedCardProps) {
-  // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, con target): cada pedazo es su mensaje.
+  // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
+  const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
+  // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, etiqueta de elegida, con target): cada pedazo es su mensaje.
   let label = placed.pos === 'set' ? t('practice.mat.cardFaceDown', { name: card.name }) : placed.pos === 'def' ? t('practice.mat.cardDefense', { name: card.name }) : card.name
+  if (materials > 0) label = t('practice.mat.cardMaterials', { label, count: materials })
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
   if (targeted) label = t('practice.card.targeted', { name: label })
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
@@ -2312,44 +2316,48 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
   }, [placed.pos])
 
   return (
-    <div
-      ref={cardRef}
-      // Esperando que se elija cómo sale, la carta es sólo una imagen: lo que se puede hacer lo dice el menú (o la barra de pasos).
-      role={pending ? undefined : 'button'}
-      tabIndex={pending ? undefined : 0}
-      aria-hidden={pending || undefined}
-      aria-label={pending ? undefined : label}
-      title={pending ? undefined : label}
-      // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
-      // Parada, la carta ocupa el alto de la casilla y queda centrada (en la zona de campo, de la forma de una carta, es la casilla entera); acostada gira sobre su centro y entra justo.
-      className={cx(MAT_CARD, 'absolute inset-x-0 top-0 mx-auto aspect-[421/614]', spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]', pending && 'pointer-events-none')}
-      // El color de su aro: el del destaque, o el rojo de la mira.
-      style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
-      data-card-id={placed.id}
-      data-pending={pending ? 'true' : undefined}
-      data-dragging={dragging ? 'true' : 'false'}
-      data-flash={flash ? 'true' : 'false'}
-      data-flash-kind={flash?.kind}
-      data-targeted={targeted ? 'true' : 'false'}
-      data-selected={framed ? 'true' : 'false'}
-      data-glow={glow ? 'true' : 'false'}
-      data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
-      data-dim={dim ? 'true' : 'false'}
-      {...bind({ id: placed.id, name: card.name, art: artOf(card) })}
-      onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
-      onContextMenu={(event) => event.preventDefault()}
-    >
-      {/* El cambio de brillo (boca abajo se ve atenuada) espera a que la carta, al darse vuelta, esté de canto. */}
-      <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[115ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none')}>
-        <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
-      </span>
-      {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}
-      {placed.materials.length > 0 ? <span key={placed.materials.length} className="absolute bottom-0.5 right-0.5 z-2 animate-pop rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground motion-reduce:animate-none">+{placed.materials.length}</span> : null}
-      {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
-      {framed ? <FxFrame tone="cyan" /> : null}
-      {glow ? <FxFrame tone={GLOW_TONE[glowKind ?? 'opening']} orbit={false} /> : null}
-      {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
-      {targeted ? <TargetMark /> : null}
-    </div>
+    <>
+      {/* Antes de la carta, así queda detrás; arrastrada o atenuada, la acompaña. */}
+      <MaterialStack count={materials} sideways={sideways} className={cx(dragging && 'opacity-30', dim && 'brightness-[0.42] saturate-[0.6]')} />
+      <div
+        ref={cardRef}
+        // Esperando que se elija cómo sale, la carta es sólo una imagen: lo que se puede hacer lo dice el menú (o la barra de pasos).
+        role={pending ? undefined : 'button'}
+        tabIndex={pending ? undefined : 0}
+        aria-hidden={pending || undefined}
+        aria-label={pending ? undefined : label}
+        title={pending ? undefined : label}
+        // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
+        // Parada, la carta ocupa el alto de la casilla y queda centrada (en la zona de campo, de la forma de una carta, es la casilla entera); acostada gira sobre su centro y entra justo.
+        className={cx(MAT_CARD, 'absolute inset-x-0 top-0 mx-auto aspect-[421/614]', spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]', pending && 'pointer-events-none')}
+        // El color de su aro: el del destaque, o el rojo de la mira.
+        style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
+        data-card-id={placed.id}
+        data-pending={pending ? 'true' : undefined}
+        data-dragging={dragging ? 'true' : 'false'}
+        data-flash={flash ? 'true' : 'false'}
+        data-flash-kind={flash?.kind}
+        data-targeted={targeted ? 'true' : 'false'}
+        data-selected={framed ? 'true' : 'false'}
+        data-glow={glow ? 'true' : 'false'}
+        data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
+        data-dim={dim ? 'true' : 'false'}
+        {...bind({ id: placed.id, name: card.name, art: artOf(card) })}
+        onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
+        onContextMenu={(event) => event.preventDefault()}
+      >
+        {/* El cambio de brillo (boca abajo se ve atenuada) espera a que la carta, al darse vuelta, esté de canto. */}
+        <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[115ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none')}>
+          <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
+        </span>
+        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}
+        <MaterialCount count={materials} sideways={sideways} />
+        {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
+        {framed ? <FxFrame tone="cyan" /> : null}
+        {glow ? <FxFrame tone={GLOW_TONE[glowKind ?? 'opening']} orbit={false} /> : null}
+        {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
+        {targeted ? <TargetMark /> : null}
+      </div>
+    </>
   )
 }

@@ -232,6 +232,9 @@ export const practice = {
   'practice.mat.cardFaceDown': '{name}, boca abajo',
   'practice.mat.cardDefense': '{name}, en defensa',
   'practice.mat.cardChosen': '{label} ({chosen})',
+  // Los materiales de un Xyz en el campo: el aro de la cantidad y lo que se suma al nombre de la carta.
+  'practice.mat.materialCount': { one: '{count} material', other: '{count} materiales' },
+  'practice.mat.cardMaterials': { one: '{label}, con {count} material', other: '{label}, con {count} materiales' },
 
   // Mano en abanico.
   'practice.hand.label': 'Mano',
