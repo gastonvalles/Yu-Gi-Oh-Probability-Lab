@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
+import { Spotlight } from '../../probability/MatFx'
 import { CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
@@ -66,10 +67,47 @@ export function DuelSection() {
 
       <ArenaSamples />
 
+      <RivalEffectSample />
+
       <TurnDialSamples />
 
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+/** Lo que Beto ve cuando Ana activa un efecto de una carta con varios: la carta grande, el cartel con el número del efecto y, debajo, su frase textual. */
+const RIVAL_EFFECT = {
+  caption: 'Ana activa el efecto 2 de Lunalight Silver Hound',
+  card: { id: 'rival-effect', name: 'Lunalight Silver Hound', art: 'https://images.ygoprodeck.com/images/cards_small/33909817.jpg' },
+  detail: {
+    lead: 'Efecto 2 · When a Spell/Trap Card or effect is activated on the field (Quick Effect)',
+    text: 'You can banish this card and 1 "Lunalight" Fusion Monster from your GY; negate the activation.',
+  },
+}
+
+/** El cartel del centro con el efecto que activa el rival (se queda 7 s para leerlo y se va solo: el botón lo vuelve a mostrar). */
+function RivalEffectSample() {
+  const [shown, setShown] = useState(1)
+
+  return (
+    <Specimen
+      title="El efecto que activa el rival"
+      layout="column"
+      note={
+        <>
+          Cuando el rival elige un efecto entre varios, el cartel del centro dice cuál (<Tag>Ana activa el efecto 2 de …</Tag>) y, debajo de la carta, lleva la frase del efecto tal cual el texto, con su número y cuándo se activa; se queda 7 s. Sin efecto elegido, sólo la carta y el cartel de siempre. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>Spotlight detail</Tag>)
+        </>
+      }
+    >
+      <div className="relative isolate min-h-[30rem] overflow-hidden rounded-card border border-border-subtle">
+        <MatScene className="absolute inset-0 -z-10" />
+        <Spotlight key={shown} kind="activate" cards={[RIVAL_EFFECT.card]} caption={RIVAL_EFFECT.caption} detail={RIVAL_EFFECT.detail} className="absolute inset-0" />
+      </div>
+      <Button variant="secondary" size="sm" icon="refresh" onClick={() => setShown((count) => count + 1)}>
+        Volver a mostrar
+      </Button>
+    </Specimen>
   )
 }
 

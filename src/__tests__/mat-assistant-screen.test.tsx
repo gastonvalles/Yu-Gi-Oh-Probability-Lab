@@ -237,13 +237,33 @@ describe('el contador por efecto: una carta con varios efectos pregunta cuál se
     expect(screen.getByRole('menuitem', { name: /^Efecto 2 · .*Ya usaste un efecto que comparte este límite.*Límite compartido/ })).toBeInTheDocument()
   })
 
-  it('una carta con varios efectos pero sin ningún límite confirmado se activa directo, sin preguntar', () => {
+  it('una carta con varios efectos pero sin ningún límite confirmado también pregunta cuál (siempre, no a veces): así el rival ve cuál efecto se activa', () => {
     setCardEffectMapForTests(new Map([[CROW_ID, effectSentences(CROW_TEXT).map((sentence) => [sentence.start, EFFECT_FACT.cost, 0] as [number, number, number])]]))
     render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
 
     tap(crow(0))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
-    expect(screen.queryByRole('menuitem', { name: /^Efecto \d · / })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('menuitem', { name: /^Efecto \d · / })).toHaveLength(2)
+    // La lista del script es completa: no hay «Otro efecto».
+    expect(screen.queryByRole('menuitem', { name: /^Otro efecto/ })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Efecto 1 · / }))
+    expect(screen.getAllByText('Activás el efecto 1 de Cuervo').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('sin datos del script (la carta no se pudo alinear) pregunta igual, con las oraciones del texto, y ofrece «Otro efecto» por si falta alguno', () => {
+    setCardEffectMapForTests(new Map())
+    render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
+
+    tap(crow(0))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    expect(screen.getAllByRole('menuitem', { name: /^Efecto \d · / })).toHaveLength(2)
+
+    const other = screen.getByRole('menuitem', { name: /^Otro efecto/ })
+    expect(other).toHaveAccessibleName(/Si el efecto no figura en la lista/)
+
+    // «Otro efecto» activa sin decir cuál: la jugada queda sin número.
+    fireEvent.click(other)
     expect(screen.getAllByText('Activás el efecto de Cuervo').length).toBeGreaterThanOrEqual(1)
   })
 })

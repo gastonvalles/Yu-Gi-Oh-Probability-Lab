@@ -106,6 +106,8 @@
   --animate-card-activate-center: card-activate-center 950ms cubic-bezier(0.2, 0, 0, 1) both;
   /* Lo que el rival activa, revela o declara y es público: la carta entra rápido y se queda 3 s para leerla (y su nombre) antes de irse; no ataja toques. */
   --animate-card-activate-linger: card-activate-linger 3000ms cubic-bezier(0.2, 0, 0, 1) both;
+  /* Lo mismo, con el efecto que activó escrito debajo de la carta: 7 s, lo que lleva leer una frase de una carta (y decidir si se responde). */
+  --animate-card-activate-read: card-activate-linger 7000ms cubic-bezier(0.2, 0, 0, 1) both;
   /* El mazo de la mesa: tirón de la carta de arriba al repartir y barajado (las dos de abajo se abren a los costados). */
   --animate-pile-draw: pile-draw 200ms cubic-bezier(0.2, 0, 0, 1);
   --animate-riffle-left: riffle-left 640ms cubic-bezier(0.4, 0, 0.2, 1);

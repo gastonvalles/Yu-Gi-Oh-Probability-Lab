@@ -11,6 +11,7 @@ import { loadCardEffectMap, loadCardEffects, setCardEffectMapForTests } from '..
 import { EFFECT_FACT } from '../app/card-effect-facts'
 import { EFFECT_PLACE } from '../app/card-effect-map'
 import CARD_EFFECTS from '../data/card-effects.json'
+import { effectSentences } from '../app/card-text'
 import { extractRoomCode } from '../app/duel-link'
 import { readPlayReturn } from '../app/play-return'
 import { createDuel } from '../app/duel-session'
@@ -24,6 +25,7 @@ import { DuelScreen } from '../components/duel/DuelScreen'
 import { COMPACT_FIELD_MEDIA_QUERY } from '../components/probability/compact-field'
 import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
+import { fetchCardsByIds } from '../ygoprodeck'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom, type MemorySpectator } from './support/memory-room'
 
 // La pantalla del duelo arma dos mesas completas por prueba: sola cada una tarda un par de segundos, pero con toda la suite corriendo a la vez alguna pasaba los 5 s de siempre (la de «atacar» fallaba una de cada tantas corridas).
@@ -1404,6 +1406,57 @@ describe('la pantalla del duelo', () => {
     expect(within(log).queryByText('Ana activa una carta')).not.toBeInTheDocument()
   })
 
+  it('cuando el rival elige un efecto entre varios, Beto ve cuál: el número en el cartel, en el registro y en el aviso de cadena, y la frase del efecto, tal cual, debajo de la carta', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const twoEffects =
+      'If this card is in your hand: You can banish 1 "HERO" monster from your GY; Special Summon this card. If this card is Normal or Special Summoned: You can add 1 "Masked HERO" monster from your Deck or GY to your hand.'
+    const cards = new Map([...monsters].map(([id, entry]) => [id, { ...entry, apiCard: { ...entry.apiCard, description: twoEffects } as ApiCardReference }]))
+    // La carta del rival se busca por su número: con su texto, así Beto puede leer los efectos.
+    const original = vi.mocked(fetchCardsByIds).getMockImplementation()!
+
+    vi.mocked(fetchCardsByIds).mockImplementation(async (ids: number[]) => (await original(ids)).map((api) => ({ ...api, description: twoEffects })))
+
+    try {
+      const { host, guest } = startDuel({ cardsById: cards })
+      openTable(host, guest)
+      await act(async () => {
+        await loadCardEffectMap()
+      })
+      summonFirst(host)
+      flush()
+      const stage = () => guest.container.querySelector('[data-activation]')
+
+      // Ana activa el efecto 2 (el menú le pregunta cuál: la carta tiene dos).
+      tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /^Efecto 2 · / }))
+      flush()
+      await act(async () => {})
+
+      // El cartel dice cuál y, debajo de la carta, su frase textual (con su número y cuándo se activa); se queda más (7 s) para leerla.
+      expect(stage()).toHaveTextContent(/Ana activa el efecto 2 de Carta \d+/)
+      expect(stage()).toHaveTextContent('Efecto 2 · If this card is Normal or Special Summoned')
+      expect(stage()).toHaveTextContent('You can add 1 "Masked HERO" monster from your Deck or GY to your hand.')
+      expect(stage()!.querySelector('[class*="animate-card-activate-read"]')).not.toBeNull()
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+      expect(stage()).not.toBeNull()
+      act(() => {
+        vi.advanceTimersByTime(2500)
+      })
+      expect(stage()).toBeNull()
+
+      // El registro tiene una sola línea, con el número del efecto.
+      click(guest, /^Chat/)
+      const log = within(screen.getByRole('dialog')).getByRole('log')
+      expect(within(log).getAllByText(/Ana activa/)).toHaveLength(1)
+      expect(within(log).getByText(/Ana activa el efecto 2 de Carta \d+/)).toBeInTheDocument()
+    } finally {
+      vi.mocked(fetchCardsByIds).mockImplementation(original)
+    }
+  })
+
   it('lo que el rival activa, revela o marca como objetivo se ve igual que lo tuyo: su carta grande en el centro y el aro en su campo, y el objetivo queda marcado', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel({ cardsById: monsters })
@@ -2623,6 +2676,48 @@ describe('la pantalla del duelo', () => {
       flush()
       expect(lane(guest, 'chain')).toBeNull()
       expect(glowing(guest)).toBe(0)
+    } finally {
+      setCardEffectMapForTests(null)
+    }
+  })
+
+  it('el aviso de cadena también dice cuál efecto activó el rival, si eligió uno entre varios', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    await loadCardEffectMap()
+    // Dos efectos: el primero roba; el segundo es rápido, se activa desde la mano y espera que el rival active algo.
+    const twoEffects = 'If this card is Normal Summoned: You can draw 1 card. When your opponent activates a card or effect (Quick Effect): You can discard this card; negate that effect.'
+    const [draw, quick] = effectSentences(twoEffects)
+
+    setCardEffectMapForTests(
+      new Map([
+        [
+          2,
+          [
+            [draw!.start, 0, 0],
+            [quick!.start, EFFECT_FACT.quick | EFFECT_FACT.cost, EFFECT_PLACE.hand],
+          ],
+        ],
+      ]),
+    )
+
+    try {
+      const waiting = { ...effectMonster, ygoprodeckId: 2, description: twoEffects } as unknown as ApiCardReference
+      const cards = new Map([...monsters].map(([id, entry]) => [id, { ...entry, apiCard: waiting }]))
+      const { host, guest } = startDuel({ cardsById: cards })
+      openTable(host, guest)
+      const lane = (view: RenderResult) => view.container.querySelector<HTMLElement>('[data-lane="chain"]')
+
+      summonFirst(host)
+      flush()
+      await act(async () => {})
+
+      // Ana activa el efecto 1 (el que roba): Beto, que puede responder con el rápido de sus cartas, ve cuál efecto es.
+      tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /^Efecto 1 · / }))
+      flush()
+      await act(async () => {})
+      expect(lane(guest)).toHaveTextContent(/^Ana activó el efecto 1 de Carta \d+\. Podés responder con Monstruo \d+, Monstruo \d+ y 3 más\./)
     } finally {
       setCardEffectMapForTests(null)
     }

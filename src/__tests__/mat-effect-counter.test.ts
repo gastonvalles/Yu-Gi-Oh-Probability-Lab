@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import type { CardEffectOfText } from '../app/card-effect-data'
+import { setCardEffectMapForTests, type CardEffectOfText } from '../app/card-effect-data'
 import { EFFECT_FACT, effectFactNames, visibleFactNames } from '../app/card-effect-facts'
 import { effectParts, effectSentences } from '../app/card-text'
 import { EFFECT_PLACE } from '../app/card-effect-map'
-import { activationFacts, countableEffects, effectChoices, effectKey, LIMIT_FACTS, usageReminder, type Activation } from '../app/mat-assistant'
+import { activationFacts, cardEffects, countableEffects, effectChoices, effectDetail, effectKey, LIMIT_FACTS, usageReminder, type Activation } from '../app/mat-assistant'
 import type { MatAction } from '../app/practice-mat'
 import { visibleTraits } from '../components/card-detail/CardEffectTraits'
 
@@ -23,14 +23,17 @@ const effectsOf = (text: string, ...facts: number[]): CardEffectOfText[] => effe
 /** Lo mismo, con desde dónde se activa cada efecto. */
 const effectsAt = (text: string, ...confirmed: Array<[facts: number, places: number]>): CardEffectOfText[] => effectSentences(text).map((sentence, index) => ({ start: sentence.start, facts: confirmed[index]?.[0] ?? 0, places: confirmed[index]?.[1] ?? 0, sentence }))
 
-describe('countableEffects: cuándo la mesa cuenta los efectos de una carta uno por uno', () => {
-  it('con varios efectos y al menos un límite confirmado; con uno solo, sin límites o sin datos, no (se activa directo, como siempre)', () => {
+describe('countableEffects: cuándo la mesa lleva los efectos de una carta uno por uno', () => {
+  it('con varios efectos, tengan o no un límite confirmado (toda carta con varios pregunta cuál: no hay inconsistencias); con uno solo o sin datos, no (se activa directo)', () => {
     const two = effectsOf(DUSK_CROW, ONCE | EFFECT_FACT.cost, ONCE)
 
     expect(countableEffects(two)).toBe(two)
     expect(countableEffects(effectsOf(DUSK_CROW, 0, ONCE))).toHaveLength(2)
-    expect(countableEffects(effectsOf(DUSK_CROW, EFFECT_FACT.cost, EFFECT_FACT.quick))).toBeNull()
+    // Sin ningún límite de uso: antes se activaba directo y a veces el menú preguntaba y a veces no (Gastón, 2026-10-20).
+    expect(countableEffects(effectsOf(DUSK_CROW, EFFECT_FACT.cost, EFFECT_FACT.quick))).toHaveLength(2)
+    expect(countableEffects(effectsOf(DUSK_CROW))).toHaveLength(2)
     expect(countableEffects(effectsOf('If this card is sent to the GY: You can draw 1 card.', ONCE))).toBeNull()
+    expect(countableEffects(effectsOf('Cannot be Normal Summoned.'))).toBeNull()
     expect(countableEffects(undefined)).toBeNull()
     expect(countableEffects([])).toBeNull()
   })
@@ -187,5 +190,56 @@ describe('activationFacts: al activar una Mágica o una Trampa sólo vale el lí
     expect(activationFacts(limited) & LIMIT_FACTS).not.toBe(0)
     expect(activationFacts(EFFECT_FACT.once | EFFECT_FACT.hardOnce | EFFECT_FACT.cost)).toBe(0)
     expect(activationFacts(0)).toBe(0)
+  })
+})
+
+describe('cardEffects: los efectos de una carta, alineados con su script o leídos del texto', () => {
+  afterEach(() => setCardEffectMapForTests(null))
+
+  it('sin datos del script, las oraciones del texto que son efectos (sin ningún hecho confirmado) y la lista no está verificada', () => {
+    const { effects, verified } = cardEffects(10808715, DUSK_CROW)
+
+    expect(verified).toBe(false)
+    expect(effects.map((effect) => effect.sentence.text.slice(0, 22))).toEqual(['If this card is in you', 'If this card is Normal'])
+    expect(effects.every((effect) => effect.facts === 0 && effect.places === 0)).toBe(true)
+  })
+
+  it('con datos alineados, la lista del script (verificada) y en el mismo lugar que la del texto: el número de efecto que viaja con la jugada vale para los dos jugadores', () => {
+    const sentences = effectSentences(DUSK_CROW)
+
+    setCardEffectMapForTests(new Map([[10808715, sentences.map((sentence) => [sentence.start, ONCE, 0] as [number, number, number])]]))
+    const aligned = cardEffects(10808715, DUSK_CROW)
+
+    expect(aligned.verified).toBe(true)
+    expect(aligned.effects.map((effect) => effect.facts)).toEqual([ONCE, ONCE])
+    // Sin los datos (el otro jugador todavía no los bajó) el efecto número 2 es el mismo.
+    setCardEffectMapForTests(null)
+    expect(cardEffects(10808715, DUSK_CROW).effects.map((effect) => effect.start)).toEqual(aligned.effects.map((effect) => effect.start))
+  })
+})
+
+describe('effectDetail: el efecto elegido, textual, para quien tiene que decidir si responde', () => {
+  it('cuándo se activa (con su número) y qué hace; un lugar que la carta no tiene no dice nada', () => {
+    const effects = effectsOf(DUSK_CROW)
+    const detail = effectDetail(effects, 1)!
+
+    expect(detail.lead).toBe('Efecto 2 · If this card is Normal or Special Summoned')
+    expect(detail.what).toBe('You can add 1 "Masked HERO" monster from your Deck or GY to your hand.')
+    expect(effectDetail(effects, 5)).toBeNull()
+  })
+})
+
+describe('effectChoices con una lista leída sólo del texto: una salida para el efecto que no figura', () => {
+  it('la lista del script es completa (sin «Otro efecto»); la del texto puede no tenerlos a todos y lo ofrece, sin decir cuál efecto es', () => {
+    const effects = effectsOf(DUSK_CROW)
+
+    expect(effectChoices('c1', 10808715, effects, [], 3).map((choice) => choice.label)).not.toContain('Otro efecto')
+
+    const open = effectChoices('c1', 10808715, effects, [], 3, false)
+    const other = open[open.length - 1]!
+
+    expect(open).toHaveLength(3)
+    expect(other.label).toBe('Otro efecto')
+    expect(other.action).toEqual({ type: 'activate', id: 'c1' })
   })
 })

@@ -171,6 +171,8 @@ interface SpotlightProps {
   cards: SpotlightCard[]
   /** Lo que pasó, en una línea (el texto del paso). */
   caption: string | null
+  /** El efecto que se activa, si se eligió uno entre varios: cuándo se activa y qué hace, textual, debajo de la carta; se queda 7 s para leerlo. */
+  detail?: { lead: string; text: string }
   /** Las cartas salen del deck o del Extra: aparecen de dorso y se dan vuelta en 3D. */
   flip?: boolean
   /** Se queda más tiempo (3 s en vez de 1): lo que el rival activa o muestra y es público, para que se alcance a leer la carta y su nombre. */
@@ -185,13 +187,16 @@ const STAGE_FACE = 'absolute inset-0 overflow-hidden bg-input shadow-[0_0_0_3px_
 /** Ancho de cada carta según cuántas son: una sola es grande; con más, se achican para entrar juntas. */
 const STAGE_CARD_WIDTH = ['', 'w-[min(42cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w-[min(22cqw,7.5rem)]', 'w-[min(18cqw,6.5rem)]']
 
+/** Con el efecto escrito debajo la carta es más chica: lo que hay que leer es el texto, y el conjunto tiene que entrar en el alto de la mesa. */
+const STAGE_CARD_WIDTH_WITH_DETAIL = 'w-[min(34cqw,10.5rem)]'
+
 /**
  * Las cartas grandes en el centro de la mesa cuando se activa, se muestra o se declara una carta (o, al reproducir un combo, cuando
  * un paso las mueve): aparecen con un resplandor y una onda, cada una con su marco de color, un reflejo y su nombre debajo, y arriba una
  * línea que dice qué pasó. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
  * recuadro, no las de la pantalla.
  */
-export function Spotlight({ kind, cards, caption, flip = false, linger = false, className }: SpotlightProps) {
+export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, className }: SpotlightProps) {
   const tone = STAGE_TONE[kind]
   const shown = cards.slice(0, 4)
 
@@ -199,7 +204,7 @@ export function Spotlight({ kind, cards, caption, flip = false, linger = false, 
     <div data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className={cx('pointer-events-none @container grid place-items-center overflow-hidden', className)} style={fxVars(tone)}>
       <span className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
       <span className="absolute left-1/2 top-1/2 aspect-square w-[min(56cqw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
-      <div className={cx('relative motion-reduce:animate-none', linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
+      <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
         {caption ? (
           <span className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
             {caption}
@@ -207,7 +212,7 @@ export function Spotlight({ kind, cards, caption, flip = false, linger = false, 
         ) : null}
         <div className="flex items-start justify-center gap-3">
           {shown.map((card) => (
-            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', STAGE_CARD_WIDTH[shown.length])}>
+            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
               {/* Dos caras: la de adelante (la carta) y la de atrás (el dorso), que se muestra primero y se da vuelta en 3D. */}
               <div className="relative aspect-[421/614] w-full [perspective:900px]">
                 <div className={cx('absolute inset-0 [transform-style:preserve-3d]', flip && 'animate-fx-flip-in motion-reduce:animate-none')}>
@@ -226,6 +231,13 @@ export function Spotlight({ kind, cards, caption, flip = false, linger = false, 
             </figure>
           ))}
         </div>
+        {/* El efecto que activa el rival (Gastón, 2026-10-20: «sería ideal que el rival pueda ver qué efecto estoy activando»): cuándo se activa y qué hace, tal cual el texto de la carta. */}
+        {detail ? (
+          <div className="mx-auto mt-3 grid w-[min(88cqw,24rem)] gap-0.5 rounded-card border border-[color:rgb(var(--fx-rgb)/0.6)] bg-background/92 px-3 py-2 text-left">
+            <p className="m-0 text-micro font-bold text-info-soft">{detail.lead}</p>
+            <p className="m-0 line-clamp-6 text-body font-semibold leading-snug text-foreground">{detail.text}</p>
+          </div>
+        ) : null}
       </div>
     </div>
   )

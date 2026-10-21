@@ -46,6 +46,8 @@ export const practice = {
   'practice.menu.activate': 'Activar',
   'practice.menu.activateEffect': 'Activar efecto',
   'practice.menu.effectLead': 'Efecto {n}',
+  'practice.menu.otherEffect': 'Otro efecto',
+  'practice.menu.otherEffectHint': 'Si el efecto no figura en la lista',
   'practice.menu.asScale': 'Activar como escala',
   'practice.menu.set': 'Colocar',
   'practice.menu.turnFaceDown': 'Poner boca abajo',

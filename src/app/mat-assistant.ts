@@ -1,8 +1,8 @@
 import { t } from '../i18n'
-import type { CardEffectOfText } from './card-effect-data'
+import { getCardEffectMap, type CardEffectOfText } from './card-effect-data'
 import { EFFECT_FACT, effectFactNames, visibleFactNames } from './card-effect-facts'
 import { EFFECT_PLACE } from './card-effect-map'
-import { effectParts } from './card-text'
+import { effectParts, effectSentences } from './card-text'
 import { isForeignId, isToken, locateCard, type MatAction, type MatCardKind, type MatMenuItem, type MatState } from './practice-mat'
 
 /**
@@ -72,11 +72,37 @@ export function usageReminder(facts: number, past: readonly Activation[], key: s
 }
 
 /**
- * Los efectos de una carta que la mesa puede contar **uno por uno** (capa 1b del motor de cartas): la carta tiene varios efectos alineados con su texto y al menos uno con un límite de uso confirmado. Si no (un solo efecto,
- * o varios sin ningún límite que contar), no hay nada que llevar por separado y la carta se activa directo, como siempre.
+ * Los efectos de una carta que se activan, en el orden del texto, para elegir cuál se activa (y para que el rival vea cuál): los **alineados con su script** (`getCardEffectMap`, con lo confirmado de cada uno) o, si la carta no se
+ * pudo alinear, las oraciones del texto que son efectos (`effectSentences`, sin ningún hecho confirmado: la precisión es de la frase). **El lugar de cada efecto es el mismo en las dos listas** (la alineación exige las mismas
+ * oraciones, en el mismo lugar), así que el número que viaja con la jugada vale para los dos jugadores aunque uno ya tenga los datos del script y el otro todavía no. `verified`: la lista es la del script (completa: son **todos** los
+ * efectos que se activan) y no sólo la lectura del texto (puede faltar alguno que no abra como un efecto).
+ */
+export function cardEffects(passcode: number, text: string): { effects: readonly CardEffectOfText[]; verified: boolean } {
+  const aligned = getCardEffectMap(passcode, text)
+
+  if (aligned) return { effects: aligned, verified: true }
+
+  return { effects: effectSentences(text).map((sentence) => ({ start: sentence.start, facts: 0, places: 0, sentence })), verified: false }
+}
+
+/**
+ * Los efectos de una carta que la mesa lleva **uno por uno**: los de toda carta con varios (Gastón, 2026-10-20: «a veces al activar el efecto de una carta aparece esto, otras veces no… que no haya inconsistencias»: antes sólo
+ * preguntaba si la carta tenía al menos un límite de uso confirmado, y las demás se activaban directo). Una carta de un solo efecto se activa directo: no hay nada que elegir.
  */
 export function countableEffects(effects: readonly CardEffectOfText[] | undefined): readonly CardEffectOfText[] | null {
-  return effects !== undefined && effects.length >= 2 && effects.some((effect) => (effect.facts & LIMIT_FACTS) !== 0) ? effects : null
+  return effects !== undefined && effects.length >= 2 ? effects : null
+}
+
+/** El efecto número `index` de una carta, **textual**: cuándo se activa (con su número: «Efecto 2 · When a Spell/Trap Card…») y qué hace, para mostrárselo a quien tiene que decidir si responde. Null si la carta no tiene ese efecto. */
+export function effectDetail(effects: readonly CardEffectOfText[], index: number): { lead: string; what: string } | null {
+  const effect = effects[index]
+
+  if (!effect) return null
+
+  const { when, what } = effectParts(effect.sentence)
+  const number = t('practice.menu.effectLead', { n: index + 1 })
+
+  return { lead: when === '' ? number : `${number} · ${when}`, what }
 }
 
 /**
@@ -106,7 +132,7 @@ const PLACE_LABELS: ReadonlyArray<{ bits: number; key: 'practice.assistant.place
  * misma cantidad y se emparejan sin dudas: `alignEffects`), así que no hay un «otro»: no queda ningún efecto afuera de la lista. Cada renglón sabe qué pedazo del texto de la carta es (`preview`). Elegir uno que ya se usó
  * no se frena: la mesa avisa, no decide.
  */
-export function effectChoices(id: string, passcode: number, effects: readonly CardEffectOfText[], past: readonly Activation[], turn: number): MatMenuItem[] {
+export function effectChoices(id: string, passcode: number, effects: readonly CardEffectOfText[], past: readonly Activation[], turn: number, complete = true): MatMenuItem[] {
   // Desde dónde se activa cada efecto sólo se dice si la carta tiene efectos de lugares distintos (la mano, el Cementerio, la Zona de Péndulo): si todos son del campo no hay nada que distinguir.
   const distinguishes = effects.some((effect) => (effect.places & (EFFECT_PLACE.hand | EFFECT_PLACE.grave | EFFECT_PLACE.pendulum)) !== 0)
   const choices = effects.map((effect, index): MatMenuItem => {
@@ -115,17 +141,19 @@ export function effectChoices(id: string, passcode: number, effects: readonly Ca
     const traits = visibleFactNames(effectFactNames(effect.facts)).map((fact) => t(`search.traits.${fact}`))
     const usedText = used === null ? '' : t((effect.facts & EFFECT_FACT.shared) !== 0 ? 'practice.assistant.usedHint.shared' : used === 'duel' ? 'practice.assistant.usedHint.duel' : 'practice.assistant.usedHint.turn')
     const hint = [usedText, ...places, ...traits].filter(Boolean).join(' · ')
-    const { when, what } = effectParts(effect.sentence)
-    const number = t('practice.menu.effectLead', { n: index + 1 })
+    const { lead, what } = effectDetail(effects, index)!
 
     return {
-      lead: when === '' ? number : `${number} · ${when}`,
+      lead,
       label: what,
       hint: hint === '' ? undefined : hint,
       preview: { start: effect.start, end: effect.start + effect.sentence.text.length },
       action: { type: 'activate', id, effect: index },
     }
   })
+
+  // Una lista sacada sólo del texto (la carta no se pudo alinear con su script) puede no tenerlos a todos: una salida para el efecto que no figura, que se activa sin decir cuál.
+  if (!complete) choices.push({ label: t('practice.menu.otherEffect'), hint: t('practice.menu.otherEffectHint'), action: { type: 'activate', id } })
 
   return choices
 }
