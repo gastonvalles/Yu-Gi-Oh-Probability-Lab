@@ -1460,7 +1460,15 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
         ...(action.type === 'activate' && action.effect !== undefined ? { effectIndex: action.effect } : {}),
       })
     } else if (showcase) {
-      setShown({ effect: { key, kind: showcase.kind, cards: showcase.ids.map((id) => ({ id, art: artOf(id) })), ...(showcase.flip ? { flip: true } : {}), caption: t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length }) } })
+      const cards = showcase.ids.map((id) => ({ id, art: artOf(id) }))
+      // Una carta que el rival suma a su mano y es pública (la buscó, la devolvió, la trajo del cementerio; robar no llega hasta acá) se ve entera: se queda para leerla, con su nombre, y queda fija en el detalle.
+      const added = showcase.kind === 'hand' && showcase.ids.length === 1 && cards[0]!.art !== null && !isToken(showcase.ids[0]!) ? theirs.known[showcase.ids[0]!] : undefined
+      const passcode = added ? passcodeOfDrawId(added) : null
+
+      setShown({
+        effect: { key, kind: showcase.kind, cards, ...(showcase.flip ? { flip: true } : {}), caption: t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length }), ...(added ? { linger: true, peekId: added } : {}) },
+        ...(passcode === null ? {} : { passcode }),
+      })
     } else if (quiet) {
       // Al cementerio o al destierro no se muestra grande: el efecto no se dibuja (`quiet`), pero su línea entra al registro como las demás.
       setShown({ effect: { key, kind: quiet.kind, quiet: true, cards: quiet.ids.map((id) => ({ id, art: artOf(id) })), caption: t(`duel.announce.show.${quiet.kind}`, { name: rival, count: quiet.ids.length }) } })
@@ -1481,8 +1489,8 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     if (shown?.passcode === undefined || shown.effect.cards[0]?.name) return
 
     const { key } = shown.effect
-    // Sólo se lee lo que se activa, se revela o se declara (ver `READABLE_KINDS`).
-    const kind = shown.effect.kind as 'activate' | 'reveal' | 'declare'
+    // Sólo se lee lo que se activa, se revela o se declara (ver `READABLE_KINDS`) y lo que se suma a la mano.
+    const kind = shown.effect.kind as 'activate' | 'reveal' | 'declare' | 'hand'
     let alive = true
 
     fetchCardsByIds([shown.passcode])
@@ -1752,6 +1760,13 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   // La mesa espera una "sesión" con la mano inicial y las jugadas; acá no hay combos ni repetición, así que el cursor está siempre al final.
   const session = useMemo<MatSession>(() => ({ initial: initial!, actions: [...actions], cursor: actions.length, names: {}, replay: false }), [initial, actions])
   const { effect: rivalEffect, flash: rivalFlash, shuffles: rivalShuffle } = useRivalEffect(snapshot)
+  // Lo que el rival suma a su mano sin robar (Gastón, 2026-10-20: «la carta añadida debe aparecer en el detalle hasta que se haga click en otra carta»): queda fija en el detalle de la izquierda, como una carta tocada.
+  const addedToHand = rivalEffect?.peekId
+  const addedKey = rivalEffect?.key
+
+  useEffect(() => {
+    if (addedToHand) dockLock({ drawId: addedToHand })
+  }, [addedToHand, addedKey, dockLock])
   // Lo que se está señalando de cada lado (un aro que late un rato): se arma antes del lado del rival, que lo lleva.
   const pointed = usePointed(snapshot)
   const opponent = useMemo<DuelSideView>(

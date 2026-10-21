@@ -99,6 +99,21 @@ describe('la mesa que se manda al rival no dice qué cartas son', () => {
     expect(game.play({ type: 'place', id: card, zone: 'mz', index: 0, pos: 'atk' }).reveal).toEqual({})
   })
 
+  it('agregar a la mano una carta que no estaba en ella (traerla de un boca abajo, devolverla) también la muestra; «agregar» una que ya está en la mano no revela nada', () => {
+    const game = duel()
+
+    // Una que ya está en la mano: sumarla de nuevo no cambia nada y no tiene por qué decir cuál es.
+    expect(game.play({ type: 'move', id: 'card-1000-1', to: 'hand' }).reveal).toEqual({})
+
+    // Una puesta boca abajo en el campo y devuelta a la mano: el rival no sabía cuál era y ahora sí (no es un robo).
+    game.play({ type: 'place', id: 'card-1001-1', zone: 'st', index: 0, pos: 'set' })
+    expect(game.play({ type: 'move', id: 'card-1001-1', to: 'hand' }).reveal).toEqual({ [game.opaque('card-1001-1')]: 'card-1001-1' })
+
+    // Un destierro boca abajo y traída de vuelta a la mano.
+    game.play({ type: 'move', id: 'card-1002-1', to: 'banished', faceDown: true })
+    expect(game.play({ type: 'move', id: 'card-1002-1', to: 'hand' }).reveal).toEqual({ [game.opaque('card-1002-1')]: 'card-1002-1' })
+  })
+
   it('agregar a la mano una carta del deck (buscarla) la muestra una vez; robar sigue siendo secreto', () => {
     const game = duel()
     const searched = 'card-1010-1'
@@ -246,8 +261,8 @@ function visible(state: MatState, action?: MatAction, before?: MatState): string
     cards.push(action.id)
   }
 
-  // Buscar una carta del deck y agregarla a la mano la muestra.
-  if (action && before && action.type === 'move' && action.to === 'hand' && before.deck.includes(action.id)) {
+  // Agregar a la mano una carta que no estaba en ella (buscarla en el deck, devolverla, traerla del cementerio) la muestra: sólo robar es secreto.
+  if (action && before && action.type === 'move' && action.to === 'hand' && !before.hand.includes(action.id)) {
     cards.push(action.id)
   }
 
