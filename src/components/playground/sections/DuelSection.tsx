@@ -4,12 +4,14 @@ import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
 import { Spotlight } from '../../probability/MatFx'
 import { CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
+import { ArenaPanel } from '../../duel/ArenaPanel'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
 import { Button } from '../../ui/Button'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
 import { TurnDial } from '../../duel/TurnDial'
 import { TURN_BANK_MS, type TurnClock } from '../../../app/duel-clock'
+import type { RoomsApi } from '../../../app/duel-rooms'
 import { CardArt } from '../../CardArt'
 import { Icon } from '../../ui/Icon'
 import { Segmented } from '../../ui/Segmented'
@@ -69,6 +71,8 @@ export function DuelSection() {
 
       <RivalEffectSample />
 
+      <LobbyArenaSamples />
+
       <TurnDialSamples />
 
       <BannerSamples />
@@ -107,6 +111,30 @@ function RivalEffectSample() {
       <Button variant="secondary" size="sm" icon="refresh" onClick={() => setShown((count) => count + 1)}>
         Volver a mostrar
       </Button>
+    </Specimen>
+  )
+}
+
+/** Dos relays de mentira para la muestra: el que nunca contesta (la arena se queda cargando) y el que contesta enseguida con la arena vacía (tocar «Actualizar» muestra el ícono girando). */
+const NO_ANSWER: RoomsApi = { list: () => new Promise(() => undefined), overview: () => new Promise(() => undefined), live: async () => false, register: async () => false, unlist: () => undefined }
+const EMPTY_ARENA: RoomsApi = { ...NO_ANSWER, list: async () => [], overview: async () => ({ rooms: [], live: [] }) }
+
+/** La arena del inicio de Jugar esperando al relay (lugares vacíos con la forma de las tarjetas) y ya vacía, con «Actualizar» girando al tocarlo. */
+function LobbyArenaSamples() {
+  return (
+    <Specimen
+      title="La arena del lobby cargando"
+      layout="column"
+      note={
+        <>
+          Mientras llega la primera respuesta del relay: la línea de estado con el punto que late (<Tag>Mirando quién está…</Tag>) y dos lugares vacíos con la forma y la altura de las tarjetas (<Tag>Skeleton</Tag>), así no se corre nada al llegar. Al tocar <Tag>Actualizar</Tag> el ícono gira al menos una vuelta y la lista se atenúa (<Tag>aria-busy</Tag>); el pedido automático de cada 15 s es silencioso. Archivo: <Tag>duel/ArenaPanel.tsx</Tag>
+        </>
+      }
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ArenaPanel rooms={NO_ANSWER} busy={false} deckReady onJoin={() => undefined} />
+        <ArenaPanel rooms={EMPTY_ARENA} busy={false} deckReady onJoin={() => undefined} />
+      </div>
     </Specimen>
   )
 }

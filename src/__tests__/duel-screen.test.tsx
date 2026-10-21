@@ -2812,14 +2812,16 @@ describe('la pantalla del duelo', () => {
     expect(pass(host)).not.toBeInTheDocument()
   })
 
-  it('el registro del duelo: lo escrito, el comienzo de cada turno y lo que hizo cada uno van en orden en el chat, y la línea sobre el campo muestra lo último y lo abre', () => {
-    const { host, guest } = startDuel()
+  it('el registro del duelo: lo escrito, el comienzo de cada turno y lo que hizo cada uno van en orden en el chat, y la línea sobre el campo muestra lo último que se jugó (no lo escrito: eso le llega como un mensaje) y lo abre', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
 
     // Sin nada que mostrar, la línea del registro no ocupa lugar.
     expect(within(host.container).queryByRole('button', { name: 'Abrir el registro de jugadas' })).not.toBeInTheDocument()
 
-    // Ana pasa el turno y Beto escribe: la línea de Ana muestra lo último escrito.
+    // Ana invoca y pasa el turno y Beto escribe: la línea de Ana muestra lo último que jugó ella y no lo escrito (eso le llega como un mensaje entrante y en el contador del chat; en la línea salía dos veces).
+    const summoned = summonFirst(host)
+    flush()
     passTurn(host)
     click(guest, 'Chat')
     const guestChat = () => within(screen.getByRole('dialog', { name: 'Chat con Ana' }))
@@ -2827,14 +2829,16 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(guestChat().getByRole('button', { name: 'Enviar' }))
     flush()
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(within(host.container).getByRole('button', { name: /^Abrir el registro de jugadas: Beto: Dale, mi turno/ })).toHaveTextContent('Beto: Dale, mi turno')
+    const line = within(host.container).getByRole('button', { name: /^Abrir el registro de jugadas: / })
+    expect(line).toHaveTextContent(summoned)
+    expect(line).not.toHaveTextContent('Dale, mi turno')
 
-    // Tocarla abre el chat, con el comienzo del turno y lo escrito en el orden en que pasó.
+    // Tocarla abre el chat, con lo jugado, el comienzo del turno y lo escrito en el orden en que pasó.
     click(host, /^Abrir el registro de jugadas/)
     const log = within(within(screen.getByRole('dialog', { name: 'Chat con Beto' })).getByRole('log'))
     const rows = log.getAllByRole('listitem').map((row) => row.textContent)
-    expect(rows[0]).toBe('Turno 2 · Beto')
-    expect(rows[1]).toContain('Dale, mi turno')
+    expect(rows.at(-2)).toBe('Turno 2 · Beto')
+    expect(rows.at(-1)).toContain('Dale, mi turno')
   })
 
   it('el registro no repite el comienzo de un turno al deshacer y volver a pasarlo, ni anota el turno que retrocede', () => {

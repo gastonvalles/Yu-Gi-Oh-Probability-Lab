@@ -32,7 +32,7 @@ import { DuelGames, type GameActions } from './DuelGames'
 import { respondersText } from './PassPrompt'
 import { ResultStrip } from './DuelResult'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
-import { isEmojiSignal, isSignal } from '../../app/duel-signals'
+import { isEmojiSignal } from '../../app/duel-signals'
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
 function useTick(ms: number): number {
@@ -484,26 +484,16 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
 }
 
 interface DuelLogTickerProps {
-  snapshot: DuelSnapshot
-  myName: string
   feed: readonly FeedEntry[]
   onOpen: () => void
 }
 
 /**
- * Las dos últimas líneas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Tocarla abre el chat con el registro entero.
- * Sin nada que mostrar deja el lugar reservado.
+ * Las dos últimas jugadas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Lo escrito no sale acá (Gastón, 2026-10-20: «el mensaje de arriba no debe
+ * aparecer, no es necesario»): al otro le llega como un mensaje entrante y en el contador del chat, y en la línea salía dos veces. Tocarla abre el chat con el registro entero. Sin nada que mostrar deja el lugar reservado.
  */
-export function DuelLogTicker({ snapshot, myName, feed, onOpen }: DuelLogTickerProps) {
-  const rival = snapshot.peerName ?? t('duel.bar.rival')
-  const lines = feed
-    .flatMap((entry) => {
-      if (entry.kind === 'turn') return []
-      if (entry.kind === 'event') return [{ id: entry.id, side: entry.side, text: entry.text }]
-
-      return isSignal(entry.line.text) ? [] : [{ id: entry.id, side: entry.line.from === snapshot.me ? ('mine' as const) : ('theirs' as const), text: `${entry.line.from === snapshot.me ? myName : rival}: ${entry.line.text}` }]
-    })
-    .slice(-2)
+export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
+  const lines = feed.filter((entry): entry is Extract<FeedEntry, { kind: 'event' }> => entry.kind === 'event').slice(-2)
 
   // Sin nada todavía se reserva el lugar: la primera jugada no corre el campo (regla 7 del sistema de diseño).
   if (lines.length === 0) return <div aria-hidden="true" className="min-h-11" />
