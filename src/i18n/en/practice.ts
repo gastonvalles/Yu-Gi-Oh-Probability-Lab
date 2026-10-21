@@ -351,4 +351,8 @@ export const practice: Translated<typeof es> = {
   'practice.many.order': '{name} (selected #{n})',
   'practice.many.range': 'Shift+click selects the range from the last one you tapped',
   'practice.many.choosePlay': 'Choose a play',
+
+  // The menu for several cards (`listBatchActions`): why an option is off (not every selected card allows it).
+  'practice.batch.notWith': 'Not for {list}',
+  'practice.batch.notWithCount': 'Not for {count} of the selected cards',
 }

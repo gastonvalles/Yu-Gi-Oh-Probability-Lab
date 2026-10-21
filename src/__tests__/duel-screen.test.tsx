@@ -1705,6 +1705,81 @@ describe('la pantalla del duelo', () => {
     }
   })
 
+  it('varias cartas elegidas en el visor viajan en un solo mensaje: el rival ve una sola línea con cuántas son y, si van a la mano, las ve entrar y el Main de Ana se baraja a la vista', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    const acts = () => memory.sent.filter((text) => (JSON.parse(text) as { t: string }).t === 'act').length
+    /** En el visor de Ana: «Elegir varias», las dos primeras cartas y «Elegir jugada», que abre el menú del lote (la hoja de abajo, en el celular). */
+    const chooseTwo = (viewer: HTMLElement) => {
+      fireEvent.click(within(viewer).getByRole('button', { name: 'Elegir varias' }))
+      within(viewer).getAllByRole('button', { pressed: false }).slice(0, 2).forEach((card) => fireEvent.click(card))
+      fireEvent.click(within(viewer).getByRole('button', { name: 'Elegir jugada' }))
+    }
+    const rivalPile = (pile: string) => guest.container.querySelector(`[data-rival-drop="${pile}"]`)?.getAttribute('aria-label')
+
+    // Ana descarta dos cartas (dos jugadas) y después las destierra juntas desde su cementerio: una sola jugada más.
+    for (const _ of [1, 2]) {
+      tap(handOf(host).getAllByRole('listitem')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
+      flush()
+    }
+    expect(rivalPile('gy')).toBe('GY: 2')
+
+    const before = acts()
+    fireEvent.click(within(host.container).getByRole('button', { name: 'GY: 2' }))
+    chooseTwo(screen.getByRole('dialog', { name: 'GY · 2' }))
+    fireEvent.click(within(screen.getByRole('region', { name: '2 cartas' })).getByRole('menuitem', { name: 'Desterrar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Boca arriba' }))
+    flush()
+
+    expect(acts()).toBe(before + 1)
+    expect(rivalPile('gy')).toBe('GY: 0')
+    expect(rivalPile('banished')).toBe('Banish: 2')
+    // Desterrar no se muestra grande (como una sola carta): va al registro, en una línea.
+    expect(guest.container.querySelector('[data-activation]')).toBeNull()
+    click(guest, /^Chat/)
+    expect(within(within(screen.getByRole('dialog')).getByRole('log')).getByText('Ana destierra 2 cartas')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    // Dos cartas del Main a la mano: Beto las ve entrar en el centro (Ana las muestra al sumarlas) y el Main de Ana se baraja, todo con un solo mensaje.
+    const animated: Element[] = []
+    const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
+
+    vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
+    Element.prototype.getAnimations = () => []
+    Element.prototype.animate = function (this: Element, _frames: unknown, options?: KeyframeAnimationOptions | number) {
+      if (typeof options === 'object' && options.duration === RIFFLE_MS) animated.push(this)
+
+      return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
+    }
+    // El barajado no se anima si se pidió reducir el movimiento.
+    window.matchMedia = (() => ({ matches: false, media: '', addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
+
+    try {
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+      chooseTwo(screen.getByRole('dialog', { name: /^Main · / }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
+      flush()
+
+      expect(acts()).toBe(before + 2)
+      expect(screen.queryByRole('dialog', { name: /^Main · / })).not.toBeInTheDocument()
+      expect(guest.container.querySelector('[data-activation]')).toHaveAttribute('data-kind', 'hand')
+      expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana lleva 2 cartas a su mano')
+      expect(animated.filter((element) => guest.container.contains(element) && element.hasAttribute('data-layer') && element.closest('[data-rival-drop="deck"]') !== null)).toHaveLength(2)
+    } finally {
+      vi.unstubAllGlobals()
+      Element.prototype.animate = animate
+      Element.prototype.getAnimations = getAnimations
+      window.matchMedia = matchMedia
+    }
+  })
+
   it('el rival puede desplegar mi cementerio y mi destierro (no el deck, el Extra ni la mano) y marcar una carta de adentro', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)

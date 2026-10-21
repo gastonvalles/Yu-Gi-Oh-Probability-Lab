@@ -1239,3 +1239,76 @@ export function listDropActions(state: MatState, id: string, kindOf: (id: string
 
   return listCardActions(state, id, kindOf, nameOf, [], rivalEmz).flatMap(aim)
 }
+
+/** La clase de una jugada: un lote hecho sólo de Target cuenta como `target` (marcar varias no mueve nada, como marcar una). */
+export function playType(action: MatAction): MatAction['type'] {
+  return action.type === 'batch' && action.actions.length > 0 && action.actions.every((part) => part.type === 'target') ? 'target' : action.type
+}
+
+/** Lo que se hace con varias cartas a la vez: lo que pide zona o posición (invocar, activar, colocar) va de a una. */
+const BATCH_PLAYS: ReadonlySet<MatAction['type']> = new Set(['move', 'target', 'attach', 'reveal'])
+
+/** Qué hace una opción sin decir con qué carta («mover al destierro boca abajo», «adjuntar a Zeus»): dos cartas con la misma clave hacen lo mismo. Target es una sola, marque o quite la mira; una pregunta, por su nombre. */
+function playKey(item: MatMenuItem): string {
+  const { action } = item
+
+  if (item.choices) return `ask:${item.label}`
+  if (action.type === 'move') return `move:${action.to}:${action.faceDown ? 'down' : ''}:${action.faceUp ? 'up' : ''}:${item.shuffleDeck ? 'random' : ''}`
+  if (action.type === 'attach') return `attach:${action.to}`
+
+  return action.type
+}
+
+/** Del menú de una carta, lo que también se hace con varias (una pregunta se queda con las respuestas que sí). */
+function batchable(items: readonly MatMenuItem[]): MatMenuItem[] {
+  return items.flatMap((item) => {
+    if (!item.choices) return BATCH_PLAYS.has(item.action.type) ? [item] : []
+
+    const choices = batchable(item.choices)
+
+    return choices.length > 0 ? [{ ...item, choices }] : []
+  })
+}
+
+/**
+ * El menú de varias cartas de una pila, elegidas juntas en su visor (en el orden en que se eligieron): lo que el menú de cada una (`listCardActions`) ofrece a **todas**, con una jugada `batch`
+ * de una parte por carta. Se compara la jugada sin su carta (`playKey`); lo que admiten sólo algunas va apagado y dice con cuáles no va (hasta tres nombres; desde cuatro, cuántas). Entran
+ * mover, Target, Adjuntar y Revelar, y lo que el menú de una carta sume se hereda solo. Target marca sólo las que no tienen la mira; con todas marcadas, es «Quitar target». Las partes van en
+ * el orden de elección, salvo arriba del deck: ahí van al revés, para que la primera elegida quede arriba de todo. El barajado (el de «Al azar» y el de lo que sale mirando el Main) lo pone la
+ * mesa al jugar, con su semilla.
+ */
+export function listBatchActions(state: MatState, ids: readonly string[], kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string): MatMenuItem[] {
+  // Por qué va apagada: las que no la admiten, cada nombre una vez.
+  const notWith = (cards: readonly string[]) => {
+    const names = [...new Set(cards.map(nameOf))]
+
+    return names.length > 3 ? t('practice.batch.notWithCount', { count: cards.length }) : t('practice.batch.notWith', { list: listNames(names) })
+  }
+  const merge = (menus: readonly (readonly MatMenuItem[])[]): MatMenuItem[] =>
+    [...new Set(menus.flatMap((items) => items.map(playKey)))].map((key): MatMenuItem => {
+      const found = menus.map((items) => items.find((item) => playKey(item) === key))
+      const first = found.find((item) => item !== undefined)!
+      const missing = ids.filter((_, index) => found[index] === undefined)
+      const off = missing.length > 0 ? { disabled: notWith(missing) } : {}
+
+      if (first.choices) {
+        const choices = merge(found.map((item) => item?.choices ?? []))
+
+        return { ...first, action: choices[0]!.action, choices, ...off }
+      }
+
+      const parts = found.flatMap((item) => (item ? [item.action] : []))
+
+      if (first.action.type === 'target') {
+        const unmarked = parts.filter((part) => part.type === 'target' && !state.targeted.includes(part.id))
+
+        return { ...first, label: t(unmarked.length > 0 ? 'practice.menu.target' : 'practice.menu.untarget'), action: { type: 'batch', actions: unmarked.length > 0 ? unmarked : parts }, ...off }
+      }
+
+      const onTop = first.action.type === 'move' && first.action.to === 'deck' && !first.shuffleDeck
+
+      return { ...first, action: { type: 'batch', actions: onTop ? parts.reverse() : parts }, ...off }
+    })
+
+  return merge(ids.map((id) => batchable(listCardActions(state, id, kindOf, nameOf))))
+}

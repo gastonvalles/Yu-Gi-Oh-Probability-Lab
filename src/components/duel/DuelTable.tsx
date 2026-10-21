@@ -335,7 +335,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
       ) : cards.length > 0 ? (art ? <CardArt key={shown} remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none')} /> : <CardBack key={shown} className={cx('h-full', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none')} />) : null}
       <PileBadge label={PILE_SHORT[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
-      {marked ? <TargetMark key={shown} /> : null}
+      {marked ? <TargetMark key={`mira:${shown}`} /> : null}
       </span>
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
     </div>
