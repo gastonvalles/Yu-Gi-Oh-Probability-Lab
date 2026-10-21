@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
+import type { FxTone } from '../../probability/practice-styles'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
 import { AppNavbar } from '../../shell/AppNavbar'
 import { AppShell } from '../../shell/AppShell'
@@ -17,8 +18,11 @@ import { StepHero } from '../../StepHero'
 import { StepPage } from '../../ui/StepPage'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
-/** Un replay de mentira: 36 pasos, con un cambio de fase cada seis y un turno nuevo en la mitad. */
-const DEMO_MARKS: ReplayMark[] = Array.from({ length: 36 }, (_, index) => ({ phase: index % 6 === 5, turnStart: index === 18 }))
+/** Los colores de un replay, uno por cada cosa que puede hacer un paso (el del destello que hace en la mesa). */
+const DEMO_TONES: Array<FxTone | null> = ['cyan', 'gold', 'gold', 'violet', null, 'amber', 'red', 'indigo', 'teal', 'white', 'cyan', null]
+
+/** Un replay de mentira: 36 pasos de todos los colores, con un cambio de fase cada seis y un turno nuevo en la mitad. */
+const DEMO_MARKS: ReplayMark[] = Array.from({ length: 36 }, (_, index) => ({ phase: index % 6 === 5, turnStart: index === 18, tone: index % 6 === 5 ? null : DEMO_TONES[index % DEMO_TONES.length] }))
 const DEMO_AUTOPLAY_MS = 1400
 
 /** Los controles del replay con un replay de mentira que avanza solo (a la velocidad elegida), para tocarlos como en la mesa. */
@@ -189,7 +193,7 @@ export function NavigationSection() {
         </Specimen>
       </SpecimenGrid>
 
-      <Specimen title="Controles del replay" layout="free" note={<>Como los de YGOPocket: volver al principio, anterior, reproducir, siguiente, la línea de tiempo (se toca, se arrastra o se maneja con el teclado), la lista de pasos y la velocidad. Violeta lo ya visto, verde el paso actual, una rayita naranja los cambios de fase y una línea los turnos. Archivo: <Tag>probability/ReplayBar.tsx</Tag></>}>
+      <Specimen title="Controles del replay" layout="free" note={<>Como los de YGOPocket: volver al principio, anterior, reproducir, siguiente, la línea de tiempo (se toca, se arrastra o se maneja con el teclado), la lista de pasos y la velocidad. Cada paso lleva el color de lo que hace (el de su destello en la mesa: dorado activar y la Invocación Normal, celeste la Especial y lo que va a la mano, rojo atacar o marcar un objetivo, violeta declarar y el cementerio, blanco la Sincronía, índigo Xyz, verde agua el Enlace, ámbar el destierro; sin color, gris), vivo lo ya visto y apagado lo que falta. La mano inicial es verde y el paso actual, ámbar y más alto, como el botón de reproducir. Una rayita naranja marca los cambios de fase y una línea, los turnos. Archivo: <Tag>probability/ReplayBar.tsx</Tag></>}>
         <div className="grid gap-4">
           <div className="rounded-card border border-border-subtle p-3">
             <ReplayDemo />

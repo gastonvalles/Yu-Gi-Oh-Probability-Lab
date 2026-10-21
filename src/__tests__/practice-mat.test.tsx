@@ -1663,6 +1663,40 @@ describe('la mesa de práctica', () => {
       expect([...slider().querySelectorAll('[data-state]')].map((pill) => pill.getAttribute('data-state'))).toEqual(['done', 'done', 'current', 'upcoming', 'upcoming'])
     })
 
+    it('cada pastilla lleva el color de lo que hace el paso (el de su destello en la mesa): vivo lo ya visto, apagado lo que falta; la mano inicial verde y el paso actual ámbar y más alto', () => {
+      const COMBO: MatAction[] = [
+        { type: 'draw', count: 1 },
+        { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'atk', how: 'normal' },
+        { type: 'activate', id: 'card-1-1' },
+        { type: 'move', id: 'card-2-1', to: 'gy' },
+        { type: 'position', id: 'card-1-1', pos: 'def' },
+        { type: 'phase', phase: 'battle' },
+      ]
+      render(<Harness actions={COMBO} />)
+      const pills = () => [...slider().querySelectorAll('[data-state]')] as HTMLElement[]
+
+      // Mano inicial (verde), robar (celeste), Invocación Normal y activar (dorado), cementerio (violeta); cambiar de posición y la fase, sin color.
+      expect(pills().map((pill) => pill.getAttribute('data-tone'))).toEqual(['green', 'cyan', 'gold', 'gold', 'violet', 'none', 'none'])
+      // El color llega por `--pill` (lo pinta `rgb(var(--pill) / alfa)`); sin color no hay variable.
+      expect(pills()[1]!.style.getPropertyValue('--pill')).toBe('56 189 248')
+      expect(pills()[2]!.style.getPropertyValue('--pill')).toBe('250 204 21')
+      expect(pills()[5]!.style.getPropertyValue('--pill')).toBe('')
+
+      // Al principio el actual es la mano inicial: ámbar y más alta; las que faltan, apagadas (con su color y sin color).
+      expect(pills()[0]).toHaveClass('h-3.5', 'bg-info')
+      expect(pills()[1]).toHaveClass('bg-[rgb(var(--pill)/0.3)]')
+      expect(pills()[5]).toHaveClass('bg-tint/22')
+
+      // Dos pasos después: lo ya visto, vivo; el actual, ámbar (no el dorado de su destello).
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      expect(pills()[1]).toHaveClass('bg-[rgb(var(--pill)/0.95)]')
+      expect(pills()[2]).toHaveClass('h-3.5', 'bg-info')
+      expect(pills()[2]).not.toHaveClass('bg-[rgb(var(--pill)/0.95)]')
+      // El botón de reproducir es ámbar, como el actual.
+      expect(screen.getByRole('button', { name: 'Reproducir' })).toHaveClass('bg-info')
+    })
+
     it('la línea de tiempo se maneja con el teclado como un deslizador y se toca o arrastra para ir a un paso', () => {
       render(<Harness actions={ACTIONS} />)
       const status = () => within(screen.getByRole('status', { name: 'Paso actual' }))

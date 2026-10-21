@@ -43,6 +43,18 @@ describe('los íconos blancos se ponen violeta claro al pasar el mouse y al sele
     expect(screen.getByRole('button', { name: 'reproducir' })).not.toHaveClass('text-white')
   })
 
+  it('el botón de reproducir (play) es redondo y ámbar, como el de la fase de ahora: lo que se toca; el ícono va oscuro y no blanco', () => {
+    render(
+      <IconButton tone="play" aria-label="reproducir">
+        <Icon name="play" />
+      </IconButton>,
+    )
+
+    const button = screen.getByRole('button', { name: 'reproducir' })
+    expect(button).toHaveClass('rounded-full', 'bg-info', 'text-accent-foreground', 'hover:bg-info-soft')
+    expect(button).not.toHaveClass('bg-primary', 'text-white')
+  })
+
   it('las redes del pie y la ⓘ de las ayudas también: blancas, y violeta claro al pasar el mouse', () => {
     render(
       <>
