@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { configDefaults } from 'vitest/config'
 import { defineConfig, type Plugin } from 'vite'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
@@ -95,6 +96,9 @@ function publicAssetsList(): Plugin {
   }
 }
 
+/** Las pruebas que redefinen `window.location` (ver `projects` abajo). */
+const REDEFINE_LOCATION = ['src/__tests__/asset-recovery.test.ts', 'src/__tests__/error-boundary.test.tsx', 'src/__tests__/i18n.test.tsx']
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), liveApiDev()],
   preview: {
@@ -127,5 +131,13 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/i18n/test-setup.ts', './src/test-setup.ts'],
+    projects: [
+      // Casi todo corre en `vmForks`: cada archivo tiene su propio contexto de V8 y se salta crear un proceso nuevo (y cargar jsdom) por archivo; medido, la suite entera baja de ~107 s a ~80 s
+      // y el trabajo de CPU, un tercio (con varios agentes corriendo suites a la vez, es lo que se nota).
+      { extends: true, test: { name: 'vm', pool: 'vmForks', exclude: [...configDefaults.exclude, ...REDEFINE_LOCATION] } },
+      // En un contexto de `vm` `window.location` no se puede redefinir (`Cannot redefine property: location`): las pruebas que lo hacen para ver si la pantalla recarga siguen en procesos propios (`forks`).
+      // Si una prueba nueva falla con ese error, se suma acá.
+      { extends: true, test: { name: 'forks', pool: 'forks', include: REDEFINE_LOCATION } },
+    ],
   },
 })
