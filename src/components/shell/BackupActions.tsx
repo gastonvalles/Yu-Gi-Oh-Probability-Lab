@@ -11,7 +11,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 
 /** Una fila del cajón del celular: el ícono y lo que hace, de 48 px, con una línea fina arriba salvo la primera. */
-const LIST_ROW = 'flex h-12 w-full cursor-pointer items-center gap-3 border-t border-nav-raised text-left text-body font-medium text-foreground transition-colors duration-150 hover:text-accent focus-visible:outline-none focus-visible:shadow-focus'
+const LIST_ROW = 'flex h-12 w-full cursor-pointer items-center gap-3 border-t border-nav-raised text-left text-body font-medium text-foreground transition-colors duration-150 hover:text-info focus-visible:outline-none focus-visible:shadow-focus'
 
 /**
  * Los dos botones de la copia de seguridad (bajar todo lo guardado en este navegador y restaurarlo desde un archivo), con el diálogo que pide

@@ -12,8 +12,8 @@ import { SocialLinks } from '../components/ui/SocialLinks'
 
 afterEach(cleanup)
 
-describe('los íconos blancos se ponen violeta claro al pasar el mouse y al seleccionarlos', () => {
-  it('un botón sin texto es blanco y sin fondo; violeta claro al pasar el mouse y mientras está seleccionado, sea cual sea su forma', () => {
+describe('los íconos blancos se ponen ámbar al pasar el mouse y al seleccionarlos', () => {
+  it('un botón sin texto es blanco y sin fondo; ámbar al pasar el mouse y mientras está seleccionado, sea cual sea su forma', () => {
     render(
       <>
         {(['raised', 'close', 'ghost', 'flat', 'outline'] as const).map((tone) => (
@@ -26,8 +26,8 @@ describe('los íconos blancos se ponen violeta claro al pasar el mouse y al sele
     )
 
     for (const button of screen.getAllByRole('button')) {
-      expect(button).toHaveClass('bg-transparent', 'text-white', 'hover:text-accent', 'aria-pressed:text-accent', 'data-[active=true]:text-accent')
-      // Sin resplandor: el verde ya no es del hover y los brillos de adorno están fuera del sistema.
+      expect(button).toHaveClass('bg-transparent', 'text-white', 'hover:text-info', 'aria-pressed:text-info', 'data-[active=true]:text-info')
+      // Sin resplandor: el hover es sólo de color (ámbar) y los brillos de adorno están fuera del sistema.
       expect(button.className).not.toContain('drop-shadow')
     }
   })
@@ -55,7 +55,7 @@ describe('los íconos blancos se ponen violeta claro al pasar el mouse y al sele
     expect(button).not.toHaveClass('bg-primary', 'text-white')
   })
 
-  it('las redes del pie y la ⓘ de las ayudas también: blancas, y violeta claro al pasar el mouse', () => {
+  it('las redes del pie y la ⓘ de las ayudas también: blancas, y ámbar al pasar el mouse', () => {
     render(
       <>
         <SocialLinks />
@@ -64,10 +64,10 @@ describe('los íconos blancos se ponen violeta claro al pasar el mouse y al sele
     )
 
     for (const link of screen.getAllByRole('link')) {
-      expect(link).toHaveClass('text-white', 'hover:text-accent')
+      expect(link).toHaveClass('text-white', 'hover:text-info')
     }
 
-    expect(screen.getByRole('button', { name: 'Ayuda' })).toHaveClass('text-white', 'hover:text-accent', 'aria-expanded:text-accent')
+    expect(screen.getByRole('button', { name: 'Ayuda' })).toHaveClass('text-white', 'hover:text-info', 'aria-expanded:text-info')
   })
 
   it('los destinos del menú: ícono y rótulo blancos; el ícono se pone ámbar al pasar el mouse, y el destino abierto va ámbar', () => {
