@@ -476,7 +476,7 @@ export function DeckImportDrawer({
         >
           <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
             <div className="flex min-w-0 items-start gap-3">
-              <Icon name="upload" size={22} className={cx('mt-1 shrink-0', TONE.brand.text)} />
+              <Icon name="upload" size={22} className="mt-1 shrink-0 text-foreground" />
               <div className="min-w-0">
                 <Heading level="section" as="h3">
                   {t('deck.import.title')}
@@ -518,7 +518,7 @@ export function DeckImportDrawer({
                     <div
                       className={[
                         'grid content-center justify-items-center gap-3 rounded-card border border-dashed px-4 py-10 text-center transition-colors pointer-coarse:flex-1',
-                        isDragActive ? 'border-primary bg-primary/12' : 'border-border pointer-coarse:border-transparent',
+                        isDragActive ? 'border-info bg-info/12' : 'border-border pointer-coarse:border-transparent',
                       ].join(' ')}
                       onDragEnter={(event) => {
                         event.preventDefault()
@@ -554,7 +554,7 @@ export function DeckImportDrawer({
                       <p className="m-0 text-micro text-soft">{t('deck.import.formats')}</p>
 
                       {selectedFileName ? (
-                        <span className={`${chip.accent} px-2 py-1 text-micro`}>{t('deck.import.selectedFile', { name: selectedFileName })}</span>
+                        <span className={`${chip.base} px-2 py-1 text-micro`}>{t('deck.import.selectedFile', { name: selectedFileName })}</span>
                       ) : null}
                     </div>
                   ) : (
@@ -654,7 +654,7 @@ export function DeckImportDrawer({
 
                       <div className="flex flex-wrap gap-1.5">
                         <span className={`${chip.base} px-2 py-1 text-micro`}>{getPreviewSourceBadge(preview)}</span>
-                        <span className={`${chip.accent} px-2 py-1 text-micro whitespace-nowrap`}>
+                        <span className={`${chip.base} px-2 py-1 text-micro whitespace-nowrap`}>
                           {t('deck.import.cardsRatio', { imported: formatInteger(preview.importedCardCount), requested: formatInteger(preview.requestedCardCount) })}
                         </span>
                       </div>

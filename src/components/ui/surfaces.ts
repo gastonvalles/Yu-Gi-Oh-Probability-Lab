@@ -27,7 +27,6 @@ export const field =
 /** Chips informativos (no interactivos). */
 export const chip = {
   base: 'rounded-full border border-border-subtle bg-tint/5 text-muted',
-  accent: cx('rounded-full border text-foreground', TONE.brand.tint),
 } as const
 
 /**

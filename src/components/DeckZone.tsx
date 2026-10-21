@@ -97,7 +97,7 @@ export const DeckZone = memo(function DeckZone({
   const classicZoneMaxHeight = zone === 'main' && !readOnly ? '29rem' : 'none'
   const classicBorderColor =
     dropState === 'valid'
-      ? 'rgb(var(--primary-rgb) / 0.85)'
+      ? 'rgb(var(--info-rgb) / 0.85)'
       : dropState === 'invalid'
         ? 'rgb(var(--destructive-rgb) / 0.85)'
         : 'var(--classic-zone-accent)'
@@ -119,7 +119,7 @@ export const DeckZone = memo(function DeckZone({
         background: 'linear-gradient(180deg, var(--classic-zone-tint), transparent), rgb(var(--card-background-rgb) / 0.6)',
         boxShadow:
           dropState === 'valid'
-            ? '0 0 0 3px rgb(var(--primary-rgb) / 0.2)'
+            ? '0 0 0 3px rgb(var(--info-rgb) / 0.2)'
             : dropState === 'invalid'
               ? '0 0 0 3px rgb(var(--destructive-rgb) / 0.2)'
               : 'none',
