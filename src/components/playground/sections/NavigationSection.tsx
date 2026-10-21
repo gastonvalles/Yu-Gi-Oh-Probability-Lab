@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { describeMatSteps } from '../../../app/practice-mat'
+import type { SavedCombo } from '../../../app/saved-combos'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
+import { MatSnapshot } from '../../probability/MatSnapshot'
+import { panelStepsOf } from '../../probability/panel-steps'
 import type { FxTone } from '../../probability/practice-styles'
+import { PracticeMatPanel } from '../../probability/PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
 import { AppNavbar } from '../../shell/AppNavbar'
 import { AppShell } from '../../shell/AppShell'
@@ -14,9 +19,12 @@ import { DrawerPanel, NavDrawer } from '../../shell/NavDrawer'
 import { SidebarLegal } from '../../shell/SidebarLegal'
 import { Button } from '../../ui/Button'
 import { Card } from '../../ui/Card'
+import { cx } from '../../ui/cx'
+import { Segmented } from '../../ui/Segmented'
 import { StepHero } from '../../StepHero'
 import { StepPage } from '../../ui/StepPage'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
+import { sampleCombo } from './duel-sample'
 
 /** Los colores de un replay, uno por cada cosa que puede hacer un paso (el del destello que hace en la mesa). */
 const DEMO_TONES: Array<FxTone | null> = ['cyan', 'gold', 'gold', 'violet', null, 'amber', 'red', 'indigo', 'teal', 'white', 'cyan', null]
@@ -72,6 +80,84 @@ function ReplayDemo({ className }: { className?: string }) {
       onOpenSteps={() => {}}
       onSpeed={setSpeed}
     />
+  )
+}
+
+/** Cada ancho de la muestra: la columna lateral de la mesa (20 rem menos su margen), el diálogo del celular a 390 px y el ancho libre (el diálogo en una tableta: el tablero pasa a la derecha). */
+const STEP_LIST_WIDTHS = {
+  column: { label: 'Columna de la mesa · 296 px', className: 'w-[18.5rem]' },
+  dialog: { label: 'Diálogo del celular · 342 px', className: 'w-[21.375rem]' },
+  free: { label: 'Ancho libre', className: 'w-full' },
+} as const
+
+type StepListWidth = keyof typeof STEP_LIST_WIDTHS
+
+const NO_COMBOS: SavedCombo[] = []
+const noop = () => {}
+
+/**
+ * La lista de pasos de la mesa con un combo de muestra (`sampleCombo`): la línea de tiempo con los círculos, las cabeceras de fase, las fichas con su chip, su tablero y,
+ * la del paso actual, abierta con «Qué se mueve». Se avanza con los botones (como el reproductor) y el interruptor «Detalles» de cada una la vuelve la lista compacta.
+ */
+function StepListSamples() {
+  const combo = useMemo(sampleCombo, [])
+  const steps = useMemo(() => panelStepsOf(combo.initial, combo.actions, describeMatSteps(combo.initial, combo.actions, combo.nameOf), combo.nameOf, combo.artOf), [combo])
+  const [cursor, setCursor] = useState(9)
+  const [width, setWidth] = useState<StepListWidth>('column')
+  const snapshot = steps[cursor - 1]
+
+  return (
+    <>
+      <Specimen
+        title="Lista de pasos"
+        layout="column"
+        note={
+          <>
+            Una línea de tiempo, con la última jugada arriba: un círculo por paso (el actual en ámbar, como su pastilla del reproductor), los cambios de fase y de turno como cabeceras y, por paso, una ficha con un solo borde: las miniaturas, el chip de la jugada con el color de su destello y el de dónde sale la carta, la frase y el tablero chico. El paso actual se abre con el turno, la fase y <Tag>Qué se mueve</Tag>. El interruptor <Tag>Detalles</Tag> (se recuerda en el navegador) la vuelve la lista compacta. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag>, <Tag>probability/panel-steps.ts</Tag> y <Tag>app/mat-step-info.ts</Tag>
+          </>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" icon="chevron-left" disabled={cursor === 0} onClick={() => setCursor((current) => Math.max(0, current - 1))}>
+            Paso anterior
+          </Button>
+          <Button variant="secondary" size="sm" iconEnd="chevron-right" disabled={cursor >= steps.length} onClick={() => setCursor((current) => Math.min(steps.length, current + 1))}>
+            Paso siguiente
+          </Button>
+          <Tag>
+            Paso {cursor} de {steps.length}
+          </Tag>
+        </div>
+        {/* Una sola lista (un combo largo dibuja muchas fichas): el ancho se elige. */}
+        <Segmented label="Ancho de la muestra" variant="chips" size="sm" value={width} onChange={setWidth} options={(Object.keys(STEP_LIST_WIDTHS) as StepListWidth[]).map((key) => ({ value: key, label: STEP_LIST_WIDTHS[key].label }))} />
+        <div className={cx('h-[44rem] max-w-full overflow-hidden rounded-card border border-border-subtle bg-background p-3', STEP_LIST_WIDTHS[width].className)}>
+          <PracticeMatPanel steps={steps} initial={combo.initial} cursor={cursor} onSeek={setCursor} nameOf={combo.nameOf} artOf={combo.artOf} combos={NO_COMBOS} deckName="" onLoad={noop} onRename={noop} onDelete={noop} showCombos={false} className="h-full" />
+        </div>
+      </Specimen>
+
+      <Specimen
+        title="Tablero chico de un paso"
+        layout="column"
+        note={
+          <>
+            La mesa como quedó después del paso, con las áreas de la de verdad: lo que cambió va enmarcado en ámbar (la casilla, la pila o la carta que llegó a la mano), lo boca abajo atenuado, el deck y el Extra de dorso, las pilas con su cantidad y los materiales Xyz con la suya. Es un dibujo (<Tag>aria-hidden</Tag>) y con <Tag>content-visibility: auto</Tag> no se dibuja fuera de la pantalla. Archivo: <Tag>probability/MatSnapshot.tsx</Tag>
+          </>
+        }
+      >
+        <div className="flex flex-wrap items-start gap-4">
+          {[
+            { label: 'En la columna · 232 px', className: 'w-[14.5rem]' },
+            { label: 'En el diálogo · 278 px', className: 'w-[17.375rem]' },
+            { label: 'Ancho libre', className: 'min-w-0 flex-1 basis-80' },
+          ].map((width) => (
+            <div key={width.label} className={cx('grid gap-2', width.className)}>
+              <Tag>{width.label}</Tag>
+              <Card padding="sm">{snapshot ? <MatSnapshot state={snapshot.after} change={snapshot.info.change} artOf={combo.artOf} /> : <MatSnapshot state={combo.initial} artOf={combo.artOf} />}</Card>
+            </div>
+          ))}
+        </div>
+      </Specimen>
+    </>
   )
 }
 
@@ -203,6 +289,8 @@ export function NavigationSection() {
           </div>
         </div>
       </Specimen>
+
+      <StepListSamples />
 
       <Specimen title="Final del menú" layout="free" note={<>Las tres redes del autor arriba y, debajo, la privacidad y el aviso legal, con la autoría y el aviso de sitio no oficial; va al final de lo que scrollea del menú lateral (no hay pie en ninguna pantalla). Con el menú contraído se desvanece. Archivo: <Tag>shell/SidebarLegal.tsx</Tag></>}>
         <div className="w-60 overflow-hidden rounded-card border border-border-subtle bg-nav">

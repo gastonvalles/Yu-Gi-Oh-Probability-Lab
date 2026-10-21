@@ -15,7 +15,7 @@ La regla de trabajo: **se prueba primero en el playground y recién después se 
 | Sección | Muestra | Fuente de la lista |
 |---|---|---|
 | Botones y controles | `Button`, `IconButton`, `Segmented`, `Switch`, `Stepper`, pastillas de selección, `Badge`, el botón flotante | los componentes de `ui/` |
-| Navegación | el menú lateral (abierto y contraído), la barra de arriba del celular, la barra de abajo con sus hojas, el cajón y el pie, y el armazón completo a pantalla completa | `components/shell/` |
+| Navegación | el menú lateral (abierto y contraído), la barra de arriba del celular, la barra de abajo con sus hojas, el cajón y el pie, y el armazón completo a pantalla completa; además los controles del replay, la **lista de pasos** (con un combo de muestra de 18 jugadas: se avanza con los botones, se elige el ancho —la columna de la mesa, el diálogo del celular o libre— y el interruptor «Detalles» la vuelve compacta) y el **tablero chico** de un paso a tres anchos | `components/shell/`; `probability/ReplayBar.tsx`, `PracticeMatPanel.tsx`, `MatSnapshot.tsx` y el combo de `playground/sections/duel-sample.ts` |
 | Títulos | `Heading` (4 niveles), `StepHero`, `SectionHeader`, el encabezado de un `Modal` | `ui/Heading.tsx`, `ui/typography.ts` |
 | Tarjetas, avisos y campos | `Card`, `Callout`, `EmptyState`, `Skeleton`, campos, sombras | `ui/` y `ui/surfaces.ts` |
 | Datos | `ProgressRing`, `SegmentedRing`, `CardEffectText`, `CardEffectTraits`, `CardArtPicker` (en columna, con muchos artes), `InfoTip` | `ui/` (y `card-detail/` para `CardEffectText`, `CardEffectTraits` y `CardArtPicker`) |

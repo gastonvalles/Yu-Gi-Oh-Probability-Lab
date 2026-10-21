@@ -135,7 +135,7 @@ describe('el panel de la mesa en inglés', () => {
       new Date('2026-10-11T12:00:00Z'),
     )
 
-    render(createElement(PracticeMatPanel, { steps: [], cursor: 0, onSeek: () => {}, combos: [combo], deckName: 'Yummy', onLoad: () => {}, onRename: () => {}, onDelete: () => {} }))
+    render(createElement(PracticeMatPanel, { steps: [], initial, cursor: 0, onSeek: () => {}, nameOf: (id: string) => id, artOf: () => null, combos: [combo], deckName: 'Yummy', onLoad: () => {}, onRename: () => {}, onDelete: () => {} }))
 
     expect(screen.getByText('No plays yet')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('radio', { name: /Combos/ }))
