@@ -12,6 +12,9 @@ function cardsOf(before: MatState, after: MatState, action: MatAction): string[]
     case 'token':
     case 'shuffle':
       return []
+    // Un lote muestra las cartas de sus partes, en orden.
+    case 'batch':
+      return action.actions.flatMap((part) => ('id' in part && !isToken(part.id) ? [part.id] : []))
     default:
       return 'id' in action && !isToken(action.id) ? [action.id] : []
   }

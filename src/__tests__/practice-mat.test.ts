@@ -269,6 +269,73 @@ describe('la mesa de práctica', () => {
     expect(describeMatSteps(state, [{ type: 'draw', count: 1 }, { type: 'draw', count: 1 }], nameOf)).toEqual(['Robás E1', 'Robás F1'])
   })
 
+  /** Un lote con una parte por carta. */
+  const batch = (ids: string[], part: (id: string) => MatAction, shuffle?: 'first' | 'last'): MatAction => {
+    const parts = ids.map(part)
+    const mix: MatAction = { type: 'shuffle', seed: 9 }
+
+    return { type: 'batch', actions: shuffle === 'first' ? [mix, ...parts] : shuffle === 'last' ? [...parts, mix] : parts }
+  }
+
+  it('un lote aplica sus partes en orden, como una sola jugada; uno vacío, sin efecto o dentro de otro, no hace nada', () => {
+    const state = start()
+    const toGy = (id: string): MatAction => ({ type: 'move', id, to: 'gy' })
+    const parts = [toGy('a1'), toGy('a2'), { type: 'move', id: 'b1', to: 'banished', faceDown: true } as const]
+
+    expect(matReducer(state, { type: 'batch', actions: parts })).toEqual(run(parts))
+    expect(matReducer(state, { type: 'batch', actions: parts })).toMatchObject({ gy: ['a1', 'a2'], banished: ['b1'], facedown: ['b1'] })
+    // En orden: arriba del deck queda la última que se puso.
+    expect(matReducer(state, batch(['a1', 'a2'], (id) => ({ type: 'move', id, to: 'deck' }))).deck).toEqual(['a2', 'a1', 'e1', 'f1'])
+    // El barajado de un lote también es una parte: al principio baraja lo que queda en el deck, al final baraja todo (las cartas que entraron incluidas).
+    expect(matReducer(state, batch(['a1', 'a2'], (id) => ({ type: 'move', id, to: 'deck' }), 'last')).deck).toEqual(shuffleWithSeed(['a2', 'a1', 'e1', 'f1'], 9))
+    // Un lote dentro de otro se ignora (el resto se aplica); uno vacío, o con partes que no cambian nada, deja la misma mesa.
+    expect(matReducer(state, { type: 'batch', actions: [{ type: 'batch', actions: parts }, toGy('c1')] })).toEqual(run([toGy('c1')]))
+    expect(matReducer(state, { type: 'batch', actions: [] })).toBe(state)
+    expect(matReducer(state, { type: 'batch', actions: [toGy('zzz'), { type: 'reveal', id: 'a1' }] })).toBe(state)
+    // Es una jugada: una sola en la lista, y deshacerla vuelve a la mesa de antes de todas sus partes.
+    expect(replayMat(state, [{ type: 'batch', actions: parts }], 0)).toBe(state)
+    expect(describeMatSteps(state, [{ type: 'batch', actions: parts }], nameOf)).toHaveLength(1)
+  })
+
+  it('un lote se cuenta en una línea: hasta tres cartas por su nombre y desde cuatro «N cartas», con el verbo de acuerdo, y su barajado y su target como los de una carta', () => {
+    // Mano: a1, a2, b1, c1, d1. Deck: diez cartas (de e1 a n1). Extra: x1 y x2.
+    const big = createMatState([...DECK.slice(0, 5), 'e1', 'f1', 'g1', 'h1', 'i1', 'j1', 'k1', 'l1', 'm1', 'n1'], EXTRA, 5)
+    const deck = big.deck
+    const say = (action: MatAction, from: MatState = big, names: (id: string) => string = nameOf) => describeMatAction(from, action, names)
+    const to = (pile: 'hand' | 'gy' | 'banished' | 'extra' | 'deck', face: { faceDown?: true; faceUp?: true } = {}) => (id: string): MatAction => ({ type: 'move', id, to: pile, ...face })
+    const names: Record<string, string> = { e1: 'Ash', f1: 'Maxx C', g1: 'Droll' }
+    const inGy = run([{ type: 'mill', count: 4 }], big)
+    const inBanish = run([{ type: 'move', id: 'e1', to: 'banished' }, { type: 'move', id: 'f1', to: 'banished' }], big)
+
+    expect(say(batch(['e1', 'f1', 'g1'], to('gy')), big, (id) => names[id] ?? id)).toBe('Mandás Ash, Maxx C y Droll del deck al cementerio')
+    expect(say(batch(['e1', 'f1'], to('hand'), 'first'))).toBe('Buscás E1 y F1 del deck a la mano y barajás')
+    expect(say(batch(deck, to('banished', { faceDown: true })))).toBe('Desterrás 10 cartas boca abajo')
+    expect(say(batch(deck.slice(0, 4), to('gy'), 'first'))).toBe('Mandás 4 cartas del deck al cementerio y barajás')
+    // Las frases en tercera persona concuerdan con la cantidad.
+    expect(say(batch(['x1', 'x2'], to('gy')))).toBe('X1 y X2 van al cementerio')
+    expect(say(batch(['e1', 'f1', 'g1', 'h1'], to('extra')), inGy)).toBe('4 cartas vuelven al Extra Deck')
+    expect(say(batch(['e1', 'f1'], to('extra', { faceUp: true })), inGy)).toBe('E1 y F1 van al Extra Deck boca arriba')
+    expect(say(batch(['e1', 'f1'], to('hand')), inBanish)).toBe('E1 y F1 van del destierro a la mano')
+    expect(say(batch(['e1', 'f1'], to('hand')), inGy)).toBe('Recuperás E1 y F1 del cementerio')
+    // Una sola carta: la frase de siempre, en singular.
+    expect(say(batch(['x1'], to('gy')))).toBe('X1 va al cementerio')
+    // Barajar: «Al azar» mete las cartas en el deck y baraja todo al final.
+    expect(say(batch(['e1', 'f1', 'g1'], to('deck'), 'last'), inGy)).toBe('Barajás E1, F1 y G1 dentro del deck')
+    expect(say(batch(['e1', 'f1'], to('deck')), inGy)).toBe('Ponés E1 y F1 arriba del deck')
+    // Target y quitar target.
+    const target = batch(['e1', 'f1', 'g1'], (id) => ({ type: 'target', id }))
+    expect(say(target, inGy)).toBe('Marcás E1, F1 y G1 como target')
+    expect(say(target, matReducer(inGy, target))).toBe('Sacás el target de E1, F1 y G1')
+    // Revelar y adjuntar a un mismo Xyz.
+    const xyz = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }], inGy)
+    expect(say(batch(['e1', 'f1'], (id) => ({ type: 'reveal', id })))).toBe('Revelás E1 y F1')
+    expect(say(batch(['e1', 'f1'], (id) => ({ type: 'attach', id, to: 'x1' })), xyz)).toBe('Adjuntás E1 y F1 a X1')
+    // Lo que no dice lo mismo (otro destino, otro origen, un Xyz distinto): «Movés …». Sólo cartas o vacío: «Barajás el deck» o «Jugada».
+    expect(say({ type: 'batch', actions: [{ type: 'move', id: 'e1', to: 'gy' }, { type: 'move', id: 'a1', to: 'gy' }] })).toBe('Movés E1 y A1')
+    expect(say({ type: 'batch', actions: [{ type: 'shuffle', seed: 1 }] })).toBe('Barajás el deck')
+    expect(say({ type: 'batch', actions: [] })).toBe('Jugada')
+  })
+
   it('la Invocación desde el Extra Deck usa materiales del campo: Xyz los pone debajo, Enlace los manda al cementerio', () => {
     const two = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'atk' }])
     const xyzSummon: MatAction = { type: 'summon', id: 'x1', how: 'xyz', materials: ['a1', 'a2'], zone: 'emz', index: 0, pos: 'atk' }
@@ -653,7 +720,7 @@ describe('la mesa de práctica', () => {
     const ids = [...DECK, ...EXTRA]
     const id = fc.constantFrom(...ids, 'token-1', 'token-2', 'nope')
     const pos = fc.constantFrom<MatPos>('atk', 'def', 'set')
-    const action: fc.Arbitrary<MatAction> = fc.oneof(
+    const single: fc.Arbitrary<MatAction> = fc.oneof(
       fc.record({ type: fc.constant('draw' as const), count: fc.integer({ min: 0, max: 3 }) }),
       fc.record({ type: fc.constant('mill' as const), count: fc.integer({ min: 0, max: 3 }) }),
       fc.record({ type: fc.constant('shuffle' as const), seed: fc.integer({ min: 0, max: 1000 }) }),
@@ -670,6 +737,8 @@ describe('la mesa de práctica', () => {
       fc.record({ type: fc.constant('tribute' as const), id, tributes: fc.array(id, { maxLength: 2 }), zone: fc.constantFrom('mz', 'emz'), index: fc.integer({ min: -1, max: 5 }), pos }),
       fc.record({ type: fc.constant('phase' as const), phase: fc.constantFrom('draw', 'standby', 'main1', 'battle', 'main2', 'end') }),
     )
+    // También en lotes (varias jugadas en una), que no pierden ni duplican nada que no perdieran sueltas.
+    const action: fc.Arbitrary<MatAction> = fc.oneof({ arbitrary: single, weight: 4 }, { arbitrary: fc.record({ type: fc.constant('batch' as const), actions: fc.array(single, { maxLength: 4 }) }), weight: 1 })
 
     fc.assert(
       fc.property(fc.array(action, { maxLength: 40 }), (actions) => {

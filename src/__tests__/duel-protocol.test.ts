@@ -43,6 +43,7 @@ const samples: DuelMessage[] = [
   { t: 'act', n: 1, wire: placed },
   { t: 'act', n: 2, wire: { action: { type: 'tribute', id: 'c3', tributes: ['c1'], zone: 'mz', index: 1, pos: 'atk' }, reveal: {} } },
   { t: 'act', n: 3, wire: { action: { type: 'draw', count: 2 }, reveal: {} } },
+  { t: 'act', n: 4, wire: { action: { type: 'batch', actions: [{ type: 'shuffle', seed: 9 }, { type: 'move', id: 'c6', to: 'hand' }, { type: 'move', id: 'c7', to: 'hand' }] }, reveal: { c6: 'card-1005-1', c7: 'card-1006-1' } } },
   { t: 'undo', n: 0 },
   { t: 'life', n: 1, lp: 7000 },
   { t: 'clock', n: 1, running: false, elapsedMs: 0 },
@@ -248,6 +249,35 @@ describe('contra un rival malicioso', () => {
     for (const effect of [-1, 10, 1.5, '1', null, true, Number.NaN]) {
       expect(message(wire({ type: 'activate', id: 'c1', effect })), String(effect)).toBeNull()
     }
+  })
+
+  it('un lote (varias cartas en una jugada): de 1 a 200 partes de las que entran en uno, cada una revisada como si fuera suelta', () => {
+    const part = { type: 'move', id: 'c1', to: 'gy' }
+    const batch = (actions: unknown, reveal: unknown = {}) => message(wire({ type: 'batch', actions }, reveal))
+    const valid = [{ type: 'shuffle', seed: 3 }, { type: 'move', id: 'c1', to: 'banished', faceDown: true }, { type: 'target', id: 'c2' }, { type: 'attach', id: 'c3', to: 'c4' }, { type: 'reveal', id: 'token-1' }]
+
+    expect(batch(valid)).toEqual({ t: 'act', n: 1, wire: { action: { type: 'batch', actions: valid }, reveal: {} } })
+    expect(batch([part])).not.toBeNull()
+    expect(batch(Array.from({ length: 200 }, (_, index) => ({ type: 'target', id: `c${index + 1}` })))).not.toBeNull()
+    // Un lote puede dejar a la vista una pila entera (el Main al cementerio): todo lo que revela entra en el mismo mensaje.
+    const main = Array.from({ length: 60 }, (_, index) => `c${index + 1}`)
+    expect(batch(main.map((id) => ({ type: 'move', id, to: 'gy' })), Object.fromEntries(main.map((id, index) => [id, `card-${1000 + index}-1`])))).not.toBeNull()
+
+    for (const [name, actions] of [
+      ['un lote vacío', []],
+      ['más de 200 partes', Array.from({ length: 201 }, () => part)],
+      ['un lote adentro de otro', [part, { type: 'batch', actions: [part] }]],
+      ['un cambio de control', [part, { type: 'give', id: 'c2' }]],
+      ['una jugada que no entra en un lote', [{ type: 'place', id: 'c2', zone: 'mz', index: 0, pos: 'atk' }]],
+      ['una parte con un id heredado', [part, { type: 'move', id: '__proto__', to: 'gy' }]],
+      ['una parte mal formada', [part, { type: 'move', id: 'c2', to: 'campo' }]],
+      ['una parte que no es una jugada', [part, 'c1']],
+      ['partes que no son una lista', 'c1'],
+    ] as const) {
+      expect(batch(actions), name).toBeNull()
+    }
+
+    expect(message(wire({ type: 'batch' }))).toBeNull()
   })
 
   it('lo revelado: la clave es un id opaco y el valor, una carta real (card-123-2); nada más', () => {

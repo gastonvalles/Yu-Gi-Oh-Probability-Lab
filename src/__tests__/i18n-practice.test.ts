@@ -70,6 +70,28 @@ describe('la mesa de práctica en inglés', () => {
     expect(describe({ type: 'counter', id: 'token-1', delta: 2 }, withToken)).toBe('Counters on the Token: 2')
   })
 
+  it('un lote se cuenta en una línea, con la lista en inglés y el verbo de acuerdo con la cantidad', () => {
+    const describe = (action: MatAction, from: MatState = start()) => describeMatAction(from, action, nameOf)
+    const batch = (ids: string[], part: (id: string) => MatAction, ...after: MatAction[]): MatAction => ({ type: 'batch', actions: [...ids.map(part), ...after] })
+    const gy = run([{ type: 'move', id: 'a1', to: 'gy' }, { type: 'move', id: 'a2', to: 'gy' }, { type: 'move', id: 'b1', to: 'gy' }, { type: 'move', id: 'c1', to: 'gy' }])
+    const banished = run([{ type: 'move', id: 'a1', to: 'banished' }, { type: 'move', id: 'a2', to: 'banished' }])
+
+    expect(describe({ type: 'batch', actions: [{ type: 'shuffle', seed: 1 }, { type: 'move', id: 'e1', to: 'hand' }, { type: 'move', id: 'f1', to: 'hand' }] })).toBe('You add E1 and F1 from the Deck to your hand and shuffle')
+    expect(describe(batch(['e1', 'f1'], (id) => ({ type: 'move', id, to: 'gy' })))).toBe('You send E1 and F1 from the Deck to Graveyard')
+    expect(describe(batch(['a1', 'a2', 'b1'], (id) => ({ type: 'move', id, to: 'gy' })))).toBe('A1, A2, and B1 go to Graveyard')
+    expect(describe(batch(['a1', 'a2', 'b1', 'c1'], (id) => ({ type: 'move', id, to: 'banished', faceDown: true })))).toBe('You banish 4 cards face-down')
+    expect(describe(batch(['a1', 'a2', 'b1', 'c1'], (id) => ({ type: 'move', id, to: 'extra' })), gy)).toBe('4 cards return to the Extra Deck')
+    expect(describe(batch(['a1', 'a2'], (id) => ({ type: 'move', id, to: 'extra', faceUp: true })), gy)).toBe('A1 and A2 go to the Extra Deck face-up')
+    expect(describe(batch(['a1', 'a2'], (id) => ({ type: 'move', id, to: 'hand' })), banished)).toBe('A1 and A2 go from the banished zone to your hand')
+    expect(describe(batch(['a1', 'a2', 'b1'], (id) => ({ type: 'move', id, to: 'deck' }), { type: 'shuffle', seed: 3 }), gy)).toBe('You shuffle A1, A2, and B1 into the Deck')
+
+    const target = batch(['a1', 'a2', 'b1'], (id) => ({ type: 'target', id }))
+    expect(describe(target, gy)).toBe('You target A1, A2, and B1')
+    expect(describe(target, run([target], gy))).toBe('You remove the target from A1, A2, and B1')
+    // Una sola carta: en singular, como siempre.
+    expect(describe(batch(['a1'], (id) => ({ type: 'move', id, to: 'gy' })))).toBe('A1 goes to Graveyard')
+  })
+
   it('el menú de una carta ofrece las jugadas con su nombre oficial', () => {
     expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Set', 'Special Summon', 'Activate effect', 'Reveal', 'Target', 'Discard', 'Banish', 'To the Deck'])
     expect(listCardActions(start(), 'a1', kindOf, nameOf).find((item) => item.label === 'Special Summon')!.choices?.map((choice) => choice.label)).toEqual(['Attack', 'Defense'])

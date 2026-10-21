@@ -185,6 +185,8 @@ const isPos = oneOf<MatPos>(['atk', 'def', 'set'])
 const isSpot = oneOf<MatSpot>(['mz', 'emz', 'st', 'field'])
 const isZone = oneOf(['mz', 'emz', 'st'] as const)
 const isPhase = oneOf(PHASES.map((phase) => phase.id))
+/** Lo que entra en un lote (`batch`): mover, marcar, adjuntar, revelar y barajar. Nunca otro lote ni un cambio de control (`give`: la otra mesa lo completa con su propia jugada). */
+const isBatchPart = oneOf<MatAction['type']>(['move', 'target', 'attach', 'reveal', 'shuffle'])
 
 /**
  * Qué lleva cada jugada. El tipo obliga a que una jugada nueva tenga su revisión; los valores
@@ -212,6 +214,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   take: (a) => isCardId(a.id) && isTakeZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.auto, (v) => v === true),
   regain: (a) =>
     isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || isTakeZone(a.to)) && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.faceUp, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
+  batch: (a) => Array.isArray(a.actions) && a.actions.length > 0 && a.actions.length <= MAX_CARDS && a.actions.every((part) => isPlain(part) && isBatchPart(part.type) && actionChecks[part.type](part)),
 }
 
 function parseAction(value: unknown): MatAction | null {
@@ -269,7 +272,8 @@ function parseWire(value: unknown): WireAct | null {
   }
 
   const action = parseAction(value.action)
-  const reveal = parseKnown(value.reveal, 50)
+  // Un lote puede dejar a la vista una pila entera (el Main al cementerio): tanto como una mesa.
+  const reveal = parseKnown(value.reveal, MAX_CARDS)
   return action && reveal ? { action, reveal } : null
 }
 

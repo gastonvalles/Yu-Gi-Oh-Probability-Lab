@@ -129,6 +129,19 @@ describe('la clase, el origen y lo que se mueve en cada jugada', () => {
     expect(next.moves.map((move) => move.id)).toEqual(['f'])
   })
 
+  it('un lote es un solo paso: la clase de su destino, de dónde sale y todas las cartas que se mueven, la de su primera parte primero', () => {
+    const info = describeStep(start, { type: 'batch', actions: [{ type: 'shuffle', seed: 2 }, { type: 'move', id: 'g', to: 'gy' }, { type: 'move', id: 'f', to: 'gy' }] })
+    const deck = { kind: 'pile', pile: 'deck' } as const
+    const gy = { kind: 'pile', pile: 'gy' } as const
+
+    expect(info).toMatchObject({ kind: 'toGy', origin: 'deck', card: 'g' })
+    expect(info.moves).toEqual([{ id: 'g', from: deck, to: gy }, { id: 'f', from: deck, to: gy }])
+    expect([...info.change.piles].sort()).toEqual(['deck', 'gy'])
+    // Revelar o marcar varias no mueve nada: dice de dónde son y qué clase de jugada es.
+    expect(describeStep(start, { type: 'batch', actions: [{ type: 'reveal', id: 'f' }, { type: 'reveal', id: 'g' }] })).toMatchObject({ kind: 'reveal', origin: 'deck', card: 'f', moves: [] })
+    expect(describeStep(start, { type: 'batch', actions: [{ type: 'target', id: 'a' }, { type: 'target', id: 'b' }] })).toMatchObject({ kind: 'target', origin: 'hand', card: 'a', moves: [] })
+  })
+
   it('una jugada que no cambia nada (la carta no existe, la zona está ocupada) no mueve ni enmarca nada', () => {
     const board = replayMat(start, [{ type: 'place', id: 'a', zone: 'mz', index: 0, pos: 'atk' }])
     const info = describeStep(board, { type: 'place', id: 'b', zone: 'mz', index: 0, pos: 'atk' })

@@ -22,7 +22,7 @@ export function randomAction(state: MatState, next: () => number): MatAction {
   const monsters = [...state.mz, ...state.emz].flatMap((placed) => (placed ? [placed.id] : []))
   const seed = Math.floor(next() * 2 ** 32)
 
-  switch (Math.floor(next() * 16)) {
+  switch (Math.floor(next() * 17)) {
     case 0:
       return { type: 'draw', count: 1 + Math.floor(next() * 3) }
     case 1:
@@ -60,6 +60,20 @@ export function randomAction(state: MatState, next: () => number): MatAction {
         { type: 'declare', id: pick(ids) },
         { type: 'target', id: pick(ids) },
       ])
+    case 15: {
+      // Un lote: de 1 a 6 cartas distintas, cada una con una parte de las que entran en un lote (las que se mueven van todas al mismo lugar), a veces con el barajado al principio o al final.
+      const to = pick(['deck', 'extra', 'hand', 'gy', 'banished', 'deck-bottom'] as const)
+      const faceDown = next() < 0.5
+      const cards = [...new Set(Array.from({ length: 1 + Math.floor(next() * 6) }, () => pick(ids)))]
+      const parts = cards.map((id): MatAction => {
+        const kind = Math.floor(next() * 6)
+
+        return kind === 0 ? { type: 'target', id } : kind === 1 ? { type: 'reveal', id } : kind === 2 ? { type: 'attach', id, to: pick(monsters.length > 0 ? monsters : ids) } : { type: 'move', id, to, faceDown }
+      })
+      const shuffle = next()
+
+      return { type: 'batch', actions: shuffle < 0.25 ? [{ type: 'shuffle', seed }, ...parts] : shuffle < 0.5 ? [...parts, { type: 'shuffle', seed }] : parts }
+    }
     default:
       return { type: 'phase', phase: pick(['draw', 'standby', 'main1', 'battle', 'main2', 'end'] as const) }
   }

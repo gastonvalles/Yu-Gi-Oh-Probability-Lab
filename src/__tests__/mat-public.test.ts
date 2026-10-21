@@ -187,6 +187,33 @@ describe('la mesa que se manda al rival no dice qué cartas son', () => {
 
     const plain: MatAction[] = [{ type: 'draw', count: 1 }, { type: 'mill', count: 1 }, { type: 'shuffle', seed: 3 }, { type: 'token', zone: 'mz', index: 0 }, { type: 'phase', phase: 'main1' }]
     expect(plain.map((action) => mapActionIds(action, upper))).toEqual(plain)
+
+    // Un lote: cada parte renombrada, en su orden.
+    expect(mapActionIds({ type: 'batch', actions: [{ type: 'shuffle', seed: 4 }, ...actions.filter((action) => ['move', 'target', 'attach', 'reveal'].includes(action.type))] }, upper)).toEqual({
+      type: 'batch',
+      actions: [{ type: 'shuffle', seed: 4 }, { type: 'move', id: 'A', to: 'gy' }, { type: 'attach', id: 'A', to: 'B' }, { type: 'reveal', id: 'A' }, { type: 'target', id: 'A' }],
+    })
+  })
+
+  it('un lote muestra lo que mostraría cada parte suelta: lo que va a la mano (sin ser un robo) y lo que se revela; lo boca abajo sigue secreto', () => {
+    const game = duel()
+    const searched = ['card-1010-1', 'card-1011-1']
+    const wire = game.play({
+      type: 'batch',
+      actions: [
+        { type: 'shuffle', seed: 3 },
+        ...searched.map((id): MatAction => ({ type: 'move', id, to: 'hand' })),
+        { type: 'reveal', id: 'card-1012-1' },
+        { type: 'move', id: 'card-1013-1', to: 'banished', faceDown: true },
+        { type: 'move', id: 'card-1014-1', to: 'gy' },
+      ],
+    })
+
+    expect(wire.reveal).toEqual(Object.fromEntries([...searched, 'card-1012-1', 'card-1014-1'].map((id) => [game.opaque(id), id])))
+    expect(JSON.stringify(wire)).not.toContain('card-1013-1')
+    expect(game.mirror.state).toEqual(mapMatIds(game.state, game.opaque))
+    // Lo que ya estaba en la mano no se vuelve a mostrar, ni se muestra lo que sólo se marca.
+    expect(game.play({ type: 'batch', actions: [{ type: 'move', id: 'card-1000-1', to: 'hand' }, { type: 'target', id: 'card-1015-1' }] }).reveal).toEqual({})
   })
 })
 
@@ -204,6 +231,18 @@ describe('el espejo del rival', () => {
     // Quien juega repite la jugada: no revela de nuevo y el espejo sigue sabiendo qué carta es.
     const again = game.play({ type: 'place', id: 'card-1001-1', zone: 'mz', index: 1, pos: 'atk' })
     expect(again.reveal).toEqual({})
+  })
+
+  it('un lote es una jugada del espejo: deshacerlo vuelve a la mesa de antes de todas sus partes, en un paso', () => {
+    const game = duel()
+    game.play({ type: 'move', id: 'card-1000-1', to: 'gy' })
+    const before = game.mirror.state
+
+    game.play({ type: 'batch', actions: ['card-1001-1', 'card-1002-1', 'card-1003-1'].map((id): MatAction => ({ type: 'move', id, to: 'gy' })) })
+
+    expect(game.mirror.acts).toHaveLength(2)
+    expect(game.mirror.state.gy).toHaveLength(4)
+    expect(mirrorUndo(game.mirror).state).toEqual(before)
   })
 
   it('quien se reconecta recupera todo con lo que ya sabía el rival más las jugadas', () => {
@@ -257,13 +296,16 @@ function visible(state: MatState, action?: MatAction, before?: MatState): string
     }
   }
 
-  if (action && (action.type === 'reveal' || action.type === 'declare' || action.type === 'activate')) {
-    cards.push(action.id)
-  }
+  // Un lote muestra lo que mostraría cada una de sus partes.
+  for (const part of action?.type === 'batch' ? action.actions : action ? [action] : []) {
+    if (part.type === 'reveal' || part.type === 'declare' || part.type === 'activate') {
+      cards.push(part.id)
+    }
 
-  // Agregar a la mano una carta que no estaba en ella (buscarla en el deck, devolverla, traerla del cementerio) la muestra: sólo robar es secreto.
-  if (action && before && action.type === 'move' && action.to === 'hand' && !before.hand.includes(action.id)) {
-    cards.push(action.id)
+    // Agregar a la mano una carta que no estaba en ella (buscarla en el deck, devolverla, traerla del cementerio) la muestra: sólo robar es secreto.
+    if (before && part.type === 'move' && part.to === 'hand' && !before.hand.includes(part.id)) {
+      cards.push(part.id)
+    }
   }
 
   return cards.filter((id) => !id.startsWith('token-'))
@@ -308,7 +350,7 @@ describe('sobre jugadas al azar', () => {
     }
 
     // La prueba no es vacía: las jugadas con efecto cubren los tipos que mueven cartas.
-    for (const type of ['move', 'place', 'position', 'counter', 'token', 'tribute', 'summon', 'attach', 'activate', 'draw']) {
+    for (const type of ['move', 'place', 'position', 'counter', 'token', 'tribute', 'summon', 'attach', 'activate', 'draw', 'batch']) {
       expect(effective[type] ?? 0, `jugadas ${type} con efecto`).toBeGreaterThan(20)
     }
   })

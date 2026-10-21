@@ -1447,14 +1447,16 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     const key = Date.now()
 
     if (spotlight && spotlight.kind !== 'attack') {
-      const art = artOf(spotlight.id)
+      // Un lote destaca varias cartas (`ids`): se muestran todas y el nombre se pide sólo cuando es una.
+      const ids = spotlight.ids ?? [spotlight.id]
+      const cards = ids.map((id) => ({ id, art: artOf(id) }))
       // Sólo si la carta es pública para quien mira (el rival la mostró al activarla o revelarla): una boca abajo sigue de dorso y sin nombre.
-      const readable = READABLE_KINDS.has(spotlight.kind) && art !== null
-      const real = isToken(spotlight.id) ? undefined : theirs.known[spotlight.id]
+      const readable = READABLE_KINDS.has(spotlight.kind) && cards[0]!.art !== null
+      const real = ids.length > 1 || isToken(spotlight.id) ? undefined : theirs.known[spotlight.id]
       const passcode = readable && real ? passcodeOfDrawId(real) : null
 
       setShown({
-        effect: { key, kind: spotlight.kind, cards: [{ id: spotlight.id, art }], caption: t(`duel.announce.${spotlight.kind}`, { name: rival }), ...(readable ? { linger: true } : {}) },
+        effect: { key, kind: spotlight.kind, cards, caption: t(`duel.announce.${spotlight.kind}`, { name: rival, count: ids.length }), ...(readable ? { linger: true } : {}) },
         flashId: spotlight.id,
         ...(passcode === null ? {} : { passcode }),
         ...(action.type === 'activate' && action.effect !== undefined ? { effectIndex: action.effect } : {}),

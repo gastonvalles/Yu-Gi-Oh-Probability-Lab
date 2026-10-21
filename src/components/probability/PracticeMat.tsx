@@ -631,7 +631,7 @@ export function PracticeMat({
     // Un paso que no muestra nada saca las cartas del paso anterior (que seguirían con la línea de éste).
     setStage(
       effects.spotlight && effects.spotlight.kind !== 'target' && effects.spotlight.kind !== 'attack'
-        ? { ids: [effects.spotlight.id], kind: effects.spotlight.kind, step: session.cursor, key }
+        ? { ids: effects.spotlight.ids ?? [effects.spotlight.id], kind: effects.spotlight.kind, step: session.cursor, key }
         : effects.showcase && session.replay
           ? { ...effects.showcase, step: session.cursor, key }
           : null,

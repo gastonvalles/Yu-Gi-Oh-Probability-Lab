@@ -401,10 +401,25 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect(ghosts().map((ghost) => [ghost.from, ghost.delay])).toEqual([0, 1, 2].map((index) => ['translate(700px, 500px)', index * FLIGHT_STAGGER_MS]))
     first.unmount()
 
+    // Más de quince de una pila a otra de una vez ya no es una jugada.
     calls = []
-    const second = render(<PileMat state={start} />)
-    second.rerender(<PileMat state={play(start, { type: 'mill', count: 9 })} />)
+    const many = createMatState(Array.from({ length: 20 }, (_, index) => String(200 + index)), [], 2)
+    const second = render(<PileMat state={many} />)
+    second.rerender(<PileMat state={play(many, { type: 'mill', count: 16 })} />)
     expect(ghosts()).toHaveLength(0)
+  })
+
+  it('un lote de diez (Pot of Desires: el deck entero al destierro boca abajo) vuela entero, escalonado hasta la 8.ª', () => {
+    const start = fresh()
+    const { rerender } = render(<PileMat state={start} />)
+
+    rerender(<PileMat state={play(start, { type: 'batch', actions: start.deck.map((id): MatAction => ({ type: 'move', id, to: 'banished', faceDown: true })) })} />)
+
+    expect(ghosts()).toHaveLength(10)
+    expect(ghosts().map((ghost) => ghost.delay)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 7, 7].map((index) => index * FLIGHT_STAGGER_MS))
+    expect(ghosts().every((ghost) => ghost.from === 'translate(700px, 500px)' && ghost.to === 'translate(700px, 200px) scale(1)')).toBe(true)
+    // El destierro da un solo golpe.
+    expect(impacts(document.querySelector('[data-drop="banished"]')!)).toHaveLength(1)
   })
 
   it('de la mano del rival a su cementerio: sale del medio de su mano, de dorso y de cabeza', () => {

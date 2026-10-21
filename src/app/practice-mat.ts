@@ -115,6 +115,12 @@ export type MatAction =
   | { type: 'give'; id: string; auto?: true }
   | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; auto?: true }
   | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; faceUp?: boolean; auto?: true }
+  /**
+   * Varias cartas en una sola jugada (elegidas juntas en el Main, el Extra, el cementerio o el destierro): las partes van en orden, de un mismo tipo y destino, con un `shuffle` al principio
+   * (salen mirando el Main: el resto se baraja) o al final («Al azar»: entran al deck y se baraja todo). Es una jugada: un paso, una línea, un Deshacer y, en el duelo, un mensaje. Un lote
+   * dentro de otro no hace nada.
+   */
+  | { type: 'batch'; actions: MatAction[] }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
@@ -535,6 +541,9 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       return newTurn && !action.skipDraw ? matReducer(next, { type: 'draw', count: 1 }) : next
     }
 
+    case 'batch':
+      return action.actions.reduce((current, part) => (part.type === 'batch' ? current : matReducer(current, part)), state)
+
     default:
       return state
   }
@@ -553,7 +562,13 @@ const positionName = (pos: MatPos) => t(pos === 'atk' ? 'practice.step.position.
 /** Qué hace la jugada, en una línea: `before` es el estado previo (para saber de dónde viene la carta). */
 export function describeMatAction(before: MatState, action: MatAction, nameOf: (id: string) => string): string {
   const name = (id: string) => (isToken(id) ? t('practice.token.the') : nameOf(id))
-  const text = describePlay(before, action, name)
+
+  return action.type === 'batch' ? describeBatch(before, action.actions, name) : describeOne(before, action, name)
+}
+
+/** La línea de una jugada; `count` es cuántas cartas nombra `name` (en un lote, la lista entera: las frases en tercera persona concuerdan con ella). */
+function describeOne(before: MatState, action: MatAction, name: (id: string) => string, count = 1): string {
+  const text = describePlay(before, action, name, count)
 
   if (action.type === 'move' && shufflesIn(before, action)) {
     return t('practice.step.deckShuffled', { card: name(action.id) })
@@ -563,7 +578,33 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
   return (action.type === 'move' || action.type === 'place') && action.shuffle !== undefined ? t('practice.step.andShuffle', { text }) : text
 }
 
-function describePlay(before: MatState, action: MatAction, name: (id: string) => string): string {
+type CardAction = Extract<MatAction, { id: string }>
+
+/**
+ * Un lote, en una línea: si todas sus partes dicen lo mismo sin su carta (mismo tipo, destino y origen), la frase de la primera con todas las cartas —hasta tres por su nombre; desde
+ * cuatro, «N cartas»—; si no (un lote mezclado, que sólo llega armado a mano), «Movés …». Su `shuffle` se dice como el de una carta: al final, con todo entrando al deck, «Barajás …
+ * dentro del deck»; si no, «… y barajás».
+ */
+function describeBatch(before: MatState, actions: readonly MatAction[], name: (id: string) => string): string {
+  const parts = actions.filter((part): part is CardAction => 'id' in part)
+  const shuffles = actions.some((part) => part.type === 'shuffle')
+  const first = parts[0]
+
+  if (!first) return t(shuffles ? 'practice.step.shuffle' : 'practice.step.play')
+
+  const cards = parts.length > 3 ? t('practice.mat.cardCount', { count: parts.length }) : listNames(parts.map((part) => name(part.id)))
+  const bare = (part: CardAction) => describeOne(before, part, (id) => (id === part.id ? '' : name(id)), parts.length)
+  const shape = bare(first)
+  const text = parts.every((part) => bare(part) === shape) ? describeOne(before, first, (id) => (id === first.id ? cards : name(id)), parts.length) : t('practice.step.move', { card: cards })
+
+  if (!shuffles) return text
+
+  const intoDeck = actions.at(-1)?.type === 'shuffle' && parts.every((part) => part.type === 'move' && (part.to === 'deck' || part.to === 'deck-bottom') && !before.deck.includes(part.id))
+
+  return intoDeck ? t('practice.step.deckShuffled', { card: cards }) : t('practice.step.andShuffle', { text })
+}
+
+function describePlay(before: MatState, action: MatAction, name: (id: string) => string, count = 1): string {
   switch (action.type) {
     case 'draw': {
       const top = before.deck[0]
@@ -587,15 +628,15 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
         case 'hand':
           if (fromPile === 'deck') return t('practice.step.search', { card })
           if (fromPile === 'gy') return t('practice.step.recover', { card })
-          if (fromPile && fromPile !== 'hand') return t('practice.step.pileToHand', { card, pile: t(PILE_PHRASE_KEY[fromPile]) })
+          if (fromPile && fromPile !== 'hand') return t('practice.step.pileToHand', { card, count, pile: t(PILE_PHRASE_KEY[fromPile]) })
           return t('practice.step.backToHand', { card })
         case 'gy':
           if (isToken(action.id)) return t('practice.step.tokenGone')
-          return fromPile === 'deck' ? t('practice.step.mill', { card }) : t('practice.step.toGy', { card })
+          return fromPile === 'deck' ? t('practice.step.mill', { card }) : t('practice.step.toGy', { card, count })
         case 'banished':
           return action.faceDown ? t('practice.step.banishFaceDown', { card }) : t('practice.step.banish', { card })
         case 'extra':
-          return t(action.faceUp ? 'practice.step.toExtraFaceUp' : 'practice.step.toExtra', { card })
+          return t(action.faceUp ? 'practice.step.toExtraFaceUp' : 'practice.step.toExtra', { card, count })
         case 'deck':
           return t('practice.step.deckTop', { card })
         case 'deck-bottom':

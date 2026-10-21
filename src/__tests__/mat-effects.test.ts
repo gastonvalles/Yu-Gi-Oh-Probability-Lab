@@ -182,6 +182,32 @@ describe('los efectos de una jugada', () => {
     expect(matEffects(start(), { type: 'shuffle', seed: 3 })).toEqual({ shuffle: true })
     expect(matEffects(after([place('a1', 0)]), { type: 'counter', id: 'a1', delta: 1 })).toEqual({})
   })
+
+  it('un lote junta los efectos de sus partes: las cartas que se muestran, van en silencio o destacan se suman (la primera sigue en `id`), y baraja si alguna parte baraja', () => {
+    const batch = (ids: string[], part: (id: string) => MatAction, ...around: MatAction[]): MatAction => ({ type: 'batch', actions: [...ids.map(part), ...around] })
+    const mix: MatAction = { type: 'shuffle', seed: 2 }
+
+    // Buscar dos en el deck (el barajado va primero): se muestran las dos, de dorso, y la mano y el deck se barajan.
+    expect(matEffects(start(), { type: 'batch', actions: [mix, ...['e1', 'f1'].map((id): MatAction => ({ type: 'move', id, to: 'hand' }))] })).toEqual({ showcase: { ids: ['e1', 'f1'], kind: 'hand', flip: true }, hand: true, shuffle: true })
+    // Al cementerio y al destierro, en silencio; al deck «al azar» (el barajado al final), se muestran y se baraja todo.
+    expect(matEffects(start(), batch(['a1', 'a2', 'c1'], (id) => ({ type: 'move', id, to: 'gy' })))).toEqual({ quiet: { ids: ['a1', 'a2', 'c1'], kind: 'gy' } })
+    expect(matEffects(start(), batch(['a1', 'a2'], (id) => ({ type: 'move', id, to: 'banished', faceDown: true })))).toEqual({ quiet: { ids: ['a1', 'a2'], kind: 'banish' } })
+    expect(matEffects(start(), batch(['a1', 'a2'], (id) => ({ type: 'move', id, to: 'deck' }), mix))).toEqual({ showcase: { ids: ['a1', 'a2'], kind: 'deck' }, shuffle: true })
+    // Revelar o marcar varias destaca la primera y trae todas en `ids`; una sola, como suelta (sin `ids`); quitarles el target no destaca nada.
+    expect(matEffects(start(), batch(['e1', 'f1'], (id) => ({ type: 'reveal', id })))).toEqual({ spotlight: { id: 'e1', kind: 'reveal', ids: ['e1', 'f1'] } })
+    expect(matEffects(start(), batch(['a1', 'a2', 'c1'], (id) => ({ type: 'target', id })))).toEqual({ spotlight: { id: 'a1', kind: 'target', ids: ['a1', 'a2', 'c1'] } })
+    expect(matEffects(start(), batch(['a1'], (id) => ({ type: 'target', id })))).toEqual({ spotlight: { id: 'a1', kind: 'target' } })
+    expect(matEffects(after([{ type: 'target', id: 'a1' }, { type: 'target', id: 'a2' }]), batch(['a1', 'a2'], (id) => ({ type: 'target', id })))).toEqual({})
+    // Adjuntar varias a un Xyz: se muestran todas.
+    const xyz = after([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk', how: 'special' }])
+    expect(matEffects(xyz, batch(['a1', 'a2'], (id) => ({ type: 'attach', id, to: 'x1' })))).toEqual({ showcase: { ids: ['a1', 'a2'], kind: 'attach' } })
+    // Un lote mezclado no junta clases distintas: queda la de la primera parte que la tuvo.
+    expect(matEffects(start(), { type: 'batch', actions: [{ type: 'move', id: 'a1', to: 'gy' }, { type: 'move', id: 'a2', to: 'banished' }] })).toEqual({ quiet: { ids: ['a1'], kind: 'gy' } })
+    // Vacío, sin efecto o dentro de otro lote: nada.
+    expect(matEffects(start(), { type: 'batch', actions: [] })).toEqual({})
+    expect(matEffects(start(), batch(['zzz'], (id) => ({ type: 'move', id, to: 'gy' })))).toEqual({})
+    expect(matEffects(start(), { type: 'batch', actions: [batch(['a1'], (id) => ({ type: 'move', id, to: 'gy' }))] })).toEqual({})
+  })
 })
 
 describe('las animaciones que no paran de la mesa', () => {
