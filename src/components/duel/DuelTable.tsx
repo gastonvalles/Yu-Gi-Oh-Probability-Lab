@@ -10,6 +10,7 @@ import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
+import { FieldArt, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
 import { PileStack } from '../probability/PileStack'
@@ -79,9 +80,9 @@ const MINE_ROWS_COMPACT = ["'m1 m2 m3 m4 m5'", "'s1 s2 s3 s4 s5'", "'extra ban f
 /** Las áreas del duelo en un celular en vertical (ver arriba). */
 export const DUEL_AREAS_COMPACT = [...THEIR_ROWS_COMPACT, MIDDLE_COMPACT, ...MINE_ROWS_COMPACT].join(' ')
 
-/** Las columnas de los costados miden lo justo de una carta (0,6857 de una del centro): todas las cartas del campo miden lo mismo. */
+/** Las columnas de los costados miden lo justo de una carta (0,6857 de una del centro): todas las cartas del campo miden lo mismo. `isolate`: el arte de una magia de campo (`FieldArt`, `-z-9`) queda detrás de las casillas y no detrás de la pantalla. */
 const GRID =
-  'relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:var(--areas)] max-sm:grid-cols-[repeat(5,minmax(0,1fr))] max-sm:[grid-template-areas:var(--areas-compact)] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,6.5rem)*0.6857))_repeat(5,minmax(0,var(--cell,6.5rem)))_minmax(0,calc(var(--cell,6.5rem)*0.6857))]'
+  'relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:var(--areas)] max-sm:grid-cols-[repeat(5,minmax(0,1fr))] max-sm:[grid-template-areas:var(--areas-compact)] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,6.5rem)*0.6857))_repeat(5,minmax(0,var(--cell,6.5rem)))_minmax(0,calc(var(--cell,6.5rem)*0.6857))]'
 
 const ZONE_LABEL: Record<MatSpot, () => string> = {
   mz: () => t('practice.zone.mz'),
@@ -213,13 +214,14 @@ export function sharedZoneCard(theirs: DuelSideView, index: number) {
   return placed ? <CardOnZone placed={placed} spot="emz" side={theirs} owner="theirs" label={zoneLabel('mine', 'emz', index)} /> : null
 }
 
-/** Las zonas y pilas de un lado. Las áreas del rival llevan una `t` delante (`tm1`, `tgy`…). */
+/** Las zonas y pilas de un lado, y el arte de su magia de campo boca arriba de fondo de su mitad. Las áreas del rival llevan una `t` delante (`tm1`, `tgy`…). */
 export function SideCells({ side, owner }: { side: DuelSideView; owner: Owner }) {
   const prefix = owner === 'theirs' ? 't' : ''
   const { state } = side
 
   return (
     <>
+      <FieldArt side={owner} src={fieldArtSrc(state.field, side.artOf)} />
       <Zone area={`${prefix}fld`} spot="field" index={0} placed={state.field} side={side} owner={owner} />
       {state.mz.map((placed, index) => (
         <Zone key={`m${index}`} area={`${prefix}m${index + 1}`} spot="mz" index={index} placed={placed} side={side} owner={owner} />
