@@ -122,7 +122,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                 onPointerUp={flip.onPointerUp}
                 onPointerCancel={flip.onPointerCancel}
               >
-                <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} shadow={false} foil={foilOf(art?.printing?.rarity, card.frameType)}>
+                <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} shadow={false} foil={foilOf(art?.printing?.rarity, card.frameType, art?.printing?.variant)}>
                   <button
                     type="button"
                     aria-label={t('deck.classic.zoom')}

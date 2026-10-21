@@ -1,0 +1,795 @@
+/*
+ * Foil de rareza (`RarityFoil`, `app/card-foil.ts`): capas encima de la carta grande que simulan el papel de una carta impresa. La rareza de la impresión elige el efecto (`data-foil`, dieciocho) y el marco (`data-frame`)
+ * dónde cae la ventana del arte; una impresión de arte extendido (`data-frame='full'`) lleva el brillo en toda la carta, sin ventana. Cada efecto sigue cómo es la rareza de verdad (Gastón, 2026-10-20, con la guía de
+ * cada una): Rare, sólo el nombre de lámina; Super, sólo el arte holográfico; Ultra, las dos cosas con el nombre dorado; Secret, rayas en diagonal que destellan en el arte y en la caja del texto; Ultimate, relieve en
+ * todo (el arte, los niveles, los atributos y los bordes); Ghost, un arte casi transparente, como un negativo; Collector's, puntos geométricos e irisaciones en el arte y los bordes; Starlight, todo cubierto de
+ * polvo de estrellas en horizontales y verticales; Quarter Century, el patrón de la Secret en toda la carta con la marca del 25.º aniversario en la caja del texto.
+ *
+ * Cada efecto se arma con hasta ocho capas (`RarityFoil`), todas mezcladas con la imagen (`mix-blend-mode`) y movidas por `--fx` / `--fy` (dónde está la luz, en %): el puntero (`--foil-px` / `--foil-py`,
+ * que escribe `card-tilt.tsx` mientras la carta se inclina) o, si nadie la toca, una deriva lenta de `--foil-ax` / `--foil-ay` (propiedades registradas, así que se pueden animar). `--fd` es qué tan lejos del
+ * centro está el puntero (0 a 1) y sube un poco la intensidad.
+ * - `rf-glare`: el reflejo de una lámpara en el papel, sobre toda la carta.
+ * - `rf-art`: la textura principal en la ventana del arte (una hoja holográfica, un cromado, un dorado…).
+ * - `rf-detail`: el dibujo fino del efecto en la ventana del arte (rayas, estrellas, vidrio roto, cuadraditos, jeroglíficos…).
+ * - `rf-text`: la caja del texto del efecto (el patrón de la Secret, la marca de la Quarter Century).
+ * - `rf-sparkle`: el polvo brillante que sólo se ve cerca de la luz.
+ * - `rf-title`: el nombre de la carta, plateado, dorado o de arcoíris (en una carta de verdad el nombre es de lámina).
+ * - `rf-border`: el borde de la carta, un anillo del grosor del marco negro.
+ * - `rf-relief`: el relieve de la Ultimate: la imagen de la propia carta, en grises, con un filtro de grabado (`#rf-emboss`), mezclada para que los bordes del dibujo se vean levantados.
+ * La raíz NO crea una capa propia (nada de `contain`, `z-index` ni `opacity`): si no, las mezclas no verían la imagen de la carta. Las texturas son propias (`public/foil/`, `scripts/foil-textures/`).
+ * Con movimiento reducido todo queda quieto.
+ */
+@property --foil-ax {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 50%;
+}
+
+@property --foil-ay {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 40%;
+}
+
+@keyframes foil-drift {
+  0% {
+    --foil-ax: 14%;
+    --foil-ay: 18%;
+  }
+
+  35% {
+    --foil-ax: 78%;
+    --foil-ay: 34%;
+  }
+
+  70% {
+    --foil-ax: 38%;
+    --foil-ay: 82%;
+  }
+
+  100% {
+    --foil-ax: 88%;
+    --foil-ay: 66%;
+  }
+}
+
+@keyframes foil-twinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.rarity-foil {
+  --fx: var(--foil-px, var(--foil-ax));
+  --fy: var(--foil-py, var(--foil-ay));
+  --fd: var(--foil-d, 0);
+
+  /* Dónde está la ventana del arte, la caja del texto y el nombre, en % de la carta (421 × 614 px). */
+  --art-l: 11.9%;
+  --art-t: 18.1%;
+  --art-w: 76.2%;
+  --art-h: 52.4%;
+  --text-l: 4.8%;
+  --text-t: 74.5%;
+  --text-w: 90.4%;
+  --text-h: 18%;
+  --name-l: 5.4%;
+  --name-t: 3.4%;
+  --name-w: 78.5%;
+  --name-h: 7.2%;
+
+  /* Lo que se desdibuja el borde de la ventana (en % de la ventana): el borde duro de un rectángulo no se parece a ninguna carta. */
+  --feather: 1.1%;
+
+  /* Cuánto de la intensidad queda cuando el brillo cubre toda la carta (arte extendido): el arte, el detalle, el texto y el polvo se multiplican por esto. */
+  --cover: 1;
+
+  /* Materiales: arcoíris, plata, oro y la luz de la lámpara. */
+  --silver: linear-gradient(115deg, #b9c4cc 0%, #f4f8fb 14%, #98a6b0 28%, #ffffff 42%, #8d9ca7 56%, #e6edf1 70%, #aebac3 84%, #f6fafc 100%);
+  --gold: linear-gradient(115deg, #7a5a12 0%, #e8bd42 16%, #fff3b8 30%, #b8861f 44%, #ffe48a 58%, #8a6414 72%, #f2cf62 86%, #fff3b8 100%);
+  --rainbow: linear-gradient(115deg, #ff4b76 0%, #ffb84a 16%, #f4ed62 30%, #65e78e 44%, #53e0e6 58%, #558dff 72%, #a967ff 86%, #f04fe7 100%);
+  --lamp: radial-gradient(circle at var(--fx) var(--fy), rgb(255 255 255 / 0.8) 0%, rgb(255 255 255 / 0.22) 30%, transparent 60%);
+  --streak: linear-gradient(115deg, transparent 32%, rgb(255 255 255 / 0.55) 46%, rgb(255 250 235 / 0.9) 50%, rgb(255 255 255 / 0.55) 54%, transparent 68%);
+  --rain: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.55) 0 0.8px, transparent 0.8px 3.6px);
+  --rain-text: repeating-linear-gradient(135deg, rgb(110 170 255 / 0.3) 0 0.9px, transparent 0.9px 2.4px, rgb(255 130 200 / 0.24) 2.4px 3.3px, transparent 3.3px 4.8px);
+  --anniversary: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 380 120'%3E%3Ctext x='190' y='78' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='92' fill='none' stroke='%237a5a1a' stroke-width='5'%3E25%3C/text%3E%3Ctext x='190' y='108' text-anchor='middle' font-family='Arial,sans-serif' font-weight='700' font-size='15' letter-spacing='6' fill='%237a5a1a'%3E25TH ANNIVERSARY%3C/text%3E%3C/svg%3E");
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  animation: foil-drift 9s ease-in-out infinite alternate;
+}
+
+.rarity-foil[data-frame='pendulum'] {
+  --art-l: 6.9%;
+  --art-t: 17.6%;
+  --art-w: 86.2%;
+  --art-h: 45%;
+  --text-t: 76%;
+  --text-h: 16.5%;
+}
+
+.rarity-foil[data-frame='spelltrap'] {
+  --art-t: 18.4%;
+  --art-h: 52.3%;
+  --name-w: 82%;
+}
+
+.rarity-foil[data-frame='skill'] {
+  --art-l: 8.2%;
+  --art-t: 15.5%;
+  --art-w: 83.6%;
+  --art-h: 58%;
+}
+
+/* Arte extendido (o con el arte sobre el marco): no hay ventana, el brillo cubre toda la carta y no se desdibuja nada. */
+.rarity-foil[data-frame='full'] {
+  --art-l: 0%;
+  --art-t: 0%;
+  --art-w: 100%;
+  --art-h: 100%;
+  --feather: 0%;
+  --cover: 0.55;
+}
+
+.rarity-foil > span {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  background-repeat: no-repeat;
+}
+
+.rarity-foil > :is(.rf-glare, .rf-relief) {
+  inset: 0;
+}
+
+/* Las capas de la ventana del arte, con el borde desdibujado. */
+.rarity-foil > :is(.rf-art, .rf-detail, .rf-sparkle) {
+  left: var(--art-l);
+  top: var(--art-t);
+  width: var(--art-w);
+  height: var(--art-h);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--feather), #000 calc(100% - var(--feather)), transparent 100%), linear-gradient(to bottom, transparent 0, #000 var(--feather), #000 calc(100% - var(--feather)), transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+/* Los efectos que van en toda la carta, no sólo en el arte. */
+:is([data-foil='quarter'], [data-foil='parallel'], [data-foil='shatterfoil'], [data-foil='starlight'], [data-foil='grand']) > :is(.rf-art, .rf-detail, .rf-sparkle) {
+  --cover: 0.7;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  mask-image: none;
+}
+
+.rarity-foil > .rf-text {
+  left: var(--text-l);
+  top: var(--text-t);
+  width: var(--text-w);
+  height: var(--text-h);
+}
+
+.rarity-foil > .rf-title {
+  left: var(--name-l);
+  top: var(--name-t);
+  width: var(--name-w);
+  height: var(--name-h);
+  mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
+}
+
+/* El borde: un anillo del grosor del marco negro de la carta (el relleno es el grosor), recortado con una máscara. */
+.rarity-foil > .rf-border {
+  inset: 0;
+  padding: 2.3%;
+  border-radius: 2.6% / 1.8%;
+  background-size: 100% 100%;
+  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-clip: content-box, border-box;
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+}
+
+/* El relieve: la imagen de la carta (la pone `RarityFoil`), en grises y con el filtro de grabado; el gris del medio no cambia nada y los bordes del dibujo quedan levantados o hundidos. */
+.rarity-foil > .rf-relief {
+  background-size: 100% 100%;
+  filter: url('#rf-emboss') contrast(1.7);
+  mix-blend-mode: hard-light;
+}
+
+/* --- Rare: sólo el nombre, de lámina plateada. El resto de la carta es igual a una común. --- */
+[data-foil='rare'] > .rf-title {
+  background-image: var(--silver);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: calc(0.7 + var(--fd) * 0.2);
+}
+
+/* --- Super: sólo el arte, con una hoja holográfica de arcoíris que corre al revés de la luz. El nombre queda como está. --- */
+[data-foil='super'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 200% 200%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.9);
+  opacity: calc((0.38 + var(--fd) * 0.1) * var(--cover));
+}
+
+/* --- Ultra: las dos cosas, el nombre dorado y el arte holográfico (más intenso que el de la Super). --- */
+[data-foil='ultra'] > .rf-title {
+  background-image: var(--gold);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: calc(0.62 + var(--fd) * 0.2);
+}
+
+[data-foil='ultra'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 150% 150%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(1.15) contrast(1.05);
+  opacity: calc((0.52 + var(--fd) * 0.12) * var(--cover));
+}
+
+/* --- Secret: el nombre plateado y de arcoíris; el arte y la caja del texto, rayas finas en diagonal que destellan («lluvia de estrellas») sobre un arcoíris pálido. --- */
+[data-foil='secret'] > .rf-title {
+  background-image: url('/foil/holo.webp');
+  background-size: 220% 400%;
+  background-position: calc(100% - var(--fx)) 40%;
+  mix-blend-mode: hard-light;
+  filter: saturate(0.55) brightness(1.15);
+  opacity: calc(0.5 + var(--fd) * 0.15);
+}
+
+[data-foil='secret'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 190% 190%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.5) brightness(1.05);
+  opacity: calc((0.34 + var(--fd) * 0.12) * var(--cover));
+}
+
+:is([data-foil='secret'], [data-foil='quarter']) > .rf-detail {
+  background-image: var(--rain);
+  background-position: calc(var(--fx) * 0.16) calc(var(--fy) * 0.16);
+  mix-blend-mode: overlay;
+}
+
+:is([data-foil='secret'], [data-foil='quarter']) > .rf-text {
+  background-image: var(--rain-text);
+  background-position: calc(var(--fx) * 0.16) calc(var(--fy) * 0.16);
+  opacity: 0.95;
+}
+
+[data-foil='secret'] > .rf-detail {
+  opacity: calc(0.8 * var(--cover));
+}
+
+[data-foil='secret'] > .rf-sparkle {
+  background-image: url('/foil/glitter.webp');
+  background-size: 340px 340px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.5) calc(var(--fy) * 0.5);
+  mix-blend-mode: screen;
+  opacity: calc((0.45 + var(--fd) * 0.3) * var(--cover));
+}
+
+/* --- Ultimate: relieve en todo (el arte, los niveles, los atributos y los bordes: un grabado que se siente), con el nombre dorado y el borde blanco y dorado. --- */
+[data-foil='ultimate'] > .rf-title {
+  background-image: var(--gold);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: calc(0.66 + var(--fd) * 0.2);
+}
+
+[data-foil='ultimate'] > .rf-relief {
+  opacity: calc(0.55 + var(--fd) * 0.15);
+}
+
+[data-foil='ultimate'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 180% 180%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.7);
+  opacity: calc((0.2 + var(--fd) * 0.08) * var(--cover));
+}
+
+[data-foil='ultimate'] > .rf-detail {
+  background-image: var(--streak);
+  background-size: 300% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: overlay;
+  opacity: calc((0.5 + var(--fd) * 0.15) * var(--cover));
+}
+
+[data-foil='ultimate'] > .rf-border {
+  background-image: conic-gradient(from 20deg at var(--fx) var(--fy), #fff3b8, #ffffff, #e8bd42, #ffffff, #fff3b8);
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+/* --- Platinum (Platinum Rare y Platinum Secret Rare): como la Secret pero todo en plata cromada. --- */
+[data-foil='platinum'] > .rf-title {
+  background-image: var(--silver);
+  background-size: 300% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: calc(0.7 + var(--fd) * 0.2);
+}
+
+[data-foil='platinum'] > .rf-art {
+  background-image: var(--silver);
+  background-size: 260% 260%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: contrast(1.25) brightness(1.05);
+  opacity: calc((0.5 + var(--fd) * 0.15) * var(--cover));
+}
+
+[data-foil='platinum'] > .rf-detail {
+  background-image: var(--rain);
+  background-position: calc(var(--fx) * 0.16) calc(var(--fy) * 0.16);
+  mix-blend-mode: overlay;
+  opacity: calc(0.7 * var(--cover));
+}
+
+[data-foil='platinum'] > .rf-sparkle {
+  background-image: url('/foil/glitter.webp');
+  background-size: 340px 340px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.5) calc(var(--fy) * 0.5);
+  mix-blend-mode: screen;
+  filter: grayscale(1);
+  opacity: calc((0.5 + var(--fd) * 0.3) * var(--cover));
+}
+
+[data-foil='platinum'] > .rf-border {
+  background-image: linear-gradient(135deg, #e9eef2, #8d9ca7 30%, #ffffff 50%, #8d9ca7 70%, #e9eef2);
+  background-size: 250% 250%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.8;
+}
+
+/* --- Gold (Gold Rare, Gold Secret, Premium Gold, Ghost/Gold): la carta bañada en oro, el nombre y el borde dorados. --- */
+[data-foil='gold'] > .rf-glare {
+  background-image: var(--gold);
+  background-size: 260% 260%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: overlay;
+  opacity: calc(0.62 + var(--fd) * 0.2);
+}
+
+[data-foil='gold'] > .rf-art {
+  background-image: var(--streak);
+  background-size: 260% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: soft-light;
+  opacity: calc(0.85 * var(--cover));
+}
+
+[data-foil='gold'] > .rf-detail {
+  background-image: var(--gold);
+  background-size: 200% 200%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  opacity: calc((0.16 + var(--fd) * 0.08) * var(--cover));
+}
+
+[data-foil='gold'] > .rf-title {
+  background-image: var(--gold);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: calc(0.7 + var(--fd) * 0.2);
+}
+
+[data-foil='gold'] > .rf-border {
+  background-image: var(--gold);
+  background-size: 250% 250%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.9;
+}
+
+/* --- Ghost: el nombre plateado pálido y el arte casi transparente y descolorido, como un negativo fotográfico, que se revela donde da la luz. --- */
+[data-foil='ghost'] > .rf-title {
+  background-image: var(--silver);
+  background-size: 300% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  filter: brightness(1.15);
+  opacity: calc(0.6 + var(--fd) * 0.2);
+}
+
+/* Primero se va el color; después un blanco por «diferencia» da vuelta los tonos a medias (el negativo) y la luz de la lámpara los devuelve y los enciende. */
+[data-foil='ghost'] > :is(.rf-art, .rf-detail) {
+  --reveal: radial-gradient(circle at var(--fx) var(--fy), transparent 0%, transparent 14%, #000 52%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--feather), #000 calc(100% - var(--feather)), transparent 100%), linear-gradient(to bottom, transparent 0, #000 var(--feather), #000 calc(100% - var(--feather)), transparent 100%), var(--reveal);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+[data-foil='ghost'] > .rf-art {
+  background-image: linear-gradient(0deg, #8a8a8a, #8a8a8a);
+  mix-blend-mode: saturation;
+  opacity: calc(0.95 * var(--cover));
+}
+
+[data-foil='ghost'] > .rf-detail {
+  background-image: linear-gradient(0deg, #ffffff, #ffffff);
+  mix-blend-mode: difference;
+  opacity: calc(0.4 * var(--cover));
+}
+
+[data-foil='ghost'] > .rf-sparkle {
+  background-image: radial-gradient(circle at var(--fx) var(--fy), rgb(255 255 255 / 0.95) 0%, rgb(222 236 255 / 0.5) 28%, transparent 62%);
+  mix-blend-mode: screen;
+  opacity: calc((0.5 + var(--fd) * 0.25) * var(--cover));
+}
+
+[data-foil='ghost'] > .rf-glare {
+  background-image: var(--streak);
+  background-size: 260% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: soft-light;
+  opacity: 0.5;
+}
+
+/* --- Starfoil: estrellitas de colores que se mueven con la luz (más rápido que el arte) sobre un holo suave. --- */
+[data-foil='starfoil'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 200% 200%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.85);
+  opacity: calc((0.26 + var(--fd) * 0.1) * var(--cover));
+}
+
+[data-foil='starfoil'] > .rf-detail {
+  background-image: url('/foil/stars.webp');
+  background-size: 130px 130px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.9) calc(var(--fy) * 0.9);
+  mix-blend-mode: screen;
+  filter: brightness(1.25);
+  opacity: calc(1 * var(--cover));
+}
+
+[data-foil='starfoil'] > .rf-sparkle {
+  background-image: url('/foil/glitter.webp');
+  background-size: 300px 300px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.4) calc(var(--fy) * 0.4);
+  mix-blend-mode: screen;
+  opacity: calc(0.55 * var(--cover));
+}
+
+/* --- Shatterfoil: vidrio roto en toda la carta, con facetas que cambian de brillo y bordes que destellan. --- */
+[data-foil='shatterfoil'] > .rf-detail {
+  background-image: url('/foil/shards.webp');
+  background-size: 360px 360px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.6) calc(var(--fy) * 0.6);
+  mix-blend-mode: soft-light;
+  filter: contrast(1.05) saturate(0.7);
+  opacity: calc((0.5 + var(--fd) * 0.15) * var(--cover));
+}
+
+[data-foil='shatterfoil'] > .rf-art {
+  background-image: url('/foil/shards.webp');
+  background-size: 220px 220px;
+  background-repeat: repeat;
+  background-position: calc(100% - var(--fx) * 0.8) calc(100% - var(--fy) * 0.8);
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.6) brightness(0.8);
+  opacity: calc(0.2 * var(--cover));
+}
+
+[data-foil='shatterfoil'] > .rf-glare {
+  background-image: var(--lamp);
+  mix-blend-mode: soft-light;
+  opacity: 0.8;
+}
+
+/* --- Mosaic: baldosas de colores en el arte, que cambian de tono con la luz. --- */
+[data-foil='mosaic'] > .rf-detail {
+  background-image: url('/foil/mosaic.webp');
+  background-size: 260px 260px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.3) calc(var(--fy) * 0.3);
+  mix-blend-mode: soft-light;
+  filter: hue-rotate(calc(var(--fx) * 2.6)) saturate(0.85) blur(0.4px);
+  opacity: calc((0.7 + var(--fd) * 0.15) * var(--cover));
+}
+
+[data-foil='mosaic'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 200% 200%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.8);
+  opacity: calc(0.22 * var(--cover));
+}
+
+[data-foil='mosaic'] > .rf-glare {
+  background-image: var(--lamp);
+  mix-blend-mode: soft-light;
+  opacity: 0.7;
+}
+
+/* --- Collector's: puntos geométricos y una irisación muy marcada en el arte y en los bordes (con el nombre y las estrellas más claros). --- */
+[data-foil='collector'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 170% 170%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(1.25) contrast(1.1);
+  opacity: calc((0.42 + var(--fd) * 0.12) * var(--cover));
+}
+
+[data-foil='collector'] > .rf-detail {
+  background-image: radial-gradient(circle at center, rgb(255 255 255 / 0.95) 0 0.9px, transparent 1.5px), radial-gradient(circle at center, rgb(255 255 255 / 0.7) 0 0.9px, transparent 1.5px);
+  background-size: 6px 6px, 6px 6px;
+  background-position: calc(var(--fx) * 0.08) calc(var(--fy) * 0.08), calc(3px + var(--fx) * 0.08) calc(3px + var(--fy) * 0.08);
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+  opacity: calc(0.9 * var(--cover));
+}
+
+[data-foil='collector'] > .rf-border {
+  background-image: var(--rainbow);
+  background-size: 300% 300%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.95;
+}
+
+[data-foil='collector'] > .rf-title {
+  background-image: var(--silver);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: 0.5;
+}
+
+/* --- Prismatic Secret: cuadraditos de arcoíris (como pixeles de un prisma) con polvo brillante y el borde de arcoíris. --- */
+[data-foil='prismatic'] > .rf-detail {
+  background-image: url('/foil/squares.webp');
+  background-size: 96px 96px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.35) calc(var(--fy) * 0.35);
+  mix-blend-mode: color-dodge;
+  opacity: calc((0.38 + var(--fd) * 0.12) * var(--cover));
+}
+
+[data-foil='prismatic'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 170% 170%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(1.1);
+  opacity: calc((0.26 + var(--fd) * 0.1) * var(--cover));
+}
+
+[data-foil='prismatic'] > .rf-sparkle {
+  background-image: url('/foil/glitter.webp');
+  background-size: 320px 320px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.5) calc(var(--fy) * 0.5);
+  mix-blend-mode: screen;
+  opacity: calc((0.55 + var(--fd) * 0.3) * var(--cover));
+}
+
+[data-foil='prismatic'] > .rf-border {
+  background-image: var(--rainbow);
+  background-size: 300% 300%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+/* --- Quarter Century Secret: el patrón de la Secret (rayas en diagonal) en toda la carta, con el nombre y el borde de arcoíris y la marca del 25.º aniversario en la caja del texto. --- */
+[data-foil='quarter'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 240% 240%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.9);
+  opacity: calc((0.3 + var(--fd) * 0.1) * var(--cover));
+}
+
+[data-foil='quarter'] > .rf-detail {
+  opacity: calc(0.85 * var(--cover));
+}
+
+[data-foil='quarter'] > .rf-glare {
+  background-image: var(--anniversary);
+  background-size: 54% auto;
+  background-position: 50% 84%;
+  mix-blend-mode: multiply;
+  opacity: 0.62;
+}
+
+[data-foil='quarter'] > .rf-sparkle {
+  background-image: url('/foil/glitter.webp');
+  background-size: 360px 360px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.5) calc(var(--fy) * 0.5);
+  mix-blend-mode: screen;
+  opacity: calc((0.7 + var(--fd) * 0.25) * var(--cover));
+}
+
+[data-foil='quarter'] > .rf-title {
+  background-image: var(--rainbow);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: 0.55;
+}
+
+[data-foil='quarter'] > .rf-border {
+  background-image: var(--rainbow);
+  background-size: 300% 300%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.9;
+}
+
+/* --- Parallel (Parallel Rare y todas las Duel Terminal): franjas anchas en diagonal que cruzan toda la carta. --- */
+[data-foil='parallel'] > .rf-detail {
+  background-image: repeating-linear-gradient(115deg, rgb(255 255 255 / 0.6) 0 14px, transparent 14px 30px);
+  background-position: calc(var(--fx) * 0.6) 0;
+  mix-blend-mode: overlay;
+  opacity: calc(0.8 * var(--cover));
+}
+
+[data-foil='parallel'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 200% 200%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(0.8);
+  opacity: calc(0.22 * var(--cover));
+}
+
+[data-foil='parallel'] > .rf-glare {
+  background-image: var(--lamp);
+  mix-blend-mode: soft-light;
+  opacity: 0.7;
+}
+
+/* --- Pharaoh's Rare: jeroglíficos dorados sobre el arte y todo en oro. --- */
+[data-foil='pharaoh'] > .rf-detail {
+  background-image: url('/foil/glyphs.webp');
+  background-size: 150px 150px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.3) calc(var(--fy) * 0.3);
+  mix-blend-mode: screen;
+  opacity: calc((0.6 + var(--fd) * 0.15) * var(--cover));
+}
+
+[data-foil='pharaoh'] > .rf-glare {
+  background-image: var(--gold);
+  background-size: 260% 260%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+[data-foil='pharaoh'] > .rf-title {
+  background-image: var(--gold);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: 0.7;
+}
+
+[data-foil='pharaoh'] > .rf-border {
+  background-image: var(--gold);
+  background-size: 250% 250%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.9;
+}
+
+/* --- Grand Master Rare: el marco dorado grueso y un holo intenso. --- */
+[data-foil='grand'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 160% 160%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(1.1);
+  opacity: calc((0.3 + var(--fd) * 0.1) * var(--cover));
+}
+
+[data-foil='grand'] > .rf-sparkle {
+  background-image: url('/foil/glitter.webp');
+  background-size: 330px 330px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.5) calc(var(--fy) * 0.5);
+  mix-blend-mode: screen;
+  opacity: calc(0.7 * var(--cover));
+}
+
+[data-foil='grand'] > .rf-title {
+  background-image: var(--gold);
+  background-size: 320% 100%;
+  background-position: calc(100% - var(--fx)) 0;
+  mix-blend-mode: hard-light;
+  opacity: 0.75;
+}
+
+[data-foil='grand'] > .rf-border {
+  padding: 3.6%;
+  background-image: var(--gold);
+  background-size: 250% 250%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.95;
+}
+
+/* --- Starlight: toda la superficie (también los bordes y la caja del texto) cubierta de polvo de estrellas, con líneas horizontales y verticales que reflejan, y el borde de arcoíris. --- */
+[data-foil='starlight'] > .rf-art {
+  background-image: url('/foil/holo.webp');
+  background-size: 260% 260%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: color-dodge;
+  filter: saturate(1.05);
+  opacity: calc((0.34 + var(--fd) * 0.1) * var(--cover));
+}
+
+[data-foil='starlight'] > .rf-detail {
+  background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.4) 0 0.6px, transparent 0.6px 3px), repeating-linear-gradient(90deg, rgb(255 255 255 / 0.4) 0 0.6px, transparent 0.6px 3px), url('/foil/stars.webp');
+  background-size: auto, auto, 170px 170px;
+  background-repeat: repeat, repeat, repeat;
+  background-position: calc(var(--fx) * 0.1) calc(var(--fy) * 0.1), calc(var(--fx) * 0.1) calc(var(--fy) * 0.1), calc(var(--fx) * 0.7) calc(var(--fy) * 0.7);
+  mix-blend-mode: overlay;
+  opacity: calc(0.7 * var(--cover));
+  animation: foil-twinkle 3.4s ease-in-out infinite;
+}
+
+[data-foil='starlight'] > .rf-sparkle {
+  background-image: url('/foil/glitter.webp');
+  background-size: 400px 400px;
+  background-repeat: repeat;
+  background-position: calc(var(--fx) * 0.5) calc(var(--fy) * 0.5);
+  mix-blend-mode: color-dodge;
+  opacity: calc((0.85 + var(--fd) * 0.15) * var(--cover));
+  animation: foil-twinkle 2.6s ease-in-out infinite reverse;
+}
+
+[data-foil='starlight'] > .rf-glare {
+  background-image: var(--lamp);
+  mix-blend-mode: soft-light;
+  opacity: 0.9;
+}
+
+[data-foil='starlight'] > .rf-border {
+  background-image: var(--rainbow);
+  background-size: 300% 300%;
+  background-position: calc(100% - var(--fx)) calc(100% - var(--fy));
+  mix-blend-mode: screen;
+  opacity: 0.95;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rarity-foil,
+  .rarity-foil > span {
+    animation: none !important;
+  }
+}

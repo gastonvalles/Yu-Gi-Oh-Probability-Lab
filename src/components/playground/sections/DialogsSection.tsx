@@ -5,7 +5,7 @@ import { printImageUrl } from '../../../app/card-prices'
 import type { ArtChoice } from '../../../app/use-card-art-options'
 import { showToastMessage, type ToastTone } from '../../../app/use-toast-message'
 import type { ApiCardReference } from '../../../types'
-import { foilKindOf, type FoilKind } from '../../../app/card-foil'
+import { foilKindOf, type FoilFrame, type FoilKind } from '../../../app/card-foil'
 import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../../card-detail/card-tilt'
 import { CardZoom } from '../../card-detail/CardZoom'
 import { RarityFoil } from '../../card-detail/RarityFoil'
@@ -50,22 +50,35 @@ const ZOOM_CARD = {
   banlist: { tcg: null, ocg: null, goat: null },
   genesys: { points: null },
 } as ApiCardReference
-// Una rareza de cada efecto, para ver todos los brillos de una vez.
-const FOIL_SAMPLES: ReadonlyArray<{ rarity: string; kind: FoilKind }> = [
-  'Rare',
-  'Super Rare',
-  'Ultra Rare',
-  'Secret Rare',
-  'Gold Rare',
-  'Ghost Rare',
-  'Platinum Secret Rare',
-  'Prismatic Secret Rare',
-  'Starlight Rare',
-].flatMap((rarity) => {
-  const kind = foilKindOf(rarity)
+// Una rareza de cada efecto, para ver todos los brillos de una vez, y dos de arte extendido (sin ventana: el brillo cubre toda la carta).
+const FOIL_SAMPLES: ReadonlyArray<{ rarity: string; kind: FoilKind; frame: FoilFrame; product?: number }> = [
+  ...[
+    'Rare',
+    'Super Rare',
+    'Ultra Rare',
+    'Secret Rare',
+    'Ultimate Rare',
+    'Platinum Secret Rare',
+    'Gold Rare',
+    'Ghost Rare',
+    'Starfoil Rare',
+    'Shatterfoil Rare',
+    'Mosaic Rare',
+    "Collector's Rare",
+    'Prismatic Secret Rare',
+    'Quarter Century Secret Rare',
+    'Duel Terminal Ultra Parallel Rare',
+    'Secret Pharaoh’s Rare',
+    'Grand Master Rare',
+    'Starlight Rare',
+  ].flatMap((rarity) => {
+    const kind = foilKindOf(rarity)
 
-  return kind ? [{ rarity, kind }] : []
-})
+    return kind ? [{ rarity, kind, frame: 'monster' as const }] : []
+  }),
+  { rarity: 'Ultra Rare · Extended Art', kind: 'ultra', frame: 'full', product: 719865 },
+  { rarity: 'Starlight Rare · Extended Art', kind: 'starlight', frame: 'full', product: 719866 },
+]
 
 const ZOOM_ARTS: ArtChoice[] = [
   {
@@ -118,14 +131,14 @@ export function DialogsSection() {
         {zoomOpen ? <CardZoom card={ZOOM_CARD} name="Ancient Warriors - Valiant Zhang De" arts={ZOOM_ARTS} artId={zoomArt} onArtChange={setZoomArt} onClose={() => setZoomOpen(false)} /> : null}
       </Specimen>
 
-      <Specimen title="Foil de rareza" note={<>El brillo que simula el papel de la carta impresa, según la rareza de la impresión que se ve: pasá el mouse (o el dedo) por encima y la luz la sigue; sin tocar, se mueve sola. Va adentro del frente de <Tag>CardFlip</Tag>. Archivos: <Tag>app/card-foil.ts</Tag> <Tag>card-detail/RarityFoil.tsx</Tag> <Tag>index.css</Tag></>}>
-        <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-4">
-          {FOIL_SAMPLES.map(({ rarity, kind }) => (
+      <Specimen title="Foil de rareza" note={<>El brillo que simula el papel de la carta impresa, según la rareza de la impresión que se ve: pasá el mouse (o el dedo) por encima y la luz la sigue; sin tocar, se mueve sola. Va adentro del frente de <Tag>CardFlip</Tag>. Dieciocho efectos, cada uno distinto a simple vista (el nombre y el borde de lámina, la hoja holográfica, rayas, vidrio roto, estrellas, jeroglíficos…); una impresión de arte extendido lleva el brillo en toda la carta, sin ventana. Archivos: <Tag>app/card-foil.ts</Tag> <Tag>card-detail/RarityFoil.tsx</Tag> <Tag>foil.css</Tag> <Tag>public/foil/</Tag></>}>
+        <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-5">
+          {FOIL_SAMPLES.map(({ rarity, kind, frame, product }) => (
             <figure key={rarity} className="m-0 grid gap-2 text-center">
-              <div className={cx('mx-auto w-full max-w-[9.5rem]', TILT_PERSPECTIVE)}>
+              <div className={cx('mx-auto w-full max-w-[13rem]', TILT_PERSPECTIVE)}>
                 <div className={cx('relative aspect-[421/614] overflow-hidden', TILT_ART)} {...tiltHandlers}>
-                  <img src={printImageUrl(ZOOM_PRODUCT, '400w')} alt="" draggable={false} className="block size-full object-cover" />
-                  <RarityFoil kind={kind} frame="monster" />
+                  <img src={printImageUrl(product ?? ZOOM_PRODUCT, 'in_1000x1000')} alt="" draggable={false} className="block size-full object-cover" />
+                  <RarityFoil kind={kind} frame={frame} />
                   <CardGlare />
                 </div>
               </div>

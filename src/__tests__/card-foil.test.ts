@@ -1,48 +1,57 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
-import { foilFrameOf, foilKindOf, foilOf, type FoilKind } from '../app/card-foil'
+import { FOIL_KINDS, foilFrameOf, foilKindOf, foilOf, type FoilKind } from '../app/card-foil'
 
 /** Las 33 rarezas que hay en los datos de precios (TCGplayer) y el efecto de cada una: null = sin brillo. */
 const RARITIES: ReadonlyArray<[rarity: string, kind: FoilKind | null]> = [
   ['Common', null],
   ['Promo', null],
   ['Rare', 'rare'],
-  ['Platinum Rare', 'rare'],
-  ['Super Rare', 'holo'],
-  ['Ultra Rare', 'holo'],
-  ['Ultimate Rare', 'holo'],
-  ['Parallel Rare', 'holo'],
-  ['Duel Terminal Normal Parallel Rare', 'holo'],
-  ['Duel Terminal Rare Parallel Rare', 'holo'],
-  ['Duel Terminal Super Parallel Rare', 'holo'],
-  ['Duel Terminal Ultra Parallel Rare', 'holo'],
-  ['Duel Terminal Technology Ultra Rare', 'holo'],
-  ['Ultra Pharaoh’s Rare', 'holo'],
-  ['Emblazoned Ultra Rare', 'holo'],
+  ['Platinum Rare', 'platinum'],
+  ['Super Rare', 'super'],
+  ['Ultra Rare', 'ultra'],
+  ['Ultimate Rare', 'ultimate'],
+  ['Parallel Rare', 'parallel'],
+  ['Duel Terminal Normal Parallel Rare', 'parallel'],
+  ['Duel Terminal Rare Parallel Rare', 'parallel'],
+  ['Duel Terminal Super Parallel Rare', 'parallel'],
+  ['Duel Terminal Ultra Parallel Rare', 'parallel'],
+  ['Duel Terminal Technology Ultra Rare', 'ultra'],
+  ['Ultra Pharaoh’s Rare', 'pharaoh'],
+  ['Secret Pharaoh’s Rare', 'pharaoh'],
+  ['Emblazoned Ultra Rare', 'ultra'],
   ['Secret Rare', 'secret'],
-  ['Secret Pharaoh’s Rare', 'secret'],
   ['10000 Secret Rare', 'secret'],
   ['Emblazoned Secret Rare', 'secret'],
   ['Gold Rare', 'gold'],
   ['Premium Gold Rare', 'gold'],
   ['Gold Secret Rare', 'gold'],
+  ['Ghost/Gold Rare', 'gold'],
   ['Ghost Rare', 'ghost'],
-  ['Ghost/Gold Rare', 'ghost'],
   ['Platinum Secret Rare', 'platinum'],
-  ['Prismatic Secret Rare', 'prism'],
-  ['Quarter Century Secret Rare', 'prism'],
-  ['Collector\'s Rare', 'prism'],
-  ['Starfoil Rare', 'prism'],
-  ['Shatterfoil Rare', 'prism'],
-  ['Mosaic Rare', 'prism'],
-  ['Grand Master Rare', 'prism'],
+  ['Prismatic Secret Rare', 'prismatic'],
+  ['Quarter Century Secret Rare', 'quarter'],
+  ["Collector's Rare", 'collector'],
+  ['Starfoil Rare', 'starfoil'],
+  ['Shatterfoil Rare', 'shatterfoil'],
+  ['Mosaic Rare', 'mosaic'],
+  ['Grand Master Rare', 'grand'],
   ['Starlight Rare', 'starlight'],
 ]
 
 describe('foilKindOf: el efecto de cada rareza', () => {
   it.each(RARITIES)('%s → %s', (rarity, kind) => {
     expect(foilKindOf(rarity)).toBe(kind)
+  })
+
+  it('las dieciocho familias se usan y ninguna rareza de los datos cae en una que no existe: las parecidas ya no comparten efecto', () => {
+    const used = new Set(RARITIES.flatMap(([, kind]) => (kind ? [kind] : [])))
+
+    expect([...used].sort()).toEqual([...FOIL_KINDS].sort())
+    expect(FOIL_KINDS).toHaveLength(18)
+    // Las que se confundían (Super y Ultra, Secret y Platinum, Prismatic y Quarter Century…) son efectos distintos.
+    expect(new Set(['Super Rare', 'Ultra Rare', 'Ultimate Rare', 'Secret Rare', 'Platinum Secret Rare', 'Prismatic Secret Rare', 'Quarter Century Secret Rare', 'Starfoil Rare', 'Shatterfoil Rare', 'Mosaic Rare'].map(foilKindOf)).size).toBe(10)
   })
 
   it('no importan las mayúsculas ni los espacios de los bordes, y una rareza que no se conoce (o ninguna) no lleva efecto', () => {
@@ -54,7 +63,7 @@ describe('foilKindOf: el efecto de cada rareza', () => {
   })
 
   it('con cualquier texto devuelve un efecto de la lista o nada, sin fallar', () => {
-    const kinds = new Set<string>(RARITIES.flatMap(([, kind]) => (kind ? [kind] : [])))
+    const kinds = new Set<string>(FOIL_KINDS)
 
     fc.assert(
       fc.property(fc.string({ maxLength: 60 }), (text) => {
@@ -80,9 +89,19 @@ describe('foilFrameOf y foilOf', () => {
     expect(foilFrameOf(undefined)).toBe('monster')
   })
 
-  it('junta los dos; sin efecto para la rareza, no hay brillo', () => {
+  it('un arte extendido (u overframe) no tiene ventana: el brillo cubre toda la carta, sea cual sea el marco', () => {
+    expect(foilFrameOf('effect', 'Extended Art')).toBe('full')
+    expect(foilFrameOf('spell', 'Overframe')).toBe('full')
+    expect(foilFrameOf('pendulum_effect', 'Full Art')).toBe('full')
+    // Un arte alternativo sí cabe en la ventana de siempre.
+    expect(foilFrameOf('effect', 'Alternate Art')).toBe('monster')
+    expect(foilFrameOf('effect', '')).toBe('monster')
+  })
+
+  it('junta los tres; sin efecto para la rareza, no hay brillo', () => {
     expect(foilOf('Starlight Rare', 'xyz')).toEqual({ kind: 'starlight', frame: 'monster' })
-    expect(foilOf('Ultra Rare', 'spell')).toEqual({ kind: 'holo', frame: 'spelltrap' })
+    expect(foilOf('Ultra Rare', 'spell')).toEqual({ kind: 'ultra', frame: 'spelltrap' })
+    expect(foilOf('Ultra Rare', 'effect', 'Extended Art')).toEqual({ kind: 'ultra', frame: 'full' })
     expect(foilOf('Common', 'effect')).toBeNull()
     expect(foilOf(undefined, 'effect')).toBeNull()
   })

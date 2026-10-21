@@ -349,7 +349,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
               setZoomed((current) => !current)
             }}
           >
-            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} foil={card ? foilOf((art as ArtChoice | undefined)?.printing?.rarity, card.frameType) : null}>
+            <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack} foil={card ? foilOf((art as ArtChoice | undefined)?.printing?.rarity, card.frameType, (art as ArtChoice | undefined)?.printing?.variant) : null}>
               <CardArt
                 // Agrandada, la imagen grande de la impresión (~1000 px), como en el zoom a pantalla completa; sin ella (un arte de YGOPRODeck), la de siempre.
                 remoteUrl={(zoomed ? (art as ArtChoice | undefined)?.imageUrlLarge : undefined) ?? art?.imageUrl ?? card?.imageUrl ?? card?.imageUrlSmall ?? null}
