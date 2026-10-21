@@ -142,6 +142,13 @@ function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) 
 }
 
 /**
+ * Cómo se reacomoda la mano del rival cuando entra o sale una carta: la caja (si cambia de ancho) y cada dorso viajan a su nuevo lugar
+ * con el tiempo de la mesa y la curva de lo que viaja de un lugar a otro (`--ease-in-out`: arranca suave y llega suave). Con movimiento reducido, de un golpe.
+ */
+const THEIR_HAND_BOX_MOTION = '[transition:width_var(--motion-duration)_var(--ease-in-out)] motion-reduce:transition-none'
+const THEIR_HAND_BACK_MOTION = '[transition:transform_var(--motion-duration)_var(--ease-in-out)] motion-reduce:transition-none'
+
+/**
  * La mano del rival: sólo se ve cuántas cartas tiene, de dorso, en abanico y encimadas como las nuestras (ascendente: el centro más alto y los extremos más cerca del campo). `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
  * como la mano reserva su alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
  */
@@ -155,7 +162,7 @@ export function TheirHand({ count, marked = false, pointed = false, onMark }: { 
   const height = Math.round(layout.cardHeight)
 
   return (
-    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className="relative shrink-0" style={{ width: Math.max(span, layout.cardWidth), height: room }}>
+    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className={cx('relative shrink-0', THEIR_HAND_BOX_MOTION)} style={{ width: Math.max(span, layout.cardWidth), height: room }}>
       <div role="img" aria-label={t('duel.hand.theirs', { count })} className="absolute inset-0">
         {Array.from({ length: shown }, (_, index) => {
           // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
@@ -164,7 +171,7 @@ export function TheirHand({ count, marked = false, pointed = false, onMark }: { 
           return (
             <span
               key={index}
-              className={cx('absolute bottom-0 left-0 block overflow-hidden', CARD_SHADOW)}
+              className={cx('absolute bottom-0 left-0 block overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
               style={{ width: layout.cardWidth, height, transform: `translate(${index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
             >
               <CardBack className="h-full" />
