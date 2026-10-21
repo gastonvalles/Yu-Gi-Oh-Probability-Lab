@@ -14,17 +14,20 @@ interface SpecimenProps {
   layout?: 'row' | 'column' | 'free'
 }
 
-/** Una muestra del catálogo: su nombre, una nota de uso y el componente real (nunca una copia) debajo. */
+/**
+ * Una muestra del catálogo: su nombre, una nota de uso y el componente real (nunca una copia) debajo. Las columnas son `minmax(0,1fr)`: con la pista automática, una fila que
+ * se desliza (`ScrollRow`) ensanchaba la muestra y la nota y lo de adentro se metían en la muestra de al lado.
+ */
 export function Specimen({ title, note, children, className, layout = 'row' }: SpecimenProps) {
   return (
-    <div className={cx('grid min-w-0 content-start gap-3 rounded-card border border-border-subtle bg-card-background/60 p-4', className)}>
+    <div className={cx('grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-3 rounded-card border border-border-subtle bg-card-background/60 p-4', className)}>
       <div className="grid gap-0.5">
         <Heading level="card" as="h3">
           {title}
         </Heading>
         {note ? <p className={cx(supportText, 'text-micro text-soft')}>{note}</p> : null}
       </div>
-      <div className={cx(layout === 'row' && 'flex flex-wrap items-center gap-3', layout === 'column' && 'grid gap-3')}>{children}</div>
+      <div className={cx(layout === 'row' && 'flex flex-wrap items-center gap-3', layout === 'column' && 'grid grid-cols-[minmax(0,1fr)] gap-3')}>{children}</div>
     </div>
   )
 }

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 
-import { FX_RGB, type FxTone } from '../../probability/practice-styles'
+import { CARD_BACK, FX_RGB, type FxTone } from '../../probability/practice-styles'
 import { Badge } from '../../ui/Badge'
 import { Button, type ButtonVariant } from '../../ui/Button'
 import { Card } from '../../ui/Card'
 import { CopiesBadge } from '../../ui/CopiesBadge'
 import { cx } from '../../ui/cx'
 import { DraggableFab } from '../../ui/DraggableFab'
+import { FilterChips } from '../../ui/FilterChips'
 import { Icon } from '../../ui/Icon'
 import { CloseButton, IconButton } from '../../ui/IconButton'
 import { OverflowMenu } from '../../ui/OverflowMenu'
@@ -18,12 +19,25 @@ import { Switch } from '../../ui/Switch'
 import { TONE, type Tone } from '../../ui/tone'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
-const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary']
+const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary', 'outline']
 const SIZES = ['sm', 'md', 'lg'] as const
 const ICON_TONES = ['raised', 'close', 'ghost', 'flat', 'tile'] as const
 const TONES = Object.keys(TONE) as Tone[]
+/** Los chips de muestra de `FilterChips`: los puestos de los decks de torneo (uno sin decks, apagado) y las rarezas de una expansión. */
+const PLACEMENTS = [
+  { name: 'Winner', count: 103 },
+  { name: 'Runner-Up', count: 87 },
+  { name: 'Top 4', count: 160 },
+  { name: 'Top 8', count: 0 },
+]
+const RARITIES = [
+  { name: 'Super Rare', count: 79 },
+  { name: 'Ultra Rare', count: 147 },
+  { name: 'Secret Rare', count: 79 },
+  { name: 'Starlight Rare', count: 0 },
+]
 
-/** Los botones de la app y los controles que se tocan: todos salen de `src/components/ui/` (Button, IconButton, Segmented, Switch, Stepper, Badge, surfaces.ts). */
+/** Los botones de la app y los controles que se tocan: todos salen de `src/components/ui/` (Button, IconButton, Segmented, FilterChips, Switch, Stepper, Badge, surfaces.ts). */
 export function ButtonsSection() {
   const [track, setTrack] = useState('b')
   const [chips, setChips] = useState('b')
@@ -31,6 +45,8 @@ export function ButtonsSection() {
   const [on, setOn] = useState(true)
   const [copies, setCopies] = useState(3)
   const [chosen, setChosen] = useState(['a'])
+  const [placements, setPlacements] = useState<string[]>([])
+  const [rarity, setRarity] = useState<string | null>('Ultra Rare')
   const [fab, setFab] = useState(false)
   const options = [
     { value: 'a', label: 'Primero' },
@@ -98,6 +114,16 @@ export function ButtonsSection() {
               Ver
             </Button>
           </Card>
+          {/* Por qué existe `outline`: sobre una tarjeta la lavanda de `secondary` casi no se ve (1,08:1); el borde fino sí, y se enciende en ámbar al apuntarlo. */}
+          <Card padding="md" className="flex flex-wrap items-center gap-3">
+            <Tag>sobre una tarjeta</Tag>
+            <Button variant="secondary" icon="layers">
+              secondary
+            </Button>
+            <Button variant="outline" icon="layers">
+              Ver deck (outline)
+            </Button>
+          </Card>
         </div>
       </Specimen>
 
@@ -119,10 +145,11 @@ export function ButtonsSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Segmented" note={<>Elegir una opción entre pocas. Archivo: <Tag>ui/Segmented.tsx</Tag></>} layout="column">
+        <Specimen title="Segmented" note={<>Elegir una opción entre pocas. Lo elegido va en <b>ámbar</b> con el texto oscuro (la tarjeta elegida, <Tag>cards</Tag>, con el borde y el texto ámbar). Archivo: <Tag>ui/Segmented.tsx</Tag></>} layout="column">
           <Segmented label="Pista" variant="track" value={track} onChange={setTrack} options={options} />
           <Segmented label="Pastillas" variant="chips" value={chips} onChange={setChips} options={options} />
-          <Segmented label="Tarjetas" variant="cards" value={cards} onChange={setCards} options={options.map((option) => ({ ...option, detail: '5 cartas · 57%' }))} />
+          {/* Los detalles del turno del Lab (los de antes, «5 cartas · 57%», no entraban en tres tarjetas de esta columna y pisaban el borde de la elegida). */}
+          <Segmented label="Tarjetas" variant="cards" value={cards} onChange={setCards} options={options.map((option, at) => ({ ...option, detail: ['5 cartas', '6 cartas', '50/50'][at] }))} />
           <Segmented label="Chico" variant="track" size="sm" value={track} onChange={setTrack} options={options} />
         </Specimen>
 
@@ -139,14 +166,14 @@ export function ButtonsSection() {
           <OverflowMenu label="Más opciones" items={[{ label: 'Ver deck Elfnote', icon: 'layers', onSelect: () => {} }]} />
         </Specimen>
 
-        <Specimen title="Switch y Stepper" note={<>Archivos: <Tag>ui/Switch.tsx</Tag> <Tag>ui/Stepper.tsx</Tag></>}>
+        <Specimen title="Switch y Stepper" note={<>El interruptor encendido va en ámbar con el pulgar oscuro. Archivos: <Tag>ui/Switch.tsx</Tag> <Tag>ui/Stepper.tsx</Tag></>}>
           <Switch label="Interruptor" checked={on} onChange={setOn} />
           <Switch label="Apagado" checked={false} onChange={() => {}} />
           <Stepper label="Copias" value={copies} min={0} max={3} onChange={setCopies} />
           <Stepper label="En línea" variant="inline" value={copies} min={0} max={3} onChange={setCopies} />
         </Specimen>
 
-        <Specimen title="Pastillas de selección" note={<>Clases de <Tag>ui/surfaces.ts</Tag>: <Tag>choiceChip</Tag> (<Tag>aria-pressed</Tag>) y <Tag>filterChip</Tag>.</>}>
+        <Specimen title="Pastillas de selección" note={<>Clases de <Tag>ui/surfaces.ts</Tag>: <Tag>choiceChip</Tag> (lavanda; elegida con <Tag>aria-pressed</Tag>, ámbar) y <Tag>filterChip</Tag> (un filtro puesto: ámbar, se toca para quitarlo).</>}>
           {['a', 'b', 'c'].map((value) => (
             <button
               key={value}
@@ -176,6 +203,50 @@ export function ButtonsSection() {
         </Specimen>
       </SpecimenGrid>
 
+      <Specimen
+        title="FilterChips"
+        layout="column"
+        note={
+          <>
+            La fila de chips para filtrar: el que apaga los filtros («Todos») y uno por valor con su cuenta. Lo elegido va en <b>ámbar</b> con el texto oscuro, igual que un filtro
+            puesto (<Tag>filterChip</Tag>, el primero de la fila de arriba); uno sin elementos queda apagado en su lugar. El mouse y el teclado muestran el hover y el foco.
+            Archivo: <Tag>ui/FilterChips.tsx</Tag>
+          </>
+        }
+      >
+        {/* Arriba, «Todos» elegido (variante `scroll`, como los decks de torneo); abajo, una rareza elegida entre varias (variante `wrap`, como Expansiones). */}
+        <div className="w-full max-w-2xl">
+          <ScrollRow>
+            <button type="button" className={cx(filterChip, 'shrink-0')}>
+              <span className="truncate">Ash Blossom & Joyous Spring</span>
+              <Icon name="x" size={12} strokeWidth={2.2} />
+            </button>
+            <FilterChips
+              variant="scroll"
+              label="Puesto"
+              all="Todos"
+              allActive={placements.length === 0}
+              onAll={() => setPlacements([])}
+              chips={PLACEMENTS.map(({ name, count }) => ({
+                key: name,
+                name,
+                count,
+                active: placements.includes(name),
+                disabled: count === 0,
+                onToggle: () => setPlacements((current) => (current.includes(name) ? current.filter((entry) => entry !== name) : [...current, name])),
+              }))}
+            />
+          </ScrollRow>
+        </div>
+        <FilterChips
+          label="Rareza"
+          all="Todas"
+          allActive={rarity === null}
+          onAll={() => setRarity(null)}
+          chips={RARITIES.map(({ name, count }) => ({ key: name, name, count, active: rarity === name, disabled: count === 0, onToggle: () => setRarity((current) => (current === name ? null : name)) }))}
+        />
+      </Specimen>
+
       <Specimen title="Badge" layout="column" note={<>Estado, conteo o tipo. El color significa algo: <Tag>brand</Tag> lo tuyo · <Tag>success</Tag> bien · <Tag>warning</Tag> ojo · <Tag>danger</Tag> mal · <Tag>info</Tag> dato. Archivo: <Tag>ui/Badge.tsx</Tag></>}>
         {(['pill', 'tag'] as const).map((shape) => (
           <div key={shape} className="flex flex-wrap items-center gap-2">
@@ -193,6 +264,18 @@ export function ButtonsSection() {
             </Badge>
           </div>
         ))}
+        {/* `onImage`: sobre una foto (la portada de un deck de torneo) el tinte de un tono no se lee; va el fondo oscuro casi opaco. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Tag>onImage</Tag>
+          <span className="relative block h-16 w-28 overflow-hidden rounded-tag">
+            <span aria-hidden="true" className={CARD_BACK} />
+            <span className="absolute right-1.5 top-1.5 z-2">
+              <Badge onImage icon="play" size="sm">
+                2
+              </Badge>
+            </span>
+          </span>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="w-10"><Tag>copias</Tag></span>
           <CopiesBadge copies={1} />

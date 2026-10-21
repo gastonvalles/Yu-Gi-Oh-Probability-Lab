@@ -11,7 +11,11 @@ export interface SegmentedOption<T extends string> {
   tone?: 'success' | 'danger'
 }
 
-/** track: pista lavanda con la opción elegida en violeta · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) · cards: tarjetas (como las fechas del diseño). */
+/**
+ * track: pista lavanda con la opción elegida en ámbar · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
+ * cards: tarjetas (como las fechas del diseño). Lo elegido es ámbar, como en toda la app (el violeta es de los fondos y de la acción principal): en la pista y las pastillas,
+ * relleno ámbar con el texto oscuro; en `cards`, el borde y el texto ámbar.
+ */
 type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards'
 
 interface SegmentedProps<T extends string> {
@@ -34,31 +38,36 @@ const GROUP: Record<SegmentedVariant, string> = {
   cards: 'grid auto-cols-fr grid-flow-col gap-2',
 }
 
-/** Opción elegida con color propio (verde / rojo) en lugar del violeta de la marca. */
+/** Opción elegida con color propio (verde / rojo) en lugar del ámbar de lo elegido. */
 const TONE_ON = {
   success: 'bg-success-solid text-white shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)]',
   danger: 'bg-danger text-white shadow-[0_6px_16px_rgb(var(--danger-rgb)/0.35)]',
 } as const
 
+/** Lo elegido: ámbar con el texto oscuro (sin hover: una opción elegida no se apaga al tocarla). */
+const ON = 'bg-info text-info-foreground'
+
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {
     base: 'rounded-lg px-3',
-    on: 'bg-primary text-primary-foreground',
+    on: ON,
     off: 'text-foreground/85 hover:bg-tint/10',
   },
   chips: {
     base: 'rounded-control px-4',
-    on: 'bg-primary text-primary-foreground',
+    on: ON,
     off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
   scroll: {
     base: 'shrink-0 rounded-control px-4',
-    on: 'bg-primary text-primary-foreground',
+    on: ON,
     off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
   cards: {
     base: 'rounded-card border px-3',
-    on: 'border-transparent bg-primary text-primary-foreground',
+    // Una tarjeta elegida dice su estado con el borde (regla G.1 de docs/ux-ui-guidelines.md, como el ganador de Comparar), en ámbar y con el texto ámbar:
+    // rellena de ámbar era lo más brillante de la pantalla y le ganaba al número que decide (el anillo del Lab), y teñida se ve marrón (como en `MatSnapshot`).
+    on: 'border-info bg-card-background text-info-soft',
     off: 'border-border-subtle bg-card-background text-foreground hover:bg-surface-hover',
   },
 }
@@ -94,7 +103,8 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
               {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}
             </span>
             {option.detail ? (
-              <span className={cx('whitespace-nowrap text-micro font-normal tabular-nums', active ? 'text-primary-foreground/80' : 'text-soft')}>{option.detail}</span>
+              // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (oscuro sobre el ámbar, ámbar en la tarjeta, blanco sobre el verde o el rojo).
+              <span className={cx('whitespace-nowrap text-micro font-normal tabular-nums', active ? 'opacity-80' : 'text-soft')}>{option.detail}</span>
             ) : null}
           </button>
         )

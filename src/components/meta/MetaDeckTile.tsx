@@ -19,19 +19,25 @@ interface MetaDeckTileProps {
   onOpen: () => void
 }
 
-/** La portada que eligió YGOPRODeck para el deck; sin ella, un ícono del mismo tamaño (la grilla no salta). El que la usa le da el tamaño con `className`. */
+/**
+ * La portada que eligió YGOPRODeck para el deck; sin ella, un ícono del mismo tamaño (la grilla no salta), blanco como todo ícono que sólo adorna. El que la usa le da el
+ * tamaño con `className`.
+ */
 function DeckCover({ cover, className }: { cover: number | null; className: string }) {
   return cover ? (
     <img src={cardImageSrc(coverArtUrl(cover), 512)} alt="" aria-hidden="true" loading="lazy" decoding="async" className={`${className} object-cover`} />
   ) : (
-    <span aria-hidden="true" className={`${className} grid place-items-center text-primary-soft/70`}>
+    <span aria-hidden="true" className={`${className} grid place-items-center text-foreground`}>
       <Icon name="layers" size={20} />
     </span>
   )
 }
 
-/** Cuántos replays tiene el deck, sobre la portada (se ven al abrirlo); nada si no tiene. */
-function ReplaysBadge({ deckId }: { deckId: number }) {
+/**
+ * Cuántos replays tiene el deck (se ven al abrirlo); nada si no tiene. Es un dato, así que va sin color; sobre la portada (`onImage`) lleva el fondo oscuro para que se lea
+ * (el tinte violeta de antes se perdía en la imagen).
+ */
+function ReplaysBadge({ deckId, onImage = false }: { deckId: number; onImage?: boolean }) {
   const replays = countReplaysOfDeck(deckId)
 
   if (replays === 0) {
@@ -41,7 +47,7 @@ function ReplaysBadge({ deckId }: { deckId: number }) {
   const label = t('meta.tournaments.hasReplays', { count: replays })
 
   return (
-    <Badge tone="brand" icon="play" size="sm" title={label}>
+    <Badge onImage={onImage} icon="play" size="sm" title={label}>
       <span aria-hidden="true">{replays}</span>
       <span className="sr-only">{label}</span>
     </Badge>
@@ -99,7 +105,7 @@ function MetaDeckRow({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
   return (
     <button
       type="button"
-      className="group grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 rounded-card border border-border-subtle bg-card-background p-3 text-left transition-colors duration-150 hover:border-primary/60 focus-visible:outline-none focus-visible:shadow-focus"
+      className="group grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 rounded-card border border-border-subtle bg-card-background p-3 text-left transition-colors duration-150 hover:border-info/60 focus-visible:border-info/60 focus-visible:outline-none focus-visible:shadow-focus"
       onClick={onOpen}
     >
       <span className="block h-[3.8rem] w-11 overflow-hidden rounded-tag bg-input">
@@ -129,7 +135,8 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
 
   return (
     // Cuatro filas (nombre, portada, contexto, puesto y botón) que comparten las tarjetas de la misma fila de la grilla (`grid-rows-subgrid`): el nombre de dos líneas de una no corre la portada de las demás.
-    <article className="row-span-4 grid min-w-0 grid-rows-subgrid rounded-card border border-border-subtle bg-card-background p-3 transition-colors duration-150 hover:border-primary/60">
+    // Al pasar el mouse o con el foco del teclado en su botón, el borde se enciende en ámbar (el énfasis y el hover son ámbar; el violeta, el fondo).
+    <article className="row-span-4 grid min-w-0 grid-rows-subgrid rounded-card border border-border-subtle bg-card-background p-3 transition-colors duration-150 hover:border-info/60 has-focus-visible:border-info/60">
       {/* Quién es: el nombre del deck y, pegado a él, quién lo jugó. */}
       <div className="grid min-w-0 gap-0.5">
         <Heading level="card" className="line-clamp-2">
@@ -144,7 +151,7 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
           <DeckCover cover={deck.cover} className="size-full" />
         </button>
         <span className="absolute right-2 top-2">
-          <ReplaysBadge deckId={deck.id} />
+          <ReplaysBadge deckId={deck.id} onImage />
         </span>
       </div>
 
@@ -181,7 +188,8 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
             </span>
           ) : null}
         </div>
-        <Button variant="secondary" icon="layers" aria-label={t('meta.tournaments.viewDeckLabel', { name: deck.name })} onClick={onOpen}>
+        {/* La única acción de la tarjeta: con borde fino (la lavanda no se veía sobre la tarjeta) y en ámbar al apuntarla, como el borde de la tarjeta. */}
+        <Button variant="outline" icon="layers" aria-label={t('meta.tournaments.viewDeckLabel', { name: deck.name })} onClick={onOpen}>
           {t('meta.tournaments.viewDeck')}
         </Button>
       </div>

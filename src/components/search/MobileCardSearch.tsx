@@ -181,14 +181,15 @@ export function MobileCardSearch({
               <button
                 key={chip.key}
                 type="button"
-                className={`${filterChip} group/chip min-h-9`}
+                className={cx(filterChip, 'min-h-9')}
                 onClick={() => actions.onFilterChange(chip.updates)}
                 aria-label={t('search.chip.removeAria', { label: chip.label, value: chip.value })}
               >
-                <span className="truncate text-foreground">
+                {/* El chip es ámbar (un filtro puesto): el texto y la X van del oscuro del chip. */}
+                <span className="truncate">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-white transition-colors duration-150 group-hover/chip:text-info" />
+                <CloseIcon className="h-3 w-3 shrink-0" />
               </button>
             ))}
           </div>

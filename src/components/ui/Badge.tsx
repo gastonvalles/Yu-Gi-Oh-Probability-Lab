@@ -19,6 +19,8 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
    * Reemplaza a `tone` (borde, fondo y texto salen de ese color).
    */
   rgb?: string
+  /** Sobre una foto (la portada de un deck): fondo oscuro casi opaco y texto blanco, porque el tinte de un tono no se lee sobre la imagen. Reemplaza a `tone`. */
+  onImage?: boolean
 }
 
 const SIZE = {
@@ -34,8 +36,11 @@ const SIZE_WRAP = {
 /** El borde, el fondo y el texto de `rgb`: las mismas proporciones que los tonos. */
 const RGB_TINT = 'border-[rgb(var(--badge-rgb)/0.4)] bg-[rgb(var(--badge-rgb)/0.12)] text-[rgb(var(--badge-rgb))]'
 
+/** Sobre una foto: el índigo del fondo casi opaco (como la duración sobre la miniatura de un replay). */
+const ON_IMAGE = 'border-transparent bg-background/85 text-foreground'
+
 /** Etiqueta compacta de estado, conteo o tipo. Un solo estilo para toda la app. */
-export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = false, icon, wrap = false, rgb, className, style, children, ...props }: BadgeProps) {
+export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = false, icon, wrap = false, rgb, onImage = false, className, style, children, ...props }: BadgeProps) {
   return (
     <span
       className={cx(
@@ -43,7 +48,7 @@ export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = fal
         wrap ? 'max-w-full text-left leading-snug whitespace-normal [overflow-wrap:anywhere]' : 'shrink-0 leading-none whitespace-nowrap',
         shape === 'pill' ? 'rounded-full' : 'rounded-tag',
         wrap ? SIZE_WRAP[size] : SIZE[size],
-        rgb ? RGB_TINT : [TONE[tone].tint, TONE[tone].text],
+        rgb ? RGB_TINT : onImage ? ON_IMAGE : [TONE[tone].tint, TONE[tone].text],
         className,
       )}
       style={rgb ? ({ '--badge-rgb': rgb, ...style } as CSSProperties) : style}

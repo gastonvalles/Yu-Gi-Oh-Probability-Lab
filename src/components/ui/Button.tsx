@@ -5,9 +5,10 @@ import { Icon, type IconName } from './Icon'
 
 /**
  * primary: la acción principal del grupo (una sola, y al final del pie) · secondary: una alternativa que hace algo, o acciones de igual peso (lavanda) ·
- * tertiary: lo que descarta o vuelve, sin caja (Cancelar, Volver) · onBrand: sobre una tarjeta violeta. Las reglas completas, en docs/design-system.md.
+ * tertiary: lo que descarta o vuelve, sin caja (Cancelar, Volver) · onBrand: sobre una tarjeta violeta · outline: la acción de una tarjeta de una grilla
+ * («Ver deck»), donde la lavanda no se distingue de la tarjeta; borde fino y ámbar al apuntarlo. Las reglas completas, en docs/design-system.md.
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'onBrand'
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'onBrand' | 'outline'
 type ButtonSize = 'sm' | 'md' | 'lg'
 /** brand: violeta de la app · danger: acciones que borran o no se pueden deshacer · success: lo que confirma que se está listo o bien (verde) · confirm: violeta que se vuelve verde al apuntarlo (dar un paso por hecho, como «Listo»). */
 export type ButtonColor = 'brand' | 'danger' | 'success' | 'confirm'
@@ -51,7 +52,14 @@ const ON_BRAND: Record<ButtonColor, string> = {
   confirm: 'bg-lavender-light text-primary hover:bg-white',
 }
 
-const COLORS = { primary: FILLED, secondary: QUIET, tertiary: GHOST, onBrand: ON_BRAND } as const
+/**
+ * Sin relleno y con un borde fino claro: se ve como botón sobre una tarjeta (la lavanda queda a 1,08:1 del fondo de la tarjeta) sin sumar un bloque de color por tarjeta.
+ * Al apuntarlo (mouse o teclado) el borde, el texto y el ícono se encienden en ámbar, como el borde de la tarjeta. Como `onBrand`, no cambia con `color`.
+ */
+const OUTLINE_LOOK = 'border border-tint/45 bg-transparent text-foreground hover:border-info/80 hover:text-info-soft focus-visible:border-info/80 focus-visible:text-info-soft'
+const OUTLINE: Record<ButtonColor, string> = { brand: OUTLINE_LOOK, danger: OUTLINE_LOOK, success: OUTLINE_LOOK, confirm: OUTLINE_LOOK }
+
+const COLORS = { primary: FILLED, secondary: QUIET, tertiary: GHOST, onBrand: ON_BRAND, outline: OUTLINE } as const
 
 const ICON_SIZE: Record<ButtonSize, number> = { sm: 16, md: 18, lg: 20 }
 
