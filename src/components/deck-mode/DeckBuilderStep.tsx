@@ -92,7 +92,7 @@ function plusGlyph(invalid: boolean): string {
     'relative block size-[2.2rem] before:absolute before:left-1/2 before:top-1/2 before:h-[0.18rem] before:w-8 before:-translate-x-1/2 before:-translate-y-1/2 after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-[0.18rem] after:-translate-x-1/2 after:-translate-y-1/2',
     invalid
       ? 'before:rotate-45 before:bg-destructive after:-rotate-45 after:bg-destructive'
-      : 'before:bg-primary after:bg-primary',
+      : 'before:bg-info after:bg-info',
   )
 }
 
@@ -263,7 +263,7 @@ export function DeckBuilderStep({
           <article
             className={cx(
               'relative h-full max-h-full min-h-0 min-w-0 overflow-hidden',
-              builderRootDropState === 'valid' && 'shadow-[inset_0_0_0_2px_rgb(var(--primary-rgb)/0.35)]',
+              builderRootDropState === 'valid' && 'shadow-[inset_0_0_0_2px_rgb(var(--info-rgb)/0.35)]',
               builderRootDropState === 'invalid' && 'shadow-[inset_0_0_0_2px_rgb(var(--destructive-rgb)/0.35)]',
             )}
             data-deck-builder-root="true"
@@ -273,7 +273,7 @@ export function DeckBuilderStep({
               <div
                 className={cx(
                   'pointer-events-none absolute inset-0 z-10 backdrop-saturate-[0.82]',
-                  builderRootDropState === 'valid' ? 'bg-primary/26' : 'bg-destructive/22',
+                  builderRootDropState === 'valid' ? 'bg-info/22' : 'bg-destructive/22',
                 )}
                 data-drop-state={builderRootDropState}
               />
@@ -399,10 +399,10 @@ export function DeckBuilderStep({
                       >
                         <span
                           className={cx(
-                            'relative -top-48 grid size-[5.25rem] place-items-center rounded-full border-2 shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.16),0_12px_28px_rgb(0_0_0/0.28)]',
+                            'relative -top-48 grid size-[5.25rem] place-items-center rounded-full border-2',
                             builderRootDropState === 'invalid'
-                              ? 'border-destructive/38 bg-[rgb(28_10_13/0.94)]'
-                              : 'border-primary/34 bg-foreground/96',
+                              ? 'border-destructive/38 bg-[rgb(28_10_13/0.94)] shadow-[0_0_0_1px_rgb(var(--destructive-rgb)/0.16),0_12px_28px_rgb(0_0_0/0.28)]'
+                              : 'border-info/34 bg-background/94 shadow-[0_0_0_1px_rgb(var(--info-rgb)/0.16),0_12px_28px_rgb(0_0_0/0.28)]',
                           )}
                         >
                           <span className={plusGlyph(builderRootDropState === 'invalid')} />

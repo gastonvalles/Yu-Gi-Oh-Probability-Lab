@@ -40,7 +40,7 @@ export const DECK_CARD_CLASSIC = [
   KEYBOARD_FOCUS,
   'motion-safe:animate-card-in',
   'cursor-pointer outline-2 -outline-offset-2 outline-dashed outline-foreground/0 transition-[outline-color] duration-150 hover:z-1 hover:outline-foreground/75',
-  'data-[selected=true]:shadow-[inset_0_0_0_1.5px_rgb(var(--primary-rgb)/0.56)] data-[selected=true]:hover:outline-primary/85',
+  'data-[selected=true]:shadow-[inset_0_0_0_1.5px_rgb(var(--info-rgb)/0.56)] data-[selected=true]:hover:outline-info/85',
   'data-[dragging=true]:bg-tint/6 data-[dragging=true]:outline-foreground/75',
   'data-[dragging=true]:[&_[data-card-art]]:opacity-0 data-[dragging=true]:[&_[data-card-limit]]:opacity-0',
 ].join(' ')
