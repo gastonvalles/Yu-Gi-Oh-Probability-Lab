@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
-import { EASE_OUT, prefersReducedMotion, supportsAdditiveAnimation } from '../../app/motion'
+import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion, supportsAdditiveAnimation } from '../../app/motion'
 import { fxVars } from './MatFx'
 
 /**
@@ -20,6 +20,8 @@ export interface Strike {
   /** Distancia entre los dos puntos (lo que viaja la espada) y ángulo del rayo, en radianes. */
   len: number
   ang: number
+  /** Lo que ataca (su carta): pone el cuerpo, se adelanta hacia el objetivo y vuelve. */
+  attacker: Element
   /** Lo que se sacude al impactar (la carta atacada o la casilla de vida); null si no hay un elemento. */
   target: Element | null
 }
@@ -82,7 +84,7 @@ export function measureStrike({ from, to, direct = 'theirs', bounds }: StrikeSpe
     }
   }
 
-  return { key: Date.now(), ax: a.x, ay: a.y, bx: b.x, by: b.y, len: Math.hypot(b.x - a.x, b.y - a.y), ang: Math.atan2(b.y - a.y, b.x - a.x), target }
+  return { key: Date.now(), ax: a.x, ay: a.y, bx: b.x, by: b.y, len: Math.hypot(b.x - a.x, b.y - a.y), ang: Math.atan2(b.y - a.y, b.x - a.x), attacker, target }
 }
 
 /** Lo que tarda la espada en llegar (el impacto empieza ahí), lo que dura la sacudida y cuándo se va todo (la onda del impacto es lo último en apagarse). */
@@ -97,6 +99,38 @@ const SHAKE_FRAMES = [
   { transform: 'translate(-3px, 0)' },
   { transform: 'translate(0, 0)' },
 ]
+
+/** El atacante pone el cuerpo: se adelanta hasta `LUNGE_PX`, o el `LUNGE_SHARE` del camino si es más corto, y vuelve. Llega a la espada al impacto. */
+const LUNGE_PX = 18
+const LUNGE_SHARE = 0.12
+
+/** Quién sacude una casilla, y es el id de su animación: `strike` (un ataque) corta la sacudida de las vidas que haya; `life` (una pérdida de vidas) no se suma a la de un ataque. */
+export type Sacudida = 'strike' | 'life'
+
+/**
+ * Sacude una carta o una casilla de vidas (`SHAKE_FRAMES`, sumada a lo que ya tenga; `delay`, lo que espera). Nunca corren dos a la vez en la misma casilla:
+ * un ataque corta la de las vidas que estuviera, y una pérdida de vidas no hace nada si ya la sacude un ataque. Null si no se anima (sin soporte o con movimiento reducido).
+ */
+export function sacudir(target: Element, quien: Sacudida, delay = 0): Animation | null {
+  if (!supportsAdditiveAnimation() || prefersReducedMotion()) {
+    return null
+  }
+
+  const enCurso = target.getAnimations()
+
+  if (quien === 'life' && enCurso.some((animation) => animation.id === 'strike')) {
+    return null
+  }
+
+  if (quien === 'strike') {
+    enCurso.filter((animation) => animation.id === 'life').forEach((animation) => animation.cancel())
+  }
+
+  return target.animate(SHAKE_FRAMES, { id: quien, duration: SHAKE_MS, delay, easing: EASE_OUT, composite: 'add' })
+}
+
+/** Un número de píxeles para una curva CSS, sin notación científica (un coseno de 1e-16 sale 0). */
+const px = (value: number) => `${Math.round(value * 100) / 100}px`
 
 /** Adónde salen las chispas del impacto (en rem, desde el centro del objetivo). */
 const SPARKS = [
@@ -143,16 +177,35 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
     return () => window.clearTimeout(timer)
   }, [strike.key])
 
-  // La sacudida se suma (`composite: 'add'`) a lo que ya tenga la carta (su giro de costado, un vuelo) sin pisarlo, y espera al impacto.
-  const { target } = strike
+  // El atacante pone el cuerpo: se adelanta hacia el objetivo y vuelve, llegando a la espada al impacto (a mitad de la animación). Va con `translate`, la propiedad
+  // individual: se compone por fuera del giro de la carta, así se mueve en el plano del campo también si va de cabeza o de costado. Se suma (`composite: 'add'`) a lo que ya tenga.
+  const { attacker, len, ang } = strike
 
   useEffect(() => {
-    if (!target || !supportsAdditiveAnimation() || prefersReducedMotion()) {
+    if (!supportsAdditiveAnimation() || prefersReducedMotion()) {
       return
     }
 
-    const shake = target.animate(SHAKE_FRAMES, { duration: SHAKE_MS, delay: IMPACT_MS, easing: EASE_OUT, composite: 'add' })
-    return () => shake.cancel()
+    const reach = Math.min(LUNGE_PX, len * LUNGE_SHARE)
+    const lunge = attacker.animate(
+      [
+        { translate: '0px 0px', easing: EASE_IN_OUT },
+        { translate: `${px(Math.cos(ang) * reach)} ${px(Math.sin(ang) * reach)}`, offset: 0.5, easing: EASE_IN_OUT },
+        { translate: '0px 0px' },
+      ],
+      { duration: 2 * IMPACT_MS, composite: 'add' },
+    )
+
+    return () => lunge.cancel()
+  }, [attacker, len, ang])
+
+  // La sacudida del objetivo espera al impacto. Con `sacudir`, nunca corre a la vez que la sacudida de unas vidas en esa misma casilla.
+  const { target } = strike
+
+  useEffect(() => {
+    const shake = target ? sacudir(target, 'strike', IMPACT_MS) : null
+
+    return () => shake?.cancel()
   }, [target])
 
   return createPortal(

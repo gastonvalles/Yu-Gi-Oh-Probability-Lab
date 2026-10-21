@@ -3,8 +3,8 @@ import { act, cleanup, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AttackFx, measureStrike, type Strike } from '../components/probability/AttackFx'
-import { EASE_OUT } from '../app/motion'
+import { AttackFx, measureStrike, sacudir, type Strike } from '../components/probability/AttackFx'
+import { EASE_IN_OUT, EASE_OUT } from '../app/motion'
 
 /** jsdom no tiene layout (todo mide 0): cada elemento dice dónde está. */
 function place(element: Element, left: number, top: number, width: number, height: number) {
@@ -32,7 +32,7 @@ function table() {
   return mesa
 }
 
-const strike = (overrides: Partial<Strike> = {}): Strike => ({ key: 1, ax: 50, ay: 60, bx: 250, by: 60, len: 200, ang: 0, target: null, ...overrides })
+const strike = (overrides: Partial<Strike> = {}): Strike => ({ key: 1, ax: 50, ay: 60, bx: 250, by: 60, len: 200, ang: 0, attacker: document.createElement('div'), target: null, ...overrides })
 
 // jsdom no trae `matchMedia`: lo que un test le ponga se saca al terminar.
 const originalMatchMedia = window.matchMedia
@@ -48,6 +48,20 @@ afterEach(() => {
   cleanup()
 })
 
+/** El navegador sabe sumar animaciones (`composite`): el atacante y el objetivo reciben sus animaciones, mockeadas. */
+function withAnimations() {
+  vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
+  const cancel = vi.fn()
+  const attackerCancel = vi.fn()
+  const target = document.body.appendChild(document.createElement('div'))
+  const attacker = document.body.appendChild(document.createElement('div'))
+  target.animate = vi.fn(() => ({ cancel }) as unknown as Animation)
+  target.getAnimations = vi.fn(() => []) as unknown as Element['getAnimations']
+  attacker.animate = vi.fn(() => ({ cancel: attackerCancel }) as unknown as Animation)
+
+  return { target, cancel, attacker, attackerCancel }
+}
+
 describe('measureStrike', () => {
   it('con objetivo mide del centro del atacante al centro del objetivo: el largo y el ángulo en radianes', () => {
     const mesa = table()
@@ -57,6 +71,8 @@ describe('measureStrike', () => {
     expect(hit).toMatchObject({ ax: 50, ay: 50, bx: 80, by: 90, len: 50 })
     expect(hit!.ang).toBeCloseTo(Math.atan2(40, 30))
     expect(hit!.target).toBe(mesa.querySelector('[data-rival-card-id="c7"]'))
+    // El atacante es la carta que ataca: la que pone el cuerpo.
+    expect(hit!.attacker).toBe(mesa.querySelector('[data-card-id="card-1-1"]'))
     expect(typeof hit!.key).toBe('number')
 
     // Hacia arriba el ángulo es negativo.
@@ -191,49 +207,113 @@ describe('AttackFx', () => {
   })
 
   describe('la sacudida del objetivo', () => {
-    /** El navegador sabe sumar animaciones (`composite`) y el objetivo recibe la sacudida. */
-    function withAnimations() {
-      vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
-      const cancel = vi.fn()
-      const target = document.body.appendChild(document.createElement('div'))
-      target.animate = vi.fn(() => ({ cancel }) as unknown as Animation)
-
-      return { target, cancel }
-    }
-
     it('se suma a lo que ya tenga la carta, espera al impacto y se corta si el ataque se va antes', () => {
-      const { target, cancel } = withAnimations()
-      const view = render(<AttackFx strike={strike({ target })} onDone={() => {}} />)
+      const { target, cancel, attacker } = withAnimations()
+      const view = render(<AttackFx strike={strike({ target, attacker })} onDone={() => {}} />)
 
       expect(target.animate).toHaveBeenCalledTimes(1)
       const [frames, options] = vi.mocked(target.animate).mock.calls[0]!
       expect(frames).toHaveLength(5)
-      expect(options).toEqual({ duration: 360, delay: 300, easing: EASE_OUT, composite: 'add' })
+      expect(options).toEqual({ id: 'strike', duration: 360, delay: 300, easing: EASE_OUT, composite: 'add' })
 
       view.unmount()
       expect(cancel).toHaveBeenCalledTimes(1)
     })
 
     it('sin objetivo en pantalla no se sacude nada', () => {
-      const { target } = withAnimations()
+      const { target, attacker } = withAnimations()
 
-      render(<AttackFx strike={strike({ target: null })} onDone={() => {}} />)
+      render(<AttackFx strike={strike({ target: null, attacker })} onDone={() => {}} />)
       expect(target.animate).not.toHaveBeenCalled()
     })
 
     it('sin soporte para sumar animaciones (se pisaría el giro de la carta) no se sacude nada', () => {
-      const { target } = withAnimations()
+      const { target, attacker } = withAnimations()
 
       vi.unstubAllGlobals()
-      render(<AttackFx strike={strike({ target })} onDone={() => {}} />)
+      render(<AttackFx strike={strike({ target, attacker })} onDone={() => {}} />)
       expect(target.animate).not.toHaveBeenCalled()
+      expect(attacker.animate).not.toHaveBeenCalled()
     })
 
     it('pidiendo menos movimiento no se sacude nada', () => {
+      const { target, attacker } = withAnimations()
+
+      window.matchMedia = ((query: string) => ({ matches: query.includes('reduce') })) as typeof window.matchMedia
+      render(<AttackFx strike={strike({ target, attacker })} onDone={() => {}} />)
+      expect(target.animate).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('el atacante pone el cuerpo', () => {
+    it('se adelanta hasta 18 px y vuelve en 2 × el impacto, con la curva de ida y vuelta; al desmontarse se corta', () => {
+      const { attacker, attackerCancel } = withAnimations()
+      const view = render(<AttackFx strike={strike({ attacker, len: 200, ang: 0 })} onDone={() => {}} />)
+
+      expect(attacker.animate).toHaveBeenCalledTimes(1)
+      const [frames, options] = vi.mocked(attacker.animate).mock.calls[0]!
+      expect(options).toEqual({ duration: 600, composite: 'add' })
+      // 12 % de 200 px son 24: el tope de 18 px manda. Llega a la espada a mitad (offset 0,5, al impacto de 300 ms) y vuelve a 0.
+      expect(frames).toEqual([
+        { translate: '0px 0px', easing: EASE_IN_OUT },
+        { translate: '18px 0px', offset: 0.5, easing: EASE_IN_OUT },
+        { translate: '0px 0px' },
+      ])
+
+      view.unmount()
+      expect(attackerCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('con un ataque corto avanza el 12 % del camino, y en la dirección del ataque (en pantalla, hacia abajo acá)', () => {
+      const { attacker } = withAnimations()
+
+      render(<AttackFx strike={strike({ attacker, len: 50, ang: Math.PI / 2 })} onDone={() => {}} />)
+      const [frames] = vi.mocked(attacker.animate).mock.calls[0]!
+      // 12 % de 50 px son 6 px; el ángulo de π/2 los manda hacia abajo (+y), y el coseno casi cero no deja basura en x.
+      expect(frames).toContainEqual(expect.objectContaining({ translate: '0px 6px', offset: 0.5 }))
+    })
+
+    it('pidiendo menos movimiento el atacante no se mueve', () => {
+      const { attacker } = withAnimations()
+
+      window.matchMedia = ((query: string) => ({ matches: query.includes('reduce') })) as typeof window.matchMedia
+      render(<AttackFx strike={strike({ attacker, len: 200 })} onDone={() => {}} />)
+      expect(attacker.animate).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('sacudir: nunca dos sacudidas a la vez en la misma casilla', () => {
+    it('una pérdida de vidas no se suma a la sacudida de un ataque que ya corre en esa casilla', () => {
+      const { target } = withAnimations()
+      target.getAnimations = vi.fn(() => [{ id: 'strike', cancel: vi.fn() }]) as unknown as Element['getAnimations']
+
+      expect(sacudir(target, 'life')).toBeNull()
+      expect(target.animate).not.toHaveBeenCalled()
+    })
+
+    it('un ataque corta la sacudida de unas vidas que corra en la casilla y pone la suya, con su espera', () => {
+      const { target } = withAnimations()
+      const cancelVidas = vi.fn()
+      target.getAnimations = vi.fn(() => [{ id: 'life', cancel: cancelVidas }]) as unknown as Element['getAnimations']
+
+      expect(sacudir(target, 'strike', 300)).not.toBeNull()
+      expect(cancelVidas).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(target.animate).mock.calls[0]![1]).toEqual({ id: 'strike', duration: 360, delay: 300, easing: EASE_OUT, composite: 'add' })
+    })
+
+    it('una pérdida de vidas sobre una casilla quieta se sacude sola, sin espera y con su propio id', () => {
+      const { target } = withAnimations()
+
+      expect(sacudir(target, 'life')).not.toBeNull()
+      expect(vi.mocked(target.animate).mock.calls[0]![1]).toEqual({ id: 'life', duration: 360, delay: 0, easing: EASE_OUT, composite: 'add' })
+    })
+
+    it('con movimiento reducido no se sacude nada, ni la de un ataque ni la de unas vidas', () => {
       const { target } = withAnimations()
 
       window.matchMedia = ((query: string) => ({ matches: query.includes('reduce') })) as typeof window.matchMedia
-      render(<AttackFx strike={strike({ target })} onDone={() => {}} />)
+      expect(sacudir(target, 'life')).toBeNull()
+      expect(sacudir(target, 'strike', 300)).toBeNull()
       expect(target.animate).not.toHaveBeenCalled()
     })
   })
