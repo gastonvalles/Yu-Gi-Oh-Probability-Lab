@@ -353,6 +353,92 @@ describe('la mesa de práctica', () => {
     })
   })
 
+  describe('Desacoplar y Adjuntar en el menú: con una sola carta la opción va directa; con varias, una sola opción que pregunta cuál', () => {
+    // X3 es otro Xyz del Extra.
+    const withX3 = (id: string) => (id === 'x3' ? XYZ : kindOf(id))
+    const menu = (state: MatState, id: string) => listCardActions(state, id, withX3, nameOf)
+    const find = (state: MatState, id: string, label: string) => menu(state, id).find((item) => item.label === label)
+    const attachItems = (state: MatState, id: string) => menu(state, id).filter((item) => item.label.startsWith('Adjuntar'))
+    /** X1 (Xyz) en la zona de monstruo 1, A2 en el cementerio y C1 desterrado; en la mano quedan A1, B1 (Mágica) y D1 (Trampa), en el deck E1 y F1, y en el Extra X2 (Enlace) y X3. */
+    const oneXyz = run(
+      [
+        { type: 'place', id: 'x1', zone: 'mz', index: 0, pos: 'atk' },
+        { type: 'move', id: 'a2', to: 'gy' },
+        { type: 'move', id: 'c1', to: 'banished' },
+      ],
+      createMatState(DECK, ['x1', 'x2', 'x3'], 5),
+    )
+    /** Además X3 en la Zona Extra 1. */
+    const twoXyz = run([{ type: 'place', id: 'x3', zone: 'emz', index: 0, pos: 'atk' }], oneXyz)
+
+    it('desacoplar: sin materiales no hay opción; con uno, «Desacoplar A1» directo; con varios, una sola «Desacoplar» que pregunta cuál, y el elegido va al cementerio como siempre', () => {
+      const detachItems = (state: MatState) => menu(state, 'x1').filter((item) => item.label.startsWith('Desacoplar'))
+
+      expect(detachItems(oneXyz)).toEqual([])
+
+      const one = run([{ type: 'attach', id: 'a1', to: 'x1' }], oneXyz)
+      expect(detachItems(one)).toEqual([{ label: 'Desacoplar A1', action: { type: 'move', id: 'a1', to: 'gy' } }])
+
+      const three = run([{ type: 'attach', id: 'b1', to: 'x1' }, { type: 'attach', id: 'e1', to: 'x1' }], one)
+      const [detach, ...others] = detachItems(three)
+      expect(others).toEqual([])
+      expect(detach!.label).toBe('Desacoplar')
+      expect(detach!.choices?.map((choice) => [choice.label, choice.cardId, choice.action])).toEqual([
+        ['A1', 'a1', { type: 'move', id: 'a1', to: 'gy' }],
+        ['B1', 'b1', { type: 'move', id: 'b1', to: 'gy' }],
+        ['E1', 'e1', { type: 'move', id: 'e1', to: 'gy' }],
+      ])
+      // La jugada que se graba es la de siempre (los combos guardados se siguen reproduciendo): el elegido va al cementerio y los demás se quedan.
+      const detached = matReducer(three, detach!.choices![1]!.action)
+      expect([detached.mz[0]?.materials, detached.gy]).toEqual([['a1', 'e1'], ['a2', 'b1']])
+    })
+
+    it('dos materiales que se llaman igual (dos copias de la misma carta): una respuesta por cada uno', () => {
+      const sameName = (id: string) => (id === 'a1' || id === 'a2' ? 'ASH' : nameOf(id))
+      const two = run([{ type: 'attach', id: 'a1', to: 'x1' }, { type: 'attach', id: 'a2', to: 'x1' }], oneXyz)
+
+      expect(listCardActions(two, 'x1', withX3, sameName).find((item) => item.label === 'Desacoplar')?.choices?.map((choice) => [choice.label, choice.cardId])).toEqual([['ASH', 'a1'], ['ASH', 'a2']])
+    })
+
+    it('un monstruo de la mano, el deck, el cementerio o el destierro se adjunta: con un Xyz en el campo, «Adjuntar a X1» directo; con dos, una sola «Adjuntar a un Xyz» que pregunta a cuál', () => {
+      for (const id of ['a1', 'e1', 'a2', 'c1']) {
+        expect(attachItems(oneXyz, id)).toEqual([{ label: 'Adjuntar a X1', action: { type: 'attach', id, to: 'x1' } }])
+
+        const [attach, ...others] = attachItems(twoXyz, id)
+        expect(others).toEqual([])
+        expect(attach!.label).toBe('Adjuntar a un Xyz')
+        expect(attach!.choices?.map((choice) => [choice.label, choice.cardId, choice.action])).toEqual([
+          ['X1', 'x1', { type: 'attach', id, to: 'x1' }],
+          ['X3', 'x3', { type: 'attach', id, to: 'x3' }],
+        ])
+      }
+
+      // Elegir uno pone la carta debajo de ese Xyz con la jugada de siempre: A2 sale del cementerio y queda de material de X3.
+      const attached = matReducer(twoXyz, find(twoXyz, 'a2', 'Adjuntar a un Xyz')!.choices![1]!.action)
+      expect([attached.emz[0]?.materials, attached.gy]).toEqual([['a2'], []])
+      // Soltar la carta en una zona libre sólo ofrece lo que la saca a esa zona: adjuntar, no.
+      expect(listDropActions(twoXyz, 'a1', withX3, nameOf, { zone: 'mz', index: 3 }).map((item) => item.label)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial'])
+    })
+
+    it('en el campo, lo mismo: con dos Xyz pregunta a cuál, y un Xyz no se ofrece a sí mismo; uno boca abajo también recibe materiales (la mesa no valida reglas)', () => {
+      const withA1 = run([{ type: 'place', id: 'a1', zone: 'mz', index: 1, pos: 'atk' }], twoXyz)
+
+      expect(find(withA1, 'a1', 'Adjuntar a un Xyz')?.choices?.map((choice) => choice.action)).toEqual([{ type: 'attach', id: 'a1', to: 'x1' }, { type: 'attach', id: 'a1', to: 'x3' }])
+      expect(attachItems(twoXyz, 'x1')).toEqual([{ label: 'Adjuntar a X3', action: { type: 'attach', id: 'x1', to: 'x3' } }])
+      expect(attachItems(run([{ type: 'position', id: 'x1', pos: 'set' }], oneXyz), 'a2')).toEqual([{ label: 'Adjuntar a X1', action: { type: 'attach', id: 'a2', to: 'x1' } }])
+    })
+
+    it('sin un Xyz en el campo no se ofrece (un Enlace no cuenta), y nunca a una ficha, a una carta del Extra Deck ni a una Mágica o Trampa', () => {
+      const noXyz = run([{ type: 'move', id: 'a2', to: 'gy' }, { type: 'place', id: 'x2', zone: 'emz', index: 0, pos: 'atk' }])
+
+      for (const id of ['a1', 'a2', 'e1']) expect(attachItems(noXyz, id)).toEqual([])
+      expect(attachItems(run([{ type: 'token', zone: 'mz', index: 4 }], twoXyz), 'token-1')).toEqual([])
+      expect(attachItems(twoXyz, 'x2')).toEqual([])
+      expect(attachItems(twoXyz, 'b1')).toEqual([])
+      expect(attachItems(twoXyz, 'd1')).toEqual([])
+    })
+  })
+
   describe('las Zonas Extra de un duelo (no son de nadie hasta que alguien invoca en una: la otra pasa a ser del rival)', () => {
     const free = (state: MatState, rivalEmz?: boolean[]) => freeTargets(state, ['emz'], rivalEmz).map((target) => target.index)
     const inEmz = (index: number, id = 'x1') => ({ type: 'place', id, zone: 'emz', index, pos: 'atk', how: 'special' }) as const
@@ -445,8 +531,8 @@ describe('la mesa de práctica', () => {
     expect(labels(played, 'a2')).toEqual(['Desacoplar al cementerio', 'Desterrar', 'A la mano'])
     // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
     expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
-    // Desde el cementerio: Invocación Especial (a una zona principal), a Mágicas/Trampas, a la mano, destierro y de vuelta al deck (arriba o abajo).
-    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Target', 'Desterrar', 'Al deck'])
+    // Desde el cementerio: Invocación Especial (a una zona principal), a Mágicas/Trampas, a la mano, destierro, adjuntar al Xyz del campo y de vuelta al deck (arriba o abajo).
+    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Target', 'Desterrar', 'Adjuntar a X1', 'Al deck'])
     expect(listCardActions(played, 'e1', kindOf, nameOf)[0]!.choices?.[0]?.targets?.every((target) => target.zone === 'mz')).toBe(true)
     expect(labels(played, 'zzz')).toEqual([])
 

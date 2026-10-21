@@ -79,6 +79,13 @@ describe('la mesa de práctica en inglés', () => {
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
     expect(labels(two, 'c1').slice(0, 2)).toEqual(['Normal Summon', 'Set'])
     expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Target', 'To the Spell & Trap Zone', 'To hand', 'To Graveyard', 'Banish', 'To the Deck'])
+
+    // Con varios materiales, «Detach» pregunta cuál; con dos Xyz en el campo (F1 hace de otro), «Attach to an Xyz» pregunta a cuál, también desde el Graveyard.
+    const withF1 = (id: string) => (id === 'f1' ? XYZ : kindOf(id))
+    const full = run([{ type: 'attach', id: 'a2', to: 'x1' }, { type: 'attach', id: 'b1', to: 'x1' }, { type: 'place', id: 'f1', zone: 'mz', index: 1, pos: 'atk' }, { type: 'move', id: 'd1', to: 'gy' }], two)
+    const menu = (id: string) => listCardActions(full, id, withF1, nameOf)
+    expect(menu('x1').find((item) => item.label === 'Detach')?.choices?.map((choice) => choice.label)).toEqual(['A2', 'B1'])
+    expect(menu('d1').find((item) => item.label === 'Attach to an Xyz')?.choices?.map((choice) => choice.label)).toEqual(['F1', 'X1'])
   })
 
   it('el nombre de un combo sin nombre sale en el idioma de ese momento', () => {

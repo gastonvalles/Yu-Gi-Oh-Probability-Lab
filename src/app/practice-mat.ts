@@ -838,6 +838,8 @@ export interface MatMenuItem {
   shuffleDeck?: true
   /** Una jugada de apoyo (revelar, target, descartar, desterrar, devolver al deck o al Extra), no una jugada del juego: la hoja de la mano las ofrece aparte, todas a un toque. */
   utility?: true
+  /** La carta que nombra la opción (en el segundo paso de «Desacoplar», un material; en el de «Adjuntar a un Xyz», un Xyz del campo): para que el menú pueda mostrar su miniatura. */
+  cardId?: string
 }
 
 /**
@@ -971,6 +973,23 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const faceUpExtra = pile === 'extra' && state.extraUp.includes(id)
   /** Un Monstruo de Péndulo en el campo (una zona de monstruo o una zona de Péndulo): si sale al cementerio, va al Extra Deck boca arriba. */
   const leavesToExtra = where.kind === 'spot' && pendulumOnField(state, id, kindOf)
+  /**
+   * Una jugada con una de varias cartas (a qué Xyz se adjunta, qué material se desacopla): con una sola, la opción va directa y la nombra («Adjuntar a Zeus»); con varias, es una sola opción
+   * que pregunta cuál, con una respuesta por carta (aunque dos se llamen igual). Sin ninguna, no se ofrece.
+   */
+  const oneOf = (cards: readonly string[], direct: (name: string) => string, label: string, action: (card: string) => MatAction) => {
+    const [first, ...rest] = cards.map((card): MatMenuItem => ({ label: nameOf(card), action: action(card), cardId: card }))
+
+    if (first) items.push(rest.length === 0 ? { label: direct(first.label), action: first.action } : askItem(label, [first, ...rest]))
+  }
+  /** Adjuntar la carta como material a un Xyz del campo: cualquiera que no sea ella misma, boca arriba o boca abajo (la mesa no valida reglas). Una ficha no es material. */
+  const attachTo = () =>
+    oneOf(
+      isToken(id) ? [] : monstersOnField(state).filter((other) => other !== id && !isToken(other) && kindOf(other).xyz),
+      (name) => t('practice.menu.attachTo', { name }),
+      t('practice.menu.attachToXyz'),
+      (xyz) => ({ type: 'attach', id, to: xyz }),
+    )
 
   if (where.kind === 'spot') {
     const { placed, spot } = where
@@ -997,17 +1016,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
         if (!kind.link && !isToken(id)) add(t('practice.menu.turnFaceDown'), { type: 'position', id, pos: 'set' })
       }
 
-      for (const zone of ['mz', 'emz'] as const) {
-        for (const other of state[zone]) {
-          if (other && other.id !== id && !isToken(other.id) && kindOf(other.id).xyz && !isToken(id)) {
-            add(t('practice.menu.attachTo', { name: nameOf(other.id) }), { type: 'attach', id, to: other.id })
-          }
-        }
-      }
-
-      for (const material of placed.materials) {
-        add(t('practice.menu.detach', { name: nameOf(material) }), { type: 'move', id: material, to: 'gy' })
-      }
+      attachTo()
+      // Desacoplar: con un material, «Desacoplar X»; con varios, una sola opción que pregunta cuál.
+      oneOf(placed.materials, (name) => t('practice.menu.detach', { name }), t('practice.menu.detachMaterial'), (material) => ({ type: 'move', id: material, to: 'gy' }))
     }
 
     target()
@@ -1127,6 +1138,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     else add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
     banish()
   }
+
+  // Un monstruo de la mano, el deck, el cementerio o el destierro también se adjunta como material a un Xyz del campo (en el campo va con sus otras jugadas; del Extra Deck, no).
+  if (pile && pile !== 'extra' && kind.monster) attachTo()
 
   if (pile !== 'extra') {
     // Un Monstruo de Péndulo va al Extra Deck boca arriba (de cualquier lado por un efecto; del campo, el cementerio ya lo manda ahí): ahí se ve y se puede volver a invocar por Péndulo.

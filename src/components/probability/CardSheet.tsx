@@ -49,7 +49,8 @@ function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: bool
     <div className={cx('grid gap-2', stacked ? 'grid-cols-1' : 'grid-cols-2')}>
       {items.map((item, index) => (
         <Button
-          key={`${item.lead ?? ''}|${item.label}`}
+          // El lugar hace única la clave (dos materiales pueden llamarse igual); el texto, que el segundo paso sean botones nuevos.
+          key={`${index}|${item.label}`}
           role="menuitem"
           aria-current={item.current ? 'true' : undefined}
           variant={item.current ? 'primary' : 'secondary'}

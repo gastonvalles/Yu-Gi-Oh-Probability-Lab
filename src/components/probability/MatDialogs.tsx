@@ -167,7 +167,8 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
         </div>
         {items.map((item, index) => (
           <button
-            key={`${item.lead ?? ''}|${item.label}`}
+            // El lugar hace única la clave (dos materiales pueden llamarse igual); el texto, que el segundo paso sean botones nuevos.
+            key={`${index}|${item.label}`}
             type="button"
             role="menuitem"
             aria-current={item.current ? 'true' : undefined}

@@ -1227,6 +1227,70 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
   })
 
+  describe('Desacoplar y Adjuntar: con varias cartas, una sola opción que abre la lista', () => {
+    // Dos copias de Ash Blossom (se llaman igual) y Maxx C debajo de Zeus, en la Zona Extra 1; Hermes, otro Xyz, en la zona de monstruo 1; Droll en el cementerio.
+    const cards = new Map(CARDS).set('card-1-2', { name: 'Ash Blossom', apiCard: card(1, 'effect') }).set('card-8-1', { name: 'Hermes', apiCard: card(8, 'xyz') })
+    const table = replayMat(createMatState(['card-1-1', 'card-1-2', 'card-2-1', 'card-5-1', 'card-3-1', 'card-4-1', 'card-6-1'], ['card-7-1', 'card-8-1'], 5), [
+      { type: 'place', id: 'card-7-1', zone: 'emz', index: 0, pos: 'atk', how: 'special' },
+      ...['card-1-1', 'card-1-2', 'card-2-1'].map((id) => ({ type: 'attach', id, to: 'card-7-1' }) as const),
+      { type: 'place', id: 'card-8-1', zone: 'mz', index: 0, pos: 'atk', how: 'special' },
+      { type: 'move', id: 'card-5-1', to: 'gy' },
+    ])
+    const asDesktop = () => {
+      const matchMedia = window.matchMedia
+
+      window.matchMedia = ((query: string) => ({ ...matchMedia(query), matches: query.includes('1101') || query.includes('reduce') })) as typeof window.matchMedia
+    }
+    /** Las advertencias de React por dos hijos con la misma clave (dos materiales que se llaman igual). */
+    const keyWarnings = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.filter((call) => String(call[0]).includes('same key'))
+    const items = () => screen.getAllByRole('menuitem').map((item) => item.textContent)
+
+    for (const device of ['escritorio', 'celular'] as const) {
+      it(`${device}: «Desacoplar» abre la lista de los materiales (dos que se llaman igual no chocan) y el elegido va al cementerio`, () => {
+        const errors = vi.spyOn(console, 'error')
+
+        try {
+          if (device === 'escritorio') asDesktop()
+          render(<Harness initial={table} cards={cards} />)
+
+          tap(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: 'Zeus' }))
+          expect(items().filter((label) => label?.startsWith('Desacoplar'))).toEqual(['Desacoplar'])
+          fireEvent.click(screen.getByRole('menuitem', { name: 'Desacoplar' }))
+          expect(items()).toEqual(['Ash Blossom', 'Ash Blossom', 'Maxx C'])
+          expect(keyWarnings(errors)).toEqual([])
+
+          fireEvent.click(screen.getByRole('menuitem', { name: 'Maxx C' }))
+          expect(within(status()).getByText('Maxx C va al cementerio')).toBeInTheDocument()
+          expect(screen.getByRole('button', { name: 'GY: 2' })).toBeInTheDocument()
+
+          // Quedan los dos Ash Blossom: sigue siendo una sola opción con la lista.
+          tap(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: 'Zeus' }))
+          fireEvent.click(screen.getByRole('menuitem', { name: 'Desacoplar' }))
+          expect(items()).toEqual(['Ash Blossom', 'Ash Blossom'])
+          expect(keyWarnings(errors)).toEqual([])
+        } finally {
+          errors.mockRestore()
+        }
+      })
+
+      it(`${device}: una carta del cementerio con dos Xyz en el campo se adjunta con «Adjuntar a un Xyz», eligiendo a cuál`, () => {
+        if (device === 'escritorio') asDesktop()
+        render(<Harness initial={table} cards={cards} />)
+
+        fireEvent.click(screen.getByRole('button', { name: 'GY: 1' }))
+        fireEvent.click(within(screen.getByRole('dialog', { name: 'GY · 1' })).getByRole('button', { name: 'Droll' }))
+        expect(items().filter((label) => label?.startsWith('Adjuntar'))).toEqual(['Adjuntar a un Xyz'])
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Adjuntar a un Xyz' }))
+        expect(items()).toEqual(['Hermes', 'Zeus'])
+
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Zeus' }))
+        expect(within(status()).getByText('Adjuntás Droll a Zeus')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'GY · 1' })).not.toBeInTheDocument()
+      })
+    }
+  })
+
   describe('doble clic en el único material (escritorio)', () => {
     const asDesktop = () => {
       const matchMedia = window.matchMedia
