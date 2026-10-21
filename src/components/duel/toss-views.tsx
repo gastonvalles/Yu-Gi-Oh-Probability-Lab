@@ -19,24 +19,29 @@ const TOSS_MS = 3200
 /** La última vez que `from` tiró un dado (de ahí sale la clave que hace girar el dado de nuevo cuando vuelve a tirar). */
 const lastDie = (games: readonly GameEntry[], from: Duelist) => [...games].reverse().find((entry) => entry.game.kind === 'die' && entry.from === from)
 
-/** Los dados de los dos, uno al lado del otro: el que todavía no tiró es un lugar vacío. */
-export function DiceStage({ snapshot, myName }: { snapshot: DuelSnapshot; myName: string }) {
-  const { games, me, opening, peerName } = snapshot
-  const rival = peerName ?? t('duel.bar.rival')
-  const seats = [
-    { name: myName || t('duel.opening.you'), value: opening.dice.mine, entry: lastDie(games, me) },
-    { name: rival, value: opening.dice.theirs, entry: lastDie(games, me === 0 ? 1 : 0) },
-  ]
+/**
+ * El dado de uno de los dos, debajo de su tarjeta de la sala: el que todavía no tiró es un lugar vacío. Mide `--die` (5 rem; la sala lo baja a 3,5 en una pantalla de menos de 760 px de alto: tiene que entrar sin scroll).
+ */
+export function DieSeat({ snapshot, side }: { snapshot: DuelSnapshot; side: 'mine' | 'theirs' }) {
+  const { games, me, opening } = snapshot
+  const value = side === 'mine' ? opening.dice.mine : opening.dice.theirs
+  const entry = lastDie(games, side === 'mine' ? me : me === 0 ? 1 : 0)
 
+  return value !== null && entry ? (
+    <Die key={entry.id} value={value} />
+  ) : (
+    <span aria-hidden="true" className="mb-[calc(var(--die,5rem)*0.3)] mt-1 grid size-[var(--die,5rem)] place-items-center rounded-card border-2 border-dashed border-border-subtle text-title font-bold text-soft">
+      ?
+    </span>
+  )
+}
+
+/** La mano de piedra-papel-tijera de uno de los dos, debajo de su tarjeta de la sala (se sacude y aparece; con otra jugada, otra `key`: vuelve a aparecer). */
+export function RpsSeat({ pick }: { pick: RpsPick }) {
   return (
-    <div className="grid grid-cols-2 gap-2 [perspective:40rem]" data-stage="dice">
-      {seats.map((seat, index) => (
-        <div key={index} className="grid justify-items-center gap-1">
-          {seat.value !== null && seat.entry ? <Die key={seat.entry.id} value={seat.value} /> : <span aria-hidden="true" className="mb-6 mt-1 grid size-20 place-items-center rounded-card border-2 border-dashed border-border-subtle text-title font-bold text-soft">?</span>}
-          <span className="max-w-full truncate text-micro font-semibold text-muted">{seat.name}</span>
-        </div>
-      ))}
-    </div>
+    <span aria-hidden="true" className="animate-rps-reveal text-[3.5rem] leading-none motion-reduce:animate-none">
+      {RPS_GLYPH[pick]}
+    </span>
   )
 }
 

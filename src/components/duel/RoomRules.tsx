@@ -13,13 +13,16 @@ interface RoomRulesProps {
   isPublic: boolean | null
   /** Cuántas personas miran ahora (las dos que juegan lo ven); sin dato (quien mira no lo sabe), la fila no va. */
   watchers?: number
+  /** Dentro de otra tarjeta (la columna de la sala, arriba del deck): sin caja propia y con el título sólo para el lector de pantalla. */
+  bare?: boolean
 }
 
 /**
  * Las reglas de la sala en una ficha, en un solo lugar y a la vista de los dos jugadores: cómo se juega (tipo, formato, tiempo, y las vidas y la mano sólo si no son las de TCG y OCG), quién puede entrar y cuántos miran.
- * Reemplaza a las pastillas y a las frases sueltas de antes: cada dato se dice una sola vez.
+ * Reemplaza a las pastillas y a las frases sueltas de antes: cada dato se dice una sola vez. Dentro de la sala, ancha (columna de la izquierda), es una lista de renglones —el rótulo a la izquierda y el dato a la derecha, con una línea fina
+ * entre uno y otro, como la lista de reglas de la sala de otro simulador—; angosta (celular), los datos se acomodan en renglones, cada uno al lado de su rótulo: la sala tiene que entrar en la pantalla sin scroll.
  */
-export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
+export function RoomRules({ settings, isPublic, watchers, bare = false }: RoomRulesProps) {
   // Lo que tiene que ver con quien mira lleva un ojo (el tercer dato de la fila).
   const rows: ReadonlyArray<readonly [string, string, IconName?]> = [
     [t('duel.rules.type'), settings.match ? t('duel.rooms.match') : t('duel.rooms.single')],
@@ -35,16 +38,16 @@ export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
   ]
 
   return (
-    <section aria-label={t('duel.rules.title')} data-testid="room-summary" className={cx('grid gap-2 rounded-card border p-3', TONE.neutral.wash)}>
-      <h3 className="m-0 text-micro font-semibold uppercase text-soft">{t('duel.rules.title')}</h3>
-      <dl className="m-0 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+    <section aria-label={t('duel.rules.title')} data-testid="room-summary" className={bare ? 'grid gap-2' : cx('grid gap-2 rounded-card border p-3', TONE.neutral.wash)}>
+      <h3 className={cx('m-0 text-micro font-semibold uppercase text-soft', bare && 'sr-only')}>{t('duel.rules.title')}</h3>
+      <dl className="m-0 flex flex-wrap gap-x-5 gap-y-1 @[46rem]:grid @[46rem]:gap-0 @[46rem]:divide-y @[46rem]:divide-border-subtle">
         {rows.map(([label, value, icon]) => (
-          <div key={label} className="flex items-baseline justify-between gap-3">
-            <dt className="inline-flex items-center gap-1.5 text-body text-muted">
-              {icon ? <Icon name={icon} size={14} /> : null}
+          <div key={label} className="flex items-baseline gap-1.5 @[46rem]:justify-between @[46rem]:gap-3 @[46rem]:py-2">
+            <dt className="inline-flex items-center gap-1 text-micro text-muted @[46rem]:text-body">
+              {icon ? <Icon name={icon} size={12} /> : null}
               {label}
             </dt>
-            <dd className="m-0 truncate text-right text-body font-semibold text-foreground">{value}</dd>
+            <dd className="m-0 text-body font-semibold text-foreground @[46rem]:text-right">{value}</dd>
           </div>
         ))}
       </dl>

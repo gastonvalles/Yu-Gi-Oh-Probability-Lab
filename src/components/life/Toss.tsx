@@ -5,10 +5,13 @@ import { cx } from '../ui/cx'
 
 /** La moneda y el dado dorados que se tiran con animación: los usan la calculadora de LP y el duelo. */
 
-/** El salto (con su sombra en el piso) va aparte del giro: cada uno es una animación continua y el conjunto se ve fluido. */
+/**
+ * El salto (con su sombra en el piso) va aparte del giro: cada uno es una animación continua y el conjunto se ve fluido. El piso de abajo mide un 30 % del dado (`--die`: 1,5 rem con los 5 rem de siempre) para que
+ * un dado chico (`[--die:3.5rem]` en un padre) no deje el mismo hueco.
+ */
 function Toss({ shadowWidth, children }: { shadowWidth: string; children: React.ReactNode }) {
   return (
-    <div className="relative grid place-items-center pb-6">
+    <div className="relative grid place-items-center pb-[calc(var(--die,5rem)*0.3)]">
       {/* Sobre el fondo oscuro una sombra sola no se ve: va una mesa tenue y, encima, la sombra que se achica en el aire. */}
       <span aria-hidden="true" className="absolute bottom-0 h-6 w-40 rounded-[50%] bg-tint/10" />
       <span aria-hidden="true" className={cx('absolute bottom-1.5 h-3 animate-toss-shadow rounded-[50%] bg-black/75 blur-[3px] motion-reduce:animate-none', shadowWidth)} />
@@ -41,20 +44,21 @@ const FACE_PLACEMENT: Record<number, string> = { 1: 'rotateY(0deg)', 2: 'rotateX
 const FACE_UP: Record<number, [number, number]> = { 1: [0, 0], 2: [-90, 0], 3: [0, -90], 4: [0, 90], 5: [90, 0], 6: [0, 180] }
 /** Dado dorado como el de la referencia: caras con degradé metálico y puntos tallados; el 1 es el Ojo Milenario. */
 const FACE =
-  'absolute inset-0 grid grid-cols-3 grid-rows-3 gap-1 p-3 [backface-visibility:hidden] bg-[linear-gradient(145deg,#fbe48f_0%,#dcb345_48%,#b5841c_100%)] shadow-[inset_0_0_0_2px_rgba(255,244,196,0.8),inset_0_-8px_14px_rgba(110,70,0,0.4)]'
+  'absolute inset-0 grid grid-cols-3 grid-rows-3 gap-1 p-[calc(var(--die,5rem)*0.15)] [backface-visibility:hidden] bg-[linear-gradient(145deg,#fbe48f_0%,#dcb345_48%,#b5841c_100%)] shadow-[inset_0_0_0_2px_rgba(255,244,196,0.8),inset_0_-8px_14px_rgba(110,70,0,0.4)]'
 const PIP = 'rounded-full bg-[radial-gradient(circle_at_35%_35%,#ffeaa8,#d68a0e_55%,#6e4100)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]'
 
+/** El dado: mide `--die` (5 rem si nadie lo cambia). */
 export function Die({ value }: { value: number }) {
   const [x, y] = FACE_UP[value] ?? [0, 0]
 
   return (
     <Toss shadowWidth="w-16">
       <div
-        className="relative size-20 animate-die-spin [transform-style:preserve-3d] motion-reduce:animate-none"
+        className="relative size-[var(--die,5rem)] animate-die-spin [transform-style:preserve-3d] motion-reduce:animate-none"
         style={{ transform: `rotateX(${x}deg) rotateY(${y}deg)`, '--die-x': `${x + 720}deg`, '--die-y': `${y + 1080}deg` } as CSSProperties}
       >
         {[1, 2, 3, 4, 5, 6].map((face) => (
-          <span key={face} className={FACE} style={{ transform: `${FACE_PLACEMENT[face]} translateZ(2.5rem)` }}>
+          <span key={face} className={FACE} style={{ transform: `${FACE_PLACEMENT[face]} translateZ(calc(var(--die, 5rem) / 2))` }}>
             {face === 1 ? (
               <MillenniumEye className="col-span-3 row-span-3 h-[72%] w-auto place-self-center" />
             ) : (

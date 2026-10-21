@@ -343,6 +343,7 @@ export const duel: Translated<typeof es> = {
   // The room before the table: getting ready and deciding who goes first.
   'duel.opening.you': 'You',
   'duel.opening.rival': 'Rival',
+  'duel.opening.versus': 'VS',
   'duel.opening.ready': 'Ready',
   'duel.opening.notReady': 'Not yet',
   'duel.opening.readyAction': "I'm ready",
