@@ -234,6 +234,7 @@ por tandas.
 **Para hacer (2026-10-21)**
 - **Indicador de cadenas:** pendiente hasta que termine el motor de entendimiento de efectos (Gastón, 2026-10-21).
 - **Xyz:** faltan los menús «Desacoplar ▸» y «Adjuntar a ▸» y la marca visual de los materiales (pila + círculo con la cantidad).
+- **Elegir varias cartas en el deck, el cementerio, el Extra y el destierro** (Gastón, 2026-10-21: «una opción de targetear varias cartas, tanto para la función target como para seleccionarlas para una misma acción como "enviar a", "barajar" o "acoplar"»): el plan completo está en `docs/seleccion-multiple.md` (modo «Elegir varias» en el visor, jugada `batch`, menú del lote, Target a varias del rival). PR: A visor (en vuelo), C `batch` (en vuelo), B Target del rival y D la mesa (después).
 
 **Para hacer (2026-10-20)**
 - **Publicar lo de #453** (ya está en `main`): producción puede seguir frenada por el límite de despliegues de Vercel (ver abajo: mirar si el último despliegue de `main` salió) y el Worker del relay no cambió en esta PR (`duel-relay/` no se tocó).
