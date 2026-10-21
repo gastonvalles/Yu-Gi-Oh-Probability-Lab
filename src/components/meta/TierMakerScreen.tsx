@@ -113,21 +113,29 @@ export function TierMakerScreen() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* `justify-between` y no `ml-auto`: si en el celular no entran juntos, los dos quedan alineados a la izquierda, uno abajo del otro (con `ml-auto`, «Descargar imagen» bajaba sola a la derecha). */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="tertiary" size="sm" disabled={ranked === 0} onClick={() => update(resetPlacements)}>
           {t('meta.maker.resetTiers')}
         </Button>
-        <Button variant="primary" size="sm" icon="download" className="ml-auto" aria-busy={busy} disabled={busy} onClick={() => void download()}>
+        <Button variant="primary" size="sm" icon="download" aria-busy={busy} disabled={busy} onClick={() => void download()}>
           {t('meta.maker.download')}
         </Button>
       </div>
 
       <div>
-        <TierMakerBoard list={list} selectedId={selectedId} onSelect={setSelectedId} onMove={move} onRemoveCard={drop} onEditTier={setEditingTier} />
+        <TierMakerBoard list={list} selectedId={selectedId} onSelect={setSelectedId} onMove={move} onRemoveCard={drop} onEditTier={setEditingTier}>
+          {/* Antes de «Sin clasificar», pegados a las filas (Gastón, 2026-10-21). Quitar saca la última: sus cartas vuelven a «Sin clasificar», así que no se pregunta. */}
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <Button variant="tertiary" size="sm" icon="plus" disabled={list.tiers.length >= MAX_TIERS} onClick={() => update((current) => addTier(current, t('meta.maker.newTierLabel')))}>
+              {t('meta.maker.addTier')}
+            </Button>
+            <Button variant="tertiary" size="sm" icon="minus" disabled={list.tiers.length === 0} onClick={() => update((current) => removeTier(current, current.tiers.at(-1)?.id ?? ''))}>
+              {t('meta.maker.removeTier')}
+            </Button>
+          </div>
+        </TierMakerBoard>
         {countCards(list) === 0 ? <p className="m-0 mt-3 text-micro text-soft">{t('meta.maker.emptyBoard')}</p> : null}
-        <Button variant="tertiary" size="sm" icon="plus" className="mt-3" disabled={list.tiers.length >= MAX_TIERS} onClick={() => update((current) => addTier(current, t('meta.maker.newTierLabel')))}>
-          {t('meta.maker.addTier')}
-        </Button>
       </div>
 
       <TierMakerAddCards list={list} onAdd={add} />

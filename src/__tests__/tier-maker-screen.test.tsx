@@ -67,7 +67,7 @@ describe('el creador de tier lists', () => {
     expect(screen.getByRole('region', { name: 'Buscar' })).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Buscar una carta por nombre' })).toBeInTheDocument()
 
-    for (const name of ['Hand traps del meta', 'Boardbreakers del meta', /Volver todo a/, 'Descargar imagen', 'Agregar fila']) {
+    for (const name of ['Hand traps del meta', 'Boardbreakers del meta', /Volver todo a/, 'Descargar imagen', 'Agregar fila', 'Quitar fila']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument()
     }
   })
@@ -212,5 +212,143 @@ describe('el creador de tier lists', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Volver todo a «Sin clasificar»' }))
     fireEvent.click(screen.getByRole('button', { name: 'Descargar imagen' }))
     expect(toast).toHaveBeenLastCalledWith('Poné alguna carta en una fila para armar la imagen.', 'info')
+  })
+})
+
+const names = (scope: HTMLElement) => tiles(scope).map((tile) => tile.getAttribute('aria-label'))
+/** Lleva una carta de «Sin clasificar» a una fila con la barra, como con un toque. */
+const moveTo = (card: string, tier: string) => {
+  fireEvent.click(tiles(row('Sin clasificar')).find((tile) => tile.getAttribute('aria-label') === `Carta ${card}`) as HTMLElement)
+  fireEvent.click(screen.getByRole('button', { name: `Mover ${card} a ${tier}` }))
+}
+
+describe('sacar cartas de a un paso (Gastón, 2026-10-21: «si hago click derecho sobre las cartas deben salirse»)', () => {
+  it('el clic derecho en una fila la devuelve al final de «Sin clasificar», y ahí la saca de la lista; el menú del navegador no sale', () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'S')
+
+    const inRow = tiles(row('S'))[0] as HTMLElement
+
+    fireEvent.pointerDown(inRow, { pointerType: 'mouse', button: 2 })
+    // `fireEvent` devuelve `false` cuando el evento se canceló (`preventDefault`): así no sale el menú del navegador.
+    expect(fireEvent.contextMenu(inRow)).toBe(false)
+    expect(tiles(row('S'))).toHaveLength(0)
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler', 'Carta Crossout Designator'])
+
+    const inPool = tiles(row('Sin clasificar'))[1] as HTMLElement
+
+    fireEvent.pointerDown(inPool, { pointerType: 'mouse', button: 2 })
+    expect(fireEvent.contextMenu(inPool)).toBe(false)
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+    expect(screen.getByText('1 de 300 cartas')).toBeInTheDocument()
+  })
+
+  it('si la carta era la elegida, el clic derecho también la deja de elegir (la barra se va)', () => {
+    seed()
+    render(<TierMakerScreen />)
+
+    const card = tiles(row('Sin clasificar'))[0] as HTMLElement
+
+    fireEvent.click(card)
+    expect(screen.getByRole('group', { name: 'Mover «Crossout Designator» a…' })).toBeInTheDocument()
+    fireEvent.contextMenu(card)
+    expect(screen.queryByRole('group', { name: /Mover «/ })).not.toBeInTheDocument()
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+  })
+
+  it('con el dedo, el toque largo (que en Android dispara el mismo evento) no saca nada: sólo se bloquea el menú; con un lápiz, sí', () => {
+    seed()
+    render(<TierMakerScreen />)
+
+    const [first, second] = tiles(row('Sin clasificar')) as [HTMLElement, HTMLElement]
+
+    fireEvent.pointerDown(first, { pointerType: 'touch' })
+    expect(fireEvent.contextMenu(first)).toBe(false)
+    expect(tiles(row('Sin clasificar'))).toHaveLength(2)
+
+    fireEvent.pointerDown(second, { pointerType: 'pen' })
+    fireEvent.contextMenu(second)
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Crossout Designator'])
+  })
+
+  it('Supr y Retroceso hacen lo mismo con el teclado, sin perder el foco; Enter sigue eligiendo', async () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'S')
+    moveTo('Effect Veiler', 'S')
+
+    const first = tiles(row('S'))[0] as HTMLElement
+
+    first.focus()
+    fireEvent.keyDown(first, { key: 'Delete' })
+    expect(names(row('S'))).toEqual(['Carta Effect Veiler'])
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Crossout Designator'])
+    // El foco pasa a la que quedó en su lugar.
+    await waitFor(() => expect(tiles(row('S'))[0]).toHaveFocus())
+
+    fireEvent.keyDown(tiles(row('S'))[0] as HTMLElement, { key: 'Backspace' })
+    expect(tiles(row('S'))).toHaveLength(0)
+    // La fila quedó vacía: el foco va a su letra, lo que está justo antes.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Editar la fila S' })).toHaveFocus())
+
+    const pooled = tiles(row('Sin clasificar'))[0] as HTMLElement
+
+    fireEvent.keyDown(pooled, { key: 'Enter' })
+    expect(pooled).toHaveAttribute('aria-pressed', 'true')
+
+    pooled.focus()
+    fireEvent.keyDown(pooled, { key: 'Delete' })
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+    await waitFor(() => expect(tiles(row('Sin clasificar'))[0]).toHaveFocus())
+
+    // La última de «Sin clasificar»: el foco pasa a «Quitar fila», lo último que se puede tocar antes.
+    fireEvent.keyDown(tiles(row('Sin clasificar'))[0] as HTMLElement, { key: 'Delete' })
+    expect(tiles()).toHaveLength(0)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Quitar fila' })).toHaveFocus())
+  })
+})
+
+describe('los botones de las filas (Gastón: «deben estar antes de la sección unranked»)', () => {
+  it('van entre la última fila y «Sin clasificar», uno al lado del otro', () => {
+    render(<TierMakerScreen />)
+
+    const after = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    const add = screen.getByRole('button', { name: 'Agregar fila' })
+    const remove = screen.getByRole('button', { name: 'Quitar fila' })
+
+    expect(after(row('F'), add)).toBe(true)
+    expect(after(add, remove)).toBe(true)
+    expect(after(remove, row('Sin clasificar'))).toBe(true)
+    expect(add.parentElement).toBe(remove.parentElement)
+  })
+
+  it('quitar saca la última fila (sus cartas vuelven a «Sin clasificar») hasta que no queda ninguna; agregar suma al final hasta el tope', () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'F')
+
+    const add = screen.getByRole('button', { name: 'Agregar fila' })
+    const remove = screen.getByRole('button', { name: 'Quitar fila' })
+
+    fireEvent.click(remove)
+    expect(screen.queryByRole('region', { name: 'F' })).not.toBeInTheDocument()
+    expect(row('E')).toBeInTheDocument()
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler', 'Carta Crossout Designator'])
+
+    for (const label of ['E', 'D', 'C', 'B', 'A', 'S']) {
+      expect(remove).toBeEnabled()
+      fireEvent.click(remove)
+      expect(screen.queryByRole('region', { name: label })).not.toBeInTheDocument()
+    }
+
+    expect(remove).toBeDisabled()
+    expect(tiles(row('Sin clasificar'))).toHaveLength(2)
+
+    for (let count = 0; count < 12; count += 1) fireEvent.click(add)
+
+    expect(screen.getAllByRole('region', { name: 'Nueva' })).toHaveLength(12)
+    expect(add).toBeDisabled()
+    expect(remove).toBeEnabled()
   })
 })
