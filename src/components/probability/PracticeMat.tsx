@@ -54,6 +54,7 @@ import { useMatView } from '../../app/mat-view'
 import { useElementSize } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
+import { Presence } from '../../app/use-presence'
 import { showToastMessage } from '../../app/use-toast-message'
 import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
@@ -2160,8 +2161,8 @@ export function PracticeMat({
         </>
       )}
 
-      {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera. */}
-      {sheeted && menu ? (
+      {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
+      <Presence>{sheeted && menu ? (
         <CardSheet
           name={menu.kind === 'phases' ? menuKicker : menuTitle}
           kicker={menu.kind === 'phases' ? undefined : menuKicker}
@@ -2177,7 +2178,7 @@ export function PracticeMat({
           passThrough={attackAsk !== null}
           onClose={() => setMenu(null)}
         />
-      ) : null}
+      ) : null}</Presence>
 
       {/* Celular: sin «Pasar turno», la End Phase pregunta si se termina el turno. «Seguir jugando» deja todo como está; para pasar el turno hay que volver a tocar el botón de la End Phase. */}
       <ConfirmDialog

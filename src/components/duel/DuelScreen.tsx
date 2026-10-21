@@ -30,6 +30,7 @@ import { useChatSound } from '../../app/use-chat-sound'
 import { useDuelSounds } from '../../app/use-duel-sounds'
 import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
+import { Presence } from '../../app/use-presence'
 import { showToastMessage } from '../../app/use-toast-message'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { openBuilderFromPlay } from '../../app/play-return'
@@ -2010,8 +2011,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onNewHand={NOTHING}
         duel={link}
       />
-      {/* Celular: la hoja de abajo; escritorio: el menú pegado a la carta. */}
-      {!docked && markMenu && !covered ? (
+      {/* Celular: la hoja de abajo (baja al cerrarse: `Presence` la deja montada mientras sale); escritorio: el menú pegado a la carta. */}
+      <Presence>{!docked && markMenu && !covered ? (
         <CardSheet
           name={markMenu.place}
           kicker={rivalName}
@@ -2022,7 +2023,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
           onInspect={markedDrawId !== undefined ? () => { setRivalInspected({ drawId: markedDrawId, rect: markMenu.rect }); setMarkMenu(null) } : undefined}
           onClose={() => setMarkMenu(null)}
         />
-      ) : null}
+      ) : null}</Presence>
       <CardMenu
         anchor={covered || !docked ? null : (markMenu?.rect ?? null)}
         kicker={rivalName}

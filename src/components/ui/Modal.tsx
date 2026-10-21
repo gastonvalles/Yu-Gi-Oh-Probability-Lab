@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
@@ -66,7 +67,7 @@ interface ModalProps {
 
 /**
  * Modal único de la app: se monta en <body> (así nunca queda atrapado dentro de un
- * contenedor con transform), centrado, con el mismo fondo, animación, cierre y scroll.
+ * contenedor con transform), centrado, con el mismo fondo, animación (de entrada y de salida), cierre y scroll.
  */
 export function Modal({
   isOpen,
@@ -92,6 +93,7 @@ export function Modal({
 }: ModalProps) {
   const id = useId()
   const titleId = `${id}-title`
+  const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   // El fondo cierra sólo si el toque empezó ahí: si empezó en el panel y el panel se achicó o movió antes de
   // soltar (se cerró una explicación, cambió el contenido), el click cae en el fondo pero no es un cierre.
@@ -101,16 +103,14 @@ export function Modal({
   useEscapeKey(onClose, isOpen && dismissible)
   useFocusTrap(panelRef, isOpen)
 
-  if (!isOpen || typeof document === 'undefined') {
-    return null
-  }
-
   const hasHeader = !bare && (kicker || title || subtitle)
   const sheet = size === 'sheet' || size === 'keypad'
 
-  return createPortal(
+  // Al cerrarse sigue montado mientras sale (`usePresence`): el velo se funde y el panel hace su entrada al revés; el foco ya volvió.
+  return usePresence(isOpen, isOpen && typeof document !== 'undefined' ? createPortal(
     <div
-      className={cx('fixed inset-0 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1101px]:p-0!')}
+      ref={rootRef}
+      className={cx('fixed inset-0 grid place-items-center overscroll-contain p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1101px]:p-0!')}
       onPointerDown={(event) => {
         pressedBackdropRef.current = event.target === event.currentTarget
       }}
@@ -122,6 +122,8 @@ export function Modal({
           : undefined
       }
     >
+      {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 animate-nav-scrim bg-background/80 motion-reduce:animate-none" />
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -181,5 +183,5 @@ export function Modal({
       </div>
     </div>,
     document.body,
-  )
+  ) : null, () => [rootRef.current])
 }

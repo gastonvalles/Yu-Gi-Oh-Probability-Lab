@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -55,6 +56,7 @@ function SheetRow({ item, status, active, onSelect }: { item: NavItem; status: b
  * (también el velo y Escape). El destino abierto va en ámbar, como en el menú lateral.
  */
 export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   // En escritorio la hoja no existe (está el menú lateral): abierta y oculta bloquearía el scroll sin que se vea nada.
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -63,18 +65,16 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
   useEscapeKey(onClose, isOpen)
   useBodyScrollLock(isOpen)
 
-  if (!group || desktop || typeof document === 'undefined') {
-    return null
-  }
+  const status = group?.sheet === 'status'
+  const rows = (group?.sheetItems ?? group?.items ?? []).filter((item) => !item.hidden)
+  const notice = group?.sheetNotice
 
-  const status = group.sheet === 'status'
-  const rows = (group.sheetItems ?? group.items).filter((item) => !item.hidden)
-  const notice = group.sheetNotice
-
-  return createPortal(
+  // Al cerrarse baja por detrás de la barra, por donde subió (`usePresence`).
+  return usePresence(isOpen, group && !desktop && typeof document !== 'undefined' ? createPortal(
     // Sólo en celular y tableta: si la ventana se ensancha con la hoja abierta, el menú lateral toma su lugar. La hoja sigue por **debajo** de la barra de abajo (que con la hoja abierta se pone arriba de ella): así no hay un borde
     // que pegar —en un teléfono real, con píxeles fraccionarios, un borde contra otro dejaba una línea fina por donde se veía la pantalla de atrás—.
-    <div className="fixed inset-0 z-150 min-[1101px]:hidden">
+    // Al cerrarse la barra vuelve en el acto a su lugar de siempre (z-40): mientras la hoja sale (`data-leaving`) se pone debajo de ella, así baja por detrás de la barra.
+    <div ref={rootRef} className="fixed inset-0 z-150 data-leaving:z-39 min-[1101px]:hidden">
       <div aria-hidden="true" className="absolute inset-0" onClick={onClose} />
       <div
         ref={panelRef}
@@ -107,5 +107,5 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
       </div>
     </div>,
     document.body,
-  )
+  ) : null, () => [rootRef.current])
 }
