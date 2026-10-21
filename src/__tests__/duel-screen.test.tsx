@@ -3145,6 +3145,39 @@ describe('la pantalla del duelo', () => {
     expect(view.queryAllByRole('listitem', { name: /Mano/ })).toHaveLength(0)
   })
 
+  it('quien mira ve volar las cartas: Ana manda el tope de su deck al cementerio y la carta vuela en la mesa de quien mira', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = extractRoomCode(window.location.hash)!
+    // Con animaciones (jsdom no las tiene) desde antes de abrir la mesa de quien mira: la primera medida es la de su mesa recién abierta.
+    const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
+    Element.prototype.getAnimations = () => []
+    Element.prototype.animate = function () {
+      return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
+    }
+    window.matchMedia = (() => ({ matches: false, media: '', addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
+
+    try {
+      window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+      const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+      flush()
+      flush()
+
+      tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Mandar al cementerio' }))
+      flush()
+
+      // El fantasma vuela dentro de la mesa de quien mira (Ana es la de abajo: sus pilas, con las marcas propias), y el cementerio espera a que llegue.
+      const table = within(watcher.container).getByTestId('spectator-table')
+      expect(table.querySelector(':scope > [data-flight-ghost]')).not.toBeNull()
+      expect(table.querySelector('[data-drop="gy"] [data-flight-hold]')).not.toBeNull()
+    } finally {
+      Element.prototype.animate = animate
+      Element.prototype.getAnimations = getAnimations
+      window.matchMedia = matchMedia
+    }
+  })
+
   it('quien mira con un solo jugador en la sala espera a su rival, sin hablar de dos', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')

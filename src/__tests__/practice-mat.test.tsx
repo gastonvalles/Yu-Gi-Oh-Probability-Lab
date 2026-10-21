@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMatState, replayMat, type MatAction, type MatState } from '../app/practice-mat'
 import { RIFFLE_MS } from '../app/shuffle-fx'
+import { FLIGHT_MS, LANDING_AT } from '../app/use-card-flights'
 import { setSoundsOn, soundsOn } from '../app/sound-prefs'
 import { useMatSession } from '../app/use-mat-session'
 import { PracticeMat, type MatCard } from '../components/probability/PracticeMat'
@@ -1593,13 +1594,13 @@ describe('la mesa de práctica', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar target' }))
       expect(document.querySelector('[data-fx="target"]')).toBeNull()
 
-      // Una Invocación Normal: el destello cae en la zona (dorado) y espera a que la carta aterrice.
+      // Una Invocación Normal: el destello cae en la zona (dorado) cuando la carta, que viene volando, la toca.
       tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
       fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
       fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
       const burst = zone('Zona de monstruo 1').querySelector('[data-fx="landing"]')
       expect(burst).toHaveAttribute('data-tone', 'normal')
-      expect(burst?.querySelector('span')).toHaveStyle({ animationDelay: '360ms' })
+      expect(burst?.querySelector('span')).toHaveStyle({ animationDelay: `${Math.round(FLIGHT_MS * LANDING_AT)}ms` })
       expect(zone('Zona de monstruo 2').querySelector('[data-fx="landing"]')).toBeNull()
 
       // Una fase nueva: el cartel con su nombre y nada más (sin los círculos de las seis fases, que ya están en los botones); y de la End Phase a la Draw Phase, con el turno.

@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { PHASES, type MatPhase } from '../../app/practice-mat'
-import { FLIGHT_MS } from '../../app/use-card-flights'
+import { FLIGHT_MS, LANDING_AT } from '../../app/use-card-flights'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -117,11 +117,11 @@ const SPARKS = [
 
 /**
  * Una carta que cae en una zona de monstruo: un fogonazo, dos ondas que se expanden y chispas. Del color de cómo llega (Normal dorado,
- * Especial celeste, Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua) y esperando a que termine de volar hasta la zona.
+ * Especial celeste, Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua) y cuando la carta, que viene volando, toca la zona (`LANDING_AT` del vuelo).
  */
 export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolean }) {
   // El retraso va en línea en cada pieza: una variable en el token de la animación se resolvería en la raíz, no acá.
-  const delay = (extra = 0): CSSProperties => ({ animationDelay: `${(flies ? FLIGHT_MS - 120 : 0) + extra}ms` })
+  const delay = (extra = 0): CSSProperties => ({ animationDelay: `${(flies ? Math.round(FLIGHT_MS * LANDING_AT) : 0) + extra}ms` })
 
   return (
     <span aria-hidden="true" data-fx="landing" data-tone={tone} className="pointer-events-none absolute inset-0 z-4 motion-reduce:hidden" style={fxVars(LANDING_TONE[tone])}>
