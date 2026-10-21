@@ -3850,7 +3850,7 @@ describe('la pantalla del duelo', () => {
     const floating = () => Array.from(host.container.querySelectorAll<HTMLElement>('[class~="max-sm:-mb-11"]'))
     expect(floating()).toHaveLength(1)
     expect(floating()[0]).toHaveClass('order-3', 'max-sm:z-20', 'max-sm:pointer-events-none')
-    expect(floating()[0]).not.toHaveClass('max-[1100px]:hidden')
+    expect(floating()[0]).not.toHaveClass('max-[1101px]:hidden')
 
     // Termina el duelo y se cierra la tarjeta: la tira del resultado ocupa ese mismo lugar (la línea se esconde) y flota igual.
     click(guest, 'Rendirme')
@@ -3860,7 +3860,7 @@ describe('la pantalla del duelo', () => {
 
     const rows = floating()
     expect(rows).toHaveLength(2)
-    expect(rows.filter((row) => row.classList.contains('max-[1100px]:hidden'))).toHaveLength(1)
+    expect(rows.filter((row) => row.classList.contains('max-[1101px]:hidden'))).toHaveLength(1)
     const strip = rows.find((row) => within(row).queryByRole('button', { name: 'Revancha' }))
     expect(strip).toHaveClass('order-3', 'max-sm:relative', 'max-sm:z-20')
   })

@@ -189,8 +189,8 @@ describe('la práctica integrada en la mesa', () => {
     const explanation = screen.getByRole('region', { name: 'Salida básica' })
 
     // Sale del flujo (sólo hasta 1100 px: en el panel de escritorio crece hacia arriba sobre la lista de pasos).
-    expect(explanation.parentElement).toHaveClass('max-[1100px]:absolute', 'max-[1100px]:bottom-full')
-    expect(explanation.parentElement?.parentElement).toHaveClass('max-[1100px]:relative')
+    expect(explanation.parentElement).toHaveClass('max-[1101px]:absolute', 'max-[1101px]:bottom-full')
+    expect(explanation.parentElement?.parentElement).toHaveClass('max-[1101px]:relative')
   })
 
   it('en el celular las salidas y problemas flotan arriba de la mano y no ocupan lugar: aparecer o irse no corre el campo', () => {

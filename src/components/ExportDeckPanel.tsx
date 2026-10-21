@@ -173,7 +173,7 @@ export function ExportDeckPanel({
         subtitle={t('deck.export.subtitle')}
         side={(
           // Las opciones van en un modal: la página no las muestra de entrada.
-          <Button variant="primary" size="md" icon="download" disabled={busy} className="max-[1100px]:hidden" onClick={() => setDownloadOpen(true)}>
+          <Button variant="primary" size="md" icon="download" disabled={busy} className="max-[1101px]:hidden" onClick={() => setDownloadOpen(true)}>
             {busy ? t('deck.export.generating') : t('deck.export.download')}
           </Button>
         )}

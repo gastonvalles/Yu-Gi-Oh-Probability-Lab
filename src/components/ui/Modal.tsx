@@ -30,7 +30,7 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   keypad: 'w-[min(26rem,100%)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
   /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un panel del tamaño de un celular. */
   screen:
-    'max-[1100px]:h-dvh max-[1100px]:max-h-dvh! max-[1100px]:w-full max-[1100px]:rounded-none! max-[1100px]:border-0! min-[1101px]:h-[min(52rem,calc(100dvh-2rem))] min-[1101px]:w-[26rem]',
+    'max-[1101px]:h-dvh max-[1101px]:max-h-dvh! max-[1101px]:w-full max-[1101px]:rounded-none! max-[1101px]:border-0! min-[1101px]:h-[min(52rem,calc(100dvh-2rem))] min-[1101px]:w-[26rem]',
 }
 
 interface ModalProps {
@@ -110,7 +110,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={cx('fixed inset-0 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1100px]:p-0!')}
+      className={cx('fixed inset-0 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1101px]:p-0!')}
       onPointerDown={(event) => {
         pressedBackdropRef.current = event.target === event.currentTarget
       }}

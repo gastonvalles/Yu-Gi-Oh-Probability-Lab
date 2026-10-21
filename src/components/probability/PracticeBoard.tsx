@@ -72,9 +72,9 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
   // La explicación va ARRIBA de los chips: los chips quedan abajo, junto a la mano (que no se mueve), y la
   // explicación crece hacia arriba (en escritorio le saca lugar a la lista de pasos; en el celular flota, sin sacarle lugar a nada).
   return (
-    <div ref={ref} className="grid gap-1.5 max-[1100px]:relative">
+    <div ref={ref} className="grid gap-1.5 max-[1101px]:relative">
       {/* En el celular la explicación flota sobre los chips (en el aire que queda entre el campo y ellos): no ocupa lugar, así el campo no se corre al tocar un chip. */}
-      <div className="grid gap-1.5 empty:hidden max-[1100px]:absolute max-[1100px]:inset-x-0 max-[1100px]:bottom-full max-[1100px]:z-10 max-[1100px]:mb-1.5">
+      <div className="grid gap-1.5 empty:hidden max-[1101px]:absolute max-[1101px]:inset-x-0 max-[1101px]:bottom-full max-[1101px]:z-10 max-[1101px]:mb-1.5">
         {activeId === UNPLAYABLE_ID && unplayable ? (
           <section className={explainStyle('problem')} aria-live="polite" aria-label={t('practice.board.unplayable')}>
             <p className={EXPLAIN_TEXT}>{t('practice.board.unplayableWhy')}</p>
@@ -92,7 +92,7 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
         ) : null}
         {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-1.5 [&>ul]:contents max-[1100px]:justify-center">
+      <div className="flex flex-wrap items-center gap-1.5 [&>ul]:contents max-[1101px]:justify-center">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayable} onToggle={onToggle} />
       </div>

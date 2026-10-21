@@ -118,9 +118,9 @@ export function TierListsScreen() {
         subtitle={t('meta.screen.subtitle')}
         help={<TierListHelp list={list} floors={floors} totalWeeks={totalWeeks} />}
         side={
-          <div className="flex flex-wrap items-center gap-2 max-[1100px]:w-full">
+          <div className="flex flex-wrap items-center gap-2 max-[1101px]:w-full">
             <MetaHeroSide region={region} onRegionChange={setMetaRegion} />
-            <Button variant="secondary" size="sm" icon="sort" className="max-[1100px]:w-full" onClick={() => goTo('#tier-maker')}>
+            <Button variant="secondary" size="sm" icon="sort" className="max-[1101px]:w-full" onClick={() => goTo('#tier-maker')}>
               {t('meta.maker.makeYours')}
             </Button>
           </div>

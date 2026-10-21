@@ -21,8 +21,8 @@ export function MatPlate() {
       <span className="mat-corner bottom-[0.55rem] right-[0.55rem] [--cx:right] [--cy:bottom]" />
       <span className="mat-stud left-1/2 top-0 -translate-x-1/2 -translate-y-1/2" />
       <span className="mat-stud bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2" />
-      <span className="mat-stud left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 max-[1100px]:hidden" />
-      <span className="mat-stud right-0 top-1/2 -translate-y-1/2 translate-x-1/2 max-[1100px]:hidden" />
+      <span className="mat-stud left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 max-[1101px]:hidden" />
+      <span className="mat-stud right-0 top-1/2 -translate-y-1/2 translate-x-1/2 max-[1101px]:hidden" />
     </span>
   )
 }

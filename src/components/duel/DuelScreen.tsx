@@ -689,7 +689,7 @@ function RoomClosing({ name, seconds }: { name: string; seconds: number }) {
 /** Lo que no es la mesa: una columna que scrollea, con el ancho de una pantalla de lectura. */
 function Screen({ children, wide = false, tight = false, aside }: { children: React.ReactNode; /** Más ancha, para lo que lleva grillas de cartas (el siding). */ wide?: boolean; /** Menos aire y, con `aside`, más ancha: la sala tiene que entrar en la pantalla sin scroll. */ tight?: boolean; /** Una columna al costado (el chat de la sala, sólo en escritorio): las dos van lado a lado. */ aside?: React.ReactNode }) {
   return (
-    <div className="h-full min-h-0 overflow-y-auto max-[1100px]:overflow-visible">
+    <div className="h-full min-h-0 overflow-y-auto max-[1101px]:overflow-visible">
       {aside ? (
         /* Las dos columnas miden lo mismo de alto (la del costado se estira hasta donde llega la otra): si no, el chat termina a la mitad de la columna de al lado. */
         <div className={cx('mx-auto grid w-full content-start items-stretch px-8 min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]', tight ? 'max-w-[90rem] gap-5 py-4 min-[1101px]:h-full min-[1101px]:grid-rows-[minmax(0,1fr)]' : 'max-w-5xl gap-6 py-6')}>
@@ -1039,7 +1039,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
           {/* El encabezado: el titular, los pasos y, en el celular, el chat; salir es una X. */}
           <header className="flex flex-wrap items-center gap-x-5 gap-y-2 [grid-area:head]">
             <h2 className="m-0 text-title font-extrabold leading-tight text-foreground">{t('duel.room.title')}</h2>
-            <RoomSteps step={step} className="order-last w-full max-[1100px]:[@media(max-height:760px)]:hidden @[46rem]:order-none @[46rem]:w-80" />
+            <RoomSteps step={step} className="order-last w-full max-[1101px]:[@media(max-height:760px)]:hidden @[46rem]:order-none @[46rem]:w-80" />
             <div className="ml-auto flex items-center gap-2">
               {docked ? null : (
                 <Button variant="secondary" icon="chat" aria-haspopup="dialog" onClick={() => setChatOpen(true)}>

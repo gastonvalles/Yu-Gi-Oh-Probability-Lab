@@ -54,7 +54,7 @@ export function FilterChips({ label, all, allActive, onAll, chips, variant = 'wr
 
   // El `py-1` con `-my-1` deja lugar al anillo de foco, que el `overflow` de la fila deslizable recortaría.
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5 max-[1100px]:-my-1 max-[1100px]:flex-nowrap max-[1100px]:overflow-x-auto max-[1100px]:py-1 max-[1100px]:[scrollbar-width:none] max-[1100px]:[&::-webkit-scrollbar]:hidden">
+    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5 max-[1101px]:-my-1 max-[1101px]:flex-nowrap max-[1101px]:overflow-x-auto max-[1101px]:py-1 max-[1101px]:[scrollbar-width:none] max-[1101px]:[&::-webkit-scrollbar]:hidden">
       {all !== undefined && onAll ? (
         <button type="button" aria-pressed={allActive} className={chipClass} onClick={onAll}>
           {all}

@@ -109,7 +109,7 @@ export function PatternEditorDrawer({
           {pattern && !isPendingCreation ? (
             // En el celular queda solo el ícono: así Cancelar y Guardar entran siempre en la fila.
             <Button variant="tertiary" color="danger" size="sm" icon="trash" aria-label={t('builder.drawer.delete')} className="px-3 min-[520px]:px-4" onClick={() => onRequestDelete(pattern.id)}>
-              <span className="max-[519px]:sr-only">{t('builder.drawer.delete')}</span>
+              <span className="max-[520px]:sr-only">{t('builder.drawer.delete')}</span>
             </Button>
           ) : (
             <span className={cx('hidden text-micro min-[520px]:block', canSave ? 'text-muted' : 'text-warning-soft')}>{hint}</span>

@@ -383,7 +383,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
           En un celular en vertical la línea no ocupa lugar (`-mb-11`): flota sobre el borde de arriba de la mano del rival, así no queda una franja vacía cuando todavía no pasó nada (Gastón, 2026-10-20: «evita el espacio muerto»). */}
       {log ? (
         // Con el resultado puesto, en el celular la tira ocupa este mismo lugar (abajo): la mesa no se corre cuando termina el duelo.
-        <div className={cx('relative order-3 basis-full max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11 min-[1101px]:hidden', Boolean(result) && !resultOpen && 'max-[1100px]:hidden')}>
+        <div className={cx('relative order-3 basis-full max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11 min-[1101px]:hidden', Boolean(result) && !resultOpen && 'max-[1101px]:hidden')}>
           <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
             {log}
           </div>
@@ -547,7 +547,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   const health: Tone = ratio > 0.5 ? 'success' : ratio > 0.25 ? 'warning' : 'danger'
   const body = (
     <>
-      <span key={change?.key ?? 'idle'} aria-hidden="true" className={cx('shrink-0 max-[1100px]:hidden', TONE[health].text, change && 'animate-pop motion-reduce:animate-none')}>
+      <span key={change?.key ?? 'idle'} aria-hidden="true" className={cx('shrink-0 max-[1101px]:hidden', TONE[health].text, change && 'animate-pop motion-reduce:animate-none')}>
         <Icon name="heart" size={big ? 32 : 28} variant="bold" />
       </span>
       <span className="grid min-w-0 content-center gap-1 min-[1101px]:flex-1">

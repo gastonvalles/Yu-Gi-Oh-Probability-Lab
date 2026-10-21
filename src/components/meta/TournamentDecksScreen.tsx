@@ -195,7 +195,7 @@ export function TournamentDecksScreen() {
             label={t('meta.tournaments.searchLabel')}
             value={query}
             placeholder={t('meta.tournaments.searchPlaceholder')}
-            className="min-w-[14rem] max-[1100px]:order-first min-[1101px]:w-72"
+            className="min-w-[14rem] max-[1101px]:order-first min-[1101px]:w-72"
             onChange={setQuery}
           />
         </div>
@@ -229,7 +229,7 @@ export function TournamentDecksScreen() {
           <>
             <div ref={sentinel} aria-hidden="true" className={GRID}>
               {[0, 1, 2].map((slot) => (
-                <MetaDeckSkeleton key={slot} layout={layout} className={cx(slot === 1 && 'max-[559px]:hidden', slot === 2 && 'max-[559px]:hidden')} />
+                <MetaDeckSkeleton key={slot} layout={layout} className={cx(slot === 1 && 'max-[560px]:hidden', slot === 2 && 'max-[560px]:hidden')} />
               ))}
             </div>
             <Button variant="secondary" size="sm" className="sr-only focus-visible:not-sr-only focus-visible:justify-self-center" onClick={loadMore}>

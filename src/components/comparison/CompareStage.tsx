@@ -143,7 +143,7 @@ export function CompareStage({ a, b, comparison, deltaByCardId }: CompareStagePr
  */
 function VsButton({ open, controls, onToggle, buttonRef, style }: { open: boolean; controls: string | undefined; onToggle: () => void; buttonRef: RefObject<HTMLButtonElement | null>; style: CSSProperties | undefined }) {
   return (
-    <div className="grid justify-items-center max-[1100px]:py-1 min-[1101px]:self-stretch" style={style}>
+    <div className="grid justify-items-center max-[1101px]:py-1 min-[1101px]:self-stretch" style={style}>
       {/* El z-index va acá y no en el botón: un sticky arma su propio contexto de apilado. Queda por encima del velo (que va en el mismo contexto) para poder cerrar desde el VS. */}
       <div className="relative z-20 grid justify-items-center gap-2 min-[1101px]:sticky min-[1101px]:top-[26vh]">
         <span aria-hidden="true" className="hidden h-20 w-px bg-linear-to-b from-transparent to-primary/60 min-[1101px]:block" />
