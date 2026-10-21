@@ -77,7 +77,7 @@ export function ConditionBlock({ index, patternId, pattern, condition, derivedMa
               SEGMENT,
               // Si no le queda un ancho razonable en la fila, baja a la línea siguiente a todo lo ancho.
               'min-w-[12rem] flex-1 justify-between text-left font-medium',
-              hasCategory ? 'text-foreground hover:bg-primary/12' : cx('bg-warning/10 hover:bg-warning/16', TONE.warning.text),
+              hasCategory ? 'text-foreground hover:bg-tint/10' : cx('bg-warning/10 hover:bg-warning/16', TONE.warning.text),
             )}
             aria-label={hasCategory ? t('builder.condition.picked', { label: categoryLabel }) : t('builder.condition.pick')}
             onClick={() => setIsPickerOpen(true)}

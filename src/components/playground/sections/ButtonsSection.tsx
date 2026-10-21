@@ -21,7 +21,7 @@ import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary', 'outline']
 const SIZES = ['sm', 'md', 'lg'] as const
-const ICON_TONES = ['raised', 'close', 'ghost', 'flat', 'tile'] as const
+const ICON_TONES = ['raised', 'close', 'ghost', 'flat', 'outline', 'tile'] as const
 const TONES = Object.keys(TONE) as Tone[]
 /** Los chips de muestra de `FilterChips`: los puestos de los decks de torneo (uno sin decks, apagado) y las rarezas de una expansión. */
 const PLACEMENTS = [
