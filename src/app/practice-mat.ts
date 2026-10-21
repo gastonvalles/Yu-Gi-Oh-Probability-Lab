@@ -271,10 +271,14 @@ function removeEverywhere(source: MatState, id: string): { state: MatState; plac
   return { state: withPlaced(state, where.spot, where.index, null), placed: where.placed }
 }
 
+/** Los materiales que la carta se lleva consigo al salir del campo o al adjuntarse. Las fichas desaparecen y las cartas del rival no son mías: vuelven a su dueño. */
+function carriedMaterials(placed: Placed | null): string[] {
+  return placed?.materials.filter((id) => !isToken(id) && !isForeignId(id)) ?? []
+}
+
 /** Al dejar el campo, los materiales Xyz van al cementerio (las fichas desaparecen). */
 function dropMaterials(state: MatState, placed: Placed | null): MatState {
-  // Las fichas desaparecen y las cartas del rival no se quedan en mi cementerio (vuelven a su dueño).
-  const materials = placed?.materials.filter((id) => !isToken(id) && !isForeignId(id)) ?? []
+  const materials = carriedMaterials(placed)
   return materials.length === 0 ? state : { ...state, gy: [...state.gy, ...materials] }
 }
 
@@ -359,15 +363,15 @@ export function matReducer(state: MatState, action: MatAction): MatState {
         return state
       }
 
+      // La carta se lleva sus materiales (un Xyz con materiales pasa debajo de otro con todo lo que tenía): no van al cementerio.
       const removed = removeEverywhere(state, action.id)
-      const next = dropMaterials(removed.state, removed.placed)
-      const owner = locateCard(next, action.to)
+      const owner = locateCard(removed.state, action.to)
 
       if (owner?.kind !== 'spot') {
         return state
       }
 
-      return withPlaced(next, owner.spot, owner.index, { ...owner.placed, materials: [...owner.placed.materials, action.id] })
+      return withPlaced(removed.state, owner.spot, owner.index, { ...owner.placed, materials: [...owner.placed.materials, action.id, ...carriedMaterials(removed.placed)] })
     }
 
     case 'position': {
@@ -422,6 +426,12 @@ export function matReducer(state: MatState, action: MatAction): MatState {
         return state
       }
 
+      // En un Xyz, lo que cada material tenía debajo pasa también al nuevo: se junta antes de que los materiales vayan al cementerio.
+      const underneath = action.materials.flatMap((material) => {
+        const where = locateCard(state, material)
+        return action.how === 'xyz' && where?.kind === 'spot' ? carriedMaterials(where.placed) : []
+      })
+
       let next = state
 
       for (const material of action.materials) {
@@ -440,8 +450,8 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       if (placed === next) return state
       if (action.how !== 'xyz') return placed
 
-      // Los materiales Xyz pasan del cementerio a debajo de la carta.
-      return action.materials.reduce((current, material) => matReducer(current, { type: 'attach', id: material, to: action.id }), placed)
+      // Los materiales Xyz (y lo que tenían debajo) pasan del cementerio a debajo de la carta.
+      return [...action.materials, ...underneath].reduce((current, material) => matReducer(current, { type: 'attach', id: material, to: action.id }), placed)
     }
 
     case 'activate': {

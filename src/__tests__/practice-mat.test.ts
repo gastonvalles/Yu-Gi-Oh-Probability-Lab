@@ -299,6 +299,60 @@ describe('la mesa de práctica', () => {
     expect(listCardActions(start(), 'x1', kindOf, nameOf)[0]!.action.type).toBe('place')
   })
 
+  describe('un Xyz con materiales que pasa a ser material de otro Xyz (Invocación Xyz o Rank-Up) o se adjunta a otro se lleva lo que tenía debajo', () => {
+    // X1 es un Xyz con A1 y A2 debajo, en la zona de monstruo; X2 es un Enlace del Extra y X3 otro Xyz del Extra.
+    const deckWithExtra = createMatState(DECK, ['x1', 'x2', 'x3'], 5)
+    const underX1 = run(
+      [
+        { type: 'place', id: 'x1', zone: 'mz', index: 0, pos: 'atk' },
+        { type: 'attach', id: 'a1', to: 'x1' },
+        { type: 'attach', id: 'a2', to: 'x1' },
+      ],
+      deckWithExtra,
+    )
+    const rankUp = matReducer(underX1, { type: 'summon', id: 'x3', how: 'xyz', materials: ['x1'], zone: 'emz', index: 0, pos: 'atk' })
+
+    it('la Invocación Xyz con un Xyz de material: el nuevo queda con el viejo y con lo que el viejo tenía debajo, y el cementerio no recibe nada', () => {
+      expect(rankUp.emz[0]).toEqual({ id: 'x3', pos: 'atk', counters: 0, materials: ['x1', 'a1', 'a2'] })
+      expect([rankUp.mz[0], rankUp.gy, rankUp.extra]).toEqual([null, [], ['x2']])
+      expect([...allMatIds(rankUp)].sort()).toEqual([...DECK, 'x1', 'x2', 'x3'].sort())
+    })
+
+    it('adjuntar un Xyz con materiales a otro Xyz: se lleva lo que tenía debajo y el cementerio no recibe nada', () => {
+      const attached = matReducer(run([{ type: 'place', id: 'x3', zone: 'emz', index: 0, pos: 'atk' }], underX1), { type: 'attach', id: 'x1', to: 'x3' })
+
+      expect([attached.mz[0], attached.gy]).toEqual([null, []])
+      expect(attached.emz[0]).toEqual({ id: 'x3', pos: 'atk', counters: 0, materials: ['x1', 'a1', 'a2'] })
+    })
+
+    it('desacoplar uno de los que pasaron debajo lo manda al cementerio y los demás se quedan (también el Xyz que se usó de material)', () => {
+      const detached = matReducer(rankUp, { type: 'move', id: 'a1', to: 'gy' })
+      expect([detached.emz[0]?.materials, detached.gy]).toEqual([['x1', 'a2'], ['a1']])
+
+      const again = matReducer(detached, { type: 'move', id: 'x1', to: 'gy' })
+      expect([again.emz[0]?.materials, again.gy]).toEqual([['a2'], ['a1', 'x1']])
+    })
+
+    it('un Xyz con materiales que sale del campo (al cementerio, por Sacrificio o como material de un Enlace) manda todos sus materiales al cementerio, como antes', () => {
+      expect(matReducer(underX1, { type: 'move', id: 'x1', to: 'gy' }).gy).toEqual(['a1', 'a2', 'x1'])
+      expect(matReducer(underX1, { type: 'tribute', id: 'c1', tributes: ['x1'], zone: 'mz', index: 1, pos: 'atk' }).gy).toEqual(['a1', 'a2', 'x1'])
+
+      const link = matReducer(underX1, { type: 'summon', id: 'x2', how: 'link', materials: ['x1'], zone: 'mz', index: 0, pos: 'atk' })
+      expect([link.mz[0]?.id, link.mz[0]?.materials, link.gy]).toEqual(['x2', [], ['a1', 'a2', 'x1']])
+    })
+
+    it('una ficha que estuviera debajo no se transfiere: desaparece al pasar a otro Xyz', () => {
+      // Jugando no se llega ahí (una ficha no es material Xyz): el caso se arma a mano para ver que la regla no la cuela.
+      const withToken: MatState = { ...underX1, mz: underX1.mz.map((card) => (card?.id === 'x1' ? { ...card, materials: [...card.materials, 'token-1'] } : card)) }
+      const summoned = matReducer(withToken, { type: 'summon', id: 'x3', how: 'xyz', materials: ['x1'], zone: 'emz', index: 0, pos: 'atk' })
+      const attached = matReducer(run([{ type: 'place', id: 'x3', zone: 'emz', index: 0, pos: 'atk' }], withToken), { type: 'attach', id: 'x1', to: 'x3' })
+
+      expect([summoned.emz[0]?.materials, attached.emz[0]?.materials, summoned.gy, attached.gy]).toEqual([['x1', 'a1', 'a2'], ['x1', 'a1', 'a2'], [], []])
+      expect(allMatIds(summoned)).not.toContain('token-1')
+      expect(allMatIds(attached)).not.toContain('token-1')
+    })
+  })
+
   describe('las Zonas Extra de un duelo (no son de nadie hasta que alguien invoca en una: la otra pasa a ser del rival)', () => {
     const free = (state: MatState, rivalEmz?: boolean[]) => freeTargets(state, ['emz'], rivalEmz).map((target) => target.index)
     const inEmz = (index: number, id = 'x1') => ({ type: 'place', id, zone: 'emz', index, pos: 'atk', how: 'special' }) as const
