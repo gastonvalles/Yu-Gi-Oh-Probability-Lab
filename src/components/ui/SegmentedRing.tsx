@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 
-import { prefersReducedMotion } from '../../app/motion'
+import { EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { cx } from './cx'
 import { RING_FILL_MS, useRingReveal } from './use-ring-reveal'
 import { clamp01, ringCenterText, ringGeometry } from './ring-shared'
@@ -70,7 +70,7 @@ export function SegmentedRing({ segments, size = 160, strokeWidth, label, active
                 {
                   stroke: `rgb(${segment.color})`,
                   opacity: activeKey && activeKey !== segment.key ? 0.5 : (segment.opacity ?? 1),
-                  transition: noMotion ? 'none' : `stroke-dasharray ${sweepMs}ms linear ${settled ? 0 : delayMs + sweepDelay}ms, opacity 150ms ease`,
+                  transition: noMotion ? 'none' : `stroke-dasharray ${sweepMs}ms linear ${settled ? 0 : delayMs + sweepDelay}ms, opacity 150ms ${EASE_OUT}`,
                 } as CSSProperties
               }
             />

@@ -43,7 +43,7 @@ const HAND_CARD = [
   '[--card-shadow:0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   // La sombra sale de `--card-shadow`: así el borde blanco de pasar el mouse y los aros de color se suman sin pisarse.
   '[box-shadow:var(--card-shadow)]',
-  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),translate_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),scale_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]',
+  '[transition:transform_var(--motion-duration)_var(--ease-out),translate_var(--motion-duration)_var(--ease-snap),scale_var(--motion-duration)_var(--ease-snap),filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]',
   // Pasar el mouse: se eleva y su borde se enciende en blanco, tenue.
   HAND_CARD_HOVER,
   // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.

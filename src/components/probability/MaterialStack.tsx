@@ -51,7 +51,7 @@ export function MaterialStack({ count, sideways, rival = false, className }: Mat
       data-material-stack={count}
       className={cx(
         'pointer-events-none absolute inset-x-0 top-0 isolate mx-auto aspect-[421/614] w-[68.57%]',
-        '[transition:transform_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),opacity_var(--motion-duration)_var(--ease-out),filter_var(--motion-duration)_var(--ease-out)] motion-reduce:transition-none',
+        '[transition:transform_var(--motion-duration)_var(--ease-snap),opacity_var(--motion-duration)_var(--ease-out),filter_var(--motion-duration)_var(--ease-out)] motion-reduce:transition-none',
         TURN[turn],
         className,
       )}

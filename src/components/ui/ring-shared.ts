@@ -1,6 +1,6 @@
 /** Transición común de los anillos: el arco crece con una curva suave que frena al final. */
 export const RING_TRANSITION =
-  'transition-[stroke-dashoffset,stroke-dasharray] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
+  'transition-[stroke-dashoffset,stroke-dasharray] duration-[900ms] ease-(--ease-snap) motion-reduce:transition-none'
 
 /** Geometría del anillo: grosor según el tamaño (4 en listas, 8 medianos, 14 en el protagonista). */
 export function ringGeometry(size: number, strokeWidth?: number) {

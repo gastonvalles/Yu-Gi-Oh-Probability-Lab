@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef,
 import { createPortal } from 'react-dom'
 
 import type { CardNavigation } from '../../app/card-neighbors'
-import { EASE_OUT, UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
+import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
 import { foilOf } from '../../app/card-foil'
 import { useCardArtOptions, type ArtChoice } from '../../app/use-card-art-options'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -23,7 +23,6 @@ import { levelOut, tiltHandlers } from './card-tilt'
 const CLOSE_MS = 180
 /** Cómo se abren los precios desde adentro del panel: el pie con botones (Anterior / Siguiente) lleva el $ en su misma fila y avisa que está para que el panel no dibuje otro. */
 const PricesContext = createContext<{ openPrices: () => void; registerFooter: (mounted: boolean) => void } | null>(null)
-const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 /** Lo que la carta nueva tarda en aparecer al pasar a otra, y cuánto se desliza desde el lado de donde viene. */
 const SWITCH_MS = 180
 const SWITCH_SLIDE_PX = 28
@@ -137,11 +136,11 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       const fade = rootRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT })
       const panel = panelRef.current?.animate(
         [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }],
-        { duration: UI_ANIMATION_MS, easing: EASE },
+        { duration: UI_ANIMATION_MS, easing: EASE_SNAP },
       )
       const flight = art.animate(
         [{ transform: origin ? flightFrom(art, origin) : 'scale(0.96)' }, { transform: 'none' }],
-        { duration: UI_ANIMATION_MS, easing: EASE },
+        { duration: UI_ANIMATION_MS, easing: EASE_SNAP },
       )
       animationsRef.current = [fade, panel, flight].filter((animation): animation is Animation => Boolean(animation))
     }
@@ -318,7 +317,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           <div
             ref={cardRef}
             className={cx(
-              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
+              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in transition-[height,rotate] duration-(--motion-duration) ease-(--ease-snap) group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
               // El dedo es de la carta (la gira hacia donde se arrastre): sobre ella no desplaza la pantalla.
               'touch-none',
             )}

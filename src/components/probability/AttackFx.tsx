@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
-import { prefersReducedMotion, supportsAdditiveAnimation } from '../../app/motion'
+import { EASE_OUT, prefersReducedMotion, supportsAdditiveAnimation } from '../../app/motion'
 import { fxVars } from './MatFx'
 
 /**
@@ -151,7 +151,7 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
       return
     }
 
-    const shake = target.animate(SHAKE_FRAMES, { duration: SHAKE_MS, delay: IMPACT_MS, composite: 'add' })
+    const shake = target.animate(SHAKE_FRAMES, { duration: SHAKE_MS, delay: IMPACT_MS, easing: EASE_OUT, composite: 'add' })
     return () => shake.cancel()
   }, [target])
 

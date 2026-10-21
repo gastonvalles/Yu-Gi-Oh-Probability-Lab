@@ -2,13 +2,16 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { EASE_IN_OUT, EASE_OUT, EASE_OUT_SOFT } from '../app/motion'
+import { EASE_IN_OUT, EASE_OUT, EASE_SNAP } from '../app/motion'
 
 // Las curvas del JS (la Web Animations API) son las de los tokens de index.css, y ningún movimiento de la interfaz usa la palabra `ease-out` de esa API
 // (es otra curva). Esta regla mira el código, como `link-rules.test.ts`.
 const SRC = path.join(process.cwd(), 'src')
+const CSS = readFileSync(path.join(SRC, 'index.css'), 'utf8')
+const FOIL = readFileSync(path.join(SRC, 'foil.css'), 'utf8')
 
-const token = (name: string) => readFileSync(path.join(SRC, 'index.css'), 'utf8').match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]?.trim()
+const token = (name: string) => CSS.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]?.trim()
+const sinComentarios = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
 
 function sourcesIn(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -22,17 +25,18 @@ function sourcesIn(dir: string): string[] {
   })
 }
 
+const SOURCES = sourcesIn(SRC)
+const relativa = (file: string) => path.relative(SRC, file)
+
 describe('las curvas de movimiento', () => {
-  it('son las de los tokens de index.css', () => {
+  it('son las tres de index.css, espejadas en el JS', () => {
     expect(EASE_OUT).toBe(token('ease-out'))
-    expect(EASE_OUT_SOFT).toBe(token('ease-out-soft'))
     expect(EASE_IN_OUT).toBe(token('ease-in-out'))
+    expect(EASE_SNAP).toBe(token('ease-snap'))
   })
 
   it('el barajado del mazo (CSS) va con la misma curva que el de la mano (JS)', () => {
-    const css = readFileSync(path.join(SRC, 'index.css'), 'utf8')
-
-    expect(css.match(/--animate-riffle-[a-z]+:[^;]+;/g)?.every((rule) => rule.includes('var(--ease-in-out)'))).toBe(true)
+    expect(CSS.match(/--animate-riffle-[a-z]+:[^;]+;/g)?.every((rule) => rule.includes('var(--ease-in-out)'))).toBe(true)
     expect(readFileSync(path.join(SRC, 'app', 'shuffle-fx.ts'), 'utf8')).toContain('easing: EASE_IN_OUT')
   })
 
@@ -44,8 +48,34 @@ describe('las curvas de movimiento', () => {
   })
 
   it('ningún movimiento usa la palabra ease-out de la Web Animations API', () => {
-    const offenders = sourcesIn(SRC).filter((file) => /easing\s*:\s*['"`](ease|ease-in|ease-out|ease-in-out)['"`]/.test(readFileSync(file, 'utf8')))
+    const offenders = SOURCES.filter((file) => /easing\s*:\s*['"`](ease|ease-in|ease-out|ease-in-out)['"`]/.test(readFileSync(file, 'utf8')))
 
-    expect(offenders.map((file) => path.relative(SRC, file)), 'Usá EASE_OUT o EASE_OUT_SOFT de app/motion.ts: la palabra ease-out de la Web Animations API es otra curva').toEqual([])
+    expect(offenders.map(relativa), 'Usá EASE_OUT, EASE_IN_OUT o EASE_SNAP de app/motion.ts: la palabra ease-out de la Web Animations API es otra curva').toEqual([])
+  })
+
+  it('cada curva se escribe una sola vez: el token en index.css y su espejo en app/motion.ts', () => {
+    // Los cuadros de un @keyframes llevan el valor literal de su token (el navegador ignora var() en la curva de un cuadro): sólo se aceptan esos valores.
+    const VALORES = new Set([EASE_OUT, EASE_IN_OUT, EASE_SNAP, token('ease-gravedad-subida'), token('ease-gravedad-caida')])
+    // En index.css, las únicas líneas con cubic-bezier( son la definición de un --ease-… (la gravedad de la moneda incluida) o un cuadro con el valor de un token.
+    const cssSueltas = CSS.split('\n').filter((linea) => {
+      if (!linea.includes('cubic-bezier(') || /^\s*--ease-[a-z-]+:\s*cubic-bezier\(/.test(linea)) return false
+
+      const cuadro = /^\s*animation-timing-function:\s*(cubic-bezier\([^)]*\));/.exec(linea)
+
+      return !(cuadro && VALORES.has(cuadro[1]!))
+    })
+
+    expect(cssSueltas, 'Las curvas se definen en el @theme de index.css (--ease-…) y se usan con var(--ease-…)').toEqual([])
+
+    // En TS sólo app/motion.ts escribe una curva: el resto usa las constantes o `ease-(--ease-snap)` en una clase.
+    const tsSueltas = SOURCES.filter((file) => !file.endsWith(path.join('app', 'motion.ts')) && /cubic-bezier\(|ease-\[/.test(readFileSync(file, 'utf8'))).map(relativa)
+
+    expect(tsSueltas, 'Usá EASE_OUT, EASE_IN_OUT o EASE_SNAP de app/motion.ts (o ease-(--ease-snap) en una clase)').toEqual([])
+  })
+
+  it('no quedan palabras de curva sueltas en el CSS: los bucles usan ease-in-out (con infinite) y lo demás, un token', () => {
+    const sueltas = [CSS, FOIL].flatMap((css) => sinComentarios(css).split('\n').filter((linea) => /(^|[\s:,(])ease(-in|-out)?(?=[\s;,)])/.test(linea)))
+
+    expect(sueltas).toEqual([])
   })
 })
