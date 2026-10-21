@@ -442,6 +442,25 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
   })
 
+  it('el tablero chico de cada paso lleva una flecha por cada carta que se movió, de dónde a dónde; la mano inicial, ninguna', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+    const list = within(screen.getByRole('region', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
+    const [summon, opening] = within(list)
+      .getAllByRole('button')
+      .map((row) => row.closest('li') as HTMLElement)
+
+    // De la mano a la zona de monstruo 1, en el dibujo del tablero (escondido a los lectores de pantalla: la frase ya lo dice).
+    expect([...summon!.querySelectorAll('[data-arrow]')].map((line) => line.getAttribute('data-arrow'))).toEqual(['hand>mz:0'])
+    expect(summon!.querySelector('[data-arrows]')).toHaveAttribute('aria-hidden', 'true')
+    expect(opening!.querySelector('[data-snapshot]')).toBeInTheDocument()
+    expect(opening!.querySelector('[data-arrows]')).toBeNull()
+  })
+
   it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha', () => {
     render(<Harness />)
 

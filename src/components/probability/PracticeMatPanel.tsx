@@ -111,6 +111,7 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
                     cards={step.cards}
                     after={step.after}
                     info={step.info}
+                    arrows={step.arrows}
                     tone={step.tone}
                     active={cursor === index + 1}
                     past={index + 1 < cursor}
@@ -309,6 +310,8 @@ interface StepTileProps {
   after: MatState
   /** `null` en la mano inicial. */
   info: StepInfo | null
+  /** Las flechas del tablero (ninguna en la mano inicial). */
+  arrows?: PanelStep['arrows']
   tone: FxTone | null
   active: boolean
   past: boolean
@@ -327,7 +330,7 @@ interface StepTileProps {
  * El botón es sólo el número y la frase (lo que se lee y lo que dicen las pruebas); su `::after` cubre la ficha entera, así se toca en cualquier lado y el foco la rodea. Es `memo`
  * con props estables: al avanzar un combo sólo cambian `active` y `past` de dos fichas.
  */
-const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, tone, active, past, details, onSeek, nameOf, artOf }: StepTileProps) {
+const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, arrows, tone, active, past, details, onSeek, nameOf, artOf }: StepTileProps) {
   const ref = useRef<HTMLLIElement | null>(null)
   const originId = useId()
   const movesId = useId()
@@ -449,8 +452,8 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
               </div>
             ) : null}
           </div>
-          {/* Debajo de la frase, hasta 18 rem (más grande no dice más y aleja la ficha siguiente). */}
-          <MatSnapshot state={after} change={info?.change} artOf={artOf} className="w-full max-w-[18rem] @min-[30rem]:max-w-none" />
+          {/* Debajo de la frase, hasta 18 rem (más grande no dice más y aleja la ficha siguiente), con las flechas de lo que se movió. */}
+          <MatSnapshot state={after} change={info?.change} arrows={arrows} artOf={artOf} className="w-full max-w-[18rem] @min-[30rem]:max-w-none" />
         </div>
       </div>
     </li>
