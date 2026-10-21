@@ -54,8 +54,7 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
 import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, getCardEffectMap, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
-import { EFFECT_FACT } from '../../app/card-effect-facts'
-import { LIMIT_FACTS, activationFacts, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, usageReminder, type Activation } from '../../app/mat-assistant'
+import { LIMIT_FACTS, activationFacts, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, type Activation } from '../../app/mat-assistant'
 import { repeatedTurnRule } from '../../app/turn-rules'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
@@ -263,11 +262,11 @@ const CELL_LOOK_SPELL = 'border border-solid border-transparent'
 const cellLook = (look: string = CELL_LOOK) => [
   'relative min-w-0 transition-[color,background-color,border-color,box-shadow] duration-150',
   look,
-  // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
-  'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-none data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
-  // Una zona que se puede elegir: relleno claro y, encima, las esquinas y el rombo de `PickMarks` (las marcas de un visor).
-  'data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-accent/45 data-[pick=true]:bg-none data-[pick=true]:bg-accent/15 data-[pick=true]:hover:bg-accent/25',
-  'data-[chosen=true]:bg-none data-[chosen=true]:bg-accent/40',
+  // Con una carta arrastrada encima: borde parejo, relleno y resplandor **ámbar** (el color de lo que se toca: sobre el fondo violeta de la mesa, el violeta no se distinguía; Gastón, 2026-10-20).
+  'data-[over=true]:border-solid data-[over=true]:border-info data-[over=true]:bg-none data-[over=true]:bg-info/22 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--info-rgb)/0.6),0_0_24px_rgb(var(--info-rgb)/0.5),inset_0_0_18px_rgb(var(--info-rgb)/0.3)]',
+  // Una zona que se puede elegir: relleno ámbar claro y, encima, las esquinas y el rombo de `PickMarks` (las marcas de un visor).
+  'data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-info/55 data-[pick=true]:bg-none data-[pick=true]:bg-info/14 data-[pick=true]:hover:bg-info/26',
+  'data-[chosen=true]:bg-none data-[chosen=true]:bg-info/40',
 ].join(' ')
 
 /**
@@ -889,8 +888,8 @@ export function PracticeMat({
     [viewer, state.deck],
   )
 
-  // El asistente de la mesa (`app/mat-assistant.ts`): se acuerda de lo que se activó acá y avisa, sin frenar nada, si se vuelve a activar un efecto de una vez por turno (o por duelo): de la carta entera o, si tiene varios
-  // efectos que sabe contar, de cada uno (el menú pregunta cuál se activa).
+  // El asistente de la mesa (`app/mat-assistant.ts`): se acuerda de lo que se activó acá para decirlo **en el menú**, en voz baja, cuando se elige qué efecto activar («Ya lo usaste este turno»). No hay ningún cartel: sin manejo de
+  // cadenas, activar otra vez un efecto es la forma de preguntarle al rival si quiere responder (Gastón, 2026-10-20), así que repetir una activación no es un error de nadie.
   const activationsRef = useRef<Activation[]>([])
   const turnNumber = duel?.turnNumber ?? state.turn
   // Los efectos de cada carta, por separado, llegan en un archivo aparte: cuando llegan, el menú de una carta se vuelve a armar.
@@ -902,7 +901,7 @@ export function PracticeMat({
   }, [])
 
   // `action` es la jugada que activa la carta `id`: `activate` (el efecto de una carta boca arriba, de una de la mano o del Cementerio) o, en una Mágica o una Trampa, la carta que queda boca arriba (`spellTrapActivation`).
-  const remindUsage = useCallback(
+  const recordUsage = useCallback(
     (action: MatAction, id: string) => {
       const card = cardOf(id)
       const api = card.apiCard
@@ -923,22 +922,8 @@ export function PracticeMat({
       const live = new Set<MatAction>(session.actions)
       const past = activationsRef.current.filter((activation) => live.has(activation.action))
       const key = effect && effectIndex !== undefined ? effectKey(facts, passcode, id, effectIndex) : limitKey(facts, passcode, id)
-      const reminder = usageReminder(facts, past, key, turnNumber)
 
       activationsRef.current = [...past, { action, turn: turnNumber, key }]
-
-      if (!reminder) return
-
-      const n = (effectIndex ?? 0) + 1
-      const message = effect
-        ? (effect.facts & EFFECT_FACT.shared) !== 0
-          ? t('practice.assistant.effectShared', { card: card.name, n })
-          : t(reminder === 'duel' ? 'practice.assistant.effectUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.effectUsedTurnByName' : 'practice.assistant.effectUsedTurn', { card: card.name, n })
-        : activation
-          ? t(reminder === 'duel' ? 'practice.assistant.activationUsedDuel' : reminder === 'turnByName' ? 'practice.assistant.activationUsedTurnByName' : 'practice.assistant.activationUsedTurn', { card: card.name })
-          : t(reminder === 'duel' ? 'practice.assistant.usedDuel' : reminder === 'turnByName' ? 'practice.assistant.usedTurnByName' : 'practice.assistant.usedTurn', { card: card.name })
-
-      showToastMessage(message, 'warning')
     },
     [cardOf, session.actions, turnNumber],
   )
@@ -952,7 +937,7 @@ export function PracticeMat({
       const repeated = repeatedTurnRule(session.initial, session.actions.slice(0, session.cursor), played)
 
       onDispatch(played)
-      if (activated !== null) remindUsage(played, activated)
+      if (activated !== null) recordUsage(played, activated)
       if (repeated !== null) showToastMessage(t(repeated === 'normalSummon' ? 'practice.assistant.normalAgain' : 'practice.assistant.pendulumAgain'), 'warning')
       setMenu(null)
       setPicking(null)
@@ -969,7 +954,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer, searching, remindUsage, state, kindOf, session.initial, session.actions, session.cursor],
+    [onDispatch, viewer, closeViewer, searching, recordUsage, state, kindOf, session.initial, session.actions, session.cursor],
   )
 
   // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).

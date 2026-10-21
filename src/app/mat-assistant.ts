@@ -8,9 +8,10 @@ import { isForeignId, isToken, locateCard, type MatAction, type MatCardKind, typ
 /**
  * El asistente de la mesa, capa 2 del motor de cartas (`docs/motor-de-cartas.md`): **avisa, no decide**. Nunca frena una jugada ni la deshace: sólo dice algo que es verdad y que quien juega puede haber olvidado.
  *
- * Primer aviso: activar otra vez una carta que ya se activó, cuando tiene un efecto de una vez por turno (o por duelo) confirmado por su script y su texto (capa 1). Los hechos de la capa 1 son de la carta
- * entera, no de cada efecto, así que el aviso no dice «no podés»: dice lo que pasó y que fije que no sea el mismo efecto (una carta con dos efectos de una vez por turno puede usar uno y después el otro).
- * Lo que cuenta es lo que **se vio hacer** en esta pantalla (nunca inventa un uso que no vio); si se deshace la jugada, el uso deja de contar.
+ * **Ya no hay ningún cartel por activar otra vez una carta** (Gastón, 2026-10-20: «activar la carta no necesariamente significa que active un efecto… hay cartas que se pueden activar más de una vez… el cartel es molesto» y «en la experiencia
+ * real de juego no tenemos manejo de cadenas, por lo que la resolución de los efectos es totalmente manual: muchas veces activar varias veces un efecto es una forma de decirle al rival si quiere responder»). Repetir una activación es una
+ * forma de hablar, no un error. Lo que queda es **pasivo y en el menú**: al elegir qué efecto activar, cada uno dice si ya se usó («Ya lo usaste este turno»; `effectChoices`), con lo que **se vio hacer** en esta pantalla (nunca inventa un uso
+ * que no vio); si se deshace la jugada, el uso deja de contar. Los hechos de la capa 1 son de la carta entera, no de cada efecto: por eso el aviso de la carta entera no existe.
  */
 
 /** Una activación hecha en esta mesa: la jugada (para saber si sigue en el registro), en qué turno del duelo y con qué clave se cuenta el límite. */
