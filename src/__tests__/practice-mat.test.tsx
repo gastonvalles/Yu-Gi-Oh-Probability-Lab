@@ -639,7 +639,7 @@ describe('la mesa de práctica', () => {
     }
   })
 
-  it('del Deck se puede revelar el tope, y desde el visor cualquier carta (sin moverla)', () => {
+  it('del Deck se puede revelar el tope, y desde el visor cualquier carta (sin moverla): revelarla y barajar al cerrar el visor es una sola jugada', () => {
     render(<Harness />)
 
     // El tope: queda anotado y el Deck sigue igual.
@@ -648,11 +648,14 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
     expect(within(status()).getByText('Revelás Imperm')).toBeInTheDocument()
 
-    // Desde el visor del Deck, una carta cualquiera ofrece "Revelar".
+    // Desde el visor del Deck, una carta cualquiera ofrece "Revelar". El barajado de después de mirar va adentro de la misma jugada (eran dos jugadas de un toque: la segunda le cortaba el destello y el sonido).
     tap(screen.getByRole('button', { name: 'Main: 1' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getByRole('button', { name: /Imperm/ }))
-    expect(screen.getByRole('menuitem', { name: 'Revelar' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Revelar' }))
+    expect(screen.queryByRole('dialog', { name: /Main/ })).not.toBeInTheDocument()
+    expect(within(status()).getByText('2/2')).toBeInTheDocument()
+    expect(within(status()).getByText('Revelás Imperm y barajás')).toBeInTheDocument()
   })
 
   /** Arrastra una carta de la mano hasta una zona (la que devuelve `elementFromPoint`) y la suelta. */
@@ -1745,6 +1748,144 @@ describe('la mesa de práctica', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
     expect(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' })).toHaveClass('rounded-none')
+  })
+
+  describe('elegir varias cartas en el visor de una pila: una sola jugada para todas', () => {
+    /** En el visor abierto: «Elegir varias», tocar esas cartas en ese orden (por el nombre de debajo: con arte, el nombre accesible también lleva el de la imagen) y «Elegir jugada», que abre el menú del lote. */
+    const chooseSeveral = (viewer: HTMLElement, names: string[]) => {
+      fireEvent.click(within(viewer).getByRole('button', { name: 'Elegir varias' }))
+      for (const name of names) fireEvent.click(within(viewer).getByText(name))
+      fireEvent.click(within(viewer).getByRole('button', { name: 'Elegir jugada' }))
+    }
+    const toGy = (ids: string[], first: MatAction[] = []) => replayMat(INITIAL, [...first, ...ids.map((id): MatAction => ({ type: 'move', id, to: 'gy' }))])
+    const ZEUS_ON_FIELD: MatAction[] = [{ type: 'place', id: 'card-7-1', zone: 'mz', index: 0, pos: 'atk' }]
+
+    it('del cementerio, tres cartas desterradas boca abajo de una vez: un paso y una línea, que un Deshacer deshace entero', () => {
+      render(<Harness initial={toGy(['card-1-1', 'card-2-1', 'card-5-1'])} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'GY: 3' }))
+      chooseSeveral(screen.getByRole('dialog', { name: 'GY · 3' }), ['Ash Blossom', 'Maxx C', 'Droll'])
+
+      // El menú del lote (en el celular, la hoja de abajo): la pila arriba y cuántas son.
+      const sheet = screen.getByRole('region', { name: '3 cartas' })
+      expect(within(sheet).getByText('GY')).toBeInTheDocument()
+      fireEvent.click(within(sheet).getByRole('menuitem', { name: 'Desterrar' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Boca abajo' }))
+
+      expect(screen.queryByRole('dialog', { name: 'GY · 3' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Banish: 3' })).toBeInTheDocument()
+      expect(within(status()).getByText('1/1')).toBeInTheDocument()
+      expect(within(status()).getByText('Desterrás Ash Blossom, Maxx C y Droll boca abajo')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+      expect(screen.getByRole('button', { name: 'GY: 3' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Banish: 0' })).toBeInTheDocument()
+      expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+    })
+
+    it('del Main, dos cartas a la mano: una sola jugada que las saca y baraja el resto, y el visor se cierra sin barajar aparte', () => {
+      render(<Harness initial={createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], ['card-7-1'], 2)} />)
+
+      tap(screen.getByRole('button', { name: 'Main: 4' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+      chooseSeveral(screen.getByRole('dialog', { name: 'Main · 4' }), ['Nibiru', 'Imperm'])
+      fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
+
+      expect(screen.queryByRole('dialog', { name: 'Main · 4' })).not.toBeInTheDocument()
+      expect(within(hand()).getByRole('listitem', { name: 'Nibiru' })).toBeInTheDocument()
+      expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Main: 2' })).toBeInTheDocument()
+      // Sacarlas y barajar son un paso (no sigue otro «Barajás el deck»).
+      expect(within(status()).getByText('1/1')).toBeInTheDocument()
+      expect(within(status()).getByText('Buscás Nibiru y Imperm del deck a la mano y barajás')).toBeInTheDocument()
+    })
+
+    it('del cementerio, dos cartas «Al deck: al azar»: entran las dos y se baraja todo una vez, en la misma jugada', () => {
+      render(<Harness initial={toGy(['card-1-1', 'card-2-1'])} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'GY: 2' }))
+      chooseSeveral(screen.getByRole('dialog', { name: 'GY · 2' }), ['Ash Blossom', 'Maxx C'])
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Al deck' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Al azar' }))
+
+      expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Main: 3' })).toBeInTheDocument()
+      expect(within(status()).getByText('1/1')).toBeInTheDocument()
+      expect(within(status()).getByText('Barajás Ash Blossom y Maxx C dentro del deck')).toBeInTheDocument()
+    })
+
+    it('tres del cementerio como target: el visor se cierra, la casilla muestra la última marcada con la mira, y a los cinco segundos vencen juntas en una jugada sin cerrar la hoja que esté abierta', () => {
+      vi.useFakeTimers({ toFake: ['performance', 'setTimeout', 'clearTimeout', 'Date'] })
+      // La mira y la carta de la casilla son hermanas: con la misma clave, React avisaba y podía confundirlas.
+      const errors = vi.spyOn(console, 'error')
+
+      try {
+        render(<Harness initial={toGy(['card-1-1', 'card-2-1', 'card-5-1'])} cards={WITH_ART} />)
+
+        const gy = () => screen.getByRole('button', { name: 'GY: 3' })
+        // Droll es la de arriba; la última que se marca es Ash Blossom.
+        expect(within(gy()).getByRole('img', { name: 'Droll' })).toBeInTheDocument()
+        fireEvent.click(gy())
+        chooseSeveral(screen.getByRole('dialog', { name: 'GY · 3' }), ['Droll', 'Maxx C', 'Ash Blossom'])
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+
+        expect(screen.queryByRole('dialog', { name: 'GY · 3' })).not.toBeInTheDocument()
+        expect(within(status()).getByText('Marcás Droll, Maxx C y Ash Blossom como target')).toBeInTheDocument()
+        expect(gy()).toHaveAttribute('data-targeted', 'true')
+        expect(within(gy()).getByRole('img', { name: 'Ash Blossom' })).toBeInTheDocument()
+        expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
+
+        // Se abre la hoja de una carta de la mano; cuando las marcas se van (las tres en una sola jugada), la hoja queda.
+        tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
+        act(() => {
+          vi.advanceTimersByTime(5100)
+        })
+        expect(within(status()).getByText('2/2')).toBeInTheDocument()
+        expect(within(status()).getByText('Sacás el target de Droll, Maxx C y Ash Blossom')).toBeInTheDocument()
+        expect(gy()).toHaveAttribute('data-targeted', 'false')
+        expect(screen.getByRole('region', { name: 'Nibiru' })).toBeInTheDocument()
+        expect(errors.mock.calls.filter(([message]) => String(message).includes('same key'))).toEqual([])
+      } finally {
+        errors.mockRestore()
+        vi.useRealTimers()
+      }
+    })
+
+    it('dos monstruos del cementerio adjuntados a Zeus de una vez: una sola jugada', () => {
+      render(<Harness initial={toGy(['card-1-1', 'card-2-1'], ZEUS_ON_FIELD)} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'GY: 2' }))
+      chooseSeveral(screen.getByRole('dialog', { name: 'GY · 2' }), ['Ash Blossom', 'Maxx C'])
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Adjuntar a Zeus' }))
+
+      expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+      expect(within(status()).getByText('1/1')).toBeInTheDocument()
+      expect(within(status()).getByText('Adjuntás Ash Blossom y Maxx C a Zeus')).toBeInTheDocument()
+    })
+
+    it('el menú del lote: lo que no admiten todas va apagado y dice por qué (tocarlo no hace nada), y cerrarlo sin elegir deja la elección como estaba', () => {
+      // Ash Blossom es un monstruo (se adjunta a Zeus); Called by the Grave, una Mágica (no).
+      render(<Harness initial={toGy(['card-1-1', 'card-3-1'], ZEUS_ON_FIELD)} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'GY: 2' }))
+      const viewer = screen.getByRole('dialog', { name: 'GY · 2' })
+      chooseSeveral(viewer, ['Ash Blossom', 'Called by the Grave'])
+
+      const attach = screen.getByRole('menuitem', { name: /^Adjuntar a Zeus/ })
+      expect(attach).toHaveAttribute('aria-disabled', 'true')
+      expect(attach).toHaveTextContent('No va con Called by the Grave')
+      fireEvent.click(attach)
+      expect(screen.getByRole('button', { name: 'GY: 2' })).toBeInTheDocument()
+      expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+      // Lo que admiten las dos, a un toque.
+      expect(screen.getByRole('menuitem', { name: 'Al deck' })).not.toHaveAttribute('aria-disabled')
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByRole('region', { name: '2 cartas' })).not.toBeInTheDocument()
+      expect(within(viewer).getByRole('button', { name: /^Ash Blossom \(1\.ª elegida\)/ })).toHaveAttribute('aria-pressed', 'true')
+      expect(within(viewer).getByRole('button', { name: /^Called by the Grave \(2\.ª elegida\)/ })).toHaveAttribute('aria-pressed', 'true')
+    })
   })
 
   it('las zonas del centro llevan las líneas de la carta, como el tapete: las de monstruos la parada y la acostada en cruz, las de Mágicas y Trampas sólo la parada; la de campo y las pilas no (ya son una carta)', () => {

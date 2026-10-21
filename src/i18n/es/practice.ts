@@ -365,4 +365,8 @@ export const practice = {
   'practice.many.order': '{name} ({n}.ª elegida)',
   'practice.many.range': 'Mayús+clic elige el tramo desde la última que tocaste',
   'practice.many.choosePlay': 'Elegir jugada',
+
+  // El menú de varias cartas (`listBatchActions`): por qué una opción va apagada (no la admiten todas las elegidas).
+  'practice.batch.notWith': 'No va con {list}',
+  'practice.batch.notWithCount': 'No va con {count} de las elegidas',
 } as const

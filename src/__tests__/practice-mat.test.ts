@@ -8,16 +8,19 @@ import {
   describeMatAction,
   describeMatSteps,
   freeTargets,
+  listBatchActions,
   listCardActions,
   listDropActions,
   locateCard,
   matReducer,
+  playType,
   replayMat,
   shuffleWithSeed,
   TOKEN_KIND,
   tributesFor,
   type MatAction,
   type MatCardKind,
+  type MatMenuItem,
   type MatPos,
   type MatState,
 } from '../app/practice-mat'
@@ -503,6 +506,112 @@ describe('la mesa de práctica', () => {
       expect(attachItems(twoXyz, 'x2')).toEqual([])
       expect(attachItems(twoXyz, 'b1')).toEqual([])
       expect(attachItems(twoXyz, 'd1')).toEqual([])
+    })
+  })
+
+  describe('varias cartas de una pila en una jugada (`listBatchActions`): lo que admiten todas, en un lote de una parte por carta', () => {
+    const withX3 = (id: string) => (id === 'x3' ? XYZ : kindOf(id))
+    const batch = (state: MatState, ids: string[]) => listBatchActions(state, ids, withX3, nameOf)
+    const item = (items: MatMenuItem[], label: string) => items.find((entry) => entry.label === label)!
+    /** X1 (Xyz) en la zona de monstruo 1 y en el cementerio A1 y A2 (monstruos) y B1 (Mágica); en el deck, E1 y F1. */
+    const gy = run(
+      [
+        { type: 'place', id: 'x1', zone: 'mz', index: 0, pos: 'atk' },
+        { type: 'move', id: 'a1', to: 'gy' },
+        { type: 'move', id: 'a2', to: 'gy' },
+        { type: 'move', id: 'b1', to: 'gy' },
+      ],
+      createMatState(DECK, ['x1', 'x2', 'x3'], 5),
+    )
+
+    it('la intersección: lo que pide zona o posición (invocar, activar) no entra, y lo que admiten sólo algunas va apagado y dice con cuáles no va', () => {
+      const items = batch(gy, ['a1', 'a2', 'b1'])
+
+      expect(items.map((entry) => [entry.label, entry.disabled])).toEqual([
+        ['A la mano', undefined],
+        ['Target', undefined],
+        ['Desterrar', undefined],
+        ['Adjuntar a X1', 'No va con B1'],
+        ['Al deck', undefined],
+      ])
+      // Cada opción es una sola jugada, con una parte por carta en el orden en que se eligieron.
+      expect(item(items, 'A la mano').action).toEqual({ type: 'batch', actions: [{ type: 'move', id: 'a1', to: 'hand' }, { type: 'move', id: 'a2', to: 'hand' }, { type: 'move', id: 'b1', to: 'hand' }] })
+      // Sólo con los monstruos, Adjuntar va con todas; con dos Xyz pregunta a cuál, y cada respuesta adjunta todas a ése.
+      expect(item(batch(gy, ['a2', 'a1']), 'Adjuntar a X1')).toEqual({ label: 'Adjuntar a X1', action: { type: 'batch', actions: [{ type: 'attach', id: 'a2', to: 'x1' }, { type: 'attach', id: 'a1', to: 'x1' }] } })
+      const twoXyz = run([{ type: 'place', id: 'x3', zone: 'emz', index: 0, pos: 'atk' }], gy)
+      expect(item(batch(twoXyz, ['a1', 'a2']), 'Adjuntar a un Xyz').choices?.map((choice) => [choice.label, choice.cardId, choice.disabled, choice.action])).toEqual([
+        ['X1', 'x1', undefined, { type: 'batch', actions: [{ type: 'attach', id: 'a1', to: 'x1' }, { type: 'attach', id: 'a2', to: 'x1' }] }],
+        ['X3', 'x3', undefined, { type: 'batch', actions: [{ type: 'attach', id: 'a1', to: 'x3' }, { type: 'attach', id: 'a2', to: 'x3' }] }],
+      ])
+    })
+
+    it('se compara la jugada sin su carta: Desterrar y Al deck preguntan cómo, una jugada por respuesta; arriba del deck las partes van al revés, así la primera elegida queda arriba de todo', () => {
+      const items = batch(gy, ['a2', 'b1', 'a1'])
+
+      expect(item(items, 'Desterrar').choices?.map((choice) => [choice.label, choice.action])).toEqual([
+        ['Boca arriba', { type: 'batch', actions: ['a2', 'b1', 'a1'].map((id) => ({ type: 'move', id, to: 'banished' })) }],
+        ['Boca abajo', { type: 'batch', actions: ['a2', 'b1', 'a1'].map((id) => ({ type: 'move', id, to: 'banished', faceDown: true })) }],
+      ])
+
+      const toDeck = item(items, 'Al deck').choices!
+      // «Al azar» lleva la marca: la mesa suma el barajado al final del lote.
+      expect(toDeck.map((choice) => [choice.label, choice.shuffleDeck ?? false])).toEqual([['Al azar', true], ['Arriba', false], ['Abajo', false]])
+      // Arriba: A2, la primera elegida, queda arriba de todo; abajo, la primera elegida queda más arriba que las otras.
+      expect(matReducer(gy, toDeck[1]!.action).deck).toEqual(['a2', 'b1', 'a1', 'e1', 'f1'])
+      expect(matReducer(gy, toDeck[2]!.action).deck).toEqual(['e1', 'f1', 'a2', 'b1', 'a1'])
+
+      // Mirando el Main: Arriba y Abajo del deck con el mismo orden, y ni «Al azar» (el menú del deck ya baraja) ni Target.
+      const main = batch(gy, ['f1', 'e1'])
+      expect(main.map((entry) => entry.label)).toEqual(['A la mano', 'Revelar', 'Al cementerio', 'Desterrar', 'Adjuntar a X1', 'Arriba del deck', 'Abajo del deck'])
+      expect(matReducer(gy, item(main, 'Arriba del deck').action).deck).toEqual(['f1', 'e1'])
+      expect(matReducer(gy, item(main, 'Abajo del deck').action).deck).toEqual(['f1', 'e1'])
+      expect(matReducer(run([{ type: 'move', id: 'c1', to: 'deck' }], gy), item(main, 'Abajo del deck').action).deck).toEqual(['c1', 'f1', 'e1'])
+    })
+
+    it('Target marca sólo las que no tienen la mira; con todas marcadas es «Quitar target», para todas. Un lote hecho sólo de Target cuenta como Target', () => {
+      const aimed = run([{ type: 'target', id: 'a2' }], gy)
+      const marking = item(batch(aimed, ['a1', 'a2', 'b1']), 'Target').action
+
+      expect(marking).toEqual({ type: 'batch', actions: [{ type: 'target', id: 'a1' }, { type: 'target', id: 'b1' }] })
+
+      const all = matReducer(aimed, marking)
+      expect(all.targeted).toEqual(['a2', 'a1', 'b1'])
+      expect(batch(all, ['a1', 'a2', 'b1']).map((entry) => entry.label)).toEqual(['A la mano', 'Quitar target', 'Desterrar', 'Adjuntar a X1', 'Al deck'])
+      expect(matReducer(all, item(batch(all, ['a1', 'a2', 'b1']), 'Quitar target').action).targeted).toEqual([])
+
+      expect(playType(marking)).toBe('target')
+      expect(playType({ type: 'batch', actions: [{ type: 'target', id: 'a1' }, { type: 'move', id: 'b1', to: 'hand' }] })).toBe('batch')
+      expect(playType({ type: 'target', id: 'a1' })).toBe('target')
+    })
+
+    it('en el Extra: Revelar va con las boca abajo y A la mano con las boca arriba (un Péndulo); mandarlas al cementerio o desterrarlas, con todas', () => {
+      const withPendulum = (id: string) => (id === 'p1' ? { ...MONSTER, pendulum: true } : kindOf(id))
+      // X1 (Xyz) boca abajo en el Extra; P1, un Monstruo de Péndulo que llegó boca arriba.
+      const extra = run([{ type: 'move', id: 'p1', to: 'extra', faceUp: true }], createMatState(['p1', ...DECK], ['x1', 'x2'], 5))
+
+      expect(listBatchActions(extra, ['x1', 'p1'], withPendulum, nameOf).map((entry) => [entry.label, entry.disabled])).toEqual([
+        ['Revelar', 'No va con P1'],
+        ['Al cementerio', undefined],
+        ['Desterrar', undefined],
+        ['A la mano', 'No va con X1'],
+        ['Dar vuelta boca abajo', 'No va con X1'],
+        ['Al deck', 'No va con X1'],
+      ])
+    })
+
+    it('la razón de una opción apagada: hasta tres nombres, cada uno una vez; desde cuatro, cuántas', () => {
+      // S1 a S4 son Mágicas (no se adjuntan) y A1, un monstruo: todas en el cementerio, con X1 en el campo.
+      const ids = ['a1', 's1', 's2', 's3', 's4']
+      const spells = (id: string) => (id.startsWith('s') ? SPELL : kindOf(id))
+      const state = run([{ type: 'place', id: 'x1', zone: 'mz', index: 0, pos: 'atk' }, ...ids.map((id): MatAction => ({ type: 'move', id, to: 'gy' }))], createMatState([...ids, 'e1'], ['x1'], 5))
+      const reason = (picked: string[], names = nameOf) => listBatchActions(state, picked, spells, names).find((entry) => entry.label === 'Adjuntar a X1')?.disabled
+
+      expect(reason(['a1', 's1'])).toBe('No va con S1')
+      expect(reason(['a1', 's1', 's2'])).toBe('No va con S1 y S2')
+      expect(reason(['a1', 's1', 's2', 's3'])).toBe('No va con S1, S2 y S3')
+      expect(reason(ids)).toBe('No va con 4 de las elegidas')
+      // Cuatro copias de la misma carta se nombran una vez.
+      expect(reason(ids, (id) => (id.startsWith('s') ? 'POT' : nameOf(id)))).toBe('No va con POT')
     })
   })
 

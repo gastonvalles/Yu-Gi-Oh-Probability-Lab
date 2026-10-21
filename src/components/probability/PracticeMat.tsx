@@ -17,6 +17,7 @@ import {
   freeTargets,
   isForeignId,
   isToken,
+  listBatchActions,
   listCardActions,
   listDropActions,
   locateCard,
@@ -26,6 +27,7 @@ import {
   PHASES,
   pileAction,
   placedAt,
+  playType,
   randomSeed,
   replayMat,
   TOKEN_KIND,
@@ -373,6 +375,13 @@ const NO_ART = () => null
 
 const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
 
+/** Las cartas que toca una jugada (las de cada parte, en un lote). */
+const cardsOfPlay = (action: MatAction): string[] => (action.type === 'batch' ? action.actions.flatMap(cardsOfPlay) : 'id' in action ? [action.id] : [])
+
+/** La jugada hecha mirando el deck, con el barajado del resto adentro: en la carta que se saca (`shuffle`) o, si no (revelar, adjuntar, un lote), al principio de un lote: así «Arriba del deck» queda arriba. */
+const shuffledIn = (action: MatAction, seed: number): MatAction =>
+  action.type === 'move' || action.type === 'place' ? { ...action, shuffle: seed } : { type: 'batch', actions: [{ type: 'shuffle', seed }, ...(action.type === 'batch' ? action.actions : [action])] }
+
 /** Dos toques seguidos al mismo material (en escritorio) cuentan como doble clic: cuánto puede pasar entre uno y otro. */
 const DOUBLE_CLICK_MS = 400
 
@@ -504,6 +513,8 @@ export function PracticeMat({
      * `drop`: la zona donde se soltó la carta; el menú ofrece lo que la saca ahí y la carta se queda en la zona mientras se elige (si se cancela, vuelve).
      */
     | { kind: 'card'; id: string; rect: DOMRect; ask?: MatMenuItem; drop?: MatTarget }
+    /** Varias cartas elegidas en el visor de una pila (en el orden en que se eligieron): el menú del lote, pegado a «Elegir jugada». */
+    | { kind: 'batch'; pile: MatPile; ids: string[]; rect: DOMRect; ask?: MatMenuItem }
     | { kind: 'deck'; rect: DOMRect; ask?: MatMenuItem }
     /** La ficha: sale en ataque o en defensa, en la zona donde se soltó (`zone`) o en la que se elija después. */
     /** Desde el botón +: primero qué agregar (`root`: una ficha o un contador) y, de la ficha, la posición; soltada en una zona libre, directo la posición. */
@@ -773,8 +784,9 @@ export function PracticeMat({
 
   // Si la mesa cambia por debajo de lo que esperaba una elección (deshacer, un paso del panel, un arrastre, otro combo), el menú y los Sacrificios o
   // materiales que se estaban eligiendo ya no valen: se cancelan. Jugar desde el menú ya los cierra por su cuenta.
-  // Una marca de objetivo que se quita sola (ver `TARGET_MS`) es una jugada más, pero no mueve nada: no cancela lo que se estaba eligiendo.
-  const lastType = session.actions[session.cursor - 1]?.type
+  // Una marca de objetivo que se quita sola (ver `TARGET_MS`) es una jugada más, pero no mueve nada: no cancela lo que se estaba eligiendo (tampoco las de un lote, que vencen juntas).
+  const lastAction = session.actions[session.cursor - 1]
+  const lastType = lastAction ? playType(lastAction) : undefined
   useEffect(() => {
     if (lastType === 'target') return
 
@@ -828,9 +840,11 @@ export function PracticeMat({
     if (menu || picking || counterMode !== null) setAutoplay(false)
   }, [menu, picking, counterMode])
 
-  // Una marca de objetivo dura `TARGET_MS` y se quita sola, con la misma jugada que la saca a mano (así el rival también la ve irse). Si se está repasando un combo, no se toca.
+  // Una marca de objetivo dura `TARGET_MS` y se quita sola, con la misma jugada que la saca a mano (así el rival también la ve irse). Las de un mismo lote vencen juntas, en una sola jugada
+  // («Sacás el target de A, B y C»); las sueltas, cada una con su plazo. Si se está repasando un combo, no se toca.
   const dispatchRef = useRef(onDispatch)
-  const targetTimers = useRef(new Map<string, number>())
+  // Por la jugada que las marcó (su lugar en la lista): su plazo y las cartas que siguen marcadas.
+  const targetTimers = useRef(new Map<number, { timer: number; ids: string[] }>())
   const idle = session.cursor === session.actions.length && !autoplay
 
   useEffect(() => {
@@ -838,30 +852,52 @@ export function PracticeMat({
   }, [onDispatch])
 
   useEffect(() => {
-    const timers = targetTimers.current
+    const groups = targetTimers.current
 
-    for (const [id, timer] of timers) {
-      if (!idle || !state.targeted.includes(id)) {
-        window.clearTimeout(timer)
-        timers.delete(id)
+    for (const [step, group] of groups) {
+      group.ids = idle ? group.ids.filter((id) => state.targeted.includes(id)) : []
+
+      if (group.ids.length === 0) {
+        window.clearTimeout(group.timer)
+        groups.delete(step)
       }
     }
 
     if (!idle) return
 
+    const timed = new Set([...groups.values()].flatMap((group) => group.ids))
+
     for (const id of state.targeted) {
-      if (!timers.has(id)) {
-        timers.set(id, window.setTimeout(() => { timers.delete(id); dispatchRef.current({ type: 'target', id }) }, TARGET_MS))
+      if (timed.has(id)) continue
+
+      // La última jugada que le tocó la mira es la que la marcó.
+      const step = session.actions.findLastIndex((action) => (action.type === 'batch' ? action.actions : [action]).some((part) => part.type === 'target' && part.id === id))
+      const known = groups.get(step)
+
+      if (known) {
+        known.ids.push(id)
+        continue
       }
+
+      const group = { timer: 0, ids: [id] }
+
+      group.timer = window.setTimeout(() => {
+        groups.delete(step)
+
+        const [first, ...rest] = group.ids
+
+        if (first !== undefined) dispatchRef.current(rest.length === 0 ? { type: 'target', id: first } : { type: 'batch', actions: group.ids.map((card) => ({ type: 'target', id: card })) })
+      }, TARGET_MS)
+      groups.set(step, group)
     }
-  }, [state.targeted, idle])
+  }, [state.targeted, idle, session.actions])
 
   useEffect(() => {
-    const timers = targetTimers.current
+    const groups = targetTimers.current
 
     return () => {
-      timers.forEach((timer) => window.clearTimeout(timer))
-      timers.clear()
+      groups.forEach((group) => window.clearTimeout(group.timer))
+      groups.clear()
     }
   }, [])
 
@@ -875,12 +911,8 @@ export function PracticeMat({
     setViewer(null)
   }, [viewer, onDispatch])
 
-  /** Sacar una carta mirando el deck: el resto se baraja en la misma jugada (buscar = un paso, que se deshace entero). */
-  const searching = useCallback(
-    (action: MatAction): action is Extract<MatAction, { type: 'move' | 'place' }> =>
-      viewer === 'deck' && (action.type === 'move' || action.type === 'place') && state.deck.includes(action.id),
-    [viewer, state.deck],
-  )
+  /** Jugar mirando el deck (sacar una carta o varias, revelarla, adjuntarla): el resto se baraja en la misma jugada (buscar = un paso, que se deshace entero; nunca dos jugadas de un toque). */
+  const searching = useCallback((action: MatAction) => viewer === 'deck' && cardsOfPlay(action).some((id) => state.deck.includes(id)), [viewer, state.deck])
 
   // El asistente de la mesa (`app/mat-assistant.ts`): se acuerda de lo que se activó acá para decirlo **en el menú**, en voz baja, cuando se elige qué efecto activar («Ya lo usaste este turno»). No hay ningún cartel: sin manejo de
   // cadenas, activar otra vez un efecto es la forma de preguntarle al rival si quiere responder (Gastón, 2026-10-20), así que repetir una activación no es un error de nadie.
@@ -925,7 +957,7 @@ export function PracticeMat({
   const play = useCallback(
     (action: MatAction) => {
       const searched = searching(action)
-      const played: MatAction = searched ? { ...action, shuffle: randomSeed() } : action
+      const played = searched ? shuffledIn(action, randomSeed()) : action
       const activated = played.type === 'activate' ? played.id : spellTrapActivation(state, played, kindOf)
       // Las reglas de turno (una Invocación Normal, una de Péndulo): avisa, no frena.
       const repeated = repeatedTurnRule(session.initial, session.actions.slice(0, session.cursor), played)
@@ -941,12 +973,13 @@ export function PracticeMat({
         setShuffleKey((key) => key + 1)
       }
 
-      // Marcar un target desde el visor de una pila lo cierra: la mira cae sobre la casilla, que ya muestra esa carta, y se ve. Quitarlo deja el visor como está.
-      const marking = played.type === 'target' && !state.targeted.includes(played.id)
+      // Marcar un target (una carta o varias) desde el visor de una pila lo cierra: la mira cae sobre la casilla, que ya muestra la última marcada, y se ve. Quitarlo deja el visor como está.
+      const targeting = playType(played) === 'target'
+      const marking = targeting && cardsOfPlay(played).some((id) => !state.targeted.includes(id))
 
       if (searched || (viewer && marking)) {
         setViewer(null)
-      } else if (viewer && played.type !== 'target') {
+      } else if (viewer && !targeting) {
         closeViewer()
       }
     },
@@ -1005,9 +1038,14 @@ export function PracticeMat({
         return
       }
 
-      // "Al deck: al azar": la carta se pone en el deck y se baraja todo con una semilla nueva.
+      // "Al deck: al azar": la carta se pone en el deck y se baraja todo con una semilla nueva (varias: entran todas y se baraja una vez, al final del lote).
       if (item.shuffleDeck && item.action.type === 'move') {
         play({ ...item.action, shuffle: randomSeed() })
+        return
+      }
+
+      if (item.shuffleDeck && item.action.type === 'batch') {
+        play({ ...item.action, actions: [...item.action.actions, { type: 'shuffle', seed: randomSeed() }] })
         return
       }
 
@@ -1405,11 +1443,18 @@ export function PracticeMat({
       return ask.choices.map((choice) => ({
         label: choice.label,
         lead: choice.lead,
-        hint: choice.hint,
+        // Una respuesta que no admiten todas las cartas del lote va apagada y dice por qué.
+        hint: choice.disabled ?? choice.hint,
+        disabled: choice.disabled !== undefined,
         // Al pasar el mouse por un efecto, el detalle de la carta resalta su frase (donde hay detalle a la izquierda).
         onPreview: choice.preview && passcode !== undefined && onHighlight ? (active: boolean) => onHighlight(active ? { ygoprodeckId: passcode, ...choice.preview! } : null) : undefined,
         onSelect: () => choose({ ...choice, label: `${ask.label}: ${choice.label.toLowerCase()}` }, dropped),
       }))
+    }
+
+    // Varias cartas de una pila: lo que admiten todas; lo que no, apagado y con la razón («No va con Ash y Droll»).
+    if (menu.kind === 'batch') {
+      return listBatchActions(state, menu.ids, kindOf, nameOf).map((item) => ({ label: item.label, onSelect: () => choose(item), utility: item.utility, disabled: item.disabled !== undefined, hint: item.disabled }))
     }
 
     if (menu.kind === 'deck') {
@@ -1471,11 +1516,13 @@ export function PracticeMat({
         ? menu.ask.label
         : menu?.kind === 'card' && menu.drop
           ? zoneLabelOf(menu.drop.zone, menu.drop.index)
-          : menuWhere
-            ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
-            : PILE_TITLES.deck
-  // Las fases no llevan título: el nombre de la de ahora ya está en la lista, marcado.
-  const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? '' : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
+          : menu?.kind === 'batch'
+            ? PILE_TITLES[menu.pile]
+            : menuWhere
+              ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
+              : PILE_TITLES.deck
+  // Las fases no llevan título: el nombre de la de ahora ya está en la lista, marcado. Varias cartas: cuántas («3 cartas»).
+  const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? '' : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: menu?.kind === 'batch' ? menu.ids.length : state.deck.length }))
   // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
   const sheeted = !isDesktop && menu !== null && !covered
 
@@ -1641,7 +1688,8 @@ export function PracticeMat({
         <span className="absolute inset-0 overflow-hidden">
           {back ? <span key={shown} className={cx(CARD_BACK, swapped && 'animate-pop motion-reduce:animate-none')} /> : shown ? <CardArt key={shown} remoteUrl={artOf(cardOf(shown))} name={cardOf(shown).name} className={cx('block h-full w-full object-cover', swapped && 'animate-pop motion-reduce:animate-none')} /> : null}
           <PileBadge label={PILE_SHORT[pile]} count={count} />
-          {marked ? <TargetMark key={shown} /> : null}
+          {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
+          {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
       </button>
     )
@@ -2116,7 +2164,7 @@ export function PracticeMat({
         <CardSheet
           name={menu.kind === 'phases' ? menuKicker : menuTitle}
           kicker={menu.kind === 'phases' ? undefined : menuKicker}
-          plain={menu.kind === 'phases'}
+          plain={menu.kind === 'phases' || menu.kind === 'batch'}
           art={menuCard ? artOf(menuCard) : null}
           back={menuCard === null}
           apiCard={menuCard?.apiCard ?? null}
@@ -2163,15 +2211,23 @@ export function PracticeMat({
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
         targeted={targetedIds}
-        onPick={(id, rect) => {
-          // Elegir una carta del visor también la muestra en el detalle fijo de la izquierda (como tocar una de la mano o del campo).
-          if (onPeek) {
-            const { name, apiCard } = cardOf(id)
+        // Tocar una carta del visor (también eligiendo varias) la muestra en el detalle fijo de la izquierda, como una de la mano o del campo.
+        onPeek={
+          onPeek
+            ? (id) => {
+                const { name, apiCard } = cardOf(id)
 
-            onPeek({ name, card: apiCard })
-          }
-
-          setMenu({ kind: 'card', id, rect })
+                onPeek({ name, card: apiCard })
+              }
+            : undefined
+        }
+        onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
+        // Elegir varias: «Elegir jugada» abre el menú del lote, pegado al botón (o la hoja, en el celular); la jugada cierra el visor.
+        many={{
+          label: () => t('practice.many.choosePlay'),
+          onPick: (ids, rect) => {
+            if (viewer) setMenu({ kind: 'batch', pile: viewer, ids, rect })
+          },
         }}
         onClose={closeViewer}
       />
