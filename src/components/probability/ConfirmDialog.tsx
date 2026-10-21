@@ -32,7 +32,6 @@ export function ConfirmDialog({
       onClose={onCancel}
       size="keypad"
       role="alertdialog"
-      kicker={t('lab.confirm.kicker')}
       title={title}
       footer={
         <>

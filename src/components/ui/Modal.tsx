@@ -139,7 +139,8 @@ export function Modal({
         onClick={(event) => event.stopPropagation()}
       >
         {hasHeader ? (
-          <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5 min-[1101px]:px-6 min-[1101px]:py-4">
+          // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios).
+          <header className="flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5">
             <div className="flex min-w-0 items-start gap-3">
               {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', TONE[tone].text)} /> : null}
               <div className="grid min-w-0 gap-0.5">
@@ -167,12 +168,13 @@ export function Modal({
           />
         ) : null}
 
-        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-4 min-[1101px]:px-6 min-[1101px]:py-5')}>
+        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-5 min-[1101px]:px-6 min-[1101px]:py-5')}>
           {children}
         </div>
 
         {footer ? (
-          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle px-4 py-3 min-[1101px]:px-6">
+          // Un diálogo `bare` arma su propio encabezado (con su padding): su pie queda como estaba, alineado con ese.
+          <footer className={cx('flex flex-wrap items-center justify-end border-t border-border-subtle min-[1101px]:px-6', bare ? 'gap-2 px-4 py-3' : 'gap-3 px-5 py-4')}>
             {footer}
           </footer>
         ) : null}

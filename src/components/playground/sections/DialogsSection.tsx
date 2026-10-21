@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, type ComponentProps } from 'react'
 
 import type { LabResults, LabViewResult } from '../../../app/probability-lab'
 import { printImageUrl } from '../../../app/card-prices'
 import type { ArtChoice } from '../../../app/use-card-art-options'
 import { showToastMessage, type ToastTone } from '../../../app/use-toast-message'
+import { formatDay, t } from '../../../i18n'
 import type { ApiCardReference } from '../../../types'
 import { foilKindOf, type FoilFrame, type FoilKind } from '../../../app/card-foil'
 import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../../card-detail/card-tilt'
@@ -11,11 +12,37 @@ import { CardZoom } from '../../card-detail/CardZoom'
 import { RarityFoil } from '../../card-detail/RarityFoil'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
+import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Modal } from '../../ui/Modal'
+import { ConfirmDialog } from '../../probability/ConfirmDialog'
 import { LabScoreSheet } from '../../probability/LabScoreSheet'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
-const SIZES = ['sm', 'md', 'full', 'sheet', 'screen'] as const
+const SIZES = ['sm', 'md', 'full', 'sheet', 'screen', 'keypad'] as const
+
+type ConfirmSample = Omit<ComponentProps<typeof ConfirmDialog>, 'isOpen' | 'onCancel' | 'onConfirm'>
+
+/** Tres confirmaciones de referencia, con texto de acá: borrar algo con nombre, descartar (el botón seguro dice lo que sigue) y una que no destruye (violeta). */
+const REFERENCE_CONFIRMS: ConfirmSample[] = [
+  { title: '¿Borrar “Branded 40”?', description: 'Se borra la build guardada. No se puede deshacer.', confirmLabel: 'Borrar build', confirmColor: 'danger' },
+  { title: '¿Descartar los cambios?', description: 'Se pierde lo que editaste desde que guardaste.', cancelLabel: 'Seguir editando', confirmLabel: 'Descartar', confirmColor: 'danger' },
+  { title: '¿Terminar tu turno?', description: 'El turno pasa a Ana.', confirmLabel: 'Terminar turno' },
+]
+
+/** Cinco confirmaciones de la app con sus textos de verdad: se arman al dibujar (`t()` nunca al cargar el módulo) y salen en el idioma elegido. */
+const appConfirms = (): ConfirmSample[] => [
+  { title: t('lab.panel.delete.title'), description: t('lab.panel.delete.description'), confirmLabel: t('lab.panel.delete.confirm'), confirmColor: 'danger' },
+  { title: t('deck.builder.clearAllTitle'), description: t('deck.builder.clearConfirm', { count: 40 }), confirmLabel: t('deck.builder.clearConfirmYes'), confirmColor: 'danger' },
+  {
+    title: t('deck.import.replace.title'),
+    description: t('deck.import.replace.description', { count: 40, incoming: 42 }),
+    cancelLabel: t('deck.import.replace.keep'),
+    confirmLabel: t('deck.import.replace.confirm'),
+    confirmColor: 'danger',
+  },
+  { title: t('deck.backup.confirmTitle'), description: t('deck.backup.confirmTextDated', { date: formatDay('2026-10-12T10:00:00.000Z') }), confirmLabel: t('deck.backup.confirmButton'), confirmColor: 'danger' },
+  { title: t('roles.panel.confirmTitle'), description: t('roles.panel.confirmText', { count: 40 }), confirmLabel: t('roles.panel.confirmAction'), confirmColor: 'danger' },
+]
 const sampleView = (clean: number, handSize: number, cleanHands: number | null, totalHands: number | null): LabViewResult => ({
   handSize,
   cleanProbability: clean,
@@ -103,6 +130,13 @@ export function DialogsSection() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [zoomOpen, setZoomOpen] = useState(false)
   const [zoomArt, setZoomArt] = useState('print-1')
+  const [confirm, setConfirm] = useState<ConfirmSample | null>(null)
+  const openButtons = (samples: ConfirmSample[]) =>
+    samples.map((sample) => (
+      <Button key={sample.title} size="sm" onClick={() => setConfirm(sample)}>
+        {sample.title}
+      </Button>
+    ))
 
   return (
     <SpecimenGrid min="22rem">
@@ -115,6 +149,27 @@ export function DialogsSection() {
         <Modal isOpen={size !== null} onClose={() => setSize(null)} size={size ?? 'sm'} kicker="Diálogo" icon="info" title={`Tamaño ${size ?? ''}`} subtitle="Un diálogo de prueba." footer={<Button onClick={() => setSize(null)}>Cerrar</Button>}>
           <p className="m-0 text-body text-muted">El contenido del diálogo scrollea adentro si no entra.</p>
         </Modal>
+      </Specimen>
+
+      <Specimen
+        title="Confirmación"
+        layout="column"
+        note={
+          <>
+            Toda confirmación es un <Tag>probability/ConfirmDialog.tsx</Tag> (un <Tag>Modal size="keypad"</Tag>: en el celular sale de abajo). El título pregunta con el verbo; el cuerpo dice qué pasa y si se puede deshacer; «Cancelar» va sin caja (o dice lo que sigue, como «Seguir editando», si sería ambiguo) y la principal, al final, repite el verbo del título. Rojo sólo si no hay vuelta. Las de la app salen en el idioma elegido.
+          </>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <Tag>de referencia</Tag>
+          {openButtons(REFERENCE_CONFIRMS)}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Tag>de la app</Tag>
+          {openButtons(appConfirms())}
+          <LanguageSwitcher />
+        </div>
+        <ConfirmDialog {...(confirm ?? REFERENCE_CONFIRMS[0]!)} isOpen={confirm !== null} onCancel={() => setConfirm(null)} onConfirm={() => setConfirm(null)} />
       </Specimen>
 
       <Specimen title="Ficha «Cómo se calcula»" note={<>Lo que abre la ⓘ de la tarjeta del resultado del Lab: una mano buena, las cuentas por turno y lo que el número no dice. Archivo: <Tag>probability/LabScoreSheet.tsx</Tag></>}>

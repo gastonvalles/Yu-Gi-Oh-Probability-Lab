@@ -96,7 +96,10 @@ export const roles: Translated<typeof es> = {
     other: "{count} cards reset to today's suggestion. Review them one by one.",
   },
   'roles.panel.confirmTitle': 'Reclassify the whole deck?',
-  'roles.panel.confirmText': "Every card goes back to today's suggestion, read from each card's rules. Confirmations and manual corrections on these cards are lost; you'll then review them one by one.",
+  'roles.panel.confirmText': {
+    one: 'The card goes back to the automatic suggestion and what you confirmed or fixed by hand is lost.',
+    other: 'The {count} cards go back to the automatic suggestion and what you confirmed or fixed by hand is lost.',
+  },
   'roles.panel.confirmAction': 'Reclassify',
 
   'roles.panel.filter.unclassified': 'Incomplete',

@@ -17,12 +17,9 @@ export const lab: Translated<typeof es> = {
   'lab.panel.discard.description': "This rule's changes weren't saved. If you leave now, they're lost.",
   'lab.panel.discard.keepEditing': 'Keep editing',
   'lab.panel.discard.confirm': 'Discard',
-  'lab.panel.delete.title': 'Delete rule',
-  'lab.panel.delete.description': 'This rule will be removed from the analysis and the result will be recalculated right away.',
+  'lab.panel.delete.title': 'Delete the rule?',
+  'lab.panel.delete.description': "It leaves the analysis and the result is recalculated. This can't be undone.",
   'lab.panel.delete.confirm': 'Delete rule',
-
-  'lab.confirm.kicker': 'Confirmation',
-  'lab.confirm.confirm': 'Confirm',
 
   'lab.disclaimer.kicker': 'Before you start',
   'lab.disclaimer.title': 'How to read these percentages',

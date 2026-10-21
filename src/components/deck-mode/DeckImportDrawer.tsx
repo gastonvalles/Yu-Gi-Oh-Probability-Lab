@@ -764,13 +764,9 @@ export function DeckImportDrawer({
 
       <ConfirmDialog
         isOpen={isReplaceConfirmOpen}
-        title={t('deck.import.apply.replace')}
-        description={
-          preview
-            ? `${t('deck.import.replace.current', { count: formatInteger(currentDeckCardCount) })} ${t('deck.import.replace.incoming', { count: formatInteger(preview.importedCardCount) })}`
-            : ''
-        }
-        cancelLabel={t('deck.import.replace.back')}
+        title={t('deck.import.replace.title')}
+        description={preview ? t('deck.import.replace.description', { count: formatInteger(currentDeckCardCount), incoming: formatInteger(preview.importedCardCount) }) : ''}
+        cancelLabel={t('deck.import.replace.keep')}
         confirmLabel={t('deck.import.replace.confirm')}
         confirmColor="danger"
         onCancel={() => setIsReplaceConfirmOpen(false)}
