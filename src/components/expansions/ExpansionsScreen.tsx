@@ -163,7 +163,7 @@ function CardHitRow({ hit, onPick }: { hit: CardHit; onPick: (hit: CardHit) => v
         <span className="truncate text-body font-semibold text-foreground">{hit.name}</span>
         <span className="truncate text-micro text-muted">{hit.code || t('catalog.sets.cardHitHint')}</span>
       </span>
-      <Icon name="dollar" size={18} className="text-muted" />
+      <Icon name="dollar-sign" size={18} className="text-muted" />
     </button>
   )
 }

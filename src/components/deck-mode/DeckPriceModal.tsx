@@ -28,9 +28,9 @@ export function DeckPriceModal({ isOpen, onClose, deckBuilder }: DeckPriceModalP
   const state = useDeckPrice(deckBuilder, isOpen)
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" kicker={t('deck.price.kicker')} icon="dollar" title={t('deck.price.title')}>
+    <Modal isOpen={isOpen} onClose={onClose} size="md" kicker={t('deck.price.kicker')} icon="dollar-sign" title={t('deck.price.title')}>
       {state.status === 'idle' ? (
-        <EmptyState icon="dollar" title={t('deck.price.emptyTitle')}>
+        <EmptyState icon="dollar-sign" title={t('deck.price.emptyTitle')}>
           {t('deck.price.emptyText')}
         </EmptyState>
       ) : state.status === 'loading' ? (
