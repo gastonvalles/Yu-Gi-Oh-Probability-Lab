@@ -117,8 +117,9 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
           <img src={cardImageSrc(backdrop)} alt="" draggable={false} className="block size-full scale-125 object-cover opacity-35 blur-3xl" />
         </span>
       ) : null}
-      {/* El lienzo se desplaza cuando la carta es más grande que la pantalla; `m-auto` la centra mientras entra (con `place-items-center` las puntas quedarían cortadas, sin forma de llegar a ellas). Un pellizco no acerca la página: lo toma `usePinchZoom`. */}
-      <div ref={canvasRef} className="absolute inset-0 overflow-auto overscroll-contain [touch-action:pan-x_pan-y]" onClick={(event) => onScrollbar(event) && event.stopPropagation()}>
+      {/* El lienzo se desplaza cuando la carta es más grande que la pantalla; `m-auto` la centra mientras entra (con `place-items-center` las puntas quedarían cortadas, sin forma de llegar a ellas). Un pellizco no acerca la página: lo toma `usePinchZoom`.
+          Al 100 % no se desplaza nunca: la carta entra entera, y al girarla en 3D su borde cercano crece un poco más que la pantalla (con la carta de alto completo en una ventana ancha) y sacaba una barra de desplazamiento que no corresponde. */}
+      <div ref={canvasRef} className={cx('absolute inset-0 overscroll-contain [touch-action:pan-x_pan-y]', inspecting ? 'overflow-hidden' : 'overflow-auto')} onClick={(event) => onScrollbar(event) && event.stopPropagation()}>
         <div className={cx('flex min-h-full min-w-full p-4', TILT_PERSPECTIVE)}>
           <div
             className={cx(

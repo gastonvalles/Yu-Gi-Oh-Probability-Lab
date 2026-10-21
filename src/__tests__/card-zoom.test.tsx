@@ -157,7 +157,7 @@ describe('la barra de abajo de la carta en grande', () => {
   it('Ctrl + la rueda (o el pellizco del trackpad) cambia el zoom de a un paso y no acerca la página; la rueda sola no hace nada (desplaza la carta)', () => {
     open()
     const reset = screen.getByRole('button', { name: 'Volver al 100 %' })
-    const canvas = screen.getByRole('dialog').querySelector('.overflow-auto')!
+    const canvas = screen.getByRole('dialog').querySelector('[class*="touch-action"]')!
     const wheel = (init: WheelEventInit) => {
       const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init })
 
@@ -188,7 +188,7 @@ describe('la barra de abajo de la carta en grande', () => {
   it('pellizcar con dos dedos acerca o aleja de a un paso (no la página) y cancela el giro que había empezado el primer dedo', () => {
     open()
     const reset = screen.getByRole('button', { name: 'Volver al 100 %' })
-    const canvas = screen.getByRole('dialog').querySelector('.overflow-auto')!
+    const canvas = screen.getByRole('dialog').querySelector('[class*="touch-action"]')!
     const touches = (distance: number) => [{ clientX: 100 - distance / 2, clientY: 200 }, { clientX: 100 + distance / 2, clientY: 200 }]
 
     expect(canvas.className).toContain('[touch-action:pan-x_pan-y]')
@@ -240,6 +240,20 @@ describe('la barra de abajo de la carta en grande', () => {
     fireEvent.keyDown(window, { key: '0' })
     expect(reset).toHaveTextContent('100%')
     expect(frame().className).toContain('touch-none')
+  })
+
+  it('al 100 % el lienzo no se desplaza (al girar la carta en 3D su borde cercano pasa un poco de la pantalla y sacaba una barra que no corresponde); con zoom, sí', () => {
+    open()
+    // El lienzo es el que lleva `touch-action` (el diálogo va por un portal al body).
+    const canvas = () => document.querySelector<HTMLElement>('[data-card-zoom] div[class*="touch-action"]')!
+
+    expect(canvas().className).toContain('overflow-hidden')
+    expect(canvas().className).not.toContain('overflow-auto')
+    fireEvent.keyDown(window, { key: '+' })
+    expect(canvas().className).toContain('overflow-auto')
+    expect(canvas().className).not.toContain('overflow-hidden')
+    fireEvent.keyDown(window, { key: '0' })
+    expect(canvas().className).toContain('overflow-hidden')
   })
 
   it('«Leer texto de efecto» muestra el texto de la carta con sus partes resaltadas sobre la imagen, y se esconde con el mismo botón; leerlo no cierra el zoom', () => {
