@@ -14,7 +14,7 @@ export function CopiesBadge({ copies, placement = 'inline', label }: CopiesBadge
   return (
     <span
       className={cx(
-        'inline-flex flex-none items-center rounded-full bg-primary px-1.5 py-px text-micro font-bold leading-4 text-primary-foreground tabular-nums',
+        'inline-flex flex-none items-center rounded-full bg-lavender px-1.5 py-px text-micro font-bold leading-4 text-foreground tabular-nums',
         placement === 'overlay' && 'absolute -bottom-1 -right-1 z-1 shadow-[0_0_0_2px_var(--background)]',
       )}
       aria-label={label ?? t('shell.copies', { count: copies, n: formatInteger(copies) })}>

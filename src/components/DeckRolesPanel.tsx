@@ -570,7 +570,7 @@ export function DeckRolesPanel({
             <div className={cx(filtersInCard && 'min-[1101px]:row-span-2')}>
               <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedShare} label={t('roles.panel.ringLabel')}>
                 <span className="grid justify-items-center leading-none">
-                  <span className="text-lead font-bold tracking-[-0.02em] text-accent min-[1101px]:text-title">{formatWholePercent(classifiedShare)}</span>
+                  <span className="text-lead font-bold tracking-[-0.02em] text-info-soft min-[1101px]:text-title">{formatWholePercent(classifiedShare)}</span>
                   <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75 min-[1101px]:mt-1 min-[1101px]:text-micro">{hasCardsNeedingClassification ? t('roles.panel.ringPartial') : t('roles.panel.ringDone')}</span>
                 </span>
               </ProgressRing>

@@ -11,12 +11,12 @@ type StatusTone = 'warning' | 'primary' | 'success'
 export type CardTypeKey = 'monster' | 'spell' | 'trap'
 
 const PANEL_THEME: Record<ClassificationStateKey, { color: string; rgb: string }> = {
-  all: { color: 'var(--primary)', rgb: 'var(--primary-rgb)' },
+  all: { color: 'var(--info)', rgb: 'var(--info-rgb)' },
   unclassified: { color: 'var(--warning)', rgb: 'var(--warning-rgb)' },
   'missing-origin': { color: 'var(--warning)', rgb: 'var(--warning-rgb)' },
   'missing-role': { color: '#b4a2d4', rgb: '180 162 212' },
-  review: { color: 'var(--primary)', rgb: 'var(--primary-rgb)' },
-  complete: { color: 'var(--accent)', rgb: 'var(--accent-rgb)' },
+  review: { color: 'var(--info)', rgb: 'var(--info-rgb)' },
+  complete: { color: 'var(--success)', rgb: 'var(--success-rgb)' },
 }
 
 /** Orden en que se muestran los roles de una carta (y los filtros por rol). */

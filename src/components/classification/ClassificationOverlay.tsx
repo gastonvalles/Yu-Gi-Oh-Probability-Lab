@@ -62,7 +62,7 @@ export function ClassificationOverlay({
           <span className="min-w-14 text-center text-micro tabular-nums text-soft">
             {formatInteger(position)} / {formatInteger(total)}
           </span>
-          <Button variant="primary" size="md" iconEnd="chevron-right" fullWidth disabled={!onNext} onClick={onNext}>
+          <Button variant="secondary" size="md" iconEnd="chevron-right" fullWidth disabled={!onNext} onClick={onNext}>
             {t('roles.overlay.next')}
           </Button>
         </div>
