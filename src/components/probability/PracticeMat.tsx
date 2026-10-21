@@ -5,6 +5,7 @@ import { parseDerivedCardId } from '../../app/calculator-state'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import { opaqueOfForeign } from '../../app/mat-control'
 import { isOpaqueId } from '../../app/mat-public'
+import { EASE_OUT } from '../../app/motion'
 import {
   allMatIds,
   type AttackTarget,
@@ -335,9 +336,9 @@ const HAND_FLASH_MS = 900
  * Se suma (`composite: 'add'`) a la `transform` que ya tiene la carta (su rotación de costado, el vuelo entre zonas) sin pisarla.
  */
 const FLIP_FRAMES = [
-  { transform: 'perspective(700px) rotateY(0deg)', easing: 'ease-in' },
+  { transform: 'perspective(700px) rotateY(0deg)', easing: EASE_OUT },
   { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
-  { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: 'ease-out' },
+  { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: EASE_OUT },
   { transform: 'perspective(700px) rotateY(0deg)' },
 ]
 const FLIP_MS = 380

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 
 
 import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
 import { cardImageSrc } from './card-image-source'
-import { UI_ANIMATION_MS, supportsAdditiveAnimation } from './motion'
+import { EASE_OUT, UI_ANIMATION_MS, supportsAdditiveAnimation } from './motion'
 import { allMatIds, locateCard, type MatState } from './practice-mat'
 
 /** Cuánto dura el vuelo de una carta entre dos lugares de la mesa. */
@@ -17,7 +17,6 @@ const STAGGER_LIMIT = 8
 const PILE_FLIGHT_LIMIT = 8
 /** Cuánto después de una jugada (o de reacomodarse la mano) todo quedó quieto y se puede medir de nuevo: lo que más dura es un vuelo, y un poco más. */
 const SETTLE_MS = FLIGHT_MS + 100
-const EASING = 'cubic-bezier(0.22, 0.9, 0.3, 1)'
 /** Marca de los vuelos: una jugada que llega con un vuelo a medias lo corta antes de medir, así la carta se mide quieta. */
 const FLIGHT_ID = 'mat-flight'
 
@@ -133,7 +132,7 @@ function localScale(element: HTMLElement, rect: Box): { x: number; y: number } {
  * transformación que ya tiene: un Xyz en defensa sigue acostado y uno que todavía llega volando no salta a su lugar.
  */
 function bump(element: HTMLElement, delay: number) {
-  element.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)', offset: 0.45 }, { transform: 'scale(1)' }], { duration: 260, delay: FLIGHT_MS - 120 + delay, easing: 'ease-out', composite: supportsAdditiveAnimation() ? 'add' : 'replace' })
+  element.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)', offset: 0.45 }, { transform: 'scale(1)' }], { duration: 260, delay: FLIGHT_MS - 120 + delay, easing: EASE_OUT, composite: supportsAdditiveAnimation() ? 'add' : 'replace' })
 }
 
 /** El color con que cada lugar recibe una carta: el cementerio, violeta; el destierro, ámbar; el deck y el Extra, celeste; debajo de un Xyz, azul. */
@@ -155,7 +154,7 @@ function impact(element: HTMLElement, rgb: string, delay: number) {
       { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 22px 6px rgb(${rgb} / 0.7)`, filter: 'brightness(1.25)', offset: 0.4 },
       { boxShadow: `0 0 0 16px rgb(${rgb} / 0), 0 0 34px 10px rgb(${rgb} / 0)`, filter: 'brightness(1)' },
     ],
-    { duration: 700, delay: FLIGHT_MS - 100 + delay, easing: 'ease-out' },
+    { duration: 700, delay: FLIGHT_MS - 100 + delay, easing: EASE_OUT },
   )
 }
 
@@ -253,7 +252,7 @@ function fly(ghost: Ghost, side: Side, delay: number): void {
   const landing = to
     ? `translate(${to.left + (to.width - width) / 2}px, ${to.top + (to.height - height) / 2}px) scale(${to.width / Math.max(1, width)})${turn}`
     : `translate(${left}px, ${top}px) scale(0.6)${turn}`
-  const flight = element.animate([{ transform: element.style.transform, opacity: 1 }, { transform: landing, opacity: to ? 0.75 : 0 }], { ...timing, easing: EASING })
+  const flight = element.animate([{ transform: element.style.transform, opacity: 1 }, { transform: landing, opacity: to ? 0.75 : 0 }], { ...timing, easing: EASE_OUT })
   flight.onfinish = () => element.remove()
   flight.oncancel = () => element.remove()
 
@@ -261,9 +260,9 @@ function fly(ghost: Ghost, side: Side, delay: number): void {
   if (flips && supportsAdditiveAnimation()) {
     element.animate(
       [
-        { transform: 'perspective(700px) rotateY(0deg)', easing: 'ease-in' },
+        { transform: 'perspective(700px) rotateY(0deg)', easing: EASE_OUT },
         { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
-        { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: 'ease-out' },
+        { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: EASE_OUT },
         { transform: 'perspective(700px) rotateY(0deg)' },
       ],
       { ...timing, composite: 'add' },
@@ -328,7 +327,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       const base = getComputedStyle(element).transform
       const own = base === 'none' ? '' : ` ${base}`
 
-      element.animate([{ transform: `${offset(before, rect, localScale(element, rect))}${own}` }, { transform: base }], { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASING })
+      element.animate([{ transform: `${offset(before, rect, localScale(element, rect))}${own}` }, { transform: base }], { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASE_OUT })
     }
 
     // Las que salen del mismo lugar (varias del deck, un Xyz con sus materiales) se taparían: salen una tras otra, en el orden en que quedan en su pila (la

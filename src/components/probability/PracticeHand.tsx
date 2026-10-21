@@ -17,6 +17,7 @@ import {
   type HandLayout,
 } from '../../app/practice-hand-layout'
 import type { SpotlightKind } from '../../app/mat-effects'
+import { EASE_OUT } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
@@ -42,14 +43,14 @@ const HAND_CARD = [
   '[--card-shadow:0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   // La sombra sale de `--card-shadow`: así el borde blanco de pasar el mouse y los aros de color se suman sin pisarse.
   '[box-shadow:var(--card-shadow)]',
-  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),translate_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),scale_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),translate_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),scale_var(--motion-duration)_cubic-bezier(0.25,1,0.5,1),filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]',
   // Pasar el mouse: se eleva y su borde se enciende en blanco, tenue.
   HAND_CARD_HOVER,
   // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.
   '[&>:not([data-back])]:pointer-events-none [&>:not([data-back])]:[-webkit-user-drag:none]',
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info',
   'data-[state=dragging]:cursor-grabbing data-[state=dragging]:shadow-[0_24px_38px_rgba(0,0,0,0.55),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
-  'data-[state=dragging]:[transition:filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  'data-[state=dragging]:[transition:filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]',
   'data-[muted=true]:grayscale data-[muted=true]:brightness-70',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   // Salidas en verde, problemas en rojo, y en un duelo las cartas que pueden responder en ámbar.
@@ -434,10 +435,10 @@ function HandCard({
 
     const flight = element.animate(
       [
-        { transform: spin(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-16deg) scale(${startScale})`, 0), opacity: 0.9, boxShadow: '0 0 0 rgb(0 0 0 / 0)', easing: 'cubic-bezier(0.3, 0.1, 0.4, 1)' },
+        { transform: spin(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-16deg) scale(${startScale})`, 0), opacity: 0.9, boxShadow: '0 0 0 rgb(0 0 0 / 0)', easing: EASE_OUT },
         { transform: spin(midPosition, 90), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)' },
-        { transform: spin(midPosition, -90), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)', easing: 'cubic-bezier(0.3, 0, 0.2, 1)' },
-        { transform: spin(bounce, 0), opacity: 1, offset: 0.82, boxShadow: '0 12px 20px rgb(0 0 0 / 0.4)', easing: 'ease-out' },
+        { transform: spin(midPosition, -90), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)', easing: EASE_OUT },
+        { transform: spin(bounce, 0), opacity: 1, offset: 0.82, boxShadow: '0 12px 20px rgb(0 0 0 / 0.4)', easing: EASE_OUT },
         { transform: spin(`${finalTransform} scale(1)`, 0), opacity: 1 },
       ],
       { duration: DEAL_MS, fill: 'backwards' },
