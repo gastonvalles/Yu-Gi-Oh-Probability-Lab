@@ -562,11 +562,12 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
   })
 
-  it('robar (o tocar el deck, o sumar una carta a la mano) baraja el deck y la mano a la vista', () => {
+  it('barajar, robar o sumar una carta a la mano baraja el deck y la mano a la vista; mandar el tope al cementerio no (la carta se ve volar)', () => {
     const animated: Element[] = []
     const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
 
-    render(<Harness />)
+    // Dos cartas en el deck: una para mandar al cementerio y otra para robar.
+    render(<Harness initial={createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], ['card-7-1'], 4)} />)
     // Con la mano ya repartida (sin movimiento), se pide movimiento: sólo el barajado se mide.
     vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
     Element.prototype.getAnimations = () => []
@@ -580,20 +581,30 @@ describe('la mesa de práctica', () => {
 
     try {
       // Las capas del deck se arman de nuevo (otro elemento) cada vez que se baraja.
-      const layers = () => screen.getByRole('button', { name: 'Main: 1' }).querySelector(':scope > span.absolute:not([data-pile-edge])')
+      const deck = () => screen.getByRole('button', { name: /^Main: [0-9]+$/ })
+      const layers = () => deck().querySelector(':scope > span.absolute:not([data-pile-edge])')
       const before = layers()
 
       // Barajar: el deck se vuelve a armar con su animación y la mano se baraja carta por carta.
-      tap(screen.getByRole('button', { name: 'Main: 1' }))
+      tap(deck())
       fireEvent.click(screen.getByRole('menuitem', { name: 'Barajar' }))
       expect(layers()).not.toBe(before)
       expect(layers()?.querySelector('.animate-riffle-left')).not.toBeNull()
       const inHand = () => animated.filter((element) => element.closest('[data-drop="hand"]') !== null && element.getAttribute('role') === 'listitem')
       expect(inHand().length).toBeGreaterThan(0)
 
-      // Robar también: la mano se baraja de nuevo.
+      // Mandar el tope al cementerio no baraja nada: ni el deck (sus capas siguen siendo las mismas) ni la mano.
       animated.length = 0
-      tap(screen.getByRole('button', { name: 'Main: 1' }))
+      const shuffled = layers()
+      tap(deck())
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Mandar al cementerio' }))
+      expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
+      expect(layers()).toBe(shuffled)
+      expect(inHand()).toHaveLength(0)
+
+      // Robar sí: la mano se baraja de nuevo.
+      animated.length = 0
+      tap(deck())
       fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
       expect(inHand().length).toBeGreaterThan(0)
 

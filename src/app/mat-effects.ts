@@ -29,7 +29,10 @@ export interface MatEffects {
   banner?: { phase: MatPhase; turn: number | null }
   /** Una carta entró a la mano (robada, buscada o devuelta): la mano se enmarca un instante. */
   hand?: true
-  /** La jugada tocó el deck (barajar, robar, buscar, mandar o devolver cartas) o sumó una carta a la mano: el deck y la mano se barajan a la vista. */
+  /**
+   * La jugada barajó el deck (Barajar, buscar una carta, devolverla al azar) o sumó una carta a la mano (robar también): el deck y la mano se barajan a la vista.
+   * Mandar cartas del deck al cementerio o al destierro, o devolver una arriba o abajo, no baraja: se ve volar la carta y la pila da su golpe (`use-card-flights`).
+   */
   shuffle?: true
 }
 
@@ -47,9 +50,10 @@ export function matEffects(before: MatState, action: MatAction): MatEffects {
   const after = matReducer(before, action)
   const effects = effectsOf(before, after, action)
   const handGained = after.hand.length > before.hand.length
-  const touchedDeck = action.type === 'shuffle' || after.deck.length !== before.deck.length
+  // Barajar de verdad: «Barajar», o una jugada con la semilla de lo que se sacó o se metió mirando el deck (buscar una carta, devolverla «Al azar»).
+  const shuffled = action.type === 'shuffle' || (after !== before && 'shuffle' in action && action.shuffle !== undefined)
 
-  return { ...effects, ...(handGained ? { hand: true as const } : {}), ...(handGained || touchedDeck ? { shuffle: true as const } : {}) }
+  return { ...effects, ...(handGained ? { hand: true as const } : {}), ...(handGained || shuffled ? { shuffle: true as const } : {}) }
 }
 
 function effectsOf(before: MatState, after: MatState, action: MatAction): MatEffects {
