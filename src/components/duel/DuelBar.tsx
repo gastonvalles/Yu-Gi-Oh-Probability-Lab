@@ -13,7 +13,7 @@ import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { PHASES } from '../../app/practice-mat'
 import { MatViewToggle } from '../probability/MatViewToggle'
-import { useAnimatedNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
+import { DELTA_MS, useAnimatedNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -87,6 +87,8 @@ interface DuelBarProps {
   resultOpen?: boolean
   /** La señal del rival que está a la vista (pensando, continuá): sale como un globo junto a sus vidas. */
   rivalSignal?: string | null
+  /** Cambia con cada señal del rival (aunque diga lo mismo): su globo vuelve a entrar. */
+  rivalSignalKey?: number
   /** Lo que se apoya sobre la línea del registro (la misma fila, sin sumar alto: el campo no se mueve): un pedido de volver atrás, o cómo terminó el tuyo. */
   lane?: LaneNotice | null
   /** Tocar las vidas del rival abre la calculadora de vidas del duelo (como tocar las propias). */
@@ -180,7 +182,7 @@ const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
-export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null, onOpenLife }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, lane = null, onOpenLife }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -323,7 +325,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
     return (
       <>
         <div className="col-start-1 row-start-1 flex min-w-0 flex-col items-start gap-2">
-          <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} onClick={onOpenLife} />
+          <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} bubbleKey={rivalSignalKey} onClick={onOpenLife} />
           {clockButton}
           <span className="flex flex-wrap items-center gap-1.5 empty:hidden">{chips}</span>
         </div>
@@ -361,7 +363,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink min-[1101px]:[&>[data-lp]]:shrink-0">
         {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
         <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
-        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} onClick={onOpenLife} />
+        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} bubbleKey={rivalSignalKey} onClick={onOpenLife} />
         {clockButton}
         <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-3 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
           {actions}
@@ -513,6 +515,9 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
   )
 }
 
+/** Cuánto se queda el globo de una señal (pensando, todo bien, un 👍) junto a las vidas: el temporizador de `useSignals` (DuelScreen) lo quita a esta misma duración. */
+export const SIGNAL_MS = 3500
+
 interface DuelLifeProps {
   snapshot: DuelSnapshot
   myName: string
@@ -520,11 +525,13 @@ interface DuelLifeProps {
   onOpen: () => void
   /** Lo que acabás de avisar (pensando, todo bien): sale como un globo junto a tus vidas. */
   signal?: string | null
+  /** Cambia con cada señal (aunque diga lo mismo): el globo vuelve a entrar. */
+  signalKey?: number
 }
 
 /** Tus puntos de vida, abajo junto a las fases: se tocan para abrir la calculadora (sincronizada con el duelo, sin salir de él). */
-export function DuelLife({ snapshot, myName, onOpen, signal = null }: DuelLifeProps) {
-  return <LifeTile name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={snapshot.life.lp[snapshot.me]} mine big bubble={signal} onClick={onOpen} />
+export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey }: DuelLifeProps) {
+  return <LifeTile name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={snapshot.life.lp[snapshot.me]} mine big bubble={signal} bubbleKey={signalKey} onClick={onOpen} />
 }
 
 /**
@@ -533,10 +540,10 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null }: DuelLifePr
  * subir o bajar) con la diferencia («−1000») saliendo al lado. En el celular, sin corazón: la fila no se parte. El borde de la tarjeta es de su dueño (violeta el tuyo, ámbar el del rival). Tocarla abre la calculadora.
  * Las dos miden lo mismo de alto.
  */
-export function LifeTile({ name, label, life, mine = false, color, bubble = null, onClick, big = false }: {
+export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, big = false }: {
   /** El de la botonera de abajo (tus vidas): más ancho y con el número más grande. */
   big?: boolean
-  name: string; /** Lo que se ve en la casilla, si no es el nombre (tus vidas dicen «Vos»; el nombre queda para el lector de pantalla). */ label?: string; life: number; mine?: boolean; /** Un aviso que sale un instante junto a las vidas, con el color de su dueño: el rival, debajo; el propio, arriba. */ bubble?: string | null; /** De qué jugador es el color (por defecto, el tuyo si es "mine"): quien mira pone el suyo a cada uno. */ color?: PlayerSide; onClick?: () => void }) {
+  name: string; /** Lo que se ve en la casilla, si no es el nombre (tus vidas dicen «Vos»; el nombre queda para el lector de pantalla). */ label?: string; life: number; mine?: boolean; /** Un aviso que sale un instante junto a las vidas, con el color de su dueño: el rival, debajo; el propio, arriba. */ bubble?: string | null; /** Cambia con cada señal (aunque diga lo mismo): el globo vuelve a entrar. */ bubbleKey?: number; /** De qué jugador es el color (por defecto, el tuyo si es "mine"): quien mira pone el suyo a cada uno. */ color?: PlayerSide; onClick?: () => void }) {
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
   const tone = PLAYER_COLOR[color ?? side]
@@ -554,7 +561,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
         <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
           <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
           {change ? (
-            <span key={change.key} aria-hidden="true" className={cx('shrink-0 animate-pop text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
+            <span key={change.key} aria-hidden="true" style={{ animationDuration: `${DELTA_MS}ms` }} className={cx('shrink-0 animate-linger text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
               {change.delta < 0 ? '−' : '+'}
               {Math.abs(change.delta)}
             </span>
@@ -563,7 +570,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
         <span className={cx('max-w-full shrink-0 truncate font-extrabold leading-none tabular-nums transition-colors duration-200', big ? 'text-stat' : 'text-title', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : tone.text)}>{shown}</span>
       </span>
       {bubble ? (
-        <span role="status" className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-pop rounded-card border bg-card-background normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', isEmojiSignal(bubble) ? 'px-3 py-1 text-display leading-none' : 'truncate px-2.5 py-1 text-body font-semibold', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
+        <span key={bubbleKey} role="status" style={{ animationDuration: `${SIGNAL_MS}ms` }} className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-linger rounded-card border bg-card-background normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', isEmojiSignal(bubble) ? 'px-3 py-1 text-display leading-none' : 'truncate px-2.5 py-1 text-body font-semibold', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
           {bubble}
         </span>
       ) : null}

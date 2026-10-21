@@ -92,4 +92,39 @@ describe('las curvas de movimiento', () => {
 
     expect(sueltas).toEqual([])
   })
+
+  it('lo pasajero se va con un fundido: al 95 % de su vida la opacidad queda bajo 0,3 y termina en 0', () => {
+    // El −N, el globo y el emoji se quedan y se funden en el último 15 % (del 85 % al 100 %), con la curva de salida (`--ease-out`) en el cuadro del 85 %.
+    const inicio = CSS.indexOf('@keyframes linger {')
+    const cuadros = [...sinComentarios(CSS.slice(inicio, CSS.indexOf('@keyframes', inicio + 1))).matchAll(/(\d+)%\s*\{([^}]*)\}/g)].map(([, pct, cuerpo]) => ({
+      pct: Number(pct),
+      opacidad: Number(/opacity:\s*([\d.]+)/.exec(cuerpo)![1]),
+      curva: /animation-timing-function:\s*(cubic-bezier\([^)]*\))/.exec(cuerpo)?.[1],
+    }))
+    const desde = cuadros.find((cuadro) => cuadro.pct === 85)!
+    const hasta = cuadros.find((cuadro) => cuadro.pct === 100)!
+
+    expect(desde.curva).toBe(token('ease-out'))
+    expect(hasta.opacidad).toBe(0)
+
+    // Cubic-bezier como lo evalúa el navegador: se busca el parámetro del tramo para el x de ese instante (bisección) y se lee el y.
+    const [x1, y1, x2, y2] = desde.curva!.slice('cubic-bezier('.length, -1).split(',').map(Number)
+    const punto = (t: number, a: number, b: number) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t ** 2 * b + t ** 3
+    const avance = (x: number) => {
+      let bajo = 0
+      let alto = 1
+      for (let i = 0; i < 60; i += 1) {
+        const medio = (bajo + alto) / 2
+
+        if (punto(medio, x1!, x2!) < x) bajo = medio
+        else alto = medio
+      }
+
+      return punto((bajo + alto) / 2, y1!, y2!)
+    }
+    const fraccion = (95 - desde.pct) / (hasta.pct - desde.pct)
+    const opacidadAl95 = desde.opacidad + (hasta.opacidad - desde.opacidad) * avance(fraccion)
+
+    expect(opacidadAl95).toBeLessThan(0.3)
+  })
 })

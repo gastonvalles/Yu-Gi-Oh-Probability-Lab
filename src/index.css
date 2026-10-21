@@ -93,6 +93,8 @@
   --animate-side-drawer: side-drawer 200ms var(--ease-out) both;
   --animate-nav-scrim: nav-scrim 200ms var(--ease-out) both;
   --animate-pop: pop var(--motion-duration) var(--ease-snap) both;
+  /* Lo pasajero (el −N de las vidas, el globo de una señal, el emoji del rival): entra como un pop, se queda y se funde al final. La duración la pone cada uso con `style` (animationDuration). */
+  --animate-linger: linger 1600ms var(--ease-out) both;
   /* Una carta que se suma a una zona del deck: sube un poco y se asienta (sin relleno hacia adelante: no deja un contexto de apilado detrás). */
   --animate-card-in: card-in 240ms var(--ease-out) backwards;
   /* La pista de «deslizá para dar vuelta»: entra, se queda un rato y se va sola. */
@@ -221,6 +223,32 @@
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+
+  /* Lo pasajero: entra como `pop` (10 % de su vida), se queda y en el último 15 % sube 4 px y se funde. En un @keyframes el navegador ignora var() en la curva de cada cuadro: aquí van los
+     valores de `--ease-snap` (la entrada) y `--ease-out` (la salida), y `__tests__/motion-curves.test.ts` verifica que sean esos y que al 95 % la opacidad quede bajo 0,3. */
+  @keyframes linger {
+    0% {
+      opacity: 0;
+      transform: translateY(0) scale(0.7);
+      animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    10% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    85% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateY(-4px) scale(1);
     }
   }
 
