@@ -5,7 +5,7 @@ import { IconButton } from '../ui/IconButton'
 
 /**
  * El botón de la barra de la mesa que cambia entre la vista superior (plana, para jugar con precisión) y la 3D (inclinada). Muestra el ícono de la vista en que estás
- * (el cubo, en violeta claro, cuando es la 3D; sin borde) y dice a cuál pasa.
+ * (el cubo, en ámbar, cuando es la 3D; sin borde) y dice a cuál pasa.
  */
 export function MatViewToggle({ className }: { className?: string }) {
   const view = useMatView()

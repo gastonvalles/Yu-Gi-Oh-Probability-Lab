@@ -122,7 +122,7 @@ function LiveCard({ stream, onOpen }: { stream: LiveStream; onOpen: () => void }
         {/* El número y la acción en la misma fila, abajo: cuánta gente la mira y el botón para mirarla. */}
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-micro tabular-nums text-muted">{viewers ?? REPLAYS.channels[stream.channel].name}</span>
-          <Button variant="primary" size="md" icon="play" onClick={onOpen}>
+          <Button variant="outline" size="md" icon="play" onClick={onOpen}>
             {t('meta.live.watch')}
           </Button>
         </div>
@@ -157,7 +157,7 @@ function PastCard({ stream, onOpen }: { stream: PastStream; onOpen: () => void }
         {/* Cuándo fue y la acción en la misma fila, abajo. */}
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-micro text-muted">{when ?? REPLAYS.channels[stream.channel].name}</span>
-          <Button variant="primary" size="md" icon="play" onClick={onOpen}>
+          <Button variant="outline" size="md" icon="play" onClick={onOpen}>
             {t('meta.live.past.watch')}
           </Button>
         </div>

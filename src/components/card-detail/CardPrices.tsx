@@ -31,7 +31,7 @@ const packBackground = (code: string) => ({
 })
 
 /**
- * El botón de precios: un ícono blanco con una moneda que se pone verde al pasar el mouse, como los demás de la app. Va siempre afuera de la carta
+ * El botón de precios: un ícono blanco con una moneda que se pone ámbar al pasar el mouse, como los demás íconos de la app. Va siempre afuera de la carta
  * (que se inclina en 3D hacia el mouse), así que no se mueve con ella; el que lo usa le da la posición y qué hacer al tocarlo.
  */
 export function CardPricesButton({ onClick, className }: { onClick: () => void; className?: string }) {
