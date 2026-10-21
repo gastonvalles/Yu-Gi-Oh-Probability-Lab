@@ -38,7 +38,7 @@ interface ModalProps {
   onClose: () => void
   size?: ModalSize
   kicker?: ReactNode
-  /** Ícono del encabezado (en un cuadrito teñido por `tone`): el tipo de diálogo se reconoce sin leer. */
+  /** Ícono del encabezado: blanco si no hay `tone`; con `tone`, toma su color (el tipo de diálogo se reconoce sin leer). */
   icon?: IconName
   tone?: Tone
   title?: ReactNode
@@ -74,7 +74,7 @@ export function Modal({
   size = 'md',
   kicker,
   icon,
-  tone = 'brand',
+  tone,
   title,
   subtitle,
   footer,
@@ -142,7 +142,7 @@ export function Modal({
           // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios).
           <header className="flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5">
             <div className="flex min-w-0 items-start gap-3">
-              {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', TONE[tone].text)} /> : null}
+              {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', tone ? TONE[tone].text : 'text-foreground')} /> : null}
               <div className="grid min-w-0 gap-0.5">
                 {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
                 {title ? (

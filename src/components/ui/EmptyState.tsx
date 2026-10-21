@@ -14,7 +14,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon = 'layers', title, children, className }: EmptyStateProps) {
   return (
     <div className={cx('grid justify-items-center gap-2 px-4 py-8 text-center motion-safe:animate-step-in', className)}>
-      <Icon name={icon} size={28} className="text-primary-soft/70" />
+      <Icon name={icon} size={28} className="text-foreground" />
       <strong className="text-body font-semibold text-foreground">{title}</strong>
       {children ? <p className="m-0 max-w-md text-body text-muted">{children}</p> : null}
     </div>

@@ -56,7 +56,7 @@ function SectionHeading({ title, icon, summary }: { title: string; icon?: IconNa
   return (
     <span className="flex min-w-0 items-start gap-3">
       {icon ? (
-        <Icon name={icon} size={20} className="mt-0.5 shrink-0 text-primary-soft" />
+        <Icon name={icon} size={20} className="mt-0.5 shrink-0 text-foreground" />
       ) : null}
       <span className="grid min-w-0 gap-0.5">
         <strong className={sectionTitle}>{title}</strong>

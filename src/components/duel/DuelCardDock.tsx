@@ -55,7 +55,7 @@ export function DuelCardDock({ peek, highlight = null }: { peek: CardPeek | null
       {/* La carta empieza a una altura pareja (el título y un corrimiento fijo, que crece un poco con el alto de la ventana) y no pegada al borde de arriba: queda en el mismo lugar aunque cambie el texto, y el texto, que ocupa lo que queda, scrollea. */}
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 pt-[clamp(0rem,4dvh,3rem)]">
         <p aria-hidden="true" className={cx(overline, 'm-0 flex items-center gap-2')}>
-          <Icon name="cards" size={14} className="text-primary-soft" />
+          <Icon name="cards" size={14} className="text-foreground" />
           {t('duel.dock.label')}
         </p>
         {view}

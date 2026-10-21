@@ -41,7 +41,7 @@ export function StepHero({ title, icon, subtitle, help, titleAction, side, sideV
   return (
     <header className="relative z-20 flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 items-center gap-3">
-        <Icon name={icon} size={28} className="shrink-0 text-primary-soft" />
+        <Icon name={icon} size={28} className="shrink-0 text-foreground" />
         <div className="grid min-w-0">
           {/* Alto fijo del renglón del título (el de la ayuda o el botón de al lado): el título no sube ni baja de una pestaña a otra. */}
           <div className="flex min-h-8 min-w-0 items-center gap-1">
