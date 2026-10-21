@@ -159,7 +159,7 @@ describe('el creador de tier lists', () => {
     expect(row('Dios')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Editar la fila Dios' })).toHaveStyle({ backgroundColor: 'rgb(127, 191, 255)' })
 
-    fireEvent.click(dialog.getByRole('button', { name: 'Borrar la fila' }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Quitar la fila' }))
     expect(screen.queryByRole('region', { name: 'Dios' })).not.toBeInTheDocument()
     expect(tiles(row('Sin clasificar'))).toHaveLength(2)
   })

@@ -330,7 +330,7 @@ export const meta: Translated<typeof es> = {
   'meta.maker.tierColorOption': 'Color {color}',
   'meta.maker.tierUp': 'Move row up',
   'meta.maker.tierDown': 'Move row down',
-  'meta.maker.tierRemove': 'Delete row',
+  'meta.maker.tierRemove': 'Remove the row',
   'meta.maker.tierRemoveHint': 'Its cards go back to “Unranked”.',
   'meta.maker.tierDone': 'Done',
   'meta.maker.addTier': 'Add row',

@@ -327,7 +327,7 @@ export const meta = {
   'meta.maker.tierColorOption': 'Color {color}',
   'meta.maker.tierUp': 'Subir la fila',
   'meta.maker.tierDown': 'Bajar la fila',
-  'meta.maker.tierRemove': 'Borrar la fila',
+  'meta.maker.tierRemove': 'Quitar la fila',
   'meta.maker.tierRemoveHint': 'Sus cartas vuelven a «Sin clasificar».',
   'meta.maker.tierDone': 'Listo',
   'meta.maker.addTier': 'Agregar fila',
