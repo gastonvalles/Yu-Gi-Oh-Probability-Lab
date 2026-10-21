@@ -72,7 +72,8 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
   // La carta de fondo, desenfocada: la chica alcanza.
   const backdrop = card.imageUrlSmall ?? card.imageUrl ?? fallbackUrl
   // El brillo de la rareza de la impresión que se ve.
-  const foil = foilOf(arts.find((art) => art.id === artId)?.printing?.rarity, card.frameType)
+  const printing = arts.find((art) => art.id === artId)?.printing
+  const foil = foilOf(printing?.rarity, card.frameType, printing?.variant)
 
   // Al pasar a otra carta vuelve al frente.
   const [shownId, setShownId] = useState(card.ygoprodeckId)

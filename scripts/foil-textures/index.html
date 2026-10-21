@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Texturas del foil de rareza</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #150a24; color: #e9ddff; font: 14px/1.4 system-ui, sans-serif; }
+      h1 { font-size: 16px; margin: 0 0 4px; }
+      p { margin: 0 0 12px; max-width: 60ch; }
+      figure { display: inline-grid; gap: 4px; margin: 0 12px 12px 0; }
+      canvas { background: repeating-conic-gradient(#2a1740 0 25%, #1c0f30 0 50%) 0 0 / 16px 16px; max-width: 256px; height: auto; }
+      a { color: #ffd84d; }
+    </style>
+  </head>
+  <body>
+    <h1>Texturas del foil de rareza (YGOUltraLab)</h1>
+    <p>
+      Se dibujan acá, con una semilla fija (siempre salen iguales), y se guardan en <code>public/foil/</code> como WebP. Las usa <code>src/foil.css</code> (<code>RarityFoil</code>). Para regenerarlas: abrir esta página,
+      tocar «Descargar» de cada una (o leer <code>window.TEXTURES</code> desde un script) y copiar los archivos a <code>public/foil/</code>. Son propias: no vienen de ningún otro sitio.
+    </p>
+    <div id="out"></div>
+    <script>
+      /* Un generador de números al azar con semilla (mulberry32): cada textura sale siempre igual. */
+      function rng(seed) {
+        let a = seed >>> 0
+        return () => {
+          a = (a + 0x6d2b79f5) >>> 0
+          let t = a
+          t = Math.imul(t ^ (t >>> 15), t | 1)
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+
+      const TAU = Math.PI * 2
+      const fract = (v) => v - Math.floor(v)
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+
+      /** Ruido de valores que se repite (la textura se puede poner en mosaico sin que se vea la costura): una grilla de `period` celdas por lado. */
+      function tileNoise(seed, period) {
+        const random = rng(seed)
+        const grid = Array.from({ length: period * period }, () => random() * 2 - 1)
+        const smooth = (t) => t * t * (3 - 2 * t)
+
+        return (u, v) => {
+          const x = fract(u) * period
+          const y = fract(v) * period
+          const x0 = Math.floor(x)
+          const y0 = Math.floor(y)
+          const fx = smooth(x - x0)
+          const fy = smooth(y - y0)
+          const at = (ix, iy) => grid[(((iy % period) + period) % period) * period + (((ix % period) + period) % period)]
+          const top = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx
+          const bottom = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx
+
+          return top * (1 - fy) + bottom * fy
+        }
+      }
+
+      function hsl(h, s, l) {
+        const a = s * Math.min(l, 1 - l)
+        const f = (n) => {
+          const k = (n + h * 12) % 12
+
+          return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+        }
+
+        return [f(0) * 255, f(8) * 255, f(4) * 255]
+      }
+
+      function canvas(size) {
+        const element = document.createElement('canvas')
+
+        element.width = size
+        element.height = size
+
+        return element
+      }
+
+      /** Dibuja `draw` en la posición y en las vecinas, para que lo que se sale por un borde entre por el otro (mosaico sin costuras). */
+      function wrapped(ctx, size, x, y, margin, draw) {
+        for (const dx of [-size, 0, size]) {
+          for (const dy of [-size, 0, size]) {
+            const px = x + dx
+            const py = y + dy
+
+            if (px > -margin && px < size + margin && py > -margin && py < size + margin) {
+              draw(px, py)
+            }
+          }
+        }
+      }
+
+      const TEXTURES = {}
+
+      /* 1. La hoja holográfica: bandas de arcoíris en diagonal, deformadas por un ruido suave, con grano fino. Es la base de casi todos los brillos. */
+      TEXTURES.holo = (() => {
+        const size = 512
+        const element = canvas(size)
+        const ctx = element.getContext('2d')
+        const image = ctx.createImageData(size, size)
+        const warp = tileNoise(11, 4)
+        const fine = tileNoise(23, 16)
+        const grain = rng(5)
+
+        for (let y = 0; y < size; y += 1) {
+          for (let x = 0; x < size; x += 1) {
+            const u = x / size
+            const v = y / size
+            const band = 2 * u + 1 * v + 0.34 * warp(u, v) + 0.08 * fine(u, v)
+            const [r, g, b] = hsl(fract(band), 0.9, 0.56 + 0.06 * Math.sin(TAU * (3 * u + 5 * v)) + 0.04 * fine(u + 0.3, v))
+            const noise = (grain() - 0.5) * 20
+            const at = (y * size + x) * 4
+
+            image.data[at] = clamp(r + noise, 0, 255)
+            image.data[at + 1] = clamp(g + noise, 0, 255)
+            image.data[at + 2] = clamp(b + noise, 0, 255)
+            image.data[at + 3] = 255
+          }
+        }
+
+        ctx.putImageData(image, 0, 0)
+
+        return element
+      })()
+
+      /* 2. Polvo brillante: puntos de distinto tamaño (blancos y pastel) y unos pocos destellos de cuatro puntas, sobre fondo transparente. */
+      TEXTURES.glitter = (() => {
+        const size = 512
+        const element = canvas(size)
+        const ctx = element.getContext('2d')
+        const random = rng(31)
+        const tints = ['255,255,255', '255,255,255', '255,255,255', '200,240,255', '255,214,236', '255,246,196', '214,255,226']
+
+        for (let index = 0; index < 520; index += 1) {
+          const x = random() * size
+          const y = random() * size
+          const radius = 0.5 + random() * random() * 1.9
+          const tint = tints[Math.floor(random() * tints.length)]
+          const alpha = 0.4 + random() * 0.6
+
+          wrapped(ctx, size, x, y, radius * 5, (px, py) => {
+            const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 4)
+
+            halo.addColorStop(0, `rgba(${tint},${alpha})`)
+            halo.addColorStop(0.25, `rgba(${tint},${alpha * 0.55})`)
+            halo.addColorStop(1, `rgba(${tint},0)`)
+            ctx.fillStyle = halo
+            ctx.beginPath()
+            ctx.arc(px, py, radius * 4, 0, TAU)
+            ctx.fill()
+          })
+        }
+
+        for (let index = 0; index < 22; index += 1) {
+          const x = random() * size
+          const y = random() * size
+          const length = 9 + random() * 13
+
+          wrapped(ctx, size, x, y, length, (px, py) => {
+            for (const [dx, dy, reach] of [[1, 0, 1], [0, 1, 1], [0.7, 0.7, 0.45], [0.7, -0.7, 0.45]]) {
+              const l = length * reach
+              const ray = ctx.createLinearGradient(px - dx * l, py - dy * l, px + dx * l, py + dy * l)
+
+              ray.addColorStop(0, 'rgba(255,255,255,0)')
+              ray.addColorStop(0.5, 'rgba(255,255,255,0.95)')
+              ray.addColorStop(1, 'rgba(255,255,255,0)')
+              ctx.strokeStyle = ray
+              ctx.lineWidth = reach === 1 ? 1.2 : 0.8
+              ctx.beginPath()
+              ctx.moveTo(px - dx * l, py - dy * l)
+              ctx.lineTo(px + dx * l, py + dy * l)
+              ctx.stroke()
+            }
+          })
+        }
+
+        return element
+      })()
+
+      /* 3. Estrellas chicas de cuatro y cinco puntas, de colores de arcoíris, con un resplandor. */
+      TEXTURES.stars = (() => {
+        const size = 256
+        const element = canvas(size)
+        const ctx = element.getContext('2d')
+        const random = rng(47)
+
+        function star(px, py, outer, points, rotation, color) {
+          const inner = outer * (points === 4 ? 0.32 : 0.45)
+
+          ctx.beginPath()
+
+          for (let index = 0; index < points * 2; index += 1) {
+            const radius = index % 2 === 0 ? outer : inner
+            const angle = rotation + (index * Math.PI) / points
+
+            ctx.lineTo(px + Math.cos(angle) * radius, py + Math.sin(angle) * radius)
+          }
+
+          ctx.closePath()
+          ctx.fillStyle = color
+          ctx.fill()
+        }
+
+        for (let index = 0; index < 46; index += 1) {
+          const x = random() * size
+          const y = random() * size
+          const outer = 3 + random() * 6.5
+          const points = random() < 0.55 ? 4 : 5
+          const [r, g, b] = hsl(random(), 0.95, 0.68)
+          const rotation = random() * TAU
+
+          wrapped(ctx, size, x, y, outer * 3, (px, py) => {
+            const glow = ctx.createRadialGradient(px, py, 0, px, py, outer * 2.6)
+
+            glow.addColorStop(0, `rgba(${r | 0},${g | 0},${b | 0},0.55)`)
+            glow.addColorStop(1, `rgba(${r | 0},${g | 0},${b | 0},0)`)
+            ctx.fillStyle = glow
+            ctx.beginPath()
+            ctx.arc(px, py, outer * 2.6, 0, TAU)
+            ctx.fill()
+            star(px, py, outer, points, rotation, `rgba(${r | 0},${g | 0},${b | 0},1)`)
+            star(px, py, outer * 0.5, points, rotation, 'rgba(255,255,255,0.9)')
+          })
+        }
+
+        return element
+      })()
+
+      /* 4. Cuadraditos con el color de arcoíris de cada uno (como pixeles de un prisma), con una rendija entre uno y otro. */
+      TEXTURES.squares = (() => {
+        const size = 256
+        const cell = 16
+        const element = canvas(size)
+        const ctx = element.getContext('2d')
+        const random = rng(59)
+        const count = size / cell
+
+        for (let row = 0; row < count; row += 1) {
+          for (let column = 0; column < count; column += 1) {
+            const [r, g, b] = hsl(fract(0.55 * (column + row) / count * 2 + random() * 0.45), 0.92, 0.5 + random() * 0.22)
+
+            ctx.fillStyle = `rgba(${r | 0},${g | 0},${b | 0},${0.55 + random() * 0.45})`
+            ctx.fillRect(column * cell + 1, row * cell + 1, cell - 2, cell - 2)
+          }
+        }
+
+        return element
+      })()
+
+      /* 5. Vidrio roto: facetas (celdas de Voronoi que se repiten), cada una con su luz y su color, y los bordes brillando. */
+      TEXTURES.shards = (() => {
+        const size = 512
+        const element = canvas(size)
+        const ctx = element.getContext('2d')
+        const image = ctx.createImageData(size, size)
+        const random = rng(71)
+        const seeds = Array.from({ length: 34 }, () => ({ x: random() * size, y: random() * size, hue: random(), light: 0.32 + random() * 0.5, slant: random() * TAU }))
+
+        for (let y = 0; y < size; y += 1) {
+          for (let x = 0; x < size; x += 1) {
+            let first = Infinity
+            let second = Infinity
+            let owner = seeds[0]
+
+            for (const seed of seeds) {
+              const dx = Math.min(Math.abs(x - seed.x), size - Math.abs(x - seed.x))
+              const dy = Math.min(Math.abs(y - seed.y), size - Math.abs(y - seed.y))
+              const distance = Math.hypot(dx, dy)
+
+              if (distance < first) {
+                second = first
+                first = distance
+                owner = seed
+              } else if (distance < second) {
+                second = distance
+              }
+            }
+
+            const edge = clamp(1 - (second - first) / 3.2, 0, 1)
+            const shade = owner.light + 0.18 * Math.sin(owner.slant + (x * Math.cos(owner.slant) + y * Math.sin(owner.slant)) * 0.012)
+            const [r, g, b] = hsl(fract(owner.hue + shade * 0.15), 0.7, clamp(shade, 0.2, 0.85))
+            const at = (y * size + x) * 4
+
+            image.data[at] = clamp(r + edge * 200, 0, 255)
+            image.data[at + 1] = clamp(g + edge * 200, 0, 255)
+            image.data[at + 2] = clamp(b + edge * 200, 0, 255)
+            image.data[at + 3] = 255
+          }
+        }
+
+        ctx.putImageData(image, 0, 0)
+
+        return element
+      })()
+
+      /* 6. Mosaico: baldosas de distinto tamaño, cada una con su tono y su brillo, y una rendija oscura entre ellas. */
+      TEXTURES.mosaic = (() => {
+        const size = 512
+        const element = canvas(size)
+        const ctx = element.getContext('2d')
+        const random = rng(83)
+        const sizes = [20, 28, 36, 44, 56]
+        let y = 0
+
+        ctx.fillStyle = 'rgba(0,0,0,1)'
+        ctx.fillRect(0, 0, size, size)
+
+        while (y < size) {
+          const rowHeight = Math.min(sizes[Math.floor(random() * sizes.length)], size - y)
+          let x = 0
+
+          while (x < size) {
+            const width = Math.min(sizes[Math.floor(random() * sizes.length)], size - x)
+            const [r, g, b] = hsl(random(), 0.85, 0.35 + random() * 0.4)
+            const tile = ctx.createLinearGradient(x, y, x + width, y + rowHeight)
+
+            tile.addColorStop(0, `rgb(${r | 0},${g | 0},${b | 0})`)
+            tile.addColorStop(1, `rgb(${(r * 0.55) | 0},${(g * 0.55) | 0},${(b * 0.7) | 0})`)
+            ctx.fillStyle = tile
+            ctx.fillRect(x + 1.5, y + 1.5, width - 3, rowHeight - 3)
+            x += width
+          }
+
+          y += rowHeight
+        }
+
+        return element
+      })()
+
+      /* 7. Jeroglíficos dorados: unos pocos símbolos sencillos (ojo, ankh, ondas, ave, círculo con punto) repetidos, sobre fondo transparente. */
+      TEXTURES.glyphs = (() => {
+        const size = 256
+        const element = canvas(size)
+        const ctx = element.getContext('2d')
+
+        ctx.strokeStyle = 'rgba(255,226,140,0.95)'
+        ctx.fillStyle = 'rgba(255,226,140,0.95)'
+        ctx.lineWidth = 2.2
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+
+        const glyphs = [
+          (x, y) => {
+            ctx.beginPath()
+            ctx.ellipse(x, y, 11, 6, 0, 0, TAU)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(x, y, 2.6, 0, TAU)
+            ctx.fill()
+            ctx.beginPath()
+            ctx.moveTo(x - 4, y + 7)
+            ctx.quadraticCurveTo(x - 6, y + 15, x - 12, y + 14)
+            ctx.stroke()
+          },
+          (x, y) => {
+            ctx.beginPath()
+            ctx.ellipse(x, y - 8, 5.5, 7, 0, 0, TAU)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(x, y - 1)
+            ctx.lineTo(x, y + 15)
+            ctx.moveTo(x - 8, y + 5)
+            ctx.lineTo(x + 8, y + 5)
+            ctx.stroke()
+          },
+          (x, y) => {
+            for (const dy of [-6, 0, 6]) {
+              ctx.beginPath()
+              ctx.moveTo(x - 12, y + dy)
+              ctx.quadraticCurveTo(x - 6, y + dy - 6, x, y + dy)
+              ctx.quadraticCurveTo(x + 6, y + dy + 6, x + 12, y + dy)
+              ctx.stroke()
+            }
+          },
+          (x, y) => {
+            ctx.beginPath()
+            ctx.moveTo(x - 12, y + 6)
+            ctx.quadraticCurveTo(x - 4, y - 12, x + 10, y - 4)
+            ctx.lineTo(x + 14, y - 8)
+            ctx.lineTo(x + 12, y)
+            ctx.quadraticCurveTo(x + 6, y + 10, x - 4, y + 10)
+            ctx.closePath()
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(x - 4, y + 10)
+            ctx.lineTo(x - 6, y + 17)
+            ctx.moveTo(x + 2, y + 9)
+            ctx.lineTo(x + 2, y + 16)
+            ctx.stroke()
+          },
+          (x, y) => {
+            ctx.beginPath()
+            ctx.arc(x, y, 9, 0, TAU)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(x, y, 2.8, 0, TAU)
+            ctx.fill()
+          },
+        ]
+        const step = 64
+        const random = rng(97)
+
+        for (let row = 0; row < size / step; row += 1) {
+          for (let column = 0; column < size / step; column += 1) {
+            glyphs[Math.floor(random() * glyphs.length)](column * step + step / 2 + (row % 2) * 10, row * step + step / 2)
+          }
+        }
+
+        return element
+      })()
+
+      /* La página: cada textura con su botón de descarga. `window.TEXTURES` deja los WebP listos para quien los lea desde un script. */
+      window.TEXTURES = {}
+
+      const out = document.getElementById('out')
+
+      for (const [name, element] of Object.entries(TEXTURES)) {
+        const figure = document.createElement('figure')
+        const caption = document.createElement('figcaption')
+        const link = document.createElement('a')
+        const data = element.toDataURL('image/webp', 0.92)
+
+        window.TEXTURES[name] = data
+        link.textContent = 'Descargar'
+        link.href = data
+        link.download = `${name}.webp`
+        caption.append(`${name} (${element.width}×${element.height}) · `, link)
+        figure.append(element, caption)
+        out.append(figure)
+      }
+
+      window.TEXTURES_READY = true
+    </script>
+  </body>
+</html>

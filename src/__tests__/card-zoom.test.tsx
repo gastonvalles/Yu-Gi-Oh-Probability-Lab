@@ -332,12 +332,13 @@ describe('la impresión de la carta en grande', () => {
 })
 
 describe('el brillo de la rareza en la carta en grande', () => {
-  const printing = (rarity: string) => ({ set: 'Set', code: 'XXXX-EN001', rarity, variant: '', editions: [] })
+  const printing = (rarity: string, variant = '') => ({ set: 'Set', code: 'XXXX-EN001', rarity, variant, editions: [] })
   const arts = [
     { id: 'art-1', imageUrl: 'a', imageUrlSmall: null, label: '' },
     { id: 'print-common', imageUrl: 'b', imageUrlSmall: null, label: '', printing: printing('Common') },
     { id: 'print-star', imageUrl: 'c', imageUrlSmall: null, label: '', printing: printing('Starlight Rare') },
     { id: 'print-ultra', imageUrl: 'd', imageUrlSmall: null, label: '', printing: printing('Ultra Rare') },
+    { id: 'print-extended', imageUrl: 'e', imageUrlSmall: null, label: '', printing: printing('Ultra Rare', 'Extended Art') },
   ]
   const ui = (artId: string | null, frameType = 'effect') => (
     <Provider store={store}>
@@ -356,9 +357,18 @@ describe('el brillo de la rareza en la carta en grande', () => {
     expect(foil()!.parentElement!.className).toContain('[backface-visibility:hidden]')
 
     view.rerender(ui('print-ultra'))
-    expect(foil()).toHaveAttribute('data-foil', 'holo')
+    expect(foil()).toHaveAttribute('data-foil', 'ultra')
     view.rerender(ui('print-common'))
     expect(foil()).toBeNull()
+  })
+
+  it('una impresión de arte extendido no tiene la ventana del arte: el brillo cubre toda la carta (marco «full»)', () => {
+    const view = render(ui('print-extended'))
+
+    expect(foil()).toHaveAttribute('data-foil', 'ultra')
+    expect(foil()).toHaveAttribute('data-frame', 'full')
+    view.rerender(ui('print-ultra'))
+    expect(foil()).toHaveAttribute('data-frame', 'monster')
   })
 
   it('un arte que no es de una impresión (los de YGOPRODeck) o sin arte elegido no brilla; el marco del brillo sigue al de la carta', () => {
