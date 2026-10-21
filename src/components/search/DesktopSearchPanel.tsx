@@ -20,7 +20,7 @@ import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
 import { Callout } from '../ui/Callout'
 import { CopiesBadge } from '../ui/CopiesBadge'
-import { field, filterChip } from '../ui/surfaces'
+import { field, filterChip, listItemSelected, rowAddButton } from '../ui/surfaces'
 
 interface DesktopSearchPanelProps {
   search: CardSearchViewState
@@ -36,11 +36,11 @@ interface DesktopSearchPanelProps {
 
 const RESULTS_GRID = 'grid min-h-0 grid-cols-2 content-start gap-2 p-2'
 
-/** Tarjeta de resultado: la elegida y la que ya está al máximo cambian de aspecto. */
+/** Tarjeta de resultado: la elegida (la de la vista previa: aro ámbar) y la que ya está al máximo cambian de aspecto. */
 function resultCard({ selected, maxed, dragging }: { selected: boolean; maxed: boolean; dragging: boolean }): string {
   return cx(
     'group/card relative grid min-w-0 [contain-intrinsic-size:auto_6.9rem] [content-visibility:auto] cursor-pointer grid-cols-[4.2rem_minmax(0,1fr)] items-start gap-2.5 rounded-control p-2 transition-colors duration-150',
-    selected ? 'bg-primary/20' : 'hover:bg-tint/7',
+    selected ? listItemSelected : 'hover:bg-tint/7',
     maxed && 'cursor-not-allowed opacity-45 grayscale',
     dragging && !maxed && 'opacity-35',
   )
@@ -49,11 +49,12 @@ function resultCard({ selected, maxed, dragging }: { selected: boolean; maxed: b
 const ADD_REVEAL =
   'opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
 
+/** El «+» de cada resultado (`rowAddButton`: oscuro con el ícono blanco, ámbar al apuntarlo); recién agregada, verde; al máximo, «MÁX» apagado. */
 function addButton(state: 'idle' | 'added' | 'maxed'): string {
   return cx(
-    'absolute bottom-2 right-2 grid h-8 min-w-8 place-items-center rounded-full border px-2 font-bold leading-none transition-[opacity,transform,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92]',
+    'absolute bottom-2 right-2 grid h-8 min-w-8 place-items-center rounded-full border px-2 font-bold leading-none transition-[opacity,transform,color,border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92]',
     state === 'added' && 'border-success-solid bg-success-solid text-lead text-white opacity-100',
-    state === 'idle' && ['border-primary/60 bg-primary text-lead text-white hover:bg-primary-hover', ADD_REVEAL],
+    state === 'idle' && [rowAddButton, 'text-lead', ADD_REVEAL],
     state === 'maxed' && ['border-border-subtle bg-card-background text-micro text-soft', ADD_REVEAL],
   )
 }
@@ -153,7 +154,7 @@ export function DesktopSearchPanel({
             />
           ) : null}
           {status === 'loading' ? (
-            <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 size-4 animate-spin rounded-full border-2 border-foreground/20 border-t-primary" />
+            <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 size-4 animate-spin rounded-full border-2 border-foreground/20 border-t-info" />
           ) : null}
         </label>
         <SearchFiltersToggle open={filtersOpen} activeCount={search.activeFilterCount} className="size-10 pointer-coarse:size-11" onToggle={() => setFiltersOpen((current) => !current)} />

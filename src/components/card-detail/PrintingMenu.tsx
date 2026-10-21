@@ -4,6 +4,7 @@ import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
 import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
+import { listItemSelected } from '../ui/surfaces'
 
 /** A cuánto está la impresión: el primer precio que se conoce de sus ediciones (1ª edición, Unlimited…), o nada. */
 function priceOf(printing: ArtPrinting): string | null {
@@ -72,7 +73,7 @@ export function PrintingMenu({ arts, artId, open, onOpen, onPick }: PrintingMenu
               aria-selected={art.id === artId}
               className={cx(
                 'flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-control px-3 py-2 text-left text-body text-muted transition-colors hover:bg-tint/10 focus-visible:outline-none focus-visible:shadow-focus',
-                art.id === artId && 'bg-primary/14',
+                art.id === artId && listItemSelected,
               )}
               onClick={() => {
                 onPick(art.id)

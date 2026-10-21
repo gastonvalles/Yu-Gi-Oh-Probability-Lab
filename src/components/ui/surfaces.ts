@@ -43,3 +43,16 @@ export const filterChip =
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =
   'rounded-card transition-colors duration-150 hover:bg-tint/7'
+
+/**
+ * La fila elegida de una lista (el resultado del buscador que se ve en la vista previa, la impresión que se ve en el zoom): lo dice un aro ámbar por dentro, que no
+ * corre nada de lugar, y el velo violeta queda de fondo. Nunca un relleno violeta (es de la acción principal) ni un velo ámbar (sobre el índigo se ve marrón).
+ */
+export const listItemSelected = 'bg-tint/10 inset-ring inset-ring-info/70'
+
+/**
+ * El «+» que se repite en cada fila de resultados (sumar la carta al deck): no es la acción principal de la pantalla, así que no va violeta. Es un círculo oscuro (tapa
+ * el texto de la fila que quede debajo) con un borde fino y el ícono blanco, que se encienden en ámbar al apuntarlo o con el foco, como el `outline`. Va con `border`
+ * y su tamaño; recién agregada, verde (lo pone quien lo usa, en vez de esta clase).
+ */
+export const rowAddButton = 'border-tint/30 bg-background/85 text-white hover:border-info/80 hover:text-info focus-visible:border-info/80 focus-visible:text-info'

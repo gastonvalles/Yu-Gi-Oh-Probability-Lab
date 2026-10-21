@@ -64,7 +64,7 @@ export function MultiSelect({ label, options, selected, onChange, className }: M
         aria-expanded={open}
         aria-controls={panelId}
         aria-labelledby={`${labelId} ${valueId}`}
-        className={cx(field, 'flex min-h-10 w-full items-center justify-between gap-2 px-3 text-left text-body pointer-coarse:min-h-11', open && 'border-primary/70')}
+        className={cx(field, 'flex min-h-10 w-full items-center justify-between gap-2 px-3 text-left text-body aria-expanded:border-info/70 pointer-coarse:min-h-11')}
         onClick={() => setOpen((current) => !current)}
       >
         <span id={valueId} className={cx('min-w-0 flex-1 truncate', chosen.length === 0 ? 'text-muted' : 'font-semibold text-foreground')}>
@@ -82,7 +82,7 @@ export function MultiSelect({ label, options, selected, onChange, className }: M
             >
               <input
                 type="checkbox"
-                className="size-4 shrink-0 cursor-pointer accent-primary focus-visible:outline-none"
+                className="size-4 shrink-0 cursor-pointer accent-info focus-visible:outline-none"
                 checked={selected.includes(option.value)}
                 onChange={() => onChange(selected.includes(option.value) ? selected.filter((value) => value !== option.value) : [...selected, option.value])}
               />

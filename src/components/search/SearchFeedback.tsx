@@ -105,11 +105,12 @@ export function SearchEmptyState({
       <p className={EMPTY_TEXT[layout]}>
         {activeFilterCount > 0 ? t('search.empty.strictFilter') : t('search.empty.checkSpelling')}
       </p>
+      {/* Las dos salidas pesan lo mismo (pastillas lavanda): el texto de arriba ya dice cuál conviene. */}
       <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
         {activeFilterCount > 0 ? (
           <button
             type="button"
-            className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout], 'border-primary/55 bg-primary/20')}
+            className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout])}
             onClick={onClearFilters}
           >
             {t('search.empty.clearFilters', { count: formatInteger(activeFilterCount) })}

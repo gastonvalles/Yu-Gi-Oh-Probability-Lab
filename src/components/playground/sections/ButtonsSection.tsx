@@ -13,7 +13,7 @@ import { CloseButton, IconButton } from '../../ui/IconButton'
 import { OverflowMenu } from '../../ui/OverflowMenu'
 import { ScrollRow } from '../../ui/ScrollRow'
 import { Segmented } from '../../ui/Segmented'
-import { choiceChip, filterChip } from '../../ui/surfaces'
+import { choiceChip, filterChip, listItemSelected, rowAddButton } from '../../ui/surfaces'
 import { Stepper } from '../../ui/Stepper'
 import { Switch } from '../../ui/Switch'
 import { TONE, type Tone } from '../../ui/tone'
@@ -36,6 +36,12 @@ const RARITIES = [
   { name: 'Secret Rare', count: 79 },
   { name: 'Starlight Rare', count: 0 },
 ]
+/** Las filas de muestra de «Fila elegida y + por fila»: la elegida, una cualquiera y la recién agregada. */
+const SEARCH_ROWS = [
+  { name: 'Ash Blossom & Joyous Spring', note: 'Elegida: el aro ámbar', state: 'chosen' },
+  { name: 'Maxx "C"', note: 'Pasá el mouse por el «+» o llegá con Tab', state: 'idle' },
+  { name: 'Nibiru, the Primal Being', note: 'Recién agregada: verde', state: 'added' },
+] as const
 
 /** Los botones de la app y los controles que se tocan: todos salen de `src/components/ui/` (Button, IconButton, Segmented, FilterChips, Switch, Stepper, Badge, surfaces.ts). */
 export function ButtonsSection() {
@@ -189,6 +195,26 @@ export function ButtonsSection() {
             Filtro activo
             <Icon name="x" size={12} strokeWidth={2.5} />
           </button>
+        </Specimen>
+
+        <Specimen title="Fila elegida y «+» por fila" layout="column" note={<>Clases de <Tag>ui/surfaces.ts</Tag> para las listas de resultados: <Tag>listItemSelected</Tag> (la fila elegida —el resultado que se ve en la vista previa del builder, la impresión del zoom—: un aro ámbar por dentro sobre el velo violeta) y <Tag>rowAddButton</Tag> (el «+» que se repite en cada fila: no es la principal, así que va oscuro con el ícono blanco y se enciende en ámbar al apuntarlo o con el foco; recién agregada, verde). Archivos: <Tag>search/DesktopSearchPanel.tsx</Tag> <Tag>search/MobileCardSearch.tsx</Tag> <Tag>card-detail/PrintingMenu.tsx</Tag></>}>
+          <div className="grid w-full max-w-sm gap-1">
+            {SEARCH_ROWS.map(({ name, note, state }) => (
+              <div key={name} className={cx('flex items-center gap-3 rounded-control p-2 transition-colors duration-150', state === 'chosen' ? listItemSelected : 'hover:bg-tint/7')}>
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  <strong className="truncate text-body font-semibold text-foreground">{name}</strong>
+                  <span className="text-micro text-muted">{note}</span>
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Agregar ${name} al deck`}
+                  className={cx('grid size-11 shrink-0 place-items-center rounded-full border transition-[color,border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus', state === 'added' ? 'border-success/70 bg-success/25 text-success-soft' : rowAddButton)}
+                >
+                  <Icon name={state === 'added' ? 'check' : 'plus'} strokeWidth={2} />
+                </button>
+              </div>
+            ))}
+          </div>
         </Specimen>
 
         <Specimen title="Botón flotante" note={<>El de la práctica y el de la calculadora de LP: se arrastra y se pega al borde. Archivo: <Tag>ui/DraggableFab.tsx</Tag></>}>
