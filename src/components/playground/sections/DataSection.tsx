@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { ArtChoice } from '../../../app/use-card-art-options'
+import { formatWholePercent } from '../../../app/utils'
 import { CardArt } from '../../CardArt'
 import { CardArtPicker } from '../../card-detail/CardArtPicker'
 import { CardEffectText } from '../../card-detail/CardEffectText'
@@ -59,7 +60,7 @@ export function DataSection() {
         {TONES.map((tone, index) => (
           <ProgressRing key={tone} value={0.2 + index * 0.15} tone={tone} label={`Tono ${tone}`} delay={index * 100} />
         ))}
-        <ProgressRing value={0.87} size={76} strokeWidth={7} label="Grande" />
+        <ProgressRing value={0.87} size={76} strokeWidth={7} format={formatWholePercent} label="Grande" />
         <ProgressRing value={0.996} label="Casi cien" />
         <ProgressRing value={0.004} label="Casi cero" />
       </Specimen>

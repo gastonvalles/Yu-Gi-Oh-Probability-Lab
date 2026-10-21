@@ -16,6 +16,43 @@ export const EASE_IN_OUT = 'cubic-bezier(0.4, 0, 0.2, 1)'
 /** Lo que arranca ya en movimiento y se asienta (pops, lo que suelta un gesto, estallidos, la moneda, las medallas). */
 export const EASE_SNAP = 'cubic-bezier(0.25, 1, 0.5, 1)'
 
+/**
+ * La curva de un `cubic-bezier(x1, y1, x2, y2)` como función: dado el tiempo recorrido (0 a 1), devuelve cuánto del camino va hecho, como en una transición.
+ * Busca el punto de la curva cuyo `x` es ese tiempo (bisección: el `x` crece con el tiempo) y devuelve su `y`.
+ */
+function bezierEase(curve: string): (time: number) => number {
+  const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = curve.match(/-?[\d.]+/g)?.map(Number) ?? []
+  const at = (p1: number, p2: number, t: number) => 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3
+
+  return (time) => {
+    if (time <= 0) {
+      return 0
+    }
+
+    if (time >= 1) {
+      return 1
+    }
+
+    let low = 0
+    let high = 1
+
+    for (let step = 0; step < 30; step++) {
+      const middle = (low + high) / 2
+
+      if (at(x1, x2, middle) < time) {
+        low = middle
+      } else {
+        high = middle
+      }
+    }
+
+    return at(y1, y2, (low + high) / 2)
+  }
+}
+
+/** `EASE_SNAP` en JS: el número que cuenta un anillo va con la misma curva que su arco (la transición CSS). */
+export const easeSnap = bezierEase(EASE_SNAP)
+
 /** ¿Puede una animación sumarse a otra (`composite: 'add'`)? Los giros en 3D de las cartas se suman a su `transform`; sin esto pisarían el vuelo, así que no se hacen. */
 export function supportsAdditiveAnimation(): boolean {
   return typeof KeyframeEffect !== 'undefined' && 'composite' in KeyframeEffect.prototype

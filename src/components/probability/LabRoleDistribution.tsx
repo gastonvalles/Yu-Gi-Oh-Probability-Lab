@@ -47,10 +47,9 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
                 size={112}
                 strokeWidth={12}
                 delay={index * 120}
+                format={(value) => <strong className="text-lead font-semibold text-foreground tabular-nums">{formatWholePercent(value)}</strong>}
                 label={t('lab.roles.chance', { label: distribution.label, percent: formatShortPercent(distribution.atLeastOne) })}
-              >
-                <strong className="text-lead font-semibold text-foreground tabular-nums">{formatWholePercent(distribution.atLeastOne)}</strong>
-              </ProgressRing>
+              />
               <span className="grid gap-0.5">
                 <strong className="text-body font-semibold text-foreground">{distribution.label}</strong>
                 <small className="text-micro text-muted">{t('lab.roles.copies', { count: distribution.copies, n: formatInteger(distribution.copies) })}</small>

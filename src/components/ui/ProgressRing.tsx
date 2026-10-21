@@ -1,10 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react'
 
+import { useAnimatedNumber } from '../../app/life-effects'
+import { easeSnap } from '../../app/motion'
 import { formatWholePercent } from '../../app/utils'
 import { cx } from './cx'
 import { RING_TRANSITION, clamp01, ringCenterText, ringGeometry } from './ring-shared'
 import { TONE, type Tone } from './tone'
-import { useRingReveal } from './use-ring-reveal'
+import { RING_FILL_MS, useRingReveal } from './use-ring-reveal'
 
 interface ProgressRingProps {
   /** 0 a 1. */
@@ -21,17 +23,25 @@ interface ProgressRingProps {
   ticks?: ReadonlyArray<number>
   /** Milisegundos de espera antes de llenarse (para escalonar varios anillos). */
   delay?: number
-  /** Contenido del centro; por defecto el porcentaje entero (`formatWholePercent`: nunca "100%" ni "0%" si no lo es). */
+  /** Contenido fijo del centro; por defecto el porcentaje entero (`formatWholePercent`: nunca "100%" ni "0%" si no lo es). */
   children?: ReactNode
+  /** Cómo se escribe el centro según el valor (0 a 1). Desde 64 px el número cuenta de 0 junto con el arco; más chico, aparece con su valor. */
+  format?: (value: number) => ReactNode
 }
 
 /** Anillo de progreso que se llena al aparecer, con el porcentaje al centro. Es la única forma de mostrar un porcentaje en la app. */
-export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, ticks, delay = 0, children }: ProgressRingProps) {
+export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, ticks, delay = 0, children, format }: ProgressRingProps) {
   const clamped = clamp01(value)
   const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
   const { ref, revealed, settled, delayMs, instant } = useRingReveal<HTMLDivElement>(delay)
   const shown = revealed ? clamped : 0
   const onBrand = tone === 'onBrand'
+  // Las listas (42 a 56 px) muestran su número de una: un número tan chico no se llega a leer mientras cuenta.
+  const centerContent = format
+    ? size >= 64
+      ? <CountingValue target={shown} ms={instant ? 0 : RING_FILL_MS} delay={delayMs} format={format} />
+      : format(clamped)
+    : (children ?? formatWholePercent(clamped))
 
   return (
     <div
@@ -78,8 +88,18 @@ export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWi
         })}
       </svg>
       <span className={cx('absolute inset-0 grid place-items-center text-center tabular-nums', ringCenterText(size), onBrand ? 'text-primary-foreground' : 'text-foreground')}>
-        {children ?? formatWholePercent(clamped)}
+        {centerContent}
       </span>
     </div>
   )
+}
+
+/**
+ * El número del centro mientras cuenta: va con el arco, con el mismo tiempo (`RING_FILL_MS`), el mismo retraso y la curva de `--ease-snap`. El valor real va en `aria-valuenow` desde el primer cuadro.
+ * ponytail: el número va por estado de React, así que pinta un cuadro después que el arco (medido: 1 o 2 cuadros bajo carga). Si hiciera falta exacto, `flushSync` dentro del cuadro.
+ */
+function CountingValue({ target, ms, delay, format }: { target: number; ms: number; delay: number; format: (value: number) => ReactNode }) {
+  const counted = useAnimatedNumber(target, { ms, delay, ease: easeSnap, round: false })
+
+  return <>{format(counted)}</>
 }

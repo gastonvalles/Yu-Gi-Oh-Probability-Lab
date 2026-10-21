@@ -59,10 +59,9 @@ export function LabScoreCard({ results, view, isRecalculating, handSize, onOpenD
           size={168}
           strokeWidth={14}
           ticks={THRESHOLD_TICKS}
+          format={per100}
           label={t('lab.score.ringLabel', { percent: formatShortPercent(current.cleanProbability), tone: KPI_TONE_LABELS[kpi] })}
-        >
-          {per100(current.cleanProbability)}
-        </ProgressRing>
+        />
 
         <div className="grid gap-1">
           <p className="m-0 text-lead font-semibold text-foreground">{t('lab.score.outOf100')}</p>
