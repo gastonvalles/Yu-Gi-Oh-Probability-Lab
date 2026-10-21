@@ -48,12 +48,15 @@ export const FX_CARD = [
  * (`FX_CARD`): una carta que destella, está marcada o tiene el menú abierto lleva el borde blanco debajo de su aro y no se pisan. `hover:` ya viene dentro de `@media (hover: hover)`: en el celular no queda pegado.
  * Sin movimiento (`motion-reduce`) la carta no se mueve y queda sólo el borde. Arrastrada no se eleva. La carta del campo sube lo justo para no perderse de la casilla; la de la mano, más (`HAND_CARD_HOVER`).
  * Las dos piden `--card-shadow` y una lista de transiciones con `translate` y `scale` (`CARD_TRANSITION`, completa: Tailwind sólo lee clases literales).
+ * **La de la mano sólo sube, no crece** (Gastón, 2026-10-20: «se levanta mal, debe ser hacia arriba, no hacia el costado»): cada carta del abanico está puesta con su `transform: translate3d(x, y) rotate(…)` y la propiedad `scale` se aplica
+ * *después* de ese `transform`, desde el origen de la carta (no desde donde quedó): multiplicaba el desplazamiento `x` del abanico y cada carta se corría hacia la derecha tanto más cuanto más lejos estaba (35 px la quinta). `translate`,
+ * en cambio, va por fuera: sube derecho.
  */
 const HOVER_RING = 'hover:[--card-shadow:0_10px_20px_rgba(0,0,0,0.5),0_0_0_1px_rgb(255_255_255/0.6),0_0_12px_rgb(255_255_255/0.2)]'
 const NO_LIFT = 'motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 data-[dragging=true]:hover:translate-y-0 data-[dragging=true]:hover:scale-100 data-[state=dragging]:hover:translate-y-0 data-[state=dragging]:hover:scale-100'
 
 export const CARD_HOVER = [HOVER_RING, 'hover:z-10 hover:-translate-y-0.5 hover:scale-105', NO_LIFT].join(' ')
-export const HAND_CARD_HOVER = [HOVER_RING, 'hover:z-40! hover:-translate-y-2 hover:scale-[1.06]', NO_LIFT].join(' ')
+export const HAND_CARD_HOVER = [HOVER_RING, 'hover:z-40! hover:-translate-y-3.5', NO_LIFT].join(' ')
 
 /**
  * Las transiciones de una carta de la mesa: el giro al cambiar de posición, el brillo, la sombra y, para elevarse, `translate` y `scale` (propiedades individuales: no pisan el `transform` de la rotación de una carta
