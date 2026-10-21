@@ -7,9 +7,12 @@ import {
   TIER_PALETTE,
   addCards,
   addTier,
+  addTierAt,
+  clearTier,
   countCards,
   moveCard,
-  moveTier,
+  moveTierTo,
+  prefersLightText,
   readStore,
   removeCard,
   removeTier,
@@ -26,6 +29,7 @@ import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
@@ -33,6 +37,7 @@ import { Modal } from '../ui/Modal'
 import { StepPage } from '../ui/StepPage'
 import { TierMakerAddCards } from './TierMakerAddCards'
 import { TierMakerBoard } from './TierMakerBoard'
+import { labelInk } from './TierStrip'
 
 /** El nombre de la imagen descargada: `downloadBlob` le pone la extensión, así que sale `tier-list.png`. */
 const IMAGE_NAME = 'tier-list'
@@ -94,6 +99,20 @@ export function TierMakerScreen() {
 
   const editing = list.tiers.find((tier) => tier.id === editingTier) ?? null
   const tierIndex = editing ? list.tiers.indexOf(editing) : -1
+  const full = list.tiers.length >= MAX_TIERS
+  /** Lo que hacen los botones del menú de la fila: se ve en el tablero, así que el menú se cierra. */
+  const editAndClose = (change: (current: MakerList) => MakerList) => {
+    update(change)
+    setEditingTier(null)
+  }
+  /** Al cerrar, el menú devuelve el foco al engranaje (o a la letra) que lo abrió; el de la fila quitada ya no está, así que pasa a la letra de la fila que quedó en su lugar (si no, se perdería en la página). */
+  const removeEditing = (tierId: string) => {
+    const next = list.tiers[tierIndex + 1] ?? list.tiers[tierIndex - 1]
+
+    editAndClose((current) => removeTier(current, tierId))
+
+    if (next) requestAnimationFrame(() => [...document.querySelectorAll<HTMLElement>('[data-tier-row]')].find((box) => box.dataset.tierRow === next.id)?.querySelector<HTMLElement>('button')?.focus())
+  }
 
   return (
     <StepPage as="article" wide>
@@ -124,7 +143,15 @@ export function TierMakerScreen() {
       </div>
 
       <div>
-        <TierMakerBoard list={list} selectedId={selectedId} onSelect={setSelectedId} onMove={move} onRemoveCard={drop} onEditTier={setEditingTier}>
+        <TierMakerBoard
+          list={list}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onMove={move}
+          onRemoveCard={drop}
+          onEditTier={setEditingTier}
+          onMoveTier={(tierId, index) => update((current) => moveTierTo(current, tierId, index))}
+        >
           {/* Antes de «Sin clasificar», pegados a las filas (Gastón, 2026-10-21). Quitar saca la última: sus cartas vuelven a «Sin clasificar», así que no se pregunta. */}
           <div className="mt-1 flex flex-wrap items-center gap-1">
             <Button variant="tertiary" size="sm" icon="plus" disabled={list.tiers.length >= MAX_TIERS} onClick={() => update((current) => addTier(current, t('meta.maker.newTierLabel')))}>
@@ -166,44 +193,45 @@ export function TierMakerScreen() {
               />
             </FieldBox>
 
-            <div role="group" aria-label={t('meta.maker.tierColor')} className="flex flex-wrap gap-2">
+            {/* Dos renglones de siete círculos en todos los tamaños: a 390 px no entran catorce de 44 px en uno. El elegido, con el aro ámbar y la tilde. */}
+            <div role="group" aria-label={t('meta.maker.tierColor')} className="grid grid-cols-7 justify-items-center gap-1">
               {TIER_PALETTE.map((color) => (
-                <button
+                <IconButton
                   key={color}
-                  type="button"
+                  tone="swatch"
                   aria-pressed={editing.color === color}
                   aria-label={t('meta.maker.tierColorOption', { color })}
-                  className="grid size-10 cursor-pointer place-items-center rounded-control border-0 text-accent-foreground focus-visible:outline-none focus-visible:shadow-focus aria-pressed:shadow-focus"
+                  // El gris oscuro casi no se distingue del panel: lleva un filo lavanda, y su tilde va clara.
+                  className={cx(labelInk(color), prefersLightText(color) && 'inset-ring inset-ring-tint/50')}
                   style={{ backgroundColor: color }}
                   onClick={() => update((current) => updateTier(current, editing.id, { color }))}
                 >
-                  {editing.color === color ? <Icon name="check" size={18} /> : null}
-                </button>
+                  {editing.color === color ? <Icon name="check" strokeWidth={2.5} /> : null}
+                </IconButton>
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <IconButton tone="ghost" aria-label={t('meta.maker.tierUp')} title={t('meta.maker.tierUp')} disabled={tierIndex <= 0} onClick={() => update((current) => moveTier(current, editing.id, -1))}>
-                <Icon name="chevron-up" />
-              </IconButton>
-              <IconButton tone="ghost" aria-label={t('meta.maker.tierDown')} title={t('meta.maker.tierDown')} disabled={tierIndex >= list.tiers.length - 1} onClick={() => update((current) => moveTier(current, editing.id, 1))}>
-                <Icon name="chevron-down" />
-              </IconButton>
-              <Button
-                variant="tertiary"
-                size="sm"
-                color="danger"
-                icon="trash"
-                className="ml-auto"
-                onClick={() => {
-                  update((current) => removeTier(current, editing.id))
-                  setEditingTier(null)
-                }}
-              >
-                {t('meta.maker.tierRemove')}
-              </Button>
+            {/* Lo que se hace con la fila, de a dos: agregar (arriba o abajo) y sacar sus cartas o la fila entera. En el celular, uno abajo del otro. */}
+            <div className="grid gap-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button size="sm" icon="plus" disabled={full} onClick={() => editAndClose((current) => addTierAt(current, tierIndex, t('meta.maker.newTierLabel')))}>
+                  {t('meta.maker.tierAddAbove')}
+                </Button>
+                <Button size="sm" icon="plus" disabled={full} onClick={() => editAndClose((current) => addTierAt(current, tierIndex + 1, t('meta.maker.newTierLabel')))}>
+                  {t('meta.maker.tierAddBelow')}
+                </Button>
+                {/* El ícono de «Sin clasificar» (el de su recuadro en el celular): es a donde van las cartas. */}
+                <Button size="sm" icon="cards" disabled={editing.cards.length === 0} onClick={() => editAndClose((current) => clearTier(current, editing.id))}>
+                  {t('meta.maker.tierClear')}
+                </Button>
+                <Button size="sm" color="danger" icon="trash" onClick={() => removeEditing(editing.id)}>
+                  {t('meta.maker.tierRemove')}
+                </Button>
+              </div>
+              {/* Por qué no se puede agregar: los dos botones de arriba están apagados. */}
+              {full ? <p className="m-0 text-micro text-warning-soft">{t('meta.maker.tierMax', { max: MAX_TIERS })}</p> : null}
+              <p className="m-0 text-micro text-soft">{t('meta.maker.tierRemoveHint')}</p>
             </div>
-            <p className="m-0 text-micro text-soft">{t('meta.maker.tierRemoveHint')}</p>
           </div>
         ) : null}
       </Modal>

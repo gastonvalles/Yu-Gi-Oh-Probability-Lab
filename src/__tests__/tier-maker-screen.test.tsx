@@ -36,6 +36,8 @@ afterEach(cleanup)
 
 const tiles = (scope: HTMLElement = document.body) => within(scope).queryAllByRole('button', { name: /^Carta / })
 const row = (name: string) => screen.getByRole('region', { name })
+/** El orden de las filas del tablero (sin «Sin clasificar»). */
+const order = () => [...document.querySelectorAll('[data-tier-row] > section[aria-label]')].map((section) => section.getAttribute('aria-label')).filter((label) => label !== 'Sin clasificar')
 /** Deja guardada una lista con las dos cartas del deck de prueba en «Sin clasificar»: lo que antes sumaba el botón «Mi deck». */
 const seed = () => {
   const list = addCards(newList('Mi tier list'), deck)
@@ -164,19 +166,11 @@ describe('el creador de tier lists', () => {
     expect(tiles(row('Sin clasificar'))).toHaveLength(2)
   })
 
-  it('las filas se suben, se bajan y se agregan', () => {
+  it('las filas se agregan al final con «Agregar fila»', () => {
     render(<TierMakerScreen />)
 
-    const order = () => [...document.querySelectorAll('section[aria-label]')].map((section) => section.getAttribute('aria-label')).slice(0, 3)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Editar la fila S' }))
-    expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'Subir la fila' })).toBeDisabled()
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bajar la fila' }))
-    expect(order()).toEqual(['A', 'S', 'B'])
-
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Listo' }))
     fireEvent.click(screen.getByRole('button', { name: 'Agregar fila' }))
-    expect(row('Nueva')).toBeInTheDocument()
+    expect(order().at(-1)).toBe('Nueva')
   })
 
   it('se guarda sola en el navegador: al volver, está como se dejó', () => {
@@ -350,5 +344,229 @@ describe('los botones de las filas (Gastón: «deben estar antes de la sección 
     expect(screen.getAllByRole('region', { name: 'Nueva' })).toHaveLength(12)
     expect(add).toBeDisabled()
     expect(remove).toBeEnabled()
+  })
+})
+
+const dialog = () => within(screen.getByRole('dialog', { name: 'Editar fila' }))
+
+describe('al final de cada fila, el engranaje y el agarre (Gastón, 2026-10-21: «en las tierlists nos faltan esas opciones al final»)', () => {
+  it('cada fila lleva, después de sus cartas, el engranaje y el agarre con el nombre de la fila; «Sin clasificar» no lleva ninguno', () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'S')
+
+    const gear = within(row('S')).getByRole('button', { name: 'Ajustes de la fila S' })
+    const grip = within(row('S')).getByRole('button', { name: 'Mover la fila S' })
+    const after = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+    expect(after(tiles(row('S'))[0] as HTMLElement, gear)).toBe(true)
+    expect(after(gear, grip)).toBe(true)
+    expect(grip).toHaveAccessibleDescription('Arrastrala para cambiarla de lugar, o usá ↑ y ↓.')
+    // Sólo el agarre deja de desplazar la página con el dedo: el resto de la fila no.
+    expect(grip).toHaveClass('touch-none')
+    expect(row('S').querySelector('.touch-none')).toBe(grip)
+
+    for (const label of ['A', 'B', 'C', 'D', 'E', 'F']) expect(within(row(label)).getByRole('button', { name: `Ajustes de la fila ${label}` })).toBeInTheDocument()
+
+    expect(within(row('Sin clasificar')).queryByRole('button', { name: /^Ajustes|^Mover la fila/ })).not.toBeInTheDocument()
+  })
+
+  it('el engranaje abre el mismo menú que la letra de la fila', () => {
+    render(<TierMakerScreen />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes de la fila B' }))
+    expect(dialog().getByRole('textbox', { name: 'Nombre de la fila' })).toHaveValue('B')
+    fireEvent.click(dialog().getByRole('button', { name: 'Listo' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar la fila B' }))
+    expect(dialog().getByRole('textbox', { name: 'Nombre de la fila' })).toHaveValue('B')
+  })
+
+  it('el menú: catorce colores (el elegido marcado), y agregar arriba o abajo, vaciar y quitar la fila; ya no tiene las flechas de subir y bajar', () => {
+    render(<TierMakerScreen />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes de la fila S' }))
+
+    const colors = within(dialog().getByRole('group', { name: 'Color' })).getAllByRole('button')
+
+    expect(colors).toHaveLength(14)
+    expect(colors.filter((color) => color.getAttribute('aria-pressed') === 'true').map((color) => color.getAttribute('aria-label'))).toEqual(['Color #ff7f7f'])
+
+    // Uno de los nuevos: el gris oscuro, con la letra clara.
+    fireEvent.click(dialog().getByRole('button', { name: 'Color #3b3b3b' }))
+    expect(dialog().getByRole('button', { name: 'Color #3b3b3b' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Editar la fila S' })).toHaveClass('text-foreground')
+
+    for (const name of ['Agregar una fila arriba', 'Agregar una fila abajo', 'Vaciar la fila', 'Quitar la fila']) expect(dialog().getByRole('button', { name })).toBeInTheDocument()
+    for (const name of ['Subir la fila', 'Bajar la fila']) expect(dialog().queryByRole('button', { name })).not.toBeInTheDocument()
+  })
+
+  it('«Agregar una fila arriba» y «abajo» la ponen ahí y cierran el menú', async () => {
+    render(<TierMakerScreen />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes de la fila B' }))
+    fireEvent.click(dialog().getByRole('button', { name: 'Agregar una fila arriba' }))
+    expect(order()).toEqual(['S', 'A', 'Nueva', 'B', 'C', 'D', 'E', 'F'])
+    // El menú puede animar su salida: se espera a que se vaya.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes de la fila F' }))
+    fireEvent.click(dialog().getByRole('button', { name: 'Agregar una fila abajo' }))
+    expect(order()).toEqual(['S', 'A', 'Nueva', 'B', 'C', 'D', 'E', 'F', 'Nueva'])
+  })
+
+  it('con 12 filas, agregar se apaga y el menú dice por qué', () => {
+    render(<TierMakerScreen />)
+
+    for (let count = 0; count < 5; count += 1) fireEvent.click(screen.getByRole('button', { name: 'Agregar fila' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes de la fila S' }))
+    expect(dialog().getByRole('button', { name: 'Agregar una fila arriba' })).toBeDisabled()
+    expect(dialog().getByRole('button', { name: 'Agregar una fila abajo' })).toBeDisabled()
+    expect(dialog().getByText('Ya hay 12 filas, el tope: quitá una para agregar otra.')).toBeInTheDocument()
+  })
+
+  it('«Vaciar la fila» manda sus cartas a «Sin clasificar» y la fila queda; vacía, el botón se apaga', () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'A')
+    moveTo('Effect Veiler', 'A')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes de la fila A' }))
+    fireEvent.click(dialog().getByRole('button', { name: 'Vaciar la fila' }))
+    expect(tiles(row('A'))).toHaveLength(0)
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Crossout Designator', 'Carta Effect Veiler'])
+    expect(order()).toEqual(['S', 'A', 'B', 'C', 'D', 'E', 'F'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes de la fila A' }))
+    expect(dialog().getByRole('button', { name: 'Vaciar la fila' })).toBeDisabled()
+  })
+
+  it('«Quitar la fila» la saca (sus cartas vuelven a «Sin clasificar») y el foco pasa a la fila que quedó en su lugar, no a la página', async () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'A')
+
+    const gear = screen.getByRole('button', { name: 'Ajustes de la fila A' })
+
+    gear.focus()
+    fireEvent.click(gear)
+    fireEvent.click(dialog().getByRole('button', { name: 'Quitar la fila' }))
+
+    expect(order()).toEqual(['S', 'B', 'C', 'D', 'E', 'F'])
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler', 'Carta Crossout Designator'])
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Editar la fila B' })).toHaveFocus())
+  })
+
+  it('con el teclado, ↑ y ↓ en el agarre mueven la fila de a un lugar, el foco se queda en el agarre y se anuncia dónde quedó; en las puntas no pasa nada', () => {
+    render(<TierMakerScreen />)
+
+    const grip = screen.getByRole('button', { name: 'Mover la fila S' })
+
+    grip.focus()
+    fireEvent.keyDown(grip, { key: 'ArrowUp' })
+    expect(order()[0]).toBe('S')
+
+    fireEvent.keyDown(grip, { key: 'ArrowDown' })
+    expect(order().slice(0, 3)).toEqual(['A', 'S', 'B'])
+    expect(screen.getByRole('button', { name: 'Mover la fila S' })).toHaveFocus()
+    expect(screen.getByText('Fila S: lugar 2 de 7.')).toHaveAttribute('aria-live', 'polite')
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Mover la fila S' }), { key: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Mover la fila S' }), { key: 'ArrowUp' })
+    expect(order().slice(0, 3)).toEqual(['A', 'S', 'B'])
+    expect(screen.getByRole('button', { name: 'Mover la fila S' })).toHaveFocus()
+  })
+
+  it('el orden nuevo se guarda: al volver, las filas están como se dejaron', () => {
+    const first = render(<TierMakerScreen />)
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Mover la fila F' }), { key: 'ArrowUp' })
+    first.unmount()
+
+    render(<TierMakerScreen />)
+    expect(order()).toEqual(['S', 'A', 'B', 'C', 'D', 'F', 'E'])
+  })
+
+  describe('el arrastre de las filas y el de las cartas no se mezclan', () => {
+    const originals = {
+      offsetTop: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetTop'),
+      offsetHeight: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight'),
+    }
+
+    beforeEach(() => {
+      // jsdom no hace layout: cada caja de fila mide 98 px con 2 de aire, una abajo de la otra.
+      const index = (element: HTMLElement) => [...(element.parentElement?.querySelectorAll(':scope > [data-tier-row]') ?? [])].indexOf(element)
+
+      Object.defineProperty(HTMLElement.prototype, 'offsetTop', { configurable: true, get(this: HTMLElement) { return this.dataset.tierRow ? index(this) * 100 : 0 } })
+      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return this.dataset.tierRow ? 98 : 0 } })
+      HTMLElement.prototype.setPointerCapture = () => {}
+    })
+
+    afterEach(() => {
+      for (const [name, descriptor] of Object.entries(originals)) {
+        if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor)
+        else Reflect.deleteProperty(HTMLElement.prototype, name)
+      }
+    })
+
+    it('arrastrar una fila con el mouse la cambia de lugar con sus cartas, y ninguna carta cambia de fila', () => {
+      seed()
+      render(<TierMakerScreen />)
+      moveTo('Crossout Designator', 'S')
+
+      const grip = screen.getByRole('button', { name: 'Mover la fila S' })
+
+      // De la mitad de S (49 px) a 260: su centro pasa los de A (149) y B (249).
+      fireEvent.pointerDown(grip, { pointerId: 7, pointerType: 'mouse', button: 0, clientY: 49 })
+      fireEvent.pointerMove(grip, { pointerId: 7, pointerType: 'mouse', clientY: 160 })
+      fireEvent.pointerMove(grip, { pointerId: 7, pointerType: 'mouse', clientY: 260 })
+      fireEvent.pointerUp(grip, { pointerId: 7, pointerType: 'mouse', clientY: 260 })
+
+      expect(order()).toEqual(['A', 'B', 'S', 'C', 'D', 'E', 'F'])
+      expect(names(row('S'))).toEqual(['Carta Crossout Designator'])
+      expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+    })
+
+    it('un clic en el agarre sin mover no mueve nada, y el botón derecho no arrastra', () => {
+      render(<TierMakerScreen />)
+
+      const grip = screen.getByRole('button', { name: 'Mover la fila S' })
+
+      fireEvent.pointerDown(grip, { pointerId: 8, pointerType: 'mouse', button: 0, clientY: 49 })
+      fireEvent.pointerMove(grip, { pointerId: 8, pointerType: 'mouse', clientY: 51 })
+      fireEvent.pointerUp(grip, { pointerId: 8, pointerType: 'mouse', clientY: 51 })
+      fireEvent.pointerDown(grip, { pointerId: 9, pointerType: 'mouse', button: 2, clientY: 49 })
+      fireEvent.pointerMove(grip, { pointerId: 9, pointerType: 'mouse', clientY: 400 })
+      fireEvent.pointerUp(grip, { pointerId: 9, pointerType: 'mouse', clientY: 400 })
+
+      expect(order()).toEqual(['S', 'A', 'B', 'C', 'D', 'E', 'F'])
+    })
+
+    it('soltar una carta sobre una fila (o sobre su agarre) mueve la carta y no reordena las filas', () => {
+      seed()
+      render(<TierMakerScreen />)
+
+      const dataTransfer = { setData: vi.fn(), getData: () => '', effectAllowed: '', dropEffect: '' }
+      const card = tiles(row('Sin clasificar'))[0] as HTMLElement
+      const rowC = row('C').querySelector('ul') as HTMLElement
+
+      fireEvent.dragStart(card, { dataTransfer })
+      fireEvent.dragOver(rowC, { dataTransfer })
+      fireEvent.drop(rowC, { dataTransfer })
+      fireEvent.dragEnd(card, { dataTransfer })
+      expect(names(row('C'))).toEqual(['Carta Crossout Designator'])
+
+      const grip = screen.getByRole('button', { name: 'Mover la fila A' })
+      const second = tiles(row('Sin clasificar'))[0] as HTMLElement
+
+      fireEvent.dragStart(second, { dataTransfer })
+      fireEvent.dragOver(grip, { dataTransfer })
+      fireEvent.drop(grip, { dataTransfer })
+      fireEvent.dragEnd(second, { dataTransfer })
+
+      expect(order()).toEqual(['S', 'A', 'B', 'C', 'D', 'E', 'F'])
+      expect(tiles(row('A'))).toHaveLength(0)
+      expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+    })
   })
 })

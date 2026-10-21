@@ -11,8 +11,11 @@ export const MAX_CARDS = 300
 export const MAX_LABEL = 14
 export const MAX_TITLE = 60
 
-/** Los colores de las filas: los clásicos de las tier lists (la S roja, la F violeta) más un verde menta. */
-export const TIER_PALETTE = ['#ff7f7f', '#ffbf7f', '#ffdf7f', '#ffff7f', '#bfff7f', '#7fffbf', '#7fbfff', '#ff7fff'] as const
+/**
+ * Los colores de las filas, en dos renglones de siete (el menú de la fila los muestra así): los clásicos de las tier lists, de la S roja al celeste (con un verde menta), y después los violetas, el
+ * rosa, los grises y el blanco (Gastón, 2026-10-21, con la paleta de otro sitio de referencia). Los ocho de antes siguen acá: lo guardado con ellos se lee igual.
+ */
+export const TIER_PALETTE = ['#ff7f7f', '#ffbf7f', '#ffdf7f', '#ffff7f', '#bfff7f', '#7fffbf', '#7fbfff', '#7f7fff', '#ff7fff', '#bf7fbf', '#3b3b3b', '#858585', '#cfcfcf', '#f7f7f7'] as const
 
 /** Las filas con las que arranca una lista: S a F, como la tier list de siempre. */
 const DEFAULT_TIERS: ReadonlyArray<readonly [string, string]> = [
@@ -22,8 +25,31 @@ const DEFAULT_TIERS: ReadonlyArray<readonly [string, string]> = [
   ['C', TIER_PALETTE[3]],
   ['D', TIER_PALETTE[4]],
   ['E', TIER_PALETTE[6]],
-  ['F', TIER_PALETTE[7]],
+  ['F', TIER_PALETTE[8]],
 ]
+
+/** La luminancia relativa de un `#rrggbb` (WCAG 2). */
+function luminance(hex: string): number {
+  const [r = 0, g = 0, b = 0] = [1, 3, 5].map((at) => {
+    const channel = Number.parseInt(hex.slice(at, at + 2), 16) / 255
+
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  })
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+/** Los dos textos posibles de la etiqueta: el índigo del fondo (`accent-foreground`) y el claro de la app (`foreground`). */
+const DARK_TEXT = luminance('#150a24')
+const LIGHT_TEXT = luminance('#fdffff')
+
+/** ¿La letra de una fila de este color se lee mejor clara? Sobre los pasteles va oscura (de 5,2:1 a 18:1); sobre el gris oscuro (1,7:1 con la oscura), clara (11:1). */
+export function prefersLightText(color: string): boolean {
+  const own = luminance(color)
+
+  return contrast(own, LIGHT_TEXT) > contrast(own, DARK_TEXT)
+}
 
 export interface MakerCard {
   id: number
@@ -140,14 +166,19 @@ export function resetPlacements(list: MakerList): MakerList {
   return { ...list, pool: [...list.pool, ...ranked], tiers: list.tiers.map((tier) => ({ ...tier, cards: [] })) }
 }
 
-/** Una fila nueva al final, con el siguiente color de la paleta. */
-export function addTier(list: MakerList, label: string): MakerList {
+/** Una fila nueva en el lugar `index` (0 es arriba de todo, `tiers.length` al final), vacía y con el siguiente color de la paleta. Con el tope de filas no hace nada. */
+export function addTierAt(list: MakerList, index: number, label: string): MakerList {
   if (list.tiers.length >= MAX_TIERS) return list
 
   const color = TIER_PALETTE[list.tiers.length % TIER_PALETTE.length] ?? TIER_PALETTE[0]
+  const at = Math.max(0, Math.min(list.tiers.length, index))
+  const tier: MakerTier = { id: newId(), label: label.trim().slice(0, MAX_LABEL), color, cards: [] }
 
-  return { ...list, tiers: [...list.tiers, { id: newId(), label: label.trim().slice(0, MAX_LABEL), color, cards: [] }] }
+  return { ...list, tiers: [...list.tiers.slice(0, at), tier, ...list.tiers.slice(at)] }
 }
+
+/** Una fila nueva al final. */
+export const addTier = (list: MakerList, label: string): MakerList => addTierAt(list, list.tiers.length, label)
 
 export function updateTier(list: MakerList, tierId: string, patch: Partial<Pick<MakerTier, 'label' | 'color'>>): MakerList {
   return {
@@ -160,12 +191,12 @@ export function updateTier(list: MakerList, tierId: string, patch: Partial<Pick<
   }
 }
 
-/** Sube (-1) o baja (+1) una fila un lugar; en las puntas no hace nada. */
-export function moveTier(list: MakerList, tierId: string, delta: -1 | 1): MakerList {
+/** Lleva la fila al lugar `index` (0 es arriba de todo; uno fuera de la lista va a la punta más cercana). Una fila que no es de la lista, o que ya está ahí, no cambia nada. */
+export function moveTierTo(list: MakerList, tierId: string, index: number): MakerList {
   const from = list.tiers.findIndex((tier) => tier.id === tierId)
-  const to = from + delta
+  const to = Math.max(0, Math.min(list.tiers.length - 1, index))
 
-  if (from === -1 || to < 0 || to >= list.tiers.length) return list
+  if (from === -1 || from === to) return list
 
   const tiers = [...list.tiers]
   const [moved] = tiers.splice(from, 1)
@@ -173,6 +204,15 @@ export function moveTier(list: MakerList, tierId: string, delta: -1 | 1): MakerL
   if (moved) tiers.splice(to, 0, moved)
 
   return { ...list, tiers }
+}
+
+/** Vacía una fila: sus cartas vuelven al final de la bandeja (en su orden) y la fila queda, con su nombre y su color. */
+export function clearTier(list: MakerList, tierId: string): MakerList {
+  const tier = list.tiers.find((candidate) => candidate.id === tierId)
+
+  if (!tier || tier.cards.length === 0) return list
+
+  return { ...list, pool: [...list.pool, ...tier.cards], tiers: list.tiers.map((candidate) => (candidate.id === tierId ? { ...candidate, cards: [] } : candidate)) }
 }
 
 /** Borra una fila: sus cartas no se pierden, vuelven a la bandeja. */

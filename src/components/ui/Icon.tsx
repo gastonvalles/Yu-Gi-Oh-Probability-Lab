@@ -308,6 +308,13 @@ const PATHS = {
       <path d="m18 17-5-5 5-5" />
     </>
   ),
+  /** El agarre para arrastrar algo hacia arriba o hacia abajo (una fila de la tier list): una flecha arriba y otra abajo. */
+  'chevrons-up-down': (
+    <>
+      <path d="m7 9.5 5-5 5 5" />
+      <path d="m7 14.5 5 5 5-5" />
+    </>
+  ),
   /** Ventana grande: las cuatro esquinas hacia afuera (y, apagado, hacia adentro). */
   maximize: (
     <>

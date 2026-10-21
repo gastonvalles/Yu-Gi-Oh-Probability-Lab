@@ -1,5 +1,5 @@
 import { cardImageSrc } from './card-image-source'
-import type { MakerCard, MakerList } from './tierlist-maker'
+import { prefersLightText, type MakerCard, type MakerList } from './tierlist-maker'
 
 /** Medidas de la imagen (px lógicos; se dibuja al doble para que se vea nítida). Las filas van como en pantalla: el recuadro de color a la izquierda y las cartas pegadas, en renglones. */
 const WIDTH = 1100
@@ -121,7 +121,8 @@ export async function renderTierListImage(list: MakerList): Promise<HTMLCanvasEl
 
     const size = Array.from(tier.label).length <= 2 ? 56 : Array.from(tier.label).length <= 6 ? 30 : 22
 
-    context.fillStyle = LABEL_TEXT
+    // Como en pantalla (`TierStrip`): la letra oscura sobre los pasteles y clara sobre un color oscuro.
+    context.fillStyle = prefersLightText(tier.color) ? TEXT : LABEL_TEXT
     context.font = `700 ${size}px ${FONT}`
     context.textAlign = 'center'
 
