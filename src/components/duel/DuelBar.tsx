@@ -12,8 +12,9 @@ import { duelTurnNumber } from '../../app/duel-turn'
 import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { PHASES } from '../../app/practice-mat'
+import { sacudir } from '../probability/AttackFx'
 import { MatViewToggle } from '../probability/MatViewToggle'
-import { DELTA_MS, useAnimatedNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
+import { DELTA_MS, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -547,9 +548,20 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
   const tone = PLAYER_COLOR[color ?? side]
-  const shown = useAnimatedNumber(life)
+  const shown = useLifeNumber(life)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
+  // Al bajar, la casilla se sacude como en el impacto (`sacudir`: no se suma a la de un ataque que ya la sacude).
+  const tile = useRef<HTMLElement | null>(null)
+  const setTile = (node: HTMLElement | null) => {
+    tile.current = node
+  }
+
+  useEffect(() => {
+    const shake = change && change.delta < 0 && tile.current ? sacudir(tile.current, 'life') : null
+
+    return () => shake?.cancel()
+  }, [change])
   const ratio = Math.min(1, Math.max(0, life / STARTING_LP))
   const health: Tone = ratio > 0.5 ? 'success' : ratio > 0.25 ? 'warning' : 'danger'
   const body = (
@@ -580,11 +592,11 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   const style = cx('relative flex h-14 shrink-0 items-center gap-3 rounded-card border bg-card-background px-2 text-left min-[1101px]:h-[4.5rem] min-[1101px]:px-3', big ? 'min-w-28 min-[1101px]:min-w-44' : 'min-w-[5.25rem] min-[1101px]:min-w-36 max-[339px]:min-w-16', tone.border)
 
   return onClick ? (
-    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button ref={setTile} type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <div role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}`} className={style}>
+    <div ref={setTile} role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}`} className={style}>
       {body}
     </div>
   )

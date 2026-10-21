@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { STARTING_LP } from './life-calculator'
 import { prefersReducedMotion } from './motion'
 
 interface AnimatedNumberOptions {
@@ -56,6 +57,34 @@ export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = 
   }, [target, ms, delay, ease, round])
 
   return shown
+}
+
+/** Lo que cuenta el número de unas vidas que no cambió: el mínimo; y el de un cambio de la vida entera (`STARTING_LP`), el máximo. */
+const LIFE_COUNT_MIN_MS = 320
+const LIFE_COUNT_MAX_MS = 900
+
+/**
+ * Cuánto cuenta un número de vidas que cambió `delta` (con cualquier signo): 320 ms por un cambio chico, 610 por uno de 4000 y 900 desde la vida entera (8000) para arriba.
+ * Lineal entre los dos: no es una curva, es el tiempo que pide el cambio.
+ */
+export function lifeCountMs(delta: number): number {
+  return Math.round(LIFE_COUNT_MIN_MS + (LIFE_COUNT_MAX_MS - LIFE_COUNT_MIN_MS) * Math.min(1, Math.abs(delta) / STARTING_LP))
+}
+
+/**
+ * El número de unas vidas que cuenta hasta el valor nuevo, con la duración de su cambio (`lifeCountMs`). La duración se fija en el render que cambia el valor
+ * (con `useState`, al cambiar el objetivo): un re-render a mitad del conteo no la vuelve a calcular ni reinicia el conteo.
+ */
+export function useLifeNumber(target: number): number {
+  const [count, setCount] = useState(() => ({ target, ms: LIFE_COUNT_MIN_MS }))
+  let current = count
+
+  if (count.target !== target) {
+    current = { target, ms: lifeCountMs(target - count.target) }
+    setCount(current)
+  }
+
+  return useAnimatedNumber(target, { ms: current.ms })
 }
 
 /** Al cambiar, el LP se pinta un momento de verde (subió) o rojo (bajó). */

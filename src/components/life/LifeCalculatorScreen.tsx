@@ -15,7 +15,7 @@ import {
   type LifeState,
 } from '../../app/life-calculator'
 import { dispatchLife, playCue, useClock, useLifeState, type RoundCue } from '../../app/life-store'
-import { useAnimatedNumber, useLpFlash } from '../../app/life-effects'
+import { useLifeNumber, useLpFlash } from '../../app/life-effects'
 import { useToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
@@ -391,7 +391,7 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
 
 /** Un duelista: su número grande (que se mueve y se pinta de verde o rojo al cambiar) y su nombre. `position` es dónde está (0 izquierda, 1 derecha: da el color y la flecha); `disabled`, el del rival en un duelo: se ve, no se elige. */
 function DuelistPanel({ position, name, lp, selected, disabled = false, onSelect }: { position: 0 | 1; name: string; lp: number; selected: boolean; disabled?: boolean; onSelect: () => void }) {
-  const shown = useAnimatedNumber(lp)
+  const shown = useLifeNumber(lp)
   const flash = useLpFlash(lp)
 
   return (

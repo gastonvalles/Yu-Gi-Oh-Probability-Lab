@@ -848,15 +848,15 @@
     }
   }
 
-  /* Un monstruo del rival que se puede atacar: el aro respira (`[data-attack-target]`, más abajo). Una casilla que se puede elegir lleva en cambio las marcas de `PickMarks`. */
+  /* Un monstruo del rival que se puede atacar: el aro respira en ámbar, lo que se ofrece (`[data-attack-target]`, más abajo; el violeta es de los fondos y de lo tuyo). Una casilla que se puede elegir lleva en cambio las marcas de `PickMarks`. */
   @keyframes fx-pick {
     0%,
     100% {
-      box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.55), 0 0 12px rgb(var(--accent-rgb) / 0.35), inset 0 0 12px rgb(var(--accent-rgb) / 0.2);
+      box-shadow: 0 0 0 2px rgb(var(--info-rgb) / 0.55), 0 0 12px rgb(var(--info-rgb) / 0.35), inset 0 0 12px rgb(var(--info-rgb) / 0.2);
     }
 
     50% {
-      box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.95), 0 0 24px 4px rgb(var(--accent-rgb) / 0.65), inset 0 0 20px rgb(var(--accent-rgb) / 0.35);
+      box-shadow: 0 0 0 2px rgb(var(--info-rgb) / 0.95), 0 0 24px 4px rgb(var(--info-rgb) / 0.65), inset 0 0 20px rgb(var(--info-rgb) / 0.35);
     }
   }
 
@@ -1966,12 +1966,12 @@
 }
 
 /*
- * Eligiendo a quién atacar, los monstruos del rival que se pueden atacar laten como una zona que se puede elegir (`PracticeMat` les pone `data-attack-target` mientras el menú de «Atacar» está abierto).
- * Con movimiento reducido queda el aro quieto.
+ * Eligiendo a quién atacar, los monstruos del rival que se pueden atacar laten como una zona que se puede elegir, en ámbar (`PracticeMat` les pone `data-attack-target` mientras el menú de «Atacar» está abierto).
+ * Con movimiento reducido queda el aro quieto, del mismo ámbar.
  */
 [data-attack-target='true'] {
   cursor: pointer;
-  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.9), 0 0 16px 2px rgb(var(--accent-rgb) / 0.55);
+  box-shadow: 0 0 0 2px rgb(var(--info-rgb) / 0.9), 0 0 16px 2px rgb(var(--info-rgb) / 0.55);
 }
 
 @media (prefers-reduced-motion: no-preference) {
