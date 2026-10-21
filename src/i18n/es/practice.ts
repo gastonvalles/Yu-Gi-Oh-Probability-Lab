@@ -55,9 +55,12 @@ export const practice = {
   'practice.menu.toDefense': 'Pasar a defensa',
   'practice.menu.toAttack': 'Pasar a ataque',
   'practice.menu.attachTo': 'Adjuntar a {name}',
+  // Con dos o más Xyz en el campo (o dos o más materiales), una sola opción que pregunta a cuál (o cuál) en el segundo paso.
+  'practice.menu.attachToXyz': 'Adjuntar a un Xyz',
   'practice.menu.giveControl': 'Dar el control a {name}',
   'practice.menu.returnControl': 'Devolver el control a {name}',
   'practice.menu.detach': 'Desacoplar {name}',
+  'practice.menu.detachMaterial': 'Desacoplar',
   'practice.menu.detachToGy': 'Desacoplar al cementerio',
   // El botón +: qué agregar.
   'practice.token.plusTitle': 'Agregar',
