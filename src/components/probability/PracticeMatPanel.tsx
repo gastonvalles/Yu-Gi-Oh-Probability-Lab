@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 
 import type { StepInfo, StepKind, StepMove, StepOrigin, StepPlace } from '../../app/mat-step-info'
+import { prefersReducedMotion } from '../../app/motion'
 import { PHASES, type MatPile, type MatState } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import { formatDay, t } from '../../i18n'
@@ -324,7 +325,7 @@ interface StepTileProps {
 /**
  * Un paso de la línea de tiempo (Gastón, 2026-10-20, con la lista de otro simulador: «nuestras replays y movimientos no se ven así»): el círculo con su número sobre la línea y,
  * con los detalles, una ficha con **un solo borde** (adentro nada lleva caja: se separa con aire y una línea fina): las miniaturas, el chip de la jugada con el color de su
- * destello y el de dónde sale la carta, la frase y el tablero de cómo quedó la mesa. El paso actual se abre: el turno y la fase, y **«Qué se mueve»** (cada carta, de dónde a
+ * destello y el de dónde sale la carta, la frase y el tablero de cómo quedó la mesa. El paso actual se abre con un fundido corto: el turno y la fase, y **«Qué se mueve»** (cada carta, de dónde a
  * dónde). Los cambios de fase y de turno son cabeceras (`data-divider`), sin ficha. Sin los detalles es la lista compacta de siempre (miniaturas y frase).
  *
  * El botón es sólo el número y la frase (lo que se lee y lo que dicen las pruebas); su `::after` cubre la ficha entera, así se toca en cualquier lado y el foco la rodea. Es `memo`
@@ -342,9 +343,13 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
   const moves = boxed && active ? (info?.moves ?? []) : []
   const phase = PHASES.find((entry) => entry.id === after.phase)?.name ?? after.phase
 
-  // El paso actual se mantiene a la vista mientras un combo se reproduce solo.
+  // El paso actual se mantiene a la vista mientras un combo se reproduce solo: la lista se desplaza suave hasta él. Al abrirse la lista el paso
+  // actual ya está activo y va de un salto (no se barre la lista entera); con movimiento reducido, siempre de un salto.
+  const primeraVez = useRef(true)
   useEffect(() => {
-    if (active) ref.current?.scrollIntoView?.({ block: 'nearest' })
+    const abriendo = primeraVez.current
+    primeraVez.current = false
+    if (active) ref.current?.scrollIntoView?.({ block: 'nearest', behavior: (abriendo || prefersReducedMotion()) ? 'auto' : 'smooth' })
   }, [active])
 
   // En la lista compacta la columna mide siempre lo mismo (el texto queda alineado); en la ficha, lo que ocupan sus cartas (una carta de 3 rem de alto mide 2,06 de ancho y cada una más asoma media).
@@ -428,10 +433,10 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
         {/* Angosta (la columna de la mesa, el celular), el tablero va abajo; ancha (el diálogo en una tableta), a la derecha, como en la referencia. */}
         <div className="grid gap-2.5 @min-[30rem]:grid-cols-[minmax(0,1fr)_15rem] @min-[30rem]:items-start">
           <div className="grid min-w-0 content-start gap-2.5">
-            {active ? <p className="m-0 text-micro font-semibold uppercase tracking-wide text-info-soft">{t('practice.steps.context', { turn: after.turn, phase })}</p> : null}
+            {active ? <p className="m-0 animate-step-in text-micro font-semibold uppercase tracking-wide text-info-soft motion-reduce:animate-none">{t('practice.steps.context', { turn: after.turn, phase })}</p> : null}
             {heading}
             {moves.length > 0 ? (
-              <div className="grid gap-2 border-t border-border-subtle pt-2.5">
+              <div className="grid animate-step-in gap-2 border-t border-border-subtle pt-2.5 motion-reduce:animate-none">
                 <p id={movesId} className="m-0 text-micro font-semibold uppercase tracking-wide text-soft">
                   {t('practice.moves.title')}
                 </p>
