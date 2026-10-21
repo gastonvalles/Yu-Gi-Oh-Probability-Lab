@@ -186,7 +186,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
       ) : (
         <div className="grid flex-1 content-center justify-items-center gap-5 text-center">
           <div className="grid justify-items-center gap-2 text-body text-soft">
-            <Icon name="image" size={28} className="text-primary-soft/70" />
+            <Icon name="image" size={28} className="text-foreground" />
             {t('deck.classic.empty')}
           </div>
           <ul className="m-0 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label={t('deck.classic.shortcuts')}>

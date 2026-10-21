@@ -6,17 +6,18 @@ import type { ToastTone } from '../../app/use-toast-message'
 import { PLAYER_COLOR } from '../duel/player-color'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
-import { TONE, type Tone } from './tone'
+import { TONE } from './tone'
 
 const SWIPE_DISMISS_PX = 70
 /** Un toque es un gesto que casi no se mueve: se va el aviso (como el clic sobre el emoji grande del rival en escritorio). */
 const TAP_MAX_PX = 8
 
-const TOAST_TONE: Record<ToastTone, { tone: Tone; icon: IconName }> = {
-  info: { tone: 'brand', icon: 'info' },
-  success: { tone: 'success', icon: 'check-circle' },
-  warning: { tone: 'warning', icon: 'alert' },
-  error: { tone: 'danger', icon: 'alert' },
+/** Color y ícono de cada aviso: el informativo va en blanco (el violeta es de fondos y de lo tuyo); el resto, con el color de su tono. */
+const TOAST_TONE: Record<ToastTone, { text: string; icon: IconName }> = {
+  info: { text: 'text-foreground', icon: 'info' },
+  success: { text: TONE.success.text, icon: 'check-circle' },
+  warning: { text: TONE.warning.text, icon: 'alert' },
+  error: { text: TONE.danger.text, icon: 'alert' },
 }
 
 const TOAST_BASE =
@@ -94,7 +95,7 @@ export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
     >
       {rival === undefined ? (
         <>
-          <Icon name={look.icon} size={20} strokeWidth={2} className={cx('shrink-0', TONE[look.tone].text)} />
+          <Icon name={look.icon} size={20} strokeWidth={2} className={cx('shrink-0', look.text)} />
           <span>{message}</span>
         </>
       ) : (

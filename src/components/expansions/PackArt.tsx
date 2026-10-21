@@ -14,7 +14,7 @@ export function PackArt({ code, className }: { code: string; className?: string 
 
   if (!code || broken) {
     return (
-      <span aria-hidden="true" className={cx('grid shrink-0 place-items-center bg-input text-primary-soft/70', className)}>
+      <span aria-hidden="true" className={cx('grid shrink-0 place-items-center bg-input text-foreground', className)}>
         <Icon name="package" size={20} />
       </span>
     )

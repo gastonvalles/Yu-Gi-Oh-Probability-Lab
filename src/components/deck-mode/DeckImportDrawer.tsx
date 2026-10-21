@@ -538,7 +538,7 @@ export function DeckImportDrawer({
                       onDrop={handleDrop}
                     >
                       <div className="grid justify-items-center gap-2">
-                        <Icon name="upload" size={28} className="text-primary-soft/70" />
+                        <Icon name="upload" size={28} className="text-foreground" />
                         {/* En el celular no se arrastra nada: el texto de arrastrar es sólo de los punteros finos (mouse). */}
                         <strong className="text-body font-semibold text-foreground pointer-coarse:hidden">{t('deck.import.drop')}</strong>
                         <strong className="hidden text-body font-semibold text-foreground pointer-coarse:block">{t('deck.import.dropTouch')}</strong>

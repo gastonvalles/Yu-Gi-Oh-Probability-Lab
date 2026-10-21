@@ -21,7 +21,7 @@ export function SectionHeader({ title, description, icon, actions, as = 'h2', cl
   return (
     <header className={cx('flex flex-wrap items-start justify-between gap-x-4 gap-y-2', className)}>
       <div className="flex min-w-0 items-start gap-3">
-        {icon ? <Icon name={icon} size={20} className="mt-0.5 shrink-0 text-primary-soft" /> : null}
+        {icon ? <Icon name={icon} size={20} className="mt-0.5 shrink-0 text-foreground" /> : null}
         <div className="grid min-w-0 gap-0.5">
           <Heading level="section" as={as}>
             {title}
