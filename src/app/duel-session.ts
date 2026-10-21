@@ -151,6 +151,8 @@ export interface Duel {
   rematch(): void
   /** Marcar (o desmarcar) como objetivo algo del lado del rival: una carta suya (por el id que él le dio) o una de sus pilas, la mano incluida. Él lo ve en lo suyo. */
   toggleMark(target: MarkTarget): void
+  /** Marcar varias cartas de su lado de una vez: un solo aviso y un solo plazo para las que se marcan (vencen juntas). Si ya estaban todas, las quita. Lo que no entra en el tope (`MAX_MARKS`) no se marca. */
+  markMany(ids: readonly string[]): void
   /** Señalar algo un instante, de mi lado (`mine`: una carta mía a la vista) o del suyo (`theirs`): los dos lo ven un rato y nada más (no cambia la mesa ni queda en las jugadas). */
   ping(target: MarkTarget, at: 'mine' | 'theirs'): void
   /** Volver a conectarme a la sala ya: lo que sigue en pausa por un aviso que no llegó se resuelve sin salir del duelo. */
@@ -431,21 +433,34 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   }
 
   const markKey = (target: MarkTarget) => ('card' in target ? `c:${target.card}` : `p:${target.pile}`)
+  /**
+   * El plazo de cada marca. Las que se marcan juntas comparten uno (vencen juntas, en un solo aviso). Un plazo sólo quita lo que sigue con él:
+   * así no se corta el de las demás al quitar una del lote, y una marca que se quitó y se volvió a poner no la quita el plazo viejo.
+   */
   const markTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
-  /** Quita un objetivo que marqué (si sigue marcado) y se lo avisa al otro: lo usa tanto el toque que lo desmarca como su plazo. */
-  const dropMark = (target: MarkTarget) => {
-    const key = markKey(target)
-    clearTimeout(markTimers.get(key))
-    markTimers.delete(key)
+  /** Quita estos objetivos del lado del rival (los que siguen marcados) y se lo avisa al otro en un solo mensaje: lo usan el toque que los desmarca y su plazo. */
+  const dropMarks = (targets: readonly MarkTarget[]) => {
+    const cards = targets.flatMap((target) => ('card' in target ? [target.card] : []))
+    const piles = targets.flatMap((target) => ('pile' in target ? [target.pile] : []))
+    const next: Marks = { cards: marksOnTheirs.cards.filter((id) => !cards.includes(id)), piles: marksOnTheirs.piles.filter((pile) => !piles.includes(pile)) }
 
-    if ('card' in target ? !marksOnTheirs.cards.includes(target.card) : !marksOnTheirs.piles.includes(target.pile)) {
+    for (const target of targets) markTimers.delete(markKey(target))
+
+    if (next.cards.length === marksOnTheirs.cards.length && next.piles.length === marksOnTheirs.piles.length) {
       return
     }
 
-    marksOnTheirs = 'card' in target ? { ...marksOnTheirs, cards: marksOnTheirs.cards.filter((id) => id !== target.card) } : { ...marksOnTheirs, piles: marksOnTheirs.piles.filter((pile) => pile !== target.pile) }
+    marksOnTheirs = next
     sendMarks()
     emit()
+  }
+
+  /** Un plazo para estos objetivos recién marcados: a los `MARK_MS` vencen todos juntos (un solo aviso). */
+  const armMarks = (targets: readonly MarkTarget[]) => {
+    const timer: ReturnType<typeof setTimeout> = setTimeout(() => dropMarks(targets.filter((target) => markTimers.get(markKey(target)) === timer)), MARK_MS)
+
+    for (const target of targets) markTimers.set(markKey(target), timer)
   }
 
   /** Mi estado de ahora: la mesa (si ya empecé), mis puntos de vida y, del anfitrión, el reloj. */
@@ -1493,11 +1508,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
-      const key = markKey(target)
-
       // Tocar un objetivo que ya está marcado lo quita.
       if ('card' in target ? marksOnTheirs.cards.includes(target.card) : marksOnTheirs.piles.includes(target.pile)) {
-        dropMark(target)
+        dropMarks([target])
         return
       }
 
@@ -1511,12 +1524,45 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         marksOnTheirs = { ...marksOnTheirs, piles: [...marksOnTheirs.piles, target.pile] }
       }
 
-      markSigns = { ...markSigns, [key]: signOf(theirs.state, target) }
+      markSigns = { ...markSigns, [markKey(target)]: signOf(theirs.state, target) }
 
       sendMarks()
       emit()
-      clearTimeout(markTimers.get(key))
-      markTimers.set(key, setTimeout(() => dropMark(target), MARK_MS))
+      armMarks([target])
+    },
+
+    markMany(ids) {
+      // Lo mismo que toggleMark, para varias cartas: sin rival o sin su mesa no se marca nada, y no se marca lo que no es suyo.
+      if (!peerPresent || !theirs) {
+        return
+      }
+
+      const cards = [...new Set(ids)]
+
+      // Con todas ya marcadas, se quitan todas (en un solo aviso); si no, se marcan las que faltan, hasta el tope.
+      if (cards.length > 0 && cards.every((id) => marksOnTheirs.cards.includes(id))) {
+        dropMarks(cards.map((card) => ({ card })))
+        return
+      }
+
+      const onTheirs = allMatIds(theirs.state)
+      const fresh = cards.filter((id) => !marksOnTheirs.cards.includes(id) && onTheirs.includes(id)).slice(0, Math.max(0, MAX_MARKS - marksOnTheirs.cards.length))
+
+      if (fresh.length === 0) {
+        return
+      }
+
+      const targets = fresh.map((card): MarkTarget => ({ card }))
+
+      marksOnTheirs = { ...marksOnTheirs, cards: [...marksOnTheirs.cards, ...fresh] }
+
+      for (const target of targets) {
+        markSigns = { ...markSigns, [markKey(target)]: signOf(theirs.state, target) }
+      }
+
+      sendMarks()
+      emit()
+      armMarks(targets)
     },
 
     endRoom() {

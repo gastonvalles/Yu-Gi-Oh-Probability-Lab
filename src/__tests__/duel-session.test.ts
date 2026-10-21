@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { PROTOCOL_VERSION, encodeMessage, type DuelSettings } from '../app/duel-protocol'
+import { MAX_MARKS, PROTOCOL_VERSION, encodeMessage, type DuelSettings } from '../app/duel-protocol'
 import { saveOf } from '../app/duel-save'
 import { EMOTE_GAP_MS, PHASE_WAIT_MS, createDuel, type Duel } from '../app/duel-session'
 import { timerElapsed } from '../app/life-calculator'
@@ -1142,6 +1142,165 @@ describe('los objetivos marcados del lado del otro', () => {
     for (const duel of [game.host, game.guest]) {
       expect(duel.getSnapshot().marks).toEqual({ mine: { cards: [], piles: [] }, theirs: { cards: [], piles: [] } })
     }
+  })
+})
+
+describe('varias marcas de una pila del otro de una vez (markMany)', () => {
+  /** Ana descarta sus tres primeras cartas: quedan en su cementerio, y Beto las ve con los ids opacos que le tocaron. */
+  function withThreeInGy() {
+    const game = setup()
+
+    startBoth(game)
+    for (const id of hostMain.slice(0, 3)) game.host.play({ type: 'move', id, to: 'gy' })
+    game.room.flush()
+
+    return { ...game, gy: game.guest.getSnapshot().theirs!.state.gy }
+  }
+
+  /** Cuántos mensajes `marks` salieron de la sala hasta ahora. */
+  const marksSent = (game: Game) => game.room.sent.filter((text) => (JSON.parse(text) as { t: string }).t === 'marks').length
+
+  it('varias cartas se marcan en un solo mensaje, con una marca por carta; lo que no es del otro lado no se marca', () => {
+    const game = withThreeInGy()
+    const [a, , c] = game.gy as [string, string, string]
+    const sent = marksSent(game)
+
+    game.guest.markMany([a, c, 'no-existe'])
+    game.room.flush()
+
+    expect(marksSent(game) - sent).toBe(1)
+    expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [a, c], piles: [] })
+    expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [hostMain[0], hostMain[2]], piles: [] })
+  })
+
+  it('con algunas ya marcadas, marca sólo las que faltan; con todas marcadas, las quita todas en un solo mensaje', () => {
+    const game = withThreeInGy()
+    const [a, b, c] = game.gy as [string, string, string]
+
+    game.guest.toggleMark({ card: a })
+    const sent = marksSent(game)
+    game.guest.markMany([a, b, c])
+    game.room.flush()
+    expect(marksSent(game) - sent).toBe(1)
+    expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([a, b, c])
+
+    const again = marksSent(game)
+    game.guest.markMany([c, a])
+    game.room.flush()
+    expect(marksSent(game) - again).toBe(1)
+    expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([b])
+    expect(game.host.getSnapshot().marks.mine.cards).toEqual([hostMain[1]])
+  })
+
+  it('las que se marcan juntas vencen juntas, en un solo aviso; las que ya tenían marca conservan su plazo', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    try {
+      const game = withThreeInGy()
+      const [a, b, c] = game.gy as [string, string, string]
+
+      game.guest.toggleMark({ card: a })
+      vi.advanceTimersByTime(3000)
+      const sent = marksSent(game)
+      game.guest.markMany([a, b, c])
+      game.room.flush()
+      expect(marksSent(game) - sent).toBe(1)
+
+      // a vence a los cinco segundos de su marca de antes; b y c, a los cinco de esta.
+      vi.advanceTimersByTime(2100)
+      game.room.flush()
+      expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([b, c])
+      expect(marksSent(game) - sent).toBe(2)
+
+      vi.advanceTimersByTime(3000)
+      game.room.flush()
+      expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([])
+      expect(game.host.getSnapshot().marks.mine.cards).toEqual([])
+      expect(marksSent(game) - sent).toBe(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('quitar una del lote a mano no le corta el plazo a las demás, y el plazo viejo de una marca quitada y puesta de nuevo no la quita', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    try {
+      const game = withThreeInGy()
+      const [a, b, c] = game.gy as [string, string, string]
+
+      game.guest.markMany([a, b])
+      vi.advanceTimersByTime(1000)
+      game.guest.toggleMark({ card: a })
+      game.room.flush()
+      vi.advanceTimersByTime(4100)
+      game.room.flush()
+      expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([])
+
+      // c se marca a los 5,1 s (vence a los 10,1 s), se quita a los 6 s y se vuelve a marcar: el plazo de la primera no la quita.
+      game.guest.toggleMark({ card: c })
+      vi.advanceTimersByTime(900)
+      game.guest.toggleMark({ card: c })
+      game.guest.toggleMark({ card: c })
+      game.room.flush()
+      vi.advanceTimersByTime(4200)
+      game.room.flush()
+      expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([c])
+
+      vi.advanceTimersByTime(900)
+      game.room.flush()
+      expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('el tope de marcas (MAX_MARKS) se respeta: lo que no entra no se marca, y una más no manda nada', () => {
+    const game = setup()
+    const deck = Array.from({ length: MAX_MARKS + 10 }, (_, index) => `card-${1000 + index}-1`)
+
+    game.host.start(createMatState(deck, hostExtra, 5))
+    game.guest.start(guestTable)
+    game.room.flush()
+
+    const { hand, deck: rest } = game.guest.getSnapshot().theirs!.state
+    const ids = [...hand, ...rest]
+    const sent = marksSent(game)
+
+    game.guest.markMany(ids)
+    game.room.flush()
+    expect(game.guest.getSnapshot().marks.theirs.cards).toEqual(ids.slice(0, MAX_MARKS))
+    expect(marksSent(game) - sent).toBe(1)
+
+    game.guest.markMany([ids[MAX_MARKS]!])
+    game.room.flush()
+    expect(game.guest.getSnapshot().marks.theirs.cards).toHaveLength(MAX_MARKS)
+    expect(marksSent(game) - sent).toBe(1)
+  })
+
+  it('las marcas de un lote se quitan igual que las sueltas si la carta sale de donde estaba', () => {
+    const game = withThreeInGy()
+    const [a, b] = game.gy as [string, string]
+
+    game.guest.markMany([a, b])
+    game.room.flush()
+    expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([a, b])
+
+    // Ana saca la segunda del cementerio: la marca de esa se va y la otra sigue (su carta no cambió de lugar).
+    game.host.play({ type: 'move', id: hostMain[1]!, to: 'banished' })
+    game.room.flush()
+    expect(game.guest.getSnapshot().marks.theirs.cards).toEqual([a])
+    expect(game.host.getSnapshot().marks.mine.cards).toEqual([hostMain[0]])
+  })
+
+  it('sin rival en la sala no se marca nada', () => {
+    const game = withThreeInGy()
+    const [a, b] = game.gy as [string, string]
+
+    game.hostEnd.disconnect()
+    game.room.flush()
+    game.guest.markMany([a, b])
+    expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [], piles: [] })
   })
 })
 

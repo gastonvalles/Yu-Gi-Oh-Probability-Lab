@@ -1607,6 +1607,62 @@ describe('la pantalla del duelo', () => {
     expect(guest.container.querySelector('[data-drop="extra"]')).toHaveAttribute('data-targeted', 'true')
   })
 
+  it('el cementerio del rival elige varias: «Target» marca las elegidas de una vez y cierra el visor; si ya estaban todas, dice «Quitar target» y las quita', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    // Tres cartas de Ana al cementerio, descartadas de la mano.
+    for (let index = 0; index < 3; index += 1) {
+      tap(handOf(host).getAllByRole('listitem')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
+      flush()
+    }
+
+    // Beto abre el cementerio de Ana: sus cartas se llaman «Carta del rival», y las marcadas llevan «(target)».
+    const openGy = () => {
+      fireEvent.click(within(guest.container).getByRole('button', { name: 'GY: marcar' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
+
+      return within(screen.getByRole('dialog', { name: 'GY · 3' }))
+    }
+    const cardsIn = (viewer: ReturnType<typeof openGy>) => viewer.getAllByRole('button', { name: /^Carta del rival/ })
+    const namesIn = (viewer: ReturnType<typeof openGy>) => cardsIn(viewer).map((card) => card.getAttribute('aria-label'))
+    const dialogGone = () => expect(screen.queryByRole('dialog', { name: /^GY/ })).not.toBeInTheDocument()
+
+    // Elegir varias: dos cartas, y «Target» las marca a las dos de una vez; el visor se cierra.
+    let viewer = openGy()
+    fireEvent.click(viewer.getByRole('button', { name: 'Elegir varias' }))
+    fireEvent.click(cardsIn(viewer)[0]!)
+    fireEvent.click(cardsIn(viewer)[1]!)
+    fireEvent.click(viewer.getByRole('button', { name: 'Target' }))
+    flush()
+    dialogGone()
+    expect(host.container.querySelector('[data-drop="gy"]')).toHaveAttribute('data-targeted', 'true')
+
+    viewer = openGy()
+    expect(namesIn(viewer)).toEqual(['Carta del rival (target)', 'Carta del rival (target)', 'Carta del rival'])
+
+    // Con dos ya marcadas, «Target» marca la que falta.
+    fireEvent.click(viewer.getByRole('button', { name: 'Elegir varias' }))
+    cardsIn(viewer).forEach((card) => fireEvent.click(card))
+    fireEvent.click(viewer.getByRole('button', { name: 'Target' }))
+    flush()
+    dialogGone()
+
+    viewer = openGy()
+    expect(namesIn(viewer)).toEqual(['Carta del rival (target)', 'Carta del rival (target)', 'Carta del rival (target)'])
+
+    // Con las dos elegidas ya marcadas, la principal dice «Quitar target» y las quita; la que no se eligió sigue marcada.
+    fireEvent.click(viewer.getByRole('button', { name: 'Elegir varias' }))
+    fireEvent.click(cardsIn(viewer)[0]!)
+    fireEvent.click(cardsIn(viewer)[1]!)
+    fireEvent.click(viewer.getByRole('button', { name: 'Quitar target' }))
+    flush()
+    dialogGone()
+
+    viewer = openGy()
+    expect(namesIn(viewer)).toEqual(['Carta del rival', 'Carta del rival', 'Carta del rival (target)'])
+  })
+
   it('cuando el rival toca su deck o suma una carta a su mano, su deck y su mano se barajan y se ven', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)

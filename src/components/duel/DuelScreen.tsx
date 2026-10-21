@@ -45,7 +45,7 @@ import { Modal } from '../ui/Modal'
 import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardSheet } from '../probability/CardSheet'
 import { MatScene } from '../probability/MatArena'
-import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
+import { CardMenu, PILE_TITLES, PileViewer, type PileMany } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
@@ -1989,6 +1989,14 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
     else if (markedIsCard) dockLock({ faceDown: true })
   }, [markedDrawId, markedIsCard, dockLock])
   const viewerTargeted = useMemo(() => new Set([...snapshot.marks.theirs.cards, ...theirs!.state.targeted]), [snapshot.marks.theirs.cards, theirs])
+  // Varias del visor del rival a la vez («Elegir varias», con dos cartas o más): la principal sólo marca (o quita, si ya estaban todas) las elegidas y cierra el visor.
+  const rivalMany: PileMany = {
+    label: (ids) => t(ids.length > 0 && ids.every((id) => snapshot.marks.theirs.cards.includes(id)) ? 'practice.menu.untarget' : 'practice.menu.target'),
+    onPick: (ids) => {
+      duel.markMany(ids)
+      setRivalViewer(null)
+    },
+  }
 
   return (
     <>
@@ -2036,6 +2044,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         }}
         targeted={viewerTargeted}
         onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
+        many={rivalMany}
         onClose={() => setRivalViewer(null)}
         anonymous
       />
