@@ -165,7 +165,8 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
 
           {/* Los botones son lo último del componente, debajo de la descripción (Gastón, 2026-10-19), y quedan pegados al borde de abajo al desplazar: con una descripción larga no hay que bajar para sumar o quitar una copia. */}
           {(source === 'deck' && deckCopy) || source === 'search' ? (
-            <div className="sticky bottom-0 z-10 -mx-4 -mb-4 grid gap-2 border-t border-border-subtle bg-card-background px-4 pb-4 pt-3">
+            // `-bottom-4` y no `bottom-0`: el navegador pega una barra pegada (`sticky`) al borde de abajo del CONTENIDO del que se desplaza, no al de su relleno (`pb-4`); con `bottom-0` quedaban 16 px de hueco debajo de la barra y por ahí se veía pasar el texto (Gastón, 2026-10-21).
+            <div className="sticky -bottom-4 z-10 -mx-4 -mb-4 grid gap-2 border-t border-border-subtle bg-card-background px-4 pb-4 pt-3">
               {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
 
               {source === 'search' ? (
