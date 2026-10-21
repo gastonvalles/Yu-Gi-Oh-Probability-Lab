@@ -120,19 +120,6 @@ export function DeckModeScreen() {
   // En el celular sólo la mesa del duelo es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre. En escritorio no cambia: el duelo ocupa todo.
   const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
-  // Las cartas del deck armado, una vez cada una (Main y Extra): para sumarlas de un toque a una tier list propia.
-  const deckBuilderState = controller.exportDeck.deckBuilder
-  const deckCards = useMemo(() => {
-    const seen = new Set<number>()
-
-    return [...deckBuilderState.main, ...deckBuilderState.extra].flatMap((card) => {
-      if (seen.has(card.apiCard.ygoprodeckId)) return []
-
-      seen.add(card.apiCard.ygoprodeckId)
-
-      return [{ id: card.apiCard.ygoprodeckId, name: card.name, image: card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl ?? null }]
-    })
-  }, [deckBuilderState.main, deckBuilderState.extra])
   const matDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
   // El duelo por enlace se ofrece sólo si la app sabe a qué relay conectarse (`VITE_DUEL_RELAY_URL`).
   const duelConnect = useMemo(() => {
@@ -381,7 +368,7 @@ export function DeckModeScreen() {
 
       {activeStep === 'tier-maker' ? (
         <div id="tier-maker" className="min-w-0 min-[1101px]:min-h-full">
-          <LazyTierMakerScreen deckCards={deckCards} />
+          <LazyTierMakerScreen />
         </div>
       ) : null}
 

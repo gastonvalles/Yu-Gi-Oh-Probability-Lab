@@ -7,8 +7,6 @@ import {
   addCards,
   addTier,
   countCards,
-  duplicateList,
-  listToText,
   moveCard,
   moveTier,
   newList,
@@ -128,32 +126,6 @@ describe('las filas', () => {
     list = removeTier(list, s)
     expect(list.tiers).toHaveLength(6)
     expect(list.pool).toContain(2)
-  })
-})
-
-describe('copias y texto', () => {
-  it('una copia no comparte ids con la original y se puede tocar sin cambiarla', () => {
-    const original = moveCard(withCards(), 1, { kind: 'tier', id: tierId(withCards(), 'S') })
-    const copy = duplicateList(withCards(), 'Copia')
-
-    expect(copy.id).not.toBe(original.id)
-    expect(copy.tiers.map((tier) => tier.id)).not.toEqual(original.tiers.map((tier) => tier.id))
-    expect(copy.title).toBe('Copia')
-  })
-
-  it('el texto trae el título, una línea por fila y la bandeja si tiene algo', () => {
-    let list = withCards()
-
-    list = moveCard(list, 1, { kind: 'tier', id: tierId(list, 'S') })
-    list = moveCard(list, 2, { kind: 'tier', id: tierId(list, 'S') })
-
-    const lines = listToText(list, 'Sin clasificar').split('\n')
-
-    expect(lines[0]).toBe('Mi lista')
-    expect(lines[1]).toBe('S: Ash Blossom, Maxx "C"')
-    expect(lines[2]).toBe('A:')
-    expect(lines.at(-1)).toBe('Sin clasificar: Carta 3')
-    expect(listToText(resetPlacements(withCards()), 'Sin clasificar').split('\n').at(-1)).toBe('Sin clasificar: Ash Blossom, Maxx "C", Carta 3')
   })
 })
 

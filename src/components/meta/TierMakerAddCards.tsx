@@ -22,8 +22,6 @@ const META_CARDS = 40
 
 interface TierMakerAddCardsProps {
   list: MakerList
-  /** Las cartas del deck armado en el builder (sin repetir). */
-  deckCards: readonly MakerCard[]
   onAdd: (cards: MakerCard[]) => void
 }
 
@@ -32,10 +30,10 @@ const fromResult = (card: ApiCardSearchResult): MakerCard => ({ id: card.ygoprod
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
 /**
- * De dónde salen las cartas de la tier list: el buscador por nombre (de la base de YGOPRODeck, con los resultados a la vista para sumar varias) y tres atajos, con las cartas del deck armado y con las de las tier lists
- * del meta (hand traps y boardbreakers, las más jugadas). Todo entra a «Sin clasificar».
+ * De dónde salen las cartas de la tier list: el buscador por nombre (de la base de YGOPRODeck, con los resultados a la vista para sumar varias) y dos atajos, con las de las tier lists del meta
+ * (hand traps y boardbreakers, las más jugadas). Todo entra a «Sin clasificar».
  */
-export function TierMakerAddCards({ list, deckCards, onAdd }: TierMakerAddCardsProps) {
+export function TierMakerAddCards({ list, onAdd }: TierMakerAddCardsProps) {
   const region = useMetaRegion('tcg')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ApiCardSearchResult[]>([])
@@ -80,18 +78,15 @@ export function TierMakerAddCards({ list, deckCards, onAdd }: TierMakerAddCardsP
       .map((stat) => ({ id: stat.id, name: stat.name, image: stat.image }))
 
   return (
-    <Card as="section" aria-label={t('meta.maker.addTitle')} className="grid gap-3">
+    <Card as="section" aria-label={t('meta.maker.searchTitle')} className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Heading level="card" as="h2">
-          {t('meta.maker.addTitle')}
+          {t('meta.maker.searchTitle')}
         </Heading>
         <span className="text-micro text-soft tabular-nums">{t('meta.maker.count', { count: countCards(list), max: MAX_CARDS })}</span>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" disabled={full || deckCards.length === 0} onClick={() => onAdd([...deckCards])}>
-          {t('meta.maker.fromDeck', { count: deckCards.length })}
-        </Button>
         <Button variant="secondary" size="sm" disabled={full} onClick={() => onAdd(fromMeta('handtrap'))}>
           {t('meta.maker.fromHandtraps')}
         </Button>

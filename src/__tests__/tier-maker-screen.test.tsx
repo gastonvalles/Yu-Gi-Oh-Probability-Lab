@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TIERLIST_STORAGE_KEY, type MakerCard } from '../app/tierlist-maker'
+import { TIERLIST_STORAGE_KEY, TIERLIST_VERSION, addCards, newList, writeStore, type MakerCard } from '../app/tierlist-maker'
 import { TierMakerScreen } from '../components/meta/TierMakerScreen'
 
 const toast = vi.hoisted(() => vi.fn())
@@ -36,11 +36,16 @@ afterEach(cleanup)
 
 const tiles = (scope: HTMLElement = document.body) => within(scope).queryAllByRole('button', { name: /^Carta / })
 const row = (name: string) => screen.getByRole('region', { name })
-const addDeck = () => fireEvent.click(screen.getByRole('button', { name: 'Mi deck (2)' }))
+/** Deja guardada una lista con las dos cartas del deck de prueba en «Sin clasificar»: lo que antes sumaba el botón «Mi deck». */
+const seed = () => {
+  const list = addCards(newList('Mi tier list'), deck)
+
+  writeStore({ version: TIERLIST_VERSION, activeId: list.id, lists: [list] })
+}
 
 describe('el creador de tier lists', () => {
   it('arranca con las filas S a F de siempre, vacías, y la bandeja de las cartas sin clasificar', () => {
-    render(<TierMakerScreen deckCards={deck} />)
+    render(<TierMakerScreen />)
 
     for (const label of ['S', 'A', 'B', 'C', 'D', 'E', 'F']) expect(row(label)).toBeInTheDocument()
 
@@ -49,20 +54,26 @@ describe('el creador de tier lists', () => {
     expect(screen.getByText(/Todavía no hay cartas/)).toBeInTheDocument()
   })
 
-  it('las cartas del deck entran de un toque a la bandeja, sin repetirse, y se avisa cuántas', () => {
-    render(<TierMakerScreen deckCards={deck} />)
+  it('solo ofrece lo que hace falta: sin título, sin lista desplegable, sin duplicar, borrar ni crear listas, sin copiar texto ni «Mi deck»', () => {
+    render(<TierMakerScreen />)
 
-    addDeck()
-    expect(tiles(row('Sin clasificar'))).toHaveLength(2)
-    expect(toast).toHaveBeenLastCalledWith('Agregué 2 cartas.', 'success')
+    expect(screen.queryByRole('textbox', { name: 'Nombre de la tier list' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Tus tier lists' })).not.toBeInTheDocument()
 
-    addDeck()
-    expect(tiles(row('Sin clasificar'))).toHaveLength(2)
-    expect(toast).toHaveBeenLastCalledWith('Esas cartas ya estaban en la lista.', 'info')
+    for (const name of ['Duplicar', 'Eliminar lista', 'Nueva lista', 'Copiar texto', /Mi deck/]) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
+
+    expect(screen.getByRole('region', { name: 'Buscar' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Buscar una carta por nombre' })).toBeInTheDocument()
+
+    for (const name of ['Hand traps del meta', 'Boardbreakers del meta', /Volver todo a/, 'Descargar imagen', 'Agregar fila', 'Quitar fila']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    }
   })
 
   it('el buscador trae cartas por nombre y tocar una la suma a la bandeja (y queda marcada como ya agregada)', async () => {
-    render(<TierMakerScreen deckCards={deck} />)
+    render(<TierMakerScreen />)
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar una carta por nombre' }), { target: { value: 'ash' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Agregar Ash Blossom & Joyous Spring' }))
@@ -72,8 +83,8 @@ describe('el creador de tier lists', () => {
   })
 
   it('con una carta elegida, la barra tiene un botón por fila: tocar uno la manda ahí, y de ahí se la manda a la bandeja', () => {
-    render(<TierMakerScreen deckCards={deck} />)
-    addDeck()
+    seed()
+    render(<TierMakerScreen />)
 
     const card = tiles(row('Sin clasificar'))[0] as HTMLElement
 
@@ -93,8 +104,8 @@ describe('el creador de tier lists', () => {
   })
 
   it('tocar un hueco de una fila con una carta elegida la manda ahí; sin carta elegida no pasa nada', () => {
-    render(<TierMakerScreen deckCards={deck} />)
-    addDeck()
+    seed()
+    render(<TierMakerScreen />)
 
     const rowA = row('A').querySelector('ul') as HTMLElement
 
@@ -107,8 +118,8 @@ describe('el creador de tier lists', () => {
   })
 
   it('se arrastra una carta a una fila y entre las de una fila (para ordenarlas)', () => {
-    render(<TierMakerScreen deckCards={deck} />)
-    addDeck()
+    seed()
+    render(<TierMakerScreen />)
 
     const dataTransfer = { setData: vi.fn(), getData: () => '', effectAllowed: '', dropEffect: '' }
     const [first, second] = tiles(row('Sin clasificar')) as [HTMLElement, HTMLElement]
@@ -134,8 +145,8 @@ describe('el creador de tier lists', () => {
   })
 
   it('la letra de una fila abre su editor: nombre, color, y borrarla devuelve sus cartas a la bandeja', () => {
-    render(<TierMakerScreen deckCards={deck} />)
-    addDeck()
+    seed()
+    render(<TierMakerScreen />)
     fireEvent.click(tiles(row('Sin clasificar'))[0] as HTMLElement)
     fireEvent.click(screen.getByRole('button', { name: 'Mover Crossout Designator a S' }))
 
@@ -148,13 +159,13 @@ describe('el creador de tier lists', () => {
     expect(row('Dios')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Editar la fila Dios' })).toHaveStyle({ backgroundColor: 'rgb(127, 191, 255)' })
 
-    fireEvent.click(dialog.getByRole('button', { name: 'Borrar la fila' }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Quitar la fila' }))
     expect(screen.queryByRole('region', { name: 'Dios' })).not.toBeInTheDocument()
     expect(tiles(row('Sin clasificar'))).toHaveLength(2)
   })
 
   it('las filas se suben, se bajan y se agregan', () => {
-    render(<TierMakerScreen deckCards={deck} />)
+    render(<TierMakerScreen />)
 
     const order = () => [...document.querySelectorAll('section[aria-label]')].map((section) => section.getAttribute('aria-label')).slice(0, 3)
 
@@ -168,47 +179,22 @@ describe('el creador de tier lists', () => {
     expect(row('Nueva')).toBeInTheDocument()
   })
 
-  it('varias listas: crear, nombrar, cambiar de una a otra y eliminar (con confirmación)', () => {
-    render(<TierMakerScreen deckCards={deck} />)
-    addDeck()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Nueva lista' }))
-
-    const select = screen.getByRole('combobox', { name: 'Tus tier lists' })
-
-    expect(within(select).getAllByRole('option')).toHaveLength(2)
-    // La nueva está vacía y es la que se ve.
-    expect(tiles()).toHaveLength(0)
-    fireEvent.change(screen.getByRole('textbox', { name: 'Nombre de la tier list' }), { target: { value: 'Meta de octubre' } })
-    expect(within(select).getByRole('option', { name: 'Meta de octubre' })).toBeInTheDocument()
-
-    fireEvent.change(select, { target: { value: (within(select).getAllByRole('option')[0] as HTMLOptionElement).value } })
-    expect(tiles(row('Sin clasificar'))).toHaveLength(2)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Eliminar lista' }))
-    expect(screen.getByRole('alertdialog')).toHaveTextContent('Se borra la lista con sus filas y sus cartas')
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Eliminar lista' }))
-    expect(within(screen.getByRole('combobox', { name: 'Tus tier lists' })).getAllByRole('option')).toHaveLength(1)
-    expect(screen.getByRole('textbox', { name: 'Nombre de la tier list' })).toHaveValue('Meta de octubre')
-  })
-
   it('se guarda sola en el navegador: al volver, está como se dejó', () => {
-    const first = render(<TierMakerScreen deckCards={deck} />)
-
-    addDeck()
+    seed()
+    const first = render(<TierMakerScreen />)
     fireEvent.click(tiles(row('Sin clasificar'))[1] as HTMLElement)
     fireEvent.click(screen.getByRole('button', { name: 'Mover Effect Veiler a B' }))
     expect(localStorage.getItem(TIERLIST_STORAGE_KEY)).toContain('Effect Veiler')
     first.unmount()
 
-    render(<TierMakerScreen deckCards={deck} />)
+    render(<TierMakerScreen />)
     expect(tiles(row('B')).map((tile) => tile.getAttribute('aria-label'))).toEqual(['Carta Effect Veiler'])
     expect(tiles(row('Sin clasificar'))).toHaveLength(1)
   })
 
   it('«Volver todo a Sin clasificar» saca las cartas de las filas sin borrar las filas', () => {
-    render(<TierMakerScreen deckCards={deck} />)
-    addDeck()
+    seed()
+    render(<TierMakerScreen />)
     fireEvent.click(tiles(row('Sin clasificar'))[0] as HTMLElement)
     fireEvent.click(screen.getByRole('button', { name: 'Mover Crossout Designator a A' }))
 
@@ -217,22 +203,152 @@ describe('el creador de tier lists', () => {
     expect(tiles(row('Sin clasificar'))).toHaveLength(2)
   })
 
-  it('copia la lista como texto, y descargar la imagen sin cartas en las filas avisa en vez de armar una imagen vacía', async () => {
-    const writeText = vi.fn(async () => undefined)
-
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    render(<TierMakerScreen deckCards={deck} />)
-    addDeck()
+  it('descargar la imagen sin cartas en las filas avisa en vez de armar una imagen vacía', () => {
+    seed()
+    render(<TierMakerScreen />)
     fireEvent.click(tiles(row('Sin clasificar'))[0] as HTMLElement)
     fireEvent.click(screen.getByRole('button', { name: 'Mover Crossout Designator a S' }))
-
-    fireEvent.click(screen.getByRole('button', { name: 'Copiar texto' }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
-    expect(String((writeText.mock.calls[0] as unknown[])[0])).toContain('S: Crossout Designator')
-    expect(toast).toHaveBeenLastCalledWith('Copié la tier list como texto.', 'success')
 
     fireEvent.click(screen.getByRole('button', { name: 'Volver todo a «Sin clasificar»' }))
     fireEvent.click(screen.getByRole('button', { name: 'Descargar imagen' }))
     expect(toast).toHaveBeenLastCalledWith('Poné alguna carta en una fila para armar la imagen.', 'info')
+  })
+})
+
+const names = (scope: HTMLElement) => tiles(scope).map((tile) => tile.getAttribute('aria-label'))
+/** Lleva una carta de «Sin clasificar» a una fila con la barra, como con un toque. */
+const moveTo = (card: string, tier: string) => {
+  fireEvent.click(tiles(row('Sin clasificar')).find((tile) => tile.getAttribute('aria-label') === `Carta ${card}`) as HTMLElement)
+  fireEvent.click(screen.getByRole('button', { name: `Mover ${card} a ${tier}` }))
+}
+
+describe('sacar cartas de a un paso (Gastón, 2026-10-21: «si hago click derecho sobre las cartas deben salirse»)', () => {
+  it('el clic derecho en una fila la devuelve al final de «Sin clasificar», y ahí la saca de la lista; el menú del navegador no sale', () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'S')
+
+    const inRow = tiles(row('S'))[0] as HTMLElement
+
+    fireEvent.pointerDown(inRow, { pointerType: 'mouse', button: 2 })
+    // `fireEvent` devuelve `false` cuando el evento se canceló (`preventDefault`): así no sale el menú del navegador.
+    expect(fireEvent.contextMenu(inRow)).toBe(false)
+    expect(tiles(row('S'))).toHaveLength(0)
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler', 'Carta Crossout Designator'])
+
+    const inPool = tiles(row('Sin clasificar'))[1] as HTMLElement
+
+    fireEvent.pointerDown(inPool, { pointerType: 'mouse', button: 2 })
+    expect(fireEvent.contextMenu(inPool)).toBe(false)
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+    expect(screen.getByText('1 de 300 cartas')).toBeInTheDocument()
+  })
+
+  it('si la carta era la elegida, el clic derecho también la deja de elegir (la barra se va)', () => {
+    seed()
+    render(<TierMakerScreen />)
+
+    const card = tiles(row('Sin clasificar'))[0] as HTMLElement
+
+    fireEvent.click(card)
+    expect(screen.getByRole('group', { name: 'Mover «Crossout Designator» a…' })).toBeInTheDocument()
+    fireEvent.contextMenu(card)
+    expect(screen.queryByRole('group', { name: /Mover «/ })).not.toBeInTheDocument()
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+  })
+
+  it('con el dedo, el toque largo (que en Android dispara el mismo evento) no saca nada: sólo se bloquea el menú; con un lápiz, sí', () => {
+    seed()
+    render(<TierMakerScreen />)
+
+    const [first, second] = tiles(row('Sin clasificar')) as [HTMLElement, HTMLElement]
+
+    fireEvent.pointerDown(first, { pointerType: 'touch' })
+    expect(fireEvent.contextMenu(first)).toBe(false)
+    expect(tiles(row('Sin clasificar'))).toHaveLength(2)
+
+    fireEvent.pointerDown(second, { pointerType: 'pen' })
+    fireEvent.contextMenu(second)
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Crossout Designator'])
+  })
+
+  it('Supr y Retroceso hacen lo mismo con el teclado, sin perder el foco; Enter sigue eligiendo', async () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'S')
+    moveTo('Effect Veiler', 'S')
+
+    const first = tiles(row('S'))[0] as HTMLElement
+
+    first.focus()
+    fireEvent.keyDown(first, { key: 'Delete' })
+    expect(names(row('S'))).toEqual(['Carta Effect Veiler'])
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Crossout Designator'])
+    // El foco pasa a la que quedó en su lugar.
+    await waitFor(() => expect(tiles(row('S'))[0]).toHaveFocus())
+
+    fireEvent.keyDown(tiles(row('S'))[0] as HTMLElement, { key: 'Backspace' })
+    expect(tiles(row('S'))).toHaveLength(0)
+    // La fila quedó vacía: el foco va a su letra, lo que está justo antes.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Editar la fila S' })).toHaveFocus())
+
+    const pooled = tiles(row('Sin clasificar'))[0] as HTMLElement
+
+    fireEvent.keyDown(pooled, { key: 'Enter' })
+    expect(pooled).toHaveAttribute('aria-pressed', 'true')
+
+    pooled.focus()
+    fireEvent.keyDown(pooled, { key: 'Delete' })
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+    await waitFor(() => expect(tiles(row('Sin clasificar'))[0]).toHaveFocus())
+
+    // La última de «Sin clasificar»: el foco pasa a «Quitar fila», lo último que se puede tocar antes.
+    fireEvent.keyDown(tiles(row('Sin clasificar'))[0] as HTMLElement, { key: 'Delete' })
+    expect(tiles()).toHaveLength(0)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Quitar fila' })).toHaveFocus())
+  })
+})
+
+describe('los botones de las filas (Gastón: «deben estar antes de la sección unranked»)', () => {
+  it('van entre la última fila y «Sin clasificar», uno al lado del otro', () => {
+    render(<TierMakerScreen />)
+
+    const after = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    const add = screen.getByRole('button', { name: 'Agregar fila' })
+    const remove = screen.getByRole('button', { name: 'Quitar fila' })
+
+    expect(after(row('F'), add)).toBe(true)
+    expect(after(add, remove)).toBe(true)
+    expect(after(remove, row('Sin clasificar'))).toBe(true)
+    expect(add.parentElement).toBe(remove.parentElement)
+  })
+
+  it('quitar saca la última fila (sus cartas vuelven a «Sin clasificar») hasta que no queda ninguna; agregar suma al final hasta el tope', () => {
+    seed()
+    render(<TierMakerScreen />)
+    moveTo('Crossout Designator', 'F')
+
+    const add = screen.getByRole('button', { name: 'Agregar fila' })
+    const remove = screen.getByRole('button', { name: 'Quitar fila' })
+
+    fireEvent.click(remove)
+    expect(screen.queryByRole('region', { name: 'F' })).not.toBeInTheDocument()
+    expect(row('E')).toBeInTheDocument()
+    expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler', 'Carta Crossout Designator'])
+
+    for (const label of ['E', 'D', 'C', 'B', 'A', 'S']) {
+      expect(remove).toBeEnabled()
+      fireEvent.click(remove)
+      expect(screen.queryByRole('region', { name: label })).not.toBeInTheDocument()
+    }
+
+    expect(remove).toBeDisabled()
+    expect(tiles(row('Sin clasificar'))).toHaveLength(2)
+
+    for (let count = 0; count < 12; count += 1) fireEvent.click(add)
+
+    expect(screen.getAllByRole('region', { name: 'Nueva' })).toHaveLength(12)
+    expect(add).toBeDisabled()
+    expect(remove).toBeEnabled()
   })
 })

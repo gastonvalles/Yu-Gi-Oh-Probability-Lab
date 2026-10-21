@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { FX_RGB, type FxTone } from '../../probability/practice-styles'
 import { Badge } from '../../ui/Badge'
 import { Button, type ButtonVariant } from '../../ui/Button'
 import { Card } from '../../ui/Card'
@@ -196,6 +197,15 @@ export function ButtonsSection() {
           <span className="w-10"><Tag>copias</Tag></span>
           <CopiesBadge copies={1} />
           <CopiesBadge copies={3} />
+        </div>
+        {/* `rgb`: un color de afuera de los tonos; el chip de cada jugada en la lista de pasos lleva el de su destello en la mesa. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-10"><Tag>rgb</Tag></span>
+          {(Object.keys(FX_RGB) as FxTone[]).map((fx) => (
+            <Badge key={fx} size="sm" shape="tag" rgb={FX_RGB[fx]}>
+              {fx}
+            </Badge>
+          ))}
         </div>
       </Specimen>
     </div>

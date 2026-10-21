@@ -28,3 +28,5 @@ Decisión de Gastón (2026-10-20): el chat principal es el **orquestador**. Repa
 - **El orquestador verifica antes de contar:** mira el diff y corre lo que sea barato (no da por hecho lo que el agente dice haber hecho) y recién entonces le reporta a Gastón en pocas líneas: qué quedó, qué falta y qué decisión le toca a él.
 - **Lo que sale del repo lo hace el orquestador** (push, PR, merge), con las reglas de siempre: mergear sin esperar el CI y sin atribución a Claude. Los agentes trabajan en su worktree y dejan el commit local hecho.
 - **En paralelo sólo lo que no toca los mismos archivos;** si no, uno atrás del otro.
+- **Un mismo test que se reintenta 2 veces, se frena** (Gastón, 2026-10-21): si el orquestador o un agente corre de nuevo el mismo test dos veces porque falla o se comporta distinto, para y reporta en resumen el problema (qué test, qué dice el fallo, qué se probó) en vez de seguir reintentando; si no, sigue. Va en el brief de todo agente.
+- **Una sola PR por tanda** (Gastón, 2026-10-21: «hace una sola pr»): lo que terminan varios agentes se junta en una rama y se sube en una única PR.

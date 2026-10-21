@@ -40,7 +40,6 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
-import { matStepCards } from '../../app/mat-steps'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import { playSfx } from '../../app/sfx'
@@ -85,7 +84,8 @@ import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
-import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
+import { PracticeMatPanel } from './PracticeMatPanel'
+import { panelStepsOf } from './panel-steps'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { PileStack } from './PileStack'
 import { CARD_BACK, CARD_BACK_URL, GLOW_TONE } from './practice-styles'
@@ -490,22 +490,10 @@ export function PracticeMat({
       })),
     [duel, nameOf],
   )
+  const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
-  // La lista de pasos: la frase de cada jugada, las miniaturas de las cartas que mueve (hasta tres, las que tienen imagen) y si es un cambio de fase.
-  const stepCards = useMemo(() => matStepCards(session.initial, session.actions), [session.initial, session.actions])
-  const panelSteps = useMemo<PanelStep[]>(
-    () =>
-      steps.map((label, index) => ({
-        label,
-        divider: session.actions[index]?.type === 'phase',
-        cards: (stepCards[index] ?? []).slice(0, 3).flatMap((id) => {
-          const art = artOf(cardOf(id))
-
-          return art ? [{ name: cardOf(id).name, art }] : []
-        }),
-      })),
-    [steps, stepCards, session.actions, cardOf],
-  )
+  // La lista de pasos: la frase de cada jugada, sus miniaturas, si es un cambio de fase y, para su ficha, la mesa de después, la clase de jugada, lo que se mueve y su color. Una vez por combo, no por paso.
+  const panelSteps = useMemo(() => panelStepsOf(session.initial, session.actions, steps, nameOf, artById), [session.initial, session.actions, steps, nameOf, artById])
   const live = session.cursor === session.actions.length
 
   const [menu, setMenu] = useState<
@@ -801,8 +789,7 @@ export function PracticeMat({
   const handCards = useMemo<HandCardData[]>(() => orderedHand.slice(0, dealt).filter((id) => id !== pendingId).map((id) => ({ id, ...cardOf(id) })), [orderedHand, dealt, cardOf, pendingId])
   const isDealt = dealt >= handTotal
 
-  // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo).
-  const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
+  // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo): `artById`, de arriba.
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
   // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
   const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}`)
@@ -1522,8 +1509,11 @@ export function PracticeMat({
   const panel = (
     <PracticeMatPanel
       steps={panelSteps}
+      initial={session.initial}
       cursor={session.cursor}
       onSeek={seekFromPanel}
+      nameOf={nameOf}
+      artOf={artById}
       combos={combos}
       deckName={deckName}
       onLoad={loadFromPanel}
