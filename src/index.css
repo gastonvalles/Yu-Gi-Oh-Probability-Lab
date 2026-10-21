@@ -1409,7 +1409,8 @@
   inset: 5%;
   z-index: 2;
   pointer-events: none;
-  color: rgb(var(--accent-rgb));
+  /* Ámbar, el color de lo que se toca: el violeta se perdía contra el fondo violeta de la mesa. */
+  color: rgb(var(--info-rgb));
   background:
     linear-gradient(currentColor, currentColor) left top / 24% 2px no-repeat,
     linear-gradient(currentColor, currentColor) left top / 2px 24% no-repeat,
@@ -1419,7 +1420,7 @@
     linear-gradient(currentColor, currentColor) left bottom / 2px 24% no-repeat,
     linear-gradient(currentColor, currentColor) right bottom / 24% 2px no-repeat,
     linear-gradient(currentColor, currentColor) right bottom / 2px 24% no-repeat;
-  filter: drop-shadow(0 0 3px rgb(var(--accent-rgb) / 0.7));
+  filter: drop-shadow(0 0 3px rgb(var(--info-rgb) / 0.7));
 }
 
 @utility mat-pick-diamond {

@@ -1678,7 +1678,7 @@ describe('la pantalla del duelo', () => {
     expect(zoneOf(guest, 'Zona de monstruo 2').queryAllByRole('button').length).toBeGreaterThan(0)
   })
 
-  it('el asistente: si Ana activa dos veces en el mismo turno una carta de una vez por turno por nombre, la pantalla le avisa; la jugada se hace igual', async () => {
+  it('el asistente: si Ana activa dos veces en el mismo turno una carta de una vez por turno por nombre, no hay cartel (activar otra vez es la forma de preguntarle al rival si quiere responder); la jugada se hace', async () => {
     // Cada carta del deck lleva el número de una carta real con «una vez por turno, por nombre» confirmado (distintos: un deck de 40 copias de la misma no es legal).
     const limited = Object.entries(CARD_EFFECTS.cards).filter(([facts]) => (Number(facts) & 6) === 6).flatMap(([, ids]) => ids)
     const ash = new Map([...monsters].map(([id, entry], index) => [id, { ...entry, name: 'Limitada ' + index, apiCard: { ...entry.apiCard, ygoprodeckId: limited[index]! } as unknown as ApiCardReference }]))
@@ -1701,7 +1701,7 @@ describe('la pantalla del duelo', () => {
     expect(messages().filter((message) => /Ya activaste/.test(message))).toEqual([])
 
     activateFirstInHand()
-    expect(messages().filter((message) => /Ya activaste/.test(message))).toEqual([expect.stringMatching(/Ya activaste Limitada \d+ este turno.*por nombre/)])
+    expect(messages().filter((message) => /Ya activaste/.test(message))).toEqual([])
   })
 
   it('cuando Ana agrega a su mano una carta de su deck (la busca), Beto la ve de frente en la animación y no de dorso', () => {

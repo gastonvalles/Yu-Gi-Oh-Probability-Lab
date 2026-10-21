@@ -62,7 +62,7 @@ const activate = (index: number) => {
   fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
 }
 
-describe('el asistente de la mesa: avisa si se activa otra vez una carta de una vez por turno', () => {
+describe('el asistente de la mesa: no avisa por activar otra vez (sin manejo de cadenas, repetir una activación es la forma de preguntarle al rival si quiere responder)', () => {
   beforeEach(() => {
     vi.mocked(showToastMessage).mockClear()
     localStorage.clear()
@@ -75,37 +75,18 @@ describe('el asistente de la mesa: avisa si se activa otra vez una carta de una 
     window.cancelAnimationFrame = () => {}
   })
 
-  it('la segunda activación en el mismo turno avisa (también con otra copia: el límite es por nombre) y no frena nada', async () => {
+  it('activar la misma carta otra vez en el mismo turno (también con otra copia) no muestra ningún cartel: repetir una activación es una forma de hablar, no un error', async () => {
     render(<Harness />)
     await act(async () => {
       await loadCardEffects()
     })
 
+    activate(0)
+    activate(1)
     activate(0)
     expect(showToastMessage).not.toHaveBeenCalled()
-
-    activate(1)
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste Ash Blossom este turno.*por nombre.*otra copia comparte el límite/)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![1]).toBe('warning')
-    // La jugada se hizo igual: las dos quedaron en el registro.
-    expect(screen.getAllByText(/Activás el efecto de Ash Blossom/).length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('si se deshacen las dos activaciones, la siguiente ya no avisa (no cuenta lo que se deshizo)', async () => {
-    render(<Harness />)
-    await act(async () => {
-      await loadCardEffects()
-    })
-
-    activate(0)
-    activate(1)
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
-    activate(0)
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
+    // Las tres quedaron en el registro.
+    expect(screen.getAllByText(/Activás el efecto de Ash Blossom/).length).toBeGreaterThanOrEqual(3)
   })
 
   it('una carta sin límite de uso confirmado se activa las veces que sea sin avisar', async () => {
@@ -198,17 +179,18 @@ describe('el contador por efecto: una carta con varios efectos pregunta cuál se
     expect(showToastMessage).not.toHaveBeenCalled()
   })
 
-  it('cada efecto cuenta lo suyo: usar el 1 y después el 2 no avisa; repetir el 1 (con otra copia: el límite es por nombre) sí, y dice cuál', () => {
+  it('usar el mismo efecto otra vez no muestra cartel (ni con otra copia): el menú lo dice en voz baja, la próxima vez que se elige', () => {
     render(<Harness cards={CROWS} initial={CROW_INITIAL} />)
 
     effect(0, 0)
     effect(1, 0)
+    effect(0, 1)
     expect(showToastMessage).not.toHaveBeenCalled()
 
-    effect(0, 1)
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste el efecto 1 de Cuervo este turno y es de «una vez por turno» por nombre \(otra copia comparte el límite\)\./)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![1]).toBe('warning')
+    // En el menú, cada efecto dice si ya se usó (los dos: el límite es por nombre y se usó cada uno).
+    open(0)
+    expect(screen.getByRole('menuitem', { name: /^Efecto 1 · .*Ya lo usaste este turno/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /^Efecto 2 · .*Ya lo usaste este turno/ })).toBeInTheDocument()
   })
 
   it('la lista dice cuál ya se usó este turno (y lo sigue ofreciendo); al deshacer, deja de decirlo', () => {
@@ -225,7 +207,7 @@ describe('el contador por efecto: una carta con varios efectos pregunta cuál se
     expect(screen.getByRole('menuitem', { name: /^Efecto 1 · / })).not.toHaveAccessibleName(/Ya lo usaste/)
   })
 
-  it('dos efectos que comparten el límite («1 of the following effects»): usar uno avisa al usar el otro, y lo dice', () => {
+  it('dos efectos que comparten el límite («1 of the following effects»): usar uno lo dice en la lista del otro, sin cartel', () => {
     const [first, second] = effectSentences(CROW_TEXT)
     const shared = ONCE_BY_NAME | EFFECT_FACT.shared
 
@@ -245,11 +227,9 @@ describe('el contador por efecto: una carta con varios efectos pregunta cuál se
     effect(0, 0)
     expect(showToastMessage).not.toHaveBeenCalled()
 
-    // El otro efecto (y con otra copia, que comparte el límite por nombre): avisa que comparten el límite.
+    // El otro efecto (y con otra copia, que comparte el límite por nombre): no hay cartel.
     effect(1, 1)
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya usaste un efecto de Cuervo este turno y el efecto 2 comparte el límite con él: se puede usar uno solo por turno\./)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![1]).toBe('warning')
+    expect(showToastMessage).not.toHaveBeenCalled()
 
     // La lista también lo dice en los dos efectos.
     open(0)
@@ -409,7 +389,7 @@ const POTS: ReadonlyMap<string, MatCard> = new Map([
 ])
 const POT_INITIAL = createMatState(['card-35261759-1', 'card-35261759-2', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], [], 5)
 
-describe('el asistente de la mesa: también cuenta las Mágicas y las Trampas (activar es dejarlas boca arriba)', () => {
+describe('el asistente de la mesa: las Mágicas y las Trampas tampoco avisan (activar es dejarlas boca arriba)', () => {
   const pot = () => within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem', { name: 'Pot of Desires' })[0]!
   /** De la mano a una zona de Mágicas y Trampas, boca arriba (activar) o boca abajo (colocar). */
   const fromHand = (option: 'Activar' | 'Colocar', zone: number) => {
@@ -430,48 +410,16 @@ describe('el asistente de la mesa: también cuenta las Mágicas y las Trampas (a
     window.cancelAnimationFrame = () => {}
   })
 
-  it('una segunda Pot of Desires activada en el mismo turno avisa, y la jugada se hace igual', async () => {
+  it('una segunda Pot of Desires activada en el mismo turno no muestra cartel: la jugada se hace y queda en el registro', async () => {
     render(<Harness cards={POTS} initial={POT_INITIAL} />)
     await act(async () => {
       await loadCardEffects()
     })
 
     fromHand('Activar', 1)
-    expect(showToastMessage).not.toHaveBeenCalled()
-
     fromHand('Activar', 2)
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste Pot of Desires este turno.*por nombre.*otra copia comparte el límite/)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![1]).toBe('warning')
+    expect(showToastMessage).not.toHaveBeenCalled()
     expect(screen.getAllByText('Activás Pot of Desires').length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('Colocar boca abajo no es activar: avisa recién al darla vuelta', async () => {
-    render(<Harness cards={POTS} initial={POT_INITIAL} />)
-    await act(async () => {
-      await loadCardEffects()
-    })
-
-    fromHand('Activar', 1)
-    fromHand('Colocar', 2)
-    expect(showToastMessage).not.toHaveBeenCalled()
-
-    tap(screen.getByRole('button', { name: 'Pot of Desires, boca abajo' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
-    expect(showToastMessage).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(showToastMessage).mock.calls[0]![0]).toMatch(/Ya activaste Pot of Desires este turno/)
-  })
-
-  it('si se deshace la primera activación, la segunda ya no avisa', async () => {
-    render(<Harness cards={POTS} initial={POT_INITIAL} />)
-    await act(async () => {
-      await loadCardEffects()
-    })
-
-    fromHand('Activar', 1)
-    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
-    fromHand('Activar', 2)
-    expect(showToastMessage).not.toHaveBeenCalled()
   })
 
   it('una Mágica Continua cuyo límite es de un efecto (no de la activación) se activa las veces que sea sin avisar', async () => {
