@@ -63,11 +63,11 @@ export function viewChip(state: { active: boolean; onBrand?: boolean }): string 
     'inline-flex items-center gap-2 rounded-control px-3.5 py-2 text-micro font-semibold leading-none transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
     state.onBrand
       ? state.active
-        ? 'bg-primary-foreground text-primary'
+        ? 'bg-info text-info-foreground'
         : 'bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25'
       : state.active
         ? 'bg-[rgb(var(--role-rgb)/0.3)] text-foreground'
-        : 'bg-lavender text-primary-soft hover:bg-[rgb(var(--role-rgb)/0.2)] hover:text-foreground',
+        : 'bg-lavender text-foreground hover:bg-[rgb(var(--role-rgb)/0.2)]',
   )
 }
 
@@ -75,10 +75,10 @@ export function viewChip(state: { active: boolean; onBrand?: boolean }): string 
 export function queueCard(active: boolean): string {
   return cx(
     'min-h-14 cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
-    active ? 'bg-primary/18' : 'bg-transparent hover:bg-tint/7',
+    active ? 'bg-tint/10' : 'bg-transparent hover:bg-tint/7',
   )
 }
 
 export function queueArt(active: boolean): string {
-  return cx('relative overflow-hidden leading-[0] transition-shadow duration-150', active && 'ring-2 ring-primary/80')
+  return cx('relative overflow-hidden leading-[0] transition-shadow duration-150', active && 'ring-2 ring-info/80')
 }
