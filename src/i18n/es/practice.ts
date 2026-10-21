@@ -352,4 +352,14 @@ export const practice = {
   'practice.eval.pool': '({count} cartas)',
   'practice.eval.noReuse': 'Sin repetir carta: {rest}',
   'practice.eval.deadCards': 'Abrís {total} Bricks/Garnets.',
+
+  // El visor de una pila: elegir varias cartas para una misma jugada (`PileViewer` con `many`).
+  'practice.many.enter': 'Elegir varias',
+  'practice.many.all': 'Elegir todas',
+  'practice.many.none': 'Quitar elección',
+  'practice.many.hint': 'Tocá las que quieras',
+  'practice.many.picked': { one: '<n>{count}</n> <w>elegida</w>', other: '<n>{count}</n> <w>elegidas</w>' },
+  'practice.many.order': '{name} ({n}.ª elegida)',
+  'practice.many.range': 'Mayús+clic elige el tramo desde la última que tocaste',
+  'practice.many.choosePlay': 'Elegir jugada',
 } as const

@@ -871,6 +871,8 @@ export interface MatMenuItem {
   lead?: string
   /** Una línea chica debajo de la opción (en el segundo paso de «Activar efecto»: si ya se usó, desde dónde se activa y sus rasgos). */
   hint?: string
+  /** La opción se ve apagada, no se elige y dice por qué (en el menú de varias cartas, la jugada que no admiten todas: «No va con Ash y Droll»). La mesa la dibuja como `MenuItem` con `disabled` y esta razón de `hint`. */
+  disabled?: string
   /** El pedazo del texto de la carta que dice esta opción (la frase del efecto): en escritorio, al pasar el mouse el detalle de la carta, a la izquierda, lo resalta. */
   preview?: { start: number; end: number }
   /** Invocación desde el Extra: se pueden elegir materiales en el campo (los que sean, o ninguno) y se confirma con un botón, o se toca una casilla libre para invocar ahí. */

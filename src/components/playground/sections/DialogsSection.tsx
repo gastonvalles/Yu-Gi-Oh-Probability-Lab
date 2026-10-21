@@ -1,8 +1,10 @@
-import { useState, type ComponentProps } from 'react'
+import { useMemo, useState, type ComponentProps } from 'react'
 
 import type { LabResults, LabViewResult } from '../../../app/probability-lab'
 import { printImageUrl } from '../../../app/card-prices'
+import type { MatPile } from '../../../app/practice-mat'
 import type { ArtChoice } from '../../../app/use-card-art-options'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { showToastMessage, type ToastTone } from '../../../app/use-toast-message'
 import { formatDay, t } from '../../../i18n'
 import type { ApiCardReference } from '../../../types'
@@ -14,9 +16,12 @@ import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
 import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Modal } from '../../ui/Modal'
+import { CardSheet } from '../../probability/CardSheet'
 import { ConfirmDialog } from '../../probability/ConfirmDialog'
 import { LabScoreSheet } from '../../probability/LabScoreSheet'
+import { CardMenu, PILE_TITLES, PileViewer, type MenuItem } from '../../probability/MatDialogs'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
+import { sampleCombo } from './duel-sample'
 
 const SIZES = ['sm', 'md', 'full', 'sheet', 'screen', 'keypad'] as const
 
@@ -124,6 +129,30 @@ const ZOOM_ARTS: ArtChoice[] = [
   },
 ]
 
+// El visor de una pila: las cartas del combo de muestra (nombre y arte de YGOPRODeck). Un cementerio de seis (sin buscador) y un Main de catorce (con buscador y tres Ash Blossom para filtrar).
+const pileCard = (passcode: number, copy = 1) => `card-${passcode}-${copy}`
+const ASH = pileCard(14558127)
+const OGRE = pileCard(59438930)
+const TALKER = pileCard(86066372)
+const SAMPLE_GY = [ASH, OGRE, TALKER, pileCard(83764718), pileCard(27204311), pileCard(38342335)]
+const SAMPLE_MAIN = [ASH, pileCard(5318639), OGRE, pileCard(14558127, 2), pileCard(53129443), pileCard(27204311), pileCard(10045474), pileCard(14558127, 3), pileCard(83764718), pileCard(24094653), pileCard(59438930, 2), pileCard(44095762), pileCard(53582587), pileCard(10045474, 2)]
+// Los monstruos del Extra Deck de la muestra: los únicos que pueden volver al Extra.
+const SAMPLE_EXTRA = new Set([TALKER, pileCard(38342335)])
+
+type PileSample = 'plain' | 'two' | 'none' | 'search' | 'batch'
+
+/** Un estado del visor por muestra: qué pila, qué cartas, cuáles llevan la mira y si arranca eligiendo (y con cuáles). */
+const PILE_SAMPLES: Record<PileSample, { pile: MatPile; ids: string[]; targeted?: string[]; start?: string[] }> = {
+  plain: { pile: 'gy', ids: SAMPLE_GY, targeted: [pileCard(83764718)] },
+  two: { pile: 'gy', ids: SAMPLE_GY, targeted: [ASH], start: [TALKER, ASH] },
+  none: { pile: 'gy', ids: SAMPLE_GY, start: [] },
+  search: { pile: 'deck', ids: SAMPLE_MAIN, start: [] },
+  batch: { pile: 'gy', ids: SAMPLE_GY, start: [TALKER, ASH, OGRE] },
+}
+
+/** Lo que dice una opción que no admiten todas las elegidas, como lo va a decir la mesa: hasta tres nombres; desde cuatro, cuántas. */
+const notWith = (names: string[]) => (names.length > 3 ? `No va con ${names.length} de las elegidas` : `No va con ${names.length > 1 ? `${names.slice(0, -1).join(', ')} y ${names.at(-1)}` : names[0]}`)
+
 /** Diálogos y avisos: se abren desde acá, tal cual se ven en la app. */
 export function DialogsSection() {
   const [size, setSize] = useState<(typeof SIZES)[number] | null>(null)
@@ -131,6 +160,29 @@ export function DialogsSection() {
   const [zoomOpen, setZoomOpen] = useState(false)
   const [zoomArt, setZoomArt] = useState('print-1')
   const [confirm, setConfirm] = useState<ConfirmSample | null>(null)
+  const [pileSample, setPileSample] = useState<PileSample | null>(null)
+  // El menú que abre el visor (como en la mesa, lo abre quien abrió el visor): el de una carta, o el del lote con «Elegir jugada». En escritorio, pegado; en el celular, la hoja de abajo.
+  const [pileMenu, setPileMenu] = useState<{ kicker: string; title: string; rect: DOMRect; items: MenuItem[]; card?: string } | null>(null)
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const { nameOf, artOf } = useMemo(() => sampleCombo(), [])
+  const pileShown = pileSample ? PILE_SAMPLES[pileSample] : null
+  // Toda jugada cierra el visor, como en la mesa.
+  const playSample = (label: string) => () => {
+    setPileMenu(null)
+    setPileSample(null)
+    showToastMessage(`Jugada de muestra: ${label}`, 'info')
+  }
+  const cardItems = (): MenuItem[] =>
+    [t('practice.menu.specialSummon'), t('practice.menu.toHand'), t('practice.menu.target'), t('practice.menu.banish'), t('practice.menu.toDeck')].map((label, index) => ({ label, onSelect: playSample(label), utility: index > 0 || undefined }))
+  const batchItems = (ids: string[]): MenuItem[] => {
+    const blocked = ids.filter((id) => !SAMPLE_EXTRA.has(id)).map(nameOf)
+    const toExtra = t('practice.menu.toExtra')
+
+    return [
+      ...[t('practice.menu.toHand'), t('practice.menu.banish'), t('practice.menu.toDeck'), t('practice.menu.target')].map((label) => ({ label, onSelect: playSample(label), utility: true })),
+      { label: toExtra, onSelect: playSample(toExtra), utility: true, disabled: blocked.length > 0, hint: blocked.length > 0 ? notWith(blocked) : undefined },
+    ]
+  }
   const openButtons = (samples: ConfirmSample[]) =>
     samples.map((sample) => (
       <Button key={sample.title} size="sm" onClick={() => setConfirm(sample)}>
@@ -171,6 +223,54 @@ export function DialogsSection() {
         </div>
         <ConfirmDialog {...(confirm ?? REFERENCE_CONFIRMS[0]!)} isOpen={confirm !== null} onCancel={() => setConfirm(null)} onConfirm={() => setConfirm(null)} />
       </Specimen>
+
+      <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
+        <Button size="sm" onClick={() => setPileSample('plain')}>
+          Abrir el cementerio
+        </Button>
+      </Specimen>
+
+      <Specimen title="Elegir varias: dos elegidas" note={<>Cada elegida lleva un aro ámbar y su número de orden (el orden se usa: arriba del deck, a la mano). La mira del Target y el aro conviven. Mayús+clic elige el tramo; Escape sale del modo y, otra vez, cierra el visor.</>}>
+        <Button size="sm" onClick={() => setPileSample('two')}>
+          Abrir con dos elegidas
+        </Button>
+      </Specimen>
+
+      <Specimen title="Elegir varias: ninguna elegida" note={<>Sin nada elegido, «Elegir jugada» va apagada y el pie dice por qué. «Cancelar» sale del modo sin cerrar el visor.</>}>
+        <Button size="sm" onClick={() => setPileSample('none')}>
+          Abrir sin elegir
+        </Button>
+      </Specimen>
+
+      <Specimen title="Elegir varias con buscador" note={<>Con más de ocho cartas, «Elegir todas» va a la derecha del buscador y elige sólo las que se ven: escribí «ash» y tocala (pasa a «Quitar elección»).</>}>
+        <Button size="sm" onClick={() => setPileSample('search')}>
+          Abrir el Main
+        </Button>
+      </Specimen>
+
+      <Specimen title="Menú de varias cartas" note={<>«Elegir jugada» le pasa las elegidas a la mesa y ella abre el menú del lote: pegado al botón en escritorio, la hoja de abajo en el celular. Lo que no admiten todas va apagado y dice por qué (hasta tres nombres; desde cuatro, cuántas). Las jugadas son de muestra.</>}>
+        <Button size="sm" onClick={() => setPileSample('batch')}>
+          Abrir con tres elegidas
+        </Button>
+      </Specimen>
+      {pileShown ? (
+        <PileViewer
+          key={pileSample}
+          pile={pileShown.pile}
+          ids={pileShown.ids}
+          info={(id) => ({ name: nameOf(id), art: artOf(id) })}
+          targeted={new Set(pileShown.targeted)}
+          onPick={(id, rect) => setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
+          many={{
+            label: () => t('practice.many.choosePlay'),
+            onPick: (ids, rect) => setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: t('practice.mat.cardCount', { count: ids.length }), rect, items: batchItems(ids) }),
+            start: pileShown.start,
+          }}
+          onClose={() => setPileSample(null)}
+        />
+      ) : null}
+      {pileMenu && !isDesktop ? <CardSheet name={pileMenu.title} kicker={pileMenu.kicker} plain={pileMenu.card === undefined} art={pileMenu.card ? artOf(pileMenu.card) : null} items={pileMenu.items} onClose={() => setPileMenu(null)} /> : null}
+      <CardMenu anchor={isDesktop ? (pileMenu?.rect ?? null) : null} kicker={pileMenu?.kicker ?? ''} title={pileMenu?.title ?? ''} items={pileMenu?.items ?? []} onClose={() => setPileMenu(null)} />
 
       <Specimen title="Ficha «Cómo se calcula»" note={<>Lo que abre la ⓘ de la tarjeta del resultado del Lab: una mano buena, las cuentas por turno y lo que el número no dice. Archivo: <Tag>probability/LabScoreSheet.tsx</Tag></>}>
         <Button size="sm" onClick={() => setSheetOpen(true)}>

@@ -53,18 +53,18 @@ function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: bool
           key={`${index}|${item.label}`}
           role="menuitem"
           aria-current={item.current ? 'true' : undefined}
-          variant={item.current ? 'primary' : 'secondary'}
-          className={cx('min-w-0 px-2!', !stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left')}
+          // Apagada: sin caja y sin atenuar todo el botón (al 40 % no se leía por qué), el texto en `muted` y la razón en `soft`; se enfoca y se lee, pero no se elige.
+          variant={item.current ? 'primary' : item.disabled ? 'tertiary' : 'secondary'}
+          className={cx('min-w-0 px-2!', !stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left', item.disabled && 'cursor-default aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0')}
           aria-disabled={item.disabled || undefined}
-          disabled={item.disabled}
           data-initial-focus={index === 0 ? '' : undefined}
-          onClick={item.onSelect}
+          onClick={item.disabled ? undefined : item.onSelect}
         >
-          {item.hint || item.lead ? (
+          {item.hint || item.lead || item.disabled ? (
             <span className="grid min-w-0 gap-0.5">
               {item.lead ? <span className="block text-micro font-semibold opacity-70">{item.lead}</span> : null}
-              <span className={cx(item.lead && 'font-normal')}>{item.label}</span>
-              {item.hint ? <span className="block text-micro font-normal opacity-70">{item.hint}</span> : null}
+              <span className={cx(item.lead && 'font-normal', item.disabled && 'text-muted')}>{item.label}</span>
+              {item.hint ? <span className={cx('block text-micro font-normal', item.disabled ? 'text-soft' : 'opacity-70')}>{item.hint}</span> : null}
             </span>
           ) : (
             item.label
