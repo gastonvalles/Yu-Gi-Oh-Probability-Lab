@@ -104,6 +104,77 @@ const arbAppState: fc.Arbitrary<AppState> = fc.record({
   }),
 })
 
+/** Un Péndulo sin escala: la forma de una carta guardada antes de que el codec conservara `scale`. */
+const CARTA_SIN_ESCALA: ApiCardReference = {
+  ygoprodeckId: 1,
+  cardType: 'Pendulum Effect Monster',
+  frameType: 'effect_pendulum',
+  description: null,
+  race: 'Spellcaster',
+  attribute: 'DARK',
+  level: 4,
+  linkValue: null,
+  atk: '1500',
+  def: '1000',
+  archetype: null,
+  ygoprodeckUrl: null,
+  imageUrl: null,
+  imageUrlSmall: null,
+  banlist: { tcg: null, ocg: null, goat: null },
+  genesys: { points: null },
+}
+
+function estadoConUnaCarta(apiCard: ApiCardReference): AppState {
+  const carta: DeckCardInstance = {
+    instanceId: 'deck-card-pendulo',
+    name: 'Péndulo de prueba',
+    apiCard,
+    origin: null,
+    roles: [],
+    needsReview: false,
+  }
+
+  return {
+    handSize: 5,
+    deckFormat: 'tcg',
+    patternsSeeded: false,
+    patternsSeedVersion: 0,
+    patterns: [],
+    disabledGenericRuleIds: [],
+    systemRuleNames: {},
+    deckBuilder: { deckName: 'Prueba', main: [carta], extra: [], side: [], isEditingDeck: true },
+  }
+}
+
+/** Guardar y leer como un archivo: pasa por JSON de verdad, no por el objeto en memoria. */
+function guardarYLeer(state: AppState): AppState {
+  return fromPortableConfig(JSON.parse(JSON.stringify(toPortableConfig(state))))
+}
+
+describe('Codec: la escala de Péndulo', () => {
+  it('sobrevive a guardar y leer, junto con el nivel', () => {
+    const restored = guardarYLeer(estadoConUnaCarta({ ...CARTA_SIN_ESCALA, scale: 8 }))
+
+    expect(restored.deckBuilder.main[0].apiCard.scale).toBe(8)
+    expect(restored.deckBuilder.main[0].apiCard.level).toBe(4)
+  })
+
+  it('una carta sin escala sigue sin el campo: no queda en null', () => {
+    const restored = guardarYLeer(estadoConUnaCarta(CARTA_SIN_ESCALA))
+
+    expect(restored.deckBuilder.main[0].apiCard).not.toHaveProperty('scale')
+  })
+
+  it('una escala inválida se descarta sin romper el parseo', () => {
+    for (const invalida of ['ocho', Number.NaN]) {
+      const restored = guardarYLeer(estadoConUnaCarta({ ...CARTA_SIN_ESCALA, scale: invalida as unknown as number }))
+
+      expect(restored.deckBuilder.main[0].apiCard).not.toHaveProperty('scale')
+      expect(restored.deckBuilder.main[0].apiCard.level).toBe(4)
+    }
+  })
+})
+
 /** El estado de la app sobrevive a pasar por la configuración portable (exportar e importar). */
 describe('Codec: toPortableConfig → fromPortableConfig', () => {
   it('conserva el formato, la mano, el nombre del deck, las reglas y las cartas de cualquier estado válido', () => {
