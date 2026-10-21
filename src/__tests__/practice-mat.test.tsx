@@ -31,6 +31,8 @@ const CARDS: ReadonlyMap<string, MatCard> = new Map([
   ['card-6-1', { name: 'Imperm', apiCard: card(6, 'trap') }],
   ['card-7-1', { name: 'Zeus', apiCard: card(7, 'xyz') }],
 ])
+// Las mismas cartas con arte: la casilla y el visor muestran su imagen (el nombre de la carta es su texto alternativo), así se ve cuál es la que se ve.
+const WITH_ART: ReadonlyMap<string, MatCard> = new Map([...CARDS].map(([id, entry]): [string, MatCard] => [id, { ...entry, art: `https://images.ygoprodeck.com/images/cards_small/${id.replace(/\D/g, '')}.jpg` }]))
 const INITIAL = createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], ['card-7-1'], 5)
 const NO_ACTIONS: MatAction[] = []
 const NO_NAMES: Record<string, string> = {}
@@ -1561,7 +1563,7 @@ describe('la mesa de práctica', () => {
     }
   })
 
-  it('poner un target a una carta del cementerio o del destierro le pone la mira en el visor y en la casilla, y el visor sigue abierto', () => {
+  it('poner un target a una carta del cementerio o del destierro le pone la mira en la casilla, y el visor se cierra para verla', () => {
     render(<Harness />)
 
     // Maxx C al cementerio y Nibiru al destierro, desde sus menús.
@@ -1580,25 +1582,22 @@ describe('la mesa de práctica', () => {
     fireEvent.click(within(screen.getByRole('dialog', { name: 'GY · 1' })).getByRole('button', { name: 'Maxx C' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
 
-    // Un target no mueve la carta: el visor sigue abierto, con la mira sobre ella, y la casilla también la lleva.
-    const viewer = screen.getByRole('dialog', { name: 'GY · 1' })
-    const tile = within(viewer).getByRole('button', { name: 'Maxx C (target)' })
-    expect(tile.querySelector('[data-fx="target"]')).not.toBeNull()
-    expect(tile.querySelector('[data-targeted="true"]')).not.toBeNull()
+    // Un target no mueve la carta: el visor se cierra para ver la mira caer sobre la casilla, que la lleva.
+    expect(screen.queryByRole('dialog', { name: 'GY · 1' })).not.toBeInTheDocument()
     expect(gy()).toHaveAttribute('data-targeted', 'true')
     expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
     expect(within(status()).getByText('Marcás Maxx C como target')).toBeInTheDocument()
 
-    // El destierro, igual.
-    fireEvent.click(within(viewer).getByRole('button', { name: 'Cerrar' }))
+    // El destierro, igual: su visor se abre y el target lo cierra otra vez.
     expect(banish().querySelector('[data-fx="target"]')).toBeNull()
     fireEvent.click(banish())
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
-    expect(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (target)' }).querySelector('[data-fx="target"]')).not.toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Banish · 1' })).not.toBeInTheDocument()
     expect(banish().querySelector('[data-fx="target"]')).not.toBeNull()
 
-    // Quitar el target saca la mira de las dos partes.
+    // Quitar el target saca la mira de las dos partes (desde el visor, que se abre de nuevo: quitarlo no lo cierra).
+    fireEvent.click(banish())
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (target)' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar target' }))
     expect(banish().querySelector('[data-fx="target"]')).toBeNull()
@@ -1607,8 +1606,39 @@ describe('la mesa de práctica', () => {
     expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
   })
 
-  it('una carta desterrada boca abajo y marcada como target dice las dos cosas en el visor', () => {
-    render(<Harness />)
+  it('con dos cartas en el cementerio, la casilla muestra la marcada como target aunque no sea la de arriba, y vuelve a la de arriba al quitarla', () => {
+    render(<Harness cards={WITH_ART} />)
+
+    // Maxx C y después Nibiru al cementerio: Nibiru queda arriba. El target va a Maxx C, la de abajo, desde el visor.
+    tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
+    tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
+
+    const gy = () => screen.getByRole('button', { name: 'GY: 2' })
+    expect(within(gy()).getByRole('img', { name: 'Nibiru' })).toBeInTheDocument()
+
+    // Con arte, el nombre accesible de la tarjeta del visor suma el texto y el alt: se toca por su imagen.
+    fireEvent.click(gy())
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'GY · 2' })).getByRole('img', { name: 'Maxx C' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+
+    // El visor se cierra y la casilla muestra Maxx C, la marcada, con la mira; Nibiru ya no se ve.
+    expect(screen.queryByRole('dialog', { name: 'GY · 2' })).not.toBeInTheDocument()
+    expect(within(gy()).getByRole('img', { name: 'Maxx C' })).toBeInTheDocument()
+    expect(within(gy()).queryByRole('img', { name: 'Nibiru' })).not.toBeInTheDocument()
+    expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
+
+    // Quitado el target (desde el visor, que se abre de nuevo), la casilla vuelve a mostrar la de arriba.
+    fireEvent.click(gy())
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'GY · 2' })).getByRole('img', { name: 'Maxx C' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar target' }))
+    expect(gy().querySelector('[data-fx="target"]')).toBeNull()
+    expect(within(gy()).getByRole('img', { name: 'Nibiru' })).toBeInTheDocument()
+  })
+
+  it('una carta desterrada boca abajo y marcada como target: el visor se cierra y la casilla sigue de dorso, con la mira encima', () => {
+    render(<Harness cards={WITH_ART} />)
 
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Desterrar' }))
@@ -1619,8 +1649,11 @@ describe('la mesa de práctica', () => {
     fireEvent.click(within(viewer()).getByRole('button', { name: 'Nibiru (boca abajo)' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
 
-    // La mira se suma al "boca abajo": el nombre accesible no pierde ninguno de los dos.
-    expect(within(viewer()).getByRole('button', { name: 'Nibiru (boca abajo) (target)' })).toBeInTheDocument()
+    // Boca abajo la casilla no muestra la carta (sin imagen, de dorso), y la mira cae sobre ella.
+    expect(screen.queryByRole('dialog', { name: 'Banish · 1' })).not.toBeInTheDocument()
+    const banish = screen.getByRole('button', { name: 'Banish: 1' })
+    expect(banish.querySelector('[data-card-art]')).toBeNull()
+    expect(banish.querySelector('[data-fx="target"]')).not.toBeNull()
   })
 
   it('las casillas de las pilas y sus cartas en el visor no van redondeadas (el reset global le da radio a todo <button>)', () => {
