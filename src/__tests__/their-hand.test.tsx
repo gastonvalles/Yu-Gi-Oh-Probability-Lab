@@ -62,4 +62,17 @@ describe('la mano del rival', () => {
     expect(cardsOf()).toHaveLength(0)
     expect((container.firstElementChild as HTMLElement).style.height).toBe(`${THEIR_HAND.desktop.room}px`)
   })
+
+  it('al entrar o salir una carta, la caja y cada dorso se reacomodan con la transición de la mesa (y con movimiento reducido, de un golpe)', () => {
+    viewport(true)
+    render(<TheirHand count={5} />)
+
+    const box = screen.getByRole('img').parentElement!
+    expect(box.className).toContain('[transition:width_var(--motion-duration)_var(--ease-in-out)]')
+    expect(box.className).toContain('motion-reduce:transition-none')
+    for (const card of cardsOf()) {
+      expect(card.className).toContain('[transition:transform_var(--motion-duration)_var(--ease-in-out)]')
+      expect(card.className).toContain('motion-reduce:transition-none')
+    }
+  })
 })
