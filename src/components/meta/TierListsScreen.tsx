@@ -100,14 +100,15 @@ export function TierListsScreen() {
     window.history.replaceState(null, '', buildTierListHash(next))
   }
 
+  // En celular la pista ocupa el ancho; desde 560 px (tableta) va a su contenido, como en escritorio.
   const zoneControl = () => (
-    <Segmented value={zone} onChange={setZone} options={zoneOptions} label={t('meta.screen.zoneLabel')} size="sm" fullWidth={!isDesktop} />
+    <Segmented value={zone} onChange={setZone} options={zoneOptions} label={t('meta.screen.zoneLabel')} size="sm" fullWidth={!isDesktop} className="min-[560px]:w-fit" />
   )
   const weeksControl = () => (
-    <Segmented value={weeks} onChange={setWeeks} options={windowOptions} label={t('meta.screen.weeksLabel')} size="sm" fullWidth={!isDesktop} />
+    <Segmented value={weeks} onChange={setWeeks} options={windowOptions} label={t('meta.screen.weeksLabel')} size="sm" fullWidth={!isDesktop} className="min-[560px]:w-fit" />
   )
   const viewControl = () => (
-    <Segmented value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} size="sm" fullWidth={!isDesktop} />
+    <Segmented value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} size="sm" fullWidth={!isDesktop} className="min-[560px]:w-fit" />
   )
 
   return (
@@ -127,7 +128,7 @@ export function TierListsScreen() {
         }
       />
 
-      <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} fullWidth={!isDesktop} className="min-[1101px]:min-w-[26rem]" />
+      <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} fullWidth={!isDesktop} className="min-[560px]:w-fit min-[1101px]:min-w-[26rem]" />
 
       <section className="min-w-0">
         <SectionHeader

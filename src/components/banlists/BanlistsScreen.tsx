@@ -137,14 +137,14 @@ export function BanlistsScreen() {
             <Badge icon="refresh" title={t('catalog.banlists.updatedTitle')} className="min-[1101px]:order-first">
               {t('catalog.banlists.updated', { date: formatDay(new Date(`${BANLISTS_FETCHED_AT}T00:00:00Z`), 'UTC') })}
             </Badge>
-            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="min-w-0 max-[1101px]:order-first max-[1101px]:flex-1" />
+            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="min-w-0 max-[1101px]:order-first max-[560px]:flex-1" />
           </div>
         }
       />
 
       <Card className="grid gap-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 min-[700px]:flex-none">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 min-[560px]:basis-full min-[700px]:flex-none">
             <IconButton tone="raised" size="lg" aria-label={t('catalog.banlists.older')} title={t('catalog.banlists.older')} disabled={index >= lists.length - 1} onClick={() => pick(index + 1)}>
               <Icon name="chevron-left" />
             </IconButton>
@@ -178,6 +178,7 @@ export function BanlistsScreen() {
               <Icon name="chevron-right" />
             </IconButton>
           </div>
+          {/* Desde 560 px va a su contenido y a la derecha de su propia fila: la fecha ocupa la primera (basis-full) y si compartieran renglón la fecha se cortaba. */}
           <Segmented
             value={view}
             onChange={setView}
@@ -187,7 +188,7 @@ export function BanlistsScreen() {
             ]}
             label={t('catalog.banlists.viewLabel')}
             fullWidth
-            className="min-[700px]:ml-auto min-[700px]:w-fit"
+            className="min-[560px]:ml-auto min-[560px]:w-fit"
           />
         </div>
 
