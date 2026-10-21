@@ -105,7 +105,7 @@ export type LaneNotice =
   | { kind: 'passAsking' }
   | { kind: 'passHeld' }
   /** El rival activó una carta o un efecto y estas cartas mías podrían responder (`app/mat-responders.ts`: avisa, no decide). */
-  | { kind: 'chain'; card: string; names: readonly string[] }
+  | { kind: 'chain'; card: string; /** El lugar del efecto que activó, si eligió uno entre varios. */ effect?: number; names: readonly string[] }
 
 /**
  * Lo de arriba de la mesa en un duelo, que es lo del rival y lo que se mira sin tocar: sus puntos de vida, el reloj de la ronda (tocarlo lo pausa),
@@ -135,7 +135,7 @@ function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string):
     case 'passHeld':
       return t('duel.pass.held', { name })
     case 'chain':
-      return t('duel.chain.hint', { name, card: lane.card, cards: respondersText(lane.names) })
+      return lane.effect === undefined ? t('duel.chain.hint', { name, card: lane.card, cards: respondersText(lane.names) }) : t('duel.chain.hintEffect', { name, card: lane.card, n: lane.effect + 1, cards: respondersText(lane.names) })
   }
 }
 

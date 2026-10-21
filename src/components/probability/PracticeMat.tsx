@@ -53,8 +53,8 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
 import type { CardTextHighlight } from '../../app/card-text'
-import { cardEffectMapLoaded, getCardEffectFacts, getCardEffectMap, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
-import { LIMIT_FACTS, activationFacts, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, type Activation } from '../../app/mat-assistant'
+import { cardEffectMapLoaded, getCardEffectFacts, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
+import { LIMIT_FACTS, activationFacts, cardEffects, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, type Activation } from '../../app/mat-assistant'
 import { repeatedTurnRule } from '../../app/turn-rules'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
@@ -148,7 +148,7 @@ export interface DuelMatLink {
    * Lo que el rival acaba de hacer y se anima (activar, mostrar, declarar o marcar una carta, invocar, mandar cartas al cementerio, al destierro, a la mano o al deck…), como en un combo
    * guardado: las cartas (con el id que él les dio y su arte, o de dorso si no las mostró) grandes en el centro y `caption` arriba, que dice qué pasó. Cambiar `key` lo vuelve a mostrar.
    */
-  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean }
+  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean; /** El efecto que activó, si eligió uno entre varios: cuándo se activa («Efecto 2 · When…») y qué hace, **textual**, para que quien tiene que decidir si responde lo lea. */ detail?: { lead: string; text: string } }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
   /** Mis cartas que pueden responder ahora (el rival preguntó si hacés algo antes de pasar de fase): brillan en ámbar, y la casilla del cementerio lleva un aro si hay una adentro. */
@@ -911,7 +911,7 @@ export function PracticeMat({
       if (passcode === undefined || isForeignId(id)) return
 
       // Con el efecto elegido (en una carta que se cuenta por efecto) vale el límite de **ese** efecto; si no, el de la carta entera. Al activar una Mágica o una Trampa (dejarla boca arriba) vale sólo el límite de la activación.
-      const effect = effectIndex === undefined ? undefined : countableEffects(getCardEffectMap(passcode, api?.description ?? ''))?.[effectIndex]
+      const effect = effectIndex === undefined ? undefined : countableEffects(cardEffects(passcode, api?.description ?? '').effects)?.[effectIndex]
       const activation = action.type !== 'activate'
       const cardFacts = getCardEffectFacts(passcode) ?? 0
       const facts = effect ? effect.facts : activation ? activationFacts(cardFacts) : cardFacts
@@ -1433,12 +1433,13 @@ export function PracticeMat({
     }
 
     const listed = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz, duel?.control)
-    // «Activar efecto» de una carta con varios efectos que la mesa cuenta uno por uno (`countableEffects`) pregunta cuál: la pregunta va en el segundo paso, como el resto (la posición, a quién se ataca).
+    // «Activar efecto» de una carta con varios efectos (`countableEffects`) pregunta **siempre** cuál: la pregunta va en el segundo paso, como el resto (la posición, a quién se ataca), y el rival ve cuál se activa.
     const api = cardOf(menu.id).apiCard
-    const effects = !effectsReady || menu.drop || !api || isForeignId(menu.id) ? null : countableEffects(getCardEffectMap(api.ygoprodeckId, api.description ?? ''))
+    const listing = !effectsReady || menu.drop || !api || isForeignId(menu.id) ? null : cardEffects(api.ygoprodeckId, api.description ?? '')
+    const effects = listing ? countableEffects(listing.effects) : null
     const live = new Set<MatAction>(session.actions)
     const past = activationsRef.current.filter((activation) => live.has(activation.action))
-    const items = !api || !effects ? listed : listed.map((item) => (item.action.type === 'activate' && !item.choices ? { ...item, choices: effectChoices(menu.id, api.ygoprodeckId, effects, past, turnNumber) } : item))
+    const items = !api || !effects ? listed : listed.map((item) => (item.action.type === 'activate' && !item.choices ? { ...item, choices: effectChoices(menu.id, api.ygoprodeckId, effects, past, turnNumber, listing!.verified) } : item))
 
     const mapped: MenuItem[] = items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility }))
     const point = duel?.point
@@ -2191,6 +2192,7 @@ export function PracticeMat({
           flip={duel.rivalEffect.flip}
           linger={duel.rivalEffect.linger}
           caption={duel.rivalEffect.caption}
+          detail={duel.rivalEffect.detail}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}
         />
       ) : null}

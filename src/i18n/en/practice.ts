@@ -45,6 +45,8 @@ export const practice: Translated<typeof es> = {
   'practice.menu.activate': 'Activate',
   'practice.menu.activateEffect': 'Activate effect',
   'practice.menu.effectLead': 'Effect {n}',
+  'practice.menu.otherEffect': 'Another effect',
+  'practice.menu.otherEffectHint': 'If the effect is not in the list',
   'practice.menu.asScale': 'Activate as Scale',
   'practice.menu.set': 'Set',
   'practice.menu.turnFaceDown': 'Turn face-down',

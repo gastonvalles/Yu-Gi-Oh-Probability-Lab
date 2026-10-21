@@ -22,6 +22,7 @@ import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
 import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
+import { cardEffects, effectDetail } from '../../app/mat-assistant'
 import type { CardTextHighlight } from '../../app/card-text'
 import { respondersOf, type ChainEvent, type Responder, type ResponderCard } from '../../app/mat-responders'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
@@ -1290,7 +1291,7 @@ const CHAIN_HINT_MS = 8000
  * rápidos cuya condición es sólo esa activación): un aviso sobre la línea del registro y el brillo en la mesa un rato. Sólo si la carta es pública (la mostró al activarla) y se sabe qué clase es; lo que ya había al abrir la
  * pantalla, o deshacer, no cuenta. El aviso se va solo, o cuando juego algo o el rival hace otra cosa. Avisa, no decide (como la pregunta de pasar de fase).
  */
-function useChainHint(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): { card: string; responders: Responder[] } | null {
+function useChainHint(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): { card: string; effect?: number; responders: Responder[] } | null {
   const { theirs, mine, me, starter, moves } = snapshot
   const acts = theirs?.acts
   const seen = useRef(acts?.length ?? 0)
@@ -1298,7 +1299,7 @@ function useChainHint(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, Mat
   const request = useRef(0)
   const movesNow = useRef(moves)
   const [loaded, setLoaded] = useState(false)
-  const [open, setOpen] = useState<{ name: string; event: ChainEvent; moves: number; acts: number } | null>(null)
+  const [open, setOpen] = useState<{ name: string; event: ChainEvent; moves: number; acts: number; /** El lugar del efecto que eligió, si eligió uno entre varios. */ effect?: number } | null>(null)
 
   useEffect(() => {
     movesNow.current = moves
@@ -1340,7 +1341,7 @@ function useChainHint(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, Mat
 
         const kind = cardKindOf(api)
 
-        setOpen({ name: api.name, event: { card: kind.monster ? 'monster' : kind.spell ? 'spell' : 'trap', via: action.type === 'activate' ? 'effect' : 'card' }, moves: movesNow.current, acts: acts.length })
+        setOpen({ name: api.name, event: { card: kind.monster ? 'monster' : kind.spell ? 'spell' : 'trap', via: action.type === 'activate' ? 'effect' : 'card' }, moves: movesNow.current, acts: acts.length, ...(action.type === 'activate' && action.effect !== undefined ? { effect: action.effect } : {}) })
       })
       .catch(() => {})
   }, [acts, theirs])
@@ -1366,7 +1367,7 @@ function useChainHint(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, Mat
 
     const responders = respondersOf(mine, phase, turn === 'mine', (id) => responderCard(cardsById.get(id)), active.event)
 
-    return responders.length > 0 ? { card: active.name, responders } : null
+    return responders.length > 0 ? { card: active.name, ...(active.effect === undefined ? {} : { effect: active.effect }), responders } : null
   }, [active, loaded, mine, theirs, me, starter, cardsById])
 }
 
@@ -1420,6 +1421,8 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 const RIVAL_FX_MS = 950
 /** Lo que el rival activa, revela o declara y es público se queda más (la carta y su nombre se alcanzan a leer); sólo eso, el resto de lo que se anima dura lo de siempre. */
 const RIVAL_READ_MS = 3000
+/** Lo que se queda el cartel de un efecto con su frase escrita (lo que lleva leerla: `--animate-card-activate-read`). */
+const RIVAL_DETAIL_MS = 7000
 const READABLE_KINDS: ReadonlySet<string> = new Set(['activate', 'reveal', 'declare'])
 
 /**
@@ -1432,7 +1435,7 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
   const { theirs, peerName } = snapshot
   const acts = theirs?.acts
   const seen = useRef(acts?.length ?? 0)
-  const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string; /** El número de YGOPRODeck de la carta, si es pública: sirve para ponerle el nombre. */ passcode?: number } | undefined>(undefined)
+  const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string; /** El número de YGOPRODeck de la carta, si es pública: sirve para ponerle el nombre. */ passcode?: number; /** El lugar del efecto que eligió entre los de la carta (la jugada lo lleva): sirve para decir cuál es. */ effectIndex?: number } | undefined>(undefined)
   // Las veces que el rival tocó su deck o sumó una carta a su mano (se baraja a la vista).
   const [shuffles, setShuffles] = useState(0)
 
@@ -1470,6 +1473,7 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
         effect: { key, kind: spotlight.kind, cards: [{ id: spotlight.id, art }], caption: t(`duel.announce.${spotlight.kind}`, { name: rival }), ...(readable ? { linger: true } : {}) },
         flashId: spotlight.id,
         ...(passcode === null ? {} : { passcode }),
+        ...(action.type === 'activate' && action.effect !== undefined ? { effectIndex: action.effect } : {}),
       })
     } else if (showcase) {
       setShown({ effect: { key, kind: showcase.kind, cards: showcase.ids.map((id) => ({ id, art: artOf(id) })), ...(showcase.flip ? { flip: true } : {}), caption: t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length }) } })
@@ -1482,7 +1486,7 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
   useEffect(() => {
     if (!shown) return
 
-    const id = setTimeout(() => setShown(undefined), shown.effect.linger ? RIVAL_READ_MS : RIVAL_FX_MS)
+    const id = setTimeout(() => setShown(undefined), shown.effect.detail ? RIVAL_DETAIL_MS : shown.effect.linger ? RIVAL_READ_MS : RIVAL_FX_MS)
     return () => clearTimeout(id)
   }, [shown])
 
@@ -1499,13 +1503,19 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
 
     fetchCardsByIds([shown.passcode])
       .then((cards) => {
-        const name = cards[0]?.name
+        const api = cards[0]
+        const name = api?.name
 
-        if (!alive || !name) return
+        if (!alive || !api || !name) return
+
+        // Si eligió un efecto entre varios (la jugada lo lleva), se dice cuál: su número en el cartel y su frase, textual, debajo de la carta. El lugar vale en las dos mesas (`cardEffects`).
+        const picked = kind === 'activate' ? shown.effectIndex : undefined
+        const detail = picked === undefined ? null : effectDetail(cardEffects(api.ygoprodeckId, api.description ?? '').effects, picked)
+        const caption = picked === undefined ? t(`duel.announce.named.${kind}`, { name: rivalLabel, card: name }) : t('duel.announce.named.activateEffect', { name: rivalLabel, card: name, n: picked + 1 })
 
         setShown((current) =>
           current && current.effect.key === key
-            ? { ...current, effect: { ...current.effect, cards: current.effect.cards.map((card) => ({ ...card, name })), caption: t(`duel.announce.named.${kind}`, { name: rivalLabel, card: name }) } }
+            ? { ...current, effect: { ...current.effect, cards: current.effect.cards.map((card) => ({ ...card, name })), caption, ...(detail ? { detail: { lead: detail.lead, text: detail.what } } : {}) } }
             : current,
         )
       })
@@ -1840,7 +1850,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
               : passHeld
                 ? { kind: 'passHeld' }
                 : chain
-                  ? { kind: 'chain', card: chain.card, names: chainNames }
+                  ? { kind: 'chain', card: chain.card, ...(chain.effect === undefined ? {} : { effect: chain.effect }), names: chainNames }
                   : snapshot.peerLook !== null
                     ? { kind: 'looking', what: snapshot.peerLook }
                     : null,

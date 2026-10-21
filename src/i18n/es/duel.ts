@@ -44,6 +44,7 @@ export const duel = {
   'duel.pass.askEndWith': '{name} quiere terminar su turno. Podés responder con {cards}.',
   'duel.pass.cardsMore': '{list} y {count} más',
   'duel.chain.hint': '{name} activó {card}. Podés responder con {cards}.',
+  'duel.chain.hintEffect': '{name} activó el efecto {n} de {card}. Podés responder con {cards}.',
   'duel.pass.allow': 'Dejar pasar',
   'duel.pass.deny': 'Jugar antes',
   'duel.pass.asking': 'Le preguntás a {name} si no hace nada más…',
@@ -72,6 +73,7 @@ export const duel = {
   'duel.announce.declare': '{name} declara una carta',
   'duel.announce.target': '{name} marca una carta como objetivo',
   'duel.announce.named.activate': '{name} activa {card}',
+  'duel.announce.named.activateEffect': '{name} activa el efecto {n} de {card}',
   'duel.announce.named.reveal': '{name} revela {card}',
   'duel.announce.named.declare': '{name} declara {card}',
 

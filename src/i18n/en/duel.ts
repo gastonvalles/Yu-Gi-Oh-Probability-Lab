@@ -44,6 +44,7 @@ export const duel: Translated<typeof es> = {
   'duel.pass.askEndWith': '{name} wants to end their turn. You can respond with {cards}.',
   'duel.pass.cardsMore': '{list} and {count} more',
   'duel.chain.hint': '{name} activated {card}. You can respond with {cards}.',
+  'duel.chain.hintEffect': '{name} activated effect {n} of {card}. You can respond with {cards}.',
   'duel.pass.allow': 'Let it pass',
   'duel.pass.deny': 'Play first',
   'duel.pass.asking': 'You asked {name} if they have nothing else to do…',
@@ -72,6 +73,7 @@ export const duel: Translated<typeof es> = {
   'duel.announce.declare': '{name} declares a card',
   'duel.announce.target': '{name} targets a card',
   'duel.announce.named.activate': '{name} activates {card}',
+  'duel.announce.named.activateEffect': '{name} activates effect {n} of {card}',
   'duel.announce.named.reveal': '{name} reveals {card}',
   'duel.announce.named.declare': '{name} declares {card}',
 
