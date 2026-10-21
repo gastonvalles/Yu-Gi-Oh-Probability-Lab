@@ -39,6 +39,14 @@ describe('las flechas de cada jugada', () => {
     expect(arrowsOf(inGy, { type: 'move', id: 'a', to: 'banished', faceDown: true })).toEqual([arrow('gy', 'banished')])
   })
 
+  it('un lote (varias cartas en una jugada) es una sola flecha con la cantidad: «Main → GY ×3»', () => {
+    const batch: MatAction = { type: 'batch', actions: [{ type: 'shuffle', seed: 4 }, ...['f', 'h', 'j'].map((id): MatAction => ({ type: 'move', id, to: 'gy' }))] }
+
+    expect(arrowsOf(start, batch)).toEqual([arrow('deck', 'gy', 3)])
+    // De la mano al destierro, igual: un camino, una flecha.
+    expect(arrowsOf(start, { type: 'batch', actions: ['a', 'b'].map((id): MatAction => ({ type: 'move', id, to: 'banished', faceDown: true })) })).toEqual([arrow('hand', 'banished', 2)])
+  })
+
   it('debajo de un Xyz es la casilla del Xyz: al invocarlo, al ponerle o sacarle un material y cuando se va con los suyos', () => {
     const board = replayMat(start, [
       { type: 'place', id: 'a', zone: 'mz', index: 0, pos: 'atk' },

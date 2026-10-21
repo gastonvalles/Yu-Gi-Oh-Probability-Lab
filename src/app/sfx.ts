@@ -50,6 +50,11 @@ export function sfxOfAction(action: MatAction): Sfx | null {
       return 'attack'
     case 'phase':
       return action.phase === 'draw' ? 'turn' : 'phase'
+    case 'batch': {
+      // Un solo sonido, el de la primera carta del lote (el barajado que la acompaña no suena aparte, como al buscar una sola); un lote dentro de otro no hace nada.
+      const part = action.actions.find((entry) => entry.type !== 'shuffle') ?? action.actions[0]
+      return part && part.type !== 'batch' ? sfxOfAction(part) : null
+    }
   }
 }
 

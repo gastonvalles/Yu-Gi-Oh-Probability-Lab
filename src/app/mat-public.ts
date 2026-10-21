@@ -92,6 +92,9 @@ export function mapActionIds(action: MatAction, map: IdMap): MatAction {
     case 'regain':
       return { ...action, id: map(action.id) }
 
+    case 'batch':
+      return { ...action, actions: action.actions.map((part) => mapActionIds(part, map)) }
+
     default: {
       const unreachable: never = action
       return unreachable
@@ -118,9 +121,10 @@ export function publicIds(state: MatState): Set<string> {
 /**
  * Cartas que se muestran aunque la mesa no cambie: la jugada sólo queda anotada. Agregar a la mano una carta que no estaba en ella —buscarla en el deck, devolverla del campo (también boca abajo), traerla del cementerio o del
  * destierro— también la muestra (Gastón, 2026-10-20: «si el oponente añade algo a la mano el oponente debe verlo, solo no lo ve si es un robo»): el rival la ve entrar, con su nombre, y queda en su detalle. Robar sigue siendo
- * secreto (no es una jugada de `move`) y una carta que ya estaba en la mano no se muestra al «agregarla» de nuevo.
+ * secreto (no es una jugada de `move`) y una carta que ya estaba en la mano no se muestra al «agregarla» de nuevo. Un lote muestra lo de sus partes (uno dentro de otro no hace nada).
  */
 function shownBy(before: MatState, action: MatAction): string[] {
+  if (action.type === 'batch') return action.actions.flatMap((part) => (part.type === 'batch' ? [] : shownBy(before, part)))
   if (action.type === 'reveal' || action.type === 'declare' || action.type === 'activate') return [action.id]
 
   return action.type === 'move' && action.to === 'hand' && !before.hand.includes(action.id) ? [action.id] : []

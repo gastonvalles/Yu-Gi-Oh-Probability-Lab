@@ -30,4 +30,10 @@ describe('las cartas de cada jugada (las miniaturas de la lista de pasos)', () =
 
     expect(cards).toEqual([[], ['f'], []])
   })
+
+  it('un lote muestra las cartas de sus partes, en orden (no el barajado que lo acompaña)', () => {
+    const cards = matStepCards(state, [{ type: 'batch', actions: [{ type: 'shuffle', seed: 3 }, { type: 'move', id: 'f', to: 'gy' }, { type: 'move', id: 'g', to: 'gy' }] }])
+
+    expect(cards).toEqual([['f', 'g']])
+  })
 })

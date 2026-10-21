@@ -62,6 +62,12 @@ describe('qué suena con cada jugada', () => {
     [{ type: 'phase', phase: 'draw' }, 'turn'],
     [{ type: 'activate', id: 'a' }, 'activate'],
     [{ type: 'give', id: 'a', auto: true }, null],
+    // Un lote suena una vez, como su primera carta (el barajado que la acompaña no suena aparte); vacío o dentro de otro, nada.
+    [{ type: 'batch', actions: [{ type: 'shuffle', seed: 1 }, { type: 'move', id: 'a', to: 'gy' }, { type: 'move', id: 'b', to: 'gy' }] }, 'grave'],
+    [{ type: 'batch', actions: [{ type: 'target', id: 'a' }, { type: 'target', id: 'b' }] }, 'tick'],
+    [{ type: 'batch', actions: [{ type: 'move', id: 'a', to: 'deck' }, { type: 'shuffle', seed: 1 }] }, 'shuffle'],
+    [{ type: 'batch', actions: [] }, null],
+    [{ type: 'batch', actions: [{ type: 'batch', actions: [{ type: 'move', id: 'a', to: 'gy' }] }] }, null],
   ]
 
   it.each(cases)('%j suena %s', (action, expected) => {

@@ -180,7 +180,9 @@ function kindOf(before: MatState, after: MatState, action: MatAction): StepKind 
 }
 
 function stepBetween(before: MatState, after: MatState, action: MatAction): StepInfo {
-  const card = 'id' in action ? action.id : null
+  // En un lote, la carta de la jugada es la de su primera parte (todas salen del mismo lugar).
+  const lead = action.type === 'batch' ? action.actions.find((part) => 'id' in part) : action
+  const card = lead && 'id' in lead ? lead.id : null
   const moves = movesBetween(before, after, card)
   const from = card === null ? moves[0]?.id : card
   // Robar y mandar cartas del tope salen del deck aunque la jugada no diga cuáles.

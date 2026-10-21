@@ -14,8 +14,8 @@ export type QuietKind = 'gy' | 'banish'
 
 /** Lo que se ve además del movimiento de las cartas cuando se hace una jugada (los vuelos los dibuja `use-card-flights`). */
 export interface MatEffects {
-  /** La carta que destella. Salvo la que se marca como objetivo, se muestra además grande en el centro de la pantalla. */
-  spotlight?: { id: string; kind: SpotlightKind }
+  /** La carta que destella. Salvo la que se marca como objetivo, se muestra además grande en el centro de la pantalla. Un lote (`batch`) que destaca varias las trae todas en `ids` (la primera sigue en `id`). */
+  spotlight?: { id: string; kind: SpotlightKind; ids?: string[] }
   /** Sólo al reproducir un combo: las cartas que cambian de lugar en este paso, grandes en el centro con lo que pasó; `flip` si salen del deck o del Extra (se dan vuelta en 3D desde el dorso). */
   showcase?: { ids: string[]; kind: ShowcaseKind; flip?: true }
   /**
@@ -47,6 +47,8 @@ const SHOWCASE_OF_PILE = { hand: 'hand', extra: 'extra', deck: 'deck', 'deck-bot
  * se activa; un monstruo que sale boca arriba a una zona de monstruo se invoca (una carta que sólo cambia de zona no); colocar boca abajo no hace ruido.
  */
 export function matEffects(before: MatState, action: MatAction): MatEffects {
+  if (action.type === 'batch') return batchEffects(before, action.actions)
+
   const after = matReducer(before, action)
   const effects = effectsOf(before, after, action)
   const handGained = after.hand.length > before.hand.length
@@ -54,6 +56,33 @@ export function matEffects(before: MatState, action: MatAction): MatEffects {
   const shuffled = action.type === 'shuffle' || (after !== before && 'shuffle' in action && action.shuffle !== undefined)
 
   return { ...effects, ...(handGained ? { hand: true as const } : {}), ...(handGained || shuffled ? { shuffle: true as const } : {}) }
+}
+
+/**
+ * Los efectos de un lote: los de cada parte (contra la mesa que dejó la anterior), juntos. Las cartas que destacan, se muestran o van en silencio se suman a las de la primera parte que lo
+ * hizo (las de otra clase, en un lote mezclado, no); lo demás (la mano, el barajado) queda si alguna parte lo tuvo. Un lote dentro de otro no hace nada.
+ */
+function batchEffects(before: MatState, actions: readonly MatAction[]): MatEffects {
+  let state = before
+  let joined: MatEffects = {}
+
+  for (const part of actions) {
+    if (part.type === 'batch') continue
+
+    const effects = matEffects(state, part)
+    const { spotlight, showcase, quiet } = joined
+
+    state = matReducer(state, part)
+    joined = {
+      ...effects,
+      ...joined,
+      ...(spotlight && effects.spotlight?.kind === spotlight.kind ? { spotlight: { ...spotlight, ids: [...(spotlight.ids ?? [spotlight.id]), effects.spotlight.id] } } : {}),
+      ...(showcase && effects.showcase?.kind === showcase.kind ? { showcase: { ...showcase, ids: [...showcase.ids, ...effects.showcase.ids], ...(effects.showcase.flip ? { flip: true as const } : {}) } } : {}),
+      ...(quiet && effects.quiet?.kind === quiet.kind ? { quiet: { ...quiet, ids: [...quiet.ids, ...effects.quiet.ids] } } : {}),
+    }
+  }
+
+  return joined
 }
 
 function effectsOf(before: MatState, after: MatState, action: MatAction): MatEffects {

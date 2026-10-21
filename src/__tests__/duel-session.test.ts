@@ -152,6 +152,28 @@ describe('las mesas', () => {
     expectSameTables(game)
   })
 
+  it('un lote (varias cartas en una jugada) viaja en un solo mensaje y se deshace entero con un solo pedido al rival', () => {
+    const game = setup()
+    startBoth(game)
+    const sent = (type: string) => game.room.sent.filter((text) => (JSON.parse(text) as { t: string }).t === type).length
+    const acts = sent('act')
+
+    game.host.play({ type: 'batch', actions: [{ type: 'shuffle', seed: 5 }, ...['card-1005-1', 'card-1006-1', 'card-1007-1'].map((id) => ({ type: 'move' as const, id, to: 'gy' as const }))] })
+    game.room.flush()
+
+    expect(sent('act')).toBe(acts + 1)
+    expect(game.host.getSnapshot().moves).toBe(1)
+    expect(game.guest.getSnapshot().theirs?.state.gy).toHaveLength(3)
+    expectSameTables(game)
+
+    undoAllowed(game, game.host, game.guest)
+
+    expect([sent('undoAsk'), sent('undo')]).toEqual([1, 1])
+    expect(game.host.getSnapshot().moves).toBe(0)
+    expect(game.guest.getSnapshot().theirs?.state.gy).toEqual([])
+    expectSameTables(game)
+  })
+
   describe('volver atrás pide permiso al rival', () => {
     const played = () => {
       const game = setup()

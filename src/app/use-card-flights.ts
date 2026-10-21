@@ -13,8 +13,13 @@ export const FLIGHT_MS = UI_ANIMATION_MS * 2
  */
 export const FLIGHT_STAGGER_MS = 70
 const STAGGER_LIMIT = 8
-/** Más cartas que esto pasando de una pila a otra en un solo cambio no es una jugada (es otra mano, otro combo o un salto de varios pasos): esas no vuelan. */
-const PILE_FLIGHT_LIMIT = 8
+/**
+ * Más cartas que esto pasando de una pila a otra en un solo cambio no es una jugada (es otra mano, otro combo o un salto de varios pasos): esas no vuelan. Un lote (`batch`) mueve varias en
+ * una jugada: 15 alcanza para un Pot of Desires (10 desterradas) con lugar de sobra.
+ * ponytail: el techo es contar cartas, no saber si el cambio fue una jugada: un salto de varios pasos de un replay que mueva hasta 15 cartas de pila a pila también vuela. Si tiene que volar
+ * un lote de más de 15 («Elegir todas» en un Main de 40), que la mesa le diga a `useCardFlights` si el cambio fue una sola jugada (el cursor avanzó uno) en vez de subir este número.
+ */
+const PILE_FLIGHT_LIMIT = 15
 /** Cuánto después de una jugada (o de reacomodarse la mano) todo quedó quieto y se puede medir de nuevo: lo que más dura es un vuelo, y un poco más. */
 const SETTLE_MS = FLIGHT_MS + 100
 /** Marca de los vuelos: una jugada que llega con un vuelo a medias lo corta antes de medir, así la carta se mide quieta. */
