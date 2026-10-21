@@ -6,8 +6,8 @@ import { Icon } from './Icon'
 type IconButtonSize = 'sm' | 'md' | 'lg'
 
 /**
- * Los botones que son sólo un ícono no llevan fondo y son siempre blancos: el aviso de que se pueden tocar es que el ícono se pone verde (con un
- * resplandor) al pasar el mouse, y verde se queda mientras el botón está seleccionado (`aria-pressed`, `aria-selected` o `data-active`); un poco menos
+ * Los botones que son sólo un ícono no llevan fondo y son siempre blancos: el aviso de que se pueden tocar es que el ícono se pone ámbar
+ * al pasar el mouse, y ámbar se queda mientras el botón está seleccionado (`aria-pressed`, `aria-selected` o `data-active`); un poco menos
  * de opacidad al apretar; el foco lleva el aro de siempre. El tono sólo cambia el tamaño y la forma:
  * raised: el de las barras de herramientas (por defecto) · close: la X de los encabezados · ghost: el de las zonas del deck (papelera, ordenar) ·
  * flat: el grande de la práctica · outline: redondo con borde (volver al principio de un replay) · tile: en una caja oscura de 44 px y sin borde, el de la botonera de la mesa del duelo.
@@ -23,9 +23,9 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const BASE =
   'inline-flex shrink-0 items-center justify-center p-0 transition-[opacity,color,border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
 
-/** Lo común de los que van sin fondo: ícono blanco que se pone verde (con resplandor) al pasar el mouse o al estar seleccionado, más tenue al apretar o si está deshabilitado. */
+/** Lo común de los que van sin fondo: ícono blanco que se pone ámbar al pasar el mouse o al estar seleccionado, más tenue al apretar o si está deshabilitado. */
 const BARE =
-  'bg-transparent text-white hover:text-accent aria-pressed:text-accent aria-selected:text-accent data-[active=true]:text-accent active:opacity-70 disabled:pointer-events-none disabled:opacity-40'
+  'bg-transparent text-white hover:text-info aria-pressed:text-info aria-selected:text-info data-[active=true]:text-info active:opacity-70 disabled:pointer-events-none disabled:opacity-40'
 
 const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
   raised: { sm: 'size-9 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },

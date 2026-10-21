@@ -173,7 +173,7 @@ export function DesktopSearchPanel({
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-white transition-colors duration-150 group-hover/chip:text-accent" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-white transition-colors duration-150 group-hover/chip:text-info" />
               </button>
             ))}
           </div>
