@@ -128,7 +128,8 @@ describe('las filas del buscador de escritorio', () => {
     rerender(<DesktopSearchPanel {...desktopProps({ selectedCardId: 3 })} />)
     expect(renders.byName).toEqual(ONCE('Carta 2', 'Carta 3'))
     expect(desktopRow('Carta 2')).not.toHaveClass('opacity-35')
-    expect(desktopRow('Carta 3')).toHaveClass('bg-primary/20')
+    // La elegida lleva el aro ámbar (`listItemSelected`), no un relleno violeta.
+    expect(desktopRow('Carta 3')).toHaveClass('inset-ring', 'inset-ring-info/70')
 
     renders.byName = {}
     rerender(<DesktopSearchPanel {...desktopProps({ selectedCardId: 3, search: searchState({ maxedOutResultIds: new Set([1]) }) })} />)

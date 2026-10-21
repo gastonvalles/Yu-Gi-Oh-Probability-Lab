@@ -27,7 +27,7 @@ import type { SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
 import { Callout } from '../ui/Callout'
-import { field, filterChip } from '../ui/surfaces'
+import { field, filterChip, rowAddButton } from '../ui/surfaces'
 
 interface MobileCardSearchProps {
   search: CardSearchViewState
@@ -154,7 +154,7 @@ export function MobileCardSearch({
               className={`${field} h-11 w-full pl-9 pr-11 text-base [-webkit-appearance:none] [appearance:none] [&::-webkit-search-cancel-button]:hidden`}
             />
             {status === 'loading' ? (
-              <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 size-4 animate-spin rounded-full border-2 border-foreground/20 border-t-primary" />
+              <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 size-4 animate-spin rounded-full border-2 border-foreground/20 border-t-info" />
             ) : null}
             {query.length > 0 ? (
               <button
@@ -344,11 +344,12 @@ const MobileResultRow = memo(function MobileResultRow({
 
       <span className={cx('shrink-0 text-micro tabular-nums', isMaxed ? 'text-muted' : 'text-soft')}>{t('search.result.copies', { copies: copiesInDeck, limit: copyLimit })}</span>
 
+      {/* El «+» de cada fila (`rowAddButton`): oscuro con el ícono blanco, ámbar al apuntarlo o con el foco; recién agregada, verde. */}
       <button
         type="button"
         className={cx(
-          'grid size-11 shrink-0 place-items-center rounded-full border text-foreground transition-[transform,background-color] duration-150 [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92] disabled:border-border-subtle disabled:bg-transparent disabled:text-soft',
-          justAdded ? 'border-success/70 bg-success/25 text-success-soft' : 'border-primary/55 bg-primary/20',
+          'grid size-11 shrink-0 place-items-center rounded-full border transition-[transform,color,border-color,background-color] duration-150 [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92] disabled:border-border-subtle disabled:bg-transparent disabled:text-soft',
+          justAdded ? 'border-success/70 bg-success/25 text-success-soft' : rowAddButton,
         )}
         disabled={isMaxed}
         aria-label={isMaxed ? t('search.mobile.maxedAria', { name: card.name }) : t('search.result.addAria', { name: card.name })}
