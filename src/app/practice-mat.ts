@@ -903,6 +903,22 @@ export function pendulumOnField(state: MatState, id: string, kindOf: (id: string
 }
 
 /**
+ * Las escalas de péndulo activas: un Monstruo de Péndulo **boca arriba** en la zona 0 o en la 4 de Mágicas y Trampas (`MatState.st`). Boca abajo, o en otra zona, no son escalas.
+ * Con dos se ofrece la Invocación de Péndulo desde la mano. El rango de nivel no se valida: el que practica manda.
+ */
+export function activeScales(state: MatState, kindOf: (id: string) => MatCardKind): { index: number; id: string }[] {
+  return [0, 4].flatMap((index): { index: number; id: string }[] => {
+    const placed = state.st[index]
+
+    if (!placed || placed.pos === 'set' || isToken(placed.id)) return []
+
+    const kind = kindOf(placed.id)
+
+    return kind.monster && kind.pendulum ? [{ index, id: placed.id }] : []
+  })
+}
+
+/**
  * La jugada de mandar una carta a una pila. Un Monstruo de Péndulo que **sale del campo al cementerio** (destruido, mandado, usado como Sacrificio) va, por regla, al Extra Deck boca arriba: es la misma jugada con ese destino. Lo demás
  * (otra pila, o una carta que no estaba en el campo) va adonde se dijo.
  */
@@ -912,7 +928,7 @@ export function pileAction(state: MatState, id: string, to: MatPile, kindOf: (id
 
 /**
  * Lo que se puede hacer con una carta desde donde está: el menú al tocarla (cubre todo lo que hace el arrastre),
- * con las jugadas del juego: Invocación Normal y Colocar desde la mano, Invocación Especial (que pregunta la posición) desde cualquier lado,
+ * con las jugadas del juego: Invocación Normal y Colocar desde la mano, Invocación Especial (que pregunta la posición) desde cualquier lado, Invocación de Péndulo desde la mano con dos escalas activas,
  * Invocación por Volteo de un monstruo boca abajo, Activar efecto (con descarte como costo si está en la mano),
  * escalas de péndulo, revelar, descartar, desterrar. Las Trampas no se activan desde la mano; los Link no van a
  * defensa; las fichas no se colocan boca abajo ni salen del campo; la Extra Monster Zone sólo se ofrece a lo que
@@ -1036,6 +1052,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     }
 
     if (kind.monster) specialSummon()
+    // Con dos escalas de péndulo activas, la Invocación de Péndulo es la Especial de siempre (zona y posición) con `how: 'pendulum'`. Una carta del Extra no se invoca así.
+    if (kind.monster && !kind.extra && activeScales(state, kindOf).length === 2) specialSummon(t('practice.menu.pendulumSummon'), 'pendulum')
 
     if (kind.pendulum) {
       const scales = freeTargets(state, ['st']).filter((target) => target.index === 0 || target.index === 4)

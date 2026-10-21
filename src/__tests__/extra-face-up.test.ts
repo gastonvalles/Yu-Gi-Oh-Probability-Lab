@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createDuel } from '../app/duel-session'
 import { parseMessage } from '../app/duel-protocol'
 import { mapMatIds, publicIds } from '../app/mat-public'
-import { createMatState, describeMatAction, listCardActions, matReducer, pendulumOnField, pileAction, replayMat, TOKEN_KIND, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
+import { activeScales, createMatState, describeMatAction, listCardActions, matReducer, pendulumOnField, pileAction, replayMat, TOKEN_KIND, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
 
 const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
@@ -157,6 +157,77 @@ describe('el menú de una carta con el Extra boca arriba', () => {
     expect(labels(down, 'x1')).toContain('Revelar')
     expect(labels(down, 'x1')).not.toContain('Invocación de Péndulo')
     expect(listCardActions(down, 'x1', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')?.choices?.every((choice) => choice.materials)).toBe(true)
+  })
+})
+
+describe('la Invocación de Péndulo desde la mano, con dos escalas activas', () => {
+  /** Dos escalas: un Monstruo de Péndulo boca arriba en la zona 0 y otro en la 4 de Mágicas y Trampas. */
+  const twoScales = () =>
+    run([
+      { type: 'place', id: 'p1', zone: 'st', index: 0, pos: 'atk', how: 'scale' },
+      { type: 'place', id: 'p2', zone: 'st', index: 4, pos: 'atk', how: 'scale' },
+    ])
+  const pendulumSummon = (state: MatState, id: string) => listCardActions(state, id, kindOf, nameOf).find((item) => item.label === 'Invocación de Péndulo')
+
+  it('un monstruo de la mano la ofrece con dos escalas, junto a la Especial; la jugada es una invocación de Péndulo (`how: \'pendulum\'`)', () => {
+    const state = twoScales()
+    const summon = pendulumSummon(state, 'b1')
+
+    expect(labels(state, 'b1')).toEqual(expect.arrayContaining(['Invocación Especial', 'Invocación de Péndulo']))
+    expect(summon?.choices?.map((choice) => choice.action)).toEqual([
+      { type: 'place', id: 'b1', zone: 'mz', index: 0, pos: 'atk', how: 'pendulum' },
+      { type: 'place', id: 'b1', zone: 'mz', index: 0, pos: 'def', how: 'pendulum' },
+    ])
+
+    const attack = summon!.choices![0]!.action
+
+    expect(matReducer(state, attack).mz[0]?.id).toBe('b1')
+    expect(describeMatAction(state, attack, nameOf)).toBe('Invocación de Péndulo de B1 en ataque')
+    // La Especial de la misma carta sigue siendo Especial.
+    expect(listCardActions(state, 'b1', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')?.choices?.map((choice) => choice.action.type === 'place' && choice.action.how)).toEqual(['special', 'special'])
+  })
+
+  it('no se ofrece con una sola escala, ni con una escala boca abajo, ni con un no-Péndulo o un Péndulo fuera de las zonas 0 y 4 de escala', () => {
+    const one = run([{ type: 'place', id: 'p1', zone: 'st', index: 0, pos: 'atk', how: 'scale' }])
+    const down = run([
+      { type: 'place', id: 'p1', zone: 'st', index: 0, pos: 'set' },
+      { type: 'place', id: 'p2', zone: 'st', index: 4, pos: 'atk', how: 'scale' },
+    ])
+    const notPendulum = run([
+      { type: 'place', id: 'c1', zone: 'st', index: 0, pos: 'atk' },
+      { type: 'place', id: 'p2', zone: 'st', index: 4, pos: 'atk', how: 'scale' },
+    ])
+    const middle = run([
+      { type: 'place', id: 'p1', zone: 'st', index: 2, pos: 'atk' },
+      { type: 'place', id: 'p2', zone: 'st', index: 4, pos: 'atk', how: 'scale' },
+    ])
+
+    for (const state of [one, down, notPendulum, middle]) {
+      expect(labels(state, 'b1')).toContain('Invocación Especial')
+      expect(labels(state, 'b1')).not.toContain('Invocación de Péndulo')
+    }
+  })
+
+  it('no se ofrece para una ficha, ni para una carta del Extra Deck que está en la mano (un Fusión de Péndulo)', () => {
+    const token = matReducer(twoScales(), { type: 'token', zone: 'mz', index: 0, pos: 'atk' })
+    const inHand = matReducer(twoScales(), { type: 'move', id: 'x1', to: 'hand' })
+
+    expect(labels(token, 'token-1')).not.toContain('Invocación de Péndulo')
+    expect(labels(inHand, 'x1')).toContain('Invocación Especial')
+    expect(labels(inHand, 'x1')).not.toContain('Invocación de Péndulo')
+  })
+
+  it('activeScales: sólo los Monstruos de Péndulo boca arriba en la zona 0 o la 4 de Mágicas y Trampas', () => {
+    expect(activeScales(start(), kindOf)).toEqual([])
+    expect(activeScales(twoScales(), kindOf)).toEqual([
+      { index: 0, id: 'p1' },
+      { index: 4, id: 'p2' },
+    ])
+    expect(activeScales(run([{ type: 'place', id: 'p1', zone: 'st', index: 0, pos: 'set' }]), kindOf)).toEqual([])
+    expect(activeScales(run([{ type: 'place', id: 'c1', zone: 'st', index: 4, pos: 'atk' }]), kindOf)).toEqual([])
+    expect(activeScales(run([{ type: 'place', id: 'p1', zone: 'st', index: 2, pos: 'atk' }]), kindOf)).toEqual([])
+    expect(activeScales(run([{ type: 'place', id: 'p1', zone: 'mz', index: 0, pos: 'atk' }]), kindOf)).toEqual([])
+    expect(activeScales(matReducer(start(), { type: 'token', zone: 'st', index: 0 }), kindOf)).toEqual([])
   })
 })
 
