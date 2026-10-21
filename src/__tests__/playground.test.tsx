@@ -83,11 +83,12 @@ describe('el catálogo /playground', () => {
 })
 
 describe('la ruta /playground', () => {
+  // El catálogo se carga perezoso (es el módulo más pesado de la app): con toda la suite corriendo, el segundo que espera `findByRole` por defecto no alcanza.
   it('la app muestra el catálogo en vez de la pantalla del deck', async () => {
     window.history.pushState({}, '', '/playground')
     renderInStore(<App />)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Playground' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Playground' }, { timeout: 10_000 })).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Pasos de la app' })).not.toBeInTheDocument()
-  })
+  }, 15_000)
 })
