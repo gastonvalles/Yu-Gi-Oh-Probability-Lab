@@ -49,7 +49,9 @@ export function ScrollRow({ children, className }: ScrollRowProps) {
 
   return (
     <div className={cx('relative min-w-0', className)}>
-      <div ref={track} className="flex gap-2 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* El aro de foco (4 px por fuera del chip) cabe en el relleno de 4 px; el margen negativo lo compensa: la fila no cambia de alto ni de lugar. Los hijos no se encogen (si no, un grupo se achica
+          al ancho del carril y el relleno final queda a mitad de la fila) y el relleno final no cuenta para el desplazamiento: el `after:` (4 px) deja entrar el aro del último chip al llegar al final. */}
+      <div ref={track} className="-m-1 flex gap-2 overflow-x-auto overscroll-x-contain p-1 [&>*]:shrink-0 after:w-1 after:shrink-0 after:content-[''] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {children}
       </div>
       {edges.start ? (

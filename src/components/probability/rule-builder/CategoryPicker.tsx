@@ -19,6 +19,7 @@ import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
 import { SearchField } from '../../ui/SearchField'
+import { choiceChip } from '../../ui/surfaces'
 import { overline } from '../../ui/typography'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { getCardTypeLabel } from './condition-labels'
@@ -34,15 +35,15 @@ interface CategoryPickerProps {
   onClose: () => void
 }
 
-const CHIP =
-  'inline-flex min-h-10 pointer-coarse:min-h-11 items-center gap-1.5 rounded-full border border-border-subtle bg-tint/5 px-3.5 text-body font-semibold text-foreground transition-[background-color,border-color] [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.97] data-[active=true]:border-primary/55 data-[active=true]:bg-primary/20 [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted'
+/** Pastillas de la cabecera (atajos y «Varias cartas»): la pastilla de selección de toda la app; «Varias cartas» se enciende en ámbar con aria-pressed. */
+const CHIP = cx(choiceChip, 'min-h-10 gap-1.5 px-3.5 text-body pointer-coarse:min-h-11 [-webkit-tap-highlight-color:transparent] active:scale-[0.97] [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted')
 
 /** Fila: el estado (ninguna / algunas / todas las cartas elegidas) llega por data-state. */
 const ROW =
-  'group flex min-h-11 items-center gap-3 rounded-control border border-transparent bg-transparent px-3 text-left text-body text-foreground [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-tint/5 focus-visible:outline-none focus-visible:shadow-focus active:bg-tint/8 data-[state=all]:border-primary/50 data-[state=all]:bg-primary/14 data-[state=some]:border-primary/25'
+  'group flex min-h-11 items-center gap-3 rounded-control border border-transparent bg-transparent px-3 text-left text-body text-foreground [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-tint/5 focus-visible:outline-none focus-visible:shadow-focus active:bg-tint/8 data-[state=all]:border-info/50 data-[state=all]:bg-info/14 data-[state=some]:border-info/30'
 
 const CHECK =
-  'inline-grid size-5 flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-micro font-bold leading-none group-data-[state=all]:border-primary group-data-[state=all]:bg-primary group-data-[state=all]:text-primary-foreground group-data-[state=some]:border-primary/70 group-data-[state=some]:text-primary-soft'
+  'inline-grid size-5 flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-micro font-bold leading-none group-data-[state=all]:border-info group-data-[state=all]:bg-info group-data-[state=all]:text-info-foreground group-data-[state=some]:border-info/70 group-data-[state=some]:text-info-soft'
 
 /** Roles fijados como atajo arriba del selector. */
 const SHORTCUT_ROLES: readonly CardRole[] = ['starter', 'extender', 'brick']
@@ -216,7 +217,6 @@ export function CategoryPicker({
           <button
             type="button"
             className={CHIP}
-            data-active={isMulti ? 'true' : 'false'}
             aria-pressed={isMulti}
             onClick={() => setIsMulti((current) => !current)}
           >
