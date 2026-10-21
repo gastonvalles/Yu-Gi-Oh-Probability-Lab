@@ -123,6 +123,22 @@ describe('la mesa de práctica', () => {
     expect(plate.parentElement).toContainElement(zone('Zona de monstruo 1'))
   })
 
+  it('tu magia de campo boca arriba lleva su arte de fondo en tu mitad: adentro del campo, junto a la placa (detrás de las casillas y con su inclinación); boca abajo, no', () => {
+    const island: MatCard = { name: 'Fire King Island', apiCard: { ...card(57554544, 'spell'), imageUrlSmall: 'https://images.ygoprodeck.com/images/cards_small/57554544.jpg' } }
+    const cards = new Map<string, MatCard>([...CARDS, ['card-3-1', island]])
+    const onField = (pos: 'atk' | 'set') => replayMat(INITIAL, [{ type: 'place', id: 'card-3-1', zone: 'field', index: 0, pos }])
+    const { unmount } = render(<Harness initial={onField('atk')} cards={cards} />)
+    const art = document.querySelector('.mat-field-art') as HTMLElement
+
+    expect(art).toHaveAttribute('data-side', 'mine')
+    expect(art.querySelector('img')).toHaveAttribute('src', '/api/card-image/cards_cropped/57554544.jpg?w=512')
+    expect(art.parentElement).toBe(document.querySelector('.mat-plate')!.parentElement)
+    unmount()
+
+    render(<Harness initial={onField('set')} cards={cards} />)
+    expect(document.querySelector('.mat-field-art')).toBeNull()
+  })
+
   it('en un celular en vertical (menos de 640 px) el campo son cinco columnas y una fila de pilas abajo —el Extra Deck y el Deck en los extremos, la Zona de campo en el medio—: las casillas pasan de 55 a 72 px', () => {
     render(<Harness />)
 

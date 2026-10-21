@@ -67,6 +67,8 @@ export function DuelSection() {
         <DuelTable mine={duel.mine} theirs={duel.theirs} show={view} turn={view} />
       </Specimen>
 
+      <FieldArtSample duel={duel} />
+
       <ArenaSamples />
 
       <RivalEffectSample />
@@ -77,6 +79,44 @@ export function DuelSection() {
 
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+type FieldMode = 'up' | 'set' | 'none'
+
+/** Tu Zona de campo en sus tres estados, con la magia de campo del rival boca arriba en la suya: el arte de fondo va sólo en la mitad de quien la tiene boca arriba, y entra y se va con un fundido. */
+function FieldArtSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
+  const [mode, setMode] = useState<FieldMode>('up')
+  const placed = duel.mine.state.field
+  const mine = useMemo<DuelSideView>(
+    () => ({ ...duel.mine, state: { ...duel.mine.state, field: mode === 'none' || !placed ? null : { ...placed, pos: mode === 'set' ? 'set' : 'atk' } } }),
+    [duel.mine, placed, mode],
+  )
+
+  return (
+    <Specimen
+      title="La magia de campo de fondo"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          Con la magia de campo boca arriba, su arte recortado (<Tag>cards_cropped</Tag>) va de fondo de la mitad de quien la activó: tenue (45 %), sin desenfoque, y se desvanece hacia los costados y hacia la fila del medio (las Zonas Extra no son de nadie). Boca abajo o sin carta, nada; del rival, sólo si se sabe cuál es. Va derecho para los dos. Archivos: <Tag>probability/MatArena.tsx</Tag> (<Tag>FieldArt</Tag>, <Tag>fieldArtSrc</Tag>) y <Tag>mat-field-art</Tag> en <Tag>index.css</Tag>.
+        </>
+      }
+    >
+      <Segmented
+        label="Tu Zona de campo"
+        variant="track"
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'up', label: 'Boca arriba' },
+          { value: 'set', label: 'Boca abajo' },
+          { value: 'none', label: 'Vacía' },
+        ]}
+      />
+      <DuelTable mine={mine} theirs={duel.theirs} />
+    </Specimen>
   )
 }
 

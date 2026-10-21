@@ -21,6 +21,10 @@ const artOfCard = (drawId: string | undefined) => {
   return passcode === null ? null : `https://images.ygoprodeck.com/images/cards_small/${passcode}.jpg`
 }
 
+/** Las magias de campo del duelo de muestra, boca arriba: la tuya de arte claro (Fire King Island) y la del rival de arte oscuro (Pandemonium), para ver su fondo en cada mitad. */
+const MY_FIELD = 'card-57554544-1'
+const THEIR_FIELD = 'card-94585852-1'
+
 const MY_PLAYS: MatAction[] = [
   { type: 'place', id: 'card-14558127-1', zone: 'mz', index: 1, pos: 'atk' },
   { type: 'place', id: 'card-59438930-1', zone: 'mz', index: 2, pos: 'def' },
@@ -32,7 +36,7 @@ const MY_PLAYS: MatAction[] = [
   { type: 'move', id: 'card-83764718-1', to: 'gy' },
   { type: 'move', id: 'card-24094653-1', to: 'gy' },
   { type: 'move', id: 'card-44095762-1', to: 'banished' },
-  { type: 'place', id: 'card-53582587-1', zone: 'field', index: 0, pos: 'atk' },
+  { type: 'place', id: MY_FIELD, zone: 'field', index: 0, pos: 'atk' },
   // Un Monstruo de Péndulo en el Extra Deck, boca arriba.
   { type: 'move', id: 'card-10045474-1', to: 'extra', faceUp: true },
 ]
@@ -47,6 +51,7 @@ const THEIR_PLAYS: MatAction[] = [
   { type: 'move', id: 'card-83764718-2', to: 'gy' },
   { type: 'move', id: 'card-24094653-2', to: 'banished' },
   { type: 'move', id: 'card-10045474-2', to: 'extra', faceUp: true },
+  { type: 'place', id: THEIR_FIELD, zone: 'field', index: 0, pos: 'atk' },
   { type: 'draw', count: 1 },
 ]
 
@@ -148,10 +153,11 @@ export function sampleArrowCombo() {
 }
 
 export function sampleDuel(): { mine: DuelSideView; theirs: DuelSideView } {
-  const myStart = createMatState(deck(MAIN, 2), deck(EXTRA, 1), 5)
+  // Las magias de campo van al fondo del deck: la mano de cada uno es la de siempre.
+  const myStart = createMatState([...deck(MAIN, 2), MY_FIELD], deck(EXTRA, 1), 5)
   const mine = replayMat(myStart, MY_PLAYS)
 
-  const theirStart = createMatState(deck(MAIN, 2).reverse(), deck(EXTRA, 1).reverse(), 5)
+  const theirStart = createMatState([...deck(MAIN, 2).reverse(), THEIR_FIELD], deck(EXTRA, 1).reverse(), 5)
   const open = openPublic(theirStart)
   let sender = open.sender
   let state = theirStart

@@ -238,6 +238,34 @@ describe('la mesa del duelo', () => {
     expect(screen.getByRole('group', { name: 'Rival, Zona de monstruo 1' })).toBeInTheDocument()
   })
 
+  describe('el arte de una magia de campo boca arriba, de fondo de la mitad de quien la tiene', () => {
+    const field = (id: string, pos: 'atk' | 'set') => play({ type: 'place', id, zone: 'field', index: 0, pos })
+    const arts = () => Array.from(document.querySelectorAll<HTMLElement>('.mat-field-art'))
+
+    it('la mía en mis filas y la del rival en las suyas, por las líneas de la grilla, y derecha para los dos (sus cartas giran, el fondo no); la mesa es su propio contexto', () => {
+      render(<DuelTable mine={side(field('card-1003-1', 'atk'))} theirs={side(field('card-1004-1', 'atk'))} />)
+
+      const [theirs, mine] = arts()
+
+      expect(mine).toHaveAttribute('data-side', 'mine')
+      expect(mine).toHaveAttribute('aria-hidden', 'true')
+      expect(mine!.style.gridArea).toBe('m1-start / extra-start / extra-end / deck-end')
+      expect(mine!.querySelector('img')).toHaveAttribute('src', '/api/card-image/cards_cropped/10031.jpg?w=512')
+      expect(theirs).toHaveAttribute('data-side', 'theirs')
+      expect(theirs!.style.gridArea).toBe('tdeck-start / tdeck-start / tm1-end / textra-end')
+      expect(theirs!.querySelector('img')).toHaveAttribute('src', '/api/card-image/cards_cropped/10041.jpg?w=512')
+      expect(document.querySelectorAll('.mat-field-art.rotate-180, .mat-field-art .rotate-180')).toHaveLength(0)
+      // Sin `isolate`, el `-z-9` del fondo lo mandaba detrás de la pantalla del espectador.
+      expect(grid()).toHaveClass('isolate')
+    })
+
+    it('sin fondo si la carta está boca abajo, o si es del rival y no la mostró', () => {
+      render(<DuelTable mine={side(field('card-1003-1', 'set'))} theirs={side(field('card-1004-1', 'atk'), ['card-1004-1'])} />)
+
+      expect(arts()).toHaveLength(0)
+    })
+  })
+
   it('las fases del turno se ven en la tira del medio y se enciende la del que juega', () => {
     const mine = play({ type: 'phase', phase: 'battle' })
     const theirs = play({ type: 'phase', phase: 'main2' })

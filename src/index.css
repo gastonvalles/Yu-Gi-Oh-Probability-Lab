@@ -1383,6 +1383,45 @@
   }
 }
 
+/*
+ * El arte de la magia de campo activada (`FieldArt`; Gastón, 2026-10-21): la única imagen del tapete. Cubre la mitad de quien la activó (el lugar lo da `grid-area`, en línea), tenue y sin
+ * desenfoque ni filtros (rendimiento). Una máscara (dos degradés que se cruzan) la desvanece en todos sus bordes, sin cortes rectos, y más hacia la fila del medio (arriba la tuya, abajo la del
+ * rival: `--art-fade`): el tapete, las líneas, las cartas y los números se siguen leyendo. Encima de la placa (`-z-10`) y debajo de las casillas; entra y se va con un fundido.
+ */
+@utility mat-field-art {
+  position: absolute;
+  inset: 0;
+  z-index: -9;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-duration) var(--ease-out-soft);
+  mask-image:
+    linear-gradient(90deg, transparent, #000 26%, #000 74%, transparent),
+    linear-gradient(var(--art-fade, to top), transparent, #000 18%, #000 62%, transparent);
+  mask-composite: intersect;
+
+  &[data-side='theirs'] {
+    --art-fade: to bottom;
+  }
+
+  &[data-shown='true'] {
+    opacity: 0.45;
+  }
+
+  /* Un poco por arriba del medio: ahí suele estar lo que se reconoce del arte (la mitad es más ancha que alta y el arte, cuadrado). */
+  & > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 40%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* Una esquina del marco de la placa (dos líneas en L): `--cx` y `--cy` dicen de qué esquina es. */
 @utility mat-corner {
   position: absolute;
