@@ -12,6 +12,7 @@ import { duelTurnNumber } from '../../app/duel-turn'
 import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { PHASES } from '../../app/practice-mat'
+import { useSwipeAway } from '../../app/use-swipe-away'
 import { sacudir } from '../probability/AttackFx'
 import { MatViewToggle } from '../probability/MatViewToggle'
 import { DELTA_MS, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
@@ -494,15 +495,30 @@ interface DuelLogTickerProps {
 /**
  * Las dos últimas jugadas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Lo escrito no sale acá (Gastón, 2026-10-20: «el mensaje de arriba no debe
  * aparecer, no es necesario»): al otro le llega como un mensaje entrante y en el contador del chat, y en la línea salía dos veces. Tocarla abre el chat con el registro entero. Sin nada que mostrar deja el lugar reservado.
+ * **Se saca con el dedo** (Gastón, 2026-10-21: «estos carteles no los puedo swipear para eliminarlos y debería poder»): arrastrarla de costado la manda para ese lado (`useSwipeAway`; con teclado, Supr);
+ * queda el lugar reservado y la próxima jugada la vuelve a mostrar, con lo nuevo solo.
  */
 export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
-  const lines = feed.filter((entry): entry is Extract<FeedEntry, { kind: 'event' }> => entry.kind === 'event').slice(-2)
+  const events = feed.filter((entry): entry is Extract<FeedEntry, { kind: 'event' }> => entry.kind === 'event')
+  // Lo último que había cuando se sacó el cartel: lo que viene después es lo que se muestra.
+  const [seen, setSeen] = useState<string | null>(null)
+  const lines = events.slice(seen === null ? 0 : events.findIndex((entry) => entry.id === seen) + 1).slice(-2)
+  const swipe = useSwipeAway(() => setSeen(events.at(-1)?.id ?? null))
 
   // Sin nada todavía se reserva el lugar: la primera jugada no corre el campo (regla 7 del sistema de diseño).
   if (lines.length === 0) return <div aria-hidden="true" className="min-h-11" />
 
   return (
-    <button type="button" aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`} className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left focus-visible:outline-none focus-visible:shadow-focus max-sm:pointer-events-auto max-sm:bg-background/85" onClick={onOpen}>
+    <button
+      type="button"
+      aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`}
+      aria-keyshortcuts="Delete"
+      title={t('duel.log.dismiss')}
+      className="flex min-h-11 w-full min-w-0 cursor-pointer touch-pan-y items-center gap-2 rounded-control px-1 text-left transition-[transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none max-sm:pointer-events-auto max-sm:bg-background/85"
+      style={swipe.style}
+      {...swipe.props}
+      onClick={onOpen}
+    >
       <span className="grid min-w-0 flex-1 gap-0.5">
         {lines.map((line) => (
           <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
