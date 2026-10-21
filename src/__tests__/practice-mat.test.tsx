@@ -135,11 +135,13 @@ describe('la mesa de práctica', () => {
   it('pasar el mouse por una carta de la mano o del campo la eleva un poco y enciende su borde en blanco, tenue; arrastrada o sin movimiento no se mueve', () => {
     render(<Harness />)
 
-    // La de la mano sube 8 px y crece un 6 %, por delante de las vecinas (el abanico las encima).
+    // La de la mano sube 14 px, derecho, por delante de las vecinas (el abanico las encima). No crece: la propiedad `scale` se aplica después del `transform: translate3d(x, …) rotate(…)` del abanico
+    // y multiplicaba su desplazamiento `x` (Gastón: «se levanta mal, debe ser hacia arriba, no hacia el costado»); `translate`, que va por fuera, sube derecho.
     const handCard = within(hand()).getByRole('listitem', { name: 'Ash Blossom' })
-    expect(handCard).toHaveClass('hover:-translate-y-2', 'hover:scale-[1.06]', 'hover:z-40!', '[box-shadow:var(--card-shadow)]')
+    expect(handCard).toHaveClass('hover:-translate-y-3.5', 'hover:z-40!', '[box-shadow:var(--card-shadow)]')
+    expect(handCard.className).not.toMatch(/(^|\s)hover:scale-/)
     expect(handCard.className).toContain('hover:[--card-shadow:0_10px_20px_rgba(0,0,0,0.5),0_0_0_1px_rgb(255_255_255/0.6),0_0_12px_rgb(255_255_255/0.2)]')
-    expect(handCard).toHaveClass('motion-reduce:hover:translate-y-0', 'motion-reduce:hover:scale-100', 'data-[state=dragging]:hover:translate-y-0', 'data-[state=dragging]:hover:scale-100')
+    expect(handCard).toHaveClass('motion-reduce:hover:translate-y-0', 'data-[state=dragging]:hover:translate-y-0')
 
     // La del campo, lo justo para no salirse de su casilla.
     tap(handCard)
