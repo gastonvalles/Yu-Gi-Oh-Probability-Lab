@@ -1751,7 +1751,7 @@
    * barra de pasos de abajo (que es fija), no cambia entre una pestaña larga (con barra) y una corta (sin barra), ni al abrir
    * un modal (que traba el scroll). En escritorio hace scroll el contenedor del paso (ver DeckModeShell).
    */
-  @media (max-width: 1100px) {
+  @media (width < 1101px) {
     html {
       scrollbar-gutter: stable;
     }
@@ -1876,7 +1876,7 @@
  * Va en la capa de las utilidades porque la posición del contenedor (AppToaster) también es una utilidad con `!`: fuera de la capa perdería contra ella.
  */
 @layer utilities {
-  @media (max-width: 1100px) {
+  @media (width < 1101px) {
     body[data-duel] .app-toaster {
       bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
     }

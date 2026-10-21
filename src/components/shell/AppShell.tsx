@@ -118,7 +118,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   }, [collapsed, isDesktop, bigWindow, immersive])
 
   return (
-    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', showNavbar && 'min-[1101px]:grid-rows-[auto_minmax(0,1fr)]', immersive ? 'max-[1100px]:h-dvh max-[1100px]:overflow-hidden' : 'max-[1100px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
+    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', showNavbar && 'min-[1101px]:grid-rows-[auto_minmax(0,1fr)]', immersive ? 'max-[1101px]:h-dvh max-[1101px]:overflow-hidden' : 'max-[1101px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
       {/* Es un botón y no un enlace: las rutas viajan en el hash, y un `href="#contenido"` cambiaría de pantalla. */}
       <button
         type="button"
@@ -128,8 +128,8 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
         {t('shell.skipToContent')}
       </button>
       {showNavbar ? <AppNavbar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onSearch={openFind} onMascots={() => onSelect('mascots')} className="min-[1101px]:col-span-2" /> : null}
-      {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1100px]:hidden" />}
-      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', ownMenu && 'max-[1100px]:pt-[env(safe-area-inset-top,0px)]')}>
+      {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
+      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
         {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onSearch={openFind} className="min-[1101px]:hidden" />}
         <div
           ref={contentScrollRef}
@@ -139,7 +139,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
             // `relative`: lo posicionado adentro (los `sr-only`) queda dentro de este recuadro; si no, se estira el alto del documento.
             'relative flex min-h-0 w-full min-w-0 flex-1 flex-col min-[1101px]:[scrollbar-gutter:stable] min-[1101px]:[scrollbar-width:thin]',
             contentScrollable ? 'min-[1101px]:overflow-y-auto' : 'min-[1101px]:overflow-hidden',
-            immersive && 'max-[1100px]:overflow-hidden',
+            immersive && 'max-[1101px]:overflow-hidden',
           )}
         >
           {/* En escritorio este envoltorio mide siempre lo que el recuadro (`min-h-0`: no crece con el contenido), así una pantalla puede ocupar justo ese alto con `h-full`

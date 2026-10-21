@@ -574,7 +574,7 @@ describe('el armazón', () => {
     )
 
     expect(screen.getByText('Pantalla')).toBeInTheDocument()
-    expect(container.firstElementChild).toHaveClass('max-[1100px]:h-dvh', 'max-[1100px]:overflow-hidden')
+    expect(container.firstElementChild).toHaveClass('max-[1101px]:h-dvh', 'max-[1101px]:overflow-hidden')
   })
 
   it('la hamburguesa abre el menú con los destinos de los cuatro grupos (aunque la barra de abajo esté), y elegir uno cierra el cajón', () => {

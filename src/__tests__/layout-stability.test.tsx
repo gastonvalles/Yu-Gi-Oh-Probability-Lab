@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -46,7 +46,7 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
   })
 
   it('la barra de scroll queda reservada: en la página entera (celular y tablet) y en el contenedor de los pasos (escritorio)', () => {
-    expect(source('index.css')).toMatch(/@media \(max-width: 1100px\)\s*\{\s*html\s*\{\s*scrollbar-gutter: stable;/)
+    expect(source('index.css')).toMatch(/@media \(width < 1101px\)\s*\{\s*html\s*\{\s*scrollbar-gutter: stable;/)
 
     const shell = source('components/shell/AppShell.tsx')
 
@@ -66,5 +66,33 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
 
     expect(keyframes).toContain('opacity')
     expect(keyframes).not.toContain('transform')
+  })
+})
+
+/** Los .ts, .tsx y .css de `dir` (sin `__tests__`), con su ruta relativa a `base`. */
+function fuentes(dir: string, base = dir): [string, string][] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entrada) => {
+    const ruta = path.join(dir, entrada.name)
+
+    if (entrada.isDirectory()) return entrada.name === '__tests__' ? [] : fuentes(ruta, base)
+    if (!/\.(tsx?|css)$/.test(entrada.name)) return []
+
+    return [[path.relative(base, ruta).split(path.sep).join('/'), readFileSync(ruta, 'utf8')]]
+  })
+}
+
+// Tailwind v4 compila `max-[N]` como `width < N` (exclusivo): el complemento exacto de `min-[N]` es `max-[N]`, con el mismo N.
+// Con `max-[1100px]` quedaba 1100 px sin cubrir (ni celular ni escritorio); los pares de 559/560 y 519/520 tenían el mismo hueco.
+describe('los cortes entre celular y escritorio no dejan huecos', () => {
+  it('ningún archivo de src vuelve a usar un corte de un píxel de menos', () => {
+    const prohibidos = ['max-[1100px]', '(max-width: 1100px)', 'max-[559px]', 'max-[519px]']
+    // ComparisonScreen tiene un max-[519px] sin par (un solo corte, sin hueco): queda como está.
+    const culpables = fuentes(path.join(process.cwd(), 'src')).flatMap(([archivo, texto]) =>
+      prohibidos
+        .filter((corte) => texto.includes(corte) && !(archivo === 'components/comparison/ComparisonScreen.tsx' && corte === 'max-[519px]'))
+        .map((corte) => `${archivo}: ${corte}`),
+    )
+
+    expect(culpables, 'El complemento de min-[N] es max-[N] (docs/design-system.md, regla 6): para el escritorio usá max-[1101px].').toEqual([])
   })
 })

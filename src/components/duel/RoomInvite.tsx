@@ -64,8 +64,8 @@ export function InviteLink({ link, room, peerPresent }: InviteLinkProps) {
         {link}
       </p>
       {/* En un celular bajo (menos de 760 px de alto) el código y la aclaración de quién mira se esconden: el enlace y los botones dicen lo que hace falta y la sala tiene que entrar sin scroll. */}
-      <p className="m-0 text-micro text-soft max-[1100px]:[@media(max-height:760px)]:hidden">{t('duel.room.code', { code: room })}</p>
-      <p className="m-0 max-w-md text-micro text-soft max-[1100px]:[@media(max-height:760px)]:hidden">{t('duel.room.watchHint')}</p>
+      <p className="m-0 text-micro text-soft max-[1101px]:[@media(max-height:760px)]:hidden">{t('duel.room.code', { code: room })}</p>
+      <p className="m-0 max-w-md text-micro text-soft max-[1101px]:[@media(max-height:760px)]:hidden">{t('duel.room.watchHint')}</p>
     </div>
   )
 }

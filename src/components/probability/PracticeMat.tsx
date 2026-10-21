@@ -1748,7 +1748,7 @@ export function PracticeMat({
       className={cx(
         'flex min-w-0 items-center gap-2 px-1 text-micro text-muted',
         choosing ? (duel ? 'pointer-events-auto absolute inset-0 z-10' : 'pointer-events-auto absolute inset-x-0 bottom-0 z-10 h-10 border-t border-primary-hover/30 bg-background/80') : 'sr-only',
-        choosing && duel && 'max-[1100px]:bg-background min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
+        choosing && duel && 'max-[1101px]:bg-background min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
       )}
       role="status"
       aria-label={t('practice.mat.currentStep')}
@@ -1842,9 +1842,9 @@ export function PracticeMat({
       >
         <DuelRailsContext.Provider value={rails}>{duel?.header}</DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'my-auto flex flex-col gap-2 max-[1100px]:pb-12') : 'contents')}>
+        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
         {/* Celular: la mano del rival y el campo van juntos y centrados: el alto que sobra se reparte arriba y abajo (ni pegado a la barra ni un hueco antes de tu mano). Escritorio: sin envoltorio y el campo se centra. */}
-        <div className={cx('flex flex-col gap-2 min-[1101px]:contents', !duel && 'max-[1100px]:my-auto')}>
+        <div className={cx('flex flex-col gap-2 min-[1101px]:contents', !duel && 'max-[1101px]:my-auto')}>
         {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio.
             Las cinco columnas del centro son cuadradas (una carta acostada entra en su zona sin pisar a la vecina) y las de los costados miden lo justo de una carta (0,6857 de una del centro), así que todas las cartas miden lo mismo. */}
         <div
@@ -2047,7 +2047,7 @@ export function PracticeMat({
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* La barra tiene su propia fila abajo de la mano, también en escritorio: antes subía sobre la franja de abajo de la mano, y con la mano ancha de una notebook (1280–1440 px, con el menú y el chat abiertos) las fases y Pasar turno quedaban encima de las cartas, entre el 55 y el 75 % de su área. */}
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
-        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1100px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')}>
+        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido. Celular: las vidas a la izquierda, las dos reacciones en el medio (centradas, alineadas con las vidas y los botones) y deshacer y el chat a la derecha
               (el pulgar de quien juega con la derecha). Escritorio: deshacer junto a tus vidas, en la esquina opuesta a las del rival. */}
           {duel ? (
@@ -2056,14 +2056,14 @@ export function PracticeMat({
                 role="toolbar"
                 aria-label={t('practice.mat.name')}
                 inert={choosing}
-                className={cx('flex items-center justify-between max-[1100px]:grid max-[1100px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]', rails && 'flex-col! items-end! gap-2', choosing && 'max-[1100px]:opacity-35 min-[1101px]:invisible')}
+                className={cx('flex items-center justify-between max-[1101px]:grid max-[1101px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]', rails && 'flex-col! items-end! gap-2', choosing && 'max-[1101px]:opacity-35 min-[1101px]:invisible')}
               >
-                <span className="pointer-events-auto flex items-center max-[1100px]:col-start-3 max-[1100px]:row-start-1 max-[1100px]:justify-self-end">
+                <span className="pointer-events-auto flex items-center max-[1101px]:col-start-3 max-[1101px]:row-start-1 max-[1101px]:justify-self-end">
                   {isDesktop ? null : undoButton}
                   {duel.tools}
                 </span>
                 {isDesktop ? null : <span className="pointer-events-auto col-start-2 row-start-1">{duel.reactions}</span>}
-                <span className={cx('pointer-events-auto flex items-center gap-2 max-[1100px]:col-start-1 max-[1100px]:row-start-1', rails && 'flex-col-reverse items-end')}>
+                <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
                   {isDesktop ? undoButton : null}
                   {duel.life}

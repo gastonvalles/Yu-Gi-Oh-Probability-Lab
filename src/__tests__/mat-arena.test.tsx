@@ -29,7 +29,7 @@ describe('la arena de la mesa es decoración: no se lee, no se toca y no ocupa l
 
     expect(studs).toHaveLength(4)
     // Arriba y abajo van siempre; izquierda y derecha, sólo en escritorio.
-    expect(studs.filter((stud) => stud.classList.contains('max-[1100px]:hidden'))).toHaveLength(2)
+    expect(studs.filter((stud) => stud.classList.contains('max-[1101px]:hidden'))).toHaveLength(2)
   })
 
   it('las marcas de una casilla que se puede elegir: las esquinas siempre y el rombo sólo si está libre', () => {

@@ -47,7 +47,7 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
                   <span className={cx(ROLE_REFERENCE_MARK, 'min-[560px]:col-start-1 min-[560px]:row-span-2 min-[560px]:self-center')} />
                   <strong className="truncate text-body font-semibold leading-none text-foreground min-[560px]:col-start-2 min-[560px]:row-start-1">{definition.shortLabel ?? definition.label}</strong>
                 </span>
-                <span className="min-w-0 text-micro text-muted max-[559px]:text-right min-[560px]:col-start-2 min-[560px]:row-start-2">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
+                <span className="min-w-0 text-micro text-muted max-[560px]:text-right min-[560px]:col-start-2 min-[560px]:row-start-2">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
               </button>
             )
           })}

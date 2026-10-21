@@ -28,7 +28,7 @@ const sideStyle = variants({
   base: 'min-w-0 gap-2',
   variants: {
     variant: {
-      actions: 'flex flex-wrap items-center justify-end max-[1100px]:w-full max-[1100px]:justify-stretch max-[1100px]:[&>button]:flex-1',
+      actions: 'flex flex-wrap items-center justify-end max-[1101px]:w-full max-[1101px]:justify-stretch max-[1101px]:[&>button]:flex-1',
       // Formulario (nombre y formato del deck): el nombre se queda con el ancho que sobra y el formato con uno fijo.
       form: 'grid w-full grid-cols-[minmax(0,1fr)_8.5rem] gap-2',
     },
@@ -57,7 +57,7 @@ export function StepHero({ title, icon, subtitle, help, titleAction, side, sideV
             {/* El botón de al lado mide 44 px en táctil: sobresale, centrado, en vez de agrandar el renglón y bajar el título. */}
             {titleAction ? <span className="-my-1.5 inline-flex shrink-0">{titleAction}</span> : null}
           </div>
-          {subtitle ? <p className={cx(supportText, 'max-[1100px]:hidden')}>{subtitle}</p> : null}
+          {subtitle ? <p className={cx(supportText, 'max-[1101px]:hidden')}>{subtitle}</p> : null}
         </div>
       </div>
       {side ? <div className={sideStyle({ variant: sideVariant })}>{side}</div> : null}

@@ -29,7 +29,7 @@ Convenciones de este repo al leer un pedido:
   de adorno, sin grises neutros: las superficies son de la familia índigo.
 - **Responsive mobile-first.** Se diseña a 390 px y se prueba a 390, 1100 y 1440 px, con el menú lateral abierto y contraído.
   Breakpoints: los de Tailwind (`sm`, `md`, `lg`, `xl`) para lo fino y **1101 px** (`min-[1101px]`,
-  `DESKTOP_DECK_BUILDER_MEDIA_QUERY`) como el único corte escritorio/menú lateral; no se inventan otros.
+  `DESKTOP_DECK_BUILDER_MEDIA_QUERY`) como el único corte escritorio/menú lateral; no se inventan otros. El complemento de `min-[1101px]` es `max-[1101px]` (en Tailwind v4 `max-[N]` es `width < N`: con `max-[1100px]` quedaba un hueco a 1100 px y con zoom); probá también a 1101 px.
 - **En pantallas chicas** los elementos se apilan, el texto sigue legible, no hay overflow horizontal y el menú lateral pasa a
   hamburguesa + cajón (lo hace `AppShell`; una pantalla no arma su propia navegación).
 - **Accesibilidad:** todo se usa con teclado; ARIA donde el HTML no alcanza (`aria-label` en botones sólo ícono, `aria-pressed` /

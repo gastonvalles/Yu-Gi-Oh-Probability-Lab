@@ -137,7 +137,7 @@ export function BanlistsScreen() {
             <Badge icon="refresh" title={t('catalog.banlists.updatedTitle')} className="min-[1101px]:order-first">
               {t('catalog.banlists.updated', { date: formatDay(new Date(`${BANLISTS_FETCHED_AT}T00:00:00Z`), 'UTC') })}
             </Badge>
-            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="min-w-0 max-[1100px]:order-first max-[1100px]:flex-1" />
+            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="min-w-0 max-[1101px]:order-first max-[1101px]:flex-1" />
           </div>
         }
       />

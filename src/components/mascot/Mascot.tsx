@@ -4,7 +4,7 @@ import { MASCOTS, MASCOT_ANIMATION, MASCOT_STILL, beginDuel, mascotPositionKey, 
 import { forgetMascotBody, reportMascotBody } from '../../app/mascot-interplay'
 import { useDraggablePosition } from '../../app/use-draggable-position'
 import { useHold } from '../../app/use-hold'
-import { useMediaQuery } from '../../app/use-media-query'
+import { MOBILE_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { cx } from '../ui/cx'
@@ -62,7 +62,7 @@ function ActiveMascot({ id, slot }: { id: MascotId; slot: number }) {
   const mascot = { id, ...MASCOTS[id] }
   const state = useMascotState(id)
   const reduceMotion = useMediaQuery(REDUCED_MOTION_MEDIA_QUERY)
-  const isMobile = useMediaQuery('(max-width: 1100px)')
+  const isMobile = useMediaQuery(MOBILE_DECK_BUILDER_MEDIA_QUERY)
   const size = isMobile ? SIZE_MOBILE : SIZE_DESKTOP
   const { position, dragging, handlers, consumeDragClick } = useDraggablePosition({
     storageKey: mascotPositionKey(id),
@@ -221,7 +221,7 @@ function ActiveMascot({ id, slot }: { id: MascotId; slot: number }) {
           type="button"
           aria-label={t('shell.mascot.hide', { name: mascot.name })}
           title={t('shell.mascot.hide', { name: mascot.name })}
-          className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-lavender text-foreground opacity-0 shadow-card transition-opacity duration-150 hover:bg-lavender-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus group-hover:opacity-100 max-[1100px]:hidden"
+          className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-lavender text-foreground opacity-0 shadow-card transition-opacity duration-150 hover:bg-lavender-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus group-hover:opacity-100 max-[1101px]:hidden"
           onClick={rest}
         >
           <Icon name="x" size={12} strokeWidth={2.2} />

@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react'
 
-import { useMediaQuery } from '../../app/use-media-query'
+import { MOBILE_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
@@ -19,7 +19,7 @@ interface LabSectionProps {
 }
 
 export function LabSection({ title, icon, summary, actions, defaultOpenOnMobile = true, className = '', children }: LabSectionProps) {
-  const isMobile = useMediaQuery('(max-width: 1100px)')
+  const isMobile = useMediaQuery(MOBILE_DECK_BUILDER_MEDIA_QUERY)
   const [isOpenOnMobile, setIsOpenOnMobile] = useState(defaultOpenOnMobile)
   const isOpen = !isMobile || isOpenOnMobile
   const contentId = useId()

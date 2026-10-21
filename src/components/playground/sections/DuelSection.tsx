@@ -21,7 +21,7 @@ import { sampleDuel } from './duel-sample'
 
 /**
  * El duelo por enlace: cómo se ven los dos campos. Las tres variantes son las que se ofrecen para el celular; en una
- * ventana ancha se ven con las medidas de escritorio. Para verlas como en el celular, achicá la ventana a menos de 1100 px.
+ * ventana ancha se ven con las medidas de escritorio. Para verlas como en el celular, achicá la ventana a 1100 px o menos.
  */
 export function DuelSection() {
   const duel = useMemo(sampleDuel, [])

@@ -89,7 +89,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             )}
             onClick={() => onChange(option.value)}
           >
-            <span className="flex items-center justify-center gap-1.5 text-center max-[519px]:whitespace-normal min-[520px]:whitespace-nowrap">
+            <span className="flex items-center justify-center gap-1.5 text-center max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap">
               {option.label}
               {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}
             </span>

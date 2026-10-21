@@ -169,7 +169,7 @@ export function ReplaysScreen() {
             label={t('meta.replays.searchLabel')}
             value={query}
             placeholder={t('meta.replays.searchPlaceholder')}
-            className="min-w-[14rem] max-[1100px]:order-first min-[1101px]:w-72"
+            className="min-w-[14rem] max-[1101px]:order-first min-[1101px]:w-72"
             onChange={setQuery}
           />
         </div>

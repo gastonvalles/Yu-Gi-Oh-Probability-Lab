@@ -33,7 +33,7 @@ export function MetaHeroSide({ region, onRegionChange }: MetaHeroSideProps) {
         options={REGION_OPTIONS}
         label={t('meta.screen.regionLabel')}
         size="sm"
-        className="min-w-0 max-[1100px]:order-first max-[1100px]:flex-1"
+        className="min-w-0 max-[1101px]:order-first max-[1101px]:flex-1"
       />
     </div>
   )
