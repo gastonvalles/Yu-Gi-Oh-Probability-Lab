@@ -56,6 +56,7 @@ export const duel = {
   'duel.point.noticeTheirs': '{name} señala algo de su lado',
   'duel.mark.notice.card': '{name} marca una de tus cartas como objetivo',
   'duel.announce.yourCard': 'una de tus cartas',
+  'duel.announce.rivalCard': 'una carta del rival',
   'duel.announce.show.gy': { one: '{name} manda una carta al cementerio', other: '{name} manda {count} cartas al cementerio' },
   'duel.announce.show.banish': { one: '{name} destierra una carta', other: '{name} destierra {count} cartas' },
   'duel.announce.show.hand': { one: '{name} lleva una carta a su mano', other: '{name} lleva {count} cartas a su mano' },

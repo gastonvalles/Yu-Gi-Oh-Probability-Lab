@@ -107,14 +107,15 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
 
     if (!initial || actions.length <= before) return
 
-    // Una carta del rival que controlo (`f.c12`) se llama por la que él mostró, si es de las de mi deck (por su número); si no, no se sabe el nombre acá.
-    const foreignName = (id: string) => {
-      const real = snapshot.theirs?.known[opaqueOfForeign(id)]
+    // Una carta del rival (su id opaco, como el objetivo de mi ataque: `c51`; o `f.c12`, una que controlo) se llama por la que él mostró, si es de las de mi deck (por su número); si no, no se sabe el nombre acá.
+    const rivalCardName = (opaque: string) => {
+      const real = snapshot.theirs?.known[opaque]
       const same = real === undefined ? undefined : [...cardsById].find(([drawId]) => cardIdOfDrawId(drawId) === cardIdOfDrawId(real))
 
-      return same?.[1].name ?? t('duel.mark.rivalCard')
+      return same?.[1].name ?? t('duel.announce.rivalCard')
     }
-    const nameOf = (id: string) => (isForeignId(id) ? foreignName(id) : (cardsById.get(id)?.name ?? t('duel.announce.yourCard')))
+    // Lo que no es una de mis cartas es del rival.
+    const nameOf = (id: string) => (isForeignId(id) ? rivalCardName(opaqueOfForeign(id)) : (cardsById.get(id)?.name ?? rivalCardName(id)))
     const lines: Array<{ index: number; entry: NewEntry }> = []
 
     for (let index = before; index < actions.length; index += 1) {

@@ -21,13 +21,15 @@ interface Props {
   turnNumber?: number
   peerActs?: number
   captions?: Array<{ key: number; caption: string } | undefined>
+  /** Lo que el rival mostró de sus cartas: su id opaco (`c51`) → el id real de la carta. */
+  known?: Record<string, string>
 }
 
 const render = (initialProps: Props) =>
   renderHook(
-    ({ actions, chat = [], turnNumber = 1, peerActs = 0, captions = [] }: Props) =>
+    ({ actions, chat = [], turnNumber = 1, peerActs = 0, captions = [], known = {} }: Props) =>
       useDuelFeed({
-        snapshot: { chat, actions, initial, theirs: { acts: Array.from({ length: peerActs }), known: {} } } as unknown as DuelSnapshot,
+        snapshot: { chat, actions, initial, theirs: { acts: Array.from({ length: peerActs }), known } } as unknown as DuelSnapshot,
         cardsById,
         rivalCaptions: captions,
         turn: 'mine',
@@ -118,5 +120,50 @@ describe('el registro del duelo cuando se deshace una jugada', () => {
     view.rerender({ actions: [] })
     act(() => undefined)
     expect(view.result.current).toHaveLength(0)
+  })
+})
+
+describe('el registro del ataque cuando el objetivo es una carta del rival', () => {
+  // El objetivo llega con el id opaco con que el rival llama a su carta (`c51`); lo que él mostró de ella está en `known`.
+  const attack = (target?: string): MatAction => ({ type: 'attack', id: first, ...(target === undefined ? {} : { target }) }) as MatAction
+
+  it('nombra la carta del rival cuando él la mostró y es de las de tu deck (por su número)', () => {
+    const view = render({ actions: [] })
+
+    view.rerender({ actions: [attack('c51')], known: { c51: 'card-3-0' } })
+
+    expect(texts(view.result.current)).toEqual(['Atacás a Carta 3 con Carta 1'])
+  })
+
+  it('dice «una carta del rival» si no se sabe cuál es (boca abajo, no la mostró)', () => {
+    const view = render({ actions: [] })
+
+    view.rerender({ actions: [attack('c52')], known: {} })
+
+    expect(texts(view.result.current)).toEqual(['Atacás a una carta del rival con Carta 1'])
+  })
+
+  it('dice «una carta del rival» si la mostró pero no es de tu deck: su nombre no se conoce acá', () => {
+    const view = render({ actions: [] })
+
+    view.rerender({ actions: [attack('c53')], known: { c53: 'card-99-0' } })
+
+    expect(texts(view.result.current)).toEqual(['Atacás a una carta del rival con Carta 1'])
+  })
+
+  it('una carta del rival que controlás (f.) sigue nombrándose por la que él mostró', () => {
+    const view = render({ actions: [] })
+
+    view.rerender({ actions: [{ type: 'attack', id: 'f.c12' } as MatAction], known: { c12: 'card-4-0' } })
+
+    expect(texts(view.result.current)).toEqual(['Atacás directo con Carta 4'])
+  })
+
+  it('tu propia carta como objetivo sigue diciendo su nombre', () => {
+    const view = render({ actions: [] })
+
+    view.rerender({ actions: [attack('card-2-0')] })
+
+    expect(texts(view.result.current)).toEqual(['Atacás a Carta 2 con Carta 1'])
   })
 })
