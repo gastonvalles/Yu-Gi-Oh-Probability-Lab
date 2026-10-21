@@ -176,7 +176,7 @@ function Scrim({ open, onClose }: { open: boolean; onClose: () => void }) {
     <div
       aria-hidden="true"
       data-results-scrim=""
-      className={cx('fixed inset-0 z-10 bg-background/60 transition-opacity duration-300 motion-reduce:transition-none', open ? 'opacity-100' : 'pointer-events-none opacity-0')}
+      className={cx('fixed inset-0 z-10 bg-background/60 transition-opacity duration-240 motion-reduce:transition-none', open ? 'opacity-100' : 'pointer-events-none opacity-0')}
       onClick={onClose}
     />
   )
@@ -201,7 +201,7 @@ function ResultsDrawer({ id, side, name, open, layout, onClose, children }: { id
       inert={!open}
       style={layout ? ({ left: layout.left[side], right: 'auto', width: layout.width, '--edge': `${layout.edge[side]}px` } as CSSProperties) : undefined}
       className={cx(
-        'fixed inset-y-0 z-170 flex w-[min(46rem,calc(50vw-4.5rem))] min-w-[22rem] flex-col overflow-hidden transition-[transform,visibility] duration-300 ease-out motion-reduce:transition-none',
+        'fixed inset-y-0 z-170 flex w-[min(46rem,calc(50vw-4.5rem))] min-w-[22rem] flex-col overflow-hidden transition-[transform,visibility] duration-240 ease-out motion-reduce:transition-none',
         surface.panel,
         side === 'A' ? 'left-0 rounded-l-none border-l-0' : 'right-0 rounded-r-none border-r-0',
         open ? cx('visible translate-x-0', side === 'A' ? 'shadow-[16px_0_48px_rgba(0,0,0,0.65)]!' : 'shadow-[-16px_0_48px_rgba(0,0,0,0.65)]!') : cx('invisible', side === 'A' ? '-translate-x-[calc(100%+var(--edge,0px))]' : 'translate-x-[calc(100%+var(--edge,0px))]'),

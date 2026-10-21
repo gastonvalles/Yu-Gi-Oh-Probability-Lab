@@ -1,4 +1,4 @@
-import { prefersReducedMotion, supportsAdditiveAnimation } from './motion'
+import { EASE_OUT, prefersReducedMotion, supportsAdditiveAnimation } from './motion'
 
 /** Cuánto dura el barajado de una mano o de un deck (el del mazo propio, `riffle-*` de `index.css`, dura lo mismo). */
 export const RIFFLE_MS = 640
@@ -29,7 +29,7 @@ export function riffle(cards: Iterable<Element>): void {
         { transform: 'translate(0px, 3px) rotate(0deg)', offset: 0.84 },
         { transform: 'translate(0px, 0px) rotate(0deg)' },
       ],
-      { duration: RIFFLE_MS, delay: index * 24, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', composite: 'add' },
+      { duration: RIFFLE_MS, delay: index * 24, easing: EASE_OUT, composite: 'add' },
     )
     index += 1
   }

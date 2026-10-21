@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef,
 import { createPortal } from 'react-dom'
 
 import type { CardNavigation } from '../../app/card-neighbors'
-import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
+import { EASE_OUT, UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
 import { foilOf } from '../../app/card-foil'
 import { useCardArtOptions, type ArtChoice } from '../../app/use-card-art-options'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -134,7 +134,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
     closingRef.current = false
 
     if (art && typeof art.animate === 'function' && !prefersReducedMotion()) {
-      const fade = rootRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' })
+      const fade = rootRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT })
       const panel = panelRef.current?.animate(
         [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }],
         { duration: UI_ANIMATION_MS, easing: EASE },
@@ -185,7 +185,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
     }
 
     if (art && panel && typeof art.animate === 'function' && !prefersReducedMotion()) {
-      const options = { duration: SWITCH_MS, easing: 'ease-out' } as const
+      const options = { duration: SWITCH_MS, easing: EASE_OUT } as const
 
       animationsRef.current.push(
         art.animate([{ opacity: 0, transform: `translateX(${direction * SWITCH_SLIDE_PX}px)` }, { opacity: 1, transform: 'none' }], options),
@@ -217,7 +217,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
     const opacity = getComputedStyle(root).opacity
     const transform = getComputedStyle(art).transform
     animationsRef.current.forEach((animation) => animation.cancel())
-    const options = { duration: CLOSE_MS, easing: 'ease-in', fill: 'forwards' } as const
+    const options = { duration: CLOSE_MS, easing: EASE_OUT, fill: 'forwards' } as const
     const fade = root.animate([{ opacity }, { opacity: 0 }], options)
     const flight = art.animate(
       [{ transform }, { transform: origin ? flightFrom(art, origin) : 'scale(0.96)' }],
