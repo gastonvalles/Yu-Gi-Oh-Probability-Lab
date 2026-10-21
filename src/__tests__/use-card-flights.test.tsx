@@ -23,8 +23,8 @@ const boxes = new Map<string, Box>()
 let flights: Array<{ card: string | undefined; from: string }> = []
 /** Los fantasmas que vuelan hasta una pila (una carta que se fue del campo): a dónde llegan. */
 let ghostLandings: string[] = []
-/** Todo lo que se animó: el elemento, sus cuadros y sus opciones. */
-let calls: Array<{ element: Element; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = []
+/** Todo lo que se animó: el elemento, sus cuadros, sus opciones y la animación que devolvió (para avisar que terminó o se cortó). */
+let calls: Array<{ element: Element; keyframes: Keyframe[]; options: KeyframeAnimationOptions; animation: Animation }> = []
 
 /**
  * Con qué nombre se mide cada elemento: la carta propia o del rival por su id, las pilas propias como `mine-<pila>`, las del rival como `rival-<pila>` y
@@ -68,9 +68,10 @@ beforeEach(() => {
   Element.prototype.animate = function (this: Element, keyframes: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
     if (this instanceof HTMLElement && (this.dataset.cardId ?? this.dataset.rivalCardId) && Array.isArray(keyframes)) flights.push({ card: this.dataset.cardId ?? this.dataset.rivalCardId, from: String(keyframes[0]?.transform ?? '') })
     if (this instanceof HTMLElement && 'flightGhost' in this.dataset && Array.isArray(keyframes) && keyframes[0]?.transform !== undefined && (typeof options !== 'object' || options.composite !== 'add')) ghostLandings.push(String(keyframes.at(-1)?.transform ?? ''))
-    if (Array.isArray(keyframes)) calls.push({ element: this, keyframes, options: typeof options === 'object' ? options : {} })
+    const animation = {} as Animation
+    if (Array.isArray(keyframes)) calls.push({ element: this, keyframes, options: typeof options === 'object' ? options : {}, animation })
 
-    return {} as Animation
+    return animation
   }
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
 })
@@ -214,6 +215,95 @@ describe('de dónde sale volando una carta que se juega desde la mano', () => {
     rerender(<Mat state={matReducer(first, { type: 'place', id: 'b', zone: 'st', index: 1, pos: 'atk' })} />)
 
     expect(flightOrigin('b')).toEqual(centerOf(at(100, 600)))
+  })
+})
+
+describe('la carta que sale de tu mano al campo vuela por encima de sus vecinas (el campo es su propio contexto de apilado y la mano se pinta encima)', () => {
+  const offsets = { width: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth'), height: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight') }
+
+  beforeEach(() => {
+    // El tamaño de layout de cada carta: el de su caja.
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get(this: HTMLElement) { return boxes.get(keyOf(this))?.width ?? 0 } })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return boxes.get(keyOf(this))?.height ?? 0 } })
+  })
+
+  afterEach(() => {
+    for (const [name, descriptor] of [['offsetWidth', offsets.width], ['offsetHeight', offsets.height]] as const) {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor)
+      else Reflect.deleteProperty(HTMLElement.prototype, name)
+    }
+  })
+
+  /** La mano de cuatro (a, b, c, d) y la del medio, c, colocada en la zona 3 de Mágicas y Trampas. */
+  function playFromHand() {
+    const start = createMatState(['a', 'b', 'c', 'd'], [], 4)
+    ;['a', 'b', 'c', 'd'].forEach((id, index) => boxes.set(id, at(100 + index * 60, 600)))
+    const view = render(<Mat state={start} />)
+
+    boxes.set('c', at(500, 350))
+    view.rerender(<Mat state={matReducer(start, { type: 'place', id: 'c', zone: 'st', index: 2, pos: 'set' })} />)
+
+    return view
+  }
+  const flightOf = (element: Element) => calls.find((call) => call.element === element && call.keyframes[0]?.transform !== undefined)
+  const hiddenOf = (element: Element) => calls.find((call) => call.element === element && call.keyframes[0]?.opacity === 0)
+
+  it('vuela una copia en la capa de los fantasmas con el mismo vuelo, y la carta queda transparente y sin atajar el puntero hasta que toca su zona', () => {
+    const { container } = playFromHand()
+    const holder = document.querySelector<HTMLElement>('[data-flight-ghost="c"]')
+    const card = container.querySelector<HTMLElement>('[data-drop="st:2"] [data-card-id="c"]')!
+
+    // En la capa de los fantasmas de la mesa (z 110: encima del campo y de la mano, debajo de las cartas grandes del centro), sin toques, foco ni lectura.
+    expect(holder?.parentElement).toBe(container.firstElementChild)
+    expect(holder?.className).toContain('z-110')
+    expect(holder?.className).toContain('pointer-events-none')
+    expect(holder?.getAttribute('aria-hidden')).toBe('true')
+    expect(holder?.hasAttribute('inert')).toBe(true)
+    // La copia, sin la marca de la carta (la mesa no la mide ni la toma por ella), justo donde está la carta.
+    const copy = holder!.firstElementChild as HTMLElement
+    expect(copy.hasAttribute('data-card-id')).toBe(false)
+    expect([copy.style.left, copy.style.top, copy.style.width, copy.style.height]).toEqual(['500px', '350px', '80px', '116px'])
+    // El mismo vuelo que la carta (los mismos cuadros y el mismo reloj): sale de donde estaba en la mano.
+    expect(flightOf(copy)!.keyframes).toBe(flightOf(card)!.keyframes)
+    expect(flightOf(copy)!.options).toMatchObject({ duration: FLIGHT_MS, easing: EASE_IN_OUT })
+    expect(flightOrigin('c')).toEqual(centerOf(at(220, 600)))
+    // La carta, transparente y sin atajar el puntero (no se eleva bajo el mouse) hasta que toca su zona; otra jugada la corta (es un vuelo).
+    expect(hiddenOf(card)!.keyframes).toEqual([{ opacity: 0, pointerEvents: 'none' }, { opacity: 0, pointerEvents: 'none' }])
+    expect(hiddenOf(card)!.options).toEqual({ id: 'mat-flight', duration: Math.round(FLIGHT_MS * LANDING_AT) })
+  })
+
+  it('cuando la carta toca su zona la copia se va; si otra jugada corta el vuelo, también', () => {
+    const first = playFromHand()
+    const card = () => document.querySelector('[data-drop="st:2"] [data-card-id="c"]')!
+
+    ;(hiddenOf(card())!.animation.onfinish as () => void)()
+    expect(document.querySelector('[data-flight-ghost]')).toBeNull()
+    first.unmount()
+
+    calls = []
+    playFromHand()
+    expect(document.querySelector('[data-flight-ghost="c"]')).not.toBeNull()
+    ;(hiddenOf(card())!.animation.oncancel as () => void)()
+    expect(document.querySelector('[data-flight-ghost]')).toBeNull()
+  })
+
+  it('lo que no sale de tu mano vuela como siempre, sin copia (de una zona a otra), y con el movimiento reducido no vuela nada', () => {
+    const placed = matReducer(createMatState(['a', 'b', 'c', 'd'], [], 4), { type: 'place', id: 'c', zone: 'st', index: 0, pos: 'atk' })
+    boxes.set('c', at(400, 350))
+    const first = render(<Mat state={placed} />)
+
+    boxes.set('c', at(530, 350))
+    first.rerender(<Mat state={matReducer(placed, { type: 'place', id: 'c', zone: 'st', index: 1, pos: 'atk' })} />)
+    expect(document.querySelector('[data-flight-ghost]')).toBeNull()
+    expect(flightOrigin('c')).toEqual(centerOf(at(400, 350)))
+    expect(hiddenOf(document.querySelector('[data-card-id="c"]')!)).toBeUndefined()
+    first.unmount()
+
+    calls = []
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    playFromHand()
+    expect(document.querySelector('[data-flight-ghost]')).toBeNull()
+    expect(calls).toHaveLength(0)
   })
 })
 
