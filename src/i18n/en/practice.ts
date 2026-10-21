@@ -339,4 +339,14 @@ export const practice: Translated<typeof es> = {
   'practice.eval.pool': '({count} cards)',
   'practice.eval.noReuse': 'Without reusing cards: {rest}',
   'practice.eval.deadCards': 'You open {total} Bricks/Garnets.',
+
+  // The pile viewer: picking several cards for one play (`PileViewer` with `many`).
+  'practice.many.enter': 'Pick several',
+  'practice.many.all': 'Select all',
+  'practice.many.none': 'Clear selection',
+  'practice.many.hint': 'Tap the cards',
+  'practice.many.picked': { one: '<n>{count}</n> <w>selected</w>', other: '<n>{count}</n> <w>selected</w>' },
+  'practice.many.order': '{name} (selected #{n})',
+  'practice.many.range': 'Shift+click selects the range from the last one you tapped',
+  'practice.many.choosePlay': 'Choose a play',
 }

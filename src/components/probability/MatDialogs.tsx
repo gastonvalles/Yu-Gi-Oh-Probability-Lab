@@ -1,11 +1,12 @@
-import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { createPortal } from 'react-dom'
+import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useEscapeKey } from '../../app/use-overlay'
 import { normalizeSearchText } from '../../app/utils'
 import type { MatPile } from '../../app/practice-mat'
 import { t } from '../../i18n'
+import { tRich } from '../../i18n/rich'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -200,6 +201,16 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
   )
 }
 
+/** Elegir varias cartas de la pila para una misma jugada (enviarlas a un lugar, barajarlas, adjuntarlas, Target). */
+export interface PileMany {
+  /** El texto de la principal según lo elegido: en tu pila, «Elegir jugada»; en la del rival, la jugada misma («Target» o «Quitar target»). Sin nada elegido va apagada. */
+  label: (ids: readonly string[]) => string
+  /** La principal: las elegidas, en el orden en que se eligieron, y dónde está el botón (el menú del lote sale pegado a él). El visor no se cierra solo: lo cierra la jugada. */
+  onPick: (ids: string[], rect: DOMRect) => void
+  /** Arranca eligiendo, con éstas ya elegidas y en este orden (así el catálogo muestra cada estado). */
+  start?: readonly string[]
+}
+
 interface PileViewerProps {
   pile: MatPile | null
   ids: string[]
@@ -207,6 +218,10 @@ interface PileViewerProps {
   /** Cartas marcadas como objetivo: llevan la mira (como en la mano y en el campo). */
   targeted: ReadonlySet<string>
   onPick: (id: string, rect: DOMRect) => void
+  /** Cada toque de una carta, también eligiendo varias: la mesa la muestra en el detalle fijo de la izquierda. */
+  onPeek?: (id: string) => void
+  /** Con esto y dos cartas o más, el pie lleva «Elegir varias». */
+  many?: PileMany
   onClose: () => void
   /** Las cartas del rival: sólo se sabe cómo se ven, no cómo se llaman, así que no hay nombre debajo ni buscador. */
   anonymous?: boolean
@@ -215,58 +230,170 @@ interface PileViewerProps {
 /**
  * Las cartas de una pila. El deck y el Extra se muestran en su orden real (tope primero; al cerrar el
  * deck se baraja, como en la mesa real) y con buscador; cementerio y destierro, la más reciente primero.
+ * Con `many`, el pie ofrece elegir varias: tocar elige o suelta (aro ámbar y número de orden), Mayús+clic elige el tramo,
+ * la principal le pasa las elegidas a quien abrió el visor y Escape sale del modo antes de cerrar el visor.
  */
-export function PileViewer({ pile, ids, info, targeted, onPick, onClose, anonymous = false }: PileViewerProps) {
+export function PileViewer({ pile, ids, info, targeted, onPick, onPeek, many, onClose, anonymous = false }: PileViewerProps) {
   const [query, setQuery] = useState('')
+  const [choosing, setChoosing] = useState(many?.start !== undefined)
+  const [picked, setPicked] = useState<string[]>(() => [...(many?.start ?? [])])
+  // Desde dónde elige Mayús+clic: la última carta tocada.
+  const lastRef = useRef<string | null>(null)
+  const gridRef = useRef<HTMLUListElement | null>(null)
+  const footRef = useRef<HTMLDivElement | null>(null)
+  const statusId = useId()
+  const canMany = many !== undefined && pile !== null && ids.length >= 2
   const cards = ids.map((id) => ({ id, ...info(id) }))
   // El Extra se muestra en su orden, pero las cartas boca arriba (las que se ven y se invocan por Péndulo) van primero.
   const ordered = pile === 'extra' ? [...cards.filter((card) => card.faceUp), ...cards.filter((card) => !card.faceUp)] : pile === 'deck' ? cards : [...cards].reverse()
   const words = normalizeSearchText(query).split(' ').filter(Boolean)
   const visible = words.length === 0 ? ordered : ordered.filter((card) => words.every((word) => normalizeSearchText(card.name).includes(word)))
+  const visibleIds = visible.map((card) => card.id)
+  const allVisible = visibleIds.length > 0 && visibleIds.every((id) => picked.includes(id))
   const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''
 
+  // La pila cambió por debajo (Deshacer, una jugada): la elección se recorta a las que siguen ahí y, con menos de dos cartas, se sale del modo.
+  const kept = picked.filter((id) => ids.includes(id))
+  if (kept.length !== picked.length) setPicked(kept)
+  if (choosing && !canMany) setChoosing(false)
+
+  // Al entrar, el foco va a la primera carta; al salir, vuelve a «Elegir varias» (el botón que se tocó ya no está).
+  const enter = () => {
+    flushSync(() => setChoosing(true))
+    gridRef.current?.querySelector<HTMLElement>('button')?.focus()
+  }
+  const exit = () => {
+    flushSync(() => {
+      setChoosing(false)
+      setPicked([])
+    })
+    footRef.current?.querySelector<HTMLElement>('button')?.focus()
+  }
+
+  // Arriba del Escape del visor: el primero sale del modo y el segundo cierra.
+  useEscapeKey(exit, choosing)
+
+  const toggle = (id: string, range: boolean) => {
+    const from = range && lastRef.current !== null ? visibleIds.indexOf(lastRef.current) : -1
+    const to = visibleIds.indexOf(id)
+
+    lastRef.current = id
+    if (from >= 0 && from !== to) {
+      // El tramo en el orden que se ve, como si se tocaran de a una desde la última.
+      const span = visibleIds.slice(Math.min(from, to), Math.max(from, to) + 1)
+      const sweep = from < to ? span : span.reverse()
+
+      setPicked((current) => [...current, ...sweep.filter((card) => !current.includes(card))])
+    } else {
+      setPicked((current) => (current.includes(id) ? current.filter((card) => card !== id) : [...current, id]))
+    }
+  }
+
+  // «Elegir todas» es de las que se ven (con el filtro puesto, sólo ésas); con todas ya elegidas, las suelta.
+  const pickVisible = () => setPicked((current) => (allVisible ? current.filter((id) => !visibleIds.includes(id)) : [...current, ...visibleIds.filter((id) => !current.includes(id))]))
+
   return (
-    <Modal isOpen={pile !== null} onClose={onClose} size="md" kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
+    <Modal
+      isOpen={pile !== null}
+      onClose={onClose}
+      size="md"
+      kicker={t('practice.mat.name')}
+      title={title}
+      ariaLabel={title}
+      footer={
+        many && canMany ? (
+          // Mide lo mismo en los dos modos: los botones son del mismo alto y lo de la izquierda entra en dos renglones (el número a la izquierda, la acción a la derecha).
+          // Donde el pie es muy angosto (un celular de 320 px), queda sólo el número: la palabra y la indicación siguen para el lector de pantalla.
+          <div ref={footRef} className="@container flex w-full items-center gap-3">
+            <p id={statusId} role="status" className="m-0 line-clamp-2 min-w-0 flex-1 text-body leading-tight text-muted">
+              {!choosing ? null : picked.length === 0 ? (
+                <>
+                  <span className="@max-2xs:sr-only">{t('practice.many.hint')}</span>
+                  <span aria-hidden="true" className="hidden font-semibold text-foreground @max-2xs:inline">0</span>
+                </>
+              ) : (
+                tRich('practice.many.picked', { n: (text) => <span className="font-semibold text-foreground">{text}</span>, w: (text) => <span className="@max-2xs:sr-only">{text}</span> }, { count: picked.length })
+              )}
+            </p>
+            {choosing ? (
+              <>
+                <Button variant="tertiary" size="sm" onClick={exit}>
+                  {t('common.cancel')}
+                </Button>
+                <Button variant="primary" size="sm" disabled={picked.length === 0} aria-describedby={statusId} onClick={(event) => many.onPick(picked, event.currentTarget.getBoundingClientRect())}>
+                  {many.label(picked)}
+                </Button>
+              </>
+            ) : (
+              <Button variant="secondary" size="sm" icon="check-circle" onClick={enter}>
+                {t('practice.many.enter')}
+              </Button>
+            )}
+          </div>
+        ) : undefined
+      }
+    >
       <div className="grid gap-3">
         {ids.length > 8 && !anonymous ? (
-          <label className="relative block">
-            <span className="sr-only">{t('practice.dialog.searchCard')}</span>
-            <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
-            <input
-              type="search"
-              value={query}
-              placeholder={t('practice.dialog.searchCard')}
-              autoComplete="off"
-              data-initial-focus=""
-              className={cx(field, 'h-10 w-full pl-9 pr-3 text-body pointer-coarse:h-11')}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="relative block min-w-0 flex-1">
+              <span className="sr-only">{t('practice.dialog.searchCard')}</span>
+              <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
+              <input
+                type="search"
+                value={query}
+                placeholder={t('practice.dialog.searchCard')}
+                autoComplete="off"
+                data-initial-focus=""
+                className={cx(field, 'h-10 w-full pl-9 pr-3 text-body pointer-coarse:h-11')}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            {choosing ? (
+              <Button variant="tertiary" size="sm" disabled={visibleIds.length === 0} onClick={pickVisible}>
+                {/* Las dos palabras ocupan el lugar de la más larga: el buscador no cambia de ancho al pasar de una a la otra. */}
+                <span className="grid">
+                  <span className="col-start-1 row-start-1">{t(allVisible ? 'practice.many.none' : 'practice.many.all')}</span>
+                  <span aria-hidden="true" className="invisible col-start-1 row-start-1">{t(allVisible ? 'practice.many.all' : 'practice.many.none')}</span>
+                </span>
+              </Button>
+            ) : null}
+          </div>
         ) : null}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
         {/* En el celular, cinco por fila (como el campo); en pantallas anchas, las que entren de 5.25 rem. */}
-        <ul className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label={t('practice.dialog.cards')}>
+        <ul ref={gridRef} className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label={t('practice.dialog.cards')}>
           {visible.map((card) => {
             // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
             const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.faceUp ? t('practice.dialog.cardFaceUp', { name: card.name }) : card.name
+            const named = targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : anonymous ? label : undefined
+            const order = choosing ? picked.indexOf(card.id) : -1
 
             return (
               <li key={card.id}>
                 <button
                   type="button"
-                  aria-label={targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : anonymous ? label : undefined}
-                  className="grid w-full gap-1 rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
-                  onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
+                  aria-pressed={choosing ? order >= 0 : undefined}
+                  aria-label={order >= 0 ? t('practice.many.order', { name: named ?? label, n: order + 1 }) : named}
+                  title={choosing ? t('practice.many.range') : undefined}
+                  className="group grid w-full gap-1 rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={(event) => {
+                    onPeek?.(card.id)
+                    if (choosing) toggle(card.id, event.shiftKey)
+                    else onPick(card.id, event.currentTarget.getBoundingClientRect())
+                  }}
                 >
                   <span
                     data-targeted={targeted.has(card.id) ? 'true' : 'false'}
-                    className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD)}
+                    // La elegida, un aro ámbar de 2 px por fuera (la mira del Target es un brillo por fuera y adentro: conviven); al pasar el mouse, el mismo aro, tenue.
+                    className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD, choosing && (order >= 0 ? 'outline-2 outline-info' : 'group-hover:outline-2 group-hover:outline-info/45'))}
                     style={fxVars('red')}
                   >
                     {card.faceDown ? <span className={CARD_BACK} /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                     {targeted.has(card.id) ? <TargetMark /> : null}
                     {card.faceUp ? <span className="absolute inset-x-0 bottom-0 z-2 bg-background/85 px-1 py-px text-center text-micro font-bold leading-tight text-white">{t('practice.dialog.faceUpTag')}</span> : null}
+                    {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-info px-1 text-micro font-bold leading-none tabular-nums text-info-foreground">{order + 1}</span> : null}
                   </span>
                   {anonymous ? null : <span className="truncate text-micro text-foreground">{label}</span>}
                 </button>
