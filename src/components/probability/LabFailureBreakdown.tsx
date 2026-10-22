@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 
+import { per100Delta } from '../../app/lab-change'
 import type { LabViewResult } from '../../app/probability-lab'
 import { formatShortPercent } from '../../app/utils'
 import { t, type MessageKey } from '../../i18n'
@@ -7,8 +8,10 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { ProgressRing } from '../ui/ProgressRing'
 import { formatPer100 } from '../ui/ring-shared'
+import { Skeleton } from '../ui/Skeleton'
 import { judgeTone } from '../ui/tone'
 import { overline } from '../ui/typography'
+import { LabDelta } from './LabDelta'
 
 type FailedSegment = 'noOpening' | 'withProblem'
 
@@ -20,19 +23,30 @@ const ROWS = [
 
 const MAX_RULES = 4
 
+const valuesOf = (result: LabViewResult): Record<FailedSegment, number> => ({ noOpening: result.noOpeningProbability, withProblem: result.withProblemProbability })
+
+interface LabFailureBreakdownProps {
+  result: LabViewResult
+  /** Probando un cambio: el mismo turno de tu deck sin el cambio. Cada número lleva su ▲ / ▼ (bajar es lo bueno). */
+  before?: LabViewResult
+  /** Mientras se mide el deck con el cambio: los números son un esqueleto y las filas no se abren (no se muestran los de antes como si fueran nuevos). */
+  measuring?: boolean
+}
+
 /**
  * La leyenda del veredicto: las manos que no son buenas (sin salida y con problema), cada una con su entero «de cada 100».
  * Cada fila se abre y muestra los problemas de esas manos (el % de las manos de ese grupo que cumple cada regla de problema).
  */
-export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
+export function LabFailureBreakdown({ result, before, measuring = false }: LabFailureBreakdownProps) {
   const [open, setOpen] = useState<FailedSegment | null>(null)
   const id = useId()
-  const values: Record<FailedSegment, number> = { noOpening: result.noOpeningProbability, withProblem: result.withProblemProbability }
+  const values = valuesOf(result)
+  const previous = before ? valuesOf(before) : null
 
   return (
     <ul className="m-0 grid list-none divide-y divide-border-subtle p-0">
       {ROWS.map((row) => {
-        const isOpen = open === row.key
+        const isOpen = open === row.key && !measuring
         const panelId = `${id}-${row.key}`
         const rules = result.segmentRules[row.key].filter((rule) => rule.kind === 'problem')
 
@@ -42,7 +56,8 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
               type="button"
               aria-expanded={isOpen}
               aria-controls={isOpen ? panelId : undefined}
-              className="grid min-h-12 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-control p-1 text-left transition-colors duration-150 hover:bg-tint/6 focus-visible:outline-none focus-visible:shadow-focus"
+              disabled={measuring}
+              className="grid min-h-12 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-control p-1 text-left transition-colors duration-150 enabled:hover:bg-tint/6 focus-visible:outline-none focus-visible:shadow-focus"
               onClick={() => setOpen(isOpen ? null : row.key)}
             >
               <span className={cx('size-2.5 rounded-full', row.dot)} aria-hidden="true" />
@@ -50,7 +65,15 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
                 <strong className="text-body font-semibold text-foreground">{t(row.label)}</strong>
                 <span className="text-body text-muted">{t(row.description)}</span>
               </span>
-              <span className="text-lead font-semibold tabular-nums text-foreground">{formatPer100(values[row.key])}</span>
+              {/* El ▲ / ▼ del cambio, debajo del número en el celular (al lado no entra: la descripción bajaría de renglón y la tarjeta crecería) y a su izquierda desde 768 px. */}
+              {measuring ? (
+                <Skeleton radius="control" className="h-6 w-6" />
+              ) : (
+                <span className="flex flex-col items-end md:flex-row md:items-baseline md:gap-1.5">
+                  <span className="text-lead font-semibold tabular-nums text-foreground">{formatPer100(values[row.key])}</span>
+                  {previous ? <LabDelta diff={per100Delta(previous[row.key], values[row.key])} higherIsBetter={false} className="text-micro md:order-first md:text-body" /> : null}
+                </span>
+              )}
               <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} size={18} className="text-soft" />
             </button>
             {isOpen ? (

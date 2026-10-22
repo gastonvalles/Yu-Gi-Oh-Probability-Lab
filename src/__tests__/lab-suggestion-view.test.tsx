@@ -13,6 +13,7 @@ import { computeLabResults } from '../app/probability-lab'
 import { LabSuggestion } from '../components/probability/LabSuggestion'
 import type { RoleDistribution } from '../app/role-distribution'
 import type { CardEntry, CardRole } from '../types'
+import { copies } from './support/deck-fixtures'
 
 // El worker no existe en jsdom: se calcula directo.
 vi.mock('../app/lab-odds-client', () => ({
@@ -76,6 +77,32 @@ describe('LabSuggestion', () => {
     expect(screen.queryByRole('button', { name: 'Ver starters' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Probar el cambio' }))
     expect(onTry.mock.calls[0]?.[0].changes.map((change: { action: string }) => change.action)).toEqual(['remove', 'add'])
+  })
+
+  it('«Comparar con mi deck» lleva el cambio a Comparar; en el celular sólo queda la principal (entra en la primera pantalla)', async () => {
+    if (computation.status !== 'ok') throw new Error('no calculable')
+
+    const onTry = vi.fn()
+    const onCompare = vi.fn()
+
+    render(<LabSuggestion deckFormat="tcg" cards={cards} checks={checks} handSize={5} view="average" result={computation.results.average} first={computation.results.first} second={computation.results.second} onTry={onTry} onCompare={onCompare} />, { wrapper })
+
+    const compare = await screen.findByRole('button', { name: 'Comparar con mi deck' })
+    expect(compare).toHaveClass('max-md:hidden')
+    fireEvent.click(compare)
+    expect(onCompare.mock.calls[0]?.[0].changes.map((change: { action: string }) => change.action)).toEqual(['remove', 'add'])
+    expect(onTry).not.toHaveBeenCalled()
+  })
+
+  it('el límite de copias cuenta el Side y el Extra: no sugiere una copia que el builder no deja meter', async () => {
+    if (computation.status !== 'ok') throw new Error('no calculable')
+
+    const props = { deckFormat: 'tcg', cards, checks, handSize: 5, view: 'average', result: computation.results.average, first: computation.results.first, second: computation.results.second } as const
+    // Con dos copias más en el Side, la única que abre ya está en su límite de 3: ningún cambio de una carta suma.
+    render(<LabSuggestion {...props} deck={{ extra: [], side: copies(1, 'Card starter', 2, ['starter']) }} />, { wrapper })
+
+    expect(await screen.findByText(/^Ningún cambio de una carta suma manos buenas/)).toBeInTheDocument()
+    expect(screen.queryByText('Sacar 1')).not.toBeInTheDocument()
   })
 
   it('prueba las variantes con prioridad baja: no le quitan el turno al resultado que la persona espera', async () => {

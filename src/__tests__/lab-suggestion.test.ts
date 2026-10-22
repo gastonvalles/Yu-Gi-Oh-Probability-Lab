@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import { mainCopyLimit } from '../app/build-draft'
+import { deriveMainDeckCardsFromZone } from '../app/calculator-state'
 import { computeLabOdds } from '../app/lab-odds'
 import { buildCandidates, findCulprit, pickBest, toOutcomes, type Evaluation } from '../app/lab-suggestion'
 import { createMatcherPattern } from '../app/pattern-factory'
+import { buildActiveRuleSet } from '../app/pattern-presets'
 import { computeLabResults } from '../app/probability-lab'
 import type { CardEntry, CardRole, HandPattern } from '../types'
+import { fireKingDeck } from './support/deck-fixtures'
 
 function card(id: string, copies: number, roles: CardRole[], origin: CardEntry['origin'] = 'engine'): CardEntry {
   return { id, name: `Card ${id}`, copies, source: 'manual', apiCard: null, origin, roles, needsReview: false }
@@ -122,14 +126,31 @@ describe('lab-suggestion', () => {
   })
 
   it('no sugiere sumar copias que la banlist no permite', () => {
-    const cards = [card('starter', 1, ['starter']), card('free', 1, ['extender']), ...Array.from({ length: 38 }, (_, index) => card(`f${index}`, 1, ['recovery'], 'non_engine'))]
+    const cards = [card('starter', 1, ['starter']), card('other', 1, ['starter']), card('free', 1, ['extender']), ...Array.from({ length: 37 }, (_, index) => card(`f${index}`, 1, ['recovery'], 'non_engine'))]
     const culprit = { kind: 'no-opening' as const, patternId: null, name: 'x', probability: 0.5 }
     // "starter" está limitada a 1 copia: no se puede sumar otra.
     const candidates = buildCandidates(culprit, cards, [opening], (entry) => (entry.id === 'starter' ? 1 : 3))
     const added = candidates.flatMap((candidate) => candidate.changes.filter((change) => change.action === 'add').map((change) => change.card.id))
 
     expect(added).not.toContain('starter')
-    expect(added).toContain('free')
+    expect(added).toContain('other')
+    // Un Extender solo no abre con «1+ Starter»: sumarle una copia no saca ninguna mano de «sin salida», así que no se propone (era el error con los decks de verdad).
+    expect(added).not.toContain('free')
+  })
+
+  it('para abrir más mete una carta que cuente para las salidas: primero la que abre sola, después la pieza de una salida de dos', () => {
+    const pair = createMatcherPattern('Starter + Extender', 'opening', [
+      { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+      { matcher: { type: 'role', value: 'extender' }, quantity: 1, kind: 'include' },
+    ], { allowSharedCards: false, matchMode: 'all', minimumMatches: 2 })
+    const cards = [card('starter', 2, ['starter']), card('extender', 1, ['extender']), card('ash', 3, ['handtrap'], 'non_engine'), ...Array.from({ length: 34 }, (_, index) => card(`f${index}`, 1, ['enabler'], 'engine'))]
+    const culprit = { kind: 'no-opening' as const, patternId: null, name: 'x', probability: 0.5 }
+    const added = (checks: HandPattern[]) => buildCandidates(culprit, cards, checks).map((candidate) => candidate.changes.find((change) => change.action === 'add')!.card.id)
+
+    // Con «1+ Starter» y «Starter + Extender», el Starter (abre solo) va antes que el Extender (sólo suma junto a un Starter).
+    expect(added([opening, pair])).toEqual(['starter', 'extender'])
+    // Si la única salida es de a dos, el Extender también cuenta.
+    expect(added([pair])).toContain('extender')
   })
 
   it('el lugar sale primero del relleno, después de los bricks y recién después de la interacción', () => {
@@ -210,5 +231,50 @@ describe('lab-suggestion', () => {
 
     expect(findCulprit(second)?.patternId).toBe(noAnswer.id)
     expect(findCulprit(average, { first, second })?.patternId).toBe(problem.id)
+  })
+})
+
+describe('con un deck de verdad: el Fire King del navegador y las reglas de hoy', () => {
+  const deck = fireKingDeck()
+  const cards = deriveMainDeckCardsFromZone(deck.main)
+  // Las reglas con las que mide el Lab: las universales y las genéricas (ninguna apagada ni propia).
+  const checks = buildActiveRuleSet(cards, [], [])
+  const computation = computeLabResults(cards, checks, 5)
+  const added = (candidate: { changes: { action: string; card: CardEntry }[] }) => candidate.changes.find((change) => change.action === 'add')!.card
+
+  it('lo que más frena son las manos sin salida, y el Lab encuentra el cambio de una carta que suma manos buenas', () => {
+    if (computation.status !== 'ok') throw new Error('no calculable')
+
+    const { first, second, average } = computation.results
+    const culprit = findCulprit(average, { first, second })
+
+    expect(culprit?.kind).toBe('no-opening')
+
+    const candidates = buildCandidates(culprit!, cards, checks, mainCopyLimit(deck, 'unlimited'))
+    // Cada candidato puede mover el número del veredicto: la carta que entra cuenta para «Salida básica» (1+ Starter). Un Extender que no es Starter no saca a nadie de «sin salida».
+    expect(candidates.length).toBeGreaterThan(0)
+    expect(candidates.every((candidate) => added(candidate).roles.includes('starter'))).toBe(true)
+
+    const best = pickBest(toOutcomes(culprit!, 'average', evaluate(candidates, checks)), average.cleanProbability)
+
+    expect(best).not.toBeNull()
+    // Lo que se ve: 81 de cada 100 manos buenas, y con el cambio 85 (▲4): 78 → 82 yendo 1º y 84 → 87 yendo 2º.
+    expect(Math.round(average.cleanProbability * 100)).toBe(81)
+    expect(Math.round(best!.cleanProbability * 100)).toBe(85)
+    expect([Math.round(best!.cleanBySide!.first * 100), Math.round(best!.cleanBySide!.second * 100)]).toEqual([82, 87])
+    expect(added(best!).name).toBe('Fire King Island')
+    expect(best!.changes.find((change) => change.action === 'remove')?.card.origin).toBe('non_engine')
+  })
+
+  it('no propone una copia que el formato no deja meter: cuenta las del Side y el Extra', () => {
+    if (computation.status !== 'ok') throw new Error('no calculable')
+
+    // Con 1 Fire King Island en el Side ya no hay lugar para una 3.ª en el Main (el límite es por nombre, en todo el deck).
+    const withSide = { ...deck, side: [...deck.side, { ...deck.main.find((card) => card.name === 'Fire King Island')!, instanceId: 'side-island' }] }
+    const culprit = findCulprit(computation.results.average, computation.results)!
+    const names = buildCandidates(culprit, cards, checks, mainCopyLimit(withSide, 'unlimited')).map((candidate) => added(candidate).name)
+
+    expect(names).not.toContain('Fire King Island')
+    expect(names).toContain('Fire King Sanctuary')
   })
 })
