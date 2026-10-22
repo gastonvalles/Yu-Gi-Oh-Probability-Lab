@@ -37,7 +37,7 @@ const REFERENCE_CONFIRMS: ConfirmSample[] = [
 
 /** Cinco confirmaciones de la app con sus textos de verdad: se arman al dibujar (`t()` nunca al cargar el módulo) y salen en el idioma elegido. */
 const appConfirms = (): ConfirmSample[] => [
-  { title: t('lab.panel.delete.title'), description: t('lab.panel.delete.description'), confirmLabel: t('lab.panel.delete.confirm'), confirmColor: 'danger' },
+  { title: t('builder.delete.title', { name: '2+ Handtraps yendo 2º' }), description: t('builder.delete.impact.second', { before: '96', after: '84' }), confirmLabel: t('builder.delete.confirm'), confirmColor: 'danger' },
   { title: t('deck.builder.clearAllTitle'), description: t('deck.builder.clearConfirm', { count: 40 }), confirmLabel: t('deck.builder.clearConfirmYes'), confirmColor: 'danger' },
   {
     title: t('deck.import.replace.title'),

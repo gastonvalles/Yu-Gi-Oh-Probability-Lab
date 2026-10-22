@@ -8,6 +8,8 @@ import { IconButton } from './IconButton'
 export interface OverflowItem {
   label: string
   icon?: IconName
+  /** danger: lo que borra (en rojo). */
+  tone?: 'danger'
   onSelect: () => void
 }
 
@@ -61,7 +63,7 @@ export function OverflowMenu({ label, items, className }: OverflowMenuProps) {
             key={item.label}
             type="button"
             role="menuitem"
-            className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-tag border-0 bg-transparent px-3 text-left text-body font-medium text-foreground transition-colors duration-100 hover:bg-tint/12 focus-visible:bg-tint/12 focus-visible:outline-none pointer-coarse:min-h-11"
+            className={cx('flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-tag border-0 bg-transparent px-3 text-left text-body font-medium transition-colors duration-100 hover:bg-tint/12 focus-visible:bg-tint/12 focus-visible:outline-none pointer-coarse:min-h-11', item.tone === 'danger' ? 'text-danger-soft' : 'text-foreground')}
             onClick={() => {
               setOpen(false)
               item.onSelect()

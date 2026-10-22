@@ -236,7 +236,7 @@ describe('el editor de reglas del Lab', () => {
           <button type="button" onClick={() => setMode('edit')}>
             Editar
           </button>
-          <PatternEditorDrawer actions={{} as PatternEditorActions} canSave={false} impact={null} derivedMainCards={[]} drawerMode={mode} pattern={null} onClose={() => setMode(null)} onRequestDelete={() => {}} onSave={() => {}} />
+          <PatternEditorDrawer isOpen={mode !== null} mode="edit" showExamples={false} actions={{} as PatternEditorActions} canSave={false} impact={{ impact: null, pending: false }} blockReason={null} duplicateOf={null} derivedMainCards={[]} pattern={null} onPickExample={() => null} onClose={() => setMode(null)} onSave={() => {}} />
         </>
       )
     }

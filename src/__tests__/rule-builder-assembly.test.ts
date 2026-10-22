@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { createPattern, createPatternRequirement } from '../app/pattern-factory'
 import { PATTERN_PRESET_DEFINITIONS } from '../app/pattern-presets'
-import { buildPatternCompactSummary } from '../components/probability/pattern-helpers'
+import { buildPatternCompactSummary, joinWord } from '../components/probability/pattern-helpers'
 import { getConditionLabel } from '../components/probability/rule-builder/condition-labels'
-import { getConnectorWord } from '../components/probability/rule-builder/LogicSelector'
 import type {
   CardEntry,
   CardOrigin,
@@ -323,9 +322,11 @@ describe('Mutation interface compliance', () => {
     }
   })
 
-  it('connector word is "Y" for all mode, "O" for any/at-least', () => {
-    expect(getConnectorWord('all')).toBe('Y')
-    expect(getConnectorWord('any')).toBe('O')
-    expect(getConnectorWord('at-least')).toBe('O')
+  it('la palabra entre condiciones es «y» con todas, «o» con alguna e «y / o» con un mínimo', () => {
+    const two = { ...createPattern('Dos'), conditions: [createPatternRequirement(), createPatternRequirement()] }
+
+    expect(joinWord({ ...two, logic: 'all', minimumConditionMatches: 2 })).toBe('y')
+    expect(joinWord({ ...two, logic: 'any', minimumConditionMatches: 1 })).toBe('o')
+    expect(joinWord({ ...two, logic: 'any', minimumConditionMatches: 2 })).toBe('y / o')
   })
 })

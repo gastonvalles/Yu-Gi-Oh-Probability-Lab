@@ -14,6 +14,7 @@ import { DuelSection } from './sections/DuelSection'
 import { IconsSection } from './sections/IconsSection'
 import { LabResultSection } from './sections/LabResultSection'
 import { NavigationSection } from './sections/NavigationSection'
+import { RulesSection } from './sections/RulesSection'
 import { SurfacesSection } from './sections/SurfacesSection'
 import { TitlesSection } from './sections/TitlesSection'
 import { TokensSection } from './sections/TokensSection'
@@ -34,6 +35,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'superficies', title: 'Tarjetas, avisos y campos', icon: 'layers', description: 'Card, Callout, EmptyState, Skeleton y los campos de texto.', Component: SurfacesSection },
   { id: 'datos', title: 'Datos', icon: 'chart', description: 'Anillos de progreso y repartidos, la fila de una tier list (también la del creador, con su engranaje y su agarre) y la explicación a pedido.', Component: DataSection },
   { id: 'lab', title: 'El Lab', icon: 'flask', description: 'El veredicto con su lente, lo que más te frena, qué robás de cada rol y el paso que falta para medir, con un deck de muestra.', Component: LabResultSection },
+  { id: 'reglas', title: 'Reglas del Lab', icon: 'list', description: 'La tarjeta de reglas (Salidas | Problemas), el número en vivo, la regla en una frase, una condición, qué cuenta y el editor entero.', Component: RulesSection },
   { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños, las confirmaciones y los avisos (toast).', Component: DialogsSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
   { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },

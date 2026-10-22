@@ -34,6 +34,8 @@ interface SegmentedProps<T extends string> {
   size?: 'sm' | 'md'
   /** Ocupa todo el ancho y reparte las opciones en partes iguales. */
   fullWidth?: boolean
+  /** Opciones de relleno chico y en un solo renglón: para una pista que comparte la fila con otros controles (Tiene | No tiene en una condición de regla). */
+  dense?: boolean
   className?: string
 }
 
@@ -86,7 +88,7 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
 }
 
 /** Selector de una opción entre pocas (turno, tipo de regla, filtro): mismo control en toda la app. */
-export function Segmented<T extends string>({ value, onChange, options, label, variant = 'track', size = 'md', fullWidth = false, className }: SegmentedProps<T>) {
+export function Segmented<T extends string>({ value, onChange, options, label, variant = 'track', size = 'md', fullWidth = false, dense = false, className }: SegmentedProps<T>) {
   const look = ITEM[variant]
 
   return (
@@ -104,7 +106,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             data-active={active ? 'true' : 'false'}
             className={cx(
               'grid min-w-0 content-center justify-items-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
-              look.base,
+              dense ? 'rounded-lg px-1' : look.base,
               active ? (option.tone && variant === 'track' ? TONE_ON[option.tone] : look.on) : look.off,
               variant === 'lens' ? null : size === 'md' ? 'min-h-10 text-body pointer-coarse:min-h-11' : 'min-h-9 text-micro pointer-coarse:min-h-11',
               variant === 'cards' && size === 'md' && 'py-2',
@@ -112,7 +114,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             onClick={() => onChange(option.value)}
           >
             {option.leading ? <span className="mb-0.5 grid place-items-center" aria-hidden="true">{option.leading}</span> : null}
-            <span className="flex items-center justify-center gap-1.5 text-center max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap">
+            <span className={cx('flex items-center justify-center gap-1.5 text-center', dense ? 'whitespace-nowrap' : 'max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap')}>
               {option.label}
               {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}
             </span>

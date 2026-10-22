@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -8,21 +8,31 @@ import { LogicSelector } from '../components/probability/rule-builder/LogicSelec
 
 afterEach(cleanup)
 
-const actions = { setPatternMatchMode: vi.fn() } as unknown as PatternEditorActions
+const actions = { setPatternMatchMode: vi.fn(), setPatternMinimumMatches: vi.fn() } as unknown as PatternEditorActions
 
 describe('LogicSelector', () => {
-  it('con condiciones normales dice "todas" y "una alcanza"', () => {
-    render(<LogicSelector patternId="p" currentMode="all" conditionCount={2} minimumConditionMatches={2} actions={actions} />)
+  it('dice con palabras cómo se combinan: «Con 3 condiciones, la mano cumple: Todas · Alguna · Un mínimo»', () => {
+    render(<LogicSelector patternId="p" currentMode="all" conditionCount={3} minimumConditionMatches={3} actions={actions} />)
 
-    expect(screen.getByRole('radio', { name: 'Y · todas' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'O · una alcanza' })).toBeInTheDocument()
+    expect(screen.getByText('Con 3 condiciones, la mano cumple:')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Todas' })).toBeChecked()
+    fireEvent.click(screen.getByRole('radio', { name: 'Alguna' }))
+    expect(actions.setPatternMatchMode).toHaveBeenCalledWith('p', 'any')
+    expect(screen.queryByRole('group', { name: 'Mínimo de condiciones a cumplir' })).not.toBeInTheDocument()
+
+    // Pasar a «Un mínimo» arranca en una menos que todas (si no, sería lo mismo que «Todas»).
+    fireEvent.click(screen.getByRole('radio', { name: 'Un mínimo' }))
+    expect(actions.setPatternMatchMode).toHaveBeenLastCalledWith('p', 'at-least')
+    expect(actions.setPatternMinimumMatches).toHaveBeenLastCalledWith('p', '2')
   })
 
-  it('con condiciones "Sin …" dice "ninguna está" y "falta alguna" (Y/O se invierten al negar)', () => {
-    render(<LogicSelector patternId="p" currentMode="all" conditionCount={2} minimumConditionMatches={2} negated actions={actions} />)
+  it('con «Un mínimo» pide «al menos [N] de las M» (de 2 a M)', () => {
+    render(<LogicSelector patternId="p" currentMode="at-least" conditionCount={3} minimumConditionMatches={2} actions={actions} />)
 
-    expect(screen.getByRole('radio', { name: 'Y · ninguna está' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'O · falta alguna' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Faltan al menos 2' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Un mínimo' })).toBeChecked()
+    expect(screen.getByText(/de las 3/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Uno más' }))
+    expect(actions.setPatternMinimumMatches).toHaveBeenCalledWith('p', '3')
+    expect(screen.getByRole('button', { name: 'Uno menos' })).toBeDisabled()
   })
 })

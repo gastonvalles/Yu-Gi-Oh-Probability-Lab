@@ -58,6 +58,17 @@ const PATHS = {
       <circle data-fill cx="19" cy="12" r="1.6" />
     </>
   ),
+  /** El agarre ⋮⋮ de lo que se reordena arrastrándolo (las condiciones de una regla): dos columnas de tres puntos. */
+  grip: (
+    <>
+      <circle data-fill cx="9" cy="6" r="1.5" />
+      <circle data-fill cx="15" cy="6" r="1.5" />
+      <circle data-fill cx="9" cy="12" r="1.5" />
+      <circle data-fill cx="15" cy="12" r="1.5" />
+      <circle data-fill cx="9" cy="18" r="1.5" />
+      <circle data-fill cx="15" cy="18" r="1.5" />
+    </>
+  ),
   /** La vista 3D de la mesa: un cubo. */
   cube: (
     <>

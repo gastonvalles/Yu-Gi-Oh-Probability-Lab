@@ -1,41 +1,31 @@
 import { useMemo } from 'react'
 
-import { getPatternMatchMode } from '../../../app/patterns'
-import { t } from '../../../i18n'
+import { renderRich } from '../../../i18n/rich'
 import type { CardEntry, HandPattern } from '../../../types'
-import { Callout } from '../../ui/Callout'
-import { buildPatternPreview } from '../pattern-helpers'
+import { cx } from '../../ui/cx'
+import { KindBadge } from '../KindBadge'
+import { buildRuleSentence } from '../pattern-helpers'
 
 /**
- * La regla leída en una frase, tal como la va a evaluar el Lab. Sirve para chequear que la
- * combinación de "al menos / sin", cantidades e Y/O dice lo que uno quería.
+ * La regla leída en una frase, arriba del editor y tal como la va a medir el Lab: «[Salida] La mano tiene **al menos 2 cartas con rol Handtrap**. Sólo yendo 2º,
+ * contando la carta robada.». Lo que decide va en negrita; si falta elegir qué cuenta, en rojo.
  */
 export function RuleReadback({ pattern, cardById }: { pattern: HandPattern; cardById: Map<string, CardEntry> }) {
-  const preview = useMemo(() => buildPatternPreview(pattern, cardById), [pattern, cardById])
-  const defined = pattern.conditions.filter((condition) => condition.matcher !== null)
+  const sentence = useMemo(() => buildRuleSentence(pattern, cardById), [pattern, cardById])
 
-  if (defined.length === 0) {
+  if (!sentence) {
     return null
   }
 
-  const mode = getPatternMatchMode(pattern)
-  const connector = ` ${t(mode === 'all' ? 'builder.readback.and' : 'builder.readback.or')} `
-  const sentence = capitalize(preview.items.join(connector))
-  const logic = pattern.conditions.length > 1 && mode !== 'all' ? ` ${preview.logic}` : ''
-  const turn =
-    pattern.turnContext === 'first'
-      ? ` ${t('builder.readback.turnFirst')}`
-      : pattern.turnContext === 'second'
-        ? ` ${t('builder.readback.turnSecond')}`
-        : ''
-
   return (
-    <Callout tone="neutral" icon="info" title={preview.heading}>
-      {sentence}.{logic}{turn}
-    </Callout>
+    <p className="m-0 flex items-start gap-2 text-body text-foreground">
+      <span className="mt-0.5 flex shrink-0">
+        <KindBadge kind={pattern.kind} />
+      </span>
+      <span className="min-w-0">
+        {renderRich(sentence.text, { b: (text) => <b className={cx('font-semibold', sentence.missing ? 'text-danger-soft' : 'text-foreground')}>{text}</b> })}
+        {sentence.turn ? ` ${sentence.turn}` : null}
+      </span>
+    </p>
   )
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
 }

@@ -57,10 +57,10 @@ describe('qué resultados del Lab se guardan en el dispositivo', () => {
     const before = persistedKeys()
     const draft = createMatcherPattern('Starter', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])
     // Las props van estables, como en el panel: arrays nuevos en cada render relanzarían el cálculo sin parar.
-    const input = { draft, cards, customPatterns: [], disabledGenericRuleIds: [], handSize: 5, cleanBefore: 0.5 }
+    const input = { draft, cards, customPatterns: [], disabledGenericRuleIds: [], handSize: 5, cleanBefore: { first: 0.5, second: 0.5, average: 0.5 } }
     const { result } = renderHook(() => useDraftImpact(input))
 
-    await waitFor(() => expect(result.current).not.toBeNull())
+    await waitFor(() => expect(result.current.impact).not.toBeNull())
     // El hook termina de asentarse (y de guardar, si guardara) después de mostrar la vista previa.
     await act(async () => {
       await afterPersist()

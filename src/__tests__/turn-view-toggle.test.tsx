@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 import type { LabResults, LabViewResult } from '../app/probability-lab'
@@ -184,46 +184,35 @@ describe('LabRuleList', () => {
     generic: [entry({ patternId: 'g', tier: 'generic', presetId: 'no_answer_second_problem', name: 'Sin respuesta', kind: 'problem' })],
     custom: [entry({ patternId: 'c', name: 'Mi combo' })],
   }
+  const handlers = () => ({
+    onEditRule: vi.fn(),
+    onToggleGenericRule: vi.fn(),
+    onEditGenericRule: vi.fn(),
+    onRenameSystemRule: vi.fn(),
+    onCreate: vi.fn(),
+    onDuplicateRule: vi.fn(),
+    onDeleteRule: vi.fn(),
+  })
 
   it('edita reglas propias con un toque y prende o apaga las genéricas', () => {
-    const onEditRule = vi.fn()
-    const onToggleGenericRule = vi.fn()
-    render(
-      <LabRuleList
-        groups={groups}
-        onEditRule={onEditRule}
-        onToggleGenericRule={onToggleGenericRule}
-        onEditGenericRule={() => {}}
-        onRenameSystemRule={() => {}}
-        onCreateCustom={() => {}}
-      />,
-    )
+    const on = handlers()
+    render(<LabRuleList groups={groups} {...on} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Editar regla Mi combo/ }))
-    expect(onEditRule).toHaveBeenCalledWith('c')
+    expect(on.onEditRule).toHaveBeenCalledWith('c')
 
     // Las reglas universales y genéricas se ven siempre: no hay nada que desplegar.
     expect(screen.getByText('Salida básica')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Genéricas/, expanded: false })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: 'Desactivar Sin respuesta' }))
-    expect(onToggleGenericRule).toHaveBeenCalledWith('no_answer_second_problem', false)
+    expect(on.onToggleGenericRule).toHaveBeenCalledWith('no_answer_second_problem', false)
 
     expect(screen.queryByRole('button', { name: /Editar regla Salida básica/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Siempre activas')).toBeInTheDocument()
+    expect(screen.getByText('Universal: siempre activa')).toBeInTheDocument()
   })
 
   it('las universales sólo permiten cambiar el nombre', () => {
-    const onRenameSystemRule = vi.fn()
-    render(
-      <LabRuleList
-        groups={groups}
-        onEditRule={() => {}}
-        onToggleGenericRule={() => {}}
-        onEditGenericRule={() => {}}
-        onRenameSystemRule={onRenameSystemRule}
-        onCreateCustom={() => {}}
-      />,
-    )
+    const on = handlers()
+    render(<LabRuleList groups={groups} {...on} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Renombrar regla Salida básica/ }))
 
@@ -234,24 +223,42 @@ describe('LabRuleList', () => {
     fireEvent.change(input, { target: { value: '  Arranque   mínimo ' } })
     fireEvent.click(save)
 
-    expect(onRenameSystemRule).toHaveBeenCalledWith('starter_opening', 'Arranque mínimo')
+    expect(on.onRenameSystemRule).toHaveBeenCalledWith('starter_opening', 'Arranque mínimo')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('filtra por tipo de regla', () => {
-    render(
-      <LabRuleList
-        groups={groups}
-        onEditRule={() => {}}
-        onToggleGenericRule={() => {}}
-        onEditGenericRule={() => {}}
-        onRenameSystemRule={() => {}}
-        onCreateCustom={() => {}}
-      />,
-    )
+  it('agrupa en Salidas | Problemas y crea desde arriba o al pie de cada columna, con su tipo', () => {
+    const on = handlers()
+    render(<LabRuleList groups={groups} {...on} />)
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Problemas' }))
-    expect(screen.queryByText('Mi combo')).not.toBeInTheDocument()
-    expect(screen.getByText('Sin respuesta')).toBeInTheDocument()
+    const openings = screen.getByRole('region', { name: 'Salidas' })
+    const problems = screen.getByRole('region', { name: 'Problemas' })
+    expect(within(openings).getByText('Mi combo')).toBeInTheDocument()
+    expect(within(openings).getByText('Tuya')).toBeInTheDocument()
+    expect(within(problems).getByText('Sin respuesta')).toBeInTheDocument()
+    expect(within(problems).queryByText('Mi combo')).not.toBeInTheDocument()
+
+    fireEvent.click(within(problems).getByRole('button', { name: 'Crear un problema' }))
+    expect(on.onCreate).toHaveBeenLastCalledWith('problem')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Crear regla' })[0]!)
+    expect(on.onCreate).toHaveBeenLastCalledWith(null)
+  })
+
+  it('el ⋯ de una regla propia la edita, la duplica o la borra', () => {
+    const on = handlers()
+    render(<LabRuleList groups={groups} {...on} />)
+
+    const more = screen.getByRole('button', { name: 'Más acciones de Mi combo' })
+    fireEvent.click(more)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicar' }))
+    expect(on.onDuplicateRule).toHaveBeenCalledWith('c')
+
+    fireEvent.click(more)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Borrar' }))
+    expect(on.onDeleteRule).toHaveBeenCalledWith('c')
+
+    fireEvent.click(more)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Editar' }))
+    expect(on.onEditRule).toHaveBeenCalledWith('c')
   })
 })
