@@ -1699,6 +1699,8 @@
     --success-soft: #6bf55c;
     --warning-soft: #ffd84d;
     --danger-soft: #ff4d4d;
+    /* El rojo de un arco (un anillo de un problema, la cola de «sin salida»): el `danger` de la paleta no llega a 3:1 contra la pista. */
+    --danger-soft-rgb: 255 77 77;
     --info-soft: #ffd84d;
     /* El gris sutil de las líneas que delimitan las casillas de la mesa (todas iguales, sin zonas de otro color). */
     --field-line: #ffffff;

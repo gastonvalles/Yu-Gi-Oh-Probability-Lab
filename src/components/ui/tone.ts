@@ -71,3 +71,36 @@ export const TONE: Record<Tone, ToneStyle> = {
     rgb: '[--tone-rgb:var(--info-rgb)]',
   },
 }
+
+/**
+ * El arco de un anillo según su tono ("R G B"): el que se lee, con 3:1 o más contra la tarjeta, el lienzo y la pista (`ring-contrast.test.ts` lo mide sobre `index.css`).
+ * Por eso `brand` dibuja en lila (el violeta de marca da 2,29:1 y queda para los rellenos y los botones), `danger` en el rojo claro (el `#DA0000` da 2,53:1 contra la pista)
+ * y `neutral` en blanco: si el color no significa nada, blanco.
+ */
+export const RING_ARC: Record<Tone, string> = {
+  neutral: 'var(--foreground-rgb)',
+  brand: 'var(--primary-soft-rgb)',
+  success: 'var(--success-rgb)',
+  warning: 'var(--warning-rgb)',
+  danger: 'var(--danger-soft-rgb)',
+  info: 'var(--info-rgb)',
+}
+
+/*
+ * Los cinco anillos de la app (un anillo dice una sola cosa y el número del centro es lo que dibuja el arco):
+ * 1. Reparto (`SegmentedRing`): un total en tramos, verde / ámbar / rojo claro desde las 12; el centro es el tramo protagonista.
+ * 2. Medida con juicio: `judgeTone` (verde si más es mejor, rojo claro si más es peor).
+ * 3. Identidad: el color del rol (`color` de `ProgressRing`), sin juzgar: un 0 de Bricks no es malo.
+ * 4. Progreso de una tarea: `progressTone` (ámbar a medio hacer, verde listo), con «9 de 17» al centro.
+ * 5. Las dos builds de Comparar: `BUILD_TONE` (A lila, B ámbar); quién gana lo dice el borde de su tarjeta, no el anillo.
+ * Y «sin medir» (`ProgressRing unmeasured`): la pista punteada y «?».
+ */
+
+/** Medida con juicio: verde si más es mejor (una salida, las manos buenas), rojo claro si más es peor (un problema). */
+export const judgeTone = (higherIsBetter: boolean): Tone => (higherIsBetter ? 'success' : 'danger')
+
+/** Progreso de una tarea (clasificar, importar): ámbar mientras falta, verde cuando está lista. */
+export const progressTone = (done: number, total: number): Tone => (total > 0 && done >= total ? 'success' : 'warning')
+
+/** Las builds de Comparar: A es lo tuyo (lila) y B la otra (ámbar), en todos sus anillos. */
+export const BUILD_TONE = { A: 'brand', B: 'info' } as const satisfies Record<'A' | 'B', Tone>

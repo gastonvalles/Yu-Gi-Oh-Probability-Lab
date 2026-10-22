@@ -96,11 +96,11 @@ describe('ProgressRing', () => {
     expect(screen.getByRole('meter', { name: 'Sobrepasado' })).toHaveAttribute('aria-valuenow', '100')
   })
 
-  it('el entero del centro no miente en las puntas: 99,5 % no es "100%" ni 0,4 % es "0%"', () => {
+  it('el entero del centro (de cada 100, sin %) no miente en las puntas: 99,5 % no es "100" ni 0,4 % es "0"', () => {
     mockReducedMotion(true)
     render(<ProgressRing value={0.9952} label="Interacción" />)
 
-    expect(screen.getByText('>99%')).toBeInTheDocument()
+    expect(screen.getByText('>99')).toBeInTheDocument()
     expect(formatWholePercent(0.9927)).toBe('99%')
     expect(formatWholePercent(0.004)).toBe('<1%')
     expect(formatWholePercent(0.747)).toBe('75%')
