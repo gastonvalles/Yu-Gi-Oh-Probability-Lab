@@ -5,7 +5,7 @@ import type { Tone } from '../ui/tone'
 
 type KpiTone = 'excellent' | 'good' | 'improvable' | 'critical'
 
-// Umbrales de la nota: se dibujan también como marcas en el medidor.
+// Umbrales de la nota (Crítico, Mejorable, Sólido, Excelente).
 export const KPI_THRESHOLDS: ReadonlyArray<{ value: number; tone: KpiTone }> = [
   { value: 0.4, tone: 'improvable' },
   { value: 0.6, tone: 'good' },
@@ -28,10 +28,10 @@ export const KPI_TONE_LABELS: Record<KpiTone, string> = {
   },
 }
 
-/** Color de cada nota: rojo → ámbar → celeste → verde. El color siempre dice lo mismo en toda la app. */
+/** Color de cada nota: rojo → ámbar → verde (Sólido y Excelente, los dos verdes: el ámbar es de lo elegido y de lo que está a medio hacer). El color siempre dice lo mismo en toda la app. */
 export const KPI_TONE: Record<KpiTone, Tone> = {
   excellent: 'success',
-  good: 'info',
+  good: 'success',
   improvable: 'warning',
   critical: 'danger',
 }

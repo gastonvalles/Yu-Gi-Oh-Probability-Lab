@@ -16,10 +16,12 @@ import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { Callout } from './ui/Callout'
 import { EmptyState } from './ui/EmptyState'
+import { Icon } from './ui/Icon'
+import { IconButton } from './ui/IconButton'
+import { Skeleton } from './ui/Skeleton'
 import { StepPage } from './ui/StepPage'
 import { ConfirmDialog } from './probability/ConfirmDialog'
 import { LabDisclaimerDialog, useLabDisclaimer } from './probability/LabDisclaimerDialog'
-import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
 import { LabSuggestion } from './probability/LabSuggestion'
 import { LabRoleDistribution } from './probability/LabRoleDistribution'
 import { LabRuleList } from './probability/LabRuleList'
@@ -27,16 +29,13 @@ import { LabScoreCard } from './probability/LabScoreCard'
 import { LabPendingClassification } from './probability/LabPendingClassification'
 import { PatternEditorDrawer } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
-import { formatCardCount } from './probability/lab-copy'
 import { buildPatternCompactSummary } from './probability/pattern-helpers'
 import { buildRuleEntryGroups, type RuleEntry } from './probability/probability-lab-helpers'
 import { QuickCalculator } from './probability/QuickCalculator'
-import { TurnViewToggle } from './probability/TurnViewToggle'
 import { useDraftImpact } from './probability/use-draft-impact'
 import { useLabelCards } from './probability/use-label-cards'
 import { usePatternDraft } from './probability/use-pattern-draft'
 import { useProbabilityLab } from './probability/use-probability-lab'
-import { surface } from './ui/surfaces'
 
 interface ProbabilityPanelProps {
   handSize: number
@@ -230,10 +229,17 @@ export function ProbabilityPanel({
         title={t('lab.panel.title')}
         icon="flask"
         subtitle={t('lab.panel.subtitle')}
+        sideVariant="inline"
         side={(
-          <Button variant="secondary" size="sm" icon="sliders" onClick={() => setQuickCalculator(true)}>
-            {t('lab.panel.quickCalculator')}
-          </Button>
+          <>
+            {/* En el celular (y a 1100 px, con el armazón del celular) la calculadora es un ícono en el renglón del título; desde 1101 px, el botón con su nombre. */}
+            <IconButton tone="ghost" className="min-[1101px]:hidden" aria-label={t('lab.panel.quickCalculator')} title={t('lab.panel.quickCalculator')} onClick={() => setQuickCalculator(true)}>
+              <Icon name="sliders" />
+            </IconButton>
+            <Button variant="secondary" size="sm" icon="sliders" className="max-[1101px]:hidden" onClick={() => setQuickCalculator(true)}>
+              {t('lab.panel.quickCalculator')}
+            </Button>
+          </>
         )}
       />
 
@@ -260,20 +266,27 @@ export function ProbabilityPanel({
           ))}
         </div>
       ) : results && currentResult ? (
-        <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-12 min-[1101px]:items-stretch min-[1101px]:gap-5">
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 min-[1101px]:col-span-full">
-            <TurnViewToggle
-              activeView={activeTurnView}
-              onChange={setActiveTurnView}
-              details={{ first: formatCardCount(5), second: formatCardCount(6), average: '50/50' }}
-            />
-          </div>
-
-          {/* Desktop: resultado y reparto lado a lado (misma altura); roles y reglas a lo ancho. */}
-          <LabScoreCard results={results} view={activeTurnView} isRecalculating={lab.isStale} handSize={handSize} onOpenDisclaimer={disclaimer.open} />
-          <LabFailureBreakdown result={currentResult} />
-          <LabSuggestion deckFormat={deckFormat} cards={derivedMainCards} checks={lab.allChecks} handSize={handSize} view={activeTurnView} result={currentResult} first={results.first} second={results.second} />
+        /*
+         * Desde 768 px, dos filas de dos (veredicto | qué probar; qué robás | reglas), de la misma altura en cada fila; en el celular, una columna en ese orden.
+         * La de reglas es la última: su lugar (8 de 12) lo pone esta grilla, así no depende de cómo se arma por dentro.
+         */
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-12 md:gap-5 md:[&>:last-child]:col-span-8">
+          <LabScoreCard className="md:col-span-6" results={results} view={activeTurnView} onViewChange={setActiveTurnView} isRecalculating={lab.isStale} handSize={handSize} onOpenDisclaimer={disclaimer.open} />
+          <LabSuggestion
+            className="md:col-span-6"
+            deckFormat={deckFormat}
+            cards={derivedMainCards}
+            checks={lab.allChecks}
+            handSize={handSize}
+            view={activeTurnView}
+            result={currentResult}
+            first={results.first}
+            second={results.second}
+            roles={lab.roleDistributions[activeTurnView]}
+            onOpenRole={setKpiModal}
+          />
           <LabRoleDistribution
+            className="md:col-span-4"
             distributions={lab.roleDistributions[activeTurnView]}
             onOpenRole={setKpiModal}
           />
@@ -288,7 +301,11 @@ export function ProbabilityPanel({
         </div>
       ) : lab.canCalculate ? (
         <LabSkeleton />
-      ) : null}
+      ) : (
+        <EmptyState icon="flask" title={t('lab.panel.noData.title')}>
+          {t('lab.panel.noData.body')}
+        </EmptyState>
+      )}
 
       <PatternEditorDrawer
         actions={draft.actions}
@@ -360,16 +377,14 @@ export function ProbabilityPanel({
   )
 }
 
-/** Mientras el cálculo exacto corre en segundo plano: bloques con la forma del resultado (sin saltos al llegar). */
+/** Mientras el cálculo exacto corre en segundo plano: las cuatro tarjetas con la forma del resultado (sin saltos al llegar). */
 function LabSkeleton() {
-  const block = `${surface.card} animate-pulse motion-reduce:animate-none`
-
   return (
-    <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-12 min-[1101px]:gap-5" role="status" aria-busy="true" aria-label={t('lab.panel.calculating')}>
-      <div className={`${block} h-11 min-[1101px]:col-span-full`} />
-      <div className={`${block} h-[17rem] min-[1101px]:col-span-5`} />
-      <div className={`${block} h-[5.5rem] min-[1101px]:col-span-7 min-[1101px]:h-[17rem]`} />
-      <div className={`${block} h-[8rem] min-[1101px]:col-span-full`} />
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-12 md:gap-5" role="status" aria-busy="true" aria-label={t('lab.panel.calculating')}>
+      <Skeleton radius="panel" className="h-96 md:col-span-6" />
+      <Skeleton radius="panel" className="h-64 md:col-span-6 md:h-96" />
+      <Skeleton radius="panel" className="h-64 md:col-span-4 md:h-96" />
+      <Skeleton radius="panel" className="h-24 md:col-span-8 md:h-96" />
     </div>
   )
 }

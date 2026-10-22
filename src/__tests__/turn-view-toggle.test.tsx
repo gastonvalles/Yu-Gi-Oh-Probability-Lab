@@ -47,23 +47,32 @@ function entry(overrides: Partial<RuleEntry>): RuleEntry {
 }
 
 describe('TurnViewToggle (isolation)', () => {
-  it('renders three radios with labels "Primero", "Segundo", "Promedio"', () => {
+  it('renders three radios with labels "Promedio", "Yendo 1º", "Yendo 2º" (in that order)', () => {
     /** **Validates: Requirements 3.2, 3.4** */
     render(<TurnViewToggle activeView="average" onChange={() => {}} />)
 
-    expect(screen.getByRole('radio', { name: 'Primero' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Segundo' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Promedio' })).toBeInTheDocument()
+    expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Promedio', 'Yendo 1º', 'Yendo 2º'])
+  })
+
+  it('con los valores, cada opción no elegida lleva su anillo y su número en el nombre; la elegida dice cuántas cartas mira', () => {
+    render(<TurnViewToggle activeView="average" onChange={() => {}} values={{ average: 0.57, first: 0.41, second: 0.73 }} details={{ average: '5 y 6 cartas' }} />)
+
+    expect(screen.getByRole('radio', { name: 'Promedio' })).toHaveTextContent('5 y 6 cartas')
+    expect(screen.getByRole('radio', { name: 'Yendo 1º: 41 de cada 100' })).toHaveTextContent('41')
+    expect(screen.getByRole('radio', { name: 'Yendo 2º: 73 de cada 100' })).toHaveTextContent('73')
+    // La elegida se enmarca (ámbar, sin relleno) y no repite su número: su número es el grande del veredicto.
+    expect(screen.getByRole('radio', { name: 'Promedio' })).toHaveClass('inset-ring-info')
+    expect(screen.getByRole('radio', { name: 'Promedio' })).not.toHaveTextContent('57')
   })
 
   it('emits onChange with the clicked view value', () => {
     const onChange = vi.fn()
     render(<TurnViewToggle activeView="average" onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Primero' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Yendo 1º' }))
     expect(onChange).toHaveBeenLastCalledWith('first')
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Segundo' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Yendo 2º' }))
     expect(onChange).toHaveBeenLastCalledWith('second')
 
     fireEvent.click(screen.getByRole('radio', { name: 'Promedio' }))
@@ -73,11 +82,11 @@ describe('TurnViewToggle (isolation)', () => {
   it('marks the active view as aria-checked="true" and others as "false"', () => {
     const { rerender } = render(<TurnViewToggle activeView="first" onChange={() => {}} />)
 
-    expect(screen.getByRole('radio', { name: 'Primero' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Yendo 1º' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
-    expect(screen.getByRole('radio', { name: 'Segundo' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Yendo 2º' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
@@ -96,25 +105,51 @@ describe('TurnViewToggle (isolation)', () => {
 })
 
 describe('LabScoreCard', () => {
-  it('muestra el KPI de la vista activa y, en promedio, el detalle por turno', async () => {
-    const { rerender } = render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
+  it('muestra el veredicto de la vista activa (un reparto, con la nota) y la lente con el número de cada turno', async () => {
+    const onViewChange = vi.fn()
+    const { rerender } = render(<LabScoreCard results={RESULTS} view="average" onViewChange={onViewChange} isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
 
-    // El número es «de cada 100», entero y sin %: el grande es el promedio y cada turno lleva el suyo en su anillo.
-    expect(screen.getByText('de cada 100 manos son buenas')).toBeInTheDocument()
-    expect(screen.getByText('Arrancan y no se traban, según tus reglas.')).toBeInTheDocument()
-    // El 57 del anillo grande cuenta de 0 junto con el arco (900 ms): se espera a que llegue al valor.
-    await waitFor(() => expect(screen.getByRole('meter', { name: /^Manos limpias: 57.0%/ })).toHaveTextContent('57'), { timeout: 2000 })
-    expect(screen.getByRole('meter', { name: /^Yendo 1º: 41.0%/ })).toHaveTextContent('41')
-    expect(screen.getByRole('meter', { name: /^Yendo 2º: 73.0%/ })).toHaveTextContent('73')
+    // El número es «de cada 100», entero, sin % y con su unidad adentro del anillo; la frase de al lado sólo dice qué son.
+    expect(screen.getByText('manos son buenas')).toBeInTheDocument()
+    expect(screen.getByText('según tus reglas')).toBeInTheDocument()
+    expect(screen.getByText('Mejorable')).toBeInTheDocument()
+    // El 57 del anillo grande cuenta de 0 junto con su arco verde: se espera a que llegue al valor. El reparto, con el decimal, va en su nombre.
+    const verdict = screen.getByRole('img', { name: /^Manos buenas: 57\.0%; con problema: 0\.0%; sin salida: 43\.0%/ })
+    await waitFor(() => expect(verdict).toHaveTextContent(/^57de cada 100$/), { timeout: 2000 })
+    // La lente: cada turno con su número; la elegida, con cuántas cartas mira.
+    expect(screen.getByRole('radio', { name: 'Promedio' })).toHaveTextContent('5 y 6 cartas')
+    expect(screen.getByRole('radio', { name: 'Yendo 1º: 41 de cada 100' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: 'Yendo 2º: 73 de cada 100' }))
+    expect(onViewChange).toHaveBeenCalledWith('second')
 
-    rerender(<LabScoreCard results={RESULTS} view="second" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
-    expect(screen.getByRole('meter', { name: /^Manos limpias: 73\.0%/ })).toHaveAttribute('aria-valuenow', '73')
+    rerender(<LabScoreCard results={RESULTS} view="second" onViewChange={onViewChange} isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
+    expect(screen.getByRole('img', { name: /^Manos buenas: 73\.0%/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Yendo 2º' })).toHaveTextContent('6 cartas')
+  })
+
+  it('«Sin salida» y «Con problema» son filas que se abren con los problemas de esas manos', () => {
+    const withRules: LabResults = {
+      ...RESULTS,
+      average: { ...RESULTS.average, segmentRules: { clean: [], withProblem: [], noOpening: [{ patternId: 'p', name: 'Sin respuesta yendo 2º', kind: 'problem', share: 0.004, jointProbability: 0.001 }] } },
+    }
+    render(<LabScoreCard results={withRules} view="average" onViewChange={() => {}} isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
+    const noOpening = screen.getByRole('button', { name: /^Sin salida/ })
+
+    expect(noOpening).toHaveAttribute('aria-expanded', 'false')
+    expect(noOpening).toHaveTextContent('43')
+    fireEvent.click(noOpening)
+    expect(noOpening).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('meter', { name: 'Sin respuesta yendo 2º: 0.4%' })).toHaveTextContent('<1')
+    expect(screen.getByText('Una mano puede tener varios problemas.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Con problema/ }))
+    expect(screen.getByText('Ninguna mano con salida tiene problemas.')).toBeInTheDocument()
   })
 })
 
 describe('la ficha «Cómo se calcula» del resultado', () => {
   it('se abre con la ⓘ y cuenta las manos de cada turno, el promedio y lo que el número no dice', () => {
-    render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
+    render(<LabScoreCard results={RESULTS} view="average" onViewChange={() => {}} isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
 
     expect(screen.queryByRole('dialog', { name: 'Cómo se calcula' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Cómo se calcula: abrir la ficha' }))
@@ -134,7 +169,7 @@ describe('la ficha «Cómo se calcula» del resultado', () => {
   it('«Cómo leer estos porcentajes» cierra la ficha y abre el aviso', () => {
     const onOpenDisclaimer = vi.fn()
 
-    render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={onOpenDisclaimer} />)
+    render(<LabScoreCard results={RESULTS} view="average" onViewChange={() => {}} isRecalculating={false} handSize={5} onOpenDisclaimer={onOpenDisclaimer} />)
     fireEvent.click(screen.getByRole('button', { name: 'Cómo se calcula: abrir la ficha' }))
     fireEvent.click(screen.getByRole('button', { name: /Cómo leer estos porcentajes/ }))
 

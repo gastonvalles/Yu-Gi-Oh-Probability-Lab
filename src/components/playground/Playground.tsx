@@ -12,6 +12,7 @@ import { DataSection } from './sections/DataSection'
 import { DialogsSection } from './sections/DialogsSection'
 import { DuelSection } from './sections/DuelSection'
 import { IconsSection } from './sections/IconsSection'
+import { LabResultSection } from './sections/LabResultSection'
 import { NavigationSection } from './sections/NavigationSection'
 import { SurfacesSection } from './sections/SurfacesSection'
 import { TitlesSection } from './sections/TitlesSection'
@@ -32,6 +33,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'titulos', title: 'Títulos', icon: 'tag', description: 'Heading, el encabezado de cada pantalla, el de una tarjeta y el de un diálogo.', Component: TitlesSection },
   { id: 'superficies', title: 'Tarjetas, avisos y campos', icon: 'layers', description: 'Card, Callout, EmptyState, Skeleton y los campos de texto.', Component: SurfacesSection },
   { id: 'datos', title: 'Datos', icon: 'chart', description: 'Anillos de progreso y repartidos, la fila de una tier list (también la del creador, con su engranaje y su agarre) y la explicación a pedido.', Component: DataSection },
+  { id: 'lab', title: 'El Lab', icon: 'flask', description: 'El veredicto con su lente, lo que más te frena, qué robás de cada rol y el paso que falta para medir, con un deck de muestra.', Component: LabResultSection },
   { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños, las confirmaciones y los avisos (toast).', Component: DialogsSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
   { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },

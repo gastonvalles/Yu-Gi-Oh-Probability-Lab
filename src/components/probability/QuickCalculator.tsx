@@ -8,8 +8,11 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
 import { ProgressRing } from '../ui/ProgressRing'
+import { formatPer100 } from '../ui/ring-shared'
 import { Segmented } from '../ui/Segmented'
 import { field } from '../ui/surfaces'
+import { judgeTone } from '../ui/tone'
+import { overline } from '../ui/typography'
 import { formatCardCount } from './lab-copy'
 
 interface QuickCalculatorProps {
@@ -89,24 +92,29 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
           ]}
         />
 
-        <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0" aria-label={t('lab.quick.handsList')}>
-          {AT_LEAST.map((atLeast) => {
-            const probability = atLeastProbability(cards, count, hand, atLeast)
-
-            return (
-              <li key={atLeast} className="grid justify-items-center gap-1.5 text-center">
-                <ProgressRing
-                  value={probability}
-                  size={84}
-                  strokeWidth={9}
-                  format={(value) => <span className="text-body font-semibold">{formatShortPercent(value)}</span>}
-                  label={`${t('lab.quick.atLeast', { n: formatInteger(atLeast) })}: ${formatShortPercent(probability)}`}
-                />
-                <span className="text-micro text-muted">{t('lab.quick.atLeast', { n: formatInteger(atLeast) })}</span>
-              </li>
-            )
-          })}
-        </ul>
+        {/* La unidad se dice una vez para los tres anillos: cada uno muestra su entero «de cada 100» (el decimal va en su nombre). */}
+        <div className="grid gap-2">
+          <p className={cx('m-0', overline)}>{t('lab.quick.per100')}</p>
+          <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0" aria-label={t('lab.quick.handsList')}>
+            {AT_LEAST.map((atLeast) => {
+              const probability = atLeastProbability(cards, count, hand, atLeast)
+  
+              return (
+                <li key={atLeast} className="grid justify-items-center gap-1.5 text-center">
+                  <ProgressRing
+                    value={probability}
+                    tone={judgeTone(true)}
+                    size={84}
+                    strokeWidth={8}
+                    format={formatPer100}
+                    label={`${t('lab.quick.atLeast', { n: formatInteger(atLeast) })}: ${formatShortPercent(probability)}`}
+                  />
+                  <span className="text-micro text-muted">{t('lab.quick.atLeast', { n: formatInteger(atLeast) })}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
 
         {/* Al revés: cuántas copias hacen falta para abrirla en tantas manos. */}
         <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-2 border-t border-border-subtle pt-4 text-body text-muted">

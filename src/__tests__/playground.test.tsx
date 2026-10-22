@@ -38,7 +38,7 @@ describe('el catálogo /playground', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Playground' })).toBeInTheDocument()
     const toc = screen.getByRole('navigation', { name: 'Secciones del catálogo' })
     const names = within(toc).getAllByRole('link').map((link) => link.textContent)
-    expect(names).toEqual(['Botones y controles', 'Navegación', 'Títulos', 'Tarjetas, avisos y campos', 'Datos', 'Diálogos y avisos', 'Duelo por enlace', 'Íconos', 'Assets', 'Tokens del diseño'])
+    expect(names).toEqual(['Botones y controles', 'Navegación', 'Títulos', 'Tarjetas, avisos y campos', 'Datos', 'El Lab', 'Diálogos y avisos', 'Duelo por enlace', 'Íconos', 'Assets', 'Tokens del diseño'])
 
     for (const name of names) {
       expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument()
