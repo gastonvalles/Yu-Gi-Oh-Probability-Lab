@@ -1,9 +1,10 @@
 import { isRecord } from './utils'
-import type { RivalHand } from './practice-mat'
+import { shuffleWithSeed, type RivalHand } from './practice-mat'
 
 /**
- * El simulador de handtraps de «Jugar solo» (pedido de Andrés Alvarez, 2026-10-22): elegís qué handtraps tiene el rival en la mano y cuántas copias de cada una y, en la mesa,
- * tocás cada una para decir en qué momento la usa. Es puro: el catálogo, la configuración que se recuerda y la mano que se reparte (sin sorteo: la que se eligió).
+ * El simulador de handtraps de «Jugar solo» (pedido de Andrés Alvarez, 2026-10-22): elegís qué handtraps tiene el rival en su deck y cuántas copias de cada una, y cuántas cartas
+ * tiene en la mano; la mano se reparte al azar de esas cartas y, en la mesa, tocás cada una para decir en qué momento la usa. Es puro: el catálogo, la configuración que se
+ * recuerda y el reparto (determinista con la semilla, como el de la mesa).
  */
 
 /** Una carta del catálogo: su passcode de YGOPRODeck (de ahí sale su imagen) y su nombre tal cual lo escribe la carta. */
@@ -12,16 +13,18 @@ export interface HandtrapCard {
   name: string
 }
 
-/** Una handtrap de la mano del rival y cuántas copias tiene de ella (de 1 a `MAX_COPIES`). */
+/** Una handtrap del deck del rival y cuántas copias tiene de ella (de 1 a `MAX_COPIES`). */
 export interface HandtrapPick extends HandtrapCard {
   copies: number
 }
 
-/** Cuántas copias de una misma carta puede tener la mano del rival: las de un deck. */
+/** Cuántas copias de una misma carta puede tener el rival: las de un deck. */
 export const MAX_COPIES = 3
 
-/** Cuántas handtraps puede tener la mano del rival en total: las que entran en la franja de la mesa. */
-export const MAX_RIVAL_HAND = 6
+/** Cuántas cartas tiene la mano del rival: de 1 a 5, y 3 si no se elige otra cosa. */
+export const MIN_RIVAL_HAND = 1
+export const MAX_RIVAL_HAND = 5
+const DEFAULT_RIVAL_HAND = 3
 
 /**
  * Las handtraps que se ofrecen (verificadas contra YGOPRODeck el 2026-10-22). Que sean handtraps lo decide la lista de `classification-engine.ts` (`KNOWN_CARDS_MAP`, rol
@@ -46,51 +49,38 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
   { id: 87126721, name: 'Mulcharmy Meowls' },
 ]
 
-/** Lo que se recuerda del simulador: si está encendido y la mano del rival (sólo las cartas con al menos una copia). */
+/** Lo que se recuerda del simulador: si está encendido, las handtraps del deck del rival (cada una con sus copias) y cuántas tiene en la mano. */
 export interface HandtrapConfig {
   enabled: boolean
   picks: HandtrapPick[]
+  hand: number
 }
 
 /** Las tres de siempre, una copia de cada una: Ash Blossom, Effect Veiler e Infinite Impermanence. */
 const DEFAULT_PICKS: readonly HandtrapPick[] = [14558127, 97268402, 10045474].map((id) => ({ ...HANDTRAP_CATALOG.find((card) => card.id === id)!, copies: 1 }))
 
-/** Apagado, con Ash Blossom, Effect Veiler e Infinite Impermanence, una copia de cada una. */
-export const DEFAULT_HANDTRAP_CONFIG: HandtrapConfig = { enabled: false, picks: DEFAULT_PICKS.map((pick) => ({ ...pick })) }
+/** Apagado, con Ash Blossom, Effect Veiler e Infinite Impermanence (una copia de cada una) y 3 cartas en la mano. */
+export const DEFAULT_HANDTRAP_CONFIG: HandtrapConfig = { enabled: false, picks: DEFAULT_PICKS.map((pick) => ({ ...pick })), hand: DEFAULT_RIVAL_HAND }
 
-/** La v1 (un pool con tipos y una cantidad general) duró unas horas: no se lee. */
+/** La v1 (un pool con tipos y una cantidad general) duró unas horas y no se lee; lo de la v2 sin `hand` (#532) sigue valiendo, con 3 en la mano. */
 export const HANDTRAP_CONFIG_KEY = 'ygo-lab:rival-handtraps:v2'
 
 const MAX_NAME_LENGTH = 100
 
-/** Cuántas cartas tiene la mano: la suma de las copias. */
-export const handCount = (picks: readonly HandtrapPick[]) => picks.reduce((total, pick) => total + pick.copies, 0)
+/** Cuántas cartas tiene el deck del rival: la suma de las copias. */
+export const poolCount = (picks: readonly HandtrapPick[]) => picks.reduce((total, pick) => total + pick.copies, 0)
 
-/**
- * La mano tal como se puede tener: cada passcode una vez (la primera manda), cada una con 1 a `MAX_COPIES` copias (lo de afuera se acota) y, en total, no más de `MAX_RIVAL_HAND`
- * (lo que sobra se recorta: las últimas pierden copias o se quedan afuera).
- */
-function capPicks(picks: readonly HandtrapPick[]): HandtrapPick[] {
-  const capped: HandtrapPick[] = []
-  let total = 0
+/** Una mano de 1 a 5 (lo de afuera se acota; lo que no es un número, 3). */
+const clampHand = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? Math.min(MAX_RIVAL_HAND, Math.max(MIN_RIVAL_HAND, Math.round(value))) : DEFAULT_RIVAL_HAND)
 
-  for (const pick of picks) {
-    if (capped.some((other) => other.id === pick.id)) continue
-
-    const copies = Math.min(MAX_COPIES, Math.max(1, Math.round(pick.copies)), MAX_RIVAL_HAND - total)
-
-    if (copies < 1) break
-
-    capped.push({ ...pick, copies })
-    total += copies
-  }
-
-  return capped
+/** Cada passcode una vez (la primera manda) y cada uno con 1 a `MAX_COPIES` copias (lo de afuera se acota). El deck del rival no tiene tope: el de la mano es `hand`. */
+function normalizePicks(picks: readonly HandtrapPick[]): HandtrapPick[] {
+  return picks.flatMap((pick, index) => (picks.findIndex((other) => other.id === pick.id) === index ? [{ ...pick, copies: Math.min(MAX_COPIES, Math.max(1, Math.round(pick.copies))) }] : []))
 }
 
 /** Las handtraps guardadas que se entienden (con su passcode, su nombre y un número de copias); las que no, afuera. */
 function parsePicks(value: readonly unknown[]): HandtrapPick[] {
-  return capPicks(
+  return normalizePicks(
     value.flatMap((entry): HandtrapPick[] => {
       if (!isRecord(entry) || !Number.isInteger(entry.id) || (entry.id as number) <= 0 || (entry.id as number) > 9_999_999_999 || typeof entry.name !== 'string' || typeof entry.copies !== 'number' || !Number.isFinite(entry.copies)) {
         return []
@@ -105,10 +95,7 @@ function parsePicks(value: readonly unknown[]): HandtrapPick[] {
 
 const defaultConfig = (): HandtrapConfig => ({ ...DEFAULT_HANDTRAP_CONFIG, picks: DEFAULT_HANDTRAP_CONFIG.picks.map((pick) => ({ ...pick })) })
 
-/**
- * Lo guardado, o lo de siempre si no hay o no se entiende (se revisa campo por campo). Una mano guardada vacía es una mano vacía (el rival no tiene ninguna); una con cartas que no
- * se entienden, o sin la lista, vuelve a la de siempre.
- */
+/** Lo guardado, o lo de siempre si no hay o no se entiende (se revisa campo por campo: sin cartas que se entiendan, vuelven las de siempre, porque la mano lleva al menos una). */
 export function readHandtrapConfig(storage: () => Storage = () => localStorage): HandtrapConfig {
   let stored: unknown = null
 
@@ -120,15 +107,14 @@ export function readHandtrapConfig(storage: () => Storage = () => localStorage):
 
   if (!isRecord(stored) || Array.isArray(stored)) return defaultConfig()
 
-  const list = Array.isArray(stored.picks) ? stored.picks : null
-  const picks = list ? parsePicks(list) : []
+  const picks = Array.isArray(stored.picks) ? parsePicks(stored.picks) : []
 
-  return { enabled: stored.enabled === true, picks: list && (list.length === 0 || picks.length > 0) ? picks : defaultConfig().picks }
+  return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand) }
 }
 
 export function writeHandtrapConfig(config: HandtrapConfig, storage: () => Storage = () => localStorage): void {
   try {
-    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })) }))
+    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })), hand: config.hand }))
   } catch {
     // Sin almacenamiento (ventana privada, cuota): vale hasta recargar.
   }
@@ -144,20 +130,22 @@ export const rivalCardOf = (id: string) => (isRivalId(id) ? id.slice(RIVAL_PREFI
 
 const rivalId = (passcode: number, copy: number) => `${RIVAL_PREFIX}card-${passcode}-${copy}`
 
-/** El lugar de cada carta del catálogo: la mano sale en ese orden y, después, las que se agregaron con el buscador. */
+/** El lugar de cada carta del catálogo: el deck del rival se arma en ese orden (y después las agregadas con el buscador) antes de barajarlo, así la semilla decide sola. */
 const CATALOG_ORDER = new Map(HANDTRAP_CATALOG.map((card, index) => [card.id, index]))
 
 /**
- * La mano del rival para una mesa nueva, sin sorteo: cada handtrap con sus copias (`rival.card-<passcode>-<copia>`), en el orden del catálogo y después las agregadas, y el nombre de
- * cada carta (la mesa y los combos lo muestran sin esperar a YGOPRODeck). `null` con el simulador apagado o sin ninguna elegida (la mesa queda como siempre).
+ * La mano del rival para una mesa nueva: su deck (cada copia, una carta con su id `rival.card-<passcode>-<copia>`) barajado con la semilla, y las primeras `hand` (o todas, si
+ * tiene menos); con el nombre de cada carta (la mesa y los combos lo muestran sin esperar a YGOPRODeck). La misma semilla da siempre la misma mano. `null` con el simulador apagado
+ * o sin ninguna carta (la mesa queda como siempre).
  */
-export function dealRival(config: HandtrapConfig): { rival: RivalHand; names: Record<string, string> } | null {
+export function dealRival(config: HandtrapConfig, seed: number): { rival: RivalHand; names: Record<string, string> } | null {
   if (!config.enabled) return null
 
   const rank = (pick: HandtrapPick) => CATALOG_ORDER.get(pick.id) ?? HANDTRAP_CATALOG.length
-  const ordered = capPicks(config.picks).sort((a, b) => rank(a) - rank(b))
-  const hand = ordered.flatMap((pick) => Array.from({ length: pick.copies }, (_, copy) => rivalId(pick.id, copy + 1)))
-  const names = Object.fromEntries(ordered.flatMap((pick) => Array.from({ length: pick.copies }, (_, copy) => [rivalId(pick.id, copy + 1), pick.name] as const)))
+  const deck = normalizePicks(config.picks)
+    .sort((a, b) => rank(a) - rank(b))
+    .flatMap((pick) => Array.from({ length: pick.copies }, (_, copy) => ({ id: rivalId(pick.id, copy + 1), name: pick.name })))
+  const drawn = shuffleWithSeed(deck, seed).slice(0, clampHand(config.hand))
 
-  return hand.length === 0 ? null : { rival: { hand, used: [] }, names }
+  return drawn.length === 0 ? null : { rival: { hand: drawn.map((card) => card.id), used: [] }, names: Object.fromEntries(drawn.map((card) => [card.id, card.name])) }
 }

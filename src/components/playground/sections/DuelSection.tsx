@@ -7,7 +7,7 @@ import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
-import { HANDTRAP_CATALOG, MAX_COPIES, type HandtrapConfig } from '../../../app/handtraps'
+import { HANDTRAP_CATALOG, type HandtrapConfig } from '../../../app/handtraps'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
@@ -271,22 +271,24 @@ function RivalEffectSample() {
   )
 }
 
-/** La mano del rival del simulador de handtraps: dos sin usar y dos usadas (con el paso en que se usaron); la segunda, con el menú abierto (el marco celeste). */
+/** La mano del rival del simulador de handtraps, llena (5): tres sin usar y dos usadas (con el paso en que se usaron); la segunda, con el menú abierto (el marco celeste). */
 const RIVAL_HAND: RivalHandCard[] = [
   { id: 'rival.card-14558127-1', name: 'Ash Blossom & Joyous Spring', art: 'https://images.ygoprodeck.com/images/cards_small/14558127.jpg', usedAt: null },
   { id: 'rival.card-97268402-1', name: 'Effect Veiler', art: 'https://images.ygoprodeck.com/images/cards_small/97268402.jpg', usedAt: null },
   { id: 'rival.card-10045474-2', name: 'Infinite Impermanence', art: 'https://images.ygoprodeck.com/images/cards_small/10045474.jpg', usedAt: 3 },
   { id: 'rival.card-42141493-1', name: 'Mulcharmy Fuwalos', art: 'https://images.ygoprodeck.com/images/cards_small/42141493.jpg', usedAt: 12 },
+  { id: 'rival.card-27204311-1', name: 'Nibiru, the Primal Being', art: 'https://images.ygoprodeck.com/images/cards_small/27204311.jpg', usedAt: null },
 ]
 
-/** La mano de muestra de las hojas (Ash ×1, Effect Veiler ×2 e Infinite Impermanence ×1): lo que se guarda no se toca (las hojas de acá no guardan nada). */
+/** Las handtraps de muestra de las hojas: 3 copias de Ash, Effect Veiler e Infinite Impermanence y 5 en la mano («entre 9 cartas»). Lo que se guarda no se toca (las hojas de acá no guardan nada). */
 const SAMPLE_HAND: HandtrapConfig = {
   enabled: true,
   picks: [
-    { ...HANDTRAP_CATALOG[0]!, copies: 1 },
-    { ...HANDTRAP_CATALOG[2]!, copies: 2 },
-    { ...HANDTRAP_CATALOG[3]!, copies: 1 },
+    { ...HANDTRAP_CATALOG[0]!, copies: 3 },
+    { ...HANDTRAP_CATALOG[2]!, copies: 3 },
+    { ...HANDTRAP_CATALOG[3]!, copies: 3 },
   ],
+  hand: 5,
 }
 
 /** El simulador de handtraps de «Jugar solo»: la franja de la mano del rival en la mesa, las cartas de la hoja con su contador (en 0, 1 y 3) y las dos hojas. */
@@ -302,13 +304,13 @@ function HandtrapSamples() {
         layout="column"
         note={
           <>
-            Arriba del campo, sólo en «Jugar solo» con el simulador encendido: cartas chicas boca arriba; tocar una abre el menú de la mesa (<Tag>Usar ahora</Tag>, <Tag>Ver carta</Tag>). La usada se queda en su lugar, apagada y con la tilde y el paso en que se usó. Archivo: <Tag>probability/RivalHandStrip.tsx</Tag>
+            Arriba del campo, sólo en «Jugar solo» con el simulador encendido y sin rótulo: hasta 5 cartas boca arriba (en el celular, de unos 46 px; en escritorio, una mano de verdad que se lleva el alto que el campo no usa, hasta el ancho de las cartas de tu mano: <Tag>--rival-card</Tag>, que acá se achica para entrar en la muestra); tocar una abre el menú de la mesa (<Tag>Usar ahora</Tag>, <Tag>Ver carta</Tag>). La usada se queda en su lugar, apagada y con la tilde y el paso en que se usó (en escritorio, también «Usada»). Archivo: <Tag>probability/RivalHandStrip.tsx</Tag>
           </>
         }
       >
-        <div className="relative isolate overflow-hidden rounded-card border border-border-subtle px-2">
+        <div className="@container relative isolate overflow-hidden rounded-card border border-border-subtle px-2">
           <MatScene className="absolute inset-0 -z-10" />
-          <RivalHandStrip cards={RIVAL_HAND} selectedId={RIVAL_HAND[1]!.id} onOpen={() => undefined} />
+          <RivalHandStrip cards={RIVAL_HAND} selectedId={RIVAL_HAND[1]!.id} onOpen={() => undefined} className="[--rival-card:min(4.5rem,calc((100cqw-4rem)/5))]" />
         </div>
       </Specimen>
 
@@ -317,14 +319,14 @@ function HandtrapSamples() {
         layout="column"
         note={
           <>
-            Cada carta lleva su contador de copias (de 0 a 3, <Tag>Stepper lg</Tag>): con una o más va con el aro ámbar de lo elegido; con 0, apagada. El «+» se apaga en 3 copias y cuando la mano ya tiene 6. Abajo de la hoja, cuántas tiene el rival en total y el aviso del tope o de que no hay ninguna. Archivo: <Tag>duel/HandtrapPool.tsx</Tag>
+            Cada carta lleva su contador de copias en el deck del rival (de 0 a 3, <Tag>Stepper lg</Tag>): con una o más va con el aro ámbar de lo elegido; con 0, apagada; el «+» se apaga en 3. Abajo de la hoja, cuántas cartas tiene en la mano (de 1 a 5) y entre cuántas se reparten al azar, o que con esas cartas la mano sale más corta. Archivo: <Tag>duel/HandtrapPool.tsx</Tag>
           </>
         }
       >
         {/* En una columna: la muestra es angosta (en la hoja, desde 640 px, van de a dos: `POOL_LIST`). */}
         <ul className="m-0 grid list-none gap-1 p-0">
           {HANDTRAP_CATALOG.slice(0, 3).map((card, index) => (
-            <HandtrapPoolCard key={card.id} card={card} copies={copies[index]!} max={MAX_COPIES} onChange={(value) => setCopies((current) => current.map((count, at) => (at === index ? value : count)))} />
+            <HandtrapPoolCard key={card.id} card={card} copies={copies[index]!} onChange={(value) => setCopies((current) => current.map((count, at) => (at === index ? value : count)))} />
           ))}
         </ul>
         <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpen(true)}>

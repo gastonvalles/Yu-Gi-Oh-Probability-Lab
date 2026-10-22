@@ -86,111 +86,126 @@ describe('el simulador en la mesa de práctica', () => {
   })
 })
 
+
 const ASH = { id: 14558127, name: 'Ash Blossom & Joyous Spring' }
 const VEILER = { id: 97268402, name: 'Effect Veiler' }
 const IMPERM = { id: 10045474, name: 'Infinite Impermanence' }
 const MAXX = { id: 23434538, name: 'Maxx "C"' }
 
-/** El contador de una carta de la hoja (un `Stepper`): su número, y sus «−» y «+». */
-const counter = (name: string) => screen.getByRole('group', { name: `Copias de ${name} en la mano del rival` })
-const copiesOf = (name: string) => within(counter(name)).getByRole('textbox')
-const more = (name: string) => within(counter(name)).getByRole('button', { name: 'Uno más' })
-const less = (name: string) => within(counter(name)).getByRole('button', { name: 'Uno menos' })
-const rowOf = (name: string) => counter(name).closest('li')!
-const total = () => screen.getByRole('status')
+/** Un contador de la hoja (un `Stepper`): el de las copias de una carta o el de las cartas en la mano; su número, y sus «−» y «+». */
+const group = (name: string) => screen.getByRole('group', { name })
+const copies = (name: string) => group(`Copias de ${name} en el deck del rival`)
+const valueOf = (stepper: HTMLElement) => within(stepper).getByRole('textbox')
+const more = (stepper: HTMLElement) => within(stepper).getByRole('button', { name: 'Uno más' })
+const less = (stepper: HTMLElement) => within(stepper).getByRole('button', { name: 'Uno menos' })
+const handCounter = () => group('Cartas en la mano del rival')
+const rowOf = (name: string) => copies(name).closest('li')!
+const summary = () => screen.getByRole('status')
 
-describe('la hoja de la mano del rival', () => {
-  const HAND: HandtrapConfig = { enabled: false, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }] }
+describe('la franja sin rótulo', () => {
+  it('la mano del rival no lleva la palabra «Rival»: sólo sus cartas (la región se llama «Mano del rival» para el lector de pantalla)', () => {
+    // Con su imagen (sin ella, la carta muestra sus iniciales).
+    render(<RivalHandStrip cards={[{ id: 'rival.card-14558127-1', name: 'Ash Blossom', art: 'https://images.ygoprodeck.com/images/cards_small/14558127.jpg', usedAt: null }]} onOpen={() => {}} />)
 
-  it('cada carta tiene su contador de copias: arranca de lo guardado, sube y baja, y abajo dice cuántas tiene en total', () => {
+    expect(strip().textContent?.trim()).toBe('')
+    expect(within(strip()).queryByText(/rival/i)).toBeNull()
+    expect(within(strip()).getAllByRole('button')).toHaveLength(1)
+  })
+})
+
+describe('la hoja de las handtraps del rival', () => {
+  const SAVED: HandtrapConfig = { enabled: false, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }], hand: 3 }
+
+  it('cada carta tiene su contador de copias en el deck del rival: arranca de lo guardado, sube y baja, y la elegida lleva el aro', () => {
     const onSave = vi.fn()
 
-    render(<HandtrapPicker isOpen config={HAND} onClose={() => {}} onSave={onSave} />)
+    render(<HandtrapPicker isOpen config={SAVED} onClose={() => {}} onSave={onSave} />)
 
-    expect(copiesOf(ASH.name)).toHaveValue('1')
-    expect(copiesOf(VEILER.name)).toHaveValue('2')
-    expect(copiesOf(MAXX.name)).toHaveValue('0')
-    expect(total()).toHaveTextContent('En la mano del rival: 3')
+    expect(valueOf(copies(ASH.name))).toHaveValue('1')
+    expect(valueOf(copies(VEILER.name))).toHaveValue('2')
+    expect(valueOf(copies(MAXX.name))).toHaveValue('0')
     // La carta se elige subiendo su contador (la fila no es un botón que se marca): con copias lleva el aro de lo elegido; con 0, no.
     expect(screen.queryByRole('button', { pressed: true })).toBeNull()
     expect(rowOf(VEILER.name)).toHaveClass('inset-ring')
     expect(rowOf(MAXX.name)).not.toHaveClass('inset-ring')
 
-    fireEvent.click(more(MAXX.name))
-    fireEvent.click(less(VEILER.name))
-    fireEvent.click(less(ASH.name))
+    fireEvent.click(more(copies(MAXX.name)))
+    fireEvent.click(less(copies(VEILER.name)))
+    fireEvent.click(less(copies(ASH.name)))
 
-    expect(copiesOf(MAXX.name)).toHaveValue('1')
+    expect(valueOf(copies(MAXX.name))).toHaveValue('1')
     expect(rowOf(MAXX.name)).toHaveClass('inset-ring')
     expect(rowOf(ASH.name)).not.toHaveClass('inset-ring')
-    expect(total()).toHaveTextContent('En la mano del rival: 2')
 
-    // En el orden del catálogo: Maxx "C" antes que Effect Veiler.
-    fireEvent.click(screen.getByRole('button', { name: 'Usar esta mano' }))
-    expect(onSave).toHaveBeenCalledWith([
-      { ...MAXX, copies: 1 },
-      { ...VEILER, copies: 1 },
-    ])
+    // En el orden del catálogo: Maxx "C" antes que Effect Veiler; la mano, la guardada.
+    fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
+    expect(onSave).toHaveBeenCalledWith([{ ...MAXX, copies: 1 }, { ...VEILER, copies: 1 }], 3)
   })
 
-  it('una carta llega a 3 copias como mucho y la mano a 6: el «+» se apaga en cada tope y abajo lo dice', () => {
-    render(<HandtrapPicker isOpen config={HAND} onClose={() => {}} onSave={() => {}} />)
+  it('cada carta va hasta 3 copias y el deck del rival no tiene tope: el «+» sólo se apaga en 3', () => {
+    render(<HandtrapPicker isOpen config={SAVED} onClose={() => {}} onSave={() => {}} />)
 
-    fireEvent.click(more(VEILER.name))
-    expect(copiesOf(VEILER.name)).toHaveValue('3')
-    expect(more(VEILER.name)).toBeDisabled()
-    expect(more(MAXX.name)).toBeEnabled()
+    for (const card of [ASH, VEILER, IMPERM, MAXX]) {
+      while (!more(copies(card.name)).hasAttribute('disabled')) fireEvent.click(more(copies(card.name)))
+      expect(valueOf(copies(card.name))).toHaveValue('3')
+    }
 
-    fireEvent.click(more(IMPERM.name))
-    fireEvent.click(more(IMPERM.name))
-    expect(total()).toHaveTextContent('En la mano del rival: 6')
-    expect(total()).toHaveTextContent('Máximo 6 en la mano.')
-    expect(more(IMPERM.name)).toBeDisabled()
-    expect(more(MAXX.name)).toBeDisabled()
-    expect(more(ASH.name)).toBeDisabled()
-
-    // Con un lugar libre, se puede volver a subir otra.
-    fireEvent.click(less(IMPERM.name))
-    expect(total()).not.toHaveTextContent('Máximo')
-    expect(more(MAXX.name)).toBeEnabled()
+    // Doce cartas en el deck del rival, y las demás todavía se pueden sumar.
+    expect(summary()).toHaveTextContent('Se reparte al azar entre 12 cartas.')
+    expect(more(copies('Ghost Ogre & Snow Rabbit'))).toBeEnabled()
   })
 
-  it('sin ninguna, lo dice y no deja usar la mano', () => {
-    render(<HandtrapPicker isOpen config={HAND} onClose={() => {}} onSave={() => {}} />)
+  it('el contador general dice cuántas cartas tiene el rival en la mano, de 1 a 5, y abajo se lee entre cuántas se reparten', () => {
+    const onSave = vi.fn()
 
-    fireEvent.click(less(ASH.name))
-    fireEvent.click(less(VEILER.name))
-    fireEvent.click(less(VEILER.name))
+    render(<HandtrapPicker isOpen config={{ ...SAVED, picks: [{ ...ASH, copies: 3 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 3 }] }} onClose={() => {}} onSave={onSave} />)
 
-    expect(total()).toHaveTextContent('En la mano del rival: 0')
-    expect(total()).toHaveTextContent('Poné al menos una handtrap.')
-    expect(screen.getByRole('button', { name: 'Usar esta mano' })).toBeDisabled()
+    expect(valueOf(handCounter())).toHaveValue('3')
+    expect(summary()).toHaveTextContent('Se reparte al azar entre 9 cartas.')
+
+    fireEvent.click(more(handCounter()))
+    fireEvent.click(more(handCounter()))
+    expect(valueOf(handCounter())).toHaveValue('5')
+    expect(more(handCounter())).toBeDisabled()
+
+    for (let step = 0; step < 4; step += 1) fireEvent.click(less(handCounter()))
+    expect(valueOf(handCounter())).toHaveValue('1')
+    expect(less(handCounter())).toBeDisabled()
+
+    fireEvent.click(more(handCounter()))
+    fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
+    expect(onSave).toHaveBeenCalledWith([{ ...ASH, copies: 3 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 3 }], 2)
   })
 
-  it('«Agregar otra carta» busca por nombre y suma la carta a la lista con una copia; con la mano llena, en 0', async () => {
+  it('con menos cartas que la mano lo avisa (la mano sale más corta); sin ninguna, no deja usarlas', () => {
+    render(<HandtrapPicker isOpen config={{ ...SAVED, hand: 5 }} onClose={() => {}} onSave={() => {}} />)
+
+    expect(summary()).toHaveTextContent('Con estas cartas la mano sale con 3.')
+    expect(screen.getByRole('button', { name: 'Usar estas handtraps' })).toBeEnabled()
+
+    fireEvent.click(less(copies(ASH.name)))
+    fireEvent.click(less(copies(VEILER.name)))
+    fireEvent.click(less(copies(VEILER.name)))
+
+    expect(summary()).toHaveTextContent('Elegí al menos una carta.')
+    expect(screen.getByRole('button', { name: 'Usar estas handtraps' })).toBeDisabled()
+  })
+
+  it('«Agregar otra carta» busca por nombre y suma la carta a la lista con una copia', async () => {
     vi.useFakeTimers()
-    const search = async (name: string, ygoprodeckId: number) => {
-      searchCards.mockResolvedValueOnce({ results: [{ ygoprodeckId, name }], hasMore: false } as never)
-      fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar otra carta' }), { target: { value: name } })
+
+    try {
+      render(<HandtrapPicker isOpen config={SAVED} onClose={() => {}} onSave={() => {}} />)
+      searchCards.mockResolvedValueOnce({ results: [{ ygoprodeckId: 91800273, name: 'Dimension Shifter' }], hasMore: false } as never)
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar otra carta' }), { target: { value: 'Dimension' } })
       await act(async () => {
         await vi.advanceTimersByTimeAsync(400)
       })
-      fireEvent.click(screen.getByRole('button', { name: `Agregar ${name} a la lista` }))
-    }
+      fireEvent.click(screen.getByRole('button', { name: 'Agregar Dimension Shifter a la lista' }))
 
-    try {
-      render(<HandtrapPicker isOpen config={HAND} onClose={() => {}} onSave={() => {}} />)
-
-      await search('Dimension Shifter', 91800273)
-      expect(copiesOf('Dimension Shifter')).toHaveValue('1')
-      expect(total()).toHaveTextContent('En la mano del rival: 4')
+      expect(valueOf(copies('Dimension Shifter'))).toHaveValue('1')
+      expect(summary()).toHaveTextContent('Se reparte al azar entre 4 cartas.')
       expect(screen.getByRole('button', { name: 'Dimension Shifter ya está en la lista' })).toBeDisabled()
-
-      fireEvent.click(more(VEILER.name))
-      fireEvent.click(more('Dimension Shifter'))
-      await search('Skull Meister', 67750322)
-      expect(copiesOf('Skull Meister')).toHaveValue('0')
-      expect(total()).toHaveTextContent('En la mano del rival: 6')
     } finally {
       vi.useRealTimers()
     }
@@ -198,43 +213,45 @@ describe('la hoja de la mano del rival', () => {
 })
 
 describe('la fila de las reglas de Solo', () => {
-  it('dice cuántas tiene el rival en la mano y el interruptor se recuerda', () => {
+  it('dice cuántas tiene el rival en la mano y entre cuántas cartas, y el interruptor se recuerda', () => {
     render(<HandtrapsRow />)
 
-    expect(screen.getByText('3 en mano')).toBeInTheDocument()
+    expect(screen.getByText('3 en mano · de 3 cartas')).toBeInTheDocument()
 
     const toggle = screen.getByRole('switch', { name: 'Handtraps del rival' })
 
     expect(toggle).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-checked', 'true')
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }, { ...IMPERM, copies: 1 }] })
-    expect(JSON.parse(localStorage.getItem(HANDTRAP_CONFIG_KEY) ?? '{}')).toMatchObject({ enabled: true })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }, { ...IMPERM, copies: 1 }], hand: 3 })
+    expect(JSON.parse(localStorage.getItem(HANDTRAP_CONFIG_KEY) ?? '{}')).toMatchObject({ enabled: true, hand: 3 })
   })
 
-  it('sin ninguna elegida lo dice', () => {
-    localStorage.setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: true, picks: [] }))
+  it('con menos cartas que la mano, dice la mano que sale', () => {
+    localStorage.setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }], hand: 5 }))
     render(<HandtrapsRow />)
 
-    expect(screen.getByText('Ninguna elegida')).toBeInTheDocument()
+    expect(screen.getByText('2 en mano · de 2 cartas')).toBeInTheDocument()
   })
 
-  it('elegir la mano la guarda y enciende el simulador', () => {
+  it('elegir las handtraps las guarda con la mano y enciende el simulador', () => {
     render(<HandtrapsRow />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Elegir… las handtraps de la mano del rival' }))
-    fireEvent.click(more(VEILER.name))
-    fireEvent.click(screen.getByRole('button', { name: 'Usar esta mano' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir… las handtraps del rival' }))
+    fireEvent.click(more(copies(VEILER.name)))
+    fireEvent.click(more(copies(VEILER.name)))
+    fireEvent.click(more(handCounter()))
+    fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }] })
-    expect(screen.getByText('4 en mano')).toBeInTheDocument()
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 1 }], hand: 4 })
+    expect(screen.getByText('4 en mano · de 5 cartas')).toBeInTheDocument()
   })
 })
 
 describe('el botón de la barra de la mesa (Entrenar solo)', () => {
   const open = () => fireEvent.click(screen.getByRole('button', { name: 'Handtraps del rival' }))
 
-  it('abre la hoja; usar la mano la guarda, enciende el simulador y reparte una mano nueva', () => {
+  it('abre la hoja; usar las handtraps las guarda, enciende el simulador y reparte una mano nueva', () => {
     const onApply = vi.fn()
 
     render(<HandtrapsMatButton onApply={onApply} />)
@@ -243,18 +260,19 @@ describe('el botón de la barra de la mesa (Entrenar solo)', () => {
     open()
     expect(screen.getByText('Al aplicar, se reparte una mano nueva.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Apagar el simulador' })).not.toBeInTheDocument()
-    fireEvent.click(more(VEILER.name))
-    fireEvent.click(screen.getByRole('button', { name: 'Usar esta mano' }))
+    fireEvent.click(more(copies(VEILER.name)))
+    fireEvent.click(more(handCounter()))
+    fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }] })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }], hand: 4 })
     expect(onApply).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Handtraps del rival' })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('con el simulador encendido ofrece apagarlo: se guarda apagado (con la misma mano) y se reparte una mano nueva', () => {
-    const hand = [{ ...VEILER, copies: 2 }, { ...ASH, copies: 1 }]
+  it('con el simulador encendido ofrece apagarlo: se guarda apagado (con las mismas handtraps y la misma mano) y se reparte una mano nueva', () => {
+    const saved = { enabled: true, picks: [{ ...VEILER, copies: 2 }, { ...ASH, copies: 1 }], hand: 2 }
 
-    localStorage.setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: true, picks: hand }))
+    localStorage.setItem(HANDTRAP_CONFIG_KEY, JSON.stringify(saved))
     const onApply = vi.fn()
 
     render(<HandtrapsMatButton onApply={onApply} />)
@@ -262,7 +280,7 @@ describe('el botón de la barra de la mesa (Entrenar solo)', () => {
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Apagar el simulador' }))
 
-    expect(readHandtrapConfig()).toEqual({ enabled: false, picks: hand })
+    expect(readHandtrapConfig()).toEqual({ ...saved, enabled: false })
     expect(onApply).toHaveBeenCalledTimes(1)
   })
 
@@ -271,7 +289,7 @@ describe('el botón de la barra de la mesa (Entrenar solo)', () => {
 
     render(<HandtrapsMatButton onApply={onApply} />)
     open()
-    fireEvent.click(more(VEILER.name))
+    fireEvent.click(more(copies(VEILER.name)))
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
 
     expect(localStorage.getItem(HANDTRAP_CONFIG_KEY)).toBeNull()

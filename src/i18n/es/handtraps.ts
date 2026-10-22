@@ -1,24 +1,24 @@
-/** El simulador de handtraps de «Jugar solo»: la fila del lobby, el botón de la mesa, la hoja de la mano del rival y la mano del rival en la mesa. */
+/** El simulador de handtraps de «Jugar solo»: la fila del lobby, el botón de la mesa, la hoja de las handtraps del rival y su mano en la mesa. */
 export const handtraps = {
   // En las reglas de la sala, con el modo Solo.
   'handtraps.title': 'Handtraps del rival',
-  'handtraps.row.summary': '{count} en mano',
-  'handtraps.row.empty': 'Ninguna elegida',
+  'handtraps.row.summary': { one: '{hand} en mano · de {count} carta', other: '{hand} en mano · de {count} cartas' },
   'handtraps.row.choose': 'Elegir…',
-  'handtraps.row.chooseLabel': 'Elegir… las handtraps de la mano del rival',
+  'handtraps.row.chooseLabel': 'Elegir… las handtraps del rival',
 
   // En la barra de la mesa de «Entrenar solo».
   'handtraps.mat.on': 'Handtraps del rival: encendido',
   'handtraps.mat.off': 'Handtraps del rival: apagado',
 
-  // La hoja: cuántas copias de cada una tiene el rival en la mano.
-  'handtraps.picker.subtitle': 'Elegí cuántas copias de cada una tiene en la mano.',
-  'handtraps.picker.list': 'Handtraps para la mano del rival',
-  'handtraps.picker.copies': 'Copias de {name} en la mano del rival',
-  'handtraps.picker.count': 'En la mano del rival: {count}',
-  'handtraps.picker.cap': 'Máximo {max} en la mano.',
-  'handtraps.picker.empty': 'Poné al menos una handtrap.',
-  'handtraps.picker.use': 'Usar esta mano',
+  // La hoja: cuántas copias de cada una tiene el rival en su deck y cuántas cartas tiene en la mano (se reparten al azar).
+  'handtraps.picker.subtitle': 'Elegí cuántas copias de cada una tiene el rival; su mano se reparte al azar.',
+  'handtraps.picker.list': 'Handtraps que puede tener el rival',
+  'handtraps.picker.copies': 'Copias de {name} en el deck del rival',
+  'handtraps.picker.hand': 'Cartas en la mano del rival',
+  'handtraps.picker.pool': { one: 'Se reparte al azar entre {count} carta.', other: 'Se reparte al azar entre {count} cartas.' },
+  'handtraps.picker.short': 'Con estas cartas la mano sale con {count}.',
+  'handtraps.picker.empty': 'Elegí al menos una carta.',
+  'handtraps.picker.use': 'Usar estas handtraps',
   'handtraps.picker.add': 'Agregar otra carta',
   'handtraps.picker.search': 'Buscar otra carta',
   'handtraps.picker.searchPlaceholder': 'Nombre de la carta',
@@ -31,8 +31,9 @@ export const handtraps = {
 
   // La mesa.
   'handtraps.strip.label': 'Mano del rival',
-  'handtraps.strip.title': 'Rival',
   'handtraps.strip.used': '{name}, usada en el paso {step}',
+  'handtraps.strip.usedMark': 'Usada',
+  'handtraps.strip.step': 'Paso {step}',
   'handtraps.menu.use': 'Usar ahora',
   'handtraps.menu.usedAt': 'La usó en el paso {step}',
   'handtraps.step.used': 'El rival usó {card}',
