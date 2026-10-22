@@ -2,6 +2,7 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit'
 
 import type { AppState } from './model'
 import { loadState, saveState } from './persistence'
+import { deckBeforeMiddleware } from './deck-before'
 import { deckBuilderReducer } from './deck-builder-slice'
 import { patternsReducer } from './patterns-slice'
 import { settingsReducer } from './settings-slice'
@@ -17,6 +18,8 @@ type RootStateSchema = ReturnType<typeof rootReducer>
 export const store = configureStore({
   reducer: rootReducer,
   preloadedState: buildRootState(loadState()),
+  // «Tu deck de antes» se guarda solo al empezar a cambiar cartas.
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(deckBeforeMiddleware),
 })
 
 export type RootState = ReturnType<typeof store.getState>

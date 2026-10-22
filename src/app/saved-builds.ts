@@ -4,7 +4,10 @@ import type { DeckCardInstance } from './model'
 import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
 import { createId } from './utils'
 
-const SAVED_BUILDS_KEY = 'ygo-lab:saved-builds'
+export const SAVED_BUILDS_KEY = 'ygo-lab:saved-builds'
+
+/** Se dispara en `window` cada vez que se escriben las builds: una lista abierta en otra pantalla las vuelve a leer con `readSavedBuilds()`. */
+export const SAVED_BUILDS_EVENT = 'ygo-lab:saved-builds-change'
 
 export interface BuildZones {
   main: DeckCardInstance[]
@@ -12,10 +15,20 @@ export interface BuildZones {
   side: DeckCardInstance[]
 }
 
+/** De dónde salió una build: tu deck guardado, una lista importada o un cambio que probaste en el Lab. */
+export type SavedBuildFrom = 'deck' | 'import' | 'lab'
+
+const BUILD_FROMS: readonly string[] = ['deck', 'import', 'lab'] satisfies SavedBuildFrom[]
+
 export interface SavedBuild extends BuildZones {
   id: string
   name: string
   savedAt: string
+  /**
+   * Opcional a propósito: las builds guardadas antes no lo tienen (y la clave sigue siendo un array sin versión, así una pestaña
+   * vieja abierta la sigue leyendo en vez de verla vacía y pisarla). Sin el dato, la build se muestra como «guardada».
+   */
+  from?: SavedBuildFrom
 }
 
 export function readSavedBuilds(): SavedBuild[] {
@@ -32,19 +45,47 @@ export function writeSavedBuilds(builds: SavedBuild[]): void {
     localStorage.setItem(SAVED_BUILDS_KEY, JSON.stringify(builds))
   } catch {
     // Sin almacenamiento (modo privado o cuota llena): las builds viven sólo en esta sesión.
+    return
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(SAVED_BUILDS_EVENT))
   }
 }
 
-/** Builds guardadas con roles u orígenes que ya no existen (Handtrap, Hybrid…): pasan a sus equivalentes. */
-function migrateSavedBuild(build: SavedBuild): SavedBuild {
-  const migrate = (cards: DeckCardInstance[]) =>
-    cards.map((card) => {
-      const roles = normalizeStoredRoles(card.roles)
+/** Cartas guardadas con roles u orígenes que ya no existen (Handtrap, Hybrid…): pasan a sus equivalentes. Vale para las builds y para «Tu deck de antes». */
+export function migrateBuildCards(cards: DeckCardInstance[]): DeckCardInstance[] {
+  return cards.map((card) => {
+    const roles = normalizeStoredRoles(card.roles)
 
-      return { ...card, roles, origin: resolveStoredCardOrigin(card.origin, roles) }
-    })
+    return { ...card, roles, origin: resolveStoredCardOrigin(card.origin, roles) }
+  })
+}
 
-  return { ...build, main: migrate(build.main), extra: migrate(build.extra), side: migrate(build.side) }
+/** Migra las cartas y descarta un `from` que no se conoce (lo demás queda igual que como se guardó). */
+function migrateSavedBuild({ from, ...build }: SavedBuild): SavedBuild {
+  const migrated = { ...build, main: migrateBuildCards(build.main), extra: migrateBuildCards(build.extra), side: migrateBuildCards(build.side) }
+
+  return from !== undefined && BUILD_FROMS.includes(from) ? { ...migrated, from } : migrated
+}
+
+/**
+ * Qué cartas hay en cada zona (ids de YGOPRODeck, sin importar el orden ni la clasificación). Dos decks con la misma firma tienen
+ * las mismas cartas: sirve para saber si una build es igual a tu deck o si una edición cambió alguna cantidad o zona.
+ */
+export function deckCardsSignature(zones: BuildZones): string {
+  const ids = (cards: DeckCardInstance[]) =>
+    cards
+      .map((card) => card.apiCard.ygoprodeckId)
+      .sort((left, right) => left - right)
+      .join(',')
+
+  return `${ids(zones.main)}|${ids(zones.extra)}|${ids(zones.side)}`
+}
+
+/** Las mismas cartas en las mismas zonas (con las mismas listas en memoria ni siquiera compara). */
+export function sameDeckCards(left: BuildZones, right: BuildZones): boolean {
+  return (left.main === right.main && left.extra === right.extra && left.side === right.side) || deckCardsSignature(left) === deckCardsSignature(right)
 }
 
 function isSavedBuild(value: unknown): value is SavedBuild {
@@ -80,7 +121,13 @@ export function uniqueBuildName(name: string, builds: readonly SavedBuild[]): st
   return `${base} (${index})`
 }
 
-export function createSavedBuild(name: string, zones: BuildZones, builds: readonly SavedBuild[], now = new Date()): SavedBuild {
+export function createSavedBuild(
+  name: string,
+  zones: BuildZones,
+  builds: readonly SavedBuild[],
+  now = new Date(),
+  from?: SavedBuildFrom,
+): SavedBuild {
   const copy = (cards: DeckCardInstance[]) => cards.map((card) => ({ ...card, roles: [...card.roles] }))
 
   return {
@@ -90,6 +137,7 @@ export function createSavedBuild(name: string, zones: BuildZones, builds: readon
     main: copy(zones.main),
     extra: copy(zones.extra),
     side: copy(zones.side),
+    ...(from ? { from } : {}),
   }
 }
 
