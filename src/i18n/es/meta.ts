@@ -406,7 +406,7 @@ export const meta = {
   'meta.maker.subtitle': 'Armá la tuya: elegí cartas, repartilas en filas y bajala como imagen.',
   'meta.maker.how': 'Cómo se arma',
   'meta.maker.help1': 'Armá tu tier list con los hand traps y boardbreakers del meta o buscando una carta por nombre.',
-  'meta.maker.help2': 'Arrastrá una carta a una fila (o entre otras para ordenarla), o tocala y elegí a dónde va. El engranaje de una fila (o su letra) abre su menú, y sus flechas la arrastran a otro lugar.',
+  'meta.maker.help2': 'Arrastrá una carta a una fila (o entre otras para ordenarla; con el dedo, mantenela apretada un momento), o tocala y elegí a dónde va. El engranaje de una fila (o su letra) abre su menú, y sus flechas la arrastran a otro lugar.',
   'meta.maker.help3': 'Con clic derecho (o Supr) una carta vuelve a «Sin clasificar», y si ya estaba ahí sale de la lista. Se guarda sola en este navegador.',
   'meta.maker.defaultTitle': 'Mi tier list',
   'meta.maker.download': 'Descargar imagen',

@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { MouseEventHandler, ReactNode } from 'react'
 
 import { prefersLightText } from '../../app/tierlist-maker'
 import { cx } from '../ui/cx'
@@ -23,10 +23,10 @@ interface TierStripProps {
   /** Con esto, el recuadro es un botón (en el creador abre el editor de la fila). */
   onLabel?: () => void
   labelAriaLabel?: string
-  /** La fila resaltada: se le va a soltar una carta. */
+  /** La fila resaltada: se le va a soltar la carta que se arrastra. */
   highlighted?: boolean
-  /** Los eventos de arrastre de las cartas (en el creador). */
-  dropProps?: Pick<HTMLAttributes<HTMLUListElement>, 'onDragOver' | 'onDragLeave' | 'onDrop' | 'onClick'>
+  /** El clic en el fondo de la fila, entre las cartas (en el creador, con una carta elegida, la manda ahí). */
+  onListClick?: MouseEventHandler<HTMLUListElement>
   /** Lo que va al final de la fila, a la derecha de las cartas, en una columna angosta (en el creador: el engranaje y el agarre para arrastrarla). Sin esto, la fila es la de siempre. */
   trailing?: ReactNode
   children: ReactNode
@@ -37,7 +37,7 @@ interface TierStripProps {
  * a otra, en renglones. Todas miden lo mismo de alto aunque estén vacías y van una abajo de otra, casi sin aire entre sí. Lo comparten las tier lists del meta (sólo se leen) y el creador (se arman). La letra
  * es oscura sobre los pasteles y clara sobre un color oscuro (el gris oscuro del creador), para que se lea.
  */
-export function TierStrip({ label, color, neutral = false, ariaLabel, title, onLabel, labelAriaLabel, highlighted = false, dropProps, trailing, children }: TierStripProps) {
+export function TierStrip({ label, color, neutral = false, ariaLabel, title, onLabel, labelAriaLabel, highlighted = false, onListClick, trailing, children }: TierStripProps) {
   const length = Array.from(label).length
   const size = neutral ? 'text-micro uppercase tracking-[0.08em]' : length <= 2 ? 'text-stat' : length <= 6 ? 'text-lead' : 'text-body'
   const labelClass = cx('grid size-full place-items-center break-words px-1 text-center font-bold leading-tight', neutral ? 'bg-surface-raised text-foreground' : labelInk(color ?? ''), size)
@@ -66,7 +66,7 @@ export function TierStrip({ label, color, neutral = false, ariaLabel, title, onL
           {content}
         </div>
       )}
-      <ul className={cx('m-0 flex list-none flex-wrap content-start gap-0.5 bg-card-background p-0.5 transition-shadow duration-150 motion-reduce:transition-none', ROW_MIN_HEIGHT, highlighted && 'shadow-focus')} {...dropProps}>
+      <ul className={cx('m-0 flex list-none flex-wrap content-start gap-0.5 bg-card-background p-0.5 transition-shadow duration-150 motion-reduce:transition-none', ROW_MIN_HEIGHT, highlighted && 'shadow-focus')} onClick={onListClick}>
         {children}
       </ul>
       {/* Sobre el fondo de la página, sin caja propia: dos botones de 44 px uno sobre otro entran en la fila más baja (97,6 px a 390). */}
