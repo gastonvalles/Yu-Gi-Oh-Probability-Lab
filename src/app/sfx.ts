@@ -45,6 +45,7 @@ export function sfxOfAction(action: MatAction): Sfx | null {
     case 'regain':
       return 'special'
     case 'activate':
+    case 'rivalUse':
       return 'activate'
     case 'attack':
       return 'attack'

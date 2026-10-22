@@ -3,6 +3,7 @@ import { catalog } from './catalog'
 import { common } from './common'
 import { deck } from './deck'
 import { duel } from './duel'
+import { handtraps } from './handtraps'
 import { lab } from './lab'
 import { meta } from './meta'
 import { practice } from './practice'
@@ -12,6 +13,6 @@ import { search } from './search'
 import { shell } from './shell'
 
 /** Un área por archivo y por prefijo de clave (`shell.…`, `deck.…`): cada parte de la app edita sólo el suyo. */
-export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel }
+export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps }
 
-export const es = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel }
+export const es = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps }

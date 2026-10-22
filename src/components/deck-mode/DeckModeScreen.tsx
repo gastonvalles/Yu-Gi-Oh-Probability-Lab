@@ -6,6 +6,7 @@ import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles
 import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import { dealRival, readHandtrapConfig } from '../../app/handtraps'
 import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
 import { Presence } from '../../app/use-presence'
@@ -509,12 +510,25 @@ function usePracticeSession({
   const reviewPendingPatternCount = useMemo(() => patterns.filter((p) => p.needsReview).length, [patterns])
 
   const { session, state, start, dispatch, undo, seek } = useMatSession()
-  const newHand = useCallback(() => start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)), [start, mainIds, extraIds, handSize])
+  // Con qué simulador de handtraps se repartió la mano de ahora (lo que se eligió en Jugar → Solo): si al volver a la mesa sin haber jugado nada es otro, se reparte de nuevo.
+  const dealtWith = useRef<string | null>(null)
+  const newHand = useCallback(() => {
+    const config = readHandtrapConfig()
+    const table = createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)
+    const rival = dealRival(config, randomSeed())
+
+    dealtWith.current = JSON.stringify(config)
+    start(rival ? { ...table, rival: rival.rival } : table, [], rival?.names)
+  }, [start, mainIds, extraIds, handSize])
   const loadCombo = useCallback((combo: SavedCombo) => start(combo.initial, combo.actions, combo.names), [start])
 
-  // Al entrar a la práctica ya se roban las cartas de la mano.
+  // Al entrar a la práctica ya se roban las cartas de la mano (también si la mano de antes, sin jugadas, se repartió con otras handtraps del rival).
   useEffect(() => {
-    if (active && !session && mainIds.length >= handSize) {
+    if (!active || mainIds.length < handSize) return
+
+    const untouched = session !== null && !session.replay && session.actions.length === 0
+
+    if (!session || (untouched && dealtWith.current !== JSON.stringify(readHandtrapConfig()))) {
       newHand()
     }
   }, [active, session, mainIds.length, handSize, newHand])

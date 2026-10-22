@@ -5,6 +5,9 @@ import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
 import { Spotlight } from '../../probability/MatFx'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
+import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
+import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
+import { HANDTRAP_CATALOG, HANDTRAP_KINDS, type HandtrapConfig, type HandtrapKind } from '../../../app/handtraps'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
@@ -76,6 +79,8 @@ export function DuelSection() {
       <ArenaSamples />
 
       <RivalEffectSample />
+
+      <HandtrapSamples />
 
       <LobbyArenaSamples />
 
@@ -222,6 +227,64 @@ function RivalEffectSample() {
         Volver a mostrar
       </Button>
     </Specimen>
+  )
+}
+
+/** La mano del rival del simulador de handtraps: dos sin usar y dos usadas (con el paso en que se usaron); la segunda, con el menú abierto (el marco celeste). */
+const RIVAL_HAND: RivalHandCard[] = [
+  { id: 'rival.card-14558127-1', name: 'Ash Blossom & Joyous Spring', art: 'https://images.ygoprodeck.com/images/cards_small/14558127.jpg', usedAt: null },
+  { id: 'rival.card-97268402-1', name: 'Effect Veiler', art: 'https://images.ygoprodeck.com/images/cards_small/97268402.jpg', usedAt: null },
+  { id: 'rival.card-10045474-2', name: 'Infinite Impermanence', art: 'https://images.ygoprodeck.com/images/cards_small/10045474.jpg', usedAt: 3 },
+  { id: 'rival.card-42141493-1', name: 'Mulcharmy Fuwalos', art: 'https://images.ygoprodeck.com/images/cards_small/42141493.jpg', usedAt: 12 },
+]
+
+/** El pool de muestra: lo que se guarda no se toca (la hoja de acá no guarda nada). */
+const SAMPLE_POOL: HandtrapConfig = { enabled: true, count: 3, picks: HANDTRAP_CATALOG.slice(0, 4).map((pick) => ({ ...pick })) }
+
+/** El simulador de handtraps de «Jugar solo»: la franja de la mano del rival en la mesa, las cartas de la hoja del pool en sus estados y la hoja entera. */
+function HandtrapSamples() {
+  const [open, setOpen] = useState(false)
+  const [kinds, setKinds] = useState<HandtrapKind[]>(['single', 'repeatable', 'charmy'])
+  const cycle = (index: number) => setKinds((current) => current.map((kind, at) => (at === index ? HANDTRAP_KINDS[(HANDTRAP_KINDS.indexOf(kind) + 1) % HANDTRAP_KINDS.length]! : kind)))
+
+  return (
+    <>
+      <Specimen
+        title="Handtraps del rival · la franja de la mesa"
+        layout="column"
+        note={
+          <>
+            Arriba del campo, sólo en «Jugar solo» con el simulador encendido: cartas chicas boca arriba; tocar una abre el menú de la mesa (<Tag>Usar ahora</Tag>, <Tag>Ver carta</Tag>). La usada se queda en su lugar, apagada y con la tilde y el paso en que se usó. Archivo: <Tag>probability/RivalHandStrip.tsx</Tag>
+          </>
+        }
+      >
+        <div className="relative isolate overflow-hidden rounded-card border border-border-subtle px-2">
+          <MatScene className="absolute inset-0 -z-10" />
+          <RivalHandStrip cards={RIVAL_HAND} selectedId={RIVAL_HAND[1]!.id} onOpen={() => undefined} />
+        </div>
+      </Specimen>
+
+      <Specimen
+        title="Handtraps del rival · la hoja del pool"
+        layout="column"
+        note={
+          <>
+            Cada carta se marca con un toque (<Tag>aria-pressed</Tag>, aro ámbar); la elegida dice su tipo y otro toque lo cambia (Repetible → Una sola → Charmy). Sin elegir, el tipo sólo se lee en el mismo lugar. Abajo de la hoja, cuántas tiene el rival y, si el pool no alcanza, «como mucho N». Archivo: <Tag>duel/HandtrapPool.tsx</Tag>
+          </>
+        }
+      >
+        {/* En una columna: la muestra es angosta (en la hoja, desde 640 px, van de a dos: `POOL_LIST`). */}
+        <ul className="m-0 grid list-none gap-1 p-0">
+          {HANDTRAP_CATALOG.slice(0, 3).map((card, index) => (
+            <HandtrapPoolCard key={card.id} card={card} kind={kinds[index]!} chosen={index !== 1} onToggle={() => undefined} onCycle={() => cycle(index)} />
+          ))}
+        </ul>
+        <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpen(true)}>
+          Abrir la hoja del pool
+        </Button>
+        <HandtrapPicker isOpen={open} config={SAMPLE_POOL} onClose={() => setOpen(false)} onSave={() => setOpen(false)} />
+      </Specimen>
+    </>
   )
 }
 

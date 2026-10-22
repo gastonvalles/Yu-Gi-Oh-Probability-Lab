@@ -62,6 +62,14 @@ export interface MatState {
   extraUp: string[]
   /** Cartas marcadas como objetivo de un efecto (la marca se va al cambiar de lugar). */
   targeted: string[]
+  /** El simulador de handtraps de «Jugar solo» (`app/handtraps.ts`): la mano del rival. Sin él (la práctica de siempre, un duelo, las mesas y los combos de antes) no hay rival. */
+  rival?: RivalHand
+}
+
+/** La mano del rival en el simulador de handtraps: lo que robó (`hand`, que no cambia: una usada se queda en su lugar) y lo que ya usó, en el orden en que lo usó. */
+export interface RivalHand {
+  hand: string[]
+  used: string[]
 }
 
 /** Cómo llega la carta al campo (sólo cambia el texto de la jugada): Invocación Normal, Especial, de Péndulo (desde el Extra Deck boca arriba), o como escala de péndulo. */
@@ -121,6 +129,8 @@ export type MatAction =
    * dentro de otro no hace nada.
    */
   | { type: 'batch'; actions: MatAction[] }
+  /** El rival usa una handtrap de su mano (el simulador de «Jugar solo»): queda usada en su lugar. Es de la práctica: no viaja en un duelo. */
+  | { type: 'rivalUse'; id: string }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
@@ -544,6 +554,13 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     case 'batch':
       return action.actions.reduce((current, part) => (part.type === 'batch' ? current : matReducer(current, part)), state)
 
+    case 'rivalUse': {
+      const rival = state.rival
+
+      // Sólo una carta de la mano del rival que todavía no usó (una mesa sin rival, de antes o de un duelo, no cambia).
+      return rival && rival.hand.includes(action.id) && !rival.used.includes(action.id) ? { ...state, rival: { ...rival, used: [...rival.used, action.id] } } : state
+    }
+
     default:
       return state
   }
@@ -740,6 +757,9 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
 
     case 'regain':
       return t(isTakeZone(action.to) && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) })
+
+    case 'rivalUse':
+      return t('handtraps.step.used', { card: name(action.id) })
 
     case 'counter': {
       const from = locateCard(before, action.id)
