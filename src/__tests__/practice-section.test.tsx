@@ -309,6 +309,70 @@ describe('la práctica integrada en la mesa', () => {
     expect(shown()).toBe('Brick')
   })
 
+  it('los bordes de los paneles se arrastran: el del detalle sólo con el detalle (pantalla ancha) y el de los pasos desde 1101 px; la grilla y los agarres van por variables (20 rem si no se tocan)', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('1440') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const wide = render(<Harness />)
+
+    const mat = screen.getByRole('region', { name: 'Mesa de práctica' })
+    const [detailEdge, panelEdge] = screen.getAllByRole('separator')
+
+    expect(detailEdge).toHaveAccessibleName('Cambiar el ancho del detalle de la carta')
+    expect(detailEdge).toHaveClass('left-[var(--mat-left,20rem)]', 'hidden', 'min-[1440px]:block')
+    expect(panelEdge).toHaveAccessibleName('Cambiar el ancho del panel')
+    expect(panelEdge).toHaveClass('right-[var(--mat-right,20rem)]', 'hidden', 'min-[1101px]:block')
+    expect(mat).toHaveClass('min-[1101px]:grid-cols-[minmax(0,1fr)_var(--mat-right,20rem)]', 'min-[1440px]:grid-cols-[var(--mat-left,20rem)_minmax(0,1fr)_var(--mat-right,20rem)]')
+    // Sin tocarlos la sección no lleva ancho propio: la mesa queda como siempre.
+    expect(mat.style.getPropertyValue('--mat-left')).toBe('')
+
+    // Con el teclado (o arrastrándolo) el ancho pasa a la sección, y se recuerda.
+    fireEvent.keyDown(detailEdge, { key: 'ArrowRight', shiftKey: true })
+    expect(mat.style.getPropertyValue('--mat-left')).toBe('384px')
+    expect(JSON.parse(localStorage.getItem('ygo-lab:mat-panels:v1') ?? 'null')).toEqual({ left: 384, right: null })
+    wide.unmount()
+
+    // Sin el detalle (menos de 1440 px) queda sólo el borde de los pasos.
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<Harness />)
+    expect(screen.getAllByRole('separator').map((edge) => edge.getAttribute('aria-label'))).toEqual(['Cambiar el ancho del panel'])
+  })
+
+  it('apretar o arrastrar el borde de un panel no suelta la carta fija del detalle ni cierra la explicación de un chip', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('1440') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<Harness />)
+
+    const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
+    const shown = () => within(dock).queryByRole('heading')?.textContent ?? null
+    const [detailEdge, panelEdge] = screen.getAllByRole('separator')
+    const drag = (edge: HTMLElement) => {
+      fireEvent.pointerDown(edge, { button: 0, pointerId: 7, clientX: 300 })
+      fireEvent.pointerMove(edge, { pointerId: 7, clientX: 360 })
+      fireEvent.pointerUp(edge, { pointerId: 7, clientX: 360 })
+    }
+
+    tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(shown()).toBe('Starter')
+
+    drag(detailEdge!)
+    drag(panelEdge!)
+    fireEvent.pointerOver(within(hand()).getByRole('listitem', { name: 'Brick' }), { pointerType: 'mouse' })
+    expect(shown()).toBe('Starter')
+
+    // La explicación de un chip (abajo, en el panel de la derecha) sigue abierta mientras se agranda el panel.
+    const chip = within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })
+
+    fireEvent.click(chip)
+    drag(panelEdge!)
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('region', { name: 'Salida básica' })).toBeInTheDocument()
+
+    // Un click afuera de verdad sí suelta la carta y cierra la explicación.
+    fireEvent.pointerDown(screen.getByRole('group', { name: 'Zona de monstruo 1' }))
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.pointerOver(within(hand()).getByRole('listitem', { name: 'Brick' }), { pointerType: 'mouse' })
+    expect(shown()).toBe('Brick')
+  })
+
   it('con el dedo no hay mouse que pasar: tocar la carta la muestra y la fija', () => {
     window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('1440') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
     render(<Harness />)

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
@@ -20,6 +20,7 @@ import { TURN_BANK_MS, type TurnClock } from '../../../app/duel-clock'
 import type { RoomsApi } from '../../../app/duel-rooms'
 import { CardArt } from '../../CardArt'
 import { Icon } from '../../ui/Icon'
+import { ResizeHandle } from '../../ui/ResizeHandle'
 import { Segmented } from '../../ui/Segmented'
 import { cx } from '../../ui/cx'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
@@ -76,6 +77,7 @@ export function DuelSection() {
       <FieldArtSample duel={duel} />
       <MaterialSamples />
       <HoldSample />
+      <ResizeHandleSample />
 
       <ArenaSamples />
 
@@ -231,6 +233,62 @@ function HoldSample() {
         <div role="group" aria-label={PILE_TITLES.deck} data-holding={held} className={cx(CELL, HOLD_PRESS)}>
           <CardBack className="h-full" />
         </div>
+      </div>
+    </Specimen>
+  )
+}
+
+type HandleLook = 'rest' | 'active' | 'focus'
+
+/** El ancho de siempre de los paneles de la muestra (en chico: la mesa de verdad va de 16 a 36 rem). */
+const DEMO_PANEL = 140
+
+/** Cómo se ve el agarre en cada estado sin tener que tocarlo: con el mouse encima o arrastrándolo, la línea ámbar; con el foco del teclado, además el anillo de siempre. */
+const HANDLE_LOOK: Record<HandleLook, string> = {
+  rest: '',
+  active: '[&_[data-panel-resizer]]:before:opacity-100',
+  focus: '[&_[data-panel-resizer]]:before:opacity-100 [&_[data-panel-resizer]]:shadow-focus',
+}
+
+/** El borde de los paneles de la mesa, que se arrastra para cambiarles el ancho: una mesa en chico con el detalle a la izquierda y el panel a la derecha, con los agarres de verdad. */
+function ResizeHandleSample() {
+  const [look, setLook] = useState<HandleLook>('rest')
+  const [widths, setWidths] = useState({ left: DEMO_PANEL, right: DEMO_PANEL })
+  const boxRef = useRef<HTMLDivElement | null>(null)
+  const preview = (name: '--demo-left' | '--demo-right', current: number) => (width: number | null) => boxRef.current?.style.setProperty(name, `${width ?? current}px`)
+
+  return (
+    <Specimen
+      title="El borde de un panel · arrastrar para cambiar el ancho"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          El detalle de la carta (desde 1440 px) y los pasos y combos o el chat (desde 1101 px) tienen el borde que da a la mesa arrastrable, como el de VS Code pero de costado. En reposo no se ve nada más que el borde de siempre; con el mouse encima, arrastrándolo o con el foco del teclado, el cursor ↔ y una línea ámbar de 2 px a todo el alto (12 px de agarre, fuera de la grilla: pasar el mouse no corre nada). Doble clic: el ancho de siempre (20 rem). Teclado: ← y → (con Shift, de a 64 px) en la dirección en que se ve, Inicio y Fin a los topes. En la mesa, de 16 a 36 rem y la mesa nunca por debajo de 33 rem; se recuerda en el navegador. Probalo acá: pasá el mouse, arrastralo o llegá con Tab. Archivos: <Tag>ui/ResizeHandle.tsx</Tag> y <Tag>app/mat-panels.ts</Tag>.
+        </>
+      }
+    >
+      <Segmented
+        label="Cómo se ve"
+        variant="track"
+        value={look}
+        onChange={setLook}
+        options={[
+          { value: 'rest', label: 'En reposo' },
+          { value: 'active', label: 'Mouse o arrastrando' },
+          { value: 'focus', label: 'Foco' },
+        ]}
+      />
+      <div
+        ref={boxRef}
+        className={cx('relative grid h-40 grid-cols-[var(--demo-left)_minmax(0,1fr)_var(--demo-right)] overflow-hidden rounded-card border border-border-subtle', HANDLE_LOOK[look])}
+        style={{ '--demo-left': `${widths.left}px`, '--demo-right': `${widths.right}px` } as CSSProperties}
+      >
+        <div className="border-r border-primary/30 bg-card-background p-3 text-micro text-soft">Detalle · {widths.left} px</div>
+        <div className="grid place-items-center text-micro text-soft">La mesa</div>
+        <div className="border-l border-border-subtle p-3 text-micro text-soft">Pasos · {widths.right} px</div>
+        <ResizeHandle panel="left" value={widths.left} min={96} max={220} label="Cambiar el ancho del detalle" title="Arrastrá para cambiar el ancho · Doble clic: el de siempre" onPreview={preview('--demo-left', widths.left)} onCommit={(left) => setWidths((current) => ({ ...current, left }))} onReset={() => setWidths((current) => ({ ...current, left: DEMO_PANEL }))} className="left-[var(--demo-left)] -translate-x-1/2" />
+        <ResizeHandle panel="right" value={widths.right} min={96} max={220} label="Cambiar el ancho del panel" title="Arrastrá para cambiar el ancho · Doble clic: el de siempre" onPreview={preview('--demo-right', widths.right)} onCommit={(right) => setWidths((current) => ({ ...current, right }))} onReset={() => setWidths((current) => ({ ...current, right: DEMO_PANEL }))} className="right-[var(--demo-right)] translate-x-1/2" />
       </div>
     </Specimen>
   )

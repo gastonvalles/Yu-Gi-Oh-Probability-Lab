@@ -53,14 +53,14 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
   const ref = useRef<HTMLDivElement | null>(null)
 
-  // Tocar en cualquier otro lado de la pantalla (la mesa, una carta, un menú) cierra la explicación.
+  // Tocar en cualquier otro lado de la pantalla (la mesa, una carta, un menú) cierra la explicación; arrastrar el borde de un panel para cambiarle el ancho, no (`ResizeHandle`).
   useEffect(() => {
     if (activeId === null || !onDismiss) {
       return
     }
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (ref.current && event.target instanceof Node && !ref.current.contains(event.target)) {
+      if (ref.current && event.target instanceof Node && !ref.current.contains(event.target) && !(event.target instanceof Element && event.target.closest('[data-panel-resizer]'))) {
         onDismiss()
       }
     }

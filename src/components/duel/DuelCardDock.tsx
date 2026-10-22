@@ -100,10 +100,14 @@ const ART_BEZEL = 'relative bg-linear-to-br from-foreground/55 via-primary-soft/
 /** El hueco de la carta dentro del marco: negro, con un filo oscuro que la separa del bisel. */
 const ART_WELL = 'relative bg-input ring-1 ring-black/70'
 
-/** El lugar de la carta grande: el pedestal con su luz y el marco. De ancho, lo que entra (el alto de la ventana lo achica: la carta no empuja al texto fuera del panel) hasta 15,5 rem. */
+/**
+ * El lugar de la carta grande: el pedestal con su luz y el marco. Crece y se achica con el panel, que se agranda arrastrando su borde (`--mat-left`, el ancho que le da la mesa; 20 rem si no se cambió):
+ * con el de siempre mide como siempre, lo que entra hasta 15,5 rem y hasta 24 dvh (el alto de la ventana la achica: no empuja al texto fuera del panel). Más angosto, se achica en proporción (15,5 de
+ * 20); más ancho, al tope del alto se le suma lo que se ensanchó el panel, y la carta crece con él hasta 32 dvh de ancho (algo menos de la mitad del alto: el texto, que scrollea, se sigue leyendo).
+ */
 function ArtHolder({ children }: { children: ReactNode }) {
   return (
-    <div className="relative isolate mx-auto w-[min(100%,15.5rem,24dvh)] flex-none" data-testid="duel-dock-art">
+    <div className="relative isolate mx-auto w-[min(100%,calc(var(--mat-left,20rem)*31/40),calc(24dvh+max(0px,var(--mat-left,20rem)-20rem)),32dvh)] flex-none" data-testid="duel-dock-art">
       <span aria-hidden="true" className={ART_LAMP} />
       <div className={ART_BEZEL}>{children}</div>
     </div>

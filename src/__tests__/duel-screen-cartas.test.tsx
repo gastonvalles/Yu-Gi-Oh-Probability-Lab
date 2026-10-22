@@ -231,7 +231,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('en escritorio lo que se centra en la mesa (la carta grande de un efecto del rival, y las tarjetas de pausa y de resultado) deja afuera la columna del chat; en el celular, no', () => {
-    const edge = 'min-[1101px]:right-[20rem]'
+    // El ancho del chat: 20 rem, o el que se le dio arrastrando su borde (`--mat-right`).
+    const edge = 'min-[1101px]:right-[var(--mat-right,20rem)]'
 
     asDesktop()
     const { host, guest } = startDuel({ cardsById: monsters })
@@ -248,6 +249,22 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
     flush()
     expect(within(guest.container).getByRole('dialog', { name: '¡Ganaste!' }).parentElement).toHaveClass(edge)
+  })
+
+  it('en escritorio los bordes del chat y del detalle de la carta se arrastran para cambiarles el ancho: un separador cada uno, junto a su panel', () => {
+    asDesktop()
+    const { host, guest } = startDuel({ cardsById: monsters })
+
+    openTable(host, guest)
+    expect(within(guest.container).getAllByRole('separator').map((edge) => edge.getAttribute('aria-label'))).toEqual(['Cambiar el ancho del panel', 'Cambiar el ancho del detalle de la carta'])
+    expect(within(guest.container).getByRole('separator', { name: 'Cambiar el ancho del panel' })).toHaveClass('right-[var(--mat-right,20rem)]', 'min-[1101px]:block')
+  })
+
+  it('en el celular la mesa del duelo no tiene paneles a los costados: ningún borde que arrastrar', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+
+    openTable(host, guest)
+    expect(within(guest.container).queryAllByRole('separator')).toEqual([])
   })
 
   it('el rival se puede marcar como objetivo: su carta del campo, su mano, su Main, su cementerio y su destierro; el dueño lo ve en lo suyo, y se quita igual', () => {
