@@ -104,7 +104,7 @@ describe('la mesa de práctica', () => {
   it('jugando en vivo, robar enmarca la mano pero no agranda la carta', () => {
     render(<Harness />)
 
-    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 1' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
     expect(document.querySelector('[data-fx="hand"]')).not.toBeNull()
@@ -322,7 +322,6 @@ describe('la mesa de práctica', () => {
       render(<Harness initial={createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], ['card-7-1'], 2)} />)
 
       tap(screen.getByRole('button', { name: 'Main: 4' }))
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
       chooseSeveral(screen.getByRole('dialog', { name: 'Main · 4' }), ['Nibiru', 'Imperm'])
       fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
 
@@ -726,7 +725,6 @@ describe('la mesa de práctica', () => {
     render(<Harness />)
 
     tap(screen.getByRole('button', { name: 'Main: 1' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
 
     const viewer = screen.getByRole('dialog', { name: 'Main · 1' })
     fireEvent.click(within(viewer).getByRole('button', { name: 'Imperm' }))
@@ -743,7 +741,6 @@ describe('la mesa de práctica', () => {
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
 
     tap(screen.getByRole('button', { name: 'Main: 1' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Main · 1' })).getByRole('button', { name: 'Cerrar' }))
     expect(within(status()).getByText('1/1')).toBeInTheDocument()
     expect(within(status()).getByText('Barajás el deck')).toBeInTheDocument()
@@ -756,7 +753,6 @@ describe('la mesa de práctica', () => {
 
     const openDeck = () => {
       tap(screen.getByRole('button', { name: 'Main: 10' }))
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
       return screen.getByRole('dialog', { name: 'Main · 10' })
     }
 

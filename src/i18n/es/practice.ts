@@ -202,7 +202,8 @@ export const practice = {
   'practice.mat.turn': 'Turno {turn}',
   'practice.mat.field': 'Campo',
   'practice.mat.phases': 'Fases',
-  'practice.mat.mainDeck': 'Main Deck',
+  // Lo que se hace con el deck (su `title`): tocarlo, arrastrarlo y mantenerlo apretado.
+  'practice.mat.deckHelp': 'Main Deck · Tocá: buscar · Arrastrá: robar · Mantené: opciones',
   'practice.mat.currentStep': 'Paso actual',
   'practice.mat.confirm': 'Invocar',
   'practice.mat.pause': 'Pausar',
@@ -265,7 +266,7 @@ export const practice = {
   'practice.panel.steps': 'Pasos',
   'practice.panel.combos': 'Combos',
   'practice.panel.noPlays': 'Todavía no hay jugadas',
-  'practice.panel.noPlaysHint': 'Arrastrá una carta a una zona o tocala para ver qué podés hacer. Cada jugada queda anotada acá.',
+  'practice.panel.noPlaysHint': 'Arrastrá una carta a una zona o tocala para ver qué podés hacer. Mantené apretado un monstruo del campo para cambiarlo de posición. Cada jugada queda anotada acá.',
   'practice.panel.plays': 'Jugadas',
   'practice.panel.noCombos': 'No hay combos guardados',
   'practice.panel.noCombosHint': 'Jugá una línea en la mesa y tocá “Guardar combo”: después la reproducís paso a paso desde acá.',

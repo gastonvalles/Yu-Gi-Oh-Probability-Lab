@@ -1162,8 +1162,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     // Las Mágicas de Campo se activan directo desde el Deck (hay efectos que lo piden).
     if (pile === 'deck' && kind.fieldSpell) placeIn(t('practice.menu.activate'), ['field'], 'atk')
     // Colocar boca abajo directo desde el Deck (hay efectos que piden "Colocar 1 carta de tu Deck"): Mágicas y Trampas a su zona (la de Campo, a la suya) y monstruos a una Zona de Monstruo.
+    // Un Link (que llegó al Deck arrastrado: la mesa no lo impide) nunca queda boca abajo.
     if (pile === 'deck' && (kind.spell || kind.trap)) placeIn(t('practice.menu.set'), kind.fieldSpell ? ['field'] : ['st'], 'set')
-    else if (pile === 'deck' && kind.monster) placeIn(t('practice.menu.set'), zones, 'set')
+    else if (pile === 'deck' && kind.monster && !kind.link) placeIn(t('practice.menu.set'), zones, 'set')
 
     const how = pile === 'extra' && !faceUpExtra ? extraSummonOf(kind) : null
 
@@ -1258,6 +1259,18 @@ export function listDropActions(state: MatState, id: string, kindOf: (id: string
   }
 
   return listCardActions(state, id, kindOf, nameOf, [], rivalEmz).flatMap(aim)
+}
+
+/**
+ * Mantener apretado un monstruo del campo: la primera jugada de cambio de posición de su menú, sin abrirlo. Boca arriba pasa de ataque a defensa (o al revés) y boca abajo se Invoca por
+ * Volteo; un Link no tiene ninguna (siempre está en ataque) y lo que no es una zona de monstruo (las Mágicas y Trampas, la mano, las pilas) tampoco: null.
+ */
+export function holdAction(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string): MatAction | null {
+  const where = locateCard(state, id)
+
+  if (where?.kind !== 'spot' || (where.spot !== 'mz' && where.spot !== 'emz')) return null
+
+  return listCardActions(state, id, kindOf, nameOf).find((item) => item.action.type === 'position' && item.action.pos !== 'set')?.action ?? null
 }
 
 /** La clase de una jugada: un lote hecho sólo de Target cuenta como `target` (marcar varias no mueve nada, como marcar una). */

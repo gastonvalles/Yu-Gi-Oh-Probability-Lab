@@ -136,7 +136,7 @@ describe('la práctica integrada en la mesa', () => {
   it('robar la carta de ir 2º reevalúa la mano inicial: aparece el problema', () => {
     render(<Harness />)
 
-    tap(screen.getByRole('button', { name: 'Main: 5' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 5' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
 
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(6)
@@ -260,7 +260,6 @@ describe('la práctica integrada en la mesa', () => {
       const dock = screen.getByRole('region', { name: 'Detalle de la carta' })
 
       tap(screen.getByRole('button', { name: /^Main: \d+/ }))
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
       fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getAllByRole('button', { name: /Brick/ })[0]!)
       expect(within(dock).getByRole('heading', { name: 'Brick' })).toBeInTheDocument()
       expect(screen.queryByRole('menuitem', { name: 'Ver carta' })).not.toBeInTheDocument()
@@ -342,7 +341,7 @@ describe('la práctica integrada en la mesa', () => {
     // La primera jugada es robar una sola carta: la mano inicial pasa a tener una más.
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
-    tap(screen.getByRole('button', { name: 'Main: 5' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 5' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
     expect(evaluations()).toBe(mounted + 1)
   })

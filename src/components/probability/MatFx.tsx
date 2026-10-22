@@ -60,6 +60,12 @@ export const CARD_HOVER = [HOVER_RING, 'hover:z-10 hover:-translate-y-0.5 hover:
 export const HAND_CARD_HOVER = [HOVER_RING, 'hover:z-40! hover:-translate-y-3.5', NO_LIFT].join(' ')
 
 /**
+ * Mantener apretada una carta del campo (o el deck) mientras se espera la retención (`HOLD_MS` de `use-mat-drag.ts`, que pone `data-holding` por el DOM): se hunde de a poco, como al apretarla.
+ * Mientras dura le gana a los otros movimientos de la carta (el latido del Target, un destello): es lo que se está tocando. Con el movimiento reducido no se hunde: la jugada (o el menú) ya lo dice.
+ */
+export const HOLD_PRESS = 'motion-safe:data-[holding=true]:animate-hold-press!'
+
+/**
  * Las transiciones de una carta de la mesa: el giro al cambiar de posición, el brillo, la sombra y, para elevarse, `translate` y `scale` (propiedades individuales: no pisan el `transform` de la rotación de una carta
  * en defensa ni los vuelos). Quien sabe qué más anima (la mano tiene su propio ritmo) escribe la suya entera.
  */

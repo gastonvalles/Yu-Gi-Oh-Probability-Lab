@@ -254,7 +254,9 @@ describe('la mesa dibujada en inglés', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Choose Monster Zone 2' }))
     expect(within(zone('Monster Zone 2')).getByRole('button', { name: 'Maxx C, Defense Position' })).toBeInTheDocument()
 
-    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    // El menú del deck (con el teclado: tocarlo es buscar) y lo que dice su title.
+    expect(screen.getByRole('button', { name: 'Main: 1' })).toHaveAttribute('title', 'Main Deck · Tap: search · Drag: draw · Hold: options')
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 1' }), { key: 'Enter' })
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw', 'Reveal the top card', 'Send to Graveyard', 'Banish the top card', 'View the Deck', 'Shuffle'])
     expect(screen.getByRole('menu', { name: '1 card' })).toBeInTheDocument()
 
@@ -267,7 +269,7 @@ describe('la mesa dibujada en inglés', () => {
     expect(screen.getByRole('button', { name: 'Banish: 1' }).querySelector('[data-card-art]')).not.toBeNull()
 
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Undo' }))
-    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 1' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Banish the top card' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Face-down' }))
     expect(status()).toHaveTextContent('You banish Imperm face-down')

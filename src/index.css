@@ -129,6 +129,8 @@
   --animate-riffle-left: riffle-left 640ms var(--ease-in-out);
   --animate-riffle-right: riffle-right 640ms var(--ease-in-out);
   --animate-riffle-lift: riffle-lift 640ms var(--ease-in-out);
+  /* Mantener apretada una carta del campo o el deck: se hunde de a poco mientras se espera la retención (`HOLD_MS` de use-mat-drag.ts: 120 ms de espera, así un toque no la mueve, y 330 de hundirse). */
+  --animate-hold-press: hold-press 330ms var(--ease-out) 120ms both;
   /* Efectos de la mesa de práctica (MatFx.tsx): marcos de colores con una luz que les da la vuelta, mira de objetivo, destello de invocación, cartel de fase y zonas que se ofrecen. `--fx-rgb` (r g b) es el color de cada uno. */
   --animate-fx-frame-in: fx-frame-in 200ms var(--ease-out) both;
   --animate-fx-orbit: fx-orbit 1.2s linear infinite;
@@ -1117,6 +1119,13 @@
   @keyframes card-armed {
     50% {
       transform: scale(1.06);
+    }
+  }
+
+  /* Con `scale` (no `transform`): la carta en defensa sigue acostada y el vuelo entre zonas no se pisa. Arranca de la escala que tenga (la del hover, con el mouse). */
+  @keyframes hold-press {
+    to {
+      scale: 0.93;
     }
   }
 

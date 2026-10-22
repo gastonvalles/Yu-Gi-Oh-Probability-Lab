@@ -16,6 +16,7 @@ import {
   type ControlOffer,
   fieldCards,
   freeTargets,
+  holdAction,
   isForeignId,
   isToken,
   listBatchActions,
@@ -88,7 +89,7 @@ import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialo
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MatViewToggle } from './MatViewToggle'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
+import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
@@ -337,6 +338,8 @@ const MAT_CARD = [
   'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
   // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
   FX_CARD,
+  // Mantenida apretada (en la práctica, un monstruo que cambia de posición): se hunde mientras se espera.
+  HOLD_PRESS,
   'motion-reduce:animate-none motion-reduce:transition-none',
 ].join(' ')
 
@@ -936,14 +939,14 @@ export function PracticeMat({
   }, [])
 
   const closeViewer = useCallback(() => {
-    // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada).
-    if (viewer === 'deck') {
+    // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada). Vacío no hay nada que barajar: tocarlo sin cartas no deja un paso de más.
+    if (viewer === 'deck' && state.deck.length > 0) {
       onDispatch({ type: 'shuffle', seed: randomSeed() })
       setShuffleKey((key) => key + 1)
     }
 
     setViewer(null)
-  }, [viewer, onDispatch])
+  }, [viewer, onDispatch, state.deck.length])
 
   /** Jugar mirando el deck (sacar una carta o varias, revelarla, adjuntarla): el resto se baraja en la misma jugada (buscar = un paso, que se deshace entero; nunca dos jugadas de un toque). */
   const searching = useCallback((action: MatAction) => viewer === 'deck' && cardsOfPlay(action).some((id) => state.deck.includes(id)), [viewer, state.deck])
@@ -1295,7 +1298,13 @@ export function PracticeMat({
   )
 
   const handleDrop = useCallback(
-    (source: MatDragSource, target: MatDropTarget) => {
+    (source: MatDragSource, target: MatDropTarget | null) => {
+      // Arrastrar el deck es robar: soltado fuera de toda zona (o en la mano, abajo) roba la carta del tope. Lo demás, soltado ahí, no hace nada.
+      if (!target) {
+        if (source.id === DECK_TOP && state.deck.length > 0) onDispatch({ type: 'draw', count: 1 })
+        return
+      }
+
       // La ficha soltada en una zona de monstruo principal libre pregunta si sale en ataque o en defensa, ahí mismo.
       if (source.id === NEW_TOKEN) {
         if (target.kind === 'spot' && target.spot === 'mz' && !placedAt(state, target.spot, target.index)) {
@@ -1370,15 +1379,40 @@ export function PracticeMat({
         return
       }
 
+      // Tocar el deck es buscar en él: abre el visor (vacío, si no quedan cartas, como las otras pilas). Las demás opciones salen manteniéndolo apretado o con el teclado.
       if (source.id === DECK_TOP) {
         setPicking(null)
-        setMenu({ kind: 'deck', rect })
+        setMenu(null)
+        setViewer('deck')
         return
       }
 
       openCard(source.id, rect)
     },
     [openCard],
+  )
+
+  /**
+   * Lo que hace mantener apretado un monstruo del campo: cambia de posición sin menú (`holdAction`: ataque ↔ defensa, boca abajo se voltea; un Link no tiene nada). Es sólo de la práctica: en un
+   * duelo, un toque largo sin querer le mandaría una jugada al rival. Eligiendo una zona, Sacrificios, materiales o contadores, tampoco: mantener una carta es tocarla.
+   */
+  const holdPlay = useCallback((id: string) => (duel || picking || counterMode !== null ? null : holdAction(state, id, kindOf, nameOf)), [duel, picking, counterMode, state, kindOf, nameOf])
+
+  /** Mantener apretado: el deck abre su menú de opciones (en la práctica y en un duelo) y un monstruo del campo cambia de posición (`holdPlay`). */
+  const handleHold = useCallback(
+    (source: MatDragSource, rect: DOMRect) => {
+      if (source.id === DECK_TOP) {
+        setPicking(null)
+        setMenu({ kind: 'deck', rect })
+        return true
+      }
+
+      const action = holdPlay(source.id)
+
+      if (action) play(action)
+      return action !== null
+    },
+    [holdPlay, play],
   )
 
   // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.
@@ -1392,7 +1426,7 @@ export function PracticeMat({
     light(previous, false)
     light(next, true)
   }, [])
-  const { drag, bind, setGhostElement } = useMatDrag({ onDrop: handleDrop, onTap: handleTap, onOver: lightZone })
+  const { drag, bind, setGhostElement } = useMatDrag({ onDrop: handleDrop, onTap: handleTap, onHold: handleHold, onOver: lightZone })
 
   // La zona que enciende la mano (la otra fuente de arrastre): se recuerda para apagarla cuando cambia.
   const handLit = useRef<string | null>(null)
@@ -1689,6 +1723,7 @@ export function PracticeMat({
             chosen={chosen ? chosenLabel : null}
             targeted={targetedIds.has(shown.id)}
             selected={selectedId === shown.id}
+            hold={holdPlay(shown.id) !== null}
             bind={bind}
             onOpen={(rect) => openCard(shown.id, rect)}
           />
@@ -2031,20 +2066,21 @@ export function PracticeMat({
           {state.mz.map((_, index) => cell('mz', index, `m${index + 1}`))}
           {state.st.map((_, index) => cell('st', index, `s${index + 1}`))}
 
-          {/* Deck: se arrastra su tope (robar, mandar al cementerio, sacar al campo) o se toca para el menú. Se baraja con cada mano nueva y reparte de a una. */}
+          {/* Deck: tocarlo es buscar (el visor), arrastrar su tope es robar (o mandarlo al cementerio, al destierro o al campo, según dónde se suelte) y mantenerlo apretado abre el menú; con el
+              teclado, el menú. Se baraja con cada mano nueva y reparte de a una. */}
           <div
             ref={deckRef}
             role="button"
             tabIndex={0}
             aria-label={`${PILE_TITLES.deck}: ${state.deck.length}`}
-            title={t('practice.mat.mainDeck')}
+            title={t('practice.mat.deckHelp')}
             data-drop="deck"
             data-over="false"
             data-targeted={rivalMarks?.piles.includes('deck') ? 'true' : 'false'}
             data-pointed={duel?.pointed?.pile === 'deck' ? 'true' : undefined}
-            className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus')}
+            className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus', HOLD_PRESS)}
             style={{ gridArea: 'deck' }}
-            {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true })}
+            {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true, hold: true })}
             onKeyDown={(event) => activate(event, () => setMenu({ kind: 'deck', rect: event.currentTarget.getBoundingClientRect() }))}
             onContextMenu={(event) => event.preventDefault()}
           >
@@ -2402,6 +2438,8 @@ interface PlacedCardProps {
   selected: boolean
   /** La carta soltada que todavía espera que se elija cómo sale: está en la zona (como se la verá, si la elección es otra se acomoda) pero no se toca ni se arrastra, y lleva el marco de la carta del menú. */
   pending: boolean
+  /** Mantenerla apretada hace algo (en la práctica, cambiarla de posición): mientras se espera, se hunde. */
+  hold: boolean
   bind: ReturnType<typeof useMatDrag>['bind']
   onOpen: (rect: DOMRect) => void
 }
@@ -2411,7 +2449,7 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, hold, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
   // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -2462,7 +2500,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
         data-glow={glow ? 'true' : 'false'}
         data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
         data-dim={dim ? 'true' : 'false'}
-        {...bind({ id: placed.id, name: card.name, art: artOf(card) })}
+        {...bind({ id: placed.id, name: card.name, art: artOf(card), hold })}
         onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
         onContextMenu={(event) => event.preventDefault()}
       >

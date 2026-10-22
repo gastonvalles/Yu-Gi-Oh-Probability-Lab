@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type TouchEvent as ReactTouchEvent } from 'react'
 
 import type { MatPile, MatSpot } from './practice-mat'
 
@@ -27,6 +27,8 @@ export interface MatDragSource {
   back?: boolean
   /** Tamaño del fantasma cuando no es el del elemento que se arrastra (la ficha del menú: una carta del tamaño de una zona); queda centrado bajo el puntero. */
   size?: () => { width: number; height: number } | null
+  /** Se puede mantener apretado (`onHold`): mientras se espera, el elemento lleva `data-holding="true"`, el indicio de que algo va a pasar. */
+  hold?: boolean
 }
 
 export interface MatDragState {
@@ -45,14 +47,27 @@ interface Session {
   moved: boolean
   element: HTMLElement
   size: { width: number; height: number } | null
+  /** El temporizador de la retención (0: no se espera ninguna). */
+  hold: number
 }
 
 const DRAG_THRESHOLD = 6
+/**
+ * Mantener apretado (mouse, dedo o lápiz) sin moverse: a los 450 ms la pulsación es una retención, no un toque. Moverse más que el umbral del arrastre ya es arrastrar
+ * (la tolerancia es la misma: no hay un tramo en el que no sea ni una cosa ni la otra). El indicio (`animate-hold-press`, en index.css) dura lo mismo.
+ */
+export const HOLD_MS = 450
 
 interface UseMatDragOptions {
-  onDrop: (source: MatDragSource, target: MatDropTarget) => void
+  /** Soltar después de arrastrar: en una zona o una pila (`data-drop`) o fuera de todas (null). Si el navegador corta el arrastre, no se suelta en ningún lado. */
+  onDrop: (source: MatDragSource, target: MatDropTarget | null) => void
   /** Toque sin arrastre. */
   onTap: (source: MatDragSource, rect: DOMRect) => void
+  /**
+   * Retención de una fuente con `hold`: true si hizo algo (la pulsación ya se usó: soltar no es un toque ni moverse, un arrastre); false si no tiene nada que hacer ahora (la pulsación
+   * sigue como siempre: al soltar es un toque). Se llama con lo último que se dibujó, no con lo de cuando se apretó.
+   */
+  onHold?: (source: MatDragSource, rect: DOMRect) => boolean
   /**
    * La zona (`data-drop`) bajo el puntero cambió: la que se dejó y la nueva (null = ninguna). Encenderla es cosa de quien llama, por el DOM:
    * si pasara por el estado de React, cruzar cada zona volvería a dibujar la mesa entera. Tiene que ser una función estable.
@@ -60,12 +75,22 @@ interface UseMatDragOptions {
   onOver?: (previous: string | null, next: string | null) => void
 }
 
+const preventCompatClick = (event: ReactTouchEvent<HTMLElement>) => event.preventDefault()
+
+/** Deja de esperar la retención y saca el indicio. */
+function stopHold(session: Session) {
+  window.clearTimeout(session.hold)
+  session.hold = 0
+  delete session.element.dataset.holding
+}
+
 /**
  * Arrastre entre zonas de la mesa, con el idioma de la mano de práctica: captura del puntero, umbral
  * de 6 px (mouse y dedo: las cartas son `touch-none`) y un cuadro por frame. El destino se busca con
  * `elementFromPoint` sobre `[data-drop]`; el fantasma se mueve por el ref y la zona de abajo se avisa con `onOver`, sin pasar por React.
+ * Una fuente con `hold` también se puede mantener apretada (`onHold`, a los `HOLD_MS`); el indicio va por el DOM, como la zona encendida.
  */
-export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
+export function useMatDrag({ onDrop, onTap, onHold, onOver }: UseMatDragOptions) {
   const [drag, setDrag] = useState<MatDragState | null>(null)
   const ghostRef = useRef<HTMLDivElement | null>(null)
   const sessionRef = useRef<Session | null>(null)
@@ -73,6 +98,19 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
   const frameRef = useRef(0)
   const positionRef = useRef({ x: 0, y: 0 })
   const overRef = useRef<string | null>(null)
+  // La retención se resuelve 450 ms después de apretar: con lo que la mesa tenga para entonces.
+  const holdRef = useRef(onHold)
+
+  useEffect(() => {
+    holdRef.current = onHold
+  }, [onHold])
+
+  useEffect(
+    () => () => {
+      if (sessionRef.current) stopHold(sessionRef.current)
+    },
+    [],
+  )
 
   const placeGhost = useCallback(() => {
     const ghost = ghostRef.current
@@ -110,9 +148,10 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
       return
     }
 
-    const rect = event.currentTarget.getBoundingClientRect()
+    const element = event.currentTarget
+    const rect = element.getBoundingClientRect()
     const size = source.size?.() ?? null
-    sessionRef.current = {
+    const session: Session = {
       source,
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -120,10 +159,26 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
       offsetX: size ? size.width / 2 : event.clientX - rect.left,
       offsetY: size ? size.height / 2 : event.clientY - rect.top,
       moved: false,
-      element: event.currentTarget,
+      element,
       size,
+      hold: 0,
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
+
+    sessionRef.current = session
+    element.setPointerCapture(event.pointerId)
+
+    if (source.hold) {
+      element.dataset.holding = 'true'
+      session.hold = window.setTimeout(() => {
+        stopHold(session)
+
+        // Hizo algo: la pulsación termina acá (lo que llegue del puntero hasta soltarlo ya no es de nadie) y el celular lo marca con una vibración corta.
+        if (sessionRef.current === session && holdRef.current?.(source, element.getBoundingClientRect())) {
+          sessionRef.current = null
+          navigator.vibrate?.(12)
+        }
+      }, HOLD_MS)
+    }
   }, [])
 
   const onPointerMove = useCallback(
@@ -140,6 +195,7 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
         }
 
         session.moved = true
+        stopHold(session)
         const rect = session.element.getBoundingClientRect()
         // El tamaño de la carta, no el del rect: en el campo inclinado el rect sale achatado y la carta arrastrada saldría más ancha que alta.
         setDrag({ source: session.source, width: session.size?.width ?? (session.element.offsetWidth || rect.width), height: session.size?.height ?? (session.element.offsetHeight || rect.height) })
@@ -163,23 +219,21 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
       }
 
       sessionRef.current = null
+      stopHold(session)
       window.cancelAnimationFrame(frameRef.current)
       frameRef.current = 0
       pendingRef.current = null
 
       if (session.moved) {
-        // Se mira la zona bajo el puntero en el momento de soltar (puede no haber llegado el último frame).
-        const value = event.type === 'pointerup' ? (document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? overRef.current) : null
-        const target = parseDropTarget(value)
-
         setDrag(null)
         onOver?.(overRef.current, null)
-        overRef.current = null
 
-        if (target) {
-          onDrop(session.source, target)
+        // Se mira la zona bajo el puntero en el momento de soltar (puede no haber llegado el último frame). Cortado (cancelado, o sin la captura), no se suelta.
+        if (event.type === 'pointerup') {
+          onDrop(session.source, parseDropTarget(document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? overRef.current))
         }
 
+        overRef.current = null
         return
       }
 
@@ -198,6 +252,9 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
       onPointerCancel: onPointerEnd,
       // Sin aviso (el celular le quita el puntero a la carta): el arrastre termina igual, sin soltarla.
       onLostPointerCapture: onPointerEnd,
+      // El gesto son los eventos del puntero: el click que el celular manda después de levantar el dedo caería en lo que se acaba de abrir debajo (una carta del visor del deck, el fondo del
+      // menú que abrió la retención) y haría otra cosa. Se corta en el `touchend` (con el mouse no hay).
+      onTouchEnd: preventCompatClick,
     }),
     [onPointerDown, onPointerMove, onPointerEnd],
   )
