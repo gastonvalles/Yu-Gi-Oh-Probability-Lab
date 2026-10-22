@@ -199,6 +199,10 @@ export const practice = {
   'practice.mat.soundsOn': 'Activar los sonidos',
   'practice.mat.soundsOff': 'Silenciar los sonidos',
   'practice.mat.stepsAndCombos': 'Pasos y combos',
+  // Los bordes de los paneles de los costados (escritorio): se arrastran para cambiarles el ancho.
+  'practice.mat.resizeDetail': 'Cambiar el ancho del detalle de la carta',
+  'practice.mat.resizePanel': 'Cambiar el ancho del panel',
+  'practice.mat.resizeHint': 'Arrastrá para cambiar el ancho · Doble clic: el de siempre',
   'practice.mat.turn': 'Turno {turn}',
   'practice.mat.field': 'Campo',
   'practice.mat.phases': 'Fases',

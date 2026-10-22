@@ -53,7 +53,8 @@ import { setDuelFullscreen, toggleDuelFullscreen, useDuelFullscreen } from '../.
 import { riffle } from '../../app/shuffle-fx'
 import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
-import { useElementSize } from '../../app/use-element-width'
+import { useMatPanels } from '../../app/mat-panels'
+import { useElementFits } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { Presence } from '../../app/use-presence'
@@ -78,6 +79,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { artOfDrawId } from '../duel/duel-art'
@@ -189,9 +191,9 @@ export interface DuelMatLink {
   rivalEmz: readonly boolean[]
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
   cover?: ReactNode
-  /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
+  /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem (o lo que se le dé arrastrando su borde, como al de los pasos de la práctica). */
   aside?: ReactNode
-  /** Un panel fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`: el detalle de la carta que se tocó): la mesa le deja 20rem y no se mueve cuando cambia. */
+  /** Un panel fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`: el detalle de la carta que se tocó): la mesa le deja 20rem (o lo que se le dé arrastrando su borde) y no se mueve cuando cambia. */
   detail?: ReactNode
   /** Se hizo click en una carta tuya (de la mano, del campo o de un visor de pila): `detail` la muestra y queda fija hasta un click afuera o en otra carta. */
   onPeek?: (peek: { name: string; card: ApiCardReference | null }) => void
@@ -459,10 +461,11 @@ export function PracticeMat({
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Celular en vertical: el campo del duelo se ajusta al alto de la pantalla para que se vea tu mano (ver `compact-field.ts`).
   const compact = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
-  // Laterales: en un duelo de escritorio, si la columna de la mesa tiene ancho de sobra, lo que rodea al campo va a sus costados (ver `duel-rails.ts`).
+  // Laterales: en un duelo de escritorio, si la columna de la mesa tiene ancho de sobra, lo que rodea al campo va a sus costados (ver `duel-rails.ts`). Se mira sólo si entran: arrastrar el borde de un
+  // panel le cambia el ancho a la columna en cada cuadro y la mesa no se vuelve a dibujar por eso.
   const columnRef = useRef<HTMLDivElement | null>(null)
-  const columnSize = useElementSize(columnRef)
-  const rails = Boolean(duel) && isDesktop && railsFit(columnSize.width, columnSize.height)
+  const railsRoom = useElementFits(columnRef, railsFit)
+  const rails = Boolean(duel) && isDesktop && railsRoom
   // La mesa (la práctica y la del duelo) mantiene la pantalla encendida: se piensa y se espera sin tocarla.
   useWakeLock(true)
 
@@ -602,6 +605,8 @@ export function PracticeMat({
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
+  // El ancho de los paneles de los costados (el detalle a la izquierda; los pasos y combos o el chat a la derecha): 20 rem hasta que se arrastra su borde (`ResizeHandle`), y se recuerda.
+  const panels = useMatPanels(sectionRef, { left: Boolean(detail), right: sidePanel })
   const view = useMatView()
   const isDuel = Boolean(duel)
   // La mano del rival del simulador de handtraps está arriba del campo (sólo en la práctica): el campo de la vista 3D no sube más que ella.
@@ -1920,20 +1925,26 @@ export function PracticeMat({
     </div>
   )
 
+  // Los bordes de los paneles de los costados se arrastran para cambiarles el ancho (Gastón, 2026-10-22), sólo donde hay panel: el del detalle desde 1440 px y el de la derecha (los pasos o el chat)
+  // desde 1101. Cada agarre va sobre su borde, fuera de la grilla (no ocupa lugar ni corre nada) y encima de la mesa y de los paneles; en el orden del foco, junto a su panel.
+  const rightHandle = <ResizeHandle panel="right" {...panels.right} label={t('practice.mat.resizePanel')} title={t('practice.mat.resizeHint')} className="hidden right-[var(--mat-right,20rem)] translate-x-1/2 min-[1101px]:block" />
+
   return (
     <section
       ref={sectionRef}
       aria-label={t('practice.mat.label')}
       onPointerOver={detail ? showHovered : undefined}
+      // `--mat-left` y `--mat-right`: el ancho de los paneles de los costados, sólo si se eligió otro que el de siempre (20 rem, el de las clases).
+      style={panels.style}
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
         // `grid-cols-[minmax(0,1fr)]`: la columna mide lo que mide la pantalla; sin eso crece hasta lo más ancho que tenga adentro (la barra de arriba) y en un celular chico se corta todo el lado derecho.
         'relative isolate grid h-full min-h-0 select-none grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-background',
         // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
-        sidePanel && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
-        // Con el detalle fijo a la izquierda (y los pasos o el chat a la derecha) son tres columnas: 20 rem, la mesa y 20 rem.
-        Boolean(detail) && (sidePanel ? 'min-[1440px]:grid-cols-[20rem_minmax(0,1fr)_20rem]' : 'min-[1440px]:grid-cols-[20rem_minmax(0,1fr)]'),
+        sidePanel && 'min-[1101px]:grid-cols-[minmax(0,1fr)_var(--mat-right,20rem)]',
+        // Con el detalle fijo a la izquierda (y los pasos o el chat a la derecha) son tres columnas: el detalle, la mesa y el panel (20 rem cada uno, o lo que se les dé arrastrando su borde).
+        Boolean(detail) && (sidePanel ? 'min-[1440px]:grid-cols-[var(--mat-left,20rem)_minmax(0,1fr)_var(--mat-right,20rem)]' : 'min-[1440px]:grid-cols-[var(--mat-left,20rem)_minmax(0,1fr)]'),
       )}
     >
       {/* El fondo de la mesa (la arena): la columna de la mesa, a todo el alto. Es decoración: va detrás de todo y no ocupa lugar en la grilla. */}
@@ -2240,17 +2251,25 @@ export function PracticeMat({
 
       {/* El panel fijo de un duelo (el chat), a la derecha y a todo el alto, sólo en escritorio. */}
       {duel?.aside ? (
-        <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col', 'min-[1101px]:col-start-2', Boolean(detail) && 'min-[1440px]:col-start-3')}>{duel.aside}</section>
+        <>
+          {rightHandle}
+          <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col', 'min-[1101px]:col-start-2', Boolean(detail) && 'min-[1440px]:col-start-3')}>{duel.aside}</section>
+        </>
       ) : null}
 
       {/* El detalle fijo (la carta que se tocó) de un duelo y de la práctica, a la izquierda y a todo el alto, sólo en escritorio: la columna está siempre (vacía hasta la primera carta), así la mesa no se corre. */}
       {detail ? (
-        <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-primary/30 bg-linear-to-b from-card-background to-background px-4 pb-4 pt-4 shadow-[inset_0_1px_0_rgb(var(--foreground-rgb)/0.06),10px_0_28px_-14px_rgb(0_0_0/0.7)] min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
+        <>
+          <section aria-label={t('duel.dock.label')} data-card-dock="" className="hidden min-h-0 border-r border-primary/30 bg-linear-to-b from-card-background to-background px-4 pb-4 pt-4 shadow-[inset_0_1px_0_rgb(var(--foreground-rgb)/0.06),10px_0_28px_-14px_rgb(0_0_0/0.7)] min-[1440px]:col-start-1 min-[1440px]:row-span-2 min-[1440px]:row-start-1 min-[1440px]:flex min-[1440px]:flex-col">{detail}</section>
+          {/* Su borde derecho se arrastra (como el del panel de la derecha: `rightHandle`). */}
+          <ResizeHandle panel="left" {...panels.left} label={t('practice.mat.resizeDetail')} title={t('practice.mat.resizeHint')} className="hidden left-[var(--mat-left,20rem)] -translate-x-1/2 min-[1440px]:block" />
+        </>
       ) : null}
 
       {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
       {duel ? null : (
         <>
+          {rightHandle}
           <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3', Boolean(detail) && 'min-[1440px]:col-start-3')} aria-label={t('practice.mat.stepsAndCombos')}>
             {panel}
             {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
@@ -2339,7 +2358,7 @@ export function PracticeMat({
 
       <Presence>{inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}</Presence>
 
-      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
+      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin los paneles de los costados (`--mat-left` / `--mat-right`, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
       {stage ? (
         <Spotlight
           key={stage.key}
@@ -2348,7 +2367,7 @@ export function PracticeMat({
           caption={steps[stage.step - 1] ?? null}
           flip={stage.flip}
           origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
-          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
         />
       ) : null}
 
@@ -2363,7 +2382,7 @@ export function PracticeMat({
           caption={duel.rivalEffect.caption}
           detail={duel.rivalEffect.detail}
           origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
-          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
         />
       ) : null}
 
@@ -2375,13 +2394,13 @@ export function PracticeMat({
       {/* Contestada, la pregunta sigue mientras sale (`Presence`; `PassPrompt` hace la salida) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
       <Presence>
         {duel?.prompt ? (
-          <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>
+          <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none">{duel.prompt}</div>
           </div>
         ) : null}
       </Presence>
 
-      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>{duel.cover}</div> : null}
+      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', Boolean(duel.aside) && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
 
       {drag
         ? createPortal(

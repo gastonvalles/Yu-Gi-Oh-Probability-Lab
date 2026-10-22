@@ -90,6 +90,19 @@ describe('el detalle fijo: la carta del mouse, y la del click mientras no se hag
     expect(nameOf(result.current.shown)).toBe('Carta 1')
   })
 
+  it('apretar el borde de un panel para cambiarle el ancho (`ResizeHandle`) no la suelta', () => {
+    const edge = document.body.appendChild(document.createElement('div'))
+
+    edge.setAttribute('data-panel-resizer', '')
+
+    const { result } = renderHook(() => useDockPeek())
+
+    act(() => result.current.lock(peekOf(1)))
+    fireEvent.pointerDown(edge)
+    expect(result.current.locked).toBe(true)
+    expect(nameOf(result.current.shown)).toBe('Carta 1')
+  })
+
   it('un click en otra carta la fija a ésa; y la del rival (por su id real, o boca abajo) funciona igual', () => {
     const { result } = renderHook(() => useDockPeek())
 

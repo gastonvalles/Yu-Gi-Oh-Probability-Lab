@@ -42,6 +42,8 @@ const ash = cardOf(14558127, 'Ash Blossom & Joyous Spring')
 const peek = (card: ApiCardSearchResult) => ({ name: card.name, card })
 
 const ZOOM = 'Ver la carta en grande'
+/** El ancho de la carta grande: con el panel de siempre (20 rem), lo que entra hasta 15,5 rem y 24 dvh (el alto de la ventana); con el panel más ancho (`--mat-left`), crece con él hasta 32 dvh. */
+const ART_WIDTH = 'w-[min(100%,calc(var(--mat-left,20rem)*31/40),calc(24dvh+max(0px,var(--mat-left,20rem)-20rem)),32dvh)]'
 const art = () => screen.getByTitle(/^Arrastrala hacia donde quieras/)
 const flipper = () => art().querySelector('[data-flipped]') as HTMLElement
 
@@ -50,7 +52,7 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     render(<DuelCardDock peek={peek(blue)} />)
 
     expect(screen.getByText('Detalle de la carta')).toBeInTheDocument()
-    expect(screen.getByTestId('duel-dock-art')).toHaveClass('w-[min(100%,15.5rem,24dvh)]')
+    expect(screen.getByTestId('duel-dock-art')).toHaveClass(ART_WIDTH)
     // El marco (el bisel) rodea el hueco donde se inclina la carta.
     expect(art().parentElement?.parentElement).toHaveClass('p-1.5')
   })
@@ -146,7 +148,7 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
   it('lo que no se conoce (boca abajo, o la carta que todavía no llegó) se ve quieto y no se agranda', () => {
     const view = render(<DuelCardDock peek={{ faceDown: true }} />)
 
-    expect(screen.getByTestId('duel-dock-art')).toHaveClass('w-[min(100%,15.5rem,24dvh)]')
+    expect(screen.getByTestId('duel-dock-art')).toHaveClass(ART_WIDTH)
     expect(screen.queryByRole('button', { name: ZOOM })).not.toBeInTheDocument()
 
     view.rerender(<DuelCardDock peek={{ name: 'Carta sin datos', card: null }} />)
