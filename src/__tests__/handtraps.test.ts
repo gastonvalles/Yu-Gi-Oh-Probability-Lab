@@ -7,10 +7,11 @@ import {
   DEFAULT_HANDTRAP_CONFIG,
   HANDTRAP_CATALOG,
   HANDTRAP_CONFIG_KEY,
+  MAX_COPIES,
+  MAX_RIVAL_HAND,
   dealRival,
-  dealRivalHand,
+  handCount,
   isRivalId,
-  maxRivalHand,
   readHandtrapConfig,
   rivalCardOf,
   writeHandtrapConfig,
@@ -28,148 +29,104 @@ const memory = () => {
   return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => void data.set(key, value) } as unknown as Storage
 }
 
-const pick = (id: number, kind: HandtrapPick['kind'], name = `Carta ${id}`): HandtrapPick => ({ id, name, kind })
-/** El passcode detrás de una carta del rival (`rival.card-7-2` → 7). */
-const passcodeOf = (id: string) => Number(/^rival\.card-(\d+)-\d+$/.exec(id)?.[1])
-const countOf = (hand: readonly string[], passcode: number) => hand.filter((id) => passcodeOf(id) === passcode).length
-const SEEDS = Array.from({ length: 200 }, (_, index) => index * 7919 + 1)
-
-/** El ejemplo de Andrés: Veiler, Ash, Imperm, Ogre, Fuwalos, Droll, Nibiru e Impulse (las repetibles con 3 copias, las únicas con 1). */
-const ANDRES = HANDTRAP_CATALOG.filter((card) => ['Effect Veiler', 'Ash Blossom & Joyous Spring', 'Infinite Impermanence', 'Ghost Ogre & Snow Rabbit', 'Mulcharmy Fuwalos', 'Droll & Lock Bird', 'Nibiru, the Primal Being', 'Dominus Impulse'].includes(card.name))
+const pick = (id: number, copies: number, name = `Carta ${id}`): HandtrapPick => ({ id, name, copies })
+const ASH = pick(14558127, 1, 'Ash Blossom & Joyous Spring')
+const VEILER = pick(97268402, 1, 'Effect Veiler')
+const IMPERM = pick(10045474, 1, 'Infinite Impermanence')
 
 describe('el catálogo de handtraps', () => {
-  it('sólo trae cartas que el motor de clasificación tiene como handtrap, cada passcode una vez', () => {
+  it('sólo trae cartas que el motor de clasificación tiene como handtrap, cada passcode una vez y sólo con su passcode y su nombre', () => {
     for (const card of HANDTRAP_CATALOG) {
       expect(KNOWN_CARDS_MAP.get(normalizeCardNameForLookup(card.name))?.roles, card.name).toContain('handtrap')
+      expect(Object.keys(card).sort(), card.name).toEqual(['id', 'name'])
     }
 
     expect(new Set(HANDTRAP_CATALOG.map((card) => card.id)).size).toBe(HANDTRAP_CATALOG.length)
   })
 
-  it('el tipo es el que dice el texto: repetibles las que no tienen «sólo una vez por turno» con su nombre, Charmy las tres Mulcharmy, el resto una sola', () => {
-    const byKind = (kind: HandtrapPick['kind']) => HANDTRAP_CATALOG.filter((card) => card.kind === kind).map((card) => card.name)
-
-    expect(byKind('repeatable')).toEqual(['Effect Veiler', 'Infinite Impermanence', 'Droll & Lock Bird', 'PSY-Framegear Gamma', 'D.D. Crow'])
-    expect(byKind('charmy')).toEqual(['Mulcharmy Fuwalos', 'Mulcharmy Purulia', 'Mulcharmy Meowls'])
-    expect(byKind('single')).toEqual(['Ash Blossom & Joyous Spring', 'Maxx "C"', 'Ghost Ogre & Snow Rabbit', 'Ghost Belle & Haunted Mansion', 'Ghost Mourner & Moonlit Chill', 'Nibiru, the Primal Being', 'Dominus Impulse'])
-    expect(ANDRES).toHaveLength(8)
+  it('una carta de un deck va de a tres como mucho y la mano del rival tiene seis lugares', () => {
+    expect(MAX_COPIES).toBe(3)
+    expect(MAX_RIVAL_HAND).toBe(6)
+    expect(handCount([pick(1, 2), pick(2, 3)])).toBe(5)
+    expect(handCount([])).toBe(0)
   })
 })
 
-describe('el reparto de la mano del rival', () => {
-  it('saca las que se piden, sin reposición y cada copia con su id', () => {
-    for (const seed of SEEDS.slice(0, 40)) {
-      const { hand, requested, possible } = dealRivalHand(ANDRES, 3, seed)
+describe('la mano del rival que se reparte', () => {
+  it('es la elegida, sin sorteo: cada handtrap con sus copias, cada copia con su id y su nombre', () => {
+    const dealt = dealRival({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] })
 
-      expect(hand).toHaveLength(3)
-      expect(new Set(hand).size).toBe(3)
-      expect(hand.every(isRivalId)).toBe(true)
-      expect(requested).toBe(3)
-      // Veiler, Imperm y Droll ×3, Ash, Ogre, Nibiru e Impulse ×1 y Fuwalos (una Charmy).
-      expect(possible).toBe(3 * 3 + 4 + 1)
-    }
+    // En el orden del catálogo: Ash Blossom va antes que Effect Veiler.
+    expect(dealt?.rival).toEqual({ hand: ['rival.card-14558127-1', 'rival.card-97268402-1', 'rival.card-97268402-2'], used: [] })
+    expect(dealt?.names).toEqual({ 'rival.card-14558127-1': 'Ash Blossom & Joyous Spring', 'rival.card-97268402-1': 'Effect Veiler', 'rival.card-97268402-2': 'Effect Veiler' })
+    expect(dealt?.rival.hand.every(isRivalId)).toBe(true)
+    // Siempre la misma: «Nueva mano» le reparte la misma al rival.
+    expect(dealRival({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] })).toEqual(dealt)
   })
 
-  it('una única nunca sale dos veces; una repetible puede salir hasta tres', () => {
-    const singles = ANDRES.filter((card) => card.kind !== 'repeatable')
-    let repeated = 0
+  it('las que no son del catálogo (agregadas con el buscador) van después, en el orden en que se agregaron', () => {
+    const dealt = dealRival({ enabled: true, picks: [pick(91800273, 1, 'Dimension Shifter'), { ...IMPERM, copies: 3 }, pick(5, 2, 'Otra')] })
 
-    for (const seed of SEEDS) {
-      const { hand } = dealRivalHand(ANDRES, 6, seed)
-
-      for (const card of singles) expect(countOf(hand, card.id)).toBeLessThanOrEqual(1)
-      for (const card of ANDRES) expect(countOf(hand, card.id)).toBeLessThanOrEqual(3)
-      if (ANDRES.some((card) => card.kind === 'repeatable' && countOf(hand, card.id) > 1)) repeated += 1
-    }
-
-    expect(repeated).toBeGreaterThan(0)
-    // Con una sola repetible en el pool, las tres copias salen juntas.
-    expect(dealRivalHand([pick(97268402, 'repeatable')], 3, 7).hand.map(passcodeOf)).toEqual([97268402, 97268402, 97268402])
+    expect(dealt?.rival.hand).toEqual(['rival.card-10045474-1', 'rival.card-10045474-2', 'rival.card-10045474-3', 'rival.card-91800273-1', 'rival.card-5-1', 'rival.card-5-2'])
+    expect(dealt?.names['rival.card-5-2']).toBe('Otra')
   })
 
-  it('entre todas las Charmies la mano no tiene más de dos', () => {
-    const charmies = [pick(1, 'charmy'), pick(2, 'charmy'), pick(3, 'charmy')]
-
-    for (const seed of SEEDS) {
-      const { hand, possible } = dealRivalHand([...charmies, pick(9, 'single')], 4, seed)
-
-      expect(hand.filter((id) => passcodeOf(id) < 4).length).toBeLessThanOrEqual(2)
-      // Dos Charmies y la única: tres, aunque se pidieron cuatro.
-      expect(hand).toHaveLength(3)
-      expect(possible).toBe(3)
-    }
+  it('apagado, o sin ninguna elegida, no hay mano del rival (la mesa queda como siempre)', () => {
+    expect(dealRival({ enabled: false, picks: [ASH] })).toBeNull()
+    expect(dealRival({ enabled: true, picks: [] })).toBeNull()
   })
 
-  it('con un pool corto la mano sale más corta y dice cuántas se pidieron y cuántas se podían', () => {
-    expect(dealRivalHand([pick(1, 'single'), pick(2, 'single')], 3, 5)).toMatchObject({ requested: 3, possible: 2 })
-    expect(dealRivalHand([pick(1, 'single'), pick(2, 'single')], 3, 5).hand).toHaveLength(2)
-    expect(dealRivalHand([], 3, 5)).toEqual({ hand: [], names: {}, requested: 3, possible: 0 })
-    expect(maxRivalHand([pick(1, 'repeatable'), pick(2, 'single'), pick(3, 'charmy'), pick(4, 'charmy'), pick(5, 'charmy')])).toBe(3 + 1 + 2)
-  })
+  it('nunca más de 3 copias de una ni de 6 en total, ni la misma carta dos veces', () => {
+    const dealt = dealRival({ enabled: true, picks: [{ ...ASH, copies: 5 }, { ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 2 }] })
 
-  it('la misma semilla da la misma mano y otra semilla, en algún caso, otra', () => {
-    expect(dealRivalHand(ANDRES, 3, 1234)).toEqual(dealRivalHand(ANDRES, 3, 1234))
-    expect(new Set(SEEDS.slice(0, 20).map((seed) => dealRivalHand(ANDRES, 3, seed).hand.join())).size).toBeGreaterThan(1)
-  })
-
-  it('un passcode repetido en el pool cuenta una vez, y cada carta repartida lleva su nombre', () => {
-    const { hand, names } = dealRivalHand([pick(1, 'single', 'Ash'), pick(1, 'repeatable', 'Ash otra vez')], 3, 3)
-
-    expect(hand).toEqual(['rival.card-1-1'])
-    expect(names).toEqual({ 'rival.card-1-1': 'Ash' })
+    expect(dealt?.rival.hand).toEqual(['rival.card-14558127-1', 'rival.card-14558127-2', 'rival.card-14558127-3', 'rival.card-97268402-1', 'rival.card-97268402-2', 'rival.card-97268402-3'])
     expect(rivalCardOf('rival.card-14558127-2')).toBe('card-14558127-2')
     expect(rivalCardOf('card-14558127-2')).toBe('card-14558127-2')
-  })
-
-  it('para una mesa nueva: nada con el simulador apagado o sin cartas; encendido, la mano y los nombres', () => {
-    expect(dealRival({ ...DEFAULT_HANDTRAP_CONFIG, enabled: false }, 1)).toBeNull()
-    expect(dealRival({ enabled: true, picks: [], count: 3 }, 1)).toBeNull()
-
-    const dealt = dealRival({ enabled: true, picks: ANDRES, count: 3 }, 1)
-
-    expect(dealt?.rival.used).toEqual([])
-    expect(dealt?.rival.hand).toHaveLength(3)
-    expect(Object.keys(dealt?.names ?? {})).toEqual(dealt?.rival.hand)
   })
 })
 
 describe('lo que se recuerda del simulador', () => {
-  it('sin nada guardado: apagado, con todo el catálogo en el pool y 3 en la mano', () => {
-    expect(readHandtrapConfig(memory)).toEqual({ enabled: false, picks: HANDTRAP_CATALOG.map((card) => ({ ...card })), count: 3 })
+  const storage = memory()
+  const read = (value: string) => {
+    storage.setItem(HANDTRAP_CONFIG_KEY, value)
+    return readHandtrapConfig(() => storage)
+  }
+
+  it('sin nada guardado: apagado, con Ash Blossom, Effect Veiler e Infinite Impermanence, una copia de cada una', () => {
+    expect(readHandtrapConfig(memory)).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM] })
+    expect(DEFAULT_HANDTRAP_CONFIG).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM] })
   })
 
   it('lo que se guarda vuelve igual', () => {
-    const storage = memory()
-    const config = { enabled: true, picks: [pick(14558127, 'charmy', 'Ash Blossom & Joyous Spring'), pick(91800273, 'single', 'Dimension Shifter')], count: 5 }
+    const config = { enabled: true, picks: [{ ...ASH, copies: 3 }, pick(91800273, 2, 'Dimension Shifter')] }
 
     writeHandtrapConfig(config, () => storage)
     expect(readHandtrapConfig(() => storage)).toEqual(config)
   })
 
   it('lo que no se entiende vuelve a lo de siempre, campo por campo', () => {
-    const storage = memory()
-    const read = (value: string) => {
-      storage.setItem(HANDTRAP_CONFIG_KEY, value)
-      return readHandtrapConfig(() => storage)
-    }
-
     expect(read('{basura')).toEqual(DEFAULT_HANDTRAP_CONFIG)
     expect(read('[1, 2]')).toEqual(DEFAULT_HANDTRAP_CONFIG)
     expect(read('{}')).toEqual(DEFAULT_HANDTRAP_CONFIG)
-    expect(read(JSON.stringify({ enabled: 'sí', count: 9 }))).toEqual(DEFAULT_HANDTRAP_CONFIG)
-    expect(read(JSON.stringify({ enabled: true, count: 0, picks: [] }))).toEqual({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true })
-
-    // Del pool quedan sólo las cartas bien formadas, cada passcode una vez (la primera manda) y con el nombre sin espacios de más.
-    expect(
-      read(JSON.stringify({ enabled: true, count: 2, picks: [{ id: 1, name: ' Ash ', kind: 'single' }, { id: 1, name: 'Otra', kind: 'charmy' }, { id: 2, name: 'Veiler', kind: 'mucho' }, { id: -3, name: 'X', kind: 'single' }, { id: 4.5, name: 'Y', kind: 'single' }, { id: 5, name: '  ', kind: 'single' }, 'nada', null] })),
-    ).toEqual({ enabled: true, count: 2, picks: [pick(1, 'single', 'Ash')] })
+    expect(read(JSON.stringify({ enabled: 'sí', picks: 'Ash' }))).toEqual(DEFAULT_HANDTRAP_CONFIG)
+    // Una lista con cartas, pero ninguna que se entienda, también.
+    expect(read(JSON.stringify({ enabled: true, picks: [{ id: -1, name: 'X', copies: 1 }, { id: 2, name: '  ', copies: 1 }, { id: 3, name: 'Sin copias' }, 'nada', null] }))).toEqual({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true })
+    // Una mano guardada vacía es una mano vacía.
+    expect(read(JSON.stringify({ enabled: true, picks: [] }))).toEqual({ enabled: true, picks: [] })
   })
 
-  it('una versión anterior, con otra clave, no se lee', () => {
-    const storage = memory()
+  it('las copias fuera de 1 a 3 se acotan, una carta repetida queda una vez (la primera manda) y lo que pasa de 6 se recorta', () => {
+    expect(read(JSON.stringify({ enabled: true, picks: [{ id: 1, name: ' Ash ', copies: 0 }, { id: 2, name: 'Veiler', copies: 9 }, { id: 3, name: 'Imperm', copies: 1.6 }] })).picks).toEqual([pick(1, 1, 'Ash'), pick(2, 3, 'Veiler'), pick(3, 2, 'Imperm')])
+    expect(read(JSON.stringify({ enabled: true, picks: [{ id: 1, name: 'Ash', copies: 1 }, { id: 1, name: 'Otra', copies: 3 }] })).picks).toEqual([pick(1, 1, 'Ash')])
+    expect(read(JSON.stringify({ enabled: true, picks: [pick(1, 3), pick(2, 2), pick(3, 3), pick(4, 1)] })).picks).toEqual([pick(1, 3), pick(2, 2), pick(3, 1)])
+  })
 
-    storage.setItem('ygo-lab:rival-handtraps:v0', JSON.stringify({ enabled: true, count: 6, picks: [pick(1, 'single')] }))
-    expect(readHandtrapConfig(() => storage)).toEqual(DEFAULT_HANDTRAP_CONFIG)
+  it('la versión anterior (un pool con tipos y una cantidad general, con otra clave) no se lee', () => {
+    const old = memory()
+
+    old.setItem('ygo-lab:rival-handtraps:v1', JSON.stringify({ enabled: true, count: 6, picks: [{ id: 1, name: 'Ash', kind: 'single' }] }))
+    expect(readHandtrapConfig(() => old)).toEqual(DEFAULT_HANDTRAP_CONFIG)
+    expect(HANDTRAP_CONFIG_KEY).toBe('ygo-lab:rival-handtraps:v2')
   })
 
   it('sin almacenamiento no rompe: lee lo de siempre y escribir no hace nada', () => {

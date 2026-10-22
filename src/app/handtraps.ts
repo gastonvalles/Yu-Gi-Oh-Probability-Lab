@@ -1,98 +1,114 @@
 import { isRecord } from './utils'
-import { shuffleWithSeed, type RivalHand } from './practice-mat'
+import type { RivalHand } from './practice-mat'
 
 /**
- * El simulador de handtraps de «Jugar solo» (pedido de Andrés Alvarez, 2026-10-22): el rival roba unas handtraps de un pool que elegís vos y, en la mesa, tocás cada una
- * para decir en qué momento la usa. Es puro: el catálogo, la configuración que se recuerda y el reparto (determinista con la semilla, como el de la mesa).
+ * El simulador de handtraps de «Jugar solo» (pedido de Andrés Alvarez, 2026-10-22): elegís qué handtraps tiene el rival en la mano y cuántas copias de cada una y, en la mesa,
+ * tocás cada una para decir en qué momento la usa. Es puro: el catálogo, la configuración que se recuerda y la mano que se reparte (sin sorteo: la que se eligió).
  */
 
-/**
- * Cuántas copias de una handtrap hay en el deck del rival: `repeatable` (3: sin «sólo una vez por turno» con su nombre se pueden robar y usar varias, como Effect Veiler),
- * `single` (1: con esa cláusula una segunda copia no sirve en el mismo turno, como Ash Blossom) y `charmy` (1 por nombre, y entre todas las Mulcharmy la mano del rival
- * no tiene más de `MAX_CHARMIES`: su texto deja activar «1 other "Mulcharmy" monster effect» en el turno).
- */
-export type HandtrapKind = 'repeatable' | 'single' | 'charmy'
-
-export const HANDTRAP_KINDS: readonly HandtrapKind[] = ['repeatable', 'single', 'charmy']
-
-const COPIES: Record<HandtrapKind, number> = { repeatable: 3, single: 1, charmy: 1 }
-
-/** Entre todas las Charmies, cuántas puede tener juntas la mano del rival. */
-const MAX_CHARMIES = 2
-
-/** Cuántas handtraps puede tener el rival en la mano: de 1 a 6, y 3 si no se elige otra cosa. */
-export const RIVAL_COUNT_RANGE = { min: 1, max: 6 } as const
-const DEFAULT_COUNT = 3
-
-/** Una handtrap del pool: su passcode de YGOPRODeck (de ahí sale su imagen), su nombre tal cual lo escribe la carta y cuántas copias tiene el rival. */
-export interface HandtrapPick {
+/** Una carta del catálogo: su passcode de YGOPRODeck (de ahí sale su imagen) y su nombre tal cual lo escribe la carta. */
+export interface HandtrapCard {
   id: number
   name: string
-  kind: HandtrapKind
 }
 
+/** Una handtrap de la mano del rival y cuántas copias tiene de ella (de 1 a `MAX_COPIES`). */
+export interface HandtrapPick extends HandtrapCard {
+  copies: number
+}
+
+/** Cuántas copias de una misma carta puede tener la mano del rival: las de un deck. */
+export const MAX_COPIES = 3
+
+/** Cuántas handtraps puede tener la mano del rival en total: las que entran en la franja de la mesa. */
+export const MAX_RIVAL_HAND = 6
+
 /**
- * Las handtraps que se ofrecen, con el tipo que dice su texto (verificado contra YGOPRODeck el 2026-10-22). Que sean handtraps lo decide la lista de `classification-engine.ts`
- * (`KNOWN_CARDS_MAP`, rol `handtrap`): un test exige que cada una esté ahí. Andrés las pidió por su rol; el passcode y el nombre bien escrito son para dibujarlas.
+ * Las handtraps que se ofrecen (verificadas contra YGOPRODeck el 2026-10-22). Que sean handtraps lo decide la lista de `classification-engine.ts` (`KNOWN_CARDS_MAP`, rol
+ * `handtrap`): un test exige que cada una esté ahí. El passcode y el nombre bien escrito son para dibujarlas.
  */
-export const HANDTRAP_CATALOG: readonly HandtrapPick[] = [
-  { id: 14558127, name: 'Ash Blossom & Joyous Spring', kind: 'single' },
-  { id: 23434538, name: 'Maxx "C"', kind: 'single' },
-  { id: 97268402, name: 'Effect Veiler', kind: 'repeatable' },
-  { id: 10045474, name: 'Infinite Impermanence', kind: 'repeatable' },
-  { id: 59438930, name: 'Ghost Ogre & Snow Rabbit', kind: 'single' },
-  { id: 73642297, name: 'Ghost Belle & Haunted Mansion', kind: 'single' },
-  { id: 52038442, name: 'Ghost Mourner & Moonlit Chill', kind: 'single' },
-  { id: 27204311, name: 'Nibiru, the Primal Being', kind: 'single' },
-  // Ni Droll ni Gamma dicen «sólo una vez por turno» con su nombre: repetibles, como manda la regla del texto.
-  { id: 94145022, name: 'Droll & Lock Bird', kind: 'repeatable' },
-  { id: 38814750, name: 'PSY-Framegear Gamma', kind: 'repeatable' },
-  { id: 24508238, name: 'D.D. Crow', kind: 'repeatable' },
+export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
+  { id: 14558127, name: 'Ash Blossom & Joyous Spring' },
+  { id: 23434538, name: 'Maxx "C"' },
+  { id: 97268402, name: 'Effect Veiler' },
+  { id: 10045474, name: 'Infinite Impermanence' },
+  { id: 59438930, name: 'Ghost Ogre & Snow Rabbit' },
+  { id: 73642297, name: 'Ghost Belle & Haunted Mansion' },
+  { id: 52038442, name: 'Ghost Mourner & Moonlit Chill' },
+  { id: 27204311, name: 'Nibiru, the Primal Being' },
+  { id: 94145022, name: 'Droll & Lock Bird' },
+  { id: 38814750, name: 'PSY-Framegear Gamma' },
+  { id: 24508238, name: 'D.D. Crow' },
   // La «Impulse» de Andrés: de las cinco cartas con ese nombre es la única handtrap para cualquier deck (Rescue-ACE Impulse también sale de la mano, pero es de su arquetipo).
-  { id: 40366667, name: 'Dominus Impulse', kind: 'single' },
-  { id: 42141493, name: 'Mulcharmy Fuwalos', kind: 'charmy' },
-  { id: 84192580, name: 'Mulcharmy Purulia', kind: 'charmy' },
-  { id: 87126721, name: 'Mulcharmy Meowls', kind: 'charmy' },
+  { id: 40366667, name: 'Dominus Impulse' },
+  { id: 42141493, name: 'Mulcharmy Fuwalos' },
+  { id: 84192580, name: 'Mulcharmy Purulia' },
+  { id: 87126721, name: 'Mulcharmy Meowls' },
 ]
 
-/** Lo que se recuerda del simulador: si está encendido, el pool y cuántas tiene el rival en la mano. */
+/** Lo que se recuerda del simulador: si está encendido y la mano del rival (sólo las cartas con al menos una copia). */
 export interface HandtrapConfig {
   enabled: boolean
   picks: HandtrapPick[]
-  count: number
 }
 
-/** Apagado, con todo el catálogo en el pool y 3 en la mano. */
-export const DEFAULT_HANDTRAP_CONFIG: HandtrapConfig = { enabled: false, picks: HANDTRAP_CATALOG.map((pick) => ({ ...pick })), count: DEFAULT_COUNT }
+/** Las tres de siempre, una copia de cada una: Ash Blossom, Effect Veiler e Infinite Impermanence. */
+const DEFAULT_PICKS: readonly HandtrapPick[] = [14558127, 97268402, 10045474].map((id) => ({ ...HANDTRAP_CATALOG.find((card) => card.id === id)!, copies: 1 }))
 
-export const HANDTRAP_CONFIG_KEY = 'ygo-lab:rival-handtraps:v1'
+/** Apagado, con Ash Blossom, Effect Veiler e Infinite Impermanence, una copia de cada una. */
+export const DEFAULT_HANDTRAP_CONFIG: HandtrapConfig = { enabled: false, picks: DEFAULT_PICKS.map((pick) => ({ ...pick })) }
 
-/** El pool más largo que se acepta de lo guardado (el catálogo y unas cuantas agregadas a mano). */
-const MAX_PICKS = 60
+/** La v1 (un pool con tipos y una cantidad general) duró unas horas: no se lee. */
+export const HANDTRAP_CONFIG_KEY = 'ygo-lab:rival-handtraps:v2'
+
 const MAX_NAME_LENGTH = 100
 
-const isKind = (value: unknown): value is HandtrapKind => (HANDTRAP_KINDS as readonly unknown[]).includes(value)
-const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= RIVAL_COUNT_RANGE.min && value <= RIVAL_COUNT_RANGE.max
+/** Cuántas cartas tiene la mano: la suma de las copias. */
+export const handCount = (picks: readonly HandtrapPick[]) => picks.reduce((total, pick) => total + pick.copies, 0)
 
-/** Las handtraps guardadas que se entienden, cada passcode una vez (la primera manda). */
-function parsePicks(value: unknown): HandtrapPick[] {
-  if (!Array.isArray(value)) return []
+/**
+ * La mano tal como se puede tener: cada passcode una vez (la primera manda), cada una con 1 a `MAX_COPIES` copias (lo de afuera se acota) y, en total, no más de `MAX_RIVAL_HAND`
+ * (lo que sobra se recorta: las últimas pierden copias o se quedan afuera).
+ */
+function capPicks(picks: readonly HandtrapPick[]): HandtrapPick[] {
+  const capped: HandtrapPick[] = []
+  let total = 0
 
-  const picks = new Map<number, HandtrapPick>()
+  for (const pick of picks) {
+    if (capped.some((other) => other.id === pick.id)) continue
 
-  for (const entry of value.slice(0, MAX_PICKS)) {
-    if (!isRecord(entry) || !Number.isInteger(entry.id) || (entry.id as number) <= 0 || (entry.id as number) > 9_999_999_999 || !isKind(entry.kind) || typeof entry.name !== 'string') continue
+    const copies = Math.min(MAX_COPIES, Math.max(1, Math.round(pick.copies)), MAX_RIVAL_HAND - total)
 
-    const name = entry.name.trim().slice(0, MAX_NAME_LENGTH)
-    const id = entry.id as number
+    if (copies < 1) break
 
-    if (name && !picks.has(id)) picks.set(id, { id, name, kind: entry.kind })
+    capped.push({ ...pick, copies })
+    total += copies
   }
 
-  return [...picks.values()]
+  return capped
 }
 
-/** Lo guardado, o lo de siempre si no hay o no se entiende (se revisa campo por campo: un pool vacío o roto vuelve al catálogo). */
+/** Las handtraps guardadas que se entienden (con su passcode, su nombre y un número de copias); las que no, afuera. */
+function parsePicks(value: readonly unknown[]): HandtrapPick[] {
+  return capPicks(
+    value.flatMap((entry): HandtrapPick[] => {
+      if (!isRecord(entry) || !Number.isInteger(entry.id) || (entry.id as number) <= 0 || (entry.id as number) > 9_999_999_999 || typeof entry.name !== 'string' || typeof entry.copies !== 'number' || !Number.isFinite(entry.copies)) {
+        return []
+      }
+
+      const name = entry.name.trim().slice(0, MAX_NAME_LENGTH)
+
+      return name ? [{ id: entry.id as number, name, copies: entry.copies }] : []
+    }),
+  )
+}
+
+const defaultConfig = (): HandtrapConfig => ({ ...DEFAULT_HANDTRAP_CONFIG, picks: DEFAULT_HANDTRAP_CONFIG.picks.map((pick) => ({ ...pick })) })
+
+/**
+ * Lo guardado, o lo de siempre si no hay o no se entiende (se revisa campo por campo). Una mano guardada vacía es una mano vacía (el rival no tiene ninguna); una con cartas que no
+ * se entienden, o sin la lista, vuelve a la de siempre.
+ */
 export function readHandtrapConfig(storage: () => Storage = () => localStorage): HandtrapConfig {
   let stored: unknown = null
 
@@ -102,20 +118,17 @@ export function readHandtrapConfig(storage: () => Storage = () => localStorage):
     // Sin almacenamiento o lo guardado no se entiende: vale lo de siempre.
   }
 
-  if (!isRecord(stored) || Array.isArray(stored)) return { ...DEFAULT_HANDTRAP_CONFIG, picks: DEFAULT_HANDTRAP_CONFIG.picks.map((pick) => ({ ...pick })) }
+  if (!isRecord(stored) || Array.isArray(stored)) return defaultConfig()
 
-  const picks = parsePicks(stored.picks)
+  const list = Array.isArray(stored.picks) ? stored.picks : null
+  const picks = list ? parsePicks(list) : []
 
-  return {
-    enabled: stored.enabled === true,
-    picks: picks.length > 0 ? picks : DEFAULT_HANDTRAP_CONFIG.picks.map((pick) => ({ ...pick })),
-    count: isCount(stored.count) ? stored.count : DEFAULT_COUNT,
-  }
+  return { enabled: stored.enabled === true, picks: list && (list.length === 0 || picks.length > 0) ? picks : defaultConfig().picks }
 }
 
 export function writeHandtrapConfig(config: HandtrapConfig, storage: () => Storage = () => localStorage): void {
   try {
-    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, kind }) => ({ id, name, kind })), count: config.count }))
+    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })) }))
   } catch {
     // Sin almacenamiento (ventana privada, cuota): vale hasta recargar.
   }
@@ -131,52 +144,20 @@ export const rivalCardOf = (id: string) => (isRivalId(id) ? id.slice(RIVAL_PREFI
 
 const rivalId = (passcode: number, copy: number) => `${RIVAL_PREFIX}card-${passcode}-${copy}`
 
-/** Cuántas handtraps puede tener como mucho la mano del rival con ese pool: todas las copias, con las Charmies topeadas. */
-export function maxRivalHand(picks: readonly HandtrapPick[]): number {
-  const charmies = picks.filter((pick) => pick.kind === 'charmy').length
-
-  return picks.reduce((total, pick) => total + (pick.kind === 'charmy' ? 0 : COPIES[pick.kind]), 0) + Math.min(charmies, MAX_CHARMIES)
-}
-
-export interface RivalDeal {
-  /** Las handtraps que robó el rival (`rival.card-…`), en el orden en que salieron. */
-  hand: string[]
-  /** El nombre de cada una (la mesa y los combos lo muestran sin esperar a YGOPRODeck). */
-  names: Record<string, string>
-  /** Cuántas se pidieron y cuántas permite el pool: si no alcanza, la mano sale más corta. */
-  requested: number
-  possible: number
-}
+/** El lugar de cada carta del catálogo: la mano sale en ese orden y, después, las que se agregaron con el buscador. */
+const CATALOG_ORDER = new Map(HANDTRAP_CATALOG.map((card, index) => [card.id, index]))
 
 /**
- * El reparto: el deck del rival (3 copias de cada repetible, 1 de cada única y 1 de cada Charmy) barajado con la semilla, y las primeras `count` sin reposición,
- * salteando una Charmy si ya hay `MAX_CHARMIES` en la mano. La misma semilla da siempre la misma mano.
+ * La mano del rival para una mesa nueva, sin sorteo: cada handtrap con sus copias (`rival.card-<passcode>-<copia>`), en el orden del catálogo y después las agregadas, y el nombre de
+ * cada carta (la mesa y los combos lo muestran sin esperar a YGOPRODeck). `null` con el simulador apagado o sin ninguna elegida (la mesa queda como siempre).
  */
-export function dealRivalHand(picks: readonly HandtrapPick[], count: number, seed: number): RivalDeal {
-  // Cada passcode una vez (la primera manda, como al leer lo guardado): dos cartas con el mismo id romperían la mesa.
-  const pool = picks.filter((pick, index) => picks.findIndex((other) => other.id === pick.id) === index)
-  const deck = pool.flatMap((pick) => Array.from({ length: COPIES[pick.kind] }, (_, copy) => ({ id: rivalId(pick.id, copy + 1), pick })))
-  const hand: string[] = []
-  const names: Record<string, string> = {}
-  let charmies = 0
-
-  for (const { id, pick } of shuffleWithSeed(deck, seed)) {
-    if (hand.length >= count) break
-    if (pick.kind === 'charmy' && charmies >= MAX_CHARMIES) continue
-
-    if (pick.kind === 'charmy') charmies += 1
-    hand.push(id)
-    names[id] = pick.name
-  }
-
-  return { hand, names, requested: count, possible: maxRivalHand(pool) }
-}
-
-/** La mano del rival para una mesa nueva, y el nombre de cada carta: `null` con el simulador apagado o sin nada que repartir (la mesa queda como siempre). */
-export function dealRival(config: HandtrapConfig, seed: number): { rival: RivalHand; names: Record<string, string> } | null {
+export function dealRival(config: HandtrapConfig): { rival: RivalHand; names: Record<string, string> } | null {
   if (!config.enabled) return null
 
-  const { hand, names } = dealRivalHand(config.picks, config.count, seed)
+  const rank = (pick: HandtrapPick) => CATALOG_ORDER.get(pick.id) ?? HANDTRAP_CATALOG.length
+  const ordered = capPicks(config.picks).sort((a, b) => rank(a) - rank(b))
+  const hand = ordered.flatMap((pick) => Array.from({ length: pick.copies }, (_, copy) => rivalId(pick.id, copy + 1)))
+  const names = Object.fromEntries(ordered.flatMap((pick) => Array.from({ length: pick.copies }, (_, copy) => [rivalId(pick.id, copy + 1), pick.name] as const)))
 
   return hand.length === 0 ? null : { rival: { hand, used: [] }, names }
 }

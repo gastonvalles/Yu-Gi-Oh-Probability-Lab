@@ -4,28 +4,32 @@ import type { Translated } from '../types'
 export const handtraps: Translated<typeof es> = {
   // In the room rules, with Solo mode.
   'handtraps.title': "Opponent's hand traps",
-  'handtraps.row.summary': '{count} in hand · pool of {pool}',
+  'handtraps.row.summary': '{count} in hand',
+  'handtraps.row.empty': 'None chosen',
   'handtraps.row.choose': 'Choose…',
-  'handtraps.row.chooseLabel': "Choose… the opponent's hand trap pool",
+  'handtraps.row.chooseLabel': "Choose… the hand traps in the opponent's hand",
 
-  // The pool sheet.
-  'handtraps.picker.subtitle': 'Mark the ones they can draw and tap the type to change it.',
-  'handtraps.picker.list': 'Hand trap pool',
-  'handtraps.kind.repeatable': 'Repeatable · 3 copies',
-  'handtraps.kind.single': 'Only one',
-  'handtraps.kind.charmy': 'Charmy · max. 2 together',
-  'handtraps.kind.change': 'Type of {name}: {kind}',
-  'handtraps.picker.count': "In the opponent's hand",
-  'handtraps.picker.max': 'With this pool the opponent can have at most {max}.',
-  'handtraps.picker.empty': 'Choose at least one hand trap.',
-  'handtraps.picker.use': 'Use this pool',
+  // In the toolbar of the «Train solo» mat.
+  'handtraps.mat.on': "Opponent's hand traps: on",
+  'handtraps.mat.off': "Opponent's hand traps: off",
+
+  // The sheet: how many copies of each one the opponent has in hand.
+  'handtraps.picker.subtitle': 'Choose how many copies of each one they have in hand.',
+  'handtraps.picker.list': "Hand traps for the opponent's hand",
+  'handtraps.picker.copies': "Copies of {name} in the opponent's hand",
+  'handtraps.picker.count': "In the opponent's hand: {count}",
+  'handtraps.picker.cap': 'At most {max} in hand.',
+  'handtraps.picker.empty': 'Add at least one hand trap.',
+  'handtraps.picker.use': 'Use this hand',
   'handtraps.picker.add': 'Add another card',
-  'handtraps.picker.search': 'Search a card for the pool',
+  'handtraps.picker.search': 'Search another card',
   'handtraps.picker.searchPlaceholder': 'Card name',
   'handtraps.picker.searching': 'Searching…',
   'handtraps.picker.noResults': 'No cards match “{query}”.',
-  'handtraps.picker.addCard': 'Add {name} to the pool',
-  'handtraps.picker.inPool': '{name} is already in the pool',
+  'handtraps.picker.addCard': 'Add {name} to the list',
+  'handtraps.picker.listed': '{name} is already on the list',
+  'handtraps.picker.dealsNew': 'Applying deals a new hand.',
+  'handtraps.picker.turnOff': 'Turn the simulator off',
 
   // The mat.
   'handtraps.strip.label': "Opponent's hand",
