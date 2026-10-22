@@ -63,12 +63,13 @@ export function useLabSuggestion(
     const candidates = buildCandidates(culprit, cards, checks, maxCopiesOf)
     setState({ status: candidates.length === 0 ? 'done' : 'loading', progress: { done: 0, total: candidates.length }, analysis: EMPTY_ANALYSIS })
 
-    const evaluated: Evaluation[] = []
+    // En el orden de los candidatos (no en el que llegan): entre dos cambios que suman lo mismo gana siempre el mismo.
+    const evaluated: Array<Evaluation | undefined> = []
     const onlyView = view === 'average' ? undefined : view
 
     // Cada variante llega por separado: se muestra la mejor hasta el momento sin esperar a las demás.
     void Promise.all(
-      candidates.map(async (candidate) => {
+      candidates.map(async (candidate, index) => {
         // Las variantes se prueban con prioridad baja: si la persona edita, su resultado no espera detrás de estas.
         const odds = await requestLabOdds(
           `suggest|${onlyView ?? 'both'}|${labInputSignature(candidate.cards, checks, handSize)}`,
@@ -80,11 +81,12 @@ export function useLabSuggestion(
           return
         }
 
-        evaluated.push({ candidate, odds })
-        const outcomes = toOutcomes(culprit, view, evaluated)
+        evaluated[index] = { candidate, odds }
+        const done = evaluated.filter((entry): entry is Evaluation => entry !== undefined)
+        const outcomes = toOutcomes(culprit, view, done)
         setState({
-          status: evaluated.length === candidates.length ? 'done' : 'loading',
-          progress: { done: evaluated.length, total: candidates.length },
+          status: done.length === candidates.length ? 'done' : 'loading',
+          progress: { done: done.length, total: candidates.length },
           analysis: { best: pickBest(outcomes, baseClean), tradeoff: pickTradeoff(outcomes, culprit.probability), compared: outcomes.length },
         })
       }),

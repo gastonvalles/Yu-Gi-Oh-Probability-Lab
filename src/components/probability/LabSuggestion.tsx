@@ -1,10 +1,12 @@
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 
+import { mainCopyLimit } from '../../app/build-draft'
 import { getCardRoleDefinition } from '../../app/deck-groups'
-import { getCardCopyLimit } from '../../app/deck-format'
+import { mainRole, per100Delta } from '../../app/lab-change'
 import type { Culprit, Outcome, PerTurnResults } from '../../app/lab-suggestion'
 import type { LabViewResult } from '../../app/probability-lab'
 import type { RoleDistribution, RoleDistributionKey } from '../../app/role-distribution'
+import type { BuildZones } from '../../app/saved-builds'
 import { formatShortPercent } from '../../app/utils'
 import { t, type MessageKey } from '../../i18n'
 import type { CardEntry, DeckFormat, HandPattern, TurnView } from '../../types'
@@ -18,10 +20,13 @@ import { Heading } from '../ui/Heading'
 import { ProgressRing } from '../ui/ProgressRing'
 import { judgeTone, progressTone } from '../ui/tone'
 import { overline, supportText } from '../ui/typography'
+import { LabDelta } from './LabDelta'
 import { useLabSuggestion } from './use-lab-suggestion'
 
 interface LabSuggestionProps {
   deckFormat: DeckFormat
+  /** El Extra y el Side de tu deck: el límite de copias es por nombre en todo el deck, así la sugerencia nunca pide una copia que el builder no deja meter. */
+  deck?: Pick<BuildZones, 'extra' | 'side'>
   cards: CardEntry[]
   checks: HandPattern[]
   handSize: number
@@ -45,11 +50,15 @@ const ROLE_OF_GROUP: Partial<Record<NonNullable<Outcome['swap']['to']>, RoleDist
 
 const TURN_LABEL = { average: 'lab.turnView.average', first: 'lab.turnView.first', second: 'lab.turnView.second' } as const satisfies Record<TurnView, MessageKey>
 
+const NO_ZONE: BuildZones['extra'] = []
+
 /** «Lo que más te frena»: el problema, el cambio de una carta que más suma (las dos cartas, con su imagen) y lo que mejora cada turno; abajo, el número y la acción. */
-export function LabSuggestion({ cards, checks, deckFormat, handSize, view, result, first, second, roles, onOpenRole, onTry, onCompare, className }: LabSuggestionProps) {
+export function LabSuggestion({ cards, checks, deckFormat, deck, handSize, view, result, first, second, roles, onOpenRole, onTry, onCompare, className }: LabSuggestionProps) {
   const perTurn = useMemo<PerTurnResults>(() => ({ first, second }), [first, second])
-  // Un cambio que suma copias tiene que ser legal en el formato (banlist): la sugerencia no puede pedir lo imposible.
-  const maxCopiesOf = useCallback((card: CardEntry) => (card.apiCard ? getCardCopyLimit(card.apiCard, deckFormat) : 3), [deckFormat])
+  // Un cambio que suma copias tiene que ser legal en el formato (banlist, y las copias del Extra y el Side cuentan): la sugerencia no puede pedir lo imposible.
+  const extra = deck?.extra ?? NO_ZONE
+  const side = deck?.side ?? NO_ZONE
+  const maxCopiesOf = useMemo(() => mainCopyLimit({ main: NO_ZONE, extra, side }, deckFormat), [deckFormat, extra, side])
   const { culprit, state, hint } = useLabSuggestion(cards, checks, handSize, view, result, maxCopiesOf, perTurn)
   const card = cx('flex flex-col gap-3', className)
 
@@ -126,7 +135,7 @@ function BestChange({ best, view, result, first, second, roles, onOpenRole, onTr
           { key: 'second', before: second.cleanProbability, after: best.cleanBySide.second },
         ]
       : [{ key: view, before: result.cleanProbability, after: best.cleanProbability }]
-  const gain = per100Diff(effects[0]!.before, effects[0]!.after)
+  const gain = per100Delta(effects[0]!.before, effects[0]!.after)
 
   return (
     <>
@@ -147,7 +156,7 @@ function BestChange({ best, view, result, first, second, roles, onOpenRole, onTr
                 <ProgressRing value={effect.after} tone={judgeTone(true)} size={56} strokeWidth={5} delay={index * 100} label={t('lab.suggestion.effectRing', { label, value: formatShortPercent(effect.after) })} />
                 <span className="flex flex-wrap items-center justify-center gap-x-1.5">
                   {label}
-                  <Delta diff={per100Diff(effect.before, effect.after)} />
+                  <LabDelta diff={per100Delta(effect.before, effect.after)} />
                 </span>
               </li>
             )
@@ -164,9 +173,11 @@ function BestChange({ best, view, result, first, second, roles, onOpenRole, onTr
           </span>
           <span className="max-w-30 text-body leading-tight text-muted">{t('lab.suggestion.gain')}</span>
         </p>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        {/* `ml-auto`: si no entra al lado del número, baja sola a la derecha (al alcance del pulgar). */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          {/* En el celular sólo la principal: así entra en la primera pantalla, junto al número (comparar está después, en la barra del cambio). */}
           {onCompare ? (
-            <Button variant="secondary" onClick={() => onCompare(best)}>
+            <Button variant="secondary" className="max-md:hidden" onClick={() => onCompare(best)}>
               {t('lab.suggestion.compare')}
             </Button>
           ) : null}
@@ -199,7 +210,8 @@ function SeeRoleButton({ roleKey, roles, onOpenRole }: { roleKey: RoleDistributi
  */
 function SwapRow({ action, card }: { action: 'remove' | 'add'; card: CardEntry }) {
   const remove = action === 'remove'
-  const role = card.roles[0] ? getCardRoleDefinition(card.roles[0]).label : t('rules.suggestion.fillerCard')
+  const main = mainRole(card.roles)
+  const role = main ? getCardRoleDefinition(main).label : t('rules.suggestion.fillerCard')
 
   return (
     <li className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 md:min-h-14 md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-3 md:py-1">
@@ -220,27 +232,6 @@ function SwapRow({ action, card }: { action: 'remove' | 'add'; card: CardEntry }
       </Badge>
     </li>
   )
-}
-
-/** ▲ / ▼ y cuántas manos buenas de cada 100: verde si suben (le conviene a quien lee), rojo si bajan. Sin cambio, nada. */
-function Delta({ diff }: { diff: number }) {
-  if (diff === 0) {
-    return null
-  }
-
-  const up = diff > 0
-
-  return (
-    <span className={cx('whitespace-nowrap font-semibold tabular-nums', up ? 'text-success-soft' : 'text-danger-soft')}>
-      <span aria-hidden="true">{`${up ? '▲' : '▼'} ${Math.abs(diff)}`}</span>
-      <span className="sr-only">{t(up ? 'lab.suggestion.more' : 'lab.suggestion.fewer', { n: Math.abs(diff) })}</span>
-    </span>
-  )
-}
-
-/** La diferencia que se ve: la de los enteros «de cada 100» que se muestran (81 → 84 = ▲ 3). */
-function per100Diff(before: number, after: number): number {
-  return Math.round(after * 100) - Math.round(before * 100)
 }
 
 /** Por qué frena: sin salida, falta con qué arrancar; un problema, es la traba que más manos saca (el número ya está en el veredicto y en las reglas: no se repite). */

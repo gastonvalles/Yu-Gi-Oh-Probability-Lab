@@ -2,6 +2,7 @@ import { t } from '../i18n'
 import type { CardEntry, CardRole, HandPattern, TurnView } from '../types'
 import { buildDerivedDeckGroupMap, getCardRoleDefinition } from './deck-groups'
 import type { LabOdds } from './lab-odds'
+import { getRequiredMatches } from './pattern-engine'
 import { resolveConditionCardIds } from './patterns'
 import type { LabViewResult } from './probability-lab'
 
@@ -144,10 +145,36 @@ export function roleGroupOf(card: Pick<CardEntry, 'roles'>): RoleGroup | null {
 }
 
 /**
+ * Cuánto cuenta cada carta para las reglas de salida, que son las que miden «sin salida»: 2 si una copia sola abre con alguna regla («1+ Starter»),
+ * 1 si es una pieza de una salida que pide más de una carta («Starter + Extender»). Una carta que no figura no saca ninguna mano de «sin salida»:
+ * sumarle copias no mueve el número del veredicto. Se supone que las condiciones «sin» de la regla se cumplen (una mano sin Brick, por ejemplo).
+ */
+function openingWeights(checks: HandPattern[], deckGroups: ReturnType<typeof buildDerivedDeckGroupMap>, cards: CardEntry[]): Map<string, number> {
+  const weights = new Map<string, number>()
+
+  for (const check of checks.filter((entry) => entry.kind === 'opening')) {
+    const includes = check.conditions.filter((condition) => condition.kind === 'include' && condition.matcher !== null)
+    const needed = getRequiredMatches(check) - check.conditions.filter((condition) => condition.kind === 'exclude').length
+
+    for (const condition of includes) {
+      const weight = needed <= 1 && condition.quantity <= 1 ? 2 : 1
+
+      for (const id of resolveConditionCardIds(condition, deckGroups, cards)) {
+        weights.set(id, Math.max(weights.get(id) ?? 0, weight))
+      }
+    }
+  }
+
+  return weights
+}
+
+/**
  * Cambios que atacan al culpable, pensados como lo haría un jugador: mover un lugar del deck de una
  * familia a otra ("sacá un starter y meté una handtrap"), con el deck del mismo tamaño y respetando
  * el límite de copias del formato. Las familias brick y relleno solo se sacan si son non-engine:
- * un brick del engine es una pieza del combo y no se toca.
+ * un brick del engine es una pieza del combo y no se toca. Para abrir más, la carta que entra es una
+ * de las que cuentan las reglas de salida (la familia «starter» incluye a los Extenders, y un Extender
+ * solo no abre una mano con «1+ Starter»).
  */
 export function buildCandidates(
   culprit: Culprit,
@@ -158,6 +185,8 @@ export function buildCandidates(
   const room = (card: CardEntry) => maxCopiesOf(card) - card.copies
   const pattern = checks.find((check) => check.id === culprit.patternId)
   const deckGroups = buildDerivedDeckGroupMap(cards)
+  const opens = openingWeights(checks, deckGroups, cards)
+  const openWeight = (card: CardEntry) => opens.get(card.id) ?? 0
   // Las reglas del sistema cuentan pools de cartas (no solo roles): se resuelve qué cartas pide la regla
   // tener (causan el problema) y cuáles pide NO tener (lo evitan).
   const idsOf = (conditionKind: 'include' | 'exclude') =>
@@ -179,6 +208,8 @@ export function buildCandidates(
       .filter((card) => roleGroupOf(card) === group && !notIds.has(card.id) && (group === 'starter' || group === 'interaction' || card.origin === 'non_engine'))
       .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))[0]
   const byRoom = (left: CardEntry, right: CardEntry) => room(right) - room(left) || left.copies - right.copies || left.name.localeCompare(right.name)
+  // Primero lo que abre solo, después las piezas de una salida; entre iguales, la que más lugar tiene en el formato.
+  const byOpening = (left: CardEntry, right: CardEntry) => openWeight(right) - openWeight(left) || byRoom(left, right)
   // `target` es la familia que gana la carta que entra (una carta con varios roles pertenece a la primera que corresponda,
   // pero acá importa para qué se la mete). Cambiar una carta por otra de la misma familia no cambia nada: no se propone.
   const swap = (out: CardEntry | undefined, inn: CardEntry | undefined, target?: RoleGroup): Candidate | null => {
@@ -192,11 +223,11 @@ export function buildCandidates(
   // De dónde se saca el lugar, de lo más prescindible a lo más importante.
   const sources: RoleGroup[] = ['filler', 'brick', 'interaction', 'starter']
 
-  // Sin salida (o como alternativa de un problema): entra un starter/extender a costa de lo más prescindible.
+  // Sin salida (o como alternativa de un problema): entra una carta que cuenta para las salidas, a costa de lo más prescindible.
   const openerSwaps = (): Array<Candidate | null> =>
     cards
-      .filter((card) => roleGroupOf(card) === 'starter' && room(card) > 0 && !causeIds.has(card.id))
-      .sort(byRoom)
+      .filter((card) => openWeight(card) > 0 && room(card) > 0 && !causeIds.has(card.id))
+      .sort(byOpening)
       .slice(0, 2)
       .flatMap((inn) => sources.filter((from) => from !== 'starter').map((from) => swap(outgoing(from, new Set()), inn, 'starter')))
 
@@ -213,7 +244,7 @@ export function buildCandidates(
       .filter((card) => causeIds.has(card.id) && card.origin === 'non_engine')
       .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))
       .slice(0, 2)
-    const starters = cards.filter((card) => roleGroupOf(card) === 'starter' && !causeIds.has(card.id) && room(card) > 0).sort(byRoom)
+    const starters = cards.filter((card) => roleGroupOf(card) === 'starter' && !causeIds.has(card.id) && room(card) > 0).sort(byOpening)
     candidates = [...causes.flatMap((out) => starters.slice(0, 2).map((inn) => swap(out, inn, 'starter'))), ...openerSwaps()]
   } else {
     candidates = openerSwaps()
