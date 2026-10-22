@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import { cx } from './cx'
 
 export interface SegmentedOption<T extends string> {
@@ -9,14 +11,18 @@ export interface SegmentedOption<T extends string> {
   count?: number
   /** Color propio cuando está elegida (variante track): verde para lo bueno, rojo para lo malo. */
   tone?: 'success' | 'danger'
+  /** Lo que va arriba de la etiqueta (variante lens: el anillo de esa opción). Es decorativo: lo que dice va en `ariaLabel`. */
+  leading?: ReactNode
+  /** Nombre para lectores de pantalla, si la opción dice más que su etiqueta (p. ej. «Yendo 1º: 78 de cada 100»). */
+  ariaLabel?: string
 }
 
 /**
  * track: pista lavanda con la opción elegida en ámbar · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
- * cards: tarjetas (como las fechas del diseño). Lo elegido es ámbar, como en toda la app (el violeta es de los fondos y de la acción principal): en la pista y las pastillas,
+ * cards: tarjetas (como las fechas del diseño) · lens: la pista lavanda con una tarjeta por opción y su anillo arriba (la lente del Lab: Promedio / Yendo 1º / Yendo 2º). Lo elegido es ámbar, como en toda la app (el violeta es de los fondos y de la acción principal): en la pista y las pastillas,
  * relleno ámbar con el texto oscuro; en `cards`, el borde y el texto ámbar.
  */
-type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards'
+type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards' | 'lens'
 
 interface SegmentedProps<T extends string> {
   value: T
@@ -36,6 +42,7 @@ const GROUP: Record<SegmentedVariant, string> = {
   chips: 'flex flex-wrap gap-2',
   scroll: 'flex gap-2',
   cards: 'grid auto-cols-fr grid-flow-col gap-2',
+  lens: 'grid auto-cols-fr grid-flow-col gap-1 rounded-card bg-lavender p-1',
 }
 
 /** Opción elegida con color propio (verde / rojo) en lugar del ámbar de lo elegido. */
@@ -70,6 +77,12 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
     on: 'border-info bg-card-background text-info-soft',
     off: 'border-border-subtle bg-card-background text-foreground hover:bg-surface-hover',
   },
+  lens: {
+    base: 'min-h-14 rounded-control px-1 py-1.5 text-body',
+    // La elegida se enmarca en ámbar (no se rellena: el relleno era lo más brillante y le ganaba al número grande) y no repite su anillo: su número es el grande.
+    on: 'text-info-soft inset-ring-2 inset-ring-info',
+    off: 'text-foreground hover:bg-tint/10',
+  },
 }
 
 /** Selector de una opción entre pocas (turno, tipo de regla, filtro): mismo control en toda la app. */
@@ -87,17 +100,18 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             type="button"
             role="radio"
             aria-checked={active}
-            aria-label={option.label}
+            aria-label={option.ariaLabel ?? option.label}
             data-active={active ? 'true' : 'false'}
             className={cx(
               'grid min-w-0 content-center justify-items-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
               look.base,
               active ? (option.tone && variant === 'track' ? TONE_ON[option.tone] : look.on) : look.off,
-              size === 'md' ? 'min-h-10 text-body pointer-coarse:min-h-11' : 'min-h-9 text-micro pointer-coarse:min-h-11',
+              variant === 'lens' ? null : size === 'md' ? 'min-h-10 text-body pointer-coarse:min-h-11' : 'min-h-9 text-micro pointer-coarse:min-h-11',
               variant === 'cards' && size === 'md' && 'py-2',
             )}
             onClick={() => onChange(option.value)}
           >
+            {option.leading ? <span className="mb-0.5 grid place-items-center" aria-hidden="true">{option.leading}</span> : null}
             <span className="flex items-center justify-center gap-1.5 text-center max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap">
               {option.label}
               {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}

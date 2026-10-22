@@ -20,8 +20,8 @@ interface StepHeroProps {
   /** Un botón chico pegado al título (p. ej. el de la guía): no se estira ni baja de renglón en mobile como `side`. */
   titleAction?: ReactNode
   side?: ReactNode
-  /** 'form': la parte lateral es un formulario (se ordena en dos columnas en mobile). */
-  sideVariant?: 'actions' | 'form'
+  /** 'form': la parte lateral es un formulario (se ordena en dos columnas en mobile) · 'inline': un botón chico que en el celular se queda en el renglón del título, a la derecha (la calculadora del Lab, sólo ícono). */
+  sideVariant?: 'actions' | 'form' | 'inline'
 }
 
 const sideStyle = variants({
@@ -31,6 +31,7 @@ const sideStyle = variants({
       actions: 'flex flex-wrap items-center justify-end max-[1101px]:w-full max-[1101px]:justify-stretch max-[1101px]:[&>button]:flex-1',
       // Formulario (nombre y formato del deck): el nombre se queda con el ancho que sobra y el formato con uno fijo.
       form: 'grid w-full grid-cols-[minmax(0,1fr)_8.5rem] gap-2',
+      inline: 'flex shrink-0 items-center justify-end',
     },
   },
   defaults: { variant: 'actions' },
