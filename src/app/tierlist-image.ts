@@ -155,10 +155,3 @@ export async function renderTierListImage(list: MakerList): Promise<HTMLCanvasEl
 
   return canvas
 }
-
-/** El lienzo como PNG (sin pérdida: son letras y bordes). */
-export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('png'))), 'image/png')
-  })
-}
