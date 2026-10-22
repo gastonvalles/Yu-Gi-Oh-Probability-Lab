@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
-import { Spotlight } from '../../probability/MatFx'
+import { HOLD_PRESS, Spotlight } from '../../probability/MatFx'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
-import { CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
+import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { HANDTRAP_CATALOG, MAX_COPIES, type HandtrapConfig } from '../../../app/handtraps'
@@ -75,6 +75,7 @@ export function DuelSection() {
 
       <FieldArtSample duel={duel} />
       <MaterialSamples />
+      <HoldSample />
 
       <ArenaSamples />
 
@@ -192,6 +193,46 @@ function SampleXyz({ count, sideways, rival }: { count: number; sideways: boolea
         <MaterialCount count={count} sideways={sideways} />
       </div>
     </div>
+  )
+}
+
+/** Mantener apretado en la mesa: una carta del campo y el deck, en reposo y mientras se espera la retención (se hunden de a poco). */
+function HoldSample() {
+  const [holding, setHolding] = useState(false)
+  const held = holding ? 'true' : undefined
+
+  return (
+    <Specimen
+      title="Mantener apretado · la carta y el deck"
+      layout="column"
+      note={
+        <>
+          Mantener apretada una carta del campo de la práctica (450 ms, con el mouse, el dedo o el lápiz) la cambia de posición sin abrir el menú: de ataque a defensa y al revés, y boca abajo la Invoca por Volteo; un Link, una Mágica o una Trampa no hacen nada (al soltarlas se abre su menú). En un duelo, no. El deck se mantiene para su menú, se toca para buscar y se arrastra para robar. Mientras se espera, la carta o el deck se hunden de a poco (<Tag>data-holding</Tag>, <Tag>animate-hold-press</Tag>: arranca a los 120 ms, así un toque no los mueve; con el movimiento reducido, nada). Archivos: <Tag>app/use-mat-drag.ts</Tag> (<Tag>onHold</Tag>, <Tag>HOLD_MS</Tag>) y <Tag>probability/MatFx.tsx</Tag> (<Tag>HOLD_PRESS</Tag>).
+        </>
+      }
+    >
+      <Segmented
+        label="Cómo está"
+        variant="track"
+        value={holding ? 'hold' : 'rest'}
+        onChange={(value) => setHolding(value === 'hold')}
+        options={[
+          { value: 'rest', label: 'En reposo' },
+          { value: 'hold', label: 'Manteniendo' },
+        ]}
+      />
+      <div className="grid grid-cols-[5rem_3.5rem] items-start gap-4">
+        <div role="group" aria-label="Carta del campo" className={CELL_MONSTER}>
+          <ZoneLines kind="monster" />
+          <div data-holding={held} className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] w-[68.57%] overflow-hidden bg-input shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]', HOLD_PRESS)}>
+            <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />
+          </div>
+        </div>
+        <div role="group" aria-label={PILE_TITLES.deck} data-holding={held} className={cx(CELL, HOLD_PRESS)}>
+          <CardBack className="h-full" />
+        </div>
+      </div>
+    </Specimen>
   )
 }
 

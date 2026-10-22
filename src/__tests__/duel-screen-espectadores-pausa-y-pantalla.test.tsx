@@ -187,7 +187,7 @@ describe('la pantalla del duelo', () => {
       flush()
       flush()
 
-      tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+      fireEvent.keyDown(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }), { key: 'Enter' })
       fireEvent.click(screen.getByRole('menuitem', { name: 'Mandar al cementerio' }))
       flush()
 
@@ -689,7 +689,6 @@ describe('la pantalla del duelo', () => {
 
     const viewer = () => screen.queryByRole('dialog', { name: /^Main · / })
     tap(within(guest.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
     fireEvent.change(within(viewer()!).getByRole('searchbox', { name: 'Buscar carta' }), { target: { value: 'Monstruo' } })
 
     closeTab(host)

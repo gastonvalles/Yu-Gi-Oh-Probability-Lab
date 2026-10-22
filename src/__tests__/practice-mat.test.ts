@@ -8,6 +8,7 @@ import {
   describeMatAction,
   describeMatSteps,
   freeTargets,
+  holdAction,
   listBatchActions,
   listCardActions,
   listDropActions,
@@ -802,6 +803,62 @@ describe('la mesa de práctica', () => {
     expect([link[0]!.label, link[0]!.choices, link[0]!.action]).toEqual(['Invocación Especial', undefined, expect.objectContaining({ type: 'place', zone: 'mz', index: 1, pos: 'atk', how: 'special' })])
     // Una zona ocupada no ofrece nada (la mesa no deja soltar ahí).
     expect(drop(run([{ type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'atk' }]), 'a1', 'mz', 1)).toEqual([])
+  })
+
+  it('un Link sólo existe boca arriba en ataque (Yugipedia): se invoca sin la pregunta de la posición desde donde esté, y en el campo no pasa a defensa ni se pone boca abajo', () => {
+    const labels = (state: MatState) => listCardActions(state, 'x2', kindOf, nameOf).map((item) => item.label)
+    const special = (state: MatState) => listCardActions(state, 'x2', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')
+
+    // En el campo: ni «Pasar a defensa» ni «Poner boca abajo»; un monstruo cualquiera, las dos.
+    const onField = run([{ type: 'place', id: 'x2', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
+    expect(labels(onField)).not.toContain('Pasar a defensa')
+    expect(labels(onField)).not.toContain('Poner boca abajo')
+    expect(listCardActions(onField, 'a1', kindOf, nameOf).map((item) => item.label)).toEqual(expect.arrayContaining(['Pasar a defensa', 'Poner boca abajo']))
+
+    // Del cementerio, del destierro y hasta de la mano (adonde la mesa lo deja llevar): la Invocación Especial sale en ataque, sin preguntar; tampoco hay Invocación Normal ni Colocar.
+    for (const pile of ['gy', 'banished', 'hand'] as const) {
+      const from = run([{ type: 'move', id: 'x2', to: pile }])
+
+      expect([special(from)?.choices, special(from)?.action]).toEqual([undefined, expect.objectContaining({ type: 'place', pos: 'atk', how: 'special' })])
+      expect(labels(from)).not.toContain('Invocación Normal')
+      expect(labels(from)).not.toContain('Colocar')
+    }
+
+    // Soltado desde el cementerio en una zona: una sola jugada, ya en ataque.
+    const fromGy = listDropActions(run([{ type: 'move', id: 'x2', to: 'gy' }]), 'x2', kindOf, nameOf, { zone: 'mz', index: 2 })
+    expect(fromGy.map((item) => [item.label, item.choices, item.action])).toEqual([['Invocación Especial', undefined, expect.objectContaining({ type: 'place', zone: 'mz', index: 2, pos: 'atk' })]])
+
+    // Arrastrado al Main Deck (la mesa no lo impide), no se coloca boca abajo desde ahí; un monstruo del Main, sí.
+    expect(labels(run([{ type: 'move', id: 'x2', to: 'deck' }]))).not.toContain('Colocar')
+    expect(listCardActions(start(), 'e1', kindOf, nameOf).map((item) => item.label)).toContain('Colocar')
+  })
+
+  it('mantener apretado un monstruo del campo (`holdAction`) hace la primera jugada de cambio de posición de su menú: de ataque a defensa y al revés, y boca abajo la Invocación por Volteo; un Link, una Mágica o Trampa y lo que no está en una zona de monstruo, nada', () => {
+    const board = run([
+      { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' },
+      { type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'def' },
+      { type: 'place', id: 'c1', zone: 'mz', index: 2, pos: 'set' },
+      { type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' },
+      { type: 'place', id: 'x2', zone: 'emz', index: 1, pos: 'atk' },
+      { type: 'place', id: 'b1', zone: 'st', index: 1, pos: 'atk' },
+      { type: 'place', id: 'd1', zone: 'st', index: 2, pos: 'set' },
+      { type: 'token', zone: 'mz', index: 3 },
+      { type: 'move', id: 'e1', to: 'gy' },
+    ])
+    const hold = (id: string) => holdAction(board, id, kindOf, nameOf)
+
+    expect(hold('a1')).toEqual({ type: 'position', id: 'a1', pos: 'def' })
+    expect(hold('a2')).toEqual({ type: 'position', id: 'a2', pos: 'atk' })
+    expect(hold('x1')).toEqual({ type: 'position', id: 'x1', pos: 'def' })
+    expect(hold('token-1')).toEqual({ type: 'position', id: 'token-1', pos: 'def' })
+    // Boca abajo: la primera de su menú, la Invocación por Volteo (a ataque), y se anota como tal.
+    expect(hold('c1')).toEqual({ type: 'position', id: 'c1', pos: 'atk' })
+    expect(describeMatAction(board, hold('c1')!, nameOf)).toBe('Invocación por Volteo de C1')
+    expect(describeMatAction(board, hold('a1')!, nameOf)).toBe('A1 pasa a defensa')
+    // Ida y vuelta: otra vez la deja como estaba.
+    expect(holdAction(matReducer(board, hold('a1')!), 'a1', kindOf, nameOf)).toEqual({ type: 'position', id: 'a1', pos: 'atk' })
+    // Nada: el Link, una Mágica y una Trampa (boca arriba o abajo), y una carta del cementerio, del deck o una que no existe.
+    expect(['x2', 'b1', 'd1', 'e1', 'f1', 'zzz'].map(hold)).toEqual([null, null, null, null, null, null])
   })
 
   it('reconoce el tipo de carta por el marco y el subtipo', () => {

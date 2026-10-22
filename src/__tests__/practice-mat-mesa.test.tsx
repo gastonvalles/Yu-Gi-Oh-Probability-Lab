@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatState, replayMat } from '../app/practice-mat'
 import { RIFFLE_MS } from '../app/shuffle-fx'
+import { HOLD_MS } from '../app/use-mat-drag'
 import { setSoundsOn, soundsOn } from '../app/sound-prefs'
 import type { MatCard } from '../components/probability/PracticeMat'
 import { CARDS, Harness, INITIAL, card, commits, endTurn, goToPhase, hand, phaseButton, pointer, render, status, tap, zone } from './support/practice-mat-harness'
@@ -228,8 +229,13 @@ describe('la mesa de práctica', () => {
       fireEvent.click(backdrop())
       expect(screen.queryByRole('region', { name: 'Ash Blossom' })).not.toBeInTheDocument()
 
-      // Deck: la hoja trae el dorso y robar es la jugada; los demás, de apoyo.
-      tap(screen.getByRole('button', { name: /^Main: [0-9]+/ }))
+      // Deck (su menú sale manteniéndolo apretado: tocarlo es buscar): la hoja trae el dorso y robar es la jugada; los demás, de apoyo.
+      const pile = screen.getByRole('button', { name: /^Main: [0-9]+/ })
+      fireEvent.pointerDown(pile, { ...pointer, clientX: 10, clientY: 10 })
+      act(() => {
+        vi.advanceTimersByTime(HOLD_MS)
+      })
+      fireEvent.pointerUp(pile, { ...pointer, clientX: 10, clientY: 10 })
       const deck = screen.getByRole('region', { name: /carta/ })
       expect(within(deck).getByRole('menuitem', { name: 'Robar' })).not.toHaveClass('bg-primary')
       vi.advanceTimersByTime(400)
@@ -472,7 +478,7 @@ describe('la mesa de práctica', () => {
     expect(dock).toHaveClass('z-55')
   })
 
-  it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {
+  it('arrastrar una carta al cementerio la manda ahí; el menú del deck (con el teclado, o manteniéndolo apretado) ofrece robar', () => {
     render(<Harness />)
 
     const gy = screen.getByRole('button', { name: 'GY: 0' })
@@ -488,7 +494,7 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'GY: 1' })).toBeInTheDocument()
     expect(within(status()).getByText('Maxx C va al cementerio')).toBeInTheDocument()
 
-    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 1' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
     expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
@@ -518,8 +524,9 @@ describe('la mesa de práctica', () => {
       const layers = () => deck().querySelector(':scope > span.absolute:not([data-pile-edge])')
       const before = layers()
 
-      // Barajar: el deck se vuelve a armar con su animación y la mano se baraja carta por carta.
-      tap(deck())
+      // Barajar: el deck se vuelve a armar con su animación y la mano se baraja carta por carta. Su menú, con el teclado (tocarlo es buscar).
+      const deckMenu = () => fireEvent.keyDown(deck(), { key: 'Enter' })
+      deckMenu()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Barajar' }))
       expect(layers()).not.toBe(before)
       expect(layers()?.querySelector('.animate-riffle-left')).not.toBeNull()
@@ -529,7 +536,7 @@ describe('la mesa de práctica', () => {
       // Mandar el tope al cementerio no baraja nada: ni el deck (sus capas siguen siendo las mismas) ni la mano.
       animated.length = 0
       const shuffled = layers()
-      tap(deck())
+      deckMenu()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Mandar al cementerio' }))
       expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
       expect(layers()).toBe(shuffled)
@@ -537,7 +544,7 @@ describe('la mesa de práctica', () => {
 
       // Robar sí: la mano se baraja de nuevo.
       animated.length = 0
-      tap(deck())
+      deckMenu()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
       expect(inHand().length).toBeGreaterThan(0)
 
@@ -557,15 +564,14 @@ describe('la mesa de práctica', () => {
   it('del Deck se puede revelar el tope, y desde el visor cualquier carta (sin moverla): revelarla y barajar al cerrar el visor es una sola jugada', () => {
     render(<Harness />)
 
-    // El tope: queda anotado y el Deck sigue igual.
-    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    // El tope (del menú del deck, con el teclado): queda anotado y el Deck sigue igual.
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 1' }), { key: 'Enter' })
     fireEvent.click(screen.getByRole('menuitem', { name: 'Revelar el tope' }))
     expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
     expect(within(status()).getByText('Revelás Imperm')).toBeInTheDocument()
 
-    // Desde el visor del Deck, una carta cualquiera ofrece "Revelar". El barajado de después de mirar va adentro de la misma jugada (eran dos jugadas de un toque: la segunda le cortaba el destello y el sonido).
+    // Desde el visor del Deck (tocarlo lo abre), una carta cualquiera ofrece "Revelar". El barajado de después de mirar va adentro de la misma jugada (eran dos jugadas de un toque: la segunda le cortaba el destello y el sonido).
     tap(screen.getByRole('button', { name: 'Main: 1' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getByRole('button', { name: /Imperm/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Revelar' }))
     expect(screen.queryByRole('dialog', { name: /Main/ })).not.toBeInTheDocument()

@@ -8,6 +8,7 @@ import { loadCardEffectMap, loadCardEffects } from '../app/card-effect-data'
 import CARD_EFFECTS from '../data/card-effects.json'
 import { RIFFLE_MS } from '../app/shuffle-fx'
 import type { DuelConnect } from '../app/use-duel'
+import { HOLD_MS } from '../app/use-mat-drag'
 import type { ApiCardReference } from '../types'
 import { fetchCardsByIds } from '../ygoprodeck'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
@@ -350,6 +351,40 @@ describe('la pantalla del duelo', () => {
     expect(namesIn(viewer)).toEqual(['Carta del rival', 'Carta del rival', 'Carta del rival (target)'])
   })
 
+  it('en un duelo, mantener apretado un monstruo no lo cambia de posición (es de la práctica: un toque largo sin querer le mandaría una jugada al rival) y soltarlo abre su menú; el deck sí: tocarlo busca y mantenerlo abre su menú', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    const name = summonFirst(host)
+    flush()
+    const press = { button: 0, pointerId: 1, clientX: 10, clientY: 10 }
+    const wait = (ms: number) =>
+      act(() => {
+        vi.advanceTimersByTime(ms)
+      })
+
+    const card = zoneOf(host, 'Zona de monstruo 1').getByRole('button', { name })
+    fireEvent.pointerDown(card, press)
+    expect(card).not.toHaveAttribute('data-holding')
+    wait(HOLD_MS * 2)
+    fireEvent.pointerUp(card, press)
+    expect(zoneOf(host, 'Zona de monstruo 1').getByRole('button', { name })).toBeInTheDocument()
+    expect(screen.getByRole('menu', { name })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    flush()
+
+    const deck = () => within(host.container).getByRole('button', { name: /^Main: \d+$/ })
+    tap(deck())
+    const viewer = screen.getByRole('dialog', { name: /^Main · / })
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Cerrar' }))
+    flush()
+
+    fireEvent.pointerDown(deck(), press)
+    wait(HOLD_MS)
+    fireEvent.pointerUp(deck(), press)
+    expect(screen.getByRole('menuitem', { name: 'Robar' })).toBeInTheDocument()
+  })
+
   it('cuando el rival toca su deck o suma una carta a su mano, su deck y su mano se barajan y se ven', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
@@ -369,7 +404,7 @@ describe('la pantalla del duelo', () => {
 
     try {
       // Ana toca su deck y roba: Beto ve barajarse el deck de Ana (sus capas) y su mano (sus dorsos).
-      tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+      fireEvent.keyDown(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }), { key: 'Enter' })
       fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
       flush()
 
@@ -449,7 +484,6 @@ describe('la pantalla del duelo', () => {
         vi.advanceTimersByTime(1000)
       })
       tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
       chooseTwo(screen.getByRole('dialog', { name: /^Main · / }))
       fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
       flush()
@@ -580,7 +614,6 @@ describe('la pantalla del duelo', () => {
     openTable(host, guest)
 
     tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getAllByRole('button', { name: /^Monstruo/ })[0]!)
     fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
     flush()
@@ -604,7 +637,6 @@ describe('la pantalla del duelo', () => {
 
     // Ana busca una carta en su deck y la agrega a su mano (no es un robo).
     tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getAllByRole('button', { name: /^Monstruo/ })[0]!)
     fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
     flush()

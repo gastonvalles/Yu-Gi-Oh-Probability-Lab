@@ -708,7 +708,7 @@ describe('la pantalla del duelo', () => {
       flush()
       await act(async () => {})
       expect(lane(guest, 'chain')).not.toBeNull()
-      tap(within(guest.container).getByRole('button', { name: /^Main: \d+/ }))
+      fireEvent.keyDown(within(guest.container).getByRole('button', { name: /^Main: \d+/ }), { key: 'Enter' })
       fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
       flush()
       expect(lane(guest, 'chain')).toBeNull()

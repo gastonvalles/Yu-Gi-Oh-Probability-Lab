@@ -158,6 +158,15 @@ Gastón, 2026-10-22: «no me convence la interfaz ni la comodidad para el usuari
 - **Estados** (`CompareEmpty` y el resto de las piezas): primera vez (`EmptyState` con «Importar un deck» y «Probar un cambio en el Lab»), «Son el mismo deck», cartas sin clasificar (anillo `unmeasured`, «?» y «Clasificar N cartas»), cargando (esqueletos, `aria-busy`), error (aviso en rojo con el motivo) y B recién adoptada (A = tu deck nuevo, B = el que dejaste, con el aviso «Deshacer»).
 - **El aviso con acción:** `AppToast` y `showToast` aceptan una acción tipada («Deshacer»); un aviso con acción dura 8 s.
 
+### La mesa: gestos
+
+Gastón, 2026-10-22, a partir de lo que le dijo un usuario. Todo lo maneja `useMatDrag` (`src/app/use-mat-drag.ts`); la lógica de «qué jugada» es pura y vive en `src/app/practice-mat.ts`.
+
+- **Mantener apretada una carta del campo = cambia de posición, sin menú. Sólo en la práctica** (en un duelo, un toque largo sin querer mandaría una jugada al rival). `onHold` dispara a los **450 ms** sin moverse más que el umbral del arrastre (6 px: pasarlo ya es arrastrar); si se suelta antes es un toque y abre el menú como siempre. Un monstruo boca arriba pasa de **ataque a defensa** y al revés; uno boca abajo hace la **Invocación por Volteo** (la primera opción de su menú: `holdAction()` reusa `listCardActions`). Links, Mágicas y Trampas, la mano y las pilas no hacen nada con el toque largo (soltar es un toque). Es una jugada más: registro, Deshacer, replay y combos. Indicio: la carta se hunde a 0,93 (`hold-press`, `--animate-hold-press`, sin movimiento con `motion-reduce`) y en el celular vibra (`vibrate(12)`).
+- **Los Links no se pueden poner en defensa** (Yugipedia: *Link Monster*, *Defense Position*): un Link sólo existe boca arriba, en Posición de Ataque. Al invocarlo (del Extra, del cementerio, del destierro, de la mano o soltándolo en una zona) **no se pregunta la posición**; su menú no ofrece «Pasar a defensa» ni «Poner boca abajo»; en el Main Deck no ofrece «Colocar»; mantenerlo no hace nada.
+- **El deck (práctica y duelo):** **tocarlo** abre el visor para buscar carta; **arrastrarlo** roba la carta del tope (soltarla en la mano o fuera de toda zona roba; en el cementerio, el destierro o una zona libre hace lo de siempre; sobre otra pila o sobre el mismo deck, nada); **mantenerlo apretado** abre el menú de opciones (Robar, Revelar el tope, Mandar al cementerio, Desterrar el tope, Ver el deck, Barajar). Con Enter o Espacio abre el menú completo. El `title` del deck lo dice («Tocá: buscar · Arrastrá: robar · Mantené: opciones»).
+- **Táctil:** el click que el celular manda al soltar caía en lo que se acababa de abrir; `useMatDrag` hace `preventDefault` en el `touchend` de todo lo que maneja (cartas del campo, deck y el +).
+
 ## 5. Navegación
 
 El armazón vive en `components/shell/` (`AppShell`) y se prueba primero en `/playground` (ver `docs/playground.md`): un solo menú, que se arma una vez y lo ven el menú lateral y el cajón.
