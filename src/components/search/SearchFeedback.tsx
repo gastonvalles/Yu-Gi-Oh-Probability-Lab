@@ -44,8 +44,10 @@ export function SearchResultsToolbar({
   return (
     <div
       className={cx(
-        'sticky top-0 z-2 flex items-center justify-between gap-2.5 bg-card-background',
-        layout === 'mobile' ? '-mx-3 -mt-2 mb-2 px-3 py-2' : 'px-3 py-2',
+        'sticky z-2 flex items-center justify-between gap-2.5 bg-card-background',
+        // `-top-2` y no `top-0` en el celular: ahí la barra va adentro del recuadro que se desplaza (`py-2`) y el navegador la pega al borde de arriba del CONTENIDO, no al del relleno;
+        // con `top-0` quedaban 8 px de hueco encima y por ahí se veían pasar los resultados. En escritorio el recuadro no tiene relleno y `top-0` es lo justo.
+        layout === 'mobile' ? '-top-2 -mx-3 -mt-2 mb-2 px-3 py-2' : 'top-0 px-3 py-2',
       )}
     >
       <p className="m-0 min-w-0 truncate text-micro text-muted [&_strong]:text-foreground" aria-live="polite">
