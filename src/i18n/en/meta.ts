@@ -409,7 +409,7 @@ export const meta: Translated<typeof es> = {
   'meta.maker.subtitle': 'Build your own: pick cards, sort them into rows and download it as an image.',
   'meta.maker.how': 'How it works',
   'meta.maker.help1': 'Build your tier list with the meta hand traps and boardbreakers, or by searching a card by name.',
-  'meta.maker.help2': "Drag a card into a row (or between others to reorder it), or tap it and choose where it goes. A row's gear (or its letter) opens its menu, and its arrows drag it somewhere else.",
+  'meta.maker.help2': "Drag a card into a row (or between others to reorder it; with a finger, hold it for a moment first), or tap it and choose where it goes. A row's gear (or its letter) opens its menu, and its arrows drag it somewhere else.",
   'meta.maker.help3': 'Right-click (or Delete) sends a card back to “Unranked”; if it was already there, it leaves the list. It saves itself in this browser.',
   'meta.maker.defaultTitle': 'My tier list',
   'meta.maker.download': 'Download image',

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { cardImageSrc } from '../app/card-image-source'
 import { buildInitials } from '../app/utils'
@@ -18,6 +18,11 @@ interface CardArtProps {
   limitBadgeSize?: CardLimitBadgeSize
   /** La carta se inclina en 3D hacia el puntero (el mouse al pasar, el dedo al tocarla) y lleva su brillo, como la del detalle: en toda grilla o lista donde las cartas se ven una al lado de otra. */
   tilt?: boolean
+  /**
+   * Sin el fundido de cuando carga, y si la imagen ya está en la memoria del navegador, sin el esqueleto: se ve desde el primer cuadro. Para una carta que React vuelve a montar en otro lugar
+   * y tiene que aparecer ahí de una: la que se suelta en otra fila del creador de tier lists.
+   */
+  instant?: boolean
 }
 
 /**
@@ -33,6 +38,7 @@ export const CardArt = memo(function CardArt({
   limitCard = null,
   limitBadgeSize = 'md',
   tilt = false,
+  instant = false,
 }: CardArtProps) {
   const frame = ['relative block h-full w-full', tilt ? TILT_IN_PLACE : ''].join(' ').trim()
   const frameProps = tilt ? tiltInPlaceHandlers : {}
@@ -55,6 +61,14 @@ export const CardArt = memo(function CardArt({
     setIsImageLoaded(Boolean(remoteUrl && image && image.complete && image.naturalWidth > 0))
   }, [remoteUrl])
 
+  // Lo mismo, antes de dibujar (el efecto de arriba corre después): la imagen ya cargada no pasa por el esqueleto. El fundido no se puede saltear así (otro efecto del mismo cuadro puede
+  // obligar a calcular los estilos con la imagen todavía transparente), por eso con `instant` la imagen no lo lleva.
+  useLayoutEffect(() => {
+    const image = imageRef.current
+
+    if (instant && image?.complete && image.naturalWidth > 0) setIsImageLoaded(true)
+  }, [instant])
+
   if (src && !hasImageError) {
     return (
       <div className={frame} {...frameProps}>
@@ -67,7 +81,7 @@ export const CardArt = memo(function CardArt({
         <img
           ref={imageRef}
           className={[
-            'rounded-none! transition-opacity duration-150',
+            instant ? 'rounded-none!' : 'rounded-none! transition-opacity duration-150',
             isImageLoaded ? 'opacity-100' : 'opacity-0',
             className,
           ].join(' ').trim()}

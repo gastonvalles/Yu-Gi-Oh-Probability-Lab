@@ -195,7 +195,7 @@ export function DataSection() {
         layout="column"
         note={
           <>
-            Arriba, la fila de las tier lists del meta (sólo se lee: recuadro y cartas). Abajo, el creador: cada fila lleva <b>al final</b> (<Tag>trailing</Tag>) el engranaje, que abre el menú de la fila, y el agarre <b>▲▼</b>, que la arrastra entera con el mouse, con el dedo (sólo el agarre es <Tag>touch-none</Tag>) o con ↑ ↓; las demás se corren para dejarle el hueco y, al soltarla, vuela a su lugar. Íconos blancos que se ponen ámbar al apuntarlos; la fila levantada lleva el aro ámbar. Archivos: <Tag>meta/TierStrip.tsx</Tag>, <Tag>meta/TierMakerBoard.tsx</Tag>, <Tag>app/use-tier-row-drag.ts</Tag>, <Tag>app/use-tier-flights.ts</Tag>
+            Arriba, la fila de las tier lists del meta (sólo se lee: recuadro y cartas). Abajo, el creador: las cartas se arrastran <b>como en el builder</b> (6 px con el mouse; con el dedo, mantenerla 350 ms): el fantasma de la carta sigue al puntero, la fila de abajo lleva el aro ámbar (<Tag>highlighted</Tag>) y una línea ámbar marca dónde entra; al soltarla cambia de lugar de una, sin vuelo. Cada fila lleva <b>al final</b> (<Tag>trailing</Tag>) el engranaje, que abre el menú de la fila, y el agarre <b>▲▼</b>, que la arrastra entera con el mouse, con el dedo (sólo el agarre es <Tag>touch-none</Tag>) o con ↑ ↓; las demás se corren para dejarle el hueco y, al soltarla, vuela a su lugar (lo único que vuela). Íconos blancos que se ponen ámbar al apuntarlos; la fila levantada lleva el aro ámbar. Archivos: <Tag>meta/TierStrip.tsx</Tag>, <Tag>meta/TierMakerBoard.tsx</Tag>, <Tag>app/use-tier-card-drag.ts</Tag>, <Tag>app/use-tier-row-drag.ts</Tag>, <Tag>app/use-tier-flights.ts</Tag>
           </>
         }
       >

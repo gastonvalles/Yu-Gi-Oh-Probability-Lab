@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TIERLIST_STORAGE_KEY, TIERLIST_VERSION, addCards, newList, writeStore, type MakerCard } from '../app/tierlist-maker'
 import { TierMakerScreen } from '../components/meta/TierMakerScreen'
+import { TIER_LAYOUT, centerOf, mockTierLayout, mouseDrag } from './support/tier-board-layout'
 
 const toast = vi.hoisted(() => vi.fn())
 
@@ -36,6 +37,8 @@ afterEach(cleanup)
 
 const tiles = (scope: HTMLElement = document.body) => within(scope).queryAllByRole('button', { name: /^Carta / })
 const row = (name: string) => screen.getByRole('region', { name })
+/** Toda la caja de una fila, donde se suelta una carta (con el layout de prueba de `support/tier-board-layout`). */
+const zoneOf = (name: string) => row(name).closest('[data-tier-drop]') as HTMLElement
 /** El orden de las filas del tablero (sin «Sin clasificar»). */
 const order = () => [...document.querySelectorAll('[data-tier-row] > section[aria-label]')].map((section) => section.getAttribute('aria-label')).filter((label) => label !== 'Sin clasificar')
 /** Deja guardada una lista con las dos cartas del deck de prueba en «Sin clasificar»: lo que antes sumaba el botón «Mi deck». */
@@ -119,31 +122,35 @@ describe('el creador de tier lists', () => {
     expect(tiles(row('A'))).toHaveLength(1)
   })
 
-  it('se arrastra una carta a una fila y entre las de una fila (para ordenarlas)', () => {
+  it('se arrastra una carta (con el mouse, como en el builder) a una fila, entre las de una fila para ordenarlas y de vuelta a la bandeja; el arrastre no la deja elegida', () => {
     seed()
-    render(<TierMakerScreen />)
 
-    const dataTransfer = { setData: vi.fn(), getData: () => '', effectAllowed: '', dropEffect: '' }
-    const [first, second] = tiles(row('Sin clasificar')) as [HTMLElement, HTMLElement]
-    const rowS = row('S').querySelector('ul') as HTMLElement
+    const layout = mockTierLayout()
 
-    fireEvent.dragStart(first, { dataTransfer })
-    fireEvent.dragOver(rowS, { dataTransfer })
-    fireEvent.drop(rowS, { dataTransfer })
-    fireEvent.dragEnd(first, { dataTransfer })
-    fireEvent.dragStart(second, { dataTransfer })
-    fireEvent.dragOver(rowS, { dataTransfer })
-    fireEvent.drop(rowS, { dataTransfer })
+    try {
+      render(<TierMakerScreen />)
 
-    expect(tiles(row('S')).map((tile) => tile.getAttribute('aria-label'))).toEqual(['Carta Crossout Designator', 'Carta Effect Veiler'])
+      const [first, second] = tiles(row('Sin clasificar')) as [HTMLElement, HTMLElement]
 
-    // Soltar la segunda sobre la primera la pone antes.
-    const [a, b] = tiles(row('S')) as [HTMLElement, HTMLElement]
+      mouseDrag(first, centerOf(zoneOf('S')))
+      mouseDrag(second, centerOf(zoneOf('S')))
+      expect(tiles(row('S')).map((tile) => tile.getAttribute('aria-label'))).toEqual(['Carta Crossout Designator', 'Carta Effect Veiler'])
+      expect(screen.queryByRole('group', { name: /Mover «/ })).not.toBeInTheDocument()
 
-    fireEvent.dragStart(b, { dataTransfer })
-    fireEvent.dragOver(a.parentElement as HTMLElement, { dataTransfer })
-    fireEvent.drop(a.parentElement as HTMLElement, { dataTransfer })
-    expect(tiles(row('S')).map((tile) => tile.getAttribute('aria-label'))).toEqual(['Carta Effect Veiler', 'Carta Crossout Designator'])
+      // Soltar la segunda sobre la mitad izquierda de la primera la pone antes.
+      const [a, b] = tiles(row('S')) as [HTMLElement, HTMLElement]
+
+      mouseDrag(b, { x: a.getBoundingClientRect().left + 5, y: centerOf(a).y })
+      expect(tiles(row('S')).map((tile) => tile.getAttribute('aria-label'))).toEqual(['Carta Effect Veiler', 'Carta Crossout Designator'])
+
+      // Y de S a «Sin clasificar», al final.
+      mouseDrag(tiles(row('S'))[0] as HTMLElement, { x: TIER_LAYOUT.width - 10, y: centerOf(zoneOf('Sin clasificar')).y })
+      expect(names(row('S'))).toEqual(['Carta Crossout Designator'])
+      expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+      expect(localStorage.getItem(TIERLIST_STORAGE_KEY)).toContain('Effect Veiler')
+    } finally {
+      layout.restore()
+    }
   })
 
   it('la letra de una fila abre su editor: nombre, color, y borrarla devuelve sus cartas a la bandeja', () => {
@@ -260,6 +267,7 @@ describe('sacar cartas de a un paso (Gastón, 2026-10-21: «si hago click derech
     fireEvent.pointerDown(first, { pointerType: 'touch' })
     expect(fireEvent.contextMenu(first)).toBe(false)
     expect(tiles(row('Sin clasificar'))).toHaveLength(2)
+    fireEvent.pointerUp(first, { pointerType: 'touch' })
 
     fireEvent.pointerDown(second, { pointerType: 'pen' })
     fireEvent.contextMenu(second)
@@ -542,31 +550,29 @@ describe('al final de cada fila, el engranaje y el agarre (Gastón, 2026-10-21: 
       expect(order()).toEqual(['S', 'A', 'B', 'C', 'D', 'E', 'F'])
     })
 
-    it('soltar una carta sobre una fila (o sobre su agarre) mueve la carta y no reordena las filas', () => {
+    it('soltar una carta sobre una fila (o sobre su agarre, que es parte de la fila) mueve la carta y no reordena las filas', () => {
       seed()
-      render(<TierMakerScreen />)
 
-      const dataTransfer = { setData: vi.fn(), getData: () => '', effectAllowed: '', dropEffect: '' }
-      const card = tiles(row('Sin clasificar'))[0] as HTMLElement
-      const rowC = row('C').querySelector('ul') as HTMLElement
+      const layout = mockTierLayout()
 
-      fireEvent.dragStart(card, { dataTransfer })
-      fireEvent.dragOver(rowC, { dataTransfer })
-      fireEvent.drop(rowC, { dataTransfer })
-      fireEvent.dragEnd(card, { dataTransfer })
-      expect(names(row('C'))).toEqual(['Carta Crossout Designator'])
+      try {
+        render(<TierMakerScreen />)
 
-      const grip = screen.getByRole('button', { name: 'Mover la fila A' })
-      const second = tiles(row('Sin clasificar'))[0] as HTMLElement
+        mouseDrag(tiles(row('Sin clasificar'))[0] as HTMLElement, centerOf(zoneOf('C')))
+        expect(names(row('C'))).toEqual(['Carta Crossout Designator'])
 
-      fireEvent.dragStart(second, { dataTransfer })
-      fireEvent.dragOver(grip, { dataTransfer })
-      fireEvent.drop(grip, { dataTransfer })
-      fireEvent.dragEnd(second, { dataTransfer })
+        // El agarre va en la columna del final de la fila, a la derecha de todo: la carta queda al final de A y las filas, como estaban.
+        const grip = screen.getByRole('button', { name: 'Mover la fila A' })
 
-      expect(order()).toEqual(['S', 'A', 'B', 'C', 'D', 'E', 'F'])
-      expect(tiles(row('A'))).toHaveLength(0)
-      expect(names(row('Sin clasificar'))).toEqual(['Carta Effect Veiler'])
+        mouseDrag(tiles(row('Sin clasificar'))[0] as HTMLElement, { x: TIER_LAYOUT.width - 5, y: centerOf(zoneOf('A')).y })
+
+        expect(order()).toEqual(['S', 'A', 'B', 'C', 'D', 'E', 'F'])
+        expect(names(row('A'))).toEqual(['Carta Effect Veiler'])
+        expect(tiles(row('Sin clasificar'))).toHaveLength(0)
+        expect(grip).not.toHaveAttribute('data-active')
+      } finally {
+        layout.restore()
+      }
     })
   })
 })

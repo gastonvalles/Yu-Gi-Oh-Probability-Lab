@@ -35,6 +35,18 @@ export function rowShifts(rows: readonly RowBox[], from: number, to: number, gap
   return rows.map((_, index) => (from < index && index <= to ? -step : to <= index && index < from ? step : 0))
 }
 
+/**
+ * Un cuadro del auto-desplazamiento al arrastrar algo del tablero (una fila o una carta): cerca del borde de arriba o de abajo de lo que se desplaza (`findScrollParent`), lo desplaza un poco
+ * (`getAutoScrollStep`). Si es la página, el borde de abajo es el de arriba de lo que tapa el armazón (`bottomInset`, la barra del celular): ahí cerca ya se desplaza.
+ */
+export function scrollNearEdge(scroller: HTMLElement, pointerY: number, bottomInset: number): void {
+  const page = scroller === document.scrollingElement || scroller === document.documentElement
+  const edges = page ? { top: 0, bottom: window.innerHeight - bottomInset } : scroller.getBoundingClientRect()
+  const step = getAutoScrollStep(pointerY, edges.top, edges.bottom)
+
+  if (step !== 0) scroller.scrollBy(0, step)
+}
+
 interface Session {
   id: string
   /** Las filas en el orden en que estaban al agarrar (el de `rows` y `elements`). */
@@ -67,8 +79,8 @@ interface TierRowDragOptions {
 }
 
 /**
- * Arrastrar una fila entera por su agarre, con el mouse, con el dedo o con el teclado. Va con Pointer Events y no con el arrastre del navegador (HTML5), que no anda con el dedo y es el de las
- * cartas: así soltar una fila nunca mueve una carta ni al revés. Al tocar el agarre (que es `touch-none`: el resto de la fila sigue desplazando la página) la fila se levanta y sigue al
+ * Arrastrar una fila entera por su agarre, con el mouse, con el dedo o con el teclado. Va con Pointer Events, aparte del arrastre de las cartas (`useTierCardDrag`, que arranca en la carta y no
+ * en el agarre): así soltar una fila nunca mueve una carta ni al revés. Al tocar el agarre (que es `touch-none`: el resto de la fila sigue desplazando la página) la fila se levanta y sigue al
  * puntero; las demás se corren para dejarle el hueco donde va a caer (ése es el lugar de destino), y cerca del borde de arriba o de abajo la página se desplaza sola. Al soltarla se reordena
  * la lista y la fila viaja del puntero a su lugar (`useTierFlights`, con `lift`); si se cancela, o cae donde estaba, vuelve a su lugar. Con ↑ y ↓ en el agarre se mueve de a un lugar.
  * Con movimiento reducido no hay transiciones. Es de presentación: el orden nuevo lo decide quien recibe `onMove`.
@@ -117,12 +129,7 @@ export function useTierRowDrag(boardRef: RefObject<HTMLElement | null>, { ids, o
 
     if (!current?.lifted) return
 
-    const page = current.scroller === document.scrollingElement || current.scroller === document.documentElement
-    const edges = page ? { top: 0, bottom: window.innerHeight - current.bottomInset } : current.scroller.getBoundingClientRect()
-    const step = getAutoScrollStep(current.lastY, edges.top, edges.bottom)
-
-    if (step !== 0) current.scroller.scrollBy(0, step)
-
+    scrollNearEdge(current.scroller, current.lastY, current.bottomInset)
     place(current)
     current.frame = requestAnimationFrame(tick)
   }

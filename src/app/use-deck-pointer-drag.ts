@@ -16,10 +16,10 @@ export type DeckDropIndicatorState = 'idle' | 'valid' | 'invalid'
 
 // Con el mouse el arrastre arranca al mover unos píxeles. Con el dedo hay que
 // mantener presionado sin moverse: así deslizar sobre las cartas scrollea la
-// página en vez de moverlas.
-const MOUSE_DRAG_THRESHOLD_PX = 6
-const TOUCH_DRAG_DELAY_MS = 350
-const TOUCH_SCROLL_SLOP_PX = 10
+// página en vez de moverlas. Los usa también el arrastre de las cartas de la tier list.
+export const MOUSE_DRAG_THRESHOLD_PX = 6
+export const TOUCH_DRAG_DELAY_MS = 350
+export const TOUCH_SCROLL_SLOP_PX = 10
 // Al arrastrar cerca del borde de la zona scrolleable se desplaza sola, para
 // poder llevar una carta a una zona que está fuera de pantalla.
 const AUTO_SCROLL_EDGE_PX = 72
