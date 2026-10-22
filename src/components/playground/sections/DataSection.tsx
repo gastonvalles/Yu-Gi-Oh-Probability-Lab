@@ -2,20 +2,48 @@ import { useState } from 'react'
 
 import { addCards, moveCard, moveTierTo, newList, removeCard, type MakerList } from '../../../app/tierlist-maker'
 import type { ArtChoice } from '../../../app/use-card-art-options'
-import { formatWholePercent } from '../../../app/utils'
 import { CardArt } from '../../CardArt'
 import { CardArtPicker } from '../../card-detail/CardArtPicker'
 import { CardEffectText } from '../../card-detail/CardEffectText'
 import { CardEffectTraits } from '../../card-detail/CardEffectTraits'
 import { TierMakerBoard } from '../../meta/TierMakerBoard'
 import { TILE_WIDTH, TierStrip } from '../../meta/TierStrip'
+import { createRoleGroupKey, getDeckGroupTheme } from '../../../app/deck-groups'
 import { InfoTip } from '../../ui/InfoTip'
 import { ProgressRing } from '../../ui/ProgressRing'
+import { formatPer100 } from '../../ui/ring-shared'
 import { SegmentedRing } from '../../ui/SegmentedRing'
-import { TONE, type Tone } from '../../ui/tone'
+import { BUILD_TONE, RING_ARC, TONE, judgeTone, progressTone, type Tone } from '../../ui/tone'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const TONES = Object.keys(TONE) as Tone[]
+
+/** El reparto del Lab: buenas, con problema y sin salida. */
+const REPARTO = [
+  { key: 'clean', value: 0.813, color: RING_ARC.success },
+  { key: 'withProblem', value: 0.002, color: RING_ARC.warning },
+  { key: 'noOpening', value: 0.185, color: RING_ARC.danger },
+]
+
+/** El centro del protagonista: el número y su unidad, pegados. */
+function ProtagonistNumber({ value }: { value: number }) {
+  return (
+    <span className="grid justify-items-center leading-none">
+      <span>{formatPer100(value)}</span>
+      <span className="mt-1 text-body font-normal tracking-normal text-muted">de cada 100</span>
+    </span>
+  )
+}
+
+/** El centro de un progreso: «9 de 17». */
+function ProgressCount({ done, total }: { done: number; total: number }) {
+  return (
+    <span className="grid justify-items-center leading-tight">
+      <span className="text-lead font-bold">{done}</span>
+      <span className="text-micro font-normal text-muted">de {total}</span>
+    </span>
+  )
+}
 
 // Cartas reales con rasgos confirmados distintos (por su número de YGOPRODeck).
 const TRAIT_SAMPLES = [
@@ -91,25 +119,52 @@ const BULLETS =
 export function DataSection() {
   return (
     <SpecimenGrid min="22rem">
-      <Specimen title="ProgressRing" note={<>Un valor = un anillo; nunca barras de progreso. Archivo: <Tag>ui/ProgressRing.tsx</Tag></>}>
+      <Specimen
+        title="ProgressRing: los tonos"
+        note={<>Un valor = un anillo; nunca barras de progreso. Un anillo dice <b>una</b> cosa y el número del centro es lo que dibuja el arco: entero «de cada 100», sin «%» (<Tag>formatPer100</Tag>; el decimal va en el nombre accesible). El arco de cada tono pasa 3:1 contra la tarjeta y la pista (<Tag>RING_ARC</Tag>: <Tag>brand</Tag> en lila, <Tag>danger</Tag> en rojo claro, <Tag>neutral</Tag> en blanco) y la pista es <b>una sola</b>, índigo (<Tag>stroke-border</Tag>). Archivos: <Tag>ui/ProgressRing.tsx</Tag>, <Tag>ui/tone.ts</Tag></>}
+      >
         {TONES.map((tone, index) => (
           <ProgressRing key={tone} value={0.2 + index * 0.15} tone={tone} label={`Tono ${tone}`} delay={index * 100} />
         ))}
-        <ProgressRing value={0.87} size={76} strokeWidth={7} format={formatWholePercent} label="Grande" />
         <ProgressRing value={0.996} label="Casi cien" />
         <ProgressRing value={0.004} label="Casi cero" />
       </Specimen>
 
-      <Specimen title="SegmentedRing" note={<>Un reparto en tramos. Archivo: <Tag>ui/SegmentedRing.tsx</Tag></>}>
-        <SegmentedRing
-          size={132}
-          label="Limpias, con problema y sin salida"
-          segments={[
-            { key: 'clean', value: 0.62, color: 'var(--success-rgb)' },
-            { key: 'problem', value: 0.23, color: 'var(--danger-rgb)' },
-            { key: 'none', value: 0.15, color: 'var(--warning-rgb)' },
-          ]}
-        />
+      <Specimen title="Los cinco anillos (y «sin medir»)" layout="column" note={<>Cada tipo dice su color con una regla de <Tag>ui/tone.ts</Tag>. 1 · reparto (<Tag>SegmentedRing</Tag>). 2 · medida con juicio (<Tag>judgeTone</Tag>: verde si más es mejor, rojo claro si más es peor). 3 · identidad (<Tag>color</Tag> del rol, sin juzgar: un 0 de Bricks no es malo). 4 · progreso de una tarea (<Tag>progressTone</Tag>: ámbar a medio hacer, verde listo). 5 · builds (<Tag>BUILD_TONE</Tag>: A lila, B ámbar). «Sin medir»: <Tag>unmeasured</Tag>, pista punteada y «?».</>}>
+        <div className="flex flex-wrap items-center gap-4">
+          <SegmentedRing size={88} label="De cada 100 manos: 81 buenas, menos de 1 con problema, 19 sin salida" format={formatPer100} segments={REPARTO} />
+          <ProgressRing value={0.81} tone={judgeTone(true)} size={64} label="Una salida: 81 de cada 100" />
+          <ProgressRing value={0.12} tone={judgeTone(false)} size={64} label="Un problema: 12 de cada 100" />
+          <ProgressRing value={0.81} color={getDeckGroupTheme(createRoleGroupKey('starter')).rgb} size={64} label="Starters: 81 de cada 100" />
+          <ProgressRing value={0} color={getDeckGroupTheme(createRoleGroupKey('brick')).rgb} size={64} label="Bricks: 0 de cada 100" />
+          <ProgressRing value={9 / 17} tone={progressTone(9, 17)} size={72} strokeWidth={7} label="Cartas confirmadas: 9 de 17">
+            <ProgressCount done={9} total={17} />
+          </ProgressRing>
+          <ProgressRing value={1} tone={progressTone(17, 17)} size={72} strokeWidth={7} label="Cartas confirmadas: 17 de 17">
+            <ProgressCount done={17} total={17} />
+          </ProgressRing>
+          <ProgressRing value={0.81} tone={BUILD_TONE.A} size={64} label="Build A: 81 de cada 100" />
+          <ProgressRing value={0.85} tone={BUILD_TONE.B} size={64} label="Build B: 85 de cada 100" />
+          <ProgressRing value={0} unmeasured size={64} label="Build B: sin medir" />
+        </div>
+      </Specimen>
+
+      <Specimen title="Los tamaños" note={<>Protagonista 140 px en el celular y 184 en escritorio (trazo 14 a 16, número <Tag>text-display</Tag>, cuenta de 0 al aparecer: con <Tag>fluid</Tag> crece con su caja) · tarjeta 56 a 88 (trazo 6 a 8; desde 64 px el número cuenta) · lista y opciones 36 a 44 (trazo 4, número <Tag>text-micro</Tag>, de una). Más chico que 36 no lleva número.</>}>
+        <span className="size-35 min-[768px]:size-46">
+          <SegmentedRing fluid size={184} strokeWidth={16} label="Protagonista: 81 de cada 100 manos son buenas" format={(value) => <ProtagonistNumber value={value} />} segments={REPARTO} />
+        </span>
+        <ProgressRing value={0.84} tone="success" size={56} strokeWidth={5} label="Tarjeta: 84 de cada 100" />
+        <ProgressRing value={0.87} tone="neutral" size={84} format={formatPer100} label="Tarjeta que cuenta: 87 de cada 100" />
+        <ProgressRing value={0.78} tone="success" size={44} label="Lista: 78 de cada 100" />
+        <ProgressRing value={0.78} tone="success" size={36} label="Opción: 78 de cada 100" />
+      </Specimen>
+
+      <Specimen title="SegmentedRing" note={<>Un reparto en tramos, en orden desde las 12 y separados 3 px: verde las buenas, ámbar las que tienen un problema, rojo claro las que no abren (los colores de <Tag>RING_ARC</Tag>). Con <Tag>format</Tag>, el centro es el primer tramo y cuenta junto con su arco. Archivo: <Tag>ui/SegmentedRing.tsx</Tag></>}>
+        <SegmentedRing size={132} label="De cada 100 manos: 62 buenas, 23 con problema, 15 sin salida" format={formatPer100} segments={[
+          { key: 'clean', value: 0.62, color: RING_ARC.success },
+          { key: 'problem', value: 0.23, color: RING_ARC.warning },
+          { key: 'none', value: 0.15, color: RING_ARC.danger },
+        ]} />
       </Specimen>
 
       <Specimen title="CardEffectText" note={<>El efecto de una carta con sus partes marcadas: verde la condición, ámbar «(Quick Effect)», rojo el costo, violeta el objetivo y subrayado el límite; lo que no es seguro queda común. Capa 0 del motor de cartas (<Tag>docs/motor-de-cartas.md</Tag>). Archivo: <Tag>card-detail/CardEffectText.tsx</Tag></>}>

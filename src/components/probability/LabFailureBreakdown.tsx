@@ -7,7 +7,7 @@ import type { HandSegment } from '../../types'
 import { cx } from '../ui/cx'
 import { ProgressRing } from '../ui/ProgressRing'
 import { SegmentedRing } from '../ui/SegmentedRing'
-import { TONE, type Tone } from '../ui/tone'
+import { RING_ARC, TONE, type Tone } from '../ui/tone'
 import { overline } from '../ui/typography'
 import { LAB_FOOTNOTE } from './lab-styles'
 import { LabSection } from './LabSection'
@@ -17,7 +17,7 @@ const SEGMENTS = [
   {
     key: 'clean',
     tone: 'success',
-    rgb: 'var(--success-rgb)',
+    rgb: RING_ARC.success,
     label: 'lab.breakdown.clean.label',
     description: 'lab.breakdown.clean.description',
     rulesTitle: 'lab.breakdown.clean.rules',
@@ -26,7 +26,7 @@ const SEGMENTS = [
   {
     key: 'withProblem',
     tone: 'warning',
-    rgb: 'var(--warning-rgb)',
+    rgb: RING_ARC.warning,
     label: 'lab.breakdown.withProblem.label',
     description: 'lab.breakdown.withProblem.description',
     rulesTitle: 'lab.breakdown.withProblem.rules',
@@ -35,7 +35,7 @@ const SEGMENTS = [
   {
     key: 'noOpening',
     tone: 'danger',
-    rgb: 'var(--danger-rgb)',
+    rgb: RING_ARC.danger,
     label: 'lab.breakdown.noOpening.label',
     description: 'lab.breakdown.noOpening.description',
     rulesTitle: 'lab.breakdown.noOpening.rules',
