@@ -188,9 +188,8 @@ function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: Saved
         ))}
       </ul>
 
-      {/* Una instancia por combo: el campo arranca con el nombre del combo que se toca. */}
+      {/* El campo arranca con el nombre del combo que se toca (lo pone al abrirse; al cerrarse sale como estaba). */}
       <SaveComboDialog
-        key={renaming?.id ?? 'closed'}
         rename
         isOpen={renaming !== null}
         defaultName={renaming?.name ?? ''}

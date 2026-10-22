@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 
 import { t } from '../../i18n'
 import type { CardTextHighlight } from '../../app/card-text'
+import { Presence } from '../../app/use-presence'
 import { formatInteger } from '../../app/utils'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
@@ -60,7 +61,8 @@ export function DuelCardDock({ peek, highlight = null }: { peek: CardPeek | null
         </p>
         {view}
       </div>
-      {zoomed ? <CardZoom card={zoomed.card} name={zoomed.name} fallbackUrl={zoomed.card.imageUrlSmall ?? zoomed.card.imageUrl} onClose={() => setZoomed(null)} /> : null}
+      {/* Al cerrarse, la carta en grande sigue mientras sale (`Presence`). */}
+      <Presence>{zoomed ? <CardZoom card={zoomed.card} name={zoomed.name} fallbackUrl={zoomed.card.imageUrlSmall ?? zoomed.card.imageUrl} onClose={() => setZoomed(null)} /> : null}</Presence>
     </>
   )
 }

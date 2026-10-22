@@ -254,22 +254,20 @@ export function DialogsSection() {
           Abrir con tres elegidas
         </Button>
       </Specimen>
-      {pileShown ? (
-        <PileViewer
-          key={pileSample}
-          pile={pileShown.pile}
-          ids={pileShown.ids}
-          info={(id) => ({ name: nameOf(id), art: artOf(id) })}
-          targeted={new Set(pileShown.targeted)}
-          onPick={(id, rect) => setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
-          many={{
-            label: () => t('practice.many.choosePlay'),
-            onPick: (ids, rect) => setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: t('practice.mat.cardCount', { count: ids.length }), rect, items: batchItems(ids) }),
-            start: pileShown.start,
-          }}
-          onClose={() => setPileSample(null)}
-        />
-      ) : null}
+      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). */}
+      <PileViewer
+        pile={pileShown?.pile ?? null}
+        ids={pileShown?.ids ?? []}
+        info={(id) => ({ name: nameOf(id), art: artOf(id) })}
+        targeted={new Set(pileShown?.targeted)}
+        onPick={(id, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
+        many={{
+          label: () => t('practice.many.choosePlay'),
+          onPick: (ids, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: t('practice.mat.cardCount', { count: ids.length }), rect, items: batchItems(ids) }),
+          start: pileShown?.start,
+        }}
+        onClose={() => setPileSample(null)}
+      />
       <Presence>{pileMenu && !isDesktop ? <CardSheet name={pileMenu.title} kicker={pileMenu.kicker} plain={pileMenu.card === undefined} art={pileMenu.card ? artOf(pileMenu.card) : null} items={pileMenu.items} onClose={() => setPileMenu(null)} /> : null}</Presence>
       <CardMenu anchor={isDesktop ? (pileMenu?.rect ?? null) : null} kicker={pileMenu?.kicker ?? ''} title={pileMenu?.title ?? ''} items={pileMenu?.items ?? []} onClose={() => setPileMenu(null)} />
 
@@ -284,7 +282,7 @@ export function DialogsSection() {
         <Button size="sm" onClick={() => setZoomOpen(true)}>
           Abrir la carta en grande
         </Button>
-        {zoomOpen ? <CardZoom card={ZOOM_CARD} name="Ancient Warriors - Valiant Zhang De" arts={ZOOM_ARTS} artId={zoomArt} onArtChange={setZoomArt} onClose={() => setZoomOpen(false)} /> : null}
+        <Presence>{zoomOpen ? <CardZoom card={ZOOM_CARD} name="Ancient Warriors - Valiant Zhang De" arts={ZOOM_ARTS} artId={zoomArt} onArtChange={setZoomArt} onClose={() => setZoomOpen(false)} /> : null}</Presence>
       </Specimen>
 
       <Specimen title="Foil de rareza" note={<>El brillo que simula el papel de la carta impresa, según la rareza de la impresión que se ve: pasá el mouse (o el dedo) por encima y la luz la sigue; sin tocar, se mueve sola. Va adentro del frente de <Tag>CardFlip</Tag>. Dieciocho efectos, cada uno distinto a simple vista (el nombre y el borde de lámina, la hoja holográfica, rayas, vidrio roto, estrellas, jeroglíficos…); una impresión de arte extendido lleva el brillo en toda la carta, sin ventana. Archivos: <Tag>app/card-foil.ts</Tag> <Tag>card-detail/RarityFoil.tsx</Tag> <Tag>foil.css</Tag> <Tag>public/foil/</Tag></>}>

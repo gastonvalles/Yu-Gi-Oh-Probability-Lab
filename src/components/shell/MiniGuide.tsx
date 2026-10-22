@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { SIDEBAR_PX } from '../../app/shell-layout'
 import { useEscapeKey } from '../../app/use-overlay'
+import { Presence, useLeaving, usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
@@ -70,32 +71,39 @@ export function MiniGuide({ groups, activeKey, onSelect, searchAvailable = false
         ))}
         {showMascots ? <MiniItem icon={mascots.icon} label={mascots.label} onClick={() => onSelect(mascots.key)} /> : null}
       </nav>
-      {group && open ? (
-        <GroupFlyout
-          group={group}
-          top={open.top}
-          activeKey={activeKey}
-          onSelect={(key) => {
-            setOpen(null)
-            onSelect(key)
-          }}
-          onClose={() => setOpen(null)}
-        />
-      ) : null}
+      {/* Al cerrarse, la lista sigue mientras sale (`Presence`); pasar a otro grupo es la misma lista, sin salida. */}
+      <Presence>
+        {group && open ? (
+          <GroupFlyout
+            group={group}
+            top={open.top}
+            activeKey={activeKey}
+            onSelect={(key) => {
+              setOpen(null)
+              onSelect(key)
+            }}
+            onClose={() => setOpen(null)}
+          />
+        ) : null}
+      </Presence>
     </>
   )
 }
 
 /**
  * La lista de destinos de un grupo, pegada a la derecha de la mini guía (como el menú que se abre al lado de un botón): el nombre del grupo y sus destinos con el que estás en ámbar.
- * Se cierra al elegir, al tocar afuera y con Escape.
+ * Se cierra al elegir, al tocar afuera y con Escape; al cerrarse se achica y se funde, la inversa de su entrada.
  */
 function GroupFlyout({ group, top, activeKey, onSelect, onClose }: { group: NavGroup; top: number; activeKey: string | null; onSelect: (key: string) => void; onClose: () => void }) {
   const panel = useRef<HTMLDivElement | null>(null)
+  // Ya cerrada, mientras sale: Escape y el toque afuera se sueltan enseguida.
+  const leaving = useLeaving()
 
-  useEscapeKey(onClose, true)
+  useEscapeKey(onClose, !leaving)
 
   useEffect(() => {
+    if (leaving) return
+
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node
 
@@ -106,13 +114,9 @@ function GroupFlyout({ group, top, activeKey, onSelect, onClose }: { group: NavG
     document.addEventListener('pointerdown', onPointerDown)
 
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [onClose])
+  }, [onClose, leaving])
 
-  if (typeof document === 'undefined') {
-    return null
-  }
-
-  return createPortal(
+  return usePresence(!leaving, typeof document === 'undefined' ? null : createPortal(
     <div
       ref={panel}
       role="menu"
@@ -128,5 +132,5 @@ function GroupFlyout({ group, top, activeKey, onSelect, onClose }: { group: NavG
         ))}
     </div>,
     document.body,
-  )
+  ), () => [panel.current])
 }

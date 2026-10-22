@@ -1,5 +1,6 @@
 import type { MetaDeck } from '../../app/meta'
 import { REPLAYS, replayLabel, thumbnailUrl, watchUrl, type ReplayEntry } from '../../app/replays'
+import { Presence, useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -20,18 +21,19 @@ interface ReplayModalProps {
  * queda el link para verlo en YouTube.
  */
 export function ReplayModal({ entry, onClose, onOpenDeck }: ReplayModalProps) {
-  // La `key` reinicia el reproductor al pasar de un replay a otro.
-  return entry ? <ReplayDialog key={entry.video.id} entry={entry} onClose={onClose} onOpenDeck={onOpenDeck} /> : null
+  // La `key` reinicia el reproductor al pasar de un replay a otro. Al cerrarse sigue montado mientras sale (`Presence`).
+  return <Presence>{entry ? <ReplayDialog key={entry.video.id} entry={entry} onClose={onClose} onOpenDeck={onOpenDeck} /> : null}</Presence>
 }
 
 function ReplayDialog({ entry, onClose, onOpenDeck }: { entry: ReplayEntry; onClose: () => void; onOpenDeck: (deck: MetaDeck) => void }) {
   const { video, event, stage, players } = entry
   const label = replayLabel(entry)
   const kicker = [event, stage?.label].filter(Boolean).join(' · ')
+  const leaving = useLeaving()
 
   return (
     <Modal
-      isOpen
+      isOpen={!leaving}
       onClose={onClose}
       size="md"
       icon="play"

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 
+import { Presence } from '../../app/use-presence'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import { t, type MessageKey } from '../../i18n'
 import type { PatternKind } from '../../types'
@@ -183,13 +184,16 @@ export function LabRuleList({
           ) : null}
         </div>
       </div>
-      {renaming?.presetId ? (
-        <RuleRenameDialog
-          entry={renaming}
-          onSave={(name) => onRenameSystemRule(renaming.presetId!, name)}
-          onClose={() => setRenamingId(null)}
-        />
-      ) : null}
+      <Presence>
+        {renaming?.presetId ? (
+          <RuleRenameDialog
+            key={renaming.patternId}
+            entry={renaming}
+            onSave={(name) => onRenameSystemRule(renaming.presetId!, name)}
+            onClose={() => setRenamingId(null)}
+          />
+        ) : null}
+      </Presence>
     </LabSection>
   )
 }

@@ -8,6 +8,7 @@ import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
+import { Presence } from '../../app/use-presence'
 import { createRoomsApi } from '../../app/duel-rooms'
 import { findPausedDuel } from '../../app/duel-save'
 import { readSavedBuilds } from '../../app/saved-builds'
@@ -421,7 +422,8 @@ export function DeckModeScreen() {
         overlay={controller.feedback.dragOverlay}
         overlayRef={controller.feedback.dragOverlayRef}
       />
-      {searchActive ? <GlobalCardSearch step={deckBuilderStep} onClose={() => setSearchOpen(false)} /> : null}
+      {/* Al cerrarse (también al cambiar de pantalla) sale: `Presence` la deja montada mientras se funde o vuelve a la derecha. */}
+      <Presence>{searchActive ? <GlobalCardSearch step={deckBuilderStep} onClose={() => setSearchOpen(false)} /> : null}</Presence>
       {/* El detalle va encima: en el celular siempre, y en escritorio cuando se abre desde el buscador global (en el builder es la vista previa de la columna). */}
       {!isDesktopDeckBuilder || searchActive || !isDeckBuilderStep ? (
         <CardDetailModal

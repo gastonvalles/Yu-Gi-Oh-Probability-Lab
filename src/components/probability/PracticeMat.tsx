@@ -2206,10 +2206,10 @@ export function PracticeMat({
         onClose={() => setMenu(null)}
       />
 
-      {/* Una instancia por pila: cada visor arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). */}
+      {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
       <PileViewer
-        key={viewer ?? 'closed'}
-        pile={covered ? null : viewer}
+        pile={viewer}
+        hidden={covered}
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
         targeted={targetedIds}
@@ -2234,9 +2234,9 @@ export function PracticeMat({
         onClose={closeViewer}
       />
 
-      <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
+      <SaveComboDialog isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
 
-      {inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
+      <Presence>{inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}</Presence>
 
       {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
       {stage ? (
@@ -2271,11 +2271,14 @@ export function PracticeMat({
 
       {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
       {/* La pregunta del rival (pasar de fase): en el medio de la pantalla, centrada en la columna de la mesa (sin el chat ni el detalle). La capa deja pasar los toques; sólo la pregunta los recibe. */}
-      {duel?.prompt ? (
-        <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>
-          <div className="pointer-events-auto w-[min(24rem,100%)]">{duel.prompt}</div>
-        </div>
-      ) : null}
+      {/* Contestada, la pregunta sigue mientras sale (`Presence`; `PassPrompt` hace la salida) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
+      <Presence>
+        {duel?.prompt ? (
+          <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>
+            <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none">{duel.prompt}</div>
+          </div>
+        ) : null}
+      </Presence>
 
       {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>{duel.cover}</div> : null}
 

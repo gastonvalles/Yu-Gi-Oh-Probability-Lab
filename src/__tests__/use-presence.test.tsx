@@ -254,4 +254,44 @@ describe('Presence: lo que el padre monta sólo abierto', () => {
     })
     expect(document.body.querySelector('section')).not.toHaveClass('pointer-events-none')
   })
+
+  it('un diálogo que el padre monta sólo abierto (un Modal con `isOpen={!useLeaving()}`) sigue en el DOM mientras sale, inerte y con data-leaving, se desmonta al terminar, y reabrirlo mientras sale vuelve el mismo nodo', async () => {
+    const { calls, finish } = fakeAnimate()
+    // jsdom no carga index.css: las dos entradas, como en la prueba del Modal.
+    const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter }' })
+    style.dataset.test = ''
+    document.head.append(style)
+
+    function Dialog() {
+      const leaving = useLeaving()
+
+      return (
+        <Modal isOpen={!leaving} onClose={() => {}} size="sm" title="Regla">
+          <p>Contenido</p>
+        </Modal>
+      )
+    }
+    const dialogs = (open: boolean) => <Presence>{open ? <Dialog /> : null}</Presence>
+    const view = render(dialogs(true))
+    const dialog = screen.getByRole('dialog', { name: 'Regla' })
+
+    view.rerender(dialogs(false))
+    // Sigue montado mientras sale: inerte, sin atajar toques, y con la salida (la inversa de la entrada).
+    expect(dialog).toBeInTheDocument()
+    expect(dialog.parentElement!.inert).toBe(true)
+    expect(dialog.parentElement).toHaveAttribute('data-leaving')
+    expect(calls).toHaveLength(2)
+
+    // Se vuelve a abrir mientras sale: es el mismo nodo y la salida vuelve al revés (no se monta otro).
+    view.rerender(dialogs(true))
+    expect(screen.getByRole('dialog', { name: 'Regla' })).toBe(dialog)
+    expect(dialog.parentElement!.inert).toBe(false)
+    expect(dialog.parentElement).not.toHaveAttribute('data-leaving')
+    expect(calls.map(({ animation }) => (animation.reverse as ReturnType<typeof vi.fn>).mock.calls.length)).toEqual([1, 1])
+
+    // Se cierra de nuevo y, al terminar la salida, se desmonta.
+    view.rerender(dialogs(false))
+    await finish()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 })

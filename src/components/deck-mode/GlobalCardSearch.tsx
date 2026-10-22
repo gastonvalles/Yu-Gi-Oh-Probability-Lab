@@ -1,6 +1,7 @@
 import { useMemo, type ComponentProps } from 'react'
 
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { DesktopSearchPanel } from '../search/DesktopSearchPanel'
 import { MobileCardSearch } from '../search/MobileCardSearch'
@@ -20,9 +21,11 @@ function ignorePointerDown() {}
  * El buscador de cartas encima de cualquier pantalla que no sea el builder (que ya lo trae), la práctica ni un duelo (la sala y la mesa; el lobby sí lo tiene): en el celular, la hoja a pantalla completa
  * de siempre; en escritorio, el mismo panel del builder en un cajón por la derecha. Agregar una carta la suma al deck de siempre; el detalle de una
  * carta se abre encima (`CardDetailModal`, que `DeckModeScreen` monta para esto). No se arrastra: el deck no está a la vista.
+ * Quien la monta sólo abierta la envuelve en un `Presence`: al cerrarse, la hoja se funde y el cajón vuelve a la derecha.
  */
 export function GlobalCardSearch({ step, onClose }: GlobalCardSearchProps) {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const leaving = useLeaving()
   const { deckBuilder } = step
   const deckCopyCounts = useMemo(() => countDeckCopiesByCardId(deckBuilder), [deckBuilder])
   const { search, actions } = buildCardSearchProps(step)
@@ -42,7 +45,7 @@ export function GlobalCardSearch({ step, onClose }: GlobalCardSearchProps) {
   }
 
   return (
-    <SideDrawer isOpen onClose={onClose} title={t('shell.search.title')} size="column">
+    <SideDrawer isOpen={!leaving} onClose={onClose} title={t('shell.search.title')} size="column">
       <div className="flex h-full min-h-0 flex-col">
         <DesktopSearchPanel
           search={search}

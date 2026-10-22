@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent } from 'react'
 
 import { MAX_RULE_NAME_LENGTH, normalizeRuleName } from '../../app/pattern-presets'
+import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -17,6 +18,8 @@ interface RuleRenameDialogProps {
 
 /** Las reglas universales sólo admiten cambiar el nombre: lo que miden no se toca. */
 export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogProps) {
+  // Al cerrarse sigue montado mientras sale (lo monta un `Presence`): `isOpen={!leaving}` lo deja salir.
+  const leaving = useLeaving()
   const [value, setValue] = useState(entry.name)
   const inputId = useId()
   const formId = useId()
@@ -42,7 +45,7 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
 
   return (
     <Modal
-      isOpen
+      isOpen={!leaving}
       onClose={onClose}
       size="sm"
       icon="pencil"

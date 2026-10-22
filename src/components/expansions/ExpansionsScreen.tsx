@@ -5,6 +5,7 @@ import { cardSmallImageUrl, compareRarities, readExpansionsHash, type CardHit, t
 import { useCardHits } from '../../app/use-card-hits'
 import { useExpansionCards, useExpansions } from '../../app/use-expansions'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { Presence } from '../../app/use-presence'
 import { formatInteger, formatUsd } from '../../app/utils'
 import { dateLocale, formatDay, perLocale, t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -225,19 +226,22 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
         ))}
         {groups.length === 0 && cardHits.hits.length === 0 && cardHits.status !== 'loading' ? <p className="m-0 px-1 py-3 text-body text-muted">{t('catalog.sets.noExpansion', { query: query.trim() })}</p> : null}
       </nav>
-      {priced ? (
-        <CardPricesModal
-          cardId={priced.cardId}
-          name={priced.name}
-          isOpen
-          onClose={() => setPriced(null)}
-          // Tocar una impresión cambia el hash y la pantalla abre esa expansión: la búsqueda ya cumplió y no debe esconderla de la lista.
-          onGoToPrint={() => {
-            setPriced(null)
-            setQuery('')
-          }}
-        />
-      ) : null}
+      <Presence>
+        {priced ? (
+          <CardPricesModal
+            key={priced.cardId}
+            cardId={priced.cardId}
+            name={priced.name}
+            isOpen
+            onClose={() => setPriced(null)}
+            // Tocar una impresión cambia el hash y la pantalla abre esa expansión: la búsqueda ya cumplió y no debe esconderla de la lista.
+            onGoToPrint={() => {
+              setPriced(null)
+              setQuery('')
+            }}
+          />
+        ) : null}
+      </Presence>
     </section>
   )
 }

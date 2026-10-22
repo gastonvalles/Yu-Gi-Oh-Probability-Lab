@@ -4,6 +4,7 @@ import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { Button } from '../ui/Button'
 import { CardDetailOverlay } from './CardDetailOverlay'
+import { useCloseCardOverlay } from './CardOverlay'
 import { buildZoneActionEntries } from './card-zone-actions'
 import { DeckCopyControls, type DeckCopyActions } from './DeckCopyControls'
 
@@ -33,20 +34,27 @@ export function CardDetail({ card, deckFormat, showActions = true, deckCopy = nu
       onClose={onClose}
       actions={actionEntries.length > 0 || deckCopy ? (
         <>
-          {actionEntries.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2.5">
-              {actionEntries.map((entry) => (
-                <Button key={entry.zone} variant={entry.variant} size="md" fullWidth onClick={() => {
-                  if (onAddToZone(entry.zone)) onClose()
-                }}>
-                  {entry.label}
-                </Button>
-              ))}
-            </div>
-          ) : null}
+          {actionEntries.length > 0 ? <ZoneButtons entries={actionEntries} onAddToZone={onAddToZone} /> : null}
           {deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
         </>
       ) : null}
     />
+  )
+}
+
+/** «Agregar al Main / Extra / Side»: la carta que entra cierra el detalle con su vuelo de vuelta, como la X (va adentro del marco, que da el cierre). */
+function ZoneButtons({ entries, onAddToZone }: { entries: ReturnType<typeof buildZoneActionEntries>; onAddToZone: (zone: DeckZone) => boolean }) {
+  const close = useCloseCardOverlay()
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5">
+      {entries.map((entry) => (
+        <Button key={entry.zone} variant={entry.variant} size="md" fullWidth onClick={() => {
+          if (onAddToZone(entry.zone)) close()
+        }}>
+          {entry.label}
+        </Button>
+      ))}
+    </div>
   )
 }
