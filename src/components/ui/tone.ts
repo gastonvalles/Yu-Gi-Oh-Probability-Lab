@@ -73,7 +73,7 @@ export const TONE: Record<Tone, ToneStyle> = {
 }
 
 /**
- * El arco de un anillo según su tono ("R G B"): el que se lee, con 3:1 o más contra la tarjeta, el lienzo y la pista (`ring-contrast.test.ts` lo mide sobre `index.css`).
+ * El arco de un anillo según su tono ("R G B"): el que se lee, con 3:1 o más contra la tarjeta, el lienzo y la pista (`ring-language.test.tsx` lo mide sobre `index.css`).
  * Por eso `brand` dibuja en lila (el violeta de marca da 2,29:1 y queda para los rellenos y los botones), `danger` en el rojo claro (el `#DA0000` da 2,53:1 contra la pista)
  * y `neutral` en blanco: si el color no significa nada, blanco.
  */
