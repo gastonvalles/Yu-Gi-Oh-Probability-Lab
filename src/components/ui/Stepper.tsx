@@ -14,20 +14,28 @@ interface StepperProps {
   step?: number
   /** field: caja propia (lavanda, redondeada) · inline: sin caja, para ir dentro de otro control. */
   variant?: 'field' | 'inline'
+  /** md: botones de 32 px (una fila de controles chicos) · lg: botones de 44 px y el número más grande, para tocarlo con el dedo (las condiciones de una regla). */
+  size?: 'md' | 'lg'
 }
 
 const STEP_BUTTON =
-  'grid w-8 place-items-center text-muted transition-colors duration-150 hover:bg-tint/10 hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus disabled:opacity-35 disabled:hover:bg-transparent'
+  'grid place-items-center text-muted transition-colors duration-150 hover:bg-tint/10 hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus disabled:opacity-35 disabled:hover:bg-transparent'
+
+const SIZE = {
+  md: { button: 'w-8', icon: 14, field: 'w-10 text-body' },
+  lg: { button: 'size-11', icon: 16, field: 'w-7 text-lead' },
+} as const
 
 /** Número con − y +: se toca sin apuntar fino (táctil) y también se escribe. */
-export function Stepper({ value, min, max, onChange, label, step = 1, variant = 'field' }: StepperProps) {
+export function Stepper({ value, min, max, onChange, label, step = 1, variant = 'field', size = 'md' }: StepperProps) {
   const atMin = value <= min
   const atMax = max !== undefined && value >= max
+  const look = SIZE[size]
 
   return (
     <span role="group" aria-label={label} className={cx('inline-flex items-stretch overflow-hidden bg-input', variant === 'field' && 'rounded-control')}>
-      <button type="button" className={STEP_BUTTON} aria-label={step === 1 ? t('shell.stepper.less') : t('shell.stepper.lessBy', { step })} disabled={atMin} onClick={() => onChange(Math.max(min, value - step))}>
-        <Icon name="minus" size={14} strokeWidth={2.5} />
+      <button type="button" className={cx(STEP_BUTTON, look.button)} aria-label={step === 1 ? t('shell.stepper.less') : t('shell.stepper.lessBy', { step })} disabled={atMin} onClick={() => onChange(Math.max(min, value - step))}>
+        <Icon name="minus" size={look.icon} strokeWidth={2.5} />
       </button>
       <NumberField
         value={value}
@@ -35,10 +43,10 @@ export function Stepper({ value, min, max, onChange, label, step = 1, variant = 
         max={max}
         onChange={onChange}
         aria-label={label}
-        className="w-10 bg-transparent text-center text-body font-semibold text-foreground outline-none [color-scheme:dark] focus:bg-input-hover focus-visible:shadow-focus"
+        className={cx('bg-transparent text-center font-semibold text-foreground tabular-nums outline-none [color-scheme:dark] focus:bg-input-hover focus-visible:shadow-focus', look.field)}
       />
-      <button type="button" className={STEP_BUTTON} aria-label={step === 1 ? t('shell.stepper.more') : t('shell.stepper.moreBy', { step })} disabled={atMax} onClick={() => onChange(max === undefined ? value + step : Math.min(max, value + step))}>
-        <Icon name="plus" size={14} strokeWidth={2.5} />
+      <button type="button" className={cx(STEP_BUTTON, look.button)} aria-label={step === 1 ? t('shell.stepper.more') : t('shell.stepper.moreBy', { step })} disabled={atMax} onClick={() => onChange(max === undefined ? value + step : Math.min(max, value + step))}>
+        <Icon name="plus" size={look.icon} strokeWidth={2.5} />
       </button>
     </span>
   )

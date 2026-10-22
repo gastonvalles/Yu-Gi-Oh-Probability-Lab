@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { createPattern, createMatcherPattern } from '../app/pattern-factory'
 import { buildPatternPresets } from '../app/pattern-presets'
-import { buildPatternCompactSummary } from '../components/probability/pattern-helpers'
+import { buildPatternCompactSummary, joinWord } from '../components/probability/pattern-helpers'
 import { getConditionLabel, getKindLabel } from '../components/probability/rule-builder/condition-labels'
-import { getConnectorWord } from '../components/probability/rule-builder/LogicSelector'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../app/patterns'
 import type {
   CardEntry,
@@ -141,8 +140,8 @@ describe('Drawer integration: existing patterns render without data loss', () =>
         expect(minMatches).toBeGreaterThanOrEqual(1)
 
         // Connector word
-        const connector = getConnectorWord(mode)
-        expect(['Y', 'O']).toContain(connector)
+        const connector = joinWord(pattern)
+        expect(['y', 'o', 'y / o']).toContain(connector)
 
         // Each condition renders
         for (const condition of pattern.conditions) {

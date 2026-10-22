@@ -10,33 +10,40 @@ interface LogicSelectorProps {
   currentMode: PatternMatchMode
   conditionCount: number
   minimumConditionMatches: number
-  /** Todas las condiciones son "Sin …": Y significa "ninguna está" y O "falta alguna" (se dice así para no confundir). */
-  negated?: boolean
   actions: PatternEditorActions
 }
 
-export function getConnectorWord(mode: PatternMatchMode): string {
-  return t(mode === 'all' ? 'builder.logic.and' : 'builder.logic.or')
-}
-
-/** Cómo se combinan las condiciones: Y (todas), O (alcanza una) o al menos N (con el N al lado). */
-export function LogicSelector({ patternId, currentMode, conditionCount, minimumConditionMatches, negated = false, actions }: LogicSelectorProps) {
+/**
+ * Cómo se combinan las condiciones, con palabras: «Con 3 condiciones, la mano cumple: Todas · Alguna · Un mínimo» y, con «Un mínimo», «al menos [− 2 +] de las 3».
+ * Cada condición ya dice «Tiene» o «No tiene», así que las palabras no se invierten con las condiciones negadas.
+ */
+export function LogicSelector({ patternId, currentMode, conditionCount, minimumConditionMatches, actions }: LogicSelectorProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="grid gap-1.5">
+      <p className="m-0 text-body text-muted">{t('builder.logic.lead', { count: formatInteger(conditionCount) })}</p>
       <Segmented
-        size="sm"
+        fullWidth
         label={t('builder.logic.label')}
         value={currentMode}
         options={[
-          { value: 'all', label: t(negated ? 'builder.logic.allNegated' : 'builder.logic.all') },
-          { value: 'any', label: t(negated ? 'builder.logic.anyNegated' : 'builder.logic.any') },
-          { value: 'at-least', label: t(negated ? 'builder.logic.atLeastNegated' : 'builder.logic.atLeast', { count: formatInteger(minimumConditionMatches) }) },
+          { value: 'all', label: t('builder.logic.all') },
+          { value: 'any', label: t('builder.logic.any') },
+          { value: 'at-least', label: t('builder.logic.atLeast') },
         ]}
-        onChange={(mode) => actions.setPatternMatchMode(patternId, mode)}
+        onChange={(mode) => {
+          actions.setPatternMatchMode(patternId, mode)
+
+          // «Un mínimo» que pide todas es lo mismo que «Todas»: arranca en una menos (y nunca menos de 2).
+          if (mode === 'at-least' && currentMode !== 'at-least') {
+            actions.setPatternMinimumMatches(patternId, String(Math.max(2, conditionCount - 1)))
+          }
+        }}
       />
       {currentMode === 'at-least' ? (
-        <span className="inline-flex items-center gap-2 text-body text-muted">
+        <span className="flex items-center gap-2 text-body text-foreground">
+          {t('builder.logic.atLeastLead')}
           <Stepper
+            size="lg"
             label={t('builder.logic.minimum')}
             value={minimumConditionMatches}
             min={2}

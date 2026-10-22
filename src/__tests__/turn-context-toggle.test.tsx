@@ -37,7 +37,7 @@ function makeActions(): PatternEditorActions {
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe('TurnContextToggle', () => {
-  it('renders three buttons with labels "Solo yendo 1º", "Solo yendo 2º" y "Siempre"', () => {
+  it('renders three buttons with labels "Yendo 1º", "Yendo 2º" y "Siempre"', () => {
     /** **Validates: Requirement 2.1** */
     const actions = makeActions()
 
@@ -45,8 +45,8 @@ describe('TurnContextToggle', () => {
       <TurnContextToggle patternId="p1" currentTurnContext="either" actions={actions} />,
     )
 
-    expect(screen.getByRole('radio', { name: 'Solo yendo 1º' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Solo yendo 2º' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Yendo 1º' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Yendo 2º' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Siempre' })).toBeInTheDocument()
   })
 
@@ -58,10 +58,10 @@ describe('TurnContextToggle', () => {
       <TurnContextToggle patternId="p1" currentTurnContext="either" actions={actions} />,
     )
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Solo yendo 1º' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Yendo 1º' }))
     expect(actions.setPatternTurnContext).toHaveBeenCalledWith('p1', 'first')
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Solo yendo 2º' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Yendo 2º' }))
     expect(actions.setPatternTurnContext).toHaveBeenCalledWith('p1', 'second')
 
     fireEvent.click(screen.getByRole('radio', { name: 'Siempre' }))
@@ -76,8 +76,8 @@ describe('TurnContextToggle', () => {
       <TurnContextToggle patternId="p1" currentTurnContext="first" actions={actions} />,
     )
 
-    expect(screen.getByRole('radio', { name: 'Solo yendo 1º' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('radio', { name: 'Solo yendo 2º' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: 'Yendo 1º' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: 'Yendo 2º' })).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'false')
   })
 
@@ -90,7 +90,7 @@ describe('TurnContextToggle', () => {
     )
 
     expect(screen.getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('radio', { name: 'Solo yendo 1º' })).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByRole('radio', { name: 'Solo yendo 2º' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: 'Yendo 1º' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: 'Yendo 2º' })).toHaveAttribute('aria-checked', 'false')
   })
 })

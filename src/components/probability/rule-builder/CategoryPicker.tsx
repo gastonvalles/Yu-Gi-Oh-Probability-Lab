@@ -1,7 +1,7 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 
 import type { CardEntry, CardOrigin, CardRole, CardType, Matcher } from '../../../types'
-import { CARD_ORIGIN_DEFINITIONS, CARD_ROLE_DEFINITIONS } from '../../../app/deck-groups'
+import { CARD_ORIGIN_DEFINITIONS, getCardRoleDefinition, getDeckGroupTheme } from '../../../app/deck-groups'
 import {
   buildDerivedDeckAttributes,
   buildDerivedDeckAttackValues,
@@ -12,482 +12,379 @@ import {
 import { buildDeckArchetypes } from '../../../app/card-archetypes'
 import { getRemainingCopies } from '../../../app/pattern-card-usage'
 import { createCardPoolMatcher } from '../../../app/patterns'
-import { formatCopies } from '../../../app/utils'
+import { formatCopies, formatInteger } from '../../../app/utils'
 import { t } from '../../../i18n'
-import { Heading } from '../../ui/Heading'
+import { renderRich } from '../../../i18n/rich'
+import { CardArt } from '../../CardArt'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
+import { Heading } from '../../ui/Heading'
 import { Icon } from '../../ui/Icon'
+import { CloseButton, IconButton } from '../../ui/IconButton'
 import { SearchField } from '../../ui/SearchField'
-import { choiceChip } from '../../ui/surfaces'
+import { Segmented } from '../../ui/Segmented'
 import { overline } from '../../ui/typography'
-import type { PatternEditorActions } from '../pattern-editor-actions'
 import { getCardTypeLabel } from './condition-labels'
 
+export type PickerTab = 'roles' | 'cards' | 'more'
+
 interface CategoryPickerProps {
-  patternId: string
-  conditionId: string
+  /** Número de la condición (1, 2…): va en el título. */
+  index: number
   currentMatcher: Matcher | null
   derivedMainCards: CardEntry[]
   /** Copias que las otras condiciones de la regla ya se llevan (esas cartas no se vuelven a ofrecer). */
   usedCopies: ReadonlyMap<string, number>
-  actions: PatternEditorActions
+  /** La pestaña con la que abre si la condición todavía no cuenta nada (un ejemplo que pide «tu carta» abre en Cartas). */
+  initialTab?: PickerTab
+  /** Vuelve a la regla sin cambiar nada (‹ y «Volver»). */
+  onBack: () => void
+  /** Cierra el editor entero (la X). */
   onClose: () => void
+  onUse: (matcher: Matcher) => void
 }
 
-/** Pastillas de la cabecera (atajos y «Varias cartas»): la pastilla de selección de toda la app; «Varias cartas» se enciende en ámbar con aria-pressed. */
-const CHIP = cx(choiceChip, 'min-h-10 gap-1.5 px-3.5 text-body pointer-coarse:min-h-11 [-webkit-tap-highlight-color:transparent] active:scale-[0.97] [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted')
+/** Lo elegido mientras el selector está abierto: un criterio (un rol o algo de «Más») o una o varias cartas. */
+type Pick = { matcher: Matcher; label: string; copies: number } | { cards: string[] } | null
 
-/** Fila: el estado (ninguna / algunas / todas las cartas elegidas) llega por data-state. */
-const ROW =
-  'group flex min-h-11 items-center gap-3 rounded-control border border-transparent bg-transparent px-3 text-left text-body text-foreground [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-tint/5 focus-visible:outline-none focus-visible:shadow-focus active:bg-tint/8 data-[state=all]:border-info/50 data-[state=all]:bg-info/14 data-[state=some]:border-info/30'
-
-const CHECK =
-  'inline-grid size-5 flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-micro font-bold leading-none group-data-[state=all]:border-info group-data-[state=all]:bg-info group-data-[state=all]:text-info-foreground group-data-[state=some]:border-info/70 group-data-[state=some]:text-info-soft'
-
-/** Roles fijados como atajo arriba del selector. */
-const SHORTCUT_ROLES: readonly CardRole[] = ['starter', 'extender', 'brick']
-
-/** Tipos de carta que se ofrecen; el rótulo sale de `getCardTypeLabel` al armar el selector. */
-const CARD_TYPES: readonly CardType[] = ['monster', 'spell', 'trap']
-
-/** Una opción del selector: elige un criterio (`matcher`) o, en selección múltiple, suma sus cartas al pool. */
-interface PickerItem {
-  id: string
-  label: string
-  copies: number
-  matcher: Matcher | null
-  /** Cartas que aporta al pool (sólo las que todavía tienen copias libres). */
-  cardIds: string[]
-}
-
-interface PickerSection {
+interface Option {
   key: string
   label: string
-  items: PickerItem[]
-  /** Se puede usar en selección múltiple (aporta cartas concretas). */
-  poolable: boolean
+  copies: number
+  matcher: Matcher
 }
 
-type SelectionState = 'none' | 'some' | 'all'
-
-const fold = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-
-/** Grupo del selector que corresponde a un criterio (clave de `buildSections`). */
-function defaultOpenKey(matcher: Matcher | null): string {
-  switch (matcher?.type) {
-    case 'card':
-    case 'card_pool':
-      return 'cards'
-    case 'archetype':
-    case 'card_type':
-    case 'origin':
-    case 'attribute':
-    case 'level':
-    case 'monster_type':
-    case 'atk':
-    case 'def':
-      return matcher.type
-    default:
-      return 'role'
-  }
+interface MoreGroup {
+  key: string
+  label: string
+  options: Option[]
 }
 
-export function CategoryPicker({
-  patternId,
-  conditionId,
-  currentMatcher,
-  derivedMainCards: allCards,
-  usedCopies,
-  actions,
-  onClose,
-}: CategoryPickerProps) {
+/** Los roles en el orden en que se piensan: los que arrancan, los que interactúan, los que ayudan y los que traban. */
+const ROLE_ORDER: readonly CardRole[] = ['starter', 'extender', 'handtrap', 'disruption', 'boardbreaker', 'floodgate', 'searcher', 'draw', 'enabler', 'payoff', 'recovery', 'brick', 'garnet']
+
+const CARD_TYPES: readonly CardType[] = ['monster', 'spell', 'trap']
+
+const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+/** Chip de un rol o de un criterio de «Más»: elegido, el aro ámbar por dentro y el texto ámbar (no corre nada de lugar). */
+const CHIP =
+  'flex min-h-13 w-full items-center gap-2.5 rounded-control bg-input px-3 text-left text-body font-semibold text-foreground transition-[background-color,color,box-shadow] duration-150 hover:bg-input-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:text-info-soft aria-pressed:inset-ring-2 aria-pressed:inset-ring-info disabled:pointer-events-none disabled:opacity-45'
+
+function initialTabOf(matcher: Matcher | null, fallback: PickerTab): PickerTab {
+  if (!matcher) return fallback
+  if (matcher.type === 'role') return 'roles'
+  if (matcher.type === 'card' || matcher.type === 'card_pool') return 'cards'
+  return 'more'
+}
+
+function copiesText(copies: number): string {
+  return t('builder.picker.copies', { count: copies, n: formatInteger(copies) })
+}
+
+/**
+ * Qué cuenta una condición, en tres pestañas: **Roles** (los 13 con su color y sus copias; los que no tienen, apagados), **Cartas** (con su imagen; una o varias)
+ * y **Más** (origen, tipo, arquetipo, atributo, nivel, tipo de monstruo, ATK/DEF). Se elige y se confirma abajo («Usar Handtrap»). Vive dentro del cajón del
+ * editor: en el celular ocupa toda la pantalla, como una hoja; el buscador filtra las tres pestañas y cada una dice cuántas coincidencias tiene.
+ */
+export function CategoryPicker({ index, currentMatcher, derivedMainCards: allCards, usedCopies, initialTab = 'roles', onBack, onClose, onUse }: CategoryPickerProps) {
   // Sólo se eligen cartas del deck (las ausentes llegan con 0 copias, para mostrar su nombre).
   const cards = useMemo(() => allCards.filter((card) => card.copies > 0), [allCards])
+  const [tab, setTab] = useState<PickerTab>(() => initialTabOf(currentMatcher, initialTab))
   const [query, setQuery] = useState('')
-  const [isMulti, setIsMulti] = useState(false)
-  const [selection, setSelection] = useState<ReadonlySet<string>>(() => {
-    if (currentMatcher?.type === 'card_pool') {
-      return new Set(currentMatcher.value)
-    }
-    if (currentMatcher?.type === 'card') {
-      return new Set([currentMatcher.value])
-    }
-    return new Set()
-  })
-
-  const sections = useMemo(() => buildSections(cards, usedCopies), [cards, usedCopies])
-  const hiddenCards = useMemo(
-    () => cards.filter((card) => getRemainingCopies(card, usedCopies) === 0).map((card) => card.name),
-    [cards, usedCopies],
-  )
-  const shortcuts = useMemo(
-    () => {
-      const counts = buildRoleCounts(cards)
-      return SHORTCUT_ROLES.flatMap((role) => counts.filter((entry) => entry.value === role && entry.copies > 0))
-    },
-    [cards],
-  )
-
   const needle = fold(query.trim())
-  const visibleSections = useMemo(
-    () =>
-      sections
-        .filter((section) => !isMulti || section.poolable)
-        .map((section) => ({
-          ...section,
-          items: section.items.filter(
-            (item) => (!needle || fold(item.label).includes(needle)) && (!isMulti || item.cardIds.length > 0),
-          ),
-        }))
-        .filter((section) => section.items.length > 0),
-    [sections, isMulti, needle],
-  )
+  const matches = (label: string) => !needle || fold(label).includes(needle)
 
-  // Acordeón: una sola pestaña abierta a la vez. Entra abierta la del criterio actual (o Roles, lo más
-  // usado) para no arrancar con todo plegado; al buscar se abre la primera con resultados.
-  const [openKey, setOpenKey] = useState<string | null>(() => defaultOpenKey(currentMatcher))
-  const activeKey = visibleSections.some((section) => section.key === openKey)
-    ? openKey
-    : needle !== ''
-      ? (visibleSections[0]?.key ?? null)
-      : null
-  const toggleSection = useCallback(
-    (key: string) => setOpenKey((current) => (current === key ? null : key)),
-    [],
-  )
+  const roles = useMemo(() => buildRoleOptions(cards), [cards])
+  const freeCards = useMemo(() => cards.filter((card) => getRemainingCopies(card, usedCopies) > 0), [cards, usedCopies])
+  const usedUp = useMemo(() => cards.filter((card) => getRemainingCopies(card, usedCopies) === 0).map((card) => card.name), [cards, usedCopies])
+  const more = useMemo(() => buildMoreGroups(cards), [cards])
 
-  const handleSelect = useCallback(
-    (matcher: Matcher) => {
-      actions.setRequirementMatcher(patternId, conditionId, matcher)
-      onClose()
-    },
-    [actions, conditionId, onClose, patternId],
-  )
+  const [pick, setPick] = useState<Pick>(() => {
+    if (currentMatcher?.type === 'card') return { cards: [currentMatcher.value] }
+    if (currentMatcher?.type === 'card_pool') return { cards: [...currentMatcher.value] }
+    if (!currentMatcher) return null
+    const option = [...roles, ...more.flatMap((group) => group.options)].find((candidate) => JSON.stringify(candidate.matcher) === JSON.stringify(currentMatcher))
+    return option ? { matcher: option.matcher, label: option.label, copies: option.copies } : null
+  })
+  const pickedCards = pick && 'cards' in pick ? new Set(pick.cards) : null
+  const isPicked = (option: Option) => pick !== null && 'matcher' in pick && JSON.stringify(pick.matcher) === JSON.stringify(option.matcher)
 
-  const handlePress = useCallback(
-    (item: PickerItem) => {
-      if (!isMulti) {
-        if (item.matcher) {
-          handleSelect(item.matcher)
-        }
-        return
-      }
+  const visibleRoles = roles.filter((option) => matches(option.label))
+  const visibleCards = freeCards.filter((card) => matches(card.name))
+  const visibleMore = more.map((group) => ({ ...group, options: group.options.filter((option) => matches(option.label) || matches(group.label)) })).filter((group) => group.options.length > 0)
+  const counts = { roles: visibleRoles.length, cards: visibleCards.length, more: visibleMore.reduce((total, group) => total + group.options.length, 0) }
 
-      setSelection((current) => {
-        const next = new Set(current)
-        const allSelected = item.cardIds.every((id) => next.has(id))
-        item.cardIds.forEach((id) => (allSelected ? next.delete(id) : next.add(id)))
-        return next
-      })
-    },
-    [handleSelect, isMulti],
-  )
+  const chooseOption = (option: Option) => setPick({ matcher: option.matcher, label: option.label, copies: option.copies })
+  const toggleCard = (cardId: string) => {
+    const next = new Set(pickedCards ?? [])
 
-  const handleConfirm = () => {
-    const matcher = createCardPoolMatcher([...selection])
+    if (next.has(cardId)) {
+      next.delete(cardId)
+    } else {
+      next.add(cardId)
+    }
+
+    setPick(next.size > 0 ? { cards: [...next] } : null)
+  }
+
+  const cardById = new Map(cards.map((card) => [card.id, card]))
+  const summary = !pick
+    ? t('builder.picker.nothing')
+    : 'matcher' in pick
+      ? t('builder.picker.selection', { label: pick.label, copies: copiesText(pick.copies) })
+      : pick.cards.length === 1
+        ? t('builder.picker.selection', { label: cardById.get(pick.cards[0]!)?.name ?? '', copies: copiesText(cardById.get(pick.cards[0]!)?.copies ?? 0) })
+        : t('builder.picker.selectionCards', { count: pick.cards.length })
+  const useLabel = !pick
+    ? t('builder.picker.useEmpty')
+    : 'matcher' in pick
+      ? t('builder.picker.use', { label: pick.label })
+      : pick.cards.length === 1
+        ? t('builder.picker.use', { label: cardById.get(pick.cards[0]!)?.name ?? '' })
+        : t('builder.picker.useCards', { count: pick.cards.length })
+
+  const commit = () => {
+    const matcher = !pick ? null : 'matcher' in pick ? pick.matcher : createCardPoolMatcher(pick.cards)
 
     if (matcher) {
-      actions.setRequirementMatcher(patternId, conditionId, matcher)
+      onUse(matcher)
     }
-    onClose()
   }
 
+  const empty = (text: string) => <p className="m-0 py-6 text-center text-body text-muted">{text}</p>
+
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="grid flex-none gap-3 border-b border-border-subtle pb-3 pl-4 pr-14 pt-4">
-        <Heading level="section" as="h3">
-          {t('builder.picker.title')}
+    <>
+      <header className="flex min-h-11 items-center gap-2 border-b border-border-subtle px-4 py-2.5 md:px-6">
+        <IconButton tone="raised" size="lg" aria-label={t('builder.picker.back')} onClick={onBack}>
+          <Icon name="chevron-left" />
+        </IconButton>
+        <Heading level="section" as="h2" className="min-w-0 flex-1 truncate">
+          {t('builder.picker.title', { index: formatInteger(index) })}
         </Heading>
-        <SearchField label={t('builder.picker.search')} value={query} placeholder={t('builder.picker.placeholder')} inputClassName="h-11" onChange={setQuery} />
-        <div className="flex flex-wrap gap-2">
-          {!isMulti
-            ? shortcuts.map((role) => (
-                <button
-                  key={role.value}
-                  type="button"
-                  className={CHIP}
-                  onClick={() => handleSelect({ type: 'role', value: role.value })}
-                >
-                  {role.label}
-                  <span>{formatCopies(role.copies)}</span>
-                </button>
-              ))
-            : null}
-          <button
-            type="button"
-            className={CHIP}
-            aria-pressed={isMulti}
-            onClick={() => setIsMulti((current) => !current)}
-          >
-            {t(isMulti ? 'builder.picker.multiOn' : 'builder.picker.multiOff')}
-          </button>
-        </div>
+        <CloseButton size="md" aria-label={t('builder.drawer.close')} onClick={onClose} />
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4 pt-2">
-        {visibleSections.length === 0 ? (
-          <p className="m-0 mt-1 py-6 text-center text-body text-muted">{t(cards.length === 0 ? 'builder.picker.noCards' : 'builder.picker.noMatches')}</p>
-        ) : (
-          visibleSections.map((section) => (
-            <PickerGroup key={section.key} id={section.key} label={section.label} open={section.key === activeKey} onToggle={toggleSection}>
-              {section.items.map((item) => (
-                <PickerRow
-                  key={item.id}
-                  item={item}
-                  multi={isMulti}
-                  state={isMulti ? getSelectionState(item, selection) : 'none'}
-                  onPress={handlePress}
-                />
+      <div className="grid min-h-0 content-start gap-4 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
+        <SearchField label={t('builder.picker.search')} value={query} placeholder={t('builder.picker.placeholder')} inputClassName="h-12" onChange={setQuery} />
+        <Segmented
+          fullWidth
+          label={t('builder.picker.tabs')}
+          value={tab}
+          options={[
+            { value: 'roles', label: t('builder.picker.tab.roles'), count: needle ? counts.roles : undefined },
+            { value: 'cards', label: t('builder.picker.tab.cards'), count: needle ? counts.cards : undefined },
+            { value: 'more', label: t('builder.picker.tab.more'), count: needle ? counts.more : undefined },
+          ]}
+          onChange={setTab}
+        />
+
+        {/* Cada pestaña entra con un fundido corto (con movimiento reducido, de una). */}
+        <div key={tab} className="grid content-start gap-4 animate-step-in motion-reduce:animate-none">
+          {tab === 'roles' ? (
+            <>
+              <p className="m-0 text-body text-muted">{t('builder.picker.rolesHint')}</p>
+              {visibleRoles.length === 0 ? (
+                empty(t('builder.picker.noMatches'))
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {visibleRoles.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={CHIP}
+                      aria-pressed={isPicked(option)}
+                      disabled={option.copies === 0}
+                      aria-label={t('builder.picker.option', { label: option.label, copies: copiesText(option.copies) })}
+                      style={{ '--role-rgb': getDeckGroupTheme(option.matcher as Extract<Matcher, { type: 'role' }>).rgb } as CSSProperties}
+                      onClick={() => chooseOption(option)}
+                    >
+                      <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full bg-[rgb(var(--role-rgb))]" />
+                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                      <span className="shrink-0 font-normal tabular-nums text-muted">{formatCopies(option.copies)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="m-0 text-body text-muted">{renderRich(t('builder.picker.rolesFoot'), { b: (text) => <b className="font-semibold text-foreground">{text}</b> })}</p>
+            </>
+          ) : tab === 'cards' ? (
+            <>
+              <p className="m-0 text-body text-muted">{t('builder.picker.cardsHint')}</p>
+              {cards.length === 0 ? (
+                empty(t('builder.picker.noCards'))
+              ) : visibleCards.length === 0 ? (
+                empty(t('builder.picker.noMatches'))
+              ) : (
+                <ul className="m-0 grid list-none gap-1 p-0">
+                  {visibleCards.map((card) => {
+                    const selected = pickedCards?.has(card.id) ?? false
+
+                    return (
+                      <li key={card.id} className="[contain-intrinsic-size:auto_60px] [content-visibility:auto]">
+                        <button
+                          type="button"
+                          aria-pressed={selected}
+                          aria-label={t('builder.picker.option', { label: card.name, copies: copiesText(getRemainingCopies(card, usedCopies)) })}
+                          className="flex min-h-15 w-full items-center gap-3 rounded-control px-2 py-1.5 text-left text-body font-semibold text-foreground transition-[background-color,color,box-shadow] duration-150 hover:bg-tint/7 focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-tint/8 aria-pressed:text-info-soft aria-pressed:inset-ring-2 aria-pressed:inset-ring-info"
+                          onClick={() => toggleCard(card.id)}
+                        >
+                          <span className="block aspect-[421/614] w-8 shrink-0 overflow-hidden bg-input">
+                            <CardArt remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null} name={card.name} />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">{card.name}</span>
+                          <span className="shrink-0 font-normal tabular-nums text-muted">{formatCopies(getRemainingCopies(card, usedCopies))}</span>
+                          <span
+                            aria-hidden="true"
+                            className={cx('grid size-5 shrink-0 place-items-center rounded-full border-[1.5px]', selected ? 'border-info bg-info text-info-foreground' : 'border-border-strong')}
+                          >
+                            {selected ? <Icon name="check" size={12} strokeWidth={3} /> : null}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              {usedUp.length > 0 ? <p className="m-0 text-body text-muted">{t('builder.picker.used', { names: usedUp.join(', ') })}</p> : null}
+            </>
+          ) : visibleMore.length === 0 ? (
+            empty(t(cards.length === 0 ? 'builder.picker.noCards' : 'builder.picker.noMatches'))
+          ) : (
+            <>
+              <p className="m-0 text-body text-muted">{t('builder.picker.moreHint')}</p>
+              {visibleMore.map((group) => (
+                <MoreSection key={group.key} title={group.label}>
+                  {group.options.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={CHIP}
+                      aria-pressed={isPicked(option)}
+                      aria-label={t('builder.picker.option', { label: option.label, copies: copiesText(option.copies) })}
+                      onClick={() => chooseOption(option)}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                      <span className="shrink-0 font-normal tabular-nums text-muted">{formatCopies(option.copies)}</span>
+                    </button>
+                  ))}
+                </MoreSection>
               ))}
-              {section.key === 'cards' && hiddenCards.length > 0 ? (
-                <p className="m-0 mt-1 text-body text-muted">{t('builder.picker.used', { names: hiddenCards.join(', ') })}</p>
-              ) : null}
-            </PickerGroup>
-          ))
-        )}
+            </>
+          )}
+        </div>
       </div>
 
-      {isMulti ? (
-        <footer className="flex flex-none items-center gap-3 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3">
-          <span className="min-w-0 flex-1 text-body font-semibold text-foreground">
-            {selection.size > 0 ? t('builder.picker.selected', { count: selection.size }) : t('builder.picker.hint')}
-          </span>
-          {selection.size > 0 ? (
-            <Button variant="tertiary" size="sm" onClick={() => setSelection(new Set())}>
-              {t('builder.picker.clear')}
-            </Button>
-          ) : null}
-          <Button variant="primary" size="sm" disabled={selection.size === 0} onClick={handleConfirm}>
-            {t('builder.picker.confirm')}
-          </Button>
-        </footer>
-      ) : null}
-    </div>
+      <footer className="flex items-center gap-2 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 md:px-6">
+        <span className="min-w-0 flex-1 text-body text-muted">{summary}</span>
+        <Button variant="tertiary" size="md" onClick={onBack}>
+          {t('builder.picker.cancel')}
+        </Button>
+        <Button variant="primary" size="md" className="min-w-0 max-w-3/5" disabled={!pick} onClick={commit}>
+          <span className="truncate">{useLabel}</span>
+        </Button>
+      </footer>
+    </>
   )
 }
 
-function getSelectionState(item: PickerItem, selection: ReadonlySet<string>): SelectionState {
-  const selected = item.cardIds.filter((id) => selection.has(id)).length
-
-  if (selected === 0) {
-    return 'none'
-  }
-
-  return selected === item.cardIds.length ? 'all' : 'some'
-}
-
-function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): PickerSection[] {
-  const available = new Set(cards.filter((card) => getRemainingCopies(card, used) > 0).map((card) => card.id))
-  const free = (cardIds: string[]) => cardIds.filter((id) => available.has(id))
-  const group = (
-    key: string,
-    label: string,
-    rows: Array<{ key: string | number; label: string; copies: number; cardIds?: string[] }>,
-    toMatcher: ((row: { key: string | number }) => Matcher) | null,
-  ): PickerSection => ({
-    key,
-    label,
-    poolable: rows.every((row) => row.cardIds !== undefined),
-    items: rows.map((row) => ({
-      id: `${key}:${row.key}`,
-      label: row.label,
-      copies: row.copies,
-      matcher: toMatcher ? toMatcher(row) : null,
-      cardIds: free(row.cardIds ?? []),
-    })),
-  })
-
-  const roleCounts = buildRoleCounts(cards).filter((role) => role.copies > 0 && !SHORTCUT_ROLES.includes(role.value))
-  const sections: PickerSection[] = [
-    {
-      key: 'cards',
-      label: t('builder.picker.group.cards'),
-      poolable: true,
-      items: cards
-        .filter((card) => available.has(card.id))
-        .map((card) => ({
-          id: `card:${card.id}`,
-          label: card.name,
-          copies: getRemainingCopies(card, used),
-          matcher: { type: 'card', value: card.id } as Matcher,
-          cardIds: [card.id],
-        })),
-    },
-    group(
-      'archetype',
-      t('builder.picker.group.archetype'),
-      buildDeckArchetypes(cards).map((archetype) => ({ key: archetype.name, label: archetype.name, copies: archetype.copies, cardIds: archetype.cardIds })),
-      (row) => ({ type: 'archetype', value: String(row.key) }),
-    ),
-    group(
-      'card_type',
-      t('builder.picker.group.cardType'),
-      buildCardTypeCounts(cards).map((entry) => ({ key: entry.value, label: entry.label, copies: entry.copies })),
-      (row) => ({ type: 'card_type', value: row.key as CardType }),
-    ),
-    group(
-      'role',
-      t('builder.picker.group.role'),
-      roleCounts.map((role) => ({ key: role.value, label: role.label, copies: role.copies })),
-      (row) => ({ type: 'role', value: row.key as CardRole }),
-    ),
-    group(
-      'origin',
-      t('builder.picker.group.origin'),
-      buildOriginCounts(cards).filter((origin) => origin.copies > 0).map((origin) => ({ key: origin.value, label: origin.label, copies: origin.copies })),
-      (row) => ({ type: 'origin', value: row.key as CardOrigin }),
-    ),
-    group(
-      'attribute',
-      t('builder.picker.group.attribute'),
-      buildDerivedDeckAttributes(cards).filter((a) => a.copies > 0).map((a) => ({ key: a.key, label: a.label, copies: a.copies, cardIds: a.cardIds })),
-      (row) => ({ type: 'attribute', value: row.key } as Matcher),
-    ),
-    group(
-      'level',
-      t('builder.picker.group.level'),
-      buildDerivedDeckLevels(cards).filter((l) => l.copies > 0).map((l) => ({ key: l.key, label: t('builder.label.level', { value: l.label }), copies: l.copies, cardIds: l.cardIds })),
-      (row) => ({ type: 'level', value: row.key } as Matcher),
-    ),
-    group(
-      'monster_type',
-      t('builder.picker.group.monsterType'),
-      buildDerivedDeckMonsterTypes(cards).filter((type) => type.copies > 0).map((type) => ({ key: type.key, label: type.label, copies: type.copies, cardIds: type.cardIds })),
-      (row) => ({ type: 'monster_type', value: row.key } as Matcher),
-    ),
-    group(
-      'atk',
-      t('builder.picker.group.atk'),
-      buildDerivedDeckAttackValues(cards).filter((a) => a.copies > 0).map((a) => ({ key: a.key, label: t('builder.label.atk', { value: a.label }), copies: a.copies, cardIds: a.cardIds })),
-      (row) => ({ type: 'atk', value: row.key } as Matcher),
-    ),
-    group(
-      'def',
-      t('builder.picker.group.def'),
-      buildDerivedDeckDefenseValues(cards).filter((d) => d.copies > 0).map((d) => ({ key: d.key, label: t('builder.label.def', { value: d.label }), copies: d.copies, cardIds: d.cardIds })),
-      (row) => ({ type: 'def', value: row.key } as Matcher),
-    ),
-  ]
-
-  return sections.filter((section) => section.items.length > 0)
-}
-
-function PickerGroup({
-  id,
-  label,
-  open,
-  onToggle,
-  children,
-}: {
-  id: string
-  label: string
-  open: boolean
-  onToggle: (id: string) => void
-  children: React.ReactNode
-}) {
+function MoreSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-border-subtle first:border-t-0">
-      <button type="button" className={cx('flex min-h-11 w-full items-center gap-2 border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', overline)} aria-expanded={open} onClick={() => onToggle(id)}>
-        <Icon name="chevron-right" size={14} className={cx('transition-transform duration-150', open && 'rotate-90')} />
-        {label}
-      </button>
-      {/* Las filas se montan sólo con el grupo abierto: abrir el selector es liviano aunque el deck sea grande. */}
-      {open ? <div className="grid gap-1 pb-2.5">{children}</div> : null}
+    <section className="grid gap-2">
+      <h3 className={cx('m-0', overline)}>{title}</h3>
+      <div className="grid grid-cols-2 gap-2">{children}</div>
     </section>
   )
 }
 
-const PickerRow = memo(function PickerRow({
-  item,
-  multi,
-  state,
-  onPress,
-}: {
-  item: PickerItem
-  multi: boolean
-  state: SelectionState
-  onPress: (item: PickerItem) => void
-}) {
-  return (
-    <button type="button" className={ROW} data-state={state} onClick={() => onPress(item)}>
-      {multi ? (
-        <span className={CHECK} aria-hidden="true">
-          {state === 'all' ? '✓' : state === 'some' ? '−' : ''}
-        </span>
-      ) : null}
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      <span className="flex-none text-body tabular-nums text-muted">{formatCopies(item.copies)}</span>
-    </button>
-  )
-})
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-interface RoleCount {
-  value: CardRole
-  label: string
-  copies: number
+function copiesOf(cards: CardEntry[], test: (card: CardEntry) => boolean): number {
+  return cards.filter(test).reduce((total, card) => total + card.copies, 0)
 }
 
-function buildRoleCounts(cards: CardEntry[]): RoleCount[] {
-  return CARD_ROLE_DEFINITIONS.map((definition) => {
-    const copies = cards
-      .filter((card) => card.roles.includes(definition.key.value))
-      .reduce((total, card) => total + card.copies, 0)
-
-    return {
-      value: definition.key.value,
-      label: definition.label,
-      copies,
-    }
-  })
+function buildRoleOptions(cards: CardEntry[]): Option[] {
+  return ROLE_ORDER.map((role) => ({
+    key: `role:${role}`,
+    label: getCardRoleDefinition(role).label,
+    copies: copiesOf(cards, (card) => card.roles.includes(role)),
+    matcher: { type: 'role', value: role },
+  }))
 }
 
-interface OriginCount {
-  value: CardOrigin
-  label: string
-  copies: number
-}
+function buildMoreGroups(cards: CardEntry[]): MoreGroup[] {
+  const groups: MoreGroup[] = [
+    {
+      key: 'origin',
+      label: t('builder.picker.group.origin'),
+      options: CARD_ORIGIN_DEFINITIONS.map((definition) => ({
+        key: `origin:${definition.key.value}`,
+        label: definition.label,
+        copies: copiesOf(cards, (card) => card.origin === definition.key.value),
+        matcher: { type: 'origin', value: definition.key.value as CardOrigin } as Matcher,
+      })),
+    },
+    {
+      key: 'card_type',
+      label: t('builder.picker.group.cardType'),
+      options: CARD_TYPES.map((type) => ({
+        key: `type:${type}`,
+        label: getCardTypeLabel(type),
+        copies: copiesOf(cards, (card) => (card.apiCard?.cardType.toLowerCase() ?? '').includes(type)),
+        matcher: { type: 'card_type', value: type } as Matcher,
+      })),
+    },
+    {
+      key: 'archetype',
+      label: t('builder.picker.group.archetype'),
+      options: buildDeckArchetypes(cards).map((archetype) => ({
+        key: `archetype:${archetype.name}`,
+        label: archetype.name,
+        copies: archetype.copies,
+        matcher: { type: 'archetype', value: archetype.name } as Matcher,
+      })),
+    },
+    {
+      key: 'attribute',
+      label: t('builder.picker.group.attribute'),
+      options: buildDerivedDeckAttributes(cards).map((entry) => ({ key: `attribute:${entry.key}`, label: entry.label, copies: entry.copies, matcher: { type: 'attribute', value: entry.key } as Matcher })),
+    },
+    {
+      key: 'level',
+      label: t('builder.picker.group.level'),
+      options: buildDerivedDeckLevels(cards).map((entry) => ({
+        key: `level:${entry.key}`,
+        label: t('builder.label.level', { value: entry.label }),
+        copies: entry.copies,
+        matcher: { type: 'level', value: entry.key } as Matcher,
+      })),
+    },
+    {
+      key: 'monster_type',
+      label: t('builder.picker.group.monsterType'),
+      options: buildDerivedDeckMonsterTypes(cards).map((entry) => ({ key: `monster:${entry.key}`, label: entry.label, copies: entry.copies, matcher: { type: 'monster_type', value: entry.key } as Matcher })),
+    },
+    {
+      key: 'atk',
+      label: t('builder.picker.group.atk'),
+      options: buildDerivedDeckAttackValues(cards).map((entry) => ({
+        key: `atk:${entry.key}`,
+        label: t('builder.label.atk', { value: entry.label }),
+        copies: entry.copies,
+        matcher: { type: 'atk', value: entry.key } as Matcher,
+      })),
+    },
+    {
+      key: 'def',
+      label: t('builder.picker.group.def'),
+      options: buildDerivedDeckDefenseValues(cards).map((entry) => ({
+        key: `def:${entry.key}`,
+        label: t('builder.label.def', { value: entry.label }),
+        copies: entry.copies,
+        matcher: { type: 'def', value: entry.key } as Matcher,
+      })),
+    },
+  ]
 
-function buildOriginCounts(cards: CardEntry[]): OriginCount[] {
-  return CARD_ORIGIN_DEFINITIONS.map((definition) => {
-    const originValue = definition.key.value
-    const copies = cards
-      .filter((card) => matchesOrigin(card.origin, originValue))
-      .reduce((total, card) => total + card.copies, 0)
-
-    return {
-      value: originValue,
-      label: definition.label,
-      copies,
-    }
-  })
-}
-
-function matchesOrigin(origin: CardEntry['origin'], target: CardOrigin): boolean {
-  return origin === target
-}
-
-interface CardTypeCount {
-  value: CardType
-  label: string
-  copies: number
-}
-
-function buildCardTypeCounts(cards: CardEntry[]): CardTypeCount[] {
-  return CARD_TYPES
-    .map((value) => {
-      const copies = cards
-        .filter((card) => {
-          const ct = card.apiCard?.cardType.toLowerCase() ?? ''
-          return ct.includes(value)
-        })
-        .reduce((total, card) => total + card.copies, 0)
-
-      return { value, label: getCardTypeLabel(value), copies }
-    })
-    .filter((entry) => entry.copies > 0)
+  // Lo que el deck no tiene no se ofrece en «Más» (en Roles sí se ve, apagado: es la lista completa de roles).
+  return groups.map((group) => ({ ...group, options: group.options.filter((option) => option.copies > 0) })).filter((group) => group.options.length > 0)
 }

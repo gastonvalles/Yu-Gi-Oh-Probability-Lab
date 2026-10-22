@@ -108,7 +108,7 @@ describe('el Lab en inglés', () => {
     expect(screen.getByTestId('needed-copies')).toHaveTextContent('you need 1 copy (12.5%).')
   })
 
-  it('la lista de reglas habla en inglés: filtros, avisos de turno, apagadas y reglas sin carta', () => {
+  it('la lista de reglas habla en inglés: las dos columnas, avisos de turno, apagadas y reglas sin carta', () => {
     const groups = {
       universal: [entry({ patternId: 'u', tier: 'universal', presetId: 'starter_opening', name: 'Basic opening', turnLean: { favored: 'first', first: 0.7, second: 0.4 } })],
       generic: [entry({ patternId: 'g', tier: 'generic', presetId: 'no_answer', name: 'No answer', kind: 'problem', enabled: false, probability: null })],
@@ -116,13 +116,16 @@ describe('el Lab en inglés', () => {
     }
 
     mockMedia(false)
-    render(<LabRuleList groups={groups} onEditRule={noop} onToggleGenericRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreateCustom={noop} />)
+    render(<LabRuleList groups={groups} onEditRule={noop} onToggleGenericRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreate={noop} onDuplicateRule={noop} onDeleteRule={noop} />)
 
-    expect(screen.getByRole('radio', { name: 'Openings' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Openings' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Problems' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Rename rule Basic opening: 50.0%, more often going first' })).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Enable No answer' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit rule No answer: Off' })).toBeInTheDocument()
     expect(within(screen.getByRole('group', { name: 'Rules without a card' })).getByRole('button', { name: 'Edit rule Missing card rule: Card missing' })).toBeInTheDocument()
-    expect(screen.getByText('Always on')).toBeInTheDocument()
+    expect(screen.getByText('Universal: always on')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create an opening' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create a problem' })).toBeInTheDocument()
   })
 })

@@ -29,34 +29,32 @@ function entry(overrides: Partial<RuleEntry>): RuleEntry {
 }
 
 const noop = () => {}
+const list = (custom: RuleEntry[], onEditRule = noop) => (
+  <LabRuleList groups={{ universal: [], generic: [], custom }} onEditRule={onEditRule} onToggleGenericRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreate={noop} onDuplicateRule={noop} onDeleteRule={noop} />
+)
 
 describe('las reglas con cartas que ya no están en el deck', () => {
-  it('van aparte, plegadas, y no en "Tus reglas"; tocarlas abre el editor', () => {
+  it('van aparte, plegadas, y no en su columna; tocarlas abre el editor', () => {
     const onEditRule = vi.fn()
     const live = entry({ patternId: 'viva', name: 'Abrir Ash' })
     const orphan = entry({ patternId: 'huerfana', name: 'Hornet + Engage', kind: 'problem', probability: null, missingCards: true })
 
-    render(<LabRuleList groups={{ universal: [], generic: [], custom: [live, orphan] }} onEditRule={onEditRule} onToggleGenericRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreateCustom={noop} />)
+    render(list([live, orphan], onEditRule))
 
-    const custom = screen.getByRole('region', { name: 'Tus reglas' })
-    expect(within(custom).getByRole('button', { name: /Abrir Ash/ })).toBeInTheDocument()
-    expect(within(custom).queryByRole('button', { name: /Hornet/ })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Salidas' })).getByRole('button', { name: /Editar regla Abrir Ash/ })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Problemas' })).queryByRole('button', { name: /Hornet/ })).not.toBeInTheDocument()
 
     const orphans = screen.getByRole('group', { name: 'Reglas sin carta' })
     expect(within(orphans).getByText('1')).toBeInTheDocument()
     expect(within(orphans).getByRole('button', { name: /Hornet \+ Engage: Falta carta/ })).toBeInTheDocument()
     fireEvent.click(within(orphans).getByRole('button', { name: /Hornet \+ Engage/ }))
     expect(onEditRule).toHaveBeenCalledWith('huerfana')
-
-    // El filtro por tipo también las filtra.
-    fireEvent.click(screen.getByRole('radio', { name: 'Salidas' }))
-    expect(screen.queryByRole('group', { name: 'Reglas sin carta' })).not.toBeInTheDocument()
   })
 
-  it('con sólo reglas huérfanas, "Tus reglas" invita a crear una', () => {
-    render(<LabRuleList groups={{ universal: [], generic: [], custom: [entry({ missingCards: true, probability: null })] }} onEditRule={noop} onToggleGenericRule={noop} onEditGenericRule={noop} onRenameSystemRule={noop} onCreateCustom={noop} />)
+  it('con sólo reglas huérfanas, cada columna sigue invitando a crear una', () => {
+    render(list([entry({ missingCards: true, probability: null })]))
 
-    expect(within(screen.getByRole('region', { name: 'Tus reglas' })).getByText('Todavía no creaste reglas')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Salidas' })).getByRole('button', { name: 'Crear una salida' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Reglas sin carta' })).toBeInTheDocument()
   })
 })

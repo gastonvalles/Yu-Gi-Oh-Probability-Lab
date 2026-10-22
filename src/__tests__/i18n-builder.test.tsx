@@ -3,19 +3,26 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { configureStore } from '@reduxjs/toolkit'
+import { Provider } from 'react-redux'
+
+import { buildDerivedDeckGroupMap } from '../app/deck-groups'
 import { applyLocale } from '../i18n'
 import { PatternEditorDrawer } from '../components/probability/PatternEditorDrawer'
 import type { PatternEditorActions } from '../components/probability/pattern-editor-actions'
-import { buildPatternCompactSummary, buildPatternPreview } from '../components/probability/pattern-helpers'
+import { buildPatternCompactSummary, buildPatternPreview, joinWord } from '../components/probability/pattern-helpers'
 import { CategoryPicker } from '../components/probability/rule-builder/CategoryPicker'
 import { getConditionLabel, getKindLabel } from '../components/probability/rule-builder/condition-labels'
 import { ConditionBlock } from '../components/probability/rule-builder/ConditionBlock'
 import { KindToggle } from '../components/probability/rule-builder/KindToggle'
-import { getConnectorWord, LogicSelector } from '../components/probability/rule-builder/LogicSelector'
+import { LogicSelector } from '../components/probability/rule-builder/LogicSelector'
 import { RuleBuilder } from '../components/probability/rule-builder/RuleBuilder'
 import { RuleReadback } from '../components/probability/rule-builder/RuleReadback'
 import { TurnContextToggle } from '../components/probability/rule-builder/TurnContextToggle'
 import type { ApiCardReference, CardEntry, HandPattern, Matcher, PatternCondition, RequirementKind } from '../types'
+
+// La imagen de una carta lee el formato del deck (su etiqueta de límite): alcanza con un store mínimo.
+const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 
 beforeEach(() => applyLocale('en'))
 
@@ -141,8 +148,9 @@ describe('las frases de la regla, en inglés', () => {
   it('los rótulos de condición y de tipo, y la palabra que une las condiciones', () => {
     expect(getKindLabel('include')).toBe('At least')
     expect(getKindLabel('exclude')).toBe('Without')
-    expect(getConnectorWord('all')).toBe('AND')
-    expect(getConnectorWord('any')).toBe('OR')
+    expect(joinWord(pattern([condition(role('starter')), condition(role('extender'))]))).toBe('and')
+    expect(joinWord(pattern([condition(role('starter')), condition(role('extender'))], { logic: 'any' }))).toBe('or')
+    expect(joinWord(pattern([condition(role('starter')), condition(role('extender'))], { logic: 'any', minimumConditionMatches: 2 }))).toBe('and / or')
     expect(getConditionLabel(null, deck)).toBe('Not defined')
     expect(getConditionLabel({ type: 'card', value: 'gone' }, deck)).toBe('Card not in the deck')
     expect(getConditionLabel({ type: 'card_pool', value: ['ash', 'pot', 'nib'] }, deck)).toBe('Ash Blossom +2 more')
@@ -156,32 +164,31 @@ describe('las frases de la regla, en inglés', () => {
 // ── Pantallas ──
 
 describe('el armador en inglés', () => {
-  it('la lectura de la regla es una sola frase, con "and"/"or", la lógica y el turno', () => {
+  it('la regla se lee en una sola frase, con lo que decide en negrita y el turno al final', () => {
     const conditions = [condition(role('starter')), condition(role('brick'), 1, 'exclude')]
-    const { rerender } = render(<RuleReadback pattern={pattern(conditions, { turnContext: 'first' })} cardById={cardById} />)
+    const { container, rerender } = render(<RuleReadback pattern={pattern(conditions, { turnContext: 'first' })} cardById={cardById} />)
 
-    expect(screen.getByText('This opening requires:')).toBeInTheDocument()
-    expect(screen.getByText('At least 1 card with role Starter and you draw no cards with role Brick. Going first only.')).toBeInTheDocument()
+    expect(container.querySelector('p')).toHaveTextContent('Opening')
+    expect(container.querySelector('p > span:last-child')).toHaveTextContent('The hand has at least 1 card with role Starter and has no card with role Brick. Going first only.')
+    expect(container.querySelector('b')).toHaveTextContent('has at least 1 card with role Starter and has no card with role Brick')
 
     rerender(<RuleReadback pattern={pattern(conditions, { logic: 'any' })} cardById={cardById} />)
+    expect(container.querySelector('p > span:last-child')).toHaveTextContent('The hand has any of these: Starter or without Brick.')
 
-    expect(screen.getByText('At least 1 card with role Starter or you draw no cards with role Brick. Meeting one condition is enough.')).toBeInTheDocument()
+    rerender(<RuleReadback pattern={pattern([condition(null)], { kind: 'problem', turnContext: 'second', ignoresDraw: true })} cardById={cardById} />)
+    expect(container.querySelector('p')).toHaveTextContent('Problem')
+    expect(container.querySelector('p > span:last-child')).toHaveTextContent('The hand has (what it counts is missing). Going second only, with your first 5.')
   })
 
-  it('el selector de lógica invierte sus palabras cuando todas las condiciones son "Without"', () => {
-    const { rerender } = render(<LogicSelector patternId="p" currentMode="at-least" conditionCount={3} minimumConditionMatches={2} actions={actions} />)
+  it('cómo se combinan las condiciones, con palabras', () => {
+    render(<LogicSelector patternId="p" currentMode="at-least" conditionCount={3} minimumConditionMatches={2} actions={actions} />)
 
-    expect(screen.getByRole('radio', { name: 'AND · all' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'OR · any one' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'At least 2' })).toBeChecked()
+    expect(screen.getByText('With 3 conditions, the hand meets:')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'All' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Any' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'A minimum' })).toBeChecked()
     expect(screen.getByRole('group', { name: 'Minimum conditions to meet' })).toBeInTheDocument()
-    expect(screen.getByText('of 3')).toBeInTheDocument()
-
-    rerender(<LogicSelector patternId="p" currentMode="all" conditionCount={3} minimumConditionMatches={2} negated actions={actions} />)
-
-    expect(screen.getByRole('radio', { name: 'AND · none present' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'OR · one missing' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'At least 2 missing' })).toBeInTheDocument()
+    expect(screen.getByText(/of the 3/)).toBeInTheDocument()
   })
 
   it('los selectores de tipo de regla y de turno', () => {
@@ -195,7 +202,7 @@ describe('el armador en inglés', () => {
     expect(screen.getByRole('radiogroup', { name: 'Rule type' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Opening' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Problem' })).toBeInTheDocument()
-    expect(screen.getByRole('radiogroup', { name: 'Turn context' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'When the rule applies' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Always' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Going first' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Going second' })).toBeInTheDocument()
@@ -204,83 +211,113 @@ describe('el armador en inglés', () => {
   it('una condición se nombra y se opera en inglés', () => {
     const own = condition({ type: 'card', value: 'ash' }, 2)
 
-    render(<ConditionBlock index={0} patternId="p" pattern={pattern([own])} condition={own} derivedMainCards={deck} actions={actions} onRemove={vi.fn()} />)
-
-    expect(screen.getByRole('article', { name: 'Condition 1' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'What to count: Ash Blossom. Change' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'At least. Change to Without' })).toHaveAttribute('title', 'Change to "Without"')
-    expect(screen.getByRole('button', { name: 'copies. Change to distinct names' })).toHaveAttribute('title', 'Count distinct names instead of copies')
-    expect(screen.getByRole('button', { name: 'Remove condition 1' })).toBeInTheDocument()
-  })
-
-  it('el editor completo: pasos, avisos, botones y el texto de ayuda de la regla a medias', () => {
-    const unfinished = pattern([condition(null)], { needsReview: true })
-
-    render(<RuleBuilder actions={actions} derivedMainCards={deck} isPendingCreation={false} pattern={unfinished} />)
-
-    expect(screen.getByText('This rule comes from an earlier version. Check these settings before trusting the result.')).toBeInTheDocument()
-    for (const step of ['Name', 'Type', 'Turn', 'Conditions']) {
-      expect(screen.getByRole('heading', { name: step })).toBeInTheDocument()
-    }
-    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('placeholder', 'Optional: otherwise the summary is used')
-    expect(screen.getByRole('button', { name: 'Choose what to count' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'And another condition' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Or another condition' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
-    expect(screen.getByText('Count the card you draw going second')).toBeInTheDocument()
-    expect(screen.getByText('Rescue the cards it uses')).toBeInTheDocument()
-    expect(screen.getByText('Problems count every card in the hand.')).toBeInTheDocument()
-  })
-
-  it('el selector de qué contar: grupos, tipos de carta y la cuenta de cartas elegidas (singular y plural)', () => {
     render(
-      <CategoryPicker patternId="p" conditionId="c" currentMatcher={null} derivedMainCards={deck} usedCopies={new Map()} actions={actions} onClose={vi.fn()} />,
-    )
-
-    expect(screen.getByRole('heading', { name: 'What do you want to count?' })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Search cards, roles, archetypes…')).toBeInTheDocument()
-    for (const group of ['Cards', 'Card type', 'Roles', 'Origin']) {
-      expect(screen.getByRole('button', { name: group })).toBeInTheDocument()
-    }
-
-    fireEvent.click(screen.getByRole('button', { name: 'Card type' }))
-    expect(screen.getByRole('button', { name: /^Monster/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^Spell/ })).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Pick several cards' }))
-    expect(screen.getByRole('button', { name: 'Several cards ✓' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('Tap cards from any group to build the pool')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cards' }))
-    fireEvent.click(screen.getByRole('button', { name: /^Ash Blossom/ }))
-    expect(screen.getByText('1 card selected')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /^Nibiru/ }))
-    expect(screen.getByText('2 cards selected')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Use selection' })).toBeEnabled()
-  })
-
-  it('el panel lateral: título, ayuda y botones', () => {
-    render(
-      <PatternEditorDrawer
-        actions={actions}
-        canSave={false}
-        impact={null}
+      <ConditionBlock
+        index={0}
+        count={1}
+        patternId="p"
+        pattern={pattern([own])}
+        condition={own}
         derivedMainCards={deck}
-        drawerMode="custom-create"
-        isPendingCreation
-        pattern={null}
-        onClose={vi.fn()}
-        onRequestDelete={vi.fn()}
-        onSave={vi.fn()}
+        groupsByKey={buildDerivedDeckGroupMap(deck)}
+        actions={actions}
+        onRemove={vi.fn()}
+        onPick={vi.fn()}
+        onMoveBy={vi.fn()}
+        onDragStart={vi.fn()}
       />,
     )
 
+    expect(screen.getByRole('article', { name: 'Condition 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'What it counts: Ash Blossom. Change' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Has' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: "Doesn't have" })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Distinct names' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove condition 1' })).toBeInTheDocument()
+  })
+
+  it('el editor completo: pasos, avisos, botones y los ajustes que aplican', () => {
+    const unfinished = pattern([condition(null)], { needsReview: true })
+
+    render(<RuleBuilder actions={actions} derivedMainCards={deck} pattern={unfinished} onPickCondition={vi.fn()} onMoveCondition={vi.fn()} />)
+
+    expect(screen.getByText('This rule comes from an earlier version. Check these settings before trusting the result.')).toBeInTheDocument()
+    for (const step of ['What it is', 'When it applies', 'The hand has']) {
+      expect(screen.getByRole('heading', { name: step })).toBeInTheDocument()
+    }
+    expect(screen.getByRole('textbox', { name: 'Name (optional)' })).toHaveAttribute('placeholder', 'Leave it empty to use the sentence above')
+    expect(screen.getByRole('button', { name: 'Choose what it counts' })).toBeInTheDocument()
+    expect(screen.getByText('Choose what this condition counts')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add condition' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Settings for this rule' })).toBeInTheDocument()
+    // «Contar la carta que robás» sólo aparece si la regla vale yendo 2º.
+    expect(screen.queryByText('Count the card you draw')).not.toBeInTheDocument()
+    expect(screen.getByText('Rescue the cards it uses')).toBeInTheDocument()
+    expect(screen.getByText('Off: problems count every card in the hand.')).toBeInTheDocument()
+  })
+
+  it('qué cuenta, en tres pestañas: Roles (apagados los que no tienen copias), Cartas (una o varias) y Más', () => {
+    const onUse = vi.fn()
+
+    render(
+      <Provider store={store}>
+        <CategoryPicker index={1} currentMatcher={null} derivedMainCards={deck} usedCopies={new Map()} onBack={vi.fn()} onClose={vi.fn()} onUse={onUse} />
+      </Provider>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'What condition 1 counts' })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Search a role, a card or an archetype')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Roles' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Starter, 0 copies' })).toBeDisabled()
+    expect(screen.getByText("You haven't picked anything yet")).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use the selection' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Handtrap, 9 copies' }))
+    expect(screen.getByText('Handtrap · 9 copies')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Use Handtrap' }))
+    expect(onUse).toHaveBeenCalledWith({ type: 'role', value: 'handtrap' })
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Cards' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ash Blossom/ }))
+    expect(screen.getByRole('button', { name: 'Use Ash Blossom' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: /^Nibiru/ }))
+    expect(screen.getByText('2 cards picked')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Use 2 cards' }))
+    expect(onUse).toHaveBeenLastCalledWith({ type: 'card_pool', value: ['ash', 'nib'] })
+
+    fireEvent.click(screen.getByRole('radio', { name: 'More' }))
+    expect(screen.getByRole('heading', { name: 'Card type' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Monster, 6 copies' })).toBeInTheDocument()
+  })
+
+  it('el panel lateral: primero los ejemplos; después, el editor con su pie', () => {
+    const props = {
+      isOpen: true,
+      mode: 'create' as const,
+      actions,
+      canSave: false,
+      impact: { impact: null, pending: false },
+      derivedMainCards: deck,
+      blockReason: 'Choose what it counts',
+      duplicateOf: null,
+      onPickExample: vi.fn(() => null),
+      onClose: vi.fn(),
+      onSave: vi.fn(),
+    }
+    const { rerender } = render(<PatternEditorDrawer {...props} showExamples pattern={pattern([condition(null)])} />)
+
     expect(screen.getByRole('dialog', { name: 'New rule' })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Close editor' })).toHaveLength(2)
-    expect(screen.getByText('Getting the editor ready…')).toBeInTheDocument()
-    expect(screen.getByText('The analysis updates when you save.')).toBeInTheDocument()
+    for (const example of ['Open your key card', 'Starter + combo piece', '2+ Handtraps going second', 'No interaction']) {
+      expect(screen.getByRole('button', { name: (name) => name.includes(example) })).toBeInTheDocument()
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Start from scratch' }))
+    expect(props.onPickExample).toHaveBeenCalledWith('blank')
+    expect(screen.queryByRole('button', { name: 'Create rule' })).not.toBeInTheDocument()
+
+    rerender(<PatternEditorDrawer {...props} showExamples={false} pattern={pattern([condition(null)])} />)
+    expect(screen.getByText('Choose what it counts to see how many hands have this opening')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Not measured: the rule is incomplete' })).toBeInTheDocument()
+    expect(screen.getByText('Choose what it counts', { selector: 'footer span' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create rule' })).toBeDisabled()
   })

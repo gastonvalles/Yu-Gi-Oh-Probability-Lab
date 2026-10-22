@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import { buildDerivedDeckGroupMap } from '../../../app/deck-groups'
+import type { DerivedDeckGroup } from '../../../app/deck-groups'
 import { allowsSharedCards, resolveConditionCardIds } from '../../../app/patterns'
 import { t } from '../../../i18n'
 import type { CardEntry, HandPattern } from '../../../types'
@@ -12,10 +12,14 @@ interface RuleSettingsProps {
   pattern: HandPattern
   actions: PatternEditorActions
   derivedMainCards: CardEntry[]
+  groupsByKey: Map<string, DerivedDeckGroup>
 }
 
-/** Interruptores que cambian cómo se evalúa la regla; sólo aparecen los que aplican a esta regla. */
-export function RuleSettings({ pattern, actions, derivedMainCards }: RuleSettingsProps) {
+/**
+ * Interruptores que cambian cómo se evalúa la regla, y sólo los que aplican: «Contar la carta que robás» si la regla vale yendo 2º (o si ya venía apagado),
+ * «Rescatar las cartas que usa» en una salida y «La misma carta cuenta…» cuando hay cartas en más de una condición.
+ */
+export function RuleSettings({ pattern, actions, derivedMainCards, groupsByKey }: RuleSettingsProps) {
   // Hay cartas que caen en más de una condición: ahí importa si una misma carta puede contar dos veces.
   const hasOverlap = useMemo(() => {
     const defined = pattern.conditions.filter((condition) => condition.matcher !== null)
@@ -24,14 +28,13 @@ export function RuleSettings({ pattern, actions, derivedMainCards }: RuleSetting
       return false
     }
 
-    const groupsByKey = buildDerivedDeckGroupMap(derivedMainCards)
     const sets = defined.map((condition) => new Set(resolveConditionCardIds(condition, groupsByKey, derivedMainCards)))
 
     return sets.some((set, index) => sets.slice(index + 1).some((other) => [...set].some((cardId) => other.has(cardId))))
-  }, [derivedMainCards, pattern.conditions])
+  }, [derivedMainCards, groupsByKey, pattern.conditions])
 
   const rows = [
-    pattern.turnContext !== 'first' && (
+    (pattern.turnContext === 'second' || (pattern.turnContext === 'either' && pattern.ignoresDraw === true)) && (
       <SettingRow
         key="draw"
         title={t('builder.settings.draw.title')}
@@ -65,8 +68,8 @@ export function RuleSettings({ pattern, actions, derivedMainCards }: RuleSetting
   }
 
   return (
-    <RuleStep title={t('builder.step.settings')}>
-      <div className="grid divide-y divide-border-subtle">{rows}</div>
+    <RuleStep title={t('builder.field.settings')}>
+      <div className="grid gap-4">{rows}</div>
     </RuleStep>
   )
 }
@@ -83,12 +86,12 @@ function SettingRow({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+    <div className="flex items-center justify-between gap-4">
       <span className="grid min-w-0 gap-0.5">
-        <span className="text-body font-medium text-foreground">{title}</span>
-        <span className="text-micro text-muted">{description}</span>
+        <span className="text-body font-semibold text-foreground">{title}</span>
+        <span className="text-body text-muted">{description}</span>
       </span>
-      <Switch checked={checked} label={title} onChange={onChange} />
+      <Switch size="lg" checked={checked} label={title} onChange={onChange} />
     </div>
   )
 }
