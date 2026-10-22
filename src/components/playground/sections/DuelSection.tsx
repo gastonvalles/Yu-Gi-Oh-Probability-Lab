@@ -244,6 +244,7 @@ const SAMPLE_POOL: HandtrapConfig = { enabled: true, count: 3, picks: HANDTRAP_C
 /** El simulador de handtraps de «Jugar solo»: la franja de la mano del rival en la mesa, las cartas de la hoja del pool en sus estados y la hoja entera. */
 function HandtrapSamples() {
   const [open, setOpen] = useState(false)
+  const [openFromMat, setOpenFromMat] = useState(false)
   const [kinds, setKinds] = useState<HandtrapKind[]>(['single', 'repeatable', 'charmy'])
   const cycle = (index: number) => setKinds((current) => current.map((kind, at) => (at === index ? HANDTRAP_KINDS[(HANDTRAP_KINDS.indexOf(kind) + 1) % HANDTRAP_KINDS.length]! : kind)))
 
@@ -283,6 +284,11 @@ function HandtrapSamples() {
           Abrir la hoja del pool
         </Button>
         <HandtrapPicker isOpen={open} config={SAMPLE_POOL} onClose={() => setOpen(false)} onSave={() => setOpen(false)} />
+        {/* «Entrenar solo» entra directo a la mesa: el botón de la barra de la mesa (`HandtrapsMatButton`) abre esta misma hoja, que avisa que aplicar reparte una mano nueva y, con el simulador encendido, ofrece apagarlo. */}
+        <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpenFromMat(true)}>
+          Abrir la hoja como se ve desde la mesa
+        </Button>
+        <HandtrapPicker isOpen={openFromMat} config={SAMPLE_POOL} dealsNew onClose={() => setOpenFromMat(false)} onSave={() => setOpenFromMat(false)} onTurnOff={() => setOpenFromMat(false)} />
       </Specimen>
     </>
   )

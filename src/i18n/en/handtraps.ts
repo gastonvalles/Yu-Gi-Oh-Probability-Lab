@@ -8,6 +8,10 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.row.choose': 'Choose…',
   'handtraps.row.chooseLabel': "Choose… the opponent's hand trap pool",
 
+  // In the toolbar of the «Train solo» mat.
+  'handtraps.mat.on': "Opponent's hand traps: on",
+  'handtraps.mat.off': "Opponent's hand traps: off",
+
   // The pool sheet.
   'handtraps.picker.subtitle': 'Mark the ones they can draw and tap the type to change it.',
   'handtraps.picker.list': 'Hand trap pool',
@@ -26,6 +30,8 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.picker.noResults': 'No cards match “{query}”.',
   'handtraps.picker.addCard': 'Add {name} to the pool',
   'handtraps.picker.inPool': '{name} is already in the pool',
+  'handtraps.picker.dealsNew': 'Applying deals a new hand.',
+  'handtraps.picker.turnOff': 'Turn the simulator off',
 
   // The mat.
   'handtraps.strip.label': "Opponent's hand",

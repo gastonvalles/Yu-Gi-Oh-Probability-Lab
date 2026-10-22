@@ -6,6 +6,10 @@ export const handtraps = {
   'handtraps.row.choose': 'Elegir…',
   'handtraps.row.chooseLabel': 'Elegir… el pool de handtraps del rival',
 
+  // En la barra de la mesa de «Entrenar solo».
+  'handtraps.mat.on': 'Handtraps del rival: encendido',
+  'handtraps.mat.off': 'Handtraps del rival: apagado',
+
   // La hoja del pool.
   'handtraps.picker.subtitle': 'Marcá las que puede robar y tocá el tipo para cambiarlo.',
   'handtraps.picker.list': 'Pool de handtraps',
@@ -24,6 +28,8 @@ export const handtraps = {
   'handtraps.picker.noResults': 'No hay cartas con «{query}».',
   'handtraps.picker.addCard': 'Agregar {name} al pool',
   'handtraps.picker.inPool': '{name} ya está en el pool',
+  'handtraps.picker.dealsNew': 'Al aplicar, se reparte una mano nueva.',
+  'handtraps.picker.turnOff': 'Apagar el simulador',
 
   // La mesa.
   'handtraps.strip.label': 'Mano del rival',

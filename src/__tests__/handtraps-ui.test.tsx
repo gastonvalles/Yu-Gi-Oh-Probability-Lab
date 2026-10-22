@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HANDTRAP_CATALOG, HANDTRAP_CONFIG_KEY, readHandtrapConfig, type HandtrapConfig } from '../app/handtraps'
 import type { MatState } from '../app/practice-mat'
-import { HandtrapPicker, HandtrapsRow } from '../components/duel/HandtrapPool'
+import { HandtrapPicker, HandtrapsMatButton, HandtrapsRow } from '../components/duel/HandtrapPool'
 import { RivalHandStrip } from '../components/probability/RivalHandStrip'
 import { Harness, INITIAL, render, status } from './support/practice-mat-harness'
 
@@ -176,5 +176,51 @@ describe('la fila de las reglas de Solo', () => {
     expect(readHandtrapConfig()).toMatchObject({ enabled: true, count: 3 })
     expect(readHandtrapConfig().picks).toHaveLength(14)
     expect(screen.getByText('3 en mano · pool de 14')).toBeInTheDocument()
+  })
+})
+
+describe('el botón de la barra de la mesa (Entrenar solo)', () => {
+  const open = () => fireEvent.click(screen.getByRole('button', { name: 'Handtraps del rival' }))
+
+  it('abre la hoja del pool; usar el pool lo guarda, enciende el simulador y reparte una mano nueva', () => {
+    const onApply = vi.fn()
+
+    render(<HandtrapsMatButton onApply={onApply} />)
+
+    expect(screen.getByRole('button', { name: 'Handtraps del rival' })).toHaveAttribute('aria-pressed', 'false')
+    open()
+    expect(screen.getByText('Al aplicar, se reparte una mano nueva.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Apagar el simulador' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Usar este pool' }))
+
+    expect(readHandtrapConfig()).toMatchObject({ enabled: true, count: 3 })
+    expect(onApply).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Handtraps del rival' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('con el simulador encendido ofrece apagarlo: se guarda apagado y se reparte una mano nueva', () => {
+    localStorage.setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: true, picks: HANDTRAP_CATALOG, count: 3 }))
+    const onApply = vi.fn()
+
+    render(<HandtrapsMatButton onApply={onApply} />)
+    expect(screen.getByRole('button', { name: 'Handtraps del rival' })).toHaveAttribute('aria-pressed', 'true')
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar el simulador' }))
+
+    expect(readHandtrapConfig().enabled).toBe(false)
+    // Se conserva el pool que había.
+    expect(readHandtrapConfig().picks).toHaveLength(HANDTRAP_CATALOG.length)
+    expect(onApply).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancelar no cambia nada ni reparte', () => {
+    const onApply = vi.fn()
+
+    render(<HandtrapsMatButton onApply={onApply} />)
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(localStorage.getItem(HANDTRAP_CONFIG_KEY)).toBeNull()
+    expect(onApply).not.toHaveBeenCalled()
   })
 })

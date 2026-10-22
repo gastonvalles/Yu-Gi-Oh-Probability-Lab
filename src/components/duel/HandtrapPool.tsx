@@ -19,6 +19,7 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { SearchField } from '../ui/SearchField'
 import { Stepper } from '../ui/Stepper'
@@ -68,6 +69,48 @@ export function HandtrapsRow() {
         }}
       />
     </div>
+  )
+}
+
+/**
+ * El simulador de handtraps dentro de la práctica: «Entrenar solo» entra directo a la mesa, sin pasar por las reglas de la sala, así que el botón de la barra de la mesa abre
+ * la misma hoja del pool. Aplicar guarda lo elegido y reparte una mano nueva (`onApply`), con el simulador encendido o apagado; se recuerda igual que lo de las reglas de la sala.
+ */
+export function HandtrapsMatButton({ onApply, className }: { onApply: () => void; className?: string }) {
+  const [config, setConfig] = useState<HandtrapConfig>(readHandtrapConfig)
+  const [choosing, setChoosing] = useState(false)
+  const apply = (next: HandtrapConfig) => {
+    setConfig(next)
+    writeHandtrapConfig(next)
+    setChoosing(false)
+    // Lo elegido ya está guardado: la mano nueva se reparte con eso.
+    onApply()
+  }
+
+  return (
+    <>
+      <IconButton
+        tone="flat"
+        size="sm"
+        className={className}
+        aria-label={t('handtraps.title')}
+        title={t(config.enabled ? 'handtraps.mat.on' : 'handtraps.mat.off')}
+        aria-haspopup="dialog"
+        aria-pressed={config.enabled}
+        onClick={() => setChoosing(true)}
+      >
+        <Icon name="hand" />
+      </IconButton>
+      <HandtrapPicker
+        isOpen={choosing}
+        config={config}
+        dealsNew
+        onClose={() => setChoosing(false)}
+        // Elegir un pool es querer usarlo: el simulador queda encendido.
+        onSave={(picks, count) => apply({ enabled: true, picks, count })}
+        onTurnOff={config.enabled ? () => apply({ ...config, enabled: false }) : undefined}
+      />
+    </>
   )
 }
 
@@ -148,13 +191,17 @@ interface HandtrapPickerProps {
   config: HandtrapConfig
   onClose: () => void
   onSave: (picks: HandtrapPick[], count: number) => void
+  /** Dentro de la práctica: aplicar reparte una mano nueva, y la hoja lo avisa abajo. */
+  dealsNew?: boolean
+  /** Con el simulador encendido, «Apagar el simulador» (sin caja: es lo que descarta). */
+  onTurnOff?: () => void
 }
 
 /**
  * La hoja del pool: las handtraps del catálogo (y las que se agregan con el buscador) como cartas que se marcan; cada elegida dice su tipo y se cambia con un toque.
  * Abajo, cuántas tiene el rival en la mano y, si el pool no alcanza, hasta cuántas puede tener. Cada vez que se abre arranca de lo guardado.
  */
-export function HandtrapPicker({ isOpen, config, onClose, onSave }: HandtrapPickerProps) {
+export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSave, onTurnOff }: HandtrapPickerProps) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(config))
   const [query, setQuery] = useState('')
   const [wasOpen, setWasOpen] = useState(isOpen)
@@ -205,7 +252,13 @@ export function HandtrapPicker({ isOpen, config, onClose, onSave }: HandtrapPick
               {picks.length === 0 ? t('handtraps.picker.empty') : possible < draft.count ? t('handtraps.picker.max', { max: possible }) : ''}
             </p>
           </div>
+          {dealsNew ? <p className="m-0 text-micro text-soft">{t('handtraps.picker.dealsNew')}</p> : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {onTurnOff ? (
+              <Button variant="tertiary" className="mr-auto" onClick={onTurnOff}>
+                {t('handtraps.picker.turnOff')}
+              </Button>
+            ) : null}
             <Button variant="tertiary" onClick={onClose}>
               {t('common.cancel')}
             </Button>

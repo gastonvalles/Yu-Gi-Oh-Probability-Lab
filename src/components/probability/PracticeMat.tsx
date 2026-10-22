@@ -80,6 +80,7 @@ import { Modal } from '../ui/Modal'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { artOfDrawId } from '../duel/duel-art'
+import { HandtrapsMatButton } from '../duel/HandtrapPool'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
@@ -1919,6 +1920,8 @@ export function PracticeMat({
               <Icon name={bigWindow ? 'minimize' : 'maximize'} />
             </IconButton>
           ) : null}
+          {/* El simulador de handtraps del rival: «Entrenar solo» entra directo a la mesa, así que se enciende y se elige el pool acá (y se reparte una mano nueva). Con menos de 340 px no entra. */}
+          <HandtrapsMatButton className="max-[339px]:hidden" onApply={onNewHand} />
           <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} onClick={onNewHand}>
             <Icon name="refresh" />
           </IconButton>
