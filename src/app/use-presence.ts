@@ -84,9 +84,9 @@ function startExit(roots: ReadonlyArray<HTMLElement | null | undefined>, done: (
 
   return () => {
     window.clearTimeout(net)
-    if (over) return
     over = true
-    // Se volvió a abrir mientras salía: vuelve desde donde iba (la salida al revés), sin parpadeo y sin montar otro.
+    // Se volvió a abrir mientras salía (o justo al terminar, antes de que React lo desmonte: si no, quedaba inerte y en su último cuadro, invisible): vuelve desde
+    // donde iba (la salida al revés), sin parpadeo y sin montar otro. Si en cambio se desmonta, esto le pasa a nodos que ya no están.
     mark(false)
     running.forEach((animation) => animation.reverse())
   }

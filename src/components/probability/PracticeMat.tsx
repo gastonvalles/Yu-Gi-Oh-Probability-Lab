@@ -2206,10 +2206,10 @@ export function PracticeMat({
         onClose={() => setMenu(null)}
       />
 
-      {/* Una instancia por pila: cada visor arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). */}
+      {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
       <PileViewer
-        key={viewer ?? 'closed'}
-        pile={covered ? null : viewer}
+        pile={viewer}
+        hidden={covered}
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
         targeted={targetedIds}
@@ -2234,7 +2234,7 @@ export function PracticeMat({
         onClose={closeViewer}
       />
 
-      <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
+      <SaveComboDialog isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
 
       <Presence>{inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}</Presence>
 

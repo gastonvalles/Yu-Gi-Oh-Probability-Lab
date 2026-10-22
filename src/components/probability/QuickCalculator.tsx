@@ -33,12 +33,22 @@ function clampInt(value: string, min: number, max: number, fallback: number): nu
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback
 }
 
-/** Cuentas sin armar el deck: con N copias en un deck de M, cuántas manos la abren, y cuántas copias hacen falta para llegar a un %. */
+/** Cómo arranca cada vez que se abre: el Main actual (40 sin deck), 3 copias, yendo primero y el 60 %. */
+const fresh = (deckSize: number) => ({ deck: String(deckSize > 0 ? deckSize : 40), copies: '3', turn: 'first' as Turn, target: '60' })
+
+/**
+ * Cuentas sin armar el deck: con N copias en un deck de M, cuántas manos la abren, y cuántas copias hacen falta para llegar a un %.
+ * Queda montada (así sale al cerrarse): arranca de cero cada vez que se abre, no al cerrarse.
+ */
 export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCalculatorProps) {
-  const [deck, setDeck] = useState(String(deckSize > 0 ? deckSize : 40))
-  const [copies, setCopies] = useState('3')
-  const [turn, setTurn] = useState<Turn>('first')
-  const [target, setTarget] = useState('60')
+  const [{ deck, copies, turn, target }, setForm] = useState(() => fresh(deckSize))
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  const set = (patch: Partial<ReturnType<typeof fresh>>) => setForm((current) => ({ ...current, ...patch }))
+
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen)
+    if (isOpen) setForm(fresh(deckSize))
+  }
 
   const cards = clampInt(deck, 1, MAX_DECK, 40)
   const hand = turn === 'first' ? handSize : handSize + 1
@@ -52,16 +62,16 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
         <div className="grid grid-cols-2 gap-2">
           <label className="grid gap-1">
             <span className="text-micro text-muted">{t('lab.quick.deckCards')}</span>
-            <input type="number" inputMode="numeric" min={1} max={MAX_DECK} value={deck} className={INPUT} onChange={(event) => setDeck(event.target.value)} />
+            <input type="number" inputMode="numeric" min={1} max={MAX_DECK} value={deck} className={INPUT} onChange={(event) => set({ deck: event.target.value })} />
           </label>
           <label className="grid gap-1">
             <span className="text-micro text-muted">{t('lab.quick.copies')}</span>
-            <input type="number" inputMode="numeric" min={0} max={cards} value={copies} className={INPUT} onChange={(event) => setCopies(event.target.value)} />
+            <input type="number" inputMode="numeric" min={0} max={cards} value={copies} className={INPUT} onChange={(event) => set({ copies: event.target.value })} />
           </label>
         </div>
 
         {deckSize > 0 && cards !== deckSize ? (
-          <Button variant="tertiary" size="sm" icon="cards" className="justify-self-start" onClick={() => setDeck(String(deckSize))}>
+          <Button variant="tertiary" size="sm" icon="cards" className="justify-self-start" onClick={() => set({ deck: String(deckSize) })}>
             {t('lab.quick.useDeck', { count: deckSize, n: formatInteger(deckSize) })}
           </Button>
         ) : null}
@@ -69,7 +79,7 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
         <Segmented
           label={t('lab.quick.turn')}
           value={turn}
-          onChange={setTurn}
+          onChange={(value) => set({ turn: value })}
           variant="track"
           size="sm"
           fullWidth
@@ -103,7 +113,7 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
           <label className="inline-flex items-center gap-1.5">
             {tRich('lab.quick.reverse', {
               field: () => (
-                <input type="number" inputMode="numeric" min={1} max={100} value={target} aria-label={t('lab.quick.targetPercent')} className={cx(field, 'h-9 pointer-coarse:h-11 w-16 px-2 text-center text-body tabular-nums')} onChange={(event) => setTarget(event.target.value)} />
+                <input type="number" inputMode="numeric" min={1} max={100} value={target} aria-label={t('lab.quick.targetPercent')} className={cx(field, 'h-9 pointer-coarse:h-11 w-16 px-2 text-center text-body tabular-nums')} onChange={(event) => set({ target: event.target.value })} />
               ),
             })}
           </label>

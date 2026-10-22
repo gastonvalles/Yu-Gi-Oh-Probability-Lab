@@ -85,8 +85,8 @@ export function ProbabilityPanel({
   const [kpiModal, setKpiModal] = useState<RoleDistribution | null>(null)
   // Detalle de una carta tocada en la lista del KPI: se abre encima y la lista queda abierta.
   const [kpiDetailCard, setKpiDetailCard] = useState<ApiCardSearchResult | null>(null)
-  // La calculadora rápida no necesita deck ni roles: se abre también con el Lab vacío (con `key` arranca de cero cada vez).
-  const [quickCalculator, setQuickCalculator] = useState(0)
+  // La calculadora rápida no necesita deck ni roles: se abre también con el Lab vacío (arranca de cero cada vez que se abre).
+  const [quickCalculator, setQuickCalculator] = useState(false)
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const { showToast } = useToastMessage()
   const disclaimer = useLabDisclaimer()
@@ -231,7 +231,7 @@ export function ProbabilityPanel({
         icon="flask"
         subtitle={t('lab.panel.subtitle')}
         side={(
-          <Button variant="secondary" size="sm" icon="sliders" onClick={() => setQuickCalculator((count) => count + 1)}>
+          <Button variant="secondary" size="sm" icon="sliders" onClick={() => setQuickCalculator(true)}>
             {t('lab.panel.quickCalculator')}
           </Button>
         )}
@@ -319,9 +319,8 @@ export function ProbabilityPanel({
       <LabDisclaimerDialog isOpen={disclaimer.isOpen} onClose={disclaimer.close} />
 
       <QuickCalculator
-        key={quickCalculator}
-        isOpen={quickCalculator > 0}
-        onClose={() => setQuickCalculator(0)}
+        isOpen={quickCalculator}
+        onClose={() => setQuickCalculator(false)}
         deckSize={derivedMainCards.reduce((total, card) => total + card.copies, 0)}
         handSize={handSize}
       />

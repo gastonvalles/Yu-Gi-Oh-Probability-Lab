@@ -213,7 +213,10 @@ export interface PileMany {
 }
 
 interface PileViewerProps {
+  /** La pila que se mira; `null`, cerrado. */
   pile: MatPile | null
+  /** Escondido sin cerrarse (la pausa o el final del duelo tapan la mesa): sale como al cerrarse y, al destaparse, vuelve como estaba (lo buscado, lo elegido). */
+  hidden?: boolean
   ids: string[]
   info: (id: string) => MatCardInfo
   /** Cartas marcadas como objetivo: llevan la mira (como en la mano y en el campo). */
@@ -233,13 +236,15 @@ interface PileViewerProps {
  * deck se baraja, como en la mesa real) y con buscador; cementerio y destierro, la más reciente primero.
  * Con `many`, el pie ofrece elegir varias: tocar elige o suelta (aro ámbar y número de orden), Mayús+clic elige el tramo,
  * la principal le pasa las elegidas a quien abrió el visor y Escape sale del modo antes de cerrar el visor.
+ * Es uno solo para todas las pilas y queda montado: al cerrarse sale como el `Modal` (la inversa de su entrada) y cada vez que se abre arranca de cero.
  */
-export function PileViewer({ pile, ids, info, targeted, onPick, onPeek, many, onClose, anonymous = false }: PileViewerProps) {
+export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, many, onClose, anonymous = false }: PileViewerProps) {
   const [query, setQuery] = useState('')
   const [choosing, setChoosing] = useState(many?.start !== undefined)
   const [picked, setPicked] = useState<string[]>(() => [...(many?.start ?? [])])
   // Desde dónde elige Mayús+clic: la última carta tocada.
-  const lastRef = useRef<string | null>(null)
+  const [last, setLast] = useState<string | null>(null)
+  const [shownPile, setShownPile] = useState(pile)
   const gridRef = useRef<HTMLUListElement | null>(null)
   const footRef = useRef<HTMLDivElement | null>(null)
   const statusId = useId()
@@ -253,9 +258,20 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onPeek, many, on
   const allVisible = visibleIds.length > 0 && visibleIds.every((id) => picked.includes(id))
   const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''
 
+  // Abrirlo (o pasar a otra pila) arranca sin lo buscado y, con `many.start`, eligiendo ésas (lo buscado en el deck no se hereda al abrir el cementerio). Cerrarlo o esconderlo
+  // no cambia nada: sale tal cual estaba y, si se vuelve a abrir mientras sale, es el mismo visor (no se monta otro).
+  if (shownPile !== pile) {
+    setShownPile(pile)
+    if (pile !== null) {
+      setQuery('')
+      setChoosing(many?.start !== undefined)
+      setPicked([...(many?.start ?? [])])
+      setLast(null)
+    }
+  }
+
   // La pila cambió por debajo (Deshacer, una jugada): la elección se recorta a las que siguen ahí y, con menos de dos cartas, se sale del modo.
-  const kept = picked.filter((id) => ids.includes(id))
-  if (kept.length !== picked.length) setPicked(kept)
+  if (picked.some((id) => !ids.includes(id))) setPicked((current) => current.filter((id) => ids.includes(id)))
   if (choosing && !canMany) setChoosing(false)
 
   // Al entrar, el foco va a la primera carta; al salir, vuelve a «Elegir varias» (el botón que se tocó ya no está).
@@ -271,14 +287,14 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onPeek, many, on
     footRef.current?.querySelector<HTMLElement>('button')?.focus()
   }
 
-  // Arriba del Escape del visor: el primero sale del modo y el segundo cierra.
-  useEscapeKey(exit, choosing)
+  // Arriba del Escape del visor: el primero sale del modo y el segundo cierra. Escondido, ninguno.
+  useEscapeKey(exit, choosing && !hidden)
 
   const toggle = (id: string, range: boolean) => {
-    const from = range && lastRef.current !== null ? visibleIds.indexOf(lastRef.current) : -1
+    const from = range && last !== null ? visibleIds.indexOf(last) : -1
     const to = visibleIds.indexOf(id)
 
-    lastRef.current = id
+    setLast(id)
     if (from >= 0 && from !== to) {
       // El tramo en el orden que se ve, como si se tocaran de a una desde la última.
       const span = visibleIds.slice(Math.min(from, to), Math.max(from, to) + 1)
@@ -295,7 +311,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onPeek, many, on
 
   return (
     <Modal
-      isOpen={pile !== null}
+      isOpen={pile !== null && !hidden}
       onClose={onClose}
       size="md"
       kicker={t('practice.mat.name')}
@@ -416,9 +432,16 @@ interface SaveComboDialogProps {
   onClose: () => void
 }
 
+/** Queda montado (así sale al cerrarse): cada vez que se abre, el campo arranca con `defaultName`. */
 export function SaveComboDialog({ isOpen, defaultName, rename = false, onSave, onClose }: SaveComboDialogProps) {
   const [name, setName] = useState(defaultName)
+  const [wasOpen, setWasOpen] = useState(isOpen)
   const title = t(rename ? 'practice.panel.renameTitle' : 'practice.mat.saveCombo')
+
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen)
+    if (isOpen) setName(defaultName)
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault()

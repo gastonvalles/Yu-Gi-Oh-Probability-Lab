@@ -2033,8 +2033,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onClose={() => setMarkMenu(null)}
       />
       <PileViewer
-        key={rivalViewer ?? 'closed'}
-        pile={covered ? null : rivalViewer}
+        pile={rivalViewer}
+        hidden={covered}
         ids={rivalViewer ? (rivalViewer === 'extra' ? theirs!.state.extraUp : theirs!.state[rivalViewer]) : []}
         info={(id) => {
           const art = opponent.artOf(id)

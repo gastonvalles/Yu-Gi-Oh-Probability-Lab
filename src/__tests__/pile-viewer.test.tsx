@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { MatPile } from '../app/practice-mat'
 import { PileViewer, type PileMany } from '../components/probability/MatDialogs'
 
 // El aviso de límite de copias de la carta lee el formato del store.
@@ -223,5 +224,51 @@ describe('el visor de una pila elige varias cartas', () => {
 
     fireEvent.click(first!)
     expect(dialog.getByRole('button', { name: 'Quitar target' })).toBeInTheDocument()
+  })
+})
+
+describe('el visor queda montado (así sale al cerrarse): arranca de cero al abrirse, no al cerrarse ni al esconderse', () => {
+  const ALL = Object.keys(NAMES)
+  const viewer = (pile: MatPile | null, { hidden = false, start }: { hidden?: boolean; start?: string[] } = {}) => (
+    <Provider store={store}>
+      <PileViewer pile={pile} hidden={hidden} ids={pile ? ALL : []} info={(id) => ({ name: NAMES[id] ?? id, art: null })} targeted={new Set()} onPick={() => {}} onClose={() => {}} many={{ label: () => 'Elegir jugada', onPick: () => {}, start }} />
+    </Provider>
+  )
+  const dialog = () => within(screen.getByRole('dialog'))
+  const search = () => dialog().getByRole('searchbox', { name: 'Buscar carta' })
+
+  it('escondido (la pausa del duelo) no se ve ni atiende Escape, y al destaparse sigue como estaba: lo buscado y lo elegido', () => {
+    const view = render(viewer('deck'))
+
+    fireEvent.change(search(), { target: { value: 'luna' } })
+    fireEvent.click(dialog().getByRole('button', { name: 'Elegir varias' }))
+    fireEvent.click(card(dialog(), 'Lunalight Tiger'))
+
+    view.rerender(viewer('deck', { hidden: true }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    escape()
+
+    view.rerender(viewer('deck'))
+    expect(search()).toHaveValue('luna')
+    expect(pressed(dialog())).toEqual(['Lunalight Tiger (1.ª elegida)'])
+  })
+
+  it('cerrado y abierto otra vez (la misma pila u otra) arranca sin lo buscado ni lo elegido y, con `many.start`, eligiendo ésas', () => {
+    const view = render(viewer('deck'))
+
+    fireEvent.change(search(), { target: { value: 'luna' } })
+    fireEvent.click(dialog().getByRole('button', { name: 'Elegir varias' }))
+    fireEvent.click(card(dialog(), 'Lunalight Tiger'))
+    view.rerender(viewer(null))
+    view.rerender(viewer('deck'))
+    expect(search()).toHaveValue('')
+    expect(dialog().queryByRole('button', { name: 'Elegir jugada' })).not.toBeInTheDocument()
+
+    fireEvent.change(search(), { target: { value: 'luna' } })
+    view.rerender(viewer(null))
+    view.rerender(viewer('gy', { start: ['b', 'a'] }))
+    expect(search()).toHaveValue('')
+    // El cementerio, la más reciente primero: Maxx C se ve antes que Ash Blossom.
+    expect(pressed(dialog())).toEqual(['Maxx C (1.ª elegida)', 'Ash Blossom (2.ª elegida)'])
   })
 })

@@ -683,6 +683,27 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
   })
 
+  it('si el duelo entra en pausa con el visor de una pila abierto, se esconde sin cerrarse: al seguir vuelve como estaba, con lo buscado', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    const viewer = () => screen.queryByRole('dialog', { name: /^Main · / })
+    tap(within(guest.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+    fireEvent.change(within(viewer()!).getByRole('searchbox', { name: 'Buscar carta' }), { target: { value: 'Monstruo' } })
+
+    closeTab(host)
+    flush()
+    expect(within(guest.container).getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeInTheDocument()
+    expect(viewer()).not.toBeInTheDocument()
+
+    click(host, 'Volver al duelo')
+    flush()
+    flush()
+    expect(within(guest.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
+    expect(within(viewer()!).getByRole('searchbox', { name: 'Buscar carta' })).toHaveValue('Monstruo')
+  })
+
   it('si el duelo entra en pausa con un cartel de opciones abierto (el de una carta del rival o el de una propia), no se ve, y no vuelve al seguir', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)

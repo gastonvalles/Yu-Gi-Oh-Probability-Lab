@@ -254,22 +254,20 @@ export function DialogsSection() {
           Abrir con tres elegidas
         </Button>
       </Specimen>
-      {pileShown ? (
-        <PileViewer
-          key={pileSample}
-          pile={pileShown.pile}
-          ids={pileShown.ids}
-          info={(id) => ({ name: nameOf(id), art: artOf(id) })}
-          targeted={new Set(pileShown.targeted)}
-          onPick={(id, rect) => setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
-          many={{
-            label: () => t('practice.many.choosePlay'),
-            onPick: (ids, rect) => setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: t('practice.mat.cardCount', { count: ids.length }), rect, items: batchItems(ids) }),
-            start: pileShown.start,
-          }}
-          onClose={() => setPileSample(null)}
-        />
-      ) : null}
+      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). */}
+      <PileViewer
+        pile={pileShown?.pile ?? null}
+        ids={pileShown?.ids ?? []}
+        info={(id) => ({ name: nameOf(id), art: artOf(id) })}
+        targeted={new Set(pileShown?.targeted)}
+        onPick={(id, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
+        many={{
+          label: () => t('practice.many.choosePlay'),
+          onPick: (ids, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: t('practice.mat.cardCount', { count: ids.length }), rect, items: batchItems(ids) }),
+          start: pileShown?.start,
+        }}
+        onClose={() => setPileSample(null)}
+      />
       <Presence>{pileMenu && !isDesktop ? <CardSheet name={pileMenu.title} kicker={pileMenu.kicker} plain={pileMenu.card === undefined} art={pileMenu.card ? artOf(pileMenu.card) : null} items={pileMenu.items} onClose={() => setPileMenu(null)} /> : null}</Presence>
       <CardMenu anchor={isDesktop ? (pileMenu?.rect ?? null) : null} kicker={pileMenu?.kicker ?? ''} title={pileMenu?.title ?? ''} items={pileMenu?.items ?? []} onClose={() => setPileMenu(null)} />
 
