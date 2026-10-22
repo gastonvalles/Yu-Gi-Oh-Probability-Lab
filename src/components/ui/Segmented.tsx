@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 
 import { cx } from './cx'
 
@@ -7,6 +7,10 @@ export interface SegmentedOption<T extends string> {
   label: string
   /** Texto secundario bajo la etiqueta (p. ej. "5 cartas · 57%"). */
   detail?: string
+  /** El color del detalle mientras la opción no está elegida: un ▲/▼ que le conviene (verde) o no (rojo) a quien lo lee. Elegida, sigue el color de la opción. */
+  detailTone?: 'success' | 'danger'
+  /** El detalle en palabras para el lector de pantalla (un «▲7» solo no se entiende): va como descripción de la opción, sin cambiarle el nombre. */
+  detailLabel?: string
   /** Conteo a la derecha de la etiqueta. */
   count?: number
   /** Color propio cuando está elegida (variante track): verde para lo bueno, rojo para lo malo. */
@@ -16,6 +20,8 @@ export interface SegmentedOption<T extends string> {
   /** Nombre para lectores de pantalla, si la opción dice más que su etiqueta (p. ej. «Yendo 1º: 78 de cada 100»). */
   ariaLabel?: string
 }
+
+const DETAIL_TONE = { success: 'font-semibold text-success-soft', danger: 'font-semibold text-danger-soft' } as const
 
 /**
  * track: pista lavanda con la opción elegida en ámbar · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
@@ -90,6 +96,7 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
 /** Selector de una opción entre pocas (turno, tipo de regla, filtro): mismo control en toda la app. */
 export function Segmented<T extends string>({ value, onChange, options, label, variant = 'track', size = 'md', fullWidth = false, dense = false, className }: SegmentedProps<T>) {
   const look = ITEM[variant]
+  const id = useId()
 
   return (
     <div role="radiogroup" aria-label={label} className={cx(GROUP[variant], variant === 'scroll' ? 'w-max' : fullWidth ? 'w-full' : 'w-fit max-w-full', className)}>
@@ -103,6 +110,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             role="radio"
             aria-checked={active}
             aria-label={option.ariaLabel ?? option.label}
+            aria-describedby={option.detailLabel ? `${id}-${option.value}` : undefined}
             data-active={active ? 'true' : 'false'}
             className={cx(
               'grid min-w-0 content-center justify-items-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
@@ -120,7 +128,14 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             </span>
             {option.detail ? (
               // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (oscuro sobre el ámbar, ámbar en la tarjeta, blanco sobre el verde o el rojo).
-              <span className={cx('whitespace-nowrap text-micro font-normal tabular-nums', active ? 'opacity-80' : 'text-soft')}>{option.detail}</span>
+              <span aria-hidden={option.detailLabel ? true : undefined} className={cx('whitespace-nowrap text-micro tabular-nums', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
+                {option.detail}
+              </span>
+            ) : null}
+            {option.detailLabel ? (
+              <span id={`${id}-${option.value}`} className="sr-only">
+                {option.detailLabel}
+              </span>
             ) : null}
           </button>
         )

@@ -86,11 +86,8 @@ function fuentes(dir: string, base = dir): [string, string][] {
 describe('los cortes entre celular y escritorio no dejan huecos', () => {
   it('ningún archivo de src vuelve a usar un corte de un píxel de menos', () => {
     const prohibidos = ['max-[1100px]', '(max-width: 1100px)', 'max-[559px]', 'max-[519px]']
-    // ComparisonScreen tiene un max-[519px] sin par (un solo corte, sin hueco): queda como está.
     const culpables = fuentes(path.join(process.cwd(), 'src')).flatMap(([archivo, texto]) =>
-      prohibidos
-        .filter((corte) => texto.includes(corte) && !(archivo === 'components/comparison/ComparisonScreen.tsx' && corte === 'max-[519px]'))
-        .map((corte) => `${archivo}: ${corte}`),
+      prohibidos.filter((corte) => texto.includes(corte)).map((corte) => `${archivo}: ${corte}`),
     )
 
     expect(culpables, 'El complemento de min-[N] es max-[N] (docs/design-system.md, regla 6): para el escritorio usá max-[1101px].').toEqual([])

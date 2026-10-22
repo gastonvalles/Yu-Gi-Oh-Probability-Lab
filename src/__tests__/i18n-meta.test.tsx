@@ -11,9 +11,8 @@ import { buildMetaReport, type MetaCardStat, type MetaDeck, type MetaDecksData }
 import type { DeckCardInstance } from '../app/model'
 import { matchReplays, readStage } from '../app/replays'
 import { createSavedBuild, uniqueBuildName } from '../app/saved-builds'
-import { BuildNotes, VerdictLine } from '../components/comparison/ComparisonSummary'
-import { DeckResults } from '../components/comparison/DeckResults'
 import { KpiDetailModal } from '../components/comparison/KpiDetailModal'
+import { VerdictCard } from '../components/comparison/VerdictCard'
 import { TierListsScreen } from '../components/meta/TierListsScreen'
 import { TournamentDecksScreen } from '../components/meta/TournamentDecksScreen'
 import { deckCardCounts, formatMetaDate, formatMetaDateFull, tierHint, tierLabel, trendText, usageText } from '../components/meta/meta-format'
@@ -103,33 +102,30 @@ describe('Comparar builds en inglés', () => {
     expect(tiny.b.blockedReasons).toEqual(['The Main Deck needs at least 6 cards.'])
   })
 
-  it('el veredicto, los resultados de un mazo y el aviso de cartas sin clasificar salen en inglés, con su plural', () => {
+  it('el veredicto, sus anillos, sus filas, la lente y el aviso de cartas sin clasificar salen en inglés, con su plural', () => {
     applyLocale('en')
 
     const better = compareBuilds({ name: 'Old', cards: OLD }, { name: 'New', cards: NEW }, RULES)
-    const first = render(
-      <>
-        <VerdictLine comparison={better} />
-        <DeckResults side="B" comparison={better} />
-      </>,
-    )
+    const noMovers = () => ({ status: 'ready' as const, movers: [] })
+    const first = render(<VerdictCard comparison={better} view="average" onViewChange={() => {}} handSize={5} moversOf={noMovers} pending={null} />)
 
-    expect(screen.getByText('New is better')).toBeInTheDocument()
-    // La respuesta en lenguaje natural y, de ese mazo, su anillo y las tarjetas con los grupos.
-    expect(screen.getByText(/^Out of every 100 hands, B gives you \d+ good ones and A \d+\.$/)).toBeInTheDocument()
-    expect(screen.getByText('out of every 100 hands are good')).toBeInTheDocument()
-    expect(screen.getByRole('meter', { name: 'out of every 100 hands are good' })).toBeInTheDocument()
-    for (const text of ['Going first:', 'Going second:', 'Get going well (more is better)', 'Get stuck (less is better)']) {
-      expect(screen.getAllByText(text, { exact: false }).length).toBeGreaterThan(0)
-    }
+    expect(screen.getByRole('heading', { name: 'B opens better' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /^Build B: out of every 100 hands, [\d.]+ good, [\d.]+ with a problem and [\d.]+ with no opening$/ })).toBeInTheDocument()
+    expect(screen.getByText('good hands out of every 100')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^No opening: A [\d.]+, B [\d.]+ out of every 100; (\d+ (more|fewer) with B|the same in both)$/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^With a problem: A/ })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Which hand to look at' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Average' })).toHaveTextContent('5 and 6 cards')
+    expect(screen.getByRole('radio', { name: 'Going first' })).toHaveAccessibleDescription(/^\d+ more with B$/)
     first.unmount()
 
     const pending = [...OLD.slice(0, -1), { ...card('x', 1, []), origin: null }]
     const incomplete = compareBuilds({ name: 'Old', cards: OLD }, { name: 'New', cards: pending }, RULES)
-    render(<BuildNotes side="B" build={incomplete.b} canClassifyHere />)
+    render(<VerdictCard comparison={incomplete} view="average" onViewChange={() => {}} handSize={5} moversOf={noMovers} pending={{ side: 'B', count: 1, names: 'Card x' }} />)
 
-    expect(screen.getByText('Build B: 1 unclassified card')).toBeInTheDocument()
-    expect(screen.getByText('Tap the cards marked with ? in the list below to classify them so the comparison is accurate.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '1 card of B to classify' })).toBeInTheDocument()
+    expect(screen.getByText("Card x: without its role there's no telling if it starts or bricks.")).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Build B: not measured' })).toBeInTheDocument()
   })
 
   it('el nombre de una build sin nombre y los plurales de las cartas', () => {
@@ -139,7 +135,8 @@ describe('Comparar builds en inglés', () => {
 
     expect(first.name).toBe('Untitled build')
     expect(uniqueBuildName('', [first])).toBe('Untitled build (2)')
-    expect(t('meta.compare.pending', { side: 'A', count: 3 })).toBe('Build A: 3 unclassified cards')
+    expect(t('meta.compare.verdict.pending', { side: 'A', count: 3, n: '3' })).toBe('3 cards of A to classify')
+    expect(t('meta.compare.classify', { count: 1, n: '1' })).toBe('Classify 1 card')
     expect(t('meta.deckModal.loadedMissing', { name: 'Elfnote', count: 1 })).toBe('Elfnote loaded into the builder with 1 fewer card (outside the format or unknown).')
     expect(t('meta.deckModal.loadedMissing', { name: 'Elfnote', count: 4 })).toBe('Elfnote loaded into the builder with 4 fewer cards (outside the format or unknown).')
     expect(t('meta.deckModal.replay', { label: 'Final · A vs. B' })).toBe('Replay: Final · A vs. B')

@@ -62,6 +62,19 @@ export function SurfacesSection() {
           <EmptyState icon="layers" title="Todavía no hay nada">
             Qué falta y qué hacer, sin caja ni marcos.
           </EmptyState>
+          {/* Con sus puertas (`actions`): uno o dos botones, la principal al final (la primera vez de Comparar). */}
+          <EmptyState
+            icon="columns"
+            title="Todavía no tenés con qué comparar"
+            actions={
+              <>
+                <Button variant="secondary" icon="upload">Importar un deck</Button>
+                <Button variant="primary" icon="flask">Probar un cambio en el Lab</Button>
+              </>
+            }
+          >
+            Con `actions`, las salidas del vacío van debajo del texto.
+          </EmptyState>
         </Specimen>
 
         <Specimen title="Skeleton" layout="column" note={<>El esqueleto mientras algo carga. Archivo: <Tag>ui/Skeleton.tsx</Tag></>}>
