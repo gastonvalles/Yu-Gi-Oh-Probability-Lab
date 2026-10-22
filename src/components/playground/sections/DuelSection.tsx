@@ -7,7 +7,7 @@ import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
-import { HANDTRAP_CATALOG, HANDTRAP_KINDS, type HandtrapConfig, type HandtrapKind } from '../../../app/handtraps'
+import { HANDTRAP_CATALOG, MAX_COPIES, type HandtrapConfig } from '../../../app/handtraps'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
@@ -238,15 +238,21 @@ const RIVAL_HAND: RivalHandCard[] = [
   { id: 'rival.card-42141493-1', name: 'Mulcharmy Fuwalos', art: 'https://images.ygoprodeck.com/images/cards_small/42141493.jpg', usedAt: 12 },
 ]
 
-/** El pool de muestra: lo que se guarda no se toca (la hoja de acá no guarda nada). */
-const SAMPLE_POOL: HandtrapConfig = { enabled: true, count: 3, picks: HANDTRAP_CATALOG.slice(0, 4).map((pick) => ({ ...pick })) }
+/** La mano de muestra de las hojas (Ash ×1, Effect Veiler ×2 e Infinite Impermanence ×1): lo que se guarda no se toca (las hojas de acá no guardan nada). */
+const SAMPLE_HAND: HandtrapConfig = {
+  enabled: true,
+  picks: [
+    { ...HANDTRAP_CATALOG[0]!, copies: 1 },
+    { ...HANDTRAP_CATALOG[2]!, copies: 2 },
+    { ...HANDTRAP_CATALOG[3]!, copies: 1 },
+  ],
+}
 
-/** El simulador de handtraps de «Jugar solo»: la franja de la mano del rival en la mesa, las cartas de la hoja del pool en sus estados y la hoja entera. */
+/** El simulador de handtraps de «Jugar solo»: la franja de la mano del rival en la mesa, las cartas de la hoja con su contador (en 0, 1 y 3) y las dos hojas. */
 function HandtrapSamples() {
   const [open, setOpen] = useState(false)
   const [openFromMat, setOpenFromMat] = useState(false)
-  const [kinds, setKinds] = useState<HandtrapKind[]>(['single', 'repeatable', 'charmy'])
-  const cycle = (index: number) => setKinds((current) => current.map((kind, at) => (at === index ? HANDTRAP_KINDS[(HANDTRAP_KINDS.indexOf(kind) + 1) % HANDTRAP_KINDS.length]! : kind)))
+  const [copies, setCopies] = useState([0, 1, 3])
 
   return (
     <>
@@ -266,29 +272,29 @@ function HandtrapSamples() {
       </Specimen>
 
       <Specimen
-        title="Handtraps del rival · la hoja del pool"
+        title="Handtraps del rival · la hoja de la mano"
         layout="column"
         note={
           <>
-            Cada carta se marca con un toque (<Tag>aria-pressed</Tag>, aro ámbar); la elegida dice su tipo y otro toque lo cambia (Repetible → Una sola → Charmy). Sin elegir, el tipo sólo se lee en el mismo lugar. Abajo de la hoja, cuántas tiene el rival y, si el pool no alcanza, «como mucho N». Archivo: <Tag>duel/HandtrapPool.tsx</Tag>
+            Cada carta lleva su contador de copias (de 0 a 3, <Tag>Stepper lg</Tag>): con una o más va con el aro ámbar de lo elegido; con 0, apagada. El «+» se apaga en 3 copias y cuando la mano ya tiene 6. Abajo de la hoja, cuántas tiene el rival en total y el aviso del tope o de que no hay ninguna. Archivo: <Tag>duel/HandtrapPool.tsx</Tag>
           </>
         }
       >
         {/* En una columna: la muestra es angosta (en la hoja, desde 640 px, van de a dos: `POOL_LIST`). */}
         <ul className="m-0 grid list-none gap-1 p-0">
           {HANDTRAP_CATALOG.slice(0, 3).map((card, index) => (
-            <HandtrapPoolCard key={card.id} card={card} kind={kinds[index]!} chosen={index !== 1} onToggle={() => undefined} onCycle={() => cycle(index)} />
+            <HandtrapPoolCard key={card.id} card={card} copies={copies[index]!} max={MAX_COPIES} onChange={(value) => setCopies((current) => current.map((count, at) => (at === index ? value : count)))} />
           ))}
         </ul>
         <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpen(true)}>
-          Abrir la hoja del pool
+          Abrir la hoja (desde las reglas de Solo)
         </Button>
-        <HandtrapPicker isOpen={open} config={SAMPLE_POOL} onClose={() => setOpen(false)} onSave={() => setOpen(false)} />
+        <HandtrapPicker isOpen={open} config={SAMPLE_HAND} onClose={() => setOpen(false)} onSave={() => setOpen(false)} />
         {/* «Entrenar solo» entra directo a la mesa: el botón de la barra de la mesa (`HandtrapsMatButton`) abre esta misma hoja, que avisa que aplicar reparte una mano nueva y, con el simulador encendido, ofrece apagarlo. */}
         <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpenFromMat(true)}>
           Abrir la hoja como se ve desde la mesa
         </Button>
-        <HandtrapPicker isOpen={openFromMat} config={SAMPLE_POOL} dealsNew onClose={() => setOpenFromMat(false)} onSave={() => setOpenFromMat(false)} onTurnOff={() => setOpenFromMat(false)} />
+        <HandtrapPicker isOpen={openFromMat} config={SAMPLE_HAND} dealsNew onClose={() => setOpenFromMat(false)} onSave={() => setOpenFromMat(false)} onTurnOff={() => setOpenFromMat(false)} />
       </Specimen>
     </>
   )
