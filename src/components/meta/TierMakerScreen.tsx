@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { canvasToPngBlob, renderTierListImage } from '../../app/tierlist-image'
+import { renderTierListImage } from '../../app/tierlist-image'
 import {
   MAX_LABEL,
   MAX_TIERS,
@@ -24,7 +24,7 @@ import {
   type MakerStore,
   type Place,
 } from '../../app/tierlist-maker'
-import { downloadBlob } from '../../app/deck-image-export-download'
+import { canvasToJpegBlob, downloadBlob } from '../../app/deck-image-export-download'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { StepHero } from '../StepHero'
@@ -39,12 +39,14 @@ import { TierMakerAddCards } from './TierMakerAddCards'
 import { TierMakerBoard } from './TierMakerBoard'
 import { labelInk } from './TierStrip'
 
-/** El nombre de la imagen descargada: `downloadBlob` le pone la extensión, así que sale `tier-list.png`. */
+/** El nombre de la imagen descargada: `downloadBlob` le pone la extensión, así que sale `tier-list.jpg`. */
 const IMAGE_NAME = 'tier-list'
+/** La calidad del JPG (Gastón, 2026-10-22: «debe ser un jpg»): alta, porque la imagen lleva letras y bordes finos y los 0,92 de siempre los empastan un poco. */
+const IMAGE_QUALITY = 0.95
 
 /**
  * El creador de tier lists propias (Gastón, 2026-10-19: «debe haber una herramienta para hacer nuestras propias tierlists»): una lista con filas de nombre y color (S a F de arranque), las cartas que se eligen
- * (buscador o meta) repartidas entre ellas arrastrando o tocando, guardada en el navegador, y salida como imagen (PNG). La pantalla muestra y edita sólo la lista activa. La lógica (filas, movimientos, lo guardado) es
+ * (buscador o meta) repartidas entre ellas arrastrando o tocando, guardada en el navegador, y salida como imagen (JPG). La pantalla muestra y edita sólo la lista activa. La lógica (filas, movimientos, lo guardado) es
  * de `app/tierlist-maker.ts`; esto es la pantalla.
  */
 export function TierMakerScreen() {
@@ -87,9 +89,9 @@ export function TierMakerScreen() {
     setBusy(true)
 
     try {
-      const blob = await canvasToPngBlob(await renderTierListImage(list))
+      const blob = await canvasToJpegBlob(await renderTierListImage(list), IMAGE_QUALITY)
 
-      downloadBlob(blob, IMAGE_NAME, 'png')
+      downloadBlob(blob, IMAGE_NAME, 'jpg')
     } catch {
       showToastMessage(t('meta.maker.downloadFailed'), 'error')
     } finally {
