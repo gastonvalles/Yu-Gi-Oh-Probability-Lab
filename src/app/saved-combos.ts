@@ -1,7 +1,7 @@
 import { t } from '../i18n'
 import { isRecord } from './utils'
 import { createId } from './utils'
-import type { MatAction, MatState } from './practice-mat'
+import type { MatAction, MatState, RivalHand } from './practice-mat'
 
 const SAVED_COMBOS_KEY = 'ygo-lab:practice-combos'
 
@@ -29,11 +29,14 @@ export function readSavedCombos(): SavedCombo[] {
   }
 }
 
-/** Combos guardados antes de que la mesa tuviera fases y destierro boca abajo: arrancan en la Draw Phase del turno 1. */
+/** Combos guardados antes de que la mesa tuviera fases y destierro boca abajo: arrancan en la Draw Phase del turno 1. Una mano del rival que no se entiende se descarta (el combo queda sin rival). */
 function migrateSavedCombo(combo: SavedCombo): SavedCombo {
-  const initial: MatState = { ...combo.initial, phase: combo.initial.phase ?? 'draw', turn: combo.initial.turn ?? 1, facedown: combo.initial.facedown ?? [], extraUp: combo.initial.extraUp ?? [], targeted: combo.initial.targeted ?? [] }
+  const { rival, ...table } = combo.initial
+  const initial: MatState = { ...table, phase: table.phase ?? 'draw', turn: table.turn ?? 1, facedown: table.facedown ?? [], extraUp: table.extraUp ?? [], targeted: table.targeted ?? [], ...(isRivalHand(rival) ? { rival } : {}) }
   return { ...combo, initial }
 }
+
+const isRivalHand = (value: unknown): value is RivalHand => isRecord(value) && isStringList(value.hand) && isStringList(value.used)
 
 export function writeSavedCombos(combos: readonly SavedCombo[]): void {
   try {
@@ -101,7 +104,7 @@ interface NewCombo {
 }
 
 export function createSavedCombo({ name, deckName, initial, actions, nameOf }: NewCombo, combos: readonly SavedCombo[], now = new Date()): SavedCombo {
-  const ids = [...initial.deck, ...initial.extra, ...initial.hand]
+  const ids = [...initial.deck, ...initial.extra, ...initial.hand, ...(initial.rival?.hand ?? [])]
 
   return {
     id: createId('combo'),

@@ -109,6 +109,10 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
     case 'attack':
       return exists(action.id) ? { spotlight: { id: action.id, kind: action.type } } : {}
 
+    // El rival usa una handtrap (el simulador de «Jugar solo»): se muestra grande en el centro, como lo que activa el rival en un duelo, con la frase del paso.
+    case 'rivalUse':
+      return changed ? { spotlight: { id: action.id, kind: 'activate' } } : {}
+
     case 'target':
       return exists(action.id) && !before.targeted.includes(action.id) ? { spotlight: { id: action.id, kind: 'target' } } : {}
 

@@ -4,6 +4,7 @@ import { catalog } from './catalog'
 import { common } from './common'
 import { deck } from './deck'
 import { duel } from './duel'
+import { handtraps } from './handtraps'
 import { lab } from './lab'
 import { meta } from './meta'
 import { practice } from './practice'
@@ -12,6 +13,6 @@ import { rules } from './rules'
 import { search } from './search'
 import { shell } from './shell'
 
-export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel }
+export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps }
 
-export const en: Messages = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel }
+export const en: Messages = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps }

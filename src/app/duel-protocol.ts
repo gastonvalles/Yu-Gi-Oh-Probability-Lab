@@ -215,6 +215,8 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   regain: (a) =>
     isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || isTakeZone(a.to)) && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.faceUp, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
   batch: (a) => Array.isArray(a.actions) && a.actions.length > 0 && a.actions.length <= MAX_CARDS && a.actions.every((part) => isPlain(part) && isBatchPart(part.type) && actionChecks[part.type](part)),
+  // El simulador de handtraps es de «Jugar solo»: la jugada nunca viaja en un duelo, y si llega se descarta.
+  rivalUse: () => false,
 }
 
 function parseAction(value: unknown): MatAction | null {

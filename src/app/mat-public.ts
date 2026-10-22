@@ -95,6 +95,10 @@ export function mapActionIds(action: MatAction, map: IdMap): MatAction {
     case 'batch':
       return { ...action, actions: action.actions.map((part) => mapActionIds(part, map)) }
 
+    // El simulador de handtraps es de «Jugar solo»: en un duelo no hay mano del rival simulada, y quien la recibiera la descarta (`duel-protocol`).
+    case 'rivalUse':
+      return action
+
     default: {
       const unreachable: never = action
       return unreachable

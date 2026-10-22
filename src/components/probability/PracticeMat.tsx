@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
+import { isRivalId, rivalCardOf } from '../../app/handtraps'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import { opaqueOfForeign } from '../../app/mat-control'
 import { isOpaqueId } from '../../app/mat-public'
@@ -78,6 +79,7 @@ import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
+import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
@@ -91,6 +93,7 @@ import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
 import { panelStepsOf } from './panel-steps'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
+import { RivalHandStrip } from './RivalHandStrip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, GLOW_TONE } from './practice-styles'
@@ -301,6 +304,15 @@ export function ZoneLines({ kind }: { kind: 'monster' | 'spell' }) {
     </span>
   )
 }
+/**
+ * El campo de la práctica con la mano del rival del simulador de handtraps arriba (la franja, 3,5 rem, y su aire, 0,75 rem): las casillas le descuentan ese alto para que tu mano siga
+ * entera a la vista. En escritorio entra en la cuenta de `--cell` (23,75 rem de lo que no es campo, en vez de 19,5, y la casilla más chica baja de 8 a 6,25 rem: en una notebook de 720 px
+ * de alto con el menú abierto el piso de 8 rem dejaba la mano 27 px debajo del borde); en el armazón del celular el campo se estira a lo ancho, así que lleva un tope de ancho que sale del
+ * alto que le queda (23,25 rem de lo demás): cinco columnas y cuatro filas en un celular en vertical, siete columnas (6,3714 casillas) y tres filas desde 640 px. Con mucho alto el tope
+ * no llega al ancho y no cambia nada; sin el simulador la mesa no lleva nada de esto.
+ */
+const RIVAL_STRIP_FIELD = 'min-[1101px]:[--cell:max(6.25rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-23.75rem)/3.2),15rem))] max-[1101px]:mx-auto max-[1101px]:w-full max-sm:max-w-[calc((100dvh-24rem)*1.25+1rem)] sm:max-[1101px]:max-w-[calc((100dvh-23.75rem)*2.1238+1.5rem)]'
+
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -458,7 +470,8 @@ export function PracticeMat({
       if (isToken(shown)) return TOKEN_CARD
 
       // Un id del rival (el objetivo de un ataque, o una carta suya que controlo: `f.c12`) se resuelve por la carta que él mostró; si no mostró ninguna, no se sabe cuál es.
-      const id = duel && isOpaqueId(shown) ? duel.foreignKnown[shown] : duel && isForeignId(shown) ? duel.foreignKnown[opaqueOfForeign(shown)] : shown
+      // Una handtrap del rival simulado (`rival.card-…`) es la carta de su id, con su imagen desde el primer dibujo.
+      const id = duel && isOpaqueId(shown) ? duel.foreignKnown[shown] : duel && isForeignId(shown) ? duel.foreignKnown[opaqueOfForeign(shown)] : rivalCardOf(shown)
       if (id === undefined) return RIVAL_MONSTER
 
       const known = cardsById.get(id) ?? byCardId.get(cardIdOfDrawId(id))
@@ -466,7 +479,11 @@ export function PracticeMat({
 
       const ygoId = parseDerivedCardId(cardIdOfDrawId(id))
       const remote = ygoId === null ? undefined : fetched.get(ygoId)
-      return remote ?? { name: session.names[id] ?? UNKNOWN_CARD.name, apiCard: null }
+      if (remote) return remote
+      if (!isRivalId(shown)) return { name: session.names[id] ?? UNKNOWN_CARD.name, apiCard: null }
+
+      const art = artOfDrawId(id)
+      return { name: session.names[shown] ?? UNKNOWN_CARD.name, apiCard: null, ...(art ? { art } : {}) }
     },
     [cardsById, byCardId, fetched, session.names, duel],
   )
@@ -474,7 +491,8 @@ export function PracticeMat({
   useEffect(() => {
     // Con los monstruos del rival a los que se puede atacar, también sus nombres (los de su deck no están en `cardsById`).
     const rivals = duel ? [...duel.attackTargets.map((target) => duel.foreignKnown[target.id]), ...allMatIds(state).filter(isForeignId).map((id) => duel.foreignKnown[opaqueOfForeign(id)])].flatMap((id) => id ?? []) : []
-    const missing = [...new Set([...allMatIds(state), ...rivals].map(cardIdOfDrawId))]
+    // Y las handtraps del rival simulado: su texto, para «Ver carta» y el detalle de la izquierda.
+    const missing = [...new Set([...allMatIds(state), ...rivals, ...(state.rival?.hand ?? []).map(rivalCardOf)].map(cardIdOfDrawId))]
       .filter((cardId) => !byCardId.has(cardId))
       .map(parseDerivedCardId)
       .filter((ygoId): ygoId is number => ygoId !== null && !fetched.has(ygoId) && !requestedRef.current.has(ygoId))
@@ -508,6 +526,16 @@ export function PracticeMat({
   // La lista de pasos: la frase de cada jugada, sus miniaturas, si es un cambio de fase y, para su ficha, la mesa de después, la clase de jugada, lo que se mueve y su color. Una vez por combo, no por paso.
   const panelSteps = useMemo(() => panelStepsOf(session.initial, session.actions, steps, nameOf, artById), [session.initial, session.actions, steps, nameOf, artById])
   const live = session.cursor === session.actions.length
+  // El simulador de handtraps: en qué paso usó el rival cada carta, de los pasos que se ven (reproduciendo un combo, las de más adelante siguen en su mano).
+  const rivalUsedAt = useMemo(() => {
+    const used = new Map<string, number>()
+
+    session.actions.slice(0, session.cursor).forEach((action, index) => {
+      if (action.type === 'rivalUse' && !used.has(action.id)) used.set(action.id, index + 1)
+    })
+
+    return used
+  }, [session.actions, session.cursor])
 
   const [menu, setMenu] = useState<
     /**
@@ -564,6 +592,8 @@ export function PracticeMat({
   const sectionRef = useRef<HTMLElement | null>(null)
   const view = useMatView()
   const isDuel = Boolean(duel)
+  // La mano del rival del simulador de handtraps está arriba del campo (sólo en la práctica): el campo de la vista 3D no sube más que ella.
+  const hasRivalStrip = !isDuel && (state.rival?.hand.length ?? 0) > 0
   // Los sonidos de la práctica (Gastón, 2026-10-20: «en la práctica no suenan los efectos del duelo»): cada jugada, deshacer y los pasos de un combo. En un duelo suenan con `useDuelSounds`, las de los dos.
   usePracticeSounds(isDuel ? null : session)
   const sounds = useSoundsOn()
@@ -704,8 +734,9 @@ export function PracticeMat({
       const box = field.getBoundingClientRect()
       const hand = field.querySelector('[data-rival-drop="hand"]')?.getBoundingClientRect()
       const area = column.getBoundingClientRect()
-      // Con la barra de arriba dentro de la columna (sin laterales) el campo no puede subir más que ella; con laterales, la barra está a los costados.
-      const headerBottom = isDuel && !rails ? (column.firstElementChild?.getBoundingClientRect().bottom ?? area.top) : area.top
+      // Con la barra de arriba dentro de la columna (sin laterales) el campo no puede subir más que ella; con laterales, la barra está a los costados. En la práctica, tampoco más que la mano del rival del simulador de handtraps.
+      const strip = column.querySelector('[data-rival-strip]')
+      const headerBottom = isDuel && !rails ? (column.firstElementChild?.getBoundingClientRect().bottom ?? area.top) : (strip?.getBoundingClientRect().bottom ?? area.top)
       // El ancho del campo son sus casillas (la grilla se centra y puede ser más angosta que su caja).
       const style = getComputedStyle(field)
       const tracks = style.gridTemplateColumns.split(' ').map(parseFloat).filter(Number.isFinite)
@@ -731,7 +762,7 @@ export function PracticeMat({
       observer?.disconnect()
       field.style.removeProperty('--field-zoom')
     }
-  }, [fieldNode, view, isDesktop, isDuel, rails])
+  }, [fieldNode, view, isDesktop, isDuel, rails, hasRivalStrip])
   // El reparto de una mano nueva suena (el barajado y una carta por vez); las cartas que se suman después, por una jugada, ya suenan con ella.
   const initialDealRef = useRef(true)
 
@@ -1475,6 +1506,14 @@ export function PracticeMat({
       ]
     }
 
+    // Una handtrap del rival simulado: usarla ahora (queda usada en su lugar); si ya la usó, la opción se apaga y dice en qué paso.
+    if (isRivalId(menu.id)) {
+      const step = rivalUsedAt.get(menu.id)
+      const id = menu.id
+
+      return [{ label: t('handtraps.menu.use'), onSelect: () => play({ type: 'rivalUse', id }), disabled: step !== undefined, hint: step === undefined ? undefined : t('handtraps.menu.usedAt', { step }) }]
+    }
+
     const listed = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz, duel?.control)
     // «Activar efecto» de una carta con varios efectos (`countableEffects`) pregunta **siempre** cuál: la pregunta va en el segundo paso, como el resto (la posición, a quién se ataca), y el rival ve cuál se activa.
     const api = cardOf(menu.id).apiCard
@@ -1496,7 +1535,7 @@ export function PracticeMat({
     }
 
     return mapped
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight, rivalUsedAt])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   // En la lista de efectos de «Activar efecto» cada uno lleva sus rasgos: los de la carta entera no se repiten arriba (cada dato se dice una sola vez).
@@ -1520,9 +1559,11 @@ export function PracticeMat({
           ? zoneLabelOf(menu.drop.zone, menu.drop.index)
           : menu?.kind === 'batch'
             ? PILE_TITLES[menu.pile]
-            : menuWhere
-              ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
-              : PILE_TITLES.deck
+            : menu?.kind === 'card' && isRivalId(menu.id)
+              ? t('handtraps.strip.label')
+              : menuWhere
+                ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
+                : PILE_TITLES.deck
   // Las fases no llevan título: el nombre de la de ahora ya está en la lista, marcado. Varias cartas: cuántas («3 cartas»).
   const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? '' : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: menu?.kind === 'batch' ? menu.ids.length : state.deck.length }))
   // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
@@ -1596,6 +1637,8 @@ export function PracticeMat({
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
   // En el celular la hoja tapa la mano: una carta de la mano no se levanta (quedaba encima de los botones); la del campo sí lleva el marco.
   const selectedId = menu?.kind === 'card' && !(!isDesktop && menuWhere?.kind === 'pile' && menuWhere.pile === 'hand') ? menu.id : null
+  // La mano del rival del simulador de handtraps: sólo en la práctica, y sólo si se repartió.
+  const rivalHand = hasRivalStrip ? (state.rival?.hand ?? null) : null
 
   const cell = (spot: MatSpot, index: number, area: string) => {
     const placed = placedAt(state, spot, index)
@@ -1902,14 +1945,25 @@ export function PracticeMat({
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
         <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
         {/* Celular: la mano del rival y el campo van juntos y centrados: el alto que sobra se reparte arriba y abajo (ni pegado a la barra ni un hueco antes de tu mano). Escritorio: sin envoltorio y el campo se centra. */}
-        <div className={cx('flex flex-col gap-2 min-[1101px]:contents', !duel && 'max-[1101px]:my-auto')}>
+        {/* Con la mano del rival del simulador de handtraps, también en escritorio van juntos y centrados la franja y el campo (lo que va junto, se junta). */}
+        <div className={cx('flex flex-col gap-2', hasRivalStrip ? 'my-auto' : cx('min-[1101px]:contents', !duel && 'max-[1101px]:my-auto'))}>
+        {/* El simulador de handtraps (sólo en «Jugar solo»): la mano del rival, en una franja fija arriba del campo. Sin él la mesa queda como siempre. */}
+        {rivalHand ? (
+          <RivalHandStrip
+            cards={rivalHand.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)), usedAt: rivalUsedAt.get(id) ?? null }))}
+            selectedId={selectedId}
+            onOpen={openCard}
+            // Un poco más de aire que entre las demás piezas: el rombo de arriba de la placa del campo sobresale y no toca las cartas.
+            className="mb-1"
+          />
+        ) : null}
         {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio.
             Las cinco columnas del centro son cuadradas (una carta acostada entra en su zona sin pisar a la vecina) y las de los costados miden lo justo de una carta (0,6857 de una del centro), así que todas las cartas miden lo mismo. */}
         <div
           ref={setField}
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]', "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:grid-cols-[repeat(5,minmax(0,1fr))] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
+          className={cx(!duel && 'min-[1101px]:my-auto', !duel && (hasRivalStrip ? RIVAL_STRIP_FIELD : 'min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-19.5rem)/3.2),15rem))]'), "relative isolate grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] max-sm:grid-cols-[repeat(5,minmax(0,1fr))] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:scale(var(--field-zoom,1))_perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]',
             // Las áreas: en la práctica, escritas acá; en un duelo las arma la pantalla (`duel.areas` y `duel.areasCompact`, por variables: el estilo en línea no se puede cambiar con un medio).
             // En un celular en vertical (menos de 640 px) son cinco columnas y una fila de pilas abajo —el Extra Deck a la izquierda y el Deck a la derecha, en los extremos, la Zona de campo en el medio, el Banish a su izquierda y el Cementerio a su derecha—: las casillas pasan de 55 a 72 px.
             duel
