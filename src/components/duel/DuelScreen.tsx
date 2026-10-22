@@ -2047,7 +2047,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onClose={() => setRivalViewer(null)}
         anonymous
       />
-      {rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}
+      <Presence>{rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}</Presence>
       <DuelCalculator isOpen={lifeOpen} snapshot={snapshot} myName={myName} duel={duel} onClose={() => setLifeOpen(false)} />
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
       <TossOverlay snapshot={snapshot} myName={myName} />

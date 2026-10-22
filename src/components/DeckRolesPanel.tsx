@@ -17,6 +17,7 @@ import {
 import { useAppDispatch } from '../app/store-hooks'
 import { useToastMessage } from '../app/use-toast-message'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../app/use-media-query'
+import { Presence } from '../app/use-presence'
 import { formatInteger, formatWholePercent } from '../app/utils'
 import { t } from '../i18n'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
@@ -647,7 +648,8 @@ export function DeckRolesPanel({
         </section>
       )}
 
-      {isDetailOpen && selectedCard !== null && drawerMode === null ? (
+      {/* La ayuda se abre debajo de la carta: la carta se va con su vuelo (`Presence`) y vuelve al cerrar la ayuda. */}
+      <Presence>{isDetailOpen && selectedCard !== null && drawerMode === null ? (
         <ClassificationEditor
           card={selectedCard}
           position={selectedCardIndexInFullList + 1}
@@ -660,7 +662,7 @@ export function DeckRolesPanel({
           onOpenHelp={() => setDrawerMode('help')}
           onClose={() => setIsDetailOpen(false)}
         />
-      ) : null}
+      ) : null}</Presence>
 
       <ClassificationDrawer
         kicker={t('roles.guide.kicker')}

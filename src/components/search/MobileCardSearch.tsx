@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { useLeaving, usePresence } from '../../app/use-presence'
 
 import { buildCompactSearchDescription, formatSearchError } from '../../app/card-search'
 import { buildFormatLimitLabel, getCardCopyLimit } from '../../app/deck-format'
@@ -55,9 +56,11 @@ export function MobileCardSearch({
   onClose,
 }: MobileCardSearchProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
-  useBodyScrollLock(true)
-  useEscapeKey(onClose)
-  useFocusTrap(rootRef)
+  // Ya cerrada, mientras se funde (`Presence`, en DeckModeScreen): lo que se ata a «abierta» (el scroll, Escape, el foco) se suelta enseguida.
+  const leaving = useLeaving()
+  useBodyScrollLock(!leaving)
+  useEscapeKey(onClose, !leaving)
+  useFocusTrap(rootRef, !leaving)
   const { filters, query, status } = search
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')
@@ -113,14 +116,16 @@ export function MobileCardSearch({
 
   // Portal: el paso del builder está dentro de un contenedor animado con
   // transform, que atraparía el z-index debajo de la navegación inferior.
-  return createPortal(
+  // Entra con un fundido y apenas sube (`sheet-in`, como la hoja de la carta: es una capa sobre la pantalla, no otra pantalla que se desliza) y al cerrarse
+  // hace lo mismo al revés en 150 ms (`usePresence`).
+  const sheet = usePresence(!leaving, createPortal(
     <div
       ref={rootRef}
       tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label={t('search.mobile.dialog')}
-      className="fixed inset-0 z-140 flex h-dvh w-full flex-col overflow-hidden bg-background outline-none min-[1101px]:hidden"
+      className="fixed inset-0 z-140 flex h-dvh w-full animate-sheet-in flex-col overflow-hidden bg-background outline-none motion-reduce:animate-none min-[1101px]:hidden"
     >
       <header className="grid gap-2 border-b border-border-subtle px-3 pb-2 pt-[max(0.6rem,env(safe-area-inset-top))]">
         <form
@@ -262,18 +267,6 @@ export function MobileCardSearch({
           )}
         </div>
 
-      <SearchFiltersDrawer
-        isOpen={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        filters={filters}
-        deckFormat={search.deckFormat}
-        activeFilterCount={search.activeFilterCount}
-        resultCount={search.hasSearchCriteria && status === 'success' ? (search.totalCount ?? sortedResults.length) : null}
-        hasMore={search.totalCount == null && search.hasMore}
-        onFilterChange={actions.onFilterChange}
-        onClearFilters={actions.onClearFilters}
-      />
-
       <footer className="flex items-center gap-3 border-t border-border-subtle px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
         <p className="m-0 min-w-0 flex-1 text-body leading-tight text-muted" aria-live="polite">
           {lastAdded ? (
@@ -292,6 +285,24 @@ export function MobileCardSearch({
       </footer>
     </div>,
     document.body,
+  ), () => [rootRef.current])
+
+  return (
+    <>
+      {sheet}
+      {/* Afuera de lo que queda quieto mientras sale (es otro portal, encima): si la búsqueda se cierra con los filtros abiertos (al cambiar de pantalla), el cajón también se va. */}
+      <SearchFiltersDrawer
+        isOpen={filtersOpen && !leaving}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        deckFormat={search.deckFormat}
+        activeFilterCount={search.activeFilterCount}
+        resultCount={search.hasSearchCriteria && status === 'success' ? (search.totalCount ?? sortedResults.length) : null}
+        hasMore={search.totalCount == null && search.hasMore}
+        onFilterChange={actions.onFilterChange}
+        onClearFilters={actions.onClearFilters}
+      />
+    </>
   )
 }
 

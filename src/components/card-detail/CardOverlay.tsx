@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useEffectEvent, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { CardNavigation } from '../../app/card-neighbors'
@@ -7,6 +7,7 @@ import { foilOf } from '../../app/card-foil'
 import { useCardArtOptions, type ArtChoice } from '../../app/use-card-art-options'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
@@ -23,6 +24,13 @@ import { levelOut, tiltHandlers } from './card-tilt'
 const CLOSE_MS = 180
 /** Cómo se abren los precios desde adentro del panel: el pie con botones (Anterior / Siguiente) lleva el $ en su misma fila y avisa que está para que el panel no dibuje otro. */
 const PricesContext = createContext<{ openPrices: () => void; registerFooter: (mounted: boolean) => void } | null>(null)
+/** Cerrar el detalle desde lo que va adentro del panel (un botón como «Agregar al Main»): con el mismo vuelo de vuelta que la X, no de golpe. */
+const CloseContext = createContext<() => void>(() => {})
+
+/** El cierre (con su vuelo) del detalle en el que se está: para lo del panel que, además de hacer lo suyo, lo cierra. */
+export function useCloseCardOverlay(): () => void {
+  return useContext(CloseContext)
+}
 /** Lo que la carta nueva tarda en aparecer al pasar a otra, y cuánto se desliza desde el lado de donde viene. */
 const SWITCH_MS = 180
 const SWITCH_SLIDE_PX = 28
@@ -73,10 +81,12 @@ function flightFrom(card: HTMLElement, origin: DOMRect): string {
 export function CardOverlay(props: CardOverlayProps) {
   const { card, name } = props
   const [pricesOpen, setPricesOpen] = useState(false)
+  // El cierre del marco (con su vuelo): el modal de precios va al lado, no adentro, y también lo cierra.
+  const closeRef = useRef<() => void>(null)
 
   return (
     <>
-      <CardOverlayFrame {...props} onOpenPrices={card ? () => setPricesOpen(true) : null} />
+      <CardOverlayFrame {...props} closeRef={closeRef} onOpenPrices={card ? () => setPricesOpen(true) : null} />
       {/* Hermano del marco, no hijo: los clics de React suben por los portales y tocar el modal cerraría la carta. */}
       {card ? <CardPricesModal
           cardId={card.ygoprodeckId}
@@ -85,14 +95,17 @@ export function CardOverlay(props: CardOverlayProps) {
           onClose={() => setPricesOpen(false)}
           onGoToPrint={() => {
             setPricesOpen(false)
-            props.onClose()
+            closeRef.current?.()
           }}
         /> : null}
     </>
   )
 }
 
-function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, initialArt, navigation = null, onOpenPrices = null, onClose, children }: CardOverlayProps & { onOpenPrices?: (() => void) | null }) {
+function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, initialArt, navigation = null, onOpenPrices = null, onClose, children, closeRef }: CardOverlayProps & { onOpenPrices?: (() => void) | null; closeRef?: Ref<() => void> }) {
+  // Su padre dejó de dibujarlo y lo deja salir (`Presence`: la pausa del duelo, la ayuda de Roles): ya no es un diálogo abierto —no ataja toques y el foco, Escape y el
+  // scroll se sueltan enseguida— y se va con el mismo vuelo de cerrar.
+  const leaving = useLeaving()
   const rootRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
@@ -126,7 +139,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const swipedRef = useRef(false)
 
-  useBodyScrollLock(true)
+  useBodyScrollLock(!leaving)
 
   useLayoutEffect(() => {
     const art = cardRef.current
@@ -152,6 +165,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   }, [origin])
 
   useEffect(() => {
+    if (leaving) return
     const previousFocus = document.activeElement
     const panel = panelRef.current
     ;(panel?.querySelector<HTMLElement>('[data-initial-focus]') ?? panel)?.focus({ preventScroll: true })
@@ -160,7 +174,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
         previousFocus.focus({ preventScroll: true })
       }
     }
-  }, [])
+  }, [leaving])
 
   // Al aparecer otra carta en el mismo marco: el panel vuelve arriba, el foco no se pierde (si estaba en algo que ya no está o quedó apagado, pasa al panel) y la
   // carta nueva llega con un fundido desde el lado al que se fue. No corre al abrir: de eso se ocupa el vuelo de arriba.
@@ -202,16 +216,11 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   }
   const hasNavigation = Boolean(navigation && (navigation.onPrevious || navigation.onNext))
 
-  const close = () => {
-    if (closingRef.current) return
-    closingRef.current = true
-
+  /** El vuelo de cerrar, desde donde esté: la carta vuelve a la suya (o se achica) y todo se funde. Devuelve el fundido, o nada si no se anima. */
+  const flyBack = () => {
     const art = cardRef.current
     const root = rootRef.current
-    if (!art || !root || typeof art.animate !== 'function' || prefersReducedMotion()) {
-      onClose()
-      return
-    }
+    if (!art || !root || typeof art.animate !== 'function' || prefersReducedMotion()) return null
 
     const opacity = getComputedStyle(root).opacity
     const transform = getComputedStyle(art).transform
@@ -223,10 +232,36 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       options,
     )
     animationsRef.current = [fade, flight]
-    void fade.finished.then(onClose, () => {})
+    return fade
   }
 
-  useEscapeKey(close)
+  const close = () => {
+    if (closingRef.current) return
+    closingRef.current = true
+
+    const fade = flyBack()
+    if (fade) void fade.finished.then(onClose, () => {})
+    else onClose()
+  }
+
+  useImperativeHandle(closeRef, () => close)
+  useEscapeKey(close, !leaving)
+
+  // Lo deja salir su padre: el mismo vuelo, sin avisarle (ya lo cerró, o sólo lo esconde y lo vuelve a mostrar después). Si lo vuelve a dibujar mientras sale, vuelve de donde iba.
+  const leave = useEffectEvent(() => {
+    if (!closingRef.current) {
+      closingRef.current = true
+      flyBack()
+    }
+
+    return () => {
+      closingRef.current = false
+      // La que todavía no arrancó se descarta (`reverse()` en el cuadro 0 salta al final y vuelve: un parpadeo, medido); la que iba, vuelve de donde estaba.
+      animationsRef.current.forEach((animation) => (animation.currentTime ? animation.reverse() : animation.cancel()))
+    }
+  })
+
+  useLayoutEffect(() => (leaving ? leave() : undefined), [leaving])
 
   return createPortal(
     <div
@@ -239,6 +274,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
+      inert={leaving}
       onPointerDown={(event) => {
         swipedRef.current = false
         // Sólo con el dedo, con vecinos y fuera de la carta (esa se arrastra para darla vuelta) y de lo que se toca (botones, campos).
@@ -391,7 +427,9 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
         >
           {/* El panel dice de qué impresión es el arte que se ve: al cambiar de arte (otra rareza, otro set) cambia también lo que dice. */}
           <PricesContext.Provider value={pricesSlot}>
-            <SelectedPrintingContext.Provider value={(art as ArtChoice | undefined)?.printing}>{children}</SelectedPrintingContext.Provider>
+            <CloseContext.Provider value={close}>
+              <SelectedPrintingContext.Provider value={(art as ArtChoice | undefined)?.printing}>{children}</SelectedPrintingContext.Provider>
+            </CloseContext.Provider>
           </PricesContext.Provider>
           {/* El $ de los precios, en la esquina de abajo a la derecha del texto de la carta: en el flujo, abajo del todo, así no tapa el texto. Si el panel tiene un pie con botones, el $ va en la fila de esos botones (no pasa su línea) y éste no se dibuja. */}
           {onOpenPrices && !hasFooter ? (
