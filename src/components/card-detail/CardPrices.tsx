@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { cardImageSrc } from '../../app/card-image-source'
 import { buildExpansionsHash, filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
+import { useLeaving } from '../../app/use-presence'
 import { formatUsd } from '../../app/utils'
 import { formatDay as formatDate, t } from '../../i18n'
 import { Badge } from '../ui/Badge'
@@ -174,8 +175,11 @@ function PriceList({ cardId, onOpenPrint }: { cardId: number; onOpenPrint: (pric
  * `onGoToPrint` para que el que lo abrió se cierre y no quede un detalle abierto encima de la otra pantalla.
  */
 export function CardPricesModal({ cardId, name, isOpen, onClose, onGoToPrint }: { cardId: number; name: string; isOpen: boolean; onClose: () => void; onGoToPrint: () => void }) {
+  // Si lo monta un `Presence` (Expansiones), al cerrarse sigue ahí mientras sale; los otros montajes no tienen uno y `leaving` es siempre false.
+  const leaving = useLeaving()
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" above kicker={t('search.prices.kicker')} title={name}>
+    <Modal isOpen={isOpen && !leaving} onClose={onClose} size="sm" above kicker={t('search.prices.kicker')} title={name}>
       <PriceList
         cardId={cardId}
         onOpenPrint={(price) => {

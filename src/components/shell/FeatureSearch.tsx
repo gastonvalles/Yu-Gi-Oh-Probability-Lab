@@ -110,10 +110,7 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
     if (isOpen && current) document.getElementById(`${id}-${current.id}`)?.scrollIntoView?.({ block: 'nearest' })
   }, [isOpen, current, id])
 
-  if (!isOpen) {
-    return null
-  }
-
+  // Cerrado no corta acá: el `Modal` no dibuja nada y, al cerrarse, sale con su animación (`usePresence`).
   const go = (row: FinderRow) => {
     const { action } = row
 

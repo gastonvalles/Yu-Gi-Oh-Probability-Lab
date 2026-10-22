@@ -5,6 +5,7 @@ import type { ApiCardReference, CardRole } from '../../types'
 import { CardArt } from '../CardArt'
 import { formatInteger } from '../../app/utils'
 import { getCardRoleDefinition } from '../../app/deck-groups'
+import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { Heading } from '../ui/Heading'
 import { Badge } from '../ui/Badge'
@@ -35,6 +36,8 @@ export function KpiDetailModal({
   onCardClick,
   onClose,
 }: KpiDetailModalProps) {
+  // Si lo monta un `Presence` (la Lab), al cerrarse sigue ahí mientras sale: `isOpen` todavía dice lo último que se vio.
+  const leaving = useLeaving()
   const result = isOpen ? getKpiDetailCards(mainDeck, roles, editsMap) : null
   // Cada carta va en el primer rol del anillo que tenga, así la suma de los grupos es la del anillo.
   const groups = roles
@@ -43,7 +46,7 @@ export function KpiDetailModal({
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen={isOpen && !leaving}
       onClose={onClose}
       size="md"
       kicker={side ? t('meta.compare.build', { side }) : undefined}

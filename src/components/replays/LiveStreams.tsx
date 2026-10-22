@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { liveThumbnailUrl, parseAgo, type LiveStream, type PastStream } from '../../app/live-streams'
 import { REPLAYS, thumbnailUrl, watchUrl } from '../../app/replays'
 import type { LiveState } from '../../app/use-live-streams'
+import { Presence, useLeaving } from '../../app/use-presence'
 import { getLocale, t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { Button } from '../ui/Button'
@@ -91,8 +92,8 @@ export function LiveStreamsSection({ state }: { state: LiveState }) {
         </Card>
       ) : null}
 
-      {/* La `key` reinicia el reproductor al pasar de una transmisión a otra. */}
-      {opened ? <LiveDialog key={opened.stream.id} opened={opened} onClose={() => setOpened(null)} /> : null}
+      {/* La `key` reinicia el reproductor al pasar de una transmisión a otra. Al cerrarse sigue montado mientras sale (`Presence`). */}
+      <Presence>{opened ? <LiveDialog key={opened.stream.id} opened={opened} onClose={() => setOpened(null)} /> : null}</Presence>
     </>
   )
 }
@@ -189,10 +190,11 @@ function LiveDialog({ opened, onClose }: { opened: Opened; onClose: () => void }
   const channel = REPLAYS.channels[stream.channel].name
   const viewers = opened.live ? viewersText(opened.stream.viewers) : null
   const detail = opened.live ? (viewers ? `${channel} · ${viewers}` : channel) : [channel, opened.stream.duration, agoText(opened.stream.published)].filter(Boolean).join(' · ')
+  const leaving = useLeaving()
 
   return (
     <Modal
-      isOpen
+      isOpen={!leaving}
       onClose={onClose}
       size="md"
       icon="play"

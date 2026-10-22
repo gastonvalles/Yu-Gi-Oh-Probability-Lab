@@ -1,6 +1,7 @@
 import { Fragment, memo, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { numberLocale, t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -146,6 +147,7 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
 function SpeedMenu({ speed, onSpeed }: { speed: ReplaySpeed; onSpeed: (speed: ReplaySpeed) => void }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const menuId = useId()
 
   useEscapeKey(() => setOpen(false), open)
@@ -160,6 +162,36 @@ function SpeedMenu({ speed, onSpeed }: { speed: ReplaySpeed; onSpeed: (speed: Re
     document.addEventListener('pointerdown', close)
     return () => document.removeEventListener('pointerdown', close)
   }, [open])
+
+  // Al cerrarse se achica y se funde, la inversa de su entrada (`usePresence`), como el menú de cada carta.
+  const menu = usePresence(
+    open,
+    open ? (
+      <div ref={menuRef} id={menuId} role="menu" aria-label={t('practice.replay.speed')} className="absolute bottom-full right-0 z-30 mb-2 grid min-w-32 gap-0.5 rounded-card border border-border-subtle bg-card-background p-1 shadow-overlay animate-pop motion-reduce:animate-none">
+        {REPLAY_SPEEDS.map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="menuitemradio"
+            aria-checked={value === speed}
+            data-initial-focus={value === speed ? '' : undefined}
+            className={cx(
+              'flex items-center justify-between gap-4 rounded-control px-3 py-2 text-left text-body tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none',
+              value === speed ? 'bg-tint/10 font-semibold text-foreground' : 'text-muted hover:bg-tint/10 hover:text-foreground',
+            )}
+            onClick={() => {
+              onSpeed(value)
+              setOpen(false)
+            }}
+          >
+            {formatSpeed(value)}
+            {value === speed ? <Icon name="check" size={16} strokeWidth={2.2} className="text-success" /> : null}
+          </button>
+        ))}
+      </div>
+    ) : null,
+    () => [menuRef.current],
+  )
 
   return (
     <div ref={rootRef} className="relative">
@@ -176,30 +208,7 @@ function SpeedMenu({ speed, onSpeed }: { speed: ReplaySpeed; onSpeed: (speed: Re
         {formatSpeed(speed)}
         <Icon name="chevron-down" size={14} strokeWidth={2.2} className={cx('transition-transform duration-150 motion-reduce:transition-none', open && 'rotate-180')} />
       </button>
-      {open ? (
-        <div id={menuId} role="menu" aria-label={t('practice.replay.speed')} className="absolute bottom-full right-0 z-30 mb-2 grid min-w-32 gap-0.5 rounded-card border border-border-subtle bg-card-background p-1 shadow-overlay animate-pop motion-reduce:animate-none">
-          {REPLAY_SPEEDS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="menuitemradio"
-              aria-checked={value === speed}
-              data-initial-focus={value === speed ? '' : undefined}
-              className={cx(
-                'flex items-center justify-between gap-4 rounded-control px-3 py-2 text-left text-body tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none',
-                value === speed ? 'bg-tint/10 font-semibold text-foreground' : 'text-muted hover:bg-tint/10 hover:text-foreground',
-              )}
-              onClick={() => {
-                onSpeed(value)
-                setOpen(false)
-              }}
-            >
-              {formatSpeed(value)}
-              {value === speed ? <Icon name="check" size={16} strokeWidth={2.2} className="text-success" /> : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {menu}
     </div>
   )
 }

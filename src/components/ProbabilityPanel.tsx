@@ -4,6 +4,7 @@ import { useAppSelector } from '../app/store-hooks'
 import type { DeckCardInstance } from '../app/model'
 import { createPattern } from '../app/pattern-factory'
 import type { RoleDistribution } from '../app/role-distribution'
+import { Presence } from '../app/use-presence'
 import { useToastMessage } from '../app/use-toast-message'
 import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
 import { t } from '../i18n'
@@ -335,16 +336,18 @@ export function ProbabilityPanel({
         title={t('lab.panel.delete.title')}
       />
 
-      {kpiModal !== null ? (
-        <KpiDetailModal
-          isOpen
-          label={kpiModal.label}
-          roles={kpiModal.roles}
-          mainDeck={cardEntriesToDeckInstances(derivedMainCards)}
-          onCardClick={(card, name) => setKpiDetailCard({ ...card, name })}
-          onClose={() => setKpiModal(null)}
-        />
-      ) : null}
+      <Presence>
+        {kpiModal !== null ? (
+          <KpiDetailModal
+            isOpen
+            label={kpiModal.label}
+            roles={kpiModal.roles}
+            mainDeck={cardEntriesToDeckInstances(derivedMainCards)}
+            onCardClick={(card, name) => setKpiDetailCard({ ...card, name })}
+            onClose={() => setKpiModal(null)}
+          />
+        ) : null}
+      </Presence>
 
       <CardDetailModal
         card={kpiDetailCard}
