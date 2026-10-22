@@ -98,7 +98,10 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
       const slash = event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey && !typing
       const palette = event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)
 
-      if ((slash || palette) && !document.querySelector('[aria-modal="true"]')) {
+      // Un diálogo abierto se queda con el atajo; uno que ya se está yendo (inerte mientras sale, `use-presence`) no: «/» y Ctrl+K responden en cuanto se cierra.
+      const modalOpen = Array.from(document.querySelectorAll('[aria-modal="true"]')).some((modal) => !modal.closest('[inert]'))
+
+      if ((slash || palette) && !modalOpen) {
         event.preventDefault()
         setFindOpen(true)
       }

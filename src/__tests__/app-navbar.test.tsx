@@ -102,6 +102,23 @@ describe('la barra de arriba de escritorio', () => {
     expect(screen.getByRole('combobox')).toBeInTheDocument()
   })
 
+  it('«/» y Ctrl+K no responden con un diálogo abierto, pero sí mientras ese diálogo sale (inerte): el atajo no se pierde durante la salida', () => {
+    shell()
+
+    const dialog = document.body.appendChild(document.createElement('div'))
+
+    dialog.setAttribute('aria-modal', 'true')
+    fireEvent.keyDown(window, { key: '/' })
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+
+    // `use-presence` lo deja inerte mientras sale (y ya no es el diálogo que manda).
+    dialog.setAttribute('inert', '')
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+
+    dialog.remove()
+  })
+
   it('en una pantalla a pantalla completa (la práctica, la mesa del duelo) no hay barra de arriba ni buscador: el menú lateral conserva su cabecera', () => {
     shell({ immersive: true })
 
