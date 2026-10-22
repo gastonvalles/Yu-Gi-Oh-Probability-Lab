@@ -72,7 +72,7 @@ export function hypergeometric(deckSize: number, copies: number, handSize: numbe
   return (choose(copies, drawn) * choose(deckSize - copies, handSize - drawn)) / total
 }
 
-function choose(n: number, k: number): number {
+export function choose(n: number, k: number): number {
   if (k < 0 || k > n) {
     return 0
   }

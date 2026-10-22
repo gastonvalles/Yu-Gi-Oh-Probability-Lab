@@ -6,6 +6,7 @@ import {
   classifyBuildCard,
   createSavedBuild,
   readSavedBuilds,
+  sameDeckCards,
   uniqueBuildName,
   withReferenceClassification,
   writeSavedBuilds,
@@ -42,6 +43,24 @@ describe('builds guardadas', () => {
 
     expect(next.main.filter((card) => card.apiCard.ygoprodeckId === 7).every((card) => card.roles[0] === 'handtrap' && !card.needsReview)).toBe(true)
     expect(next.main[2]!.origin).toBeNull()
+  })
+
+  it('recuerda de dónde salió la build y descarta un origen que no conoce (lo guardado antes no lo tiene)', () => {
+    const fromLab = createSavedBuild('Del Lab', { main: [instance(1)], extra: [], side: [] }, [], new Date(), 'lab')
+    const unknown = { ...createSavedBuild('Rara', { main: [], extra: [], side: [] }, []), from: 'otra-cosa' }
+
+    localStorage.setItem('ygo-lab:saved-builds', JSON.stringify([fromLab, unknown]))
+
+    const [lab, rare] = readSavedBuilds()
+    expect(lab?.from).toBe('lab')
+    expect(rare && 'from' in rare).toBe(false)
+  })
+
+  it('dos decks con las mismas cartas en las mismas zonas tienen la misma firma (sin importar el orden)', () => {
+    const one = { main: [instance(1), instance(2)], extra: [], side: [instance(3)] }
+
+    expect(sameDeckCards(one, { main: [instance(2), instance(1)], extra: [], side: [instance(3)] })).toBe(true)
+    expect(sameDeckCards(one, { main: [instance(2), instance(1), instance(3)], extra: [], side: [] })).toBe(false)
   })
 
   it('una carta que ya está en tu deck usa esa clasificación', () => {

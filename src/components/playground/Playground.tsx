@@ -8,6 +8,7 @@ import { SectionHeader } from '../ui/SectionHeader'
 import { supportText } from '../ui/typography'
 import { AssetsSection } from './sections/AssetsSection'
 import { ButtonsSection } from './sections/ButtonsSection'
+import { CompareSection } from './sections/CompareSection'
 import { DataSection } from './sections/DataSection'
 import { DialogsSection } from './sections/DialogsSection'
 import { DuelSection } from './sections/DuelSection'
@@ -37,6 +38,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'lab', title: 'El Lab', icon: 'flask', description: 'El veredicto con su lente, lo que más te frena, qué robás de cada rol y el paso que falta para medir, con un deck de muestra.', Component: LabResultSection },
   { id: 'reglas', title: 'Reglas del Lab', icon: 'list', description: 'La tarjeta de reglas (Salidas | Problemas), el número en vivo, la regla en una frase, una condición, qué cuenta y el editor entero.', Component: RulesSection },
   { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños, las confirmaciones y los avisos (toast).', Component: DialogsSection },
+  { id: 'comparar', title: 'Comparar', icon: 'columns', description: 'El par A/B, «Mis builds», la tarjeta del veredicto, las filas espejo, «Qué cambiaste», las dos listas y la barra de abajo.', Component: CompareSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
   { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
   { id: 'assets', title: 'Assets', icon: 'image', description: 'Los archivos de public/, la marca, las fuentes y las imágenes de cartas.', Component: AssetsSection },

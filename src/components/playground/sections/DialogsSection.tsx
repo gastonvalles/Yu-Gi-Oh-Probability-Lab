@@ -308,6 +308,17 @@ export function DialogsSection() {
             {tone}
           </Button>
         ))}
+        {/* Con una acción (`action`): el botón al final del aviso, que dura el doble (8 s). Tocarlo hace la acción y lo cierra. */}
+        <Button
+          size="sm"
+          onClick={() =>
+            showToastMessage('Cargaste "fire-king-starters" en el builder. Tu deck de antes quedó guardado.', 'success', {
+              action: { label: 'Deshacer', onAction: () => showToastMessage('Tu deck volvió a como estaba.', 'info') },
+            })
+          }
+        >
+          con «Deshacer»
+        </Button>
       </Specimen>
     </SpecimenGrid>
   )

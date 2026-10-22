@@ -4,9 +4,16 @@ import { toast } from 'react-hot-toast'
 import { useToastBox } from '../../app/toast-box'
 import type { ToastTone } from '../../app/use-toast-message'
 import { PLAYER_COLOR } from '../duel/player-color'
+import { Button } from './Button'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
 import { TONE } from './tone'
+
+/** Una acción sobre lo que se acaba de hacer («Deshacer»): un botón al final del aviso. Tocarlo hace la acción y cierra el aviso. */
+export interface ToastAction {
+  label: string
+  onAction: () => void
+}
 
 const SWIPE_DISMISS_PX = 70
 /** Un toque es un gesto que casi no se mueve: se va el aviso (como el clic sobre el emoji grande del rival en escritorio). */
@@ -37,10 +44,12 @@ interface AppToastProps {
   tone: ToastTone
   /** De quién es el mensaje (el nombre del rival): lo muestra con su color y más grande, sin el ícono de un aviso común. */
   rival?: string
+  /** El botón de lo que se acaba de hacer («Deshacer»), sólo en un aviso común. */
+  action?: ToastAction
 }
 
 /** Aviso único de la app: con color según el tipo y se descarta con un toque o deslizándolo hacia un costado. */
-export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
+export function AppToast({ id, visible, message, tone, rival, action }: AppToastProps) {
   const [offset, setOffset] = useState(0)
   const [dismissed, setDismissed] = useState(false)
   const startRef = useRef<number | null>(null)
@@ -96,7 +105,22 @@ export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
       {rival === undefined ? (
         <>
           <Icon name={look.icon} size={20} strokeWidth={2} className={cx('shrink-0', look.text)} />
-          <span>{message}</span>
+          <span className={cx(action && 'min-w-0 flex-1')}>{message}</span>
+          {action ? (
+            // El toque del botón no es el del aviso (que lo descarta o lo arrastra): no llega a capturar el puntero, así el clic cae en el botón.
+            <Button
+              variant="tertiary"
+              size="sm"
+              className="-my-1 -mr-2"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                action.onAction()
+                dismiss()
+              }}
+            >
+              {action.label}
+            </Button>
+          ) : null}
         </>
       ) : (
         <>

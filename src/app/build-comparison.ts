@@ -16,7 +16,7 @@ interface ComparisonBuildInput {
   cards: CardEntry[]
 }
 
-interface ComparisonRules {
+export interface ComparisonRules {
   patterns: HandPattern[]
   disabledGenericRuleIds: readonly string[]
   /** Nombres propios de las reglas universales. */
@@ -160,7 +160,8 @@ function computeIfPossible(build: ComparisonBuildInput, activeRules: HandPattern
   return deckSizeOf(build) >= handSize + 1 ? computeLabResults(build.cards, activeRules, handSize) : null
 }
 
-function buildActiveRules(cards: CardEntry[], rules: ComparisonRules): HandPattern[] {
+/** Las reglas con las que se mide una build (las mismas del Lab para esas cartas). */
+export function buildActiveRules(cards: CardEntry[], rules: ComparisonRules): HandPattern[] {
   // Una regla que pide una carta ausente queda afuera: en esa build no puede cumplirse.
   return buildActiveRuleSet(cards, curatePatterns(rules.patterns, cards), rules.disabledGenericRuleIds, rules.systemRuleNames)
 }

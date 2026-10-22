@@ -41,6 +41,19 @@ interface SetDeckCardOriginPayload {
   ygoprodeckId: number
 }
 
+/**
+ * Cómo cuenta para «Tu deck de antes» (`deck-before.ts`) un cambio de cartas hecho desde otra pantalla: como una edición del builder
+ * («Aplicar al deck» del Lab), como un reemplazo del deck (cargar una build: igual que importar) o como un Deshacer, que no se cuenta.
+ */
+export type DeckCardsChange = 'edit' | 'replace' | 'restore'
+
+interface SetDeckCardsPayload {
+  zones: Pick<DeckBuilderState, DeckZone>
+  /** Si viene, el deck pasa a llamarse así (cargar una build trae su nombre). */
+  deckName?: string
+  as: DeckCardsChange
+}
+
 const deckBuilderSlice = createSlice({
   name: 'deckBuilder',
   // Perezoso: el nombre por defecto sale en el idioma de ese momento (nunca se arma texto al evaluar el módulo).
@@ -81,6 +94,16 @@ const deckBuilderSlice = createSlice({
     replaceDeckBuilder(_state, action: PayloadAction<DeckBuilderState>) {
       return action.payload
     },
+    /** Las cartas del deck desde el Lab o Comparar (ver `deck-change-actions.ts`); el resto del estado queda igual. */
+    setDeckCards(state, action: PayloadAction<SetDeckCardsPayload>) {
+      state.main = action.payload.zones.main
+      state.extra = action.payload.zones.extra
+      state.side = action.payload.zones.side
+
+      if (action.payload.deckName !== undefined) {
+        state.deckName = action.payload.deckName
+      }
+    },
     setDeckName(state, action: PayloadAction<string>) {
       state.deckName = action.payload
     },
@@ -120,6 +143,7 @@ export const {
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,
+  setDeckCards,
   setDeckCardOrigin,
   setDeckName,
   setIsEditingDeck,

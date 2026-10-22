@@ -170,6 +170,14 @@ export function ButtonsSection() {
           {/* Los detalles del turno del Lab (los de antes, «5 cartas · 57%», no entraban en tres tarjetas de esta columna y pisaban el borde de la elegida). */}
           <Segmented label="Tarjetas" variant="cards" value={cards} onChange={setCards} options={options.map((option, at) => ({ ...option, detail: ['5 cartas', '6 cartas', '50/50'][at] }))} />
           <Segmented label="Chico" variant="track" size="sm" value={track} onChange={setTrack} options={options} />
+          {/* La lente de Comparar: la elegida dice qué mano mira y las otras su ▲/▼ en verde o rojo (`detailTone`), con las palabras para el lector de pantalla (`detailLabel`). */}
+          <Segmented
+            label="Con ▲/▼"
+            variant="cards"
+            value={cards}
+            onChange={setCards}
+            options={options.map((option, at) => (option.value === cards ? { ...option, detail: ['5 cartas', '6 cartas', '5 y 6 cartas'][at] } : { ...option, detail: ['▲7', '▼2', '='][at], detailTone: (['success', 'danger', undefined] as const)[at], detailLabel: ['7 más con B', '2 menos con B', 'igual en las dos'][at] }))}
+          />
         </Specimen>
 
         <Specimen
