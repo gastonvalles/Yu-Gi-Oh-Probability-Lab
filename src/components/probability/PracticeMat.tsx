@@ -307,13 +307,21 @@ export function ZoneLines({ kind }: { kind: 'monster' | 'spell' }) {
   )
 }
 /**
- * El campo de la práctica con la mano del rival del simulador de handtraps arriba (la franja, 3,5 rem, y su aire, 0,75 rem): las casillas le descuentan ese alto para que tu mano siga
- * entera a la vista. En escritorio entra en la cuenta de `--cell` (23,75 rem de lo que no es campo, en vez de 19,5, y la casilla más chica baja de 8 a 6,25 rem: en una notebook de 720 px
- * de alto con el menú abierto el piso de 8 rem dejaba la mano 27 px debajo del borde); en el armazón del celular el campo se estira a lo ancho, así que lleva un tope de ancho que sale del
- * alto que le queda (23,25 rem de lo demás): cinco columnas y cuatro filas en un celular en vertical, siete columnas (6,3714 casillas) y tres filas desde 640 px. Con mucho alto el tope
- * no llega al ancho y no cambia nada; sin el simulador la mesa no lleva nada de esto.
+ * La mano del rival del simulador de handtraps en escritorio: una mano de verdad arriba del campo. El grupo de la franja y el campo define `--cell` para los dos, y la fila de la mano
+ * entra en la cuenta: 1,094 casillas de carta más 1,75 rem de aire (su relleno, su margen y el hueco hasta el campo) sobre los 19,5 rem de lo que no es campo, así que el alto se
+ * reparte entre 3,2 + 1,094 casillas; la casilla más chica baja de 8 a 5 rem (en una notebook de 720 px de alto con el menú abierto, con el piso de 8 rem la mano quedaba debajo del
+ * borde). Las cartas (`--rival-card`) se llevan el alto que el campo no usa: 3/4 de la casilla cuando manda el alto, y más cuando la columna es angosta (el menú abierto y el detalle a
+ * la izquierda dejan el campo chico a lo ancho), hasta el ancho de las cartas de tu mano (7,75 rem), con las cinco dentro de la columna y nunca menos de 3 rem.
  */
-const RIVAL_STRIP_FIELD = 'min-[1101px]:[--cell:max(6.25rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-23.75rem)/3.2),15rem))] max-[1101px]:mx-auto max-[1101px]:w-full max-sm:max-w-[calc((100dvh-24rem)*1.25+1rem)] sm:max-[1101px]:max-w-[calc((100dvh-23.75rem)*2.1238+1.5rem)]'
+const RIVAL_STRIP_GROUP = 'min-[1101px]:[--cell:max(5rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-21.25rem)/4.294),15rem))] min-[1101px]:[--rival-card:max(3rem,min(7.75rem,calc((100cqw-3rem)/5),calc((100dvh-21.25rem-3.2*min(var(--cell),calc((100cqw-3rem)/6.3714)))*0.6857)))]'
+
+/**
+ * El campo de la práctica con la mano del rival en el celular (la franja, 4,75 rem, y su aire, 0,75 rem): el campo se estira a lo ancho, así que lleva un tope de ancho que sale del alto
+ * que le queda (24,5 rem de lo demás) para que tu mano siga entera a la vista: cinco columnas y cuatro filas en un celular en vertical, siete columnas (6,3714 casillas) y tres filas desde
+ * 640 px. Con mucho alto el tope no llega al ancho y no cambia nada. En escritorio la casilla sale de `RIVAL_STRIP_GROUP` y el campo mide lo que sus casillas: cuando manda el alto, la
+ * placa no queda más ancha que la grilla y la vista 3D, al agrandarla hasta el ancho, no la saca de la columna. Sin el simulador la mesa no lleva nada de esto.
+ */
+const RIVAL_STRIP_FIELD = 'mx-auto max-[1101px]:w-full min-[1101px]:w-fit max-sm:max-w-[calc((100dvh-25.25rem)*1.25+1rem)] sm:max-[1101px]:max-w-[calc((100dvh-25rem)*2.1238+1.5rem)]'
 
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
@@ -1984,7 +1992,7 @@ export function PracticeMat({
         <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
         {/* Celular: la mano del rival y el campo van juntos y centrados: el alto que sobra se reparte arriba y abajo (ni pegado a la barra ni un hueco antes de tu mano). Escritorio: sin envoltorio y el campo se centra. */}
         {/* Con la mano del rival del simulador de handtraps, también en escritorio van juntos y centrados la franja y el campo (lo que va junto, se junta). */}
-        <div className={cx('flex flex-col gap-2', hasRivalStrip ? 'my-auto' : cx('min-[1101px]:contents', !duel && 'max-[1101px]:my-auto'))}>
+        <div className={cx('flex flex-col gap-2', hasRivalStrip ? cx('my-auto', RIVAL_STRIP_GROUP) : cx('min-[1101px]:contents', !duel && 'max-[1101px]:my-auto'))}>
         {/* El simulador de handtraps (sólo en «Jugar solo»): la mano del rival, en una franja fija arriba del campo. Sin él la mesa queda como siempre. */}
         {rivalHand ? (
           <RivalHandStrip

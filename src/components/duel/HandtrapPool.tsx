@@ -5,7 +5,8 @@ import {
   HANDTRAP_CATALOG,
   MAX_COPIES,
   MAX_RIVAL_HAND,
-  handCount,
+  MIN_RIVAL_HAND,
+  poolCount,
   readHandtrapConfig,
   writeHandtrapConfig,
   type HandtrapCard,
@@ -30,13 +31,13 @@ import { Switch } from '../ui/Switch'
 const NO_EXPANSIONS: Expansion[] = []
 
 /**
- * El simulador de handtraps en las reglas de la sala, con el modo Solo: encenderlo, cuántas tiene el rival en la mano («3 en mano») y la hoja para elegirlas.
- * Se recuerda en el navegador (`app/handtraps.ts`) y vale para la próxima mano de «Jugar solo».
+ * El simulador de handtraps en las reglas de la sala, con el modo Solo: encenderlo, cuántas tiene el rival en la mano y entre cuántas cartas se reparten («3 en mano · de 9 cartas»)
+ * y la hoja para elegirlas. Se recuerda en el navegador (`app/handtraps.ts`) y vale para la próxima mano de «Jugar solo».
  */
 export function HandtrapsRow() {
   const [config, setConfig] = useState<HandtrapConfig>(readHandtrapConfig)
   const [choosing, setChoosing] = useState(false)
-  const count = handCount(config.picks)
+  const count = poolCount(config.picks)
   const save = (next: HandtrapConfig) => {
     setConfig(next)
     writeHandtrapConfig(next)
@@ -46,7 +47,8 @@ export function HandtrapsRow() {
     <div className="flex items-center justify-between gap-3 sm:col-span-2">
       <span className="grid min-w-0 gap-0.5">
         <span className="text-body font-semibold text-foreground">{t('handtraps.title')}</span>
-        <span className="text-micro text-soft">{count === 0 ? t('handtraps.row.empty') : t('handtraps.row.summary', { count })}</span>
+        {/* Con menos cartas que la mano, la mano sale con todas: se dice lo que sale. */}
+        <span className="text-micro text-soft">{t('handtraps.row.summary', { hand: Math.min(config.hand, count), count })}</span>
       </span>
       <span className="flex shrink-0 items-center gap-3">
         <Button variant="secondary" size="sm" aria-label={t('handtraps.row.chooseLabel')} aria-haspopup="dialog" onClick={() => setChoosing(true)}>
@@ -58,9 +60,9 @@ export function HandtrapsRow() {
         isOpen={choosing}
         config={config}
         onClose={() => setChoosing(false)}
-        onSave={(picks) => {
-          // Elegir la mano es querer usarla: el simulador queda encendido.
-          save({ enabled: true, picks })
+        onSave={(picks, hand) => {
+          // Elegir las handtraps es querer usarlas: el simulador queda encendido.
+          save({ enabled: true, picks, hand })
           setChoosing(false)
         }}
       />
@@ -102,31 +104,29 @@ export function HandtrapsMatButton({ onApply, className }: { onApply: () => void
         config={config}
         dealsNew
         onClose={() => setChoosing(false)}
-        // Elegir la mano es querer usarla: el simulador queda encendido.
-        onSave={(picks) => apply({ enabled: true, picks })}
+        // Elegir las handtraps es querer usarlas: el simulador queda encendido.
+        onSave={(picks, hand) => apply({ enabled: true, picks, hand })}
         onTurnOff={config.enabled ? () => apply({ ...config, enabled: false }) : undefined}
       />
     </>
   )
 }
 
-/** La lista de la hoja: una columna en el celular y dos desde 640 px, sin cajas (sólo la que está en la mano se marca). */
+/** La lista de la hoja: una columna en el celular y dos desde 640 px, sin cajas (sólo la que está en el deck del rival se marca). */
 const POOL_LIST = 'm-0 grid list-none gap-1 p-0 sm:grid-cols-2'
 
 interface HandtrapPoolCardProps {
   card: HandtrapCard
-  /** Cuántas copias tiene el rival en la mano (0: no la tiene). */
+  /** Cuántas copias tiene el rival en su deck (0: no la tiene). */
   copies: number
-  /** Hasta cuántas se puede subir: `MAX_COPIES`, o menos si la mano ya está llena. */
-  max: number
   onChange: (copies: number) => void
 }
 
 /**
- * Una carta de la hoja: su arte, su nombre y, debajo, cuántas copias tiene el rival en la mano (de 0 a `max`). Con una o más lleva el aro ámbar de lo elegido; con 0, apagada.
+ * Una carta de la hoja: su arte, su nombre y, debajo, cuántas copias tiene el rival en su deck (de 0 a `MAX_COPIES`). Con una o más lleva el aro ámbar de lo elegido; con 0, apagada.
  * La carta se elige subiendo su contador (la fila no es un botón).
  */
-export function HandtrapPoolCard({ card, copies, max, onChange }: HandtrapPoolCardProps) {
+export function HandtrapPoolCard({ card, copies, onChange }: HandtrapPoolCardProps) {
   const chosen = copies > 0
 
   return (
@@ -142,17 +142,19 @@ export function HandtrapPoolCard({ card, copies, max, onChange }: HandtrapPoolCa
       </span>
       <span className="grid min-w-0 flex-1 justify-items-start gap-1">
         <span className={cx('max-w-full truncate text-body font-semibold', chosen ? 'text-foreground' : 'text-muted')}>{card.name}</span>
-        <Stepper size="lg" label={t('handtraps.picker.copies', { name: card.name })} value={copies} min={0} max={max} onChange={onChange} />
+        <Stepper size="lg" label={t('handtraps.picker.copies', { name: card.name })} value={copies} min={0} max={MAX_COPIES} onChange={onChange} />
       </span>
     </li>
   )
 }
 
 interface Draft {
-  /** Las copias de cada carta (0, o sin anotar: no está en la mano). */
+  /** Las copias de cada carta (0, o sin anotar: no está en el deck del rival). */
   copies: Readonly<Record<number, number>>
   /** Las cartas que no son del catálogo (agregadas con el buscador): siguen en la lista aunque bajen a 0, hasta cerrar la hoja. */
   extras: readonly HandtrapCard[]
+  /** Cuántas cartas tiene el rival en la mano (de `MIN_RIVAL_HAND` a `MAX_RIVAL_HAND`). */
+  hand: number
 }
 
 const CATALOG_IDS = new Set(HANDTRAP_CATALOG.map((card) => card.id))
@@ -160,14 +162,15 @@ const CATALOG_IDS = new Set(HANDTRAP_CATALOG.map((card) => card.id))
 const draftOf = (config: HandtrapConfig): Draft => ({
   copies: Object.fromEntries(config.picks.map((pick) => [pick.id, pick.copies])),
   extras: config.picks.filter((pick) => !CATALOG_IDS.has(pick.id)).map(({ id, name }) => ({ id, name })),
+  hand: config.hand,
 })
 
 interface HandtrapPickerProps {
   isOpen: boolean
   config: HandtrapConfig
   onClose: () => void
-  /** La mano elegida: las cartas con al menos una copia, en el orden del catálogo y después las agregadas. */
-  onSave: (picks: HandtrapPick[]) => void
+  /** Las handtraps del deck del rival (las cartas con al menos una copia, en el orden del catálogo y después las agregadas) y cuántas tiene en la mano. */
+  onSave: (picks: HandtrapPick[], hand: number) => void
   /** Dentro de la práctica: aplicar reparte una mano nueva, y la hoja lo avisa abajo. */
   dealsNew?: boolean
   /** Con el simulador encendido, «Apagar el simulador» (sin caja: es lo que descarta). */
@@ -175,8 +178,8 @@ interface HandtrapPickerProps {
 }
 
 /**
- * La hoja de la mano del rival: las handtraps del catálogo (y las que se agregan con el buscador), cada una con su contador de copias (hasta `MAX_COPIES` por carta y `MAX_RIVAL_HAND`
- * en total: el «+» se apaga en cualquiera de los dos topes). Abajo, cuántas tiene en total y, en el tope o sin ninguna, el aviso. Cada vez que se abre arranca de lo guardado.
+ * La hoja de las handtraps del rival: las del catálogo (y las que se agregan con el buscador), cada una con su contador de copias en el deck del rival (hasta `MAX_COPIES`; el deck no
+ * tiene tope). Abajo, cuántas cartas tiene en la mano (de 1 a 5) y entre cuántas se reparten al azar; sin ninguna carta no se puede usar. Cada vez que se abre arranca de lo guardado.
  */
 export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSave, onTurnOff }: HandtrapPickerProps) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(config))
@@ -198,13 +201,13 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSa
   const entries = [...HANDTRAP_CATALOG, ...draft.extras]
   const copiesOf = (card: HandtrapCard) => draft.copies[card.id] ?? 0
   const picks = entries.filter((card) => copiesOf(card) > 0).map((card) => ({ ...card, copies: copiesOf(card) }))
-  const total = handCount(picks)
-  const room = MAX_RIVAL_HAND - total
+  const total = poolCount(picks)
   const listed = new Set(entries.map((card) => card.id))
+  const summary = total === 0 ? t('handtraps.picker.empty') : total < draft.hand ? t('handtraps.picker.short', { count: total }) : t('handtraps.picker.pool', { count: total })
 
   const setCopies = (card: HandtrapCard, copies: number) => setDraft((current) => ({ ...current, copies: { ...current.copies, [card.id]: copies } }))
-  // Lo agregado entra con una copia si todavía hay lugar en la mano; si no, en 0 (queda en la lista).
-  const add = (card: HandtrapCard) => setDraft((current) => (listed.has(card.id) ? current : { extras: [...current.extras, card], copies: { ...current.copies, [card.id]: room > 0 ? 1 : 0 } }))
+  // Lo agregado entra con una copia y queda en la lista.
+  const add = (card: HandtrapCard) => setDraft((current) => (listed.has(card.id) ? current : { ...current, extras: [...current.extras, card], copies: { ...current.copies, [card.id]: 1 } }))
 
   return (
     <Modal
@@ -215,10 +218,17 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSa
       subtitle={t('handtraps.picker.subtitle')}
       footer={
         <div className="grid w-full gap-3">
-          <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1" role="status">
-            <span className="text-body font-semibold tabular-nums text-foreground">{t('handtraps.picker.count', { count: total })}</span>
-            <span className="min-h-5 text-micro text-warning">{total === 0 ? t('handtraps.picker.empty') : room === 0 ? t('handtraps.picker.cap', { max: MAX_RIVAL_HAND }) : ''}</span>
-          </p>
+          <div className="grid gap-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <span className="text-body font-semibold text-foreground">
+                {t('handtraps.picker.hand')}
+              </span>
+              <Stepper size="lg" label={t('handtraps.picker.hand')} value={draft.hand} min={MIN_RIVAL_HAND} max={MAX_RIVAL_HAND} onChange={(hand) => setDraft((current) => ({ ...current, hand }))} />
+            </div>
+            <p className={cx('m-0 min-h-5 text-micro', total === 0 || total < draft.hand ? 'text-warning' : 'text-soft')} role="status">
+              {summary}
+            </p>
+          </div>
           {dealsNew ? <p className="m-0 text-micro text-soft">{t('handtraps.picker.dealsNew')}</p> : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
             {onTurnOff ? (
@@ -229,7 +239,7 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSa
             <Button variant="tertiary" onClick={onClose}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" disabled={total === 0} onClick={() => onSave(picks)}>
+            <Button variant="primary" disabled={total === 0} onClick={() => onSave(picks, draft.hand)}>
               {t('handtraps.picker.use')}
             </Button>
           </div>
@@ -238,7 +248,7 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSa
     >
       <ul aria-label={t('handtraps.picker.list')} className={POOL_LIST}>
         {entries.map((card) => (
-          <HandtrapPoolCard key={card.id} card={card} copies={copiesOf(card)} max={Math.min(MAX_COPIES, copiesOf(card) + room)} onChange={(copies) => setCopies(card, copies)} />
+          <HandtrapPoolCard key={card.id} card={card} copies={copiesOf(card)} onChange={(copies) => setCopies(card, copies)} />
         ))}
       </ul>
 

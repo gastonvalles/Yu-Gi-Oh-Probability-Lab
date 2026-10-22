@@ -515,8 +515,8 @@ function usePracticeSession({
   const newHand = useCallback(() => {
     const config = readHandtrapConfig()
     const table = createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)
-    // La mano del rival es la elegida, sin sorteo: cada «Nueva mano» le reparte la misma.
-    const rival = dealRival(config)
+    // La mano del rival también se sortea (de las handtraps elegidas): cada «Nueva mano» le reparte otra.
+    const rival = dealRival(config, randomSeed())
 
     dealtWith.current = JSON.stringify(config)
     start(rival ? { ...table, rival: rival.rival } : table, [], rival?.names)

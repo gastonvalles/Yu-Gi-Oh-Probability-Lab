@@ -9,12 +9,14 @@ import {
   HANDTRAP_CONFIG_KEY,
   MAX_COPIES,
   MAX_RIVAL_HAND,
+  MIN_RIVAL_HAND,
   dealRival,
-  handCount,
   isRivalId,
+  poolCount,
   readHandtrapConfig,
   rivalCardOf,
   writeHandtrapConfig,
+  type HandtrapConfig,
   type HandtrapPick,
 } from '../app/handtraps'
 import { matEffects } from '../app/mat-effects'
@@ -33,6 +35,12 @@ const pick = (id: number, copies: number, name = `Carta ${id}`): HandtrapPick =>
 const ASH = pick(14558127, 1, 'Ash Blossom & Joyous Spring')
 const VEILER = pick(97268402, 1, 'Effect Veiler')
 const IMPERM = pick(10045474, 1, 'Infinite Impermanence')
+/** El passcode detrás de una carta del rival (`rival.card-7-2` → 7). */
+const passcodeOf = (id: string) => Number(/^rival\.card-(\d+)-\d+$/.exec(id)?.[1])
+const SEEDS = Array.from({ length: 200 }, (_, index) => index * 7919 + 1)
+const on = (picks: HandtrapPick[], hand: number): HandtrapConfig => ({ enabled: true, picks, hand })
+/** «3 de 3 cartas»: 3 copias de cada una de 3 cartas (9 en el deck del rival). */
+const THREE_OF_THREE = [{ ...ASH, copies: 3 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 3 }]
 
 describe('el catálogo de handtraps', () => {
   it('sólo trae cartas que el motor de clasificación tiene como handtrap, cada passcode una vez y sólo con su passcode y su nombre', () => {
@@ -44,44 +52,75 @@ describe('el catálogo de handtraps', () => {
     expect(new Set(HANDTRAP_CATALOG.map((card) => card.id)).size).toBe(HANDTRAP_CATALOG.length)
   })
 
-  it('una carta de un deck va de a tres como mucho y la mano del rival tiene seis lugares', () => {
+  it('de cada carta hay de 1 a 3 copias (las de un deck) y la mano del rival tiene de 1 a 5 cartas', () => {
     expect(MAX_COPIES).toBe(3)
-    expect(MAX_RIVAL_HAND).toBe(6)
-    expect(handCount([pick(1, 2), pick(2, 3)])).toBe(5)
-    expect(handCount([])).toBe(0)
+    expect([MIN_RIVAL_HAND, MAX_RIVAL_HAND]).toEqual([1, 5])
+    expect(poolCount(THREE_OF_THREE)).toBe(9)
+    expect(poolCount([])).toBe(0)
   })
 })
 
 describe('la mano del rival que se reparte', () => {
-  it('es la elegida, sin sorteo: cada handtrap con sus copias, cada copia con su id y su nombre', () => {
-    const dealt = dealRival({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] })
+  it('sale con las que se piden (o con todas, si el deck del rival tiene menos), sin repetir ninguna copia', () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      for (const hand of [1, 3, 5]) {
+        const dealt = dealRival(on(THREE_OF_THREE, hand), seed)
 
-    // En el orden del catálogo: Ash Blossom va antes que Effect Veiler.
-    expect(dealt?.rival).toEqual({ hand: ['rival.card-14558127-1', 'rival.card-97268402-1', 'rival.card-97268402-2'], used: [] })
-    expect(dealt?.names).toEqual({ 'rival.card-14558127-1': 'Ash Blossom & Joyous Spring', 'rival.card-97268402-1': 'Effect Veiler', 'rival.card-97268402-2': 'Effect Veiler' })
-    expect(dealt?.rival.hand.every(isRivalId)).toBe(true)
-    // Siempre la misma: «Nueva mano» le reparte la misma al rival.
-    expect(dealRival({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] })).toEqual(dealt)
+        expect(dealt?.rival.hand).toHaveLength(hand)
+        expect(new Set(dealt?.rival.hand).size).toBe(hand)
+        expect(dealt?.rival.used).toEqual([])
+        expect(dealt?.rival.hand.every(isRivalId)).toBe(true)
+      }
+
+      // Con 2 cartas en el deck del rival y 5 en la mano, la mano sale con las 2.
+      expect(dealRival(on([ASH, VEILER], 5), seed)?.rival.hand.sort()).toEqual(['rival.card-14558127-1', 'rival.card-97268402-1'])
+    }
   })
 
-  it('las que no son del catálogo (agregadas con el buscador) van después, en el orden en que se agregaron', () => {
-    const dealt = dealRival({ enabled: true, picks: [pick(91800273, 1, 'Dimension Shifter'), { ...IMPERM, copies: 3 }, pick(5, 2, 'Otra')] })
+  it('de una carta no salen más copias que las que tiene el rival en su deck', () => {
+    for (const seed of SEEDS) {
+      const { hand } = dealRival(on([{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 3 }], 5), seed)!.rival
+      const count = (passcode: number) => hand.filter((id) => passcodeOf(id) === passcode).length
 
-    expect(dealt?.rival.hand).toEqual(['rival.card-10045474-1', 'rival.card-10045474-2', 'rival.card-10045474-3', 'rival.card-91800273-1', 'rival.card-5-1', 'rival.card-5-2'])
-    expect(dealt?.names['rival.card-5-2']).toBe('Otra')
+      expect(count(ASH.id)).toBeLessThanOrEqual(1)
+      expect(count(VEILER.id)).toBeLessThanOrEqual(2)
+      expect(count(IMPERM.id)).toBeLessThanOrEqual(3)
+    }
   })
 
-  it('apagado, o sin ninguna elegida, no hay mano del rival (la mesa queda como siempre)', () => {
-    expect(dealRival({ enabled: false, picks: [ASH] })).toBeNull()
-    expect(dealRival({ enabled: true, picks: [] })).toBeNull()
+  it('se sortea de verdad: con 3 copias de 3 cartas y 5 en la mano, cada semilla da su mano y entre todas salen las 9 cartas', () => {
+    const hands = SEEDS.map((seed) => dealRival(on(THREE_OF_THREE, 5), seed)!.rival.hand)
+    const seen = new Set(hands.flat())
+
+    expect(new Set(hands.map((hand) => hand.join())).size).toBeGreaterThan(50)
+    expect(seen).toEqual(new Set(THREE_OF_THREE.flatMap((card) => [1, 2, 3].map((copy) => `rival.card-${card.id}-${copy}`))))
   })
 
-  it('nunca más de 3 copias de una ni de 6 en total, ni la misma carta dos veces', () => {
-    const dealt = dealRival({ enabled: true, picks: [{ ...ASH, copies: 5 }, { ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 2 }] })
+  it('la misma semilla da siempre la misma mano, aunque las cartas lleguen en otro orden', () => {
+    expect(dealRival(on(THREE_OF_THREE, 5), 1234)).toEqual(dealRival(on(THREE_OF_THREE, 5), 1234))
+    expect(dealRival(on([...THREE_OF_THREE].reverse(), 5), 1234)).toEqual(dealRival(on(THREE_OF_THREE, 5), 1234))
+  })
 
-    expect(dealt?.rival.hand).toEqual(['rival.card-14558127-1', 'rival.card-14558127-2', 'rival.card-14558127-3', 'rival.card-97268402-1', 'rival.card-97268402-2', 'rival.card-97268402-3'])
+  it('cada carta repartida lleva su nombre; las agregadas con el buscador entran igual que las del catálogo', () => {
+    const dealt = dealRival(on([pick(91800273, 2, 'Dimension Shifter'), { ...ASH, copies: 1 }], 3), 9)!
+
+    expect(dealt.rival.hand.sort()).toEqual(['rival.card-14558127-1', 'rival.card-91800273-1', 'rival.card-91800273-2'])
+    expect(dealt.names).toEqual({ 'rival.card-14558127-1': 'Ash Blossom & Joyous Spring', 'rival.card-91800273-1': 'Dimension Shifter', 'rival.card-91800273-2': 'Dimension Shifter' })
     expect(rivalCardOf('rival.card-14558127-2')).toBe('card-14558127-2')
     expect(rivalCardOf('card-14558127-2')).toBe('card-14558127-2')
+  })
+
+  it('nunca más de 3 copias de una carta, ni la misma carta dos veces, ni una mano fuera de 1 a 5', () => {
+    const hand = dealRival(on([{ ...ASH, copies: 7 }, { ...ASH, copies: 3 }], 5), 3)!.rival.hand
+
+    expect(hand.sort()).toEqual(['rival.card-14558127-1', 'rival.card-14558127-2', 'rival.card-14558127-3'])
+    expect(dealRival(on(THREE_OF_THREE, 9), 3)?.rival.hand).toHaveLength(5)
+    expect(dealRival(on(THREE_OF_THREE, 0), 3)?.rival.hand).toHaveLength(1)
+  })
+
+  it('apagado, o sin ninguna carta, no hay mano del rival (la mesa queda como siempre)', () => {
+    expect(dealRival({ enabled: false, picks: [ASH], hand: 3 }, 1)).toBeNull()
+    expect(dealRival(on([], 3), 1)).toBeNull()
   })
 })
 
@@ -92,33 +131,42 @@ describe('lo que se recuerda del simulador', () => {
     return readHandtrapConfig(() => storage)
   }
 
-  it('sin nada guardado: apagado, con Ash Blossom, Effect Veiler e Infinite Impermanence, una copia de cada una', () => {
-    expect(readHandtrapConfig(memory)).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM] })
-    expect(DEFAULT_HANDTRAP_CONFIG).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM] })
+  it('sin nada guardado: apagado, con Ash Blossom, Effect Veiler e Infinite Impermanence (una copia de cada una) y 3 en la mano', () => {
+    expect(readHandtrapConfig(memory)).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM], hand: 3 })
+    expect(DEFAULT_HANDTRAP_CONFIG).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM], hand: 3 })
   })
 
-  it('lo que se guarda vuelve igual', () => {
-    const config = { enabled: true, picks: [{ ...ASH, copies: 3 }, pick(91800273, 2, 'Dimension Shifter')] }
+  it('lo que se guarda vuelve igual, también un deck del rival grande (no tiene tope)', () => {
+    const config = on([...HANDTRAP_CATALOG.map((card) => ({ ...card, copies: 3 })), pick(91800273, 2, 'Dimension Shifter')], 5)
 
     writeHandtrapConfig(config, () => storage)
     expect(readHandtrapConfig(() => storage)).toEqual(config)
+    expect(poolCount(readHandtrapConfig(() => storage).picks)).toBe(47)
   })
 
-  it('lo que no se entiende vuelve a lo de siempre, campo por campo', () => {
+  it('lo guardado antes de la mano de 1 a 5 (sin `hand`) sigue valiendo: sus cartas son el deck del rival y la mano es de 3', () => {
+    expect(read(JSON.stringify({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] }))).toEqual({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH], hand: 3 })
+  })
+
+  it('la mano se acota de 1 a 5, y si no es un número es de 3', () => {
+    const handOf = (hand: unknown) => read(JSON.stringify({ enabled: true, picks: [ASH], hand })).hand
+
+    expect([handOf(9), handOf(0), handOf(-2), handOf(2.6), handOf('x'), handOf(null)]).toEqual([5, 1, 1, 3, 3, 3])
+  })
+
+  it('lo que no se entiende vuelve a lo de siempre, campo por campo; sin cartas, vuelven las de siempre (la mano lleva al menos una)', () => {
     expect(read('{basura')).toEqual(DEFAULT_HANDTRAP_CONFIG)
     expect(read('[1, 2]')).toEqual(DEFAULT_HANDTRAP_CONFIG)
     expect(read('{}')).toEqual(DEFAULT_HANDTRAP_CONFIG)
     expect(read(JSON.stringify({ enabled: 'sí', picks: 'Ash' }))).toEqual(DEFAULT_HANDTRAP_CONFIG)
-    // Una lista con cartas, pero ninguna que se entienda, también.
+    expect(read(JSON.stringify({ enabled: true, picks: [], hand: 4 }))).toEqual({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true, hand: 4 })
     expect(read(JSON.stringify({ enabled: true, picks: [{ id: -1, name: 'X', copies: 1 }, { id: 2, name: '  ', copies: 1 }, { id: 3, name: 'Sin copias' }, 'nada', null] }))).toEqual({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true })
-    // Una mano guardada vacía es una mano vacía.
-    expect(read(JSON.stringify({ enabled: true, picks: [] }))).toEqual({ enabled: true, picks: [] })
   })
 
-  it('las copias fuera de 1 a 3 se acotan, una carta repetida queda una vez (la primera manda) y lo que pasa de 6 se recorta', () => {
+  it('las copias fuera de 1 a 3 se acotan y una carta repetida queda una vez (la primera manda), sin recortar el total', () => {
     expect(read(JSON.stringify({ enabled: true, picks: [{ id: 1, name: ' Ash ', copies: 0 }, { id: 2, name: 'Veiler', copies: 9 }, { id: 3, name: 'Imperm', copies: 1.6 }] })).picks).toEqual([pick(1, 1, 'Ash'), pick(2, 3, 'Veiler'), pick(3, 2, 'Imperm')])
     expect(read(JSON.stringify({ enabled: true, picks: [{ id: 1, name: 'Ash', copies: 1 }, { id: 1, name: 'Otra', copies: 3 }] })).picks).toEqual([pick(1, 1, 'Ash')])
-    expect(read(JSON.stringify({ enabled: true, picks: [pick(1, 3), pick(2, 2), pick(3, 3), pick(4, 1)] })).picks).toEqual([pick(1, 3), pick(2, 2), pick(3, 1)])
+    expect(poolCount(read(JSON.stringify({ enabled: true, picks: [pick(1, 3), pick(2, 3), pick(3, 3), pick(4, 3)] })).picks)).toBe(12)
   })
 
   it('la versión anterior (un pool con tipos y una cantidad general, con otra clave) no se lee', () => {
