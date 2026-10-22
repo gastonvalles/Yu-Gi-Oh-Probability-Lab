@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { CardEntry, HandPattern } from '../../types'
 import { Heading } from '../ui/Heading'
@@ -51,25 +52,22 @@ export function PatternEditorDrawer({
   pattern,
 }: PatternEditorDrawerProps) {
   const isOpen = drawerMode !== null
+  const rootRef = useRef<HTMLDivElement>(null)
   const asideRef = useRef<HTMLElement>(null)
 
   useEscapeKey(onClose, isOpen)
   useBodyScrollLock(isOpen)
   useFocusTrap(asideRef, isOpen)
 
-  if (!isOpen) {
-    return null
-  }
-
   const isCreating = drawerMode === 'custom-create'
   const title = pattern?.name.trim() || t(isCreating ? 'builder.drawer.titleNew' : 'builder.drawer.titleEdit')
 
   const drawer = (
-    <div className="fixed inset-0 isolate z-150">
+    <div ref={rootRef} className="fixed inset-0 isolate z-150">
       <button
         type="button"
         aria-label={t('builder.drawer.close')}
-        className="absolute inset-0 h-full w-full bg-background/80"
+        className="absolute inset-0 h-full w-full animate-nav-scrim bg-background/80 motion-reduce:animate-none"
         onClick={onClose}
       />
 
@@ -127,9 +125,6 @@ export function PatternEditorDrawer({
     </div>
   )
 
-  if (typeof document === 'undefined') {
-    return drawer
-  }
-
-  return createPortal(drawer, document.body)
+  // Al cerrarse sale por donde entró (`usePresence`): el panel se corre a la derecha y se funde, y el velo también.
+  return usePresence(isOpen, isOpen ? (typeof document === 'undefined' ? drawer : createPortal(drawer, document.body)) : null, () => [rootRef.current])
 }

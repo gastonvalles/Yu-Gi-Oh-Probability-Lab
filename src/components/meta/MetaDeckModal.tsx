@@ -18,6 +18,7 @@ import type { DeckCardInstance, DeckZone as DeckZoneKey } from '../../app/model'
 import { replayLabel, replaysOfDeck, type ReplayEntry } from '../../app/replays'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { Presence, useLeaving } from '../../app/use-presence'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
@@ -70,8 +71,15 @@ interface MetaDeckModalProps {
 /**
  * Un Tournament Meta Deck completo sin salir de la app, con la estructura del builder: la carta elegida a la
  * izquierda y las zonas a la derecha (en mobile, el detalle se abre al tocar). Se puede cargar en el builder.
+ * Quien lo muestra lo deja montado con `deck` en null (cerrado): al cerrarse, `Presence` conserva el deck que se veía mientras el modal sale.
  */
-export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps) {
+export function MetaDeckModal(props: MetaDeckModalProps) {
+  return <Presence>{props.deck ? <MetaDeckDialog {...props} /> : null}</Presence>
+}
+
+function MetaDeckDialog({ deck, onClose, onOpenDeck }: MetaDeckModalProps) {
+  // Ya cerrado, mientras sale: el modal y lo que se abrió encima (el detalle, el replay, la confirmación) se van con él.
+  const leaving = useLeaving()
   const dispatch = useAppDispatch()
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const builderHasCards = useAppSelector(
@@ -204,7 +212,7 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
   return (
     <>
       <Modal
-        isOpen
+        isOpen={!leaving}
         onClose={onClose}
         size="full"
         bare
@@ -339,7 +347,7 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
       <CardDetailModal
         card={selectedCard}
         deckFormat={deckFormat}
-        isOpen={!isDesktop && selectedCard !== null}
+        isOpen={!leaving && !isDesktop && selectedCard !== null}
         navigation={selectedInstanceId && selectedZoneCards ? buildZoneNavigation(selectedZoneCards, selectedInstanceId, openInstance) : null}
         showActions={false}
         onAddToZone={() => false}
@@ -347,7 +355,7 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
       />
 
       <ReplayModal
-        entry={replay}
+        entry={leaving ? null : replay}
         onClose={() => setReplay(null)}
         onOpenDeck={(next) => {
           setReplay(null)
@@ -359,7 +367,7 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
       />
 
       <ConfirmDialog
-        isOpen={confirmReplace}
+        isOpen={!leaving && confirmReplace}
         title={t('meta.deckModal.replaceTitle')}
         description={t('meta.deckModal.replaceBody', { name: deck.name })}
         confirmLabel={t('meta.deckModal.replaceConfirm')}

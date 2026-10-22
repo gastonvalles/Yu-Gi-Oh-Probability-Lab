@@ -2271,11 +2271,14 @@ export function PracticeMat({
 
       {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
       {/* La pregunta del rival (pasar de fase): en el medio de la pantalla, centrada en la columna de la mesa (sin el chat ni el detalle). La capa deja pasar los toques; sólo la pregunta los recibe. */}
-      {duel?.prompt ? (
-        <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>
-          <div className="pointer-events-auto w-[min(24rem,100%)]">{duel.prompt}</div>
-        </div>
-      ) : null}
+      {/* Contestada, la pregunta sigue mientras sale (`Presence`; `PassPrompt` hace la salida) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
+      <Presence>
+        {duel?.prompt ? (
+          <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>
+            <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none">{duel.prompt}</div>
+          </div>
+        ) : null}
+      </Presence>
 
       {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]', Boolean(detail) && 'min-[1440px]:left-[20rem]')}>{duel.cover}</div> : null}
 

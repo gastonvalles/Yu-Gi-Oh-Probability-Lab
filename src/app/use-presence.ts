@@ -20,6 +20,7 @@ const EXITS: Record<string, Keyframe> = {
   'sheet-in': { opacity: 0, transform: 'translateY(10px)' },
   'sheet-up': { transform: 'translateY(100%)' },
   'side-drawer': { transform: 'translateX(100%)' },
+  'drawer-enter': { opacity: 0, transform: 'translateX(1.35rem)' },
   'nav-drawer': { transform: 'translateX(-100%)' },
   'nav-scrim': { opacity: 0 },
 }

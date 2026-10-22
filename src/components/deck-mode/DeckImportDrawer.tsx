@@ -31,6 +31,7 @@ import { loadFormatData } from '../../app/format-data'
 import type { DeckBuilderState } from '../../app/model'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { usePresence } from '../../app/use-presence'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
@@ -200,6 +201,7 @@ export function DeckImportDrawer({
   const [method, setMethod] = useState<ImportMethod>('text')
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const asideRef = useRef<HTMLElement | null>(null)
   const currentDeckCardCount =
     deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
@@ -230,10 +232,6 @@ export function DeckImportDrawer({
   useEscapeKey(() => handleClose(), isOpen)
   useFocusTrap(asideRef, isOpen)
   useBodyScrollLock(isOpen)
-
-  if (!isOpen) {
-    return null
-  }
 
   // La ventana cambia de contenido (los controles se van mientras carga y la vista previa se va con "Volver"): el foco se queda en el panel, no cae al <body>.
   const keepFocus = () => asideRef.current?.focus({ preventScroll: true })
@@ -455,14 +453,13 @@ export function DeckImportDrawer({
     void processFile(file)
   }
 
-  // Se monta en <body>: dentro de un paso animado (con transform) quedaría corrido.
-  return createPortal(
-    <>
-      <div className="fixed inset-0 z-150">
+  // Se monta en <body>: dentro de un paso animado (con transform) quedaría corrido. Entra por la derecha sobre un velo que se funde y, al cerrarse, sale por donde entró (`usePresence`).
+  const drawer = usePresence(isOpen, isOpen ? createPortal(
+      <div ref={rootRef} className="fixed inset-0 z-150">
         <button
           type="button"
           aria-label={t('deck.import.close')}
-          className="absolute inset-0 h-full w-full bg-background/80"
+          className="absolute inset-0 h-full w-full animate-nav-scrim bg-background/80 motion-reduce:animate-none"
           onClick={handleClose}
         />
 
@@ -472,7 +469,7 @@ export function DeckImportDrawer({
           role="dialog"
           aria-modal="true"
           aria-label={t('deck.import.dialog')}
-          className="absolute right-0 top-0 flex h-full w-full max-w-136 flex-col border-l outline-none border-border-subtle bg-card-background p-0 shadow-overlay"
+          className="absolute right-0 top-0 flex h-full w-full max-w-136 animate-side-drawer flex-col border-l outline-none border-border-subtle bg-card-background p-0 shadow-overlay motion-reduce:animate-none"
         >
           <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
             <div className="flex min-w-0 items-start gap-3">
@@ -760,10 +757,16 @@ export function DeckImportDrawer({
             </footer>
           ) : null}
         </aside>
-      </div>
+      </div>,
+    document.body,
+  ) : null, () => [rootRef.current])
 
+  return (
+    <>
+      {drawer}
+      {/* Afuera del cajón: al aplicar se cierran los dos y cada uno sale por su cuenta (adentro, la confirmación seguiría abierta mientras el cajón sale). */}
       <ConfirmDialog
-        isOpen={isReplaceConfirmOpen}
+        isOpen={isOpen && isReplaceConfirmOpen}
         title={t('deck.import.replace.title')}
         description={preview ? t('deck.import.replace.description', { count: formatInteger(currentDeckCardCount), incoming: formatInteger(preview.importedCardCount) }) : ''}
         cancelLabel={t('deck.import.replace.keep')}
@@ -772,8 +775,7 @@ export function DeckImportDrawer({
         onCancel={() => setIsReplaceConfirmOpen(false)}
         onConfirm={applyImport}
       />
-    </>,
-    document.body,
+    </>
   )
 }
 

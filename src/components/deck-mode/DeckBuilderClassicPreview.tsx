@@ -9,6 +9,7 @@ import {
 import type { DeckZone } from '../../app/model'
 import { foilOf } from '../../app/card-foil'
 import { useCardArtOptions } from '../../app/use-card-art-options'
+import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
@@ -181,7 +182,8 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
               ) : null}
             </div>
           ) : null}
-          {zoomed ? <CardZoom card={{ ...card, imageUrl: art?.imageUrlLarge ?? artUrl }} fallbackUrl={art?.imageUrl ?? card.imageUrl} name={card.name} navigation={navigation} arts={arts} artId={art?.id ?? null} onArtChange={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} onClose={() => setZoomed(false)} /> : null}
+          {/* Al cerrarse, la carta en grande sigue mientras sale (`Presence`). */}
+          <Presence>{zoomed ? <CardZoom card={{ ...card, imageUrl: art?.imageUrlLarge ?? artUrl }} fallbackUrl={art?.imageUrl ?? card.imageUrl} name={card.name} navigation={navigation} arts={arts} artId={art?.id ?? null} onArtChange={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} onClose={() => setZoomed(false)} /> : null}</Presence>
           <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} onGoToPrint={() => setPricesOpen(false)} />
         </>
       ) : (

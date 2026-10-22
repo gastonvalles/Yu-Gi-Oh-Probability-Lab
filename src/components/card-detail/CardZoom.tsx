@@ -6,6 +6,7 @@ import { cardImageSrc } from '../../app/card-image-source'
 import type { CardNavigation } from '../../app/card-neighbors'
 import type { ArtChoice } from '../../app/use-card-art-options'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { useLeaving, usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
@@ -50,12 +51,16 @@ function onScrollbar(event: MouseEvent<HTMLElement>): boolean {
  * la carta en sí no cierra nada: se gira y se arrastra para inspeccionarla en 3D. Si hay un modal abajo, Escape cierra primero este.
  * Abajo, la barra con el zoom (100 %, 150 %, 200 %, 300 %: más grande que la pantalla, se desplaza con el dedo, la rueda o las barras; el giro 3D sólo va al 100 %; también se cambia con Ctrl + la rueda y pellizcando con dos dedos, `usePinchZoom`) y «Leer texto de efecto», que muestra
  * el texto resaltado sobre la carta; detrás, la misma carta agrandada y desenfocada, como en la referencia; arriba a la izquierda, la impresión (ver `PrintingMenu`). Teclas: F da vuelta la carta, + y − cambian el zoom, 0 vuelve al 100 %, ← y → pasan de carta.
+ * Quien la monta sólo abierta la envuelve en un `Presence`: al cerrarse se achica y se funde, la inversa de su entrada.
  */
 export function CardZoom({ card, name, fallbackUrl = null, navigation = null, arts = NO_ARTS, artId = null, onArtChange, onClose }: CardZoomProps) {
-  useBodyScrollLock(true)
+  // Ya cerrada, mientras sale: lo que se ata a «abierta» (el bloqueo del scroll, Escape, las teclas) se suelta enseguida.
+  const leaving = useLeaving()
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useBodyScrollLock(!leaving)
   const [menuOpen, setMenuOpen] = useState(false)
   // Escape cierra primero la lista de impresiones y después el zoom.
-  useEscapeKey(() => (menuOpen ? setMenuOpen(false) : onClose()))
+  useEscapeKey(() => (menuOpen ? setMenuOpen(false) : onClose()), !leaving)
   const flip = useCardFlip()
   const { flip: turnOver, reset } = flip
   const previous = navigation?.onPrevious ?? null
@@ -85,6 +90,8 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
 
   // F da vuelta la carta, como arrastrarla de costado; ← y → pasan a la carta anterior y a la siguiente; + y − cambian el zoom y 0 lo vuelve al 100 %.
   useEffect(() => {
+    if (leaving) return
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return
 
@@ -99,10 +106,11 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
     window.addEventListener('keydown', onKeyDown)
 
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [turnOver, previous, next])
+  }, [turnOver, previous, next, leaving])
 
-  return createPortal(
+  return usePresence(!leaving, createPortal(
     <div
+      ref={rootRef}
       role="dialog"
       aria-modal="true"
       aria-label={t('search.zoom.aria', { name })}
@@ -190,5 +198,5 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, ar
       />
     </div>,
     document.body,
-  )
+  ), () => [rootRef.current])
 }
