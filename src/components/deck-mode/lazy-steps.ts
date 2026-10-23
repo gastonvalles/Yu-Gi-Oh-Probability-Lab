@@ -84,14 +84,25 @@ export const LazyExpansionsScreen = lazy(orReload(() => loaders.expansions().the
 export const LazyBanlistsScreen = lazy(orReload(() => loaders.banlists().then((m) => ({ default: m.BanlistsScreen }))))
 export const LazyLifeCalculatorScreen = lazy(orReload(() => loaders.life().then((m) => ({ default: m.LifeCalculatorScreen }))))
 
-export function preloadHeavySteps(): void {
-  // Si falla de fondo (p. ej. sin red) no pasa nada: se vuelve a intentar al abrir el paso.
-  const run = () => Object.values(loaders).forEach((load) => void load().catch(() => {}))
-  const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback
+/**
+ * De a una carga por vez, cada una en un momento ocioso y recién cuando terminó la anterior. Si una falla de fondo (p. ej. sin red) no pasa nada: se sigue
+ * con el resto y ésa se vuelve a intentar al abrir el paso.
+ */
+export function preloadOneByOne(loads: ReadonlyArray<() => Promise<unknown>>, idle: (callback: () => void) => void): void {
+  const queue = [...loads]
+  const next = () => {
+    const load = queue.shift()
 
-  if (idle) {
-    idle(run)
-  } else {
-    window.setTimeout(run, 1500)
+    if (load) idle(() => void load().catch(() => {}).then(next))
   }
+
+  next()
+}
+
+/**
+ * Los trece pasos juntos eran ~40 archivos a la vez justo después del primer pintado: en un celular con red lenta le sacaban la red a lo que la pantalla
+ * muestra (las imágenes del deck, el catálogo). De a uno, cambiar de paso sigue siendo instantáneo y lo de la pantalla llega primero.
+ */
+export function preloadHeavySteps(): void {
+  preloadOneByOne(Object.values(loaders), (callback) => (window.requestIdleCallback ? window.requestIdleCallback(callback) : window.setTimeout(callback, 1500)))
 }
