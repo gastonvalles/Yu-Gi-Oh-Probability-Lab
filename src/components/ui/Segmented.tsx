@@ -53,10 +53,10 @@ const GROUP: Record<SegmentedVariant, string> = {
   lens: 'grid auto-cols-fr grid-flow-col gap-1 rounded-card bg-lavender p-1',
 }
 
-/** Opción elegida con color propio (verde / rojo) en lugar del ámbar de lo elegido. */
+/** Opción elegida con color propio (verde / rojo) en lugar del ámbar de lo elegido, con el texto blanco y sin brillo debajo (regla 9 de docs/design-system.md). */
 const TONE_ON = {
-  success: 'bg-success-solid text-white shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)]',
-  danger: 'bg-danger text-white shadow-[0_6px_16px_rgb(var(--danger-rgb)/0.35)]',
+  success: 'bg-success-solid text-white',
+  danger: 'bg-danger text-white',
 } as const
 
 /** Lo elegido: ámbar con el texto oscuro (sin hover: una opción elegida no se apaga al tocarla). */

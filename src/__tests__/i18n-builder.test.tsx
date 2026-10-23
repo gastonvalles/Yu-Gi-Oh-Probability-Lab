@@ -239,7 +239,8 @@ describe('el armador en inglés', () => {
   it('el editor completo: pasos, avisos, botones y los ajustes que aplican', () => {
     const unfinished = pattern([condition(null)], { needsReview: true })
 
-    render(<RuleBuilder actions={actions} derivedMainCards={deck} pattern={unfinished} onPickCondition={vi.fn()} onMoveCondition={vi.fn()} />)
+    // Con `showErrors` (ya se intentó guardar): así se ve también el error de la condición sin qué cuenta.
+    render(<RuleBuilder actions={actions} derivedMainCards={deck} pattern={unfinished} onPickCondition={vi.fn()} onMoveCondition={vi.fn()} showErrors />)
 
     expect(screen.getByText('This rule comes from an earlier version. Check these settings before trusting the result.')).toBeInTheDocument()
     for (const step of ['What it is', 'When it applies', 'The hand has']) {
@@ -319,6 +320,12 @@ describe('el armador en inglés', () => {
     expect(screen.getByRole('img', { name: 'Not measured: the rule is incomplete' })).toBeInTheDocument()
     expect(screen.getByText('Choose what it counts', { selector: 'footer span' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Create rule' })).toBeDisabled()
+    // A medias, «Create rule» se ve apagado pero se enfoca (aria-disabled, no disabled): tocarlo marca lo que falta.
+    const create = screen.getByRole('button', { name: 'Create rule' })
+    expect(create).toHaveAttribute('aria-disabled', 'true')
+    expect(create).toHaveAccessibleDescription('Choose what it counts')
+    fireEvent.click(create)
+    expect(props.onSave).not.toHaveBeenCalled()
+    expect(screen.getByText('Choose what this condition counts')).toBeInTheDocument()
   })
 })
