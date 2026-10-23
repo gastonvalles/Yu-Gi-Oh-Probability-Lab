@@ -4,7 +4,7 @@ Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!: armás el de
 
 ## Cómo se corre
 
-Node.js `>=22.12.0` (`.nvmrc`) y npm.
+Node.js 22 (`.nvmrc`; `engines`: `>=22.12.0`) y npm.
 
 ```
 npm install
@@ -36,7 +36,7 @@ npm run sync:effects   # capa 1 del motor de cartas (docs/motor-de-cartas.md)
 
 ## Publicación
 
-- La URL pública está en `index.html`, `robots.txt` y `sitemap.xml`: si cambia, va en los tres (el test `site-meta` avisa si no coinciden).
+- La URL pública está en `index.html`, `robots.txt` y `sitemap.xml` (el test `site-meta` avisa si no coinciden) y también en `vercel.json` (los dos `host` de la CSP), `duel-relay/wrangler.jsonc` (`ALLOWED_ORIGINS`) y las dos páginas de privacidad: si cambia, va en todos.
 - `/assets/*` se cachea un año como `immutable`: un archivo sin hash nunca va ahí.
 - `privacidad.html` y `privacy.html` dicen que el sitio no tiene analíticas ni cookies: si se suman, hay que actualizarlas.
 
@@ -47,11 +47,11 @@ src/probability.ts  el motor exacto del Lab
 src/app/            la lógica sin interfaz: estado, builder, Lab, mesa, duelo y motor de cartas
 src/components/     las pantallas; ui/ son las piezas base y playground/ el catálogo /playground
 src/i18n/           los textos en español y en inglés
-src/data/           los datos que escriben los syncs
+src/data/           los datos que escriben los syncs (menos la lista de Edison)
 src/__tests__/      los tests (Vitest + fast-check)
 duel-relay/         el relay del duelo (Worker + Durable Object de Cloudflare)
 api/                funciones de Vercel: imágenes de cartas y transmisiones en vivo
-scripts/            los syncs de datos
+scripts/            los syncs de datos y algunas herramientas
 public/             estáticos: íconos, precios, mascotas, 404 y privacidad
 docs/               la documentación
 ```
