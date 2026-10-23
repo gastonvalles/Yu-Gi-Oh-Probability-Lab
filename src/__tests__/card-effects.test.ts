@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { cleanEffectText, EFFECT_BIT, EFFECT_KEYS, EFFECT_MATCHERS, effectMaskOf, matchesEffect, type EffectKey } from '../app/card-effects'
 
 /**
- * Cada caso es un texto real (o casi) donde el motor se equivocó en la auditoría con etiquetas a ciegas (`docs/auditoria-motor-efectos.md`) y después se corrigió:
+ * Cada caso es un texto real (o casi) donde el motor se equivocó en la auditoría con etiquetas a ciegas (`docs/motor-de-cartas.md`, «Apéndice · Cómo se midió y cómo repetirlo») y después se corrigió:
  * lo que tiene que marcar y lo que no. La medición de cuánto acierta en general está en el documento; esto cuida que un arreglo no se pierda.
  */
 const CASES: Record<EffectKey, { yes: string[]; no: string[] }> = {

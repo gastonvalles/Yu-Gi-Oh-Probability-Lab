@@ -1,201 +1,89 @@
 # Motor de cartas: por capas
 
-Gastón (2026-10-19), después de mirar cómo Dueling Nexus remarca el texto de las cartas («un motor heurístico; creo que es la clave»): **resaltar el texto**, leer **más de los scripts de EDOPro** y, sobre
-los duelos automáticos, «esto es en efecto un proyecto enorme, por lo que vamos a tener que hacerlo en capas, de a poco, con lo que estemos seguros que funciona al 100 %».
+Los duelos automáticos son un proyecto enorme: por eso van en capas, de a poco y sólo con lo que se sabe que funciona.
 
-**Regla de oro: cada capa sólo afirma lo que se pudo comprobar.** Ante la duda, una capa no dice nada: un texto raro pierde el color, nunca gana uno equivocado. Cada capa trae sus pruebas y se mide contra el
-catálogo entero antes de pasar a la siguiente.
+**Regla de oro: cada capa sólo afirma lo que se pudo comprobar.** Ante la duda, una capa no dice nada: un texto raro pierde el color, nunca gana uno equivocado. Cada capa trae sus pruebas y se mide contra el catálogo entero antes de pasar a la siguiente.
 
 | Capa | Qué hace | Estado |
 | --- | --- | --- |
-| 0 · Resaltar | Colorea el texto de la carta: condición, efecto rápido, costo, objetivo y límite. No decide nada del juego. | **Hecha** |
-| 1 · Hechos confirmados | Lo que el script de EDOPro **y** el texto de la carta dicen los dos de sus efectos: rápido, una vez por turno (con o sin nombre), una vez por Duelo, costo y objetivo. | **Hecha** (a nivel de carta) |
-| 1b · Alinear frase y efecto | Qué frase del texto es qué efecto del script, y de **cada** efecto: sus hechos y desde dónde se activa (mano, Cementerio, campo, zona de Mágicas y Trampas, Zona de Péndulo). Sólo lo que las señales obligan, con margen. | **Hecha** (2.115 cartas; la leen el contador por efecto y «podés responder con…») |
-| 2 · Asistente de la mesa | La mesa **avisa, no decide**: muestra los rasgos confirmados de la carta donde se decide jugarla, dice **en voz baja, en el menú**, qué efecto ya se usó (**sin ningún cartel por activar otra vez**: sin manejo de cadenas, repetir una activación es la forma de preguntarle al rival si quiere responder), avisa de las reglas de turno (una Invocación Normal y una de Péndulo por turno) y dice qué cartas podés responder (antes de pasar de fase y cuando el rival activa algo). | **Hecha** en lo que se puede afirmar (ver «Lo que falta») |
-| 3 · Automatización parcial | Efectos simples, de a una carta, cada una probada contra su script. | **Diseñada** (abajo), sin construir |
-| 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) compilado a WebAssembly, detrás de una bandera. | **Bloqueada** por la licencia (AGPL-3.0): decide Gastón |
+| 0 · Resaltar | Colorea el texto de la carta: condición, efecto rápido, costo, objetivo y límite. No decide nada del juego. | Hecha |
+| 1 · Hechos confirmados | Lo que el script de EDOPro **y** el texto de la carta dicen los dos de sus efectos (de la carta entera). | Hecha |
+| 1b · Alinear frase y efecto | Qué frase del texto es qué efecto del script y, de cada efecto, sus hechos y desde dónde se activa. | Hecha |
+| 2 · Asistente de la mesa | La mesa avisa, no decide: rasgos, usos, reglas de turno y qué cartas pueden responder. | Hecha en lo que se puede afirmar |
+| 3 · Automatización parcial | Efectos simples, de a una carta, cada una probada contra su script. | Diseñada, sin construir |
+| 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) compilado a WebAssembly, detrás de una bandera. | Bloqueada por la licencia (AGPL-3.0): decide Gastón |
 
 ## Capa 0 · Resaltar el texto
 
-**Dónde vive:** `src/app/card-text.ts` (`segmentCardText`, una función pura: texto → pedazos con su tipo, sin DOM ni estado) y `src/components/card-detail/CardEffectText.tsx` (los pinta). Lo usan el detalle de la carta
-(`CardDetailOverlay`: celular, búsqueda, expansiones, banlists), la barra de la izquierda del builder (`DeckBuilderClassicPreview`) y el detalle fijo del duelo (`DuelCardDock`). Muestra en `/playground`, sección Datos.
+Vive en `src/app/card-text.ts` (`segmentCardText`, puro; sus garantías están en su comentario y las prueba `card-text.test.ts`) y la pinta `CardEffectText`. El texto nunca cambia: se agregan sólo `<span>` con `data-tone`, así un lector de pantalla lo lee igual y copiar y pegar da el original.
 
-**Cómo se ve** (los cuatro colores de la paleta cerrada y un subrayado; el color significa algo, y cada parte lleva su nombre en `title`, en los dos idiomas: `search.cardText.*`):
-
-| Parte | Qué es | Se ve |
-| --- | --- | --- |
-| `condition` | Cuándo se activa: lo que va antes de los dos puntos (`If this card is Special Summoned`, `During your Main Phase`) | verde |
-| `speed` | `(Quick Effect)`: se puede activar en respuesta | ámbar, en negrita |
-| `cost` | Lo que se paga al activar: lo que va antes del `;` y empieza con un verbo de costo (`discard`, `send`, `banish`, `Tribute`, `detach`, `pay`, `remove`, `reveal`, `shuffle`, `return`, `release`) | rojo |
-| `target` | A qué carta apunta: `target 1 monster…` antes del `;` | violeta |
-| `limit` | `You can only …` (una vez por turno, por nombre…) y `Once per turn` / `Once per Chain` delante de los dos puntos | subrayado punteado, sin color |
-
-Lo demás (`plain`) queda como texto común. El texto no cambia nunca: se agregan sólo `<span>`s con `data-tone`, así que un lector de pantalla lo lee igual y copiar y pegar da el texto original.
-
-**Qué se lee del texto** (la plantilla de los efectos de Yu-Gi-Oh! es rígida): `Condición (Quick Effect): Costo; Efecto.`, y aparte `You can only …`. Se parte por líneas (`\r\n`), por viñetas (`●`) y por oraciones; los `:` y `;`
-dentro de comillas (`"Number 39: Utopia"`) o paréntesis no cortan nada, y si las comillas o los paréntesis no cierran no se interpreta la oración. Un `:` sólo abre una condición si lo que va antes empieza con un
-abridor de la plantilla (`If`, `When`, `While`, `During`, `At the`, `After`, `Each time`, `Before`, `Once while`, `Whenever`, `Your opponent`, `Neither/Both players`, `FLIP`), así que una lista
-(`You can activate 1 of these effects:`) no es una condición. Un `costo con objetivo` se parte en dos (`discard this card, then target 1 monster;` → costo y objetivo, y el `then`, el `and` y el `to` quedan sin color).
-
-**Garantías** (las prueban `src/__tests__/card-text.test.ts`, con textos reales y propiedades sobre texto armado al azar, y `card-effect-text.test.tsx`):
-1. Los pedazos, pegados, dan exactamente el texto de entrada.
-2. Ningún pedazo está vacío y dos vecinos nunca repiten tipo.
-3. Un `cost`, un `target` o una `condition` nunca llevan espacios de borde ni el `;` o el `:` que los cierra.
-
-**Medido contra el catálogo entero** (YGOPRODeck, 14.618 cartas, el 2026-10-19; 0 violaciones de las garantías): 11.289 condiciones, 947 «(Quick Effect)», 4.380 costos, 4.973 objetivos y 8.391 límites. Se revisaron a
-mano muestras de cada parte y los 722 monstruos Normales: los que no son Péndulo **no llevan ninguna marca** (el *flavor* va entre dos apóstrofos `''…''` y no se toca) y los 27 Normales Péndulo marcan
-sólo su efecto de Péndulo. Esa revisión encontró y corrigió tres cosas: el `Once per turn:` del frente era una condición (es un límite), un `to` colgado en el costo (`banish this card from the GY to target…`) y los espacios
-dentro del color. Para repetirla: bajar `https://db.ygoprodeck.com/api/v7/cardinfo.php` (sin parámetros; con `misc=no` da 400) y pasar `segmentCardText` por cada `desc` con las tres garantías.
-
-**Lo que no marca (a propósito):** efectos continuos sin dos puntos (`This card gains 500 ATK…`), el costo de un efecto sin `;`, una condición que no abre con una de las palabras de arriba, `Once per turn, you can …`
-sin dos puntos, los textos de invocación (`You can Ritual Summon this card with…`), las reglas de los materiales (`2 Level 4 monsters`) y todo texto que no esté en inglés (el catálogo de YGOPRODeck viene en inglés; ver
-`docs/i18n.md`). Si se quiere marcar uno de esos, se agrega una regla con su prueba y se vuelve a medir el catálogo.
-
-**Cómo se parece y se distingue de Dueling Nexus:** allá la condición es verde, «(Quick Effect)» amarillo, el costo rosa y la restricción subrayada; acá lo mismo con la paleta propia (rojo en vez de rosa) y el objetivo
-en violeta. No se revisó el código de ellos: es una lectura de lo que se ve.
+- **Lo que no marca, a propósito:** los efectos continuos sin dos puntos, el costo de un efecto sin `;`, una condición que no abre con las palabras de la plantilla, «Once per turn, you can …» sin dos puntos, los textos de invocación, las reglas de los materiales y todo texto que no esté en inglés. Marcar uno de esos pide una regla con su prueba y volver a medir el catálogo.
+- **Para medirla:** bajar `https://db.ygoprodeck.com/api/v7/cardinfo.php` sin parámetros (con `misc=no` da 400) y pasar `segmentCardText` por cada `desc` comprobando las garantías.
 
 ## Capa 1 · Hechos confirmados por dos fuentes
 
-**Idea:** el script de EDOPro dice lo que el motor del juego hace de verdad y el texto dice lo que la carta imprime; no se conocen entre sí. Un hecho que **las dos fuentes afirman** es cierto; uno que afirma una sola puede ser una forma
-de escribir distinta (las cartas viejas no llevan «(Quick Effect)») o un detalle interno del motor (un efecto continuo con límite para no repetirse). La capa 1 se queda sólo con la intersección.
+El script de EDOPro dice lo que el motor hace de verdad y el texto, lo que la carta imprime. Un hecho que afirma una sola fuente puede ser una forma de escribir distinta (las cartas viejas no llevan «(Quick Effect)») o un detalle interno del motor, así que se publica sólo la intersección (`card-effect-facts.ts`). Un bit apagado no dice nada, y una carta sin script o sin hechos confirmados no está en el JSON.
 
-**Dónde vive:** `src/app/card-effect-facts.ts` (puro: `scriptEffectFacts`, `textEffectFacts`, `verifiedEffectFacts`, la máscara `EFFECT_FACT`), el lector de scripts ampliado (`card-script-rules.ts`: `SetCountLimit`, `SetCost`,
-`SetCondition`, `SetProperty` y `scope: 'all'`, que también lee los efectos que una carta se da a sí misma fuera de `initial_effect`), el generador `scripts/build-card-effects.mjs` (`npm run sync:effects`: baja el texto de las
-cartas de YGOPRODeck, actualiza el clon de los scripts y escribe `src/data/card-effects.json`, agrupado por máscara como `card-rules.json`) y el lector de la app `src/app/card-effect-data.ts` (`loadCardEffects`, `getCardEffectFacts`).
-Se corre a mano cuando conviene (salen cartas nuevas): no forma parte del sync diario.
-
-**Los hechos** (`EFFECT_FACT`; son de la **carta entera**, no de cada efecto: «tiene al menos un efecto…». La excepción es `shared`, que sólo existe por efecto, en la capa 1b):
-
-| Hecho | El script dice | El texto dice |
-| --- | --- | --- |
-| `quick` | un efecto `EFFECT_TYPE_QUICK_O` o `QUICK_F` | `(Quick Effect)` (la capa 0 lo marca como `speed`) |
-| `once` | `SetCountLimit(1, …)` que no es por Duelo, por cadena ni «mientras está boca arriba» | «once per turn» o la forma por nombre de abajo |
-| `hardOnce` | lo mismo con el id de la carta como código (`id`, `{id,1}`, `OATH`): por nombre | «You can only use … "Nombre" … once per turn», «You can only use 1 "Nombre" per turn», «You can only activate 1 "Nombre" per turn», «"Nombre" can only be activated once per turn» (se mira con cada nombre reemplazado por `"N"`: llevan puntos y comillas) |
-| `perDuel` | `EFFECT_COUNT_CODE_DUEL` | «once per Duel» |
-| `cost` | `SetCost(…)` | un costo antes del `;` (capa 0, `cost`) |
-| `target` | `EFFECT_FLAG_CARD_TARGET` | `target 1 …` antes del `;` (capa 0, `target`) |
-| `shared` | dos o más efectos de la carta (su activación incluida) usan el **mismo código** en `SetCountLimit` (`limitCode`) | «You can only use 1 of the following/these effects of "X" per turn, and only once that turn» o «You can only use 1 "X" effect per turn, and only once that turn» (`textSharedLimit`) |
-| `activation` | la **activación** de una Mágica o una Trampa (`EFFECT_TYPE_ACTIVATE`) tiene un límite por turno o por nombre | «You can only activate 1 "X" per turn», «"X" can only be activated once per turn» **al empezar la oración** (un «The effect of "X" can only be activated once per turn» es de un efecto, no de la activación) o el límite compartido de todos sus efectos |
-
-**Qué significa un bit:** encendido = confirmado por las dos fuentes; apagado = **no dice nada** (no que no sea cierto). Una carta sin script (monstruos normales, cartas nuevas) o sin hechos confirmados no está en el JSON.
-
-**Mágicas y Trampas:** la capa 1 ya leía sus scripts; ahora suma el hecho `activation` (1.036 cartas) y la capa 1b las alinea (el generador toma `Monster`, `Spell` y `Trap`, menos los monstruos Normales). La **activación** (`EFFECT_TYPE_ACTIVATE`) no es una frase del texto que se pueda emparejar, así que queda **fuera** de los efectos lógicos y de la alineación, pero **cuenta para los límites compartidos** (`limitUsers`): una Mágica cuya activación y cuyo efecto comparten el «1 por turno» se alinea sin la activación, y el límite se lee igual.
-
-**Medido contra el catálogo** (YGOPRODeck y los scripts del 2026-10-19: 10.266 cartas con algún hecho en el script; **9.182** llevan al menos uno confirmado, y **9.187** con `activation` y los refinamientos de «una vez por turno» del 2026-10-20). Por hecho, las cartas donde los dos coinciden / sólo lo dice el script / sólo lo dice el texto (la tabla es la del 2026-10-19; con la regeneración de 2026-10-20 `once` y `hardOnce` subieron 10 cada uno, `activation` es de 1.036 y los demás quedaron igual):
-
-| Hecho | Los dos (confirmado) | Sólo el script | Sólo el texto |
-| --- | ---: | ---: | ---: |
-| `quick` | 1.029 | 938 | 21 |
-| `once` | 7.235 | 399 | 123 |
-| `hardOnce` | 5.528 | 25 | 84 |
-| `perDuel` | 58 | 3 | 3 |
-| `cost` | 3.936 | 877 | 61 |
-| `target` | 4.398 | 654 | 64 |
-
-Lo que se descarta tiene causas conocidas, que se fueron corrigiendo al medir: el texto viejo sin «(Quick Effect)» (el script dice rápido: **no se confirma**, por diseño), una etiqueta de velocidad sola sin condición (`(Quick Effect): …`, arreglada
-en la capa 0), los nombres con puntos o con comillas anidadas (`"Maxx "C""`, arreglado), los efectos que una carta se da a sí misma en otra función (arreglado con `scope: 'all'`) y los límites que el motor impone sin que el texto los diga (un efecto
-continuo con `SetCountLimit(1)` para no dispararse dos veces). Quedan, entre otros, los límites de «You can only Special Summon "X" once per turn» (el script los pone con una bandera, no con `SetCountLimit`), que no se confirman.
-
-**Lo que esta capa NO hace:** no dice **cuál** efecto tiene cada hecho (eso lo hace la capa 1b, abajo: alinear cada frase del texto con cada efecto del script), no sabe cuántos cupos por nombre tiene una carta, ni desde qué zona se activa, ni qué evento lo
-dispara; esos datos están en el script (`range`, `code`) pero sin segunda fuente que los confirme todavía. Y **nada de la app lo usa aún**: la capa 2 (el asistente de la mesa) es la que lo va a leer.
+- **Se genera a mano**, cuando salen cartas, con `npm run sync:effects` (`scripts/build-card-effects.mjs`: baja el texto de YGOPRODeck, actualiza el clon de los scripts y escribe `src/data/card-effects.json` y `card-effect-map.json`). Ningún workflow programado lo corre. La app lo lee con `card-effect-data.ts`.
+- **No se confirma** lo que el script pone con una bandera y no con `SetCountLimit` (por ejemplo, «You can only Special Summon "X" once per turn»), ni la velocidad de las cartas viejas sin «(Quick Effect)».
+- La activación de una Mágica o una Trampa (`EFFECT_TYPE_ACTIVATE`) no es una frase que se pueda emparejar: queda afuera de la alineación, pero cuenta para los límites compartidos.
 
 ## Capa 1b · Alinear cada frase del texto con su efecto del script
 
-**Idea:** la capa 1 dice hechos de la **carta entera**. Para que la mesa sepa «este efecto es rápido, aquel apunta, el otro se usa desde la mano» hace falta saber **qué frase del texto es qué efecto del script** (Gastón: «seguí con la alineación frase↔efecto»). La misma regla de oro: **sólo se alinea lo que las señales obligan**; ante la duda, la carta no se alinea y queda como estaba (hechos de la carta entera).
+`card-effect-map.ts` (con `effectSentences` de `card-text.ts`) empareja las frases que son efectos con los efectos del script que se activan (sus clones, juntos) usando cinco señales: la clase, el costo, el objetivo, el «Once per turn:» de apertura y el lugar desde donde se activa. Todo lo que dice la frase tiene que estar en el efecto, no al revés.
 
-**Dónde vive:** `src/app/card-effect-map.ts` (puro), `effectSentences` en `src/app/card-text.ts` (las oraciones del texto que son efectos), `origin` en `CardEffect` (`card-script-rules.ts`: un `Clone` comparte el origen de su original), `effectFactsOf` en `card-effect-facts.ts` (los hechos de **un** efecto del script), el mismo generador de la capa 1 (`npm run sync:effects` escribe también `src/data/card-effect-map.json`, 57 KB) y el lector `getCardEffectMap` en `src/app/card-effect-data.ts`.
+- **Sólo con certeza:** el mismo número de frases que de efectos, una forma de armar los pares sin contradicciones y todas las demás con al menos 2 contradicciones más (`MARGEN`). En los pares seguros, cada una de las cuatro primeras señales falla entre el 0,4 y el 1,4 % de las veces: una alineación que se sostiene por una sola señal cambiaría si esa señal estuviera mal leída, así que no se publica.
+- **Los lugares, con dos fuentes:** la mano y el Cementerio, con el `SetRange` y la frase; el campo y la zona de Mágicas y Trampas, con el `SetRange` y que la frase no nombre otro lugar; la Zona de Péndulo, con el `SetRange` y que la frase esté en la parte «Pendulum Effect». Un «this card» que es el objeto de la acción («with a Level lower than this card from your hand») no es un lugar.
+- Entran las cartas de varios efectos y las de uno solo si es rápido. `getCardEffectMap` no dice nada si las frases ya no empiezan donde estaban al generar (el texto cambió y el orden no sería de fiar).
+- Antes de que el lugar fuera una señal, se comprobó la alineación con él como oráculo (el lugar que declara el script frente al que dice la frase): los desacuerdos eran frases cuyo «this card» es el objeto de la acción, no malas alineaciones.
 
-**Cómo se alinea:**
-1. **Las frases** (`effectSentences`): las oraciones que abren con una condición (`If …:`, `When …:`), con `During …:`, con `Once per turn:`, con `(Quick Effect):` o que empiezan con `You can` y llevan un `;`. Las reglas, los límites («You can only use each effect…») y los efectos continuos no cuentan. Cada una sabe cómo abre, dónde empieza en el texto y si lleva velocidad, costo, objetivo o «una vez por turno».
-2. **Los efectos** (`logicalEffects`): los efectos del script que se activan (rápidos, de disparo, de ignición), con sus **clones juntos**: `e2=e1:Clone()` que sólo cambia el rango o el evento es el mismo efecto (el texto lo dice una vez: «If this card is Normal or Special Summoned»). Los continuos, las reglas de invocación y las activaciones de Mágicas y Trampas no cuentan (éstas sí cuentan para el límite que comparten con un efecto: `shared`, arriba).
-3. **Cuatro señales** (`mismatches` cuenta cuántas contradice un par frase↔efecto): la **clase** (una frase que dice «(Quick Effect)» es un efecto rápido; un suceso —«is sent to the GY»— es un disparo o un rápido; un estado —«is in your GY», «you control»— es una ignición o un rápido; un «while …» agrega un estado a un suceso y no cuenta), el **costo** (si la frase paga algo antes del `;`, el efecto tiene `SetCost`), el **objetivo** (`target 1 …` ⇒ `EFFECT_FLAG_CARD_TARGET`) y el **«Once per turn:» de apertura** (⇒ `SetCountLimit`). Todo lo que la frase dice tiene que estar en el efecto, no al revés (el texto viejo no lleva «(Quick Effect)»).
-4. **La carta se alinea si, y sólo si:** tiene el **mismo número** de frases que de efectos, hay una forma de armar los pares **sin ninguna contradicción** y **todas las demás formas tienen al menos 2 contradicciones más**. Esa última condición (`MARGEN`) es lo que cuida la regla de oro: una alineación que se sostiene por **una sola** señal cambiaría si esa señal estuviera mal leída (las señales de la clase, el costo, el objetivo y el «una vez» se equivocan en 0,4 a 1,4 % de los pares seguros, ver abajo), así que no se publica.
+## Capa 2 · Asistente de la mesa
 
-**Qué se guarda de cada efecto** (`verifiedEffects`; `[dónde empieza la frase, hechos, lugares]`): los **hechos** de la capa 1 (`EFFECT_FACT`) pero **por efecto** —lo que declara ese efecto del script **y** dice esa frase— y los **lugares** (`EFFECT_PLACE`: `hand`, `grave`, `field`, `spellTrap`, `pendulum`) desde donde se activa: la mano y el Cementerio con las dos fuentes —el `SetRange` del efecto y la frase que dice «this card is in your hand», «discard this card», «banish this card from your GY»…—; el **campo** (`LOCATION_MZONE`) y la **zona de Mágicas y Trampas o de Campo** (`LOCATION_SZONE`, `LOCATION_FZONE`: `spellTrap`) con el `SetRange` y la **ausencia** de otro lugar en la frase (la segunda fuente es negativa: si la frase nombra la mano o el Cementerio para esta carta, esos lugares no se confirman); la **Zona de Péndulo** (`LOCATION_PZONE`) con el `SetRange` y que la frase esté en la parte «Pendulum Effect» del texto (la segunda fuente es la **sección**: `inPendulumSection`). Cuando «this card» es el objeto de una acción y no el lugar («Special Summon … with a Level lower than this card from your hand», «the same Level as this card from your hand»), no cuenta como «desde la mano» (`namesHand` descarta lo que sigue a «as» o «than»). Una frase que habla de «cada efecto» («You can only use each effect of "X" once per turn») le da `once` y `hardOnce` a todas; un límite **compartido** («You can only use 1 of the following effects…») no es el de ningún efecto. Un bit apagado **no dice nada**.
+**Avisa, no decide:** nunca frena, deshace ni mueve una jugada; sólo dice algo que es verdad y que quien juega puede haber olvidado. Cuenta sólo lo que se vio hacer en esa pantalla: si se recarga o se deshace, el uso deja de contar, y el aviso se queda corto, nunca de más. El turno es el del duelo entero (`duelTurnNumber`).
 
-**Qué carta sale:** las de **varios** efectos y las de **uno solo si es rápido** (para esas los hechos de la carta entera ya son los de su efecto, pero hace falta saber desde dónde se activa). Son monstruos con efecto, Mágicas y Trampas (los Monstruos de Péndulo, con su efecto de escala). El lector (`getCardEffectMap(id, texto)`) vuelve a leer las frases del texto que recibe y **no dice nada si ya no empiezan donde estaban** cuando se generó (el texto cambió): el orden no sería de fiar.
-
-**Medido contra el catálogo** (YGOPRODeck y los scripts del 2026-10-19: 8.559 monstruos con efecto en el script):
-
-| | Cartas |
-| --- | ---: |
-| Con efectos en el script **y** frases de efecto en el texto | 6.763 |
-| …con el mismo número de frases que de efectos | 6.362 |
-| …de las cuales con un solo efecto | 3.030 |
-| …con **varios** efectos (2 a 5) | 3.332 |
-| …**alineadas con certeza**, de varios efectos (en `card-effect-map.json`: 2.967 efectos) | **1.471** |
-| …más las de un solo efecto rápido (también en el JSON, 64 KB en total) | 235 |
-| Distinto número de frases que de efectos (no se alinea) | 401 |
-| **Con las Mágicas, las Trampas, las escalas de Péndulo y el límite compartido (2026-10-20, 80 KB):** cartas en el mapa | **2.115** (1.877 de varios efectos; **409** más) |
-| …sus efectos, y los que se activan desde la mano / el Cementerio / el campo / Mágicas y Trampas / la Zona de Péndulo | 4.051: 670 / 408 / 1.551 / 261 / 63 |
-| …de ellos, con un límite compartido (`shared`) | 154 |
-
-**Cómo se comprobó que no se equivoca:**
-- **Pares seguros** (una frase y un efecto: no hay con qué confundir): se midió con qué frecuencia cada señal es falsa para el par verdadero: la clase de disparo 7 de 1.675 (0,4 %), el costo 14 de 995 (1,4 %), el objetivo 5 de 969 (0,5 %), el «una vez» 3 de 372 (0,8 %), la clase rápida 1 de 234. Son raras pero existen (un costo que el script paga dentro de otra función, un `while` que se lee como estado): de ahí el margen de 2.
-- **Un oráculo independiente** que no se usa para alinear: de las frases alineadas que dicen que **esta carta** se activa desde la mano (435) o el Cementerio (255), el script de su efecto declara ese lugar en 682 de 690. Las 8 que no coinciden se revisaron a mano: **ninguna es una mala alineación**, son frases cuyo «this card» es el objeto de una acción y no el lugar de activación («banish this card from your Graveyard» como costo de un disparo, «Special Summon … with a Level lower than this card from your hand»).
-- Primera versión (sin margen, sólo «una sola forma posible»): 2.400 cartas con varios efectos; con el margen quedaron 1.471 (se pierden las que sólo se distinguían por una señal) y el oráculo no cambió.
-- Al sumar las Mágicas, las Trampas y los lugares nuevos (2026-10-20), el mapa nuevo **se comparó contra el viejo**: las 1.706 cartas siguen, con la misma cantidad de efectos y el mismo comienzo de cada frase; ningún efecto perdió un hecho ni un lugar (116 efectos ganaron algún hecho y 84, algún lugar). Una revisión a mano de muestras encontró dos señales de lugar que se pasaban de listas («as this card from your hand», «lower than this card») y un «una vez por turno» de activación que era de un efecto; se arreglaron con una prueba cada una.
-
-**Lo que esta capa NO hace:** no dice nada de las 401 cartas con distinto número de frases (efectos que el texto dice en una sola frase o que el script parte en dos, como `Kuriboh - Multiply!`), de las 1.861 con varios efectos que no se distinguen con certeza, ni de las cartas nuevas sin script. Lo lee «podés responder con…» (capa 2, abajo) y es la base del contador por efecto.
-
-## Capa 2 · Asistente de la mesa (empezada)
-
-**Regla:** avisa, no decide. Nunca frena una jugada, nunca la deshace, nunca mueve una carta. Sólo dice algo que es verdad y que quien juega puede haber olvidado, con los hechos confirmados de la capa 1 (`card-effect-facts.ts`).
-
-**Lo que hace hoy:**
-1. **Rasgos confirmados a primera vista** (`CardEffectTraits`, `app/use-card-effect-facts.ts`): fichitas con los hechos de la capa 1 —**efecto rápido** (ámbar), **1 vez por turno** (o **por nombre**), **1 vez por duelo**, **con costo** (rojo) y **apunta** (violeta), los mismos colores del texto resaltado— donde se decide jugar la carta: la hoja del celular y el menú de escritorio de la mesa (`CardSheet`, `CardMenu`, también con las cartas del rival que ya mostró), el detalle de la carta (`CardDetailOverlay`), el detalle fijo del duelo (`DuelCardDock`), la barra del builder (`DeckBuilderClassicPreview`) y el texto del zoom. Cada una explica qué es en su `title`. Los datos (82 KB) se bajan la primera vez que se piden. Sin nada confirmado, no se muestra nada.
-2. **Aviso de uso, ya sin cartel** (`app/mat-assistant.ts`, en `PracticeMat`): la mesa se acuerda de las activaciones con un límite de uso confirmado **sólo para decirlo en el menú** (el punto 4: «Ya lo usaste este turno»). **No hay ningún cartel por activar otra vez una carta** (Gastón, 2026-10-20: «si activé la carta no necesariamente significa que activé un efecto… hay cartas que se pueden activar más de una vez… el cartel es molesto» y «en la experiencia real de juego no tenemos manejo de cadenas, por lo que la resolución de los efectos de las cartas es totalmente manual. Muchas veces activar varias veces un efecto es una forma de decirle al rival si quiere responder. El chat cumple el mismo propósito pero debemos darle herramientas varias al usuario para que use la que le resulte más cómoda, como los emojis»): hasta ese día aparecía «Ya activaste X este turno y tiene un efecto de «una vez por turno»…», que confundía una activación con un efecto y castigaba una forma de hablar. El asistente avisa sólo de lo que es una regla del juego que no se discute (las reglas de turno, el punto 6) y de lo que se puede **responder** (los puntos 3 y 5). El turno es el del duelo entero (`duelTurnNumber`: cuenta los dos jugadores; en la práctica, el de la mesa). **Sólo cuenta lo que se vio hacer acá:** nunca inventa un uso (si se recarga la página o se deshace la jugada, el uso deja de contar, y el aviso se queda corto, no de más).
-
-3. **«Podés responder con…»** (`app/mat-responders.ts`, `useResponders` en `DuelScreen`): cuando el rival pregunta «¿Hacés algo antes?» antes de pasar de fase (`docs/duelo.md`), la pregunta —una tarjeta en el medio de la pantalla, `PassPrompt`— dice «Ana quiere pasar a la Battle Phase. Podés responder con A, B y 3 más.» y esas cartas tuyas **brillan en ámbar** —la mano, el campo y la casilla del Cementerio, sin oscurecer al resto: `GlowKind` `respond`— mientras la pregunta está en pie; sólo lo ve quien recibe la pregunta. Entran: una **Trampa o una Mágica de Juego Rápido boca abajo** (por su tipo; en el turno del rival ya pasó la fase en que se pusieron) y un **monstruo con un efecto rápido confirmado** (`quick`, capa 1b) que se activa desde **donde está** (la mano, el campo boca arriba o el Cementerio: `places`) y **sin condición**: el encabezado del efecto es sólo «(Quick Effect)», «Once per turn (Quick Effect)» o «During your opponent's Main Phase (Quick Effect)» (`effectWindow` en `card-text.ts`: de quién es el turno y en qué fases; la fase en que va el rival tiene que estar dentro). Un efecto rápido que espera un suceso («When a card or effect is activated (Quick Effect)») **no se ofrece** antes de pasar de fase —ahora no hay nada a lo que responder—, pero sí cuando el rival activa algo (el punto 5). De los 653 efectos rápidos alineados, 315 tienen un lugar confirmado y no esperan nada (44 desde la mano, 264 desde el campo, 7 desde el Cementerio) y 338 llevan una condición. No sabe si lo que pide cada carta se cumple (un objetivo, cierta cantidad de cartas): por eso dice «podés», no «tenés que».
-
-4. **Contador por efecto** (`countableEffects`, `effectChoices` y `effectKey` en `app/mat-assistant.ts`; la jugada `activate` lleva `effect?: number`): en **toda carta con varios efectos** «Activar efecto» **pregunta cuál** en un segundo paso del menú (Gastón, 2026-10-20: «a veces al activar el efecto de una carta aparece esto, otras veces no… que no haya inconsistencias»: antes sólo preguntaba en las 946 cartas con varios efectos alineados y al menos un límite confirmado —capa 1b: 1.915 efectos, 1.600 con límite— y las demás se activaban directo; ahora la lista sale de `cardEffects`: los efectos **alineados con el script** o, si la carta no se pudo alinear, las oraciones del texto que son efectos), como la posición de una Invocación Especial: un renglón por efecto con **lo que hace, textual**: la frase del efecto sin recortar ni reescribir (Gastón: «debe resumir lo que hace el efecto sin perder precisión»: la precisión es de la frase, así que se parte y no se acorta), con su número y cuándo se activa arriba («Efecto 1 · If this card is in your hand», `effectParts` en `card-text.ts`: lo de antes de los dos puntos tal cual) y, debajo, si ya lo usaste este turno o en este duelo, desde dónde se activa (la mano o el Cementerio, sólo si las dos fuentes lo confirman: `places`) y sus rasgos confirmados (`visibleFactNames`, los mismos que dibuja `CardEffectTraits`; los de la carta entera no se repiten arriba mientras se elige). **«Otro efecto» sólo en las listas leídas del texto** (la primera versión lo tenía en todas, como salida para activar sin elegir; Gastón preguntó «¿y esa opción «otro efecto»?» y no tenía razón de ser **donde la lista es completa**): la lista alineada con el script son **todos** los efectos que se activan de la carta (el texto y el script tienen la misma cantidad y se emparejan sin dudas: `alignEffects`), y no lleva «Otro efecto»; la leída sólo del texto (`verified: false`) puede no tenerlos a todos, así que termina con **«Otro efecto»**, que activa sin decir cuál. **El lugar de cada efecto es el mismo en las dos listas** (la alineación exige las mismas oraciones en el mismo lugar), así que el número que viaja con la jugada vale para los dos jugadores aunque uno tenga los datos del script y el otro todavía no. **El rival ve cuál efecto se activa** (Gastón: «sería ideal que el rival pueda ver qué efecto estoy activando»): el cartel del centro dice «Ana activa el efecto 2 de X» y, debajo de la carta, **la frase textual** del efecto con su número y cuándo se activa (`effectDetail`; se queda 7 s para leerla: `--animate-card-activate-read`), la línea del registro lleva el número y el aviso de cadena (punto 5) también («Ana activó el efecto 2 de X. Podés responder con…»). En escritorio el menú se ensancha (22 rem) para que entren las frases y, **al pasar el mouse por una opción** (o enfocarla con el teclado, no con el foco que se lleva el menú al abrirse), **el detalle de la carta de la izquierda resalta la frase de ese efecto** con un fondo claro que no cambia los colores de lo que tiene adentro (`MatMenuItem.preview` → `onHighlight` → `DuelCardDock highlight` → `CardEffectText highlight`); se apaga al irse, al elegir o al cerrar el menú. En el celular las opciones van de a una por fila, sin ese resaltado (no hay detalle fijo). La jugada queda anotada con su número («Activás el efecto 2 de X») y la lista cuenta **por efecto** (`effectKey`: la clave del límite del efecto —por nombre o por carta— y su lugar entre los efectos): cada efecto dice si ya se usó («Ya lo usaste este turno»), sin ningún cartel. **Qué no pregunta:** una carta de un solo efecto o una del rival que controlás se activa directo (no hay nada que elegir). El número viaja con la jugada (el protocolo lo valida: entero de 0 a 9; un cliente de antes lo ignora) y queda en los combos guardados. Lo que se ve («1 · …», «Ya lo usaste este turno») sale de las frases del texto y de las activaciones que **se vieron hacer acá**, igual que el aviso: nunca inventa un uso.
-
-5. **Cuando el rival activa algo** (`ChainEvent`, `chainOpens` y `respondersOf(…, event)` en `app/mat-responders.ts`; `useChainHint` en `DuelScreen`): si el rival **activa** una carta —la jugada `activate`, una Mágica o Trampa que queda boca arriba (entra a la zona de Mágicas y Trampas o a la de Campo boca arriba sin venir de otra zona de la mesa, o se da vuelta de boca abajo a boca arriba), que es lo que el foco de la mesa (`matEffects`) ya sabe ver—, la mesa averigua de qué clase es esa carta (`fetchCardsByIds`) y muestra **un aviso en la línea de avisos** («Ana activó X. Podés responder con A y B», `duel.chain.hint`) durante 8 segundos, con las cartas que entran **brillando en ámbar** ese mismo rato. Entran las de siempre —una Trampa o una Mágica de Juego Rápido boca abajo, un efecto rápido confirmado desde donde está— **más** los efectos rápidos que **esperaban una activación**: los que sólo dicen «When a card or effect is activated», «When your opponent activates a card or effect», «When a Spell/Trap Card is activated», «When a monster effect is activated»… (`EffectChain` y `CHAIN_HEADERS` en `card-text.ts`: quién activa, qué clase de carta —cualquiera, un monstruo, una Mágica, una Trampa— y si es la carta o su efecto). Con algo más en la condición («that targets», «while you control») **no se ofrece**: no se sabe si se cumple. Tampoco decide si se puede responder de verdad: dice «podés». Sólo lo ve quien recibe la activación.
-
-6. **Mágicas y Trampas, límites compartidos y reglas de turno** (`spellTrapActivation`, `activationFacts`, `effectKey` y `effectChoices` en `app/mat-assistant.ts`; `app/turn-rules.ts`):
-   - Una **Mágica o Trampa que se activa** es una carta que **queda boca arriba en su zona** (entra a Mágicas y Trampas o a la de Campo boca arriba, o se da vuelta de boca abajo a boca arriba): se anota como una activación y cuenta como cualquier otra, con los hechos de su activación (`activationFacts`, sólo si el bit `activation` está confirmado). Una segunda «Pot of Desires» no muestra cartel (repetir una activación es una forma de hablar). Una Mágica Continua con un efecto aparte se cuenta por efecto, como un monstruo.
-   - Los **límites compartidos**: los efectos con el bit `shared` comparten **una sola clave** de uso (`effectKey` → `limitKey`: el código del `SetCountLimit` que usan todos), así que la lista de «Activar efecto» lo dice en la opción de los dos efectos («Ya usaste un efecto que comparte este límite», `usedHint.shared`), sin cartel. Sólo se comparte si **el script** usa el mismo código en los dos efectos **y el texto** lo dice (`textSharedLimit`).
-   - Las **reglas de turno** (`repeatedTurnRule` en `turn-rules.ts`, puro): una segunda **Invocación Normal** (o Colocación) o una segunda **Invocación de Péndulo** en el mismo turno muestra un aviso («Ya hiciste una Invocación Normal (o Colocaste un monstruo) este turno: sólo se puede una por turno, salvo que un efecto te dé otra») **sin frenar**: un efecto puede permitirlo, así que avisa y deja jugar. Cuenta sólo lo que se vio hacer acá, como el aviso de uso.
-   - La **Invocación de Péndulo** es una jugada propia (`how: 'pendulum'`; el protocolo del duelo la valida y el registro dice «Invocación de Péndulo de X en …»): un Monstruo de Péndulo boca arriba en el Extra Deck se invoca a una zona de monstruo por Péndulo, no con materiales. Y un Monstruo de Péndulo **en el campo** (una zona de monstruo o una de Péndulo: `pendulumOnField`) que sale al cementerio —destruido, mandado, usado como Sacrificio— **va al Extra Deck boca arriba**, como dice el reglamento: el menú dice «Al cementerio (al Extra Deck)» y arrastrarlo al Cementerio hace lo mismo (`pileAction`).
-
-**Por qué ya no hay aviso de uso:** los hechos de la capa 1 son de la **carta entera**, no de cada efecto (una carta con dos efectos de una vez por turno puede usar uno y después el otro, y la mesa no puede distinguirlos sin saber cuál se activa) y, sobre todo, **sin manejo de cadenas repetir una activación es la forma de preguntarle al rival si quiere responder**: un cartel por eso es ruido. El contador por efecto (arriba, el punto 4) dice en voz baja, en el menú, cuál ya se usó.
-
-**Lo que falta** (y qué hace falta para hacerlo con certeza):
-- **Cadenas reales**: la mesa ve **una** activación del rival y ofrece respuestas a esa; no lleva la **cadena** (qué se respondió a qué, en qué eslabón estamos) ni sabe cuándo se **resuelve**. Eso es de la capa 3.
-- **Lo que cada carta pide para responder** (un objetivo que cumpla algo, cierta cantidad de cartas en el Cementerio, el costo que se pueda pagar): sólo se sabe que existe (`cost`, `target`), no si se cumple. Por eso dice «podés», no «tenés».
-- **Qué efecto de una Mágica o Trampa se activó** cuando la carta tiene varios y no está alineada: se cuenta la carta (su activación), no el efecto.
-- **Reglas que no son de una carta:** sólo las dos de arriba (una Invocación Normal y una de Péndulo por turno). No hay avisos de fases, de daños ni de costos (no se pueden decir sin decidir).
-- **Cobertura:** de las 14.618 cartas del catálogo, **9.187** tienen algún hecho confirmado y **2.115** están alineadas efecto por efecto. Las que no (los 401 de distinto número de frases y de efectos, los monstruos de un solo efecto que no es rápido, las cartas nuevas sin script, los Normales) **no dicen nada**: el asistente calla antes que equivocarse. Se mide de nuevo con `npm run sync:effects` cuando salgan cartas.
+- **Sin cartel por activar otra vez una carta:** sin manejo de cadenas, repetir una activación es la forma de preguntarle al rival si quiere responder, y los hechos de la capa 1 son de la carta entera, no de cada efecto. Qué efecto ya se usó lo dice el menú, en voz baja.
+- **Contador por efecto** (`mat-assistant.ts`): «Activar efecto» de una carta con varios pregunta cuál, con la frase textual (no se resume: la precisión es de la frase). La lista alineada con el script tiene todos los efectos y no lleva «Otro efecto»; la leída sólo del texto puede no tenerlos y termina con «Otro efecto». El número viaja con la jugada (entero de 0 a 9; un cliente de antes lo ignora) y vale para los dos jugadores porque las dos listas ponen cada efecto en el mismo lugar.
+- **Reglas de turno** (`turn-rules.ts`): una segunda Invocación Normal o de Péndulo en el turno avisa y no frena, porque un efecto puede permitirla.
+- **Límites compartidos:** se comparten sólo si el script usa el mismo código en los efectos **y** el texto lo dice.
+- **Lo que no hace:** no lleva la cadena (qué responde a qué ni cuándo se resuelve), no sabe si se puede cumplir lo que pide una carta (un objetivo, un costo: por eso «podés responder con…» dice «podés», `mat-responders.ts`) y no avisa de fases, daños ni costos, que no se pueden decir sin decidir. Una Mágica o Trampa con varios efectos que no se pudo alinear se cuenta por carta (su activación), no por efecto.
 
 ## Capas 3 y 4 (diseño; sin construir)
 
-Las dos son proyectos grandes y **no se empezaron**: acá queda el diseño para no partir de cero. La regla de oro sigue: no se automatiza nada que no se haya comprobado.
+Ninguna se empezó. La regla de oro sigue: no se automatiza nada que no se haya comprobado.
 
 ### Capa 3 · Automatización parcial (diseño)
 
-**Idea:** una carta a la vez, sólo efectos que el script describe **sin ambigüedad**, cada una con su prueba contra el script y un freno que vuelve a la mesa manual ante cualquier cosa que no se entienda. Hoy la mesa **no ejecuta** ningún efecto: lo que el jugador mueve, se mueve.
+1. **Primero, los efectos de una sola acción y sin elección:** robar N, mandar o desterrar la propia carta, invocarla desde la mano o el Cementerio, buscar 1 por nombre, darla vuelta o cambiarla de posición. Falta clasificar el cuerpo de la operación, que `card-script-rules.ts` ya trae.
+2. **Un efecto es una función pura** `applyEffect(state, effect, choices) → { state, log }` que devuelve las mismas `MatAction` de siempre: el rival ve lo mismo sin un protocolo nuevo, y deshacer, el registro y los combos siguen sirviendo.
+3. **Cada carta, con su prueba:** si la operación del script no es la que implementa `applyEffect`, la carta no entra (`sync:effects` la marcaría `auto` sólo si lo comprueba).
+4. **El freno:** ante cualquier elección, objetivo o condición que la mesa no pueda evaluar, el efecto se juega a mano. Nunca a medias.
+5. **Cadenas:** una pila de activaciones que se resuelve al revés, recién con más de una carta automatizada; antes hace falta un modelo de velocidad de hechizo y de ventana de respuesta.
+6. **Apagada por defecto** y, en el duelo, con el acuerdo de los dos: una mesa no puede cambiar la otra sin que lo sepa.
 
-1. **Qué se automatiza primero:** los efectos de **una sola acción**, sin elección: *robar N* (`Duel.Draw`), *mandar la carta misma al Cementerio o desterrarla*, *Invocación Especial de esta carta desde la mano o el Cementerio*, *buscar 1 carta por nombre* y *dar vuelta* o *cambiar de posición*. El lector de scripts (`card-script-rules.ts`) ya trae el **nombre** de la función de la operación de cada efecto y su cuerpo (`operation`); falta **clasificar el cuerpo** (qué llamadas hace) y quedarse con los efectos cuyo cuerpo es una de esas acciones y nada más.
-2. **Un efecto es una función pura** `applyEffect(state, effect, choices) → { state, log }` en `src/app/` (como `practice-mat.ts`: sin DOM ni RTK) que devuelve **las mismas jugadas** (`MatAction`) que ya entienden la mesa y el protocolo del duelo. Así el rival ve lo mismo que hoy (no hace falta un protocolo nuevo) y deshacer, el registro y los combos siguen sirviendo.
-3. **La prueba de cada carta:** un caso con el estado antes y después, escrito a mano la primera vez; el script de EDOPro es la segunda fuente: si la operación del script no es la que `applyEffect` implementa (el script roba 2 y la tabla de la carta dice 1), la carta **no entra**. El generador (`sync:effects`) la marcaría `auto` sólo si lo comprueba.
-4. **El freno:** ante cualquier cosa fuera de la lista (una elección, un objetivo, una condición que la mesa no puede evaluar, otra carta que lo cambia) el efecto se juega **a mano**, como hoy, con el aviso de la capa 2. Una acción nunca se completa a medias: si falta un dato se pregunta (como la lista de «Activar efecto») o se vuelve a manual.
-5. **Cadenas:** una **pila** de activaciones (`chain: [{ player, card, effect }]`) que se resuelve al revés; entra cuando haya más de una carta automatizada. Antes hace falta un modelo de **velocidad de hechizo** (1, 2, 3) y de **ventana de respuesta**, que hoy el duelo no tiene.
-6. **Bandera y acuerdo:** apagada por defecto; en el duelo, **los dos jugadores tienen que aceptar** automatizar (una mesa no puede cambiar el estado de la otra sin que lo sepa).
-
-**Antes de empezar se mide** cuántas cartas entran a la lista corta, con el mismo método de la capa 1b: contar, no suponer.
+Antes de empezar se mide cuántas cartas entran a la lista corta, con el método de la capa 1b.
 
 ### Capa 4 · Núcleo de reglas (diseño y bloqueo)
 
-**Qué sería:** `@n1xx1/ocgcore-wasm` (JSR) es `ocgcore`, el motor de EDOPro, compilado a WebAssembly: aplica **las reglas de verdad** (cadenas, resolución, daños, condiciones) a los mismos scripts que ya leemos. Con él la mesa dejaría de ser manual en un modo aparte; el modo manual **seguiría siendo** el camino por defecto.
-
-**El bloqueo: su licencia es AGPL-3.0.** Enlazarlo en la app y servirla por la web **puede obligar** (la cláusula 13, de interacción por red) a ofrecer el **código fuente completo de la aplicación** a quien la use. No es consejo legal: hay que confirmarlo antes de escribir una línea, y la decisión es de Gastón:
+`@n1xx1/ocgcore-wasm` (JSR) es `ocgcore`, el motor de EDOPro, en WebAssembly: aplicaría las reglas de verdad a los mismos scripts. **Su licencia es AGPL-3.0:** enlazarlo y servir la app por la web puede obligar (cláusula 13) a ofrecer el código fuente completo de la aplicación. No es consejo legal: hay que confirmarlo antes de escribir una línea, y decide Gastón.
 
 | Opción | Qué implica |
 | --- | --- |
-| Publicar YGOUltraLab entero bajo AGPL-3.0 | Se puede usar el motor sin más; el código de la app se vuelve libre. |
-| El motor en un servicio aparte (la app le habla por red) | La obligación puede seguir para quien corre el motor; hay que consultarlo con una persona de leyes. |
-| No usarlo | Queda la capa 3 (cartas de a una, con sus pruebas), sin el motor. |
+| Publicar la app entera bajo AGPL-3.0 | El motor se usa sin más; el código de la app se vuelve libre. |
+| El motor en un servicio aparte | La obligación puede seguir para quien lo corre: hay que consultarlo. |
+| No usarlo | Queda la capa 3. |
 
-**Cómo se probaría si se decide usarlo:** detrás de una bandera, en una pantalla aparte («Duelo automático (beta)»), sin ser el camino por defecto, con los mismos decks y sin tocar el relay del duelo manual. El tamaño del WASM y de los scripts manda una carga bajo demanda (como el inglés: otro archivo, sólo si se entra a esa pantalla).
+Si se usa: detrás de una bandera, en una pantalla aparte («Duelo automático (beta)»), sin ser el camino por defecto, con carga bajo demanda y sin tocar el relay del duelo manual.
 
-Ver también `docs/auditoria-motor-efectos.md` (el filtro **Efecto** del buscador, que ya lee el texto con expresiones y está medido a ciegas) y `docs/duelo.md` (la mesa).
+Ver también el apéndice (el filtro Efecto del buscador) y `docs/duelo.md` (la mesa).
+
+## Apéndice · Cómo se midió y cómo repetirlo
+
+El filtro **Efecto** del buscador no es una capa: lee el texto en inglés con una expresión por categoría (`src/app/card-effects.ts`; `effectMaskOf` arma la máscara que el índice del catálogo guarda por carta).
+
+**Cómo se mide.** En cada una de las 14 categorías: tres estratos (lo que marca, lo que no marca pero huele a la categoría y el resto), cada uno con una muestra de semilla fija; las etiqueta a mano, a ciegas, alguien que no ve el motor ni los estratos, y la precisión y la cobertura se estiman por estratos (Wilson y remuestreo). Una ronda sirve para corregir y otra, con otras cartas y otra semilla, es la reserva: el motor se congela antes de ver sus etiquetas. Las muestras y las etiquetas no están en el repositorio: dependen del catálogo del día.
+
+**El criterio de las etiquetas:** aplica si la carta **hace** eso (efecto, costo o una mitad de Péndulo), no si es condición, disparador, restricción o prohibición. Buscar es del Deck a la mano y «A la mano», devolver; las destrucciones incluyen «destroy 1 card on the field», no la propia; Fichas incluye usarlas; Dañar LP no cuenta la batalla.
+
+**Lo que justifica las decisiones:** en la reserva (20 cartas por categoría, un margen de ±10 a 15 puntos), once de las 14 categorías marcaron bien 19 o 20 de 20 (Fichas, 18; Robar, 17) y todas cubrieron el 80 % o más; Tomar el control marcó bien 13 (leía los cambios de posición) y se corrigió con esa muestra. Ningún arreglo posterior a la reserva se volvió a medir con cartas nuevas (no hubo tercera ronda): los números de después de corregir son una cota optimista. Siguen fallando los contraataques («Negate the activation, and if you do, destroy it»: Mágica, Trampa o monstruo según lo activado), las referencias entre oraciones y las Fichas: por eso el filtro avisa que se guía por el texto en inglés y deja al lado la búsqueda en el texto libre. Falsos positivos vistos y sin corregir: «Eradicator Epidemic Virus» marca Robar («all cards they draw until…»), «Izanagi» marca A la mano («effects that return them to the hand») y «Scrounging Goblin» marca Negar («to negate this effect», que decide el rival). La máscara de todo el catálogo cuesta unos 100 ms, una vez, al armar el índice; la abaratan una sola pasada por las comillas y un chequeo de palabra clave antes de cada expresión (`EFFECT_GATE`, con un test que cuida que no cambie resultados).
+
+**Para repetirla:** bajar el catálogo, muestrear por estrato y por categoría con semilla fija, etiquetar a ciegas con el criterio y estimar por estratos. Las rondas fueron de 68 cartas por categoría (la de corrección) y de 75 (la reserva); el texto de cada muestra va mezclado y los estratos, en un archivo que quien etiqueta no lee. Ni las muestras ni los scripts de medición están en el repo: hay que rehacerlos. Cada arreglo tiene su caso en `src/__tests__/card-effects.test.ts`; una categoría nueva pide otra muestra y otro bit de la máscara (`EFFECT_KEYS`: caben 16).

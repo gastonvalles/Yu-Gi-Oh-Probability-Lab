@@ -32,7 +32,7 @@ export type LimitKey = (typeof LIMIT_KEYS)[number]
 /** Mágicas y trampas por su subtipo: `spell:Quick-Play`, `trap:Counter`… (el subtipo viene en la raza de la carta). */
 export const SPELL_TRAP_KINDS = ['spell:Normal', 'spell:Field', 'spell:Equip', 'spell:Continuous', 'spell:Quick-Play', 'spell:Ritual', 'trap:Normal', 'trap:Continuous', 'trap:Counter'] as const
 
-// Los efectos, por lo que dice el texto de la carta, los resuelve `card-effects.ts` (con la medición de cuánto aciertan en `docs/auditoria-motor-efectos.md`).
+// Los efectos, por lo que dice el texto de la carta, los resuelve `card-effects.ts` (con la medición de cuánto aciertan en el apéndice de `docs/motor-de-cartas.md`).
 export { EFFECT_KEYS, effectMaskOf, matchesEffect, type EffectKey } from './card-effects'
 
 /** De dónde se juega la carta: en qué formatos está. «Sólo TCG» y «sólo OCG» son las que existen en uno y no en el otro. */
