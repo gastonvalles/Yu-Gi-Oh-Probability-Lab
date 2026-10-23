@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -301,14 +301,15 @@ export const CELL_SPELL = `aspect-square ${cellLook(CELL_LOOK_SPELL)}`
  * Las líneas de una zona del centro, como las del tapete (Gastón, 2026-10-19: «nos faltan las líneas del campo»): la carta **parada** (del alto de la casilla) y, en las de monstruos, la carta **acostada** (del ancho)
  * cruzadas en el medio, que juntas hacen la cruz de cada Main Monster Zone y de las Zonas Extra; las de Mágicas y Trampas, sólo la parada. Va adentro de la casilla, debajo de la carta, y no recibe toques.
  */
-export function ZoneLines({ kind }: { kind: 'monster' | 'spell' }) {
+// Con `memo`: son doce por mesa y no cambian nunca; sin él se redibujaban en cada toque.
+export const ZoneLines = memo(function ZoneLines({ kind }: { kind: 'monster' | 'spell' }) {
   return (
     <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
       <span className={cx('absolute inset-y-0 left-1/2 w-[68.57%] -translate-x-1/2 border border-field-line/70', kind === 'spell' && 'bg-field-line/[0.05]')} />
       {kind === 'monster' ? <span className="absolute inset-x-0 top-1/2 h-[68.57%] -translate-y-1/2 border border-field-line/70" /> : null}
     </span>
   )
-}
+})
 /**
  * La mano del rival del simulador de handtraps en escritorio: una mano de verdad arriba del campo. El grupo de la franja y el campo define `--cell` para los dos, y la fila de la mano
  * entra en la cuenta: 1,094 casillas de carta más 1,75 rem de aire (su relleno, su margen y el hueco hasta el campo) sobre los 19,5 rem de lo que no es campo, así que el alto se
@@ -2463,14 +2464,14 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 }
 
 /** Cantidad grande en el centro de la pila, como en la mesa real, y el nombre de la casilla chico debajo. */
-export function PileBadge({ label, count }: { label: string; count: number }) {
+export const PileBadge = memo(function PileBadge({ label, count }: { label: string; count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none">
       <span className={cx('rounded-full px-1.5 py-0.5 text-lead font-extrabold tabular-nums text-foreground min-[1101px]:text-title', count > 0 && 'bg-background/70')}>{count}</span>
       <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{label}</span>
     </span>
   )
-}
+})
 
 /** La carta que se está mirando (al pasar el mouse o tocarla), como el panel de la izquierda de DuelingBook. */
 interface PlacedCardProps {

@@ -1,5 +1,8 @@
 import {
+  memo,
+  useCallback,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -132,7 +135,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   // El tamaño de la carta sale de la mano inicial (no cambia al jugar o robar), pero la separación, el abanico y el centrado salen de las cartas que hay: al salir una, las que quedan se vuelven a centrar.
   const count = Math.max(1, cards.length)
-  const layout = computeHandLayout(width, count, maxCardWidth, sizeSlots)
+  // Memorizado: es una prop de cada carta (`HandCard` va con `memo`), así que un objeto nuevo en cada render las redibujaría a todas.
+  const layout = useMemo(() => computeHandLayout(width, count, maxCardWidth, sizeSlots), [width, count, maxCardWidth, sizeSlots])
   // La carta arrastrada: sólo cuál es. Dónde está se escribe en su `transform` por el ref, un cuadro por vez, sin pasar por React.
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement } | null>(null)
@@ -307,6 +311,17 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
     }
   }
 
+  // Las cartas (con `memo`) reciben funciones fijas que leen siempre los últimos manejadores: tocar una no redibuja las demás.
+  const latest = useRef({ handlePointerDown, handlePointerMove, handlePointerEnd, handleKeyDown, getDeckRect })
+  useLayoutEffect(() => {
+    latest.current = { handlePointerDown, handlePointerMove, handlePointerEnd, handleKeyDown, getDeckRect }
+  })
+  const onCardPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>, id: string) => latest.current.handlePointerDown(event, id), [])
+  const onCardPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => latest.current.handlePointerMove(event), [])
+  const onCardPointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>, id: string) => latest.current.handlePointerEnd(event, id), [])
+  const onCardKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>, id: string) => latest.current.handleKeyDown(event, id), [])
+  const deckRect = useCallback(() => latest.current.getDeckRect(), [])
+
   return (
     <div
       ref={containerRef}
@@ -340,13 +355,13 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
             flash={flashing ? flash : null}
             targeted={targeted.has(card.id)}
             selected={selected}
-            getDeckRect={getDeckRect}
+            getDeckRect={deckRect}
             flyIn={dealsFromDeck ? dealsFromDeck(card.id) : true}
             containerRef={containerRef}
-            onPointerDown={(event) => handlePointerDown(event, card.id)}
-            onPointerMove={handlePointerMove}
-            onPointerEnd={(event) => handlePointerEnd(event, card.id)}
-            onKeyDown={(event) => handleKeyDown(event, card.id)}
+            onPointerDown={onCardPointerDown}
+            onPointerMove={onCardPointerMove}
+            onPointerEnd={onCardPointerEnd}
+            onKeyDown={onCardKeyDown}
           />
         )
       })}
@@ -372,13 +387,15 @@ interface HandCardProps {
   /** false: la carta llega de otro lado de la mesa (la trae el vuelo entre zonas), sin el reparto desde el mazo. */
   flyIn: boolean
   containerRef: React.RefObject<HTMLDivElement | null>
-  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void
+  /** Fijas (las arma `PracticeHand` una vez): reciben el id de la carta, así el `memo` de la carta no se rompe en cada render de la mano. */
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>, id: string) => void
   onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void
-  onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>) => void
-  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void
+  onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>, id: string) => void
+  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>, id: string) => void
 }
 
-function HandCard({
+/** Una carta de la mano. Con `memo`: un toque (abrir su menú, el destello de otra) sólo redibuja las cartas cuyas props cambian. */
+const HandCard = memo(function HandCard({
   card,
   layout,
   transform,
@@ -494,13 +511,13 @@ function HandCard({
       data-targeted={targeted ? 'true' : 'false'}
       data-selected={selected ? 'true' : 'false'}
       style={style}
-      onPointerDown={onPointerDown}
+      onPointerDown={(event) => onPointerDown(event, card.id)}
       onPointerMove={onPointerMove}
-      onPointerUp={onPointerEnd}
-      onPointerCancel={onPointerEnd}
+      onPointerUp={(event) => onPointerEnd(event, card.id)}
+      onPointerCancel={(event) => onPointerEnd(event, card.id)}
       // Un puntero que se pierde sin avisar (el navegador del celular, la mano que se arma de nuevo a mitad de camino) corta el arrastre: no queda una zona encendida.
-      onLostPointerCapture={onPointerEnd}
-      onKeyDown={onKeyDown}
+      onLostPointerCapture={(event) => onPointerEnd(event, card.id)}
+      onKeyDown={(event) => onKeyDown(event, card.id)}
       onContextMenu={(event) => event.preventDefault()}
     >
       <CardArt
@@ -518,4 +535,4 @@ function HandCard({
       {targeted ? <TargetMark /> : null}
     </div>
   )
-}
+})
