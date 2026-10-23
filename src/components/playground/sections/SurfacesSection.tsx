@@ -77,11 +77,12 @@ export function SurfacesSection() {
           </EmptyState>
         </Specimen>
 
-        <Specimen title="Skeleton" layout="column" note={<>El esqueleto mientras algo carga. Archivo: <Tag>ui/Skeleton.tsx</Tag></>}>
+        <Specimen title="Skeleton" layout="column" note={<>El esqueleto mientras algo carga. Archivo: <Tag>ui/Skeleton.tsx</Tag>. Con <Tag>still</Tag> queda sin el brillo que corre: para cuando hay decenas a la vez (las imágenes de las cartas, <Tag>CardArt</Tag>).</>}>
           <Skeleton className="h-10 w-full" />
           <div className="flex gap-3">
             <Skeleton radius="chip" className="size-10" />
             <Skeleton radius="panel" className="h-10 flex-1" />
+            <Skeleton still radius="panel" className="h-10 flex-1" />
           </div>
         </Specimen>
 

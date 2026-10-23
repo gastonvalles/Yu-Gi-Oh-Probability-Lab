@@ -75,6 +75,7 @@ export const CardArt = memo(function CardArt({
         {!isImageLoaded ? (
           <Skeleton
             radius="none"
+            still
             className={['absolute inset-0', className].join(' ').trim()}
           />
         ) : null}
