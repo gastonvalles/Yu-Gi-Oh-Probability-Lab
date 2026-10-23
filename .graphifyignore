@@ -1,0 +1,7 @@
+# graphify no necesita leer esto para ubicarse en el código (lo que ya ignora .gitignore: node_modules, dist y .claude, no hace falta repetirlo).
+# Datos y recursos: miles de JSON de precios, los catálogos de cartas, imágenes (en la pasada con LLM saldrían a leerse una por una).
+public/
+src/data/
+package-lock.json
+# Críticas de diseño de otra herramienta: son notas, no código.
+.impeccable/

@@ -40,3 +40,13 @@ Gastón (2026-10-21): siempre que se termina algo (una PR mergeada o una tanda),
 - **Formato:** un título con el nombre de la novedad y, debajo, **Novedades** (lo que ahora se puede hacer, en viñetas cortas), **Cómo se usa** (2 a 4 pasos, sólo si hay algo que aprender), **Cambios y arreglos** (lo que ya andaba y ahora anda mejor) y **Ojo** (límites conocidos, sólo si los hay). Una novedad = unas pocas líneas; si son varias, un parche con un bloque por cada una.
 - **Dónde va:** en el reporte final a Gastón y arriba del cuerpo de la PR bajo el título «Notas del parche». Lo técnico (archivos, decisiones, pruebas) sigue aparte, debajo.
 - **Verdad antes que brillo:** sólo se cuenta lo que se verificó que anda; los límites van en «Ojo». Un arreglo interno que el usuario no nota (un test, un refactor) se menciona en una línea o no se menciona.
+
+## graphify
+
+Gastón (2026-10-22): graphify está instalado en la máquina (`uv tool install graphifyy`; el paquete oficial lleva doble «y») para ubicarse rápido en el código: unos 1.700 archivos, con pantallas de 2.500 líneas como `PracticeMat.tsx`. Arma un grafo de conocimiento (`graphify-out/`: `graph.json`, `GRAPH_REPORT.md` y `graph.html`) leyendo el AST de los archivos, **sin LLM y sin costo**.
+
+- **El grafo es local y no se sube:** `graphify-out/` está en `.gitignore` (pesa ~10 MB y se rehace de una). Cada checkout y cada worktree tiene el suyo y refleja lo que hay en ese directorio. `.graphifyignore` deja afuera lo que no es código (`public/`, `src/data/`, el lock).
+- **Armarlo:** `graphify update .` en la raíz del worktree (la primera vez, un minuto; después sólo relee lo que cambió). Si no hay `graphify-out/graph.json`, se sigue como siempre (`git grep` y leer los archivos).
+- **Usarlo**, con el grafo armado: `graphify query "<pregunta>"` antes del primer grep de una pregunta sobre el código, `graphify path "<A>" "<B>"` para ver cómo se conectan dos cosas y `graphify explain "<concepto>"` para un concepto; los archivos se leen sólo en las líneas que el grafo ya ubicó. `GRAPH_REPORT.md` es para una mirada de arquitectura. Un subagente que explora código puede armarse el suyo al empezar.
+- **Las docs y las imágenes** entran sólo con `/graphify .` en Claude Code: esa pasada sí usa un LLM y gasta tokens; lo normal es el modo sin costo.
+- **Sin hooks de git:** no se instala `graphify hook install` (reescribiría `graphify-out/` en cada commit de cada worktree).

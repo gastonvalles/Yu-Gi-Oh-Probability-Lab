@@ -17,3 +17,5 @@ duel-relay/.wrangler/
 .claude/
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+# El grafo de conocimiento del código (graphify): se arma en cada checkout y worktree con `graphify update .`; no se sube.
+graphify-out/
