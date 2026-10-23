@@ -56,6 +56,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `RarityFoil` | La excepción a «sin brillos de adorno», porque dice la rareza: sólo en la carta grande. Su trampa (la raíz sin capa propia), en `src/foil.css`. |
 | `PracticeMat` | La mesa (`probability/`), también la del duelo: no se mueve mientras se juega (regla 7) y sus cartas y zonas van rectas (regla 8). Ver `docs/duelo.md`. |
 | `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): sólo decoración y la excepción del lienzo plano (regla 9). |
+| `CardMenu` · `CardSheet` | El menú de una carta (`probability/`; muestra «Menú de una carta»): sus reglas, en «Menús» de `docs/duelo.md`. |
 | `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`); elegir varias, en «Elegir varias cartas de una pila» de `docs/duelo.md`. |
 | `DuelTable` · `PracticeMatPanel` · `MatSnapshot` · `MaterialStack` · `RivalHandStrip` · `HandtrapPool` · `DuelMedal` | La mesa y el duelo (`probability/`, `duel/`). |
 | `TierStrip` · `TierMakerBoard` | Las tier lists (`meta/`). |
