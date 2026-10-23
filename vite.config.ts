@@ -98,6 +98,9 @@ function publicAssetsList(): Plugin {
 
 /** Las pruebas que redefinen `window.location` (ver `projects` abajo). */
 const REDEFINE_LOCATION = ['src/__tests__/asset-recovery.test.ts', 'src/__tests__/error-boundary.test.tsx', 'src/__tests__/i18n.test.tsx']
+/** Las pruebas lentas (el fuzz del núcleo de reglas): fuera de `npm test`; las corre `npm run test:auto`, que es lo único que suma su proyecto. */
+const SLOW = 'src/__tests__/**/*.slow.test.ts'
+const SLOW_RUN = process.env.npm_lifecycle_event === 'test:auto'
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), liveApiDev()],
@@ -136,10 +139,11 @@ export default defineConfig({
     projects: [
       // Casi todo corre en `vmForks`: cada archivo tiene su propio contexto de V8 y se salta crear un proceso nuevo (y cargar jsdom) por archivo; medido, la suite entera baja de ~107 s a ~80 s
       // y el trabajo de CPU, un tercio (con varios agentes corriendo suites a la vez, es lo que se nota).
-      { extends: true, test: { name: 'vm', pool: 'vmForks', exclude: [...configDefaults.exclude, ...REDEFINE_LOCATION] } },
+      { extends: true, test: { name: 'vm', pool: 'vmForks', exclude: [...configDefaults.exclude, ...REDEFINE_LOCATION, SLOW] } },
       // En un contexto de `vm` `window.location` no se puede redefinir (`Cannot redefine property: location`): las pruebas que lo hacen para ver si la pantalla recarga siguen en procesos propios (`forks`).
       // Si una prueba nueva falla con ese error, se suma acá.
       { extends: true, test: { name: 'forks', pool: 'forks', include: REDEFINE_LOCATION } },
+      ...(SLOW_RUN ? [{ extends: true as const, test: { name: 'slow', pool: 'forks' as const, include: [SLOW] } }] : []),
     ],
   },
 })
