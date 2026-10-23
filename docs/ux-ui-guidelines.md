@@ -38,6 +38,8 @@ Cómo se lee un pedido de diseño y cómo se hace una mejora visual. Las reglas,
   el mismo foco en todo (`shadow-focus`); objetivos táctiles de 44 px.
 - **Estados, siempre todos:** default, hover, focus, selected/active, disabled, error (`danger`), vacío (`EmptyState`),
   cargando (`Skeleton`, `aria-busy`) y éxito (toast o `Callout` `success`).
+- **Un error se muestra después de un intento, no al entrar:** lo que falta completar en algo recién abierto es una pista
+  neutra; pasa a `danger` recién cuando se intentó guardar, y el foco va a lo primero que falta.
 
 ## D) Heurísticas
 

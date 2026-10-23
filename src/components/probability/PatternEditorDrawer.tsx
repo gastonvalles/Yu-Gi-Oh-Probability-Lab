@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal, flushSync } from 'react-dom'
 
 import { getCopiesUsedByOtherConditions } from '../../app/pattern-card-usage'
 import { RULE_EXAMPLES, moveCondition, type RuleExampleId } from '../../app/rule-edits'
@@ -50,7 +50,10 @@ export interface PatternEditorDrawerProps {
   derivedMainCards: CardEntry[]
   impact: { impact: DraftImpact | null; pending: boolean }
   canSave: boolean
-  /** Por qué no se puede guardar (va en rojo en el pie), o null. */
+  /**
+   * Por qué no se puede guardar (va en el pie), o null. Si es que falta elegir qué cuenta, es el paso que sigue: va apagado hasta que se intenta guardar, y ahí en rojo;
+   * cualquier otro (un duplicado), en rojo desde que aparece.
+   */
   blockReason: string | null
   /** El nombre de la regla que ya mide lo mismo, si la hay. */
   duplicateOf: string | null
@@ -89,6 +92,9 @@ export function PatternEditorDrawer({
 }: PatternEditorDrawerProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const asideRef = useRef<HTMLElement>(null)
+  const reasonId = useId()
+  // La regla con la que se intentó guardar a medias: recién ahí lo que falta se marca en rojo.
+  const [attemptedId, setAttemptedId] = useState<string | null>(null)
   // El selector de qué cuenta reemplaza al editor (en el mismo cajón): la condición que se está eligiendo y la pestaña con la que abre.
   const [picking, setPicking] = useState<{ conditionId: string; tab: PickerTab } | null>(null)
   // Al volver del selector, el foco vuelve al botón de esa condición.
@@ -153,6 +159,27 @@ export function PatternEditorDrawer({
   const title = isCreating ? t('builder.drawer.titleNew') : pattern?.name.trim() || t('builder.drawer.titleNew')
   const examples = RULE_EXAMPLES.filter((example) => !createKind || example.kind === createKind)
   const complete = pattern !== null && pattern.conditions.length > 0 && pattern.conditions.every((condition) => condition.matcher !== null)
+  // Falta elegir qué cuenta: no es un error hasta que se intenta guardar. El botón se ve apagado pero se enfoca y se toca: así se marca lo que falta.
+  const missingPick = pattern !== null && !complete
+
+  // El intento se apaga al cerrar el cajón y cuando ya no falta nada (una condición que se suma después, recién creada, tampoco es un error); otra regla no lo hereda.
+  if (attemptedId !== null && (!isOpen || !missingPick)) {
+    setAttemptedId(null)
+  }
+
+  const attempted = missingPick && attemptedId === pattern?.id
+  const flagReason = blockReason !== null && (attempted || !missingPick)
+
+  // El intento a medias: se marca en rojo lo que falta (antes de mover el foco, para que el lector lea el error) y el foco va a la primera condición sin qué cuenta.
+  const revealMissing = () => {
+    flushSync(() => setAttemptedId(pattern!.id))
+    const first = pattern!.conditions.find((condition) => condition.matcher === null)
+
+    if (first) {
+      asideRef.current?.querySelector<HTMLElement>(`[data-condition-pick="${first.id}"]`)?.focus()
+    }
+  }
+
   const menuItems = onDuplicate ? [{ label: t(tier === 'generic' ? 'builder.drawer.duplicateOwn' : 'builder.drawer.duplicate'), icon: 'cards' as const, onSelect: onDuplicate }] : []
 
   const drawer = (
@@ -204,7 +231,7 @@ export function PatternEditorDrawer({
               {view === 'editor' && pattern ? (
                 <>
                   <DraftImpactSummary kind={pattern.kind} complete={complete} impact={impact.impact} pending={impact.pending} />
-                  <RuleReadback pattern={pattern} cardById={cardById} />
+                  <RuleReadback pattern={pattern} cardById={cardById} flagMissing={attempted} />
                   {duplicateOf ? <p className="m-0 text-body font-semibold text-danger-soft">{t('lab.entry.duplicate', { name: duplicateOf })}</p> : null}
                 </>
               ) : null}
@@ -241,6 +268,7 @@ export function PatternEditorDrawer({
                   actions={actions}
                   derivedMainCards={derivedMainCards}
                   pattern={pattern}
+                  showErrors={attempted}
                   onPickCondition={(conditionId) => openPicker(conditionId)}
                   onMoveCondition={(from, to) => actions.replacePatterns([moveCondition(pattern, from, to)])}
                 />
@@ -264,7 +292,7 @@ export function PatternEditorDrawer({
                   </Button>
                 </span>
               ) : (
-                <span className={cx('min-w-0 flex-1 text-body', blockReason ? 'font-semibold text-danger-soft' : 'text-muted')} aria-live="polite">
+                <span id={reasonId} className={cx('min-w-0 flex-1 text-body', flagReason ? 'font-semibold text-danger-soft' : 'text-muted')} aria-live="polite">
                   {blockReason}
                 </span>
               )}
@@ -272,7 +300,13 @@ export function PatternEditorDrawer({
                 {t('common.cancel')}
               </Button>
               {view === 'examples' ? null : (
-                <Button variant="primary" disabled={!canSave} onClick={onSave}>
+                <Button
+                  variant="primary"
+                  disabled={!canSave && !missingPick}
+                  disabledFocusable={missingPick}
+                  aria-describedby={blockReason && !onDelete && !onRestore ? reasonId : undefined}
+                  onClick={missingPick ? revealMissing : onSave}
+                >
                   {t(isCreating ? 'builder.drawer.create' : 'builder.drawer.saveChanges')}
                 </Button>
               )}

@@ -20,7 +20,7 @@ export function joinWord(pattern: HandPattern): string {
 export interface RuleSentence {
   /** La frase, con lo que decide entre <b>…</b> (va a `renderRich`). */
   text: string
-  /** Alguna condición todavía no dice qué cuenta: la parte en negrita se marca en rojo. */
+  /** Alguna condición todavía no dice qué cuenta: la parte en negrita se apaga (o va en rojo, después de intentar guardar). */
   missing: boolean
   /** En qué turno vale y si cuenta la robada; null si vale siempre y como siempre. */
   turn: string | null

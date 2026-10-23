@@ -58,6 +58,7 @@ export function ButtonsSection() {
   const [placements, setPlacements] = useState<string[]>([])
   const [rarity, setRarity] = useState<string | null>('Ultra Rare')
   const [fab, setFab] = useState(false)
+  const [tried, setTried] = useState(false)
   const options = [
     { value: 'a', label: 'Primero' },
     { value: 'b', label: 'Segundo' },
@@ -114,6 +115,14 @@ export function ButtonsSection() {
               Listo (pasá el mouse)
             </Button>
           </div>
+          {/* `disabledFocusable`: se ve como `disabled`, pero se enfoca, se lee y el clic llega (el «Crear regla» de una regla incompleta: al tocarlo, marca lo que falta). */}
+          <div className="flex flex-wrap items-center gap-3">
+            <Tag>disabledFocusable</Tag>
+            <Button variant="primary" disabledFocusable onClick={() => setTried(true)}>
+              Crear regla
+            </Button>
+            <span className={cx('text-body', tried ? 'font-semibold text-danger-soft' : 'text-muted')}>Falta elegir qué cuenta</span>
+          </div>
           <Button fullWidth icon="download">
             Ocupa todo el ancho
           </Button>
@@ -164,7 +173,7 @@ export function ButtonsSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Segmented" note={<>Elegir una opción entre pocas. Lo elegido va en <b>ámbar</b> con el texto oscuro (la tarjeta elegida, <Tag>cards</Tag>, con el borde y el texto ámbar). Archivo: <Tag>ui/Segmented.tsx</Tag></>} layout="column">
+        <Specimen title="Segmented" note={<>Elegir una opción entre pocas. Lo elegido va en <b>ámbar</b> con el texto oscuro (la tarjeta elegida, <Tag>cards</Tag>, con el borde y el texto ámbar). La excepción es una opción con <Tag>tone</Tag> en la pista: verde o rojo lleno con el texto blanco («Qué es» de una regla, en «Reglas del Lab»). Archivo: <Tag>ui/Segmented.tsx</Tag></>} layout="column">
           <Segmented label="Pista" variant="track" value={track} onChange={setTrack} options={options} />
           <Segmented label="Pastillas" variant="chips" value={chips} onChange={setChips} options={options} />
           {/* Los detalles del turno del Lab (los de antes, «5 cartas · 57%», no entraban en tres tarjetas de esta columna y pisaban el borde de la elegida). */}
@@ -322,6 +331,22 @@ export function ButtonsSection() {
               </Badge>
             </span>
           </span>
+        </div>
+        {/* `solid`: lleno con el texto blanco, sólo verde y rojo (la etiqueta Salida / Problema de una regla, del color de su opción en «Qué es»). */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-10"><Tag>solid</Tag></span>
+          <Badge tone="success" shape="tag" size="sm" solid>
+            Salida
+          </Badge>
+          <Badge tone="danger" shape="tag" size="sm" solid>
+            Problema
+          </Badge>
+          <Badge tone="success" solid>
+            success
+          </Badge>
+          <Badge tone="danger" solid>
+            danger
+          </Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="w-10"><Tag>copias</Tag></span>

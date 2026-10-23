@@ -21,6 +21,11 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   rgb?: string
   /** Sobre una foto (la portada de un deck): fondo oscuro casi opaco y texto blanco, porque el tinte de un tono no se lee sobre la imagen. Reemplaza a `tone`. */
   onImage?: boolean
+  /**
+   * Lleno en vez de teñido, con el texto blanco (dentro de un relleno verde o rojo el texto es blanco): sólo con `success` (el verde `success-solid`) y `danger`; con otro
+   * tono no hace nada. Es la etiqueta «Salida» / «Problema» de una regla, del mismo color que su opción elegida en «Qué es».
+   */
+  solid?: boolean
 }
 
 const SIZE = {
@@ -39,8 +44,14 @@ const RGB_TINT = 'border-[rgb(var(--badge-rgb)/0.4)] bg-[rgb(var(--badge-rgb)/0.
 /** Sobre una foto: el índigo del fondo casi opaco (como la duración sobre la miniatura de un replay). */
 const ON_IMAGE = 'border-transparent bg-background/85 text-foreground'
 
+/** Lleno: el relleno pasa por debajo del borde transparente, así mide lo mismo que la teñida. */
+const SOLID: Partial<Record<Tone, string>> = {
+  success: 'border-transparent bg-success-solid text-white',
+  danger: 'border-transparent bg-danger text-white',
+}
+
 /** Etiqueta compacta de estado, conteo o tipo. Un solo estilo para toda la app. */
-export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = false, icon, wrap = false, rgb, onImage = false, className, style, children, ...props }: BadgeProps) {
+export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = false, icon, wrap = false, rgb, onImage = false, solid = false, className, style, children, ...props }: BadgeProps) {
   return (
     <span
       className={cx(
@@ -48,7 +59,7 @@ export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = fal
         wrap ? 'max-w-full text-left leading-snug whitespace-normal [overflow-wrap:anywhere]' : 'shrink-0 leading-none whitespace-nowrap',
         shape === 'pill' ? 'rounded-full' : 'rounded-tag',
         wrap ? SIZE_WRAP[size] : SIZE[size],
-        rgb ? RGB_TINT : onImage ? ON_IMAGE : [TONE[tone].tint, TONE[tone].text],
+        rgb ? RGB_TINT : onImage ? ON_IMAGE : (solid && SOLID[tone]) || [TONE[tone].tint, TONE[tone].text],
         className,
       )}
       style={rgb ? ({ '--badge-rgb': rgb, ...style } as CSSProperties) : style}

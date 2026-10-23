@@ -21,6 +21,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Ícono antes del texto: la acción se reconoce sin leer. */
   icon?: IconName
   iconEnd?: IconName
+  /**
+   * Apagado pero enfocable (`aria-disabled`): se ve como `disabled`, pero se enfoca, se lee y el clic llega, para que quien lo usa muestre qué falta (el «Crear regla» de
+   * una regla incompleta marca lo que falta y lleva el foco ahí). Con el foco del teclado se ve entero: al 40 % el anillo del foco quedaría casi invisible.
+   */
+  disabledFocusable?: boolean
 }
 
 const FILLED: Record<ButtonColor, string> = {
@@ -82,6 +87,7 @@ export function Button({
   fullWidth = false,
   icon,
   iconEnd,
+  disabledFocusable = false,
   className = '',
   type = 'button',
   children,
@@ -90,7 +96,12 @@ export function Button({
   const iconSize = ICON_SIZE[size]
 
   return (
-    <button type={type} className={cx(buttonStyle({ size }, COLORS[variant][color]), fullWidth && 'w-full', className)} {...props}>
+    <button
+      type={type}
+      aria-disabled={disabledFocusable || undefined}
+      className={cx(buttonStyle({ size }, COLORS[variant][color]), fullWidth && 'w-full', disabledFocusable && 'opacity-40 focus-visible:opacity-100', className)}
+      {...props}
+    >
       {icon ? <Icon name={icon} size={iconSize} /> : null}
       {children}
       {iconEnd ? <Icon name={iconEnd} size={iconSize} /> : null}

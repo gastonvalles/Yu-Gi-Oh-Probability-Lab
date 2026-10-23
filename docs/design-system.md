@@ -24,7 +24,7 @@ Una sola forma de hacer cada cosa: antes de escribir clases sueltas, buscá si y
 
 **Quién lleva qué color.** El violeta es el primario y el ámbar, el secundario (lo elegido, el hover y el foco de lo que se toca); el verde y el rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en ámbar y la que no, en rojo). **Dentro de un relleno verde o rojo el texto es siempre blanco:** por eso el verde lleno es `success-solid`, y el verde claro queda para texto, anillos y puntos.
 
-**Lo elegido es ámbar:** se rellena de ámbar con el texto oscuro (el blanco sobre el ámbar no se lee). Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en ámbar: el estado de una tarjeta lo dice su borde (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
+**Lo elegido es ámbar:** se rellena de ámbar con el texto oscuro (el blanco sobre el ámbar no se lee). La excepción es «Qué es» de una regla: **Salida va llena de verde y Problema de rojo, con el texto blanco**, igual que su etiqueta (`KindBadge`, `Badge solid`, sólo verde y rojo). Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en ámbar: el estado de una tarjeta lo dice su borde (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
 
 **El violeta es de lo tuyo, no de todo:** las categorías que se distinguen de un vistazo —roles y grupos (`deck-groups.ts`), las zonas del deck, los tipos de carta y los tiers (`meta-format.ts`)— llevan un color cada una (los roles y los tiers los vigila `color-variety.test.ts`). Antes de pintar algo de violeta, preguntate si no es una categoría que merece su color.
 
@@ -73,6 +73,7 @@ Una sola principal por grupo, lo demás pesa menos y cada texto dice qué hace. 
 3. **La principal va al final** del pie de un diálogo, de una barra o de una fila alineada a la derecha («Cancelar · Guardar»).
 4. **El texto dice qué hace:** un verbo en infinitivo (en inglés, imperativo), siempre el mismo para la misma acción (Borrar, no Eliminar; Elegir, no Seleccionar). La principal nombra el objeto si la pantalla no lo dice y **nunca es un «Sí», «No», «Aceptar», «OK», «Continuar» o «Confirmar» a secas**: la de una confirmación repite la acción. Sólo los estados se salvan: «Estoy listo», «Listo», «Entendido».
 5. **«Salir» es una X** (`CloseButton` con `aria-label` «Salir»), nunca un botón con la palabra. **«Estoy listo» es verde** (`color="success"`). El Side Deck de un Match se llama **Sidedeck** en los dos idiomas.
+6. **Un botón apagado que explica** (`disabledFocusable`): se ve apagado pero se enfoca y su clic marca lo que falta («Crear regla» de una regla incompleta). Lo que falta se marca en `danger` **después de ese intento**, nunca al entrar.
 
 ### Anillos
 

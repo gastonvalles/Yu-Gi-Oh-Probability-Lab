@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../../app/deck-groups'
-import { createMatcherPattern } from '../../../app/pattern-factory'
+import { createMatcherPattern, createPattern } from '../../../app/pattern-factory'
 import { buildRuleExample, type RuleExampleId } from '../../../app/rule-edits'
+import { t } from '../../../i18n'
 import type { CardEntry, HandPattern } from '../../../types'
 import { Button } from '../../ui/Button'
 import { DraftImpactSummary } from '../../probability/DraftImpactSummary'
+import { KindBadge } from '../../probability/KindBadge'
 import { LabRuleList } from '../../probability/LabRuleList'
 import { PatternEditorDrawer, exampleTitle } from '../../probability/PatternEditorDrawer'
 import type { RuleEntry, RuleEntryGroups } from '../../probability/probability-lab-helpers'
 import { CategoryPicker } from '../../probability/rule-builder/CategoryPicker'
 import { ConditionBlock } from '../../probability/rule-builder/ConditionBlock'
+import { KindToggle } from '../../probability/rule-builder/KindToggle'
 import { RuleReadback } from '../../probability/rule-builder/RuleReadback'
 import { usePatternDraft } from '../../probability/use-pattern-draft'
 import { Specimen, Tag } from '../Specimen'
@@ -137,11 +140,35 @@ export function RulesSection() {
         <DraftImpactSummary kind="opening" complete pending impact={null} />
       </Specimen>
 
-      <Specimen title="La regla en una frase" layout="column" note={<><Tag>rule-builder/RuleReadback.tsx</Tag> lo que decide en negrita; si falta qué cuenta, en rojo.</>}>
+      <Specimen
+        title="La regla en una frase"
+        layout="column"
+        note={
+          <>
+            <Tag>rule-builder/RuleReadback.tsx</Tag> lo que decide en negrita. Si falta qué cuenta, apagado y sin negrita: es el paso que sigue, no un error. Con <Tag>flagMissing</Tag>
+            (se intentó guardar así, la última), en rojo.
+          </>
+        }
+      >
         <RuleReadback pattern={single} cardById={cardById} />
         <RuleReadback pattern={none} cardById={cardById} />
         <RuleReadback pattern={atLeast} cardById={cardById} />
         <RuleReadback pattern={missing} cardById={cardById} />
+        <RuleReadback pattern={missing} cardById={cardById} flagMissing />
+      </Specimen>
+
+      <Specimen
+        title="Qué es: Salida o Problema"
+        layout="column"
+        note={
+          <>
+            <Tag>rule-builder/KindToggle.tsx</Tag> la excepción al ámbar de lo elegido: la salida va en verde lleno y el problema en rojo lleno, los dos con el texto blanco, igual que
+            su etiqueta (<Tag>probability/KindBadge.tsx</Tag>, un <Tag>Badge solid</Tag>). Se pueden tocar.
+          </>
+        }
+      >
+        <KindSample pattern={single} />
+        <KindSample pattern={none} />
       </Specimen>
 
       <Specimen
@@ -150,12 +177,14 @@ export function RulesSection() {
         note={
           <>
             <Tag>rule-builder/ConditionBlock.tsx</Tag> [⋮⋮] [Tiene | No tiene] [− N +] [×] y debajo qué cuenta (● rol ×copias ›). El agarre sólo con dos o más condiciones: se
-            arrastra o se mueve con ↑ ↓. Sin qué cuenta: el borde rojo y qué falta.
+            arrastra o se mueve con ↑ ↓. Sin qué cuenta, el botón se ve como un campo más (es el paso que sigue); con <Tag>showError</Tag> (se intentó guardar así, la última), el
+            borde rojo y qué falta.
           </>
         }
       >
         <ConditionSample pattern={atLeast} count={3} groupsByKey={groupsByKey} />
         <ConditionSample pattern={missing} count={1} groupsByKey={groupsByKey} />
+        <ConditionSample pattern={missing} count={1} groupsByKey={groupsByKey} showError />
       </Specimen>
 
       <Specimen
@@ -168,15 +197,23 @@ export function RulesSection() {
         </div>
       </Specimen>
 
-      <Specimen title="El editor entero" note={<><Tag>probability/PatternEditorDrawer.tsx</Tag> primero los cuatro ejemplos (o «Empezar en blanco»); después, la regla en una sola pantalla.</>}>
+      <Specimen
+        title="El editor entero"
+        note={
+          <>
+            <Tag>probability/PatternEditorDrawer.tsx</Tag> primero los cuatro ejemplos (o «Empezar en blanco»); después, la regla en una sola pantalla. A medias no hay nada en rojo:
+            «Crear regla» se ve apagado pero se toca, y recién ahí marca lo que falta y lleva el foco a esa condición.
+          </>
+        }
+      >
         <EditorSample />
       </Specimen>
     </div>
   )
 }
 
-/** Una condición que se puede tocar: trabaja sobre su propio borrador (la primera condición de la regla de muestra). */
-function ConditionSample({ pattern, count, groupsByKey }: { pattern: HandPattern; count: number; groupsByKey: ReturnType<typeof buildDerivedDeckGroupMap> }) {
+/** El borrador de una muestra que se puede tocar: se abre una vez con la regla de muestra. */
+function useSampleDraft(pattern: HandPattern) {
   const draft = usePatternDraft(DEFAULTS)
   const opened = useRef(false)
 
@@ -187,7 +224,25 @@ function ConditionSample({ pattern, count, groupsByKey }: { pattern: HandPattern
     }
   })
 
-  const shown = draft.draft ?? pattern
+  return { shown: draft.draft ?? pattern, actions: draft.actions }
+}
+
+/** La etiqueta de la regla y su selector «Qué es», sobre el mismo borrador. */
+function KindSample({ pattern }: { pattern: HandPattern }) {
+  const { shown, actions } = useSampleDraft(pattern)
+
+  // La etiqueta en una columna fija, a la derecha: los dos selectores miden lo mismo.
+  return (
+    <div className="grid max-w-140 grid-cols-[minmax(0,1fr)_5.5rem] items-center justify-items-start gap-3">
+      <KindToggle patternId={shown.id} currentKind={shown.kind} actions={actions} />
+      <KindBadge kind={shown.kind} />
+    </div>
+  )
+}
+
+/** Una condición que se puede tocar: trabaja sobre su propio borrador (la primera condición de la regla de muestra). */
+function ConditionSample({ pattern, count, groupsByKey, showError = false }: { pattern: HandPattern; count: number; groupsByKey: ReturnType<typeof buildDerivedDeckGroupMap>; showError?: boolean }) {
+  const { shown, actions } = useSampleDraft(pattern)
 
   return (
     <div className="max-w-140">
@@ -199,7 +254,8 @@ function ConditionSample({ pattern, count, groupsByKey }: { pattern: HandPattern
         condition={shown.conditions[0]!}
         derivedMainCards={CARDS}
         groupsByKey={groupsByKey}
-        actions={draft.actions}
+        actions={actions}
+        showError={showError}
         onRemove={noop}
         onPick={noop}
         onMoveBy={noop}
@@ -209,9 +265,16 @@ function ConditionSample({ pattern, count, groupsByKey }: { pattern: HandPattern
   )
 }
 
+/** El editor como en el Lab: arranca en blanco y no se puede crear hasta que cada condición diga qué cuenta. */
 function EditorSample() {
   const draft = usePatternDraft(DEFAULTS)
   const [state, setState] = useState<{ examples: boolean } | null>(null)
+  const rule = draft.draft
+  const complete = rule !== null && rule.conditions.length > 0 && rule.conditions.every((condition) => condition.matcher !== null)
+  const close = () => {
+    draft.close()
+    setState(null)
+  }
 
   const pick = (id: RuleExampleId | 'blank') => {
     setState({ examples: false })
@@ -231,7 +294,7 @@ function EditorSample() {
         variant="secondary"
         icon="plus"
         onClick={() => {
-          draft.open(createMatcherPattern('', 'opening', [{ matcher: role('starter'), quantity: 1, kind: 'include' }]))
+          draft.open(createPattern('', undefined, 'opening'))
           setState({ examples: true })
         }}
       >
@@ -241,19 +304,16 @@ function EditorSample() {
         isOpen={state !== null}
         mode="create"
         showExamples={state?.examples ?? false}
-        pattern={draft.draft}
+        pattern={rule}
         actions={draft.actions}
         derivedMainCards={CARDS}
         impact={{ impact: null, pending: false }}
-        canSave={false}
-        blockReason={null}
+        canSave={complete}
+        blockReason={complete ? null : t('builder.hint.pick')}
         duplicateOf={null}
         onPickExample={pick}
-        onClose={() => {
-          draft.close()
-          setState(null)
-        }}
-        onSave={noop}
+        onClose={close}
+        onSave={close}
       />
     </>
   )

@@ -15,7 +15,7 @@ const cards: CardEntry[] = [
   { id: 'card-1', name: 'Ash', copies: 3, source: 'manual', apiCard: null, origin: 'non_engine', roles: ['handtrap'], needsReview: false },
 ]
 
-function renderCondition(overrides: Partial<PatternCondition>, count = 1) {
+function renderCondition(overrides: Partial<PatternCondition>, count = 1, showError = false) {
   const pattern = createPattern('Regla', 'card-1')
   const condition = { ...pattern.conditions[0]!, ...overrides }
   const actions = { setRequirementDistinct: vi.fn(), setRequirementCount: vi.fn(), setRequirementKind: vi.fn() } as unknown as PatternEditorActions
@@ -31,6 +31,7 @@ function renderCondition(overrides: Partial<PatternCondition>, count = 1) {
       derivedMainCards={cards}
       groupsByKey={buildDerivedDeckGroupMap(cards)}
       actions={actions}
+      showError={showError}
       {...handlers}
     />,
   )
@@ -75,7 +76,8 @@ describe('condición: se lee como una frase', () => {
     expect(screen.queryByRole('group', { name: 'Cantidad' })).not.toBeInTheDocument()
   })
 
-  it('qué cuenta es un botón con su nombre y sus copias; sin elegir, va en rojo y dice qué falta', () => {
+  // Antes iba en rojo apenas se creaba; ahora faltar qué cuenta es el paso que sigue y el rojo llega sólo con `showError` (se intentó guardar así).
+  it('qué cuenta es un botón con su nombre y sus copias; sin elegir es el paso que sigue, y en rojo con qué falta sólo con showError', () => {
     const { handlers } = renderCondition({})
 
     fireEvent.click(screen.getByRole('button', { name: 'Qué cuenta: Ash. Cambiar' }))
@@ -84,9 +86,18 @@ describe('condición: se lee como una frase', () => {
 
     cleanup()
     renderCondition({ matcher: null })
+    const fresh = screen.getByRole('button', { name: 'Elegí qué cuenta' })
+    expect(fresh).not.toHaveAttribute('aria-invalid')
+    expect(fresh).not.toHaveAccessibleDescription()
+    expect(fresh).not.toHaveClass('text-danger-soft')
+    expect(screen.queryByText('Falta elegir qué cuenta esta condición')).not.toBeInTheDocument()
+
+    cleanup()
+    renderCondition({ matcher: null }, 1, true)
     const pick = screen.getByRole('button', { name: 'Elegí qué cuenta' })
     expect(pick).toHaveAttribute('aria-invalid', 'true')
     expect(pick).toHaveAccessibleDescription('Falta elegir qué cuenta esta condición')
+    expect(pick).toHaveClass('text-danger-soft')
   })
 
   it('con dos o más condiciones lleva el agarre: ↑ ↓ la mueven y el puntero la arrastra', () => {

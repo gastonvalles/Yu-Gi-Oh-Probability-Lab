@@ -28,13 +28,15 @@ interface RuleBuilderProps {
   onPickCondition: (conditionId: string) => void
   /** Mueve una condición de lugar (el orden no cambia lo que mide la regla). */
   onMoveCondition: (from: number, to: number) => void
+  /** Ya se intentó guardar: las condiciones sin qué cuenta se marcan como error. */
+  showErrors?: boolean
 }
 
 /**
  * El editor de una regla en una sola pantalla, en orden: nombre (opcional) → qué es → cuándo vale → la mano tiene (cómo se combinan, las condiciones y
  * «Sumar condición») → los ajustes que aplican. Las condiciones se reordenan con el agarre: arrastrándolas o con ↑ ↓.
  */
-export function RuleBuilder({ actions, derivedMainCards, pattern, onPickCondition, onMoveCondition }: RuleBuilderProps) {
+export function RuleBuilder({ actions, derivedMainCards, pattern, onPickCondition, onMoveCondition, showErrors = false }: RuleBuilderProps) {
   const nameId = useId()
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
   const matchMode = getPatternMatchMode(pattern)
@@ -115,6 +117,7 @@ export function RuleBuilder({ actions, derivedMainCards, pattern, onPickConditio
                   groupsByKey={groupsByKey}
                   actions={actions}
                   dragging={drag.draggingId === condition.id}
+                  showError={showErrors}
                   onRemove={() => actions.removeRequirement(pattern.id, condition.id)}
                   onPick={onPickCondition}
                   onMoveBy={moveBy}

@@ -27,6 +27,8 @@ interface ConditionBlockProps {
   actions: PatternEditorActions
   /** Se está arrastrando esta condición. */
   dragging?: boolean
+  /** Ya se intentó guardar la regla: si falta qué cuenta, se marca como error (en rojo y con qué falta). Antes, faltar es sólo el paso que sigue. */
+  showError?: boolean
   onRemove: () => void
   /** Abre el selector de qué cuenta (en el mismo cajón). */
   onPick: (conditionId: string) => void
@@ -38,11 +40,13 @@ interface ConditionBlockProps {
 
 /**
  * Una condición se lee como una frase: [⋮⋮] [Tiene | No tiene] [− N +] [×] y debajo [● qué cuenta ×copias ›]. «No tiene» es «ninguna»: la cantidad sólo aparece
- * si ya pedía más de una. Sin qué cuenta, el botón va en rojo y dice qué falta. La cantidad no pasa de las copias que hay en el deck.
+ * si ya pedía más de una. Sin qué cuenta, el botón es el paso que sigue y se ve como cualquier campo; con `showError` (se intentó guardar así), va en rojo y dice qué
+ * falta. La cantidad no pasa de las copias que hay en el deck.
  */
-export function ConditionBlock({ index, count, patternId, pattern, condition, derivedMainCards, groupsByKey, actions, dragging = false, onRemove, onPick, onMoveBy, onDragStart }: ConditionBlockProps) {
+export function ConditionBlock({ index, count, patternId, pattern, condition, derivedMainCards, groupsByKey, actions, dragging = false, showError = false, onRemove, onPick, onMoveBy, onDragStart }: ConditionBlockProps) {
   const errorId = useId()
   const hasCategory = condition.matcher !== null
+  const invalid = showError && !hasCategory
   const usedCopies = useMemo(
     () => getCopiesUsedByOtherConditions(pattern, condition.id, derivedMainCards),
     [pattern, condition.id, derivedMainCards],
@@ -133,13 +137,13 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
       <button
         type="button"
         data-condition-pick={condition.id}
-        aria-invalid={!hasCategory}
-        aria-describedby={hasCategory ? undefined : errorId}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? errorId : undefined}
         aria-label={hasCategory ? t('builder.condition.picked', { label }) : t('builder.condition.pick')}
         style={rgb ? ({ '--role-rgb': rgb } as CSSProperties) : undefined}
         className={cx(
           'flex min-h-12 w-full items-center gap-2.5 rounded-control bg-input pl-3.5 pr-3 text-left text-body font-semibold transition-colors duration-150 hover:bg-input-hover focus-visible:outline-none focus-visible:shadow-focus',
-          hasCategory ? 'text-foreground' : 'text-danger-soft inset-ring-2 inset-ring-danger-soft',
+          invalid ? 'text-danger-soft inset-ring-2 inset-ring-danger-soft' : 'text-foreground',
         )}
         onClick={() => onPick(condition.id)}
       >
@@ -148,12 +152,12 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
         {hasCategory ? <span className="shrink-0 font-normal tabular-nums text-muted">{formatCopies(copies)}</span> : null}
         <Icon name="chevron-right" size={18} className="shrink-0 text-soft" />
       </button>
-      {hasCategory ? null : (
+      {invalid ? (
         <p id={errorId} className="m-0 flex items-center gap-1.5 text-body font-semibold text-danger-soft">
           <Icon name="alert" size={16} className="shrink-0" />
           {t('builder.condition.missing')}
         </p>
-      )}
+      ) : null}
 
       {showUnit ? (
         <Segmented
