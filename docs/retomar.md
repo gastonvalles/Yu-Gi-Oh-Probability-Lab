@@ -29,13 +29,13 @@ Todo está en `main` y publicado en <https://yu-gi-oh-probability-lab.vercel.app
 - **Replays**, armados como la home de YouTube (`ReplaysScreen`): arriba lo que está en vivo y las transmisiones que ya terminaron (`api/live.ts`, `app/live-streams.ts`), abajo los replays de los canales oficiales (`npm run sync:replays` → `src/data/replays.json`).
 - **Expansiones** (`ExpansionsScreen`) busca expansiones y también cartas, por nombre o por código de impresión (`app/use-card-hits.ts`, `findCardsByCode`). Los **precios** son de TCGplayer, vía TCGCSV (`npm run sync:prices` → `public/prices/`).
 - **Banlists** (`BanlistsScreen`; `src/data/banlists.json` sale de `lflist.conf` de YGOPro con `npm run sync:banlists`): Vigente, Próxima y «En partes» (`partial`; lo que la fuente todavía no trae va en `scripts/banlist-supplements.json`).
-- Invariante: todo esto son archivos estáticos que la app lee sin servidor. Hoy **no se actualizan solos** (ver la sección 6).
+- Invariante: los datos son archivos estáticos que la app lee sin servidor (lo único en vivo pasa por `api/live.ts`, una función de Vercel). Hoy **no se actualizan solos** (ver la sección 6).
 
 ### Jugar y el duelo
-- El inicio de Jugar (`PlayHome`): «Jugar ahora», cuatro baldosas (Retar a un amigo · Tengo un código · Entrenar solo · Reglas del duelo) y la arena con las salas públicas y los duelos en vivo (`ArenaPanel`). Las reglas (Single · Match · Solo, reloj, formato, pública o privada) se recuerdan en `ygo-lab:duel-prefs`.
+- El inicio de Jugar (`PlayHome`): «Jugar ahora», cuatro baldosas (Retar a un amigo · Tengo un código · Entrenar solo · Reglas del duelo) y la arena con las salas públicas y los duelos en vivo (`ArenaPanel`). Se recuerdan en `ygo-lab:duel-prefs` (`app/duel-prefs.ts`) el reloj de la ronda y el de turnos, el formato, Match, siding y el tope de Genesys; no quién puede entrar: «Jugar ahora» es siempre público y «Retar a un amigo», siempre privado.
 - La sala (`DuelScreen`, `DuelOpening`, `RoomRules`, `RoomDeck`) entra sin scroll: las reglas y el deck a la izquierda, el escenario en el medio y el chat a la derecha. Al tocar «Estoy listo», cada uno revisa su deck con las reglas del formato (`deckFormatIssues` en `app/duel-format.ts`): el rival no ve el deck.
 - En el duelo: reloj de la ronda (50 min o sin tiempo) y reloj de turnos (7 min y +3 por pase; quien llega a cero pierde: `app/duel-clock.ts`), siding en un Match (es el builder, con 3 min: `DuelSiding`), hasta dos espectadores (`SpectatorScreen`, enlace con `&watch=1`) y la pantalla que no se apaga (`app/use-wake-lock.ts`). Con el duelo terminado y el rival afuera, la sala se cierra para todos a los 5 s (`CLOSE_ROOM_OVER`).
-- El relay es un Worker de Cloudflare (`duel-relay/`: una sala por código y `RoomIndex` para las públicas) en `wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev`; el sitio lo encuentra por `VITE_DUEL_RELAY_URL`. Cómo se prueba y se publica: `docs/duelo-relay.md`.
+- El relay es un Worker de Cloudflare (`duel-relay/`: una sala por código y `RoomIndex` para las públicas) en `wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev`; el sitio lo encuentra por `VITE_DUEL_RELAY_URL`. Hay que volver a publicarlo cuando cambia `duel-relay/` **o `src/app/duel-relay-rules.ts`** (el Worker lo empaqueta): primero el relay y después el sitio. Cómo se prueba y se publica: `docs/duelo-relay.md`.
 - La calculadora de LP es una vista (`#life`, `LifeCalculatorScreen`); adentro del duelo, un modal (`DuelCalculator`).
 - Invariante: un cambio de mensajes no rompe a un cliente que no recargó (`PROTOCOL_VERSION` en `app/duel-protocol.ts`; ver `docs/duelo.md`).
 
@@ -74,9 +74,10 @@ npm run dev            # http://localhost:5173; Vite también sirve /api/card-im
 
 Cierre de cada tarea: `npm run typecheck`, `npm run lint`, `npm test` y `npm run build`, más el chequeo responsive de
 `docs/ux-ui-guidelines.md`. Los datos se bajan con `npm run sync:meta`, `sync:prices`, `sync:banlists`, `sync:replays`,
-`sync:genesys` y `sync:effects` (qué hace cada uno: `README.md`).
+`sync:genesys` y `sync:effects` (qué hace cada uno: `README.md`; el de efectos, `docs/motor-de-cartas.md`).
 
-**Un duelo en local** necesita `VITE_DUEL_RELAY_URL` en un `.env.local` (ignorado por git) y un relay:
+**Un duelo en local** necesita `VITE_DUEL_RELAY_URL` en un `.env.local` (ignorado por git: un worktree nuevo no lo trae, copialo del checkout
+principal; sin él, `#duel` dice «El duelo con un amigo todavía no está disponible») y un relay:
 - **El publicado** (`wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev`) acepta `localhost:5173` y `127.0.0.1:5173`: el
   servidor de desarrollo tiene que estar en ese puerto. Una sala pública que armes probando aparece en «Salas abiertas» de
   producción: probá en privada o cerrala.
@@ -109,8 +110,10 @@ Artifact privado: <https://claude.ai/artifact/EDbqyjWAgvgRctJpastsF7> («Prototi
 claude.ai (desde Claude Code: acción `read` del Artifact con esa URL, y `list` con `scope: "files"` para ver las hojas). Hay una
 hoja por pantalla o estado (`Mesa`, `MesaPerspectiva`, `Lab`, `Comparar`, `Lobby`, `Hoja*`, `Paleta`, `Logo`…), en celular y en
 escritorio. Los fuentes (`*.dc.html`) no están en el repo: vale la copia publicada. No se copia lo roto: la hoja
-`LobbyEscritorio` trae HTML roto y Exportar dice PNG (la app exporta JPG). Las maquetas del rediseño del Lab y de Comparar
-no están ni ahí ni en el repo: lo decidido quedó en `docs/design-system.md`.
+`LobbyEscritorio` trae HTML roto y Exportar dice PNG (la app exporta JPG). Tampoco se vuelve a poner lo que Gastón pidió
+sacar aunque el lienzo lo traiga: la barra de cinco pasos del Deck (`FlowSteps`), la barra de abajo del Deck en el celular
+(«Siguiente: Roles» / «Buscar cartas»), el pie de página y el botón ✋ «Esperá». Las maquetas del rediseño del Lab y de
+Comparar no están ni ahí ni en el repo: lo decidido quedó en `docs/design-system.md`.
 
 Para medir qué tan fiel es la app al lienzo: revisiones de sólo lectura en paralelo, una por grupo de hojas, que comparan cada
 hoja con su pantalla y devuelven las diferencias con su esfuerzo (S/M/L) y si piden lógica nueva; después se juntan en una lista.
@@ -136,8 +139,9 @@ hoja con su pantalla y devuelven las diferencias con su esfuerzo (S/M/L) y si pi
 - **Lab:** el veredicto es un anillo de reparto (verde lo que abre, rojo lo que no) con el entero «de cada 100», sin «%»
   (`formatPer100`), y la nota en rojo, ámbar o verde. El violeta `primary` no se usa como arco: da 2,29:1.
 - **El Lab sólo mide lo confirmado;** un resultado provisional con sugerencias sin confirmar queda para más adelante.
-- **Colores:** violeta = el fondo, lo tuyo y la acción principal; ámbar = el énfasis, el hover, el foco y lo elegido; verde y
-  rojo = respuestas y estadísticas, con texto blanco sobre sus rellenos. El detalle, en `docs/design-system.md`.
+- **Colores:** violeta = el fondo, lo tuyo y la acción principal; ámbar = el énfasis, el hover, el foco, lo elegido y, en la
+  mesa, lo del rival (`PLAYER_COLOR`); verde y rojo = respuestas y estadísticas, con texto blanco sobre sus rellenos. El detalle,
+  en `docs/design-system.md`.
 - **Vidas:** en escritorio, un corazón del color de la salud (en el celular, sin corazón). El anillo con la inicial no gustó: no
   volver a ponerlo.
 - **La calculadora de LP queda como está** (el teclado recto, Duelista 1 y Duelista 2): el rediseño con tarjetas se descartó.
@@ -150,8 +154,9 @@ hoja con su pantalla y devuelven las diferencias con su esfuerzo (S/M/L) y si pi
   dado más grande lo bajaría, pero cambia la cara del dado.
 - **Mascotas:** apagadas la primera vez en el celular (`app/mascot.ts`); no se tocan si no se pide.
 - **Marca:** el nombre YGOUltraLab y el logo A (anillo y carta, `AppBrand`).
-- **`motion` no está instalada:** sería una dependencia nueva (para un motor de arrastre y vuelos, empezando en `/playground` con
-  un solo gesto) y espera el visto bueno de Gastón; las animaciones 3D de hoy se mantienen.
+- **`motion` no está en `main`:** sería una dependencia nueva (para un motor de arrastre y vuelos, empezando en `/playground` con
+  un solo gesto) y espera el visto bueno de Gastón (el checkout de su PC la tiene sin commitear); las animaciones 3D de hoy se
+  mantienen.
 - **Las hojas de salas no se publican al lienzo:** el diseño de las salas vive en el código.
 
 ## 6. Pendiente
@@ -171,8 +176,13 @@ hoja con su pantalla y devuelven las diferencias con su esfuerzo (S/M/L) y si pi
 - **Los datos de Descubrir no se actualizan:** los workflows programados (`sync-banlists`, `sync-meta-decks`, `sync-replays`) no
   corren desde el 2026-10-18 (GitHub Actions no arranca por la facturación de la cuenta). El meta, los precios, los replays y las
   banlists sólo cambian corriendo los `sync:*` a mano y subiendo el resultado.
-- **El violeta en Duelo y Jugar:** esas pantallas no tuvieron la pasada de la auditoría del violeta (la tanda 5). La regla para
-  hacerla: en la mesa, `accent` dice de quién es; el estado o el resultado van en ámbar o verde.
+- **El violeta en Duelo y Jugar:** la auditoría del violeta se hizo por tandas (el builder, las zonas, Roles, Replays y las tier
+  lists, los íconos y las casillas del duelo) y no hay registro de una pasada propia por Duelo y Jugar. La regla para hacerla: en
+  la mesa el violeta (`accent`) es lo tuyo y el ámbar (`info`) lo del rival (`PLAYER_COLOR`); un estado o un resultado va en
+  verde o en rojo.
+- **Campo del celular en vertical:** el techo es el alto de la pantalla (la carta mide 46 × 67 px a 844 px de alto:
+  `probability/compact-field.ts` sólo dimensiona por alto); acercar, desplazar o girar el campo en la práctica no está hecho, y
+  a 360 × 640 los chips «Salida…» tapaban la fila de pilas (se midió así, sin arreglar).
 - **El visor de una pila** nombra dos veces una carta con arte para un lector de pantalla («Maxx CMaxx C»: el `alt` de `CardArt`
   más el texto, sin `aria-label` en el caso común; `PileViewer` en `MatDialogs.tsx`).
 - **La sala del duelo en un celular bajo:** a unos 700 px de alto todavía se desplaza hasta ~100 px en la tirada del dado (idea:
@@ -215,7 +225,8 @@ pedido, los tests livianos y frenar al segundo reintento, las notas del parche y
   `git worktree` aparte y mirá la rama antes de cada commit; `node_modules` puede ser un junction al del repo (en PowerShell,
   `New-Item -ItemType Junction`).
 - **Se mergea sin esperar el CI:** cuando `typecheck`, `lint`, las pruebas y el build pasan en local,
-  `gh pr merge N --squash --admin`, y después se mira producción (Vercel despliega `main` solo). El CI de GitHub
+  `gh pr merge N --squash --admin --match-head-commit <sha>` (el sha es el del último commit que se verificó: sólo se mergea lo
+  que se probó), y después se mira producción (Vercel despliega `main` solo). El CI de GitHub
   falla en segundos sin correr ningún paso (la facturación de la cuenta); si vuelve, rige otra vez el `check` verde del último
   commit.
 - **Un rediseño se presenta antes de escribir código:** maquetas en imágenes, el antes y el después y las decisiones abiertas; el
