@@ -78,7 +78,11 @@ export type MatSummon = 'normal' | 'special' | 'pendulum' | 'scale'
 type ExtraSummon = 'fusion' | 'synchro' | 'xyz' | 'link'
 
 export type MatAction =
-  | { type: 'draw'; count: number }
+  /**
+   * Robar del tope. `ids` (duelos automáticos): cuáles se roban, estén donde estén del deck. El núcleo baraja y no le dice a nadie el orden (ni a su dueño): cuando
+   * roba, dice qué carta salió, así que la mesa no puede tenerla arriba de antemano. Con `ids`, `count` no cuenta.
+   */
+  | { type: 'draw'; count: number; ids?: string[] }
   | { type: 'mill'; count: number }
   | { type: 'shuffle'; seed: number }
   /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. `shuffle`: la carta salió mirando el deck y el resto se baraja con esa semilla en la misma jugada. */
@@ -318,6 +322,11 @@ function reshuffled(state: MatState, seed: number | undefined): MatState {
 export function matReducer(state: MatState, action: MatAction): MatState {
   switch (action.type) {
     case 'draw': {
+      if (action.ids) {
+        const drawn = action.ids.filter((id, at) => state.deck.includes(id) && action.ids!.indexOf(id) === at)
+        return drawn.length === 0 ? state : { ...state, deck: state.deck.filter((id) => !drawn.includes(id)), hand: [...state.hand, ...drawn] }
+      }
+
       const count = pileLength(state, action.count)
       return count === 0 ? state : { ...state, deck: state.deck.slice(count), hand: [...state.hand, ...state.deck.slice(0, count)] }
     }
@@ -624,8 +633,9 @@ function describeBatch(before: MatState, actions: readonly MatAction[], name: (i
 function describePlay(before: MatState, action: MatAction, name: (id: string) => string, count = 1): string {
   switch (action.type) {
     case 'draw': {
-      const top = before.deck[0]
-      return action.count === 1 && top ? t('practice.step.draw', { card: name(top) }) : t('practice.step.drawCount', { count: action.count })
+      const top = action.ids ? action.ids[0] : before.deck[0]
+      const count = action.ids?.length ?? action.count
+      return count === 1 && top ? t('practice.step.draw', { card: name(top) }) : t('practice.step.drawCount', { count })
     }
 
     case 'mill': {

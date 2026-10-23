@@ -11,6 +11,7 @@ const NOT_AT_STARTUP = [
   'src/data/genesys-card-data.json', // las tablas de formatos: sólo `format-tables.ts`
   'src/data/edison-format-data.ts',
   // Los duelos automáticos: el núcleo en wasm va bajo demanda (y `ocgcore-wasm` sólo lo importan estos: auto-isolation.test.ts).
+  'src/app/auto/adapter.ts',
   'src/app/auto/core-host.ts',
   'src/app/auto/deck-map.ts',
   'src/app/auto/policies.ts',

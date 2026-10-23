@@ -193,7 +193,7 @@ const isBatchPart = oneOf<MatAction['type']>(['move', 'target', 'attach', 'revea
  * permitidos (`how`, `cost`…) son los de `MatAction` y hay que ponerlos al día si ese tipo cambia.
  */
 const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) => boolean> = {
-  draw: (a) => isInt(a.count, 0, MAX_CARDS),
+  draw: (a) => isInt(a.count, 0, MAX_CARDS) && optional(a.ids, (v) => isCardIds(v)),
   mill: (a) => isInt(a.count, 0, MAX_CARDS),
   shuffle: (a) => isSeed(a.seed),
   move: (a) => isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom') && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.faceUp, (v) => typeof v === 'boolean') && optional(a.shuffle, isSeed),

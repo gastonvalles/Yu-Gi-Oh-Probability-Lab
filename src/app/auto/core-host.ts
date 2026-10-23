@@ -17,7 +17,7 @@ import createCore, {
   type OcgResponse,
   type SelectFieldPlace,
 } from 'ocgcore-wasm'
-import { deckOrder, needsScript, scriptName } from './deck-map'
+import { needsScript, scriptName, teamOrder } from './deck-map'
 import { askFor, eventFor, statsFor } from './referee'
 import {
   ASK_SHAPES,
@@ -338,7 +338,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
     let orders: number[][]
 
     try {
-      orders = command.decks.map((deck, team) => deckOrder(deck.main, (command.seed + team) >>> 0, deck.hand))
+      orders = command.decks.map((_, team) => teamOrder(command, team))
     } catch (error) {
       fault('setup', error instanceof Error ? error.message : String(error))
       return

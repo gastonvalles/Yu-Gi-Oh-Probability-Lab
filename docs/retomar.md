@@ -122,8 +122,8 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 
 **Esperan una decisión de Gastón**
 - **Duelos automáticos (capa 4):** la capa 3 se descartó y avanza el núcleo real (`ocgcore`); su licencia (AGPL-3.0) se decide antes de
-  publicar nada que lleve el wasm. Falta el adaptador que dibuja lo que cuenta el núcleo en la mesa, «Jugar solo automático (beta)»
-  con el núcleo en un Worker, deshacer, combos y handtraps, y el duelo por enlace (`docs/motor-de-cartas.md`).
+  publicar nada que lleve el wasm. Falta cerrar el espejo del rival del adaptador, «Jugar solo automático (beta)» con el núcleo en un
+  Worker, deshacer, combos y handtraps, y el duelo por enlace (`docs/motor-de-cartas.md`).
 - **`motion`:** sería una dependencia nueva (un motor de arrastre y vuelos, empezando en `/playground` con un solo gesto); el
   checkout de su PC la tiene sin commitear. Hasta entonces, las animaciones 3D de hoy se mantienen.
 
