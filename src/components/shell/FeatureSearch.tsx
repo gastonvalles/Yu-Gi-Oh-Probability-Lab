@@ -7,7 +7,8 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { buildFindEntries, filterFindEntries, type FindEntry } from './feature-search'
-import { cardResult, findDeckResults, findReplayResults, FINDER_MIN_LENGTH, setCodePrefix, type FinderAction, type FinderResult } from './finder-sources'
+import { cardResult, FINDER_MIN_LENGTH, setCodePrefix, type FinderAction, type FinderResult } from './finder-sources'
+import { useFinderDecks } from './finder-decks-loader'
 import type { NavGroup } from './nav-model'
 import { NAV_OVERLINE } from './rail'
 import { useFinderData } from './use-finder-data'
@@ -74,6 +75,7 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
   const entries = useMemo(() => buildFindEntries(groups, { cards: cardsAvailable }), [groups, cardsAvailable])
   const features = useMemo(() => filterFindEntries(entries, query), [entries, query])
   const data = useFinderData(query, isOpen)
+  const decks = useFinderDecks(isOpen)
   const listed = text === '' ? groupEntries(features) : null
   const rows = useMemo<FinderRow[]>(() => {
     if (text === '') {
@@ -90,11 +92,11 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
       ...(codeLike ? sets : []),
       ...data.cards.map((card) => resultRow(cardResult(card))),
       ...(codeLike ? [] : sets),
-      ...(searchable ? findDeckResults(text).map(resultRow) : []),
-      ...(searchable ? findReplayResults(text).map(resultRow) : []),
+      ...(searchable && decks ? decks.findDeckResults(text).map(resultRow) : []),
+      ...(searchable && decks ? decks.findReplayResults(text).map(resultRow) : []),
       ...(searchable && cardsAvailable ? [{ id: 'cards-search', label: t('shell.find.inCards', { query: text }), hint: t('shell.find.cardsHint'), group: t('shell.find.group.cards'), icon: 'search' as const, action: { type: 'select' as const, key: 'search', detail: text } }] : []),
     ]
-  }, [text, features, data.sets, data.cards, cardsAvailable])
+  }, [text, features, data.sets, data.cards, cardsAvailable, decks])
   const current = rows[Math.min(highlight, rows.length - 1)]
 
   // Cada vez que se abre arranca limpio.

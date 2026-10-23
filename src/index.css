@@ -597,10 +597,10 @@
     }
   }
 
-  /* La luz que le da la vuelta al marco: gira el ángulo del degradé cónico (`--fx-angle`, registrada abajo). */
+  /* La luz que le da la vuelta al marco: gira el degradé cónico entero con `rotate`, que lo mueve el compositor (girar su ángulo, una propiedad registrada, recalculaba estilos y repintaba en cada cuadro). */
   @keyframes fx-orbit {
     to {
-      --fx-angle: 360deg;
+      rotate: 360deg;
     }
   }
 
@@ -1176,13 +1176,6 @@
   }
 }
 
-/* El ángulo de la luz que le da la vuelta a un marco (`fx-orbit`): registrado para que el navegador pueda animarlo. Sin soporte, el marco queda quieto y se ve igual. */
-@property --fx-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-
 /*
  * Marco de colores de una carta de la mesa de práctica (`FxFrame`, color en `--fx-rgb`): borde parejo y brillo hacia adentro, una luz que
  * le da la vuelta (::before, un degradé cónico recortado a un aro) y un reflejo que lo cruza una vez (::after, con `data-shine`).
@@ -1543,12 +1536,11 @@
     inset 0 0 0 2px rgb(var(--fx-rgb) / 0.95),
     inset 0 0 18px 2px rgb(var(--fx-rgb) / 0.55);
 
-  &::before {
-    content: '';
+  /* La luz que gira (`FxFrame` con `orbit`): el aro de 3 px queda quieto (la máscara) y adentro gira el degradé, en una caja más grande con el mismo centro (así cubre la carta en cualquier ángulo). */
+  & > [data-fx='orbit'] {
     position: absolute;
     inset: 0;
     padding: 3px;
-    background: conic-gradient(from var(--fx-angle), transparent 0deg 170deg, rgb(var(--fx-rgb) / 0.9) 290deg, #fff 345deg, transparent 360deg);
     -webkit-mask:
       linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
@@ -1556,11 +1548,14 @@
     mask:
       linear-gradient(#fff 0 0) content-box exclude,
       linear-gradient(#fff 0 0);
-    animation: var(--animate-fx-orbit);
-  }
 
-  &[data-orbit='false']::before {
-    display: none;
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -75%;
+      background: conic-gradient(transparent 0deg 170deg, rgb(var(--fx-rgb) / 0.9) 290deg, #fff 345deg, transparent 360deg);
+      animation: var(--animate-fx-orbit);
+    }
   }
 
   &[data-shine='true']::after {
@@ -1572,7 +1567,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    &::before {
+    & > [data-fx='orbit']::before {
       animation: none;
     }
 

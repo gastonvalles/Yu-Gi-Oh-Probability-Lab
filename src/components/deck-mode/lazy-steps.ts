@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 
 import { assetUrlsOf, refreshAssets } from '../../app/asset-recovery'
+import { loadFinderDecks } from '../shell/finder-decks-loader'
 
 /**
  * Pasos y paneles pesados: se bajan recién cuando se usan (el builder es lo primero que se ve).
@@ -21,6 +22,9 @@ const loaders = {
   banlists: () => import('../banlists/BanlistsScreen'),
   life: () => import('../life/LifeCalculatorScreen'),
 }
+
+/** Lo que se precarga de fondo, en este orden: primero los decks y replays del buscador de la app (se abre desde cualquier pantalla) y después los pasos. */
+const PRELOADS = [loadFinderDecks, ...Object.values(loaders)]
 
 const RELOAD_FLAG = 'ygo-lab:chunk-reload'
 
@@ -104,5 +108,5 @@ export function preloadOneByOne(loads: ReadonlyArray<() => Promise<unknown>>, id
  * muestra (las imágenes del deck, el catálogo). De a uno, cambiar de paso sigue siendo instantáneo y lo de la pantalla llega primero.
  */
 export function preloadHeavySteps(): void {
-  preloadOneByOne(Object.values(loaders), (callback) => (window.requestIdleCallback ? window.requestIdleCallback(callback) : window.setTimeout(callback, 1500)))
+  preloadOneByOne(PRELOADS, (callback) => (window.requestIdleCallback ? window.requestIdleCallback(callback) : window.setTimeout(callback, 1500)))
 }
