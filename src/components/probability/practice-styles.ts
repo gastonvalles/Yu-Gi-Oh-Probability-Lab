@@ -35,8 +35,8 @@ export const PILE_LAYER_PCT = 2
 export const PILE_LAYER_DIM = 0.07
 
 /**
- * El dorso por defecto de una carta de Yu-Gi-Oh!: la imagen `cards/back.jpg` de YGOPRODeck, que sale por el mismo proxy que las
- * demás (`card-image-source`).
+ * El dorso por defecto de una carta de Yu-Gi-Oh!: el real, una imagen propia (`public/card-back-sm.webp`), que no pasa por el proxy
+ * de imágenes de cartas.
  */
 export const CARD_BACK_URL = '/card-back-sm.webp'
 /** El dorso en alta (927 × 1353, WebP, ~220 KB): para la carta grande dada vuelta. `CARD_BACK_URL` es el mismo en 428 × 625 (~50 KB) para todo lo demás. Los dos son una copia del dorso de Yugipedia, en `public/`, con los logos de una carta real: KONAMI arriba a la izquierda y Yu-Gi-Oh! abajo a la derecha (el de YGOPRODeck no los tiene y en grande se ve a bloques). */

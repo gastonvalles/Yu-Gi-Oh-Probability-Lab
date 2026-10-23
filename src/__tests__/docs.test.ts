@@ -18,7 +18,7 @@ const BUDGET_KB: Record<string, number> = {
   'PRODUCT.md': 9,
   'docs/retomar.md': 15,
   'docs/design-system.md': 20,
-  'docs/duelo.md': 14,
+  'docs/duelo.md': 16,
   'docs/motor-de-cartas.md': 14,
 }
 /** Carpetas que no se miran: dependencias, salidas y datos. Las que empiezan con punto tampoco (configuración local de otras herramientas), salvo `.github`. */

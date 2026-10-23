@@ -7,7 +7,7 @@ import { TONE } from './tone'
  * `cx()` o se interpolan en un className. Para bloques nuevos preferí <Card>, <Callout> y <Badge>.
  *
  * Jerarquía: lienzo (fondo) < card < inset (hundido dentro de una card). Las sombras son
- * parejas y suaves; sólo la acción principal lleva brillo violeta y el foco, un aro ámbar.
+ * parejas y suaves, sin brillos, y el foco lleva un aro ámbar.
  */
 export const surface = {
   /** Contenedor flotante grande (modal, drawer). */

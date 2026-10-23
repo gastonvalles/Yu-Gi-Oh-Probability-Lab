@@ -26,7 +26,7 @@
 }
 
 @theme {
-  /* Tipografía: Lexend Deca y 6 tamaños (11 · 14 · 19 · 24 · 33 · 44), cada uno con su interlineado. Sin tamaños sueltos en los componentes. */
+  /* Tipografía: Lexend Deca y 6 tamaños (12 · 14 · 19 · 24 · 33 · 44), cada uno con su interlineado. Sin tamaños sueltos en los componentes. */
   --font-sans: 'Lexend Deca', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --text-micro: 0.75rem;
   --text-micro--line-height: 1rem;
@@ -47,7 +47,7 @@
   --radius-card: 1rem;
   --radius-panel: 1.5rem;
 
-  /* Elevación: tres niveles (tarjeta, flotante, overlay) y el brillo de marca. */
+  /* Elevación: la tarjeta, el overlay y el aro de foco (ámbar). */
   --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04);
   --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
   --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--info-rgb) / 0.6);
@@ -1711,7 +1711,7 @@
     /* El rojo de un arco (un anillo de un problema, la cola de «sin salida»): el `danger` de la paleta no llega a 3:1 contra la pista. */
     --danger-soft-rgb: 255 77 77;
     --info-soft: #ffd84d;
-    /* El gris sutil de las líneas que delimitan las casillas de la mesa (todas iguales, sin zonas de otro color). */
+    /* El blanco de las líneas que delimitan las casillas de la mesa (todas iguales, sin zonas de otro color). */
     --field-line: #ffffff;
     --field-line-rgb: 255 255 255;
 
