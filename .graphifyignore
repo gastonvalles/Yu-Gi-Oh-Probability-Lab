@@ -5,3 +5,7 @@ src/data/
 package-lock.json
 # Críticas de diseño de otra herramienta: son notas, no código.
 .impeccable/
+# Archivos de herramientas de trabajo que algunas máquinas tienen sueltos en .github (agentes, hooks y skills de otra herramienta): sumaban más de mil nodos que no son del proyecto.
+.github/agents/
+.github/hooks/
+.github/skills/
