@@ -82,7 +82,7 @@ export interface DuelSnapshot {
    * y si ya eligió (`ordered`, y entonces cada uno reparte su mano). En una revancha elige quien perdió, sin tirar nada.
    */
   opening: { method: TossMethod | null; caller: Duelist | null; dice: { mine: number | null; theirs: number | null }; chooser: Duelist | null; ordered: boolean }
-  /** El reloj de turnos (5 minutos por jugador y 2 más cada vez que el rival pasa el turno): público, lo que le queda a cada uno sale de `turnTimeLeft`. */
+  /** El reloj de turnos (por defecto 7 minutos por jugador y 3 más cada vez que el rival pasa el turno): público, lo que le queda a cada uno sale de `turnTimeLeft`. */
   turnClock: TurnClock
   /** Lo que el rival está haciendo y se ve (mira una pila, elige cómo jugar una carta); null si nada. */
   peerLook: Activity | null

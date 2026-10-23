@@ -17,10 +17,10 @@ Quien llega por un enlace no pasa por el lobby: escribe su nombre en la sala y e
 
 La de la práctica, con el campo del rival espejado arriba y las Extra Monster Zones compartidas en el medio.
 
-- **Cada uno es dueño de lo suyo:** cada jugador mueve sólo sus cartas, sus vidas y su reloj de turnos. Lo que le pasa a una carta del rival lo hace él en su mesa: se le pide con el chat, con Target o con Señalar. Deshacer vuelve la última jugada de la mesa, sea de quien sea; si es del rival, se le pide que la deshaga él. Cambiar el control de una carta son dos jugadas, una en cada mesa, que se completan solas (`mat-control.ts`) y no se deshacen, porque la otra mesa ya las completó. Quien llega a cero en el reloj de turnos se rinde desde su propio dispositivo: un cliente modificado podría no hacerlo y no hay servidor que lo corte.
+- **Cada uno es dueño de lo suyo:** cada jugador mueve sólo sus cartas, sus vidas y su reloj de turnos. Lo que le pasa a una carta del rival lo hace él en su mesa: se le pide con el chat, con Target o con Señalar. Deshacer vuelve la última jugada de la mesa, sea de quien sea; con el rival presente siempre se le pide permiso y, si la jugada es suya, la deshace él. Cambiar el control de una carta son dos jugadas, una en cada mesa, que se completan solas (`mat-control.ts`) y no se deshacen, porque la otra mesa ya las completó. Quien llega a cero en el reloj de turnos se rinde desde su propio dispositivo: un cliente modificado podría no hacerlo y no hay servidor que lo corte.
 - **La mesa no valida:** el que juega manda (los materiales son opcionales y la Invocación de Péndulo no mira el rango) y el asistente avisa, no decide (`docs/motor-de-cartas.md`, capa 2).
 - **La mesa no se mueve:** nada de lo que aparece (los avisos, la pregunta de pasar de fase, la tira del resultado, la línea de jugadas) suma alto, y las manos nunca tapan el campo. El alto de las manos sale del presupuesto de la casilla (`classicCell` en `duel-rails.ts`): con poca altura la casilla toca su mínimo y la columna se desplaza.
-- **Pasar de fase le pregunta al rival** si va a hacer algo antes. Sin respuesta pasa sola (`PHASE_WAIT_MS`): callar es no tener nada que jugar y un rival ausente no frena el duelo. Es la única notificación que se contesta, por eso va en el medio de la pantalla (`PassPrompt`); las demás van de a una, por urgencia, sobre la línea del registro (`LaneNotice`).
+- **Pasar de fase le pregunta al rival** si va a hacer algo antes. Sin respuesta pasa sola (`PHASE_WAIT_MS`): callar es no tener nada que jugar y un rival ausente no frena el duelo. Es la única que va en el medio de la pantalla (`PassPrompt`); el pedido de Deshacer, que también se contesta, y las demás van de a una, por urgencia, sobre la línea del registro (`LaneNotice`).
 - **Menús:** en escritorio, pegados a lo que se toca (`CardMenu`), con las opciones centradas y en bloques: apoyo (Revelar, Target), envíos (Al deck, A la mano, Al cementerio, Desterrar) y jugadas, con la principal abajo, pegada a la carta (`mat-menu-order.ts`; el motor no cambia de orden). Una pregunta de «cómo» (la posición, boca arriba o abajo, dónde del deck) es una fila con › y abre un submenú al costado; Atacar, elegir un efecto o un material siguen con su segundo paso en el mismo menú: fila con › abre un submenú, fila sin › actúa o pregunta ahí mismo. En el celular, siempre la hoja de abajo (`CardSheet`) con el orden del motor y una flecha para volver del segundo paso. Los rótulos no se renombran ni se traducen distinto (`practice.menu.*`).
 
 ### El campo en un celular en vertical
@@ -39,12 +39,12 @@ El visor de pilas elige varias (`PileViewer` con `many`) y `listBatchActions` (`
 
 ## Chat, avisos y señales
 
-- **Señalar no es Target:** Señalar dura un instante y no deja nada (no es una jugada: no entra en Deshacer, no se guarda y no se repone al reconectar). Target marca, vence solo y viaja como el conjunto entero de marcas (`marks`): repetirlo no cambia nada y reconectar lo repone.
+- **Señalar no es Target:** Señalar dura un instante y no deja nada (no es una jugada: no entra en Deshacer, no se guarda y no se repone al reconectar). Target sobre lo del rival marca, vence solo y viaja como el conjunto entero de marcas (`marks`): repetirlo no cambia nada y reconectar lo repone; sobre lo tuyo es una jugada `target` más (entra en Deshacer y en los pasos).
 - **Las señales (🤔, 👍) salen una cada 3 s** (`EMOTE_GAP_MS`), con el reloj de quien las manda: no se filtran al recibir, así que un cliente de antes que las mande seguido se ve igual.
 
 ## Siding
 
-Es el builder (las mismas zonas y el mismo arrastre), no una pantalla aparte, y no tiene salida: termina con «Listo» o cuando se acaba el tiempo (`SIDING_MS`). Recargar vuelve al siding como estaba (`duel-save.ts`).
+Usa las zonas y el arrastre del builder, pero es una pantalla propia del duelo (`DuelSiding`), y no tiene salida: termina con «Listo» o cuando se acaba el tiempo (`SIDING_MS`). Recargar vuelve al siding como estaba (`duel-save.ts`).
 
 ## Mirar un duelo (espectadores)
 
@@ -53,8 +53,9 @@ Quien mira lleva cada lado como lo lleva el rival (`duel-spectator.ts`): ve lo m
 ## Reconexión y cierre de sala
 
 - Mientras falta uno de los dos, el duelo queda en pausa: la mesa se tapa y el reloj de la ronda se detiene, así el tiempo afuera no cuenta.
+- **Reconectar** (el engranaje de la barra y el cartel de pausa; lo tocan los dos) tira la conexión y abre otra: el relay vuelve a decir quién está y destraba una pausa por un aviso que no llegó.
 - **Límite:** el relay no reserva el asiento. Otra persona con el enlace puede ocupar el lugar de quien salió; sólo recupera su mesa quien tiene lo guardado en su navegador.
-- **La sala muere al terminar el duelo** (uno suelto o un Match ganado): si el rival se va, a los 5 s (`ROOM_CLOSE_S`) la sala se cierra para todos (`duel.endRoom()`; el porqué, en `docs/duelo-relay.md`). Mientras tanto, a otra identidad que la del rival que jugó no se le cuenta nada (`stranger`) y quien ocupa su lugar no cuenta como presente hasta saludar (`peerGreeted`): un tercero no reinicia la cuenta. Un Match que sigue no cuenta como terminado.
+- **La sala muere al terminar el duelo** (uno suelto o un Match ganado): si el rival se va, a los 5 s (`ROOM_CLOSE_S`) la sala se cierra para todos (`duel.endRoom()`; el porqué, en `docs/duelo-relay.md`). Mientras tanto, a otra identidad que la del rival que jugó no se le cuenta nada (`stranger`) y quien ocupa su lugar no cuenta como presente hasta saludar (`peerGreeted`): un tercero no reinicia la cuenta. Un Match que sigue no cuenta como terminado. La sala pública del anfitrión no vuelve a la lista de las que esperan rival: un tercero entraría a ver la mesa de quien se quedó (`rivalLeft` en `DuelScreen.tsx`).
 
 ## Cómo está armado
 
@@ -70,7 +71,9 @@ duel-relay/                  el Worker + Durable Object de Cloudflare
 
 La mesa sigue siendo `matReducer`, puro y determinista: **cada lado aplica las jugadas del otro a un espejo de su mesa** con el mismo reductor y las mismas semillas de mezcla (`shuffleWithSeed`: el orden del deck nunca viaja), y los dos quedan iguales. Por eso toda jugada nueva tiene que ser determinista y serializable a JSON: el fuzz de `mat-public.test.ts` pasa cada jugada por JSON y comprueba que el espejo quede igual y que no viaje ningún id real.
 
-El tiempo real vive en Cloudflare porque las funciones de Vercel no mantienen WebSockets. El resto del código sólo conoce `DuelTransport` (en `duel-session.ts`): los tests usan una sala en memoria y cambiar de transporte es barato.
+El tiempo real vive en Cloudflare porque las funciones de Vercel no mantienen WebSockets, y no se usó WebRTC (PeerJS): en redes móviles necesita un servidor TURN para conectar de forma fiable, justo el caso celular↔PC. `createDuel` sólo conoce `DuelTransport` (en `duel-session.ts`): los tests usan una sala en memoria (`memory-room.ts`).
+
+La mesa del duelo es `PracticeMat` con la prop `duel` (`DuelMatLink`) y no sabe de red: la fase va por `duel.askPhase` y el resto por `duel.play`. Moneda, dado, Match y relojes: `duel-games.ts`, `duel-turn.ts` y `duel-clock.ts`; siding y formato: `duel-siding.ts` y `duel-format.ts`; el enlace: `duel-link.ts` y `use-duel.ts`.
 
 ### Mensajes (`duel-protocol.ts`)
 
@@ -100,7 +103,7 @@ En **Windows**, `wrangler dev` levantado varias veces deja procesos `workerd` co
 
 ## Qué se descartó a propósito
 
-- El registro de jugadas no es un replay: como en otros simuladores, anota lo que cada uno hizo, con las palabras de un combo.
+- El registro de jugadas no es un replay: a diferencia del chat de otros simuladores (que casi no cuenta jugadas), anota lo que cada uno hizo, con las palabras de un combo.
 - No hay guardar el duelo como replay, ofertas de empate, revelar de forma persistente, chat libre de los espectadores, torneos ni cuentas, ni una sala «Solo» a la que se sume alguien: Jugar solo es la práctica, local y sin relay.
 - No hay selector de deck ni deck pegado en Jugar (ver «Lobby y salas»), y los puntos de vida no se eligen: siempre 8000.
 - No hay ✋ «Esperá»: las señales son 🤔 y 👍.

@@ -6,9 +6,9 @@ import { effectSentences, type EffectSentence } from './card-text'
  * Alinear cada efecto del texto de una carta con su efecto del script de EDOPro (capa 1b del motor de cartas, `docs/motor-de-cartas.md`): saber que «esta frase» es «este efecto» y, con eso, de **cada** efecto, y no sólo de la
  * carta entera, desde dónde se activa, si es rápido, cuántas veces se puede usar, si lleva costo y si apunta.
  *
- * Regla de oro, la misma de siempre: **se alinea sólo lo que las restricciones obligan**. Cada par (frase, efecto) tiene que ser compatible (la velocidad, el costo, el objetivo, cómo abre la frase y qué tipo de efecto es) y
- * sólo se publica la carta si hay **una única** forma de armar los pares con las dos listas del mismo largo. Si hay dos formas (dos efectos que no se distinguen), ninguna o distinto número de frases que de efectos, no se
- * alinea nada: es mejor no saber que adivinar la frase de un efecto.
+ * Regla de oro, la misma de siempre: **se alinea sólo lo que las restricciones obligan**. Cada par (frase, efecto) tiene que ser compatible (la velocidad, el costo, el objetivo, cómo abre la frase, qué tipo de efecto es y desde
+ * dónde se activa) y sólo se publica la carta si, con las dos listas del mismo largo, hay una forma de armar los pares sin contradicciones y **toda otra forma tiene al menos `MARGEN` contradicciones más** (así ninguna señal mal
+ * leída la cambiaría). Si hay dos formas casi iguales (dos efectos que no se distinguen), ninguna o distinto número de frases que de efectos, no se alinea nada: es mejor no saber que adivinar la frase de un efecto.
  */
 
 /** Cómo se activa un efecto del script: `quick` (efecto rápido), `trigger` (se dispara por algo que pasó) o `ignition` (se activa cuando el jugador quiere, en su Main Phase). */
