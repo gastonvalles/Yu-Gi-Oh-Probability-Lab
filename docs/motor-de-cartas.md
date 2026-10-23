@@ -10,8 +10,8 @@ Los duelos automáticos son un proyecto enorme: por eso van en capas, de a poco 
 | 1 · Hechos confirmados | Lo que el script de EDOPro **y** el texto de la carta dicen los dos de sus efectos (de la carta entera). | Hecha |
 | 1b · Alinear frase y efecto | Qué frase del texto es qué efecto del script y, de cada efecto, sus hechos y desde dónde se activa. | Hecha |
 | 2 · Asistente de la mesa | La mesa avisa, no decide: rasgos, usos, reglas de turno y qué cartas pueden responder. | Hecha en lo que se puede afirmar |
-| 3 · Automatización parcial | Efectos simples, de a una carta, cada una probada contra su script. | Diseñada, sin construir |
-| 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) compilado a WebAssembly, detrás de una bandera. | Bloqueada por la licencia (AGPL-3.0): decide Gastón |
+| 3 · Automatización parcial | Un motor propio de efectos simples. | Descartada: cubriría el 8 % de las cartas del meta y ninguna cadena |
+| 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) en WebAssembly corre los duelos de verdad con los scripts de Project Ignis. | En construcción: protocolo, anfitrión, árbitro y fuzz hechos (`src/app/auto/`); faltan el adaptador a la mesa y la pantalla. La licencia (AGPL-3.0) la decide Gastón |
 
 ## Capa 0 · Resaltar el texto
 
@@ -47,32 +47,17 @@ El script de EDOPro dice lo que el motor hace de verdad y el texto, lo que la ca
 - **Límites compartidos:** se comparten sólo si el script usa el mismo código en los efectos **y** el texto lo dice.
 - **Lo que no hace:** no lleva la cadena (qué responde a qué ni cuándo se resuelve), no sabe si se puede cumplir lo que pide una carta (un objetivo, un costo: por eso «podés responder con…» dice «podés», `mat-responders.ts`) y no avisa de fases, daños ni costos, que no se pueden decir sin decidir. Una Mágica o Trampa con varios efectos que no se pudo alinear se cuenta por carta (su activación), no por efecto.
 
-## Capas 3 y 4 (diseño; sin construir)
+## Capa 4 · El núcleo real de reglas (la capa 3 se descartó)
 
-Ninguna se empezó. La regla de oro sigue: no se automatiza nada que no se haya comprobado.
+Un motor propio sólo alcanzaría a los efectos sin elección, objetivo ni costo: el 8 % de las 1.449 cartas que juegan los decks del meta, y ninguna cadena (el 92 % restante elige, apunta o paga). Para automatizar de verdad se corre `ocgcore` con los scripts de Project Ignis (`ocgcore-wasm`, versión exacta en `package.json`). **El campo de la mesa no cambia:** el núcleo manda y la mesa es una proyección de lo que cuenta.
 
-### Capa 3 · Automatización parcial (diseño)
-
-1. **Primero, los efectos de una sola acción y sin elección:** robar N, mandar o desterrar la propia carta, invocarla desde la mano o el Cementerio, buscar 1 por nombre, darla vuelta o cambiarla de posición. Falta clasificar el cuerpo de la operación, que `card-script-rules.ts` ya trae.
-2. **Un efecto es una función pura** `applyEffect(state, effect, choices) → { state, log }` que devuelve las mismas `MatAction` de siempre: el rival ve lo mismo sin un protocolo nuevo, y deshacer, el registro y los combos siguen sirviendo.
-3. **Cada carta, con su prueba:** si la operación del script no es la que implementa `applyEffect`, la carta no entra (`sync:effects` la marcaría `auto` sólo si lo comprueba).
-4. **El freno:** ante cualquier elección, objetivo o condición que la mesa no pueda evaluar, el efecto se juega a mano. Nunca a medias.
-5. **Cadenas:** una pila de activaciones que se resuelve al revés, recién con más de una carta automatizada; antes hace falta un modelo de velocidad de hechizo y de ventana de respuesta.
-6. **Apagada por defecto** y, en el duelo, con el acuerdo de los dos: una mesa no puede cambiar la otra sin que lo sepa.
-
-Antes de empezar se mide cuántas cartas entran a la lista corta, con el método de la capa 1b.
-
-### Capa 4 · Núcleo de reglas (diseño y bloqueo)
-
-`@n1xx1/ocgcore-wasm` (JSR) es `ocgcore`, el motor de EDOPro, en WebAssembly: aplicaría las reglas de verdad a los mismos scripts. **Su licencia es AGPL-3.0:** enlazarlo y servir la app por la web puede obligar (cláusula 13) a ofrecer el código fuente completo de la aplicación. No es consejo legal: hay que confirmarlo antes de escribir una línea, y decide Gastón.
-
-| Opción | Qué implica |
-| --- | --- |
-| Publicar la app entera bajo AGPL-3.0 | El motor se usa sin más; el código de la app se vuelve libre. |
-| El motor en un servicio aparte | La obligación puede seguir para quien lo corre: hay que consultarlo. |
-| No usarlo | Queda la capa 3. |
-
-Si se usa: detrás de una bandera, en una pantalla aparte («Duelo automático (beta)»), sin ser el camino por defecto, con carga bajo demanda y sin tocar el relay del duelo manual.
+- **Frontera:** la app sólo habla JSON con el anfitrión del núcleo (`src/app/auto/protocol.ts`: sin `bigint`; el mismo esquema da el tipo y valida lo que llega). `core-host.ts` corre igual en un Worker o en un servidor; `referee.ts` filtra por asiento lo que cada jugador puede ver (una regla, `knows`, y una tabla que no compila si falta un mensaje); `policies.ts` trae el rival pasivo y el bot al azar legal.
+- **Lo que el núcleo no hace** y se resuelve acá: no baraja el deck inicial (lo baraja `deckOrder` con la semilla; la mano fija son las primeras cartas), empieza siempre el jugador 0 (el deck que va primero), `MSG_WIN` no corta el duelo (el fin es el primer `win`) y una carta sin script no da error: `mapDeck` la detecta antes y el modo automático no arranca con ella (ante la duda no se automatiza).
+- **El paquete** (0.1.6) necesita dos arreglos (`send`, por `SORT_CARD`; `freeDuel`, por la fuga de `destroyDuel`) y baja el wasm en base64 si no se le pasa `wasmBinary` o `locateFile` (+344 KB, +3,5 s): `createAutoHost` lo exige.
+- **Determinismo:** semilla + respuestas = el duelo entero; deshacer re-simula en una instancia nueva (`rewind`). Entre dos instancias el núcleo no ordena igual las pistas seguidas: `canonical` las ordena.
+- **A veces tarda:** armar los materiales de una Sincronía llegó a 43 s en un escritorio. El núcleo va en un Worker, con un «pensando…» y un cancelar que termina el Worker y re-simula.
+- **Licencia (la decide Gastón):** el núcleo y los scripts son AGPL-3.0 (el paquete se declara MIT, pero su `.wasm` lleva el núcleo) y `cards.cdb` no tiene licencia. Hasta que se decida, nada de producción importa `ocgcore-wasm` ni `src/app/auto/` (`auto-isolation.test.ts`, `NOT_AT_STARTUP`). Las salidas: abrir la app bajo AGPL (el núcleo en el navegador), un servicio aparte con su código publicado, o no usarlo.
+- **Datos y pruebas:** `npm run sync:core` baja `cards.cdb` y los scripts a una carpeta fuera del repo (nada de eso se sube). `npm run test:auto` corre el fuzz —dos bots al azar sobre los decks del meta: 0 `RETRY`, 0 mensajes sin manejar, 0 fugas de lo oculto, `rewind` igual— y no entra en `npm test`.
 
 Ver también el apéndice (el filtro Efecto del buscador) y `docs/duelo.md` (la mesa).
 

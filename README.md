@@ -14,6 +14,7 @@ npm run preview        # sirve el build, sin los Cache-Control de vercel.json
 npm test               # Vitest
 npm run typecheck      # tipos de la app y de los tests
 npm run lint           # ESLint
+npm run test:auto      # el fuzz del núcleo de reglas (lento; pide `npm run sync:core` una vez; docs/motor-de-cartas.md)
 ```
 
 ## Datos
@@ -27,6 +28,7 @@ npm run sync:banlists  # banlists del TCG y del OCG
 npm run sync:replays   # replays de torneo de los canales de YouTube
 npm run sync:genesys   # puntos de Genesys
 npm run sync:effects   # capa 1 del motor de cartas (docs/motor-de-cartas.md)
+npm run sync:core      # cards.cdb y scripts para los duelos automáticos, en una carpeta fuera del repo (no se suben)
 ```
 
 - Los workflows `sync-*.yml` tienen horario, pero no corren solos desde que se cortó la facturación de GitHub Actions: los datos se actualizan corriendo los scripts a mano.

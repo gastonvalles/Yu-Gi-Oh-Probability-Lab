@@ -14,11 +14,13 @@
     "preview": "vite preview",
     "sync:genesys": "node scripts/sync-genesys-card-data.mjs",
     "sync:banlists": "node scripts/sync-banlists.mjs",
+    "sync:core": "node scripts/sync-core-data.mjs",
     "sync:effects": "node scripts/build-card-effects.mjs",
     "sync:meta": "node scripts/sync-meta-decks.mjs",
     "sync:prices": "node scripts/sync-card-prices.mjs",
     "sync:replays": "node scripts/sync-replays.mjs",
     "test": "vitest --run",
+    "test:auto": "vitest --run --project slow",
     "typecheck": "tsc -p src/tsconfig.test.json"
   },
   "dependencies": {
@@ -44,6 +46,7 @@
     "fast-check": "^4.10.2",
     "globals": "^17.13.0",
     "jsdom": "^30.1.2",
+    "ocgcore-wasm": "0.1.6",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.1",
