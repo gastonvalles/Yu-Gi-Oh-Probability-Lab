@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import type { Expansion, ExpansionCard } from '../app/card-prices'
 import { META_DECKS } from '../app/meta'
 import { getReplayEntries } from '../app/replays'
-import { cardResult, findDeckResults, findExpansionResults, findPrintResults, findReplayResults, setCodePrefix } from '../components/shell/finder-sources'
+import { findDeckResults, findReplayResults } from '../components/shell/finder-decks'
+import { cardResult, findExpansionResults, findPrintResults, setCodePrefix } from '../components/shell/finder-sources'
 
 const EXPANSIONS: Expansion[] = [
   { id: 1, name: 'Legend of Blue Eyes White Dragon', date: '2002-03-08', count: 126, code: 'LOB' },

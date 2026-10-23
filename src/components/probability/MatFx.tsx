@@ -82,7 +82,12 @@ interface FxFrameProps {
 
 /** Marco de color adentro de una carta: borde parejo, brillo hacia adentro y, si se pide, la luz que gira y el reflejo. */
 export function FxFrame({ tone, orbit = true, shine = false }: FxFrameProps) {
-  return <span aria-hidden="true" data-fx="frame" data-orbit={orbit ? undefined : 'false'} data-shine={shine ? 'true' : undefined} className="fx-frame animate-fx-frame-in motion-reduce:animate-none" style={fxVars(tone)} />
+  return (
+    <span aria-hidden="true" data-fx="frame" data-orbit={orbit ? undefined : 'false'} data-shine={shine ? 'true' : undefined} className="fx-frame animate-fx-frame-in motion-reduce:animate-none" style={fxVars(tone)}>
+      {/* La luz que gira va en su propio elemento (el aro quieto, el degradé que gira adentro con `rotate`): así la anima el compositor y la mesa no recalcula estilos en cada cuadro. */}
+      {orbit ? <span data-fx="orbit" /> : null}
+    </span>
+  )
 }
 
 /** Las cuatro esquinas de la mira. */
