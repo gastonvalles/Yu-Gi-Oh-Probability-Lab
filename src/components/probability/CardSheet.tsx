@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -11,7 +11,7 @@ import { CardEffectTraits } from '../card-detail/CardEffectTraits'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { CloseButton } from '../ui/IconButton'
+import { CloseButton, IconButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
 import { GHOST_CLICK_MS, type MenuItem } from './MatDialogs'
 import { CARD_BACK } from './practice-styles'
@@ -32,6 +32,8 @@ interface CardSheetProps {
   items: readonly MenuItem[]
   /** El segundo paso de una jugada («¿En ataque o en defensa?»): sus opciones salen en lugar de las jugadas. */
   asking?: string
+  /** Volver del segundo paso a las jugadas: con esto, una flecha arriba a la izquierda de las opciones. */
+  onBack?: () => void
   /** Ver la carta entera (el detalle). */
   onInspect?: () => void
   /** Sin carta: sólo el encabezado con el título (las fases). */
@@ -44,6 +46,7 @@ interface CardSheetProps {
 /**
  * Una sola grilla de dos columnas de botones iguales (mismo estilo, mismo alto) y siempre el mismo aire entre todos (`gap-2`, también entre las jugadas y las de apoyo); si sobra uno, ocupa la fila entera. Con `stacked`
  * (la lista de efectos de «Activar efecto»: frases largas, cada una con su línea chica debajo) van de a una por fila. Una opción con `hint` lleva el texto arriba y la línea chica debajo.
+ * Una que abre un segundo paso de «cómo» (`children`) lleva una flecha a la derecha, en el borde: el texto lleva el mismo aire a los dos lados y sigue al medio.
  */
 function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: boolean }) {
   return (
@@ -56,7 +59,7 @@ function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: bool
           aria-current={item.current ? 'true' : undefined}
           // Apagada: sin caja y sin atenuar todo el botón (al 40 % no se leía por qué), el texto en `muted` y la razón en `soft`; se enfoca y se lee, pero no se elige.
           variant={item.current ? 'primary' : item.disabled ? 'tertiary' : 'secondary'}
-          className={cx('min-w-0 px-2!', !stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left', item.disabled && 'cursor-default aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0')}
+          className={cx('relative min-w-0 px-2!', !stacked && items.length % 2 === 1 && index === items.length - 1 && 'col-span-2', stacked && 'justify-start text-left', item.disabled && 'cursor-default aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0')}
           aria-disabled={item.disabled || undefined}
           data-initial-focus={index === 0 ? '' : undefined}
           onClick={item.disabled ? undefined : item.onSelect}
@@ -67,6 +70,11 @@ function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: bool
               <span className={cx(item.lead && 'font-normal', item.disabled && 'text-muted')}>{item.label}</span>
               {item.hint ? <span className={cx('block text-micro font-normal', item.disabled ? 'text-soft' : 'opacity-70')}>{item.hint}</span> : null}
             </span>
+          ) : item.children ? (
+            <>
+              <span className="min-w-0 px-2 text-balance">{item.label}</span>
+              <Icon name="chevron-right" size={12} strokeWidth={2} className="absolute right-1 top-1/2 -translate-y-1/2" />
+            </>
           ) : (
             item.label
           )}
@@ -82,7 +90,7 @@ function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: bool
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
  * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen. Quien la monta sólo abierta la envuelve en un `Presence` y así, al cerrarse, baja y se funde.
  */
-export function CardSheet({ name, kicker, art, back = false, apiCard = null, traits = true, stacked = false, items, asking, onInspect, plain = false, passThrough = false, onClose }: CardSheetProps) {
+export function CardSheet({ name, kicker, art, back = false, apiCard = null, traits = true, stacked = false, items, asking, onBack, onInspect, plain = false, passThrough = false, onClose }: CardSheetProps) {
   const backdropRef = useRef<HTMLDivElement | null>(null)
   const ref = useRef<HTMLElement | null>(null)
   const openedAtRef = useRef(performance.now())
@@ -154,8 +162,24 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
           </div>
         </div>
 
+        {/* En el segundo paso, la flecha que vuelve a las jugadas (afuera del `menu`: no es una opción). El foco va a la primera jugada. */}
+        {onBack ? (
+          <IconButton
+            size="sm"
+            tone="ghost"
+            aria-label={t('practice.menu.back')}
+            title={t('practice.menu.back')}
+            className="mt-2"
+            onClick={() => {
+              flushSync(onBack)
+              ref.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+            }}
+          >
+            <Icon name="arrow-left" />
+          </IconButton>
+        ) : null}
         {/* Las jugadas, `role="menu"`, y cada una un `menuitem`, como en el menú pegado a la carta: las del juego primero y las de apoyo después, todas en la misma grilla. */}
-        <div role="menu" aria-label={name} className={cx('mt-3', stacked && 'max-h-[min(55dvh,28rem)] overflow-y-auto')}>
+        <div role="menu" aria-label={name} className={cx(onBack ? 'mt-1' : 'mt-3', stacked && 'max-h-[min(55dvh,28rem)] overflow-y-auto')}>
           <Options items={asking !== undefined ? items : [...plays, ...support]} stacked={stacked} />
         </div>
       </section>

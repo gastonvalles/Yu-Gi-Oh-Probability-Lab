@@ -86,6 +86,7 @@ export const practice: Translated<typeof es> = {
   'practice.menu.deckRandom': 'At random',
   'practice.menu.deckOnTop': 'On top',
   'practice.menu.deckOnBottom': 'On the bottom',
+  'practice.menu.back': 'Back',
 
   'practice.deckMenu.draw': 'Draw',
   'practice.deckMenu.mill': 'Send to Graveyard',
