@@ -5,6 +5,7 @@ import { parseDerivedCardId } from '../../app/calculator-state'
 import { isRivalId, rivalCardOf } from '../../app/handtraps'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import { opaqueOfForeign } from '../../app/mat-control'
+import { SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
 import { isOpaqueId } from '../../app/mat-public'
 import { EASE_IN_OUT } from '../../app/motion'
 import {
@@ -1489,11 +1490,17 @@ export function PracticeMat({
       }))
     }
 
+    /** La posición de la ficha: la pregunta del segundo paso (o soltada en una zona libre) y el submenú de «Ficha» en escritorio. */
+    const tokenPositions = (dropped?: MatTarget): MenuItem[] => [
+      { label: t('practice.menu.attack'), onSelect: () => summonToken('atk', dropped) },
+      { label: t('practice.menu.defense'), onSelect: () => summonToken('def', dropped) },
+    ]
+
     // El + tocado: una ficha (pregunta la posición después) o poner / quitar un contador (sólo si hay cartas a las que ponérselo o quitárselo).
     if (menu.kind === 'token' && menu.root) {
       const root: MenuItem[] = []
 
-      if (freeTargets(state, monsterZones(false)).length > 0) root.push({ label: t('practice.menu.plusToken'), onSelect: () => setMenu({ kind: 'token', rect: menu.rect }) })
+      if (freeTargets(state, monsterZones(false)).length > 0) root.push({ label: t('practice.menu.plusToken'), onSelect: () => setMenu({ kind: 'token', rect: menu.rect }), children: tokenPositions() })
       // Poner contadores se ve siempre (Gastón, 2026-10-19: «falta la posibilidad de poner contadores a una carta»): tocarlo pide tocar la carta; sin ninguna en el campo, dice qué falta en vez de esconderse.
       const onField = fieldCards(state).length > 0
 
@@ -1505,23 +1512,17 @@ export function PracticeMat({
     }
 
     if (menu.kind === 'token') {
-      const dropped = menu.zone
-
-      return [
-        { label: t('practice.menu.attack'), onSelect: () => summonToken('atk', dropped) },
-        { label: t('practice.menu.defense'), onSelect: () => summonToken('def', dropped) },
-      ]
+      return tokenPositions(menu.zone)
     }
 
-    // Elegir en la pregunta arma la jugada completa ("Invocación Especial: en ataque") para lo que la mesa pida después.
-    const { ask } = menu
-
-    if (ask?.choices) {
-      const dropped = menu.kind === 'card' ? menu.drop : undefined
-
-      const passcode = menu.kind === 'card' ? cardOf(menu.id).apiCard?.ygoprodeckId : undefined
-
-      return ask.choices.map((choice) => ({
+    const dropped = menu.kind === 'card' ? menu.drop : undefined
+    const passcode = menu.kind === 'card' ? cardOf(menu.id).apiCard?.ygoprodeckId : undefined
+    /**
+     * Las respuestas de una pregunta: las mismas en el segundo paso y en el submenú de escritorio. Elegir una arma la jugada completa ("Invocación Especial: en ataque") para lo que la mesa
+     * pida después.
+     */
+    const answersOf = (ask: MatMenuItem): MenuItem[] =>
+      (ask.choices ?? []).map((choice) => ({
         label: choice.label,
         lead: choice.lead,
         // Una respuesta que no admiten todas las cartas del lote va apagada y dice por qué.
@@ -1531,11 +1532,25 @@ export function PracticeMat({
         onPreview: choice.preview && passcode !== undefined && onHighlight ? (active: boolean) => onHighlight(active ? { ygoprodeckId: passcode, ...choice.preview! } : null) : undefined,
         onSelect: () => choose({ ...choice, label: `${ask.label}: ${choice.label.toLowerCase()}` }, dropped),
       }))
+    /** Una pregunta de «cómo» (la posición, boca arriba o boca abajo, dónde del deck) lleva sus respuestas: en escritorio, el submenú al costado; en el celular, la flecha del botón. */
+    const childrenOf = (item: MatMenuItem) => (asksHow(item) ? answersOf(item) : undefined)
+    /** Escritorio: el menú pegado a la carta va en bloques (apoyo, envíos y las jugadas con la principal abajo); la hoja del celular, en el orden del motor. */
+    const blocked = (rows: { entry: MenuItem; place: MenuPlace }[]) => (isDesktop ? inMenuBlocks(rows) : rows.map(({ entry }) => entry))
+
+    const { ask } = menu
+
+    if (ask?.choices) {
+      return answersOf(ask)
     }
 
     // Varias cartas de una pila: lo que admiten todas; lo que no, apagado y con la razón («No va con Ash y Droll»).
     if (menu.kind === 'batch') {
-      return listBatchActions(state, menu.ids, kindOf, nameOf).map((item) => ({ label: item.label, onSelect: () => choose(item), utility: item.utility, disabled: item.disabled !== undefined, hint: item.disabled }))
+      return blocked(
+        listBatchActions(state, menu.ids, kindOf, nameOf).map((item) => ({
+          entry: { label: item.label, onSelect: () => choose(item), utility: item.utility, disabled: item.disabled !== undefined, hint: item.disabled, children: childrenOf(item) },
+          place: menuPlaceOf(item, menu.ids),
+        })),
+      )
     }
 
     if (menu.kind === 'deck') {
@@ -1544,11 +1559,13 @@ export function PracticeMat({
 
       if (!top) return [view]
 
+      const banishTop = banishItem(top, t('practice.deckMenu.banishTop'))
+
       return [
         { label: t('practice.deckMenu.draw'), onSelect: () => play({ type: 'draw', count: 1 }) },
         { label: t('practice.deckMenu.revealTop'), onSelect: () => play({ type: 'reveal', id: top }), utility: true },
         { label: t('practice.deckMenu.mill'), onSelect: () => play({ type: 'mill', count: 1 }), utility: true },
-        { label: t('practice.deckMenu.banishTop'), onSelect: () => choose(banishItem(top, t('practice.deckMenu.banishTop'))), utility: true },
+        { label: banishTop.label, onSelect: () => choose(banishTop), utility: true, children: childrenOf(banishTop) },
         { ...view, utility: true },
         { label: t('practice.deckMenu.shuffle'), onSelect: () => play({ type: 'shuffle', seed: randomSeed() }), utility: true },
       ]
@@ -1571,18 +1588,18 @@ export function PracticeMat({
     const past = activationsRef.current.filter((activation) => live.has(activation.action))
     const items = !api || !effects ? listed : listed.map((item) => (item.action.type === 'activate' && !item.choices ? { ...item, choices: effectChoices(menu.id, api.ygoprodeckId, effects, past, turnNumber, listing!.verified) } : item))
 
-    const mapped: MenuItem[] = items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility }))
+    const rows: { entry: MenuItem; place: MenuPlace }[] = items.map((item) => ({ entry: { label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility, children: childrenOf(item) }, place: menuPlaceOf(item, [menu.id]) }))
     const point = duel?.point
 
     // Una carta mía a la vista en el campo se puede señalar: un aro que late un rato en las dos pantallas. Comunica, no es una jugada (no cambia la mesa ni queda en los pasos), y va junto a Target.
     if (point && !menu.drop && locateCard(state, menu.id)?.kind === 'spot') {
       const item: MenuItem = { label: t('duel.point.label'), onSelect: () => { setMenu(null); point(menu.id) }, utility: true }
-      const targetAt = mapped.findIndex((entry) => entry.label === t('practice.menu.target') || entry.label === t('practice.menu.untarget'))
+      const targetAt = rows.findIndex(({ entry }) => entry.label === t('practice.menu.target') || entry.label === t('practice.menu.untarget'))
 
-      mapped.splice(targetAt >= 0 ? targetAt : mapped.length, 0, item)
+      rows.splice(targetAt >= 0 ? targetAt : rows.length, 0, { entry: item, place: SUPPORT_PLACE })
     }
 
-    return mapped
+    return blocked(rows)
   }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight, rivalUsedAt])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
@@ -1616,6 +1633,14 @@ export function PracticeMat({
   const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? '' : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: menu?.kind === 'batch' ? menu.ids.length : state.deck.length }))
   // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
   const sheeted = !isDesktop && menu !== null && !covered
+  // La flecha de volver de la hoja: del segundo paso a las jugadas, y de la posición de la ficha a lo que agrega el +. No la lleva la pregunta con la que el menú abrió directo (la carta soltada en una
+  // zona con una sola jugada, que pregunta): no hay a dónde volver.
+  const menuBack =
+    menu?.kind === 'token'
+      ? !menu.root && !menu.zone ? () => setMenu({ kind: 'token', rect: menu.rect, root: true }) : undefined
+      : menu && menu.kind !== 'phases' && menu.ask && !(menu.kind === 'card' && menu.drop && listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz).length === 1)
+        ? () => setMenu({ ...menu, ask: undefined })
+        : undefined
 
   const saveCombo = (name: string) => {
     const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf }, combos)
@@ -2294,6 +2319,7 @@ export function PracticeMat({
           traits={!choosingEffect}
           stacked={choosingEffect}
           asking={menu.kind !== 'token' && menu.kind !== 'phases' ? menu.ask?.label : undefined}
+          onBack={menuBack}
           onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
           passThrough={attackAsk !== null}
           onClose={() => setMenu(null)}

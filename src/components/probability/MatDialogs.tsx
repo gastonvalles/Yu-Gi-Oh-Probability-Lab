@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
@@ -59,6 +59,13 @@ export interface MenuItem {
   hint?: string
   /** Se llama con `true` al pasar el mouse por la opción (o al enfocarla con el teclado) y con `false` al irse: la mesa lo usa para resaltar, en el detalle de la carta, el texto que dice esa opción. */
   onPreview?: (active: boolean) => void
+  /**
+   * Las respuestas de una pregunta de «cómo» (la posición, boca arriba o boca abajo, dónde del deck): la opción es un grupo y lleva una flecha (›). En el menú pegado a la carta salen en un submenú al
+   * costado (al pasar el mouse, con un clic, Enter o →); en la hoja del celular el toque hace `onSelect`, que abre el segundo paso de siempre.
+   */
+  children?: MenuItem[]
+  /** Arranca un bloque (apoyo, envíos, jugadas): en el menú pegado a la carta lleva una línea fina arriba. */
+  divider?: boolean
 }
 
 interface CardMenuProps {
@@ -74,6 +81,8 @@ interface CardMenuProps {
   wide?: boolean
   /** El menú no tapa la mesa: el fondo deja pasar los toques (se elige tocando una carta del campo, p. ej. a quién atacar) y no se lleva el foco. Se cierra con Escape, la jugada o al tocar otra carta. */
   passThrough?: boolean
+  /** Arranca con el submenú de la opción que se llama así ya abierto (así el catálogo lo muestra). */
+  startExpanded?: string
   onClose: () => void
 }
 
@@ -86,8 +95,31 @@ const keyboardFocus = (element: HTMLElement): boolean => {
   }
 }
 
-const MENU_ITEM =
-  'block w-full border-0 bg-transparent px-3 py-1.5 text-left text-body font-medium text-foreground outline-none transition-colors duration-100 hover:bg-tint/12 focus-visible:bg-tint/12'
+/**
+ * Una opción del menú y del submenú: el texto al medio y el foco con el aro de siempre (las filas van a 4 px del borde del panel, así el aro entra sin cortarse). Abierta (su submenú a la vista),
+ * el mismo fondo que al pasar el mouse.
+ */
+const MENU_ROW =
+  'relative w-full rounded-tag border-0 bg-transparent py-1.5 text-body font-medium text-foreground outline-none transition-[background-color,box-shadow] duration-100 hover:bg-tint/12 focus-visible:bg-tint/12 focus-visible:shadow-focus aria-expanded:bg-tint/12'
+
+/** Lo que se elige con las flechas: las apagadas se enfocan con Tab (se leen), pero las flechas las saltean. */
+const CHOOSABLE = '[role="menuitem"]:not([aria-disabled="true"])'
+
+/** La espera del mouse antes de abrir, cambiar o cerrar un submenú: pasar de largo por una fila no lo abre ni lo cierra. */
+const HOVER_MS = 120
+
+/**
+ * ↑ ↓ Inicio y Fin mueven el foco entre las opciones de una lista, dando la vuelta (desde la primera, ↑ va a la última: la jugada principal, que está abajo, pegada a la carta). Dice si la tecla era de ésas.
+ */
+function moveFocus(list: HTMLElement, key: string): boolean {
+  const rows = [...list.querySelectorAll<HTMLElement>(CHOOSABLE)]
+  const at = rows.findIndex((row) => row === document.activeElement)
+  const next = key === 'ArrowDown' ? at + 1 : key === 'ArrowUp' ? (at < 0 ? rows.length : at) - 1 : key === 'Home' ? 0 : key === 'End' ? rows.length - 1 : null
+
+  if (next === null || rows.length === 0) return false
+  rows[(next + rows.length) % rows.length]!.focus()
+  return true
+}
 
 /**
  * En el celular, el click que el navegador sintetiza al soltar el dedo llega DESPUÉS del `pointerup` que
@@ -98,19 +130,69 @@ export const GHOST_CLICK_MS = 350
 /**
  * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
  * medio. Nace de la carta (crece desde su lado, de 0,96 a 1) y, al cerrarse, vuelve a ella. Se cierra al elegir, al tocar afuera o con Escape.
+ * Las opciones van al medio; una con `children` (›) abre al costado un submenú con sus respuestas, sin mover el menú: al pasar el mouse (con una espera, y sin cerrarse al ir en diagonal
+ * hacia él), con un clic, Enter o →; se cierra al irse el mouse, con ← o con Escape (el primero cierra sólo el submenú y vuelve a su fila). ↑ ↓ Inicio y Fin recorren las opciones.
  */
-export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false, passThrough = false, onClose }: CardMenuProps) {
+export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false, passThrough = false, startExpanded, onClose }: CardMenuProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const ref = useRef<HTMLDivElement | null>(null)
+  const subRef = useRef<HTMLDivElement | null>(null)
   const openedAtRef = useRef(0)
   // La carta a la que se acomodó el menú la última vez: si cambia sólo lo que dice (el segundo paso, "¿En ataque o en defensa?") y no la carta, se queda donde estaba.
   const placedForRef = useRef<DOMRect | null>(null)
+  // La espera del mouse (`hover`): a qué fila va (`null`, cerrar) y su reloj. Dónde estaba el mouse y de qué lado salió el submenú: yendo hacia él, la espera vuelve a empezar.
+  const intentRef = useRef<{ timer: number; index: number | null } | null>(null)
+  const pointerRef = useRef<{ x: number; y: number } | null>(null)
+  const sideRef = useRef<1 | -1>(1)
   // `transformOrigin`: el punto del borde del menú que da a la carta (frente a su centro, abajo si el menú va arriba de ella): de ahí crece al abrirse y ahí vuelve al cerrarse.
   const [position, setPosition] = useState<{ left: number; top: number; transformOrigin: string } | null>(null)
+  // El submenú abierto: de qué fila (su lugar y su texto: si la lista cambia por debajo, se cierra solo).
+  const [expanded, setExpanded] = useState<{ index: number; label: string } | null>(null)
   const open = anchor !== null
+  const expandedItem = expanded ? items[expanded.index] : undefined
+  const sub = expandedItem && expandedItem.label === expanded?.label && expandedItem.children && !expandedItem.disabled ? expandedItem : null
+  const subIndex = sub ? expanded!.index : null
+
+  const cancelIntent = () => {
+    window.clearTimeout(intentRef.current?.timer)
+    intentRef.current = null
+  }
+  const rowOf = (index: number | null) => (index === null ? null : (ref.current?.querySelector<HTMLElement>(`[data-menu-row="${index}"]`) ?? null))
+
+  /** El mouse llegó a una fila (o se fue): pasada la espera, abre su submenú, cambia al de otra o lo cierra (`null`). */
+  const hover = (index: number | null) => {
+    cancelIntent()
+    const timer = window.setTimeout(() => {
+      intentRef.current = null
+      setExpanded((current) => (index === null ? null : current?.index === index ? current : { index, label: items[index]?.label ?? '' }))
+    }, HOVER_MS)
+
+    intentRef.current = { timer, index }
+  }
+
+  /** Abre el submenú de la fila ya (un clic, Enter, →) y, desde el teclado, pasa el foco a su primera respuesta. */
+  const expand = (index: number, focus: boolean) => {
+    cancelIntent()
+    flushSync(() => setExpanded({ index, label: items[index]?.label ?? '' }))
+    if (focus) subRef.current?.querySelector<HTMLElement>(CHOOSABLE)?.focus()
+  }
+
+  /** Cierra el submenú y, si se pide (← o Escape), vuelve el foco a su fila. */
+  const collapse = (focusRow: boolean) => {
+    const row = focusRow ? rowOf(subIndex) : null
+
+    cancelIntent()
+    setExpanded(null)
+    row?.focus()
+  }
 
   useEscapeKey(onClose, open)
-  useFocusTrap(ref, open && !passThrough)
+  // Arriba del Escape del menú: con el submenú abierto, el primero cierra sólo el submenú.
+  useEscapeKey(() => collapse(true), sub !== null)
+  // La trampa del foco es de todo el menú, con el submenú adentro (va al lado del panel, no dentro: el panel scrollea y lo cortaría).
+  useFocusTrap(rootRef, open && !passThrough)
+
+  useEffect(() => () => window.clearTimeout(intentRef.current?.timer), [])
 
   useLayoutEffect(() => {
     const menu = ref.current
@@ -118,6 +200,9 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
     if (!anchor || !menu) {
       placedForRef.current = null
       setPosition(null)
+      window.clearTimeout(intentRef.current?.timer)
+      intentRef.current = null
+      setExpanded(null)
       return
     }
 
@@ -139,12 +224,119 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
         ? { left: Math.min(Math.max(current.left, margin), Math.max(margin, window.innerWidth - width - margin)), top: Math.min(Math.max(current.top, margin), Math.max(margin, window.innerHeight - height - margin)), transformOrigin: current.transformOrigin }
         : { left, top, transformOrigin },
     )
+
+    // Otra carta: el submenú arranca cerrado (o el que pide el catálogo).
+    if (!sameCard) {
+      const start = startExpanded === undefined ? -1 : items.findIndex((item) => item.label === startExpanded && item.children)
+
+      setExpanded(start >= 0 ? { index: start, label: startExpanded! } : null)
+    }
+    // `items` y `startExpanded` se leen al acomodarse para otra carta: cambiar lo que dice no lo vuelve a acomodar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchor, items.length, wide])
+
+  // El submenú sale pegado al costado del menú (a la derecha; si no entra, a la izquierda), con su primera respuesta a la altura de la fila y entero dentro de la pantalla. Se acomoda con
+  // las medidas de layout de la fila y del panel (no con su rect, que al abrirse está achicado por la animación) y sin otro dibujo: el estilo va directo al elemento.
+  useLayoutEffect(() => {
+    const panel = ref.current
+    const submenu = subRef.current
+    const row = rowOf(subIndex)
+
+    if (!panel || !submenu || !row || !position) return
+
+    const margin = 8
+    // Se pisan 4 px (el aire del costado del panel): el mouse pasa de la fila al submenú sin salir de los dos.
+    const overlap = 4
+    const { offsetWidth: width, offsetHeight: height } = submenu
+    const right = position.left + panel.offsetWidth - overlap
+    const side = right + width <= window.innerWidth - margin ? 1 : -1
+    const left = side === 1 ? right : Math.max(margin, position.left - width + overlap)
+    const first = submenu.querySelector<HTMLElement>('[role="menuitem"]')
+    const rowTop = position.top + panel.clientTop + row.offsetTop - panel.scrollTop
+    const top = Math.min(Math.max(rowTop - submenu.clientTop - (first?.offsetTop ?? 0), margin), Math.max(margin, window.innerHeight - height - margin))
+
+    sideRef.current = side
+    submenu.style.left = `${Math.round(left)}px`
+    submenu.style.top = `${Math.round(top)}px`
+    // Crece desde el lado que da a la fila.
+    submenu.style.transformOrigin = `${side === 1 ? '0' : '100%'} ${Math.round(rowTop - top + row.offsetHeight / 2)}px`
+  }, [subIndex, position])
 
   const closeFromBackdrop = () => {
     if (performance.now() - openedAtRef.current >= GHOST_CLICK_MS) {
       onClose()
     }
+  }
+
+  // Yendo hacia el submenú en diagonal (por arriba de otras filas), la espera de cambiar o cerrar vuelve a empezar mientras el mouse siga acercándose: no se cierra en el camino.
+  const keepTowardSub = (event: ReactMouseEvent) => {
+    const last = pointerRef.current
+    const pending = intentRef.current
+
+    pointerRef.current = { x: event.clientX, y: event.clientY }
+    if (!last || !pending || subIndex === null || pending.index === subIndex) return
+
+    const toward = (event.clientX - last.x) * sideRef.current
+
+    if (toward > 0 && toward >= Math.abs(event.clientY - last.y) / 2) hover(pending.index)
+  }
+
+  const onPanelKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (moveFocus(event.currentTarget, event.key)) {
+      event.preventDefault()
+      if (expanded) collapse(false)
+      return
+    }
+
+    const index = Number(document.activeElement instanceof HTMLElement ? document.activeElement.dataset.menuRow : undefined)
+    const item = items[index]
+
+    if (event.key === 'ArrowRight' && item?.children && !item.disabled) {
+      event.preventDefault()
+      expand(index, true)
+    }
+  }
+
+  /** Una fila: la de una jugada o la de una respuesta del submenú (`row`: su lugar en el menú; sin él, es del submenú). */
+  const renderRow = (item: MenuItem, index: number, row?: number) => {
+    // Su lugar, si abre un submenú (una opción apagada no abre nada).
+    const group = item.children && !item.disabled ? row : undefined
+    // Las frases largas (la lista de efectos de «Activar efecto», con su número arriba y sus rasgos abajo) van a la izquierda: centradas se leen mal.
+    const left = wide || item.lead !== undefined
+
+    return (
+      <button
+        // El lugar hace única la clave (dos materiales pueden llamarse igual); el texto, que el segundo paso sean botones nuevos.
+        key={`${index}|${item.label}`}
+        type="button"
+        role="menuitem"
+        aria-current={item.current ? 'true' : undefined}
+        aria-disabled={item.disabled || undefined}
+        aria-haspopup={group !== undefined ? 'menu' : undefined}
+        aria-expanded={group !== undefined ? subIndex === group : undefined}
+        data-menu-row={row}
+        // Relleno parejo a los dos lados: el texto queda al medio, haya flecha o no (la de un grupo va en su relleno).
+        className={cx(MENU_ROW, 'block', left ? 'px-2 text-left' : cx('text-center text-balance', group !== undefined ? 'px-4' : 'px-2'), item.lead && 'font-normal', item.current && 'font-bold text-info!', item.disabled && 'cursor-default text-muted hover:bg-transparent')}
+        data-initial-focus={row === 0 ? '' : undefined}
+        onClick={item.disabled ? undefined : group !== undefined ? (event) => expand(group, event.detail === 0) : item.onSelect}
+        onMouseEnter={() => {
+          if (row !== undefined) hover(group ?? null)
+          item.onPreview?.(true)
+        }}
+        onMouseLeave={() => {
+          if (row !== undefined) hover(null)
+          item.onPreview?.(false)
+        }}
+        // Con el teclado también (no al abrir con el mouse: el foco que se lleva el primero sin que nadie lo apunte no resalta nada).
+        onFocus={item.onPreview ? (event) => item.onPreview?.(keyboardFocus(event.currentTarget)) : undefined}
+        onBlur={item.onPreview ? () => item.onPreview?.(false) : undefined}
+      >
+        {item.lead ? <span className="block text-micro font-semibold text-soft">{item.lead}</span> : null}
+        {item.label}
+        {item.hint ? <span className="block text-micro font-normal text-soft">{item.hint}</span> : null}
+        {group !== undefined ? <Icon name="chevron-right" size={12} strokeWidth={2} className="absolute right-1 top-1/2 -translate-y-1/2 text-muted" /> : null}
+      </button>
+    )
   }
 
   // Al cerrarse sigue montado mientras vuelve a la carta (`usePresence`): sin atajar el toque siguiente.
@@ -155,11 +347,17 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
         role="menu"
         aria-label={title || kicker}
         tabIndex={-1}
-        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
+        // Sin nada que elegir, el foco va al panel.
+        data-initial-focus={items.length === 0 && !onInspect ? '' : undefined}
+        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto px-1 py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={onPanelKey}
+        onMouseMove={keepTowardSub}
+        // Si el panel scrollea, el submenú quedaría lejos de su fila: se cierra.
+        onScroll={() => (expanded ? collapse(false) : undefined)}
       >
-        <div className="grid gap-0.5 px-3 pb-1.5 pt-1.5">
+        <div className="grid gap-0.5 px-2 pb-1.5 pt-1.5">
           <p className={cx('m-0', overline)}>{kicker}</p>
           {title ? (
             <p className="m-0 truncate text-body font-semibold text-foreground" title={title}>
@@ -168,35 +366,53 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
           ) : null}
         </div>
         {items.map((item, index) => (
-          <button
-            // El lugar hace única la clave (dos materiales pueden llamarse igual); el texto, que el segundo paso sean botones nuevos.
-            key={`${index}|${item.label}`}
-            type="button"
-            role="menuitem"
-            aria-current={item.current ? 'true' : undefined}
-            aria-disabled={item.disabled || undefined}
-            className={cx(MENU_ITEM, item.lead && 'font-normal', item.current && 'font-bold text-info!', item.disabled && 'cursor-default text-muted hover:bg-transparent')}
-            data-initial-focus={index === 0 ? '' : undefined}
-            onClick={item.disabled ? undefined : item.onSelect}
-            onMouseEnter={item.onPreview ? () => item.onPreview?.(true) : undefined}
-            onMouseLeave={item.onPreview ? () => item.onPreview?.(false) : undefined}
-            // Con el teclado también (no al abrir con el mouse: el foco que se lleva el primero sin que nadie lo apunte no resalta nada).
-            onFocus={item.onPreview ? (event) => item.onPreview?.(keyboardFocus(event.currentTarget)) : undefined}
-            onBlur={item.onPreview ? () => item.onPreview?.(false) : undefined}
-          >
-            {item.lead ? <span className="block text-micro font-semibold text-soft">{item.lead}</span> : null}
-            {item.label}
-            {item.hint ? <span className="block text-micro font-normal text-soft">{item.hint}</span> : null}
-          </button>
+          <Fragment key={`${index}|${item.label}`}>
+            {/* Entre bloques (apoyo, envíos, jugadas), una línea fina. */}
+            {item.divider ? <div aria-hidden="true" className="my-1 border-t border-border-subtle" /> : null}
+            {renderRow(item, index, index)}
+          </Fragment>
         ))}
-        {items.length === 0 ? <p className="m-0 px-3 py-1.5 text-micro text-muted">{t('practice.dialog.empty')}</p> : null}
+        {items.length === 0 ? <p className="m-0 px-2 py-1.5 text-micro text-muted">{t('practice.dialog.empty')}</p> : null}
         {onInspect ? (
-          <button type="button" role="menuitem" className={cx(MENU_ITEM, 'mt-1 flex items-center gap-2 border-t border-border-subtle pt-2 text-muted')} data-initial-focus={items.length === 0 ? '' : undefined} onClick={onInspect}>
-            <Icon name="search" size={14} />
-            {t('practice.dialog.viewCard')}
-          </button>
+          <>
+            <div aria-hidden="true" className="my-1 border-t border-border-subtle" />
+            <button
+              type="button"
+              role="menuitem"
+              className={cx(MENU_ROW, 'flex items-center justify-center gap-2 px-2 text-muted')}
+              data-initial-focus={items.length === 0 ? '' : undefined}
+              onClick={onInspect}
+              onMouseEnter={() => hover(null)}
+            >
+              <Icon name="search" size={14} />
+              {t('practice.dialog.viewCard')}
+            </button>
+          </>
         ) : null}
       </div>
+      {sub ? (
+        <div
+          // Uno nuevo por fila: cambiar de submenú vuelve a fundirse.
+          key={subIndex}
+          ref={subRef}
+          role="menu"
+          aria-label={sub.label}
+          className={cx(surface.panel, 'absolute left-0 top-0 w-36 px-1 py-1 animate-dialog-enter motion-reduce:animate-none')}
+          onClick={(event) => event.stopPropagation()}
+          onMouseEnter={cancelIntent}
+          onMouseLeave={() => hover(null)}
+          onKeyDown={(event) => {
+            if (moveFocus(event.currentTarget, event.key)) {
+              event.preventDefault()
+            } else if (event.key === 'ArrowLeft') {
+              event.preventDefault()
+              collapse(true)
+            }
+          }}
+        >
+          {sub.children!.map((child, index) => renderRow(child, index))}
+        </div>
+      ) : null}
     </div>,
     document.body,
   ) : null, () => [rootRef.current])

@@ -308,6 +308,13 @@ const PATHS = {
       <path d="m13 6 6 6-6 6" />
     </>
   ),
+  /** Volver al paso anterior (el segundo paso de la hoja de una carta vuelve a sus jugadas). */
+  'arrow-left': (
+    <>
+      <path d="M19 12H5" />
+      <path d="m11 6-6 6 6 6" />
+    </>
+  ),
   'chevron-down': <path d="m6 9 6 6 6-6" />,
   'chevron-up': <path d="m6 15 6-6 6 6" />,
   'chevron-left': <path d="m15 6-6 6 6 6" />,
