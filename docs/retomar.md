@@ -215,7 +215,7 @@ pedido, los tests livianos y frenar al segundo reintento, las notas del parche y
   `git worktree` aparte y mirá la rama antes de cada commit; `node_modules` puede ser un junction al del repo (en PowerShell,
   `New-Item -ItemType Junction`).
 - **Se mergea sin esperar el CI:** cuando `typecheck`, `lint`, las pruebas y el build pasan en local,
-  `gh pr merge N --merge --match-head-commit <sha>`, y después se mira producción (Vercel despliega `main` solo). El CI de GitHub
+  `gh pr merge N --squash --admin`, y después se mira producción (Vercel despliega `main` solo). El CI de GitHub
   falla en segundos sin correr ningún paso (la facturación de la cuenta); si vuelve, rige otra vez el `check` verde del último
   commit.
 - **Un rediseño se presenta antes de escribir código:** maquetas en imágenes, el antes y el después y las decisiones abiertas; el
