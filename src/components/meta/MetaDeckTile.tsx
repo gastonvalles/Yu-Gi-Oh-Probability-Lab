@@ -21,11 +21,12 @@ interface MetaDeckTileProps {
 
 /**
  * La portada que eligió YGOPRODeck para el deck; sin ella, un ícono del mismo tamaño (la grilla no salta), blanco como todo ícono que sólo adorna. El que la usa le da el
- * tamaño con `className`.
+ * tamaño con `className`; `width`, el ancho que se le pide al proxy: 320 para la portada chica de la fila del celular (44 px, con DPR 3 son 183 px de alto), que con 512 bajaba y
+ * decodificaba casi el triple de píxeles por fila al desplazar la lista.
  */
-function DeckCover({ cover, className }: { cover: number | null; className: string }) {
+function DeckCover({ cover, className, width }: { cover: number | null; className: string; width: 320 | 512 }) {
   return cover ? (
-    <img src={cardImageSrc(coverArtUrl(cover), 512)} alt="" aria-hidden="true" loading="lazy" decoding="async" className={`${className} object-cover`} />
+    <img src={cardImageSrc(coverArtUrl(cover), width)} alt="" aria-hidden="true" loading="lazy" decoding="async" className={`${className} object-cover`} />
   ) : (
     <span aria-hidden="true" className={`${className} grid place-items-center text-foreground`}>
       <Icon name="layers" size={20} />
@@ -109,7 +110,7 @@ function MetaDeckRow({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
       onClick={onOpen}
     >
       <span className="block h-[3.8rem] w-11 overflow-hidden rounded-tag bg-input">
-        <DeckCover cover={deck.cover} className="size-full" />
+        <DeckCover cover={deck.cover} className="size-full" width={320} />
       </span>
       <span className="grid min-w-0 gap-0.5">
         <strong className="truncate text-body font-semibold text-foreground">{deck.name}</strong>
@@ -148,7 +149,7 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
       {/* La portada abre el deck con el mouse; para el teclado y los lectores de pantalla está el botón de abajo. */}
       <div className="relative">
         <button type="button" tabIndex={-1} aria-hidden="true" className="block aspect-[16/10] w-full overflow-hidden rounded-tag bg-input" onClick={onOpen}>
-          <DeckCover cover={deck.cover} className="size-full" />
+          <DeckCover cover={deck.cover} className="size-full" width={512} />
         </button>
         <span className="absolute right-2 top-2">
           <ReplaysBadge deckId={deck.id} onImage />

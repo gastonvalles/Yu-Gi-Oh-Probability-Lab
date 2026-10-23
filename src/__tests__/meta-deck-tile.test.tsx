@@ -120,6 +120,16 @@ describe('la fila de un deck de torneo (celular)', () => {
 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
+
+  it('la portada chica de la fila se pide a 320 px y la de la tarjeta de escritorio a 512: la fila no baja ni decodifica de más al desplazar la lista', () => {
+    const { container, rerender } = render(<MetaDeckTile deck={{ ...DECK, cover: 14558127 }} layout="row" onOpen={() => {}} />)
+
+    expect(container.querySelector('img')).toHaveAttribute('src', '/api/card-image/cards_cropped/14558127.jpg?w=320')
+
+    rerender(<MetaDeckTile deck={{ ...DECK, cover: 14558127 }} layout="card" onOpen={() => {}} />)
+
+    expect(container.querySelector('img')).toHaveAttribute('src', '/api/card-image/cards_cropped/14558127.jpg?w=512')
+  })
 })
 
 describe('lo que dice la tarjeta de un deck', () => {
