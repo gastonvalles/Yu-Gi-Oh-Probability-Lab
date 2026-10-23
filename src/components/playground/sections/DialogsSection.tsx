@@ -1,5 +1,6 @@
 import { useMemo, useState, type ComponentProps } from 'react'
 
+import { SUPPORT_PLACE, inMenuBlocks, type MenuPlace } from '../../../app/mat-menu-order'
 import type { LabResults, LabViewResult } from '../../../app/probability-lab'
 import { printImageUrl } from '../../../app/card-prices'
 import type { MatPile } from '../../../app/practice-mat'
@@ -154,6 +155,30 @@ const PILE_SAMPLES: Record<PileSample, { pile: MatPile; ids: string[]; targeted?
 /** Lo que dice una opción que no admiten todas las elegidas, como lo va a decir la mesa: hasta tres nombres; desde cuatro, cuántas. */
 const notWith = (names: string[]) => (names.length > 3 ? `No va con ${names.length} de las elegidas` : `No va con ${names.length > 1 ? `${names.slice(0, -1).join(', ')} y ${names.at(-1)}` : names[0]}`)
 
+const SEND = (rank: number): MenuPlace => ({ block: 'send', rank })
+const PLAY: MenuPlace = { block: 'play', rank: 0 }
+
+/**
+ * El menú de Ash Blossom en la mano, en el orden del motor y con el bloque de cada opción, como lo arma la mesa: las respuestas de «cómo» van en `children` (el submenú en escritorio, la › en el
+ * celular). `ask` es lo que hace tocar un grupo en la hoja (el segundo paso); `play`, una jugada de muestra.
+ */
+const ashMenuRows = (ask: (label: string) => void, play: (label: string) => () => void): { entry: MenuItem; place: MenuPlace }[] => {
+  const group = (label: string, answers: string[]): MenuItem => ({ label, onSelect: () => ask(label), children: answers.map((answer) => ({ label: answer, onSelect: play(`${label}: ${answer.toLowerCase()}`) })) })
+  const single = (label: string, utility?: true): MenuItem => ({ label, onSelect: play(label), utility })
+
+  return [
+    { entry: single(t('practice.menu.normalSummon')), place: PLAY },
+    { entry: single(t('practice.menu.set')), place: PLAY },
+    { entry: group(t('practice.menu.specialSummon'), [t('practice.menu.attack'), t('practice.menu.defense')]), place: PLAY },
+    { entry: single(t('practice.menu.activateEffect')), place: PLAY },
+    { entry: single(t('practice.menu.reveal'), true), place: SUPPORT_PLACE },
+    { entry: single(t('practice.menu.target'), true), place: SUPPORT_PLACE },
+    { entry: single(t('practice.menu.discard'), true), place: SEND(2) },
+    { entry: { ...group(t('practice.menu.banish'), [t('practice.menu.banishFaceUp'), t('practice.menu.banishFaceDown')]), utility: true }, place: SEND(3) },
+    { entry: { ...group(t('practice.menu.toDeck'), [t('practice.menu.deckRandom'), t('practice.menu.deckOnTop'), t('practice.menu.deckOnBottom')]), utility: true }, place: SEND(0) },
+  ]
+}
+
 /** Diálogos y avisos: se abren desde acá, tal cual se ven en la app. */
 export function DialogsSection() {
   const [size, setSize] = useState<(typeof SIZES)[number] | null>(null)
@@ -165,6 +190,8 @@ export function DialogsSection() {
   // El menú que abre el visor (como en la mesa, lo abre quien abrió el visor): el de una carta, o el del lote con «Elegir jugada». En escritorio, pegado; en el celular, la hoja de abajo.
   const [pileMenu, setPileMenu] = useState<{ kicker: string; title: string; rect: DOMRect; items: MenuItem[]; card?: string } | null>(null)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // El menú de una carta de la mano (Ash Blossom): dónde se tocó y, si se abrió con una pregunta, cuál (en escritorio, su submenú abierto; en el celular, su segundo paso).
+  const [ashMenu, setAshMenu] = useState<{ rect: DOMRect; ask?: string } | null>(null)
   const { nameOf, artOf } = useMemo(() => sampleCombo(), [])
   const pileShown = pileSample ? PILE_SAMPLES[pileSample] : null
   // Toda jugada cierra el visor, como en la mesa.
@@ -184,6 +211,14 @@ export function DialogsSection() {
       { label: toExtra, onSelect: playSample(toExtra), utility: true, disabled: blocked.length > 0, hint: blocked.length > 0 ? notWith(blocked) : undefined },
     ]
   }
+  const ashRows = ashMenuRows(
+    (label) => setAshMenu((current) => (current ? { ...current, ask: label } : current)),
+    (label) => () => {
+      setAshMenu(null)
+      showToastMessage(`Jugada de muestra: ${label}`, 'info')
+    },
+  )
+  const ashAsked = ashMenu?.ask === undefined ? undefined : ashRows.find(({ entry }) => entry.label === ashMenu.ask)?.entry
   const openButtons = (samples: ConfirmSample[]) =>
     samples.map((sample) => (
       <Button key={sample.title} size="sm" onClick={() => setConfirm(sample)}>
@@ -224,6 +259,37 @@ export function DialogsSection() {
         </div>
         <ConfirmDialog {...(confirm ?? REFERENCE_CONFIRMS[0]!)} isOpen={confirm !== null} onCancel={() => setConfirm(null)} onConfirm={() => setConfirm(null)} />
       </Specimen>
+
+      <Specimen
+        title="Menú de una carta"
+        note={
+          <>
+            En escritorio, pegado a la carta (<Tag>CardMenu</Tag>): todo al medio y en tres bloques con una línea fina entre ellos, apoyo (Revelar, Target), envíos (Al deck, Descartar, Desterrar) y las jugadas, con la principal abajo, pegada a la carta. Una opción con › abre al costado un submenú con el «cómo» (al pasar el mouse, con un clic, Enter o →; ← o Escape lo cierran) sin mover el menú; sin ›, actúa o pregunta ahí mismo. En el celular, la hoja de abajo (<Tag>CardSheet</Tag>) en el orden de siempre: la › en los botones que abren un segundo paso y, en ese paso, la flecha para volver. El orden: <Tag>app/mat-menu-order.ts</Tag>.
+          </>
+        }
+      >
+        <Button size="sm" onClick={(event) => setAshMenu({ rect: event.currentTarget.getBoundingClientRect() })}>
+          Abrir el menú de Ash Blossom
+        </Button>
+        <Button size="sm" onClick={(event) => setAshMenu({ rect: event.currentTarget.getBoundingClientRect(), ask: t('practice.menu.specialSummon') })}>
+          Abrir con «{t('practice.menu.specialSummon')}» abierto
+        </Button>
+        <LanguageSwitcher />
+      </Specimen>
+      <Presence>
+        {ashMenu && !isDesktop ? (
+          <CardSheet
+            name={nameOf(ASH)}
+            kicker={ashAsked?.label ?? PILE_TITLES.hand}
+            art={artOf(ASH)}
+            items={ashAsked?.children ?? ashRows.map(({ entry }) => entry)}
+            asking={ashAsked?.label}
+            onBack={ashAsked ? () => setAshMenu((current) => (current ? { rect: current.rect } : current)) : undefined}
+            onClose={() => setAshMenu(null)}
+          />
+        ) : null}
+      </Presence>
+      <CardMenu anchor={isDesktop ? (ashMenu?.rect ?? null) : null} kicker={PILE_TITLES.hand} title={nameOf(ASH)} items={inMenuBlocks(ashRows)} startExpanded={ashMenu?.ask} onClose={() => setAshMenu(null)} />
 
       <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
         <Button size="sm" onClick={() => setPileSample('plain')}>

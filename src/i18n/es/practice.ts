@@ -89,6 +89,8 @@ export const practice = {
   'practice.menu.deckRandom': 'Al azar',
   'practice.menu.deckOnTop': 'Arriba',
   'practice.menu.deckOnBottom': 'Abajo',
+  // La flecha del segundo paso de la hoja del celular (sólo para el lector de pantalla): vuelve a las jugadas.
+  'practice.menu.back': 'Volver',
 
   // Menú del tope del deck.
   'practice.deckMenu.draw': 'Robar',
