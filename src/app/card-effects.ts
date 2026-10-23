@@ -1,6 +1,6 @@
 /**
  * El motor que entiende efectos: de lo que dice el texto de una carta (en inglés) a qué hace. Son expresiones sobre el texto, no una comprensión del juego: aciertan en
- * lo común y pueden fallar con una redacción rara; `docs/auditoria-motor-efectos.md` dice cuánto (precisión y cobertura medidas con etiquetas a ciegas) y dónde.
+ * lo común y pueden fallar con una redacción rara; el apéndice de `docs/motor-de-cartas.md` dice cuánto (precisión y cobertura medidas con etiquetas a ciegas) y dónde.
  *
  * No importa nada: es una función pura del texto. `card-filters.ts` lo usa para filtrar y `scripts`/pruebas lo miden contra textos reales.
  */

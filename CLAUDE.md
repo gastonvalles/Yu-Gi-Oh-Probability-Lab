@@ -9,7 +9,17 @@ Las reglas visuales, los componentes y los tokens están en `docs/design-system.
 
 ## Retomar el trabajo
 
-Si arrancás sin contexto previo (otra PC, sin la memoria de Claude), leé `docs/retomar.md`: dónde quedó el rediseño, los pendientes, las decisiones en pie y el lienzo de prototipos.
+Si arrancás sin contexto previo (otra PC, sin la memoria de Claude), leé `docs/retomar.md`: el estado por áreas, cómo arrancar, las decisiones en pie, lo pendiente y la forma de trabajo.
+
+## Documentación
+
+Hay pocos documentos y cada uno tiene un trabajo; **no son un diario**: el historial es `git log` y el cuerpo de cada PR (con sus «Notas del parche» y su detalle técnico).
+
+- `README.md`: qué es la app, cómo se corre y dónde está cada cosa. `PRODUCT.md`: para quién es y el tono.
+- `docs/retomar.md`: una foto del estado, las decisiones en pie, lo pendiente y la forma de trabajo, para arrancar sin la memoria de Claude (otra PC).
+- Diseño: `docs/design-system.md` (reglas, tokens y un índice corto de componentes: el detalle de cada uno está en su comentario), `docs/playground.md` (el catálogo vivo `/playground`) y `docs/ux-ui-guidelines.md` (cómo se lee un pedido de diseño).
+- Un tema cada uno: `docs/duelo.md` y `docs/duelo-relay.md`, `docs/motor-de-cartas.md`, `docs/i18n.md` y `docs/seguridad.md`.
+- **Se toca un doc sólo si cambia una regla, un componente o un comportamiento**, en una o dos líneas y en el lugar que corresponde: nada de entradas con fecha, citas ni números de PR. Los planes y los informes de una sola vez se borran cuando se cumplen (quedan en git). `src/__tests__/docs.test.ts` le pone un tope de tamaño a cada doc, no deja ninguno huérfano y revisa que toda ruta `docs/….md` exista.
 
 ## Orquestación: este chat coordina, los subagentes trabajan
 
