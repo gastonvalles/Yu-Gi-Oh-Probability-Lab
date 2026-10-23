@@ -96,10 +96,13 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
   y el deck en una fila).
 - **Rarezas:** falta el nombre de lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
 - **Rendimiento en el celular** (medido con Edge por CDP, compilado de producción, 390×844 DPR 2, CPU ×4, 150 ms y 200 KB/s, mediana de 3; el
-  arranque pinta a ~3,1 s y la mesa recalcula estilos unas 300 veces en 12 s): quedan el primer cálculo de estilos del Deck (~200 ms sobre 270 KB de CSS), el
-  estilo y el layout de cada toque de la mesa (el próximo paso es un trazado con `invalidationTracking`), el Layout de 64–97 ms en la 4.ª tecla del buscador de la
-  app (`FeatureSearch`: un `scrollIntoView` y las filas nuevas; `useDeferredValue` sin probar), `DeckImportDrawer` y la ficha de carta que aún viajan antes de
-  pintar (~15 y ~14 KB gz) y el catálogo en frío a un worker. `startup-imports.test.ts` cuida lo que la entrada no debe importar.
+  arranque pinta a ~3,1 s): quedan el primer cálculo de estilos del Deck (~420–570 ms para ~1.060 elementos con pseudo-elementos; los selectores no son el problema:
+  el más caro cuesta 3–4 ms), el Layout de 64–97 ms en la 4.ª tecla del buscador de la app (`FeatureSearch`: las 17 filas nuevas; `useDeferredValue` sin probar),
+  `DeckImportDrawer` y la ficha de carta que aún viajan antes de pintar (~15 y ~14 KB gz) y el catálogo en frío a un worker. **Animaciones:** con el compositor
+  de este Edge, un brillo `translateX` aislado no cuesta nada, pero dentro de la app el brillo de las ~70 miniaturas recalculaba estilos en cada cuadro (por eso
+  `Skeleton still` en `CardArt`) y la entrada `sheet-in` de la hoja de una carta corre en el hilo principal sin que se sepa por qué (el `box-shadow` animado que se
+  vio es del foco del primer botón); el costo de un toque en la mesa es sobre todo armar esa hoja (~250 elementos, ~25 ms a ×4). `startup-imports.test.ts` cuida lo
+  que la entrada no debe importar.
 - **Chicos:** el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene una muestra del parallax; el
   editor de la carta de Roles se sale por la derecha a 390 px (sin verificar).
 

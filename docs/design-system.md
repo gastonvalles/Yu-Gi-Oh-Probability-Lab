@@ -46,7 +46,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | Componente | Para qué |
 |---|---|
 | `Button` · `IconButton` · `CloseButton` | `ui/`. Las reglas de `Button`, en «Botones: jerarquía y texto». Un botón sin texto va sin fondo y blanco, y se enciende en ámbar al apuntarlo o elegirlo (igual las redes del pie, la ⓘ de `InfoTip` y los íconos del menú: `icon-buttons.test.tsx`). |
-| `Card` · `Callout` · `EmptyState` · `Skeleton` · `FieldBox` | Las superficies (`ui/`), con sus estilos sueltos en `ui/surfaces.ts`. Ver «Dos niveles de caja». |
+| `Card` · `Callout` · `EmptyState` · `Skeleton` · `FieldBox` | Las superficies (`ui/`), con sus estilos sueltos en `ui/surfaces.ts`. Ver «Dos niveles de caja». `Skeleton still` queda sin el brillo que corre: va donde hay decenas a la vez (`CardArt`). |
 | `Heading` · `SectionHeader` · `StepHero` · `StepPage` | Todo título pasa por `Heading` (`ui/typography.ts`). **Los hipervínculos** usan `textLink`: ámbar y un solo estilo (`link-rules.test.ts`). |
 | `ProgressRing` · `SegmentedRing` | Los anillos (`ui/`): ver «Anillos». |
 | `Segmented` · `Switch` · `FilterChips` · `MultiSelect` · `Stepper` · `SearchField` · `ScrollRow` · `OverflowMenu` · `Badge` | Los controles (`ui/`); lo elegido, en ámbar. |
