@@ -326,7 +326,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs}
         rivalSignalKey={signals.theirsKey}
         lane={asks.lane}
-        phase={snap.overlay.turn > 0 ? asks.state.phase : null}
+        // La fase es la de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
+        phase={snap.overlay.turn > 0 ? (asks.turnMine ? asks.state.phase : snap.theirs.phase) : null}
         turnNumber={Math.max(1, snap.overlay.turn)}
         extraSettings={settings}
         {...(reason ? { resultReason: reason } : {})}
