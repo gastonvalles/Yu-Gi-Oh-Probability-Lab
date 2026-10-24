@@ -2,9 +2,14 @@
 export const auto = {
   // La entrada: el interruptor del lobby de Jugar, debajo de las baldosas.
   'auto.entry.switch': 'Duelo automático (beta)',
-  'auto.entry.hint': 'Las reglas las aplica el núcleo. Jugás vos; el rival no juega (todavía).',
+  // Vale con el simulador de handtraps encendido o apagado.
+  'auto.entry.hint': 'Las reglas las aplica el núcleo. Jugás vos; el rival no juega su turno: sólo usa las handtraps que le des.',
   // El rival pasivo, dicho en la portada de carga y en «Más opciones».
   'auto.rival.passive': 'El rival no juega: sólo recibe. Sirve para probar tus jugadas con las reglas de verdad.',
+  // El rival con las handtraps del simulador, en la portada de carga.
+  'auto.rival.handtraps': 'El rival no juega su turno: usa sus handtraps solo, contra lo que hacés, cuando las reglas lo dejan.',
+  // El cartel de la carta que el rival activa en respuesta (su nombre ya va debajo de la carta).
+  'auto.rival.responds': '{name} responde a {to}',
 
   // La pregunta de sí o no del núcleo, en el medio de la mesa. Activar un efecto dice «Activar efecto» (`practice.menu.activateEffect`): el texto ya nombra la carta.
   'auto.ask.effect': '¿Activás el efecto de {card}?',
@@ -58,6 +63,12 @@ export const auto = {
   'auto.bar.auto': 'Automática',
   'auto.bar.restart': 'Reiniciar el duelo',
   'auto.bar.restartHint': 'El mismo duelo desde el principio: las mismas cartas, en el mismo orden.',
+  // Las handtraps del rival (el simulador de «Jugar solo») y la mano del rival de dorso.
+  'auto.bar.handtrapsOn': '{cards} · {hand} en la mano',
+  'auto.bar.handtrapsOff': 'Apagadas: el rival no usa nada.',
+  'auto.bar.handtrapsChange': 'Cambiar handtraps',
+  'auto.bar.blind': 'A ciegas',
+  'auto.bar.blindHint': 'La mano del rival se ve de dorso: cada carta se ve cuando la usa.',
   // El ATK y la DEF de ahora en el detalle de la carta, cuando difieren de los impresos.
   'auto.dock.now': 'ahora {value}',
 

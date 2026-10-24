@@ -4,9 +4,12 @@ import type { Translated } from '../types'
 export const auto: Translated<typeof es> = {
   // The entry: the switch in the Play lobby, below the tiles.
   'auto.entry.switch': 'Automatic duel (beta)',
-  'auto.entry.hint': "The rules engine applies the rules. You play; the opponent doesn't (yet).",
+  'auto.entry.hint': "The rules engine applies the rules. You play; the opponent doesn't play its turn: it only uses the hand traps you give it.",
   // The passive opponent, said on the loading cover and in «More options».
   'auto.rival.passive': "The opponent doesn't play: it only receives. Use it to test your plays with the real rules.",
+  // The opponent with the simulator's hand traps, on the loading cover.
+  'auto.rival.handtraps': "The opponent doesn't play its turn: it uses its hand traps on its own, against what you do, when the rules allow it.",
+  'auto.rival.responds': '{name} responds to {to}',
 
   // The engine's yes/no question, in the middle of the mat.
   'auto.ask.effect': "Activate {card}'s effect?",
@@ -59,6 +62,11 @@ export const auto: Translated<typeof es> = {
   'auto.bar.auto': 'Automatic',
   'auto.bar.restart': 'Restart the duel',
   'auto.bar.restartHint': 'The same duel from the start: the same cards, in the same order.',
+  'auto.bar.handtrapsOn': '{cards} · {hand} in hand',
+  'auto.bar.handtrapsOff': 'Off: the opponent uses nothing.',
+  'auto.bar.handtrapsChange': 'Change hand traps',
+  'auto.bar.blind': 'Blind',
+  'auto.bar.blindHint': "The opponent's hand is face down: you see each card when it's used.",
   // The current ATK and DEF in the card detail, when they differ from the printed ones.
   'auto.dock.now': 'now {value}',
 

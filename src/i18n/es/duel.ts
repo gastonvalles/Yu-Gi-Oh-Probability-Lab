@@ -10,6 +10,8 @@ export const duel = {
   'duel.zone.theirs': 'Rival, {zone}',
   'duel.zone.conflict': '{zone}: la ocupan los dos',
   'duel.hand.theirs': 'Mano del rival: {count}',
+  // Boca arriba: la del rival de handtraps del duelo automático.
+  'duel.hand.theirsShown': 'Mano del rival: {cards}',
   'duel.phase.current': 'Fase actual: {phase}',
   // El aviso cuando el rival ataca.
   'duel.announce.attack': '{name} ataca a {target}',

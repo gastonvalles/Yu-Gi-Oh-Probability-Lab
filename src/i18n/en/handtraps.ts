@@ -29,6 +29,8 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.picker.addCard': 'Add {name} to the list',
   'handtraps.picker.listed': '{name} is already on the list',
   'handtraps.picker.dealsNew': 'Applying deals a new hand.',
+  'handtraps.picker.restarts': 'Applying restarts the duel.',
+  'handtraps.picker.notAuto': "It doesn't use it on its own yet",
   'handtraps.picker.turnOff': 'Turn the simulator off',
 
   // The mat.

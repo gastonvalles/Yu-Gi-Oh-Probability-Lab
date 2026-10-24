@@ -5,13 +5,14 @@ import { createAdapter, type Adapter, type AutoOverlay } from './adapter'
 import { DataUnavailableError, type DataLoader, type DuelData } from './auto-data'
 import type { WorkerData } from './core-host.worker'
 import { teamOrder, type DeckList } from './deck-map'
-import { passivePolicy } from './policies'
+import { handtrapPolicy, passivePolicy, type RivalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
 
 /**
- * «Jugar solo automático»: la sesión de un duelo contra el rival pasivo, sin React (F2b la lee con `useSyncExternalStore`). Junta el
+ * «Jugar solo automático»: la sesión de un duelo contra el rival, sin React (F2b la lee con `useSyncExternalStore`). Junta el
  * cargador de datos, el anfitrión del núcleo (en un Worker o en el mismo proceso: `HostTransport`), un adaptador por asiento (§3.3 del
- * diseño: la mesa es una proyección de lo que cuenta el núcleo) y el rival pasivo, que contesta solo lo del asiento que no juega nadie.
+ * diseño: la mesa es una proyección de lo que cuenta el núcleo) y el rival, que contesta solo lo del asiento que no juega nadie: el
+ * pasivo o, con `rival`, el de handtraps (`handtrapPolicy`, que decide con lo que ve su adaptador).
  *
  * Deshacer, reiniciar y cancelar re-simulan (§3.6): el anfitrión vuelve a mandar todos los eventos desde cero, así que cada tanda nueva
  * (la marca `loading` con `done` 0) rearma los adaptadores, y las preguntas ya contestadas se saltan hasta la que espera de verdad. Mientras
@@ -82,6 +83,8 @@ export interface AutoSnapshot {
   texts: Readonly<Record<number, readonly string[]>>
   /** Lo que el adaptador no pudo proyectar en la mesa, en orden (se vacía al rearmarse). */
   unmapped: readonly string[]
+  /** Con el rival de handtraps, su mano como la ve él (códigos, en su orden): la pantalla la muestra salvo «A ciegas». Vacía con el pasivo. */
+  rivalHand: readonly number[]
 }
 
 export interface SessionOptions {
@@ -97,8 +100,13 @@ export interface SessionOptions {
   handSize?: number
   /** Tu asiento: 0 (por defecto) empieza; 1 va segundo. */
   seat?: Seat
-  /** `seat` (por defecto): contestás vos sólo lo de tu asiento y el rival pasivo lo suyo; `both`: las dos (para jugar los dos lados). */
+  /** `seat` (por defecto): contestás vos sólo lo de tu asiento y el rival lo suyo; `both`: las dos (para jugar los dos lados). */
   control?: 'seat' | 'both'
+  /**
+   * El rival con handtraps (`autoRival` de `handtraps.ts`): esas cartas van en su deck antes del relleno (que lo completa hasta su tamaño), su mano de arranque es
+   * `hand(semilla)` y las usa con `handtrapPolicy`, en el orden de `main`. Sin esto, el rival pasivo de 40 Normales.
+   */
+  rival?: { main: readonly (readonly [number, number])[]; hand: (seed: number) => number[] } | null
   /** Cada evento del anfitrión tal como llega (para un registro). */
   onEvent?: (event: AutoEvent) => void
   thinkingMs?: number
@@ -169,7 +177,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const me: Seat = options.seat ?? 0
   const controlled = (seat: Seat) => options.control === 'both' || seat === me
   const thinkingMs = options.thinkingMs ?? 400
-  const passive = passivePolicy()
+  const rival = options.rival ?? null
+  const policy: RivalPolicy = rival ? handtrapPolicy(rival.main.map(([code]) => code)) : passivePolicy()
   const listeners = new Set<() => void>()
   const blank = emptyAdapter()
   let snapshot: AutoSnapshot = {
@@ -190,9 +199,12 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     names: {},
     texts: {},
     unmapped: [],
+    rivalHand: [],
   }
   let data: DuelData | null = null
   let create: CreateCommand | null = null
+  /** El `create` de una semilla (reiniciar con otra semilla le reparte otra mano al rival de handtraps). */
+  let build: ((seed: number) => CreateCommand) | null = null
   let transport: HostTransport | null = null
   /** Un adaptador por asiento del núcleo; el de `me` es la mesa que se muestra. */
   let adapters: Adapter[] = []
@@ -214,7 +226,11 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     if (notify) listeners.forEach((listener) => listener())
   }
 
-  const view = () => ({ mine: adapters[me]!.mine, theirs: adapters[me]!.theirs.state, overlay: adapters[me]!.overlay })
+  const view = () => {
+    const theirs = adapters[1 - me]!
+
+    return { mine: adapters[me]!.mine, theirs: adapters[me]!.theirs.state, overlay: adapters[me]!.overlay, rivalHand: rival ? theirs.mine.hand.map((id) => theirs.codeOf({ side: 'mine', id })) : [] }
+  }
 
   function stopTimer() {
     clearTimeout(timer)
@@ -325,8 +341,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         }
         commit()
         stopTimer()
-        // El rival pasivo contesta solo; la pantalla se entera recién con la pregunta tuya.
-        if (!controlled(event.seat)) return send(event.seat, event.askId, passive(event.ask))
+        // El rival contesta solo, con lo que ve su adaptador; la pantalla se entera recién con la pregunta tuya.
+        if (!controlled(event.seat)) return send(event.seat, event.askId, policy(event.ask, adapters[event.seat]!))
 
         return set({ status: 'ready', ask: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, replaying: false, answers })
       }
@@ -352,9 +368,12 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   async function start() {
     const loading = (async () => {
       const { filler } = await loader.manifest()
-      const rival: DeckList = { main: filler.map((code) => [code, 1] as const) }
+      // Las handtraps del rival y el relleno hasta el tamaño del deck pasivo (así roba sin quedarse sin cartas).
+      const own = rival?.main ?? []
+      const room = Math.max(0, filler.length - own.reduce((sum, [, copies]) => sum + copies, 0))
+      const theirs: DeckList = { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)] }
 
-      return loader.load([options.deck, rival], (done, total) => set({ progress: { done, total } }))
+      return loader.load([options.deck, theirs], (done, total) => set({ progress: { done, total } }))
     })()
 
     // El anfitrión arranca ya: el Worker baja y compila el wasm mientras llegan los datos.
@@ -373,18 +392,23 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     // Ante la duda no se automatiza: una carta sin datos o sin script no deja crear el duelo.
     if (bad.length > 0) return fail('rules', `cards without automatic rules: ${mine.missing.length + theirs.missing.length} without data, ${mine.noRules.length + theirs.noRules.length} without a script`, bad)
     const types = new Map(data.cards.map((card) => [card.code, card.type]))
-    const decks = [
-      { main: mine.main, extra: mine.extra, hand: options.hand ?? [] },
-      { main: theirs.main, extra: theirs.extra, hand: [] },
-    ]
-
-    typeOf = (code) => types.get(code) ?? 0
-    // El asiento 0 del núcleo siempre empieza: tu deck va ahí, salvo que vayas segundo.
+    const own = { main: mine.main, extra: mine.extra, hand: options.hand ?? [] }
     const mine_ = { ...PLAYER, hand: options.handSize ?? PLAYER.hand }
 
-    create = { t: 'create', seed: snapshot.seed, flags: MR5, players: me === 0 ? [mine_, PLAYER] : [PLAYER, mine_], decks: me === 0 ? decks : [decks[1]!, decks[0]!] }
+    typeOf = (code) => types.get(code) ?? 0
+    build = (seed) => {
+      // Con handtraps, el rival roba al empezar justo su mano (la del simulador con esa semilla), que va arriba de su deck.
+      const hand = rival?.hand(seed) ?? []
+      const other = { main: theirs.main, extra: theirs.extra, hand }
+      const player = hand.length > 0 ? { ...PLAYER, hand: hand.length } : PLAYER
+
+      // El asiento 0 del núcleo siempre empieza: tu deck va ahí, salvo que vayas segundo.
+      return { t: 'create', seed, flags: MR5, players: me === 0 ? [mine_, player] : [player, mine_], decks: me === 0 ? [own, other] : [other, own] }
+    }
+    create = build(snapshot.seed)
     try {
-      teamOrder(create, me)
+      teamOrder(create, 0)
+      teamOrder(create, 1)
     } catch (error) {
       return fail('setup', error instanceof Error ? error.message : String(error))
     }
@@ -436,8 +460,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       startTimer()
     },
     restart(seed = snapshot.seed) {
-      if (!create || !data || destroyed) return
-      create = { ...create, seed: seed >>> 0 }
+      if (!create || !build || !data || destroyed) return
+      create = build(seed >>> 0)
       answers = []
       inFlight = null
       retries = 0
