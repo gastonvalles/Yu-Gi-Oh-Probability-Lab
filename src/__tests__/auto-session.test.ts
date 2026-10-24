@@ -87,11 +87,12 @@ describe('la sesión del duelo automático', () => {
 
   it('carga, pregunta, contesta y el rival pasivo contesta solo; las respuestas quedan en orden', async () => {
     const host = fakeHost()
-    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 7 })
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, handSize: 6 })
 
     expect(session.getSnapshot().status).toBe('loading')
     await until(session, (s) => s.status === 'ready')
-    expect(host.commands[0]).toMatchObject({ t: 'create', seed: 7, flags: MR5, decks: [{ main: [1, 1, 1, 1, 1], hand: [] }, { main: [2, 2, 2, 2, 2] }] })
+    // La mano de apertura del Lab es la mía; el rival roba 5.
+    expect(host.commands[0]).toMatchObject({ t: 'create', seed: 7, flags: MR5, players: [{ lp: 8000, hand: 6, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], decks: [{ main: [1, 1, 1, 1, 1], hand: [] }, { main: [2, 2, 2, 2, 2] }] })
     expect(session.getSnapshot().names).toEqual({ 1: 'One' })
 
     expect(session.answer({ type: 'select_chain', index: null })).toBe(false)

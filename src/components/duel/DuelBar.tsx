@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
 import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
@@ -117,6 +117,14 @@ export type LaneNotice =
 
 /** Cuánto espera «Cancelar» para aparecer mientras el núcleo resuelve: lo rápido no parpadea. */
 export const THINKING_CANCEL_MS = 1500
+
+/**
+ * Lo que va en el lateral izquierdo debajo de las vidas (los avisos): se corre de lo que el campo agrandado se mete en el lateral (`--field-overhang`, lo mide la mesa), hasta dejarle 11 rem;
+ * con menos, se apoya sobre el borde del campo, por encima (`z-20` en el contenedor). Antes el aviso ocupaba todo el lateral y la mesa en perspectiva lo tapaba (Gastón, 2026-10-24).
+ */
+export const RAIL_LANE_STYLE: CSSProperties = { paddingRight: 'min(var(--field-overhang, 0px), max(0px, 100% - 11rem))' }
+/** Lo mismo para el lateral derecho (el resultado). */
+export const RAIL_RESULT_STYLE: CSSProperties = { paddingLeft: 'min(var(--field-overhang, 0px), max(0px, 100% - 11rem))' }
 
 /**
  * Lo de arriba de la mesa en un duelo, que es lo del rival y lo que se mira sin tocar: sus puntos de vida, el reloj de la ronda (tocarlo lo pausa),
@@ -377,7 +385,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
             {phase ? <span data-testid="duel-phase" className="text-info">{phase}</span> : null}
           </span>
         </div>
-        <div ref={toastHost} data-testid="duel-rail-notices" className="relative col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4">
+        <div ref={toastHost} data-testid="duel-rail-notices" className="relative z-20 col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4" style={RAIL_LANE_STYLE}>
           {lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}
           {status !== 'open' ? (
             <Callout tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
@@ -386,7 +394,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
           ) : null}
         </div>
         {result && !resultOpen ? (
-          <div className="col-start-3 row-start-2 flex min-h-0 flex-col items-stretch pt-4">
+          <div className="relative z-20 col-start-3 row-start-2 flex min-h-0 flex-col items-stretch pt-4" style={RAIL_RESULT_STYLE}>
             <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} rail />
           </div>
         ) : null}

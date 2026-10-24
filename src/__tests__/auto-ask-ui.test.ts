@@ -105,7 +105,7 @@ const ASKS: CoreAsk[] = [
   { type: 'select_yesno', player: 0, description: '31' },
   { type: 'select_option', player: 0, options: ['6400', '6401', '1190'] },
   { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 2, selects: [pos(100, L.HAND, 0, 10), pos(200, L.MZONE, 0, 1), pos(700, L.MZONE, 0, 1, 1)] },
-  { type: 'select_chain', player: 0, spe_count: 0, forced: false, hint_timing: 0, hint_timing_other: 0, selects: [{ ...pos(950, L.SZONE, 1, 10), description: '0', client_mode: 0 }] },
+  { type: 'select_chain', player: 0, spe_count: 1, forced: false, hint_timing: 0, hint_timing_other: 0, selects: [{ ...pos(950, L.SZONE, 1, 10), description: '0', client_mode: 0 }] },
   { type: 'select_place', player: 0, count: 1, field_mask: ~(0b11 | (1 << 5) | (1 << 13)) >>> 0 },
   { type: 'select_position', player: 0, code: 100, positions: 1 | 4 | 8 },
   { type: 'select_tribute', player: 0, can_cancel: true, min: 2, max: 2, selects: [{ ...loc(200, L.MZONE, 0), release_param: 1 }, { ...loc(201, L.MZONE, 1), release_param: 1 }, { ...loc(202, L.MZONE, 2), release_param: 2 }] },
@@ -242,6 +242,9 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(askView(open({ ...chain, forced: true }, never)).auto).toEqual({ answer: { type: 'select_chain', index: 0 }, why: 'setting' })
     // Contestada sola, ningún toque hace nada.
     expect(gesturesOf(askView(open(chain, never)))).toEqual([])
+    // Sin nada que responda de verdad a este momento (`spe_count` 0: una Trampa colocada en cada paso del propio turno) «Preguntar» no pregunta; forzada, sí.
+    expect(askView(open({ ...chain, spe_count: 0 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_chain', index: null }, why: 'setting' })
+    expect(askView(open({ ...chain, spe_count: 0, forced: true }, ctx(MESA))).auto).toBeNull()
   })
 
   it('sí o no: el efecto con su carta (que brilla) y el sí o no a secas, cada uno con sus dos respuestas', () => {

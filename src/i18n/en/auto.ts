@@ -57,6 +57,10 @@ export const auto: Translated<typeof es> = {
   'auto.bar.ask': 'Ask',
   'auto.bar.never': 'Never',
   'auto.bar.auto': 'Automatic',
+  'auto.bar.restart': 'Restart the duel',
+  'auto.bar.restartHint': 'The same duel from the start: the same cards, in the same order.',
+  // The current ATK and DEF in the card detail, when they differ from the printed ones.
+  'auto.dock.now': 'now {value}',
 
   // The log line: what the engine does, the chain and the notices that don't stop the duel.
   'auto.lane.thinking': 'The rules engine is resolving…',
@@ -68,6 +72,7 @@ export const auto: Translated<typeof es> = {
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
   'auto.lane.respondNow': 'You can activate {cards} now',
   'auto.lane.pass': "Don't respond",
+  'auto.lane.mustActivate': 'You must activate {cards}: tap it',
   'auto.lane.autoZone': 'The zone was picked for you',
   'auto.lane.unmapped': "The mat can't show: {what}",
   'auto.lane.script': "{card}'s script failed: the duel goes on.",

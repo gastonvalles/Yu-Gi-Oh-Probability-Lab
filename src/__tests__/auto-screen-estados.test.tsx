@@ -112,16 +112,29 @@ describe('auto-screen · los estados', () => {
     expect(fake.restarts).toBe(1)
   })
 
-  it('el fin: quién ganó y por qué, y «Jugar otra vez»', () => {
+  it('el fin: quién ganó y por qué (los códigos del núcleo: 1 las vidas, 2 sin robar), y «Jugar otra vez»', () => {
     const fake = renderAuto()
 
-    core(() => fake.end(0, 1))
+    core(() => fake.end(0, 2))
     const cover = screen.getByRole('alertdialog', { name: '¡Ganaste!' })
 
     expect(cover).toHaveTextContent('El rival no pudo robar.')
     fireEvent.click(within(cover).getByRole('button', { name: 'Jugar otra vez' }))
     expect(fake.restarts).toBe(1)
     expect(dispatches).toBe(0)
+    core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, lp: [0, 3000] } }))
+    core(() => fake.end(1, 1))
+    expect(screen.getByRole('alertdialog', { name: 'Perdiste' })).toHaveTextContent('Te quedaste sin puntos de vida.')
+  })
+
+  it('«Más opciones» ofrece «Reiniciar el duelo»; lo que la mesa no puede mostrar va a la línea', () => {
+    const fake = renderAuto()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el duelo' }))
+    expect(fake.restarts).toBe(1)
+    core(() => fake.set({ status: 'ready', replaying: false, unmapped: ['swap mz 0 <-> mz 1'] }))
+    expect(lane()).toHaveTextContent('La mesa no puede mostrar: swap mz 0 <-> mz 1')
   })
 
   it('la carga: la portada dice cuántas reglas van y la mesa queda detrás', () => {

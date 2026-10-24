@@ -119,8 +119,16 @@ function autoDataDev(): Plugin {
             if (url.pathname === '/manifest') return reply(request, response, 200, 'application/json', await (manifest ??= buildManifest()))
             if (url.pathname === '/cards') {
               const codes = (url.searchParams.get('codes') ?? '').split(',').filter((code) => /^\d{1,10}$/.test(code)).slice(0, 2000).map(Number)
-              const found = await rows('select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, t.name from datas d left join texts t on t.id = d.id where d.id in (select value from json_each(?))', JSON.stringify(codes))
-              const out = found.map((row) => ({ id: Number(row.id), alias: Number(row.alias), setcode: u64(row.setcode), type: Number(row.type), atk: Number(row.atk), def: Number(row.def), level: Number(row.level), race: u64(row.race), attribute: Number(row.attribute), ...(typeof row.name === 'string' ? { name: row.name } : {}) }))
+              // Con el nombre van los rótulos de los efectos (`str1`…`str16` de `texts`: lo que `aux.Stringid` nombra en un menú), sin los vacíos del final.
+              const strs = Array.from({ length: 16 }, (_, i) => `t.str${i + 1}`).join(', ')
+              const found = await rows(`select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, t.name, ${strs} from datas d left join texts t on t.id = d.id where d.id in (select value from json_each(?))`, JSON.stringify(codes))
+              const out = found.map((row) => {
+                const texts = Array.from({ length: 16 }, (_, i) => (typeof row[`str${i + 1}`] === 'string' ? (row[`str${i + 1}`] as string) : ''))
+
+                while (texts.length > 0 && texts[texts.length - 1] === '') texts.pop()
+
+                return { id: Number(row.id), alias: Number(row.alias), setcode: u64(row.setcode), type: Number(row.type), atk: Number(row.atk), def: Number(row.def), level: Number(row.level), race: u64(row.race), attribute: Number(row.attribute), ...(typeof row.name === 'string' ? { name: row.name } : {}), ...(texts.length > 0 ? { strs: texts } : {}) }
+              })
 
               return reply(request, response, 200, 'application/json', JSON.stringify(out))
             }

@@ -168,7 +168,11 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
         if (legalOnes) {
           const offered = new Set(offeredAnswers(view))
 
-          for (const answer of legalOnes) if (!offered.has(JSON.stringify(answer))) bump(tally.notOffered, `${ask.type}${'action' in answer ? `:${answer.action}` : ''}`)
+          for (const answer of legalOnes) {
+            if (offered.has(JSON.stringify(answer))) continue
+            bump(tally.notOffered, `${ask.type}${'action' in answer ? `:${answer.action}` : ''}`)
+            if (ask.type !== 'select_idlecmd' && samples.length < 40) samples.push({ duel: d, kind: `not offered ${ask.type} ${JSON.stringify(answer)}`, detail: JSON.stringify({ ask, items: [...view.items.keys()], respond: view.respond }).slice(0, 1200) })
+          }
         }
         const played = playAsk(state, random)
         const uiMs = performance.now() - uiStart

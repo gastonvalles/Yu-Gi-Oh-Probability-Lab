@@ -18,13 +18,13 @@ const IDLE: CoreAsk = {
   pos_changes: [loc(200, L.MZONE, 0)],
   monster_sets: [loc(100, L.HAND, 0)],
   spell_sets: [loc(900, L.HAND, 1)],
-  activates: [act(900, L.HAND, 1), act(400, L.GRAVE, 0, '6401'), act(400, L.GRAVE, 0, '6402')],
+  activates: [act(900, L.HAND, 1), act(400, L.GRAVE, 0, '10001'), act(400, L.GRAVE, 0, '10002')],
   to_bp: true,
   to_ep: true,
   shuffle: false,
 }
 const BATTLE: CoreAsk = { type: 'select_battlecmd', player: 0, chains: [], attacks: [{ ...loc(200, L.MZONE, 0), can_direct: false }], to_m2: true, to_ep: true }
-const CHAIN: CoreAsk = { type: 'select_chain', player: 0, spe_count: 0, forced: false, hint_timing: 0, hint_timing_other: 0, selects: [{ ...pos(900, L.HAND, 1, 10), description: '0', client_mode: 0 }] }
+const CHAIN: CoreAsk = { type: 'select_chain', player: 0, spe_count: 1, forced: false, hint_timing: 0, hint_timing_other: 0, selects: [{ ...pos(900, L.HAND, 1, 10), description: '0', client_mode: 0 }] }
 
 describe('auto-screen · las jugadas', () => {
   it('idle: tocar una carta de la mano abre sus jugadas legales y «Invocación Normal» contesta', () => {
@@ -52,7 +52,11 @@ describe('auto-screen · las jugadas', () => {
     const effects = within(sheet).getAllByRole('menuitem')
 
     expect(effects).toHaveLength(2)
+    // Cada efecto con su rótulo del `.cdb` (`strN`, el que nombra el `desc`), con «Efecto n» delante.
+    expect(effects[0]).toHaveTextContent('Efecto 1')
+    expect(effects[0]).toHaveTextContent('Summon a Token')
     expect(effects[1]).toHaveTextContent('Efecto 2')
+    expect(effects[1]).toHaveTextContent('Destroy a monster')
     fireEvent.click(effects[1]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 2 }])
     expect(dispatches).toBe(0)
@@ -120,6 +124,26 @@ describe('auto-screen · las jugadas', () => {
     expect(lane()).toHaveTextContent('Podés activar Called by the Grave ahora')
     fireEvent.click(within(lane()!).getByRole('button', { name: 'No responder' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
+  })
+
+  it('cadena obligatoria: sin «No responder», la línea dice que hay que activarla; tocar la carta y «Activar» contesta', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask({ ...CHAIN, forced: true }))
+    expect(lane()).toHaveTextContent('Tenés que activar Called by the Grave: tocala')
+    expect(within(lane()!).queryByRole('button')).toBeNull()
+    tap(handCard('Called by the Grave'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
+  })
+
+  it('cadena sin nada que responda de verdad a este momento (`spe_count` 0): «Preguntar» contesta «No responder» sola, sin mostrar nada', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
+    expect(lane()).toBeNull()
+    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'respond')
   })
 
   it('cadena: tocar la carta que responde y «Activar» contesta con su índice', () => {

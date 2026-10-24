@@ -56,6 +56,10 @@ export const auto = {
   'auto.bar.ask': 'Preguntar',
   'auto.bar.never': 'Nunca',
   'auto.bar.auto': 'Automática',
+  'auto.bar.restart': 'Reiniciar el duelo',
+  'auto.bar.restartHint': 'El mismo duelo desde el principio: las mismas cartas, en el mismo orden.',
+  // El ATK y la DEF de ahora en el detalle de la carta, cuando difieren de los impresos.
+  'auto.dock.now': 'ahora {value}',
 
   // La línea del registro: lo que hace el núcleo, la cadena y los avisos que no frenan el duelo.
   'auto.lane.thinking': 'El núcleo está resolviendo…',
@@ -67,6 +71,7 @@ export const auto = {
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
   'auto.lane.respondNow': 'Podés activar {cards} ahora',
   'auto.lane.pass': 'No responder',
+  'auto.lane.mustActivate': 'Tenés que activar {cards}: tocala',
   'auto.lane.autoZone': 'La casilla se eligió sola',
   'auto.lane.unmapped': 'La mesa no puede mostrar: {what}',
   'auto.lane.script': 'Falló el script de {card}: el duelo sigue.',

@@ -7,7 +7,7 @@ const TOKEN = 0x4011
 
 /** Una fuente de mentira: cuenta lo que se le pide. */
 function fakeSource(version = 'v1') {
-  const rows = new Map([row(100, EFFECT), row(200, EFFECT), row(300, EFFECT), row(400, NORMAL), row(900, TOKEN)].map((card) => [card.id, card]))
+  const rows = new Map([row(100, EFFECT, { strs: ['Add 1 card'] }), row(200, EFFECT), row(300, EFFECT), row(400, NORMAL), row(900, TOKEN)].map((card) => [card.id, card]))
   const scripts: Record<string, string> = {
     'constant.lua': '-- constants',
     'utility.lua': 'Duel.LoadScript("proc_a.lua")',
@@ -60,6 +60,8 @@ describe('los datos de un duelo automático', () => {
     expect(calls.cards).toHaveLength(1)
     expect(data.cards.map((card) => card.code).sort()).toEqual([100, 200, 300, 400, 900])
     expect(data.names[900]).toBe('card 900')
+    // Los rótulos de los efectos, sólo de las cartas que los traen.
+    expect(data.texts).toEqual({ 100: ['Add 1 card'] })
     expect(progress.at(-1)).toEqual([1 + calls.scripts.length, 1 + calls.scripts.length])
     expect(progress.every(([done, total]) => done <= total)).toBe(true)
   })

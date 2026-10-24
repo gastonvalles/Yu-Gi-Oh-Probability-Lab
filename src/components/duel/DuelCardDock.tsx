@@ -36,7 +36,13 @@ interface Zoomed {
  * y al tocarla se agranda (`CardZoom`). Sin una carta que se conozca (la boca abajo, la que todavía no llegó) queda quieta.
  * La presentación (Gastón, 2026-10-20: «el panel izquierdo nuestro es muy distinto al de la imagen y el nuestro se ve peor»): título del panel, carta grande en un marco con bisel, nombre en grande, números rotulados y un texto que ocupa el resto.
  */
-export function DuelCardDock({ peek, highlight = null }: { peek: CardPeek | null; /** Un pedazo del texto de la carta que se resalta (la frase del efecto que se está eligiendo en el menú): sólo si es el texto de la carta que se ve. */ highlight?: CardTextHighlight | null }) {
+/** El ATK y la DEF de ahora de la carta que se ve (el duelo automático: lo que el núcleo cuenta de ella en el campo). */
+export interface CardStatsNow {
+  attack: number
+  defense: number
+}
+
+export function DuelCardDock({ peek, highlight = null, stats = null }: { peek: CardPeek | null; /** Un pedazo del texto de la carta que se resalta (la frase del efecto que se está eligiendo en el menú): sólo si es el texto de la carta que se ve. */ highlight?: CardTextHighlight | null; /** Los números de ahora, si la carta está en el campo: se dicen al lado de los impresos cuando difieren. */ stats?: CardStatsNow | null }) {
   const [zoomed, setZoomed] = useState<Zoomed | null>(null)
   const zoom = (card: ApiCardReference, name: string) => setZoomed({ card, name })
   let view
@@ -46,9 +52,9 @@ export function DuelCardDock({ peek, highlight = null }: { peek: CardPeek | null
   } else if ('faceDown' in peek) {
     view = <CardPeekView name={t('duel.dock.faceDown')} card={null} back onZoom={zoom} />
   } else if ('drawId' in peek) {
-    view = <RivalPeek key={peek.drawId} drawId={peek.drawId} onZoom={zoom} />
+    view = <RivalPeek key={peek.drawId} drawId={peek.drawId} now={stats} onZoom={zoom} />
   } else {
-    view = <CardPeekView name={peek.name} card={peek.card} highlight={highlight} onZoom={zoom} />
+    view = <CardPeekView name={peek.name} card={peek.card} highlight={highlight} now={stats} onZoom={zoom} />
   }
 
   return (
@@ -67,10 +73,10 @@ export function DuelCardDock({ peek, highlight = null }: { peek: CardPeek | null
   )
 }
 
-function RivalPeek({ drawId, onZoom }: { drawId: string; onZoom: (card: ApiCardReference, name: string) => void }) {
+function RivalPeek({ drawId, now = null, onZoom }: { drawId: string; now?: CardStatsNow | null; onZoom: (card: ApiCardReference, name: string) => void }) {
   const card = useRivalCard(drawId)
 
-  return <CardPeekView name={card?.name ?? t('duel.mark.rivalCard')} card={card} onZoom={onZoom} />
+  return <CardPeekView name={card?.name ?? t('duel.mark.rivalCard')} card={card} now={now} onZoom={onZoom} />
 }
 
 /** Un número que pasa de texto a cifra con el separador del idioma («1800» → «1.800»); lo que no es un número («?») queda como está. */
@@ -80,15 +86,16 @@ function formatStat(value: string): string {
   return Number.isFinite(number) ? formatInteger(number) : value
 }
 
-/** Los números de una carta, rotulados: el nivel (el rango de una Xyz, o el Link) y el ATK y la DEF; sin los que no tiene (una Mágica no tiene ninguno, un Link no tiene DEF). */
-function statsOf(card: ApiCardReference): Array<{ key: string; label: string; value: string }> {
-  const stats = []
+/** Los números de una carta, rotulados: el nivel (el rango de una Xyz, o el Link) y el ATK y la DEF; sin los que no tiene (una Mágica no tiene ninguno, un Link no tiene DEF). Con `now`, el de ahora si difiere del impreso. */
+function statsOf(card: ApiCardReference, now: CardStatsNow | null): Array<{ key: string; label: string; value: string; now?: string }> {
+  const stats: Array<{ key: string; label: string; value: string; now?: string }> = []
+  const changed = (printed: string, current: number) => (now !== null && current !== Number(printed) ? { now: formatInteger(current) } : {})
 
   if (card.linkValue !== null) stats.push({ key: 'link', label: t('duel.dock.link'), value: String(card.linkValue) })
   else if (card.level !== null) stats.push({ key: 'level', label: t(/xyz/i.test(card.cardType) ? 'duel.dock.rank' : 'duel.dock.level'), value: String(card.level) })
 
-  if (card.atk) stats.push({ key: 'atk', label: t('duel.dock.atk'), value: formatStat(card.atk) })
-  if (card.def && card.linkValue === null) stats.push({ key: 'def', label: t('duel.dock.def'), value: formatStat(card.def) })
+  if (card.atk) stats.push({ key: 'atk', label: t('duel.dock.atk'), value: formatStat(card.atk), ...changed(card.atk, now?.attack ?? 0) })
+  if (card.def && card.linkValue === null) stats.push({ key: 'def', label: t('duel.dock.def'), value: formatStat(card.def), ...changed(card.def, now?.defense ?? 0) })
 
   return stats
 }
@@ -114,7 +121,7 @@ function ArtHolder({ children }: { children: ReactNode }) {
   )
 }
 
-function CardPeekView({ name, card, back = false, highlight = null, onZoom }: { name: string; card: ApiCardReference | null; back?: boolean; highlight?: CardTextHighlight | null; onZoom: (card: ApiCardReference, name: string) => void }) {
+function CardPeekView({ name, card, back = false, highlight = null, now = null, onZoom }: { name: string; card: ApiCardReference | null; back?: boolean; highlight?: CardTextHighlight | null; now?: CardStatsNow | null; onZoom: (card: ApiCardReference, name: string) => void }) {
   const summary = card ? buildCardSummary(card) : null
   // El texto se muestra sin los espacios de los bordes: el pedazo señalado se corre lo que se sacó del principio.
   const description = card?.description ?? ''
@@ -122,7 +129,7 @@ function CardPeekView({ name, card, back = false, highlight = null, onZoom }: { 
   const range = highlight && card && highlight.ygoprodeckId === card.ygoprodeckId ? { start: highlight.start - shift, end: highlight.end - shift } : undefined
   // El tipo va solo y los números aparte, rotulados: cada dato se dice una sola vez.
   const typeLine = summary?.typeLine ?? null
-  const stats = card ? statsOf(card) : []
+  const stats = card ? statsOf(card, now) : []
   // La carta que se da vuelta vuelve al frente al pasar a otra (si no, la siguiente se vería de dorso).
   const flip = useCardFlip()
   const [flippedFor, setFlippedFor] = useState(card?.ygoprodeckId)
@@ -184,7 +191,11 @@ function CardPeekView({ name, card, back = false, highlight = null, onZoom }: { 
             {stats.map((stat) => (
               <div key={stat.key} className="flex items-baseline gap-1.5">
                 <dt className={overline}>{stat.label}</dt>
-                <dd className="m-0 text-lead font-bold tabular-nums text-foreground">{stat.value}</dd>
+                <dd className="m-0 text-lead font-bold tabular-nums text-foreground">
+                  {stat.value}
+                  {/* El número de ahora (el duelo automático), en el ámbar de lo que está pasando. */}
+                  {stat.now ? <span className="text-body font-semibold text-info">{` · ${t('auto.dock.now', { value: stat.now })}`}</span> : null}
+                </dd>
               </div>
             ))}
           </dl>

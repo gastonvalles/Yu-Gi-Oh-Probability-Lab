@@ -78,6 +78,10 @@ export interface AutoSnapshot {
   replaying: boolean
   /** Los nombres del `.cdb` de las cartas del duelo (y de las fichas). */
   names: Readonly<Record<number, string>>
+  /** Los rótulos de los efectos (`str1`…`str16` del `.cdb`), por código: el `desc` de una pregunta es carta << 4 | n. */
+  texts: Readonly<Record<number, readonly string[]>>
+  /** Lo que el adaptador no pudo proyectar en la mesa, en orden (se vacía al rearmarse). */
+  unmapped: readonly string[]
 }
 
 export interface SessionOptions {
@@ -89,6 +93,8 @@ export interface SessionOptions {
   seed?: number
   /** La mano fija: esas cartas arriba, en ese orden (passcodes del deck). */
   hand?: number[]
+  /** Cuántas cartas robás al empezar (la mano de apertura del Lab); el rival, 5. */
+  handSize?: number
   /** Tu asiento: 0 (por defecto) empieza; 1 va segundo. */
   seat?: Seat
   /** `seat` (por defecto): contestás vos sólo lo de tu asiento y el rival pasivo lo suyo; `both`: las dos (para jugar los dos lados). */
@@ -182,6 +188,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     progress: { done: 0, total: 0 },
     replaying: false,
     names: {},
+    texts: {},
+    unmapped: [],
   }
   let data: DuelData | null = null
   let create: CreateCommand | null = null
@@ -238,7 +246,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         typeOf,
       }),
     )
-    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], ...view() }, false)
+    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], unmapped: [], ...view() }, false)
   }
 
   /** Un anfitrión nuevo (otro Worker): arma el duelo con las primeras `to` respuestas ya dadas. Lo que mande el anterior ya no se escucha. */
@@ -274,6 +282,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         ...view(),
         ...(out.mine.length > 0 ? { mineActions: snapshot.mineActions.concat(out.mine) } : {}),
         ...(out.theirs.length > 0 ? { theirsActs: snapshot.theirsActs.concat(out.theirs) } : {}),
+        ...(out.unmapped.length > 0 ? { unmapped: snapshot.unmapped.concat(out.unmapped) } : {}),
       },
       !snapshot.replaying,
     )
@@ -370,13 +379,15 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
     typeOf = (code) => types.get(code) ?? 0
     // El asiento 0 del núcleo siempre empieza: tu deck va ahí, salvo que vayas segundo.
-    create = { t: 'create', seed: snapshot.seed, flags: MR5, players: [PLAYER, PLAYER], decks: me === 0 ? decks : [decks[1]!, decks[0]!] }
+    const mine_ = { ...PLAYER, hand: options.handSize ?? PLAYER.hand }
+
+    create = { t: 'create', seed: snapshot.seed, flags: MR5, players: me === 0 ? [mine_, PLAYER] : [PLAYER, mine_], decks: me === 0 ? decks : [decks[1]!, decks[0]!] }
     try {
       teamOrder(create, me)
     } catch (error) {
       return fail('setup', error instanceof Error ? error.message : String(error))
     }
-    set({ names: data.names })
+    set({ names: data.names, texts: data.texts ?? {} })
     streams = [0]
     transport.send(create)
   }

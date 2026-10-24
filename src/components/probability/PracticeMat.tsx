@@ -746,6 +746,7 @@ export function PracticeMat({
 
     if (view !== '3d' || !isDesktop) {
       field.style.removeProperty('--field-zoom')
+      column.style.removeProperty('--field-overhang')
 
       return
     }
@@ -771,6 +772,10 @@ export function PracticeMat({
       })
 
       field.style.setProperty('--field-zoom', String(Math.round(zoom * 1000) / 1000))
+      // Con laterales el campo agrandado se mete en ellos (sólo se reserva aire): cuánto, por costado, para que lo que va en el lateral debajo de las vidas (la línea del registro, lo que falta elegir) no quede debajo del tablero.
+      const columns = rails ? getComputedStyle(column).gridTemplateColumns.split(' ').map(parseFloat) : []
+
+      column.style.setProperty('--field-overhang', `${columns.length === 3 ? Math.max(0, Math.round(((tracksWidth || box.width) * zoom - columns[1]!) / 2)) : 0}px`)
     }
 
     measure()
@@ -783,6 +788,7 @@ export function PracticeMat({
     return () => {
       observer?.disconnect()
       field.style.removeProperty('--field-zoom')
+      column.style.removeProperty('--field-overhang')
     }
   }, [fieldNode, view, isDesktop, isDuel, rails, hasRivalStrip])
   // El reparto de una mano nueva suena (el barajado y una carta por vez); las cartas que se suman después, por una jugada, ya suenan con ella.
@@ -2267,7 +2273,8 @@ export function PracticeMat({
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* La barra tiene su propia fila abajo de la mano, también en escritorio: antes subía sobre la franja de abajo de la mano, y con la mano ancha de una notebook (1280–1440 px, con el menú y el chat abiertos) las fases y Pasar turno quedaban encima de las cartas, entre el 55 y el 75 % de su área. */}
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
-        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')}>
+        {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven. */}
+        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido. Celular: las vidas a la izquierda, las dos reacciones en el medio (centradas, alineadas con las vidas y los botones) y deshacer y el chat a la derecha
               (el pulgar de quien juega con la derecha). Escritorio: deshacer junto a tus vidas, en la esquina opuesta a las del rival. */}
           {duel ? (
@@ -2376,7 +2383,7 @@ export function PracticeMat({
       />
 
       {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
-      {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede. */}
+      {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
       <PileViewer
         pile={duel?.auto?.viewer?.pile ?? viewer}
         hidden={covered}
@@ -2401,7 +2408,7 @@ export function PracticeMat({
             if (viewer) setMenu({ kind: 'batch', pile: viewer, ids, rect })
           },
         }}
-        onClose={duel?.auto?.viewer ? (duel.auto.cardPick?.cancel ?? (() => {})) : closeViewer}
+        onClose={duel?.auto?.viewer ? (duel.auto.cardPick?.cancel ?? duel.auto.cardPick?.done?.onSelect ?? (() => {})) : closeViewer}
       />
 
       <SaveComboDialog isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />

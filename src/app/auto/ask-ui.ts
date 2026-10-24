@@ -22,7 +22,7 @@ export interface AskQueries extends Pick<Adapter, 'idAt' | 'codeOf'> {
 
 export interface AskContext {
   queries: AskQueries
-  /** «Respuestas»: preguntar sólo si hay con qué responder, o nunca. «Casilla»: preguntar, o la primera libre. */
+  /** «Respuestas»: preguntar sólo si algo responde de verdad a este momento (`spe_count`), o nunca. «Casilla»: preguntar, o la primera libre. */
   prefs: { chainMode: 'ask' | 'never'; placeMode: 'ask' | 'auto' }
   /** La fase de ahora (la del overlay): marca la actual en `phaseItems`. */
   phase?: MatPhase | null
@@ -489,9 +489,11 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     }
     case 'select_chain': {
       base.items = itemsOf(ask, resolve, ctx)
-      const never = ctx.prefs.chainMode === 'never'
+      // «Preguntar» pregunta como EDOPro sin «Always chain»: sólo si algo responde de verdad a este momento (`spe_count` del núcleo: los disparos opcionales y los
+      // efectos rápidos con el timing de ahora). Una carta que sólo «podría» activarse (una Trampa colocada, en cada paso del propio turno) no pregunta. Forzada, siempre.
+      const quiet = ctx.prefs.chainMode === 'never' || (ask.spe_count === 0 && !ask.forced)
 
-      if (never || ask.selects.length === 0) auto({ type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }, ask.selects.length === 0 ? 'forced' : 'setting')
+      if (quiet || ask.selects.length === 0) auto({ type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }, ask.selects.length === 0 ? 'forced' : 'setting')
       break
     }
     case 'select_effectyn':

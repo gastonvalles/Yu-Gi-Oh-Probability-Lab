@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
-import type { CardRef, ChainLink } from '../../app/auto/adapter'
+import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, openAsk, step, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { createDataLoader, httpSource } from '../../app/auto/auto-data'
 import { createAutoSession, workerTransport, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
@@ -9,7 +9,9 @@ import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
 import { allMatIds, cardKindOf, replayMat, type MatAction, type MatState } from '../../app/practice-mat'
+import { playSfx } from '../../app/sfx'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
+import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
 import { DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { usePracticeSounds } from '../../app/use-practice-sounds'
@@ -50,10 +52,12 @@ export interface AutoSoloScreenProps {
   extraIds: readonly string[]
   cardsById: ReadonlyMap<string, MatCard>
   deckName: string
+  /** La mano de apertura del Lab: cuántas cartas robás al empezar (el núcleo reparte 5 si no se dice). */
+  handSize?: number
   /** La X de la barra: vuelve al lobby. */
   onExit: () => void
   /** Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. */
-  connect?: (deck: DeckList) => AutoSession
+  connect?: (deck: DeckList, options: { handSize?: number }) => AutoSession
 }
 
 /** Cuánto espera la mesa entre una jugada y la siguiente de una misma tanda (una cadena larga se cuenta paso a paso). */
@@ -62,9 +66,9 @@ const NOTHING = () => {}
 /** Los Tipos (`RACE_*`, por bit) y los Atributos (`ATTRIBUTE_*`) del núcleo, con las palabras de las cartas (en inglés, como las muestra el catálogo). */
 const RACES = ['Warrior', 'Spellcaster', 'Fairy', 'Fiend', 'Zombie', 'Machine', 'Aqua', 'Pyro', 'Rock', 'Winged Beast', 'Plant', 'Insect', 'Thunder', 'Dragon', 'Sea Serpent', 'Reptile', 'Psychic', 'Divine-Beast', 'Creator God', 'Wyrm', 'Cyberse', 'Illusion', 'Cyborg', 'Magical Knight', 'High Dragon', 'Omega Psychic', 'Celestial Warrior', 'Galaxy', 'Yokai']
 const ATTRIBUTES = ['EARTH', 'WATER', 'FIRE', 'WIND', 'LIGHT', 'DARK', 'DIVINE']
-/** `MSG_WIN`: por qué terminó (0 vidas, 1 sin robar; lo demás, el efecto de una carta). */
-const REASON_LP = 0
-const REASON_DECK = 1
+/** `MSG_WIN`: por qué terminó, como lo escribe el núcleo (`Processors::Adjust`): 1 las vidas en 0, 2 sin cartas para robar (0 sólo lo manda un servidor al rendirse). */
+const REASON_LP = 1
+const REASON_DECK = 2
 /** Desde acá, las razones las ponen los scripts (`Duel.Win`: Exodia, el Tablero del Destino…). */
 const SCRIPT_REASON = 0x10
 const SPELL = 0x2
@@ -84,7 +88,7 @@ function deckListOf(ids: readonly string[]): [number, number][] {
   return [...copies]
 }
 
-const connectLive = (deck: DeckList): AutoSession => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport() })
+const connectLive = (deck: DeckList, { handSize }: { handSize?: number }): AutoSession => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...(handSize === undefined ? {} : { handSize }) })
 
 /** La mesa como la ve la pantalla: la mesa del arranque, las jugadas que ya llegaron y hasta cuál se muestra. */
 interface Paced {
@@ -101,17 +105,17 @@ const drawIdOf = (code: number) => `card-${code}-1`
 /** La mesa intentó jugar sola: en automático es un bug (cada gesto se contesta, nunca se despacha). Se anota y no se hace nada. */
 const sentinel = (action: MatAction) => console.error('[auto] la mesa intentó despachar una jugada en modo automático', action)
 
-export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, onExit, connect = connectLive }: AutoSoloScreenProps) {
+export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, connect = connectLive }: AutoSoloScreenProps) {
   const [session, setSession] = useState<AutoSession | null>(null)
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite y la sesión de la primera pasada se destruye.
   useEffect(() => {
-    const live = connect({ main: deckListOf(mainIds), extra: deckListOf(extraIds) })
+    const live = connect({ main: deckListOf(mainIds), extra: deckListOf(extraIds) }, handSize === undefined ? {} : { handSize })
 
     setSession(live)
 
     return () => live.destroy()
-  }, [connect, mainIds, extraIds])
+  }, [connect, mainIds, extraIds, handSize])
 
   return session ? <AutoDuel session={session} cardsById={cardsById} deckName={deckName} onExit={onExit} /> : <LoadingCover progress={{ done: 0, total: 0 }} />
 }
@@ -153,6 +157,17 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
   const matSession = useMemo<MatSession>(() => ({ initial: paced.initial, actions: [...paced.actions], cursor: paced.cursor, names, replay: false }), [paced, names])
 
   usePracticeSounds(matSession)
+  // Las vidas que bajan o suben y el fin (las jugadas ya suenan con la mesa); rearmando no suena nada.
+  useChange(snap.replaying ? undefined : ([...snap.overlay.lp] as const), (before, now) => {
+    if (before.some((points) => points <= 0)) return
+    if (now.some((points, seat) => points < before[seat]!)) playSfx('lpDown')
+    else if (now.some((points, seat) => points > before[seat]!)) playSfx('lpUp')
+  })
+  useEffect(() => {
+    const end = snap.status === 'ended' ? snap.overlay.end : null
+
+    if (end) playSfx(end.winner === 2 ? 'turn' : end.winner === 0 ? 'win' : 'lose')
+  }, [snap.status, snap.overlay.end])
 
   // ── Las cartas: el nombre, el arte y el tipo por código (lo que el núcleo nombra y la mesa no tiene). ──
   const byCode = useMemo(() => {
@@ -193,6 +208,15 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
     },
     [cardsById, codeOf],
   )
+  // El rótulo de un efecto o de una opción: el `strN` del `.cdb` que nombra el `desc` (carta = desc >> 4, n = desc & 15); los del sistema (< 10000) no viajan: la pantalla dice «Efecto n».
+  const effectLabel = useCallback(
+    (_code: number, description: string): string | null => {
+      const desc = BigInt(description)
+
+      return desc < 10000n ? null : snap.texts[Number(desc >> 4n)]?.[Number(desc & 15n)] || null
+    },
+    [snap.texts],
+  )
   const pickCardOf = (card: AskCard, key: string): PickCard => {
     const where = card.place === 'hand' ? PILE_TITLES.hand : card.place === 'pile' && card.pile ? PILE_TITLES[card.pile] : undefined
     const place = where && card.ref?.side === 'theirs' ? t('duel.zone.theirs', { zone: where }) : where
@@ -207,15 +231,16 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
   const open = () => {
     const adapter = session.adapter
 
-    return pending && adapter ? openAsk(pending, { queries: adapter, prefs: { chainMode: prefs.chain, placeMode: prefs.place }, phase: adapter.mine.phase, typeOf }) : null
+    return pending && adapter ? openAsk(pending, { queries: adapter, prefs: { chainMode: prefs.chain, placeMode: prefs.place }, phase: adapter.mine.phase, typeOf, effectLabel }) : null
   }
   const [opened, setOpened] = useState<{ askId: number | null; state: AskState | null }>({ askId: null, state: null })
   /** Una pregunta sin gesto ni respuesta segura (anunciar una carta sin catálogo): la línea avisa y ofrece deshacer. */
   const [stuck, setStuck] = useState<string | null>(null)
   /** El segundo paso de «Activar efecto» en el celular (en escritorio es el submenú del menú): el ítem padre, con sus efectos. */
   const [sub, setSub] = useState<AskItem | null>(null)
-  /** Cuántos errores había al contestar la última pregunta: los nuevos se muestran en la línea. */
+  /** Cuántos errores (y cuántas cosas que la mesa no pudo mostrar) había al contestar la última pregunta: los nuevos se muestran en la línea. */
   const faultsBase = useRef(0)
+  const unmappedBase = useRef(0)
   const askRef = useRef<AskState | null>(null)
 
   if (opened.askId !== askId) {
@@ -256,6 +281,7 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
           setOpened({ askId: current.askId, state: null })
           setSub(null)
           faultsBase.current = session.getSnapshot().faults.length
+          unmappedBase.current = session.getSnapshot().unmapped.length
           session.answer(next.answer)
           return
         }
@@ -319,7 +345,8 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
         ? {
             pile: pick.pile,
             ids: viewerIds,
-            ...(pick.max > 1 ? { many: { label: (ids) => t('auto.picker.choose', { count: ids.length }), onPick: (ids) => gesture(...ids.map((id) => ({ kind: 'card' as const, ref: { side: 'mine' as const, id } })), { kind: 'done' }) } } : {}),
+            // Elegir varias de una vez, salvo cuando el núcleo las pide de a una (`select_unselect_card`: cada toque contesta y vuelve a preguntar).
+            ...(pick.max > 1 && pick.type !== 'select_unselect_card' ? { many: { label: (ids) => t('auto.picker.choose', { count: ids.length }), onPick: (ids) => gesture(...ids.map((id) => ({ kind: 'card' as const, ref: { side: 'mine' as const, id } })), { kind: 'done' }) } } : {}),
           }
         : null,
     asking: shown !== null,
@@ -351,15 +378,34 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
     ? { kind: 'ask', text: t('auto.lane.error', { message: stuck }), actions: [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] }
     : snap.status === 'thinking'
       ? { kind: 'thinking', onCancel: () => session.cancel() }
-      : shown?.type === 'select_chain' && shown.cancelable
+      : shown?.type === 'select_chain'
         ? {
+            // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla.
             kind: 'ask',
-            text: chain.length > 0 ? t('auto.lane.respondTo', { card: linkName(chain[chain.length - 1]!), cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') }) : t('auto.lane.respondNow', { cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') }),
-            actions: [{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }],
+            text: !shown.cancelable
+              ? t('auto.lane.mustActivate', { cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') })
+              : chain.length > 0
+                ? t('auto.lane.respondTo', { card: linkName(chain[chain.length - 1]!), cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') })
+                : t('auto.lane.respondNow', { cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') }),
+            actions: shown.cancelable ? [{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }] : [],
           }
         : snap.faults.length > faultsBase.current && newFault
           ? { kind: 'ask', text: newFault.kind === 'script' ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') }) : t('auto.lane.error', { message: newFault.message }), actions: [] }
-          : chainLane(chain, linkName)
+          : snap.unmapped.length > unmappedBase.current
+            ? { kind: 'ask', text: t('auto.lane.unmapped', { what: snap.unmapped[snap.unmapped.length - 1]! }), actions: [] }
+            : chainLane(chain, linkName)
+
+  // ── ATK/DEF de ahora de la carta del detalle (sólo las del campo los tienen): se busca por código entre las del campo de ese lado. ──
+  const peeked = dock.shown
+  const dockStats = useMemo(() => {
+    const side: Side = peeked && 'drawId' in peeked ? 'theirs' : 'mine'
+    const code = peeked && 'card' in peeked ? peeked.card?.ygoprodeckId : peeked && 'drawId' in peeked ? parseDerivedCardId(cardIdOfDrawId(peeked.drawId)) : null
+    const mat = side === 'mine' ? state : theirs
+    const codeAt = (id: string) => (side === 'mine' ? cardsById.get(id)?.apiCard?.ygoprodeckId : codeOf({ side, id }))
+    const id = code ? [...mat.mz, ...mat.emz, ...mat.st, mat.field].find((placed) => placed !== null && codeAt(placed.id) === code)?.id : undefined
+
+    return id ? (snap.overlay.stats[side][id] ?? null) : null
+  }, [peeked, state, theirs, cardsById, codeOf, snap.overlay.stats])
 
   // ── Lo que se muestra fuera del campo. ──
   const prompt = shown?.prompt
@@ -369,7 +415,8 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
     option.label ?? (options?.of === 'race' ? (RACES[option.value] ?? String(option.value)) : options?.of === 'attribute' ? (ATTRIBUTES[option.value] ?? String(option.value)) : t('practice.menu.effectLead', { n: index + 1 }))
   const optionsTitle = options ? (options.of === 'position' ? t('auto.options.position') : options.of === 'number' ? t('auto.options.number') : options.of === 'race' ? t('auto.options.race', { count: options.count }) : options.of === 'attribute' ? t('auto.options.attribute', { count: options.count }) : t('auto.options.option')) : ''
   const list = pick && pick.surface === 'list' ? pick : null
-  const listCards = list ? [...list.chosen, ...list.eligible.filter((i) => !list.chosen.includes(i))].map((i) => pickCardOf(list.cards[i]!, String(i))) : []
+  // Todas las de la pregunta, en su orden (las que ahora no valen van apagadas: `eligible`; las elegidas, con su aro).
+  const listCards = list ? list.cards.map((card, i) => pickCardOf(card, String(i))) : []
   const myTurn = shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd'
   const turnMine = snap.overlay.turnPlayer === 0
   const undoable = snap.answers.some((item) => item.seat === 0 && (item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd'))
@@ -402,6 +449,7 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
         onChain={(mode) => setAutoPref('chain', mode)}
         place={prefs.place}
         onPlace={(mode) => setAutoPref('place', mode)}
+        onRestart={() => session.restart()}
       />
     ),
     rivalHand: <TheirHand count={theirs.hand.length} />,
@@ -429,7 +477,7 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
     turnNumber: snap.overlay.turn,
     rivalEmz: theirs.emz.map(Boolean),
     ...(cover === undefined ? {} : { cover }),
-    ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight} /> } : {}),
+    ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight} stats={dockStats} /> } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
     onRivalHover: (id) => {
@@ -482,13 +530,18 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
       </Presence>
       <Presence>
         {list ? (
+          // La cuenta la lleva `ask-ui` (lo elegido, lo que todavía vale, si «Listo» contesta): la hoja sólo la muestra. `select_unselect_card` va de a una (cada toque contesta).
           <CardPicker
             key={`picker-${askId}`}
             title={pickLabel}
             cards={listCards}
-            min={list.done ? 0 : list.min}
-            max={list.type === 'select_unselect_card' ? Math.max(list.max, 2) : list.max}
-            onPick={(keys) => gesture(...keys.map((key) => ({ kind: 'pick' as const, index: Number(key) })), { kind: 'done' })}
+            min={list.min}
+            max={list.type === 'select_unselect_card' ? 1 : list.max}
+            chosen={list.chosen.map(String)}
+            eligible={new Set(list.eligible.map(String))}
+            done={list.done}
+            onToggle={(key) => gesture({ kind: 'pick', index: Number(key) })}
+            onPick={() => gesture({ kind: 'done' })}
             {...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {})}
           />
         ) : null}

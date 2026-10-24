@@ -4,9 +4,10 @@ import { useDuelRails } from '../../app/duel-rails'
 import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
-import { HEADER_ICON, LaneBanner, LifeTile, type LaneNotice } from '../duel/DuelBar'
+import { HEADER_ICON, LaneBanner, LifeTile, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
 import { MatViewToggle } from '../probability/MatViewToggle'
 import { ShellMenuButton } from '../shell/ShellMenu'
+import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -42,6 +43,8 @@ interface AutoBarProps {
   onChain: (mode: AutoChainMode) => void
   place: AutoPlaceMode
   onPlace: (mode: AutoPlaceMode) => void
+  /** «Reiniciar el duelo» de «Más opciones»: el mismo duelo desde el principio (sin esto, no se ofrece). */
+  onRestart?: () => void
 }
 
 /** Un ajuste de «Más opciones» con su nombre, su línea chica y el control debajo. */
@@ -63,14 +66,14 @@ function Setting({ title, hint, children }: { title: string; hint: string; child
  * de salir. En el celular, la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto
  * suma alto cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = null, log, sounds, onSounds, chain, onChain, place, onPlace }: AutoBarProps) {
+export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = null, log, sounds, onSounds, chain, onChain, place, onPlace, onRestart }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const rails = useDuelRails()
   const laneOpen = lane !== null
   const phaseName = PHASES.find((entry) => entry.id === phase)?.name
   const whose = myTurn ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })
-  const turnChip = turn > 0 ? <span className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn })}</span> : null
+  const turnChip = turn > 0 ? <span data-testid="auto-turn" className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn })}</span> : null
 
   const lives = (
     <>
@@ -104,6 +107,21 @@ export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = n
           <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
         </Setting>
         <Callout tone="neutral">{t('auto.rival.passive')}</Callout>
+        {onRestart ? (
+          <Setting title={t('auto.bar.restart')} hint={t('auto.bar.restartHint')}>
+            <Button
+              variant="secondary"
+              icon="refresh"
+              className="justify-self-start"
+              onClick={() => {
+                setMoreOpen(false)
+                onRestart()
+              }}
+            >
+              {t('auto.bar.restart')}
+            </Button>
+          </Setting>
+        ) : null}
       </div>
     </Modal>
   )
@@ -121,7 +139,8 @@ export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = n
             {phaseName ? <span data-testid="auto-phase" className="text-info">{phaseName}</span> : null}
           </span>
         </div>
-        <div className="relative col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4">{lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}</div>
+        {/* El aviso, en lo que el campo agrandado deja libre del lateral (`--field-overhang`, de la mesa) y por encima del tablero (`z-20`): nunca cortado ni debajo. Con menos de 11 rem libres se apoya sobre el borde del campo. */}
+        <div className="relative z-20 col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4" style={RAIL_LANE_STYLE}>{lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}</div>
         {dialogs}
       </>
     )

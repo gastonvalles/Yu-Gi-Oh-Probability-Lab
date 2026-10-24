@@ -29,6 +29,8 @@ interface PickGridProps {
   onToggle: (key: string, range: boolean) => void
   /** Se eligen varias (`aria-multiselectable`, y Mayús+clic para el tramo). */
   multi: boolean
+  /** Las que un toque acepta ahora (el núcleo: lo que todavía completa la pregunta); las demás, sin elegir, van apagadas. Sin esto, todas. */
+  eligible?: ReadonlySet<string>
   /** Las columnas de la grilla. */
   className?: string
 }
@@ -37,9 +39,10 @@ interface PickGridProps {
  * La grilla de cartas para elegir, con el aro ámbar y el número de orden de `PileViewer` eligiendo varias (no se extrajo de ahí: allá son botones con `aria-pressed` y acá un `listbox`). Se recorre con
  * las flechas (arriba y abajo, una fila), Inicio y Fin, con un solo lugar de tabulación; Espacio o Enter eligen. Mientras llega el arte de una carta, un esqueleto quieto (son decenas a la vez).
  */
-export function PickGrid({ label, cards, chosen, onToggle, multi, className }: PickGridProps) {
+export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, className }: PickGridProps) {
   const [active, setActive] = useState(0)
   const at = Math.min(active, cards.length - 1)
+  const blocked = (card: PickCard) => eligible !== undefined && !eligible.has(card.key) && !chosen.includes(card.key)
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const columns = getComputedStyle(event.currentTarget).gridTemplateColumns.split(' ').filter(Boolean).length || 1
@@ -54,7 +57,7 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, className }: P
       option?.focus()
     } else if ((event.key === ' ' || event.key === 'Enter') && cards[at]) {
       event.preventDefault()
-      onToggle(cards[at].key, event.shiftKey)
+      if (!blocked(cards[at])) onToggle(cards[at].key, event.shiftKey)
     }
   }
 
@@ -63,6 +66,7 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, className }: P
       {cards.map((card, index) => {
         const order = chosen.indexOf(card.key)
         const name = order >= 0 ? t('practice.many.order', { name: card.name, n: order + 1 }) : card.name
+        const off = blocked(card)
 
         return (
           <div
@@ -72,12 +76,13 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, className }: P
             // Al abrirse la hoja, el foco va a las cartas (no a la X).
             data-initial-focus={index === at ? '' : undefined}
             aria-selected={order >= 0}
+            aria-disabled={off || undefined}
             aria-label={card.place ? `${name}, ${card.place}` : name}
             title={multi ? t('practice.many.range') : undefined}
-            className="group grid min-w-0 cursor-pointer content-start gap-1 rounded-none outline-none focus-visible:shadow-focus"
+            className={cx('group grid min-w-0 content-start gap-1 rounded-none outline-none focus-visible:shadow-focus', off ? 'cursor-default opacity-40' : 'cursor-pointer')}
             onClick={(event) => {
               setActive(index)
-              onToggle(card.key, event.shiftKey)
+              if (!off) onToggle(card.key, event.shiftKey)
             }}
           >
             {/* La elegida, un aro ámbar de 2 px por fuera; al pasar el mouse, el mismo aro, tenue. */}
@@ -134,18 +139,31 @@ interface CardPickerProps {
   onPick: (keys: string[]) => void
   /** Sólo si la pregunta se puede cancelar (`can_cancel`): «Cancelar», la X y Escape. Sin esto, hay que contestar. */
   onCancel?: () => void
+  /**
+   * Controlada por quien pregunta (el duelo automático lleva la cuenta en `ask-ui`): las elegidas, cada toque (`onToggle`), qué toque vale ahora (`eligible`: una suma o un Sacrificio no deja
+   * elegir lo que el núcleo no acepta) y si la principal contesta (`done`). Sin esto, la hoja lleva la cuenta sola hasta `max`.
+   */
+  chosen?: readonly string[]
+  onToggle?: (key: string) => void
+  eligible?: ReadonlySet<string>
+  done?: boolean
 }
 
 /**
  * Elegir de `min` a `max` cartas de una lista que no está en el campo ni en una sola pila (de varios lugares, o por código), en una hoja (`Modal sheet`; en el celular sale de abajo). Tocar elige o suelta
- * (aro ámbar y número de orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta; si no, la principal («Elegir 2 cartas», o «Listo» si se puede no elegir ninguna) se enciende
- * con `min` y el pie dice cuántas van. Va dentro de un `Presence` (así sale al contestarse).
+ * (aro ámbar y número de orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, la principal («Elegir 2 cartas»,
+ * o «Listo» si se puede no elegir ninguna) se enciende con `min` (o con `done`) y el pie dice cuántas van. Va dentro de un `Presence` (así sale al contestarse).
  */
-export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel }: CardPickerProps) {
+export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done }: CardPickerProps) {
   const leaving = useLeaving()
-  const [chosen, toggle] = usePicked(cards, max)
+  const [own, toggleOwn] = usePicked(cards, max)
+  const chosen = picked ?? own
+  const toggle = onToggle ? (key: string) => onToggle(key) : toggleOwn
   const statusId = useId()
   const single = max === 1
+  const ready = done ?? chosen.length >= min
+  // Con `max` 1, el pie sólo si hay «Listo» (terminar sin elegir) o «Cancelar».
+  const finish = single && done === true
 
   // Sin cancelar, Escape no cierra esto ni lo que haya abajo: hay que contestar.
   useEscapeKey(() => {}, !onCancel && !leaving)
@@ -160,7 +178,7 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel }:
       title={title}
       subtitle={min === max ? t('auto.pick.cards', { count: max }) : t('auto.pick.range', { min, max })}
       footer={
-        single && !onCancel ? undefined : (
+        single && !onCancel && !finish ? undefined : (
           <>
             {single ? null : (
               <p id={statusId} role="status" className="m-0 mr-auto text-body tabular-nums text-muted">
@@ -172,8 +190,8 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel }:
                 {t('common.cancel')}
               </Button>
             ) : null}
-            {single ? null : (
-              <Button variant="primary" size="sm" disabled={chosen.length < min} aria-describedby={statusId} onClick={() => onPick(chosen)}>
+            {single && !finish ? null : (
+              <Button variant="primary" size="sm" disabled={!ready} aria-describedby={single ? undefined : statusId} onClick={() => onPick([...chosen])}>
                 {chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length })}
               </Button>
             )}
@@ -181,7 +199,7 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel }:
         )
       }
     >
-      <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} onToggle={single ? (key) => onPick([key]) : toggle} multi={!single} className="grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]" />
+      <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} className="grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]" />
     </Modal>
   )
 }

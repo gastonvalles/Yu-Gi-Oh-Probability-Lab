@@ -347,7 +347,7 @@ export function DeckModeScreen() {
             {t('shell.practice.title')}
           </Heading>
           {autoSolo && matDeck.mainIds.length > 0 ? (
-            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} onExit={() => { window.location.hash = '#duel' }} />
+            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} />
           ) : practice ? (
             <LazyPracticeSection {...practice} />
           ) : (

@@ -122,6 +122,9 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     progress: { done: 1, total: 1 },
     replaying: false,
     names: { 700: 'Blue-Eyes White Dragon', 100: 'Ash Blossom', 400: 'Nibiru' },
+    // Los rótulos del `.cdb` por código (`desc` = código << 4 | n; menos de 10000 es del sistema): los dos efectos de Nibiru llevan los `desc` 10001 y 10002 (625 << 4 | n).
+    texts: { 625: ['', 'Summon a Token', 'Destroy a monster'] },
+    unmapped: [],
   }
   let askId = 0
   const set = (patch: Partial<AutoSnapshot>) => {

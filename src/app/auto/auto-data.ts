@@ -22,6 +22,8 @@ export interface CardRow {
   race: string
   attribute: number
   name?: string
+  /** Los rótulos de los efectos (`str1`…`str16` de `texts`: lo que `aux.Stringid(id, n)` nombra en un menú), sin los vacíos del final. */
+  strs?: string[]
 }
 
 export interface DataManifest {
@@ -48,6 +50,8 @@ export interface DuelData {
   cards: OcgCardData[]
   scripts: Record<string, string>
   names: Record<number, string>
+  /** Los rótulos de los efectos por código (`strs`): el `desc` de una pregunta es carta << 4 | n. */
+  texts?: Record<number, string[]>
   version: string
 }
 
@@ -186,7 +190,8 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
       // juntas, en una sola entrada: una consulta por carta (las fichas son ~240) es una tarea larga del hilo principal en un celular.
       const codes = [...new Set([...lists.flatMap((list) => [...list.main, ...(list.extra ?? [])].map(([code]) => code)), ...manifest.tokens])]
 
-      if (rows.size === 0) for (const [code, row] of Object.entries(((await recall('cards', 'all')) ?? {}) as Record<string, CardRow | null>)) rows.set(Number(code), row)
+      // `all2`: desde que las filas llevan `strs`, las guardadas antes (sin ellos) no sirven.
+      if (rows.size === 0) for (const [code, row] of Object.entries(((await recall('cards', 'all2')) ?? {}) as Record<string, CardRow | null>)) rows.set(Number(code), row)
       const wanted = codes.filter((code) => !rows.has(code))
 
       tick()
@@ -194,7 +199,7 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
         const got = new Map((await source.cards(wanted)).map((row) => [row.id, row]))
 
         for (const code of wanted) rows.set(code, got.get(code) ?? null)
-        keep('cards', 'all', Object.fromEntries(rows))
+        keep('cards', 'all2', Object.fromEntries(rows))
       }
       done += 1
       tick()
@@ -230,6 +235,7 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
         cards: [...data.values()],
         scripts: texts,
         names: Object.fromEntries(codes.flatMap((code) => (rows.get(code)?.name ? [[code, rows.get(code)!.name!]] : []))),
+        texts: Object.fromEntries(codes.flatMap((code) => (rows.get(code)?.strs?.length ? [[code, rows.get(code)!.strs!]] : []))),
         version: manifest.version,
       }
     },

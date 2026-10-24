@@ -19,6 +19,9 @@ const SUM: CoreAsk = { type: 'select_sum', player: 0, select_max: 0, amount: 4, 
 const PLACE: CoreAsk = { type: 'select_place', player: 0, count: 1, field_mask: ~0b110 >>> 0 }
 const POSITION: CoreAsk = { type: 'select_position', player: 0, code: 100, positions: 1 | 4 }
 const SEARCH: CoreAsk = { type: 'select_card', player: 0, can_cancel: false, min: 1, max: 1, selects: [pos(101, L.DECK, 1, 10), pos(102, L.DECK, 0, 10)] }
+/** Una suma entre el cementerio y la mano: no cabe en el campo ni en una pila → la hoja aparte. */
+const SUM_LIST: CoreAsk = { ...SUM, selects: [{ ...loc(400, L.GRAVE, 0), amount: 4 }, { ...loc(100, L.HAND, 0), amount: 3 }] } as CoreAsk
+const UNSELECT_LIST: CoreAsk = { ...UNSELECT, select_cards: [pos(100, L.HAND, 0, 10), pos(400, L.GRAVE, 0, 5)], unselect_cards: [] } as CoreAsk
 
 describe('auto-screen · elegir', () => {
   it('select_card: las candidatas brillan, el estado cuenta, tocar una la elige y «Listo» contesta con los índices', () => {
@@ -105,6 +108,34 @@ describe('auto-screen · elegir', () => {
     expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
     fireEvent.click(within(sheet).getByRole('menuitem', { name: 'En defensa' }))
     expect(fake.answers).toEqual([{ type: 'select_position', position: 4 }])
+  })
+
+  it('una suma en la hoja aparte: la cuenta la lleva el núcleo (lo que no suma va apagado) y la que completa contesta sola', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(SUM_LIST))
+    const sheet = screen.getByRole('dialog', { name: /Niveles/ })
+    const ash = within(sheet).getByRole('option', { name: /Ash Blossom/ })
+
+    expect(ash).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(ash)
+    expect(fake.answers).toEqual([])
+    fireEvent.click(within(sheet).getByRole('option', { name: /Nibiru/ }))
+    expect(fake.answers).toEqual([{ type: 'select_sum', indices: [0] }])
+    expect(dispatches).toBe(0)
+  })
+
+  it('unselect en la hoja aparte, de a una: tocar contesta, y con `can_finish` hay «Listo»', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(UNSELECT_LIST))
+    const sheet = screen.getByRole('dialog', { name: /Elegí/ })
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Listo' }))
+    expect(fake.answers).toEqual([{ type: 'select_unselect_card', index: null }])
+    core(() => fake.ask(UNSELECT_LIST))
+    fireEvent.click(within(screen.getByRole('dialog', { name: /Elegí/ })).getByRole('option', { name: /Nibiru/ }))
+    expect(fake.answers[1]).toEqual({ type: 'select_unselect_card', index: 1 })
   })
 
   it('buscar en el deck: el visor muestra sólo las candidatas y tocar una contesta', () => {
