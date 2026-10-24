@@ -1005,7 +1005,7 @@ export function pileAction(state: MatState, id: string, to: MatPile, kindOf: (id
  * Lo que se puede hacer con una carta desde donde está: el menú al tocarla (cubre todo lo que hace el arrastre),
  * con las jugadas del juego: Invocación Normal y Colocar desde la mano, Invocación Especial (que pregunta la posición) desde cualquier lado, Invocación de Péndulo desde la mano con dos escalas activas,
  * Invocación por Volteo de un monstruo boca abajo, Activar efecto (con descarte como costo si está en la mano),
- * escalas de péndulo, revelar, descartar, desterrar. Las Trampas no se activan desde la mano; los Link no van a
+ * escalas de péndulo, revelar, descartar, desterrar. Una Mágica o Trampa del cementerio o del destierro se activa o se coloca (como una de la mano). Las Trampas no se activan desde la mano; los Link no van a
  * defensa; las fichas no se colocan boca abajo ni salen del campo; la Extra Monster Zone sólo se ofrece a lo que
  * viene del Extra Deck.
  */
@@ -1194,6 +1194,13 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       else specialSummon()
     }
     if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn(t('practice.menu.toSpellTrapZone'), ['st'], 'atk')
+    // Una Mágica o una Trampa del cementerio o del destierro también se activa (sale boca arriba a su zona, la de Campo a la suya) o se coloca boca abajo: hay efectos que lo piden.
+    if ((pile === 'gy' || pile === 'banished') && (kind.spell || kind.trap)) {
+      const spellTrapZones: MatSpot[] = kind.fieldSpell ? ['field'] : ['st']
+
+      placeIn(t('practice.menu.activate'), spellTrapZones, 'atk')
+      placeIn(t('practice.menu.set'), spellTrapZones, 'set')
+    }
     if (pile === 'gy' || pile === 'banished') {
       // Efectos que se activan en el cementerio o en el destierro.
       if (kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
