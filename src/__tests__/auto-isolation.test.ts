@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, posix } from 'node:path'
 
 // El núcleo de reglas (`ocgcore-wasm`) lleva adentro un binario AGPL-3.0 y la decisión de licencia está abierta: hasta que se tome, nada
 // que el navegador de la app pueda cargar lo importa. Sólo los módulos de `src/app/auto/`, las pruebas y los scripts; y ningún archivo de
@@ -19,8 +19,14 @@ describe('el núcleo de reglas queda aislado', () => {
 
   it('ningún archivo de producción importa src/app/auto todavía', () => {
     const production = source.filter((file) => !file.startsWith('src/app/auto/') && !file.startsWith('src/__tests__/'))
-    const importers = production.filter((file) => /from\s+['"][./]*(?:app\/)?auto\/|import\(\s*['"][./]*(?:app\/)?auto\//.test(readFileSync(join(ROOT, file), 'utf8')))
+    // Cada importación relativa se resuelve desde su archivo: `../../auto/…` desde el catálogo es `src/components/auto/` (las piezas de pantalla, sin el núcleo), no `src/app/auto/`.
+    const reachesCore = (file: string) =>
+      [...readFileSync(join(ROOT, file), 'utf8').matchAll(/(?:from\s+|import\(\s*)['"](\.{1,2}\/[^'"]*)['"]/g)].some((match) => {
+        const target = posix.join(posix.dirname(file), match[1]!)
 
-    expect(importers.map((file) => relative(ROOT, join(ROOT, file)).split('\\').join('/'))).toEqual([])
+        return target === 'src/app/auto' || target.startsWith('src/app/auto/')
+      })
+
+    expect(production.filter(reachesCore)).toEqual([])
   })
 })

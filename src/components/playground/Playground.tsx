@@ -7,6 +7,7 @@ import { Icon, type IconName } from '../ui/Icon'
 import { SectionHeader } from '../ui/SectionHeader'
 import { supportText } from '../ui/typography'
 import { AssetsSection } from './sections/AssetsSection'
+import { AutoSection } from './sections/AutoSection'
 import { ButtonsSection } from './sections/ButtonsSection'
 import { CompareSection } from './sections/CompareSection'
 import { DataSection } from './sections/DataSection'
@@ -40,6 +41,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños, las confirmaciones y los avisos (toast).', Component: DialogsSection },
   { id: 'comparar', title: 'Comparar', icon: 'columns', description: 'El par A/B, «Mis builds», la tarjeta del veredicto, las filas espejo, «Qué cambiaste», las dos listas y la barra de abajo.', Component: CompareSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
+  { id: 'automatico', title: 'Duelo automático (beta)', icon: 'play', description: 'Las piezas del modo automático, fuera del campo: la pregunta del núcleo, sus opciones, elegir y ordenar cartas, y la barra de arriba.', Component: AutoSection },
   { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
   { id: 'assets', title: 'Assets', icon: 'image', description: 'Los archivos de public/, la marca, las fuentes y las imágenes de cartas.', Component: AssetsSection },
   { id: 'tokens', title: 'Tokens del diseño', icon: 'sliders', description: 'Colores, radios, sombras y tipografías, leídos de index.css.', Component: TokensSection },

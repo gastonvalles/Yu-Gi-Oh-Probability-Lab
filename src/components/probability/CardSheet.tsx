@@ -48,7 +48,7 @@ interface CardSheetProps {
  * (la lista de efectos de «Activar efecto»: frases largas, cada una con su línea chica debajo) van de a una por fila. Una opción con `hint` lleva el texto arriba y la línea chica debajo.
  * Una que abre un segundo paso de «cómo» (`children`) lleva una flecha a la derecha, en el borde: el texto lleva el mismo aire a los dos lados y sigue al medio.
  */
-function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: boolean }) {
+export function Options({ items, stacked }: { items: readonly MenuItem[]; stacked: boolean }) {
   return (
     <div className={cx('grid gap-2', stacked ? 'grid-cols-1' : 'grid-cols-2')}>
       {items.map((item, index) => (
