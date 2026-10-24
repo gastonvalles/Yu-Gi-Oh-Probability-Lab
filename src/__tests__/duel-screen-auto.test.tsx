@@ -90,8 +90,9 @@ describe('una sala con reglas automáticas', () => {
     expect(autoPrefs().duel).toBe(true)
     expect(sheet.getByText('Con reglas automáticas: un solo duelo, privado, sin reloj de turnos.')).toBeInTheDocument()
     expect(sheet.getByRole('radio', { name: 'Single' })).toBeChecked()
-    expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeDisabled()
-    expect(sheet.getByRole('radio', { name: 'Solo' })).toBeDisabled()
+    // Sin Match (la sala es de un solo duelo); Solo se sigue pudiendo elegir (ahí rige el simulador de handtraps).
+    expect(sheet.queryByRole('radio', { name: 'Match · mejor de 3' })).not.toBeInTheDocument()
+    expect(sheet.getByRole('radio', { name: 'Solo' })).toBeEnabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeDisabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).not.toBeChecked()
     expect(sheet.getByRole('radio', { name: 'Privada' })).toBeChecked()

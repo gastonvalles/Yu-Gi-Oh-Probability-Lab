@@ -3,7 +3,7 @@ export const auto = {
   // La entrada: el interruptor del lobby de Jugar, debajo de las baldosas.
   'auto.entry.switch': 'Duelo automático (beta)',
   // Vale con el simulador de handtraps encendido o apagado.
-  'auto.entry.hint': 'Las reglas las aplica el núcleo. Jugás vos; el rival no juega su turno: sólo usa las handtraps que le des.',
+  'auto.entry.hint': 'El núcleo aplica las reglas, solo o con un amigo (en sala privada). Solo, el rival no juega su turno: sólo usa las handtraps que le des.',
   // El rival pasivo, dicho en la portada de carga y en «Más opciones».
   'auto.rival.passive': 'El rival no juega: sólo recibe. Sirve para probar tus jugadas con las reglas de verdad.',
   // El rival con las handtraps del simulador, en la portada de carga.

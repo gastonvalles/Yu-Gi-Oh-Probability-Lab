@@ -367,8 +367,8 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
   }, [isOpen, prefs])
 
   const genesys = draft.format === 'genesys'
-  // Con reglas automáticas el tipo, el reloj de turnos y quién entra quedan fijos (un solo duelo, sin reloj, privada: lo dice la fila del interruptor). Sólo se muestran así: lo
-  // elegido antes vuelve al apagarlo.
+  // Con reglas automáticas la sala es de un solo duelo (el tipo no ofrece Match), sin reloj de turnos y privada: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se
+  // muestran así: lo elegido antes vuelve al apagarlo.
   const locked = auto && !solo
   const match = draft.match && !locked
   const turnOn = draft.turnLimit && !locked
@@ -402,26 +402,24 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
     >
       <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
         <RuleField label={t('duel.create.type')} hint={solo ? (canTrain ? t('duel.create.soloHint') : t('duel.play.trainNeedDeck')) : match ? t('duel.create.matchHint') : null} className="sm:col-span-2">
-          {/* Fijo con reglas automáticas: el `fieldset` apaga sus botones (y se ve apagado). */}
-          <fieldset disabled={locked} className="min-w-0 disabled:opacity-40">
-            <Segmented<RoomMode>
-              label={t('duel.create.type')}
-              fullWidth
-              value={mode}
-              onChange={(value) => {
-                setSolo(value === 'solo')
+          {/* Con reglas automáticas la sala es de un solo duelo: sin Match (vuelve al apagarlas); Solo se sigue pudiendo elegir. */}
+          <Segmented<RoomMode>
+            label={t('duel.create.type')}
+            fullWidth
+            value={mode}
+            onChange={(value) => {
+              setSolo(value === 'solo')
 
-                if (value !== 'solo') {
-                  set({ match: value === 'match', siding: value === 'match' && draft.siding })
-                }
-              }}
-              options={[
-                { value: 'single', label: t('duel.create.single') },
-                { value: 'match', label: t('duel.create.match') },
-                { value: 'solo', label: t('duel.create.solo') },
-              ]}
-            />
-          </fieldset>
+              if (value !== 'solo') {
+                set({ match: value === 'match', siding: value === 'match' && draft.siding })
+              }
+            }}
+            options={[
+              { value: 'single', label: t('duel.create.single') },
+              ...(auto ? [] : [{ value: 'match' as const, label: t('duel.create.match') }]),
+              { value: 'solo', label: t('duel.create.solo') },
+            ]}
+          />
         </RuleField>
 
         {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, debajo de las baldosas.
