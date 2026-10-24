@@ -277,7 +277,8 @@ const COMMAND_SHAPES = {
 } as const
 
 export type AutoCommand =
-  | Flat<{ t: 'create' } & Infer<typeof COMMAND_SHAPES.create>>
+  /** `answers`: re-simula esas respuestas antes de la primera pregunta (cancelar en un anfitrión nuevo, rearmar un duelo guardado). */
+  | Flat<{ t: 'create'; answers?: CoreAnswer[] } & Infer<typeof COMMAND_SHAPES.create>>
   | { t: 'answer'; askId: number; answer: CoreAnswer }
   | Flat<{ t: 'rewind' } & Infer<typeof COMMAND_SHAPES.rewind>>
   | { t: 'destroy' }
@@ -305,6 +306,8 @@ export type AutoEvent =
 const MAX_SEED = 2 ** 32 - 1
 const MAX_LP = 999_999
 const MAX_JSON = 256 * 1024
+/** Un duelo largo del fuzz anda por las 2.000 respuestas. */
+const MAX_ANSWERS = 20_000
 
 function parseRaw(input: unknown): Record<string, unknown> | null {
   if (typeof input !== 'string') return isPlain(input) ? input : null
@@ -359,8 +362,10 @@ export function parseAutoCommand(input: unknown): AutoCommand | null {
 
       if (!body || !inRange(body.seed, 0, MAX_SEED) || body.players.length !== 2 || body.decks.length !== 2 || !body.decks.every(deckOk)) return null
       if (!body.players.every((p) => inRange(p.lp, 1, MAX_LP) && inRange(p.hand, 0, 60) && inRange(p.draw, 0, 60))) return null
+      if (raw.answers === undefined) return { t: 'create', ...body }
+      const answers = Array.isArray(raw.answers) && raw.answers.length <= MAX_ANSWERS ? raw.answers.map(parseAnswer) : null
 
-      return { t: 'create', ...body }
+      return answers?.every((answer) => answer !== null) ? { t: 'create', ...body, answers: answers as CoreAnswer[] } : null
     }
 
     case 'answer': {

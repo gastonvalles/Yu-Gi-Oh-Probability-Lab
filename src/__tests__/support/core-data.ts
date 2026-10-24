@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import type { OcgCardData } from 'ocgcore-wasm'
+import { cardData, type CardRow, type DataSource } from '../../app/auto/auto-data'
 import type { AutoHost } from '../../app/auto/core-host'
 import { mapDeck, type DeckList } from '../../app/auto/deck-map'
 import type { Policy } from '../../app/auto/policies'
@@ -26,45 +27,55 @@ export function wasmBinary(): ArrayBuffer {
   return file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer
 }
 
-/**
- * El `.cdb` entero: los datos que pide `cardReader` y los nombres. Codificación de YGOPro: `level` = nivel | escala derecha << 16 |
- * izquierda << 24; en los Link, `def` son las flechas; `setcode`, 4 × u16 en un int64.
- */
-export function loadCards(file = path.join(CORE_DATA_DIR, 'cards.cdb')): { cards: Map<number, OcgCardData>; names: Map<number, string> } {
+/** Las filas de `datas` (con el nombre de `texts` y el `ot`) como las sirve la ruta de desarrollo `/auto-data/cards` (vite.config.ts). */
+export function cardRows(file = path.join(CORE_DATA_DIR, 'cards.cdb')): (CardRow & { ot: number })[] {
   const db = new DatabaseSync(file, { readOnly: true })
-  const rows = db.prepare('select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, t.name from datas d left join texts t on t.id = d.id')
+  const rows = db.prepare('select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, d.ot, t.name from datas d left join texts t on t.id = d.id')
 
   rows.setReadBigInts(true)
-  const cards = new Map<number, OcgCardData>()
-  const names = new Map<number, string>()
+  const out = (rows.all() as Record<string, bigint | string | null>[]).map((row) => ({
+    id: Number(row.id),
+    alias: Number(row.alias),
+    setcode: BigInt.asUintN(64, row.setcode as bigint).toString(),
+    type: Number(row.type),
+    atk: Number(row.atk),
+    def: Number(row.def),
+    level: Number(row.level),
+    race: BigInt.asUintN(64, row.race as bigint).toString(),
+    attribute: Number(row.attribute),
+    ot: Number(row.ot),
+    ...(typeof row.name === 'string' ? { name: row.name } : {}),
+  }))
 
-  for (const row of rows.all() as Record<string, bigint | string | null>[]) {
-    const code = Number(row.id)
-    const type = Number(row.type)
-    const level = Number(row.level)
-    const isLink = (type & 0x4000000) !== 0
-    const setcode = BigInt.asUintN(64, row.setcode as bigint)
-    const setcodes = [0n, 1n, 2n, 3n].map((i) => Number((setcode >> (i * 16n)) & 0xffffn)).filter((value) => value !== 0)
-
-    cards.set(code, {
-      code,
-      alias: Number(row.alias),
-      setcodes,
-      type,
-      level: level & 0xff,
-      attribute: Number(row.attribute),
-      race: BigInt.asUintN(64, row.race as bigint),
-      attack: Number(row.atk),
-      defense: isLink ? 0 : Number(row.def),
-      lscale: (level >>> 24) & 0xff,
-      rscale: (level >>> 16) & 0xff,
-      link_marker: isLink ? Number(row.def) : 0,
-    })
-    if (typeof row.name === 'string') names.set(code, row.name)
-  }
   db.close()
+  return out
+}
 
-  return { cards, names }
+/** El `.cdb` entero: los datos que pide `cardReader` (con el decodificador del navegador, `cardData`) y los nombres. */
+export function loadCards(file = path.join(CORE_DATA_DIR, 'cards.cdb')): { cards: Map<number, OcgCardData>; names: Map<number, string> } {
+  const rows = cardRows(file)
+
+  return { cards: new Map(rows.map((row) => [row.id, cardData(row)])), names: new Map(rows.flatMap((row) => (row.name ? [[row.id, row.name] as const] : []))) }
+}
+
+/**
+ * La fuente de datos de los duelos automáticos sobre las carpetas locales: lo mismo que sirve `vite serve` en `/auto-data` (el
+ * manifiesto con las fichas y el rival de relleno: los primeros 40 Monstruos Normales TCG/OCG sin arte alternativo ni script).
+ */
+export function nodeSource(rows = cardRows(), store = scriptStore()): DataSource {
+  const byId = new Map(rows.map((row) => [row.id, row]))
+  const tokens = rows.filter((row) => (row.type & 0x4000) !== 0).map((row) => row.id)
+  const filler = rows
+    .filter((row) => row.type === 0x11 && row.alias === 0 && (row.ot & 3) !== 0 && !store.has(`c${row.id}.lua`))
+    .map((row) => row.id)
+    .sort((a, b) => a - b)
+    .slice(0, 40)
+
+  return {
+    manifest: async () => ({ version: 'node', tokens, filler }),
+    cards: async (codes) => codes.flatMap((code) => (byId.has(code) ? [byId.get(code)!] : [])),
+    script: async (name) => store.read(name),
+  }
 }
 
 /** Los scripts del clon, con caché: `c<código>.lua` en `official/` y después en `pre-release/`; las bibliotecas, en la raíz y en `unofficial/`. */
