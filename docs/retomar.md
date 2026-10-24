@@ -15,7 +15,7 @@ dónde vive y qué no hay que romper:
   Lab mide en workers y **sólo lo confirmado en Roles**; los límites de copias salen de las banlists del sitio (rige la vigente;
   la próxima sólo avisa).
 - **Descubrir y Cartas:** archivos estáticos (`src/data/`, `public/prices/`) que bajan los `sync:*`; lo único en vivo pasa por
-  `api/live.ts`. Hoy no se actualizan solos (sección 6).
+  `api/live.ts`. El meta, las banlists y los replays los suben solos los workflows `sync-*.yml`; el resto de los `sync:*` es a mano.
 - **Jugar y el duelo:** `docs/duelo.md`; el relay, en `duel-relay/` y `docs/duelo-relay.md`. Un cambio de mensajes no rompe a
   quien no recargó (`PROTOCOL_VERSION` en `app/duel-protocol.ts`); si cambia `duel-relay/` o `src/app/duel-relay-rules.ts`, se
   publica primero el relay y después el sitio.
@@ -86,8 +86,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
   arriba con el rango resaltado y, después, validar; un deck guardado sin `scale` queda «sin rango», nunca con un número inventado.
 - **Lab y Comparar:** unificar «Aplicaste el cambio» (`LabAppliedNotice`) con el `AppToast` con acción; ▲/▼ en las filas de
   reglas con un borrador (`LabRuleList` no usa `LabDelta`); la sugerencia del Lab en los vacíos de Comparar (`CompareEmpty`).
-- **Los datos de Descubrir no se actualizan:** los workflows programados no corren (GitHub Actions no arranca por la facturación
-  de la cuenta); el meta, los precios, los replays y las banlists cambian sólo corriendo los `sync:*` a mano y subiéndolos.
+- **Precios y Genesys** no tienen workflow: cambian sólo corriendo `sync:prices` y `sync:genesys` a mano y subiéndolos.
 - **El violeta en Duelo y Jugar:** falta la pasada de la auditoría del violeta por esas pantallas. La regla: en la mesa el
   violeta (`accent`) es lo tuyo y el ámbar (`info`), lo del rival (`PLAYER_COLOR`); un estado o un resultado, verde o rojo.
 - **Campo del celular en vertical:** el techo es el alto de la pantalla (la casilla es la más grande que deja ver tu mano:
@@ -134,9 +133,10 @@ Lo que ya dice `CLAUDE.md` (subagentes, cuántas PR, tests livianos, reintentos,
 - **Ramas desde `origin/main`.** Si otra sesión usa el mismo checkout (puede cambiarte la rama bajo los pies), trabajá en un
   `git worktree` aparte y mirá la rama antes de cada commit; `node_modules` puede ser un junction al del repo
   (`New-Item -ItemType Junction`).
-- **Se mergea sin esperar el CI** (falla en segundos sin correr nada, por la facturación de la cuenta): con `typecheck`, `lint`,
-  las pruebas y el build en verde en local, `gh pr merge N --squash --admin --match-head-commit <sha>` (el sha del último commit
-  verificado: sólo se mergea lo probado) y después se mira producción. Si el CI vuelve, rige otra vez su `check` en verde.
+- **Se mergea sin esperar el CI** (orden de Gastón): con `typecheck`, `lint`, las pruebas y el build en verde en local,
+  `gh pr merge N --squash --admin --match-head-commit <sha>` (el sha del último commit verificado: sólo se mergea lo probado) y
+  después se mira producción. Desde que el repo es público las Actions corren gratis y el `check` suele estar terminado antes
+  del merge (`gh run list`): si salió rojo, no se mergea.
 - **Un rediseño se presenta antes del código:** maquetas en imágenes, el antes y el después y las decisiones abiertas; el
   código, con el visto bueno de Gastón. «Mostrame imágenes» se contesta con imágenes.
 - **Tandas cortas** (menos de 30 minutos) que se puedan mirar enseguida.
