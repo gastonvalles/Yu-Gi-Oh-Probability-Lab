@@ -57,6 +57,8 @@ export function mapMatIds(state: MatState, map: IdMap): MatState {
 export function mapActionIds(action: MatAction, map: IdMap): MatAction {
   switch (action.type) {
     case 'draw':
+      return action.ids ? { ...action, ids: action.ids.map(map) } : action
+
     case 'mill':
     case 'shuffle':
     case 'token':

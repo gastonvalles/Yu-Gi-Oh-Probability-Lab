@@ -85,6 +85,13 @@ export function deckOrder(main: readonly number[], seed: number, hand: readonly 
   return [...hand, ...shuffleWithSeed(rest, seed)]
 }
 
+/** El Main del deck `team` tal como lo pone el anfitrión (`core-host.ts`), de arriba hacia abajo: lo reproduce cualquiera que tenga el `create`. */
+export function teamOrder(create: { seed: number; decks: readonly { main: readonly number[]; hand: readonly number[] }[] }, team: number): number[] {
+  const deck = create.decks[team]!
+
+  return deckOrder(deck.main, (create.seed + team) >>> 0, deck.hand)
+}
+
 const LOAD_SCRIPT = /Duel\.LoadScript\(\s*["']([^"']+)["']/g
 
 /**
