@@ -4,6 +4,9 @@ export const common = {
   'common.scrollForward': 'Ver lo que sigue',
   'common.cancel': 'Cancelar',
   'common.close': 'Cerrar',
+  // El asa de una hoja de abajo del celular (`SheetHandle`): la baja sin cerrarla y la vuelve a subir.
+  'common.sheet.lower': 'Bajar la hoja',
+  'common.sheet.raise': 'Subir la hoja: {title}',
   'common.delete': 'Borrar',
   'common.save': 'Guardar',
   'common.language': 'Idioma',

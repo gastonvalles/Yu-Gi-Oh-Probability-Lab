@@ -150,7 +150,8 @@ interface CardPickerProps {
 }
 
 /**
- * Elegir de `min` a `max` cartas de una lista que no está en el campo ni en una sola pila (de varios lugares, o por código), en una hoja (`Modal sheet`; en el celular sale de abajo). Tocar elige o suelta
+ * Elegir de `min` a `max` cartas de una lista que no está en el campo ni en una sola pila (de varios lugares, o por código), en una hoja (`Modal sheet`; en el celular sale de abajo y su asa la baja sin
+ * contestar, para ver la mano). Tocar elige o suelta
  * (aro ámbar y número de orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, la principal («Elegir 2 cartas»,
  * o «Listo» si se puede no elegir ninguna) se enciende con `min` (o con `done`) y el pie dice cuántas van. Va dentro de un `Presence` (así sale al contestarse).
  */
@@ -174,6 +175,7 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
       onClose={onCancel ?? (() => {})}
       dismissible={Boolean(onCancel)}
       size="sheet"
+      lowerable
       kicker={kicker}
       title={title}
       subtitle={min === max ? t('auto.pick.cards', { count: max }) : t('auto.pick.range', { min, max })}

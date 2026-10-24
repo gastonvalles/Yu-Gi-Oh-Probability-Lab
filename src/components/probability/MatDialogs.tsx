@@ -5,6 +5,7 @@ import { useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
+import { useSheetDrag } from '../../app/use-sheet-drag'
 import { normalizeSearchText } from '../../app/utils'
 import type { MatPile } from '../../app/practice-mat'
 import { t } from '../../i18n'
@@ -16,6 +17,7 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { SheetHandle } from '../ui/SheetHandle'
 import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { FX_CARD, TargetMark, fxVars } from './MatFx'
@@ -462,7 +464,8 @@ interface PileViewerProps {
  * **No tapa el campo ni el detalle** (Gastón, 2026-10-24: «los modales de deck, extra, gy y banish tapan el campo pero no deberían hacerlo» y «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo
  * acceder a la info»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le da quien lo monta (una caja `grid` posicionada: la columna de la derecha o un rincón de la mesa, ver `PracticeMat`)
  * y el campo sigue vivo: se tocan sus cartas y sus casillas con el visor abierto, y la carta que se toca o se apunta en el visor se lee en el detalle (`onPeek`, `onHover`).
- * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera.
+ * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera;
+ * con su asa se baja sin cerrarse, para ver la mano (`SheetHandle`).
  */
 export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, onHover, many, onClose, anonymous = false }: PileViewerProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -480,6 +483,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
   const openerRef = useRef<HTMLElement | null>(null)
   // El fondo de la hoja cierra sólo si el toque empezó ahí (como el del `Modal`): el click que sigue a un toque que la abrió no la cierra.
   const pressedBackdropRef = useRef(false)
+  // En el celular, bajada con el asa (sin cerrarse) para ver la mano.
+  const drag = useSheetDrag(panelRef)
   const statusId = useId()
   const titleId = useId()
   const open = pile !== null && !hidden
@@ -493,8 +498,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
   const allVisible = visibleIds.length > 0 && visibleIds.every((id) => picked.includes(id))
   const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''
 
-  // Abrirlo (o pasar a otra pila) arranca sin lo buscado y, con `many.start`, eligiendo ésas (lo buscado en el deck no se hereda al abrir el cementerio). Cerrarlo o esconderlo
-  // no cambia nada: sale tal cual estaba y, si se vuelve a abrir mientras sale, es el mismo visor (no se monta otro).
+  // Abrirlo (o pasar a otra pila) arranca sin lo buscado, arriba y, con `many.start`, eligiendo ésas (lo buscado en el deck no se hereda al abrir el cementerio). Cerrarlo o esconderlo
+  // no cambia nada: sale tal cual estaba (también bajada) y, si se vuelve a abrir mientras sale, es el mismo visor (no se monta otro).
   if (shownPile !== pile) {
     setShownPile(pile)
     if (pile !== null) {
@@ -502,6 +507,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
       setChoosing(many?.start !== undefined)
       setPicked([...(many?.start ?? [])])
       setLast(null)
+      drag.setLowered(false)
     }
   }
 
@@ -607,18 +613,21 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
       </div>
     ) : null
 
+  // El encabezado del `Modal`, más angosto: dónde y cuántas, y la X. En el celular va debajo del asa (que ya deja el aire de arriba).
+  const header = (
+    <header className={cx('flex flex-none items-start justify-between gap-2 border-b border-border-subtle bg-surface-raised pl-3 pr-2', desktop ? 'py-2.5' : 'pb-2.5')}>
+      <div className="grid min-w-0 gap-0.5">
+        <p className={cx('m-0', overline)}>{t('practice.mat.name')}</p>
+        <Heading level="section" id={titleId}>
+          {title}
+        </Heading>
+      </div>
+      <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} />
+    </header>
+  )
+
   const content = (
     <>
-      {/* El encabezado del `Modal`, más angosto: dónde y cuántas, y la X. */}
-      <header className="flex flex-none items-start justify-between gap-2 border-b border-border-subtle bg-surface-raised py-2.5 pl-3 pr-2">
-        <div className="grid min-w-0 gap-0.5">
-          <p className={cx('m-0', overline)}>{t('practice.mat.name')}</p>
-          <Heading level="section" id={titleId}>
-            {title}
-          </Heading>
-        </div>
-        <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} />
-      </header>
       <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain p-3">
         {ids.length > 8 && !anonymous ? (
           // Donde el buscador quedaría con menos de 9 rem (el rincón de la mesa) «Elegir todas» baja debajo de él: así se lee «Buscar carta» entero.
@@ -700,16 +709,18 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
     !open || typeof document === 'undefined' ? null : desktop ? (
       // Escritorio: llena la caja que le da quien lo monta, sin velo; con otro visor que sale mientras éste entra, los dos van en la misma celda (no se reparten el alto).
       <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className={cx(surface.panel, 'pointer-events-auto col-start-1 row-start-1 flex min-h-0 flex-col overflow-hidden outline-none animate-sheet-in motion-reduce:animate-none')}>
+        {header}
         {content}
       </section>
     ) : (
-      // Celular: la hoja de abajo, por encima de la mesa y debajo del menú de una carta (`CardSheet`), con un fondo sin velo que la cierra al tocar afuera.
+      // Celular: la hoja de abajo, por encima de la mesa y debajo del menú de una carta (`CardSheet`), con un fondo sin velo que la cierra al tocar afuera. Con su asa se baja sin cerrarse
+      // (`useSheetDrag`): queda la tira del asa, el fondo deja de atajar toques (se toca la mano y el campo) y lo de adentro queda como estaba, inerte, hasta que se sube.
       createPortal(
         <>
           <div
             ref={backdropRef}
             aria-hidden="true"
-            className="fixed inset-0 z-180"
+            className={cx('fixed inset-0 z-180', drag.lowered && 'pointer-events-none')}
             onPointerDown={(event) => {
               pressedBackdropRef.current = event.target === event.currentTarget
             }}
@@ -717,8 +728,13 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
               if (pressedBackdropRef.current && event.target === event.currentTarget) onClose()
             }}
           />
-          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className="fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none">
-            {content}
+          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} style={drag.style} className="fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none">
+            <SheetHandle drag={drag} label={title} className="bg-surface-raised">
+              {header}
+            </SheetHandle>
+            <div inert={drag.lowered} className="contents">
+              {content}
+            </div>
           </section>
         </>,
         document.body,

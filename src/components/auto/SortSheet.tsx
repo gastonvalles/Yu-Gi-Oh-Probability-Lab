@@ -18,7 +18,8 @@ interface SortSheetProps {
 
 /**
  * Ordenar cartas (`sort_card`: el tope del deck) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el aro ámbar y el número de `PickGrid`) y tocar una numerada la suelta
- * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera.
+ * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera (en el celular, su asa
+ * la baja sin contestar).
  * Va dentro de un `Presence` (así sale al contestarse).
  */
 export function SortSheet({ title = t('auto.sort.title'), kicker, cards, onSort }: SortSheetProps) {
@@ -33,6 +34,7 @@ export function SortSheet({ title = t('auto.sort.title'), kicker, cards, onSort 
       onClose={() => {}}
       dismissible={false}
       size="keypad"
+      lowerable
       kicker={kicker}
       title={title}
       subtitle={t('auto.sort.hint')}
