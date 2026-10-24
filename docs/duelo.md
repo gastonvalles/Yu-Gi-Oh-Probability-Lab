@@ -28,6 +28,14 @@ La de la práctica, con el campo del rival espejado arriba y las Extra Monster Z
 - Bajo los 640 px hay cinco columnas y las pilas van en una fila aparte, con el Extra y el Deck en los extremos (`DUEL_AREAS_COMPACT`). Las áreas llegan por variables CSS (`--areas`, `--areas-compact`) porque un estilo en línea no cambia con un medio; los nombres de área son los mismos, así que el arrastre, los menús y el protocolo no se enteran.
 - La casilla es cuadrada para que una carta en defensa entre sin pisar a la vecina, y la limita el alto de la pantalla (`compactDuelFieldStyle`): agrandar más las cartas pediría desplazar o acercar el campo.
 
+### El visor de una pila no tapa el campo
+
+`PileViewer` no es un modal y no lleva velo: con él abierto el campo sigue vivo (se tocan sus cartas y casillas) y no se mueve ni cambia de tamaño.
+
+- Desde 1440 px ocupa la columna del detalle de la carta mientras está abierto (al cerrarlo vuelve el detalle). De 1101 a 1439 px va, en la práctica, en la columna de los pasos y, en el duelo (la derecha es del chat y el campo no deja lugar a los costados), en un panel de dos cartas contra el borde izquierdo, debajo de las vidas y el reloj del rival. Bajo 1101 px es la hoja de abajo (hasta 55 dvh), que se cierra al tocar afuera.
+- La caja que lo aloja es `absolute` en la grilla de la mesa y no ataja toques, sólo el panel. Trampa: en algo `absolute`, un fin de línea `auto` es el borde de la grilla y la caja se estira sobre la mesa; se escribe con principio y fin (`col-[1/2]`).
+- Con el visor abierto lo cierra sólo jugar una carta suya (jugar otra, no: serían dos jugadas en un toque con el deck); tocar otra pila cambia lo que muestra (dejar el Main lo baraja una vez) y abrir el del rival cierra el tuyo. El foco entra al panel y vuelve a la pila que lo abrió, sin trampa.
+
 ### Elegir varias cartas de una pila
 
 El visor de pilas elige varias (`PileViewer` con `many`) y `listBatchActions` (`practice-mat.ts`) ofrece sólo lo que admiten todas.

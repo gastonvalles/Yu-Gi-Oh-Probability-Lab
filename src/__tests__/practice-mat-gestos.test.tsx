@@ -273,6 +273,22 @@ describe('el deck: tocar es buscar, arrastrar es robar y mantenerlo apretado abr
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
+  it('con el visor abierto el campo sigue vivo: jugar una carta de la mano no lo cierra ni baraja (una sola jugada); pasar a otra pila cambia lo que muestra y baraja el deck una vez', () => {
+    render(<Harness initial={FOUR} />)
+
+    tap(deck())
+    expect(screen.getByRole('dialog', { name: 'Main · 4' })).toBeInTheDocument()
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
+    expect(screen.getByRole('dialog', { name: 'Main · 4' })).toBeInTheDocument()
+    expect(within(status()).getByText('1/1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'GY: 1' }))
+    expect(screen.queryByRole('dialog', { name: 'Main · 4' })).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'GY · 1' })).toBeInTheDocument()
+    expect(within(status()).getByText('2/2')).toBeInTheDocument()
+  })
+
   it('vacío, el visor igual se abre (como las otras pilas) y cerrarlo no anota un barajado', () => {
     render(<Harness initial={createMatState(['card-1-1', 'card-2-1'], [], 2)} />)
 
