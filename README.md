@@ -31,7 +31,7 @@ npm run sync:effects   # capa 1 del motor de cartas (docs/motor-de-cartas.md)
 npm run sync:core      # cards.cdb y scripts para los duelos automáticos, fuera del repo, en los commits de auto-data.lock.json (-- --update-lock los sube)
 ```
 
-- Los workflows `sync-*.yml` tienen horario, pero no corren solos desde que se cortó la facturación de GitHub Actions: los datos se actualizan corriendo los scripts a mano.
+- Los workflows `sync-*.yml` corren con horario y suben solos el meta, las banlists y los replays («Datos diarios…» en `main`); los demás `sync:*` (precios, Genesys, efectos, núcleo) se corren a mano.
 - `sync:meta` falla en vez de pisar datos buenos si trae menos de la mitad de los decks de la corrida anterior o si de las reglas salen menos de cinco boardbreakers.
 - Una banlist anunciada en partes se toma de Yugipedia hasta que la trae `lflist.conf`; lo que la wiki todavía no tiene se parcha en `scripts/banlist-supplements.json` (una entrada y `npm run sync:banlists`; se ignora sola cuando llega la lista oficial).
 - `sync:replays` lee la pestaña Videos de cada canal sin API key: si YouTube cambia ese formato, el script falla y los datos quedan como estaban.
