@@ -25,7 +25,7 @@ import { cardIdOfDrawId } from '../probability/practice'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { Segmented } from '../ui/Segmented'
 import { Setting } from './AutoBar'
-import { deckListOf, FaultCover, LoadingCover } from './AutoSoloScreen'
+import { deckListOf, FaultCover, LoadingCover, REASON_DECK, REASON_LP, SCRIPT_REASON } from './AutoSoloScreen'
 import { sentinel, useAutoAsks } from './use-auto-asks'
 
 /**
@@ -61,10 +61,6 @@ export interface AutoDuelScreenProps {
 const NOTHING = () => {}
 const noSubscribe = () => () => {}
 const noSnapshot = () => null
-/** `MSG_WIN` (como en `AutoSoloScreen`): 1 las vidas en 0, 2 sin cartas para robar; desde `0x10`, las razones de los scripts (`Duel.Win`). */
-const REASON_LP = 1
-const REASON_DECK = 2
-const SCRIPT_REASON = 0x10
 
 /** El enlace de verdad: el anfitrión baja los datos y corre el núcleo en un Worker; el invitado sólo baja lo de sus cartas. `features.online` del manifiesto lo apaga sin tocar código. */
 function liveLink(transport: OnlineTransport, role: DuelRole, deck: DeckList, handSize: number): OnlineLink {
