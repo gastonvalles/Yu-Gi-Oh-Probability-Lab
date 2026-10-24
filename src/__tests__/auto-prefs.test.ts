@@ -1,4 +1,4 @@
-import { AUTO_KEYS, autoPrefs, DEFAULT_AUTO_PREFS, readAutoPrefs, setAutoPref } from '../app/auto-prefs'
+import { AUTO_KEYS, autoPrefs, canRunAuto, DEFAULT_AUTO_PREFS, readAutoPrefs, setAutoPref } from '../app/auto-prefs'
 
 const memory = () => {
   const data = new Map<string, string>()
@@ -7,19 +7,17 @@ const memory = () => {
 }
 
 describe('las preferencias del duelo automático', () => {
-  it('sin nada guardado: la beta escondida, el switch apagado, se pregunta la cadena y la casilla', () => {
-    expect(readAutoPrefs(memory, '')).toEqual(DEFAULT_AUTO_PREFS)
-    expect(DEFAULT_AUTO_PREFS).toEqual({ flag: false, duel: false, chain: 'ask', place: 'ask' })
+  it('sin nada guardado: el interruptor apagado (la mesa manual de siempre), se pregunta la cadena y la casilla', () => {
+    expect(readAutoPrefs(memory)).toEqual(DEFAULT_AUTO_PREFS)
+    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: false, chain: 'ask', place: 'ask' })
   })
 
-  it('`?auto=1` prende la bandera y queda guardada; `?auto=0` la apaga', () => {
+  it('ya no hay bandera: la clave vieja no prende nada', () => {
     const storage = memory()
 
-    expect(readAutoPrefs(() => storage, '?auto=1').flag).toBe(true)
-    expect(storage.getItem(AUTO_KEYS.flag)).toBe('on')
-    expect(readAutoPrefs(() => storage, '').flag).toBe(true)
-    expect(readAutoPrefs(() => storage, '?x=2&auto=0').flag).toBe(false)
-    expect(readAutoPrefs(() => storage, '').flag).toBe(false)
+    storage.setItem('ygo-lab:auto-flag', 'on')
+    expect(readAutoPrefs(() => storage)).toEqual(DEFAULT_AUTO_PREFS)
+    expect(AUTO_KEYS).not.toHaveProperty('flag')
   })
 
   it('lo guardado vuelve; lo que no se entiende vale lo de siempre; sin almacenamiento, también', () => {
@@ -28,15 +26,16 @@ describe('las preferencias del duelo automático', () => {
     storage.setItem(AUTO_KEYS.duel, 'on')
     storage.setItem(AUTO_KEYS.chain, 'never')
     storage.setItem(AUTO_KEYS.place, 'auto')
-    expect(readAutoPrefs(() => storage, '')).toEqual({ flag: false, duel: true, chain: 'never', place: 'auto' })
+    expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto' })
+    storage.setItem(AUTO_KEYS.duel, 'si')
     storage.setItem(AUTO_KEYS.chain, 'siempre')
     storage.setItem(AUTO_KEYS.place, '1')
-    expect(readAutoPrefs(() => storage, '')).toMatchObject({ chain: 'ask', place: 'ask' })
+    expect(readAutoPrefs(() => storage)).toEqual(DEFAULT_AUTO_PREFS)
     const broken = () => {
       throw new Error('sin almacenamiento')
     }
 
-    expect(readAutoPrefs(broken, '?auto=1')).toEqual({ ...DEFAULT_AUTO_PREFS, flag: true })
+    expect(readAutoPrefs(broken)).toEqual(DEFAULT_AUTO_PREFS)
     expect(() => setAutoPref('duel', true, broken)).not.toThrow()
     setAutoPref('duel', false, broken)
   })
@@ -48,6 +47,18 @@ describe('las preferencias del duelo automático', () => {
     setAutoPref('duel', true, () => storage)
     expect(autoPrefs()).toMatchObject({ chain: 'never', duel: true })
     expect([storage.getItem(AUTO_KEYS.chain), storage.getItem(AUTO_KEYS.duel)]).toEqual(['never', 'on'])
-    expect(readAutoPrefs(() => storage, '')).toMatchObject({ chain: 'never', duel: true })
+    expect(readAutoPrefs(() => storage)).toMatchObject({ chain: 'never', duel: true })
+    setAutoPref('duel', false, () => storage)
+    expect(storage.getItem(AUTO_KEYS.duel)).toBe('off')
+    expect(readAutoPrefs(() => storage).duel).toBe(false)
+  })
+
+  it('el núcleo necesita WebAssembly y un Worker: sin alguno, el navegador no lo puede correr', () => {
+    class FakeWorker {}
+
+    expect(canRunAuto({ WebAssembly: {}, Worker: FakeWorker })).toBe(true)
+    expect(canRunAuto({ WebAssembly: {} })).toBe(false)
+    expect(canRunAuto({ Worker: FakeWorker })).toBe(false)
+    expect(canRunAuto({})).toBe(false)
   })
 })

@@ -227,12 +227,13 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
             </Button>
           </LobbyBanner>
 
-          {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). */}
+          {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). Debajo, con deck, el interruptor que decide qué mesa abre «Entrenar solo». */}
           <div className="stagger grid grid-cols-2 gap-3">
             <LobbyTile tone="brand" icon="link" title={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={challenge} />
             <LobbyTile tone="info" icon="tag" title={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
             <LobbyTile tone="success" icon="hand" title={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={onTrain} />
             <LobbyTile tone="neutral" icon="gear" title={t('duel.play.rules')} hint={rulesLine(prefs)} label={`${t('duel.play.rules')} · ${rulesLine(prefs)}`} popup onClick={() => setRulesOpen(true)} />
+            {trainReady ? <AutoDuelRow /> : null}
           </div>
           {codeOpen ? (
             <form
@@ -399,10 +400,8 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
           />
         </RuleField>
 
-        {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). */}
+        {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, debajo de las baldosas. */}
         {solo ? <HandtrapsRow /> : null}
-        {/* Solo: el duelo automático (beta), sólo con la bandera. */}
-        {solo ? <AutoDuelRow /> : null}
 
         {solo ? null : (
           <RuleField label={t('duel.create.time')} className="sm:col-span-2">

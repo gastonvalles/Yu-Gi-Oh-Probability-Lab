@@ -451,6 +451,7 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
         place={prefs.place}
         onPlace={(mode) => setAutoPref('place', mode)}
         onRestart={() => session.restart()}
+        onManual={() => setAutoPref('duel', false)}
       />
     ),
     rivalHand: <TheirHand count={theirs.hand.length} />,

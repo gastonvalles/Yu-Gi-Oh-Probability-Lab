@@ -1,19 +1,22 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Las preferencias del duelo automático (beta), recordadas en el navegador. `flag` es la bandera de la beta: hasta que se decida la licencia
- * del núcleo nadie ve el modo; la prende `?auto=1` en la dirección y la apaga `?auto=0` (y queda guardado). `duel` es el switch del lobby;
- * `chain`, «Respuestas: Preguntar · Nunca»; `place`, «Casilla: preguntar · automática». No importa nada de `auto/`: lo lee el lobby.
+ * Las preferencias del duelo automático (beta), recordadas en el navegador. `duel` es el interruptor del lobby de Jugar: prendido, «Entrenar solo» abre la mesa contra el núcleo de
+ * reglas; apagado, la mesa manual de siempre. `chain`, «Respuestas: Preguntar · Nunca»; `place`, «Casilla: preguntar · automática». No importa nada de `auto/`: lo lee el lobby.
+ * La bandera de antes (`?auto=1`, `ygo-lab:auto-flag`) ya no existe: el modo lo ve todo el mundo y la clave vieja se ignora.
  */
 export interface AutoPrefs {
-  flag: boolean
   duel: boolean
   chain: 'ask' | 'never'
   place: 'ask' | 'auto'
 }
 
-export const AUTO_KEYS = { flag: 'ygo-lab:auto-flag', duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place' } as const
-export const DEFAULT_AUTO_PREFS: AutoPrefs = { flag: false, duel: false, chain: 'ask', place: 'ask' }
+export const AUTO_KEYS = { duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place' } as const
+/** Lo de quien no tocó nada. `duel: false`: se arranca en la mesa manual (con `true` arrancaría en el automático; quien lo apagó lo sigue teniendo apagado). */
+export const DEFAULT_AUTO_PREFS: AutoPrefs = { duel: false, chain: 'ask', place: 'ask' }
+
+/** El núcleo corre en WebAssembly y en un Worker: un navegador sin alguno de los dos no lo puede correr, y entonces el interruptor va apagado y la preferencia no se usa. */
+export const canRunAuto = (scope: { WebAssembly?: unknown; Worker?: unknown } = globalThis): boolean => typeof scope.WebAssembly === 'object' && typeof scope.Worker === 'function'
 
 const stored = (value: AutoPrefs[keyof AutoPrefs]) => (value === true ? 'on' : value === false ? 'off' : value)
 
@@ -25,8 +28,8 @@ function write(storage: () => Storage, key: string, value: string): void {
   }
 }
 
-/** Lo guardado (lo que no se entiende vale lo de siempre), con la bandera que diga la dirección. */
-export function readAutoPrefs(storage: () => Storage = () => localStorage, search: string = typeof location === 'undefined' ? '' : location.search): AutoPrefs {
+/** Lo guardado; lo que no se entiende (o no está) vale lo de siempre (`DEFAULT_AUTO_PREFS`). */
+export function readAutoPrefs(storage: () => Storage = () => localStorage): AutoPrefs {
   const get = (key: string) => {
     try {
       return storage().getItem(key)
@@ -34,13 +37,10 @@ export function readAutoPrefs(storage: () => Storage = () => localStorage, searc
       return null
     }
   }
-  const url = new URLSearchParams(search).get('auto')
-
-  if (url === '1' || url === '0') write(storage, AUTO_KEYS.flag, url === '1' ? 'on' : 'off')
+  const duel = get(AUTO_KEYS.duel)
 
   return {
-    flag: url === '1' || (url !== '0' && get(AUTO_KEYS.flag) === 'on'),
-    duel: get(AUTO_KEYS.duel) === 'on',
+    duel: duel === 'on' || (duel !== 'off' && DEFAULT_AUTO_PREFS.duel),
     chain: get(AUTO_KEYS.chain) === 'never' ? 'never' : 'ask',
     place: get(AUTO_KEYS.place) === 'auto' ? 'auto' : 'ask',
   }

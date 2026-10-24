@@ -103,7 +103,7 @@ export function AutoSection() {
       </Specimen>
 
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
-      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (sonidos, respuestas, la casilla y que el rival no juega). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
+      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (sonidos, respuestas, la casilla, que el rival no juega, «Reiniciar el duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
     </SpecimenGrid>
   )
 }
@@ -247,6 +247,8 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
       onChain={setChain}
       place={place}
       onPlace={setPlace}
+      onRestart={() => setPassed((count) => count + 1)}
+      onManual={() => setPassed((count) => count + 1)}
     />
   )
 

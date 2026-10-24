@@ -49,7 +49,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `Card` · `Callout` · `EmptyState` · `Skeleton` · `FieldBox` | Las superficies (`ui/`), con sus estilos sueltos en `ui/surfaces.ts`. Ver «Dos niveles de caja». `Skeleton still` queda sin el brillo que corre: va donde hay decenas a la vez (`CardArt`). |
 | `Heading` · `SectionHeader` · `StepHero` · `StepPage` | Todo título pasa por `Heading` (`ui/typography.ts`). **Los hipervínculos** usan `textLink`: ámbar y un solo estilo (`link-rules.test.ts`). |
 | `ProgressRing` · `SegmentedRing` | Los anillos (`ui/`): ver «Anillos». |
-| `Segmented` · `Switch` · `FilterChips` · `MultiSelect` · `Stepper` · `SearchField` · `ScrollRow` · `OverflowMenu` · `Badge` | Los controles (`ui/`); lo elegido, en ámbar. |
+| `Segmented` · `Switch` · `FilterChips` · `MultiSelect` · `Stepper` · `SearchField` · `ScrollRow` · `OverflowMenu` · `Badge` | Los controles (`ui/`); lo elegido, en ámbar. `Switch disabled`: no se puede usar y el porqué va en el texto de al lado. |
 | `Modal` | Todo diálogo (`ui/Modal.tsx`); sus tamaños, en la regla 10. Una confirmación es `ConfirmDialog` y su texto sigue la muestra «Confirmación». |
 | `SideDrawer` | Panel por la derecha (`ui/SideDrawer.tsx`): dos anchos y nada más, para que dos cajones encimados se cubran justo. |
 | `Icon` | El único set (`ui/Icon.tsx`): nada de SVG suelto. El $ de los precios va sin círculo: el del círculo no está en el registro, a propósito. |
