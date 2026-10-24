@@ -216,6 +216,7 @@ describe('el menú lateral, como el de YouTube', () => {
       'https://www.instagram.com/gaston_valles/',
       'https://github.com/gastonvalles',
       '/privacidad.html',
+      'https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab',
     ])
     expect(legal).toHaveTextContent(`© ${new Date().getFullYear()} Gastón Valles`)
     expect(legal).toHaveTextContent('Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.')
@@ -246,6 +247,7 @@ describe('el cajón del menú del celular', () => {
       'https://www.instagram.com/gaston_valles/',
       'https://github.com/gastonvalles',
       '/privacidad.html',
+      'https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab',
     ])
     // Sin destinos (no se los pasó): sólo los ajustes; con ellos, ver el armazón.
     expect(within(dialog).queryByRole('button', { name: /^Exportar deck/ })).not.toBeInTheDocument()

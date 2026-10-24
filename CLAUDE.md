@@ -6,6 +6,10 @@
 
 Reglas visuales, componentes y tokens: `docs/design-system.md`. El catálogo vivo es `/playground`: todo cambio de diseño se prueba ahí primero y después se lleva a las pantallas.
 
+## Repo público y AGPL
+
+El repo es público y la licencia es la AGPL-3.0-or-later (`LICENSE`, `NOTICE.md`; la app ofrece el código desde su menú y `licencia.test.tsx` lo vigila): nada de secretos, mails ni datos personales en commits, documentos, comentarios ni cuerpos de PR (también se ven), y lo que no es nuestro (imágenes de Konami, datos sin licencia) no se sube. Cambiar la licencia es decisión de Gastón.
+
 ## Retomar el trabajo
 
 Sin contexto previo (otra PC, sin la memoria de Claude), leé `docs/retomar.md`: cómo arrancar, las decisiones en pie, lo pendiente y la forma de trabajo.

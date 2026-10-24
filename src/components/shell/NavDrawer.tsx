@@ -9,7 +9,7 @@ import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
+import { SiteCredit, SocialLinks, SourceLink } from '../ui/SocialLinks'
 import { AppBrand } from './AppBrand'
 import { BackupActions } from './BackupActions'
 import { mascotsNavItem, type NavGroup } from './nav-model'
@@ -89,9 +89,12 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
         {/* Lo legal va abajo del todo (el resto lo empuja con `mt-auto`). */}
         <div className="mt-auto grid gap-2">
           <SocialLinks size="lg" className="-ml-2" />
-          <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
-            {t('shell.legal.label')}
-          </a>
+          <div className="flex flex-wrap items-center gap-x-4">
+            <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
+              {t('shell.legal.label')}
+            </a>
+            <SourceLink className="inline-flex min-h-11 w-fit items-center text-body" />
+          </div>
           <SiteCredit withDisclaimer />
         </div>
       </div>
