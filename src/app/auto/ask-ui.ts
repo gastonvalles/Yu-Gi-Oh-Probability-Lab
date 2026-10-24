@@ -463,6 +463,15 @@ function phaseItemsOf(offered: Partial<Record<MatPhase, CoreAnswer>>, phase: Mat
 // ── Abrir una pregunta ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** El estado de una pregunta recién llegada (lo que depende de la mesa se resuelve acá, una vez). Si `askView(state).auto`, se contesta sola. */
+/** Los nombres de las cartas para una línea del registro («A, B ×2»): los de la misma carta van juntos, con cuántas son. */
+export function namesList(names: readonly string[]): string {
+  const counts = new Map<string, number>()
+
+  for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1)
+
+  return [...counts].map(([name, count]) => (count > 1 ? `${name} ×${count}` : name)).join(', ')
+}
+
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {
   const { ask } = input
   const resolve = resolver(ctx.queries, ask.player)

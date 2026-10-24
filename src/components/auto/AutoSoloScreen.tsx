@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, openAsk, step, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, namesList, openAsk, step, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { createDataLoader, httpSource } from '../../app/auto/auto-data'
 import { createAutoSession, workerTransport, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import type { DeckList } from '../../app/auto/deck-map'
@@ -373,6 +373,7 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
   // ── La línea del registro: lo que no frena (trabada, pensando, la cadena con «No responder», un error de script, la cadena que se resuelve), lo más urgente primero. ──
   const chain = snap.overlay.chain
   const linkName = (link: ChainLink) => nameOf(link.card, link.code)
+  const respondNames = (ids: Iterable<string>) => namesList([...ids].map((id) => nameOf({ side: 'mine', id })))
   const newFault = snap.faults[snap.faults.length - 1]
   const lane: LaneNotice | null = stuck
     ? { kind: 'ask', text: t('auto.lane.error', { message: stuck }), actions: [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] }
@@ -383,10 +384,10 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
             // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla.
             kind: 'ask',
             text: !shown.cancelable
-              ? t('auto.lane.mustActivate', { cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') })
+              ? t('auto.lane.mustActivate', { cards: respondNames(shown.items.keys()) })
               : chain.length > 0
-                ? t('auto.lane.respondTo', { card: linkName(chain[chain.length - 1]!), cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') })
-                : t('auto.lane.respondNow', { cards: [...shown.items.keys()].map((id) => nameOf({ side: 'mine', id })).join(', ') }),
+                ? t('auto.lane.respondTo', { card: linkName(chain[chain.length - 1]!), cards: respondNames(shown.items.keys()) })
+                : t('auto.lane.respondNow', { cards: respondNames(shown.items.keys()) }),
             actions: shown.cancelable ? [{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }] : [],
           }
         : snap.faults.length > faultsBase.current && newFault
