@@ -7,7 +7,7 @@ sus despliegues).
 ## Defensas y dónde viven
 
 - **Los encabezados** (`vercel.json`, fijados por `vercel-headers.test.ts`): una CSP estricta en producción (sólo scripts
-  propios, sin `unsafe-inline` ni `unsafe-eval`; `object-src 'none'`; `frame-ancestors 'none'`; el único WebSocket es la
+  propios, sin `unsafe-inline` ni `unsafe-eval`, y `wasm-unsafe-eval` sólo para compilar el núcleo del duelo automático; `object-src 'none'`; `frame-ancestors 'none'`; el único WebSocket es la
   dirección exacta del relay), que en los otros dominios suma lo de la barra de Vercel (`vercel.live`); además
   `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` y `Cross-Origin-Opener-Policy`. HSTS lo
   pone Vercel.
@@ -46,8 +46,9 @@ sus despliegues).
    montones.
 3. **Vercel:** una regla del Firewall que limite por IP `/api/card-image` (y el modo «Attack Challenge» mientras dure un abuso),
    y Deployment Protection para que las vistas previas no sean públicas.
-4. **GitHub:** el repositorio es privado y de plan gratuito, sin reglas de protección de rama; si pasa a Pro o se hace público,
-   activar «Require status checks» en `main` y el escaneo de secretos con protección de push.
+4. **GitHub:** el repositorio es público (AGPL-3.0) y de plan gratuito, sin reglas de protección de rama: activar en «Code security»
+   el escaneo de secretos con protección de push y el aviso privado de vulnerabilidades (gratis en repos públicos) y, si se quiere,
+   «Require status checks» en `main`.
 5. Revisar cada tanto las integraciones y los tokens de las tres cuentas y revocar lo que no se use.
 
 ## Límites aceptados
@@ -63,4 +64,4 @@ sus despliegues).
 - **Los datos de terceros** (meta, precios, banlists, replays) se dibujan como texto y las direcciones se arman con ids
   validados, pero un dato envenenado puede mostrar información incorrecta hasta que alguien lo note.
 
-Un problema de seguridad se le avisa directo a quien administra el repositorio (es privado), sin abrir un issue público.
+Un problema de seguridad se le avisa directo a quien administra el repositorio (`SECURITY.md`), sin abrir un issue público.
