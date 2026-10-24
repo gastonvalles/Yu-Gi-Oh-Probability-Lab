@@ -10,7 +10,6 @@ import {
   interpretAmount,
   lifeReducer,
   readLifeState,
-  recentAmounts,
   timerElapsed,
   timerRemaining,
   writeLifeState,
@@ -67,14 +66,6 @@ describe('calculadora de LP', () => {
     expect(interpretAmount('050')).toBe(50)
     expect(interpretAmount('150')).toBe(150)
     expect(interpretAmount('1500')).toBe(1500)
-  })
-
-  it('los atajos repiten los últimos cambios distintos, del más nuevo al más viejo', () => {
-    const state = run(createLifeState(), change(1, -800), change(0, -800), change(1, 500), change(0, -2000), change(1, -800))
-
-    expect(recentAmounts(state.log)).toEqual([-800, -2000, 500])
-    expect(recentAmounts(state.log, 2)).toEqual([-800, -2000])
-    expect(recentAmounts([])).toEqual([])
   })
 
   it('la ronda cuenta 50 minutos para atrás y acumula entre pausas', () => {

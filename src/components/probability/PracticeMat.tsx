@@ -207,6 +207,8 @@ export interface DuelMatLink {
   onHighlight?: (highlight: CardTextHighlight | null) => void
   /** Lo que estoy haciendo y el rival tiene que ver (mirar mi deck, mi Extra Deck, mi cementerio o lo desterrado; elegir cómo jugar una carta); `null` si nada. Se llama sólo cuando cambia. */
   onActivity?: (activity: Activity | null) => void
+  /** El visor de las pilas del rival (`rivalViewer`) está abierto: el de la mesa se cierra, porque los dos van en el mismo lugar. */
+  rivalViewing?: boolean
   /** El reloj de turnos: va en el centro del campo, entre las dos Zonas Extra (la casilla `p2`, que en un duelo no lleva nada). */
   clock?: ReactNode
   /** El duelo automático: las jugadas las decide el núcleo de reglas y la mesa sólo contesta sus preguntas (los menús, las casillas y las cartas que ofrece); nada se arrastra, se mantiene ni se despacha. */
@@ -243,6 +245,8 @@ interface PracticeMatProps {
   onHover?: (peek: { name: string; card: ApiCardReference | null }) => void
   /** El pedazo del texto que `detail` resalta mientras se elige un efecto (en la práctica; en un duelo es `duel.onHighlight`). */
   onHighlight?: (highlight: CardTextHighlight | null) => void
+  /** En un duelo, el visor de las pilas del rival (lo maneja la pantalla del duelo): va en el mismo lugar que el de la mesa. */
+  rivalViewer?: ReactNode
 }
 
 /** Fuentes de arrastre que no son cartas: el tope del deck y la ficha. */
@@ -454,6 +458,7 @@ export function PracticeMat({
   onPeek: practicePeek,
   onHover: practiceHover,
   onHighlight: practiceHighlight,
+  rivalViewer,
 }: PracticeMatProps) {
   // El detalle fijo de la izquierda y la carta que se tocó: de un duelo, o de la práctica.
   const detail = duel?.detail ?? practiceDetail
@@ -972,6 +977,27 @@ export function PracticeMat({
     setViewer(null)
   }, [viewer, onDispatch, state.deck.length])
 
+  // El visor no tapa el campo, así que se puede tocar otra pila con uno abierto: cambia lo que muestra. Dejar el deck por otra pila es dejar de mirarlo: se baraja, como al cerrarlo.
+  const openViewer = useCallback(
+    (pile: MatPile) => {
+      if (viewer === 'deck' && pile !== 'deck') closeViewer()
+      setViewer(pile)
+    },
+    [viewer, closeViewer],
+  )
+
+  // El visor de las pilas del rival va en el mismo lugar: al abrirse, el de la mesa se cierra (sólo entonces: abrir el de la mesa cierra el del rival, ver `DuelScreen`).
+  const rivalViewing = Boolean(duel?.rivalViewing)
+  const closeViewerRef = useRef(closeViewer)
+
+  useEffect(() => {
+    closeViewerRef.current = closeViewer
+  }, [closeViewer])
+
+  useEffect(() => {
+    if (rivalViewing) closeViewerRef.current()
+  }, [rivalViewing])
+
   /** Jugar mirando el deck (sacar una carta o varias, revelarla, adjuntarla): el resto se baraja en la misma jugada (buscar = un paso, que se deshace entero; nunca dos jugadas de un toque). */
   const searching = useCallback((action: MatAction) => viewer === 'deck' && cardsOfPlay(action).some((id) => state.deck.includes(id)), [viewer, state.deck])
 
@@ -1035,12 +1061,14 @@ export function PracticeMat({
       }
 
       // Marcar un target (una carta o varias) desde el visor de una pila lo cierra: la mira cae sobre la casilla, que ya muestra la última marcada, y se ve. Quitarlo deja el visor como está.
+      // Lo que se juega con otra carta (el campo sigue vivo con el visor abierto) lo deja abierto: cerrar el deck lo barajaría, y serían dos jugadas de un toque.
       const targeting = playType(played) === 'target'
       const marking = targeting && cardsOfPlay(played).some((id) => !state.targeted.includes(id))
+      const fromViewer = viewer !== null && cardsOfPlay(played).some((id) => state[viewer].includes(id))
 
-      if (searched || (viewer && marking)) {
+      if (searched || (fromViewer && marking)) {
         setViewer(null)
-      } else if (viewer && !targeting) {
+      } else if (fromViewer && !targeting) {
         closeViewer()
       }
     },
@@ -1824,7 +1852,7 @@ export function PracticeMat({
         // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
         className={cx(CELL, 'cursor-pointer rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
         style={{ gridArea: area, ...fxVars('red') }}
-        onClick={() => setViewer(pile)}
+        onClick={() => openViewer(pile)}
       >
         {pile === 'extra' ? <PileStack count={count} /> : null}
         {/* El recorte va en un contenedor aparte: el botón no recorta, así el área que se toca (`before` de `CELL`) puede salirse 4 px de la casilla. */}
@@ -2382,34 +2410,51 @@ export function PracticeMat({
         onClose={() => setMenu(null)}
       />
 
-      {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
-      {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
-      <PileViewer
-        pile={duel?.auto?.viewer?.pile ?? viewer}
-        hidden={covered}
-        ids={duel?.auto?.viewer?.ids ? [...duel.auto.viewer.ids] : viewer ? state[viewer] : []}
-        info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
-        targeted={targetedIds}
-        // Tocar una carta del visor (también eligiendo varias) la muestra en el detalle fijo de la izquierda, como una de la mano o del campo.
-        onPeek={
-          onPeek
-            ? (id) => {
-                const { name, apiCard } = cardOf(id)
+      {/*
+        El lugar de los visores de las pilas en escritorio (el de la mesa y, en un duelo, el del rival): no tapan el campo ni lo oscurecen, y el campo sigue vivo. Con el detalle fijo (desde 1440 px) van en su
+        columna, en su lugar mientras están abiertos; sin él, en la práctica, en la de los pasos y combos; en un duelo sin detalle (la derecha es del chat y el campo no deja 20 rem a los costados), en un panel
+        angosto (dos cartas) contra el borde izquierdo de la mesa, entre las vidas y el reloj del rival (arriba, 9 rem) y tu mano (abajo, 12 rem): ahí el campo deja su margen más ancho. Ocupan la celda de la grilla sin cambiarla (`absolute`) y la caja no ataja toques: sólo el panel. En el celular el visor es la hoja de abajo (va por portal).
+        Las líneas van con su principio y su fin (`col-[1/2]`): en algo `absolute`, un fin `auto` es el borde de la grilla y la caja se estiraría sobre la mesa.
+      */}
+      <div
+        data-pile-slot=""
+        className={cx(
+          'pointer-events-none absolute z-[115] row-[1/3] grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]',
+          duel
+            ? cx('left-2 top-36 col-[1/2] max-h-[calc(100%-21rem)] w-48', Boolean(detail) && 'min-[1440px]:inset-2 min-[1440px]:max-h-none min-[1440px]:w-auto')
+            : cx('inset-2 min-[1101px]:col-[2/3]', Boolean(detail) && 'min-[1440px]:col-[1/2]'),
+        )}
+      >
+        {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
+        {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
+        <PileViewer
+          pile={duel?.auto?.viewer?.pile ?? viewer}
+          hidden={covered}
+          ids={duel?.auto?.viewer?.ids ? [...duel.auto.viewer.ids] : viewer ? state[viewer] : []}
+          info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
+          targeted={targetedIds}
+          // Tocar una carta del visor (también eligiendo varias) la muestra en el detalle fijo de la izquierda, como una de la mano o del campo.
+          onPeek={
+            onPeek
+              ? (id) => {
+                  const { name, apiCard } = cardOf(id)
 
-                onPeek({ name, card: apiCard })
-              }
-            : undefined
-        }
-        onPick={(id, rect) => (duel?.auto ? openCard(id, rect) : setMenu({ kind: 'card', id, rect }))}
-        // Elegir varias: «Elegir jugada» abre el menú del lote, pegado al botón (o la hoja, en el celular); la jugada cierra el visor.
-        many={duel?.auto ? duel.auto.viewer?.many : {
-          label: () => t('practice.many.choosePlay'),
-          onPick: (ids, rect) => {
-            if (viewer) setMenu({ kind: 'batch', pile: viewer, ids, rect })
-          },
-        }}
-        onClose={duel?.auto?.viewer ? (duel.auto.cardPick?.cancel ?? duel.auto.cardPick?.done?.onSelect ?? (() => {})) : closeViewer}
-      />
+                  onPeek({ name, card: apiCard })
+                }
+              : undefined
+          }
+          onPick={(id, rect) => (duel?.auto ? openCard(id, rect) : setMenu({ kind: 'card', id, rect }))}
+          // Elegir varias: «Elegir jugada» abre el menú del lote, pegado al botón (o la hoja, en el celular); la jugada cierra el visor.
+          many={duel?.auto ? duel.auto.viewer?.many : {
+            label: () => t('practice.many.choosePlay'),
+            onPick: (ids, rect) => {
+              if (viewer) setMenu({ kind: 'batch', pile: viewer, ids, rect })
+            },
+          }}
+          onClose={duel?.auto?.viewer ? (duel.auto.cardPick?.cancel ?? duel.auto.cardPick?.done?.onSelect ?? (() => {})) : closeViewer}
+        />
+        {rivalViewer}
+      </div>
 
       <SaveComboDialog isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
 

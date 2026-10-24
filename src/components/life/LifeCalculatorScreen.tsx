@@ -9,12 +9,11 @@ import {
   duelistName,
   formatClock,
   interpretAmount,
-  recentAmounts,
   timerRemaining,
   type Duelist,
   type LifeState,
 } from '../../app/life-calculator'
-import { dispatchLife, playCue, useClock, useLifeState, type RoundCue } from '../../app/life-store'
+import { dispatchLife, testCue, useClock, useLifeState, type RoundCue } from '../../app/life-store'
 import { useLifeNumber, useLpFlash } from '../../app/life-effects'
 import { useToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
@@ -41,7 +40,8 @@ const BADGE: Record<Duelist, string> = { 0: 'bg-primary/25 text-primary-soft', 1
 /** Teclas y acciones: grandes, sin retardo táctil y con respuesta inmediata al apretar. Van con las esquinas rectas (el radio lo pone cada pieza: las teclas, ninguno). */
 export const PRESSABLE =
   'touch-manipulation select-none font-semibold text-foreground transition-[background-color,transform,color] duration-100 focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.96] disabled:opacity-35 [-webkit-tap-highlight-color:transparent]'
-export const KEY = cx(PRESSABLE, 'min-h-12 rounded-none bg-lavender active:bg-lavender-hover @xl:min-h-10')
+/** Las teclas se reparten el alto que deja la pantalla (46 px en el celular más bajo, 360 × 640; ~85 px en uno de 844): 40 px es el piso para que entre todo sin scroll. */
+export const KEY = cx(PRESSABLE, 'min-h-10 rounded-none bg-lavender active:bg-lavender-hover')
 
 /** A quién iba la última operación: al cerrar y volver a abrir la calculadora sigue elegido. */
 let lastSelected: Duelist = 0
@@ -116,7 +116,6 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
   const finished = !duel && remaining === 0
   const amount = interpretAmount(digits)
   const lp = state.lp[selected]
-  const recent = recentAmounts(state.log)
   const name = nameOf(selected)
 
   useWakeLock()
@@ -184,7 +183,12 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
 
   return (
     <div
-      className="@container grid h-full min-h-0 gap-2 overflow-hidden bg-background px-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] [grid-template-areas:'head'_'lp'_'disp'_'quick'_'pad'_'eq'] [grid-template-rows:auto_minmax(auto,1.2fr)_auto_auto_minmax(auto,4fr)_auto] @xl:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'quick_pad'_'._eq'] @xl:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] @xl:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] @xl:gap-x-4"
+      className={cx(
+        // Entra entera en el alto que le da el armazón, sin scroll: el teclado y el «=» (una fila más de teclas) se reparten lo que dejan el reloj, las vidas y el número que se escribe.
+        "@container grid h-full min-h-0 gap-2 overflow-hidden bg-background px-3 [grid-template-areas:'head'_'lp'_'disp'_'pad'_'eq'] [grid-template-rows:auto_minmax(auto,1.2fr)_auto_minmax(0,4fr)_minmax(3rem,1fr)] @xl:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'._pad'_'._eq'] @xl:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] @xl:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] @xl:gap-x-4",
+        // Como vista de la app, las barras del armazón ya dejan los márgenes seguros; a pantalla completa (la del duelo), los pone ella.
+        onClose ? 'pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]' : 'py-2',
+      )}
       onPointerDown={unlockAudio}
     >
       <header className="flex items-center justify-between gap-2 [grid-area:head]">
@@ -278,28 +282,6 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
         <span className={cx('shrink-0 rounded-tag px-2 py-0.5 text-micro font-semibold', BADGE[order[0] === selected ? 0 : 1])}>{name}</span>
       </div>
 
-      {/* Los últimos cambios, para repetirlos con un toque sobre el duelista elegido. */}
-      <div className="grid grid-cols-3 gap-1.5 [grid-area:quick] @xl:self-start" aria-label={t('shell.life.recent.label')}>
-        {[0, 1, 2].map((slot) => {
-          const delta = recent[slot]
-
-          return delta === undefined ? (
-            <span key={slot} className="min-h-10" aria-hidden="true" />
-          ) : (
-            <button
-              key={slot}
-              type="button"
-              className={cx(PRESSABLE, 'min-h-10 rounded-none text-lead tabular-nums', delta < 0 ? 'bg-danger/15 text-danger-soft active:bg-danger/30' : 'bg-success/12 text-success-soft active:bg-success/25')}
-              aria-label={t(delta < 0 ? 'shell.life.recent.subtract' : 'shell.life.recent.add', { amount: Math.abs(delta), name })}
-              onClick={() => applyDelta(delta)}
-            >
-              {delta < 0 ? '−' : '+'}
-              {Math.abs(delta)}
-            </button>
-          )
-        })}
-      </div>
-
       <div className="grid grid-cols-4 grid-rows-4 gap-2 [grid-area:pad]" role="group" aria-label={t('shell.life.keypad')}>
         {KEYS.map((key) => {
           const isOperator = key === '+' || key === '-'
@@ -326,7 +308,7 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
 
       <button
         type="button"
-        className={cx(PRESSABLE, 'min-h-[5.25rem] rounded-none bg-primary text-stat text-primary-foreground active:bg-primary-hover [grid-area:eq] @xl:min-h-14')}
+        className={cx(PRESSABLE, 'rounded-none bg-primary text-stat text-primary-foreground active:bg-primary-hover [grid-area:eq] @xl:min-h-14')}
         disabled={amount === 0}
         aria-label={t(operator === '-' ? 'shell.life.apply.subtract' : 'shell.life.apply.add', { amount, name })}
         onClick={() => applyDelta(operator === '-' ? -amount : amount)}
@@ -498,7 +480,7 @@ function ToolsPanel() {
               size="sm"
               onClick={() => {
                 unlockAudio()
-                playCue(kind)
+                testCue(kind)
               }}
             >
               {kind === 'end' ? t('shell.life.tools.cueEnd') : kind === 'five' ? '5 min' : '10 min'}

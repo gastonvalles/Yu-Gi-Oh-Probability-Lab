@@ -1751,6 +1751,14 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const openMark = useCallback((target: MarkTarget, rect: DOMRect, place: string) => setMarkMenu({ target, rect, place }), [])
   // El cementerio y el destierro del rival son públicos: se pueden desplegar para ver (y marcar) sus cartas.
   const [rivalViewer, setRivalViewer] = useState<'gy' | 'banished' | 'extra' | null>(null)
+  // Lo que hago se le cuenta al rival (`duel.look`) y, si abrí una pila mía, el visor del rival se cierra: los dos van en el mismo lugar de la mesa (y al revés, `rivalViewing`).
+  const lookAt = useCallback(
+    (activity: Parameters<Duel['look']>[0]) => {
+      duel.look(activity)
+      if (activity !== null && activity !== 'choosing') setRivalViewer(null)
+    },
+    [duel],
+  )
   // El detalle fijo de la izquierda (escritorio): la carta a la que se le pasa el mouse, o la que se tocó (queda fija hasta un click afuera o en otra), tuya o del rival.
   const { shown: dockShown, hover: dockHover, lock: dockLock } = useDockPeek()
   // El pedazo del texto de esa carta que se resalta mientras se elige uno de sus efectos en el menú.
@@ -1912,7 +1920,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       rivalFlights: { state: opponent.state, artOf: opponent.artOf },
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
-      onActivity: duel.look,
+      onActivity: lookAt,
+      rivalViewing: rivalViewer !== null,
       clock: (snapshot.settings.turnMin ?? 0) > 0 ? <TurnDial clock={snapshot.turnClock} owner={turn === 'mine' ? snapshot.me : snapshot.me === 0 ? 1 : 0} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} /> : undefined,
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
       myTurn: turn === 'mine',
@@ -1940,7 +1949,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} rivalSignalKey={signals.theirsKey} lane={lane} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer],
   )
 
   const markTarget = markMenu?.target
@@ -2010,6 +2019,24 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onLoadCombo={NOTHING}
         onNewHand={NOTHING}
         duel={link}
+        // En el mismo lugar que el visor de mis pilas (sin tapar el campo): la mesa lo pone.
+        rivalViewer={
+          <PileViewer
+            pile={rivalViewer}
+            hidden={covered}
+            ids={rivalViewer ? (rivalViewer === 'extra' ? theirs!.state.extraUp : theirs!.state[rivalViewer]) : []}
+            info={(id) => {
+              const art = opponent.artOf(id)
+
+              return { name: rivalCardName, art, faceDown: theirs!.state.facedown.includes(id) || art === null, faceUp: theirs!.state.extraUp.includes(id) }
+            }}
+            targeted={viewerTargeted}
+            onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
+            many={rivalMany}
+            onClose={() => setRivalViewer(null)}
+            anonymous
+          />
+        }
       />
       {/* Celular: la hoja de abajo (baja al cerrarse: `Presence` la deja montada mientras sale); escritorio: el menú pegado a la carta. */}
       <Presence>{!docked && markMenu && !covered ? (
@@ -2031,21 +2058,6 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         items={markItems}
         onInspect={markMenu && markedDrawId !== undefined ? () => { setRivalInspected({ drawId: markedDrawId, rect: markMenu.rect }); setMarkMenu(null) } : undefined}
         onClose={() => setMarkMenu(null)}
-      />
-      <PileViewer
-        pile={rivalViewer}
-        hidden={covered}
-        ids={rivalViewer ? (rivalViewer === 'extra' ? theirs!.state.extraUp : theirs!.state[rivalViewer]) : []}
-        info={(id) => {
-          const art = opponent.artOf(id)
-
-          return { name: rivalCardName, art, faceDown: theirs!.state.facedown.includes(id) || art === null, faceUp: theirs!.state.extraUp.includes(id) }
-        }}
-        targeted={viewerTargeted}
-        onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
-        many={rivalMany}
-        onClose={() => setRivalViewer(null)}
-        anonymous
       />
       <Presence>{rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}</Presence>
       <DuelCalculator isOpen={lifeOpen} snapshot={snapshot} myName={myName} duel={duel} onClose={() => setLifeOpen(false)} />

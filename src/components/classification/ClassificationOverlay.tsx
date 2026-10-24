@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
 import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
@@ -45,6 +46,8 @@ export function ClassificationOverlay({
   onOpenHelp,
   onClose,
 }: ClassificationOverlayProps) {
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+
   return (
     <CardOverlay ariaLabel={t('roles.overlay.aria', { name })} panelLabel={t('roles.overlay.panel')} name={name} card={card} tall onClose={onClose}>
       <CardPanelHeader title={name} lines={lines} />
@@ -55,15 +58,16 @@ export function ClassificationOverlay({
         </div>
       </CardPanelBody>
       <CardPanelFooter>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <Button variant="secondary" size="md" icon="chevron-left" fullWidth disabled={!onPrevious} onClick={onPrevious}>
-            {t('roles.overlay.previous')}
+        {/* En el celular el pie comparte la fila con el $ y no entran las flechas: los botones van sin ellas, más angostos y del ancho de su texto (si igual no entra, se corta con «…»). */}
+        <div className="grid grid-cols-[minmax(0,auto)_auto_minmax(0,auto)] items-center gap-2 min-[1101px]:grid-cols-[1fr_auto_1fr]">
+          <Button variant="secondary" size={isDesktop ? 'md' : 'sm'} icon={isDesktop ? 'chevron-left' : undefined} fullWidth disabled={!onPrevious} onClick={onPrevious}>
+            <span className="min-w-0 truncate">{t('roles.overlay.previous')}</span>
           </Button>
-          <span className="min-w-14 text-center text-micro tabular-nums text-soft">
+          <span className="min-w-10 text-center text-micro tabular-nums text-soft">
             {formatInteger(position)} / {formatInteger(total)}
           </span>
-          <Button variant="secondary" size="md" iconEnd="chevron-right" fullWidth disabled={!onNext} onClick={onNext}>
-            {t('roles.overlay.next')}
+          <Button variant="secondary" size={isDesktop ? 'md' : 'sm'} iconEnd={isDesktop ? 'chevron-right' : undefined} fullWidth disabled={!onNext} onClick={onNext}>
+            <span className="min-w-0 truncate">{t('roles.overlay.next')}</span>
           </Button>
         </div>
       </CardPanelFooter>

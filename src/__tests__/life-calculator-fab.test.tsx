@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ROUND_LIMIT_MS } from '../app/life-calculator'
 import { dispatchLife } from '../app/life-store'
 import { LifeCalculatorFab } from '../components/life/LifeCalculatorFab'
 
@@ -62,6 +63,17 @@ describe('el botón flotante de la calculadora de LP', () => {
 
     rerender(<LifeCalculatorFab onOpen={() => {}} hidden={false} />)
     expect(screen.getByRole('button', { name: FAB })).toBeInTheDocument()
+  })
+
+  it('al acabarse la ronda se queda en 00:00 (la alarma suena hasta que se reinicie el reloj, y por ahí se llega a hacerlo) y al reiniciarlo se va', () => {
+    startRound()
+    render(<LifeCalculatorFab onOpen={() => {}} />)
+    act(() => vi.advanceTimersByTime(ROUND_LIMIT_MS))
+
+    expect(screen.getByRole('button', { name: FAB })).toHaveTextContent('00:00')
+
+    act(() => dispatchLife({ type: 'timer-reset' }))
+    expect(screen.queryByRole('button', { name: /Calculadora de LP/ })).not.toBeInTheDocument()
   })
 
   it('al pausar el reloj el botón se va', () => {

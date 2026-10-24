@@ -55,12 +55,13 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
       </section>
 
       <section className="grid gap-2" aria-label={t('roles.fields.rolesAria')}>
-        <div className="flex items-center justify-between gap-2">
+        {/* Si la pregunta y la ayuda no entran en una fila (el celular), la ayuda baja a la suya, a la derecha: la pregunta no se aprieta en cuatro renglones. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <p className={KICKER}>{t('roles.fields.roleQuestion')}</p>
           {onOpenHelp ? (
             <button
               type="button"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-micro font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-micro font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
               onClick={onOpenHelp}
             >
               <Icon name="info" size={14} />

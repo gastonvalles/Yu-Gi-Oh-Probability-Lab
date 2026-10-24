@@ -431,7 +431,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onOpenCard={controller.openFoundCard} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep && !isLifeStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} navbar={!(isPracticeStep || (isDuelStep && duelTable))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onOpenCard={controller.openFoundCard} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep && !isLifeStep} fitScreen={isLifeStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} navbar={!(isPracticeStep || (isDuelStep && duelTable))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
         {mainContent}
       </AppShell>
 
