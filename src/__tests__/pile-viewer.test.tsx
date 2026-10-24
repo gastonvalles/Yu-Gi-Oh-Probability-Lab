@@ -86,8 +86,9 @@ describe('el visor de una pila elige varias cartas', () => {
   it('«Elegir varias» lleva el foco a la primera carta; tocar elige o suelta, con aria-pressed y el orden, y «N elegidas» lo anuncia', async () => {
     const { dialog, onPick, onPeek } = open()
 
-    // El diálogo pone su foco inicial en el cuadro siguiente: se espera antes de entrar al modo.
-    await waitFor(() => expect(dialog.getByRole('button', { name: 'Cerrar' })).toHaveFocus())
+    // El visor pone su foco inicial (la primera carta) en el cuadro siguiente: se espera y se lo lleva a otro lado antes de entrar al modo.
+    await waitFor(() => expect(card(dialog, 'Ash Blossom')).toHaveFocus())
+    dialog.getByRole('button', { name: 'Cerrar' }).focus()
     fireEvent.click(dialog.getByRole('button', { name: 'Elegir varias' }))
     expect(card(dialog, 'Ash Blossom')).toHaveFocus()
     expect(card(dialog, 'Ash Blossom')).toHaveAttribute('aria-pressed', 'false')
@@ -224,6 +225,49 @@ describe('el visor de una pila elige varias cartas', () => {
 
     fireEvent.click(first!)
     expect(dialog.getByRole('button', { name: 'Quitar target' })).toBeInTheDocument()
+  })
+})
+
+describe('el visor no es un modal: no tapa el campo', () => {
+  const viewer = (pile: MatPile | null, onClose = () => {}) => (
+    <Provider store={store}>
+      <button type="button">GY: 3</button>
+      <PileViewer pile={pile} ids={pile ? ['a', 'b', 'c'] : []} info={(id) => ({ name: NAMES[id] ?? id, art: null })} targeted={new Set()} onPick={() => {}} onClose={onClose} />
+    </Provider>
+  )
+
+  it('sin aria-modal ni trampa: el foco entra a la primera carta, Tab sale a la mesa y, al cerrarse, vuelve a la pila que lo abrió', async () => {
+    const view = render(viewer(null))
+    const pile = screen.getByRole('button', { name: 'GY: 3' })
+
+    pile.focus()
+    view.rerender(viewer('gy'))
+    const panel = screen.getByRole('dialog', { name: 'GY · 3' })
+
+    expect(panel).not.toHaveAttribute('aria-modal')
+    await waitFor(() => expect(within(panel).getByRole('button', { name: 'Droll' })).toHaveFocus())
+    // El Tab no da la vuelta adentro del panel (no hay quien lo frene): lo hace el navegador.
+    expect(fireEvent.keyDown(document, { key: 'Tab' })).toBe(true)
+
+    view.rerender(viewer(null))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(pile).toHaveFocus()
+  })
+
+  it('en el celular, tocar afuera de la hoja la cierra (sin velo: el fondo es transparente); el click que sigue a un toque que la abrió, no', () => {
+    const onClose = vi.fn()
+
+    render(viewer('gy', onClose))
+    const backdrop = document.querySelector<HTMLElement>('.fixed.inset-0')!
+
+    // Un click suelto (el que el celular manda después del toque que la abrió): el toque no empezó en el fondo.
+    fireEvent.click(backdrop)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(backdrop.className).not.toMatch(/bg-/)
+
+    fireEvent.pointerDown(backdrop)
+    fireEvent.click(backdrop)
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
 

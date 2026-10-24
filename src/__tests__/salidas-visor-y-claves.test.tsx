@@ -32,8 +32,8 @@ beforeEach(() => {
     return 1
   }
   window.cancelAnimationFrame = () => {}
-  // jsdom no carga index.css: las dos entradas del `Modal`, como en la app.
-  const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter }' })
+  // jsdom no carga index.css: las dos entradas del `Modal` y la del visor de una pila (`sheet-in`), como en la app.
+  const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter } .animate-sheet-in { animation-name: sheet-in }' })
   style.dataset.test = ''
   document.head.append(style)
 })
@@ -74,25 +74,24 @@ describe('el visor de una pila sale al cerrarse: la mesa ya no le cambia la `key
     gy.focus()
     fireEvent.click(gy)
     const dialog = screen.getByRole('dialog', { name: 'GY · 2' })
-    const root = dialog.parentElement!
     const { calls, finish } = fakeExit()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar' }))
     expect(dialog).toBeInTheDocument()
     expect(dialog).toHaveTextContent('Maxx C')
-    expect(root.inert).toBe(true)
-    expect(root).toHaveAttribute('data-leaving')
-    expect(root.style.pointerEvents).toBe('none')
-    // El velo se funde y el panel vuelve a 0,96 (la entrada del `Modal`, `dialog-enter`, al revés).
-    const exits = calls.filter(({ element }) => root.contains(element))
-    expect(exits.map(({ keyframes }) => keyframes)).toEqual([[{ opacity: 0 }], [{ opacity: 0, transform: 'scale(0.96)' }]])
+    expect(dialog.inert).toBe(true)
+    expect(dialog).toHaveAttribute('data-leaving')
+    expect(dialog.style.pointerEvents).toBe('none')
+    // Sin velo que fundir (no tapa el campo): la hoja hace su entrada, `sheet-in`, al revés.
+    const exits = calls.filter(({ element }) => dialog.contains(element))
+    expect(exits.map(({ keyframes }) => keyframes)).toEqual([[{ opacity: 0, transform: 'translateY(10px)' }]])
     expect(document.activeElement).toBe(gy)
 
     fireEvent.click(gy)
     expect(screen.getByRole('dialog', { name: 'GY · 2' })).toBe(dialog)
-    expect(root.inert).toBe(false)
-    expect(root).not.toHaveAttribute('data-leaving')
-    expect(exits.map(({ animation }) => vi.mocked(animation.reverse).mock.calls.length)).toEqual([1, 1])
+    expect(dialog.inert).toBe(false)
+    expect(dialog).not.toHaveAttribute('data-leaving')
+    expect(exits.map(({ animation }) => vi.mocked(animation.reverse).mock.calls.length)).toEqual([1])
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar' }))
     await finish()

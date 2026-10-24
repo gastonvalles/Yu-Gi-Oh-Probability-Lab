@@ -2,6 +2,7 @@ import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type For
 import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
 import { normalizeSearchText } from '../../app/utils'
@@ -11,7 +12,9 @@ import { tRich } from '../../i18n/rich'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
+import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { CloseButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
@@ -452,9 +455,14 @@ interface PileViewerProps {
  * deck se baraja, como en la mesa real) y con buscador; cementerio y destierro, la más reciente primero.
  * Con `many`, el pie ofrece elegir varias: tocar elige o suelta (aro ámbar y número de orden), Mayús+clic elige el tramo,
  * la principal le pasa las elegidas a quien abrió el visor y Escape sale del modo antes de cerrar el visor.
- * Es uno solo para todas las pilas y queda montado: al cerrarse sale como el `Modal` (la inversa de su entrada) y cada vez que se abre arranca de cero.
+ * Es uno solo para todas las pilas y queda montado: al cerrarse sale (la inversa de su entrada) y cada vez que se abre arranca de cero.
+ *
+ * **No tapa el campo** (Gastón, 2026-10-24: «los modales de deck, extra, gy y banish tapan el campo pero no deberían hacerlo»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le
+ * da quien lo monta (una caja `grid` posicionada: la columna del detalle, la de los pasos o un rincón de la mesa, ver `PracticeMat`) y el campo sigue vivo: se tocan sus cartas y sus casillas con el visor abierto.
+ * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera.
  */
 export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, many, onClose, anonymous = false }: PileViewerProps) {
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [query, setQuery] = useState('')
   const [choosing, setChoosing] = useState(many?.start !== undefined)
   const [picked, setPicked] = useState<string[]>(() => [...(many?.start ?? [])])
@@ -463,7 +471,15 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
   const [shownPile, setShownPile] = useState(pile)
   const gridRef = useRef<HTMLUListElement | null>(null)
   const footRef = useRef<HTMLDivElement | null>(null)
+  const panelRef = useRef<HTMLElement | null>(null)
+  const backdropRef = useRef<HTMLDivElement | null>(null)
+  // Lo que tenía el foco al abrirse (la casilla de la pila): ahí vuelve al cerrarse.
+  const openerRef = useRef<HTMLElement | null>(null)
+  // El fondo de la hoja cierra sólo si el toque empezó ahí (como el del `Modal`): el click que sigue a un toque que la abrió no la cierra.
+  const pressedBackdropRef = useRef(false)
   const statusId = useId()
+  const titleId = useId()
+  const open = pile !== null && !hidden
   const canMany = many !== undefined && pile !== null && ids.length >= 2
   const cards = ids.map((id) => ({ id, ...info(id) }))
   // El Extra se muestra en su orden, pero las cartas boca arriba (las que se ven y se invocan por Péndulo) van primero.
@@ -503,8 +519,38 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
     footRef.current?.querySelector<HTMLElement>('button')?.focus()
   }
 
-  // Arriba del Escape del visor: el primero sale del modo y el segundo cierra. Escondido, ninguno.
+  // El de cerrar va antes que el de salir del modo: así el de salir queda arriba y el primer Escape sale del modo y el segundo cierra. Escondido, ninguno.
+  useEscapeKey(onClose, open)
   useEscapeKey(exit, choosing && !hidden)
+
+  // Al abrirse, y al pasar a otra pila, el foco entra al panel: al buscador o, si no hay, a la primera carta. Sin trampa: no es un modal y Tab sale a la mesa.
+  useEffect(() => {
+    if (!open) return
+
+    const active = document.activeElement
+
+    if (active instanceof HTMLElement && active !== document.body && !panelRef.current?.contains(active)) openerRef.current = active
+
+    const frame = requestAnimationFrame(() => {
+      const panel = panelRef.current
+
+      ;(panel?.querySelector<HTMLElement>('[data-initial-focus]') ?? gridRef.current?.querySelector<HTMLElement>('button') ?? panel)?.focus({ preventScroll: true })
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [open, pile])
+
+  // Al cerrarse (o esconderse), el foco vuelve a lo que lo abrió, si quedó en el visor o se perdió (lo que sale ya no se enfoca): si pasó a otro lado (el visor del rival que se abrió en su lugar), se queda ahí.
+  useEffect(() => {
+    if (open) return
+
+    const opener = openerRef.current
+    const active = document.activeElement
+    const lost = !(active instanceof HTMLElement) || active === document.body || Boolean(panelRef.current?.contains(active)) || active.closest('[inert]') !== null
+
+    openerRef.current = null
+    if (opener?.isConnected && lost) opener.focus({ preventScroll: true })
+  }, [open])
 
   const toggle = (id: string, range: boolean) => {
     const from = range && last !== null ? visibleIds.indexOf(last) : -1
@@ -525,51 +571,56 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
   // «Elegir todas» es de las que se ven (con el filtro puesto, sólo ésas); con todas ya elegidas, las suelta.
   const pickVisible = () => setPicked((current) => (allVisible ? current.filter((id) => !visibleIds.includes(id)) : [...current, ...visibleIds.filter((id) => !current.includes(id))]))
 
-  return (
-    <Modal
-      isOpen={pile !== null && !hidden}
-      onClose={onClose}
-      size="md"
-      kicker={t('practice.mat.name')}
-      title={title}
-      ariaLabel={title}
-      footer={
-        many && canMany ? (
-          // Mide lo mismo en los dos modos: los botones son del mismo alto y lo de la izquierda entra en dos renglones (el número a la izquierda, la acción a la derecha).
-          // Donde el pie es muy angosto (un celular de 320 px), queda sólo el número: la palabra y la indicación siguen para el lector de pantalla.
-          <div ref={footRef} className="@container flex w-full items-center gap-3">
-            <p id={statusId} role="status" className="m-0 line-clamp-2 min-w-0 flex-1 text-body leading-tight text-muted">
-              {!choosing ? null : picked.length === 0 ? (
-                <>
-                  <span className="@max-2xs:sr-only">{t('practice.many.hint')}</span>
-                  <span aria-hidden="true" className="hidden font-semibold text-foreground @max-2xs:inline">0</span>
-                </>
-              ) : (
-                tRich('practice.many.picked', { n: (text) => <span className="font-semibold text-foreground">{text}</span>, w: (text) => <span className="@max-2xs:sr-only">{text}</span> }, { count: picked.length })
-              )}
-            </p>
-            {choosing ? (
-              <>
-                <Button variant="tertiary" size="sm" onClick={exit}>
-                  {t('common.cancel')}
-                </Button>
-                <Button variant="primary" size="sm" disabled={picked.length === 0} aria-describedby={statusId} onClick={(event) => many.onPick(picked, event.currentTarget.getBoundingClientRect())}>
-                  {many.label(picked)}
-                </Button>
-              </>
-            ) : (
-              <Button variant="secondary" size="sm" icon="check-circle" onClick={enter}>
-                {t('practice.many.enter')}
-              </Button>
-            )}
-          </div>
-        ) : undefined
-      }
-    >
-      <div className="grid gap-3">
+  const footer =
+    many && canMany ? (
+      // Mide lo mismo en los dos modos: los botones son del mismo alto y lo de la izquierda entra en dos renglones (el número a la izquierda, la acción a la derecha).
+      // Donde el pie es muy angosto (un celular de 320 px, el panel de escritorio), queda sólo el número: la palabra y la indicación siguen para el lector de pantalla. En el rincón de la mesa
+      // (12 rem) la principal baja a otro renglón, a la derecha.
+      <div ref={footRef} className="@container flex w-full flex-wrap items-center justify-end gap-x-3 gap-y-2">
+        <p id={statusId} role="status" className="m-0 line-clamp-2 min-w-0 flex-1 text-body leading-tight text-muted">
+          {!choosing ? null : picked.length === 0 ? (
+            <>
+              <span className="@max-2xs:sr-only">{t('practice.many.hint')}</span>
+              <span aria-hidden="true" className="hidden font-semibold text-foreground @max-2xs:inline">0</span>
+            </>
+          ) : (
+            tRich('practice.many.picked', { n: (text) => <span className="font-semibold text-foreground">{text}</span>, w: (text) => <span className="@max-2xs:sr-only">{text}</span> }, { count: picked.length })
+          )}
+        </p>
+        {choosing ? (
+          <>
+            <Button variant="tertiary" size="sm" onClick={exit}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" size="sm" disabled={picked.length === 0} aria-describedby={statusId} onClick={(event) => many.onPick(picked, event.currentTarget.getBoundingClientRect())}>
+              {many.label(picked)}
+            </Button>
+          </>
+        ) : (
+          <Button variant="secondary" size="sm" icon="check-circle" onClick={enter}>
+            {t('practice.many.enter')}
+          </Button>
+        )}
+      </div>
+    ) : null
+
+  const content = (
+    <>
+      {/* El encabezado del `Modal`, más angosto: dónde y cuántas, y la X. */}
+      <header className="flex flex-none items-start justify-between gap-2 border-b border-border-subtle bg-surface-raised py-2.5 pl-3 pr-2">
+        <div className="grid min-w-0 gap-0.5">
+          <p className={cx('m-0', overline)}>{t('practice.mat.name')}</p>
+          <Heading level="section" id={titleId}>
+            {title}
+          </Heading>
+        </div>
+        <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} />
+      </header>
+      <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain p-3">
         {ids.length > 8 && !anonymous ? (
-          <div className="flex items-center gap-2">
-            <label className="relative block min-w-0 flex-1">
+          // Donde el buscador quedaría con menos de 9 rem (el rincón de la mesa) «Elegir todas» baja debajo de él: así se lee «Buscar carta» entero.
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="relative block min-w-36 flex-1">
               <span className="sr-only">{t('practice.dialog.searchCard')}</span>
               <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
               <input
@@ -595,8 +646,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
         ) : null}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
-        {/* En el celular, cinco por fila (como el campo); en pantallas anchas, las que entren de 5.25 rem. */}
-        <ul ref={gridRef} className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label={t('practice.dialog.cards')}>
+        {/* En el celular, cinco por fila (como el campo); en la hoja de una tableta, las que entren de 5.25 rem; en el panel de escritorio, más angosto, las de 4.5 rem (tres en la columna del detalle, dos en el rincón de la mesa). */}
+        <ul ref={gridRef} className={cx('m-0 grid list-none p-0', desktop ? 'grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2' : 'grid-cols-5 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2')} aria-label={t('practice.dialog.cards')}>
           {visible.map((card) => {
             // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
             const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.faceUp ? t('practice.dialog.cardFaceUp', { name: card.name }) : card.name
@@ -635,7 +686,41 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
           })}
         </ul>
       </div>
-    </Modal>
+      {footer ? <footer className="flex flex-none items-center border-t border-border-subtle p-3">{footer}</footer> : null}
+    </>
+  )
+
+  // Al cerrarse sigue montado mientras sale (`usePresence`: la inversa de `sheet-in`); el foco ya volvió.
+  return usePresence(
+    open,
+    !open || typeof document === 'undefined' ? null : desktop ? (
+      // Escritorio: llena la caja que le da quien lo monta, sin velo; con otro visor que sale mientras éste entra, los dos van en la misma celda (no se reparten el alto).
+      <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className={cx(surface.panel, 'pointer-events-auto col-start-1 row-start-1 flex min-h-0 flex-col overflow-hidden outline-none animate-sheet-in motion-reduce:animate-none')}>
+        {content}
+      </section>
+    ) : (
+      // Celular: la hoja de abajo, por encima de la mesa y debajo del menú de una carta (`CardSheet`), con un fondo sin velo que la cierra al tocar afuera.
+      createPortal(
+        <>
+          <div
+            ref={backdropRef}
+            aria-hidden="true"
+            className="fixed inset-0 z-180"
+            onPointerDown={(event) => {
+              pressedBackdropRef.current = event.target === event.currentTarget
+            }}
+            onClick={(event) => {
+              if (pressedBackdropRef.current && event.target === event.currentTarget) onClose()
+            }}
+          />
+          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className="fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none">
+            {content}
+          </section>
+        </>,
+        document.body,
+      )
+    ),
+    () => [backdropRef.current, panelRef.current],
   )
 }
 
