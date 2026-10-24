@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentProps } from 'react'
+import { useMemo, useRef, useState, type ComponentProps } from 'react'
 
 import { SUPPORT_PLACE, inMenuBlocks, type MenuPlace } from '../../../app/mat-menu-order'
 import type { LabResults, LabViewResult } from '../../../app/probability-lab'
@@ -7,6 +7,7 @@ import type { MatPile } from '../../../app/practice-mat'
 import type { ArtChoice } from '../../../app/use-card-art-options'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
+import { useSheetDrag } from '../../../app/use-sheet-drag'
 import { showToastMessage, type ToastTone } from '../../../app/use-toast-message'
 import { formatDay, t } from '../../../i18n'
 import type { ApiCardReference } from '../../../types'
@@ -16,8 +17,11 @@ import { CardZoom } from '../../card-detail/CardZoom'
 import { RarityFoil } from '../../card-detail/RarityFoil'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
+import { Heading } from '../../ui/Heading'
 import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Modal } from '../../ui/Modal'
+import { SheetHandle } from '../../ui/SheetHandle'
+import { overline } from '../../ui/typography'
 import { CardSheet } from '../../probability/CardSheet'
 import { ConfirmDialog } from '../../probability/ConfirmDialog'
 import { LabScoreSheet } from '../../probability/LabScoreSheet'
@@ -179,6 +183,30 @@ const ashMenuRows = (ask: (label: string) => void, play: (label: string) => () =
   ]
 }
 
+/** El asa de una hoja de abajo (la de verdad, con su arrastre) en un marco del tamaño de una mesa: la hoja se baja y se sube adentro del marco, no en la pantalla. */
+function LowerSample() {
+  const panelRef = useRef<HTMLElement | null>(null)
+  const drag = useSheetDrag(panelRef)
+  const title = `${PILE_TITLES.gy} · 6`
+
+  return (
+    <div className="relative h-80 w-full overflow-hidden rounded-card border border-border-subtle bg-background">
+      <p className="m-0 p-3 text-micro text-soft">El campo y la mano van acá atrás: no se mueven.</p>
+      <section ref={panelRef} aria-label={title} style={drag.style} className="absolute inset-x-0 bottom-0 flex h-56 flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background shadow-overlay">
+        <SheetHandle drag={drag} label={title} className="bg-surface-raised">
+          <header className="border-b border-border-subtle bg-surface-raised pb-2.5 pl-3 pr-2">
+            <p className={cx('m-0', overline)}>{t('practice.mat.name')}</p>
+            <Heading level="section">{title}</Heading>
+          </header>
+        </SheetHandle>
+        <p inert={drag.lowered} className="m-0 p-3 text-body text-muted">
+          Lo de adentro (lo buscado, lo elegido, el scroll, la pregunta que espera) queda como estaba mientras está bajada.
+        </p>
+      </section>
+    </div>
+  )
+}
+
 /** Diálogos y avisos: se abren desde acá, tal cual se ven en la app. */
 export function DialogsSection() {
   const [size, setSize] = useState<(typeof SIZES)[number] | null>(null)
@@ -295,6 +323,17 @@ export function DialogsSection() {
         <Button size="sm" onClick={() => setPileSample('plain')}>
           Abrir el cementerio
         </Button>
+      </Specimen>
+
+      <Specimen
+        title="Hoja que se baja"
+        note={
+          <>
+            En el celular, el visor de una pila y las hojas del duelo automático (elegir cartas, ordenar, opciones: <Tag>Modal lowerable</Tag>) llevan un asa arriba (<Tag>ui/SheetHandle.tsx</Tag>, <Tag>app/use-sheet-drag.ts</Tag>). Toda la franja de arriba es el asa: arrastrala para abajo (o tocala) y la hoja queda como una tira con su título, sin cerrarse, para ver la mano; arrastrala para arriba (o tocá la tira) y vuelve como estaba. Bajada, los toques pasan a la mesa y lo de adentro queda inerte.
+          </>
+        }
+      >
+        <LowerSample />
       </Specimen>
 
       <Specimen title="Elegir varias: dos elegidas" note={<>Cada elegida lleva un aro ámbar y su número de orden (el orden se usa: arriba del deck, a la mano). La mira del Target y el aro conviven. Mayús+clic elige el tramo; Escape sale del modo y, otra vez, cierra el visor.</>}>
