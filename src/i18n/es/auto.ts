@@ -1,6 +1,6 @@
 /** El duelo automático (beta): las preguntas del núcleo de reglas, la barra, la línea del registro, la carga, los errores, el fin y la entrada. */
 export const auto = {
-  // La entrada: el interruptor del modo Solo, en las reglas de la sala.
+  // La entrada: el interruptor del lobby de Jugar, debajo de las baldosas.
   'auto.entry.switch': 'Duelo automático (beta)',
   'auto.entry.hint': 'Las reglas las aplica el núcleo. Jugás vos; el rival no juega (todavía).',
   // El rival pasivo, dicho en la portada de carga y en «Más opciones».
@@ -96,4 +96,9 @@ export const auto = {
   'auto.end.deckOutLose': 'No pudiste robar: te quedaste sin deck.',
   'auto.end.effectWin': 'Ganaste por el efecto de una carta.',
   'auto.end.effectLose': 'Perdiste por el efecto de una carta.',
+
+  // El interruptor del lobby en un navegador que no puede correr el núcleo, y volver a la mesa manual desde «Más opciones».
+  'auto.entry.unsupported': 'Tu navegador no puede correr el motor de reglas.',
+  'auto.bar.manual': 'Jugar en modo manual',
+  'auto.bar.manualHint': 'Apaga las reglas automáticas y abre la mesa manual con tu mismo deck.',
 } as const

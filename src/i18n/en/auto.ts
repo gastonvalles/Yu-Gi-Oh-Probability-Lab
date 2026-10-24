@@ -2,7 +2,7 @@ import type { auto as es } from '../es/auto'
 import type { Translated } from '../types'
 
 export const auto: Translated<typeof es> = {
-  // The entry: the Solo mode switch, in the room rules.
+  // The entry: the switch in the Play lobby, below the tiles.
   'auto.entry.switch': 'Automatic duel (beta)',
   'auto.entry.hint': "The rules engine applies the rules. You play; the opponent doesn't (yet).",
   // The passive opponent, said on the loading cover and in «More options».
@@ -97,4 +97,9 @@ export const auto: Translated<typeof es> = {
   'auto.end.deckOutLose': "You couldn't draw: your deck ran out.",
   'auto.end.effectWin': 'You won by a card effect.',
   'auto.end.effectLose': 'You lost by a card effect.',
+
+  // The lobby switch in a browser that can't run the engine, and going back to the manual table from «More options».
+  'auto.entry.unsupported': "Your browser can't run the rules engine.",
+  'auto.bar.manual': 'Play in manual mode',
+  'auto.bar.manualHint': 'Turns off the automatic rules and opens the manual table with the same deck.',
 }

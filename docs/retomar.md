@@ -77,7 +77,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 ## 6. Pendiente
 
 **Abierto**
-- **Duelos automáticos (capa 4):** «Jugar solo automático» (beta, `?auto=1`) juega la mesa de siempre contra el núcleo real y un rival pasivo (`docs/duelos-automaticos.md`). Falta: cerrar el espejo del rival del adaptador, ir segundo, handtraps y combos con el núcleo y el duelo por enlace.
+- **Duelos automáticos (capa 4):** «Jugar solo automático» (beta; el interruptor del lobby de Jugar, apagado de entrada) juega la mesa de siempre contra el núcleo real y un rival pasivo (`docs/duelos-automaticos.md`). Falta: cerrar el espejo del rival del adaptador, ir segundo, handtraps y combos con el núcleo y el duelo por enlace.
 - **Handtraps en tableta:** por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`) aunque el campo sea ancho;
   se puede escalar entre 640 y 1100 px.
 - **Links y Extra Deck en la mesa:** un Link en la zona de Mágicas y Trampas todavía ofrece «Poner boca abajo»

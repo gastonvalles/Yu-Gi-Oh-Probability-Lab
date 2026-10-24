@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
-import { useAutoPrefs } from '../../app/auto-prefs'
+import { canRunAuto, useAutoPrefs } from '../../app/auto-prefs'
 import { clearPlayReturn, readPlayReturn } from '../../app/play-return'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
@@ -153,9 +153,9 @@ export function DeckModeScreen() {
     systemRuleNames: controller.probability.systemRuleNames,
     hasCompletedClassification: hasCompletedRoleStep,
   })
-  // El duelo automático (beta): con la bandera y el interruptor de Jugar → Solo, «Entrenar solo» abre la mesa contra el núcleo de reglas en vez de la práctica.
+  // El duelo automático (beta): con el interruptor del lobby de Jugar prendido (y un navegador que pueda correr el núcleo), «Entrenar solo» abre la mesa contra el núcleo de reglas en vez de la práctica.
   const autoPrefs = useAutoPrefs()
-  const autoSolo = autoPrefs.flag && autoPrefs.duel
+  const autoSolo = autoPrefs.duel && canRunAuto()
   // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
