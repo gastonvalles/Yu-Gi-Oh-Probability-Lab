@@ -13,6 +13,7 @@ import {
   type HandtrapConfig,
   type HandtrapPick,
 } from '../../app/handtraps'
+import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { useCardHits } from '../../app/use-card-hits'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -66,6 +67,26 @@ export function HandtrapsRow() {
           setChoosing(false)
         }}
       />
+    </div>
+  )
+}
+
+/**
+ * «Duelo automático (beta)» en las reglas del modo Solo: con él, «Entrenar solo» abre la mesa jugada contra el núcleo de reglas en vez de la práctica de siempre. Sólo se ve con la
+ * bandera de la beta (`?auto=1`, `app/auto-prefs.ts`): hasta que se decida la licencia del núcleo nadie más lo tiene. Se recuerda en el navegador.
+ */
+export function AutoDuelRow() {
+  const prefs = useAutoPrefs()
+
+  if (!prefs.flag) return null
+
+  return (
+    <div className="flex items-center justify-between gap-3 sm:col-span-2">
+      <span className="grid min-w-0 gap-0.5">
+        <span className="text-body font-semibold text-foreground">{t('auto.entry.switch')}</span>
+        <span className="text-micro text-soft">{t('auto.entry.hint')}</span>
+      </span>
+      <Switch checked={prefs.duel} onChange={(on) => setAutoPref('duel', on)} label={t('auto.entry.switch')} />
     </div>
   )
 }

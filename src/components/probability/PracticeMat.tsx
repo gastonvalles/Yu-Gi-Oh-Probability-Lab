@@ -48,6 +48,7 @@ import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, 
 import { supportsAdditiveAnimation } from '../../app/motion'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
+import type { AutoLink } from '../../app/auto/ask-ui'
 import { playSfx } from '../../app/sfx'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { setDuelFullscreen, toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
@@ -210,6 +211,8 @@ export interface DuelMatLink {
   rivalViewing?: boolean
   /** El reloj de turnos: va en el centro del campo, entre las dos Zonas Extra (la casilla `p2`, que en un duelo no lleva nada). */
   clock?: ReactNode
+  /** El duelo automático: las jugadas las decide el núcleo de reglas y la mesa sólo contesta sus preguntas (los menús, las casillas y las cartas que ofrece); nada se arrastra, se mantiene ni se despacha. */
+  auto?: AutoLink
 }
 
 interface PracticeMatProps {
@@ -1174,6 +1177,8 @@ export function PracticeMat({
   )
 
   const pickZone = (zone: MatSpot, index: number) => {
+    // En automático la casilla la pregunta el núcleo: tocarla contesta.
+    if (duel?.auto?.zonePick) return duel.auto.zonePick.onPick(zone, index)
     // Invocando desde el Extra, tocar una casilla libre invoca ahí con los materiales que haya (o sin ninguno).
     if (picking?.kind === 'materials') {
       if (!picking.zone && (zone === 'mz' || zone === 'emz')) summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, { zone, index })
@@ -1290,6 +1295,9 @@ export function PracticeMat({
         onPeek({ name, card: apiCard })
       }
 
+      // En automático una carta que la pregunta ofrece se elige con el toque; una con jugadas legales abre su menú; las demás sólo se muestran en el detalle.
+      if (duel?.auto) return duel.auto.cardPick?.eligible.has(id) ? duel.auto.cardPick.onToggle(id) : duel.auto.itemsFor(id) ? setMenu({ kind: 'card', id, rect }) : undefined
+
       // Poniendo o quitando contadores: tocar una carta del campo suma o resta uno y se sigue; lo demás no hace nada.
       if (counterMode !== null) {
         const where = locateCard(state, id)
@@ -1318,7 +1326,7 @@ export function PracticeMat({
     },
     // pickTribute y pickMaterial leen `picking` y `state` del render actual.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picking, state, counterMode, cardOf, onPeek],
+    [picking, state, counterMode, cardOf, onPeek, duel?.auto],
   )
 
   /** Soltar una carta de una pila en una zona libre: el menú ofrece lo que la saca ahí (si es una sola jugada, sale así) y la carta se queda en la zona mientras se elige. */
@@ -1348,6 +1356,8 @@ export function PracticeMat({
 
   const handleDrop = useCallback(
     (source: MatDragSource, target: MatDropTarget | null) => {
+      // En automático nada se juega arrastrando (la mano sólo se reordena, que es local).
+      if (duel?.auto) return
       // Arrastrar el deck es robar: soltado fuera de toda zona (o en la mano, abajo) roba la carta del tope. Lo demás, soltado ahí, no hace nada.
       if (!target) {
         if (source.id === DECK_TOP && state.deck.length > 0) onDispatch({ type: 'draw', count: 1 })
@@ -1415,7 +1425,7 @@ export function PracticeMat({
       const pos = where.kind === 'spot' ? where.placed.pos : 'atk'
       onDispatch({ type: 'place', id: source.id, zone: target.spot, index: target.index, pos })
     },
-    [state, onDispatch, kindOf, dropInto],
+    [state, onDispatch, kindOf, dropInto, duel?.auto],
   )
 
   const handleTap = useCallback(
@@ -1428,8 +1438,9 @@ export function PracticeMat({
         return
       }
 
-      // Tocar el deck es buscar en él: abre el visor (vacío, si no quedan cartas, como las otras pilas). Las demás opciones salen manteniéndolo apretado o con el teclado.
+      // Tocar el deck es buscar en él: abre el visor (vacío, si no quedan cartas, como las otras pilas). Las demás opciones salen manteniéndolo apretado o con el teclado. En automático el deck no se mira (información oculta).
       if (source.id === DECK_TOP) {
+        if (duel?.auto) return
         setPicking(null)
         setMenu(null)
         setViewer('deck')
@@ -1438,7 +1449,7 @@ export function PracticeMat({
 
       openCard(source.id, rect)
     },
-    [openCard],
+    [openCard, duel?.auto],
   )
 
   /**
@@ -1451,6 +1462,7 @@ export function PracticeMat({
   const handleHold = useCallback(
     (source: MatDragSource, rect: DOMRect) => {
       if (source.id === DECK_TOP) {
+        if (duel?.auto) return false
         setPicking(null)
         setMenu({ kind: 'deck', rect })
         return true
@@ -1461,7 +1473,7 @@ export function PracticeMat({
       if (action) play(action)
       return action !== null
     },
-    [holdPlay, play],
+    [holdPlay, play, duel?.auto],
   )
 
   // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.
@@ -1508,6 +1520,11 @@ export function PracticeMat({
 
   const menuItems: MenuItem[] = useMemo(() => {
     if (!menu) return []
+
+    // En automático los ítems son los que el núcleo ofrece (`ask-ui`): la de una carta, las fases; elegir uno cierra el menú y contesta. El deck y el lote no tienen menú.
+    const closing = (item: MenuItem): MenuItem => ({ ...item, onSelect: () => { setMenu(null); item.onSelect() }, children: item.children?.map(closing) })
+
+    if (duel?.auto) return menu.kind === 'phases' ? duel.auto.phaseItems.map(closing) : menu.kind === 'card' ? (duel.auto.itemsFor(menu.id) ?? []).map(closing) : []
 
     // Las fases: elegir una es pasar a ella (la Draw Phase después de la End Phase es pasar el turno). Sólo lo hace quien tiene el turno (el botón no abre si no es el tuyo).
     if (menu.kind === 'phases') {
@@ -1734,7 +1751,7 @@ export function PracticeMat({
   const materialZones = picking?.kind === 'materials' && !picking.zone ? freeTargets(state, monsterZones(true), duel?.rivalEmz) : []
   // Eligiendo la zona, los Sacrificios o materiales ya confirmados siguen marcados: su zona se libera y también se puede elegir.
   const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
-  const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
+  const chosenLabel = duel?.auto?.cardPick ? t('auto.pick.chosen') : picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
   // Las cartas con la mira: las que marqué yo y las que marcó el rival (de las pilas enteras y de la mano, también se marca lo de adentro).
   const rivalMarks = duel?.marksOnMine
   // Las cartas que brillan: cuando el rival pregunta si hacés algo antes, las que pueden responder (ámbar); si no, las de la salida o el problema del Lab.
@@ -1756,9 +1773,9 @@ export function PracticeMat({
     const drop = dropIdOf(spot, index)
     const label = zoneLabelOf(spot, index)
     const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
-    const pickableZone = (picking?.kind === 'zone' && picking.targets.some((target) => target.zone === spot && target.index === index)) || materialZones.some((target) => target.zone === spot && target.index === index)
+    const pickableZone = (picking?.kind === 'zone' && picking.targets.some((target) => target.zone === spot && target.index === index)) || materialZones.some((target) => target.zone === spot && target.index === index) || (duel?.auto?.zonePick?.targets.some((target) => target.zone === spot && target.index === index) ?? false)
     const pickableTribute = choosingOnField && placed !== null && tributeCandidates.includes(placed.id)
-    const chosen = placed !== null && (((picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.chosen.includes(placed.id)) || leaving.includes(placed.id))
+    const chosen = placed !== null && (((picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.chosen.includes(placed.id)) || leaving.includes(placed.id) || (duel?.auto?.cardPick?.chosen.includes(placed.id) ?? false))
 
     return (
       <div
@@ -1903,8 +1920,11 @@ export function PracticeMat({
       return { phase: action.type === 'phase', turnStart: current.turn !== before.turn, tone: stepTone(before, action) }
     })
   }, [session.replay, session.initial, session.actions])
+  // En automático lo que falta elegir lo dice la pregunta del núcleo (una casilla, cartas); «Listo» y «Cancelar» son los suyos.
+  const autoPick = duel?.auto?.cardPick ?? null
   const pickingText =
-    picking?.kind === 'tributes'
+    duel?.auto?.zonePick?.label ?? autoPick?.label ??
+    (picking?.kind === 'tributes'
       ? t('practice.mat.pickTributes', { count: picking.required, chosen: picking.chosen.length })
       : picking?.kind === 'materials'
         ? t(isDesktop && picking.chosen.length === 1 ? 'practice.mat.pickMaterialsOne' : 'practice.mat.pickMaterials', { count: picking.chosen.length })
@@ -1912,9 +1932,9 @@ export function PracticeMat({
           ? t('practice.mat.pickZone', { label: picking.label })
           : counterMode !== null
             ? t(counterMode > 0 ? 'practice.mat.pickCounterAdd' : 'practice.mat.pickCounterRemove')
-            : null
+            : null)
   // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
-  const choosing = picking !== null || counterMode !== null
+  const choosing = picking !== null || counterMode !== null || pickingText !== null
 
   // Deshacer, la ficha (o los contadores) y la lista de pasos: arriba en la práctica; en un duelo, abajo, donde llega el pulgar.
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, arriba, sin caja.
@@ -1950,7 +1970,7 @@ export function PracticeMat({
   // tiene el turno; en la práctica el turno siempre es tuyo.
   const phaseNow = duel ? duel.phase : state.phase
   const myTurn = duel ? duel.myTurn : true
-  const passTurn = () => play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) })
+  const passTurn = () => (duel?.auto ? duel.auto.endTurn?.() : play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) }))
   // El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos).
   // Eligiendo se apoya sobre la fila de abajo que ese momento no se usa (`absolute inset-0`): no suma ni quita alto. En un duelo de escritorio es una cápsula centrada que sí recibe toques (la barra de abajo no los ataja: el medio es de la mano).
   const status = (
@@ -1966,10 +1986,12 @@ export function PracticeMat({
       {pickingText ? (
         <>
           <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-tight text-accent">{pickingText}</span>
+          {duel?.auto ? (autoPick?.cancel ? <Button variant="tertiary" size="sm" className="px-3" onClick={autoPick.cancel}>{t('common.cancel')}</Button> : null) : (
           <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="px-3" onClick={() => { setPicking(null); setCounterMode(null) }}>
             {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
           </Button>
-          {picking?.kind === 'materials' ? (
+          )}
+          {autoPick?.done ? <Button variant="primary" size="sm" className="px-3" onClick={autoPick.done.onSelect}>{autoPick.done.label}</Button> : picking?.kind === 'materials' ? (
             <Button variant="primary" size="sm" className="px-3" onClick={confirmMaterials}>
               {t('practice.mat.confirm')}
             </Button>
@@ -2105,7 +2127,7 @@ export function PracticeMat({
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {/* La fila del medio, de izquierda a derecha: el reloj de turnos (`p1`, entre el Banish del rival y la Zona Extra de monstruos), el + al medio del campo (`p2`, entre las dos Zonas Extra; también en la práctica) y el botón de la fase de ahora (`p3`), que al tocarlo muestra todas (Gastón, 2026-10-19). */}
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
-          <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{tokenButton}</div>
+          <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel?.auto ? null : tokenButton}</div>
           <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
               <button
                 type="button"
@@ -2406,10 +2428,11 @@ export function PracticeMat({
         )}
       >
         {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
+        {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
         <PileViewer
-          pile={viewer}
+          pile={duel?.auto?.viewer?.pile ?? viewer}
           hidden={covered}
-          ids={viewer ? state[viewer] : []}
+          ids={duel?.auto?.viewer?.ids ? [...duel.auto.viewer.ids] : viewer ? state[viewer] : []}
           info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
           targeted={targetedIds}
           // Tocar una carta del visor (también eligiendo varias) la muestra, fija, en el detalle de la izquierda, y pasarle el mouse también (mientras no haya otra fija), como una de la mano o del campo.
@@ -2431,15 +2454,15 @@ export function PracticeMat({
                 }
               : undefined
           }
-          onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
+          onPick={(id, rect) => (duel?.auto ? openCard(id, rect) : setMenu({ kind: 'card', id, rect }))}
           // Elegir varias: «Elegir jugada» abre el menú del lote, pegado al botón (o la hoja, en el celular); la jugada cierra el visor.
-          many={{
+          many={duel?.auto ? duel.auto.viewer?.many : {
             label: () => t('practice.many.choosePlay'),
             onPick: (ids, rect) => {
               if (viewer) setMenu({ kind: 'batch', pile: viewer, ids, rect })
             },
           }}
-          onClose={closeViewer}
+          onClose={duel?.auto?.viewer ? (duel.auto.cardPick?.cancel ?? duel.auto.cardPick?.done?.onSelect ?? (() => {})) : closeViewer}
         />
         {rivalViewer}
       </div>

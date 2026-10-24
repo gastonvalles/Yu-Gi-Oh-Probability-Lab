@@ -1,4 +1,5 @@
 import type { Messages } from '../types'
+import { auto } from './auto'
 import { builder } from './builder'
 import { catalog } from './catalog'
 import { common } from './common'
@@ -13,6 +14,6 @@ import { rules } from './rules'
 import { search } from './search'
 import { shell } from './shell'
 
-export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps }
+export const areas = { common, shell, deck, search, roles, rules, lab, builder, practice, meta, catalog, duel, handtraps, auto }
 
-export const en: Messages = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps }
+export const en: Messages = { ...common, ...shell, ...deck, ...search, ...roles, ...rules, ...lab, ...builder, ...practice, ...meta, ...catalog, ...duel, ...handtraps, ...auto }

@@ -76,6 +76,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 ## 6. Pendiente
 
 **Abierto**
+- **Duelos automáticos (capa 4):** «Jugar solo automático» (beta, `?auto=1`) juega la mesa de siempre contra el núcleo real y un rival pasivo (`docs/motor-de-cartas.md`). Falta: sus datos en producción (`/auto-data`), cerrar el espejo del rival del adaptador, ir segundo, handtraps y combos con el núcleo, una muestra de cada pieza en `/playground` y el duelo por enlace.
 - **Handtraps en tableta:** por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`) aunque el campo sea ancho;
   se puede escalar entre 640 y 1100 px.
 - **Links y Extra Deck en la mesa:** un Link en la zona de Mágicas y Trampas todavía ofrece «Poner boca abajo»
@@ -104,8 +105,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
   `Skeleton still` en `CardArt`) y la entrada `sheet-in` de la hoja de una carta corre en el hilo principal sin que se sepa por qué (el `box-shadow` animado que se
   vio es del foco del primer botón); el costo de un toque en la mesa es sobre todo armar esa hoja (~250 elementos, ~25 ms a ×4). `startup-imports.test.ts` cuida lo
   que la entrada no debe importar.
-- **Chicos:** el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene una muestra del parallax; el
-  editor de la carta de Roles se sale por la derecha a 390 px (sin verificar).
+- **Chicos:** el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene una muestra del parallax.
 
 **Sin probar donde importa**
 - **En un teléfono real** (todo se midió emulado): el toque largo de la mesa en iOS y en Android (el de CDP no dispara
@@ -122,8 +122,6 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 - **Preguntarle al rival si responde:** qué otras herramientas suma (más emojis, por ejemplo); hoy están 🤔, 👍 y el chat.
 
 **Esperan una decisión de Gastón**
-- **Duelos automáticos (capa 4):** la capa 3 se descartó y avanza el núcleo real (`ocgcore`), con la licencia ya decidida (arriba). Falta cerrar el espejo del rival del adaptador, «Jugar solo automático (beta)» con el núcleo en un
-  Worker, deshacer, combos y handtraps, y el duelo por enlace (`docs/motor-de-cartas.md`).
 - **`motion`:** sería una dependencia nueva (un motor de arrastre y vuelos, empezando en `/playground` con un solo gesto); el
   checkout de su PC la tiene sin commitear. Hasta entonces, las animaciones 3D de hoy se mantienen.
 

@@ -19,6 +19,8 @@ describe('el protocolo de los duelos automáticos', () => {
     expect(parseAutoCommand(JSON.stringify(create))).toEqual(create)
     expect(parseAutoCommand({ t: 'answer', askId: 3, answer: { type: 'select_card', indices: [0, 2], extra: 1 } })).toEqual({ t: 'answer', askId: 3, answer: { type: 'select_card', indices: [0, 2] } })
     expect(parseAutoCommand({ t: 'answer', askId: 3, answer: { type: 'select_chain', index: null } })).toEqual({ t: 'answer', askId: 3, answer: { type: 'select_chain', index: null } })
+    // Crear con respuestas ya dadas: el duelo se re-simula hasta ahí (cancelar en otro Worker).
+    expect(parseAutoCommand({ ...create, answers: [{ type: 'select_chain', index: null, x: 1 }] })).toEqual({ ...create, answers: [{ type: 'select_chain', index: null }] })
     expect(parseAutoCommand({ t: 'rewind', to: 0 })).toEqual({ t: 'rewind', to: 0 })
     expect(parseAutoCommand({ t: 'destroy', x: 1 })).toEqual({ t: 'destroy' })
   })
@@ -34,6 +36,8 @@ describe('el protocolo de los duelos automáticos', () => {
       { ...create, players: [create.players[0]] },
       { ...create, decks: [create.decks[0], { main: [1], extra: [], hand: [1, 2] }] },
       { ...create, decks: [create.decks[0], { main: [0], extra: [], hand: [] }] },
+      { ...create, answers: [{ type: 'select_yesno', yes: 1 }] },
+      { ...create, answers: {} },
       { t: 'answer', askId: 0, answer: { type: 'select_yesno', yes: true } },
       { t: 'answer', askId: 1, answer: { type: 'select_yesno', yes: 1 } },
       { t: 'answer', askId: 1, answer: { type: 'select_nada' } },

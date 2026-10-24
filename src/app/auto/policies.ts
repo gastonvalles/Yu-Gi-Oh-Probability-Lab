@@ -15,7 +15,7 @@ const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets',
 const FIELD_ZONES = 4
 
 /** Las casillas libres de una pregunta de casillas (el bit en 0 = libre), como las pide la respuesta: jugador absoluto, lugar y secuencia. */
-function freePlaces(ask: AskOf<'select_place' | 'select_disfield'>) {
+export function freePlaces(ask: AskOf<'select_place' | 'select_disfield'>) {
   const places: { player: Seat; location: number; sequence: number }[] = []
 
   for (let bit = 0; bit < FIELD_ZONES * 8; bit += 1) {

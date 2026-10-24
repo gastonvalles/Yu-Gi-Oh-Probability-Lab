@@ -10,7 +10,7 @@ import type { MatAction } from './practice-mat'
  * Lo último que se vio de algo, para sonar sólo lo que cambia después: `undefined` hasta la primera vez que hay algo que mirar (lo que ya estaba al abrir la pantalla o al reconectar
  * no suena) y otra vez `undefined` si deja de haberlo.
  */
-function useChange<T>(value: T | undefined, onChange: (before: T, now: T) => void) {
+export function useChange<T>(value: T | undefined, onChange: (before: T, now: T) => void) {
   const seen = useRef<T | undefined>(undefined)
 
   useEffect(() => {

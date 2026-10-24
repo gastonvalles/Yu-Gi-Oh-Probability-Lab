@@ -1,6 +1,10 @@
 /// <reference types="vitest" />
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gzipSync } from 'node:zlib'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { configDefaults } from 'vitest/config'
@@ -56,6 +60,101 @@ function liveApiDev(): Plugin {
   }
 }
 
+/**
+ * Duelos automáticos en desarrollo (sólo `vite serve`: nada de esto llega al build). Sirve los datos del núcleo desde las carpetas de
+ * `npm run sync:core` (`CORE_DATA_DIR` con `cards.cdb` y `CARD_SCRIPTS_DIR` con los scripts; ninguna está en el repo) con las rutas que
+ * lee `httpSource` (`src/app/auto/auto-data.ts`): `/auto-data/manifest`, `/auto-data/cards?codes=…` y `/auto-data/script/<nombre>`
+ * (404 si no existe); y la consola de pruebas `/__auto/` (`src/app/auto/dev-console.ts`). Las respuestas van con gzip, como las daría un CDN.
+ */
+function autoDataDev(): Plugin {
+  return {
+    name: 'auto-data-dev',
+    apply: 'serve',
+    configureServer(server) {
+      const dataDir = process.env.CORE_DATA_DIR ?? join(tmpdir(), 'ygo-lab-core-data')
+      const scriptsDir = process.env.CARD_SCRIPTS_DIR ?? join(tmpdir(), 'ygo-lab-card-scripts')
+      const cdb = join(dataDir, 'cards.cdb')
+      // `node:sqlite` se carga recién al primer pedido (avisa que es experimental en Node 22).
+      type Db = { prepare: (sql: string) => { setReadBigInts: (on: boolean) => void; all: (...params: unknown[]) => Record<string, unknown>[] } }
+      let db: Promise<Db> | null = null
+      const open = () => (db ??= import('node:sqlite').then(({ DatabaseSync }) => new DatabaseSync(cdb, { readOnly: true }) as unknown as Db))
+      const rows = async (sql: string, ...params: unknown[]) => {
+        const query = (await open()).prepare(sql)
+
+        query.setReadBigInts(true)
+        return query.all(...params)
+      }
+      // Como `scriptStore` de las pruebas: las cartas en `official/` y después `pre-release/`; las bibliotecas en la raíz y `unofficial/`.
+      const scriptFile = (name: string) => (/^c\d+\.lua$/.test(name) ? ['official', 'pre-release'] : ['.', 'unofficial']).map((dir) => join(scriptsDir, dir, name)).find((file) => existsSync(file))
+      const reply = (request: { headers: Record<string, string | string[] | undefined> }, response: import('node:http').ServerResponse, status: number, type: string, body: string) => {
+        response.statusCode = status
+        response.setHeader('Content-Type', type)
+        response.setHeader('Cache-Control', 'no-cache')
+        if (!/\bgzip\b/.test(String(request.headers['accept-encoding'] ?? ''))) return response.end(body)
+        response.setHeader('Content-Encoding', 'gzip')
+        response.end(gzipSync(body))
+      }
+      const u64 = (value: unknown) => BigInt.asUintN(64, BigInt(value as bigint)).toString()
+      let manifest: Promise<string> | null = null
+      const buildManifest = async () => {
+        const head = join(scriptsDir, '.git', 'HEAD')
+        const ref = existsSync(head) ? readFileSync(head, 'utf8').trim() : ''
+        const refFile = ref.startsWith('ref: ') ? join(scriptsDir, '.git', ref.slice(5)) : ''
+        const commit = refFile && existsSync(refFile) ? readFileSync(refFile, 'utf8').trim() : ref
+        const stat = statSync(cdb)
+        const tokens = (await rows('select id from datas where (type & 16384) != 0 order by id')).map((row) => Number(row.id))
+        // El rival pasivo: los primeros 40 Monstruos Normales (TCG u OCG, sin arte alternativo) que no tienen script.
+        const normals = (await rows('select id from datas where type = 17 and alias = 0 and (ot & 3) != 0 order by id')).map((row) => Number(row.id))
+        const filler = normals.filter((code) => !scriptFile(`c${code}.lua`)).slice(0, 40)
+
+        return JSON.stringify({ version: createHash('sha1').update(`${stat.size}:${stat.mtimeMs}:${commit}`).digest('hex').slice(0, 12), tokens, filler })
+      }
+
+      server.middlewares.use('/auto-data', (request, response) => {
+        void (async () => {
+          try {
+            const url = new URL(request.url ?? '/', 'http://localhost')
+            const script = /^\/script\/([\w.-]+\.lua)$/.exec(decodeURIComponent(url.pathname))
+
+            if (url.pathname === '/manifest') return reply(request, response, 200, 'application/json', await (manifest ??= buildManifest()))
+            if (url.pathname === '/cards') {
+              const codes = (url.searchParams.get('codes') ?? '').split(',').filter((code) => /^\d{1,10}$/.test(code)).slice(0, 2000).map(Number)
+              // Con el nombre van los rótulos de los efectos (`str1`…`str16` de `texts`: lo que `aux.Stringid` nombra en un menú), sin los vacíos del final.
+              const strs = Array.from({ length: 16 }, (_, i) => `t.str${i + 1}`).join(', ')
+              const found = await rows(`select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, t.name, ${strs} from datas d left join texts t on t.id = d.id where d.id in (select value from json_each(?))`, JSON.stringify(codes))
+              const out = found.map((row) => {
+                const texts = Array.from({ length: 16 }, (_, i) => (typeof row[`str${i + 1}`] === 'string' ? (row[`str${i + 1}`] as string) : ''))
+
+                while (texts.length > 0 && texts[texts.length - 1] === '') texts.pop()
+
+                return { id: Number(row.id), alias: Number(row.alias), setcode: u64(row.setcode), type: Number(row.type), atk: Number(row.atk), def: Number(row.def), level: Number(row.level), race: u64(row.race), attribute: Number(row.attribute), ...(typeof row.name === 'string' ? { name: row.name } : {}), ...(texts.length > 0 ? { strs: texts } : {}) }
+              })
+
+              return reply(request, response, 200, 'application/json', JSON.stringify(out))
+            }
+            const file = script ? scriptFile(script[1]!) : undefined
+
+            if (file) return reply(request, response, 200, 'text/plain; charset=utf-8', readFileSync(file, 'utf8'))
+            reply(request, response, 404, 'text/plain', 'not found')
+          } catch (error) {
+            reply(request, response, 500, 'text/plain', String(error))
+          }
+        })()
+      })
+
+      server.middlewares.use('/__auto', (request, response, next) => {
+        if (new URL(request.url ?? '/', 'http://localhost').pathname !== '/') return next()
+        const html = '<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Auto duel console</title></head><body><script type="module" src="/src/app/auto/dev-console.ts"></script></body></html>'
+
+        void server.transformIndexHtml(request.originalUrl ?? '/__auto/', html).then((body) => {
+          response.setHeader('Content-Type', 'text/html; charset=utf-8')
+          response.end(body)
+        }, next)
+      })
+    },
+  }
+}
+
 /** Aviso de autoría al principio de cada archivo JS del build. Se agrega después de minificar, así ningún paso lo borra. */
 function copyrightBanner(): Plugin {
   return {
@@ -103,7 +202,7 @@ const SLOW = 'src/__tests__/**/*.slow.test.ts'
 const SLOW_RUN = process.env.npm_lifecycle_event === 'test:auto'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), liveApiDev()],
+  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), liveApiDev(), autoDataDev()],
   preview: {
     headers: readVercelHeaders(),
     proxy: CARD_IMAGE_PROXY,

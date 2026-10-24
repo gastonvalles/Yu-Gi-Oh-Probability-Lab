@@ -17,6 +17,8 @@ import createCore, {
   type OcgResponse,
   type SelectFieldPlace,
 } from 'ocgcore-wasm'
+import { preloadedReaders } from './auto-data'
+import type { TransportFactory } from './auto-session'
 import { needsScript, scriptName, teamOrder } from './deck-map'
 import { askFor, eventFor, statsFor } from './referee'
 import {
@@ -184,6 +186,40 @@ export function toResponse(answer: CoreAnswer): OcgResponse {
       return { type: R.ANNOUNCE_NUMBER, value: answer.index }
     case 'rock_paper_scissors':
       return { type: R.ROCK_PAPER_SCISSORS, value: answer.value as 1 | 2 | 3 }
+  }
+}
+
+/**
+ * El anfitrión en el mismo proceso (pruebas y Node), como transporte de `auto-session.ts`: los mismos comandos y eventos que el Worker
+ * (`core-host.worker.ts`), de a uno y en orden. `onHost` deja ver el anfitrión (las pruebas consultan el estado real del núcleo).
+ */
+export function localTransport(core: HostOptions['core'], onHost?: (host: AutoHost) => void): TransportFactory {
+  return (data) => {
+    let listener: ((event: AutoEvent) => void) | null = null
+    let alive = true
+    const emit = (event: AutoEvent) => {
+      if (alive) listener?.(event)
+    }
+    const host = data.then((loaded) => {
+      const made = createAutoHost({ core, ...preloadedReaders(loaded, emit), emit })
+
+      onHost?.(made)
+      return made
+    })
+    // Si los datos no llegan, la sesión ya lo dice: los comandos no van a ningún lado.
+    let queue: Promise<unknown> = host.catch(() => {})
+
+    return {
+      send(command) {
+        queue = queue.then(async () => (alive ? (await host).handle(command) : undefined)).catch((error: unknown) => emit({ t: 'fault', kind: 'crash', message: `core host failed: ${error instanceof Error ? error.message : String(error)}` }))
+      },
+      onEvent: (next) => void (listener = next),
+      // Como el Worker al morir: lo que quede en la cola no corre y el duelo se libera.
+      terminate() {
+        alive = false
+        queue = queue.then(async () => (await host).handle({ t: 'destroy' })).catch(() => {})
+      },
+    }
   }
 }
 
@@ -401,7 +437,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
           answers.length = 0
           timings.length = 0
           hotScripts.length = 0
-          await start(command, [])
+          await start(command, command.answers ?? [])
           break
         // Una respuesta vieja (dos toques, una reconexión) se descarta en `give`: no es la de la pregunta pendiente.
         case 'answer':

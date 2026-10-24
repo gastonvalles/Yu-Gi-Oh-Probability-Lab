@@ -1,0 +1,99 @@
+/** El duelo automático (beta): las preguntas del núcleo de reglas, la barra, la línea del registro, la carga, los errores, el fin y la entrada. */
+export const auto = {
+  // La entrada: el interruptor del modo Solo, en las reglas de la sala.
+  'auto.entry.switch': 'Duelo automático (beta)',
+  'auto.entry.hint': 'Las reglas las aplica el núcleo. Jugás vos; el rival no juega (todavía).',
+  // El rival pasivo, dicho en la portada de carga y en «Más opciones».
+  'auto.rival.passive': 'El rival no juega: sólo recibe. Sirve para probar tus jugadas con las reglas de verdad.',
+
+  // La pregunta de sí o no del núcleo, en el medio de la mesa. Activar un efecto dice «Activar efecto» (`practice.menu.activateEffect`): el texto ya nombra la carta.
+  'auto.ask.effect': '¿Activás el efecto de {card}?',
+  'auto.ask.fallback': '¿Lo hacés?',
+  'auto.ask.skipEffect': 'No activar',
+  'auto.ask.yes': 'Hacerlo',
+  'auto.ask.no': 'No hacerlo',
+
+  // Las opciones del núcleo (una hoja): una opción, la posición, un número, Tipos o Atributos. «Declarar» es la palabra de las cartas.
+  'auto.options.option': 'Elegí una opción',
+  'auto.options.position': 'Elegí la posición',
+  'auto.options.number': 'Declará un número',
+  'auto.options.race': { one: 'Declará {count} Tipo', other: 'Declará {count} Tipos' },
+  'auto.options.attribute': { one: 'Declará {count} Atributo', other: 'Declará {count} Atributos' },
+  'auto.options.declare': 'Declarar',
+  // Las demás posiciones ya existen (`practice.menu.attack`, `defense`, `turnFaceDown`).
+  'auto.position.faceDownAttack': 'Boca abajo en ataque',
+
+  // Elegir cartas de una lista que no está en el campo (de varios lugares, o por código).
+  'auto.picker.title': 'Elegí cartas',
+  'auto.picker.cards': 'Cartas para elegir',
+  'auto.picker.choose': { one: 'Elegir {count} carta', other: 'Elegir {count} cartas' },
+  'auto.picker.status': '{chosen} de {max}',
+
+  // Ordenar cartas (el tope del deck).
+  'auto.sort.title': 'Ordená las cartas',
+  'auto.sort.hint': 'Tocalas en el orden en que van: la primera queda arriba.',
+  'auto.sort.done': 'Ordenar así',
+  'auto.sort.asIs': 'Dejar como está',
+
+  // Lo que se elige en la mesa (la línea de estado de abajo): casillas y cartas.
+  'auto.pick.zone': { one: 'Elegí {count} casilla', other: 'Elegí {count} casillas' },
+  'auto.pick.cards': { one: 'Elegí {count} carta', other: 'Elegí {count} cartas' },
+  'auto.pick.range': 'Elegí de {min} a {max} cartas',
+  'auto.pick.tribute': 'Sacrificios: {chosen} de {total}',
+  'auto.pick.sum': 'Niveles: {chosen} de {total}',
+  'auto.pick.counter': 'Contadores: {chosen} de {total}',
+  'auto.pick.attackTarget': 'Elegí a qué monstruo atacar',
+  'auto.pick.done': 'Listo',
+  'auto.pick.chosen': 'Elegida',
+  'auto.phase.notYet': 'Todavía no',
+
+  // La barra de arriba y «Más opciones».
+  'auto.bar.soundsHint': 'Las jugadas y las vidas.',
+  'auto.bar.chain': 'Respuestas',
+  'auto.bar.chainHint': 'Si te pregunta cuando podés responder a una cadena.',
+  'auto.bar.place': 'Casilla',
+  'auto.bar.placeHint': 'Dónde va cada carta: la elegís vos o va a la primera libre.',
+  'auto.bar.ask': 'Preguntar',
+  'auto.bar.never': 'Nunca',
+  'auto.bar.auto': 'Automática',
+  'auto.bar.restart': 'Reiniciar el duelo',
+  'auto.bar.restartHint': 'El mismo duelo desde el principio: las mismas cartas, en el mismo orden.',
+  // El ATK y la DEF de ahora en el detalle de la carta, cuando difieren de los impresos.
+  'auto.dock.now': 'ahora {value}',
+
+  // La línea del registro: lo que hace el núcleo, la cadena y los avisos que no frenan el duelo.
+  'auto.lane.thinking': 'El núcleo está resolviendo…',
+  'auto.lane.rivalChoosing': 'El rival está eligiendo',
+  'auto.lane.chainLink': 'Cadena {link}: {card}',
+  'auto.lane.chain': 'Cadena {link}: {card} responde a {to}',
+  'auto.lane.resolve': 'Se resuelve {card}',
+  'auto.lane.negated': 'Negada: {card}',
+  'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
+  'auto.lane.respondNow': 'Podés activar {cards} ahora',
+  'auto.lane.pass': 'No responder',
+  'auto.lane.mustActivate': 'Tenés que activar {cards}: tocala',
+  'auto.lane.autoZone': 'La casilla se eligió sola',
+  'auto.lane.unmapped': 'La mesa no puede mostrar: {what}',
+  'auto.lane.script': 'Falló el script de {card}: el duelo sigue.',
+  'auto.lane.error': 'Algo falló: {message}',
+
+  // La portada de carga.
+  'auto.loading.start': 'Preparando el duelo…',
+  'auto.loading.rules': 'Cargando las reglas de tus cartas… {done} de {total}',
+
+  // Los errores que no dejan jugar.
+  'auto.fault.rules': { one: 'A {count} carta le faltan sus reglas', other: 'A {count} cartas les faltan sus reglas' },
+  'auto.fault.rulesText': 'El núcleo no tiene sus datos o su script: con ellas el duelo automático no arranca.',
+  'auto.fault.manual': 'Jugar en modo manual',
+  'auto.fault.back': 'Volver al lobby',
+  'auto.fault.setup': 'No se pudo crear el duelo',
+  'auto.fault.crash': 'El núcleo se cayó',
+  'auto.fault.retry': 'Reintentar',
+
+  // El fin (el título y las vidas, con los de `duel.result.*`).
+  'auto.end.again': 'Jugar otra vez',
+  'auto.end.deckOutWin': 'El rival no pudo robar.',
+  'auto.end.deckOutLose': 'No pudiste robar: te quedaste sin deck.',
+  'auto.end.effectWin': 'Ganaste por el efecto de una carta.',
+  'auto.end.effectLose': 'Perdiste por el efecto de una carta.',
+} as const

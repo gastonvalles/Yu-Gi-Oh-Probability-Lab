@@ -110,6 +110,13 @@ export type LaneNotice =
   | { kind: 'passHeld' }
   /** El rival activó una carta o un efecto y estas cartas mías podrían responder (`app/mat-responders.ts`: avisa, no decide). */
   | { kind: 'chain'; card: string; /** El lugar del efecto que activó, si eligió uno entre varios. */ effect?: number; names: readonly string[] }
+  /** Un aviso ya armado (el duelo automático: la cadena, «No responder»): con botones se contesta y va enmarcado en ámbar; sin botones sólo informa. La principal va al final. */
+  | { kind: 'ask'; text: string; actions: ReadonlyArray<{ label: string; onSelect: () => void; primary?: boolean }> }
+  /** El otro lado está trabajando (el núcleo resuelve, el rival elige): el punto que late y, pasados `THINKING_CANCEL_MS`, «Cancelar» si se puede. */
+  | { kind: 'thinking'; /** Lo que dice, si no es «El núcleo está resolviendo…». */ text?: string; onCancel?: () => void }
+
+/** Cuánto espera «Cancelar» para aparecer mientras el núcleo resuelve: lo rápido no parpadea. */
+export const THINKING_CANCEL_MS = 1500
 
 /**
  * Lo que va en el lateral izquierdo debajo de las vidas (los avisos): se corre de lo que el campo agrandado se mete en el lateral (`--field-overhang`, lo mide la mesa), hasta dejarle 11 rem;
@@ -148,11 +155,32 @@ function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string):
       return t('duel.pass.held', { name })
     case 'chain':
       return lane.effect === undefined ? t('duel.chain.hint', { name, card: lane.card, cards: respondersText(lane.names) }) : t('duel.chain.hintEffect', { name, card: lane.card, n: lane.effect + 1, cards: respondersText(lane.names) })
+    case 'ask':
+      return lane.text
+    case 'thinking':
+      return lane.text ?? t('auto.lane.thinking')
   }
 }
 
+/** «Cancelar» de lo que se está resolviendo: aparece recién a los `THINKING_CANCEL_MS` (montado de nuevo, vuelve a esperar). */
+function ThinkingCancel({ onCancel }: { onCancel: () => void }) {
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShown(true), THINKING_CANCEL_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  return shown ? (
+    <Button variant="tertiary" size="sm" className="px-2" onClick={onCancel}>
+      {t('common.cancel')}
+    </Button>
+  ) : null
+}
+
 /** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo), tu pregunta de pasar de fase y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
-function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
+export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
   const place = rail ? 'flex-wrap py-2' : 'absolute inset-0 max-sm:pointer-events-auto'
   const clamp = rail ? '' : 'line-clamp-2'
 
@@ -165,10 +193,12 @@ function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rival
     )
   }
 
-  const asked = lane.kind === 'undoAsked'
+  // Lo que hay que contestar va enmarcado en ámbar.
+  const asked = lane.kind === 'undoAsked' || (lane.kind === 'ask' && lane.actions.length > 0)
 
   return (
     <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
+      {lane.kind === 'thinking' ? <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-info motion-safe:animate-pulse" /> : null}
       <span className={cx(clamp, 'min-w-0 flex-1')} title={laneText(lane, rivalName)}>
         {laneText(lane, rivalName)}
       </span>
@@ -182,12 +212,20 @@ function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rival
           </Button>
         </>
       ) : null}
+      {lane.kind === 'ask'
+        ? lane.actions.map((action) => (
+            <Button key={action.label} variant={action.primary ? 'primary' : 'tertiary'} size="sm" className={action.primary ? 'px-3' : 'px-2'} onClick={action.onSelect}>
+              {action.label}
+            </Button>
+          ))
+        : null}
+      {lane.kind === 'thinking' && lane.onCancel ? <ThinkingCancel onCancel={lane.onCancel} /> : null}
     </div>
   )
 }
 
 /** Los íconos sueltos de la barra de arriba (la vista, rendirse, el engranaje y salir): 40 px cada uno (36 en un celular angosto, 32 en uno de 320 px) para que entren con la hamburguesa, las vidas y el reloj. */
-const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
+export const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
 
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
