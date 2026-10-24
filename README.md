@@ -14,7 +14,7 @@ npm run preview        # sirve el build, sin los Cache-Control de vercel.json
 npm test               # Vitest
 npm run typecheck      # tipos de la app y de los tests
 npm run lint           # ESLint
-npm run test:auto      # el fuzz del núcleo de reglas (lento; pide `npm run sync:core` una vez; docs/motor-de-cartas.md)
+npm run test:auto      # el fuzz del núcleo de reglas (lento; pide `npm run sync:core` una vez; docs/duelos-automaticos.md)
 ```
 
 ## Datos
@@ -67,7 +67,8 @@ docs/               la documentación
 - `docs/ux-ui-guidelines.md`: cómo se lee un pedido de diseño y cómo se hace una mejora visual.
 - `docs/duelo.md`: el duelo con un amigo.
 - `docs/duelo-relay.md`: el relay del duelo: cómo probarlo y publicarlo.
-- `docs/motor-de-cartas.md`: el motor de cartas por capas y la medición del filtro Efecto.
+- `docs/motor-de-cartas.md`: el motor de cartas por capas (el texto y el asistente de la mesa) y la medición del filtro Efecto.
+- `docs/duelos-automaticos.md`: el núcleo real de reglas: «Jugar solo» automático, sus datos y el duelo online automático.
 - `docs/i18n.md`: cómo está armada la traducción.
 - `docs/seguridad.md`: qué se protege y qué queda en manos de quien administra las cuentas.
 
@@ -75,7 +76,7 @@ docs/               la documentación
 
 - No hay importación desde imagen (por decisión de UX).
 - El cálculo es exacto sólo para la mano inicial: no simula robos posteriores.
-- La mesa y el duelo son manuales: no aplican las reglas (el asistente avisa, no decide); sólo «Jugar solo automático» (beta, `?auto=1`) las aplica, con el núcleo real contra un rival pasivo. El simulador de handtraps reparte la mano del rival, pero cuándo usa cada carta lo decidís vos.
+- La mesa y el duelo son manuales: no aplican las reglas (el asistente avisa, no decide); sólo el duelo automático (beta: el interruptor del lobby de Jugar, apagado de entrada) las aplica, con el núcleo real contra un rival pasivo. El simulador de handtraps reparte la mano del rival, pero cuándo usa cada carta lo decidís vos.
 - El duelo es para jugar con amigos: nada impide mirar el tráfico de red.
 - Los textos de las cartas y el filtro Efecto son sólo en inglés (los da YGOPRODeck), y los precios son los del último `sync:prices`.
 

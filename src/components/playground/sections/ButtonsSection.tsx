@@ -202,9 +202,10 @@ export function ButtonsSection() {
           <OverflowMenu label="Más opciones" items={[{ label: 'Ver deck Elfnote', icon: 'layers', onSelect: () => {} }]} />
         </Specimen>
 
-        <Specimen title="Switch y Stepper" note={<>El interruptor encendido va en ámbar con el pulgar oscuro. Archivos: <Tag>ui/Switch.tsx</Tag> <Tag>ui/Stepper.tsx</Tag></>}>
+        <Specimen title="Switch y Stepper" note={<>El interruptor encendido va en ámbar con el pulgar oscuro; <Tag>disabled</Tag>, cuando no se puede usar (el porqué va en el texto de al lado). Archivos: <Tag>ui/Switch.tsx</Tag> <Tag>ui/Stepper.tsx</Tag></>}>
           <Switch label="Interruptor" checked={on} onChange={setOn} />
           <Switch label="Apagado" checked={false} onChange={() => {}} />
+          <Switch label="Sin poder usarse" checked={false} disabled onChange={() => {}} />
           <Stepper label="Copias" value={copies} min={0} max={3} onChange={setCopies} />
           <Stepper label="En línea" variant="inline" value={copies} min={0} max={3} onChange={setCopies} />
         </Specimen>

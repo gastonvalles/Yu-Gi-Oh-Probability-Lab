@@ -19,7 +19,8 @@ const BUDGET_KB: Record<string, number> = {
   'docs/retomar.md': 15,
   'docs/design-system.md': 20,
   'docs/duelo.md': 16,
-  'docs/motor-de-cartas.md': 14,
+  'docs/motor-de-cartas.md': 10,
+  'docs/duelos-automaticos.md': 12,
 }
 /** Carpetas que no se miran: dependencias, salidas y datos. Las que empiezan con punto tampoco (configuración local de otras herramientas), salvo `.github`. */
 const SKIPPED = new Set(['node_modules', 'dist', 'coverage', 'public', 'graphify-out'])

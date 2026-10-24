@@ -45,6 +45,8 @@ interface AutoBarProps {
   onPlace: (mode: AutoPlaceMode) => void
   /** «Reiniciar el duelo» de «Más opciones»: el mismo duelo desde el principio (sin esto, no se ofrece). */
   onRestart?: () => void
+  /** «Jugar en modo manual» de «Más opciones»: apaga el duelo automático y queda la mesa manual con el mismo deck (sin esto, no se ofrece). */
+  onManual?: () => void
 }
 
 /** Un ajuste de «Más opciones» con su nombre, su línea chica y el control debajo. */
@@ -66,7 +68,7 @@ function Setting({ title, hint, children }: { title: string; hint: string; child
  * de salir. En el celular, la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto
  * suma alto cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = null, log, sounds, onSounds, chain, onChain, place, onPlace, onRestart }: AutoBarProps) {
+export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = null, log, sounds, onSounds, chain, onChain, place, onPlace, onRestart, onManual }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const rails = useDuelRails()
@@ -119,6 +121,21 @@ export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = n
               }}
             >
               {t('auto.bar.restart')}
+            </Button>
+          </Setting>
+        ) : null}
+        {onManual ? (
+          <Setting title={t('auto.bar.manual')} hint={t('auto.bar.manualHint')}>
+            <Button
+              variant="secondary"
+              icon="hand"
+              className="justify-self-start"
+              onClick={() => {
+                setMoreOpen(false)
+                onManual()
+              }}
+            >
+              {t('auto.bar.manual')}
             </Button>
           </Setting>
         ) : null}

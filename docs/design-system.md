@@ -49,7 +49,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `Card` · `Callout` · `EmptyState` · `Skeleton` · `FieldBox` | Las superficies (`ui/`), con sus estilos sueltos en `ui/surfaces.ts`. Ver «Dos niveles de caja». `Skeleton still` queda sin el brillo que corre: va donde hay decenas a la vez (`CardArt`). |
 | `Heading` · `SectionHeader` · `StepHero` · `StepPage` | Todo título pasa por `Heading` (`ui/typography.ts`). **Los hipervínculos** usan `textLink`: ámbar y un solo estilo (`link-rules.test.ts`). |
 | `ProgressRing` · `SegmentedRing` | Los anillos (`ui/`): ver «Anillos». |
-| `Segmented` · `Switch` · `FilterChips` · `MultiSelect` · `Stepper` · `SearchField` · `ScrollRow` · `OverflowMenu` · `Badge` | Los controles (`ui/`); lo elegido, en ámbar. |
+| `Segmented` · `Switch` · `FilterChips` · `MultiSelect` · `Stepper` · `SearchField` · `ScrollRow` · `OverflowMenu` · `Badge` | Los controles (`ui/`); lo elegido, en ámbar. `Switch disabled`: no se puede usar y el porqué va en el texto de al lado. |
 | `Modal` | Todo diálogo (`ui/Modal.tsx`); sus tamaños, en la regla 10. Una confirmación es `ConfirmDialog` y su texto sigue la muestra «Confirmación». |
 | `SideDrawer` | Panel por la derecha (`ui/SideDrawer.tsx`): dos anchos y nada más, para que dos cajones encimados se cubran justo. |
 | `Icon` | El único set (`ui/Icon.tsx`): nada de SVG suelto. El $ de los precios va sin círculo: el del círculo no está en el registro, a propósito. |
@@ -60,7 +60,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `PracticeMat` | La mesa (`probability/`), también la del duelo: no se mueve mientras se juega (regla 7) y sus cartas y zonas van rectas (regla 8). Ver `docs/duelo.md`. |
 | `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): sólo decoración y la excepción del lienzo plano (regla 9). |
 | `CardMenu` · `CardSheet` | El menú de una carta (`probability/`; muestra «Menú de una carta»): sus reglas, en «Menús» de `docs/duelo.md`. |
-| `AskPrompt` · `AskOptions` · `CardPicker` · `SortSheet` · `AutoBar` | Las piezas de «Jugar solo automático (beta)» para lo que el campo no puede expresar (`auto/`): el sí o no centrado y sin fondo, las opciones en una hoja chica, elegir cartas de una lista, ordenar el tope y la barra de arriba. Sus reglas, en su comentario y en `docs/motor-de-cartas.md`. |
+| `AskPrompt` · `AskOptions` · `CardPicker` · `SortSheet` · `AutoBar` | Las piezas de «Jugar solo automático (beta)» para lo que el campo no puede expresar (`auto/`): el sí o no centrado y sin fondo, las opciones en una hoja chica, elegir cartas de una lista, ordenar el tope y la barra de arriba. Sus reglas, en su comentario y en `docs/duelos-automaticos.md`. |
 | `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal, no tapa el campo ni el detalle de la carta ni lleva velo. Su lugar y elegir varias, en «El visor de una pila no tapa el campo ni el detalle» y «Elegir varias cartas de una pila» de `docs/duelo.md`. |
 | `DuelTable` · `PracticeMatPanel` · `MatSnapshot` · `MaterialStack` · `RivalHandStrip` · `HandtrapPool` · `DuelMedal` | La mesa y el duelo (`probability/`, `duel/`). |
 | `TierStrip` · `TierMakerBoard` | Las tier lists (`meta/`). |
