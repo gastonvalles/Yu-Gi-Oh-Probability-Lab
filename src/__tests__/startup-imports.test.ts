@@ -21,6 +21,8 @@ const NOT_AT_STARTUP = [
   'src/app/auto/online.ts',
   'src/app/auto/online-protocol.ts',
   'src/components/auto/AutoDuelScreen.tsx',
+  'src/components/auto/use-auto-asks.tsx',
+  'src/app/auto/auto-save.ts',
   'src/app/auto/deck-map.ts',
   'src/app/auto/dev-console.ts',
   'src/app/auto/policies.ts',
