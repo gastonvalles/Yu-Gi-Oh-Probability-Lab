@@ -143,6 +143,8 @@ export interface AutoSession {
   expectReplay(skip: number): void
   /** Re-simular ahora mismo con todas las respuestas aceptadas (el anfitrión, cuando el invitado pide el duelo de nuevo y el registro no alcanza). */
   resimulate(): void
+  /** Sólo para pruebas: la mesa, el espejo y el overlay de `seat` como los proyecta esta sesión (el anfitrión calcula la vista del invitado: tiene que ser la que el invitado arma). */
+  viewOf?(seat: Seat): { mine: MatState; theirs: MatState; overlay: AutoOverlay } | null
   /** Al salir de la pantalla: termina el Worker y libera el duelo. */
   destroy(): void
 }
@@ -194,8 +196,11 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const { loader, transport: makeTransport } = options
   const me: Seat = options.seat ?? 0
   const controlled = (seat: Seat) => options.control === 'both' || seat === me
+  /** El duelo por enlace (el anfitrión con `remote`, el invitado con `typeOf`): el otro asiento es una persona, y cuando elige ella se espera (`waiting`). */
+  const online = options.remote !== undefined || options.typeOf !== undefined
   const thinkingMs = options.thinkingMs ?? 400
-  const rival = options.rival ?? null
+  // En el duelo por enlace el otro asiento es una persona: ni handtraps ni relleno.
+  const rival = options.remote ? null : (options.rival ?? null)
   const policy: RivalPolicy = rival ? handtrapPolicy(rival.main.map(([code]) => code)) : passivePolicy()
   const listeners = new Set<() => void>()
   const blank = emptyAdapter()
@@ -265,8 +270,11 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   function fail(kind: FaultKind, message: string, cards: number[] = []) {
     stopTimer()
     transport?.terminate()
-    set({ status: 'error', fault: { kind, message, cards }, ask: null, replaying: false })
+    set({ status: 'error', fault: { kind, message, cards }, ask: null, remoteAsk: null, replaying: false })
   }
+
+  /** El duelo por enlace: antes de cada re-emisión, cuántas respuestas del asiento remoto vienen ya dadas en las primeras `to` (el invitado se salta esas preguntas). */
+  const replayed = (to: number) => options.remote?.onReplay?.(answers.slice(0, to).filter((item) => item.seat !== me).length)
 
   /** La mesa desde cero (una tanda nueva): adaptadores nuevos y ninguna jugada. Sin avisar: si es una re-simulación, se avisa al final. */
   function project() {
@@ -291,6 +299,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     transport.onEvent(receive)
     streams = [to]
     current = false
+    replayed(to)
     transport.send(to > 0 ? { ...create!, answers: answers.slice(0, to).map((item) => item.answer) } : create!)
   }
 
@@ -344,6 +353,14 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
     switch (event.t) {
       case 'events':
+        apply(event)
+        // La pregunta viva es del otro asiento: sin esto el invitado (que no recibe las preguntas del anfitrión) se queda «pensando» o re-simulando.
+        if (online && skip === 0 && event.seat === me && event.events.some((item) => item.type === 'waiting')) {
+          stopTimer()
+          set({ status: 'waiting', replaying: false })
+        }
+        return
+
       case 'stats':
         return apply(event)
 
@@ -351,7 +368,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         commit()
         stopTimer()
         apply(event)
-        return set({ status: 'ended', ask: null, replaying: false, answers })
+        return set({ status: 'ended', ask: null, remoteAsk: null, replaying: false, answers })
 
       case 'ask': {
         if (skip > 0) {
@@ -360,6 +377,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         }
         commit()
         stopTimer()
+        // El duelo por enlace: la contesta una persona en otro navegador (`answerRemote`).
+        if (!controlled(event.seat) && options.remote) return set({ status: 'waiting', remoteAsk: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, ask: null, replaying: false, answers })
         // El rival contesta solo, con lo que ve su adaptador; la pantalla se entera recién con la pregunta tuya.
         if (!controlled(event.seat)) return send(event.seat, event.askId, policy(event.ask, adapters[event.seat]!))
 
@@ -373,9 +392,11 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         if ((event.kind === 'retry' || event.kind === 'answer') && (skip > 0 || snapshot.replaying)) return fail('crash', `replay diverged: ${event.message}`)
         // En vivo, la respuesta no vale: el anfitrión vuelve a preguntar.
         if (event.kind === 'retry') {
+          const remote = options.remote !== undefined && inFlight !== null && inFlight.seat !== me
+
           inFlight = null
           retries += 1
-          if (retries >= MAX_RETRIES) return fail('retry', `the core rejected ${MAX_RETRIES} answers in a row: ${event.message}`)
+          if (retries >= MAX_RETRIES) return fail('retry', `the core rejected ${MAX_RETRIES} answers in a row${remote ? ' from the remote seat' : ''}: ${event.message}`)
         }
 
         // Re-simulando vuelven los mismos errores de scripts: ya están anotados.
@@ -392,7 +413,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       const room = Math.max(0, filler.length - own.reduce((sum, [, copies]) => sum + copies, 0))
       const theirs: DeckList = { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)] }
 
-      return loader.load([options.deck, theirs], (done, total) => set({ progress: { done, total } }))
+      // En el duelo por enlace, el deck del otro (entero, sin relleno).
+      return loader.load([options.deck, options.remote?.deck ?? theirs], (done, total) => set({ progress: { done, total } }))
     })()
 
     // El anfitrión arranca ya: el Worker baja y compila el wasm mientras llegan los datos.
@@ -414,12 +436,14 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     const own = { main: mine.main, extra: mine.extra, hand: options.hand ?? [] }
     const mine_ = { ...PLAYER, hand: options.handSize ?? PLAYER.hand }
 
-    typeOf = (code) => types.get(code) ?? 0
+    // El invitado no tiene las cartas del rival: el tipo de las que el flujo le deja ver llega aparte.
+    typeOf = (code) => types.get(code) ?? options.typeOf?.(code) ?? 0
     build = (seed) => {
       // Con handtraps, el rival roba al empezar justo su mano (la del simulador con esa semilla), que va arriba de su deck.
       const hand = rival?.hand(seed) ?? []
       const other = { main: theirs.main, extra: theirs.extra, hand }
-      const player = hand.length > 0 ? { ...PLAYER, hand: hand.length } : PLAYER
+      // En el duelo por enlace los dos roban la mano de la sala.
+      const player = options.remote ? mine_ : hand.length > 0 ? { ...PLAYER, hand: hand.length } : PLAYER
 
       // El asiento 0 del núcleo siempre empieza: tu deck va ahí, salvo que vayas segundo.
       return { t: 'create', seed, flags: MR5, players: me === 0 ? [mine_, player] : [player, mine_], decks: me === 0 ? [own, other] : [other, own] }
@@ -431,9 +455,14 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     } catch (error) {
       return fail('setup', error instanceof Error ? error.message : String(error))
     }
-    set({ names: data.names, texts: data.texts ?? {} })
-    streams = [0]
-    transport.send(create)
+    // Rearmar un duelo guardado: el núcleo re-simula las respuestas de antes y la sesión las salta hasta la primera pregunta viva. Sin eso, `streams` queda como está:
+    // vacío es la tanda del `create`, y el invitado que entra a un duelo empezado ya pidió la suya (`expectReplay`).
+    answers = [...(options.restore?.answers ?? [])]
+    if (answers.length > 0) streams = [answers.length]
+    set({ names: data.names, texts: data.texts ?? {}, ...(answers.length > 0 ? { answers, replaying: true } : {}) })
+    transport.send(answers.length > 0 ? { ...create, answers: answers.map((item) => item.answer) } : create)
+    // Después del `create` (que el enlace le cuenta al invitado) y antes del primer evento, que llega después.
+    if (answers.length > 0) replayed(answers.length)
   }
 
   void start()
@@ -465,6 +494,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       answers = all.slice(0, to)
       inFlight = null
       streams.push(to)
+      replayed(to)
       transport.send({ t: 'rewind', to })
       set({ ask: null, replaying: true, status: snapshot.status === 'ended' ? 'thinking' : snapshot.status, answers })
       startTimer()
@@ -488,12 +518,32 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       set({ seed: create.seed, status: 'loading', ask: null, fault: null, faults: [], answers, replaying: true })
       boot(0)
     },
-    // ESQUELETO: el duelo por enlace (paquete del protocolo).
-    answerRemote() {
-      return false
+    answerRemote(askId, answer) {
+      const pending = snapshot.remoteAsk
+
+      if (!pending || snapshot.status !== 'waiting' || askId !== pending.askId || answer.type !== pending.ask.type) return false
+      set({ remoteAsk: null })
+      send(pending.seat, askId, answer)
+
+      return true
     },
-    expectReplay() {},
-    resimulate() {},
+    expectReplay(skip) {
+      streams.push(skip)
+      inFlight = null
+      set({ ask: null, replaying: true })
+    },
+    resimulate() {
+      if (!create || !data || destroyed || snapshot.status === 'error') return
+      inFlight = null
+      set({ ask: null, remoteAsk: null, replaying: true })
+      boot(answers.length)
+      startTimer()
+    },
+    viewOf(seat) {
+      const adapter = adapters[seat]
+
+      return adapter ? { mine: adapter.mine, theirs: adapter.theirs.state, overlay: adapter.overlay } : null
+    },
     destroy() {
       destroyed = true
       stopTimer()

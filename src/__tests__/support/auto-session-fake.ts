@@ -76,8 +76,14 @@ export interface FakeSession extends AutoSession {
   cancels: number
   restarts: number
   destroyed: boolean
+  /** El duelo por enlace: las respuestas del asiento remoto que se aceptaron, las re-emisiones pedidas (`expectReplay`) y las re-simulaciones. */
+  remoteAnswers: { askId: number; answer: CoreAnswer }[]
+  replays: number[]
+  resimulations: number
   /** Lo que haría el núcleo: cada una avisa a quien escucha. */
   ask(ask: CoreAsk, title?: string): void
+  /** Elige el otro asiento (una persona): `waiting` y, si se pasa, su pregunta como `remoteAsk` (la del anfitrión). */
+  waiting(ask?: CoreAsk | null): void
   events(actions: MatAction[]): void
   thinking(): void
   /** Re-simular: otra mesa del arranque (igual) con estas jugadas y, al final, esta pregunta; avisa una sola vez. */
@@ -170,15 +176,33 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
       fake.restarts += 1
       set({ status: 'loading', ask: null, fault: null, faults: [], answers: [], replaying: true })
     },
-    // El duelo por enlace (la sesión del anfitrión con un asiento remoto): la pantalla online lo prueba con sus propias pruebas.
-    answerRemote: () => false,
-    expectReplay() {},
-    resimulate() {},
+    remoteAnswers: [],
+    replays: [],
+    resimulations: 0,
+    answerRemote(askId, answer) {
+      const pending = snapshot.remoteAsk
+
+      if (!pending || askId !== pending.askId || answer.type !== pending.ask.type) return false
+      fake.remoteAnswers.push({ askId, answer })
+      set({ remoteAsk: null })
+
+      return true
+    },
+    expectReplay(skip) {
+      fake.replays.push(skip)
+      set({ ask: null, replaying: true })
+    },
+    resimulate() {
+      fake.resimulations += 1
+      set({ ask: null, remoteAsk: null, replaying: true })
+    },
+    viewOf: (seat) => (seat === 0 ? { mine: snapshot.mine, theirs: snapshot.theirs, overlay: snapshot.overlay } : null),
     destroy() {
       fake.destroyed = true
       listeners.clear()
     },
     ask: (ask, title) => set({ status: 'ready', ask: { askId: (askId += 1), seat: 0, ask, ...(title === undefined ? {} : { title }) }, replaying: false }),
+    waiting: (ask = null) => set({ status: 'waiting', ask: null, remoteAsk: ask ? { askId: (askId += 1), seat: 1, ask } : null, replaying: false }),
     events: (actions) => set({ mineActions: [...snapshot.mineActions, ...actions] }),
     thinking: () => set({ status: 'thinking', ask: null }),
     rearm: (actions, ask) => set({ initial: { mine: { ...states.mine }, theirs: { ...states.theirs } }, mineActions: actions, status: 'ready', replaying: false, ask: ask ? { askId: (askId += 1), seat: 0, ask } : null }),

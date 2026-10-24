@@ -2,76 +2,8 @@ import { OcgDuelMode } from 'ocgcore-wasm'
 import { matReducer } from '../app/practice-mat'
 import { DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
 import { createAutoSession, MR5, type AutoSession, type AutoSnapshot, type TransportFactory } from '../app/auto/auto-session'
-import type { MappedDeck } from '../app/auto/deck-map'
-import type { AutoCommand, AutoEvent, CoreAnswer, CoreAsk, Seat } from '../app/auto/protocol'
-
-const IDLE: CoreAsk = { type: 'select_idlecmd', player: 0, summons: [], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: false, to_ep: true, shuffle: false }
-const CHAIN: CoreAsk = { type: 'select_chain', player: 1, spe_count: 0, forced: false, hint_timing: 0, hint_timing_other: 0, selects: [] }
-const END: CoreAnswer = { type: 'select_idlecmd', action: 7, index: null }
-
-const mapped = (main: number[]): MappedDeck => ({ main, extra: [], missing: [], noRules: [] })
-const loader = (mine = mapped([1, 1, 1, 1, 1])): DataLoader => ({
-  manifest: async () => ({ version: 't', tokens: [], filler: [2, 2, 2, 2, 2] }),
-  load: async () => ({ decks: [mine, mapped([2, 2, 2, 2, 2])], cards: [], scripts: {}, names: { 1: 'One' }, version: 't' }),
-})
-
-/**
- * Un anfitrión de mentira con las reglas del de verdad que la sesión usa: cada tanda empieza con `loading` 0, re-simular vuelve a mandar
- * todo desde cero, una respuesta vieja se descarta. La pregunta k es del asiento `seatOf(k)`; antes de cada una las vidas del asiento 0
- * bajan a 8000 - k (así la mesa dice cuántas respuestas lleva) y, en las tres primeras, el asiento 0 roba una carta (una jugada de la
- * mesa). `hold` deja colgada la próxima respuesta (el núcleo «pensando»).
- */
-function fakeHost(seatOf: (k: number) => Seat = (k) => (k % 3 === 2 ? 1 : 0), react?: (command: AutoCommand, emit: (event: AutoEvent) => void) => boolean, firstCode = 1) {
-  const commands: AutoCommand[] = []
-  const state = { hold: false, transports: 0 }
-  let askId = 0
-  const factory: TransportFactory = (data) => {
-    let listener: ((event: AutoEvent) => void) | null = null
-    let alive = true
-    let answers: CoreAnswer[] = []
-    let pending: { askId: number; seat: Seat } | null = null
-    const emit = (event: AutoEvent) => alive && listener?.(event)
-    const ask = () => {
-      const k = answers.length
-      const seat = seatOf(k)
-
-      pending = { askId: ++askId, seat }
-      for (const viewer of [0, 1] as const) {
-        emit({ t: 'events', seat: viewer, n: k, events: [{ type: 'lpupdate', player: 0, lp: 8000 - k }, ...(k < 3 ? [{ type: 'draw' as const, player: 0, drawn: [{ code: viewer === 0 ? firstCode : 0, position: 10 }] }] : [])] })
-      }
-      emit({ t: 'ask', seat, askId: pending.askId, ask: seat === 0 ? IDLE : CHAIN })
-    }
-    const run = (replay: readonly CoreAnswer[]) => {
-      emit({ t: 'loading', done: 0, total: 1 })
-      answers = []
-      ask()
-      for (const answer of replay) {
-        answers.push(answer)
-        ask()
-      }
-    }
-
-    state.transports += 1
-    return {
-      send(command) {
-        commands.push(command)
-        void data.then(() => {
-          if (!alive || react?.(command, emit)) return
-          if (command.t === 'create') run(command.answers ?? [])
-          if (command.t === 'rewind') run(answers.slice(0, command.to))
-          if (command.t === 'answer' && pending?.askId === command.askId && !state.hold) {
-            answers.push(command.answer)
-            ask()
-          }
-        })
-      },
-      onEvent: (next) => void (listener = next),
-      terminate: () => void (alive = false),
-    }
-  }
-
-  return { factory, commands, state }
-}
+import type { AutoCommand, AutoEvent, Seat } from '../app/auto/protocol'
+import { CHAIN, END, fakeHost, IDLE, loader, mapped, PASS } from './support/auto-core-fake'
 
 const tick = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
 async function until(session: AutoSession, test: (snapshot: AutoSnapshot) => boolean) {
@@ -285,5 +217,167 @@ describe('la sesión del duelo automático', () => {
     expect(failed.fault?.kind).toBe('retry')
     expect(failed.faults).toEqual([{ kind: 'script', message: 'lua: oops', cards: [1] }, ...Array(2).fill({ kind: 'retry', message: 'RETRY', cards: [] })])
     session.destroy()
+  })
+})
+
+/** Un anfitrión del núcleo que no hace nada solo: la prueba le pone los eventos (como el enlace del invitado, que los recibe por la red). */
+function manualHost() {
+  let listener: ((event: AutoEvent) => void) | null = null
+  const sent: AutoCommand[] = []
+  const factory: TransportFactory = () => ({ send: (command) => void sent.push(command), onEvent: (next) => void (listener = next), terminate: () => {} })
+
+  return { factory, sent, emit: (event: AutoEvent) => listener?.(event) }
+}
+
+describe('la sesión del duelo por enlace', () => {
+  it('con un asiento remoto: su deck va entero, los dos roban la mano de la sala, su pregunta espera a la persona y sólo vale la respuesta a la pendiente', async () => {
+    const host = fakeHost()
+    const lists: number[][] = []
+    const recording: DataLoader = { ...loader(), load: async (decks) => (lists.push(...decks.map((deck) => deck.main.map(([code]) => code))), loader().load(decks)) }
+    const session = createAutoSession({ loader: recording, deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, handSize: 6, remote: { deck: { main: [[3, 5]] } } })
+
+    await until(session, (s) => s.status === 'ready')
+    // Sin relleno: el deck del otro tal cual; y la mano de la sala para los dos.
+    expect(lists).toEqual([[1], [3]])
+    expect(host.commands[0]).toMatchObject({ t: 'create', players: [{ hand: 6 }, { hand: 6 }] })
+    session.answer(END)
+    await until(session, (s) => s.answers.length === 1 && s.ask !== null)
+    session.answer(END)
+    const waiting = await until(session, (s) => s.status === 'waiting' && s.remoteAsk !== null)
+    const { askId } = waiting.remoteAsk!
+
+    expect(waiting).toMatchObject({ ask: null, remoteAsk: { seat: 1, ask: CHAIN }, answers: [{ seat: 0 }, { seat: 0 }] })
+    // Nadie de este lado la contesta: ni la política del rival, ni `answer`.
+    await tick(20)
+    expect(host.commands.filter((command) => command.t === 'answer')).toHaveLength(2)
+    expect(session.answer(PASS)).toBe(false)
+    expect(session.answerRemote(askId + 1, PASS)).toBe(false)
+    expect(session.answerRemote(askId, END)).toBe(false)
+    expect(session.answerRemote(askId, PASS)).toBe(true)
+    expect(session.answerRemote(askId, PASS)).toBe(false)
+    const after = await until(session, (s) => s.answers.length === 3 && s.status === 'ready')
+
+    expect(after.answers[2]).toEqual({ seat: 1, answer: PASS })
+    expect(after.remoteAsk).toBeNull()
+    // La vista que la sesión calcula para cada asiento (la del invitado la compara la prueba del enlace).
+    expect(session.viewOf!(0)).toEqual({ mine: after.mine, theirs: after.theirs, overlay: after.overlay })
+    expect(session.viewOf!(1)?.theirs.hand).toHaveLength(3)
+    session.destroy()
+  })
+
+  it('antes de cada re-emisión dice cuántas respuestas del remoto vienen dadas; re-simular vuelve a la pregunta remota que esperaba', async () => {
+    const host = fakeHost()
+    const replays: number[] = []
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, remote: { deck: { main: [[2, 5]] }, onReplay: (skip) => replays.push(skip) } })
+
+    await until(session, (s) => s.status === 'ready')
+    session.answer(END)
+    await until(session, (s) => s.answers.length === 1 && s.ask !== null)
+    session.answer(END)
+    const first = await until(session, (s) => s.status === 'waiting' && s.remoteAsk !== null)
+
+    session.answerRemote(first.remoteAsk!.askId, PASS)
+    await until(session, (s) => s.answers.length === 3 && s.status === 'ready')
+    session.answer(END)
+    await until(session, (s) => s.answers.length === 4 && s.ask !== null)
+    session.answer(END)
+    const waiting = await until(session, (s) => s.status === 'waiting' && s.remoteAsk !== null && s.answers.length === 5)
+
+    expect(replays).toEqual([])
+    session.resimulate()
+    expect(session.getSnapshot()).toMatchObject({ remoteAsk: null, replaying: true })
+    expect(replays).toEqual([1])
+    const back = await until(session, (s) => s.status === 'waiting' && s.remoteAsk !== null && !s.replaying)
+
+    expect(host.state.transports).toBe(2)
+    expect(host.commands.at(-1)).toMatchObject({ t: 'create', answers: [END, END, PASS, END, END] })
+    expect(back.answers).toEqual(waiting.answers)
+    expect(back.mine).toEqual(waiting.mine)
+    expect(back.remoteAsk?.ask).toEqual(CHAIN)
+    // Deshacer (re-simula en el mismo anfitrión) también avisa.
+    expect(session.undo()).toBe(true)
+    expect(replays).toEqual([1, 1])
+    session.destroy()
+  })
+
+  it('rearmar un duelo guardado: el núcleo re-simula las respuestas y la sesión sigue desde la pregunta viva; el aviso de re-emisión va después del create', async () => {
+    const host = fakeHost()
+    const order: string[] = []
+    const factory: TransportFactory = (data) => {
+      const inner = host.factory(data)
+
+      return { ...inner, send: (command) => (order.push(command.t), inner.send(command)) }
+    }
+    const answers = [
+      { seat: 0 as Seat, answer: END },
+      { seat: 0 as Seat, answer: END },
+      { seat: 1 as Seat, answer: PASS },
+    ]
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: factory, seed: 7, remote: { deck: { main: [[2, 5]] }, onReplay: (skip) => order.push(`replay ${skip}`) }, restore: { answers } })
+    const live = await until(session, (s) => s.status === 'ready' && !s.replaying)
+
+    expect(order).toEqual(['create', 'replay 1'])
+    expect(host.commands[0]).toMatchObject({ t: 'create', answers: [END, END, PASS] })
+    expect(live.answers).toEqual(answers)
+    expect(live.overlay.lp[0]).toBe(8000 - 3)
+    expect(live.ask).toMatchObject({ seat: 0, ask: IDLE })
+    session.destroy()
+  })
+
+  it('tres respuestas del remoto rechazadas seguidas cortan el duelo y lo dicen', async () => {
+    const host = fakeHost(
+      (k) => (k === 0 ? 1 : 0),
+      (command, emit) => {
+        if (command.t !== 'answer' || command.answer.type !== 'select_chain') return false
+        emit({ t: 'fault', kind: 'retry', message: 'RETRY' })
+        emit({ t: 'ask', seat: 1, askId: command.askId, ask: CHAIN })
+        return true
+      },
+    )
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, remote: { deck: { main: [[2, 5]] } } })
+
+    for (let i = 0; i < 3; i += 1) {
+      const waiting = await until(session, (s) => (s.status === 'waiting' && s.remoteAsk !== null) || s.status === 'error')
+
+      if (waiting.remoteAsk) session.answerRemote(waiting.remoteAsk.askId, PASS)
+      await tick(5)
+    }
+    const failed = await until(session, (s) => s.status === 'error')
+
+    expect(failed.fault).toMatchObject({ kind: 'retry', message: expect.stringContaining('from the remote seat') })
+    session.destroy()
+  })
+
+  it('el invitado (sin núcleo): espera mientras elige el otro, y una re-emisión pedida antes de que arranque salta sus preguntas ya contestadas', async () => {
+    const remote = manualHost()
+    const session = createAutoSession({ loader: loader(), deck: { main: [[2, 5]] }, transport: remote.factory, seed: 7, seat: 1, typeOf: () => 0 })
+
+    session.expectReplay(1)
+    expect(session.getSnapshot()).toMatchObject({ status: 'loading', replaying: true })
+    for (let i = 0; i < 100 && remote.sent.length === 0; i += 1) await tick(1)
+    expect(remote.sent[0]).toMatchObject({ t: 'create', seed: 7 })
+    remote.emit({ t: 'loading', done: 0, total: 1 })
+    // La primera pregunta mía ya estaba contestada: se salta.
+    remote.emit({ t: 'ask', seat: 1, askId: 5, ask: CHAIN })
+    expect(session.getSnapshot().ask).toBeNull()
+    // Elige el otro: el invitado espera (sin quedarse «re-simulando»).
+    remote.emit({ t: 'events', seat: 1, n: 1, events: [{ type: 'lpupdate', player: 0, lp: 7000 }, { type: 'waiting' }] })
+    expect(session.getSnapshot()).toMatchObject({ status: 'waiting', replaying: false, ask: null })
+    expect(session.getSnapshot().overlay.lp[0]).toBe(7000)
+    remote.emit({ t: 'ask', seat: 1, askId: 6, ask: CHAIN })
+    expect(session.getSnapshot()).toMatchObject({ status: 'ready', ask: { askId: 6, seat: 1 } })
+    expect(session.answer(PASS)).toBe(true)
+    expect(remote.sent.at(-1)).toEqual({ t: 'answer', askId: 6, answer: PASS })
+    session.destroy()
+
+    // Jugar solo no conoce `waiting`: lo que cuente el núcleo sobre el rival no cambia el estado.
+    const solo = manualHost()
+    const alone = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: solo.factory, seed: 7 })
+
+    for (let i = 0; i < 100 && solo.sent.length === 0; i += 1) await tick(1)
+    solo.emit({ t: 'loading', done: 0, total: 1 })
+    solo.emit({ t: 'events', seat: 0, n: 0, events: [{ type: 'waiting' }] })
+    expect(alone.getSnapshot().status).toBe('loading')
+    alone.destroy()
   })
 })
