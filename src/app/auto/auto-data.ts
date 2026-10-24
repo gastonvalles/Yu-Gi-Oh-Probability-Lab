@@ -6,8 +6,9 @@ import type { AutoEvent } from './protocol'
  * Los datos de un duelo automático: las filas del `.cdb` de las cartas (y de las fichas, que el núcleo lee en caliente al crearlas) y
  * el cierre de scripts (§3.5 del diseño). Los lectores del núcleo son síncronos, así que todo se baja antes de crear el duelo, en
  * paralelo, con caché en memoria y, si existe, en la `Cache API` (un cajón por versión del manifiesto: datos o scripts nuevos, caché
- * nueva). La fuente es intercambiable (`DataSource`): en desarrollo, las rutas de `vite serve` (`/auto-data`, plugin de vite.config.ts);
- * en producción, la que se decida (`VITE_AUTO_DATA_URL`; bloqueada por la licencia). No importa el paquete del núcleo (sólo sus tipos).
+ * nueva). La fuente es intercambiable (`DataSource`); la de la app es `/auto-data` del mismo origen: en desarrollo la sirve `vite serve`
+ * (plugin `autoDataDev` de vite.config.ts) y en producción la función `api/auto-data.ts` (`VITE_AUTO_DATA_URL` la cambia). No importa el
+ * paquete del núcleo (sólo sus tipos).
  */
 
 /** Una fila de `datas` como la sirve la fuente: los int64 (`setcode`, `race`) como texto decimal. `name` (de `texts`) es opcional. */
@@ -85,12 +86,19 @@ export function cardData(row: CardRow): OcgCardData {
   }
 }
 
+/** Lo que el servidor explica en `{ error }` (un despliegue sin los datos de la beta): la sesión lo muestra tal cual. */
+export class DataUnavailableError extends Error {}
+
 /** La fuente por HTTP: `<base>/manifest`, `<base>/cards?codes=…` y `<base>/script/<nombre>` (404 = no existe). */
 export function httpSource(base: string = import.meta.env.VITE_AUTO_DATA_URL ?? '/auto-data'): DataSource {
   const get = async (path: string) => {
     const response = await fetch(`${base}${path}`)
 
-    if (!response.ok && response.status !== 404) throw new Error(`auto-data: ${response.status} on ${path}`)
+    if (!response.ok && response.status !== 404) {
+      const reason = await response.json().then((body: { error?: unknown }) => body.error, () => undefined)
+
+      throw typeof reason === 'string' ? new DataUnavailableError(reason) : new Error(`auto-data: ${response.status} on ${path}`)
+    }
 
     return response
   }

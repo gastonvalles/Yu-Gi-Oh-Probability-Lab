@@ -9,6 +9,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { configDefaults } from 'vitest/config'
 import { defineConfig, type Plugin } from 'vite'
+import { cardsByCodes, manifestCodes, scriptDirs } from './scripts/build-auto-data.mjs'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
 
@@ -39,23 +40,27 @@ const CARD_IMAGE_PROXY = {
 }
 
 /**
- * En desarrollo `/api/live` (una función de Vercel) la atiende Vite con el mismo código, así las transmisiones en vivo se ven sin desplegar.
- * Sólo en `npm run dev`: el build y `preview` no la llevan (en producción la sirve Vercel).
+ * En desarrollo las funciones de Vercel (`api/`) las atiende Vite con el mismo código: `/api/live` (las transmisiones en vivo se ven sin
+ * desplegar) y `/api/auto-data`, la de los datos del duelo automático en producción (lee `.auto-data/`, que arma
+ * `AUTO_DATA_BUILD=1 node scripts/build-auto-data.mjs`; para que la beta la use en vez de `autoDataDev`: `VITE_AUTO_DATA_URL=/api/auto-data`).
+ * Sólo en `npm run dev`: el build y `preview` no las llevan (en producción las sirve Vercel).
  */
-function liveApiDev(): Plugin {
+function apiDev(): Plugin {
   return {
-    name: 'live-api-dev',
+    name: 'api-dev',
     configureServer(server) {
-      server.middlewares.use('/api/live', (request, response) => {
-        void (async () => {
-          const { GET } = (await server.ssrLoadModule('/api/live.ts')) as { GET: (request: Request) => Promise<Response> }
-          const result = await GET(new Request(`http://localhost${request.originalUrl ?? '/api/live'}`))
+      for (const name of ['live', 'auto-data']) {
+        server.middlewares.use(`/api/${name}`, (request, response) => {
+          void (async () => {
+            const { GET } = (await server.ssrLoadModule(`/api/${name}.ts`)) as { GET: (request: Request) => Promise<Response> }
+            const result = await GET(new Request(`http://localhost${request.originalUrl ?? `/api/${name}`}`))
 
-          response.statusCode = result.status
-          result.headers.forEach((value, key) => response.setHeader(key, value))
-          response.end(await result.text())
-        })()
-      })
+            response.statusCode = result.status
+            result.headers.forEach((value, key) => response.setHeader(key, value))
+            response.end(await result.text())
+          })()
+        })
+      }
     },
   }
 }
@@ -65,6 +70,8 @@ function liveApiDev(): Plugin {
  * `npm run sync:core` (`CORE_DATA_DIR` con `cards.cdb` y `CARD_SCRIPTS_DIR` con los scripts; ninguna está en el repo) con las rutas que
  * lee `httpSource` (`src/app/auto/auto-data.ts`): `/auto-data/manifest`, `/auto-data/cards?codes=…` y `/auto-data/script/<nombre>`
  * (404 si no existe); y la consola de pruebas `/__auto/` (`src/app/auto/dev-console.ts`). Las respuestas van con gzip, como las daría un CDN.
+ * Las filas, el manifiesto y el orden de búsqueda de los scripts son las funciones de `scripts/build-auto-data.mjs`, las mismas con las
+ * que el build arma los datos de producción (`api/auto-data.ts`).
  */
 function autoDataDev(): Plugin {
   return {
@@ -75,17 +82,9 @@ function autoDataDev(): Plugin {
       const scriptsDir = process.env.CARD_SCRIPTS_DIR ?? join(tmpdir(), 'ygo-lab-card-scripts')
       const cdb = join(dataDir, 'cards.cdb')
       // `node:sqlite` se carga recién al primer pedido (avisa que es experimental en Node 22).
-      type Db = { prepare: (sql: string) => { setReadBigInts: (on: boolean) => void; all: (...params: unknown[]) => Record<string, unknown>[] } }
-      let db: Promise<Db> | null = null
-      const open = () => (db ??= import('node:sqlite').then(({ DatabaseSync }) => new DatabaseSync(cdb, { readOnly: true }) as unknown as Db))
-      const rows = async (sql: string, ...params: unknown[]) => {
-        const query = (await open()).prepare(sql)
-
-        query.setReadBigInts(true)
-        return query.all(...params)
-      }
-      // Como `scriptStore` de las pruebas: las cartas en `official/` y después `pre-release/`; las bibliotecas en la raíz y `unofficial/`.
-      const scriptFile = (name: string) => (/^c\d+\.lua$/.test(name) ? ['official', 'pre-release'] : ['.', 'unofficial']).map((dir) => join(scriptsDir, dir, name)).find((file) => existsSync(file))
+      let db: Promise<import('node:sqlite').DatabaseSync> | null = null
+      const open = () => (db ??= import('node:sqlite').then(({ DatabaseSync }) => new DatabaseSync(cdb, { readOnly: true })))
+      const scriptFile = (name: string) => scriptDirs(name).map((dir: string) => join(scriptsDir, dir, name)).find((file: string) => existsSync(file))
       const reply = (request: { headers: Record<string, string | string[] | undefined> }, response: import('node:http').ServerResponse, status: number, type: string, body: string) => {
         response.statusCode = status
         response.setHeader('Content-Type', type)
@@ -94,7 +93,6 @@ function autoDataDev(): Plugin {
         response.setHeader('Content-Encoding', 'gzip')
         response.end(gzipSync(body))
       }
-      const u64 = (value: unknown) => BigInt.asUintN(64, BigInt(value as bigint)).toString()
       let manifest: Promise<string> | null = null
       const buildManifest = async () => {
         const head = join(scriptsDir, '.git', 'HEAD')
@@ -102,12 +100,8 @@ function autoDataDev(): Plugin {
         const refFile = ref.startsWith('ref: ') ? join(scriptsDir, '.git', ref.slice(5)) : ''
         const commit = refFile && existsSync(refFile) ? readFileSync(refFile, 'utf8').trim() : ref
         const stat = statSync(cdb)
-        const tokens = (await rows('select id from datas where (type & 16384) != 0 order by id')).map((row) => Number(row.id))
-        // El rival pasivo: los primeros 40 Monstruos Normales (TCG u OCG, sin arte alternativo) que no tienen script.
-        const normals = (await rows('select id from datas where type = 17 and alias = 0 and (ot & 3) != 0 order by id')).map((row) => Number(row.id))
-        const filler = normals.filter((code) => !scriptFile(`c${code}.lua`)).slice(0, 40)
 
-        return JSON.stringify({ version: createHash('sha1').update(`${stat.size}:${stat.mtimeMs}:${commit}`).digest('hex').slice(0, 12), tokens, filler })
+        return JSON.stringify({ version: createHash('sha1').update(`${stat.size}:${stat.mtimeMs}:${commit}`).digest('hex').slice(0, 12), ...manifestCodes(await open(), (name: string) => scriptFile(name) !== undefined) })
       }
 
       server.middlewares.use('/auto-data', (request, response) => {
@@ -119,18 +113,8 @@ function autoDataDev(): Plugin {
             if (url.pathname === '/manifest') return reply(request, response, 200, 'application/json', await (manifest ??= buildManifest()))
             if (url.pathname === '/cards') {
               const codes = (url.searchParams.get('codes') ?? '').split(',').filter((code) => /^\d{1,10}$/.test(code)).slice(0, 2000).map(Number)
-              // Con el nombre van los rótulos de los efectos (`str1`…`str16` de `texts`: lo que `aux.Stringid` nombra en un menú), sin los vacíos del final.
-              const strs = Array.from({ length: 16 }, (_, i) => `t.str${i + 1}`).join(', ')
-              const found = await rows(`select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, t.name, ${strs} from datas d left join texts t on t.id = d.id where d.id in (select value from json_each(?))`, JSON.stringify(codes))
-              const out = found.map((row) => {
-                const texts = Array.from({ length: 16 }, (_, i) => (typeof row[`str${i + 1}`] === 'string' ? (row[`str${i + 1}`] as string) : ''))
 
-                while (texts.length > 0 && texts[texts.length - 1] === '') texts.pop()
-
-                return { id: Number(row.id), alias: Number(row.alias), setcode: u64(row.setcode), type: Number(row.type), atk: Number(row.atk), def: Number(row.def), level: Number(row.level), race: u64(row.race), attribute: Number(row.attribute), ...(typeof row.name === 'string' ? { name: row.name } : {}), ...(texts.length > 0 ? { strs: texts } : {}) }
-              })
-
-              return reply(request, response, 200, 'application/json', JSON.stringify(out))
+              return reply(request, response, 200, 'application/json', JSON.stringify(cardsByCodes(await open(), codes)))
             }
             const file = script ? scriptFile(script[1]!) : undefined
 
@@ -202,7 +186,7 @@ const SLOW = 'src/__tests__/**/*.slow.test.ts'
 const SLOW_RUN = process.env.npm_lifecycle_event === 'test:auto'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), liveApiDev(), autoDataDev()],
+  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), apiDev(), autoDataDev()],
   preview: {
     headers: readVercelHeaders(),
     proxy: CARD_IMAGE_PROXY,

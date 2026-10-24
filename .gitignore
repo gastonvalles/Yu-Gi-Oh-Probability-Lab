@@ -13,6 +13,8 @@ coverage/
 Thumbs.db
 vitest-*.txt
 duel-relay/.wrangler/
+# Los datos del duelo automático que arma el build de Vercel (`scripts/build-auto-data.mjs`): salen de `cards.cdb`, que no tiene licencia. Nunca se suben.
+.auto-data/
 # Configuración local de las herramientas de trabajo (rutas, permisos): no es del proyecto.
 .claude/
 # Playwright CLI output (may contain credentials)
