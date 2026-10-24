@@ -3,6 +3,7 @@ import path from 'node:path'
 import { cardMatchesOpcode } from 'ocgcore-wasm'
 import { openAsk, type AskContext } from '../app/auto/ask-ui'
 import { createDataLoader } from '../app/auto/auto-data'
+import { autoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession, PendingAsk, TransportFactory } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
@@ -16,21 +17,23 @@ import { createDuel } from '../app/duel-session'
 import type { Duelist } from '../app/life-calculator'
 import { playAsk, seeded } from './support/ask-ui-player'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
-import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
+import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 
 /**
  * El duelo automático por enlace con el núcleo real (lento: `npm run test:auto`; se salta sin datos). Un anfitrión y un invitado en memoria (`createDuel` sobre `MemoryRoom`,
  * con `createHostLink` sobre `localTransport` y `createGuestLink` sin núcleo), con decks del meta, y un jugador al azar que sólo toca lo que la pantalla ofrece (`ask-ui`, como el
  * oráculo de `auto-ask-ui.slow.test.ts`) por los dos asientos. Comprueba: 0 `RETRY`; ningún fallo salvo errores de scripts; ningún código oculto en el cable (cada evento que
  * viaja es uno que el árbitro le dejó ver al invitado, y las cartas adjuntas son las de ese evento); la mesa del invitado es la que el anfitrión calcula para su asiento después de
- * cada tanda; y el invitado que recarga a mitad de duelo (otro enlace) vuelve a la misma mesa y la misma pregunta. Parámetros: ONLINE_PAIRS pares (2), ONLINE_FROM (0),
- * ONLINE_CAP preguntas por duelo (300), ONLINE_DUEL_S segundos por duelo (120), ONLINE_RELOAD_AT la pregunta en la que recarga el invitado (40), ONLINE_SEED (1).
+ * cada tanda; el invitado que recarga a mitad de duelo (otro enlace) vuelve a la misma mesa y la misma pregunta, y el anfitrión que recarga rearma el duelo con lo guardado. Parámetros: ONLINE_PAIRS pares (2), ONLINE_FROM (0),
+ * ONLINE_CAP preguntas por duelo (300), ONLINE_DUEL_S segundos por duelo (120), ONLINE_RELOAD_AT la pregunta en la que recarga el invitado (40), ONLINE_HOST_RELOAD_AT la
+ * pregunta en la que recarga el anfitrión, que rearma el duelo con lo guardado (80), ONLINE_SEED (1).
  */
 const PAIRS = Number(process.env.ONLINE_PAIRS ?? 2)
 const FROM = Number(process.env.ONLINE_FROM ?? 0)
 const CAP = Number(process.env.ONLINE_CAP ?? 300)
 const DUEL_MS = Number(process.env.ONLINE_DUEL_S ?? 120) * 1000
 const RELOAD_AT = Number(process.env.ONLINE_RELOAD_AT ?? 40)
+const HOST_RELOAD_AT = Number(process.env.ONLINE_HOST_RELOAD_AT ?? 80)
 const SEED = Number(process.env.ONLINE_SEED ?? 1)
 const PREFS: AskContext['prefs'] = { chainMode: 'ask', placeMode: 'ask' }
 
@@ -63,7 +66,7 @@ function settled(host: AutoSession, guest: AutoSession): boolean {
   return a.status === 'waiting' && a.remoteAsk !== null && b.status === 'ready' && b.ask?.askId === a.remoteAsk.askId
 }
 
-const tally = { duels: 0, questions: 0, guestAnswers: 0, reloads: 0, checks: 0, wire: 0, maxBytes: 0, peakPerStep: 0, resyncMessages: 0, resyncBytes: 0, ends: {} as Record<string, number>, notPreloaded: {} as Record<string, string>, ms: 0 }
+const tally = { duels: 0, questions: 0, guestAnswers: 0, reloads: 0, hostReloads: 0, checks: 0, wire: 0, maxBytes: 0, peakPerStep: 0, resyncMessages: 0, resyncBytes: 0, ends: {} as Record<string, number>, notPreloaded: {} as Record<string, string>, ms: 0 }
 
 describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo real (npm run test:auto)', () => {
   const rows = hasCoreData ? cardRows() : []
@@ -104,9 +107,10 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
     const seed = (SEED * 100_003 + pair) >>> 0
     const random = seeded(seed)
     const room = createMemoryRoom()
-    const hostEnd = room.join()
+    const settings = { ...DEFAULT_SETTINGS, auto: true }
+    let hostEnd = room.join()
     const guestEnd = room.join()
-    const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings: { ...DEFAULT_SETTINGS, auto: true } })
+    let host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings })
     const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
     // Lo que cuenta el núcleo, tal cual sale del árbitro (por asiento), y los comandos que recibe.
     const coreEvents: AutoEvent[] = []
@@ -123,11 +127,15 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
     // Un reloj que corre solo: el marcapasos nunca frena (el ritmo lo prueba `auto-online-protocol.test.ts`).
     let clock = 0
     const now = () => (clock += 100)
-    const hostLink = createHostLink({ transport: hostEnd, loader: createDataLoader(source, null), deck: lists[hostId]!, handSize: 5, makeTransport, enabled: async () => true, now, random })
+    // Lo que el anfitrión guarda (en un `localStorage` en memoria, con el mismo reloj que el enlace: lo guardado vence) para rearmar el duelo si recarga.
+    const items = new Map<string, string>()
+    const save = autoSaveStore(`PAR${pair}`, { getItem: (key) => items.get(key) ?? null, setItem: (key, value) => void items.set(key, value), removeItem: (key) => void items.delete(key) }, now)
+    const hostLinkOf = (transport: MemoryEnd) => createHostLink({ transport, loader: createDataLoader(source, null), deck: lists[hostId]!, handSize: 5, makeTransport, enabled: async () => true, now, random, save })
+    let hostLink: OnlineLink = hostLinkOf(hostEnd)
     let guestLink: OnlineLink = createGuestLink({ transport: guestEnd, source, deck: lists[guestId]!, now })
     let offGuest = guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
+    let offHost = host.subscribe(() => hostLink.observe(host.getSnapshot()))
 
-    host.subscribe(() => hostLink.observe(host.getSnapshot()))
     hostLink.observe(host.getSnapshot())
     guestLink.observe(guest.getSnapshot())
 
@@ -204,6 +212,24 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
         tally.resyncBytes = Math.max(tally.resyncBytes, room.sent.reduce((sum, text) => sum + text.length, 0) - bytes)
       }
 
+      // Más adelante recarga Ana: otra sala (que se entera por Beto de quién empezaba), otro enlace y otro núcleo; con lo guardado el duelo se rearma y los dos quedan igual.
+      if (q === HOST_RELOAD_AT) {
+        const view = (snap: ReturnType<AutoSession['getSnapshot']>) => ({ mine: snap.mine, theirs: snap.theirs, overlay: snap.overlay, status: snap.status, ask: snap.ask?.ask ?? null, remoteAsk: snap.remoteAsk?.ask ?? null })
+        const before = [view(a), view(b)]
+
+        offHost()
+        hostLink.destroy()
+        hostEnd.close()
+        hostEnd = room.join()
+        host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-2', settings })
+        hostLink = hostLinkOf(hostEnd)
+        offHost = host.subscribe(() => hostLink.observe(host.getSnapshot()))
+        hostLink.observe(host.getSnapshot())
+        expect(await pump(room, () => hostLink.getSnapshot().session !== null && guestLink.getSnapshot().session !== null && settled(hosted(), guested()), DUEL_MS)).toBe(true)
+        expect([view(hosted().getSnapshot()), view(guested().getSnapshot())]).toEqual(before)
+        tally.hostReloads += 1
+      }
+
       sentBefore = toGuestCount()
       tally.questions += 1
       if (a.status === 'ready') hosted().answer(play(hosted(), a.ask!, random, bots[1 - guestSeat]!))
@@ -263,14 +289,17 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
     tally.duels += 1
     tally.ms += performance.now() - started
     offGuest()
+    offHost()
     guestLink.destroy()
     hostLink.destroy()
   }, 30 * 60 * 1000)
 
-  it('comprobó lo que dice: cada par, las mesas en cada tanda y una recarga del invitado por par', () => {
+  it('comprobó lo que dice: cada par, las mesas en cada tanda y las recargas del invitado y del anfitrión', () => {
     console.log(JSON.stringify({ ...tally, ms: Math.round(tally.ms) }))
     expect(tally.duels).toBe(PAIRS)
-    expect(tally.reloads).toBe(PAIRS)
+    // Recarga cada uno una vez por par (si el duelo llegó a esa pregunta).
+    expect(tally.reloads).toBeGreaterThan(0)
+    expect(tally.hostReloads).toBeGreaterThan(0)
     expect(tally.guestAnswers).toBeGreaterThan(0)
     expect(tally.checks).toBeGreaterThan(PAIRS * Math.min(CAP, RELOAD_AT))
   })

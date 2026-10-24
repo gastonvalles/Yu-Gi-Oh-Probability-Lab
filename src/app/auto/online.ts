@@ -1,7 +1,8 @@
 import { RateLimiter } from '../duel-relay-rules'
 import type { DuelSnapshot } from '../duel-session'
 import { cardData, type DataLoader, type DataSource, type DuelData } from './auto-data'
-import { createAutoSession, type AutoSession, type HostTransport, type TransportFactory } from './auto-session'
+import type { AutoSave, AutoSaveStore } from './auto-save'
+import { createAutoSession, type AutoSession, type HostTransport, type SessionAnswer, type TransportFactory } from './auto-session'
 import type { DeckList, MappedDeck } from './deck-map'
 import {
   AUTO_PROTOCOL_VERSION,
@@ -27,7 +28,7 @@ import type { AutoCommand, AutoEvent, CoreAnswer, Seat } from './protocol'
  *
  * El anfitrión es de confianza (tiene la mano del invitado en memoria: es para jugar con amigos); el invitado no: todo lo que manda pasa por `parseAutoMessage`, sólo vale la
  * respuesta a la pregunta pendiente y lo demás tiene tope de frecuencia. Lo que el anfitrión le manda va por un marcapasos (`createPacer`), en orden, y se anota (`log`) para
- * reponérselo entero si se cae y vuelve. El anfitrión que recarga la página pierde el duelo (la sala sigue): «lost».
+ * reponérselo entero si se cae y vuelve. El anfitrión que recarga la página rearma el duelo con lo guardado (`save`, `auto-save.ts`); sin eso, el duelo se pierde (la sala sigue): «lost».
  */
 
 /** Lo que el enlace necesita del relay: mandar y escuchar texto (un `DuelTransport` lo cumple; en las pruebas, un par en memoria). */
@@ -73,6 +74,8 @@ export interface HostLinkOptions {
   makeTransport: TransportFactory
   /** `AUTO_ONLINE` del manifiesto (`features.online`): apagado, se contesta `autoCheck{ok:false, reason:'off'}`. */
   enabled: () => Promise<boolean>
+  /** El guardado del duelo de esta sala (`autoSaveStore(sala)`): el enlace lo escribe con cada respuesta, lo borra al terminar y lo usa si la página se recargó a mitad de duelo. Abandonar lo borra la pantalla. */
+  save?: AutoSaveStore
   now?: () => number
   random?: () => number
 }
@@ -221,6 +224,13 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let heldRetry: AutoEvent | null = null
   let resendLater = false
   let partId = 0
+  // El duelo guardado: el deck y la mano con que se juega (los de lo guardado, si se rearma), lo que se va a rearmar y lo último escrito (`saving`: mientras el duelo sigue).
+  let hostDeck = options.deck
+  let hand = options.handSize
+  let restoring: AutoSave | null = null
+  let remoteDeck: DeckList | null = null
+  let saving = false
+  let savedAnswers: readonly SessionAnswer[] | null = null
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -281,7 +291,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     try {
       if (!(await options.enabled())) next = { ok: false, mine: NONE, theirs: 0, bad: NONE, reason: 'off' }
       else {
-        const data = await loader.load([options.deck, deck])
+        const data = await loader.load([hostDeck, deck])
 
         if (token !== checks) return
         const mine = badOf(data.decks[0])
@@ -295,9 +305,45 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     if (token !== checks || destroyed) return
     check = next
+    // Lo guardado ya no se puede jugar (otros datos en el despliegue, cartas sin reglas): el duelo se perdió.
+    if (restoring && !next.ok) {
+      restoring = null
+      pending = false
+      options.save?.clear()
+      return lose()
+    }
     sendCheck()
     if (pending && next.ok && room?.opening.ordered) begin()
     refresh()
+  }
+
+  /** La página se recargó con el duelo empezado (la sala ya eligió quién empieza): con lo guardado se rearma (primero se revisan los decks, que bajan los datos); sin eso, se perdió. */
+  function recover() {
+    const saved = options.save?.read() ?? null
+
+    if (!saved) return lose()
+    restoring = saved
+    hostDeck = saved.decks.mine
+    hand = saved.hand
+    guestDeck = saved.decks.theirs
+    pending = true
+    stopWait()
+    outdated = false
+    void runCheck(guestDeck)
+  }
+
+  /** Lo que se guarda para rearmar el duelo: con cada respuesta aceptada (no mientras se re-simula); terminado el duelo, se borra. */
+  function persist() {
+    if (!options.save || !saving || !session || !seats) return
+    const snap = session.getSnapshot()
+
+    if (snap.status === 'ended' || snap.status === 'error' || (room?.conceded ?? null) !== null) {
+      saving = false
+      return options.save.clear()
+    }
+    if (snap.replaying || snap.answers === savedAnswers) return
+    savedAnswers = snap.answers
+    options.save.write({ v: 1, seed: snap.seed, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now() })
   }
 
   function takeDeck(message: Extract<AutoMessage, { t: 'autoDeck' }>) {
@@ -455,34 +501,42 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       resendLater = false
       resend()
     }
+    persist()
     refresh()
   }
 
-  /** Empieza el duelo: el anfitrión es el duelista 0 de la sala y el asiento 0 del núcleo siempre empieza. */
+  /** Empieza el duelo (o lo rearma con lo guardado): el anfitrión es el duelista 0 de la sala y el asiento 0 del núcleo siempre empieza. */
   function begin() {
     if (!room || !guestDeck || !check?.ok) {
       pending = true
       return
     }
+    const saved = restoring
+
     pending = false
+    restoring = null
     drop()
     lost = false
-    const host: Seat = room.starter === 0 ? 0 : 1
+    const host: Seat = saved?.seat ?? (room.starter === 0 ? 0 : 1)
 
     seats = { host, guest: (1 - host) as Seat }
+    remoteDeck = saved?.decks.theirs ?? guestDeck
     restartLog()
     sent = new Set()
     heldRetry = null
     resendLater = false
+    saving = true
+    savedAnswers = null
     session = createAutoSession({
       loader,
-      deck: options.deck,
-      seed: Math.floor(random() * 2 ** 32) >>> 0,
+      deck: hostDeck,
+      seed: saved?.seed ?? Math.floor(random() * 2 ** 32) >>> 0,
       seat: host,
-      handSize: options.handSize,
-      remote: { deck: guestDeck, onReplay: (skip) => void post({ t: 'autoReplay', skip }) },
+      handSize: hand,
+      remote: { deck: remoteDeck, onReplay: (skip) => void post({ t: 'autoReplay', skip }) },
       transport: (data) => watch(options.makeTransport(data)),
       onEvent: forward,
+      ...(saved ? { restore: { answers: saved.answers } } : {}),
     })
     unwatch = session.subscribe(onSession)
   }
@@ -524,7 +578,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
         if (armed) {
           armed = false
           begin()
-        } else if (!session) lose()
+        } else if (!session) recover()
       } else if (!next.opening.ordered && before?.opening.ordered) {
         // La revancha: la sala vuelve a definir quién empieza; el próximo `ordered` arma otra sesión, con otra semilla.
         drop()
@@ -532,6 +586,8 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
         lost = false
         sendCheck()
       }
+      // Rendirse termina el duelo para la sala: lo guardado ya no sirve.
+      persist()
       refresh()
     },
     resync() {},
