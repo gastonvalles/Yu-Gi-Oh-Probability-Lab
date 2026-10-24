@@ -612,7 +612,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
       <>
         {AutoDuel ? (
           <Suspense fallback={renderRoom(AUTO_PENDING)}>
-            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} />
+            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} code={intent.room} />
           </Suspense>
         ) : (
           renderRoom(AUTO_PENDING)

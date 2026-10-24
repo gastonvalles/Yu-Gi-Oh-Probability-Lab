@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 
 import { createDataLoader, httpSource } from '../../app/auto/auto-data'
+import { autoSaveStore, type AutoSaveStore } from '../../app/auto/auto-save'
 import { workerTransport, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
@@ -56,6 +57,8 @@ export interface AutoDuelScreenProps {
   onLeave: () => void
   onAbandon: () => void
   onRematch: () => void
+  /** El código de la sala: con él el anfitrión guarda el duelo en el navegador (si recarga la página, lo retoma); sin él no guarda nada. */
+  code?: string
   /** Pruebas: el enlace de mentira (tiene que ser estable: cambiarlo arma otro enlace). */
   connect?: (transport: OnlineTransport, role: DuelRole) => OnlineLink
 }
@@ -65,12 +68,12 @@ const noSubscribe = () => () => {}
 const noSnapshot = () => null
 
 /** El enlace de verdad: el anfitrión baja los datos y corre el núcleo en un Worker; el invitado sólo baja lo de sus cartas. `features.online` del manifiesto lo apaga sin tocar código. */
-function liveLink(transport: OnlineTransport, role: DuelRole, deck: DeckList, handSize: number): OnlineLink {
+function liveLink(transport: OnlineTransport, role: DuelRole, deck: DeckList, handSize: number, save: AutoSaveStore | null): OnlineLink {
   if (role === 'guest') return createGuestLink({ transport, source: httpSource(), deck })
   const loader = createDataLoader(httpSource())
 
   // Sin manifiesto no se sabe: se sigue y, si los datos no llegan, el enlace lo dice (`reason: 'data'`).
-  return createHostLink({ transport, loader, deck, handSize, makeTransport: workerTransport(), enabled: () => loader.manifest().then((manifest) => manifest.features?.online !== false, () => true) })
+  return createHostLink({ transport, loader, deck, handSize, makeTransport: workerTransport(), enabled: () => loader.manifest().then((manifest) => manifest.features?.online !== false, () => true), ...(save ? { save } : {}) })
 }
 
 /** Una clave por sesión (la mesa arranca de cero con cada una: revancha, o el invitado que vuelve a recibir el duelo). */
@@ -78,19 +81,29 @@ const sessionIds = new WeakMap<AutoSession, number>()
 let lastSessionId = 0
 const sessionKey = (session: AutoSession) => sessionIds.get(session) ?? (sessionIds.set(session, (lastSessionId += 1)), lastSessionId)
 
-export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, connect }: AutoDuelScreenProps) {
+export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, connect }: AutoDuelScreenProps) {
   const { role, peerPresent } = snapshot
   const list = useMemo<DeckList>(() => ({ main: deckListOf(deck.mainIds), extra: deckListOf(deck.extraIds) }), [deck.mainIds, deck.extraIds])
   const [link, setLink] = useState<OnlineLink | null>(null)
+  // El duelo guardado del anfitrión se borra al salir o abandonar (el enlace no lo borra al destruirse: con `StrictMode` borraría lo guardado al volver a montar).
+  const save = useMemo(() => (code ? autoSaveStore(code) : null), [code])
+  const leave = useCallback(() => {
+    save?.clear()
+    onLeave()
+  }, [save, onLeave])
+  const abandon = useCallback(() => {
+    save?.clear()
+    onAbandon()
+  }, [save, onAbandon])
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite, y un enlace escucha el relay y manda; el de la primera pasada se destruye.
   useEffect(() => {
-    const next = connect ? connect(transport, role) : liveLink(transport, role, list, handSize)
+    const next = connect ? connect(transport, role) : liveLink(transport, role, list, handSize, save)
 
     setLink(next)
 
     return () => next.destroy()
-  }, [connect, transport, role, list, handSize])
+  }, [connect, transport, role, list, handSize, save])
 
   const online = useSyncExternalStore(link ? link.subscribe : noSubscribe, link ? link.getSnapshot : noSnapshot)
 
@@ -126,8 +139,8 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
       status={status}
       myName={myName}
       deck={deck}
-      onLeave={onLeave}
-      onAbandon={onAbandon}
+      onLeave={leave}
+      onAbandon={abandon}
       onRematch={onRematch}
     />
   )
