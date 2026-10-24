@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, openAsk, step, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, namesList, openAsk, step, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { gesturesOf, legal, playAsk, seeded } from './support/ask-ui-player'
@@ -132,6 +132,14 @@ const ASKS: CoreAsk[] = [
 ]
 
 const NO_UI = ['select_counter', 'select_disfield', 'sort_chain', 'announce_card', 'rock_paper_scissors']
+
+describe('namesList: los nombres de una línea del registro', () => {
+  it('junta las copias de la misma carta con cuántas son y respeta el orden en que aparecen', () => {
+    expect(namesList(['Kirin', 'Ponix', 'Kirin', 'Kirin'])).toBe('Kirin ×3, Ponix')
+    expect(namesList(['Ponix'])).toBe('Ponix')
+    expect(namesList([])).toBe('')
+  })
+})
 
 describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
   it('cada tipo tiene su gesto: tocando al azar lo ofrecido, siempre llega una respuesta que el núcleo acepta, y ningún toque ofrecido queda muerto', () => {
