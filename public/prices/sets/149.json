@@ -1,6 +1,6 @@
 [
 ["CP01-EN001","Ultra Rare","Unlimited",72.99,26056,50400231,"Satellite Cannon"],
-["CP01-EN002","Super Rare","Unlimited",690,26057,14087893,"Book of Moon"],
+["CP01-EN002","Super Rare","Unlimited",733.33,26057,14087893,"Book of Moon"],
 ["CP01-EN003","Super Rare","Unlimited",421.49,26058,46411259,"Metamorphosis"],
 ["CP01-EN004","Super Rare","Unlimited",236.79,26059,56120475,"Sakuretsu Armor"],
 ["CP01-EN005","Super Rare","Unlimited",218.67,26060,16226786,"Night Assailant"],
@@ -8,7 +8,7 @@
 ["CP01-EN007","Rare","Unlimited",1.18,26062,23171610,"Limiter Removal"],
 ["CP01-EN008","Rare","Unlimited",30,26063,41420027,"Solemn Judgment"],
 ["CP01-EN009","Rare","Unlimited",4.27,26064,2851070,"Reflect Bounder"],
-["CP01-EN010","Rare","Unlimited",5.62,26065,98045062,"Enemy Controller"],
+["CP01-EN010","Rare","Unlimited",4.97,26065,98045062,"Enemy Controller"],
 ["CP01-EN011","Rare","Unlimited",13.44,26066,67169062,"Pot of Avarice"],
 ["CP01-EN012","Common","Unlimited",5.17,26067,15510988,"Thunder Kid"],
 ["CP01-EN013","Common","Unlimited",0.11,26068,1347977,"Mysterious Guard"],
@@ -17,6 +17,5 @@
 ["CP01-EN016","Common","Unlimited",1.13,26071,95308449,"Final Countdown"],
 ["CP01-EN017","Common","Unlimited",0.63,26072,82108372,"Mudora"],
 ["CP01-EN018","Common","Unlimited",0.99,26073,3510565,"Stealth Bird"],
-["CP01-EN019","Common","Unlimited",18,26074,75043725,"Emissary of the Afterlife"],
-["CP01-EN020","Common","Unlimited",1.54,26075,36361633,"Threatening Roar"]
+["CP01-EN019","Common","Unlimited",18,26074,75043725,"Emissary of the Afterlife"]
 ]
