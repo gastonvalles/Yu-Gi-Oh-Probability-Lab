@@ -7,9 +7,9 @@ const memory = () => {
 }
 
 describe('las preferencias del duelo automático', () => {
-  it('sin nada guardado: el interruptor apagado (la mesa manual de siempre), se pregunta la cadena y la casilla', () => {
+  it('sin nada guardado: el interruptor apagado (la mesa manual de siempre), se pregunta la cadena y la casilla, la mano del rival a la vista', () => {
     expect(readAutoPrefs(memory)).toEqual(DEFAULT_AUTO_PREFS)
-    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: false, chain: 'ask', place: 'ask' })
+    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: false, chain: 'ask', place: 'ask', blind: false })
   })
 
   it('ya no hay bandera: la clave vieja no prende nada', () => {
@@ -26,8 +26,10 @@ describe('las preferencias del duelo automático', () => {
     storage.setItem(AUTO_KEYS.duel, 'on')
     storage.setItem(AUTO_KEYS.chain, 'never')
     storage.setItem(AUTO_KEYS.place, 'auto')
-    expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto' })
+    storage.setItem(AUTO_KEYS.blind, 'on')
+    expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto', blind: true })
     storage.setItem(AUTO_KEYS.duel, 'si')
+    storage.setItem(AUTO_KEYS.blind, 'si')
     storage.setItem(AUTO_KEYS.chain, 'siempre')
     storage.setItem(AUTO_KEYS.place, '1')
     expect(readAutoPrefs(() => storage)).toEqual(DEFAULT_AUTO_PREFS)

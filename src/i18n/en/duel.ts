@@ -11,6 +11,7 @@ export const duel: Translated<typeof es> = {
   'duel.zone.theirs': 'Opponent, {zone}',
   'duel.zone.conflict': '{zone}: both players are using it',
   'duel.hand.theirs': "Opponent's hand: {count}",
+  'duel.hand.theirsShown': "Opponent's hand: {cards}",
   'duel.phase.current': 'Current phase: {phase}',
   'duel.announce.attack': '{name} attacks {target}',
   'duel.announce.attackDirect': '{name} attacks you directly',

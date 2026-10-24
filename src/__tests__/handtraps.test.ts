@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { KNOWN_CARDS_MAP, normalizeCardNameForLookup } from '../app/classification-engine'
 import { encodeMessage, parseMessage } from '../app/duel-protocol'
 import {
+  AUTO_RULES,
+  autoRival,
   DEFAULT_HANDTRAP_CONFIG,
   HANDTRAP_CATALOG,
   HANDTRAP_CONFIG_KEY,
@@ -121,6 +123,28 @@ describe('la mano del rival que se reparte', () => {
   it('apagado, o sin ninguna carta, no hay mano del rival (la mesa queda como siempre)', () => {
     expect(dealRival({ enabled: false, picks: [ASH], hand: 3 }, 1)).toBeNull()
     expect(dealRival(on([], 3), 1)).toBeNull()
+  })
+})
+
+describe('el rival del duelo automático', () => {
+  const GAMMA = pick(38814750, 2, 'PSY-Framegear Gamma')
+
+  it('apagado es el pasivo; encendido, su deck son las copias elegidas en el orden de la hoja (con Gamma, también PSY-Frame Driver)', () => {
+    expect(autoRival({ enabled: false, picks: [ASH], hand: 3 })).toBeNull()
+    expect(autoRival(on([], 3))).toBeNull()
+    expect(autoRival(on([{ ...VEILER, copies: 2 }, ASH], 3))?.main).toEqual([[97268402, 2], [14558127, 1]])
+    expect(autoRival(on([ASH, GAMMA], 3))?.main).toEqual([[14558127, 1], [38814750, 2], [49036338, 1]])
+  })
+
+  it('su mano es la que repartiría el simulador con esa semilla, en passcodes', () => {
+    const rival = autoRival(on(THREE_OF_THREE, 3))!
+
+    for (const seed of SEEDS.slice(0, 40)) expect(rival.hand(seed)).toEqual(dealRival(on(THREE_OF_THREE, 3), seed)!.rival.hand.map(passcodeOf))
+    expect(new Set(SEEDS.slice(0, 40).map((seed) => rival.hand(seed).join())).size).toBeGreaterThan(1)
+  })
+
+  it('cada handtrap del catálogo tiene su regla (y nada más la tiene)', () => {
+    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual(HANDTRAP_CATALOG.map((card) => card.id).sort())
   })
 })
 

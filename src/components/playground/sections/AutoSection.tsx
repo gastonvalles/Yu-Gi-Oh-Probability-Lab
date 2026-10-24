@@ -103,7 +103,7 @@ export function AutoSection() {
       </Specimen>
 
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
-      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (sonidos, respuestas, la casilla, que el rival no juega, «Reiniciar el duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
+      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (sonidos, respuestas, la casilla, «Handtraps del rival» con «Cambiar handtraps» y, encendidas, «A ciegas» —en la del núcleo resolviendo están apagadas y dice que el rival no juega—, «Reiniciar el duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
     </SpecimenGrid>
   )
 }
@@ -227,6 +227,9 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
   const [place, setPlace] = useState<AutoPlaceMode>('ask')
   const [layout, setLayout] = useState<'top' | 'rails'>('top')
   const [passed, setPassed] = useState(0)
+  // Las handtraps del rival en «Más opciones»: encendidas (con «A ciegas») en la de la cadena; apagadas (el rival pasivo) en la del núcleo resolviendo.
+  const [blind, setBlind] = useState(false)
+  const handtraps = { on: kind === 'chain', summary: kind === 'chain' ? t('auto.bar.handtrapsOn', { cards: 'Ash Blossom & Joyous Spring, Effect Veiler, Infinite Impermanence', hand: 3 }) : t('auto.bar.handtrapsOff'), onChange: () => setPassed((count) => count + 1) }
   const lane: LaneNotice =
     kind === 'thinking'
       ? { kind: 'thinking', onCancel: () => setPassed((count) => count + 1) }
@@ -249,6 +252,9 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
       onPlace={setPlace}
       onRestart={() => setPassed((count) => count + 1)}
       onManual={() => setPassed((count) => count + 1)}
+      handtraps={handtraps}
+      blind={blind}
+      onBlind={setBlind}
     />
   )
 

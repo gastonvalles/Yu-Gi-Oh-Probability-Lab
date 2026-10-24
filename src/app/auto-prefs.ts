@@ -2,18 +2,19 @@ import { useSyncExternalStore } from 'react'
 
 /**
  * Las preferencias del duelo automático (beta), recordadas en el navegador. `duel` es el interruptor del lobby de Jugar: prendido, «Entrenar solo» abre la mesa contra el núcleo de
- * reglas; apagado, la mesa manual de siempre. `chain`, «Respuestas: Preguntar · Nunca»; `place`, «Casilla: preguntar · automática». No importa nada de `auto/`: lo lee el lobby.
- * La bandera de antes (`?auto=1`, `ygo-lab:auto-flag`) ya no existe: el modo lo ve todo el mundo y la clave vieja se ignora.
+ * reglas; apagado, la mesa manual de siempre. `chain`, «Respuestas: Preguntar · Nunca»; `place`, «Casilla: preguntar · automática»; `blind`, «A ciegas»: la mano del rival de
+ * handtraps de dorso. No importa nada de `auto/`: lo lee el lobby. La bandera de antes (`?auto=1`, `ygo-lab:auto-flag`) ya no existe: el modo lo ve todo el mundo y la clave vieja se ignora.
  */
 export interface AutoPrefs {
   duel: boolean
   chain: 'ask' | 'never'
   place: 'ask' | 'auto'
+  blind: boolean
 }
 
-export const AUTO_KEYS = { duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place' } as const
+export const AUTO_KEYS = { duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place', blind: 'ygo-lab:auto-blind' } as const
 /** Lo de quien no tocó nada. `duel: false`: se arranca en la mesa manual (con `true` arrancaría en el automático; quien lo apagó lo sigue teniendo apagado). */
-export const DEFAULT_AUTO_PREFS: AutoPrefs = { duel: false, chain: 'ask', place: 'ask' }
+export const DEFAULT_AUTO_PREFS: AutoPrefs = { duel: false, chain: 'ask', place: 'ask', blind: false }
 
 /** El núcleo corre en WebAssembly y en un Worker: un navegador sin alguno de los dos no lo puede correr, y entonces el interruptor va apagado y la preferencia no se usa. */
 export const canRunAuto = (scope: { WebAssembly?: unknown; Worker?: unknown } = globalThis): boolean => typeof scope.WebAssembly === 'object' && typeof scope.Worker === 'function'
@@ -43,6 +44,7 @@ export function readAutoPrefs(storage: () => Storage = () => localStorage): Auto
     duel: duel === 'on' || (duel !== 'off' && DEFAULT_AUTO_PREFS.duel),
     chain: get(AUTO_KEYS.chain) === 'never' ? 'never' : 'ask',
     place: get(AUTO_KEYS.place) === 'auto' ? 'auto' : 'ask',
+    blind: get(AUTO_KEYS.blind) === 'on',
   }
 }
 

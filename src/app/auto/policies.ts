@@ -1,11 +1,13 @@
-import type { AskOf, CoreAnswer, CoreAsk, Seat } from './protocol'
+import { AUTO_RULES, type AutoRule } from '../handtraps'
+import type { AutoOverlay, CardRef, ChainLink, CorePlace } from './adapter'
+import { LOCATION, type AskOf, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
 /**
- * Quién contesta cuando no contesta una persona (§3.8 del diseño). Las dos son puras y deterministas: `passivePolicy` es el rival que no
- * hace nada (deja jugar tu combo con reglas de verdad) y `randomLegalPolicy` el bot del fuzz (una respuesta legal al azar; nunca un modo
- * para el usuario). Anunciar una carta pide evaluar el filtro del núcleo contra una base de cartas que estas funciones no tienen: lo hace
- * `pickCard`, que pasa quien las usa (en el fuzz, `cardMatchesOpcode` del paquete sobre el `.cdb`); sin él, se anuncia 0 y el núcleo
- * vuelve a preguntar.
+ * Quién contesta cuando no contesta una persona (§3.8 del diseño). Todas son puras y deterministas: `passivePolicy` es el rival que no
+ * hace nada (deja jugar tu combo con reglas de verdad), `handtrapPolicy` el que además usa sus handtraps contra lo tuyo y
+ * `randomLegalPolicy` el bot del fuzz (una respuesta legal al azar; nunca un modo para el usuario). Anunciar una carta pide evaluar el
+ * filtro del núcleo contra una base de cartas que estas funciones no tienen: lo hace `pickCard`, que pasa quien las usa (en el fuzz,
+ * `cardMatchesOpcode` del paquete sobre el `.cdb`); sin él, se anuncia 0 y el núcleo vuelve a preguntar.
  */
 
 export type Policy = (ask: CoreAsk) => CoreAnswer
@@ -151,6 +153,64 @@ export function passivePolicy(pickCard?: CardPicker): Policy {
       case 'rock_paper_scissors':
         return { type: ask.type, value: 1 }
     }
+  }
+}
+
+/** Lo que el rival ve del duelo: su adaptador (`adapter.ts`), que sólo lleva lo que el árbitro le dejó ver a su asiento. */
+export interface RivalView {
+  readonly overlay: Pick<AutoOverlay, 'chain' | 'turnPlayer'>
+  locationOf(ref: CardRef): CorePlace | null
+}
+export type RivalPolicy = (ask: CoreAsk, view: RivalView) => CoreAnswer
+
+/** `TIMING_SUMMON | TIMING_SPSUMMON | TIMING_FLIPSUMMON`: en `hint_timing_other`, la ventana que abre una Invocación del otro. */
+const SUMMON_TIMINGS = 0x40 | 0x80 | 0x100
+
+/**
+ * El rival con handtraps: contesta como el pasivo salvo dos cosas. Ante una cadena, activa la primera de `priority` (los passcodes, en el
+ * orden de la hoja) que su regla (`AUTO_RULES`) pide usar ahora, sólo contra un eslabón tuyo que todavía espera (nunca contra lo suyo:
+ * Ash también negaría su propio Maxx "C"). Y al elegir el objetivo de la que acaba de activar (`monster`, `graveyard`), apunta a la carta
+ * de tu eslabón. Lo demás (y lo que no sabe resolver) es del pasivo: nunca da una respuesta que el núcleo rechace.
+ */
+export function handtrapPolicy(priority: readonly number[], fallback: Policy = passivePolicy()): RivalPolicy {
+  /** De tu lado (visto por el rival) y esperando respuesta. */
+  const yours = (link: ChainLink | undefined): link is ChainLink & { card: CardRef } => link?.card?.side === 'theirs' && link.state === 'chained'
+
+  return (ask, view) => {
+    const chain = view.overlay.chain
+    const top = chain.at(-1)
+    const opponent = (1 - ask.player) as Seat
+
+    if (ask.type === 'select_chain' && !ask.forced) {
+      const at = yours(top) ? view.locationOf(top.card) : null
+      const wants: Record<AutoRule, boolean> = {
+        respond: yours(top),
+        monster: at?.controller === opponent && at.location === LOCATION.MZONE,
+        graveyard: at?.controller === opponent && at.location === LOCATION.GRAVE,
+        offered: true,
+        draw: view.overlay.turnPlayer === opponent && (yours(top) || (chain.length === 0 && (ask.hint_timing_other & SUMMON_TIMINGS) !== 0)),
+      }
+
+      for (const code of priority) {
+        const rule = AUTO_RULES[code]
+        const index = rule && wants[rule] ? ask.selects.findIndex((card) => card.code === code) : -1
+
+        if (index >= 0) return { type: ask.type, index }
+      }
+    }
+
+    // El objetivo de la que acaba de activar (el eslabón de arriba es suyo): la carta de tu eslabón, el de abajo.
+    const below = chain.at(-2)
+    const aims = top?.card?.side === 'mine' && (AUTO_RULES[top.code] === 'monster' || AUTO_RULES[top.code] === 'graveyard')
+
+    if (ask.type === 'select_card' && aims && below?.card?.side === 'theirs' && ask.min <= 1) {
+      const at = view.locationOf(below.card)
+      const index = at ? ask.selects.findIndex((card) => card.controller === at.controller && card.location === at.location && card.sequence === at.sequence) : -1
+
+      if (index >= 0) return { type: ask.type, indices: [index] }
+    }
+
+    return fallback(ask)
   }
 }
 

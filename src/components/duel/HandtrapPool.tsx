@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 
 import { cardSmallImageUrl, type Expansion } from '../../app/card-prices'
 import {
+  AUTO_RULES,
   HANDTRAP_CATALOG,
   MAX_COPIES,
   MAX_RIVAL_HAND,
@@ -140,13 +141,15 @@ interface HandtrapPoolCardProps {
   /** Cuántas copias tiene el rival en su deck (0: no la tiene). */
   copies: number
   onChange: (copies: number) => void
+  /** Una línea chica debajo del nombre (en el duelo automático, que el rival todavía no la usa solo). */
+  note?: string
 }
 
 /**
  * Una carta de la hoja: su arte, su nombre y, debajo, cuántas copias tiene el rival en su deck (de 0 a `MAX_COPIES`). Con una o más lleva el aro ámbar de lo elegido; con 0, apagada.
  * La carta se elige subiendo su contador (la fila no es un botón).
  */
-export function HandtrapPoolCard({ card, copies, onChange }: HandtrapPoolCardProps) {
+export function HandtrapPoolCard({ card, copies, onChange, note }: HandtrapPoolCardProps) {
   const chosen = copies > 0
 
   return (
@@ -162,6 +165,7 @@ export function HandtrapPoolCard({ card, copies, onChange }: HandtrapPoolCardPro
       </span>
       <span className="grid min-w-0 flex-1 justify-items-start gap-1">
         <span className={cx('max-w-full truncate text-body font-semibold', chosen ? 'text-foreground' : 'text-muted')}>{card.name}</span>
+        {note ? <span className="text-micro text-soft">{note}</span> : null}
         <Stepper size="lg" label={t('handtraps.picker.copies', { name: card.name })} value={copies} min={0} max={MAX_COPIES} onChange={onChange} />
       </span>
     </li>
@@ -193,6 +197,8 @@ interface HandtrapPickerProps {
   onSave: (picks: HandtrapPick[], hand: number) => void
   /** Dentro de la práctica: aplicar reparte una mano nueva, y la hoja lo avisa abajo. */
   dealsNew?: boolean
+  /** En el duelo automático: aplicar reinicia el duelo (la hoja lo avisa abajo) y las cartas sin regla (`AUTO_RULES`) dicen que el rival todavía no las usa solo. */
+  auto?: boolean
   /** Con el simulador encendido, «Apagar el simulador» (sin caja: es lo que descarta). */
   onTurnOff?: () => void
 }
@@ -201,7 +207,7 @@ interface HandtrapPickerProps {
  * La hoja de las handtraps del rival: las del catálogo (y las que se agregan con el buscador), cada una con su contador de copias en el deck del rival (hasta `MAX_COPIES`; el deck no
  * tiene tope). Abajo, cuántas cartas tiene en la mano (de 1 a 5) y entre cuántas se reparten al azar; sin ninguna carta no se puede usar. Cada vez que se abre arranca de lo guardado.
  */
-export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSave, onTurnOff }: HandtrapPickerProps) {
+export function HandtrapPicker({ isOpen, config, dealsNew = false, auto = false, onClose, onSave, onTurnOff }: HandtrapPickerProps) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(config))
   const [query, setQuery] = useState('')
   const [wasOpen, setWasOpen] = useState(isOpen)
@@ -249,7 +255,7 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSa
               {summary}
             </p>
           </div>
-          {dealsNew ? <p className="m-0 text-micro text-soft">{t('handtraps.picker.dealsNew')}</p> : null}
+          {dealsNew || auto ? <p className="m-0 text-micro text-soft">{t(auto ? 'handtraps.picker.restarts' : 'handtraps.picker.dealsNew')}</p> : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
             {onTurnOff ? (
               <Button variant="tertiary" className="mr-auto" onClick={onTurnOff}>
@@ -268,7 +274,7 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, onClose, onSa
     >
       <ul aria-label={t('handtraps.picker.list')} className={POOL_LIST}>
         {entries.map((card) => (
-          <HandtrapPoolCard key={card.id} card={card} copies={copiesOf(card)} onChange={(copies) => setCopies(card, copies)} />
+          <HandtrapPoolCard key={card.id} card={card} copies={copiesOf(card)} onChange={(copies) => setCopies(card, copies)} {...(auto && !AUTO_RULES[card.id] ? { note: t('handtraps.picker.notAuto') } : {})} />
         ))}
       </ul>
 

@@ -100,6 +100,15 @@ describe('el adaptador: del núcleo a la mesa', () => {
     expect(adapter.overlay.chain).toEqual([{ card: { side: 'theirs', id: 'c1' }, code: 14558127, description: '232933232', state: 'chained' }])
     adapter.apply(events(0, { type: 'chain_solving', chain_size: 1 }, { type: 'chain_solved', chain_size: 1 }))
     expect(adapter.overlay.chain).toEqual([])
+    expect(adapter.overlay.negated).toEqual([])
+    // Lo negado queda dicho después de la cadena (que se resuelve de una), hasta que empieza otra.
+    const ash = { type: 'chaining' as const, code: 14558127, controller: 1 as const, location: L.HAND, sequence: 0, position: 10, triggering_controller: 1 as const, triggering_location: L.HAND, triggering_sequence: 0, description: '0', chain_size: 1 }
+
+    adapter.apply(events(0, ash))
+    adapter.apply(events(0, { type: 'chain_solving', chain_size: 1 }, { type: 'chain_disabled', chain_size: 1 }, { type: 'chain_solved', chain_size: 1 }, { type: 'chain_end' }))
+    expect(adapter.overlay.negated).toEqual([{ card: { side: 'theirs', id: 'c1' }, code: 14558127, description: '0', state: 'disabled' }])
+    adapter.apply(events(0, ash))
+    expect(adapter.overlay.negated).toEqual([])
     adapter.apply({ t: 'stats', seat: 0, cards: [] })
     adapter.apply({ t: 'end', winner: 0, reason: 1 })
     expect(adapter.overlay.end).toEqual({ winner: 0, reason: 1 })

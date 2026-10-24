@@ -27,6 +27,9 @@ export const handtraps = {
   'handtraps.picker.addCard': 'Agregar {name} a la lista',
   'handtraps.picker.listed': '{name} ya está en la lista',
   'handtraps.picker.dealsNew': 'Al aplicar, se reparte una mano nueva.',
+  // En el duelo automático: aplicar reinicia el duelo y lo que no tiene regla (lo agregado con el buscador) el rival lo tiene pero no lo usa.
+  'handtraps.picker.restarts': 'Al aplicar, el duelo empieza de nuevo.',
+  'handtraps.picker.notAuto': 'Todavía no la usa solo',
   'handtraps.picker.turnOff': 'Apagar el simulador',
 
   // La mesa.

@@ -1,5 +1,6 @@
-import { passivePolicy, randomLegalPolicy } from '../app/auto/policies'
-import { ASK_SHAPES, parseAnswer, type CoreAnswer, type CoreAsk } from '../app/auto/protocol'
+import type { CardRef, ChainLink, CorePlace } from '../app/auto/adapter'
+import { handtrapPolicy, passivePolicy, randomLegalPolicy, type RivalView } from '../app/auto/policies'
+import { ASK_SHAPES, LOCATION as L, parseAnswer, type AskOf, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 
 const card = (code: number, sequence = 0) => ({ code, controller: 0 as const, location: 2, sequence })
 const pos = (code: number, sequence = 0) => ({ ...card(code, sequence), position: 10 })
@@ -92,5 +93,83 @@ describe('las políticas de respuesta', () => {
       expect(byType('select_place').places[0]!.sequence).toBeLessThanOrEqual(4)
       expect([String(1n << 40n), '4']).toContain(byType('announce_race').races)
     }
+  })
+})
+
+describe('el rival de handtraps', () => {
+  const ASH = 14558127
+  const MAXX = 23434538
+  const VEILER = 97268402
+  const IMPERM = 10045474
+  const MOURNER = 52038442
+  const CROW = 24508238
+  /** Una carta que no tiene regla (la agregó quien juega con el buscador). */
+  const OTHER = 12345678
+
+  /** Lo que el rival (asiento 1) ve: tu Stratos en tu mz 2, tu Glow-Up Bulb en tu cementerio, tu búsqueda en tus Mágicas y su Veiler, ya en su cementerio. */
+  const places: Record<string, CorePlace> = { stratos: { controller: 0, location: L.MZONE, sequence: 2 }, bulb: { controller: 0, location: L.GRAVE, sequence: 1 }, search: { controller: 0, location: L.SZONE, sequence: 0 }, veiler: { controller: 1, location: L.GRAVE, sequence: 0 } }
+  const link = (id: string, code: number, side: CardRef['side'] = 'theirs', state: ChainLink['state'] = 'chained'): ChainLink => ({ card: { side, id }, code, description: '0', state })
+  const view = (chain: ChainLink[], turnPlayer: Seat | null = 0): RivalView => ({ overlay: { chain, turnPlayer }, locationOf: (ref) => places[ref.id] ?? null })
+  const chainAsk = (codes: number[], extra: Partial<AskOf<'select_chain'>> = {}): CoreAsk => ({
+    type: 'select_chain',
+    player: 1,
+    spe_count: 0,
+    forced: false,
+    hint_timing: 0,
+    hint_timing_other: 0,
+    selects: codes.map((code, sequence) => ({ code, controller: 1 as const, location: L.HAND, sequence, position: 10, description: '0', client_mode: 0 })),
+    ...extra,
+  })
+  const policy = handtrapPolicy([ASH, MAXX, VEILER, IMPERM, MOURNER, CROW, OTHER])
+  const pass = { type: 'select_chain', index: null }
+
+  it('responde a tu activación con la primera que su regla pide, en el orden de la hoja; nunca a lo suyo', () => {
+    // Tu búsqueda (una Mágica): Ash, aunque Veiler también se ofrezca (no es un monstruo en el campo).
+    expect(policy(chainAsk([VEILER, ASH]), view([link('search', 1)]))).toEqual({ type: 'select_chain', index: 1 })
+    // Contra lo suyo (su Maxx "C", que Ash podría negar), nada.
+    expect(policy(chainAsk([ASH]), view([link('search', 1), link('maxx', MAXX, 'mine')]))).toEqual(pass)
+    // Sin cadena, nada: ni en la ventana de tu Invocación (no es una de robar).
+    expect(policy(chainAsk([ASH, VEILER, IMPERM]), view([]))).toEqual(pass)
+    expect(policy(chainAsk([VEILER, IMPERM], { hint_timing_other: 0x40 }), view([]))).toEqual(pass)
+    // Un eslabón tuyo que ya se resuelve no espera respuesta.
+    expect(policy(chainAsk([ASH]), view([link('search', 1, 'theirs', 'solving')]))).toEqual(pass)
+    // Una carta sin regla no la usa nunca.
+    expect(policy(chainAsk([OTHER]), view([link('search', 1)]))).toEqual(pass)
+  })
+
+  it('Veiler e Imperm, sólo contra el efecto de un monstruo tuyo en el campo, y apuntan a ese monstruo', () => {
+    expect(policy(chainAsk([IMPERM, VEILER]), view([link('stratos', 40044918)]))).toEqual({ type: 'select_chain', index: 1 })
+    expect(policy(chainAsk([VEILER]), view([link('bulb', 67441435)]))).toEqual(pass)
+    // El objetivo: tu Stratos (no la primera que ofrece el núcleo).
+    const target: CoreAsk = { type: 'select_card', player: 1, can_cancel: false, min: 1, max: 1, selects: [0, 2, 4].map((sequence) => ({ code: 7, controller: 0 as const, location: L.MZONE, sequence, position: 1 })) }
+
+    expect(policy(target, view([link('stratos', 40044918), link('veiler', VEILER, 'mine')]))).toEqual({ type: 'select_card', indices: [1] })
+    // Si el de abajo no es un monstruo que ofrezca el núcleo, lo del pasivo: la primera.
+    expect(policy(target, view([link('bulb', 67441435), link('veiler', VEILER, 'mine')]))).toEqual({ type: 'select_card', indices: [0] })
+  })
+
+  it('D.D. Crow, contra un efecto que activás desde tu cementerio, destierra esa carta', () => {
+    expect(policy(chainAsk([CROW]), view([link('bulb', 67441435)]))).toEqual({ type: 'select_chain', index: 0 })
+    expect(policy(chainAsk([CROW]), view([link('stratos', 40044918)]))).toEqual(pass)
+    const target: CoreAsk = { type: 'select_card', player: 1, can_cancel: false, min: 1, max: 1, selects: [0, 1].map((sequence) => ({ code: 7, controller: 0 as const, location: L.GRAVE, sequence, position: 5 })) }
+
+    expect(policy(target, view([link('bulb', 67441435), link('crow', CROW, 'mine')]))).toEqual({ type: 'select_card', indices: [1] })
+  })
+
+  it('las de robar, en tu turno a tu primera activación o Invocación; las que el núcleo ofrece sólo cuando pasó algo, apenas aparecen', () => {
+    expect(policy(chainAsk([MAXX]), view([link('search', 1)]))).toEqual({ type: 'select_chain', index: 0 })
+    expect(policy(chainAsk([MAXX], { hint_timing_other: 0x80 }), view([]))).toEqual({ type: 'select_chain', index: 0 })
+    // En su turno, o en otra ventana del tuyo (el fin de tu Main Phase), no.
+    expect(policy(chainAsk([MAXX]), view([link('search', 1)], 1))).toEqual(pass)
+    expect(policy(chainAsk([MAXX], { hint_timing_other: 0x4 }), view([]))).toEqual(pass)
+    // Ghost Mourner: el núcleo la ofrece sólo después de tu Invocación Especial.
+    expect(policy(chainAsk([MOURNER]), view([]))).toEqual({ type: 'select_chain', index: 0 })
+  })
+
+  it('una cadena obligatoria y todo lo demás lo contesta como el pasivo', () => {
+    const passive = passivePolicy()
+
+    expect(policy(chainAsk([ASH], { forced: true }), view([]))).toEqual({ type: 'select_chain', index: 0 })
+    for (const ask of ASKS.filter((item) => item.type !== 'select_chain')) expect(policy({ ...ask, player: 1 } as CoreAsk, view([link('search', 1)]))).toEqual(passive({ ...ask, player: 1 } as CoreAsk))
   })
 })

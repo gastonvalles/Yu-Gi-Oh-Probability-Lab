@@ -245,6 +245,9 @@ describe('AutoBar', () => {
     onSounds: () => {},
     onChain: () => {},
     onPlace: () => {},
+    handtraps: { on: false, summary: 'Apagadas: el rival no usa nada.', onChange: () => {} },
+    blind: false,
+    onBlind: () => {},
   }
 
   it('las vidas de los dos, el turno con la fase y la X de salir', () => {
@@ -277,6 +280,26 @@ describe('AutoBar', () => {
     expect(onChain).toHaveBeenCalledWith('never')
     expect(onPlace).toHaveBeenCalledWith('auto')
     expect(dialog).toHaveTextContent('El rival no juega: sólo recibe.')
+    // Sin handtraps: «Apagadas» y sin «A ciegas».
+    expect(dialog).toHaveTextContent('Handtraps del rivalApagadas: el rival no usa nada.')
+    expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
+  })
+
+  it('«Más opciones» con handtraps: lo que tiene, «Cambiar handtraps» (cierra y abre la hoja) y «A ciegas»; ya no dice que el rival no juega', () => {
+    const onChange = vi.fn()
+    const onBlind = vi.fn()
+    render(<AutoBar {...props} handtraps={{ on: true, summary: 'Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano', onChange }} onBlind={onBlind} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+
+    expect(dialog).toHaveTextContent('Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano')
+    expect(dialog).not.toHaveTextContent('El rival no juega')
+    fireEvent.click(within(dialog).getByRole('switch', { name: 'A ciegas' }))
+    expect(onBlind).toHaveBeenCalledWith(true)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cambiar handtraps' }))
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog', { name: 'Más opciones del duelo' })).toBeNull()
   })
 
   it('la línea: «resolviendo» con «Cancelar» recién a los 1,5 s; la cadena con «No responder», enmarcada; sin botones, sólo informa', () => {
