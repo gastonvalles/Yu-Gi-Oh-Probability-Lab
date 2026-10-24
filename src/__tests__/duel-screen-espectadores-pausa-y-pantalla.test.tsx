@@ -1282,8 +1282,8 @@ describe('la pantalla del duelo', () => {
     const view = host
     const notices = within(view.container).getByTestId('duel-rail-notices')
 
-    // Lo que rodea al campo está en la misma grilla que él, en las columnas de los costados.
-    expect(notices).toHaveClass('col-start-1')
+    // Lo que rodea al campo está en la misma grilla que él, en las columnas de los costados, y los avisos van por encima de él: agrandado en 3D se mete en el lateral y, sin esto, los cortaría.
+    expect(notices).toHaveClass('col-start-1', 'z-20')
     expect(view.container.querySelector('[data-lp="theirs"]')?.parentElement).toHaveClass('col-start-1', 'row-start-1')
     expect(within(view.container).getByRole('button', { name: 'Rendirme' }).closest('.col-start-3')).not.toBeNull()
     expect(within(view.container).getByTestId('duel-phase')).toHaveTextContent(/^Draw Phase$/)
