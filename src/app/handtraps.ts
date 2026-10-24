@@ -49,6 +49,59 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
   { id: 87126721, name: 'Mulcharmy Meowls' },
 ]
 
+/**
+ * Cuándo usa cada handtrap el rival del duelo automático (`handtrapPolicy`, `auto/policies.ts`), según la ventana en que la ofrece su script (CardScripts); siempre contra
+ * lo tuyo, nunca contra lo suyo. Las que no están acá las tiene en la mano y no las usa (la hoja lo avisa).
+ * - `respond`: el script la ofrece sólo en respuesta a lo que niega (`EVENT_CHAINING`): se usa contra tu última activación.
+ * - `monster`: libre (`EVENT_FREE_CHAIN`) y niega a un monstruo: contra el efecto de un monstruo tuyo en el campo, apuntándolo (sin esto, se gastaba en tu primera Invocación).
+ * - `offered`: el núcleo la ofrece sólo cuando pasó lo que la dispara (Invocaste de modo Especial, sumaste del deck a la mano, 5 Invocaciones): se usa apenas aparece.
+ * - `draw`: libre y roba mientras jugás: en tu turno, a tu primera activación o Invocación.
+ * - `graveyard`: contra un efecto que activás desde tu cementerio, desterrando esa carta (un efecto que no la necesita ahí, como buscar al ser enviada, la gasta igual).
+ */
+export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard'
+
+export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
+  14558127: 'respond', // Ash Blossom & Joyous Spring
+  23434538: 'draw', // Maxx "C"
+  97268402: 'monster', // Effect Veiler
+  10045474: 'monster', // Infinite Impermanence
+  59438930: 'respond', // Ghost Ogre & Snow Rabbit
+  73642297: 'respond', // Ghost Belle & Haunted Mansion
+  52038442: 'offered', // Ghost Mourner & Moonlit Chill
+  27204311: 'offered', // Nibiru, the Primal Being
+  94145022: 'offered', // Droll & Lock Bird
+  38814750: 'respond', // PSY-Framegear Gamma
+  24508238: 'graveyard', // D.D. Crow
+  40366667: 'respond', // Dominus Impulse
+  42141493: 'draw', // Mulcharmy Fuwalos
+  84192580: 'draw', // Mulcharmy Purulia
+  87126721: 'draw', // Mulcharmy Meowls
+}
+
+/** PSY-Framegear Gamma Invoca a PSY-Frame Driver (de la mano, el deck o el cementerio): sin Driver en el deck, el núcleo nunca la ofrece. */
+const PSY_FRAMEGEAR_GAMMA = 38814750
+const PSY_FRAME_DRIVER = 49036338
+
+/** El rival del duelo automático: las cartas de su deck además del relleno (`[passcode, copias]`, en el orden en que las prefiere) y su mano de arranque para una semilla. */
+export interface AutoRival {
+  main: [number, number][]
+  hand: (seed: number) => number[]
+}
+
+/**
+ * El rival con handtraps del duelo automático, del simulador: su deck son las copias elegidas (en el orden de la hoja, que es el de preferencia; con Gamma, también
+ * PSY-Frame Driver) y su mano, la misma que repartiría el simulador manual con esa semilla (`dealRival`). `null` con el simulador apagado: el rival pasivo.
+ */
+export function autoRival(config: HandtrapConfig): AutoRival | null {
+  if (!dealRival(config, 0)) return null
+  const picks = normalizePicks(config.picks)
+
+  return {
+    main: [...picks.map((pick): [number, number] => [pick.id, pick.copies]), ...(picks.some((pick) => pick.id === PSY_FRAMEGEAR_GAMMA) ? [[PSY_FRAME_DRIVER, 1] as [number, number]] : [])],
+    hand: (seed) => dealRival(config, seed)!.rival.hand.map((id) => Number(rivalCardOf(id).split('-')[1])),
+  }
+}
+
 /** Lo que se recuerda del simulador: si está encendido, las handtraps del deck del rival (cada una con sus copias) y cuántas tiene en la mano. */
 export interface HandtrapConfig {
   enabled: boolean

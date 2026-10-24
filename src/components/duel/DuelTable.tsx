@@ -150,12 +150,28 @@ const THEIR_HAND_BACK_MOTION = '[transition:transform_var(--motion-duration)_var
 
 /**
  * La mano del rival: sólo se ve cuántas cartas tiene, de dorso, en abanico y encimadas como las nuestras (ascendente: el centro más alto y los extremos más cerca del campo). `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
- * como la mano reserva su alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
+ * como la mano reserva su alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos. Con `cards` (el rival de handtraps del duelo automático) va boca arriba, en el mismo lugar y del mismo tamaño.
  */
-export function TheirHand({ count, marked = false, pointed = false, onMark }: { count: number; /** El otro jugador la marcó como objetivo. */ marked?: boolean; /** Se la está señalando ahora (late un rato). */ pointed?: boolean; /** Tocarla para marcarla (sólo quien juega contra ese rival). */ onMark?: (rect: DOMRect) => void }) {
+export function TheirHand({
+  count,
+  cards,
+  marked = false,
+  pointed = false,
+  onMark,
+}: {
+  count: number
+  /** Boca arriba, en su orden (sin esto, de dorso). */
+  cards?: ReadonlyArray<{ name: string; art: string | null }>
+  /** El otro jugador la marcó como objetivo. */
+  marked?: boolean
+  /** Se la está señalando ahora (late un rato). */
+  pointed?: boolean
+  /** Tocarla para marcarla (sólo quien juega contra ese rival). */
+  onMark?: (rect: DOMRect) => void
+}) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const { cardWidth, maxWidth, room } = desktop ? THEIR_HAND.desktop : THEIR_HAND.mobile
-  const shown = Math.min(count, 12)
+  const shown = Math.min(cards?.length ?? count, 12)
   // El tamaño sale de una mano de 5 y no cambia al jugar; la separación sí (con más cartas se juntan más).
   const layout = computeHandLayout(maxWidth, Math.max(1, shown), cardWidth, 5)
   const span = layout.cardWidth + layout.step * Math.max(0, shown - 1)
@@ -163,18 +179,20 @@ export function TheirHand({ count, marked = false, pointed = false, onMark }: { 
 
   return (
     <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className={cx('relative shrink-0', THEIR_HAND_BOX_MOTION)} style={{ width: Math.max(span, layout.cardWidth), height: room }}>
-      <div role="img" aria-label={t('duel.hand.theirs', { count })} className="absolute inset-0">
+      <div role="img" aria-label={cards ? t('duel.hand.theirsShown', { cards: cards.map((card) => card.name).join(', ') }) : t('duel.hand.theirs', { count })} className="absolute inset-0">
         {Array.from({ length: shown }, (_, index) => {
           // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
           const raise = (((shown - 1) / 2) ** 2 - Math.abs(index - (shown - 1) / 2) ** 2) * THEIR_FAN_RISE
+          const card = cards?.[index]
 
           return (
             <span
               key={index}
+              title={card?.name}
               className={cx('absolute bottom-0 left-0 block overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
               style={{ width: layout.cardWidth, height, transform: `translate(${index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
             >
-              <CardBack className="h-full" />
+              {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
             </span>
           )
         })}

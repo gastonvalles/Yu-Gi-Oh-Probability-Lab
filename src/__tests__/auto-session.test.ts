@@ -211,6 +211,35 @@ describe('la sesión del duelo automático', () => {
     session.destroy()
   })
 
+  it('con handtraps: el deck del rival son esas cartas y el relleno hasta su tamaño, roba su mano de la semilla y otra semilla le reparte otra', async () => {
+    const host = fakeHost()
+    const lists: number[][][] = []
+    // Este cargador arma cada deck con lo que se le pide (el de arriba devuelve siempre los mismos).
+    const asked: DataLoader = {
+      manifest: async () => ({ version: 't', tokens: [], filler: [2, 2, 2, 2, 2] }),
+      load: async (decks) => {
+        lists.push(decks.map((deck) => deck.main.flatMap(([code, copies]) => Array<number>(copies).fill(code))))
+        return { decks: lists.at(-1)!.map(mapped), cards: [], scripts: {}, names: {}, version: 't' }
+      },
+    }
+    const hand = (seed: number) => (seed % 2 === 0 ? [7] : [8, 7])
+    const session = createAutoSession({ loader: asked, deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, rival: { main: [[7, 1], [8, 2]], hand } })
+
+    await until(session, (s) => s.status === 'ready')
+    expect(lists).toEqual([[[1, 1, 1, 1, 1], [7, 8, 8, 2, 2]]])
+    expect(host.commands[0]).toMatchObject({ seed: 7, players: [{ hand: 5 }, { lp: 8000, hand: 2, draw: 1 }], decks: [{ hand: [] }, { main: [7, 8, 8, 2, 2], hand: [8, 7] }] })
+    // La pregunta del rival (una cadena sin nada que activar) la contesta solo, como antes.
+    session.answer(END)
+    await until(session, (s) => s.ask !== null && s.answers.length === 1)
+    session.answer(END)
+    expect((await until(session, (s) => s.answers.length === 3 && s.ask !== null)).answers[2]).toEqual({ seat: 1, answer: { type: 'select_chain', index: null } })
+
+    session.restart(12)
+    await until(session, (s) => s.status === 'ready' && s.seed === 12)
+    expect(host.commands.at(-1)).toMatchObject({ t: 'create', seed: 12, players: [{ hand: 5 }, { hand: 1 }], decks: [{ hand: [] }, { hand: [7] }] })
+    session.destroy()
+  })
+
   it('sin los datos en el despliegue, el error dice lo que explica el servidor, tal cual; otro fallo de la bajada lleva el contexto', async () => {
     const failing = (error: Error): DataLoader => ({ manifest: async () => Promise.reject(error), load: async () => Promise.reject(error) })
     const host = fakeHost()

@@ -91,7 +91,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
   const states = statesOf(cards)
   const listeners = new Set<() => void>()
   const sideOf = (controller: Seat): Side => (controller === 0 ? 'mine' : 'theirs')
-  const overlay: Adapter['overlay'] = { stats: { mine: {}, theirs: {} }, chain: [], lp: [8000, 8000], turn: 1, turnPlayer: 0, phase: 4, equips: [], disabled: 0, end: null }
+  const overlay: Adapter['overlay'] = { stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [8000, 8000], turn: 1, turnPlayer: 0, phase: 4, equips: [], disabled: 0, end: null }
   const adapter: Adapter = {
     initial: { mine: states.mine, theirs: states.theirs },
     mine: states.mine,
@@ -125,6 +125,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     // Los rótulos del `.cdb` por código (`desc` = código << 4 | n; menos de 10000 es del sistema): los dos efectos de Nibiru llevan los `desc` 10001 y 10002 (625 << 4 | n).
     texts: { 625: ['', 'Summon a Token', 'Destroy a monster'] },
     unmapped: [],
+    rivalHand: [],
   }
   let askId = 0
   const set = (patch: Partial<AutoSnapshot>) => {
