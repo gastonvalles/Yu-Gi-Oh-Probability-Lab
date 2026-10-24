@@ -229,6 +229,7 @@ export const shell: Translated<typeof es> = {
   'shell.social.link': 'Gastón Valles on {network}',
   'shell.legal.label': 'Privacy and legal notice',
   'shell.legal.page': '/privacy.html',
+  'shell.source.label': 'Source code',
   'shell.disclaimer': 'Unofficial site. Yu-Gi-Oh! is a trademark of Konami.',
   'shell.step.tierMaker.label': 'Make a tier list',
   'shell.step.tierMaker.title': 'Make your own tier list',

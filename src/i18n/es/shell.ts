@@ -227,6 +227,7 @@ export const shell = {
   'shell.social.link': 'Gastón Valles en {network}',
   'shell.legal.label': 'Privacidad y aviso legal',
   'shell.legal.page': '/privacidad.html',
+  'shell.source.label': 'Código fuente',
   'shell.disclaimer': 'Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.',
   'shell.step.tierMaker.label': 'Crear tier list',
   'shell.step.tierMaker.title': 'Crear tu propia tier list',

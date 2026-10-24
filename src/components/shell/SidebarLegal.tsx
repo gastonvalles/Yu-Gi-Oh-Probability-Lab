@@ -1,6 +1,6 @@
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
-import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
+import { SiteCredit, SocialLinks, SourceLink } from '../ui/SocialLinks'
 import { textLink } from '../ui/typography'
 
 /**
@@ -17,9 +17,12 @@ export function SidebarLegal({ className }: { className?: string }) {
       )}
     >
       <SocialLinks className="-ml-1" />
-      <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-9 w-fit items-center rounded-control text-micro pointer-coarse:min-h-11', textLink)}>
-        {t('shell.legal.label')}
-      </a>
+      <div className="flex flex-wrap items-center gap-x-3">
+        <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-9 w-fit items-center rounded-control text-micro pointer-coarse:min-h-11', textLink)}>
+          {t('shell.legal.label')}
+        </a>
+        <SourceLink className="inline-flex min-h-9 w-fit items-center text-micro pointer-coarse:min-h-11" />
+      </div>
       <SiteCredit withDisclaimer />
     </div>
   )
