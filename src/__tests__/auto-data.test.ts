@@ -1,4 +1,4 @@
-import { cardData, createDataLoader, preloadedReaders, type CardRow, type DataSource } from '../app/auto/auto-data'
+import { cardData, createDataLoader, DataUnavailableError, httpSource, preloadedReaders, type CardRow, type DataSource } from '../app/auto/auto-data'
 
 const row = (id: number, type: number, extra: Partial<CardRow> = {}): CardRow => ({ id, alias: 0, setcode: '0', type, atk: 1000, def: 1000, level: 4, race: '1', attribute: 1, name: `card ${id}`, ...extra })
 const EFFECT = 0x21
@@ -94,6 +94,24 @@ describe('los datos de un duelo automático', () => {
   it('lee las filas del .cdb como el núcleo: escalas, flechas de Link y setcodes de 4 × u16', () => {
     expect(cardData(row(1, 0x1000021, { level: 4 | (3 << 16) | (5 << 24), setcode: String((0x10an << 16n) | 0x2bn) }))).toMatchObject({ level: 4, lscale: 5, rscale: 3, setcodes: [0x2b, 0x10a] })
     expect(cardData(row(2, 0x4000021, { def: 0b101, race: '-1' }))).toMatchObject({ defense: 0, link_marker: 5, race: 2n ** 64n - 1n })
+  })
+
+  it('por HTTP: un 404 es «no existe»; lo que el servidor explica en { error } llega tal cual, y otro fallo dice dónde', async () => {
+    const responses: Record<string, () => Response> = {
+      '/d/script/c1.lua': () => new Response('not found', { status: 404 }),
+      '/d/manifest': () => Response.json({ error: 'Los datos del duelo automático no están disponibles ahora' }, { status: 503 }),
+      '/d/cards?codes=1': () => new Response('<html>', { status: 502 }),
+    }
+
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => responses[url]!()))
+    const source = httpSource('/d')
+    const failure = await source.manifest().catch((error: unknown) => error)
+
+    await expect(source.script('c1.lua')).resolves.toBeNull()
+    expect(failure).toBeInstanceOf(DataUnavailableError)
+    expect((failure as Error).message).toBe('Los datos del duelo automático no están disponibles ahora')
+    await expect(source.cards([1])).rejects.toThrow('auto-data: 502 on /cards?codes=1')
+    vi.unstubAllGlobals()
   })
 
   it('los lectores precargados avisan una vez por carta que el núcleo pide y no está', () => {

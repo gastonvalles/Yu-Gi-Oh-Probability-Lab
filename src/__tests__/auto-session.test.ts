@@ -1,6 +1,6 @@
 import { OcgDuelMode } from 'ocgcore-wasm'
 import { matReducer } from '../app/practice-mat'
-import type { DataLoader } from '../app/auto/auto-data'
+import { DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
 import { createAutoSession, MR5, type AutoSession, type AutoSnapshot, type TransportFactory } from '../app/auto/auto-session'
 import type { MappedDeck } from '../app/auto/deck-map'
 import type { AutoCommand, AutoEvent, CoreAnswer, CoreAsk, Seat } from '../app/auto/protocol'
@@ -209,6 +209,19 @@ describe('la sesión del duelo automático', () => {
     expect(creates.map((command) => command.seed)).toEqual([11, 11, 12])
     expect(creates[1]).toEqual(creates[0])
     session.destroy()
+  })
+
+  it('sin los datos en el despliegue, el error dice lo que explica el servidor, tal cual; otro fallo de la bajada lleva el contexto', async () => {
+    const failing = (error: Error): DataLoader => ({ manifest: async () => Promise.reject(error), load: async () => Promise.reject(error) })
+    const host = fakeHost()
+    const session = createAutoSession({ loader: failing(new DataUnavailableError('Los datos del duelo automático no están disponibles ahora')), deck: { main: [[1, 5]] }, transport: host.factory })
+    const other = createAutoSession({ loader: failing(new TypeError('Failed to fetch')), deck: { main: [[1, 5]] }, transport: host.factory })
+
+    expect((await until(session, (s) => s.status === 'error')).fault).toEqual({ kind: 'setup', message: 'Los datos del duelo automático no están disponibles ahora', cards: [] })
+    expect((await until(other, (s) => s.status === 'error')).fault?.message).toBe('could not load the duel data: Failed to fetch')
+    expect(host.commands).toEqual([])
+    session.destroy()
+    other.destroy()
   })
 
   it('una carta sin reglas no deja arrancar: error con la lista y sin crear el duelo', async () => {

@@ -2,7 +2,7 @@ import { getLocale } from '../../i18n'
 import type { WireAct } from '../mat-public'
 import type { MatAction, MatState } from '../practice-mat'
 import { createAdapter, type Adapter, type AutoOverlay } from './adapter'
-import type { DataLoader, DuelData } from './auto-data'
+import { DataUnavailableError, type DataLoader, type DuelData } from './auto-data'
 import type { WorkerData } from './core-host.worker'
 import { teamOrder, type DeckList } from './deck-map'
 import { passivePolicy } from './policies'
@@ -363,7 +363,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     try {
       data = await loading
     } catch (error) {
-      return fail('setup', `could not load the duel data: ${error instanceof Error ? error.message : String(error)}`)
+      // Lo que explica el servidor (`{ error }`: un despliegue sin los datos de la beta) va tal cual; lo demás, con el contexto.
+      return fail('setup', error instanceof DataUnavailableError ? error.message : `could not load the duel data: ${error instanceof Error ? error.message : String(error)}`)
     }
     if (destroyed) return
     const [mine, theirs] = data.decks as [DuelData['decks'][number], DuelData['decks'][number]]

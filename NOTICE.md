@@ -24,6 +24,8 @@ La licencia es del **código**. No da permiso para usar el nombre «YGOUltraLab�
 | Scripts de las cartas de Project Ignis (`CardScripts`) | AGPL-3.0-or-later | <https://github.com/ProjectIgnis/CardScripts> |
 | Lexend Deca (tipografía, autoalojada) | SIL OFL 1.1 | `src/fonts/OFL-Lexend.txt` |
 
+La versión exacta de los scripts de Project Ignis que sirve el sitio (el commit de `CardScripts`) está fijada en `auto-data.lock.json`.
+
 Las demás dependencias (React, Vite, Tailwind y el resto de `package.json`) mantienen sus licencias; sus avisos van en sus paquetes.
 
 `cards.cdb` (la base de cartas de Project Ignis) no tiene licencia publicada: no está en este repositorio.

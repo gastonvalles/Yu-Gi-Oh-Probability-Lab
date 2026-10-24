@@ -3,8 +3,12 @@
   "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]",
   "rewrites": [
     { "source": "/api/card-image/:path*", "destination": "/api/card-image?path=:path*" },
+    { "source": "/auto-data/:path*", "destination": "/api/auto-data?path=:path*" },
     { "source": "/playground/:path*", "destination": "/index.html" }
   ],
+  "functions": {
+    "api/auto-data.ts": { "includeFiles": ".auto-data/**" }
+  },
   "headers": [
     {
       "source": "/(.*)",

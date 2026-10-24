@@ -8,8 +8,8 @@ Node.js 22 (`.nvmrc`; `engines`: `>=22.12.0`) y npm.
 
 ```
 npm install
-npm run dev            # desarrollo; también sirve /api/card-image y /api/live (para el duelo: VITE_DUEL_RELAY_URL en .env.local, ver docs/duelo-relay.md)
-npm run build          # tipos + build de producción
+npm run dev            # desarrollo; también sirve las funciones de api/ (para el duelo: VITE_DUEL_RELAY_URL en .env.local, ver docs/duelo-relay.md)
+npm run build          # tipos + build de producción (en Vercel arma también los datos del duelo automático)
 npm run preview        # sirve el build, sin los Cache-Control de vercel.json
 npm test               # Vitest
 npm run typecheck      # tipos de la app y de los tests
@@ -28,7 +28,7 @@ npm run sync:banlists  # banlists del TCG y del OCG
 npm run sync:replays   # replays de torneo de los canales de YouTube
 npm run sync:genesys   # puntos de Genesys
 npm run sync:effects   # capa 1 del motor de cartas (docs/motor-de-cartas.md)
-npm run sync:core      # cards.cdb y scripts para los duelos automáticos, en una carpeta fuera del repo (no se suben)
+npm run sync:core      # cards.cdb y scripts para los duelos automáticos, fuera del repo, en los commits de auto-data.lock.json (-- --update-lock los sube)
 ```
 
 - Los workflows `sync-*.yml` tienen horario, pero no corren solos desde que se cortó la facturación de GitHub Actions: los datos se actualizan corriendo los scripts a mano.
@@ -52,7 +52,7 @@ src/i18n/           los textos en español y en inglés
 src/data/           los datos que escriben los syncs (menos la lista de Edison)
 src/__tests__/      los tests (Vitest + fast-check)
 duel-relay/         el relay del duelo (Worker + Durable Object de Cloudflare)
-api/                funciones de Vercel: imágenes de cartas y transmisiones en vivo
+api/                funciones de Vercel: imágenes de cartas, transmisiones en vivo y datos del duelo automático
 scripts/            los syncs de datos y algunas herramientas
 public/             estáticos: íconos, precios, mascotas, 404 y privacidad
 docs/               la documentación

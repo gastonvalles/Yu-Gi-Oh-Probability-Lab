@@ -78,6 +78,17 @@ describe('seguridad del hosting (vercel.json)', () => {
     expect(policy).toContain('upgrade-insecure-requests')
   })
 
+  it('los datos del duelo automático salen del mismo origen: /auto-data va a la función y el navegador no le habla a GitHub', () => {
+    const { rewrites, functions } = JSON.parse(text('vercel.json')) as { rewrites: Array<{ source: string; destination: string }>; functions?: Record<string, { includeFiles?: string }> }
+
+    expect(rewrites).toContainEqual({ source: '/auto-data/:path*', destination: '/api/auto-data?path=:path*' })
+    // Los datos que arma el build (`.auto-data/`, fuera del repo) viajan con la función: se piden por nombre, así que se incluyen sin depender de que el rastreo de Vercel los encuentre.
+    expect(functions?.['api/auto-data.ts']?.includeFiles).toBe('.auto-data/**')
+    // Los datos los arma el build y los sirve la función: en producción el navegador sigue hablándole sólo a estos.
+    expect(directives(csp(production)!)['connect-src']).toEqual(["'self'", 'https://db.ygoprodeck.com', 'https://ygo-lab-duel-relay.gastonvallesyeou.workers.dev', 'wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev'])
+    expect(directives(csp(previews)!)['connect-src']!.filter((source) => /github/.test(source))).toEqual([])
+  })
+
   it('el relay del duelo es el único WebSocket permitido, con su dirección exacta (no cualquier workers.dev)', () => {
     for (const rule of [production, previews]) {
       const connect = directives(csp(rule)!)['connect-src']!
