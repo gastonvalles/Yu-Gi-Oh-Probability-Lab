@@ -116,6 +116,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     theirs: states.theirs,
     overlay: adapter.overlay,
     ask: null,
+    remoteAsk: null,
     fault: null,
     faults: [],
     answers: [],
@@ -168,6 +169,10 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
       fake.restarts += 1
       set({ status: 'loading', ask: null, fault: null, faults: [], answers: [], replaying: true })
     },
+    // El duelo por enlace (la sesión del anfitrión con un asiento remoto): la pantalla online lo prueba con sus propias pruebas.
+    answerRemote: () => false,
+    expectReplay() {},
+    resimulate() {},
     destroy() {
       fake.destroyed = true
       listeners.clear()

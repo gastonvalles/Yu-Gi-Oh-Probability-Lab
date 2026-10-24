@@ -31,7 +31,8 @@ export interface HostTransport {
  */
 export type TransportFactory = (data: Promise<Pick<DuelData, 'cards' | 'scripts'>>) => HostTransport
 
-export type AutoStatus = 'loading' | 'ready' | 'thinking' | 'ended' | 'error'
+/** `waiting`: (sólo con `remote`) la pregunta viva es del otro asiento, una persona en otro navegador. */
+export type AutoStatus = 'loading' | 'ready' | 'thinking' | 'waiting' | 'ended' | 'error'
 export interface PendingAsk {
   askId: number
   /** Quién contesta: tu asiento (o el del rival, si jugás los dos: `control: 'both'`). */
@@ -66,6 +67,8 @@ export interface AutoSnapshot {
   overlay: AutoOverlay
   /** La pregunta que espera respuesta, sólo de los asientos que juega una persona: las del rival pasivo no aparecen (las contesta la sesión). */
   ask: PendingAsk | null
+  /** La pregunta que espera el asiento remoto (sólo con `remote`): la pantalla dice «X está eligiendo». */
+  remoteAsk: PendingAsk | null
   /** Lo que cortó la sesión (`status: 'error'`): `rules` (cartas sin reglas, en `cards`, antes de la primera pregunta), `setup`, `crash`, `retry`. */
   fault: SessionFault | null
   /** Lo que salió mal sin cortar el duelo (errores de un script, un `RETRY`). */
@@ -102,6 +105,15 @@ export interface SessionOptions {
   /** Cada evento del anfitrión tal como llega (para un registro). */
   onEvent?: (event: AutoEvent) => void
   thinkingMs?: number
+  /**
+   * El duelo por enlace: el otro asiento es una persona en otro navegador. Su deck entero va tal cual (sin relleno) y sus preguntas no las contesta ninguna política: quedan en
+   * `remoteAsk` hasta que llegue `answerRemote`. `onReplay(skip)` avisa, antes de cada re-emisión (deshacer, cancelar, reiniciar, rearmar), cuántas respuestas de ese asiento vienen ya dadas.
+   */
+  remote?: { deck: DeckList; onReplay?: (skip: number) => void }
+  /** El invitado del duelo por enlace: `loader` no trae las cartas del rival; el tipo de las que el flujo deja ver llega por acá (el adaptador lo necesita al instante). */
+  typeOf?: (code: number) => number
+  /** Rearmar un duelo guardado: las respuestas ya dadas (de los dos asientos, en orden) se re-simulan antes de la primera pregunta viva. */
+  restore?: { answers: readonly SessionAnswer[] }
 }
 
 export interface AutoSession {
@@ -117,6 +129,12 @@ export interface AutoSession {
   cancel(): void
   /** Empieza de nuevo: con la misma semilla, el mismo duelo. */
   restart(seed?: number): void
+  /** La respuesta del asiento remoto a `remoteAsk`; `false` si no es la pendiente o es de otro tipo. */
+  answerRemote(askId: number, answer: CoreAnswer): boolean
+  /** El invitado: lo que sigue es una re-emisión desde cero con `skip` preguntas mías ya contestadas (no se avisa a nadie hasta la viva). */
+  expectReplay(skip: number): void
+  /** Re-simular ahora mismo con todas las respuestas aceptadas (el anfitrión, cuando el invitado pide el duelo de nuevo y el registro no alcanza). */
+  resimulate(): void
   /** Al salir de la pantalla: termina el Worker y libera el duelo. */
   destroy(): void
 }
@@ -182,6 +200,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     theirs: blank.theirs.state,
     overlay: blank.overlay,
     ask: null,
+    remoteAsk: null,
     fault: null,
     faults: [],
     answers: [],
@@ -445,6 +464,12 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       set({ seed: create.seed, status: 'loading', ask: null, fault: null, faults: [], answers, replaying: true })
       boot(0)
     },
+    // ESQUELETO: el duelo por enlace (paquete del protocolo).
+    answerRemote() {
+      return false
+    },
+    expectReplay() {},
+    resimulate() {},
     destroy() {
       destroyed = true
       stopTimer()

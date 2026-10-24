@@ -34,6 +34,8 @@ export interface DataManifest {
   tokens: number[]
   /** El deck del rival pasivo: 40 Monstruos Normales sin script (sin efectos y sin cartas sin reglas). */
   filler: number[]
+  /** Interruptores del despliegue (`AUTO_ONLINE=0` en el build): `online: false` apaga el duelo automático por enlace sin tocar código. Sin dato, encendido. */
+  features?: { online?: boolean }
 }
 
 export interface DataSource {
