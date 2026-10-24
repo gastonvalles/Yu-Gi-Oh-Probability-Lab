@@ -1,7 +1,7 @@
 // Lo que comparten las pruebas de la mesa de práctica (repartidas en dos archivos): las cartas de prueba, el Harness que monta la mesa y los helpers de la mesa.
 import { configureStore } from '@reduxjs/toolkit'
 import { fireEvent, render as renderBare, screen, within, type RenderResult } from '@testing-library/react'
-import { Profiler, useEffect, type ReactElement } from 'react'
+import { Profiler, useEffect, type ComponentProps, type ReactElement } from 'react'
 import { Provider } from 'react-redux'
 import { createMatState, type MatAction, type MatState } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
@@ -37,7 +37,10 @@ const countCommit = () => {
   commits += 1
 }
 
-export function Harness({ initial = INITIAL, actions = NO_ACTIONS, cards = CARDS }: { initial?: MatState; actions?: MatAction[]; cards?: ReadonlyMap<string, MatCard> }) {
+/** `dock`: el detalle fijo de la izquierda (lo que en la app pasa la práctica desde 1440 px) y quién se entera de lo que se toca o se apunta. */
+type DockProps = Pick<ComponentProps<typeof PracticeMat>, 'detail' | 'onPeek' | 'onHover'>
+
+export function Harness({ initial = INITIAL, actions = NO_ACTIONS, cards = CARDS, dock }: { initial?: MatState; actions?: MatAction[]; cards?: ReadonlyMap<string, MatCard>; dock?: DockProps }) {
   const mat = useMatSession()
   const { start } = mat
 
@@ -61,6 +64,7 @@ export function Harness({ initial = INITIAL, actions = NO_ACTIONS, cards = CARDS
         onSeek={mat.seek}
         onLoadCombo={(combo) => start(combo.initial, combo.actions, combo.names)}
         onNewHand={() => start(INITIAL)}
+        {...dock}
       />
     </Profiler>
   )

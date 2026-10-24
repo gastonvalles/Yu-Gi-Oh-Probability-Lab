@@ -289,6 +289,26 @@ describe('el deck: tocar es buscar, arrastrar es robar y mantenerlo apretado abr
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
   })
 
+  it('con el detalle fijo (desde 1440 px) el visor va en la columna de la derecha y deja el detalle a la vista; tocar o apuntar una carta del visor la muestra ahí', () => {
+    const onPeek = vi.fn()
+    const onHover = vi.fn()
+
+    render(<Harness initial={FOUR} dock={{ detail: <p>Detalle</p>, onPeek, onHover }} />)
+    tap(deck())
+    const slot = document.querySelector('[data-pile-slot]')!
+
+    // La columna de los pasos (la tercera, con el detalle a la izquierda): nunca la del detalle.
+    expect(slot.className).toContain('min-[1440px]:col-[3/4]')
+    expect(slot.className).not.toContain('col-[1/2]')
+
+    const nibiru = within(screen.getByRole('dialog', { name: 'Main · 4' })).getByRole('button', { name: 'Nibiru' })
+
+    fireEvent.pointerEnter(nibiru, { pointerType: 'mouse' })
+    expect(onHover).toHaveBeenLastCalledWith({ name: 'Nibiru', card: expect.objectContaining({ ygoprodeckId: 4 }) })
+    fireEvent.click(nibiru)
+    expect(onPeek).toHaveBeenLastCalledWith({ name: 'Nibiru', card: expect.objectContaining({ ygoprodeckId: 4 }) })
+  })
+
   it('vacío, el visor igual se abre (como las otras pilas) y cerrarlo no anota un barajado', () => {
     render(<Harness initial={createMatState(['card-1-1', 'card-2-1'], [], 2)} />)
 
