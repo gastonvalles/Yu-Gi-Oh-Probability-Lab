@@ -20,7 +20,7 @@ import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
 import { LobbyBanner } from './LobbyBanner'
 import { ArenaPanel } from './ArenaPanel'
-import { HandtrapsRow } from './HandtrapPool'
+import { AutoDuelRow, HandtrapsRow } from './HandtrapPool'
 import { formatName } from './room-chips'
 
 /** Lo que dice la búsqueda de «Jugar ahora» mientras pasa de verdad: se busca, se entra o se abre la tuya. */
@@ -401,6 +401,8 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
 
         {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). */}
         {solo ? <HandtrapsRow /> : null}
+        {/* Solo: el duelo automático (beta), sólo con la bandera. */}
+        {solo ? <AutoDuelRow /> : null}
 
         {solo ? null : (
           <RuleField label={t('duel.create.time')} className="sm:col-span-2">

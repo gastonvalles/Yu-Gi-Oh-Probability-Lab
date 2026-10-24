@@ -10,7 +10,8 @@ const NOT_AT_STARTUP = [
   'src/components/shell/finder-decks.ts',
   'src/data/genesys-card-data.json', // las tablas de formatos: sólo `format-tables.ts`
   'src/data/edison-format-data.ts',
-  // Los duelos automáticos: el núcleo en wasm va bajo demanda (y `ocgcore-wasm` sólo lo importan estos: auto-isolation.test.ts).
+  // Los duelos automáticos: el núcleo en wasm va bajo demanda, detrás del único `lazy(() => import(` de la pantalla (auto-isolation.test.ts); `IMPORT` no ve los `import()`, así que el `lazy` pasa.
+  'src/components/auto/AutoSoloScreen.tsx',
   'src/app/auto/adapter.ts',
   'src/app/auto/ask-ui.ts',
   'src/app/auto/auto-data.ts',

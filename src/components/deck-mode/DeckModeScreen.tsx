@@ -1,5 +1,6 @@
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
+import { useAutoPrefs } from '../../app/auto-prefs'
 import { clearPlayReturn, readPlayReturn } from '../../app/play-return'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
@@ -53,6 +54,12 @@ import {
 } from './lazy-steps'
 import { useLabPrewarm } from '../probability/use-lab-prewarm'
 import { useDeckModeController } from './use-deck-mode-controller'
+
+/**
+ * «Jugar solo automático (beta)»: el único punto de entrada del modo automático (y del núcleo de reglas en wasm, que viaja aparte y sólo bajo demanda: `auto-isolation.test.ts`).
+ * No va en `lazy-steps.ts`: no se precarga.
+ */
+const LazyAutoSolo = lazy(() => import('../auto/AutoSoloScreen').then((m) => ({ default: m.AutoSoloScreen })))
 
 /** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#tournaments?deck=123`). */
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
@@ -146,6 +153,9 @@ export function DeckModeScreen() {
     systemRuleNames: controller.probability.systemRuleNames,
     hasCompletedClassification: hasCompletedRoleStep,
   })
+  // El duelo automático (beta): con la bandera y el interruptor de Jugar → Solo, «Entrenar solo» abre la mesa contra el núcleo de reglas en vez de la práctica.
+  const autoPrefs = useAutoPrefs()
+  const autoSolo = autoPrefs.flag && autoPrefs.duel
   // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -336,7 +346,13 @@ export function DeckModeScreen() {
           <Heading level="page" className="sr-only">
             {t('shell.practice.title')}
           </Heading>
-          {practice ? <LazyPracticeSection {...practice} /> : <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>}
+          {autoSolo && matDeck.mainIds.length > 0 ? (
+            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} onExit={() => { window.location.hash = '#duel' }} />
+          ) : practice ? (
+            <LazyPracticeSection {...practice} />
+          ) : (
+            <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>
+          )}
         </div>
       ) : null}
 

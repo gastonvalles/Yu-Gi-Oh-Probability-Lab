@@ -44,6 +44,7 @@ export const auto = {
   'auto.pick.counter': 'Contadores: {chosen} de {total}',
   'auto.pick.attackTarget': 'Elegí a qué monstruo atacar',
   'auto.pick.done': 'Listo',
+  'auto.pick.chosen': 'Elegida',
   'auto.phase.notYet': 'Todavía no',
 
   // La barra de arriba y «Más opciones».

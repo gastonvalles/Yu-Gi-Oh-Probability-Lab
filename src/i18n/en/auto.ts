@@ -45,6 +45,7 @@ export const auto: Translated<typeof es> = {
   'auto.pick.counter': 'Counters: {chosen} of {total}',
   'auto.pick.attackTarget': 'Choose which monster to attack',
   'auto.pick.done': 'Done',
+  'auto.pick.chosen': 'Chosen',
   'auto.phase.notYet': 'Not yet',
 
   // The top bar and «More options».
