@@ -1997,6 +1997,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
     else if (markedIsCard) dockLock({ faceDown: true })
   }, [markedDrawId, markedIsCard, dockLock])
   const viewerTargeted = useMemo(() => new Set([...snapshot.marks.theirs.cards, ...theirs!.state.targeted]), [snapshot.marks.theirs.cards, theirs])
+  // Lo que el detalle muestra de una carta del visor del rival: lo mismo que el visor dibuja (boca abajo, el dorso, aunque se la conozca).
+  const viewerPeekOf = (id: string): CardPeek => (theirs!.state.facedown.includes(id) ? { faceDown: true } : rivalPeekOf(id))
   // Varias del visor del rival a la vez («Elegir varias», con dos cartas o más): la principal sólo marca (o quita, si ya estaban todas) las elegidas y cierra el visor.
   const rivalMany: PileMany = {
     label: (ids) => t(ids.length > 0 && ids.every((id) => snapshot.marks.theirs.cards.includes(id)) ? 'practice.menu.untarget' : 'practice.menu.target'),
@@ -2032,6 +2034,9 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
             }}
             targeted={viewerTargeted}
             onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
+            // Tocar o apuntar una carta suya la muestra en el detalle de la izquierda: la que se ve, por su número; una boca abajo (como la dibuja el visor), sólo como tal.
+            onPeek={(id) => dockLock(viewerPeekOf(id))}
+            onHover={(id) => dockHover(viewerPeekOf(id))}
             many={rivalMany}
             onClose={() => setRivalViewer(null)}
             anonymous

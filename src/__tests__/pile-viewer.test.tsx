@@ -269,6 +269,22 @@ describe('el visor no es un modal: no tapa el campo', () => {
     fireEvent.click(backdrop)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('pasar el mouse por una carta avisa cuál (la mesa la muestra en el detalle de la izquierda); el dedo no, porque tocar ya la fija', () => {
+    const onHover = vi.fn()
+
+    render(
+      <Provider store={store}>
+        <PileViewer pile="gy" ids={['a', 'b']} info={(id) => ({ name: NAMES[id] ?? id, art: null })} targeted={new Set()} onPick={() => {}} onHover={onHover} onClose={() => {}} />
+      </Provider>,
+    )
+    const maxx = screen.getByRole('button', { name: 'Maxx C' })
+
+    fireEvent.pointerEnter(maxx, { pointerType: 'touch' })
+    expect(onHover).not.toHaveBeenCalled()
+    fireEvent.pointerEnter(maxx, { pointerType: 'mouse' })
+    expect(onHover).toHaveBeenCalledWith('b')
+  })
 })
 
 describe('el visor queda montado (así sale al cerrarse): arranca de cero al abrirse, no al cerrarse ni al esconderse', () => {

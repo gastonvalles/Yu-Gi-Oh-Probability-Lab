@@ -61,7 +61,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): sólo decoración y la excepción del lienzo plano (regla 9). |
 | `CardMenu` · `CardSheet` | El menú de una carta (`probability/`; muestra «Menú de una carta»): sus reglas, en «Menús» de `docs/duelo.md`. |
 | `AskPrompt` · `AskOptions` · `CardPicker` · `SortSheet` · `AutoBar` | Las piezas de «Jugar solo automático (beta)» para lo que el campo no puede expresar (`auto/`): el sí o no centrado y sin fondo, las opciones en una hoja chica, elegir cartas de una lista, ordenar el tope y la barra de arriba. Sus reglas, en su comentario y en `docs/motor-de-cartas.md`. |
-| `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal, no tapa el campo ni lleva velo. Su lugar y elegir varias, en «El visor de una pila no tapa el campo» y «Elegir varias cartas de una pila» de `docs/duelo.md`. |
+| `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal, no tapa el campo ni el detalle de la carta ni lleva velo. Su lugar y elegir varias, en «El visor de una pila no tapa el campo ni el detalle» y «Elegir varias cartas de una pila» de `docs/duelo.md`. |
 | `DuelTable` · `PracticeMatPanel` · `MatSnapshot` · `MaterialStack` · `RivalHandStrip` · `HandtrapPool` · `DuelMedal` | La mesa y el duelo (`probability/`, `duel/`). |
 | `TierStrip` · `TierMakerBoard` | Las tier lists (`meta/`). |
 | `DeckZoneHeader` · `StepErrorBoundary` · `ResizeHandle` · `Mascot` | `components/DeckZoneHeader.tsx`, `ui/` y `mascot/`. |
