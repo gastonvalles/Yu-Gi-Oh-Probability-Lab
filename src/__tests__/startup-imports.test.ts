@@ -12,6 +12,7 @@ const NOT_AT_STARTUP = [
   'src/data/edison-format-data.ts',
   // Los duelos automáticos: el núcleo en wasm va bajo demanda (y `ocgcore-wasm` sólo lo importan estos: auto-isolation.test.ts).
   'src/app/auto/adapter.ts',
+  'src/app/auto/ask-ui.ts',
   'src/app/auto/auto-data.ts',
   'src/app/auto/auto-session.ts',
   'src/app/auto/core-host.ts',

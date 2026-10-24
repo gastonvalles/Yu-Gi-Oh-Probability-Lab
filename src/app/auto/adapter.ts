@@ -135,7 +135,7 @@ const isMaterial = (place: { location: number; overlay_sequence?: number }) => p
 const baseLocation = (location: number) => location & ~L.OVERLAY
 
 /** La casilla de la mesa: Main Monster Zone 0–4, Extra Monster Zone 5–6, Mágicas y Trampas 0–4 y la de Campo, 5. */
-function spotOf(location: number, sequence: number): { zone: MatSpot; index: number } | null {
+export function spotOf(location: number, sequence: number): { zone: MatSpot; index: number } | null {
   if (location === L.MZONE) return sequence < 5 ? { zone: 'mz', index: sequence } : sequence < 7 ? { zone: 'emz', index: sequence - 5 } : null
   if (location === L.SZONE) return sequence < 5 ? { zone: 'st', index: sequence } : sequence === 5 ? { zone: 'field', index: 0 } : null
 
