@@ -14,7 +14,7 @@ import type { RoomsApi } from '../../app/duel-rooms'
 import { validGenesysCap, validTurnBonusMin, validTurnMin, type RoomOptions } from '../../app/duel-prefs'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
-import { duelFinished, duelResult, rpsOutcome } from '../../app/duel-games'
+import { duelFinished, duelResult } from '../../app/duel-games'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
@@ -52,11 +52,12 @@ import { MatScene } from '../probability/MatArena'
 import { CardMenu, PILE_TITLES, PileViewer, type PileMany } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice, SIGNAL_MS } from './DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
 import { useDockPeek } from './use-dock-peek'
+import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from './use-duel-table'
 import { ReactionButtons } from './ReactionButtons'
-import { isEmojiSignal, isSignal } from '../../app/duel-signals'
+import { isEmojiSignal } from '../../app/duel-signals'
 import { useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
 import { PassPrompt } from './PassPrompt'
@@ -65,7 +66,6 @@ import { DuelPause } from './DuelPause'
 import { RivalCardDetail, useRivalCard } from './RivalCardDetail'
 import { ResultCard } from './DuelResult'
 import type { DuelDeck } from './duel-deck-type'
-import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening, PlayerCard, VersusMark } from './DuelOpening'
 import { TurnOrderBanner } from './DuelBanner'
@@ -1198,49 +1198,6 @@ function AutoNotice({ notice }: { notice: NonNullable<RoomAutoState['notice']> }
 const NOTHING = () => undefined
 
 /**
- * El duelo en pausa detiene el reloj de la ronda: lo para quien se queda y lo retoma cuando vuelve el que faltaba. Sólo retoma si lo había parado él (un reloj que
- * ya estaba pausado a mano sigue así).
- */
-export function useClockPause(duel: Duel, snapshot: DuelSnapshot, paused: boolean) {
-  const stopped = useRef(false)
-  const running = snapshot.life.timer.running
-
-  useEffect(() => {
-    if (paused && running) {
-      stopped.current = true
-      duel.toggleClock()
-    } else if (!paused && stopped.current) {
-      stopped.current = false
-
-      if (!running) {
-        duel.toggleClock()
-      }
-    }
-  }, [duel, paused, running])
-}
-
-/**
- * El reloj de la ronda arranca solo cuando los dos tienen su mano (lo pone en marcha el anfitrión y el invitado lo recibe): nadie tiene que acordarse de
- * apretar play. Sólo si el reloj está en cero y parado; si alguien ya lo pausó o lo reinició a mano, no se toca.
- */
-export function useAutoStartClock(duel: Duel, snapshot: DuelSnapshot) {
-  const checked = useRef(false)
-  const { role, life } = snapshot
-
-  useEffect(() => {
-    if (checked.current) {
-      return
-    }
-
-    checked.current = true
-
-    if (role === 'host' && !life.timer.running && life.timer.elapsedMs === 0) {
-      duel.toggleClock()
-    }
-  }, [duel, role, life.timer.running, life.timer.elapsedMs])
-}
-
-/**
  * La carta del turno se roba cuando empieza el turno propio, o sea cuando el rival llega a su End Phase: así el segundo jugador roba en su primer turno
  * y quien termina no roba de más antes de tiempo (la mesa, en un duelo, no roba sola al pasar). Llegar dos veces a lo mismo (el rival deshace y repite)
  * no roba dos veces.
@@ -1259,36 +1216,6 @@ function useTurnDraw(duel: Duel, snapshot: DuelSnapshot, turn: 'mine' | 'theirs'
       }
     }
   }, [number, turn, duel])
-}
-
-/**
- * Avisos de lo que hace el rival fuera de las cartas (moneda, dado, su elección en piedra-papel-tijera, quién empieza, una señal) y de cómo salió la ronda,
- * para verlos aunque el panel de juegos esté cerrado. Lo que ya estaba en el registro al abrir la pantalla no se avisa.
- */
-export function useGameToasts(snapshot: DuelSnapshot, myName: string) {
-  const { games, rps, peerName, me } = snapshot
-  const seen = useRef(games.at(-1)?.id ?? 0)
-  const rival = peerName ?? t('duel.bar.rival')
-
-  useEffect(() => {
-    const nameOf = (player: 0 | 1) => (player === me ? myName : rival)
-
-    for (const entry of games) {
-      if (entry.id > seen.current && entry.from !== me) {
-        showToastMessage(gameText(entry, nameOf), 'info')
-      }
-    }
-
-    seen.current = Math.max(seen.current, games.at(-1)?.id ?? 0)
-  }, [games, me, myName, rival])
-
-  const outcome = rpsOutcome(rps.mine, rps.theirs)
-
-  useEffect(() => {
-    if (outcome && rps.mine && rps.theirs) {
-      showToastMessage(t('duel.games.log.rpsResult', { mine: rpsName(rps.mine), theirs: rpsName(rps.theirs), outcome: outcomeText(outcome) }), outcome === 'win' ? 'success' : 'info')
-    }
-  }, [outcome, rps.mine, rps.theirs])
 }
 
 /** Lo que la mesa sabe de una carta mía para ver si puede responder: de qué clase es y sus efectos confirmados (sin los datos del catálogo, nada). */
@@ -1673,72 +1600,6 @@ function usePointed(snapshot: DuelSnapshot): { mine: Pointed; theirs: Pointed } 
   const target: Pointed = shown ? { ...(shown.card !== undefined ? { card: shown.card } : {}), ...(shown.pile !== undefined ? { pile: shown.pile } : {}) } : null
 
   return { mine: shown?.side === 'mine' ? target : null, theirs: shown?.side === 'theirs' ? target : null }
-}
-
-/** Lo último que tocó el rival (cualquier emoji de señal): en escritorio se muestra grande en el medio de la pantalla un momento (o hasta que se lo toca). */
-const BURST_MS = 2200
-
-export function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null; mineKey: number; theirsKey: number; burst: { emoji: string; key: number } | null; dismissBurst: () => void } {
-  const { chat, me } = snapshot
-  const last = chat.at(-1)?.id ?? 0
-  const seen = useRef(last)
-  const [shown, setShown] = useState<{ mine: string | null; theirs: string | null; mineKey: number; theirsKey: number }>({ mine: null, theirs: null, mineKey: 0, theirsKey: 0 })
-  const [burst, setBurst] = useState<{ emoji: string; key: number } | null>(null)
-
-  useEffect(() => {
-    const fresh = chat.filter((line) => line.id > seen.current && isSignal(line.text))
-    const rivalEmoji = chat.filter((line) => line.id > seen.current && line.from !== me && isEmojiSignal(line.text)).at(-1)
-
-    seen.current = Math.max(seen.current, last)
-
-    if (rivalEmoji) {
-      setBurst({ emoji: rivalEmoji.text, key: rivalEmoji.id })
-    }
-
-    if (fresh.length > 0) {
-      const line = fresh[fresh.length - 1]!
-
-      // Cada señal lleva el número de su línea: el globo de ese lado vuelve a entrar aunque diga lo mismo que el anterior (cae dentro de su fundido).
-      setShown((current) => (line.from === me ? { ...current, mine: line.text, mineKey: line.id } : { ...current, theirs: line.text, theirsKey: line.id }))
-    }
-  }, [chat, last, me])
-
-  useEffect(() => {
-    if (shown.mine === null && shown.theirs === null) return
-
-    const id = setTimeout(() => setShown((current) => ({ ...current, mine: null, theirs: null })), SIGNAL_MS)
-    return () => clearTimeout(id)
-  }, [shown])
-
-  useEffect(() => {
-    if (burst === null) return
-
-    const id = setTimeout(() => setBurst(null), BURST_MS)
-    return () => clearTimeout(id)
-  }, [burst])
-
-  const dismissBurst = useCallback(() => setBurst(null), [])
-
-  return useMemo(() => ({ ...shown, burst, dismissBurst }), [shown, burst, dismissBurst])
-}
-
-/**
- * El emoji que toca el rival, grande y en el medio de la pantalla, sólo en escritorio (en el celular sale como un mensaje más, en la línea del registro). Se va solo, o al tocarlo:
- * el resto de la pantalla no recibe toques de menos, sólo el emoji.
- */
-export function RivalEmoji({ burst, name, onDismiss }: { burst: { emoji: string; key: number } | null; name: string; onDismiss: () => void }) {
-  if (burst === null) return null
-
-  return (
-    <div key={burst.key} data-testid="rival-emoji" aria-live="polite" className="pointer-events-none fixed inset-0 z-60 grid place-items-center">
-      <button type="button" aria-label={t('duel.emoji.close', { name, emoji: burst.emoji })} className="pointer-events-auto grid cursor-pointer justify-items-center gap-1 rounded-card animate-linger focus-visible:outline-none focus-visible:shadow-focus motion-reduce:animate-none" style={{ animationDuration: `${BURST_MS}ms` }} onClick={onDismiss}>
-        <span aria-hidden="true" style={{ fontSize: 'clamp(7rem, 38vw, 12rem)' }} className="leading-none drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
-          {burst.emoji}
-        </span>
-        <span className="rounded-full bg-card-background/90 px-3 py-1 text-body font-semibold text-foreground">{name}</span>
-      </button>
-    </div>
-  )
 }
 
 /** Cuando el rival marca algo de tu lado (una carta, tu mano, el cementerio…), un aviso: sobre una pila o la mano la mira se ve poco y puede pasar desapercibida. */

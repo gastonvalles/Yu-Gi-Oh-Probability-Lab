@@ -586,7 +586,7 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
   )
 }
 
-/** Cuánto se queda el globo de una señal (pensando, todo bien, un 👍) junto a las vidas: el temporizador de `useSignals` (DuelScreen) lo quita a esta misma duración. */
+/** Cuánto se queda el globo de una señal (pensando, todo bien, un 👍) junto a las vidas: el temporizador de `useSignals` (use-duel-table) lo quita a esta misma duración. */
 export const SIGNAL_MS = 3500
 
 interface DuelLifeProps {
