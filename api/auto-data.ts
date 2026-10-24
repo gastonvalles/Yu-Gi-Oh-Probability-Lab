@@ -56,7 +56,7 @@ export function autoDataHandler(dir: string) {
     const loaded = load()
 
     if (!loaded) return Response.json({ error: UNAVAILABLE }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
-    if (path === 'manifest') return reply(JSON.stringify({ version: loaded.version, tokens: loaded.tokens, filler: loaded.filler }), 'application/json')
+    if (path === 'manifest') return reply(JSON.stringify({ version: loaded.version, tokens: loaded.tokens, filler: loaded.filler, ...(loaded.features ? { features: loaded.features } : {}) }), 'application/json')
     if (path === 'cards') {
       const codes = (url.searchParams.get('codes') ?? '').split(',').filter((code) => /^\d{1,10}$/.test(code)).slice(0, 2000).map(Number)
 

@@ -3,8 +3,10 @@ import { join, posix } from 'node:path'
 
 // El núcleo de reglas (`ocgcore-wasm`) lleva adentro un binario AGPL-3.0 y la decisión de licencia está abierta: hasta que se tome, nada
 // del arranque de la app lo importa. Sólo los módulos de `src/app/auto/`, las pruebas y los scripts; de producción, sólo las piezas del modo
-// automático (`src/components/auto/`) importan `src/app/auto/`, y a ésas las trae un único `lazy(() => import(` (`DeckModeScreen.tsx`): el
-// wasm viaja en su propio chunk y sólo bajo demanda (`src/app/auto/` además figura en NOT_AT_STARTUP de startup-imports.test.ts).
+// automático (`src/components/auto/`) importan `src/app/auto/`, y a ésas las traen dos `lazy(() => import(` (`DeckModeScreen.tsx`: jugar solo y
+// la mesa de una sala con reglas automáticas): el wasm viaja en su propio chunk y sólo bajo demanda (`src/app/auto/` además figura en
+// NOT_AT_STARTUP de startup-imports.test.ts). La única excepción es un `import(` del manifiesto de los datos (`auto-data.ts`, que no trae el
+// núcleo): el interruptor del despliegue que mira la hoja de las reglas del duelo.
 const ROOT = join(__dirname, '..', '..')
 const files = (dir: string): string[] =>
   readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? files(join(dir, entry.name)) : /\.(tsx?|mjs|js)$/.test(entry.name) ? [join(dir, entry.name).split('\\').join('/')] : []))
@@ -22,24 +24,29 @@ describe('el núcleo de reglas queda aislado', () => {
     const production = source.filter((file) => !file.startsWith('src/app/auto/') && !file.startsWith('src/__tests__/') && !file.startsWith('src/components/auto/'))
     // Cada importación relativa se resuelve desde su archivo: `../../auto/…` desde el catálogo es `src/components/auto/` (las piezas de pantalla, sin el núcleo), no `src/app/auto/`.
     // Un `import type` se borra al compilar: la mesa (`PracticeMat.tsx`) sólo toma el tipo de `duel.auto` de `ask-ui.ts`.
+    // El manifiesto de los datos sí, con un `import(` (nunca estático): `auto-data.ts` no trae el núcleo.
     const reachesCore = (file: string) =>
       [...readFileSync(join(ROOT, file), 'utf8').matchAll(/(?:import\s+(?!type\s)[^'"]*?from\s+|import\(\s*)['"](\.{1,2}\/[^'"]*)['"]/g)].some((match) => {
         const target = posix.join(posix.dirname(file), match[1]!)
 
-        return target === 'src/app/auto' || target.startsWith('src/app/auto/')
+        return (target === 'src/app/auto' || target.startsWith('src/app/auto/')) && !(match[0].startsWith('import(') && target === 'src/app/auto/auto-data')
       })
 
     expect(production.filter(reachesCore)).toEqual([])
+    expect(readFileSync(join(ROOT, 'src/app/auto/auto-data.ts'), 'utf8')).not.toMatch(/import\s+(?!type\s)[^'"]*?from\s+['"](?:ocgcore-wasm|\.\/core-host)/)
   })
 
-  it('el modo automático entra por un único lazy(() => import( en DeckModeScreen.tsx', () => {
+  it('el modo automático entra por dos lazy(() => import( en DeckModeScreen.tsx (jugar solo y la sala con reglas automáticas)', () => {
     const production = source.filter((file) => !file.startsWith('src/__tests__/') && !file.startsWith('src/components/auto/'))
-    const names = production.filter((file) => /components\/auto\//.test(readFileSync(join(ROOT, file), 'utf8')) || /(?:from\s+|import\(\s*)['"]\.{1,2}\/auto\//.test(readFileSync(join(ROOT, file), 'utf8')))
+    // Un `import type` (las props de la mesa automática que pide la pantalla del duelo) se borra al compilar.
+    const values = (file: string) => readFileSync(join(ROOT, file), 'utf8').replace(/^\s*import\s+type\s[^\n]*\n/gm, '')
+    const names = production.filter((file) => /components\/auto\//.test(values(file)) || /(?:from\s+|import\(\s*)['"]\.{1,2}\/auto\//.test(values(file)))
 
     expect(names).toEqual(['src/components/deck-mode/DeckModeScreen.tsx'])
     const lines = readFileSync(join(ROOT, 'src/components/deck-mode/DeckModeScreen.tsx'), 'utf8').split('\n').filter((line) => /['"]\.{1,2}\/auto\//.test(line))
 
-    expect(lines).toHaveLength(1)
+    expect(lines).toHaveLength(2)
     expect(lines[0]).toMatch(/lazy\(\(\) => import\(['"]\.\.\/auto\/AutoSoloScreen['"]\)/)
+    expect(lines[1]).toMatch(/lazy\(\(\) => import\(['"]\.\.\/auto\/AutoDuelScreen['"]\)/)
   })
 })

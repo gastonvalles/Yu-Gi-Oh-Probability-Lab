@@ -442,5 +442,14 @@ export const duel: Translated<typeof es> = {
   'duel.turn.passHint': 'Pass the turn',
   'duel.turn.drew': 'Your turn started: you drew a card.',
 
-
+  // A room with automatic rules (beta): the rules engine applies the rules for both players.
+  'duel.auto.rules': 'Automatic rules (beta)',
+  'duel.auto.rulesHint': 'The rules engine applies the rules for both of you. Private room, a single duel, no turn clock or spectators.',
+  'duel.auto.locked': 'With automatic rules: a single duel, private, no turn clock.',
+  'duel.auto.unsupported': "Your browser can't run the automatic rules.",
+  'duel.auto.off': 'Automatic rules are turned off for now.',
+  'duel.auto.rulesRow': 'Automatic (beta)',
+  'duel.auto.watchLabel': 'Spectators',
+  'duel.auto.watchUnavailable': 'Not available',
+  'duel.auto.noWatch': "This duel uses automatic rules: it can't be watched yet.",
 }

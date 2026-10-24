@@ -454,4 +454,15 @@ export const duel = {
   // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).
 
   // Jugar con otro deck que el del builder (por ejemplo desde un celular).
+
+  // Una sala con reglas automáticas (beta): el núcleo aplica las reglas por los dos.
+  'duel.auto.rules': 'Reglas automáticas (beta)',
+  'duel.auto.rulesHint': 'El núcleo aplica las reglas por los dos. Sala privada, un solo duelo, sin reloj de turnos ni espectadores.',
+  'duel.auto.locked': 'Con reglas automáticas: un solo duelo, privado, sin reloj de turnos.',
+  'duel.auto.unsupported': 'Tu navegador no puede correr las reglas automáticas.',
+  'duel.auto.off': 'Las reglas automáticas están apagadas por ahora.',
+  'duel.auto.rulesRow': 'Automáticas (beta)',
+  'duel.auto.watchLabel': 'Quién mira',
+  'duel.auto.watchUnavailable': 'No disponible',
+  'duel.auto.noWatch': 'Este duelo usa reglas automáticas: todavía no se puede mirar.',
 } as const

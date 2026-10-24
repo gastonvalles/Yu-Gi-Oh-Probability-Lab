@@ -1,0 +1,146 @@
+import { describe, expect, it } from 'vitest'
+import { cardData, type CardRow, type DataLoader, type DataSource } from '../app/auto/auto-data'
+import { autoSaveStore, parseAutoSave, type AutoSave } from '../app/auto/auto-save'
+import type { AutoSession } from '../app/auto/auto-session'
+import type { DeckList } from '../app/auto/deck-map'
+import { createGuestLink, createHostLink, type OnlineLink } from '../app/auto/online'
+import { isAutoText, parseAutoMessage } from '../app/auto/online-protocol'
+import { DEFAULT_SETTINGS } from '../app/duel-protocol'
+import { SAVE_TTL_MS } from '../app/duel-save'
+import { createDuel } from '../app/duel-session'
+import { END, fakeHost, PASS } from './support/auto-core-fake'
+import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
+
+/** El guardado del anfitrión del duelo automático por enlace: su forma, y que el anfitrión que recarga la página rearma el duelo y el invitado vuelve a la misma mesa. */
+
+const HOST_DECK: DeckList = { main: [[1, 5]] }
+const GUEST_DECK: DeckList = { main: [[2, 5]] }
+const row = (id: number): CardRow => ({ id, alias: 0, setcode: '0', type: 0x21, atk: 0, def: 0, level: 4, race: '1', attribute: 1, name: `Carta ${id}` })
+const expand = (rows: DeckList['main'] = []) => rows.flatMap(([code, copies]) => Array<number>(copies).fill(code))
+const loader: DataLoader = {
+  manifest: async () => ({ version: 't', tokens: [], filler: [] }),
+  async load(lists) {
+    const decks = lists.map((list) => ({ main: expand(list.main), extra: expand(list.extra), missing: [], noRules: [] }))
+    const codes = [...new Set(decks.flatMap((deck) => deck.main))]
+
+    return { decks, cards: codes.map((code) => cardData(row(code))), scripts: {}, names: {}, version: 't' }
+  },
+}
+const source: DataSource = { manifest: async () => ({ version: 't', tokens: [], filler: [] }), cards: async (codes) => codes.map(row), script: async () => null }
+const tick = () => new Promise((resolve) => setImmediate(resolve))
+async function settle(room: MemoryRoom) {
+  for (let i = 0; i < 30; i += 1) {
+    room.flush()
+    await tick()
+  }
+}
+/** Un `localStorage` en memoria. */
+function memoryStorage() {
+  const items = new Map<string, string>()
+
+  return { items, getItem: (key: string) => items.get(key) ?? null, setItem: (key: string, value: string) => void items.set(key, value), removeItem: (key: string) => void items.delete(key) }
+}
+
+const SAVE: AutoSave = { v: 1, seed: 7, seat: 1, hand: 5, decks: { mine: HOST_DECK, theirs: GUEST_DECK }, answers: [{ seat: 0, answer: END }], savedAt: 1000 }
+
+describe('el guardado del duelo automático por enlace', () => {
+  it('lee lo que escribió, si tiene forma de duelo y no venció', () => {
+    const storage = memoryStorage()
+    const store = autoSaveStore('ABCDEFGH', storage, () => 2000)
+
+    expect(store.read()).toBeNull()
+    store.write(SAVE)
+    expect([...storage.items.keys()]).toEqual(['ygo-lab:auto-save:ABCDEFGH'])
+    expect(store.read()).toEqual(SAVE)
+    expect(autoSaveStore('ABCDEFGH', storage, () => 1000 + SAVE_TTL_MS + 1).read()).toBeNull()
+    for (const bad of [{ ...SAVE, v: 2 }, { ...SAVE, seat: 2 }, { ...SAVE, seed: -1 }, { ...SAVE, answers: [{ seat: 0, answer: { type: 'nada' } }] }, { ...SAVE, decks: { mine: { main: [[0, 1]] }, theirs: GUEST_DECK } }]) {
+      expect(parseAutoSave(JSON.stringify(bad), 2000)).toBeNull()
+    }
+    expect(parseAutoSave('{', 2000)).toBeNull()
+    store.clear()
+    expect(store.read()).toBeNull()
+    // Sin almacenamiento, no se recuerda nada (y no se rompe).
+    const none = autoSaveStore('ABCDEFGH', null)
+
+    none.write(SAVE)
+    expect(none.read()).toBeNull()
+  })
+
+  it('el anfitrión que recarga la página rearma el duelo con lo guardado y el invitado vuelve a la misma mesa y a la misma pregunta', async () => {
+    const storage = memoryStorage()
+    const room = createMemoryRoom()
+    const hostEnd = room.join()
+    const guestEnd = room.join()
+    const settings = { ...DEFAULT_SETTINGS, auto: true }
+    const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings })
+    const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
+    // Beto va primero (asiento 0): las preguntas 0 y 1 son suyas, la 2 de Ana, la 3 de Beto.
+    const hostLink = createHostLink({ transport: hostEnd, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0001', storage) })
+    const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK })
+    const sessionOf = (link: OnlineLink) => link.getSnapshot().session!
+
+    host.subscribe(() => hostLink.observe(host.getSnapshot()))
+    guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
+    await settle(room)
+    host.setReady(true)
+    guest.setReady(true)
+    await settle(room)
+    host.chooseMethod('rps')
+    await settle(room)
+    host.pickRps('rock')
+    guest.pickRps('scissors')
+    await settle(room)
+    host.chooseFirst(1)
+    await settle(room)
+    sessionOf(guestLink).answer(END)
+    await settle(room)
+    sessionOf(guestLink).answer(END)
+    await settle(room)
+    sessionOf(hostLink).answer(PASS)
+    await settle(room)
+    const before = sessionOf(guestLink).getSnapshot()
+
+    expect(before).toMatchObject({ status: 'ready', ask: { seat: 0 } })
+    expect(JSON.parse(storage.items.get('ygo-lab:auto-save:ROOM0001')!)).toMatchObject({ seat: 1, hand: 5, answers: [{ seat: 0 }, { seat: 0 }, { seat: 1, answer: PASS }] })
+
+    // Ana recarga: otra sala (que se entera por Beto de quién empezaba), otro enlace, otro núcleo; lo guardado sigue ahí.
+    hostLink.destroy()
+    hostEnd.close()
+    const hostEnd2 = room.join()
+    const host2 = createDuel(hostEnd2, { role: 'host', name: 'Ana', sid: 'host-2', settings })
+    const hostLink2 = createHostLink({ transport: hostEnd2, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0001', storage) })
+
+    host2.subscribe(() => hostLink2.observe(host2.getSnapshot()))
+    hostLink2.observe(host2.getSnapshot())
+    await settle(room)
+    const hosted: AutoSession = sessionOf(hostLink2)
+    const after = sessionOf(guestLink).getSnapshot()
+
+    expect(hostLink2.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })
+    expect(hosted.getSnapshot()).toMatchObject({ status: 'waiting', remoteAsk: { seat: 0 } })
+    expect(hosted.getSnapshot().answers).toHaveLength(3)
+    expect(guestLink.getSnapshot().phase).toBe('playing')
+    expect(after).toMatchObject({ status: 'ready', replaying: false, ask: { seat: 0, ask: { type: 'select_idlecmd' } } })
+    expect({ mine: after.mine, theirs: after.theirs, overlay: after.overlay }).toEqual({ mine: before.mine, theirs: before.theirs, overlay: before.overlay })
+    expect(after.ask!.askId).toBe(hosted.getSnapshot().remoteAsk!.askId)
+    // El invitado recibió el duelo de nuevo: cómo empieza, y que sus 2 preguntas ya estaban contestadas.
+    const toGuest = room.sent.filter(isAutoText).map((text) => parseAutoMessage(text)!)
+
+    expect(toGuest.filter((message) => message.t === 'autoInit')).toHaveLength(2)
+    expect(toGuest.filter((message) => message.t === 'autoReplay').at(-1)).toEqual({ t: 'autoReplay', skip: 2 })
+    // Y sigue: Beto contesta (la pregunta 4 también es suya) y el núcleo lo cuenta a partir de lo rearmado.
+    expect(sessionOf(guestLink).answer(END)).toBe(true)
+    await settle(room)
+    expect(hosted.getSnapshot()).toMatchObject({ status: 'waiting', remoteAsk: { seat: 0 } })
+    expect(hosted.getSnapshot().answers.map((answer) => answer.seat)).toEqual([0, 0, 1, 0])
+
+    // Termina por rendición: lo guardado se borra.
+    guest.concede()
+    await settle(room)
+    expect(hostLink2.getSnapshot().phase).toBe('ended')
+    expect(storage.items.size).toBe(0)
+    hostLink2.destroy()
+    guestLink.destroy()
+  })
+})
+

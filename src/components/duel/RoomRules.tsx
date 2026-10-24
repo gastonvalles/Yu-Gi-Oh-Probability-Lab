@@ -25,6 +25,8 @@ interface RoomRulesProps {
 export function RoomRules({ settings, isPublic, watchers, bare = false }: RoomRulesProps) {
   // Lo que tiene que ver con quien mira lleva un ojo (el tercer dato de la fila).
   const rows: ReadonlyArray<readonly [string, string, IconName?]> = [
+    // Con reglas automáticas el núcleo aplica las reglas por los dos: va primero, es lo que más cambia el duelo.
+    ...(settings.auto ? ([[t('duel.rules.title'), t('duel.auto.rulesRow')]] as const) : []),
     [t('duel.rules.type'), settings.match ? t('duel.rooms.match') : t('duel.rooms.single')],
     ...(settings.match && settings.siding ? ([[t('duel.rules.siding'), t('duel.rules.yes')]] as const) : []),
     [t('duel.rules.format'), getDeckFormatLabel(settings.format)],
@@ -34,7 +36,12 @@ export function RoomRules({ settings, isPublic, watchers, bare = false }: RoomRu
     // La vida y la mano inicial no hace falta decirlas en TCG y OCG (siempre son las mismas); en los otros formatos sí.
     ...(settings.format === 'tcg' || settings.format === 'ocg' ? [] : ([[t('duel.rules.life'), String(settings.lp)], [t('duel.rules.hand'), String(settings.hand)]] as const)),
     ...(isPublic === null ? [] : ([[t('duel.create.visibility'), isPublic ? t('duel.create.public') : t('duel.create.private')]] as const)),
-    ...(watchers === undefined ? [] : ([[t('duel.rules.watching'), t('duel.rules.watchingValue', { count: watchers, max: MAX_SPECTATORS }), 'eye']] as const)),
+    // Una sala con reglas automáticas todavía no se puede mirar.
+    ...(settings.auto
+      ? ([[t('duel.auto.watchLabel'), t('duel.auto.watchUnavailable'), 'eye']] as const)
+      : watchers === undefined
+        ? []
+        : ([[t('duel.rules.watching'), t('duel.rules.watchingValue', { count: watchers, max: MAX_SPECTATORS }), 'eye']] as const)),
   ]
 
   return (

@@ -1,0 +1,357 @@
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+
+import { createDataLoader, httpSource } from '../../app/auto/auto-data'
+import { autoSaveStore, type AutoSaveStore } from '../../app/auto/auto-save'
+import { workerTransport, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
+import type { DeckList } from '../../app/auto/deck-map'
+import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
+import { createGuestLink, createHostLink, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type RoomAutoState } from '../../app/auto/online'
+import type { Seat } from '../../app/auto/protocol'
+import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
+import { parseDerivedCardId } from '../../app/calculator-state'
+import { duelResult, type DuelResult } from '../../app/duel-games'
+import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
+import { isEmojiSignal } from '../../app/duel-signals'
+import type { SocketStatus } from '../../app/duel-socket'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { t } from '../../i18n'
+import { TurnOrderBanner } from '../duel/DuelBanner'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker } from '../duel/DuelBar'
+import { DuelChatPanel } from '../duel/DuelChat'
+import { DuelPause } from '../duel/DuelPause'
+import { ResultCard } from '../duel/DuelResult'
+import { ReactionButtons } from '../duel/ReactionButtons'
+import type { FeedEntry } from '../duel/use-duel-feed'
+import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from '../duel/use-duel-table'
+import { cardIdOfDrawId } from '../probability/practice'
+import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
+import { Segmented } from '../ui/Segmented'
+import { Setting } from './AutoBar'
+import { FaultCover, LoadingCover } from './AutoCovers'
+import { deckListOf } from './deck-list'
+import { sentinel, useAutoAsks } from './use-auto-asks'
+
+/**
+ * El duelo automático por enlace (diseño: `docs/duelos-automaticos.md`, «Duelo online»): la sala de siempre (`createDuel`: listos, tirada, chat, señales, vidas, rendirse, revancha) y
+ * la mesa de «Jugar solo automático» (`PracticeMat` con la composición del duelo y las preguntas del núcleo contestadas en la mesa: `useAutoAsks`), unidas por el enlace del núcleo
+ * (`OnlineLink`): el anfitrión corre el núcleo con los dos asientos y el invitado proyecta lo que le llega. Mientras no hay sesión, la sala la dibuja `DuelRoom` (`room`) con lo que el
+ * enlace sabe (`RoomAutoState`: si se puede estar listo y qué decir). La mesa no cambia en nada: recibe lo mismo que en solo, con la barra del duelo (`DuelBar`), el chat, las
+ * señales, la pausa y el resultado. Sin Deshacer ni reloj de turnos (v1). Las vidas del núcleo se vuelcan en las de la sala (cada uno declara las suyas) y al final el que pierde
+ * pone las suyas en 0: así el resultado, la revancha y el cierre de la sala andan como siempre.
+ */
+
+/**
+ * Lo que `DuelScreen` le pasa a la mesa del duelo automático por enlace: la sala de siempre (`duel`, `snapshot`, `status`), el transporte del relay para el enlace del núcleo y el
+ * deck de esta persona. La sala (listos, tirada) la dibuja `DuelRoom` mientras no hay sesión: llega como `room`.
+ */
+export interface AutoDuelScreenProps {
+  duel: Duel
+  snapshot: DuelSnapshot
+  status: SocketStatus
+  transport: OnlineTransport
+  myName: string
+  deck: { name: string; mainIds: readonly string[]; extraIds: readonly string[]; cardsById: ReadonlyMap<string, MatCard> }
+  handSize: number
+  /** La sala de siempre (DuelRoom) mientras no empieza: la dibuja la pantalla con lo que el enlace sabe. */
+  room: (auto: RoomAutoState) => ReactNode
+  onLeave: () => void
+  onAbandon: () => void
+  onRematch: () => void
+  /** El código de la sala: con él el anfitrión guarda el duelo en el navegador (si recarga la página, lo retoma); sin él no guarda nada. */
+  code?: string
+  /** Pruebas: el enlace de mentira (tiene que ser estable: cambiarlo arma otro enlace). */
+  connect?: (transport: OnlineTransport, role: DuelRole) => OnlineLink
+}
+
+const NOTHING = () => {}
+const noSubscribe = () => () => {}
+const noSnapshot = () => null
+
+/** El enlace de verdad: el anfitrión baja los datos y corre el núcleo en un Worker; el invitado sólo baja lo de sus cartas. `features.online` del manifiesto lo apaga sin tocar código. */
+function liveLink(transport: OnlineTransport, role: DuelRole, deck: DeckList, handSize: number, save: AutoSaveStore | null): OnlineLink {
+  if (role === 'guest') return createGuestLink({ transport, source: httpSource(), deck })
+  const loader = createDataLoader(httpSource())
+
+  // Sin manifiesto no se sabe: se sigue y, si los datos no llegan, el enlace lo dice (`reason: 'data'`).
+  return createHostLink({ transport, loader, deck, handSize, makeTransport: workerTransport(), enabled: () => loader.manifest().then((manifest) => manifest.features?.online !== false, () => true), ...(save ? { save } : {}) })
+}
+
+/** Una clave por sesión (la mesa arranca de cero con cada una: revancha, o el invitado que vuelve a recibir el duelo). */
+const sessionIds = new WeakMap<AutoSession, number>()
+let lastSessionId = 0
+const sessionKey = (session: AutoSession) => sessionIds.get(session) ?? (sessionIds.set(session, (lastSessionId += 1)), lastSessionId)
+
+export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, connect }: AutoDuelScreenProps) {
+  const { role, peerPresent } = snapshot
+  const list = useMemo<DeckList>(() => ({ main: deckListOf(deck.mainIds), extra: deckListOf(deck.extraIds) }), [deck.mainIds, deck.extraIds])
+  const [link, setLink] = useState<OnlineLink | null>(null)
+  // El duelo guardado del anfitrión se borra al salir o abandonar (el enlace no lo borra al destruirse: con `StrictMode` borraría lo guardado al volver a montar).
+  const save = useMemo(() => (code ? autoSaveStore(code) : null), [code])
+  const leave = useCallback(() => {
+    save?.clear()
+    onLeave()
+  }, [save, onLeave])
+  const abandon = useCallback(() => {
+    save?.clear()
+    onAbandon()
+  }, [save, onAbandon])
+
+  // En un efecto (y no en el render): con `StrictMode` el montaje se repite, y un enlace escucha el relay y manda; el de la primera pasada se destruye.
+  useEffect(() => {
+    const next = connect ? connect(transport, role) : liveLink(transport, role, list, handSize, save)
+
+    setLink(next)
+
+    return () => next.destroy()
+  }, [connect, transport, role, list, handSize, save])
+
+  const online = useSyncExternalStore(link ? link.subscribe : noSubscribe, link ? link.getSnapshot : noSnapshot)
+
+  // La sala avanza (el rival entra, la tirada, quién empieza, la revancha): el enlace lo mira con cada snapshot.
+  useEffect(() => {
+    link?.observe(snapshot)
+  }, [link, snapshot])
+
+  // El invitado que vuelve a ver al anfitrión (se cortó uno de los dos) pide el duelo de nuevo; la primera vez que lo ve, no (entra a la sala).
+  const presence = useRef({ ever: false, now: false })
+
+  useEffect(() => {
+    const before = presence.current
+
+    presence.current = { ever: before.ever || peerPresent, now: peerPresent }
+    if (link && role === 'guest' && before.ever && !before.now && peerPresent) link.resync()
+  }, [link, role, peerPresent])
+
+  const rivalName = snapshot.peerName ?? t('duel.bar.rival')
+  const codeName = useCodeName(deck.cardsById, online?.cards)
+
+  // La sala hasta que hay duelo: también entre un duelo y su revancha (la mesa vuelve a cero y elige el que perdió).
+  if (!online?.session || online.seat === null || !snapshot.opening.ordered) return <>{room(roomAutoState(online, rivalName, codeName))}</>
+
+  return (
+    <AutoDuelTable
+      key={sessionKey(online.session)}
+      session={online.session}
+      online={online}
+      seat={online.seat}
+      duel={duel}
+      snapshot={snapshot}
+      status={status}
+      myName={myName}
+      deck={deck}
+      onLeave={leave}
+      onAbandon={abandon}
+      onRematch={onRematch}
+    />
+  )
+}
+
+/** El nombre de una carta por código: las tuyas, del builder; las del rival que el núcleo dejó ver, de `cards`. */
+function useCodeName(cardsById: ReadonlyMap<string, MatCard>, cards: OnlineSnapshot['cards'] | undefined): (code: number) => string {
+  return useMemo(() => {
+    const names = new Map<number, string>()
+
+    for (const [id, card] of cardsById) {
+      const code = parseDerivedCardId(cardIdOfDrawId(id))
+
+      if (code !== null && !names.has(code)) names.set(code, card.name)
+    }
+
+    return (code: number) => names.get(code) ?? cards?.get(code)?.name ?? t('practice.card.unknown')
+  }, [cardsById, cards])
+}
+
+/** Lo que la sala muestra mientras no hay duelo: «Estoy listo» sólo con los dos decks revisados (`ready`); el aviso, `info` mientras espera, `warning` si algo impide empezar y `danger` si algo se perdió. */
+function roomAutoState(online: OnlineSnapshot | null, rival: string, nameOf: (code: number) => string): RoomAutoState {
+  const say = (tone: 'info' | 'warning' | 'danger', text: string, cards?: { code: number; name: string }[]) => ({ tone, text, ...(cards && cards.length > 0 ? { cards } : {}) })
+
+  switch (online?.phase ?? 'idle') {
+    case 'idle':
+      return { canReady: false, notice: null }
+    case 'awaitingDeck':
+      return { canReady: false, notice: say('info', t('auto.online.waitingDeck', { name: rival })) }
+    case 'checking':
+      return { canReady: false, notice: say('info', t('auto.online.checking')) }
+    case 'outdated':
+      return { canReady: false, notice: say('warning', t('auto.online.outdated', { name: rival })) }
+    case 'blocked': {
+      const { mine, theirs, reason } = online!.problems
+
+      if (reason === 'lost') return { canReady: false, notice: say('danger', t('auto.online.lost')) }
+      if (reason !== null) return { canReady: false, notice: say('warning', reason === 'off' ? t('auto.online.off') : reason === 'version' ? t('auto.online.version', { name: rival }) : t('auto.online.data')) }
+      const text = [...(mine.length > 0 ? [t('auto.online.blockedMine', { count: mine.length })] : []), ...(theirs > 0 ? [t('auto.online.blockedTheirs', { count: theirs, name: rival })] : [])].join(' ')
+
+      return { canReady: false, notice: say('warning', text || t('auto.online.data'), mine.map((code) => ({ code, name: nameOf(code) }))) }
+    }
+    // Entre un duelo y su revancha (`ended`) los decks ya se revisaron.
+    case 'ready':
+    case 'ended':
+      return { canReady: true, notice: null }
+    case 'starting':
+    case 'playing':
+      return { canReady: false, notice: say('info', t('auto.loading.start')) }
+    case 'lost':
+      return { canReady: false, notice: say('danger', online!.problems.reason === 'lost' ? t('auto.online.lost') : t('auto.online.broken')) }
+  }
+}
+
+/** Por qué terminó según el núcleo, cuando no lo dicen las vidas (sin cartas para robar, el efecto de una carta): lo que `ResultCard` muestra en vez de «se quedó sin puntos de vida». */
+function coreReason(end: { winner: number; reason: number }, lp: readonly [number, number], seat: Seat, rival: string): string | undefined {
+  const won = end.winner === seat
+
+  if (end.winner === 2 || end.reason === REASON_LP || lp[won ? 1 - seat : seat]! <= 0) return undefined
+
+  return end.reason === REASON_DECK || end.reason < SCRIPT_REASON ? (won ? t('auto.online.deckOutWin', { name: rival }) : t('auto.end.deckOutLose')) : t(won ? 'auto.end.effectWin' : 'auto.end.effectLose')
+}
+
+/**
+ * Las vidas del núcleo son las de la sala: cada uno declara las suyas (`changeLife`, el `life` del protocolo de siempre), así la barra, el resultado, la revancha y el cierre de la sala
+ * andan sin cambios. Al terminar, el que pierde pone las suyas en 0 (empate: los dos). La sesión deja de hablar por la sala cuando terminó o cuando el duelo terminó de otra forma
+ * (alguien se rindió): la revancha vuelve las vidas de la sala al máximo y la cuenta otra sesión, que arranca igual.
+ */
+function useCoreLife(duel: Duel, snapshot: DuelSnapshot, snap: AutoSnapshot, seat: Seat, result: DuelResult | null) {
+  // Una sesión que ya había terminado cuando se montó su mesa (la del duelo de antes de una revancha) no habla por la sala: las vidas de ahora son de otro duelo.
+  const done = useRef(snap.status === 'ended')
+  const mine = snapshot.life.lp[snapshot.me]
+
+  useEffect(() => {
+    if (done.current || snap.replaying || snap.status === 'loading' || snap.status === 'error') return
+    const end = snap.status === 'ended' ? snap.overlay.end : null
+
+    if (result !== null && !end) {
+      done.current = true
+      return
+    }
+    if (end) done.current = true
+    const target = end && end.winner !== seat ? 0 : snap.overlay.lp[seat]
+
+    if (target !== mine) duel.changeLife(target - mine)
+  }, [duel, snap, seat, mine, result])
+}
+
+interface AutoDuelTableProps {
+  session: AutoSession
+  online: OnlineSnapshot
+  seat: Seat
+  duel: Duel
+  snapshot: DuelSnapshot
+  status: SocketStatus
+  myName: string
+  deck: AutoDuelScreenProps['deck']
+  onLeave: () => void
+  onAbandon: () => void
+  onRematch: () => void
+}
+
+/** La mesa de un duelo (una sesión): la de «Jugar solo automático» con la barra, el chat, las señales, la pausa y el resultado del duelo por enlace. */
+function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, deck, onLeave, onAbandon, onRematch }: AutoDuelTableProps) {
+  const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
+  const prefs = useAutoPrefs()
+  const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const rivalName = snapshot.peerName ?? t('duel.bar.rival')
+  const result = duelResult(snapshot.life.lp, snapshot.conceded)
+  // El anfitrión corre el núcleo: puede cortar lo que piensa. El invitado, no (el núcleo está en otro navegador).
+  const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null })
+  const paused = !snapshot.peerPresent && result === null
+  // Al terminar, la tarjeta del resultado tapa la mesa hasta que se la cierra para mirarla.
+  const [resultClosed, setResultClosed] = useState(false)
+  const resultOpen = result !== null && !resultClosed
+  const [chatOpen, setChatOpen] = useState(false)
+
+  useEffect(() => {
+    if (result === null) setResultClosed(false)
+  }, [result])
+  useGameToasts(snapshot, myName)
+  useAutoStartClock(duel, snapshot)
+  useClockPause(duel, snapshot, paused)
+  useCoreLife(duel, snapshot, snap, seat, result)
+  const signals = useSignals(snapshot)
+
+  // El cartel del comienzo (vas primero o segundo), una vez, cuando el duelo nuevo termina de cargar.
+  const [banner, setBanner] = useState(false)
+  const bannerSeen = useRef(false)
+  const hideBanner = useCallback(() => setBanner(false), [])
+
+  useEffect(() => {
+    if (bannerSeen.current || snap.status === 'loading') return
+    bannerSeen.current = true
+    if (snap.overlay.turn <= 1 && snap.answers.length === 0) setBanner(true)
+  }, [snap.status, snap.overlay.turn, snap.answers.length])
+
+  // v1: el registro es el chat (las jugadas del núcleo en el registro, después).
+  const feed = useMemo(() => snapshot.chat.map((line): FeedEntry => ({ id: `c${line.id}`, kind: 'chat', line })), [snapshot.chat])
+  const end = snap.overlay.end
+  const reason = snapshot.conceded === null && end ? coreReason(end, snap.overlay.lp, seat, rivalName) : undefined
+  // Lo que corta el duelo: el enlace se perdió (el anfitrión recargó), el núcleo se cayó o rechazó jugadas inválidas.
+  const fault = snap.fault ?? (online.phase === 'lost' ? { kind: 'crash' as const, message: '', cards: [] } : null)
+  const faultTitle = snap.fault?.kind === 'retry' ? t('auto.online.cut', { name: rivalName }) : online.phase === 'lost' && !snap.fault ? (online.problems.reason === 'lost' ? t('auto.online.lost') : t('auto.online.broken')) : undefined
+
+  const cover = fault ? (
+    <FaultCover fault={fault} {...(faultTitle ? { title: faultTitle } : {})} nameOf={(code) => asks.nameOf(null, code)} artOf={(code) => asks.artOf(null, code)} onExit={onLeave} />
+  ) : paused ? (
+    <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
+  ) : resultOpen ? (
+    <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(reason ? { reason } : {})} />
+  ) : snap.status === 'loading' || online.phase === 'starting' ? (
+    <LoadingCover progress={snap.progress} note={null} />
+  ) : undefined
+
+  // «Más opciones» de la barra: lo mismo que en solo (las respuestas a la cadena y la casilla); los sonidos y reconectar ya están.
+  const settings = (
+    <>
+      <Setting title={t('auto.bar.chain')} hint={t('auto.bar.chainHint')}>
+        <Segmented label={t('auto.bar.chain')} value={prefs.chain} onChange={(mode) => setAutoPref('chain', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'never', label: t('auto.bar.never') }]} />
+      </Setting>
+      <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
+        <Segmented label={t('auto.bar.place')} value={prefs.place} onChange={(mode) => setAutoPref('place', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
+      </Setting>
+    </>
+  )
+
+  const link: DuelMatLink = {
+    ...asks.mat,
+    header: (
+      <DuelBar
+        snapshot={snapshot}
+        status={status}
+        turn={asks.turnMine ? 'mine' : 'theirs'}
+        onToggleClock={duel.toggleClock}
+        onRematch={onRematch}
+        onLeave={onLeave}
+        onAbandon={onAbandon}
+        onConcede={duel.concede}
+        onReconnect={duel.reconnect}
+        log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />}
+        resultOpen={resultOpen}
+        rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs}
+        rivalSignalKey={signals.theirsKey}
+        lane={asks.lane}
+        // La fase es la de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
+        phase={snap.overlay.turn > 0 ? (asks.turnMine ? asks.state.phase : snap.theirs.phase) : null}
+        turnNumber={Math.max(1, snap.overlay.turn)}
+        extraSettings={settings}
+        {...(reason ? { resultReason: reason } : {})}
+      />
+    ),
+    // Tus vidas, abajo como en el duelo (sin calculadora: las lleva el núcleo).
+    life: <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} />,
+    tools: docked ? null : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />,
+    // Celular: las dos reacciones debajo de la mano; en escritorio están en el chat, fijo a la derecha.
+    reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} readyAt={snapshot.emoteReadyAt} />,
+    aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
+    rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
+    // Sin Deshacer en v1 (dos personas: haría falta pedir permiso y re-simular).
+    undoAvailable: false,
+    ...(cover === undefined ? {} : { cover }),
+  }
+
+  return (
+    // Tocar la mesa mientras cuenta una tanda la salta al final.
+    <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
+      <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} />
+      {asks.pieces}
+      {banner ? <TurnOrderBanner first={seat === 0} rival={rivalName} onDone={hideBanner} /> : null}
+      {docked ? <RivalEmoji burst={signals.burst} name={rivalName} onDismiss={signals.dismissBurst} /> : null}
+    </div>
+  )
+}

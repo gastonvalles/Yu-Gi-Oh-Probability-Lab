@@ -40,6 +40,8 @@ export interface DuelSettings {
   match: boolean
   /** En un Match, cambiar cartas entre el Main, el Extra y el Side entre un duelo y el siguiente. */
   siding: boolean
+  /** Reglas automáticas (beta): el navegador del anfitrión corre el núcleo de reglas por los dos (`docs/duelos-automaticos.md`). Lo fija el anfitrión al crear la sala; sin dato, manual. */
+  auto?: boolean
 }
 
 /** Los tiempos que se ofrecen al crear la sala: 50 minutos (lo que dura una ronda de torneo) o sin tiempo (0). El protocolo acepta cualquier tiempo de 0 a 180: salas de antes tenían otros. */
@@ -346,7 +348,7 @@ function parseState(value: unknown): MatState | null {
 
 function parseSettings(value: unknown): DuelSettings | null {
   // Un anfitrión de una versión anterior no manda el tiempo: vale el de siempre.
-  if (!isPlain(value) || !isInt(value.lp, 1, MAX_LP) || !isInt(value.hand, 0, 20) || !optional(value.turnMin, (v) => isInt(v, 0, 60)) || !optional(value.turnBonusMin, (v) => isInt(v, 0, 30)) || !optional(value.limitMin, (v) => isInt(v, 0, 180)) || !optional(value.format, (v) => (DUEL_FORMATS as readonly unknown[]).includes(v)) || !optional(value.genesysCap, (v) => isInt(v, 1, 999)) || !optional(value.match, (v) => typeof v === 'boolean') || !optional(value.siding, (v) => typeof v === 'boolean')) {
+  if (!isPlain(value) || !isInt(value.lp, 1, MAX_LP) || !isInt(value.hand, 0, 20) || !optional(value.turnMin, (v) => isInt(v, 0, 60)) || !optional(value.turnBonusMin, (v) => isInt(v, 0, 30)) || !optional(value.auto, (v) => typeof v === 'boolean') || !optional(value.limitMin, (v) => isInt(v, 0, 180)) || !optional(value.format, (v) => (DUEL_FORMATS as readonly unknown[]).includes(v)) || !optional(value.genesysCap, (v) => isInt(v, 1, 999)) || !optional(value.match, (v) => typeof v === 'boolean') || !optional(value.siding, (v) => typeof v === 'boolean')) {
     return null
   }
 
@@ -363,6 +365,7 @@ function parseSettings(value: unknown): DuelSettings | null {
     ...(format === 'genesys' && typeof value.genesysCap === 'number' ? { genesysCap: value.genesysCap } : {}),
     match: value.match === true,
     siding: value.match === true && value.siding === true,
+    ...(value.auto === true ? { auto: true } : {}),
   }
 }
 

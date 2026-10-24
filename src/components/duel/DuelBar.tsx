@@ -11,7 +11,7 @@ import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { PHASES } from '../../app/practice-mat'
+import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { useSwipeAway } from '../../app/use-swipe-away'
 import { sacudir } from '../probability/AttackFx'
 import { MatViewToggle } from '../probability/MatViewToggle'
@@ -95,6 +95,13 @@ interface DuelBarProps {
   lane?: LaneNotice | null
   /** Tocar las vidas del rival abre la calculadora de vidas del duelo (como tocar las propias). */
   onOpenLife?: () => void
+  /** La fase y el turno del duelo, si no salen de las mesas de la sala (el duelo automático: las cuenta el núcleo y `mine`/`theirs` no existen). `null`: todavía no empezó. */
+  phase?: MatPhase | null
+  turnNumber?: number
+  /** Más ajustes al final de «Más opciones» (el duelo automático: las respuestas a la cadena y la casilla). */
+  extraSettings?: ReactNode
+  /** Por qué terminó, si no es lo que dicen las vidas o la rendición (el duelo automático: sin cartas para robar, el efecto de una carta). */
+  resultReason?: string
 }
 
 /**
@@ -230,7 +237,7 @@ export const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
-export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, lane = null, onOpenLife }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, lane = null, onOpenLife, phase: phaseOf, turnNumber = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null), extraSettings, resultReason }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -255,7 +262,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   // Con el rival presente y el duelo sin terminar, salir es abandonar: se pierde. Con el rival ausente (se cayó) o el duelo terminado, sólo se sale.
   const abandoning = result === null && peerPresent && onAbandon !== undefined
   // La fase que se ve es la de quien tiene el turno: así los dos saben en qué punto va.
-  const phaseId = (turn === 'mine' ? snapshot.mine : snapshot.theirs?.state)?.phase
+  const phaseId = phaseOf !== undefined ? phaseOf : (turn === 'mine' ? snapshot.mine : snapshot.theirs?.state)?.phase
   const phase = PHASES.find((entry) => entry.id === phaseId)?.name
 
   const dialogs = (
@@ -277,6 +284,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
             </Button>
             <p className="m-0 px-1 text-micro text-soft">{t('duel.bar.reconnectHint')}</p>
           </div>
+          {extraSettings}
         </div>
       </Modal>
 
@@ -379,7 +387,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
         </div>
         <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
           <span className="-mr-2 flex flex-wrap items-center justify-end">{actions}</span>
-          <span className="sr-only">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
+          <span className="sr-only">{t('practice.mat.turn', { turn: turnNumber })}</span>
           <span className="grid justify-items-end text-right text-lead font-bold leading-tight">
             <span className={turn === 'mine' ? 'text-accent' : 'text-info-soft'}>{turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}</span>
             {phase ? <span data-testid="duel-phase" className="text-info">{phase}</span> : null}
@@ -395,7 +403,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
         </div>
         {result && !resultOpen ? (
           <div className="relative z-20 col-start-3 row-start-2 flex min-h-0 flex-col items-stretch pt-4" style={RAIL_RESULT_STYLE}>
-            <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} rail />
+            <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} reason={resultReason} rail />
           </div>
         ) : null}
         {dialogs}
@@ -422,7 +430,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       <div className="order-2 flex min-w-0 basis-full items-center gap-1.5 min-[1101px]:order-2 min-[1101px]:ml-auto min-[1101px]:basis-auto">
         {chips}
         {/* El número del turno lo dice el lector de pantalla (y el registro, en cada separador): a la vista, el turno de quién es y la fase. */}
-        <span className="sr-only">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
+        <span className="sr-only">{t('practice.mat.turn', { turn: turnNumber })}</span>
         <span className="min-w-0 truncate text-lead font-bold">
           <span className={turn === 'mine' ? 'text-accent' : 'text-info-soft'}>{turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}</span>
           {phase ? <span data-testid="duel-phase" className="text-info">{` · ${phase}`}</span> : null}
@@ -461,7 +469,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
 
       {result && !resultOpen ? (
         <div className="order-3 basis-full max-sm:relative max-sm:z-20 max-sm:-mb-11 min-[1101px]:order-2 min-[1101px]:min-w-0 min-[1101px]:basis-auto min-[1101px]:shrink">
-          <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} />
+          <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} reason={resultReason} />
         </div>
       ) : null}
 
@@ -578,14 +586,14 @@ export function DuelLogTicker({ feed, onOpen }: DuelLogTickerProps) {
   )
 }
 
-/** Cuánto se queda el globo de una señal (pensando, todo bien, un 👍) junto a las vidas: el temporizador de `useSignals` (DuelScreen) lo quita a esta misma duración. */
+/** Cuánto se queda el globo de una señal (pensando, todo bien, un 👍) junto a las vidas: el temporizador de `useSignals` (use-duel-table) lo quita a esta misma duración. */
 export const SIGNAL_MS = 3500
 
 interface DuelLifeProps {
   snapshot: DuelSnapshot
   myName: string
-  /** Abre la calculadora de vidas del duelo. */
-  onOpen: () => void
+  /** Abre la calculadora de vidas del duelo. Sin esto la casilla no es un botón (el duelo automático: las vidas las lleva el núcleo). */
+  onOpen?: () => void
   /** Lo que acabás de avisar (pensando, todo bien): sale como un globo junto a tus vidas. */
   signal?: string | null
   /** Cambia con cada señal (aunque diga lo mismo): el globo vuelve a entrar. */

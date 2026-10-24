@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
+import { useAutoPrefs } from '../../app/auto-prefs'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
@@ -20,6 +21,7 @@ import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
 import { LobbyBanner } from './LobbyBanner'
 import { ArenaPanel } from './ArenaPanel'
+import { AutoRoomRow, useAutoRooms, type AutoRooms } from './AutoRoomRow'
 import { AutoDuelRow, HandtrapsRow } from './HandtrapPool'
 import { formatName } from './room-chips'
 
@@ -81,7 +83,8 @@ function LobbyTile({ tone, icon, title, hint, label, disabled = false, expanded,
   )
 }
 
-const rulesLine = (prefs: DuelPrefs) => [formatName(prefs.format, prefs.genesysCap), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle')].join(' · ')
+/** Las reglas con que se abre tu sala, en una línea; con reglas automáticas, eso en vez del tipo (es siempre un solo duelo). */
+const rulesLine = (prefs: DuelPrefs, auto: boolean) => [formatName(prefs.format, prefs.genesysCap), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), auto ? t('duel.auto.rulesRow') : prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle')].join(' · ')
 
 /**
  * El inicio de Jugar: primero entrar (una acción principal, «Jugar ahora», con las reglas que se recuerdan), después lo que pasa en la arena (salas que esperan y duelos en vivo,
@@ -96,6 +99,11 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
   const [invalid, setInvalid] = useState(false)
   const codeRef = useRef<HTMLInputElement | null>(null)
   const alive = useRef(true)
+  // El modo automático (el interruptor del lobby, el mismo que el de las reglas): la sala que abrís (con «Retar a un amigo» o «Abrir duelo», no con «Jugar ahora») tiene reglas
+  // automáticas si está prendido y se puede. Se decide al abrirla y queda así mientras dure.
+  const autoDuel = useAutoPrefs().duel
+  const autoRooms = useAutoRooms(rulesOpen || autoDuel)
+  const autoRoom = autoDuel && autoRooms === 'on'
 
   useEffect(() => {
     alive.current = true
@@ -156,12 +164,13 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
 
     setSearch({ kind: 'opening' })
     writePrefs(prefs)
+    // Siempre manual, aunque el modo automático esté prendido: es una sala pública y el relay no publica salas automáticas (nadie tiene que caer en una sin saberlo).
     onOpenDuel({ ...prefs, isPublic: Boolean(rooms) })
   }
 
   const challenge = () => {
     writePrefs(prefs)
-    onOpenDuel({ ...prefs, isPublic: false })
+    onOpenDuel({ ...prefs, isPublic: false, ...(autoRoom ? { auto: true } : {}) })
   }
 
   /** Con el código (o el enlace) pegado: entrar a jugar, o a mirar (sin deck ni nombre; vale para una sala pública o una privada). */
@@ -232,7 +241,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
             <LobbyTile tone="brand" icon="link" title={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={challenge} />
             <LobbyTile tone="info" icon="tag" title={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
             <LobbyTile tone="success" icon="hand" title={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={onTrain} />
-            <LobbyTile tone="neutral" icon="gear" title={t('duel.play.rules')} hint={rulesLine(prefs)} label={`${t('duel.play.rules')} · ${rulesLine(prefs)}`} popup onClick={() => setRulesOpen(true)} />
+            <LobbyTile tone="neutral" icon="gear" title={t('duel.play.rules')} hint={rulesLine(prefs, autoRoom)} label={`${t('duel.play.rules')} · ${rulesLine(prefs, autoRoom)}`} popup onClick={() => setRulesOpen(true)} />
             {trainReady ? <AutoDuelRow /> : null}
           </div>
           {codeOpen ? (
@@ -281,6 +290,8 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
         canPublish={Boolean(rooms)}
         canOpen={deckReady}
         canTrain={trainReady}
+        autoRooms={autoRooms}
+        auto={autoRoom}
         onClose={() => setRulesOpen(false)}
         onTrain={() => {
           setRulesOpen(false)
@@ -295,7 +306,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
           setPrefs(next)
           writePrefs(next)
           setRulesOpen(false)
-          onOpenDuel({ ...next, isPublic })
+          onOpenDuel({ ...next, isPublic, ...(autoRoom ? { auto: true } : {}) })
         }}
       />
 
@@ -312,6 +323,10 @@ interface RulesSheetProps {
   canOpen: boolean
   /** Hay un deck armado en el builder: «Solo» juega con ése. */
   canTrain: boolean
+  /** Si se pueden abrir salas con reglas automáticas (y si no, por qué): la fila de su interruptor. */
+  autoRooms: AutoRooms
+  /** El modo automático está prendido y se puede: la sala que se abre es de un solo duelo, privada y sin reloj de turnos. */
+  auto: boolean
   onClose: () => void
   onSave: (prefs: DuelPrefs) => void
   onOpen: (prefs: DuelPrefs, isPublic: boolean) => void
@@ -337,7 +352,7 @@ function RuleField({ label, hint, className, children }: { label: string; hint?:
  * (tipo y tiempo, formato y quién entra) donde hay lugar y en una columna en el celular; cada uno con una sola línea de ayuda, y sólo cuando aclara algo. El tiempo es de 50 minutos o ninguno;
  * en Genesys aparece el tope de puntos del deck.
  */
-function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onSave, onOpen, onTrain }: RulesSheetProps) {
+function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, auto, onClose, onSave, onOpen, onTrain }: RulesSheetProps) {
   const [draft, setDraft] = useState<DuelPrefs>(prefs)
   const [isPublic, setIsPublic] = useState(true)
   const [solo, setSolo] = useState(false)
@@ -352,7 +367,13 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
   }, [isOpen, prefs])
 
   const genesys = draft.format === 'genesys'
-  const mode: RoomMode = solo ? 'solo' : draft.match ? 'match' : 'single'
+  // Con reglas automáticas la sala es de un solo duelo (el tipo no ofrece Match), sin reloj de turnos y privada: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se
+  // muestran así: lo elegido antes vuelve al apagarlo.
+  const locked = auto && !solo
+  const match = draft.match && !locked
+  const turnOn = draft.turnLimit && !locked
+  const shownPublic = isPublic && !locked
+  const mode: RoomMode = solo ? 'solo' : match ? 'match' : 'single'
 
   return (
     <Modal
@@ -371,7 +392,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
               <Button variant="secondary" onClick={() => onSave(draft)}>
                 {t('duel.play.rulesSave')}
               </Button>
-              <Button variant="primary" disabled={!canOpen} onClick={() => onOpen(draft, canPublish && isPublic)}>
+              <Button variant="primary" disabled={!canOpen} onClick={() => onOpen(draft, canPublish && shownPublic)}>
                 {t('duel.play.rulesOpen')}
               </Button>
             </>
@@ -380,7 +401,8 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
       }
     >
       <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
-        <RuleField label={t('duel.create.type')} hint={solo ? (canTrain ? t('duel.create.soloHint') : t('duel.play.trainNeedDeck')) : draft.match ? t('duel.create.matchHint') : null} className="sm:col-span-2">
+        <RuleField label={t('duel.create.type')} hint={solo ? (canTrain ? t('duel.create.soloHint') : t('duel.play.trainNeedDeck')) : match ? t('duel.create.matchHint') : null} className="sm:col-span-2">
+          {/* Con reglas automáticas la sala es de un solo duelo: sin Match (vuelve al apagarlas); Solo se sigue pudiendo elegir. */}
           <Segmented<RoomMode>
             label={t('duel.create.type')}
             fullWidth
@@ -394,14 +416,15 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
             }}
             options={[
               { value: 'single', label: t('duel.create.single') },
-              { value: 'match', label: t('duel.create.match') },
+              ...(auto ? [] : [{ value: 'match' as const, label: t('duel.create.match') }]),
               { value: 'solo', label: t('duel.create.solo') },
             ]}
           />
         </RuleField>
 
-        {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, debajo de las baldosas. */}
-        {solo ? <HandtrapsRow /> : null}
+        {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, debajo de las baldosas.
+            Con rival: las reglas automáticas, el mismo interruptor que el del lobby. */}
+        {solo ? <HandtrapsRow /> : <AutoRoomRow rooms={autoRooms} />}
 
         {solo ? null : (
           <RuleField label={t('duel.create.time')} className="sm:col-span-2">
@@ -422,9 +445,9 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
                 <span className="text-body font-semibold text-foreground">{t('duel.create.turn')}</span>
                 <span className="text-micro text-soft">{t('duel.create.turnHint')}</span>
               </span>
-              <Switch checked={draft.turnLimit} onChange={(turnLimit) => set({ turnLimit })} label={t('duel.create.turn')} />
+              <Switch checked={turnOn} disabled={locked} onChange={(turnLimit) => set({ turnLimit })} label={t('duel.create.turn')} />
             </div>
-            {draft.turnLimit ? (
+            {turnOn ? (
               <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-body text-muted">{t('duel.create.turnBank')}</span>
@@ -439,7 +462,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
           </div>
         )}
 
-        {draft.match && !solo ? (
+        {match && !solo ? (
           <div className="flex items-center justify-between gap-3 sm:col-span-2">
             <span className="grid min-w-0 gap-0.5">
               <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
@@ -464,17 +487,19 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, onClose, onS
             </RuleField>
 
             {canPublish ? (
-              <RuleField label={t('duel.create.visibility')} hint={isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
-                <Segmented<'public' | 'private'>
-                  label={t('duel.create.visibility')}
-                  fullWidth
-                  value={isPublic ? 'public' : 'private'}
-                  onChange={(value) => setIsPublic(value === 'public')}
-                  options={[
-                    { value: 'public', label: t('duel.create.public') },
-                    { value: 'private', label: t('duel.create.private') },
-                  ]}
-                />
+              <RuleField label={t('duel.create.visibility')} hint={shownPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
+                <fieldset disabled={locked} className="min-w-0 disabled:opacity-40">
+                  <Segmented<'public' | 'private'>
+                    label={t('duel.create.visibility')}
+                    fullWidth
+                    value={shownPublic ? 'public' : 'private'}
+                    onChange={(value) => setIsPublic(value === 'public')}
+                    options={[
+                      { value: 'public', label: t('duel.create.public') },
+                      { value: 'private', label: t('duel.create.private') },
+                    ]}
+                  />
+                </fieldset>
               </RuleField>
             ) : null}
 

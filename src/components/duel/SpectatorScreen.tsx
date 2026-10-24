@@ -56,7 +56,25 @@ function sideView(side: SpectatorSide): DuelSideView | null {
 }
 
 export function SpectatorScreen({ room, connect, onLeave }: SpectatorScreenProps) {
-  const { snapshot, status } = useSpectator({ room, connect })
+  // Una sala con reglas automáticas todavía no se puede mirar: al enterarse (con el saludo del anfitrión) se corta la conexión y queda el aviso (de esa sala: otro enlace se mira).
+  const [autoRoom, setAutoRoom] = useState<string | null>(null)
+  const blocked = autoRoom === room
+  const { snapshot, status } = useSpectator({ room: blocked ? null : room, connect })
+  const auto = snapshot?.settings?.auto === true
+
+  useEffect(() => {
+    if (auto) setAutoRoom(room)
+  }, [auto, room])
+
+  if (blocked || auto) {
+    return (
+      <Screen>
+        <Callout tone="warning" icon="alert" action={<CloseButton size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />}>
+          {t('duel.auto.noWatch')}
+        </Callout>
+      </Screen>
+    )
+  }
 
   if (status === 'full') {
     return (

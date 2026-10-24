@@ -3,7 +3,7 @@ export const auto = {
   // La entrada: el interruptor del lobby de Jugar, debajo de las baldosas.
   'auto.entry.switch': 'Duelo automático (beta)',
   // Vale con el simulador de handtraps encendido o apagado.
-  'auto.entry.hint': 'Las reglas las aplica el núcleo. Jugás vos; el rival no juega su turno: sólo usa las handtraps que le des.',
+  'auto.entry.hint': 'El núcleo aplica las reglas, solo o con un amigo (en sala privada). Solo, el rival no juega su turno: sólo usa las handtraps que le des.',
   // El rival pasivo, dicho en la portada de carga y en «Más opciones».
   'auto.rival.passive': 'El rival no juega: sólo recibe. Sirve para probar tus jugadas con las reglas de verdad.',
   // El rival con las handtraps del simulador, en la portada de carga.
@@ -112,4 +112,19 @@ export const auto = {
   'auto.entry.unsupported': 'Tu navegador no puede correr el motor de reglas.',
   'auto.bar.manual': 'Jugar en modo manual',
   'auto.bar.manualHint': 'Apaga las reglas automáticas y abre la mesa manual con tu mismo deck.',
+
+  // El duelo automático por enlace: lo que la sala le dice a quien espera (debajo del deck), la línea mientras elige el otro y lo que corta el duelo.
+  'auto.online.waitingDeck': 'Esperando el deck de {name}…',
+  'auto.online.checking': 'Revisando que las cartas de los dos tengan reglas…',
+  'auto.online.blockedMine': { one: 'A {count} carta tuya le faltan sus reglas: cambiala en el builder.', other: 'A {count} cartas tuyas les faltan sus reglas: cambialas en el builder.' },
+  'auto.online.blockedTheirs': { one: 'A {count} carta de {name} le faltan sus reglas.', other: 'A {count} cartas de {name} les faltan sus reglas.' },
+  'auto.online.outdated': '{name} tiene que actualizar la app para jugar con reglas automáticas.',
+  'auto.online.version': 'Tu app y la de {name} no son la misma versión: recarguen la página para jugar con reglas automáticas.',
+  'auto.online.off': 'El duelo automático por enlace está apagado por ahora.',
+  'auto.online.data': 'No se pudieron bajar las reglas del duelo: probá de nuevo en un rato.',
+  'auto.online.rivalChoosing': '{name} está eligiendo…',
+  'auto.online.lost': 'El duelo se perdió: el anfitrión recargó la página.',
+  'auto.online.cut': 'El duelo se cortó: {name} mandó jugadas inválidas.',
+  'auto.online.broken': 'El duelo se cortó y no se puede seguir.',
+  'auto.online.deckOutWin': '{name} no pudo robar.',
 } as const
