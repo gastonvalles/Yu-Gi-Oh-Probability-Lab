@@ -152,6 +152,16 @@ describe('los datos del duelo automático en producción (scripts/build-auto-dat
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=0, s-maxage=86400')
   })
 
+  it('con AUTO_ONLINE=0 en el build el manifiesto apaga el duelo automático por enlace (sin tocar código); sin él no dice nada (encendido)', async () => {
+    const dir = join(work, 'sin-online')
+
+    stubDownloads()
+    expect(await buildAutoData({ outDir: dir, env: { VERCEL: '1', AUTO_ONLINE: '0' } })).toBe(true)
+    const response = await autoDataHandler(dir)(new Request('https://ygo.example/api/auto-data?path=manifest'))
+
+    expect(await response.json()).toEqual({ version: versionOf(lock), tokens: [900, 901], filler: [400, 404], features: { online: false } })
+  })
+
   it('los scripts, con el orden de búsqueda de desarrollo, enteros (también con letras de varios bytes) y sin ninguna ruta', async () => {
     const script = async (name: string) => {
       const response = await get(`?path=script/${name}`)

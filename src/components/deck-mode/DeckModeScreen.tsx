@@ -56,10 +56,11 @@ import { useLabPrewarm } from '../probability/use-lab-prewarm'
 import { useDeckModeController } from './use-deck-mode-controller'
 
 /**
- * «Jugar solo automático (beta)»: el único punto de entrada del modo automático (y del núcleo de reglas en wasm, que viaja aparte y sólo bajo demanda: `auto-isolation.test.ts`).
- * No va en `lazy-steps.ts`: no se precarga.
+ * Los dos puntos de entrada del modo automático (y del núcleo de reglas en wasm, que viaja aparte y sólo bajo demanda: `auto-isolation.test.ts`): «Jugar solo automático (beta)» y la
+ * mesa de una sala con reglas automáticas (el duelo por enlace la monta cuando la sala lo pide). No van en `lazy-steps.ts`: no se precargan.
  */
 const LazyAutoSolo = lazy(() => import('../auto/AutoSoloScreen').then((m) => ({ default: m.AutoSoloScreen })))
+const LazyAutoDuel = lazy(() => import('../auto/AutoDuelScreen').then((m) => ({ default: m.AutoDuelScreen })))
 
 /** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#tournaments?deck=123`). */
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
@@ -371,7 +372,7 @@ export function DeckModeScreen() {
             {t('shell.nav.group.duel')}
           </Heading>
           {duelConnect ? (
-            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} onImmersiveChange={setDuelTable} onLobbyChange={setDuelLobby} />
+            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} onImmersiveChange={setDuelTable} onLobbyChange={setDuelLobby} autoDuel={LazyAutoDuel} />
           ) : (
             <Callout tone="info" className="m-4">{t('duel.unavailable')}</Callout>
           )}

@@ -7,7 +7,7 @@
  * pruebas) no toca la red ni necesita `node:sqlite`. Baja de GitHub las versiones de `auto-data.lock.json` (`cards.cdb` de
  * ProjectIgnis/BabelCDB y el tarball de ProjectIgnis/CardScripts) y deja en `.auto-data/` (fuera del repo: el `.cdb` no tiene licencia)
  * lo que la función lleva consigo, entero, en su paquete:
- * - `data.json`: el manifiesto (`version`, `tokens`, `filler`), las filas de todas las cartas (`cards`, por código) y dónde está cada
+ * - `data.json`: el manifiesto (`version`, `tokens`, `filler` y, con `AUTO_ONLINE=0`, `features: { online: false }`), las filas de todas las cartas (`cards`, por código) y dónde está cada
  *   script dentro del paquete (`scripts`: nombre → [inicio, largo], en bytes).
  * - `scripts.pack`: los scripts que se sirven, uno detrás del otro. Viajan con la función (y no se le piden a GitHub en cada pedido): el
  *   sitio no depende de GitHub para jugar y nadie ve desde allá qué cartas se usan.
@@ -116,8 +116,8 @@ function packScripts(files) {
 /** La versión del manifiesto (la clave de la caché de la app): cambia sólo con el lock. */
 export const versionOf = (lock) => createHash('sha1').update(`${lock.CardScripts.commit}:${lock.BabelCDB.commit}`).digest('hex').slice(0, 12)
 
-/** Arma `data.json` y `scripts.pack` en `outDir` con lo bajado. */
-async function writeAutoData(outDir, { cdb, tarball, lock }) {
+/** Arma `data.json` y `scripts.pack` en `outDir` con lo bajado. `features` va tal cual en el manifiesto (los interruptores del despliegue). */
+async function writeAutoData(outDir, { cdb, tarball, lock, features }) {
   // Se importa recién acá: un build que no arma datos no lo necesita, y un Node sin `node:sqlite` cae en el aviso de `buildAutoData`.
   const { DatabaseSync } = await import('node:sqlite')
   // El `.cdb` va a una carpeta temporal y no a `outDir`: la función lleva todo lo que haya ahí.
@@ -129,7 +129,7 @@ async function writeAutoData(outDir, { cdb, tarball, lock }) {
 
   try {
     const { index, pack } = packScripts(untar(gunzipSync(tarball)))
-    const data = { version: versionOf(lock), ...manifestCodes(db, (name) => Object.hasOwn(index, name)), cards: Object.fromEntries(allCards(db).map((row) => [row.id, row])), scripts: index }
+    const data = { version: versionOf(lock), ...manifestCodes(db, (name) => Object.hasOwn(index, name)), ...(features ? { features } : {}), cards: Object.fromEntries(allCards(db).map((row) => [row.id, row])), scripts: index }
 
     mkdirSync(outDir, { recursive: true })
     // El paquete primero: la función mira `data.json` para saber si hay datos.
@@ -164,7 +164,8 @@ export async function buildAutoData({ outDir = OUT_DIR, env = process.env } = {}
     const lock = JSON.parse(readFileSync(LOCK, 'utf8'))
     const github = env.AUTO_DATA_GITHUB ?? 'https://github.com'
     const [cdb, tarball] = await Promise.all([download(`${github}/ProjectIgnis/BabelCDB/raw/${lock.BabelCDB.commit}/cards.cdb`), download(`${github}/ProjectIgnis/CardScripts/archive/${lock.CardScripts.commit}.tar.gz`)])
-    const data = await writeAutoData(outDir, { cdb, tarball, lock })
+    // `AUTO_ONLINE=0` apaga el duelo automático por enlace sin tocar código (un redeploy): el lobby no lo ofrece y el anfitrión de una sala vieja no lo arranca.
+    const data = await writeAutoData(outDir, { cdb, tarball, lock, features: env.AUTO_ONLINE === '0' ? { online: false } : undefined })
 
     console.log(`auto-data: ${Object.keys(data.cards).length} cartas y ${Object.keys(data.scripts).length} scripts (versión ${data.version}) en ${outDir}`)
     return true

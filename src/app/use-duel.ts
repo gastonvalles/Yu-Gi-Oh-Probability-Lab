@@ -44,8 +44,9 @@ const noSnapshot = () => null
  * Un duelo en curso: se conecta a la sala mientras `room` no sea null y se desconecta al cambiar o desmontarse.
  * El nombre y los ajustes se leen al conectar (cambiarlos después no reconecta). `connect` tiene que ser estable.
  * Lo propio del duelo (mi mesa, mis vidas, el reloj) se guarda en la pestaña a cada cambio y, al volver a entrar a la misma sala con el mismo rol (una recarga), se sigue desde ahí.
+ * `transport` es la conexión (null junto con `duel`): por ella viaja también el duelo automático de una sala con reglas automáticas.
  */
-export function useDuel({ room, role, name, settings, connect }: UseDuelInput): { duel: Duel | null; snapshot: DuelSnapshot | null; status: SocketStatus } {
+export function useDuel({ room, role, name, settings, connect }: UseDuelInput): { duel: Duel | null; snapshot: DuelSnapshot | null; status: SocketStatus; transport: SocketTransport | null } {
   const [live, setLive] = useState<{ duel: Duel; transport: SocketTransport } | null>(null)
   const latest = useRef({ name, settings })
   latest.current = { name, settings }
@@ -83,7 +84,7 @@ export function useDuel({ room, role, name, settings, connect }: UseDuelInput): 
     live ? () => live.transport.status : () => 'closed' as const,
   )
 
-  return { duel: live?.duel ?? null, snapshot, status }
+  return { duel: live?.duel ?? null, snapshot, status, transport: live?.transport ?? null }
 }
 
 /** Un duelo mirado como espectador: se conecta a la sala mientras `room` no sea null y se desconecta al cambiar o desmontarse. `connect` tiene que ser estable. */

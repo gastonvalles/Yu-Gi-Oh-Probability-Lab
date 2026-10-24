@@ -24,6 +24,11 @@ export interface DuelPrefs {
 /** Lo que fija el anfitrión de una sala al abrirla: las reglas y si aparece en la lista de salas abiertas mientras espera rival. */
 export interface RoomOptions extends DuelPrefs {
   isPublic: boolean
+  /**
+   * Reglas automáticas (beta): el interruptor del modo automático (`auto-prefs.ts`) estaba prendido al abrirla y no es «Jugar ahora». Se decide al abrir y queda fijo
+   * mientras dure la sala (no es una regla que se recuerde: cambiar el interruptor después no cambia una sala abierta). Una sala así es privada.
+   */
+  auto?: boolean
 }
 
 /** Lo que viene elegido: TCG, 50 minutos, un solo duelo. */

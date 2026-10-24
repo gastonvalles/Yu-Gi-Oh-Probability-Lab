@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 
+import type { RoomAutoState } from '../../app/auto/online'
 import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
 import { deckFormatIssues } from '../../app/duel-format'
 import { MAIN_MINIMUM, renumberDeck, type SideDeck } from '../../app/duel-siding'
@@ -35,6 +36,8 @@ import { showToastMessage } from '../../app/use-toast-message'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { openBuilderFromPlay } from '../../app/play-return'
 import { t } from '../../i18n'
+import type { AutoDuelScreenProps } from '../auto/AutoDuelScreen'
+import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
@@ -81,8 +84,10 @@ import { TurnDial } from './TurnDial'
 const NAME_KEY = 'ygo-lab:duel-name'
 /** Quién creó cada sala (por pestaña): si se recarga la página, sigue siendo el anfitrión. */
 const roleKey = (room: string) => `ygo-lab:duel-role:${room}`
-/** Lo que eligió el anfitrión de cada sala (el reloj, el formato y si es un Match, por pestaña): si recarga la página, la sala sigue igual. */
+/** Lo que eligió el anfitrión de cada sala (el reloj, el formato, si es un Match y si tiene reglas automáticas, por pestaña): si recarga la página, la sala sigue igual. */
 const optionsKey = (room: string) => `ygo-lab:duel-options:${room}`
+/** La sala con reglas automáticas mientras no está su pantalla (se carga a pedido) o sin ella: nadie puede estar listo. */
+const AUTO_PENDING: RoomAutoState = { canReady: false, notice: null }
 
 interface DuelScreenProps {
   handSize: number
@@ -102,6 +107,8 @@ interface DuelScreenProps {
   onImmersiveChange?: (immersive: boolean) => void
   /** Avisa si la pantalla de ahora es el lobby (sin sala: crear una, unirse o mirar) o ya es la sala o el duelo. El buscador de cartas de la app está en el lobby y no en la sala ni en la mesa. */
   onLobbyChange?: (inLobby: boolean) => void
+  /** La mesa de una sala con reglas automáticas (la carga a pedido quien usa la pantalla); sin esto, en una sala así nadie puede estar listo. */
+  autoDuel?: ComponentType<AutoDuelScreenProps>
 }
 
 interface Intent {
@@ -153,7 +160,9 @@ function optionsFor(room: string | undefined): RoomOptions {
     match: stored.match === true,
     siding: stored.match === true && stored.siding === true,
     genesysCap: validGenesysCap(stored.genesysCap),
-    isPublic: stored.isPublic === true,
+    // Con reglas automáticas la sala es privada: el relay no publica ese dato y nadie tiene que caer en una sin saberlo.
+    isPublic: stored.isPublic === true && stored.auto !== true,
+    auto: stored.auto === true,
   }
 }
 
@@ -202,7 +211,7 @@ function showRoomInUrl(room: string | null, watch = false) {
  * El duelo por enlace: sin sala, el lobby (crear una o unirse con un código); en la sala, el enlace para el rival hasta que los dos
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
-export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange, onLobbyChange }: DuelScreenProps) {
+export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange, onLobbyChange, autoDuel: AutoDuel }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
   useEffect(() => {
     // `data-duel` hace que, en celular, los avisos se dibujen arriba de la botonera (ver index.css).
@@ -259,11 +268,12 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [sided, deckName, mainIds, extraIds, sideIds, cardsById])
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
+  // Con reglas automáticas: un solo duelo y sin reloj de turnos (el núcleo lleva la mesa: de este lado no hay turnos que contar ni cartas que cambiar entre duelos).
   const settings = useMemo(
-    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding }),
+    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true, turnMin: 0, turnBonusMin: 0, match: false, siding: false } : {}) }),
     [handSize, options],
   )
-  const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
+  const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
 
   // Cuando ya se eligió quién va primero, cada uno reparte su mano solo (hace falta el deck y, del invitado, los ajustes del anfitrión).
@@ -271,6 +281,9 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const started = snapshot?.mine != null
   const settingsKnown = snapshot ? snapshot.role === 'host' || snapshot.peerName !== null : false
   const dealHand = snapshot?.settings.hand ?? handSize
+  // Una sala con reglas automáticas nunca reparte la mesa manual (ni la guarda, ni la pausa, ni el siding de acá): la mesa la cuenta el núcleo, en la pantalla del duelo automático.
+  // El invitado lo sabe con el saludo del anfitrión, que llega antes de que nadie pueda elegir quién empieza.
+  const autoRoom = snapshot?.settings.auto === true
 
   // Una sala pública está en la lista de salas abiertas mientras espera rival (se anota al crearla). Cuando llega el rival pasa a la de los duelos en vivo y su anfitrión lo avisa cada minuto,
   // con cuántos lo miran; si el relay no lo entiende (uno de antes), se baja como siempre al llegar el rival. Se baja al salir o al cerrar la pestaña, y una sala privada nunca se anota.
@@ -342,8 +355,9 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [rooms, publicCode, publicToken, awaitingRival, watchers, guestName])
 
   // Sólo la mesa es a pantalla completa; antes de ella y entre un duelo y el siguiente (lobby, sala, siding, pausa) la app lleva su barra de abajo en el celular.
+  // En una sala con reglas automáticas la mesa (la del núcleo) va desde que se eligió quién empieza hasta la revancha, como la manual.
   const inSiding = sidingOpen && Boolean(snapshot?.mine && snapshot.series.winner === null)
-  const onTable = intent !== null && (intent.watch === true || Boolean(duel && snapshot?.mine && snapshot.theirs && !inSiding))
+  const onTable = intent !== null && (intent.watch === true || Boolean(duel && snapshot?.mine && snapshot.theirs && !inSiding) || Boolean(duel && autoRoom && ordered))
 
   useEffect(() => {
     onImmersiveChange?.(onTable)
@@ -368,7 +382,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   // Cada mensaje de los jugadores, tuyo o del rival, hace un sonido sutil (quien mira no lo escucha).
   useChatSound(intent?.watch ? undefined : snapshot?.chat, snapshot?.me)
   // Y cada jugada de la mesa (tuya y del rival), los puntos de vida, la moneda, el dado y el resultado (con la mesa abierta; los sonidos se apagan en «Más opciones»).
-  useDuelSounds(onTable && !intent?.watch ? snapshot : null)
+  // La mesa del núcleo pone sus propios sonidos (sonarían dos veces).
+  useDuelSounds(onTable && !intent?.watch && !autoRoom ? snapshot : null)
 
   // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue (no antes: al recargar, la mesa tarda en volver y no por eso se sale).
   const hadTable = useRef(false)
@@ -383,10 +398,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [snapshot?.mine, updateSiding])
 
   useEffect(() => {
-    if (duel && ordered && !started && settingsKnown && deckReady) {
+    if (duel && ordered && !started && settingsKnown && deckReady && !autoRoom) {
       duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, dealHand))
     }
-  }, [duel, ordered, started, settingsKnown, deckReady, deck, dealHand])
+  }, [duel, ordered, started, settingsKnown, deckReady, deck, dealHand, autoRoom])
 
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
@@ -564,11 +579,46 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     )
   }
 
-  if (!duel || !snapshot) {
+  if (!duel || !snapshot || !transport) {
     return (
       <Screen>
         <p className="text-body text-muted">{t('duel.status.connecting')}</p>
       </Screen>
+    )
+  }
+
+  const renderRoom = (auto?: RoomAutoState) => (
+    <DuelRoom
+      duel={duel}
+      snapshot={snapshot}
+      status={status}
+      room={intent.room}
+      myName={myName}
+      name={name}
+      onRename={rename}
+      deckReady={deckReady}
+      deck={{ name: deckName, mainIds: deck.mainIds, extraIds: deck.extraIds, cardsById: deck.cardsById, size: deck.mainIds.length, min: handSize, onOpenBuilder: openBuilderFromPlay }}
+      isPublic={rooms && intent.role === 'host' ? options.isPublic : null}
+      onLeave={leave}
+      onLeaveToCreate={leaveToCreate}
+      auto={auto}
+    />
+  )
+
+  // Una sala con reglas automáticas: la sala de siempre y la mesa del núcleo, las dos en la pantalla del duelo automático (que se carga a pedido; mientras tanto, la sala sin poder estar listo).
+  // Nunca la mesa manual, su pausa ni el siding: en una sala así no hay revancha con siding ni Match, así que la revancha es la de siempre.
+  if (autoRoom) {
+    return (
+      <>
+        {AutoDuel ? (
+          <Suspense fallback={renderRoom(AUTO_PENDING)}>
+            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} />
+          </Suspense>
+        ) : (
+          renderRoom(AUTO_PENDING)
+        )}
+        {closingIn === null ? null : <RoomClosing name={snapshot.peerName ?? t('duel.bar.rival')} seconds={closingIn} />}
+      </>
     )
   }
 
@@ -605,22 +655,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }
 
   if (!snapshot.mine || !snapshot.theirs) {
-    return (
-      <DuelRoom
-        duel={duel}
-        snapshot={snapshot}
-        status={status}
-        room={intent.room}
-        myName={myName}
-        name={name}
-        onRename={rename}
-        deckReady={deckReady}
-        deck={{ name: deckName, mainIds: deck.mainIds, extraIds: deck.extraIds, cardsById: deck.cardsById, size: deck.mainIds.length, min: handSize, onOpenBuilder: openBuilderFromPlay }}
-        isPublic={rooms && intent.role === 'host' ? options.isPublic : null}
-        onLeave={leave}
-        onLeaveToCreate={leaveToCreate}
-      />
-    )
+    return renderRoom()
   }
 
   // Terminado un duelo de un Match con siding, «Siguiente duelo» lleva a cambiar cartas antes de pedir la revancha; el Match ganado vuelve al deck de origen.
@@ -959,9 +994,11 @@ interface DuelRoomProps {
   onLeave: () => void
   /** Salir y volver al lobby directo a «Crear una sala» (desde la pantalla de un enlace que ya no funciona). */
   onLeaveToCreate: () => void
+  /** Una sala con reglas automáticas: si ya se puede estar listo (se revisaron los dos decks) y lo que se le dice a quien espera, debajo del deck. */
+  auto?: RoomAutoState
 }
 
-function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deck: deckInfo, isPublic, onLeave, onLeaveToCreate }: DuelRoomProps) {
+function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deck: deckInfo, isPublic, onLeave, onLeaveToCreate, auto }: DuelRoomProps) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
@@ -981,7 +1018,9 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
   const issues = useMemo(() => (needsTables && !tablesLoaded ? [] : deckFormatIssues([...roomDeck.mainIds, ...roomDeck.extraIds], roomDeck.cardsById, settings.format, settings.genesysCap)), [roomDeck, settings.format, settings.genesysCap, needsTables, tablesLoaded])
   // Un duelo se juega con 40 cartas en el Main como mínimo (jugar solo, la práctica, no lo pide).
   const mainShort = roomDeck.mainIds.length < MAIN_MINIMUM
-  const canReady = peerPresent && settingsKnown && !incompatible && deckReady && !mainShort && issues.length === 0 && (!needsTables || tablesLoaded)
+  const canReady = peerPresent && settingsKnown && !incompatible && deckReady && !mainShort && issues.length === 0 && (!needsTables || tablesLoaded) && (auto?.canReady ?? true)
+  // Sin espectadores en una sala con reglas automáticas: no se ofrece el enlace para mirar.
+  const watchable = !settings.auto
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
   // Quien entra por un enlace y no encuentra a nadie, tras unos segundos, probablemente tiene un enlace vencido: se lo dice en vez de dejarlo esperando.
   const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
@@ -1077,8 +1116,8 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
                   </ul>
                   {role === 'host' ? (
                     <div className="grid justify-items-center gap-3">
-                      <InviteLink link={link} room={room} peerPresent={false} />
-                      <InviteButtons peerPresent={false} canShare={canShare} onShare={share} onCopy={(watch) => void copy(watch)} />
+                      <InviteLink link={link} room={room} peerPresent={false} watchable={watchable} />
+                      <InviteButtons peerPresent={false} canShare={canShare} watchable={watchable} onShare={share} onCopy={(watch) => void copy(watch)} />
                     </div>
                   ) : null}
                 </div>
@@ -1109,13 +1148,14 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
                 ) : null}
                 {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
                 {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
+                {auto?.notice ? <AutoNotice notice={auto.notice} /> : null}
               </RoomDeck>
             </div>
 
             {role === 'host' && peerPresent ? (
               <div className="border-t border-border-subtle pt-3 @[46rem]:pt-4">
                 <InviteLink link={link} room={room} peerPresent />
-                <InviteButtons peerPresent stacked canShare={canShare} onShare={share} onCopy={(watch) => void copy(watch)} />
+                <InviteButtons peerPresent stacked canShare={canShare} watchable={watchable} onShare={share} onCopy={(watch) => void copy(watch)} />
               </div>
             ) : null}
           </div>
@@ -1129,6 +1169,29 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
         </Modal>
       )}
     </Screen>
+  )
+}
+
+/** Lo que la sala con reglas automáticas le dice a quien espera o no puede empezar: una línea y, si hay cartas sin reglas, cada una con su arte chico y su nombre. */
+function AutoNotice({ notice }: { notice: NonNullable<RoomAutoState['notice']> }) {
+  return (
+    <Callout tone={notice.tone}>
+      <span className="grid gap-2" role={notice.tone === 'danger' ? undefined : 'status'}>
+        <span>{notice.text}</span>
+        {notice.cards && notice.cards.length > 0 ? (
+          <ul className="m-0 grid max-h-40 list-none gap-1 overflow-y-auto p-0">
+            {notice.cards.map((card, index) => (
+              <li key={`${card.code}:${index}`} className="flex min-w-0 items-center gap-2 text-body text-foreground">
+                <span aria-hidden="true" className="aspect-[421/614] w-7 shrink-0 overflow-hidden bg-input">
+                  <CardArt remoteUrl={artOfDrawId(`card-${card.code}-1`)} name={card.name} className="block h-full w-full object-cover" />
+                </span>
+                <span className="min-w-0 truncate">{card.name}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </span>
+    </Callout>
   )
 }
 
