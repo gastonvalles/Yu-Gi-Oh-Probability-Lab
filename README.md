@@ -14,7 +14,7 @@ npm run preview        # sirve el build, sin los Cache-Control de vercel.json
 npm test               # Vitest
 npm run typecheck      # tipos de la app y de los tests
 npm run lint           # ESLint
-npm run test:auto      # el fuzz del núcleo de reglas (lento; pide `npm run sync:core` una vez; docs/motor-de-cartas.md)
+npm run test:auto      # el fuzz del núcleo de reglas (lento; pide `npm run sync:core` una vez; docs/duelos-automaticos.md)
 ```
 
 ## Datos
@@ -67,7 +67,8 @@ docs/               la documentación
 - `docs/ux-ui-guidelines.md`: cómo se lee un pedido de diseño y cómo se hace una mejora visual.
 - `docs/duelo.md`: el duelo con un amigo.
 - `docs/duelo-relay.md`: el relay del duelo: cómo probarlo y publicarlo.
-- `docs/motor-de-cartas.md`: el motor de cartas por capas y la medición del filtro Efecto.
+- `docs/motor-de-cartas.md`: el motor de cartas por capas (el texto y el asistente de la mesa) y la medición del filtro Efecto.
+- `docs/duelos-automaticos.md`: el núcleo real de reglas: «Jugar solo» automático, sus datos y el duelo online automático.
 - `docs/i18n.md`: cómo está armada la traducción.
 - `docs/seguridad.md`: qué se protege y qué queda en manos de quien administra las cuentas.
 

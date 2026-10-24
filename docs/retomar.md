@@ -66,7 +66,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 - **Lo que se pide para el celular** no toca el menú lateral ni las pantallas de escritorio.
 - **Deck en escritorio:** el buscador de cartas va a la derecha, nunca a la izquierda.
 - **El Lab sólo mide lo confirmado;** un resultado provisional con sugerencias sin confirmar queda para más adelante.
-- **Los datos de la beta en producción** salen del build, fijados en `auto-data.lock.json`, no de GitHub en vivo; si no se pueden armar, se despliega igual (`docs/motor-de-cartas.md`).
+- **Los datos de la beta en producción** salen del build, fijados en `auto-data.lock.json`, no de GitHub en vivo; si no se pueden armar, se despliega igual (`docs/duelos-automaticos.md`).
 - **La app es AGPL-3.0-or-later y el repo es público** (`LICENSE`, `NOTICE.md`): el núcleo y los scripts de las cartas lo son. Un nivel pago vendería el servicio, no código cerrado; nada de secretos ni datos personales en el repo.
 - **La calculadora de LP queda como está:** el rediseño con tarjetas se descartó. Su reloj avisa a los 10 minutos (2 veces seguidas), a los 5 (3) y al final sin parar hasta reiniciarlo, en cualquier pantalla: el botón flotante se queda en 00:00 hasta entonces.
 - **Replays en vivo sin API key de YouTube:** se lee la página de transmisiones de cada canal (`api/live.ts`).
@@ -77,7 +77,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 ## 6. Pendiente
 
 **Abierto**
-- **Duelos automáticos (capa 4):** «Jugar solo automático» (beta, `?auto=1`) juega la mesa de siempre contra el núcleo real y un rival pasivo (`docs/motor-de-cartas.md`). Falta: cerrar el espejo del rival del adaptador, ir segundo, handtraps y combos con el núcleo y el duelo por enlace.
+- **Duelos automáticos (capa 4):** «Jugar solo automático» (beta, `?auto=1`) juega la mesa de siempre contra el núcleo real y un rival pasivo (`docs/duelos-automaticos.md`). Falta: cerrar el espejo del rival del adaptador, ir segundo, handtraps y combos con el núcleo y el duelo por enlace.
 - **Handtraps en tableta:** por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`) aunque el campo sea ancho;
   se puede escalar entre 640 y 1100 px.
 - **Links y Extra Deck en la mesa:** un Link en la zona de Mágicas y Trampas todavía ofrece «Poner boca abajo»
