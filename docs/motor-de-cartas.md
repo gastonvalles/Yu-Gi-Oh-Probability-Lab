@@ -11,7 +11,7 @@ Los duelos automáticos son un proyecto enorme: por eso van en capas, de a poco 
 | 1b · Alinear frase y efecto | Qué frase del texto es qué efecto del script y, de cada efecto, sus hechos y desde dónde se activa. | Hecha |
 | 2 · Asistente de la mesa | La mesa avisa, no decide: rasgos, usos, reglas de turno y qué cartas pueden responder. | Hecha en lo que se puede afirmar |
 | 3 · Automatización parcial | Un motor propio de efectos simples. | Descartada: cubriría el 8 % de las cartas del meta y ninguna cadena |
-| 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) en WebAssembly corre los duelos de verdad con los scripts de Project Ignis. | En construcción: protocolo, anfitrión, árbitro, fuzz y adaptador a la mesa hechos (`src/app/auto/`); faltan la pantalla, el Worker y cerrar el espejo del rival. La licencia (AGPL-3.0) la decide Gastón |
+| 4 · Núcleo de reglas | `ocgcore` (el motor de EDOPro) en WebAssembly corre los duelos de verdad con los scripts de Project Ignis. | En construcción: protocolo, anfitrión, árbitro, fuzz y adaptador a la mesa hechos (`src/app/auto/`); faltan la pantalla, el Worker y cerrar el espejo del rival |
 
 ## Capa 0 · Resaltar el texto
 
@@ -57,7 +57,7 @@ Un motor propio sólo alcanzaría a los efectos sin elección, objetivo ni costo
 - **El paquete** (0.1.6) necesita dos arreglos (`send`, por `SORT_CARD`; `freeDuel`, por la fuga de `destroyDuel`) y baja el wasm en base64 si no se le pasa `wasmBinary` o `locateFile` (+344 KB, +3,5 s): `createAutoHost` lo exige.
 - **Determinismo:** semilla + respuestas = el duelo entero; deshacer re-simula en una instancia nueva (`rewind`). Entre dos instancias el núcleo no ordena igual las pistas seguidas: `canonical` las ordena.
 - **A veces tarda:** armar los materiales de una Sincronía llegó a 43 s en un escritorio. El núcleo va en un Worker, con un «pensando…» y un cancelar que termina el Worker y re-simula.
-- **Licencia (la decide Gastón):** el núcleo y los scripts son AGPL-3.0 (el paquete se declara MIT, pero su `.wasm` lleva el núcleo) y `cards.cdb` no tiene licencia. Hasta que se decida, nada de producción importa `ocgcore-wasm` ni `src/app/auto/` (`auto-isolation.test.ts`, `NOT_AT_STARTUP`). Las salidas: abrir la app bajo AGPL (el núcleo en el navegador), un servicio aparte con su código publicado, o no usarlo.
+- **Licencia:** la app es AGPL-3.0-or-later, como el núcleo y los scripts (el paquete se declara MIT, pero su `.wasm` lleva el núcleo): el repo es público y la app ofrece el código desde su menú (`NOTICE.md`; `licencia.test.tsx` lo vigila). `cards.cdb` no tiene licencia: no se sube al repo. Hasta que salga la pantalla, nada de producción importa `ocgcore-wasm` ni `src/app/auto/` (`auto-isolation.test.ts`, `NOT_AT_STARTUP`).
 - **Datos y pruebas:** `npm run sync:core` baja `cards.cdb` y los scripts a una carpeta fuera del repo (nada de eso se sube). `npm run test:auto` corre el fuzz —dos bots al azar sobre los decks del meta: 0 `RETRY`, 0 mensajes sin manejar, 0 fugas de lo oculto, `rewind` igual— y no entra en `npm test`.
 
 Ver también el apéndice (el filtro Efecto del buscador) y `docs/duelo.md` (la mesa).

@@ -66,6 +66,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 - **Lo que se pide para el celular** no toca el menú lateral ni las pantallas de escritorio.
 - **Deck en escritorio:** el buscador de cartas va a la derecha, nunca a la izquierda.
 - **El Lab sólo mide lo confirmado;** un resultado provisional con sugerencias sin confirmar queda para más adelante.
+- **La app es AGPL-3.0-or-later y el repo es público** (`LICENSE`, `NOTICE.md`): el núcleo y los scripts de las cartas lo son. Un nivel pago vendería el servicio, no código cerrado; nada de secretos ni datos personales en el repo.
 - **La calculadora de LP queda como está:** el rediseño con tarjetas se descartó. Su reloj avisa a los 10 minutos (2 veces seguidas), a los 5 (3) y al final sin parar hasta reiniciarlo, en cualquier pantalla: el botón flotante se queda en 00:00 hasta entonces.
 - **Replays en vivo sin API key de YouTube:** se lee la página de transmisiones de cada canal (`api/live.ts`).
 - **El dado de quién empieza** es un d6 por jugador que se repite si empatan (1 de cada 6 salas): no es un fallo; un dado más
@@ -121,8 +122,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 - **Preguntarle al rival si responde:** qué otras herramientas suma (más emojis, por ejemplo); hoy están 🤔, 👍 y el chat.
 
 **Esperan una decisión de Gastón**
-- **Duelos automáticos (capa 4):** la capa 3 se descartó y avanza el núcleo real (`ocgcore`); su licencia (AGPL-3.0) se decide antes de
-  publicar nada que lleve el wasm. Falta cerrar el espejo del rival del adaptador, «Jugar solo automático (beta)» con el núcleo en un
+- **Duelos automáticos (capa 4):** la capa 3 se descartó y avanza el núcleo real (`ocgcore`), con la licencia ya decidida (arriba). Falta cerrar el espejo del rival del adaptador, «Jugar solo automático (beta)» con el núcleo en un
   Worker, deshacer, combos y handtraps, y el duelo por enlace (`docs/motor-de-cartas.md`).
 - **`motion`:** sería una dependencia nueva (un motor de arrastre y vuelos, empezando en `/playground` con un solo gesto); el
   checkout de su PC la tiene sin commitear. Hasta entonces, las animaciones 3D de hoy se mantienen.
