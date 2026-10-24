@@ -30,9 +30,10 @@ export function rematchLabel(snapshot: DuelSnapshot): string {
   return !series.match ? t('duel.result.rematch') : series.winner !== null ? t('duel.result.rematchMatch') : t('duel.result.nextGame')
 }
 
-/** Cómo terminó el duelo contado para quien lo mira, y en un Match cómo va (o cómo terminó) el Match. */
-function viewOf(result: DuelResult, snapshot: DuelSnapshot, rival: string): ResultView {
-  const view = gameViewOf(result, snapshot, rival)
+/** Cómo terminó el duelo contado para quien lo mira, y en un Match cómo va (o cómo terminó) el Match. `reason` reemplaza el porqué que se deduce (el duelo automático: lo dice el núcleo). */
+function viewOf(result: DuelResult, snapshot: DuelSnapshot, rival: string, reason?: string): ResultView {
+  const counted = gameViewOf(result, snapshot, rival)
+  const view = reason === undefined ? counted : { ...counted, reason }
   const { series, me } = snapshot
 
   if (!series.match) {
@@ -80,14 +81,16 @@ interface ResultProps {
   snapshot: DuelSnapshot
   rival: string
   onRematch: () => void
+  /** Por qué terminó, si no es por las vidas ni por rendirse (el duelo automático: sin cartas para robar, el efecto de una carta). */
+  reason?: string
 }
 
 /**
  * El final del duelo, al centro de la mesa: la medalla en 3D (ganar o perder pesa más que cualquier otro cartel), cómo te fue en grande, por qué y qué sigue
  * (revancha, salir o mirar cómo quedó la mesa). Quien ya pidió la revancha ve que espera a su rival; si el rival la pidió, "Revancha" la acepta.
  */
-export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose }: ResultProps & { onLeave: () => void; onClose: () => void }) {
-  const view = viewOf(result, snapshot, rival)
+export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose, reason }: ResultProps & { onLeave: () => void; onClose: () => void }) {
+  const view = viewOf(result, snapshot, rival, reason)
   const titleId = useId()
 
   return (
@@ -111,8 +114,8 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
 }
 
 /** Con la tarjeta cerrada, el resultado queda arriba en una línea: cómo te fue, por qué y la revancha a mano. En un lateral del campo (`rail`) se apila: el texto completo y la revancha debajo. */
-export function ResultStrip({ result, snapshot, rival, onRematch, rail = false }: ResultProps & { rail?: boolean }) {
-  const view = viewOf(result, snapshot, rival)
+export function ResultStrip({ result, snapshot, rival, onRematch, rail = false, reason }: ResultProps & { rail?: boolean }) {
+  const view = viewOf(result, snapshot, rival, reason)
   const tone = TONE[view.tone]
 
   return (

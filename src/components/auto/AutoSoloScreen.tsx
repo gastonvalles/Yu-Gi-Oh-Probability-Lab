@@ -76,7 +76,7 @@ const TRAP = 0x4
 const MONSTER = 0x1
 
 /** El deck como lo pide la sesión (`[passcode, copias]`), contando las copias del builder. */
-function deckListOf(ids: readonly string[]): [number, number][] {
+export function deckListOf(ids: readonly string[]): [number, number][] {
   const copies = new Map<number, number>()
 
   for (const id of ids) {
@@ -571,30 +571,34 @@ function chainLane(chain: readonly ChainLink[], nameOf: (link: ChainLink) => str
   return { kind: 'ask', text, actions: [] }
 }
 
-/** La portada de carga: el progreso de las reglas y, detrás, la mesa ya repartida (sin brillo animado: el esqueleto quieto). */
-function LoadingCover({ progress }: { progress: AutoSnapshot['progress'] }) {
+/** La portada de carga: el progreso de las reglas y, detrás, la mesa ya repartida (sin brillo animado: el esqueleto quieto). Abajo, qué hace el rival (`note`; el duelo por enlace no lleva). */
+export function LoadingCover({ progress, note = t('auto.rival.passive') }: { progress: AutoSnapshot['progress']; note?: string | null }) {
   return (
     <div role="status" aria-busy="true" className="grid h-full place-items-center bg-background/85 p-6">
       <div className="grid w-full max-w-xs justify-items-center gap-3 text-center">
         <Callout tone="info">{progress.total === 0 ? t('auto.loading.start') : t('auto.loading.rules', progress)}</Callout>
         <Skeleton still className="h-40 w-full" />
-        <p className="m-0 text-micro text-soft">{t('auto.rival.passive')}</p>
+        {note ? <p className="m-0 text-micro text-soft">{note}</p> : null}
       </div>
     </div>
   )
 }
 
-/** Lo que no deja jugar: cartas sin reglas (con la lista, y «Jugar en modo manual»), o el núcleo que no arrancó o se cayó («Reintentar»). */
-function FaultCover({ fault, nameOf, artOf, onRetry, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry: () => void; onExit: () => void }) {
+/**
+ * Lo que no deja jugar: cartas sin reglas (con la lista, y «Jugar en modo manual»), o el núcleo que no arrancó o se cayó («Reintentar»). El duelo por enlace la usa sin `onRetry`
+ * (no hay nada que reintentar: sólo volver) y con su `title` (el duelo se perdió o se cortó).
+ */
+export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; title?: string; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry?: () => void; onExit: () => void }) {
   const rules = fault.kind === 'rules'
-  const title = rules ? t('auto.fault.rules', { count: fault.cards.length }) : fault.kind === 'crash' ? t('auto.fault.crash') : t('auto.fault.setup')
+  const title = titleText ?? (rules ? t('auto.fault.rules', { count: fault.cards.length }) : fault.kind === 'crash' ? t('auto.fault.crash') : t('auto.fault.setup'))
+  const text = rules ? t('auto.fault.rulesText') : fault.message
 
   return (
     <div role="alertdialog" aria-modal="true" aria-label={title} className="relative grid h-full place-items-center overflow-y-auto bg-background/85 p-6">
       <CloseButton size="md" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-3 top-3" onClick={onExit} />
       <div className="grid w-full max-w-sm gap-3">
         <Callout tone="warning">{title}</Callout>
-        <p className="m-0 text-body text-muted">{rules ? t('auto.fault.rulesText') : fault.message}</p>
+        {text ? <p className="m-0 text-body text-muted">{text}</p> : null}
         {rules ? (
           <ul className="m-0 grid max-h-60 list-none gap-1 overflow-y-auto p-0">
             {fault.cards.map((code) => (
@@ -608,10 +612,11 @@ function FaultCover({ fault, nameOf, artOf, onRetry, onExit }: { fault: NonNulla
           </ul>
         ) : null}
         <div className="flex justify-end gap-2">
-          <Button variant="tertiary" onClick={onExit}>
+          {/* Sin nada que reintentar, salir es lo único que queda: va como la principal. */}
+          <Button variant={onRetry ? 'tertiary' : 'primary'} onClick={onExit}>
             {t('auto.fault.back')}
           </Button>
-          {rules ? (
+          {!onRetry ? null : rules ? (
             <Button variant="primary" onClick={() => setAutoPref('duel', false)}>
               {t('auto.fault.manual')}
             </Button>

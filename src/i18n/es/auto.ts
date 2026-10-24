@@ -101,4 +101,19 @@ export const auto = {
   'auto.entry.unsupported': 'Tu navegador no puede correr el motor de reglas.',
   'auto.bar.manual': 'Jugar en modo manual',
   'auto.bar.manualHint': 'Apaga las reglas automáticas y abre la mesa manual con tu mismo deck.',
+
+  // El duelo automático por enlace: lo que la sala le dice a quien espera (debajo del deck), la línea mientras elige el otro y lo que corta el duelo.
+  'auto.online.waitingDeck': 'Esperando el deck de {name}…',
+  'auto.online.checking': 'Revisando que las cartas de los dos tengan reglas…',
+  'auto.online.blockedMine': { one: 'A {count} carta tuya le faltan sus reglas: cambiala en el builder.', other: 'A {count} cartas tuyas les faltan sus reglas: cambialas en el builder.' },
+  'auto.online.blockedTheirs': { one: 'A {count} carta de {name} le faltan sus reglas.', other: 'A {count} cartas de {name} les faltan sus reglas.' },
+  'auto.online.outdated': '{name} tiene que actualizar la app para jugar con reglas automáticas.',
+  'auto.online.version': 'Tu app y la de {name} no son la misma versión: recarguen la página para jugar con reglas automáticas.',
+  'auto.online.off': 'El duelo automático por enlace está apagado por ahora.',
+  'auto.online.data': 'No se pudieron bajar las reglas del duelo: probá de nuevo en un rato.',
+  'auto.online.rivalChoosing': '{name} está eligiendo…',
+  'auto.online.lost': 'El duelo se perdió: el anfitrión recargó la página.',
+  'auto.online.cut': 'El duelo se cortó: {name} mandó jugadas inválidas.',
+  'auto.online.broken': 'El duelo se cortó y no se puede seguir.',
+  'auto.online.deckOutWin': '{name} no pudo robar.',
 } as const

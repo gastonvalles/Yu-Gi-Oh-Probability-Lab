@@ -49,8 +49,8 @@ interface AutoBarProps {
   onManual?: () => void
 }
 
-/** Un ajuste de «Más opciones» con su nombre, su línea chica y el control debajo. */
-function Setting({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+/** Un ajuste de «Más opciones» con su nombre, su línea chica y el control debajo (también los del duelo automático por enlace, en «Más opciones» de `DuelBar`). */
+export function Setting({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
     <div className="grid gap-2">
       <span className="grid gap-0.5">

@@ -1138,7 +1138,7 @@ const NOTHING = () => undefined
  * El duelo en pausa detiene el reloj de la ronda: lo para quien se queda y lo retoma cuando vuelve el que faltaba. Sólo retoma si lo había parado él (un reloj que
  * ya estaba pausado a mano sigue así).
  */
-function useClockPause(duel: Duel, snapshot: DuelSnapshot, paused: boolean) {
+export function useClockPause(duel: Duel, snapshot: DuelSnapshot, paused: boolean) {
   const stopped = useRef(false)
   const running = snapshot.life.timer.running
 
@@ -1160,7 +1160,7 @@ function useClockPause(duel: Duel, snapshot: DuelSnapshot, paused: boolean) {
  * El reloj de la ronda arranca solo cuando los dos tienen su mano (lo pone en marcha el anfitrión y el invitado lo recibe): nadie tiene que acordarse de
  * apretar play. Sólo si el reloj está en cero y parado; si alguien ya lo pausó o lo reinició a mano, no se toca.
  */
-function useAutoStartClock(duel: Duel, snapshot: DuelSnapshot) {
+export function useAutoStartClock(duel: Duel, snapshot: DuelSnapshot) {
   const checked = useRef(false)
   const { role, life } = snapshot
 
@@ -1202,7 +1202,7 @@ function useTurnDraw(duel: Duel, snapshot: DuelSnapshot, turn: 'mine' | 'theirs'
  * Avisos de lo que hace el rival fuera de las cartas (moneda, dado, su elección en piedra-papel-tijera, quién empieza, una señal) y de cómo salió la ronda,
  * para verlos aunque el panel de juegos esté cerrado. Lo que ya estaba en el registro al abrir la pantalla no se avisa.
  */
-function useGameToasts(snapshot: DuelSnapshot, myName: string) {
+export function useGameToasts(snapshot: DuelSnapshot, myName: string) {
   const { games, rps, peerName, me } = snapshot
   const seen = useRef(games.at(-1)?.id ?? 0)
   const rival = peerName ?? t('duel.bar.rival')
@@ -1615,7 +1615,7 @@ function usePointed(snapshot: DuelSnapshot): { mine: Pointed; theirs: Pointed } 
 /** Lo último que tocó el rival (cualquier emoji de señal): en escritorio se muestra grande en el medio de la pantalla un momento (o hasta que se lo toca). */
 const BURST_MS = 2200
 
-function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null; mineKey: number; theirsKey: number; burst: { emoji: string; key: number } | null; dismissBurst: () => void } {
+export function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null; mineKey: number; theirsKey: number; burst: { emoji: string; key: number } | null; dismissBurst: () => void } {
   const { chat, me } = snapshot
   const last = chat.at(-1)?.id ?? 0
   const seen = useRef(last)
@@ -1663,7 +1663,7 @@ function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: stri
  * El emoji que toca el rival, grande y en el medio de la pantalla, sólo en escritorio (en el celular sale como un mensaje más, en la línea del registro). Se va solo, o al tocarlo:
  * el resto de la pantalla no recibe toques de menos, sólo el emoji.
  */
-function RivalEmoji({ burst, name, onDismiss }: { burst: { emoji: string; key: number } | null; name: string; onDismiss: () => void }) {
+export function RivalEmoji({ burst, name, onDismiss }: { burst: { emoji: string; key: number } | null; name: string; onDismiss: () => void }) {
   if (burst === null) return null
 
   return (

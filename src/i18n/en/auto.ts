@@ -102,4 +102,19 @@ export const auto: Translated<typeof es> = {
   'auto.entry.unsupported': "Your browser can't run the rules engine.",
   'auto.bar.manual': 'Play in manual mode',
   'auto.bar.manualHint': 'Turns off the automatic rules and opens the manual table with the same deck.',
+
+  // The automatic link duel: what the room tells whoever is waiting (below the deck), the line while the other one chooses and what cuts the duel short.
+  'auto.online.waitingDeck': "Waiting for {name}'s deck…",
+  'auto.online.checking': "Checking that both players' cards have rules…",
+  'auto.online.blockedMine': { one: '{count} of your cards is missing its rules: swap it in the builder.', other: '{count} of your cards are missing their rules: swap them in the builder.' },
+  'auto.online.blockedTheirs': { one: "{count} of {name}'s cards is missing its rules.", other: "{count} of {name}'s cards are missing their rules." },
+  'auto.online.outdated': '{name} has to update the app to play with automatic rules.',
+  'auto.online.version': "Your app and {name}'s aren't the same version: reload the page to play with automatic rules.",
+  'auto.online.off': 'Automatic link duels are turned off for now.',
+  'auto.online.data': "The duel's rules couldn't be downloaded: try again in a while.",
+  'auto.online.rivalChoosing': '{name} is choosing…',
+  'auto.online.lost': 'The duel was lost: the host reloaded the page.',
+  'auto.online.cut': 'The duel was cut short: {name} sent invalid plays.',
+  'auto.online.broken': "The duel was cut short and can't go on.",
+  'auto.online.deckOutWin': "{name} couldn't draw.",
 }
