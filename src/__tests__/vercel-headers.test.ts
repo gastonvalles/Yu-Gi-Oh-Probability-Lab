@@ -67,7 +67,8 @@ describe('seguridad del hosting (vercel.json)', () => {
     expect(policy).not.toMatch(/vercel\.(live|com)|pusher|assets\.vercel/)
     expect(policy).not.toContain('*')
     expect(policy).not.toMatch(/script-src[^;]*'unsafe-(inline|eval)'/)
-    expect(rule['script-src']).toEqual(["'self'"])
+    // El núcleo de reglas del duelo automático es WebAssembly: compilarlo exige 'wasm-unsafe-eval', que no abre ni `eval` ni scripts en línea.
+    expect(rule['script-src']).toEqual(["'self'", "'wasm-unsafe-eval'"])
     expect(rule['default-src']).toEqual(["'self'"])
     expect(rule['object-src']).toEqual(["'none'"])
     expect(rule['base-uri']).toEqual(["'self'"])
@@ -96,6 +97,7 @@ describe('seguridad del hosting (vercel.json)', () => {
     const policy = csp(previews)!
 
     expect(policy).toContain('https://vercel.live')
+    expect(directives(policy)['script-src']).toContain("'wasm-unsafe-eval'")
     expect(policy).not.toContain('*')
     expect(policy).not.toMatch(/script-src[^;]*'unsafe-(inline|eval)'/)
     expect(directives(policy)['frame-ancestors']).toEqual(["'none'"])
