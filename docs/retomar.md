@@ -66,7 +66,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 - **Lo que se pide para el celular** no toca el menú lateral ni las pantallas de escritorio.
 - **Deck en escritorio:** el buscador de cartas va a la derecha, nunca a la izquierda.
 - **El Lab sólo mide lo confirmado;** un resultado provisional con sugerencias sin confirmar queda para más adelante.
-- **La calculadora de LP queda como está:** el rediseño con tarjetas se descartó.
+- **La calculadora de LP queda como está:** el rediseño con tarjetas se descartó. Su reloj avisa a los 10 minutos (2 veces seguidas), a los 5 (3) y al final sin parar hasta reiniciarlo, en cualquier pantalla: el botón flotante se queda en 00:00 hasta entonces.
 - **Replays en vivo sin API key de YouTube:** se lee la página de transmisiones de cada canal (`api/live.ts`).
 - **El dado de quién empieza** es un d6 por jugador que se repite si empatan (1 de cada 6 salas): no es un fallo; un dado más
   grande lo bajaría, pero cambia la cara del dado.

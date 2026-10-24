@@ -89,21 +89,6 @@ export function interpretAmount(digits: string): number {
   return Number(digits.length < 3 ? `${digits}00` : digits)
 }
 
-/** Los últimos cambios distintos (del más nuevo al más viejo) para repetirlos con un toque. */
-export function recentAmounts(log: LifeEntry[], limit = 3): number[] {
-  const seen: number[] = []
-
-  for (let index = log.length - 1; index >= 0 && seen.length < limit; index -= 1) {
-    const delta = log[index]!.delta
-
-    if (!seen.includes(delta)) {
-      seen.push(delta)
-    }
-  }
-
-  return seen
-}
-
 function setLp(state: LifeState, player: Duelist, to: number, now: number): LifeState {
   const from = state.lp[player]
   const next = Math.max(0, Math.min(MAX_LP, to))

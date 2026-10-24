@@ -267,7 +267,8 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
     <div
       ref={rootRef}
       className={cx(
-        'fixed inset-0 z-240 grid place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3',
+        // Una sola columna `minmax(0,1fr)`: con la pista `auto` de siempre, lo más ancho del panel (un pie de botones, un aviso con su acción) la estiraba más allá de la pantalla del celular y todo se corría a la derecha.
+        'fixed inset-0 z-240 grid grid-cols-[minmax(0,1fr)] place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3',
         // Al clasificar la carta se ve grande (32dvh): el panel de abajo cede espacio y su cuerpo scrollea si hace falta.
         wide ? '[--detail-art-height:min(72dvh,34rem)]' : tall ? '[--detail-art-height:min(32dvh,20rem)] [--detail-panel-height:min(64dvh,36rem)]' : '[--detail-art-height:min(36dvh,20rem)] [--detail-panel-height:min(52dvh,28rem)]',
       )}

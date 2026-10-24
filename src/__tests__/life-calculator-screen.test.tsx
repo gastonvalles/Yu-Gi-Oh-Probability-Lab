@@ -49,7 +49,7 @@ describe('la calculadora de LP', () => {
     expect(screen.getByRole('button', { name: 'Deshacer' })).toHaveClass('rounded-none')
   })
 
-  it('se teclea un monto (con menos de tres cifras son centenas), se resta con «=» y el cambio queda a mano para repetirlo', () => {
+  it('se teclea un monto (con menos de tres cifras son centenas) y se resta con «=»; entre el número y el teclado no queda ninguna fila (la de los cambios recientes ya no está)', () => {
     renderScreen()
 
     tap('1')
@@ -60,9 +60,9 @@ describe('la calculadora de LP', () => {
     expect(duelist(/^Duelista 1: 6800 LP/)).toBeInTheDocument()
     expect(duelist(/^Duelista 2: 8000 LP/)).toBeInTheDocument()
 
-    // El mismo cambio, repetido con un toque.
-    fireEvent.click(within(screen.getByLabelText('Repetir un cambio reciente')).getByRole('button', { name: 'Restar 1200 a Duelista 1' }))
-    expect(duelist(/^Duelista 1: 5600 LP/)).toBeInTheDocument()
+    // El número que se escribe va pegado al teclado: la fila de en medio se borró del DOM (no se esconde).
+    expect(screen.getByRole('status').parentElement?.nextElementSibling).toBe(screen.getByRole('group', { name: 'Teclado' }))
+    expect(screen.queryByRole('button', { name: /^Restar 1200 a/ })).not.toBeInTheDocument()
   })
 
   it('los ceros rápidos (00 y 000), Sumar con el otro duelista elegido y Borrar', () => {
