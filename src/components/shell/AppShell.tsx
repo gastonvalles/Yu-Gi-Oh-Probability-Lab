@@ -32,6 +32,8 @@ interface AppShellProps {
   onSheetOpen?: (groupKey: string) => void
   /** Vista completa (la práctica): en el celular, del alto exacto de la ventana (nada de scroll de página); la pantalla se reparte ese alto. */
   immersive?: boolean
+  /** En el celular, la pantalla mide justo lo que queda entre las dos barras (la calculadora de LP): sin scroll de página, se reparte ese alto con `h-full`. En escritorio ya es así sin `contentScrollable`. */
+  fitScreen?: boolean
   /** Lleva la barra de arriba de escritorio (el buscador de la app, las mascotas y el idioma). Por defecto, todas las pantallas menos las de vista completa; el inicio y la sala del duelo, aunque ocupen todo el alto, la llevan: sólo la mesa no. */
   navbar?: boolean
   /** Hay buscador de cartas en esta pantalla (todas menos el builder, que ya tiene el suyo, la práctica y la sala o la mesa de un duelo; el lobby sí): aparece en el menú lateral, la barra de arriba y el cajón del celular, y abre `onSelect('search')`. */
@@ -43,7 +45,7 @@ interface AppShellProps {
  * el mismo alto y es ella la que scrollea); en el celular, la barra de arriba con la hamburguesa (que abre el cajón de ajustes: idioma, copia de seguridad y legales), la barra de abajo con los cuatro
  * grupos (cada uno abre una hoja con sus opciones) y la pantalla. No hay pie en ninguna vista. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
-export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, contentScrollRef, contentScrollable = false, immersive = false, navbar = !immersive, onSheetOpen, searchAvailable = false }: AppShellProps) {
+export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, contentScrollRef, contentScrollable = false, immersive = false, fitScreen = false, navbar = !immersive, onSheetOpen, searchAvailable = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
   // Con el duelo en ventana grande, el menú lateral no está (el duelo ocupa toda la pantalla).
   const bigWindow = useDuelFullscreen()
@@ -132,7 +134,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
       </button>
       {showNavbar ? <AppNavbar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onSearch={openFind} onMascots={() => onSelect('mascots')} className="min-[1101px]:col-span-2" /> : null}
       {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
-      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
+      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && 'max-[1101px]:h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))]', ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
         {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onSearch={openFind} className="min-[1101px]:hidden" />}
         <div
           ref={contentScrollRef}
@@ -142,7 +144,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
             // `relative`: lo posicionado adentro (los `sr-only`) queda dentro de este recuadro; si no, se estira el alto del documento.
             'relative flex min-h-0 w-full min-w-0 flex-1 flex-col min-[1101px]:[scrollbar-gutter:stable] min-[1101px]:[scrollbar-width:thin]',
             contentScrollable ? 'min-[1101px]:overflow-y-auto' : 'min-[1101px]:overflow-hidden',
-            immersive && 'max-[1101px]:overflow-hidden',
+            (immersive || fitScreen) && 'max-[1101px]:overflow-hidden',
           )}
         >
           {/* En escritorio este envoltorio mide siempre lo que el recuadro (`min-h-0`: no crece con el contenido), así una pantalla puede ocupar justo ese alto con `h-full`

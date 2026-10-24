@@ -11,7 +11,7 @@ interface LifeCalculatorFabProps {
 
 /**
  * Mientras corre el reloj de la ronda, un botón flotante que muestra cuánto queda y lleva a la calculadora (una vista de la app, `#life`): sólo aparece con el reloj corriendo y fuera
- * de ella (se sale a leer una carta o a mirar la mesa y se vuelve con un toque). Sin reloj corriendo no hay botón: la calculadora se abre desde el menú. En la mesa de un duelo tampoco: ahí está el reloj del duelo.
+ * de ella (se sale a leer una carta o a mirar la mesa y se vuelve con un toque). Al acabarse la ronda se queda en 00:00 hasta que se reinicie el reloj (la alarma suena hasta entonces). Con el reloj parado y con tiempo no hay botón: la calculadora se abre desde el menú. En la mesa de un duelo tampoco: ahí está el reloj del duelo.
  */
 export function LifeCalculatorFab({ onOpen, hidden = false }: LifeCalculatorFabProps) {
   const countdown = useRoundCountdownLabel()
