@@ -291,7 +291,7 @@ export function DialogsSection() {
       </Presence>
       <CardMenu anchor={isDesktop ? (ashMenu?.rect ?? null) : null} kicker={PILE_TITLES.hand} title={nameOf(ASH)} items={inMenuBlocks(ashRows)} startExpanded={ashMenu?.ask} onClose={() => setAshMenu(null)} />
 
-      <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el campo: sin velo, en escritorio va en la columna del detalle (desde 1440 px), en la de los pasos o en un panel angosto abajo a la izquierda de la mesa del duelo, y el campo sigue vivo; en el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
+      <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el campo ni el detalle de la carta: sin velo, en escritorio va en la columna de la derecha (los pasos o, desde 1440 px, el chat del duelo) o en un panel angosto contra el borde izquierdo de la mesa del duelo, y el campo sigue vivo; la carta que se toca o se apunta se lee en el detalle. En el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
         <Button size="sm" onClick={() => setPileSample('plain')}>
           Abrir el cementerio
         </Button>
@@ -320,7 +320,7 @@ export function DialogsSection() {
           Abrir con tres elegidas
         </Button>
       </Specimen>
-      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). No es un modal: en escritorio llena la caja donde va (en la mesa, la columna del detalle o la de los pasos); acá, una abajo a la derecha. En el celular, la hoja de abajo. */}
+      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). No es un modal: en escritorio llena la caja donde va (en la mesa, la columna de la derecha); acá, una abajo a la derecha. En el celular, la hoja de abajo. */}
       <div className="pointer-events-none fixed bottom-4 right-4 z-180 grid h-[min(34rem,calc(100dvh-2rem))] w-80 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
         <PileViewer
           pile={pileShown?.pile ?? null}

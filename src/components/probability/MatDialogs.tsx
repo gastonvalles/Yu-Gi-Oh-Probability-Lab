@@ -443,6 +443,8 @@ interface PileViewerProps {
   onPick: (id: string, rect: DOMRect) => void
   /** Cada toque de una carta, también eligiendo varias: la mesa la muestra en el detalle fijo de la izquierda. */
   onPeek?: (id: string) => void
+  /** Se pasó el mouse por una carta (el dedo no: tocar ya la fija): la mesa la muestra en el detalle mientras no haya otra fija, como en la mano y en el campo. */
+  onHover?: (id: string) => void
   /** Con esto y dos cartas o más, el pie lleva «Elegir varias». */
   many?: PileMany
   onClose: () => void
@@ -457,11 +459,12 @@ interface PileViewerProps {
  * la principal le pasa las elegidas a quien abrió el visor y Escape sale del modo antes de cerrar el visor.
  * Es uno solo para todas las pilas y queda montado: al cerrarse sale (la inversa de su entrada) y cada vez que se abre arranca de cero.
  *
- * **No tapa el campo** (Gastón, 2026-10-24: «los modales de deck, extra, gy y banish tapan el campo pero no deberían hacerlo»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le
- * da quien lo monta (una caja `grid` posicionada: la columna del detalle, la de los pasos o un rincón de la mesa, ver `PracticeMat`) y el campo sigue vivo: se tocan sus cartas y sus casillas con el visor abierto.
+ * **No tapa el campo ni el detalle** (Gastón, 2026-10-24: «los modales de deck, extra, gy y banish tapan el campo pero no deberían hacerlo» y «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo
+ * acceder a la info»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le da quien lo monta (una caja `grid` posicionada: la columna de la derecha o un rincón de la mesa, ver `PracticeMat`)
+ * y el campo sigue vivo: se tocan sus cartas y sus casillas con el visor abierto, y la carta que se toca o se apunta en el visor se lee en el detalle (`onPeek`, `onHover`).
  * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera.
  */
-export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, many, onClose, anonymous = false }: PileViewerProps) {
+export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, onHover, many, onClose, anonymous = false }: PileViewerProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [query, setQuery] = useState('')
   const [choosing, setChoosing] = useState(many?.start !== undefined)
@@ -646,7 +649,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
         ) : null}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
-        {/* En el celular, cinco por fila (como el campo); en la hoja de una tableta, las que entren de 5.25 rem; en el panel de escritorio, más angosto, las de 4.5 rem (tres en la columna del detalle, dos en el rincón de la mesa). */}
+        {/* En el celular, cinco por fila (como el campo); en la hoja de una tableta, las que entren de 5.25 rem; en el panel de escritorio, más angosto, las de 4.5 rem (tres en la columna de la derecha, dos en el rincón de la mesa). */}
         <ul ref={gridRef} className={cx('m-0 grid list-none p-0', desktop ? 'grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2' : 'grid-cols-5 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2')} aria-label={t('practice.dialog.cards')}>
           {visible.map((card) => {
             // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
@@ -667,6 +670,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
                     if (choosing) toggle(card.id, event.shiftKey)
                     else onPick(card.id, event.currentTarget.getBoundingClientRect())
                   }}
+                  onPointerEnter={onHover ? (event) => (event.pointerType === 'touch' ? undefined : onHover(card.id)) : undefined}
                 >
                   <span
                     data-targeted={targeted.has(card.id) ? 'true' : 'false'}
