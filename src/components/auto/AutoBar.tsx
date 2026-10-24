@@ -47,6 +47,11 @@ interface AutoBarProps {
   onRestart?: () => void
   /** «Jugar en modo manual» de «Más opciones»: apaga el duelo automático y queda la mesa manual con el mismo deck (sin esto, no se ofrece). */
   onManual?: () => void
+  /** «Handtraps del rival»: si las usa, lo que tiene y «Cambiar handtraps» (la pantalla abre la hoja del simulador; al aplicar, el duelo empieza de nuevo). Apagadas, el rival es el pasivo. */
+  handtraps: { on: boolean; summary: string; onChange: () => void }
+  /** «A ciegas» (sólo con handtraps): la mano del rival de dorso. */
+  blind: boolean
+  onBlind: (on: boolean) => void
 }
 
 /** Un ajuste de «Más opciones» con su nombre, su línea chica y el control debajo (también los del duelo automático por enlace, en «Más opciones» de `DuelBar`). */
@@ -64,11 +69,11 @@ export function Setting({ title, hint, children }: { title: string; hint: string
 
 /**
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace: las vidas de los dos (`LifeTile`, que las
- * cuenta, destella y sacude como en el duelo), el turno con la fase, la vista de la mesa, el engranaje con «Más opciones» (sonidos, respuestas a la cadena, la casilla y que el rival no juega) y la X
+ * cuenta, destella y sacude como en el duelo), el turno con la fase, la vista de la mesa, el engranaje con «Más opciones» (sonidos, respuestas a la cadena, la casilla, las handtraps del rival y «A ciegas», o que no juega) y la X
  * de salir. En el celular, la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto
  * suma alto cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = null, log, sounds, onSounds, chain, onChain, place, onPlace, onRestart, onManual }: AutoBarProps) {
+export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = null, log, sounds, onSounds, chain, onChain, place, onPlace, onRestart, onManual, handtraps, blind, onBlind }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const rails = useDuelRails()
@@ -108,7 +113,30 @@ export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, lane = n
         <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
           <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
         </Setting>
-        <Callout tone="neutral">{t('auto.rival.passive')}</Callout>
+        <Setting title={t('handtraps.title')} hint={handtraps.summary}>
+          <Button
+            variant="secondary"
+            className="justify-self-start"
+            aria-haspopup="dialog"
+            onClick={() => {
+              setMoreOpen(false)
+              handtraps.onChange()
+            }}
+          >
+            {t('auto.bar.handtrapsChange')}
+          </Button>
+        </Setting>
+        {handtraps.on ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-body font-semibold text-foreground">{t('auto.bar.blind')}</span>
+              <span className="text-micro text-soft">{t('auto.bar.blindHint')}</span>
+            </span>
+            <Switch checked={blind} onChange={onBlind} label={t('auto.bar.blind')} />
+          </div>
+        ) : (
+          <Callout tone="neutral">{t('auto.rival.passive')}</Callout>
+        )}
         {onRestart ? (
           <Setting title={t('auto.bar.restart')} hint={t('auto.bar.restartHint')}>
             <Button

@@ -41,6 +41,8 @@ export interface AutoOverlay {
   stats: Record<Side, Record<string, { attack: number; defense: number; level: number }>>
   /** La cadena en curso, del eslabón 1 en adelante. */
   chain: ChainLink[]
+  /** Lo que se negó (la activación o el efecto) en la cadena en curso o en la última, en orden: la cadena se resuelve de una y la pantalla lo cuenta después. Se vacía al empezar otra. */
+  negated: ChainLink[]
   /** Las vidas, por asiento del núcleo. */
   lp: [number, number]
   /** El turno del núcleo (1 = el primero) y de quién es; la fase, con la constante del núcleo (`PHASE_*`: 1 Draw … 0x200 End). */
@@ -157,7 +159,7 @@ function copyIds(codes: readonly number[]): string[] {
   })
 }
 
-const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null })
+const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null })
 
 export function createAdapter(options: AdapterOptions): Adapter {
   const { seat, typeOf } = options
@@ -615,7 +617,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const card = cardAt(event, event.code)
 
         if (card) learn(card, event.code, isMaterial(event) || isPublic(event.location, event.position))
-        overlay = { ...overlay, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }] }
+        overlay = { ...overlay, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }], ...(overlay.chain.length === 0 ? { negated: [] } : {}) }
         if (!card) return note('chaining: nothing there')
         // Una Mágica o Trampa que esta tanda dio vuelta o puso boca arriba ya cuenta como activada (la jugada la anota y destella).
         if (!openedNow.has(card)) emit(event.controller, { type: 'activate', id: matId(card, event.controller) })
@@ -629,7 +631,13 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const state = ({ chain_solving: 'solving', chain_solved: 'solved', chain_negated: 'negated', chain_disabled: 'disabled' } as const)[event.type]
 
         // Un eslabón resuelto sale de la cadena (como en el núcleo); los demás cambian de estado.
-        overlay = { ...overlay, chain: state === 'solved' ? overlay.chain.slice(0, event.chain_size - 1) : overlay.chain.map((link, i) => (i === event.chain_size - 1 ? { ...link, state } : link)) }
+        const link = overlay.chain[event.chain_size - 1]
+
+        overlay = {
+          ...overlay,
+          chain: state === 'solved' ? overlay.chain.slice(0, event.chain_size - 1) : overlay.chain.map((item, i) => (i === event.chain_size - 1 ? { ...item, state } : item)),
+          ...((state === 'negated' || state === 'disabled') && link ? { negated: [...overlay.negated, { ...link, state }] } : {}),
+        }
         return
       }
 

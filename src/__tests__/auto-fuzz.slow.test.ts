@@ -1,21 +1,26 @@
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { cardMatchesOpcode, OcgDuelMode, OcgLocation as L, OcgQueryFlags as Q, ocgMessageTypeStrings, type OcgCoreSync, type OcgDuelHandle, type OcgMessage } from 'ocgcore-wasm'
+import { createAdapter, type Adapter } from '../app/auto/adapter'
 import { createAutoHost } from '../app/auto/core-host'
-import { randomLegalPolicy, type CardPicker } from '../app/auto/policies'
-import type { AutoEvent, CoreAnswer, CoreAsk, Seat } from '../app/auto/protocol'
-import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, runDuel, scriptStore, wasmBinary } from './support/core-data'
+import { teamOrder } from '../app/auto/deck-map'
+import { handtrapPolicy, randomLegalPolicy, type CardPicker } from '../app/auto/policies'
+import type { AutoCommand, AutoEvent, CoreAnswer, CoreAsk, Seat } from '../app/auto/protocol'
+import { autoRival, HANDTRAP_CATALOG, MAX_RIVAL_HAND } from '../app/handtraps'
+import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, runDuel, scriptStore, wasmBinary } from './support/core-data'
 
 /**
  * El fuzz del núcleo (lento: fuera de `npm test`, se corre con `npm run test:auto`). Dos bots al azar legal juegan duelos con decks del
  * meta y se cuentan los invariantes de F1: 0 RETRY, 0 mensajes sin manejar, 0 errores del núcleo, 0 cuelgues; el asiento filtrado nunca
  * ve lo oculto (un oráculo aparte, con el estado real que da `duelQueryLocation`); `rewind` reproduce los eventos y un duelo con semilla
- * fija se repite igual. Escribe el informe por carta y el de lentitud en CORE_DATA_DIR (nunca en el repo).
- * Parámetros: FUZZ_DECKS (20), FUZZ_DUELS por deck (4), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S segundos por
- * duelo (120: un duelo más largo se corta y queda en el informe de lentitud, no cuenta como cuelgue). El avance va a fuzz-progress.log.
+ * fija se repite igual. Lo mismo con el rival de handtraps en el asiento 1 (`Rival`). Escribe el informe por carta y el de lentitud en
+ * CORE_DATA_DIR (nunca en el repo). Parámetros: FUZZ_DECKS (20), FUZZ_DUELS por deck (4), FUZZ_HANDTRAP_DUELS por deck contra el rival
+ * de handtraps (2), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S segundos por duelo (120: un duelo más largo se corta
+ * y queda en el informe de lentitud, no cuenta como cuelgue). El avance va a fuzz-progress.log (y fuzz-progress-handtraps.log).
  */
 const DECKS = Number(process.env.FUZZ_DECKS ?? 20)
 const DUELS = Number(process.env.FUZZ_DUELS ?? 4)
+const HANDTRAP_DUELS = Number(process.env.FUZZ_HANDTRAP_DUELS ?? 2)
 const SEED = Number(process.env.FUZZ_SEED ?? 1)
 const CAP = Number(process.env.FUZZ_CAP ?? 2000)
 const DUEL_MS = Number(process.env.FUZZ_DUEL_S ?? 120) * 1000
@@ -143,12 +148,26 @@ function offeredBy(ask: CoreAsk): number[] {
 /** Los lotes de eventos de un duelo, para comparar dos corridas tal cual (el anfitrión ya ordena las pistas seguidas: `canonical`). */
 const normalized = (events: AutoEvent[]) => events.filter((event) => event.t === 'events').map((event) => `${event.seat}|${event.n}|${JSON.stringify(event.events)}`)
 
+/**
+ * Contra quién juega el asiento 1: otro bot al azar con un deck del meta, o el rival de handtraps de la pantalla (`handtrapPolicy`, con lo que ve
+ * su adaptador): las 15 del catálogo, una copia de cada una, 5 en la mano repartidas con la semilla del duelo y el relleno de Normales.
+ */
+type Rival = 'random' | 'handtraps'
+
 describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
-  it(`${DECKS} decks × ${DUELS} duelos`, { timeout: 6 * 60 * 60 * 1000 }, async () => {
+  it(`${DECKS} decks × ${DUELS} duelos`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('random', DUELS))
+  it(`${DECKS} decks × ${HANDTRAP_DUELS} duelos contra el rival de handtraps`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('handtraps', HANDTRAP_DUELS))
+
+  async function fuzz(rival: Rival, duels: number) {
     const { cards, names } = loadCards()
     const store = scriptStore()
     const all = metaDecks(cards, store)
     const pool = Array.from({ length: Math.min(DECKS, all.length) }, (_, i) => all[Math.floor((i * all.length) / Math.min(DECKS, all.length))]!)
+    const setup = autoRival({ enabled: true, picks: HANDTRAP_CATALOG.map((card) => ({ ...card, copies: 1 })), hand: MAX_RIVAL_HAND })!
+    const own = setup.main.flatMap(([code, copies]) => Array<number>(copies).fill(code))
+    const filler = rival === 'handtraps' ? (await nodeSource(undefined, store).manifest()).filler : []
+    const handtraps = { id: 'handtraps', main: [...own, ...filler.slice(0, Math.max(0, filler.length - own.length))], extra: [] as number[], missing: [], noRules: [] }
+    const suffix = rival === 'handtraps' ? '-handtraps' : ''
     const cardList = [...cards.values()]
     const pickCard: CardPicker = (ask, random) => {
       const opcodes = ask.opcodes.map(BigInt)
@@ -184,7 +203,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
     const slow: { ms: number; card: number | null; ask: string; duel: number; decks: string[] }[] = []
     const times: number[] = []
     const slowDuels: { duel: number; decks: string[]; questions: number }[] = []
-    const progress = path.join(CORE_DATA_DIR, 'fuzz-progress.log')
+    const progress = path.join(CORE_DATA_DIR, `fuzz-progress${suffix}.log`)
     const stat = (code: number) => perCard.get(code) ?? (perCard.set(code, { offered: 0, played: 0, faulted: 0 }), perCard.get(code)!)
     const started = performance.now()
 
@@ -194,8 +213,24 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
     const playOne = async (d: number, a: (typeof pool)[number], b: (typeof pool)[number], check: boolean) => {
       const events: AutoEvent[] = []
       let batch: OcgMessage[] = []
-      const host = createAutoHost({ core: { wasmBinary: wasm }, cardReader: (code) => cards.get(code) ?? null, scriptReader: store.read, emit: (event) => events.push(event), tap: (message) => batch.push(message) })
+      // El adaptador del asiento 1, para el rival de handtraps: ve lo mismo que en la pantalla.
+      let view: Adapter | null = null
+      const host = createAutoHost({
+        core: { wasmBinary: wasm },
+        cardReader: (code) => cards.get(code) ?? null,
+        scriptReader: store.read,
+        emit: (event) => {
+          events.push(event)
+          view?.apply(event)
+        },
+        tap: (message) => batch.push(message),
+      })
       const seed = (SEED * 100_003 + d) >>> 0
+      const hand = rival === 'handtraps' ? setup.hand(seed) : []
+      const create: Extract<AutoCommand, { t: 'create' }> = { t: 'create', seed, flags: MR5, players: [PLAYERS[0]!, { ...PLAYERS[1]!, hand: hand.length || PLAYERS[1]!.hand }], decks: [{ main: a.main, extra: a.extra, hand: [] }, { main: b.main, extra: b.extra, hand }] }
+      const second = rival === 'handtraps' ? handtrapPolicy(setup.main.map(([code]) => code)) : null
+
+      if (second) view = createAdapter({ seat: 1, mine: { deck: teamOrder(create, 1), extra: b.extra }, theirs: { deck: a.main.length, extra: a.extra.length }, typeOf: (code) => cards.get(code)?.type ?? 0 })
       let before = [new Set<number>(), new Set<number>()]
       const history = [new Set<number>(), new Set<number>()]
       let mark = 0
@@ -211,7 +246,8 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
             const allowed = new Set([...before[seat]!, ...now.seen[seat]])
 
             revealed(seat, batch, allowed)
-            allowed.forEach((code) => history[seat]!.add(code))
+            // Una pista nombra el script (`HINT_CARD` con el `id` de `GetID()`): un arte alternativo (Ghost Mourner 52038442) usa el del original (52038441).
+            allowed.forEach((code) => history[seat]!.add(code).add(cards.get(code)?.alias || code))
             for (const event of fresh) {
               if (!('seat' in event) || event.seat !== seat) continue
               for (const code of event.t === 'events' ? hintCodes(event.events) : []) {
@@ -247,9 +283,9 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
         }
       }
 
-      await host.handle({ t: 'create', seed, flags: MR5, players: PLAYERS, decks: [{ main: a.main, extra: a.extra, hand: [] }, { main: b.main, extra: b.extra, hand: [] }] })
+      await host.handle(create)
       audit()
-      const result = await runDuel(host, events, [randomLegalPolicy(seed * 2 + 1, pickCard), randomLegalPolicy(seed * 2 + 2, pickCard)], CAP, (ask, answer) => {
+      const result = await runDuel(host, events, [randomLegalPolicy(seed * 2 + 1, pickCard), second ? (ask) => second(ask, view!) : randomLegalPolicy(seed * 2 + 2, pickCard)], CAP, (ask, answer) => {
         lastCard = cardOf(ask.ask, answer)
         if (lastCard) stat(lastCard).played += 1
         const ms = host.timings.at(-1) ?? 0
@@ -264,10 +300,10 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       return { events, host, result }
     }
 
-    for (let d = 0; d < pool.length * DUELS; d += 1) {
+    for (let d = 0; d < pool.length * duels; d += 1) {
       const a = pool[d % pool.length]!
       const other = (d * 7 + 3) % pool.length
-      const b = pool[other === d % pool.length ? (other + 1) % pool.length : other]!
+      const b = rival === 'handtraps' ? handtraps : pool[other === d % pool.length ? (other + 1) % pool.length : other]!
       const { events, host, result } = await playOne(d, a, b, true)
 
       tally.duels += 1
@@ -293,16 +329,18 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
         tally.repeatChecked += 1
         if (differ(d, 'repeat', firstRun, normalized(again.events))) tally.repeatMismatch += 1
       }
-      appendFileSync(progress, `${new Date().toISOString()} duelo ${d + 1}/${pool.length * DUELS} ${a.id}-${b.id} ${result.end} ${result.questions} preguntas, ${Math.round((performance.now() - started) / 1000)} s
+      appendFileSync(progress, `${new Date().toISOString()} duelo ${d + 1}/${pool.length * duels} ${a.id}-${b.id} ${result.end} ${result.questions} preguntas, ${Math.round((performance.now() - started) / 1000)} s
 `)
     }
 
     const sorted = [...times].sort((x, y) => x - y)
     const pct = (p: number) => Math.round((sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))] ?? 0) * 100) / 100
-    const deckCodes = new Set(pool.flatMap((deck) => [...deck.main, ...deck.extra]))
+    const deckCodes = new Set([...pool, ...(rival === 'handtraps' ? [handtraps] : [])].flatMap((deck) => [...deck.main, ...deck.extra]))
     const label = (code: number | null) => (code ? `${code} ${names.get(code) ?? '?'}` : '')
     const report = {
-      parameters: { decks: pool.length, duelsPerDeck: DUELS, seed: SEED, cap: CAP, seconds: Math.round((performance.now() - started) / 1000) },
+      parameters: { rival, decks: pool.length, duelsPerDeck: duels, seed: SEED, cap: CAP, seconds: Math.round((performance.now() - started) / 1000) },
+      // Cuántas veces el rival activó cada handtrap (y cuántas se la ofreció el núcleo).
+      ...(rival === 'handtraps' ? { handtraps: Object.fromEntries(setup.main.map(([code]) => [label(code), perCard.get(code) ?? { offered: 0, played: 0, faulted: 0 }])) } : {}),
       tally,
       msPerAnswer: { answers: sorted.length, median: pct(50), p95: pct(95), p99: pct(99), max: pct(100) },
       slowDuels,
@@ -321,8 +359,8 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       mismatches,
     }
 
-    writeFileSync(path.join(CORE_DATA_DIR, `fuzz-${pool.length}x${DUELS}-s${SEED}.json`), JSON.stringify(report, null, 1))
-    console.log(JSON.stringify({ ...report.parameters, ...report.tally, ms: report.msPerAnswer, cleanCards: report.cards.playedClean, neverOffered: report.cards.neverOffered.length, faultCards: report.cards.playedWithFault.length }))
+    writeFileSync(path.join(CORE_DATA_DIR, `fuzz-${pool.length}x${duels}-s${SEED}${suffix}.json`), JSON.stringify(report, null, 1))
+    console.log(JSON.stringify({ ...report.parameters, ...report.tally, ms: report.msPerAnswer, cleanCards: report.cards.playedClean, neverOffered: report.cards.neverOffered.length, faultCards: report.cards.playedWithFault.length, ...('handtraps' in report ? { handtraps: report.handtraps } : {}) }))
 
     expect({ retries: tally.retries, unhandled: tally.unhandled, coreErrors: tally.coreErrors, exceptions: tally.exceptions, stuck: tally.stuck, leaks: tally.leaks, rewindMismatch: tally.rewindMismatch, repeatMismatch: tally.repeatMismatch }).toEqual({
       retries: 0,
@@ -334,5 +372,5 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       rewindMismatch: 0,
       repeatMismatch: 0,
     })
-  })
+  }
 })

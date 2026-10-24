@@ -8,6 +8,7 @@ import type { DeckList } from '../../app/auto/deck-map'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
+import { autoRival, poolCount, readHandtrapConfig, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
 import { allMatIds, cardKindOf, replayMat, type MatAction, type MatState } from '../../app/practice-mat'
 import { playSfx } from '../../app/sfx'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
@@ -22,6 +23,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
 import { DuelCardDock } from '../duel/DuelCardDock'
 import { DUEL_AREAS, DUEL_AREAS_COMPACT, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
+import { HandtrapPicker } from '../duel/HandtrapPool'
 import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES } from '../probability/MatDialogs'
 import { cardIdOfDrawId } from '../probability/practice'
@@ -38,7 +40,8 @@ import { SortSheet } from './SortSheet'
 
 /**
  * «Jugar solo automático (beta)»: la mesa de siempre (`PracticeMat` con la composición del duelo: el campo del rival arriba, la barra, el detalle a la izquierda) jugada contra el
- * núcleo de reglas (`createAutoSession`: `ocgcore` en un Worker, el rival pasivo). La pantalla **nunca despacha una jugada**: las jugadas las cuenta el núcleo (`mineActions`) y la
+ * núcleo de reglas (`createAutoSession`: `ocgcore` en un Worker; el rival, pasivo o con las handtraps del simulador de «Jugar solo», que usa solo: su mano va boca arriba en el lugar de la
+ * mano del rival, salvo «A ciegas», y lo que activa se cuenta grande en el centro). La pantalla **nunca despacha una jugada**: las jugadas las cuenta el núcleo (`mineActions`) y la
  * mesa las reproduce de a una (`STEP_MS`, tocar la mesa salta al final: así los vuelos, los destellos y los sonidos de siempre narran cada paso); lo que la pantalla hace es contestar
  * preguntas: cada `CoreAsk` pasa por `openAsk` / `askView` (`ask-ui.ts`) y se muestra con los menús, las casillas y el brillo de la mesa (`duel.auto`) o con las piezas de afuera
  * (`AskPrompt`, `AskOptions`, `CardPicker`, `SortSheet`); cada toque pasa por `step` y, con respuesta, a `session.answer`. Al rearmarse la mesa (deshacer, reiniciar, cancelar)
@@ -56,12 +59,17 @@ export interface AutoSoloScreenProps {
   handSize?: number
   /** La X de la barra: vuelve al lobby. */
   onExit: () => void
-  /** Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. */
-  connect?: (deck: DeckList, options: { handSize?: number }) => AutoSession
+  /**
+   * Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. `rival`: el de handtraps del simulador (`null`, el
+   * pasivo); `seed`: la del duelo de antes (cambiar las handtraps reinicia el mismo duelo, como «Reiniciar el duelo»).
+   */
+  connect?: (deck: DeckList, options: { handSize?: number; rival?: AutoRival | null; seed?: number }) => AutoSession
 }
 
 /** Cuánto espera la mesa entre una jugada y la siguiente de una misma tanda (una cadena larga se cuenta paso a paso). */
 export const STEP_MS = 220
+/** Lo que se deja leer lo que hizo el rival (la carta que activó, grande, y lo que se negó): lo mismo que en el duelo por enlace. */
+export const RIVAL_READ_MS = 3000
 const NOTHING = () => {}
 /** Los Tipos (`RACE_*`, por bit) y los Atributos (`ATTRIBUTE_*`) del núcleo, con las palabras de las cartas (en inglés, como las muestra el catálogo). */
 const RACES = ['Warrior', 'Spellcaster', 'Fairy', 'Fiend', 'Zombie', 'Machine', 'Aqua', 'Pyro', 'Rock', 'Winged Beast', 'Plant', 'Insect', 'Thunder', 'Dragon', 'Sea Serpent', 'Reptile', 'Psychic', 'Divine-Beast', 'Creator God', 'Wyrm', 'Cyberse', 'Illusion', 'Cyborg', 'Magical Knight', 'High Dragon', 'Omega Psychic', 'Celestial Warrior', 'Galaxy', 'Yokai']
@@ -88,7 +96,7 @@ export function deckListOf(ids: readonly string[]): [number, number][] {
   return [...copies]
 }
 
-const connectLive = (deck: DeckList, { handSize }: { handSize?: number }): AutoSession => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...(handSize === undefined ? {} : { handSize }) })
+const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options) => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...options })
 
 /** La mesa como la ve la pantalla: la mesa del arranque, las jugadas que ya llegaron y hasta cuál se muestra. */
 interface Paced {
@@ -106,21 +114,45 @@ const drawIdOf = (code: number) => `card-${code}-1`
 const sentinel = (action: MatAction) => console.error('[auto] la mesa intentó despachar una jugada en modo automático', action)
 
 export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, connect = connectLive }: AutoSoloScreenProps) {
-  const [session, setSession] = useState<AutoSession | null>(null)
+  // Las handtraps del rival: las del simulador de «Jugar solo» (`app/handtraps.ts`); cambiarlas arma otra sesión con la misma semilla.
+  const [handtraps, setHandtraps] = useState<HandtrapConfig>(readHandtrapConfig)
+  const [live, setLive] = useState<{ session: AutoSession; n: number } | null>(null)
+  const seed = useRef<number | undefined>(undefined)
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite y la sesión de la primera pasada se destruye.
   useEffect(() => {
-    const live = connect({ main: deckListOf(mainIds), extra: deckListOf(extraIds) }, handSize === undefined ? {} : { handSize })
+    const session = connect({ main: deckListOf(mainIds), extra: deckListOf(extraIds) }, { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), ...(seed.current === undefined ? {} : { seed: seed.current }) })
 
-    setSession(live)
+    seed.current = session.getSnapshot().seed
+    // Otra sesión, otra mesa: la pantalla arranca de cero (`key`).
+    setLive((current) => ({ session, n: (current?.n ?? 0) + 1 }))
 
-    return () => live.destroy()
-  }, [connect, mainIds, extraIds, handSize])
+    return () => session.destroy()
+  }, [connect, mainIds, extraIds, handSize, handtraps])
 
-  return session ? <AutoDuel session={session} cardsById={cardsById} deckName={deckName} onExit={onExit} /> : <LoadingCover progress={{ done: 0, total: 0 }} />
+  const changeHandtraps = useCallback((next: HandtrapConfig) => {
+    writeHandtrapConfig(next)
+    setHandtraps(next)
+  }, [])
+
+  return live ? (
+    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} handtraps={handtraps} onHandtraps={changeHandtraps} />
+  ) : (
+    <LoadingCover progress={{ done: 0, total: 0 }} rival={autoRival(handtraps) !== null} />
+  )
 }
 
-function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSession; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onExit: () => void }) {
+interface AutoDuelProps {
+  session: AutoSession
+  cardsById: ReadonlyMap<string, MatCard>
+  deckName: string
+  onExit: () => void
+  /** Las handtraps del rival (encendidas, las usa) y cambiarlas desde «Más opciones» (el duelo empieza de nuevo). */
+  handtraps: HandtrapConfig
+  onHandtraps: (next: HandtrapConfig) => void
+}
+
+function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps }: AutoDuelProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const sounds = useSoundsOn()
@@ -128,6 +160,9 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
   const dock = useDockPeek()
   const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
   const rivalName = t('duel.bar.rival')
+  // El rival de handtraps (con el simulador encendido y alguna carta) y la hoja para cambiarlas.
+  const rivalOn = useMemo(() => autoRival(handtraps) !== null, [handtraps])
+  const [choosing, setChoosing] = useState(false)
 
   // ── El ritmo: las jugadas de una tanda se agregan de una vez y el cursor avanza de a una; al rearmarse la mesa se salta al final (un solo commit: se ajusta en el render). ──
   const [paced, setPaced] = useState<Paced>(() => ({ initial: snap.initial.mine, actions: snap.mineActions, cursor: snap.mineActions.length }))
@@ -368,13 +403,43 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
     [theirs, artOf, gesture],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
+  // Su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
+  const rivalCards = rivalOn && !prefs.blind ? snap.rivalHand.map((code) => ({ name: nameOf(null, code), art: artOf(null, code) })) : undefined
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
 
   // ── La línea del registro: lo que no frena (trabada, pensando, la cadena con «No responder», un error de script, la cadena que se resuelve), lo más urgente primero. ──
   const chain = snap.overlay.chain
-  const linkName = (link: ChainLink) => nameOf(link.card, link.code)
+  const linkName = useCallback((link: ChainLink) => nameOf(link.card, link.code), [nameOf])
   const respondNames = (ids: Iterable<string>) => namesList([...ids].map((id) => nameOf({ side: 'mine', id })))
   const newFault = snap.faults[snap.faults.length - 1]
+
+  // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,
+  // con a qué responde (como en el duelo por enlace), y lo que se negó, en la línea. Se mira la cadena (una Trampa que activa desde la mano llega a la mesa colocada, no como
+  // «activar»): después de cada eslabón del rival el núcleo te pregunta, así que la mesa siempre lo ve abierto. Lo que vuelve a llegar al rearmarse la mesa no se cuenta otra vez. ──
+  const [told, setTold] = useState<{ effect?: NonNullable<DuelMatLink['rivalEffect']>; negated?: string } | null>(null)
+  const heard = useRef({ initial: snap.initial, chain: snap.overlay.chain.length, negated: snap.overlay.negated })
+
+  useEffect(() => {
+    const before = heard.current
+    const now = snap.overlay
+
+    heard.current = { initial: snap.initial, chain: now.chain.length, negated: now.negated }
+    if (snap.replaying || before.initial !== snap.initial) return
+    const at = now.chain.findLastIndex((link, i) => i >= before.chain && link.card?.side === 'theirs')
+    const link = now.chain[at]
+    const effect = link
+      ? { key: Date.now(), kind: 'activate' as const, cards: [{ id: link.card!.id, art: artOf(link.card, link.code), name: linkName(link) }], caption: at > 0 ? t('auto.rival.responds', { name: rivalName, to: linkName(now.chain[at - 1]!) }) : t('duel.announce.activate', { name: rivalName }), linger: true }
+      : undefined
+    const negated = now.negated !== before.negated && now.negated.length > 0 && now.chain.length === 0 ? t('auto.lane.negated', { card: namesList(now.negated.map(linkName)) }) : undefined
+
+    if (effect || negated) setTold((current) => ({ ...current, ...(effect ? { effect } : {}), ...(negated ? { negated } : {}) }))
+  }, [snap.initial, snap.overlay, snap.replaying, artOf, linkName, rivalName])
+  useEffect(() => {
+    if (!told) return
+    const timer = window.setTimeout(() => setTold(null), RIVAL_READ_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [told])
   const lane: LaneNotice | null = stuck
     ? { kind: 'ask', text: t('auto.lane.error', { message: stuck }), actions: [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] }
     : snap.status === 'thinking'
@@ -394,7 +459,9 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
           ? { kind: 'ask', text: newFault.kind === 'script' ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') }) : t('auto.lane.error', { message: newFault.message }), actions: [] }
           : snap.unmapped.length > unmappedBase.current
             ? { kind: 'ask', text: t('auto.lane.unmapped', { what: snap.unmapped[snap.unmapped.length - 1]! }), actions: [] }
-            : chainLane(chain, linkName)
+            : told?.negated && chain.length === 0
+              ? { kind: 'ask', text: told.negated, actions: [] }
+              : chainLane(chain, linkName)
 
   // ── ATK/DEF de ahora de la carta del detalle (sólo las del campo los tienen): se busca por código entre las del campo de ese lado. ──
   const peeked = dock.shown
@@ -427,7 +494,7 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
   ) : snap.status === 'ended' && snap.overlay.end ? (
     <EndCover end={snap.overlay.end} lp={snap.overlay.lp} rival={rivalName} onAgain={() => session.restart()} onExit={onExit} />
   ) : snap.status === 'loading' ? (
-    <LoadingCover progress={snap.progress} />
+    <LoadingCover progress={snap.progress} rival={rivalOn} />
   ) : undefined
 
   const link: DuelMatLink = {
@@ -452,9 +519,16 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
         onPlace={(mode) => setAutoPref('place', mode)}
         onRestart={() => session.restart()}
         onManual={() => setAutoPref('duel', false)}
+        handtraps={{
+          on: rivalOn,
+          summary: rivalOn ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) }) : t('auto.bar.handtrapsOff'),
+          onChange: () => setChoosing(true),
+        }}
+        blind={prefs.blind}
+        onBlind={(on) => setAutoPref('blind', on)}
       />
     ),
-    rivalHand: <TheirHand count={theirs.hand.length} />,
+    rivalHand: <TheirHand count={theirs.hand.length} {...(rivalCards ? { cards: rivalCards } : {})} />,
     attackTargets,
     foreignKnown,
     tools: null,
@@ -474,6 +548,7 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
       />
     ) : undefined,
     rivalFlights: { state: theirs, artOf: opponent.artOf },
+    ...(told?.effect ? { rivalEffect: told.effect } : {}),
     undoAvailable: undoable && snap.status !== 'thinking' && !snap.replaying,
     undoPending: snap.replaying,
     turnNumber: snap.overlay.turn,
@@ -495,6 +570,25 @@ function AutoDuel({ session, cardsById, deckName, onExit }: { session: AutoSessi
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={settled ? undefined : skipAhead}>
       <PracticeMat session={matSession} state={state} cardsById={cardsById} deckName={deckName} onDispatch={sentinel} onUndo={() => session.undo()} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} />
+      {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
+      <HandtrapPicker
+        isOpen={choosing}
+        config={handtraps}
+        auto
+        onClose={() => setChoosing(false)}
+        onSave={(picks, hand) => {
+          setChoosing(false)
+          onHandtraps({ enabled: true, picks, hand })
+        }}
+        {...(handtraps.enabled
+          ? {
+              onTurnOff: () => {
+                setChoosing(false)
+                onHandtraps({ ...handtraps, enabled: false })
+              },
+            }
+          : {})}
+      />
       <Presence>
         {options ? (
           <AskOptions
@@ -571,14 +665,19 @@ function chainLane(chain: readonly ChainLink[], nameOf: (link: ChainLink) => str
   return { kind: 'ask', text, actions: [] }
 }
 
-/** La portada de carga: el progreso de las reglas y, detrás, la mesa ya repartida (sin brillo animado: el esqueleto quieto). Abajo, qué hace el rival (`note`; el duelo por enlace no lleva). */
-export function LoadingCover({ progress, note = t('auto.rival.passive') }: { progress: AutoSnapshot['progress']; note?: string | null }) {
+/**
+ * La portada de carga: el progreso de las reglas y, detrás, la mesa ya repartida (sin brillo animado: el esqueleto quieto). Abajo, qué hace el rival (`rival`: el de handtraps);
+ * `note` lo reemplaza (el duelo por enlace no lleva nada: `null`).
+ */
+export function LoadingCover({ progress, rival = false, note }: { progress: AutoSnapshot['progress']; rival?: boolean; note?: string | null }) {
+  const line = note !== undefined ? note : rival ? t('auto.rival.handtraps') : t('auto.rival.passive')
+
   return (
     <div role="status" aria-busy="true" className="grid h-full place-items-center bg-background/85 p-6">
       <div className="grid w-full max-w-xs justify-items-center gap-3 text-center">
         <Callout tone="info">{progress.total === 0 ? t('auto.loading.start') : t('auto.loading.rules', progress)}</Callout>
         <Skeleton still className="h-40 w-full" />
-        {note ? <p className="m-0 text-micro text-soft">{note}</p> : null}
+        {line ? <p className="m-0 text-micro text-soft">{line}</p> : null}
       </div>
     </div>
   )
