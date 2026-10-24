@@ -34,7 +34,8 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true):
         return
       }
 
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE))
+      // Lo inerte no cuenta (una hoja bajada deja a la vista sólo su asa): si no, Tab saldría del panel.
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((element) => !element.closest('[inert]'))
 
       if (focusable.length === 0) {
         event.preventDefault()

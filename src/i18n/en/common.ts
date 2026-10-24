@@ -6,6 +6,8 @@ export const common: Translated<typeof es> = {
   'common.scrollForward': 'Show next',
   'common.cancel': 'Cancel',
   'common.close': 'Close',
+  'common.sheet.lower': 'Lower the sheet',
+  'common.sheet.raise': 'Raise the sheet: {title}',
   'common.delete': 'Delete',
   'common.save': 'Save',
   'common.language': 'Language',

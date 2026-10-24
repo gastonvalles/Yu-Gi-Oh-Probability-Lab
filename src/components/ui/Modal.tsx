@@ -1,13 +1,16 @@
-import { useId, useRef, type ReactNode } from 'react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
+import { useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
+import { useSheetDrag } from '../../app/use-sheet-drag'
 import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
 import { CloseButton } from './IconButton'
+import { SheetHandle } from './SheetHandle'
 import { surface } from './surfaces'
 import { TONE, type Tone } from './tone'
 import { overline } from './typography'
@@ -20,6 +23,8 @@ import { Heading } from './Heading'
 type ModalSize = 'sm' | 'md' | 'full' | 'sheet' | 'screen' | 'keypad'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
+/** Donde `sheet` y `keypad` salen de abajo (`max-sm` de Tailwind v4): ahí una `lowerable` lleva el asa. */
+const SHEET_MEDIA_QUERY = '(width < 40rem)'
 
 const SIZE_CLASS: Record<ModalSize, string> = {
   sm: 'w-[min(32rem,100%)]',
@@ -62,6 +67,11 @@ interface ModalProps {
   closeSize?: 'sm' | 'md'
   /** Posición de la X flotante; reemplaza a la estándar. */
   closeClassName?: string
+  /**
+   * `sheet` o `keypad` con encabezado: en el celular, donde sale de abajo, lleva un asa que la baja sin cerrarla (`SheetHandle`), para ver la mesa (las hojas del duelo automático). Bajada, el
+   * velo se va y los toques llegan a lo de atrás; lo de adentro queda como estaba (inerte) y el foco, en el asa. Cerrar sigue siendo la X, Escape o el botón de siempre.
+   */
+  lowerable?: boolean
   children: ReactNode
 }
 
@@ -89,6 +99,7 @@ export function Modal({
   closeTone = 'close',
   closeSize = 'md',
   closeClassName,
+  lowerable = false,
   children,
 }: ModalProps) {
   const id = useId()
@@ -98,19 +109,51 @@ export function Modal({
   // El fondo cierra sólo si el toque empezó ahí: si empezó en el panel y el panel se achicó o movió antes de
   // soltar (se cerró una explicación, cambió el contenido), el click cae en el fondo pero no es un cierre.
   const pressedBackdropRef = useRef(false)
+  const hasHeader = !bare && (kicker || title || subtitle)
+  const sheet = size === 'sheet' || size === 'keypad'
+  // Sólo las que llevan el asa miran el ancho.
+  const narrow = useMediaQuery(lowerable && sheet ? SHEET_MEDIA_QUERY : null)
+  const drag = useSheetDrag(panelRef)
+  const [wasOpen, setWasOpen] = useState(isOpen)
 
   useBodyScrollLock(isOpen)
   useEscapeKey(onClose, isOpen && dismissible)
   useFocusTrap(panelRef, isOpen)
 
-  const hasHeader = !bare && (kicker || title || subtitle)
-  const sheet = size === 'sheet' || size === 'keypad'
+  // Con el asa (sólo donde sale de abajo) y, si la bajaron, bajada.
+  const docked = narrow && Boolean(hasHeader)
+  const lowered = docked && drag.lowered
+
+  // Cada vez que se abre, arriba.
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen)
+    if (isOpen) drag.setLowered(false)
+  }
+
+  const header = hasHeader ? (
+    // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios). Debajo del asa, el aire de arriba ya lo deja el asa.
+    <header className={cx('flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 min-[1101px]:px-6 min-[1101px]:py-5', docked ? 'pb-4' : 'py-4')}>
+      <div className="flex min-w-0 items-start gap-3">
+        {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', tone ? TONE[tone].text : 'text-foreground')} /> : null}
+        <div className="grid min-w-0 gap-0.5">
+          {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
+          {title ? (
+            <Heading level="section" id={titleId}>
+              {title}
+            </Heading>
+          ) : null}
+          {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
+        </div>
+      </div>
+      {dismissible ? <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} /> : null}
+    </header>
+  ) : null
 
   // Al cerrarse sigue montado mientras sale (`usePresence`): el velo se funde y el panel hace su entrada al revés; el foco ya volvió.
   return usePresence(isOpen, isOpen && typeof document !== 'undefined' ? createPortal(
     <div
       ref={rootRef}
-      className={cx('fixed inset-0 grid place-items-center overscroll-contain p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1101px]:p-0!')}
+      className={cx('fixed inset-0 grid place-items-center overscroll-contain p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1101px]:p-0!', lowered && 'pointer-events-none')}
       onPointerDown={(event) => {
         pressedBackdropRef.current = event.target === event.currentTarget
       }}
@@ -122,8 +165,8 @@ export function Modal({
           : undefined
       }
     >
-      {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 animate-nav-scrim bg-background/80 motion-reduce:animate-none" />
+      {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. Con la hoja bajada se aclara: se ve la mesa. */}
+      <div aria-hidden="true" className={cx('pointer-events-none absolute inset-0 animate-nav-scrim transition-[background-color] duration-200 motion-reduce:animate-none motion-reduce:transition-none', lowered ? 'bg-transparent' : 'bg-background/80')} />
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -131,8 +174,11 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
+        style={docked ? drag.style : undefined}
         className={cx(
           'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 outline-none motion-reduce:animate-none',
+          // Bajada, el fondo deja pasar los toques; la tira del asa, no.
+          lowered && 'pointer-events-auto',
           sheet ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
           'sm:max-h-[calc(100dvh-2rem)]',
           surface.panel,
@@ -140,23 +186,12 @@ export function Modal({
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        {hasHeader ? (
-          // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios).
-          <header className="flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5">
-            <div className="flex min-w-0 items-start gap-3">
-              {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', tone ? TONE[tone].text : 'text-foreground')} /> : null}
-              <div className="grid min-w-0 gap-0.5">
-                {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
-                {title ? (
-                  <Heading level="section" id={titleId}>
-                    {title}
-                  </Heading>
-                ) : null}
-                {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
-              </div>
-            </div>
-            {dismissible ? <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} /> : null}
-          </header>
+        {docked ? (
+          <SheetHandle drag={drag} label={typeof title === 'string' ? title : (ariaLabel ?? '')} className="bg-surface-raised">
+            {header}
+          </SheetHandle>
+        ) : hasHeader ? (
+          header
         ) : dismissible && !hideCloseButton ? (
           <CloseButton
             size={closeSize}
@@ -170,13 +205,13 @@ export function Modal({
           />
         ) : null}
 
-        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-5 min-[1101px]:px-6 min-[1101px]:py-5')}>
+        <div inert={lowered} className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-5 min-[1101px]:px-6 min-[1101px]:py-5')}>
           {children}
         </div>
 
         {footer ? (
           // Un diálogo `bare` arma su propio encabezado (con su padding): su pie queda como estaba, alineado con ese.
-          <footer className={cx('flex flex-wrap items-center justify-end border-t border-border-subtle min-[1101px]:px-6', bare ? 'gap-2 px-4 py-3' : 'gap-3 px-5 py-4')}>
+          <footer inert={lowered} className={cx('flex flex-wrap items-center justify-end border-t border-border-subtle min-[1101px]:px-6', bare ? 'gap-2 px-4 py-3' : 'gap-3 px-5 py-4')}>
             {footer}
           </footer>
         ) : null}

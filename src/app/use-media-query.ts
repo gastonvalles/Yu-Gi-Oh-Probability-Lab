@@ -11,10 +11,11 @@ function canMatchMedia(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
 }
 
-export function useMediaQuery(query: string): boolean {
+/** Si la consulta se cumple, y se actualiza al cambiar. Con `null` no escucha nada y da `false` (lo que sólo a veces depende del ancho, como el asa de un `Modal lowerable`). */
+export function useMediaQuery(query: string | null): boolean {
   const subscribe = useCallback(
     (onChange: () => void) => {
-      if (!canMatchMedia()) {
+      if (query === null || !canMatchMedia()) {
         return () => {}
       }
 
@@ -27,7 +28,7 @@ export function useMediaQuery(query: string): boolean {
 
   return useSyncExternalStore(
     subscribe,
-    () => canMatchMedia() && window.matchMedia(query).matches,
+    () => query !== null && canMatchMedia() && window.matchMedia(query).matches,
     () => false,
   )
 }
