@@ -18,7 +18,8 @@ const GIVE_RANK = 4
 
 /** Lo que no es del motor y va con el apoyo (Señalar, en un duelo). */
 export const SUPPORT_PLACE: MenuPlace = { block: 'support', rank: 0 }
-const PLAY_PLACE: MenuPlace = { block: 'play', rank: 0 }
+/** Una jugada; en automático, todas las opciones del núcleo (el apoyo y los envíos son jugadas manuales que el núcleo no acepta). */
+export const PLAY_PLACE: MenuPlace = { block: 'play', rank: 0 }
 
 /**
  * Dónde va una opción del motor. Una pregunta se clasifica por su primera respuesta y un lote, por su primera parte. `own` son las cartas del menú: mover una de ellas es un envío;

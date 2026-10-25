@@ -485,4 +485,12 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
     expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
     expect(dispatches).toBe(0)
   })
+
+  it('el menú de una carta va en los bloques de la manual: las jugadas con la principal abajo, pegada a la carta', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(IDLE))
+    tap(handCard('Ash Blossom'))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Colocar', 'Invocación Normal', 'Ver carta'])
+  })
 })

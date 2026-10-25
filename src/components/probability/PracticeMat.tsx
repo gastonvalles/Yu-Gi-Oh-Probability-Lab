@@ -5,7 +5,7 @@ import { parseDerivedCardId } from '../../app/calculator-state'
 import { isRivalId, rivalCardOf } from '../../app/handtraps'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import { opaqueOfForeign } from '../../app/mat-control'
-import { SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
+import { PLAY_PLACE, SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type MenuPlace } from '../../app/mat-menu-order'
 import { isOpaqueId } from '../../app/mat-public'
 import { EASE_IN_OUT } from '../../app/motion'
 import {
@@ -1583,7 +1583,13 @@ export function PracticeMat({
     const fromViewer = menu.kind === 'card' && viewer !== null && state[viewer].includes(menu.id)
     const closing = (item: MenuItem): MenuItem => ({ ...item, onSelect: () => { setMenu(null); if (fromViewer && !item.children) setViewer(null); item.onSelect() }, children: item.children?.map(closing) })
 
-    if (duel?.auto) return menu.kind === 'phases' ? duel.auto.phaseItems.map(closing) : menu.kind === 'card' ? (duel.auto.itemsFor(menu.id, menu.drop) ?? []).map(closing) : []
+    // Las de una carta van como en la manual: en escritorio, en bloques (sólo el de las jugadas, con la principal abajo); en la hoja del celular, en el orden del núcleo.
+    if (duel?.auto) {
+      if (menu.kind === 'phases') return duel.auto.phaseItems.map(closing)
+      const items = menu.kind === 'card' ? (duel.auto.itemsFor(menu.id, menu.drop) ?? []).map(closing) : []
+
+      return isDesktop ? inMenuBlocks(items.map((entry) => ({ entry, place: PLAY_PLACE }))) : items
+    }
 
     // Las fases: elegir una es pasar a ella (la Draw Phase después de la End Phase es pasar el turno). Sólo lo hace quien tiene el turno (el botón no abre si no es el tuyo).
     if (menu.kind === 'phases') {
