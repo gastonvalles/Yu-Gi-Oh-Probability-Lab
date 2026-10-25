@@ -8,6 +8,8 @@ import type { RoomAutoState } from '../app/auto/online'
 import { LOCATION as L, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
+import { createMatState, type MatState } from '../app/practice-mat'
+import { showToastMessage } from '../app/use-toast-message'
 import { AutoDuelScreen } from '../components/auto/AutoDuelScreen'
 import { THINKING_CANCEL_MS } from '../components/duel/DuelBar'
 import { fakeOnlineLink } from './support/auto-online-fake'
@@ -15,6 +17,8 @@ import { core, dispatches, handCard, lane } from './support/auto-screen-harness'
 import { CARDS, fakeSession, loc } from './support/auto-session-fake'
 import { createMemoryRoom } from './support/memory-room'
 import { render, tap } from './support/practice-mat-harness'
+
+vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
 
 // El duelo automático por enlace, de la sala a la mesa: «Estoy listo» espera al enlace, la mesa es la de solo con la barra del duelo, las vidas del núcleo son las de la sala,
 // el fin dice la razón del núcleo, la pausa tapa la mesa sin moverla y la revancha arma otra mesa. Con la sala de verdad (`createDuel` en memoria) y el enlace y la sesión de mentira.
@@ -50,7 +54,7 @@ function setup(role: 'host' | 'guest' = 'host') {
 
   room.flush()
   const link = fakeOnlineLink()
-  const calls = { leave: 0, abandon: 0, rematch: 0 }
+  const calls = { leave: 0, abandon: 0, rematch: 0, manual: [] as MatState[] }
   const me = duels[role]
   const connect = () => link
 
@@ -73,6 +77,7 @@ function setup(role: 'host' | 'guest' = 'host') {
           calls.rematch += 1
           me.rematch()
         }}
+        onManual={(table) => calls.manual.push(table)}
         connect={connect}
       />
     )
@@ -295,5 +300,102 @@ describe('auto-screen-online · la mesa', () => {
     expect(handCard('Ash Blossom')).toBeInTheDocument()
     expect(duels.host.getSnapshot().life.lp).toEqual([8000, 8000])
     expect(dispatches).toBe(0)
+  })
+})
+
+describe('auto-screen-online · pasar a manual', () => {
+  const moreOptions = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+
+    return within(screen.getByRole('dialog', { name: 'Más opciones del duelo' }))
+  }
+  const prompt = () => screen.getByText(/quiere seguir el duelo en modo manual/).closest<HTMLElement>('[data-prompt]')!
+
+  it('«Más opciones» lo pide; mientras espera, la línea lo dice con «Cancelar pedido» (y la fila también lo ofrece)', () => {
+    vi.useFakeTimers()
+    const { start, link } = setup('guest')
+
+    start()
+    const more = moreOptions()
+
+    expect(more.getByText('Modo manual')).toBeInTheDocument()
+    expect(more.getByText('Le preguntás a Ana: si acepta, siguen a mano los dos, con la mesa como está. El automático vuelve en la revancha.')).toBeInTheDocument()
+    fireEvent.click(more.getByRole('button', { name: 'Pasar a manual' }))
+    expect(link.manuals).toEqual([true])
+    core(() => link.set({ manual: 'asking' }))
+    expect(more.getByText('Esperando a que Ana acepte seguir en modo manual…')).toBeInTheDocument()
+    fireEvent.click(more.getByRole('button', { name: 'Cancelar pedido' }))
+    expect(link.manuals).toEqual([true, false])
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(lane()).toHaveAttribute('data-lane', 'thinking')
+    expect(lane()).toHaveTextContent('Esperando a que Ana acepte seguir en modo manual…')
+    act(() => vi.advanceTimersByTime(THINKING_CANCEL_MS + 10))
+    fireEvent.click(within(lane()!).getByRole('button', { name: 'Cancelar pedido' }))
+    expect(link.manuals).toEqual([true, false, false])
+  })
+
+  it('el pedido del rival va en el medio, como una pregunta: «Pasar a manual» lo acepta y «Seguir en automático» lo rechaza', () => {
+    const { start, link } = setup()
+
+    start()
+    core(() => link.set({ manual: 'asked' }))
+    expect(prompt()).toHaveTextContent('Beto quiere seguir el duelo en modo manual: cada uno mueve sus cartas a mano, con la mesa como está.')
+    fireEvent.click(within(prompt()).getByRole('button', { name: 'Seguir en automático' }))
+    fireEvent.click(within(prompt()).getByRole('button', { name: 'Pasar a manual' }))
+    expect(link.manuals).toEqual([false, true])
+    core(() => link.set({ manual: 'idle' }))
+    expect(screen.queryByText(/quiere seguir el duelo en modo manual/)).toBeNull()
+  })
+
+  it('cómo terminó mi pedido es un aviso: rechazado, sin respuesta o con una carta bajo el control del otro (y entonces la fila no deja pedirlo y dice por qué)', () => {
+    const { start, link } = setup()
+    const session = start()
+
+    vi.mocked(showToastMessage).mockClear()
+    core(() => link.set({ manual: 'asking' }))
+    core(() => link.set({ manual: 'declined' }))
+    expect(showToastMessage).toHaveBeenLastCalledWith('Beto prefirió seguir en automático.', 'info')
+    core(() => link.set({ manual: 'asking' }))
+    core(() => link.set({ manual: 'expired' }))
+    expect(showToastMessage).toHaveBeenLastCalledWith('Beto no contestó: el duelo sigue en automático.', 'info')
+    core(() => link.set({ manual: 'blocked' }))
+    expect(showToastMessage).toHaveBeenLastCalledWith('No se pudo pasar a manual: hay una carta bajo el control del otro jugador.', 'warning')
+
+    // Una carta de Beto bajo tu control (`f.c1`): la mesa manual no podría seguirla.
+    const mine = session.getSnapshot().mine
+
+    core(() => session.set({ mine: { ...mine, mz: [mine.mz[0]!, { id: 'f.c1', pos: 'atk', counters: 0, materials: [] }, null, null, null] } }))
+    const more = moreOptions()
+
+    expect(more.getByRole('button', { name: 'Pasar a manual' })).toBeDisabled()
+    expect(more.getByText('Ahora no se puede: hay una carta bajo el control del otro jugador.')).toBeInTheDocument()
+  })
+
+  it('acordado, la mesa queda quieta («Pasando a modo manual…»); el invitado sigue a mano con el corte y la mesa del corte', () => {
+    const { start, link, calls } = setup('guest')
+    const session = start()
+
+    core(() => session.ask(IDLE))
+    core(() => link.set({ manual: 'switching' }))
+    expect(lane()).toHaveTextContent('Pasando a modo manual…')
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryByRole('menuitem', { name: 'Invocación Normal' })).toBeNull()
+    expect(calls.manual).toEqual([])
+    vi.mocked(showToastMessage).mockClear()
+    core(() => link.set({ manual: 'agreed', manualDropped: true }))
+    expect(calls.manual).toEqual([session.getSnapshot().mine])
+    expect(showToastMessage).toHaveBeenLastCalledWith('Siguen en modo manual. Lo que estaba a medio jugar se descartó: la mesa quedó como estaba.', 'info')
+    expect(session.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('el anfitrión sigue a mano cuando le llega la mesa manual del invitado (aunque haya recargado y no sepa del acuerdo)', () => {
+    const { start, duels, flush, calls } = setup()
+    const session = start()
+
+    expect(calls.manual).toEqual([])
+    act(() => duels.guest.start(createMatState(['card-1-1', 'card-2-1'], [], 1)))
+    flush()
+    expect(calls.manual).toEqual([session.getSnapshot().mine])
   })
 })

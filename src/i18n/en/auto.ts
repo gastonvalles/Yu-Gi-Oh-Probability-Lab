@@ -125,4 +125,20 @@ export const auto: Translated<typeof es> = {
   'auto.online.cut': 'The duel was cut short: {name} sent invalid plays.',
   'auto.online.broken': "The duel was cut short and can't go on.",
   'auto.online.deckOutWin': "{name} couldn't draw.",
+
+  // Going on with the link duel in manual mode (from «More options»): the row, the request to the other player, the wait and how it ended.
+  'auto.online.manualTitle': 'Manual mode',
+  'auto.online.manualHint': 'You ask {name}: if they agree, you both go on by hand, with the table as it is. Automatic comes back with the rematch.',
+  'auto.online.manualControlHint': "Not right now: a card is under the other player's control.",
+  'auto.online.manualAsk': 'Switch to manual',
+  'auto.online.manualCancel': 'Cancel request',
+  'auto.online.manualAsking': 'Waiting for {name} to agree to go on in manual mode…',
+  'auto.online.manualAsked': '{name} wants to go on with the duel in manual mode: each of you moves your own cards by hand, with the table as it is.',
+  'auto.online.manualKeep': 'Stay automatic',
+  'auto.online.manualSwitching': 'Switching to manual mode…',
+  'auto.online.manualDeclined': '{name} chose to stay automatic.',
+  'auto.online.manualExpired': "{name} didn't answer: the duel stays automatic.",
+  'auto.online.manualControl': "Couldn't switch to manual: a card is under the other player's control.",
+  'auto.online.manualDone': 'You go on in manual mode: each of you moves your own cards.',
+  'auto.online.manualDoneDropped': 'You go on in manual mode. What was half played was dropped: the table stayed as it was.',
 }

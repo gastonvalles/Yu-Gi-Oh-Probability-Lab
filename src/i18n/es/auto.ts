@@ -127,4 +127,20 @@ export const auto = {
   'auto.online.cut': 'El duelo se cortó: {name} mandó jugadas inválidas.',
   'auto.online.broken': 'El duelo se cortó y no se puede seguir.',
   'auto.online.deckOutWin': '{name} no pudo robar.',
+
+  // Seguir el duelo por enlace en modo manual (desde «Más opciones»): la fila, el pedido al otro, la espera y cómo terminó.
+  'auto.online.manualTitle': 'Modo manual',
+  'auto.online.manualHint': 'Le preguntás a {name}: si acepta, siguen a mano los dos, con la mesa como está. El automático vuelve en la revancha.',
+  'auto.online.manualControlHint': 'Ahora no se puede: hay una carta bajo el control del otro jugador.',
+  'auto.online.manualAsk': 'Pasar a manual',
+  'auto.online.manualCancel': 'Cancelar pedido',
+  'auto.online.manualAsking': 'Esperando a que {name} acepte seguir en modo manual…',
+  'auto.online.manualAsked': '{name} quiere seguir el duelo en modo manual: cada uno mueve sus cartas a mano, con la mesa como está.',
+  'auto.online.manualKeep': 'Seguir en automático',
+  'auto.online.manualSwitching': 'Pasando a modo manual…',
+  'auto.online.manualDeclined': '{name} prefirió seguir en automático.',
+  'auto.online.manualExpired': '{name} no contestó: el duelo sigue en automático.',
+  'auto.online.manualControl': 'No se pudo pasar a manual: hay una carta bajo el control del otro jugador.',
+  'auto.online.manualDone': 'Siguen en modo manual: cada uno mueve sus cartas.',
+  'auto.online.manualDoneDropped': 'Siguen en modo manual. Lo que estaba a medio jugar se descartó: la mesa quedó como estaba.',
 } as const

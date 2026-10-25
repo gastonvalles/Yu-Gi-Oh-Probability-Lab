@@ -120,7 +120,7 @@ export type LaneNotice =
   /** Un aviso ya armado (el duelo automático: la cadena, «No responder»): con botones se contesta y va enmarcado en ámbar; sin botones sólo informa. La principal va al final. */
   | { kind: 'ask'; text: string; actions: ReadonlyArray<{ label: string; onSelect: () => void; primary?: boolean }> }
   /** El otro lado está trabajando (el núcleo resuelve, el rival elige): el punto que late y, pasados `THINKING_CANCEL_MS`, «Cancelar» si se puede. */
-  | { kind: 'thinking'; /** Lo que dice, si no es «El núcleo está resolviendo…». */ text?: string; onCancel?: () => void }
+  | { kind: 'thinking'; /** Lo que dice, si no es «El núcleo está resolviendo…». */ text?: string; onCancel?: () => void; /** Lo que dice el botón, si no es «Cancelar» («Cancelar pedido»). */ cancelLabel?: string }
 
 /** Cuánto espera «Cancelar» para aparecer mientras el núcleo resuelve: lo rápido no parpadea. */
 export const THINKING_CANCEL_MS = 1500
@@ -170,7 +170,7 @@ function laneText(lane: Exclude<LaneNotice, { kind: 'looking' }>, name: string):
 }
 
 /** «Cancelar» de lo que se está resolviendo: aparece recién a los `THINKING_CANCEL_MS` (montado de nuevo, vuelve a esperar). */
-function ThinkingCancel({ onCancel }: { onCancel: () => void }) {
+function ThinkingCancel({ onCancel, label }: { onCancel: () => void; label?: string | undefined }) {
   const [shown, setShown] = useState(false)
 
   useEffect(() => {
@@ -181,7 +181,7 @@ function ThinkingCancel({ onCancel }: { onCancel: () => void }) {
 
   return shown ? (
     <Button variant="tertiary" size="sm" className="px-2" onClick={onCancel}>
-      {t('common.cancel')}
+      {label ?? t('common.cancel')}
     </Button>
   ) : null
 }
@@ -226,7 +226,7 @@ export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice
             </Button>
           ))
         : null}
-      {lane.kind === 'thinking' && lane.onCancel ? <ThinkingCancel onCancel={lane.onCancel} /> : null}
+      {lane.kind === 'thinking' && lane.onCancel ? <ThinkingCancel onCancel={lane.onCancel} label={lane.cancelLabel} /> : null}
     </div>
   )
 }
