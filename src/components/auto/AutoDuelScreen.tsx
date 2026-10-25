@@ -5,7 +5,7 @@ import { autoSaveStore, type AutoSaveStore } from '../../app/auto/auto-save'
 import { workerTransport, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
-import { createGuestLink, createHostLink, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type RoomAutoState } from '../../app/auto/online'
+import { createGuestLink, createHostLink, underControl, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type RoomAutoState } from '../../app/auto/online'
 import type { Seat } from '../../app/auto/protocol'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -13,10 +13,12 @@ import { duelResult, type DuelResult } from '../../app/duel-games'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import { isEmojiSignal } from '../../app/duel-signals'
 import type { SocketStatus } from '../../app/duel-socket'
+import type { MatState } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker } from '../duel/DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, type LaneNotice } from '../duel/DuelBar'
 import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
 import { ResultCard } from '../duel/DuelResult'
@@ -25,7 +27,9 @@ import type { FeedEntry } from '../duel/use-duel-feed'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from '../duel/use-duel-table'
 import { cardIdOfDrawId } from '../probability/practice'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
+import { Button } from '../ui/Button'
 import { Segmented } from '../ui/Segmented'
+import { AskPrompt } from './AskPrompt'
 import { Setting } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckListOf } from './deck-list'
@@ -59,6 +63,11 @@ export interface AutoDuelScreenProps {
   onRematch: () => void
   /** El código de la sala: con él el anfitrión guarda el duelo en el navegador (si recarga la página, lo retoma); sin él no guarda nada. */
   code?: string
+  /**
+   * Los dos acordaron seguir en modo manual: la mesa propia del corte, para `duel.start` (la sala sigue como manual hasta la revancha). Sin esto, «Más opciones» no ofrece pasar.
+   * El invitado pasa con el corte del anfitrión; el anfitrión, cuando le llega la mesa manual del invitado.
+   */
+  onManual?: (table: MatState) => void
   /** Pruebas: el enlace de mentira (tiene que ser estable: cambiarlo arma otro enlace). */
   connect?: (transport: OnlineTransport, role: DuelRole) => OnlineLink
 }
@@ -81,11 +90,11 @@ const sessionIds = new WeakMap<AutoSession, number>()
 let lastSessionId = 0
 const sessionKey = (session: AutoSession) => sessionIds.get(session) ?? (sessionIds.set(session, (lastSessionId += 1)), lastSessionId)
 
-export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, connect }: AutoDuelScreenProps) {
+export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, connect }: AutoDuelScreenProps) {
   const { role, peerPresent } = snapshot
   const list = useMemo<DeckList>(() => ({ main: deckListOf(deck.mainIds), extra: deckListOf(deck.extraIds) }), [deck.mainIds, deck.extraIds])
   const [link, setLink] = useState<OnlineLink | null>(null)
-  // El duelo guardado del anfitrión se borra al salir o abandonar (el enlace no lo borra al destruirse: con `StrictMode` borraría lo guardado al volver a montar).
+  // El duelo guardado del anfitrión se borra al salir, abandonar o pasar a manual (el enlace no lo borra al destruirse: con `StrictMode` borraría lo guardado al volver a montar).
   const save = useMemo(() => (code ? autoSaveStore(code) : null), [code])
   const leave = useCallback(() => {
     save?.clear()
@@ -95,6 +104,15 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
     save?.clear()
     onAbandon()
   }, [save, onAbandon])
+  const toManual = useMemo(
+    () =>
+      onManual &&
+      ((table: MatState) => {
+        save?.clear()
+        onManual(table)
+      }),
+    [save, onManual],
+  )
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite, y un enlace escucha el relay y manda; el de la primera pasada se destruye.
   useEffect(() => {
@@ -142,6 +160,7 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
       onLeave={leave}
       onAbandon={abandon}
       onRematch={onRematch}
+      {...(toManual && link?.manual ? { request: (yes: boolean) => link.manual?.(yes), onManual: toManual } : {})}
     />
   )
 }
@@ -229,6 +248,33 @@ function useCoreLife(duel: Duel, snapshot: DuelSnapshot, snap: AutoSnapshot, sea
   }, [duel, snap, seat, mine, result])
 }
 
+/**
+ * El pase a manual de este lado: cómo terminó mi pedido (un aviso) y cuándo la sala sigue como manual (`onManual` con la mesa del corte). El invitado pasa con el corte del
+ * anfitrión (`agreed`: su mesa ya tiene todo lo que contó el núcleo hasta ahí); el anfitrión, cuando le llega la mesa manual del invitado (también si recargó en el medio: su núcleo,
+ * rearmado con lo guardado, está en el mismo punto). Una sola vez por mesa.
+ */
+function usePassToManual({ snapshot, snap, online, rivalName, onManual }: { snapshot: DuelSnapshot; snap: AutoSnapshot; online: OnlineSnapshot; rivalName: string; onManual: ((table: MatState) => void) | undefined }) {
+  const manual = online.manual ?? 'idle'
+  const shown = useRef(manual)
+  const passed = useRef(false)
+  const ready = snapshot.role === 'guest' ? manual === 'agreed' : snapshot.theirs !== null
+
+  useEffect(() => {
+    if (shown.current === manual) return
+    shown.current = manual
+    if (manual === 'declined') showToastMessage(t('auto.online.manualDeclined', { name: rivalName }), 'info')
+    else if (manual === 'expired') showToastMessage(t('auto.online.manualExpired', { name: rivalName }), 'info')
+    else if (manual === 'blocked') showToastMessage(t('auto.online.manualControl'), 'warning')
+  }, [manual, rivalName])
+
+  useEffect(() => {
+    if (passed.current || !onManual || !ready || snap.status === 'loading' || snap.status === 'error' || snap.replaying) return
+    passed.current = true
+    showToastMessage(t(online.manualDropped ? 'auto.online.manualDoneDropped' : 'auto.online.manualDone'), 'info')
+    onManual(snap.mine)
+  }, [onManual, ready, snap, online.manualDropped])
+}
+
 interface AutoDuelTableProps {
   session: AutoSession
   online: OnlineSnapshot
@@ -241,18 +287,25 @@ interface AutoDuelTableProps {
   onLeave: () => void
   onAbandon: () => void
   onRematch: () => void
+  /** Pedir, aceptar (`true`), rechazar o retirar (`false`) seguir en modo manual (`OnlineLink.manual`). */
+  request?: (yes: boolean) => void
+  onManual?: (table: MatState) => void
 }
 
 /** La mesa de un duelo (una sesión): la de «Jugar solo automático» con la barra, el chat, las señales, la pausa y el resultado del duelo por enlace. */
-function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, deck, onLeave, onAbandon, onRematch }: AutoDuelTableProps) {
+function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, deck, onLeave, onAbandon, onRematch, request, onManual }: AutoDuelTableProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const result = duelResult(snapshot.life.lp, snapshot.conceded)
+  const manual = online.manual ?? 'idle'
+  // Acordado el pase a manual, la mesa queda quieta (nada más se contesta) hasta que llega la mesa manual.
+  const switching = manual === 'switching' || manual === 'agreed'
   // El anfitrión corre el núcleo: puede cortar lo que piensa. El invitado, no (el núcleo está en otro navegador).
-  const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null })
+  const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null || switching })
   const paused = !snapshot.peerPresent && result === null
+  usePassToManual({ snapshot, snap, online, rivalName, onManual })
   // Al terminar, la tarjeta del resultado tapa la mesa hasta que se la cierra para mirarla.
   const [resultClosed, setResultClosed] = useState(false)
   const resultOpen = result !== null && !resultClosed
@@ -296,7 +349,13 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     <LoadingCover progress={snap.progress} note={null} />
   ) : undefined
 
-  // «Más opciones» de la barra: lo mismo que en solo (las respuestas a la cadena y la casilla); los sonidos y reconectar ya están.
+  // Pasar a manual: con el duelo en juego y el rival en la sala. Una carta bajo el control del otro no se puede seguir en la mesa manual (ver `underControl`).
+  const want = request ?? NOTHING
+  const canSwitch = request !== undefined && online.phase === 'playing' && result === null && snapshot.peerPresent && snap.status !== 'loading'
+  const control = underControl(snap.mine) || underControl(snap.theirs)
+  const manualHint = switching ? t('auto.online.manualSwitching') : manual === 'asking' ? t('auto.online.manualAsking', { name: rivalName }) : control ? t('auto.online.manualControlHint') : t('auto.online.manualHint', { name: rivalName })
+
+  // «Más opciones» de la barra: lo mismo que en solo (las respuestas a la cadena y la casilla) y pasar a manual; los sonidos y reconectar ya están.
   const settings = (
     <>
       <Setting title={t('auto.bar.chain')} hint={t('auto.bar.chainHint')}>
@@ -305,11 +364,38 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
       <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
         <Segmented label={t('auto.bar.place')} value={prefs.place} onChange={(mode) => setAutoPref('place', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
       </Setting>
+      {canSwitch ? (
+        <Setting title={t('auto.online.manualTitle')} hint={manualHint}>
+          {manual === 'asking' ? (
+            <Button variant="tertiary" className="justify-self-start" onClick={() => want(false)}>
+              {t('auto.online.manualCancel')}
+            </Button>
+          ) : (
+            <Button variant="secondary" icon="hand" className="justify-self-start" disabled={switching || control} onClick={() => want(true)}>
+              {t('auto.online.manualAsk')}
+            </Button>
+          )}
+        </Setting>
+      ) : null}
     </>
   )
+  // Lo del pase a manual en la línea: la espera (con «Cancelar pedido») y el corte. Lo que hay que contestar del núcleo va antes.
+  const manualLane: LaneNotice | null = switching
+    ? { kind: 'thinking', text: t('auto.online.manualSwitching') }
+    : manual === 'asking' && canSwitch
+      ? { kind: 'thinking', text: t('auto.online.manualAsking', { name: rivalName }), onCancel: () => want(false), cancelLabel: t('auto.online.manualCancel') }
+      : null
+  const lane = asks.lane?.kind === 'ask' && asks.lane.actions.length > 0 ? asks.lane : (manualLane ?? asks.lane)
 
   const link: DuelMatLink = {
     ...asks.mat,
+    // El pedido del rival va en el medio, como una pregunta del núcleo (`AskPrompt`): es lo que hay que contestar.
+    prompt:
+      manual === 'asked' && canSwitch ? (
+        <AskPrompt key="manual" text={t('auto.online.manualAsked', { name: rivalName })} yes={{ label: t('auto.online.manualAsk'), onSelect: () => want(true) }} no={{ label: t('auto.online.manualKeep'), onSelect: () => want(false) }} />
+      ) : (
+        asks.mat.prompt
+      ),
     header: (
       <DuelBar
         snapshot={snapshot}
@@ -325,7 +411,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         resultOpen={resultOpen}
         rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs}
         rivalSignalKey={signals.theirsKey}
-        lane={asks.lane}
+        lane={lane}
         // La fase es la de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
         phase={snap.overlay.turn > 0 ? (asks.turnMine ? asks.state.phase : snap.theirs.phase) : null}
         turnNumber={Math.max(1, snap.overlay.turn)}

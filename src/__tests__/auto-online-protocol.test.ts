@@ -33,6 +33,10 @@ const GOOD: AutoMessage[] = [
   { t: 'autoPart', id: 3, i: 1, n: 2, text: '{"t":' },
   { t: 'autoAnswer', askId: 17, answer: { type: 'select_chain', index: null } },
   { t: 'autoResync' },
+  { t: 'autoManual', step: 'ask' },
+  { t: 'autoManual', step: 'yes', dropped: true },
+  { t: 'autoManual', step: 'no', why: 'control' },
+  { t: 'autoManual', step: 'cancel' },
 ]
 
 describe('el protocolo del duelo automático por enlace', () => {
@@ -51,9 +55,9 @@ describe('el protocolo del duelo automático por enlace', () => {
     expect(parseAutoMessage(JSON.stringify({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true, hack: 1 } }))).toEqual({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true } })
   })
 
-  it('cada lado acepta sólo lo que manda el otro, y entre los dos cubren todos los mensajes', () => {
-    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual([])
-    expect([...HOST_ACCEPTS, ...GUEST_ACCEPTS].sort()).toEqual([...new Set(GOOD.map((message) => message.t))].sort())
+  it('cada lado acepta sólo lo que manda el otro (pasar a manual lo piden los dos), y entre los dos cubren todos los mensajes', () => {
+    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual(['autoManual'])
+    expect([...new Set([...HOST_ACCEPTS, ...GUEST_ACCEPTS])].sort()).toEqual([...new Set(GOOD.map((message) => message.t))].sort())
   })
 
   it('rechaza lo mal formado o lo que pasa los topes', () => {
@@ -94,6 +98,10 @@ describe('el protocolo del duelo automático por enlace', () => {
       { t: 'autoAnswer', askId: 0, answer: { type: 'select_chain', index: null } },
       { t: 'autoAnswer', askId: 1, answer: { type: 'select_nada' } },
       { t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: 1 } },
+      { t: 'autoManual' },
+      { t: 'autoManual', step: 'maybe' },
+      { t: 'autoManual', step: 'yes', dropped: false },
+      { t: 'autoManual', step: 'no', why: 'otra' },
     ]
 
     for (const message of bad) expect(parseAutoMessage(JSON.stringify(message)), JSON.stringify(message).slice(0, 80)).toBeNull()

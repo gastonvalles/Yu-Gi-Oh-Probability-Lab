@@ -57,11 +57,18 @@ export type AutoMessage =
   | { t: 'autoAnswer'; askId: number; answer: CoreAnswer }
   /** Invitado → anfitrión: me perdí algo (o acabo de entrar): mandame el duelo de nuevo. */
   | { t: 'autoResync' }
+  /**
+   * Los dos: seguir este duelo en modo manual. `ask` lo pide, `no` lo rechaza y `cancel` lo retira. `yes` del invitado acepta el pedido del anfitrión; el `yes` del anfitrión es el
+   * corte (va detrás de todo lo que contó el núcleo: el invitado pasa a manual al recibirlo), con `dropped` si quedó algo a medio jugar. Un `no` del anfitrión con `why: 'control'`:
+   * una carta está bajo el control del otro jugador y la mesa manual no puede seguirla.
+   */
+  | { t: 'autoManual'; step: ManualStep; dropped?: true; why?: 'control' }
 
+export type ManualStep = 'ask' | 'yes' | 'no' | 'cancel'
 export type AutoMessageKind = AutoMessage['t']
 /** Lo que cada lado acepta recibir (se descarta lo demás, sin avisar). */
-export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync']
-export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart']
+export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync', 'autoManual']
+export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart', 'autoManual']
 
 export function encodeAutoMessage(message: AutoMessage): string {
   return JSON.stringify(message)
@@ -77,6 +84,7 @@ const MAX_CODE = 999_999_999_999
 const MAX_SEED = 2 ** 32 - 1
 const MAX_ASK_ID = 1_000_000
 const REASONS = ['version', 'off', 'data', 'lost'] as const
+const MANUAL_STEPS: readonly unknown[] = ['ask', 'yes', 'no', 'cancel'] satisfies ManualStep[]
 
 const isPlain = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const isInt = (value: unknown, min: number, max: number): value is number => Number.isSafeInteger(value) && (value as number) >= min && (value as number) <= max
@@ -190,6 +198,11 @@ export function parseAutoMessage(input: string, maxBytes = MAX_MESSAGE_BYTES): A
 
     case 'autoResync':
       return { t: 'autoResync' }
+
+    case 'autoManual':
+      if (!MANUAL_STEPS.includes(raw.step) || (raw.dropped !== undefined && raw.dropped !== true) || (raw.why !== undefined && raw.why !== 'control')) return null
+
+      return { t: 'autoManual', step: raw.step as ManualStep, ...(raw.dropped ? { dropped: true as const } : {}), ...(raw.why ? { why: 'control' as const } : {}) }
 
     default:
       return null

@@ -21,7 +21,7 @@ import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
-import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
+import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile, type MatState } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
 import { cardEffects, effectDetail } from '../../app/mat-assistant'
 import type { CardTextHighlight } from '../../app/card-text'
@@ -283,7 +283,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const dealHand = snapshot?.settings.hand ?? handSize
   // Una sala con reglas automáticas nunca reparte la mesa manual (ni la guarda, ni la pausa, ni el siding de acá): la mesa la cuenta el núcleo, en la pantalla del duelo automático.
   // El invitado lo sabe con el saludo del anfitrión, que llega antes de que nadie pueda elegir quién empieza.
-  const autoRoom = snapshot?.settings.auto === true
+  // Salvo que los dos acuerden seguir en modo manual: cada uno arma su mesa manual con la del corte (`onManual`) y, desde ahí y hasta la revancha, la sala es manual (también al
+  // recargar: la mesa manual se guarda como siempre). Mientras falta la mesa del rival sigue la pantalla automática, quieta, para que el campo no salte.
+  const [manualSwitch, setManualSwitch] = useState(false)
+  const autoRoom = snapshot?.settings.auto === true && (!snapshot.mine || (manualSwitch && !snapshot.theirs))
 
   // Una sala pública está en la lista de salas abiertas mientras espera rival (se anota al crearla). Cuando llega el rival pasa a la de los duelos en vivo y su anfitrión lo avisa cada minuto,
   // con cuántos lo miran; si el relay no lo entiende (uno de antes), se baja como siempre al llegar el rival. Se baja al salir o al cerrar la pestaña, y una sala privada nunca se anota.
@@ -402,6 +405,14 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
       duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, dealHand))
     }
   }, [duel, ordered, started, settingsKnown, deckReady, deck, dealHand, autoRoom])
+
+  const toManual = useCallback(
+    (table: MatState) => {
+      duel?.start(table)
+      setManualSwitch(true)
+    },
+    [duel],
+  )
 
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
@@ -612,7 +623,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
       <>
         {AutoDuel ? (
           <Suspense fallback={renderRoom(AUTO_PENDING)}>
-            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} code={intent.room} />
+            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} code={intent.room} onManual={toManual} />
           </Suspense>
         ) : (
           renderRoom(AUTO_PENDING)
@@ -1717,9 +1728,10 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
     if (initial && bannerFor.current !== initial) {
       bannerFor.current = initial
 
-      if (actions.length === 0) setFirstBanner(snapshot.starter === snapshot.me)
+      // Una sala automática que pasó a manual sigue un duelo empezado: no hay quién va primero que anunciar.
+      if (actions.length === 0 && !snapshot.settings.auto) setFirstBanner(snapshot.starter === snapshot.me)
     }
-  }, [initial, actions.length, snapshot.starter, snapshot.me])
+  }, [initial, actions.length, snapshot.starter, snapshot.me, snapshot.settings.auto])
   const hideBanner = useCallback(() => setFirstBanner(null), [])
   useTurnDraw(duel, snapshot, turn)
   useAutoStartClock(duel, snapshot)
