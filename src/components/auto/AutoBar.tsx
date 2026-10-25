@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { useDuelRails } from '../../app/duel-rails'
 import { PHASES, type MatPhase } from '../../app/practice-mat'
+import { useElementFits } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { LaneBanner, LifeTile, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
@@ -21,10 +22,20 @@ export type AutoChainMode = 'ask' | 'never'
 /** Si la casilla de cada carta la elegís vos (`ask`) o va a la primera libre (`auto`). */
 export type AutoPlaceMode = 'ask' | 'auto'
 
+/**
+ * Cuánto tiene que medir la fila de escritorio para llevar las vidas: la flecha (44 px), las dos vidas (36 rem cada una) y los ocho íconos (44 px), con su aire. Con el panel de pasos a
+ * la derecha (y el detalle o el menú abiertos) la columna de la mesa es más angosta: las vidas bajan a la botonera, como en el celular (`onLivesInBar`).
+ */
+const LIVES_IN_BAR_PX = 740
+/** Sin medir (o en las pruebas, sin diseño), entran. */
+const livesFit = (width: number) => width === 0 || width >= LIVES_IN_BAR_PX
+
 interface AutoBarProps {
   rivalName: string
   /** Los puntos de vida de los dos (los cuentan y destellan como en el duelo: `LifeTile`). En el celular no van acá: van abajo (`AutoLives` en `duel.life`). */
   life: { mine: number; theirs: number }
+  /** Si las vidas van en la barra (con laterales, o en una fila de escritorio que las tiene): sin lugar, la pantalla las pone abajo (`duel.life`), como en el celular. */
+  onLivesInBar?: (inBar: boolean) => void
   /** El turno del duelo (desde 1) y si es tuyo. */
   turn: number
   myTurn: boolean
@@ -70,12 +81,15 @@ export function Setting({ title, hint, children }: { title: string; hint: string
   )
 }
 
-/** Las vidas de los dos (`LifeTile`: las cuenta, destella y sacude como en el duelo): en escritorio, en la barra; en el celular, abajo, en la botonera de la mesa (donde va la tuya en el duelo por enlace). */
-export function AutoLives({ rivalName, life }: { rivalName: string; life: { mine: number; theirs: number } }) {
+/**
+ * Las vidas de los dos (`LifeTile`: las cuenta, destella y sacude como en el duelo): en escritorio, en la barra; en el celular, abajo, en la botonera de la mesa (donde va la tuya en el duelo por
+ * enlace). En escritorio, si en la barra no entran, también abajo y del tamaño del celular (`compact`): la botonera no crece.
+ */
+export function AutoLives({ rivalName, life, compact = false }: { rivalName: string; life: { mine: number; theirs: number }; compact?: boolean }) {
   return (
     <>
-      <LifeTile name={rivalName} life={life.theirs} />
-      <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
+      <LifeTile name={rivalName} life={life.theirs} compact={compact} />
+      <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact={compact} />
     </>
   )
 }
@@ -84,13 +98,20 @@ export function AutoLives({ rivalName, life }: { rivalName: string; life: { mine
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace. Es la barra de la práctica: la flecha de
  * «Volver a Jugar» a la izquierda y los mismos íconos, en el mismo orden (`MatBarActions`: la vista, los sonidos, la ventana grande, las handtraps del rival, «Nueva mano» y deshacer), y lo propio del
  * automático: el engranaje con «Más opciones» (respuestas a la cadena, la casilla, las handtraps del rival y «A ciegas», reiniciar el mismo duelo y jugar en modo manual), el turno con la fase y,
- * en escritorio, las vidas de los dos (en el celular van abajo: con los íconos no entran en la fila). En el celular la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de
- * ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
+ * en escritorio, las vidas de los dos (en el celular van abajo: con los íconos no entran en la fila; tampoco en una fila de escritorio angosta, con el panel de pasos: `onLivesInBar`). En el
+ * celular la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto
+ * cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, onUndo, canUndo, onNewHand, onHandtraps, lane = null, log, chain, onChain, place, onPlace, onRestart, onManual, handtraps, blind, onBlind }: AutoBarProps) {
+export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, onExit, onUndo, canUndo, onNewHand, onHandtraps, lane = null, log, chain, onChain, place, onPlace, onRestart, onManual, handtraps, blind, onBlind }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const rails = useDuelRails()
+  // La fila de escritorio se mide (no la ventana): el ancho que deja la mesa depende del menú, del detalle y del panel de pasos.
+  const [row, setRow] = useState<HTMLDivElement | null>(null)
+  const roomy = useElementFits(useMemo(() => ({ current: row }), [row]), livesFit)
+  const livesInBar = rails || (docked && roomy)
+
+  useLayoutEffect(() => onLivesInBar?.(livesInBar), [livesInBar, onLivesInBar])
   const laneOpen = lane !== null
   const phaseName = PHASES.find((entry) => entry.id === phase)?.name
   const whose = myTurn ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })
@@ -209,10 +230,11 @@ export function AutoBar({ rivalName, life, turn, myTurn, phase, onExit, onUndo, 
   if (docked) {
     return (
       // Escritorio: una sola fila, del alto de las vidas. A la izquierda la flecha y las vidas; a la derecha los íconos y, debajo, el turno (en una notebook, en la fila de las vidas no entran juntos).
-      <div className="relative flex items-center gap-1.5 px-0.5 pt-1.5">
+      // Si las vidas no entran (bajan a la botonera), la fila guarda su alto (`min-h-18`, el de una vida): el campo queda donde estaba.
+      <div ref={setRow} className="relative flex items-center gap-1.5 px-0.5 pt-1.5">
         <MatExitButton onExit={onExit} />
-        {lives}
-        <div className="ml-auto flex min-w-0 flex-col items-end gap-0.5">
+        {livesInBar ? lives : null}
+        <div className="ml-auto flex min-h-18 min-w-0 flex-col items-end justify-center gap-0.5">
           <div role="toolbar" aria-label={t('practice.mat.name')} className="-mr-1 flex items-center gap-1">
             {actions()}
           </div>

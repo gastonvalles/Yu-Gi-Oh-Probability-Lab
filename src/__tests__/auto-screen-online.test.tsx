@@ -188,6 +188,46 @@ describe('auto-screen-online · la mesa', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a defensa'])
   })
 
+  it('la mesa del duelo por enlace no lleva los pasos ni los combos de «Jugar solo» (su panel de la derecha es el chat)', () => {
+    const { start } = setup()
+    const session = start()
+
+    core(() => session.ask(IDLE))
+    expect(handCard('Ash Blossom')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Pasos y combos' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Guardar combo' })).toBeNull()
+  })
+
+  it('en escritorio sin el detalle, el visor de las pilas es una tira ancha sobre la fila de las Zonas Extra, con renglones que se deslizan de arriba abajo; una casilla que pregunta el núcleo la esconde hasta contestar, y jugar una carta suya la cierra', () => {
+    const media = window.matchMedia
+
+    // Desde 1101 px (sin el detalle fijo, que llega a los 1440): a la derecha va el chat.
+    window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
+    const { start } = setup()
+    const session = start()
+    const withZeus: CoreAsk = { ...IDLE, special_summons: [loc(500, L.EXTRA, 0)] }
+
+    core(() => session.ask(withZeus))
+    fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+    const slot = document.querySelector<HTMLElement>('[data-pile-slot]')!
+    const list = within(within(slot).getByRole('dialog', { name: 'Extra · 1' })).getByRole('list')
+
+    expect(slot.className).toContain('top-[var(--strip-top,0.5rem)]')
+    expect(slot.className).toContain('bottom-[var(--strip-bottom,50%)]')
+    expect(list).toHaveClass('flex-wrap')
+    expect(list.parentElement).toHaveClass('overflow-y-auto')
+    core(() => session.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~0b110 >>> 0 }))
+    expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
+    core(() => session.ask(withZeus))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: /^Zeus/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    expect(session.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 1, index: 0 })
+    expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
+    expect(dispatches).toBe(0)
+  })
+
   it('pensando: el anfitrión puede cortar al núcleo; el invitado (seat 1) espera sin Cancelar y ve el turno de Ana', () => {
     vi.useFakeTimers()
     const { start } = setup('guest')

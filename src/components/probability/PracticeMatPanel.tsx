@@ -39,6 +39,8 @@ interface PracticeMatPanelProps {
   onDelete: (combo: SavedCombo) => void
   /** Sin la pestaña de combos guardados (en un duelo, donde no se guardan combos). */
   showCombos?: boolean
+  /** Lo que dice la lista vacía, si no es el de la práctica (en «Jugar solo automático» no se arrastra ni se mantiene). */
+  emptyHint?: string
   className?: string
 }
 
@@ -64,7 +66,7 @@ function writeDetails(on: boolean) {
 const NO_CARDS: PanelStep['cards'] = []
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, showCombos = true, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, showCombos = true, emptyHint, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
   // ponytail: cada panel (el lateral y el del celular) lee la preferencia al abrirse; si se cambia en uno, el otro —que está escondido— la toma recién al volver a montarse.
   const [details, setDetails] = useState(readDetails)
@@ -92,7 +94,7 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
       {tab === 'steps' || !showCombos ? (
         steps.length === 0 ? (
           <EmptyState icon="hand" title={t('practice.panel.noPlays')}>
-            {t('practice.panel.noPlaysHint')}
+            {emptyHint ?? t('practice.panel.noPlaysHint')}
           </EmptyState>
         ) : (
           <>

@@ -18,6 +18,8 @@ export interface SavedCombo {
   initial: MatState
   names: Record<string, string>
   actions: MatAction[]
+  /** Se grabó en «Jugar solo automático»: las jugadas las contó el núcleo de reglas. Se abre igual en las dos mesas (es la misma forma). */
+  auto?: true
 }
 
 export function readSavedCombos(): SavedCombo[] {
@@ -101,9 +103,10 @@ interface NewCombo {
   initial: MatState
   actions: readonly MatAction[]
   nameOf: (id: string) => string
+  auto?: boolean
 }
 
-export function createSavedCombo({ name, deckName, initial, actions, nameOf }: NewCombo, combos: readonly SavedCombo[], now = new Date()): SavedCombo {
+export function createSavedCombo({ name, deckName, initial, actions, nameOf, auto = false }: NewCombo, combos: readonly SavedCombo[], now = new Date()): SavedCombo {
   const ids = [...initial.deck, ...initial.extra, ...initial.hand, ...(initial.rival?.hand ?? [])]
 
   return {
@@ -114,5 +117,6 @@ export function createSavedCombo({ name, deckName, initial, actions, nameOf }: N
     initial: structuredClone(initial),
     names: Object.fromEntries(ids.map((id) => [id, nameOf(id)])),
     actions: structuredClone([...actions]),
+    ...(auto ? { auto: true as const } : {}),
   }
 }

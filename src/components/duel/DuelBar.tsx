@@ -616,9 +616,11 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey }:
  * subir o bajar) con la diferencia («−1000») saliendo al lado. En el celular, sin corazón: la fila no se parte. El borde de la tarjeta es de su dueño (violeta el tuyo, ámbar el del rival). Tocarla abre la calculadora.
  * Las dos miden lo mismo de alto.
  */
-export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, big = false }: {
+export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, big = false, compact = false }: {
   /** El de la botonera de abajo (tus vidas): más ancho y con el número más grande. */
   big?: boolean
+  /** La del celular también en escritorio (sin corazón, 56 px de alto): las de «Jugar solo automático» cuando bajan a la botonera porque en la barra no entran. */
+  compact?: boolean
   name: string; /** Lo que se ve en la casilla, si no es el nombre (tus vidas dicen «Vos»; el nombre queda para el lector de pantalla). */ label?: string; life: number; mine?: boolean; /** Un aviso que sale un instante junto a las vidas, con el color de su dueño: el rival, debajo; el propio, arriba. */ bubble?: string | null; /** Cambia con cada señal (aunque diga lo mismo): el globo vuelve a entrar. */ bubbleKey?: number; /** De qué jugador es el color (por defecto, el tuyo si es "mine"): quien mira pone el suyo a cada uno. */ color?: PlayerSide; onClick?: () => void }) {
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
@@ -641,7 +643,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   const health: Tone = ratio > 0.5 ? 'success' : ratio > 0.25 ? 'warning' : 'danger'
   const body = (
     <>
-      <span key={change?.key ?? 'idle'} aria-hidden="true" className={cx('shrink-0 max-[1101px]:hidden', TONE[health].text, change && 'animate-pop motion-reduce:animate-none')}>
+      <span key={change?.key ?? 'idle'} aria-hidden="true" className={cx('shrink-0', compact ? 'hidden' : 'max-[1101px]:hidden', TONE[health].text, change && 'animate-pop motion-reduce:animate-none')}>
         <Icon name="heart" size={big ? 32 : 28} variant="bold" />
       </span>
       <span className="grid min-w-0 content-center gap-1 min-[1101px]:flex-1">
@@ -664,7 +666,12 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
     </>
   )
   // Las dos vidas miden lo mismo de alto (la del rival arriba, la tuya abajo).
-  const style = cx('relative flex h-14 shrink-0 items-center gap-3 rounded-card border bg-card-background px-2 text-left min-[1101px]:h-[4.5rem] min-[1101px]:px-3', big ? 'min-w-28 min-[1101px]:min-w-44' : 'min-w-[5.25rem] min-[1101px]:min-w-36 max-[339px]:min-w-16', tone.border)
+  const style = cx(
+    'relative flex h-14 shrink-0 items-center gap-3 rounded-card border bg-card-background px-2 text-left',
+    !compact && 'min-[1101px]:h-[4.5rem] min-[1101px]:px-3',
+    big ? 'min-w-28 min-[1101px]:min-w-44' : compact ? 'min-w-[5.25rem]' : 'min-w-[5.25rem] min-[1101px]:min-w-36 max-[339px]:min-w-16',
+    tone.border,
+  )
 
   return onClick ? (
     <button ref={setTile} type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-info/60 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
