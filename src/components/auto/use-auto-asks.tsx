@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, itemsInto, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
@@ -9,7 +9,7 @@ import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
-import { allMatIds, cardKindOf, replayMat, type MatAction, type MatPhase, type MatState } from '../../app/practice-mat'
+import { allMatIds, cardKindOf, replayMat, type MatAction, type MatPhase, type MatState, type MatTarget } from '../../app/practice-mat'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
@@ -241,10 +241,18 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // contesta en un efecto; lo demás espera a que la mesa termine de contar. ──
   const pending = snap.ask
   const askId = pending?.askId ?? null
+  /**
+   * La carta de la mano que soltaste en una casilla y elegiste cómo sale (`itemsFor` con `drop`, en la pregunta `from`): la casilla contesta la primera pregunta de casillas que sigue
+   * (`prefer`; `placeAsk` es esa pregunta) y la carta se dibuja ahí mientras el núcleo la cuenta. Se olvida cuando sale de la mano, cuando la mesa ya contó todo y muestra otra vez tus
+   * jugadas del turno (la jugada no se hizo) y al rearmarse la mesa (`initial`: deshacer, reiniciar, cortar al núcleo).
+   */
+  const [dropped, setDropped] = useState<({ id: string; initial: AutoSnapshot['initial']; from: number; placeAsk?: number } & MatTarget) | null>(null)
+  const held = dropped && dropped.initial === snap.initial ? dropped : null
   const open = () => {
     const adapter = session.adapter
+    const prefer = held && (held.placeAsk === undefined || held.placeAsk === askId) ? { prefer: { side: 'mine' as const, zone: held.zone, index: held.index } } : {}
 
-    return pending && adapter ? openAsk(pending, { queries: adapter, prefs: { chainMode: prefs.chain, placeMode: prefs.place }, phase: adapter.mine.phase, typeOf, effectLabel }) : null
+    return pending && adapter ? openAsk(pending, { queries: adapter, prefs: { chainMode: prefs.chain, placeMode: prefs.place }, phase: adapter.mine.phase, typeOf, effectLabel, ...prefer }) : null
   }
   const [opened, setOpened] = useState<{ askId: number | null; state: AskState | null }>({ askId: null, state: null })
   /** Una pregunta sin gesto ni respuesta segura (anunciar una carta sin catálogo): la línea avisa (y, solo, ofrece deshacer). */
@@ -258,11 +266,16 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   if (opened.askId !== askId) {
     const state = open()
+    const type = pending?.ask.type
 
     setOpened({ askId, state: state && !askView(state).auto ? state : null })
     setStuck(null)
     setSub(null)
+    // La casilla soltada contesta sólo la primera pregunta de casillas; si no se pudo usar, la carta deja de esperar ahí.
+    if (held && type === 'select_place' && held.placeAsk === undefined) setDropped(state && askView(state).auto?.why === 'drop' ? { ...held, placeAsk: askId! } : null)
   }
+  // Ya salió de la mano: lo que se soltó, se jugó.
+  if (held && !state.hand.includes(held.id)) setDropped(null)
   const askState = opened.askId === askId ? opened.state : null
 
   useEffect(() => {
@@ -309,6 +322,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // La ventana de una fase que ya pediste dejar (la SP, si desde la DP pediste la Main Phase 1) no se muestra: se pasa sola.
   const passing = view?.phaseWindow ? leaves(allowed, snap.mine.turn, view.phaseWindow) : false
   const shown = settled && !frozen && !passing ? view : null
+
+  // Otra vez tus jugadas del turno, con la mesa ya quieta y la carta soltada todavía en la mano: la jugada no se hizo (se cancelaron los Sacrificios), la carta deja de esperar.
+  // Se mira lo que se muestra y no la pregunta que llega: esa llega junto con las jugadas que la mesa todavía cuenta de a una (la carta volvería a la mano antes de caer).
+  if (held && shown && shown.askId !== held.from && (shown.type === 'select_idlecmd' || shown.type === 'select_battlecmd')) setDropped(null)
 
   useEffect(() => {
     if (passing) session.answer({ type: 'select_chain', index: null })
@@ -359,7 +376,23 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       : null
   const viewerIds = pick && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
   const auto: AutoLink = {
-    itemsFor: (id) => shown?.items.get(id)?.map(menuItem) ?? null,
+    itemsFor: (id, drop) => {
+      const items = shown?.items.get(id)
+
+      if (!shown || !items || !drop) return items?.map(menuItem) ?? null
+      // Soltada en una casilla: lo que la saca ahí; elegirlo la deja en esa casilla (también en el segundo paso, «¿cuál efecto?»).
+      const from = shown.askId
+      const keep = (item: AutoMenuItem): AutoMenuItem => ({
+        ...item,
+        onSelect: () => {
+          setDropped({ id, zone: drop.zone, index: drop.index, initial: snap.initial, from })
+          item.onSelect()
+        },
+        ...(item.children ? { children: item.children.map(keep) } : {}),
+      })
+
+      return itemsInto(items, drop.zone === 'mz' || drop.zone === 'emz' ? 'monster' : 'spell').map((item) => keep(menuItem(item)))
+    },
     phaseItems: (stopped ? stopPhaseItems(state.phase) : (shown?.phaseItems ?? [])).map(menuItem),
     endTurn: shown?.endTurn ? () => gesture({ kind: 'item', answer: shown.endTurn! }) : null,
     zonePick: shown?.zonePick
@@ -382,6 +415,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     asking: shown !== null,
     // Como «No responder» de la línea: en la ventana de una fase tuya (`phaseWindow`) pasar es cambiar de fase, y eso va por el botón de fases.
     cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick) ? () => gesture({ kind: 'cancel' }) : null,
+    dropped: held,
   }
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
 

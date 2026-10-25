@@ -35,6 +35,7 @@ import {
   replayMat,
   TOKEN_KIND,
   type MatAction,
+  type MatCardKind,
   type MatMenuItem,
   type MatPhase,
   type MatPile,
@@ -431,6 +432,11 @@ const TARGET_MS = 5000
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
+/**
+ * En el duelo automático, si una carta de la mano puede caer en esa casilla por lo que es (la clase, monstruo o Mágica y Trampa, la dicen sus jugadas): una Mágica de Campo, sólo en la
+ * de campo; las demás, nunca ahí; un Péndulo, como escala, sólo en las puntas de abajo; en una Zona Extra, nada de la mano.
+ */
+const fitsZone = (kind: MatCardKind, { zone, index }: MatTarget) => (zone === 'field' ? kind.fieldSpell : zone === 'st' ? !kind.fieldSpell && (!kind.pendulum || index === 0 || index === 4) : zone === 'mz')
 const zoneLabelOf = (spot: MatSpot, index: number) => (spot === 'field' ? ZONE_LABELS.field : t('practice.zone.numbered', { zone: ZONE_LABELS[spot], n: index + 1 }))
 
 function prefersReducedMotion(): boolean {
@@ -836,19 +842,20 @@ export function PracticeMat({
   }, [dealt, handTotal])
 
   // La carta soltada en una zona que todavía espera que se elija cómo sale (el menú de esa zona, o los Sacrificios o materiales) se queda en la zona,
-  // en vez de volver a la mano; si se cancela, vuelve. Sin jugada no hay cambio de estado: es sólo cómo se la dibuja mientras tanto.
+  // en vez de volver a la mano; si se cancela, vuelve. Sin jugada no hay cambio de estado: es sólo cómo se la dibuja mientras tanto. En automático, también mientras el núcleo la cuenta.
+  const autoDropped = duel?.auto?.dropped ?? null
   const pending = useMemo<({ id: string } & MatTarget) | null>(() => {
     const waiting =
       menu?.kind === 'card' && menu.drop
         ? { id: menu.id, ...menu.drop }
         : (picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.dropped && picking.zone
           ? { id: picking.action.id, ...picking.zone }
-          : null
+          : autoDropped
 
     // Sólo espera mientras la mesa sigue como estaba al soltarla (la carta en una pila y la zona libre): si cambió por debajo (deshacer, un arrastre
     // a esa zona), no hay nada que dibujar esperando y la carta se queda donde está.
     return waiting && locateCard(state, waiting.id)?.kind === 'pile' && !placedAt(state, waiting.zone, waiting.index) ? waiting : null
-  }, [menu, picking, state])
+  }, [menu, picking, state, autoDropped])
   const pendingId = pending?.id ?? null
 
   // Si la mesa cambia por debajo de lo que esperaba una elección (deshacer, un paso del panel, un arrastre, otro combo), el menú y los Sacrificios o
@@ -1364,10 +1371,26 @@ export function PracticeMat({
     [state, kindOf, nameOf, choose, onDispatch, duel?.rivalEmz],
   )
 
+  /** En automático, lo que el núcleo deja hacer con una carta de la mano soltada en una casilla libre donde puede caer (`fitsZone`); null o vacío si nada. */
+  const autoDrop = useCallback(
+    (id: string, drop: MatTarget) => (state.hand.includes(id) && !placedAt(state, drop.zone, drop.index) && fitsZone(kindOf(id), drop) ? (duel?.auto?.itemsFor(id, drop) ?? null) : null),
+    [state, kindOf, duel?.auto],
+  )
+
   const handleDrop = useCallback(
     (source: MatDragSource, target: MatDropTarget | null) => {
-      // En automático nada se juega arrastrando (la mano sólo se reordena, que es local).
-      if (duel?.auto) return
+      // En automático sólo se suelta una carta de la mano en una casilla donde tiene jugada: el menú ofrece lo que la saca ahí (con una sola sin pregunta, se hace) y la carta se queda
+      // en la casilla mientras se elige y mientras el núcleo la cuenta (`duel.auto.dropped`). Si no hay nada, vuelve a la mano.
+      if (duel?.auto) {
+        if (target?.kind !== 'spot') return
+        const drop = { zone: target.spot, index: target.index }
+        const items = autoDrop(source.id, drop) ?? []
+        const anchor = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(drop.zone, drop.index)}"]`)
+
+        if (items.length === 1 && !items[0]!.children) items[0]!.onSelect()
+        else if (items.length > 0 && anchor) setMenu({ kind: 'card', id: source.id, rect: anchor.getBoundingClientRect(), drop })
+        return
+      }
       // Arrastrar el deck es robar: soltado fuera de toda zona (o en la mano, abajo) roba la carta del tope. Lo demás, soltado ahí, no hace nada.
       if (!target) {
         if (source.id === DECK_TOP && state.deck.length > 0) onDispatch({ type: 'draw', count: 1 })
@@ -1435,7 +1458,7 @@ export function PracticeMat({
       const pos = where.kind === 'spot' ? where.placed.pos : 'atk'
       onDispatch({ type: 'place', id: source.id, zone: target.spot, index: target.index, pos })
     },
-    [state, onDispatch, kindOf, dropInto, duel?.auto],
+    [state, onDispatch, kindOf, dropInto, duel?.auto, autoDrop],
   )
 
   const handleTap = useCallback(
@@ -1502,14 +1525,15 @@ export function PracticeMat({
   // La zona que enciende la mano (la otra fuente de arrastre): se recuerda para apagarla cuando cambia.
   const handLit = useRef<string | null>(null)
   const lightFromHand = useCallback(
-    (next: string | null) => {
-      // En automático soltar en una zona todavía no juega nada: ninguna se enciende.
-      const lit = isAuto ? null : next
+    (next: string | null, id?: string) => {
+      const target = next && isAuto ? parseDrop(next) : null
+      // En automático se enciende sólo la casilla donde esa carta tiene jugada.
+      const lit = !isAuto || (id && target?.kind === 'spot' && autoDrop(id, { zone: target.spot, index: target.index })?.length) ? next : null
 
       lightZone(handLit.current, lit)
       handLit.current = lit
     },
-    [lightZone, isAuto],
+    [lightZone, isAuto, autoDrop],
   )
 
   // Red de seguridad: pase lo que pase con un arrastre (el celular lo corta sin avisar, la mano se vuelve a armar a mitad de camino…), al levantar el dedo ninguna casilla queda
@@ -1537,7 +1561,7 @@ export function PracticeMat({
     // En automático los ítems son los que el núcleo ofrece (`ask-ui`): la de una carta, las fases; elegir uno cierra el menú y contesta. El deck y el lote no tienen menú.
     const closing = (item: MenuItem): MenuItem => ({ ...item, onSelect: () => { setMenu(null); item.onSelect() }, children: item.children?.map(closing) })
 
-    if (duel?.auto) return menu.kind === 'phases' ? duel.auto.phaseItems.map(closing) : menu.kind === 'card' ? (duel.auto.itemsFor(menu.id) ?? []).map(closing) : []
+    if (duel?.auto) return menu.kind === 'phases' ? duel.auto.phaseItems.map(closing) : menu.kind === 'card' ? (duel.auto.itemsFor(menu.id, menu.drop) ?? []).map(closing) : []
 
     // Las fases: elegir una es pasar a ella (la Draw Phase después de la End Phase es pasar el turno). Sólo lo hace quien tiene el turno (el botón no abre si no es el tuyo).
     if (menu.kind === 'phases') {

@@ -2,7 +2,7 @@ import { appendFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { cardMatchesOpcode, OcgDuelMode } from 'ocgcore-wasm'
 import { createAdapter } from '../app/auto/adapter'
-import { askView, openAsk, type AskContext, type AskView } from '../app/auto/ask-ui'
+import { askView, openAsk, type AskContext, type AskView, type ZoneTarget } from '../app/auto/ask-ui'
 import { createAutoHost } from '../app/auto/core-host'
 import { teamOrder } from '../app/auto/deck-map'
 import { randomLegalPolicy } from '../app/auto/policies'
@@ -30,6 +30,8 @@ const PLAYERS = [
   { lp: 8000, hand: 5, draw: 1 },
 ]
 const NO_UI = ['select_counter', 'select_disfield', 'sort_chain', 'announce_card', 'rock_paper_scissors']
+/** Las casillas propias donde se puede soltar una carta de la mano. */
+const DROPS: ZoneTarget[] = [...(['mz', 'st'] as const).flatMap((zone) => [0, 1, 2, 3, 4].map((index) => ({ side: 'mine' as const, zone, index }))), { side: 'mine', zone: 'field', index: 0 }]
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
 
 /** Las respuestas legales de las preguntas de menú (las que se pueden enumerar), para ver qué no ofrece la pantalla. */
@@ -134,6 +136,8 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
         return 0
       }
       const fallback = randomLegalPolicy(seed)
+      // La casilla donde «se soltó» la carta (`prefer`), al azar entre las propias, libres u ocupadas: la que la máscara da contesta sola (`drop`) y el núcleo nunca la rechaza.
+      const drops = seeded(seed + 1)
       const duelStart = performance.now()
       let from = 0
       let end = 'cap'
@@ -160,7 +164,7 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
         }
         const { ask } = asked
         const uiStart = performance.now()
-        const state = openAsk(asked, { queries: adapters[asked.seat]!, prefs, typeOf, announceCard })
+        const state = openAsk(asked, { queries: adapters[asked.seat]!, prefs, typeOf, announceCard, prefer: DROPS[Math.floor(drops() * DROPS.length)]! })
         const view = askView(state)
         const legalOnes = view.auto ? null : legalAnswers(ask)
 
