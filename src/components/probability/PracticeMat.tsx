@@ -90,7 +90,7 @@ import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-fiel
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton } from './MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
@@ -1753,14 +1753,19 @@ export function PracticeMat({
         ? () => setMenu({ ...menu, ask: undefined })
         : undefined
 
+  // Guardar es una foto de lo que se ve, hasta el paso de ahora; nunca una jugada (en automático, la mesa no despacha). Lo que contó el núcleo en vivo queda marcado (`auto`): no un
+  // combo guardado que se está repasando.
   const saveCombo = (name: string) => {
-    const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf }, combos)
+    const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf, auto: Boolean(duel?.auto) && !session.replay }, combos)
     const next = [...combos, combo]
     writeSavedCombos(next)
     setCombos(next)
     setSaving(false)
     showToastMessage(t('practice.combo.saved', { name: combo.name }), 'success')
   }
+  // «Guardar combo» para la barra que arma la pantalla de «Jugar solo automático» (la de la práctica lo recibe por props): el diálogo y la lista siguen siendo de la mesa.
+  const canSave = session.cursor > 0
+  const saveLink = useMemo(() => (duel?.steps ? { onSave: () => setSaving(true), canSave } : null), [duel?.steps, canSave])
 
   const renameCombo = useCallback(
     (combo: SavedCombo, name: string) => {
@@ -2202,7 +2207,9 @@ export function PracticeMat({
           rails ? 'grid grid-cols-[minmax(13rem,1fr)_minmax(0,calc(var(--cell-h)*6.3714+3rem))_minmax(13rem,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] gap-x-4' : 'flex flex-col gap-2',
         )}
       >
-        <DuelRailsContext.Provider value={rails}>{duel?.header}</DuelRailsContext.Provider>
+        <DuelRailsContext.Provider value={rails}>
+          <MatSaveContext.Provider value={saveLink}>{duel?.header}</MatSaveContext.Provider>
+        </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
         <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
         {/* Celular: la mano del rival y el campo van juntos y centrados: el alto que sobra se reparte arriba y abajo (ni pegado a la barra ni un hueco antes de tu mano). Escritorio: sin envoltorio y el campo se centra. */}

@@ -28,6 +28,16 @@ describe('combos guardados', () => {
     expect(combo.initial).not.toBe(initial)
   })
 
+  it('uno grabado en «Jugar solo automático» lleva su marca y se lee igual que los de la práctica; sin la marca, no la lleva', () => {
+    const auto = createSavedCombo({ name: 'Del núcleo', deckName: 'Yummy', initial, actions, nameOf, auto: true }, [])
+    const manual = createSavedCombo({ name: 'A mano', deckName: 'Yummy', initial, actions, nameOf }, [auto])
+    writeSavedCombos([auto, manual])
+
+    expect(readSavedCombos()).toEqual([auto, manual])
+    expect(auto.auto).toBe(true)
+    expect('auto' in manual).toBe(false)
+  })
+
   it('reproducir el combo guardado da el mismo estado final', () => {
     const combo = createSavedCombo({ name: 'Línea', deckName: 'Yummy', initial, actions, nameOf }, [])
     const saved = JSON.parse(JSON.stringify(combo)) as typeof combo

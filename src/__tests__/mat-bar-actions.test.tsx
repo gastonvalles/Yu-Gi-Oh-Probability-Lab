@@ -40,8 +40,8 @@ const barButtons = () =>
     .getAllByRole('button')
     .map((button) => ({ name: button.getAttribute('aria-label'), title: button.getAttribute('title'), pressed: button.getAttribute('aria-pressed'), disabled: (button as HTMLButtonElement).disabled }))
 
-/** Del primero de los íconos compartidos (la vista) hasta deshacer: lo que tiene que ser igual en las dos mesas. */
-const shared = (buttons: ReturnType<typeof barButtons>) => buttons.slice(buttons.findIndex((button) => button.name?.startsWith('Cambiar a la vista')), buttons.findIndex((button) => button.name === 'Deshacer') + 1)
+/** Del primero de los íconos compartidos (la vista) hasta «Guardar combo»: lo que tiene que ser igual en las dos mesas. */
+const shared = (buttons: ReturnType<typeof barButtons>) => buttons.slice(buttons.findIndex((button) => button.name?.startsWith('Cambiar a la vista')), buttons.findIndex((button) => button.name === 'Guardar combo') + 1)
 
 /** La pantalla automática con una sesión de mentira por cada `connect` (con semilla 99; reiniciar con otra semilla la cambia), y lo que se le pidió a cada una. */
 function mountAuto() {
@@ -90,10 +90,10 @@ describe('la barra de la mesa es una sola', () => {
       const auto = barButtons()
 
       expect(shared(auto)).toEqual(shared(practice))
-      expect(shared(practice).map((button) => button.name)).toEqual(['Cambiar a la vista superior', 'Sonidos', ...(layout === 'escritorio' ? ['Ventana grande'] : []), 'Handtraps del rival', 'Nueva mano', 'Deshacer'])
-      // Lo de cada una, después: guardar y los pasos (la práctica); el engranaje (el automático).
-      expect(practice.slice(practice.findIndex((button) => button.name === 'Deshacer') + 1).map((button) => button.name)).toEqual(['Guardar combo', 'Pasos y combos'])
-      expect(auto.slice(auto.findIndex((button) => button.name === 'Deshacer') + 1).map((button) => button.name)).toEqual(['Más opciones del duelo'])
+      expect(shared(practice).map((button) => button.name)).toEqual(['Cambiar a la vista superior', 'Sonidos', ...(layout === 'escritorio' ? ['Ventana grande'] : []), 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Guardar combo'])
+      // Lo de cada una, después: los pasos (la práctica; los del automático van abajo a la derecha); el engranaje (el automático).
+      expect(practice.slice(practice.findIndex((button) => button.name === 'Guardar combo') + 1).map((button) => button.name)).toEqual(['Pasos y combos'])
+      expect(auto.slice(auto.findIndex((button) => button.name === 'Guardar combo') + 1).map((button) => button.name)).toEqual(['Más opciones del duelo'])
       // La flecha de «Volver a Jugar»: en la práctica y en el automático, a la izquierda de los íconos (en el celular, en la misma fila).
       expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
       if (layout === 'celular') expect([practice[0]!.name, auto[0]!.name]).toEqual(['Volver a Jugar', 'Volver a Jugar'])

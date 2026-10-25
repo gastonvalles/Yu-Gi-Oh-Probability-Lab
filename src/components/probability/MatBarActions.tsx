@@ -1,3 +1,5 @@
+import { createContext, useContext } from 'react'
+
 import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -23,6 +25,12 @@ export function MatExitButton({ onExit }: { onExit: () => void }) {
   )
 }
 
+/**
+ * «Guardar combo» de la mesa, para una barra que arma la pantalla (`duel.header`: la de «Jugar solo automático»): el diálogo y la lista de combos son de la mesa (`PracticeMat`),
+ * que lo pone alrededor de esa barra; sin `onSave`, `MatBarActions` toma éste.
+ */
+export const MatSaveContext = createContext<{ onSave: () => void; canSave: boolean } | null>(null)
+
 interface MatBarActionsProps {
   /** Deshacer: la última jugada (la práctica) o tu última orden al núcleo (el automático); `canUndo` apagado si no hay. */
   onUndo: () => void
@@ -33,7 +41,7 @@ interface MatBarActionsProps {
   onHandtraps: () => void
   /** El duelo automático: la hoja de las handtraps dice que aplicar reinicia el duelo y cuáles el rival todavía no usa solo. */
   auto?: boolean
-  /** «Guardar combo» (sin esto no está: el automático todavía no tiene los pasos); `canSave` apagado sin jugadas. */
+  /** «Guardar combo»; `canSave` apagado sin jugadas. Sin esto, el de la mesa (`MatSaveContext`, el automático) o ninguno (el duelo por enlace). */
   onSave?: () => void
   canSave?: boolean
   /** Para el primero (la vista): la práctica empuja el grupo a la derecha (`ml-auto`). */
@@ -45,14 +53,15 @@ interface MatBarActionsProps {
  * la ventana grande (sólo en escritorio: en el celular la mesa ya ocupa todo), las handtraps del rival, «Nueva mano», deshacer y «Guardar combo». Lo propio de cada mesa va después, en
  * su barra: los pasos de la práctica (en el celular) y el engranaje del automático (Gastón, 2026-10-25: «TODAS las mesas deberían ser iguales… menos las opciones de cada una»).
  *
- * - Variantes: con o sin «Guardar combo» (`onSave`); la hoja de las handtraps de la práctica o la del automático (`auto`).
+ * - Variantes: con o sin «Guardar combo» (`onSave`, o el que pone la mesa alrededor de la barra de una pantalla: `MatSaveContext`); la hoja de las handtraps de la práctica o la del
+ *   automático (`auto`).
  * - Estados: blancos y en ámbar al apuntarlos, al enfocarlos (el aro de siempre) o con el ajuste prendido (`aria-pressed`: los sonidos, la ventana grande y las handtraps; la vista 3D con
  *   `data-active`); deshacer y guardar se apagan sin nada que deshacer o guardar.
  * - Accesibilidad: cada uno con `aria-label` y `title` (el de los sonidos y el de la ventana grande dicen qué pasa al tocarlos). Son botones sueltos (un fragmento): van dentro del
  *   `role="toolbar"` de la barra, que los acomoda y los achica en el celular (`MAT_BAR_ROW`, `[&>button]`).
  * - El estado es de toda la app (la vista, los sonidos, la ventana grande y las handtraps se recuerdan): las dos mesas lo comparten y acá no se guarda nada.
  * - Hacer: lo propio de una mesa va después del grupo, en su barra. No hacer: copiar uno de estos botones en otra barra (lo que falta se suma acá, con una prop) ni mostrar uno
- *   que esa mesa no usa (sin `onSave` no hay «Guardar combo»).
+ *   que esa mesa no usa (sin `onSave` ni `MatSaveContext` no hay «Guardar combo»).
  * - Usos: la barra de la práctica (`PracticeMat`), la de «Jugar solo automático» (`AutoBar`: en el celular, en escritorio y con laterales) y la muestra del catálogo; la del duelo
  *   por enlace (`DuelBar`) puede tomarlo igual, con su engranaje y su bandera después.
  */
@@ -60,6 +69,8 @@ export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, auto = 
   const sounds = useSoundsOn()
   const bigWindow = useDuelFullscreen()
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const fromMat = useContext(MatSaveContext)
+  const save = onSave ? { onSave, canSave } : fromMat
 
   return (
     <>
@@ -82,8 +93,8 @@ export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, auto = 
       <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={!canUndo} className="disabled:opacity-35" onClick={onUndo}>
         <Icon name="undo" />
       </IconButton>
-      {onSave ? (
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={!canSave} className="disabled:opacity-35" onClick={onSave}>
+      {save ? (
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={!save.canSave} className="disabled:opacity-35" onClick={save.onSave}>
           <Icon name="save" />
         </IconButton>
       ) : null}
