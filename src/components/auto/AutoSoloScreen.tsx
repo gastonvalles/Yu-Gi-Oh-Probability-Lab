@@ -163,7 +163,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
         life={life}
         turn={snap.overlay.turn}
         myTurn={asks.turnMine}
-        phase={snap.overlay.turn > 0 ? asks.state.phase : null}
+        phase={snap.overlay.turn > 0 ? asks.mat.phase : null}
         onExit={onExit}
         onUndo={() => session.undo()}
         canUndo={asks.undoable && snap.status !== 'thinking' && !snap.replaying}

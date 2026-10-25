@@ -44,6 +44,8 @@ export interface AskItem {
   /** En las fases: la de ahora, y las que el núcleo no ofrece. */
   current?: boolean
   disabled?: boolean
+  /** En las fases: a cuál pasa (sin `answer`, en una parada de `phase-stops.ts`: la mesa sigue contando). */
+  to?: MatPhase
 }
 
 /** Una carta de la pregunta: dónde está en la mesa (`ref`, o null si sólo se nombra por código) y dónde se toca. */
@@ -136,6 +138,8 @@ export interface AskView {
   sort: AskSortView | null
   /** Cancelar (o «No responder», o «Dejar como está») contesta ahora. */
   cancelable: boolean
+  /** Una ventana de tu fase (la Draw, la Standby o la End Phase de tu turno): como en la mesa manual, sin cartel; el botón de fases la pasa. */
+  phaseWindow: MatPhase | null
 }
 
 export type AskGesture =
@@ -158,6 +162,7 @@ interface Base {
   options: AskOptionsView['options']
   targets: (ZoneTarget & { bit: number })[]
   auto: AskView['auto']
+  phaseWindow: MatPhase | null
 }
 
 export interface AskState {
@@ -454,16 +459,26 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
   return items
 }
 
-/** Las seis fases, como el botón de fase de la mesa: las que el núcleo ofrece contestan; la de ahora se marca; las demás, apagadas. */
-function phaseItemsOf(offered: Partial<Record<MatPhase, CoreAnswer>>, phase: MatPhase | null | undefined): AskItem[] {
+/** Las ventanas de tus fases por el `hint_timing` de una cadena (`TIMING_DRAW_PHASE`, `TIMING_STANDBY_PHASE`, `TIMING_END_PHASE`): en el turno del rival vienen en `hint_timing_other`. */
+const PHASE_WINDOWS = [
+  [0x1, 'draw'],
+  [0x2, 'standby'],
+  [0x20, 'end'],
+] as const
+
+/** Las seis fases, como el botón de fase de la mesa: las ofrecidas pasan a ella (con su respuesta, o `null` si no contesta nada); la de ahora se marca; las demás, apagadas. */
+function phaseItemsOf(offered: Partial<Record<MatPhase, CoreAnswer | null>>, phase: MatPhase | null | undefined): AskItem[] {
   return PHASES.map(({ id, name }) => {
     const answer = offered[id]
 
     if (id === phase) return { label: name, current: true }
 
-    return answer ? { label: name, answer } : { label: name, disabled: true }
+    return answer === undefined ? { label: name, disabled: true } : { label: name, to: id, ...(answer ? { answer } : {}) }
   })
 }
+
+/** Las fases en una parada de tu DP o tu SP (`phase-stops.ts`): desde la DP, la SP o la M1; desde la SP, la M1 (el núcleo pide pasar por la M1 antes de la batalla). */
+export const stopPhaseItems = (phase: MatPhase): AskItem[] => phaseItemsOf(phase === 'draw' ? { standby: null, main1: null } : { main1: null }, phase)
 
 // ── Abrir una pregunta ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -480,7 +495,7 @@ export function namesList(names: readonly string[]): string {
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {
   const { ask } = input
   const resolve = resolver(ctx.queries, ask.player)
-  const base: Base = { cards: [], items: new Map(), phaseItems: phaseItemsOf({}, ctx.phase), endTurn: null, prompt: null, options: [], targets: [], auto: null }
+  const base: Base = { cards: [], items: new Map(), phaseItems: phaseItemsOf({}, ctx.phase), endTurn: null, prompt: null, options: [], targets: [], auto: null, phaseWindow: null }
   const cardsOf = <C extends Loc>(list: readonly C[], value?: (card: C) => number) => list.map((card) => askCard(card, resolve(card), value?.(card)))
   const auto = (answer: CoreAnswer | null, why: NonNullable<AskView['auto']>['why']) => void (base.auto = { answer: answer && parseAnswer(answer), why })
 
@@ -505,9 +520,20 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       base.items = itemsOf(ask, resolve, ctx)
       // «Preguntar» pregunta como EDOPro sin «Always chain»: sólo si algo responde de verdad a este momento (`spe_count` del núcleo: los disparos opcionales y los
       // efectos rápidos con el timing de ahora). Una carta que sólo «podría» activarse (una Trampa colocada, en cada paso del propio turno) no pregunta. Forzada, siempre.
-      const quiet = ctx.prefs.chainMode === 'never' || (ask.spe_count === 0 && !ask.forced)
+      // Salvo en tus fases (la Draw, la Standby y la End Phase de tu turno: `hint_timing`) con algo que activar: ahí se juega como en la mesa manual (brilla lo que se
+      // activa y el botón de fases pasa). El post-robo (`0x210000`) no: serían dos paradas por fase. Con «Nunca», tampoco.
+      const own = !ask.forced && ask.selects.length > 0 ? (PHASE_WINDOWS.find(([bit]) => (ask.hint_timing & bit) !== 0)?.[1] ?? null) : null
+      const quiet = ctx.prefs.chainMode === 'never' || (ask.spe_count === 0 && !ask.forced && !own)
 
       if (quiet || ask.selects.length === 0) auto({ type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }, ask.selects.length === 0 ? 'forced' : 'setting')
+      else if (own) {
+        const pass: CoreAnswer = { type: ask.type, index: null }
+
+        // Pasar es ir a la fase que sigue (de la DP también a la M1: la SP se pasa sola) o, en la End Phase, terminar el turno.
+        base.phaseWindow = own
+        base.phaseItems = phaseItemsOf(own === 'draw' ? { standby: pass, main1: pass } : own === 'standby' ? { main1: pass } : { draw: pass }, own)
+        base.endTurn = own === 'end' ? pass : null
+      }
       break
     }
     case 'select_effectyn':
@@ -589,6 +615,7 @@ export function askView(state: AskState): AskView {
     options: null,
     sort: null,
     cancelable: false,
+    phaseWindow: base.phaseWindow,
   }
 
   if (base.auto) return view
