@@ -36,7 +36,7 @@ import { deckListOf } from './deck-list'
 import { sentinel, useAutoAsks } from './use-auto-asks'
 
 /**
- * El duelo automático por enlace (diseño: `docs/duelos-automaticos.md`, «Duelo online»): la sala de siempre (`createDuel`: listos, tirada, chat, señales, vidas, rendirse, revancha) y
+ * El duelo automático por enlace (diseño: `docs/duelo-automatico-enlace.md`): la sala de siempre (`createDuel`: listos, tirada, chat, señales, vidas, rendirse, revancha) y
  * la mesa de «Jugar solo automático» (`PracticeMat` con la composición del duelo y las preguntas del núcleo contestadas en la mesa: `useAutoAsks`), unidas por el enlace del núcleo
  * (`OnlineLink`): el anfitrión corre el núcleo con los dos asientos y el invitado proyecta lo que le llega. Mientras no hay sesión, la sala la dibuja `DuelRoom` (`room`) con lo que el
  * enlace sabe (`RoomAutoState`: si se puede estar listo y qué decir). La mesa no cambia en nada: recibe lo mismo que en solo, con la barra del duelo (`DuelBar`), el chat, las

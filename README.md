@@ -69,7 +69,8 @@ docs/               la documentación
 - `docs/duelo.md`: el duelo con un amigo.
 - `docs/duelo-relay.md`: el relay del duelo: cómo probarlo y publicarlo.
 - `docs/motor-de-cartas.md`: el motor de cartas por capas (el texto y el asistente de la mesa) y la medición del filtro Efecto.
-- `docs/duelos-automaticos.md`: el núcleo real de reglas: «Jugar solo» automático, sus datos y el duelo online automático.
+- `docs/duelos-automaticos.md`: el núcleo real de reglas: «Jugar solo» automático y sus datos.
+- `docs/duelo-automatico-enlace.md`: el duelo automático por enlace: quién corre el núcleo, el protocolo, la reconexión y «Pasar a manual».
 - `docs/i18n.md`: cómo está armada la traducción.
 - `docs/seguridad.md`: qué se protege y qué queda en manos de quien administra las cuentas.
 

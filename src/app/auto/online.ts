@@ -23,7 +23,7 @@ import {
 import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat } from './protocol'
 
 /**
- * El enlace del duelo automático por enlace (diseño: `docs/duelos-automaticos.md`, «Duelo online»): lo que une la sala de siempre (`createDuel`: saludo, listos, tirada, chat,
+ * El enlace del duelo automático por enlace (diseño: `docs/duelo-automatico-enlace.md`): lo que une la sala de siempre (`createDuel`: saludo, listos, tirada, chat,
  * vidas, revancha) con la sesión del núcleo. El anfitrión corre `AutoSession` con el asiento del invitado como remoto (sus preguntas salen por la red) y le manda su vista filtrada
  * por el árbitro; el invitado corre la misma sesión sobre ese flujo, sin núcleo, y contesta con la misma `ask-ui`. Los textos viajan por el mismo relay que el protocolo manual.
  *
