@@ -29,6 +29,7 @@ npm run sync:replays   # replays de torneo de los canales de YouTube
 npm run sync:genesys   # puntos de Genesys
 npm run sync:effects   # capa 1 del motor de cartas (docs/motor-de-cartas.md)
 npm run sync:core      # cards.cdb y scripts para los duelos automáticos, fuera del repo, en los commits de auto-data.lock.json (-- --update-lock los sube)
+# para servir esos datos como en producción: AUTO_DATA_BUILD=1 node scripts/build-auto-data.mjs y VITE_AUTO_DATA_URL=/api/auto-data npm run dev (en PowerShell: Git Bash reescribe /api/…)
 ```
 
 - Los workflows `sync-*.yml` corren con horario y suben solos el meta, las banlists y los replays («Datos diarios…» en `main`); los demás `sync:*` (precios, Genesys, efectos, núcleo) se corren a mano.
