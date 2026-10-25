@@ -13,6 +13,12 @@ const FLAGS = (Q.CODE | Q.POSITION | Q.COUNTERS | Q.OVERLAY_CARD | Q.ATTACK | Q.
 const PILES = [L.DECK, L.HAND, L.GRAVE, L.REMOVED, L.EXTRA] as const
 
 const sorted = (codes: number[]) => [...codes].sort((a, b) => a - b).join(',')
+/**
+ * Cuántos contadores tiene la carta (la mesa lleva uno solo, la suma de los tipos). El paquete 0.1.6 decodifica `QUERY_COUNTERS` al revés: el
+ * núcleo manda `tipo | cantidad << 16` y queda `{ cantidad: tipo }` (Selene con 11 Contadores de Magia, tipo 1, da `{ 11: 1 }`), así que se suman
+ * las claves. ponytail: dos tipos con la misma cantidad comparten clave y uno se pierde; leer el buffer crudo si alguna carta lo necesita.
+ */
+const counted = (counters: Record<number, number> = {}) => Object.keys(counters).reduce((sum, count) => sum + Number(count), 0)
 const posName = (location: number, position: number) => ((position & FACEDOWN) !== 0 ? 'set' : location === L.MZONE && (position & 4) !== 0 ? 'def' : 'atk')
 
 /** Los códigos que lleva un evento (para la regla de que un `reveal` sólo puede decir lo que llegó). */
@@ -53,12 +59,23 @@ export function readReal(lib: OcgCoreSync, handle: OcgDuelHandle, controller: Se
     zones[location] = Array.from({ length: size }, (_, sequence) => {
       const card = cards[sequence]
 
-      return card?.code ? { code: card.code, pos: posName(location, card.position ?? 0), counters: Object.values(card.counters ?? {}).reduce((a, b) => a + b, 0), materials: card.overlayCards ?? [], attack: card.attack, defense: card.defense } : null
+      return card?.code ? { code: card.code, pos: posName(location, card.position ?? 0), counters: counted(card.counters), materials: card.overlayCards ?? [], attack: card.attack, defense: card.defense } : null
     })
   }
 
   return { piles, zones }
 }
+
+/**
+ * Un Xyz con materiales mientras sigue en el Extra: la Invocación Xyz los junta debajo de la carta antes de sacarla, y en ese tramo el núcleo
+ * puede preguntar (dónde va, en qué posición). La mesa no lo puede mostrar y los deja en el campo hasta que sale (`adapter.ts`): mientras tanto
+ * no se comparan el campo ni el cementerio (las diferencias de `TRANSIT`).
+ */
+export function xyzInTransit(lib: OcgCoreSync, handle: OcgDuelHandle): boolean {
+  return ([0, 1] as const).some((controller) => lib.duelQueryLocation(handle, { flags: Q.OVERLAY_CARD as Q, controller, location: L.EXTRA }).some((card) => (card?.overlayCards?.length ?? 0) > 0))
+}
+
+export const TRANSIT = /^(mzone|szone)|^grave/
 
 /** La mesa en el mismo formato que `readReal`; `code` da el código de cada id (0 = no se sabe). */
 export function readMat(state: MatState, code: (id: string) => number) {

@@ -65,6 +65,35 @@ describe('el adaptador: del núcleo a la mesa', () => {
     expect(adapter.mine.gy).toEqual(['card-111-1'])
   })
 
+  it('Xyz del Extra del rival ya barajado y conocido: los materiales salen con la carta que sale, no con la que los recibió', () => {
+    const adapter = createAdapter({ seat: 0, mine: { deck: [111], extra: [] }, theirs: { deck: 2, extra: 2 }, lp: [8000, 8000], typeOf: (code) => types[code] ?? 1 })
+
+    // Su Extra se mostró (c3 es el Xyz 900, c4 otra) y se barajó: es bolsa, y el núcleo junta los materiales debajo de una secuencia que no dice cuál.
+    adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 900, controller: 1, location: L.EXTRA, sequence: 0 }, { code: 901, controller: 1, location: L.EXTRA, sequence: 1 }] }, { type: 'shuffle_extra', player: 1, cards: [0, 0] }))
+    adapter.apply(events(0, move(555, at(1, L.DECK, 1, 10), at(1, L.MZONE, 0)), move(556, at(1, L.DECK, 0, 10), at(1, L.MZONE, 1))))
+    adapter.apply(events(0, move(555, at(1, L.MZONE, 0), at(1, L.EXTRA, 0, P.FACEUP_ATTACK, 0)), move(556, at(1, L.MZONE, 1), at(1, L.EXTRA, 0, P.FACEUP_ATTACK, 1)), move(900, at(1, L.EXTRA, 0, 10), at(1, L.MZONE, 5)), played('spsummoning', 900, at(1, L.MZONE, 5))))
+
+    expect(adapter.theirs.state.emz[0]).toMatchObject({ id: 'c3', materials: ['c1', 'c2'] })
+    expect(adapter.theirs.state.mz.slice(0, 2)).toEqual([null, null])
+    expect(adapter.apply(events(0, move(555, at(1, L.MZONE, 5, P.FACEUP_ATTACK, 0), at(1, L.GRAVE, 0)))).unmapped).toEqual([])
+    expect(adapter.theirs.state.gy).toEqual(['c1'])
+  })
+
+  it('un Kaiju: de la mano de su dueño al campo del otro, en las dos mesas', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 0, drawn: [{ code: 111, position: 10 }] }, { type: 'draw', player: 1, drawn: [{ code: 0, position: 10 }] }))
+    const mine = adapter.apply(events(0, move(111, at(0, L.HAND, 0, 10), at(1, L.MZONE, 2)), played('spsummoning', 111, at(1, L.MZONE, 2))))
+
+    expect(mine.mine).toEqual([{ type: 'give', id: 'card-111-1' }])
+    expect([adapter.mine.hand, adapter.theirs.state.mz[2]?.id]).toEqual([[], 'f.card-111-1'])
+    // El del rival, a mi campo: sale de su mano en el espejo y entra a la mía como ajena.
+    const theirs = adapter.apply(events(0, move(777, at(1, L.HAND, 0, 10), at(0, L.MZONE, 1)), played('spsummoning', 777, at(0, L.MZONE, 1))))
+
+    expect(theirs.mine).toEqual([{ type: 'take', id: 'f.c1', zone: 'mz', index: 1, pos: 'atk' }])
+    expect([adapter.theirs.state.hand, adapter.codeOf({ side: 'mine', id: 'f.c1' })]).toEqual([[], 777])
+  })
+
   it('fichas que aparecen y se van, y un Péndulo que vuelve al Extra boca arriba', () => {
     const adapter = make()
 

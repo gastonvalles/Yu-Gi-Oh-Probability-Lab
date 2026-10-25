@@ -331,6 +331,21 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(step(open({ ...(ASKS[5] as Extract<CoreAsk, { type: 'select_card' }>), can_cancel: false }, ctx(MESA)), { kind: 'cancel' }).answer).toBeUndefined()
   })
 
+  it('elegir casi todas (A Bao A Qu: 9 de las 10 de la mano, sin cancelar): están todas a un toque y el jugador al azar siempre termina', () => {
+    const codes = [24461358, 45171524, 33599853, 40543231, 94145021, 45171524, 42141493, 94145021, 24461358, 82782870]
+    const hand = mesa(codes.map((code, i) => ({ side: 'mine', id: `card-${code}-${i}`, code, location: L.HAND, sequence: i })))
+    const ask: CoreAsk = { type: 'select_card', player: 0, can_cancel: false, min: 9, max: 9, selects: codes.map((code, i) => pos(code, L.HAND, i, 10)) }
+    const random = seeded(9)
+
+    expect(askView(open(ask, ctx(hand))).cardPick).toMatchObject({ surface: 'mat', eligible: codes.map((_, i) => i), done: false })
+    for (let run = 0; run < 60; run += 1) {
+      const played = playAsk(open(ask, ctx(hand)), random)
+
+      expect({ stuck: played.stuck, dead: played.dead }).toEqual({ stuck: false, dead: 0 })
+      expect(legal(ask, played.answer!)).toBe(true)
+    }
+  })
+
   it('elegir cartas: en la mesa, en una sola pila mía (el deck barajado da cada una con su código, sin repetir) o en una lista aparte', () => {
     const deck: Spot[] = [100, 100, 300, 900].map((code, i) => ({ side: 'mine', id: `card-${code}-${i + 11}`, code, location: L.DECK, sequence: i }))
     const queries = mesa([...CARDS, ...deck], { bag: true })

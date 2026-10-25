@@ -395,7 +395,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       const pos = posOf(to.location, to.position)
 
       if (fromSpot) return from.controller === to.controller ? emit(to.controller, { type: 'place', id: matId(card, to.controller), zone: toSpot.zone, index: toSpot.index, pos }) : control(card, from, to)
-      // Del cementerio o del destierro del otro a mi campo (Monster Reborn sobre una suya): sale de su mesa y entra a la mía como ajena.
+      // De una pila del otro a mi campo (Monster Reborn sobre una de su cementerio; un Kaiju o Contact "C", de su mano): sale de su mesa y entra a la mía como ajena.
       if (card.owner !== to.controller) {
         if (toSpot.zone === 'emz') return note('move: a card of the other side to an Extra Monster Zone')
         emit(card.owner, { type: 'give', id: card.id })
@@ -408,6 +408,14 @@ export function createAdapter(options: AdapterOptions): Adapter {
       if (pos === 'atk' && to.location === L.SZONE) openedNow.add(card)
       if (how === 'fusion' || how === 'synchro' || how === 'xyz' || how === 'link') {
         if (toSpot.zone === 'field') return note('move: an Extra Deck monster to the Field Zone')
+        // En una bolsa (el Extra del rival, barajado) el núcleo junta los materiales debajo de una secuencia, que no dice cuál carta es: quedaron
+        // en una cualquiera y son de la que sale (elegida por su código).
+        const holder = how === 'xyz' && !materials.has(card) ? places[from.controller].extra.find((item) => materials.has(item)) : undefined
+
+        if (holder) {
+          materials.set(card, materials.get(holder)!)
+          materials.delete(holder)
+        }
         // Los materiales del Xyz siguen en la mesa hasta ahora (no se pueden poner debajo de una carta del Extra): la invocación los lleva.
         const held = (materials.get(card) ?? []).map((material) => matId(material, to.controller))
         const onField = held.filter((material) => {

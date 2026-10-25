@@ -120,7 +120,7 @@ export type MatAction =
    */
   | { type: 'phase'; phase: MatPhase; skipDraw?: true }
   /**
-   * Control de una carta (duelo): `give` la saca de mi mesa —del campo (los materiales van a mi cementerio), del cementerio o del destierro— para que la tenga el rival, o la devuelve si era de él (su id lleva `f.`);
+   * Control de una carta (duelo): `give` la saca de mi mesa —del campo (los materiales van a mi cementerio) o de una pila— para que la tenga el rival, o la devuelve si era de él (su id lleva `f.`);
    * `take` pone en mi campo una carta de él (con su id `f.…`), venga de su campo, de su cementerio o de su destierro; `regain` me devuelve una carta mía que el rival tenía (al campo o a una pila). Lo que hace uno, el otro lo
    * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). Ver `mat-control.ts`.
    */
@@ -504,8 +504,10 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     case 'give': {
       const where = locateCard(state, action.id)
 
-      // Se da (o se le suelta al rival) una carta del campo, del cementerio o del destierro: la mano, el deck, el Extra, un material o una ficha no.
-      if ((where?.kind !== 'spot' && !(where?.kind === 'pile' && (where.pile === 'gy' || where.pile === 'banished'))) || isToken(action.id)) {
+      // Se da (o se le suelta al rival) una carta del campo o de una pila: el menú sólo lo ofrece en el campo, y el rival la toma de su cementerio o su
+      // destierro; en un duelo automático el núcleo también la manda de la mano o del deck al campo del rival (un Kaiju de la mano, Allure Palace del deck).
+      // Un material o una ficha no.
+      if ((where?.kind !== 'spot' && where?.kind !== 'pile') || isToken(action.id)) {
         return state
       }
 

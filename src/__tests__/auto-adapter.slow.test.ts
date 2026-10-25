@@ -1,13 +1,13 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { cardMatchesOpcode, OcgDuelMode, OcgLocation as L, OcgQueryFlags as Q } from 'ocgcore-wasm'
+import { cardMatchesOpcode, OcgDuelMode, OcgLocation as L } from 'ocgcore-wasm'
 import { createAdapter, type Adapter } from '../app/auto/adapter'
 import { createAutoHost } from '../app/auto/core-host'
 import { teamOrder } from '../app/auto/deck-map'
 import { randomLegalPolicy, type CardPicker } from '../app/auto/policies'
 import type { AutoCommand, AutoEvent, Seat } from '../app/auto/protocol'
 import { whoseTurn } from '../app/duel-turn'
-import { codeOfId, codesIn, compare, readMat, readReal } from './support/core-compare'
+import { codeOfId, codesIn, compare, readMat, readReal, TRANSIT, xyzInTransit } from './support/core-compare'
 import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, runDuel, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -112,7 +112,7 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
         if (!host.live) return
         tally.tandas += 1
         const { lib, handle } = host.live
-        const extraHeld = ([0, 1] as const).some((controller) => lib.duelQueryLocation(handle, { flags: Q.OVERLAY_CARD as Q, controller, location: L.EXTRA }).some((card) => (card?.overlayCards?.length ?? 0) > 0))
+        const extraHeld = xyzInTransit(lib, handle)
 
         if (extraHeld) tally.whitelist['xyz: materials under an Extra Deck card (transit)'] = (tally.whitelist['xyz: materials under an Extra Deck card (transit)'] ?? 0) + 1
         const field = lib.duelQueryField(handle)
@@ -139,7 +139,7 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
             const real = readReal(lib, handle, controller)
             let diffs = compare(real, mat, own)
 
-            if (extraHeld) diffs = diffs.filter((diff) => !/^(mzone|szone)|^grave/.test(diff))
+            if (extraHeld) diffs = diffs.filter((diff) => !TRANSIT.test(diff))
             // (c) el overlay: las vidas, el ATK/DEF de lo que se ve y quién juega.
             // Las vidas del núcleo son u32: debajo de 0 dan la vuelta (y la pantalla muestra 0).
             const lp = Math.max(0, (field.players[controller] as unknown as { lp: number }).lp | 0)
