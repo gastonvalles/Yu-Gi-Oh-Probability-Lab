@@ -3,7 +3,7 @@ import { MAX_LP } from '../life-calculator'
 import { parseAnswer, parseAutoEvent, type AutoEvent, type CoreAnswer, type Seat } from './protocol'
 
 /**
- * El duelo automático por enlace (diseño: `docs/duelos-automaticos.md`, «Duelo online»): los mensajes de texto que el anfitrión (que corre el núcleo con los dos asientos) y el
+ * El duelo automático por enlace (diseño: `docs/duelo-automatico-enlace.md`): los mensajes de texto que el anfitrión (que corre el núcleo con los dos asientos) y el
  * invitado (que no lo corre) se mandan por el mismo relay, al lado del protocolo manual de `duel-protocol.ts`, que los ignora (`parseMessage` da `null` con un `t` que no conoce).
  * Es puro: tipos, límites, validación (`parseAutoMessage`), troceo de lo que no entra en un mensaje y el marcapasos del que manda. El relay no cambia: reenvía texto, con tope de
  * 16 KB por mensaje y 30 por segundo (ráfaga de 60).

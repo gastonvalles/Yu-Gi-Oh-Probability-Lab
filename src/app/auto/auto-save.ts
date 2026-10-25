@@ -4,7 +4,7 @@ import type { DeckList } from './deck-map'
 import { parseAnswer, type Seat } from './protocol'
 
 /**
- * El duelo automático por enlace guardado por el anfitrión (diseño: `docs/duelos-automaticos.md`, «Duelo online»): con la semilla, su asiento, la mano de la sala, los dos
+ * El duelo automático por enlace guardado por el anfitrión (diseño: `docs/duelo-automatico-enlace.md`): con la semilla, su asiento, la mano de la sala, los dos
  * decks y las respuestas aceptadas de los dos, el núcleo vuelve a contar el duelo entero (`restore` de la sesión) si el anfitrión recarga la página, y el invitado lo recibe de
  * nuevo. Nada más: ni nombres ni mensajes. Se escribe con cada respuesta aceptada, se reescribe en cada revancha, se borra cuando el duelo termina (o lo borra la pantalla al
  * abandonar) y vence como el guardado del duelo manual (`SAVE_TTL_MS`).
