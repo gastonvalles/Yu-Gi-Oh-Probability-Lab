@@ -2005,7 +2005,8 @@ export function PracticeMat({
   // Los visores de las pilas en la mesa de un duelo de escritorio (salvo con el chat y el detalle, desde 1440 px: ahí va en la columna del chat) son una tira horizontal sobre la fila de las Zonas
   // Extra, del ancho del campo, que no llega a tu mano (Gastón, 2026-10-25: «en el medio de la pantalla o sobre las extra monster zone para no tapar la mano y en horizontal»). Tapa el campo del
   // rival y la fila del medio (las fases, el reloj); se esconde mientras se elige en el campo (una casilla, cartas, a quién atacar), que podría quedar debajo, salvo en el visor que elige.
-  const pileStrip = isDesktop && isDuel && !(duel?.aside && detail)
+  // Con los pasos y combos a la derecha («Jugar solo automático»), el visor va en su columna, como en la práctica.
+  const pileStrip = isDesktop && isDuel && !stepsPanel && !(duel?.aside && detail)
   const stripOpen = pileStrip && (viewer !== null || rivalViewing || Boolean(duel?.auto?.viewer))
   const stripHidden = pileStrip && (attackAsk !== null || (choosing && !duel?.auto?.viewer))
   const slotRef = useRef<HTMLDivElement | null>(null)
@@ -2563,7 +2564,7 @@ export function PracticeMat({
           'pointer-events-none absolute z-[115] grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]',
           pileStrip
             ? 'top-[var(--strip-top,0.5rem)] right-[var(--strip-right,0px)] bottom-[var(--strip-bottom,50%)] left-[var(--strip-left,0px)]'
-            : cx('row-[1/3] inset-2', duel ? 'col-[3/4]' : cx('min-[1101px]:col-[2/3]', Boolean(detail) && 'min-[1440px]:col-[3/4]')),
+            : cx('row-[1/3] inset-2', stepsPanel ? cx('min-[1101px]:col-[2/3]', Boolean(detail) && 'min-[1440px]:col-[3/4]') : 'col-[3/4]'),
         )}
       >
         {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}

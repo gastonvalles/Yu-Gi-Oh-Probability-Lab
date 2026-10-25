@@ -468,22 +468,17 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
     window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
   })
 
-  it('es una tira ancha sobre la fila de las Zonas Extra, con renglones que se deslizan de arriba abajo; una casilla que pregunta el núcleo la esconde hasta contestar, y jugar una carta suya la cierra', () => {
+  // La tira sobre las Zonas Extra es la de las mesas sin columna a la derecha (el duelo por enlace sin el detalle: `auto-screen-online`).
+  it('con los pasos y combos a la derecha, va en su columna, como en la práctica (no tapa el campo ni tu mano); jugar una carta suya lo cierra', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
     fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
     const slot = document.querySelector<HTMLElement>('[data-pile-slot]')!
-    const list = within(within(slot).getByRole('dialog', { name: 'Extra · 1' })).getByRole('list')
 
-    expect(slot.className).toContain('top-[var(--strip-top,0.5rem)]')
-    expect(slot.className).toContain('bottom-[var(--strip-bottom,50%)]')
-    expect(list).toHaveClass('flex-wrap')
-    expect(list.parentElement).toHaveClass('overflow-y-auto')
-    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~0b110 >>> 0 }))
-    expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
-    core(() => fake.ask(IDLE))
+    expect(within(slot).getByRole('dialog', { name: 'Extra · 1' })).toBeInTheDocument()
+    expect(slot.className).toContain('min-[1101px]:col-[2/3]')
+    expect(slot.className).not.toContain('--strip-top')
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: /^Zeus/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
     expect(fake.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 1, index: 0 })
