@@ -21,6 +21,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
 import { DuelCardDock } from '../duel/DuelCardDock'
 import { DUEL_AREAS, DUEL_AREAS_COMPACT, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
+import { RivalCardDetail } from '../duel/RivalCardDetail'
 import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES } from '../probability/MatDialogs'
 import { cardIdOfDrawId } from '../probability/practice'
@@ -379,23 +380,35 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           }
         : null,
     asking: shown !== null,
+    // Como «No responder» de la línea: en la ventana de una fase tuya (`phaseWindow`) pasar es cambiar de fase, y eso va por el botón de fases.
+    cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick) ? () => gesture({ kind: 'cancel' }) : null,
   }
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
 
   // ── El rival: su espejo, dibujado por lo que el núcleo dejó ver (`codeOf`). ──
   const theirs = snap.theirs
   const turnMine = snap.overlay.turnPlayer === seat
+  /** La carta del rival que se tocó, grande (como «Ver carta»), donde no está el detalle fijo de la izquierda. */
+  const [rivalCard, setRivalCard] = useState<{ drawId: string; rect: DOMRect } | null>(null)
+  const choosing = Boolean(shown?.cardPick || shown?.zonePick)
+  const lockDock = dock.lock
   const opponent = useMemo<DuelSideView>(
     () => ({
       state: theirs,
       artOf: (id) => artOf({ side: 'theirs', id }),
       handCount: theirs.hand.length,
-      // Tocar una carta suya elige (cuando la pregunta la ofrece: el objetivo de un ataque, una carta de su campo).
-      onMark: (target) => {
-        if ('card' in target) gesture({ kind: 'card', ref: { side: 'theirs', id: target.card } })
+      // Tocar una carta suya elige (cuando la pregunta pide elegir: el objetivo de un ataque, una carta de su campo); si no, la muestra: en el detalle de la izquierda o, sin él, grande.
+      onMark: (target, rect) => {
+        if (!('card' in target)) return
+        const ref: CardRef = { side: 'theirs', id: target.card }
+        const code = codeOf(ref)
+
+        if (choosing) gesture({ kind: 'card', ref })
+        else if (wide) lockDock(code ? { drawId: drawIdOf(code) } : { faceDown: true })
+        else if (code) setRivalCard({ drawId: drawIdOf(code), rect })
       },
     }),
-    [theirs, artOf, gesture],
+    [theirs, artOf, gesture, choosing, wide, lockDock, codeOf],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
@@ -553,6 +566,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           />
         ) : null}
       </Presence>
+      <Presence>{rivalCard ? <RivalCardDetail key={rivalCard.drawId} drawId={rivalCard.drawId} origin={rivalCard.rect} onClose={() => setRivalCard(null)} /> : null}</Presence>
     </>
   )
 

@@ -352,6 +352,8 @@ const MAT_CARD = [
   CARD_HOVER,
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
+  // En el duelo automático no se arrastra (`still`): sólo se toca.
+  'data-[still=true]:cursor-pointer',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)] data-[glow-kind=respond]:[--glow-rgb:var(--warning-rgb)]!',
   'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
@@ -619,6 +621,7 @@ export function PracticeMat({
   const panels = useMatPanels(sectionRef, { left: Boolean(detail), right: sidePanel })
   const view = useMatView()
   const isDuel = Boolean(duel)
+  const isAuto = Boolean(duel?.auto)
   // La mano del rival del simulador de handtraps está arriba del campo (sólo en la práctica): el campo de la vista 3D no sube más que ella.
   const hasRivalStrip = !isDuel && (state.rival?.hand.length ?? 0) > 0
   // Los sonidos de la práctica (Gastón, 2026-10-20: «en la práctica no suenan los efectos del duelo»): cada jugada, deshacer y los pasos de un combo. En un duelo suenan con `useDuelSounds`, las de los dos.
@@ -633,6 +636,8 @@ export function PracticeMat({
 
   useEscapeKey(() => setPicking(null), picking !== null)
   useEscapeKey(() => setCounterMode(null), counterMode !== null)
+  // En automático, Escape cancela lo que se elige en la mesa (cartas, Sacrificios) o es «No responder» en una cadena, como su botón.
+  useEscapeKey(() => duel?.auto?.cancel?.(), Boolean(duel?.auto?.cancel))
 
   useEffect(() => {
     if (!flash) return
@@ -1293,8 +1298,15 @@ export function PracticeMat({
         onPeek({ name, card: apiCard })
       }
 
-      // En automático una carta que la pregunta ofrece se elige con el toque; una con jugadas legales abre su menú; las demás sólo se muestran en el detalle.
-      if (duel?.auto) return duel.auto.cardPick?.eligible.has(id) ? duel.auto.cardPick.onToggle(id) : duel.auto.itemsFor(id) ? setMenu({ kind: 'card', id, rect }) : undefined
+      // En automático una carta que la pregunta ofrece se elige con el toque; si no, abre su menú con las jugadas legales. Sin ninguna, el menú lo dice y ofrece «Ver carta» (como en la
+      // mesa manual, tocar siempre muestra algo); con el detalle fijo a la izquierda ya se ve ahí. Eligiendo cartas o una casilla, tocar otra no hace nada.
+      if (duel?.auto) {
+        const { cardPick, zonePick } = duel.auto
+
+        if (cardPick?.eligible.has(id)) cardPick.onToggle(id)
+        else if (duel.auto.itemsFor(id) || !(detail || cardPick || zonePick)) setMenu({ kind: 'card', id, rect })
+        return
+      }
 
       // Poniendo o quitando contadores: tocar una carta del campo suma o resta uno y se sigue; lo demás no hace nada.
       if (counterMode !== null) {
@@ -1324,7 +1336,7 @@ export function PracticeMat({
     },
     // pickTribute y pickMaterial leen `picking` y `state` del render actual.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picking, state, counterMode, cardOf, onPeek, duel?.auto],
+    [picking, state, counterMode, cardOf, onPeek, duel?.auto, detail],
   )
 
   /** Soltar una carta de una pila en una zona libre: el menú ofrece lo que la saca ahí (si es una sola jugada, sale así) y la carta se queda en la zona mientras se elige. */
@@ -1491,10 +1503,13 @@ export function PracticeMat({
   const handLit = useRef<string | null>(null)
   const lightFromHand = useCallback(
     (next: string | null) => {
-      lightZone(handLit.current, next)
-      handLit.current = next
+      // En automático soltar en una zona todavía no juega nada: ninguna se enciende.
+      const lit = isAuto ? null : next
+
+      lightZone(handLit.current, lit)
+      handLit.current = lit
     },
-    [lightZone],
+    [lightZone, isAuto],
   )
 
   // Red de seguridad: pase lo que pase con un arrastre (el celular lo corta sin avisar, la mano se vuelve a armar a mitad de camino…), al levantar el dedo ninguna casilla queda
@@ -1812,6 +1827,7 @@ export function PracticeMat({
             targeted={targetedIds.has(shown.id)}
             selected={selectedId === shown.id}
             hold={holdPlay(shown.id) !== null}
+            still={isAuto}
             bind={bind}
             onOpen={(rect) => openCard(shown.id, rect)}
           />
@@ -2569,6 +2585,8 @@ interface PlacedCardProps {
   pending: boolean
   /** Mantenerla apretada hace algo (en la práctica, cambiarla de posición): mientras se espera, se hunde. */
   hold: boolean
+  /** No se arrastra (el duelo automático): sólo se toca y, con `hold`, se mantiene. */
+  still: boolean
   bind: ReturnType<typeof useMatDrag>['bind']
   onOpen: (rect: DOMRect) => void
 }
@@ -2578,7 +2596,7 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, hold, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
   // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -2629,7 +2647,8 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
         data-glow={glow ? 'true' : 'false'}
         data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
         data-dim={dim ? 'true' : 'false'}
-        {...bind({ id: placed.id, name: card.name, art: artOf(card), hold })}
+        data-still={still || undefined}
+        {...bind({ id: placed.id, name: card.name, art: artOf(card), hold, still })}
         onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
         onContextMenu={(event) => event.preventDefault()}
       >

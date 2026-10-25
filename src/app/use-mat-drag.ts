@@ -29,6 +29,8 @@ export interface MatDragSource {
   size?: () => { width: number; height: number } | null
   /** Se puede mantener apretado (`onHold`): mientras se espera, el elemento lleva `data-holding="true"`, el indicio de que algo va a pasar. */
   hold?: boolean
+  /** No se arrastra (en el duelo automático, una carta del campo: nada se mueve a mano): moverse no la levanta ni la suelta en ningún lado, sólo deja de ser un toque. */
+  still?: boolean
 }
 
 export interface MatDragState {
@@ -196,11 +198,14 @@ export function useMatDrag({ onDrop, onTap, onHold, onOver }: UseMatDragOptions)
 
         session.moved = true
         stopHold(session)
+        if (session.source.still) return
         const rect = session.element.getBoundingClientRect()
         // El tamaño de la carta, no el del rect: en el campo inclinado el rect sale achatado y la carta arrastrada saldría más ancha que alta.
         setDrag({ source: session.source, width: session.size?.width ?? (session.element.offsetWidth || rect.width), height: session.size?.height ?? (session.element.offsetHeight || rect.height) })
       }
 
+      // Lo que no se arrastra no lleva fantasma ni enciende zonas.
+      if (session.source.still) return
       pendingRef.current = { x: event.clientX, y: event.clientY }
 
       if (!frameRef.current) {
@@ -225,6 +230,7 @@ export function useMatDrag({ onDrop, onTap, onHold, onOver }: UseMatDragOptions)
       pendingRef.current = null
 
       if (session.moved) {
+        if (session.source.still) return
         setDrag(null)
         onOver?.(overRef.current, null)
 

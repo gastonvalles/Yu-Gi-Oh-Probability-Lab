@@ -186,6 +186,8 @@ export interface AutoLink {
   viewer: { pile: MatPile; ids: readonly string[]; many?: { label: (ids: readonly string[]) => string; onPick: (ids: string[], rect: DOMRect) => void; start?: readonly string[] } } | null
   /** Hay una pregunta pendiente para mí: sin ella, tocar una carta sólo la muestra en el detalle. */
   asking: boolean
+  /** Escape: cancelar lo que se elige en la mesa (cartas, Sacrificios) o «No responder» en una cadena; null si no se puede. */
+  cancel: (() => void) | null
 }
 
 /** La forma de `MenuItem` (`MatDialogs.tsx`), para que la mesa use los ítems tal cual. */

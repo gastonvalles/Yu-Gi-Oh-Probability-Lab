@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { act, loc, pos, stringId } from './support/auto-session-fake'
 import { core, dispatches, handCard, lane, phaseButton, renderAuto, status } from './support/auto-screen-harness'
-import { tap } from './support/practice-mat-harness'
+import { pointer, tap } from './support/practice-mat-harness'
 
 // Las jugadas del turno en «Jugar solo automático»: cada pregunta del núcleo se contesta tocando la mesa de siempre, un gesto por prueba, y la mesa nunca despacha (0 del centinela).
 
@@ -168,15 +168,69 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('una carta sin jugada legal no abre nada, y el deck no se mira', () => {
+  it('una carta sin jugada legal abre su hoja sin jugadas (lo dice y «Ver carta» la muestra), y el deck no se mira', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
     tap(handCard('Ash Blossom'))
-    expect(screen.queryByRole('menuitem')).toBeNull()
+    const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
+
+    expect(within(sheet).queryByRole('menuitem')).toBeNull()
+    expect(sheet).toHaveTextContent('No hay nada para hacer desde acá.')
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Ver carta' }))
+    expect(screen.getByRole('dialog', { name: 'Detalle de Ash Blossom' })).toBeInTheDocument()
     tap(screen.getByRole('button', { name: 'Main: 2' }))
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('dialog', { name: /Main/ })).toBeNull()
     expect(status()).toBeInTheDocument()
+    expect(fake.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('una carta del rival que no se elige se muestra grande (sin el detalle fijo de la izquierda)', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(IDLE))
+    fireEvent.click(screen.getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    // El texto llega de YGOPRODeck (acá no hay): mientras tanto, «Carta del rival».
+    expect(screen.getByRole('dialog', { name: 'Detalle de Carta del rival' })).toBeInTheDocument()
+    expect(fake.answers).toEqual([])
+  })
+
+  it('Escape es «No responder» en una cadena (no en la obligatoria ni en la ventana de una fase tuya) y cancela lo que se elige en la mesa', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask({ ...CHAIN, forced: true }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    // En tu Draw Phase con una Rápida, pasar es cambiar de fase: eso va por el botón de fases.
+    core(() => fake.ask({ ...CHAIN, spe_count: 0, hint_timing: 0x1 }))
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(fake.answers).toEqual([])
+    core(() => fake.ask(CHAIN))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
+    core(() => fake.ask({ type: 'select_card', player: 0, can_cancel: true, min: 1, max: 1, selects: [pos(100, L.HAND, 0, 10), pos(200, L.MZONE, 0, 1)] }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(fake.answers[1]).toEqual({ type: 'select_card', indices: null })
+    expect(dispatches).toBe(0)
+  })
+
+  it('una carta del campo no se arrastra: moverla no la levanta ni enciende zonas, y soltarla no hace nada', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(IDLE))
+    const maxx = screen.getByRole('button', { name: 'Maxx C' })
+    const mz2 = screen.getByRole('group', { name: 'Zona de monstruo 2' })
+
+    expect(maxx).toHaveAttribute('data-still', 'true')
+    document.elementFromPoint = () => mz2
+    fireEvent.pointerDown(maxx, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(maxx, { ...pointer, clientX: 40, clientY: 60 })
+    fireEvent.pointerMove(maxx, { ...pointer, clientX: 80, clientY: 120 })
+    expect(maxx).toHaveAttribute('data-dragging', 'false')
+    expect(mz2).toHaveAttribute('data-over', 'false')
+    fireEvent.pointerUp(maxx, { ...pointer, clientX: 80, clientY: 120 })
+    expect(screen.queryByRole('menuitem')).toBeNull()
     expect(fake.answers).toEqual([])
     expect(dispatches).toBe(0)
   })

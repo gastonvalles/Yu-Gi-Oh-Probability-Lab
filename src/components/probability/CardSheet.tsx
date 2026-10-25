@@ -180,7 +180,8 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
         ) : null}
         {/* Las jugadas, `role="menu"`, y cada una un `menuitem`, como en el menú pegado a la carta: las del juego primero y las de apoyo después, todas en la misma grilla. */}
         <div role="menu" aria-label={name} className={cx(onBack ? 'mt-1' : 'mt-3', stacked && 'max-h-[min(55dvh,28rem)] overflow-y-auto')}>
-          <Options items={asking !== undefined ? items : [...plays, ...support]} stacked={stacked} />
+          {/* Sin jugadas (en el duelo automático, lo que el núcleo no deja hacer ahora), lo dice, como el menú pegado a la carta. */}
+          {items.length === 0 ? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p> : <Options items={asking !== undefined ? items : [...plays, ...support]} stacked={stacked} />}
         </div>
       </section>
     </>,
