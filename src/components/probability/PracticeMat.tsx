@@ -928,11 +928,11 @@ export function PracticeMat({
   }, [menu, picking, counterMode])
 
   // Una marca de objetivo dura `TARGET_MS` y se quita sola, con la misma jugada que la saca a mano (así el rival también la ve irse). Las de un mismo lote vencen juntas, en una sola jugada
-  // («Sacás el target de A, B y C»); las sueltas, cada una con su plazo. Si se está repasando un combo, no se toca.
+  // («Sacás el target de A, B y C»); las sueltas, cada una con su plazo. Si se está repasando un combo, no se toca. En automático, nunca: la mesa no despacha (la mira la quita el núcleo).
   const dispatchRef = useRef(onDispatch)
   // Por la jugada que las marcó (su lugar en la lista): su plazo y las cartas que siguen marcadas.
   const targetTimers = useRef(new Map<number, { timer: number; ids: string[] }>())
-  const idle = session.cursor === session.actions.length && !autoplay
+  const idle = session.cursor === session.actions.length && !autoplay && !duel?.auto
 
   useEffect(() => {
     dispatchRef.current = onDispatch
@@ -2102,6 +2102,24 @@ export function PracticeMat({
       <Icon name="list" />
     </IconButton>
   )
+  const replayBar =
+    session.replay && !choosing ? (
+      <ReplayBar
+        marks={replayMarks}
+        cursor={session.cursor}
+        playing={autoplay}
+        playLabel={replayLabel}
+        speed={speed}
+        describe={describeStep}
+        onSeek={onSeek}
+        onTogglePlay={togglePlay}
+        onRestart={restart}
+        onPrevious={previousStep}
+        onNext={nextStep}
+        onOpenSteps={openSteps}
+        onSpeed={setSpeed}
+      />
+    ) : null
 
   // La fase de ahora y de quién es el turno: el botón de las fases (`p3`, en el medio del campo) es el mismo en un duelo y en la práctica; al tocarlo muestra las seis y elegir una pasa a ella (la Draw Phase
   // después de la End Phase pasa el turno: ahí sube la cuenta de turnos). En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien
@@ -2407,24 +2425,8 @@ export function PracticeMat({
         </div>
         </div>
 
-        {/* Replay (sólo viendo un combo guardado): los controles de YGOPocket. La lista de pasos se abre aparte, en el mismo panel del celular. */}
-        {session.replay && !choosing ? (
-          <ReplayBar
-            marks={replayMarks}
-            cursor={session.cursor}
-            playing={autoplay}
-            playLabel={replayLabel}
-            speed={speed}
-            describe={describeStep}
-            onSeek={onSeek}
-            onTogglePlay={togglePlay}
-            onRestart={restart}
-            onPrevious={previousStep}
-            onNext={nextStep}
-            onOpenSteps={openSteps}
-            onSpeed={setSpeed}
-          />
-        ) : null}
+        {/* Replay (sólo viendo un combo guardado): los controles de YGOPocket. La lista de pasos se abre aparte, en el mismo panel del celular. En un duelo (repasando en «Jugar solo automático»), abajo. */}
+        {duel ? null : replayBar}
 
         {/* Abajo: las seis fases con Pasar turno pegado a la End Phase (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En un duelo de escritorio van a la derecha, junto a tus vidas.
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
@@ -2436,6 +2438,8 @@ export function PracticeMat({
               (el pulgar de quien juega con la derecha). Escritorio: deshacer junto a tus vidas, en la esquina opuesta a las del rival. */}
           {duel ? (
             <div className="relative">
+              {/* Repasando un combo, los controles del replay van en el lugar de esta fila (en escritorio miden lo mismo, 44 px: el campo no se corre). */}
+              {replayBar ?? (
               <div
                 // Con Deshacer arriba (`undoInHeader`) la fila no lleva botones (a lo sumo las vidas): no es una barra, y la de arriba es la única «Mesa».
                 role={duel.undoInHeader ? undefined : 'toolbar'}
@@ -2456,6 +2460,7 @@ export function PracticeMat({
                   {duel.life}
                 </span>
               </div>
+              )}
               {status}
             </div>
           ) : (

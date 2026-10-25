@@ -105,6 +105,8 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // En escritorio, si las vidas entran en la barra (lo mide ella: con el panel de pasos la columna de la mesa es más angosta).
+  const [livesInBar, setLivesInBar] = useState(true)
   const rivalName = t('duel.bar.rival')
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
   const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null })
@@ -155,13 +157,17 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   ) : undefined
 
   const life = { mine: snap.overlay.lp[0], theirs: snap.overlay.lp[1] }
+  // Repasando un combo (o tus jugadas) la mesa es la del repaso: el turno de la barra es el del paso que se mira, y la portada (el fin, un error), la mano del rival y lo que activa
+  // esperan a «Volver al duelo».
+  const reviewing = asks.review.active
   const link: DuelMatLink = {
     ...asks.mat,
     header: (
       <AutoBar
         rivalName={rivalName}
         life={life}
-        turn={snap.overlay.turn}
+        onLivesInBar={setLivesInBar}
+        turn={reviewing ? asks.state.turn : snap.overlay.turn}
         myTurn={asks.turnMine}
         phase={snap.overlay.turn > 0 ? asks.mat.phase : null}
         onExit={onExit}
@@ -187,28 +193,31 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
         onBlind={(on) => setAutoPref('blind', on)}
       />
     ),
-    rivalHand: <TheirHand count={snap.theirs.hand.length} {...(rivalCards ? { cards: rivalCards } : {})} />,
+    ...(reviewing ? {} : { rivalHand: <TheirHand count={snap.theirs.hand.length} {...(rivalCards ? { cards: rivalCards } : {})} /> }),
     tools: null,
-    // Las vidas de los dos: en escritorio, en la barra (`AutoBar`); en el celular, con los íconos de la práctica arriba, no entran: van abajo, donde va la tuya en el duelo por enlace.
+    // Las vidas de los dos: en escritorio, en la barra (`AutoBar`); en el celular, con los íconos de la práctica arriba, no entran: van abajo, donde va la tuya en el duelo por enlace. En una
+    // fila de escritorio angosta (el panel de pasos, el detalle y el menú abiertos) tampoco: abajo, del tamaño del celular.
     // Suben 12 px sobre el borde de la mano (`-mt-3`): la botonera mide lo que medía con Deshacer (44 px) y el campo no se corre, tampoco en una pantalla alta (ahí no hay scroll y su alto cuenta).
-    life: docked ? null : (
-      <span className="-mt-3 flex items-center gap-2">
-        <AutoLives rivalName={rivalName} life={life} />
-      </span>
-    ),
+    life:
+      docked && livesInBar ? null : (
+        <span className="-mt-3 flex items-center gap-2">
+          <AutoLives rivalName={rivalName} life={life} compact={docked} />
+        </span>
+      ),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
-    ...(told?.effect ? { rivalEffect: told.effect } : {}),
+    ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),
     // Deshacer va arriba, con los íconos de la práctica.
     undoInHeader: true,
     // El panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos.
     steps: true,
-    ...(cover === undefined ? {} : { cover }),
+    ...(cover === undefined || reviewing ? {} : { cover }),
   }
 
   return (
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
-      <PracticeMat session={asks.matSession} state={asks.state} cardsById={cardsById} deckName={deckName} onDispatch={sentinel} onUndo={() => session.undo()} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} />
+      {/* Los pasos del panel y los combos guardados se repasan en esta misma mesa (`asks.review`); nada se despacha. */}
+      <PracticeMat session={asks.matSession} state={asks.state} cardsById={cardsById} deckName={deckName} onDispatch={sentinel} onUndo={() => session.undo()} onSeek={asks.review.seek} onLoadCombo={asks.review.load} onNewHand={NOTHING} duel={link} />
       {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
       <HandtrapPicker
         isOpen={choosing}

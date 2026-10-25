@@ -182,3 +182,100 @@ describe('auto-screen · guardar combos', () => {
     expect(within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
   })
 })
+
+const nameOf = (id: string) => CARDS.get(id)?.name ?? id
+/** Un combo de la práctica manual: Droll e Imperm en la mano; Droll al campo y la activación de Imperm. */
+const DROLL_LINE = () =>
+  createSavedCombo(
+    { name: 'Línea Droll', deckName: 'Test', initial: createMatState(['card-101-1', 'card-102-1', 'card-100-1'], [], 2), actions: [{ type: 'place', id: 'card-101-1', zone: 'mz', index: 2, pos: 'atk', how: 'normal' }, { type: 'activate', id: 'card-102-1' }], nameOf },
+    [],
+  )
+const rivalMonster = () => document.querySelector('[data-rival-card-id="c1"]')
+const replayControls = () => screen.queryByRole('group', { name: 'Controles del replay' })
+const lane = () => document.querySelector<HTMLElement>('[data-lane]')
+
+describe('auto-screen · repasar en la misma mesa', () => {
+  it('un combo guardado se repasa con los controles del replay y el lado del rival vacío, sin despachar ni contestar nada; «Volver al duelo» lo retoma donde estaba, con su pregunta', () => {
+    writeSavedCombos([DROLL_LINE()])
+    const fake = played()
+
+    expect(rivalMonster()).not.toBeNull()
+    expect(phaseButton()).toBeEnabled()
+    fireEvent.click(within(panel()).getByRole('radio', { name: /Combos/ }))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Cargar Línea Droll' }))
+
+    // La mesa del combo, desde su mano inicial; se reproduce sola, con los controles de siempre (abajo, en el lugar de la fila de tus vidas).
+    expect(replayControls()).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument()
+    expect(handCard('Droll')).toBeInTheDocument()
+    expect(inHand('Called by the Grave')).toBeNull()
+    expect(rivalMonster()).toBeNull()
+    expect(lane()).toHaveTextContent('Repasás “Línea Droll”: el duelo te espera donde lo dejaste.')
+    // Nada que jugar: ni el botón de fases ni el menú de una carta, ni tocar la mesa adelanta el duelo.
+    expect(phaseButton()).toBeDisabled()
+    act(() => vi.advanceTimersByTime(1400 + 5))
+    expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Droll' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    fireEvent.pointerDown(document.querySelector('[data-drop="hand"]')!, { button: 0, pointerId: 1 })
+    fireEvent.click(within(panel()).getByRole('radio', { name: /Pasos/ }))
+    expect(steps()).toEqual(['2Activás el efecto de Imperm', '1Invocación Normal de Droll', '0Mano inicial'])
+
+    fireEvent.click(within(lane()!).getByRole('button', { name: 'Volver al duelo' }))
+    expect(replayControls()).toBeNull()
+    expect(within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+    expect(handCard('Called by the Grave')).toBeInTheDocument()
+    expect(rivalMonster()).not.toBeNull()
+    expect(phaseButton()).toBeEnabled()
+    expect(steps()[0]).toBe('3Invocación Normal de Ash Blossom')
+    expect(stored().map((combo) => combo.name)).toEqual(['Línea Droll'])
+    expect(fake.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('tocar un paso de tus jugadas lo muestra en la mesa (como en la práctica, sin los controles del replay); el duelo espera: la tanda que llega no avanza hasta volver (tocando el último paso o «Volver al duelo»)', () => {
+    const fake = played()
+
+    core(() => fake.events([to('battle')]))
+    fireEvent.click(within(panel()).getByRole('button', { name: /^1/ }))
+    expect(handCard('Ash Blossom')).toBeInTheDocument()
+    expect(replayControls()).toBeNull()
+    expect(lane()).toHaveTextContent('Repasás tus jugadas: el duelo te espera donde lo dejaste.')
+    // Ni el tiempo ni tocar la mesa lo mueven: la lista sigue siendo la de antes y la cinta del núcleo no cambia.
+    step()
+    step()
+    fireEvent.pointerDown(document.querySelector('[data-drop="hand"]')!, { button: 0, pointerId: 1 })
+    expect(steps()).toEqual(['3Invocación Normal de Ash Blossom', '2Pasás a la Main Phase 1', '1Pasás a la Standby Phase', '0Mano inicial'])
+    expect(fake.getSnapshot().mineActions).toEqual([...START, SUMMON, to('battle')])
+
+    fireEvent.click(within(panel()).getByRole('button', { name: /^2/ }))
+    expect(lane()).toHaveTextContent('Repasás tus jugadas')
+    // El último paso es ahora: vuelve al duelo, que sigue a su ritmo.
+    fireEvent.click(within(panel()).getByRole('button', { name: /^3/ }))
+    expect(lane()).toBeNull()
+    expect(inHand('Ash Blossom')).toBeNull()
+    step()
+    expect(steps()[0]).toBe('4Pasás a la Battle Phase')
+    expect(fake.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('repasando, la mira que deja un combo no se quita sola (la mesa no despacha); reiniciar el duelo cierra el repaso', () => {
+    const marked = createSavedCombo({ name: 'Con mira', deckName: 'Test', initial: createMatState(['card-101-1', 'card-102-1'], [], 2), actions: [{ type: 'target', id: 'card-101-1' }], nameOf }, [])
+
+    writeSavedCombos([marked])
+    const fake = played()
+
+    fireEvent.click(within(panel()).getByRole('radio', { name: /Combos/ }))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Cargar Con mira' }))
+    act(() => vi.advanceTimersByTime(1400 + 5))
+    act(() => vi.advanceTimersByTime(6000))
+    expect(handCard('Droll (target)')).toBeInTheDocument()
+    expect(dispatches).toBe(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el mismo duelo' }))
+    expect(fake.restarts).toBe(1)
+    expect(lane()?.textContent ?? '').not.toMatch(/Repasás/)
+    expect(replayControls()).toBeNull()
+  })
+})

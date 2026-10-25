@@ -10,7 +10,8 @@ import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
-import { allMatIds, cardKindOf, replayMat, type MatAction, type MatPhase, type MatState, type MatTarget } from '../../app/practice-mat'
+import { allMatIds, cardKindOf, createMatState, replayMat, type MatAction, type MatPhase, type MatState, type MatTarget } from '../../app/practice-mat'
+import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
@@ -102,6 +103,11 @@ export interface AutoAsks {
   undoable: boolean
   /** El turno es tuyo. */
   turnMine: boolean
+  /**
+   * El repaso (sólo «Jugar solo», desde el panel de pasos y combos): `load` repasa un combo guardado (con los controles del replay), `seek` va a un paso (en vivo, de tus jugadas)
+   * y `back` vuelve al duelo donde estaba. Repasar no despacha ni le contesta nada al núcleo.
+   */
+  review: { active: boolean; load: (combo: SavedCombo) => void; seek: (step: number) => void; back: () => void }
 }
 
 export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false }: AutoAsksInput): AutoAsks {
@@ -117,9 +123,16 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const rearmAt = (initial: MatState, actions: readonly MatAction[], upTo: Allowed | null) => stopAt(initial, actions, trailingStops(initial, actions), upTo)
   const [paced, setPaced] = useState<Paced>(() => ({ initial: snap.initial.mine, actions: snap.mineActions, cursor: rearmAt(snap.initial.mine, snap.mineActions, null) }))
   const [seen, setSeen] = useState(snap.initial)
+  /**
+   * El repaso («Jugar solo»): un combo guardado (`name`), o tus jugadas hasta un paso, en la misma mesa y con la lista de siempre. El duelo vivo espera donde estaba: ni el ritmo, ni
+   * tocar la mesa, ni las paradas de fase lo mueven y no se muestra ninguna pregunta; la cinta (`paced`) se sigue rehaciendo sólo del núcleo. El lado del rival queda vacío.
+   */
+  const [review, setReview] = useState<{ name?: string; session: MatSession } | null>(null)
+  const reviewing = review !== null
 
-  // Reiniciar es otro duelo: lo pedido vuelve a cero.
+  // Reiniciar es otro duelo: lo pedido vuelve a cero y el repaso se cierra.
   if (snap.status === 'loading' && allowed !== null) setAllowed(null)
+  if (snap.status === 'loading' && reviewing) setReview(null)
   if (!snap.replaying) {
     if (seen !== snap.initial) {
       const initial = sameStart(paced.initial, snap.initial.mine) ? paced.initial : snap.initial.mine
@@ -135,22 +148,21 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const limit = useMemo(() => stopAt(paced.initial, paced.actions, paced.cursor, allowed), [paced, allowed])
 
   useEffect(() => {
-    if (paced.cursor >= limit) return
+    if (reviewing || paced.cursor >= limit) return
     const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), STEP_MS)
 
     return () => window.clearTimeout(timer)
-  }, [paced, limit])
+  }, [paced, limit, reviewing])
 
-  // Tocar la mesa salta hasta la próxima parada (no la cruza).
-  const skipAhead = useCallback(
-    () =>
-      setPaced((current) => {
-        const to = stopAt(current.initial, current.actions, current.cursor, allowed)
+  // Tocar la mesa salta hasta la próxima parada (no la cruza); repasando, no.
+  const skipAhead = useCallback(() => {
+    if (reviewing) return
+    setPaced((current) => {
+      const to = stopAt(current.initial, current.actions, current.cursor, allowed)
 
-        return to > current.cursor ? { ...current, cursor: to } : current
-      }),
-    [allowed],
-  )
+      return to > current.cursor ? { ...current, cursor: to } : current
+    })
+  }, [allowed, reviewing])
   const settled = paced.cursor === paced.actions.length && !snap.replaying
   // Lo que se ve, como en la práctica: la mano de apertura plegada en la mesa del arranque (`foldOpeningHand`), así el paso 0 es «Mano inicial». Se pliega por contenido:
   // deshacer re-simula y la jugada vuelve como otro objeto con las mismas cartas (la mano no se reparte de nuevo).
@@ -162,7 +174,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const played = useMemo(() => paced.actions.slice(opening.skip, Math.max(opening.skip, paced.cursor)), [paced.actions, paced.cursor, opening.skip])
   const state = useMemo(() => replayMat(opening.initial, played, played.length), [opening.initial, played])
   /** La mesa espera en tu DP o tu SP (una parada): el botón de fases la pasa. */
-  const stopped = !frozen && !snap.replaying && paced.cursor === limit && limit < paced.actions.length
+  const stopped = !reviewing && !frozen && !snap.replaying && paced.cursor === limit && limit < paced.actions.length
   /** Pedir pasar a una fase: la parada que deja se cruza ya (lo que sigue, a su ritmo). */
   const allow = useCallback(
     (to: MatPhase) => {
@@ -176,8 +188,23 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // Los nombres del `.cdb` (las cartas del rival, que no están en `cardsById`): la mesa los lee por el id de su primera copia.
   const names = useMemo(() => Object.fromEntries(Object.entries(snap.names).map(([code, name]) => [drawIdOf(Number(code)), name])), [snap.names])
   const matSession = useMemo<MatSession>(() => ({ initial: opening.initial, actions: played, cursor: played.length, names, replay: false }), [opening.initial, played, names])
+  // Lo que se repasa se ve en la misma mesa; la del duelo (`state`, `matSession`) queda como estaba.
+  const reviewState = useMemo(() => (review ? replayMat(review.session.initial, review.session.actions, review.session.cursor) : null), [review])
+  const load = useCallback((combo: SavedCombo) => setReview({ name: combo.name, session: { initial: combo.initial, actions: combo.actions, cursor: 0, names: combo.names, replay: true } }), [])
+  const back = useCallback(() => setReview(null), [])
+  // Un paso: repasando, el de lo que se repasa (el último de tus jugadas es ahora: vuelve al duelo); en vivo, uno de tus jugadas (como en la práctica, sin los controles del replay).
+  const seek = useCallback(
+    (step: number) => {
+      const to = Math.max(0, Math.trunc(step))
 
-  usePracticeSounds(matSession)
+      if (review && review.name === undefined && to >= review.session.actions.length) setReview(null)
+      else if (review) setReview({ ...review, session: { ...review.session, cursor: Math.min(to, review.session.actions.length) } })
+      else if (to < matSession.actions.length) setReview({ session: { ...matSession, cursor: to } })
+    },
+    [review, matSession],
+  )
+
+  usePracticeSounds(review?.session ?? matSession)
   // Las vidas que bajan o suben y el fin (las jugadas ya suenan con la mesa); rearmando no suena nada.
   useChange(snap.replaying ? undefined : ([...snap.overlay.lp] as const), (before, now) => {
     if (before.some((points) => points <= 0)) return
@@ -330,7 +357,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const view = useMemo(() => (askState ? askView(askState) : null), [askState])
   // La ventana de una fase que ya pediste dejar (la SP, si desde la DP pediste la Main Phase 1) no se muestra: se pasa sola.
   const passing = view?.phaseWindow ? leaves(allowed, snap.mine.turn, view.phaseWindow) : false
-  const shown = settled && !frozen && !passing ? view : null
+  // Repasando no se pregunta nada: la pregunta espera y vuelve con «Volver al duelo».
+  const shown = settled && !frozen && !passing && !reviewing ? view : null
+
+  if (reviewing && sub !== null) setSub(null)
 
   // Otra vez tus jugadas del turno, con la mesa ya quieta y la carta soltada todavía en la mano: la jugada no se hizo (se cancelaron los Sacrificios), la carta deja de esperar.
   // Se mira lo que se muestra y no la pregunta que llega: esa llega junto con las jugadas que la mesa todavía cuenta de a una (la carta volvería a la mano antes de caer).
@@ -467,7 +497,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const linkName = (link: ChainLink) => nameOf(link.card, link.code)
   const respondNames = (ids: Iterable<string>) => namesList([...ids].map((id) => nameOf({ side: 'mine', id })))
   const newFault = snap.faults[snap.faults.length - 1]
-  const lane: LaneNotice | null = frozen
+  const lane: LaneNotice | null = review
+    ? // Repasando: qué se mira y la salida, en el lugar de los avisos (no corre nada).
+      { kind: 'ask', text: review.name === undefined ? t('auto.review.plays') : t('auto.review.combo', { name: review.name }), actions: [{ label: t('auto.review.back'), onSelect: back, primary: true }] }
+    : frozen
     ? null
     : stuck
       ? { kind: 'ask', text: t('auto.lane.error', { message: stuck }), actions: canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : [] }
@@ -544,7 +577,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     rivalFlights: { state: theirs, artOf: opponent.artOf },
     turnNumber: snap.overlay.turn,
     rivalEmz: theirs.emz.map(Boolean),
-    ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight} stats={dockStats} /> } : {}),
+    // El ATK/DEF de ahora es del duelo vivo: repasando, el detalle muestra la carta impresa.
+    ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight} stats={reviewing ? null : dockStats} /> } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
     onRivalHover: (id) => {
@@ -620,18 +654,30 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
 
   return {
-    state,
-    matSession,
+    state: reviewState ?? state,
+    matSession: review?.session ?? matSession,
     settled,
     skipAhead,
     lane,
-    mat,
+    mat: reviewState ? reviewMat(mat, reviewState.phase) : mat,
     pieces,
     nameOf,
     artOf,
-    undoable: snap.answers.some((item) => item.seat === seat && (item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd')),
-    turnMine,
+    undoable: !reviewing && snap.answers.some((item) => item.seat === seat && (item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd')),
+    // Lo que se repasa es tuyo.
+    turnMine: reviewing || turnMine,
+    review: { active: reviewing, load, seek, back },
   }
+}
+
+/** Un lado del rival vacío: repasando, la mesa es sólo la tuya (como en la práctica), sin moverse de lugar. */
+const NO_RIVAL: DuelSideView = { state: createMatState([], [], 0), artOf: () => null, handCount: 0 }
+
+/** La mesa del repaso: el lado del rival vacío y sin sus vuelos (al volver al duelo, sus cartas siguen donde estaban) y la fase del paso que se mira. */
+function reviewMat(mat: AutoAsks['mat'], phase: MatPhase): AutoAsks['mat'] {
+  const { rivalFlights: _flights, ...rest } = mat
+
+  return { ...rest, opponent: <SideCells side={NO_RIVAL} owner="theirs" />, sharedZone: () => null, rivalHand: <TheirHand count={0} />, attackTargets: [], phase }
 }
 
 /** La cadena que se está resolviendo, un eslabón por vez: el último que no terminó. */
