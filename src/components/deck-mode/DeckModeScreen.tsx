@@ -348,7 +348,8 @@ export function DeckModeScreen() {
             {t('shell.practice.title')}
           </Heading>
           {autoSolo && matDeck.mainIds.length > 0 ? (
-            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} />
+            // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá.
+            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} {...(practice ? { lab: practice } : {})} />
           ) : practice ? (
             <LazyPracticeSection {...practice} />
           ) : (

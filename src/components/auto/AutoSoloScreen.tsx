@@ -16,6 +16,7 @@ import type { LaneNotice } from '../duel/DuelBar'
 import { TheirHand } from '../duel/DuelTable'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
+import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
 import { AutoBar, AutoLives } from './AutoBar'
@@ -44,6 +45,8 @@ export interface AutoSoloScreenProps {
   handSize?: number
   /** La flecha de la barra («Volver a Jugar», como en la práctica): vuelve al lobby. */
   onExit: () => void
+  /** Las reglas del Lab: con esto, las salidas y problemas de tu mano de apertura (los chips de la práctica) debajo de los pasos o sobre tu mano. */
+  lab?: PracticeLab
   /**
    * Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. `rival`: el de handtraps del simulador (`null`, el
    * pasivo); `seed`: la del duelo de antes (cambiar las handtraps reinicia el mismo duelo, como «Reiniciar el mismo duelo»).
@@ -57,7 +60,7 @@ const NOTHING = () => {}
 
 const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options) => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...options })
 
-export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, connect = connectLive }: AutoSoloScreenProps) {
+export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, lab, connect = connectLive }: AutoSoloScreenProps) {
   // Las handtraps del rival: las del simulador de «Jugar solo» (`app/handtraps.ts`); cambiarlas arma otra sesión con la misma semilla.
   const [handtraps, setHandtraps] = useState<HandtrapConfig>(readHandtrapConfig)
   const [live, setLive] = useState<{ session: AutoSession; n: number } | null>(null)
@@ -85,7 +88,7 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   }, [])
 
   return live ? (
-    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} handtraps={handtraps} onHandtraps={changeHandtraps} />
+    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} />
   ) : (
     <LoadingCover progress={{ done: 0, total: 0 }} rival={autoRival(handtraps) !== null} />
   )
@@ -99,9 +102,13 @@ interface AutoDuelProps {
   /** Las handtraps del rival (encendidas, las usa) y cambiarlas desde «Más opciones» (el duelo empieza de nuevo). */
   handtraps: HandtrapConfig
   onHandtraps: (next: HandtrapConfig) => void
+  lab: PracticeLab
 }
 
-function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps }: AutoDuelProps) {
+/** Sin las reglas del Lab (las pruebas), no hay chips: un deck vacío no alcanza para una mano. */
+const NO_LAB: PracticeLab = { handSize: 5, derivedMainCards: [], patterns: [], hasCompletedClassification: true, reviewPendingPatternCount: 0 }
+
+function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps, lab }: AutoDuelProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -111,6 +118,8 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
   const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null })
   const { nameOf, artOf } = asks
+  // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo).
+  const chips = usePracticeChips(lab, asks.matSession)
   // El rival de handtraps (con el simulador encendido y alguna carta) y la hoja para cambiarlas.
   const rivalOn = useMemo(() => autoRival(handtraps) !== null, [handtraps])
   const [choosing, setChoosing] = useState(false)
@@ -217,7 +226,19 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
       {/* Los pasos del panel y los combos guardados se repasan en esta misma mesa (`asks.review`); nada se despacha. */}
-      <PracticeMat session={asks.matSession} state={asks.state} cardsById={cardsById} deckName={deckName} onDispatch={sentinel} onUndo={() => session.undo()} onSeek={asks.review.seek} onLoadCombo={asks.review.load} onNewHand={NOTHING} duel={link} />
+      <PracticeMat
+        session={asks.matSession}
+        state={asks.state}
+        cardsById={cardsById}
+        deckName={deckName}
+        onDispatch={sentinel}
+        onUndo={() => session.undo()}
+        onSeek={asks.review.seek}
+        onLoadCombo={asks.review.load}
+        onNewHand={NOTHING}
+        duel={link}
+        {...(chips.needCards ? {} : { footer: chips.footer, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
+      />
       {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
       <HandtrapPicker
         isOpen={choosing}

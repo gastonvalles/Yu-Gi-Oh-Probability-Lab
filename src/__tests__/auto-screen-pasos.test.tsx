@@ -4,15 +4,19 @@ import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
+import { createMatcherPattern } from '../app/pattern-factory'
 import { createMatState, replayMat, type MatAction, type MatPhase } from '../app/practice-mat'
 import { createSavedCombo, readSavedCombos, writeSavedCombos, type SavedCombo } from '../app/saved-combos'
-import { STEP_MS } from '../components/auto/AutoSoloScreen'
+import { AutoSoloScreen, STEP_MS } from '../components/auto/AutoSoloScreen'
+import type { CardEntry, CardRole } from '../types'
 import { CARDS, fakeSession, loc, SPOTS, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, handCard, inHand, phaseButton, renderAuto } from './support/auto-screen-harness'
 import { Harness, render, zone } from './support/practice-mat-harness'
 
 // «Jugar solo automático» con el panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos. La mesa nunca despacha: lo que se
 // anota es lo que contó el núcleo.
+
+vi.mock('../app/lab-odds-client', () => ({ requestLabOdds: vi.fn(() => new Promise(() => {})) }))
 
 const IDLE: CoreAsk = { type: 'select_idlecmd', player: 0, summons: [loc(100, L.HAND, 0)], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: false, to_ep: true, shuffle: false }
 const to = (phase: MatPhase): MatAction => ({ type: 'phase', phase })
@@ -86,6 +90,29 @@ describe('auto-screen · los pasos de la práctica', () => {
 
     expect(within(sheet).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Pasos2', 'Combos0'])
     expect(within(within(sheet).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').map((button) => button.textContent)).toEqual(['2Pasás a la Main Phase 1', '1Pasás a la Standby Phase', '0Mano inicial'])
+    expect(dispatches).toBe(0)
+  })
+
+  it('las salidas de tu mano de apertura (los chips del Lab) están como en la práctica: tocar una ilumina sus cartas y con la primera jugada se van', () => {
+    const entry = (code: number, roles: CardRole[]): CardEntry => ({ id: `card-${code}`, name: CARDS.get(`card-${code}-1`)!.name, copies: 1, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false })
+    const lab = {
+      handSize: 2,
+      derivedMainCards: [entry(100, ['starter']), entry(900, ['enabler']), entry(101, ['brick']), entry(102, ['brick'])],
+      patterns: [createMatcherPattern('Salida básica', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])],
+      hasCompletedClassification: true,
+      reviewPendingPatternCount: 0,
+    }
+    const fake = openingSession()
+
+    render(<AutoSoloScreen mainIds={[...CARDS.keys()].filter((id) => id !== 'card-500-1')} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={() => {}} lab={lab} connect={() => fake} />)
+    rearm(fake, START, IDLE)
+    const chip = within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })
+
+    fireEvent.click(chip)
+    expect(handCard('Ash Blossom')).toHaveAttribute('data-glow', 'true')
+    goTo('Standby Phase')
+    expect(screen.queryByRole('list', { name: 'Salidas' })).toBeNull()
+    expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow', 'true')
     expect(dispatches).toBe(0)
   })
 })
