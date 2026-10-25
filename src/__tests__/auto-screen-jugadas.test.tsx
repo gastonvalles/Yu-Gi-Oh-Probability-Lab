@@ -131,14 +131,31 @@ describe('auto-screen · las jugadas', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('cadena: la carta que puede responder brilla, la línea ofrece «No responder» y contesta null', () => {
+  it('cadena: la carta que puede responder brilla, el medio de la mesa ofrece sólo «No responder» (la línea queda libre) y contesta null', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
     expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
-    expect(lane()).toHaveTextContent('Podés activar Called by the Grave ahora')
-    fireEvent.click(within(lane()!).getByRole('button', { name: 'No responder' }))
+    expect(lane()).toBeNull()
+    const prompt = within(screen.getByTestId('duel-prompt-layer'))
+
+    expect(prompt.getByRole('status')).toHaveTextContent('Podés activar Called by the Grave ahora')
+    expect(prompt.getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder'])
+    fireEvent.click(prompt.getByRole('button', { name: 'No responder' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
+  })
+
+  it('cadena con un eslabón: el medio dice a qué respondés, con su carta chica a la izquierda, en una sola fila con «No responder»', () => {
+    const fake = renderAuto()
+    const overlay = fake.getSnapshot().overlay
+
+    core(() => fake.set({ overlay: { ...overlay, chain: [{ card: { side: 'mine', id: 'card-200-1' }, code: 200, description: '0', state: 'chained' }] } }))
+    core(() => fake.ask(CHAIN))
+    const prompt = screen.getByTestId('duel-prompt-layer').querySelector<HTMLElement>('[data-prompt="ask"]')!
+
+    expect(prompt).toHaveTextContent('Podés responder a Maxx C con Called by the Grave')
+    expect(within(prompt).getByRole('img', { name: 'Maxx C' })).toBeInTheDocument()
+    expect(prompt.className).toContain('flex')
   })
 
   it('cadena obligatoria: sin «No responder», la línea dice que hay que activarla; tocar la carta y «Activar» contesta', () => {

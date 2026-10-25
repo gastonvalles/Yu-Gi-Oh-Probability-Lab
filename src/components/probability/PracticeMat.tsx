@@ -47,7 +47,7 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
-import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '../../app/duel-rails'
+import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptTop, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink } from '../../app/auto/ask-ui'
 import { playSfx } from '../../app/sfx'
@@ -2071,6 +2071,47 @@ export function PracticeMat({
     }
   }, [stripOpen, fieldNode, view, rails])
 
+  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder ni la tira de un visor abierto. Si cae encima, se corre lo justo
+  // (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Se mide al aparecer, cuando cambia lo que brilla o la tira, y con la ventana.
+  const promptRef = useRef<HTMLDivElement | null>(null)
+  const hasPrompt = Boolean(duel?.prompt)
+
+  useLayoutEffect(() => {
+    const box = promptRef.current
+    const section = sectionRef.current
+
+    if (!hasPrompt || !box || !section) return
+
+    let frame = 0
+    const place = () => {
+      box.style.translate = ''
+      const layer = box.parentElement!.getBoundingClientRect()
+      const at = box.getBoundingClientRect()
+      const strip = stripOpen && slotRef.current ? [slotRef.current.getBoundingClientRect()] : []
+      const glows = [...section.querySelectorAll('[data-glow-kind="respond"], [data-respond="true"]')].map((element) => element.getBoundingClientRect())
+      // Sin lugar para todo, la tira abierta gana (es lo que se está mirando): al cerrarla, la pregunta vuelve a correrse de lo que brilla.
+      // Nunca sobre la barra de arriba (sin laterales es lo primero de la columna, como para la tira) ni fuera de la pantalla.
+      const min = Math.max(layer.top, (rails ? null : columnRef.current?.firstElementChild?.getBoundingClientRect().bottom) ?? layer.top)
+      const max = Math.min(layer.bottom, window.innerHeight)
+      const top = promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
+
+      if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
+    }
+    const later = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(place)
+    }
+
+    place()
+    later()
+    window.addEventListener('resize', later)
+
+    return () => {
+      window.removeEventListener('resize', later)
+      cancelAnimationFrame(frame)
+    }
+  }, [hasPrompt, responders, stripOpen, state, view, rails])
+
   // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
   // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.
   const autoViewer = duel?.auto?.viewer ?? null
@@ -2658,7 +2699,9 @@ export function PracticeMat({
       <Presence>
         {duel?.prompt ? (
           <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
-            <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none">{duel.prompt}</div>
+            <div ref={promptRef} className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+              {duel.prompt}
+            </div>
           </div>
         ) : null}
       </Presence>
