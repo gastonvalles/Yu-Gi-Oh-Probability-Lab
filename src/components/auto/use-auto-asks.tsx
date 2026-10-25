@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, namesList, openAsk, step, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
+import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
-import { allMatIds, cardKindOf, replayMat, type MatAction, type MatState } from '../../app/practice-mat'
+import { allMatIds, cardKindOf, replayMat, type MatAction, type MatPhase, type MatState } from '../../app/practice-mat'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
@@ -107,29 +108,61 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const dock = useDockPeek()
   const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
 
-  // ── El ritmo: las jugadas de una tanda se agregan de una vez y el cursor avanza de a una; al rearmarse la mesa se salta al final (un solo commit: se ajusta en el render). ──
-  const [paced, setPaced] = useState<Paced>(() => ({ initial: snap.initial.mine, actions: snap.mineActions, cursor: snap.mineActions.length }))
+  // ── El ritmo: las jugadas de una tanda se agregan de una vez y el cursor avanza de a una; al rearmarse la mesa se salta al final (un solo commit: se ajusta en el render).
+  // Las fases las cambiás vos, como en la mesa manual (`phase-stops.ts`): la mesa frena en tu Draw y tu Standby Phase hasta que pidas dejarlas con el botón de fases (`allowed`);
+  // al rearmarse frena sólo si las jugadas terminan en esas paradas (el duelo nuevo, el turno recién llegado), no a mitad de un turno. ──
+  const [allowed, setAllowed] = useState<Allowed | null>(null)
+  const rearmAt = (initial: MatState, actions: readonly MatAction[], upTo: Allowed | null) => stopAt(initial, actions, trailingStops(initial, actions), upTo)
+  const [paced, setPaced] = useState<Paced>(() => ({ initial: snap.initial.mine, actions: snap.mineActions, cursor: rearmAt(snap.initial.mine, snap.mineActions, null) }))
   const [seen, setSeen] = useState(snap.initial)
 
+  // Reiniciar es otro duelo: lo pedido vuelve a cero.
+  if (snap.status === 'loading' && allowed !== null) setAllowed(null)
   if (!snap.replaying) {
     if (seen !== snap.initial) {
+      const initial = sameStart(paced.initial, snap.initial.mine) ? paced.initial : snap.initial.mine
+
       setSeen(snap.initial)
-      setPaced({ initial: sameStart(paced.initial, snap.initial.mine) ? paced.initial : snap.initial.mine, actions: snap.mineActions, cursor: snap.mineActions.length })
+      setPaced({ initial, actions: snap.mineActions, cursor: rearmAt(initial, snap.mineActions, allowed) })
     } else if (paced.actions !== snap.mineActions) {
       setPaced({ ...paced, actions: snap.mineActions })
     }
   }
 
+  // Hasta dónde puede contar la mesa: la próxima parada que no pediste dejar, o el final.
+  const limit = useMemo(() => stopAt(paced.initial, paced.actions, paced.cursor, allowed), [paced, allowed])
+
   useEffect(() => {
-    if (paced.cursor >= paced.actions.length) return
+    if (paced.cursor >= limit) return
     const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), STEP_MS)
 
     return () => window.clearTimeout(timer)
-  }, [paced])
+  }, [paced, limit])
 
-  const skipAhead = useCallback(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.actions.length } : current)), [])
+  // Tocar la mesa salta hasta la próxima parada (no la cruza).
+  const skipAhead = useCallback(
+    () =>
+      setPaced((current) => {
+        const to = stopAt(current.initial, current.actions, current.cursor, allowed)
+
+        return to > current.cursor ? { ...current, cursor: to } : current
+      }),
+    [allowed],
+  )
   const settled = paced.cursor === paced.actions.length && !snap.replaying
   const state = useMemo(() => replayMat(paced.initial, paced.actions, paced.cursor), [paced])
+  /** La mesa espera en tu DP o tu SP (una parada): el botón de fases la pasa. */
+  const stopped = !frozen && !snap.replaying && paced.cursor === limit && limit < paced.actions.length
+  /** Pedir pasar a una fase: la parada que deja se cruza ya (lo que sigue, a su ritmo). */
+  const allow = useCallback(
+    (to: MatPhase) => {
+      const next = allowTo(allowed, state.turn, to)
+
+      setAllowed(next)
+      setPaced((current) => (stopAt(current.initial, current.actions, current.cursor, next) > current.cursor ? { ...current, cursor: current.cursor + 1 } : current))
+    },
+    [allowed, state.turn],
+  )
   // Los nombres del `.cdb` (las cartas del rival, que no están en `cardsById`): la mesa los lee por el id de su primera copia.
   const names = useMemo(() => Object.fromEntries(Object.entries(snap.names).map(([code, name]) => [drawIdOf(Number(code)), name])), [snap.names])
   const matSession = useMemo<MatSession>(() => ({ initial: paced.initial, actions: [...paced.actions], cursor: paced.cursor, names, replay: false }), [paced, names])
@@ -272,17 +305,34 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
 
   const view = useMemo(() => (askState ? askView(askState) : null), [askState])
-  const shown = settled && !frozen ? view : null
+  // La ventana de una fase que ya pediste dejar (la SP, si desde la DP pediste la Main Phase 1) no se muestra: se pasa sola.
+  const passing = view?.phaseWindow ? leaves(allowed, snap.mine.turn, view.phaseWindow) : false
+  const shown = settled && !frozen && !passing ? view : null
+
+  useEffect(() => {
+    if (passing) session.answer({ type: 'select_chain', index: null })
+  }, [passing, askId, session])
+
   const menuItem = useCallback(
     (item: AskItem): AutoMenuItem => ({
       label: item.label,
       ...(item.current ? { current: true } : {}),
       ...(item.disabled ? { disabled: true, hint: t('auto.phase.notYet') } : {}),
-      onSelect: item.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : item.children ? () => setSub(item) : NOTHING,
+      // Una fase: pedirla y, si contesta algo (pasar una ventana, ir a la batalla), contestar.
+      onSelect: item.to
+        ? () => {
+            allow(item.to!)
+            if (item.answer) gesture({ kind: 'item', answer: item.answer })
+          }
+        : item.answer
+          ? () => gesture({ kind: 'item', answer: item.answer! })
+          : item.children
+            ? () => setSub(item)
+            : NOTHING,
       // Los hijos son siempre los efectos de «Activar efecto»: como en la mesa manual, filas anchas y a la izquierda.
       ...(item.children ? { children: item.children.map(menuItem), wide: true } : {}),
     }),
-    [gesture],
+    [gesture, allow],
   )
 
   // ── Lo que la mesa recibe de la pregunta (`duel.auto`). ──
@@ -309,7 +359,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const viewerIds = pick && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
   const auto: AutoLink = {
     itemsFor: (id) => shown?.items.get(id)?.map(menuItem) ?? null,
-    phaseItems: shown?.phaseItems.map(menuItem) ?? [],
+    phaseItems: (stopped ? stopPhaseItems(state.phase) : (shown?.phaseItems ?? [])).map(menuItem),
     endTurn: shown?.endTurn ? () => gesture({ kind: 'item', answer: shown.endTurn! }) : null,
     zonePick: shown?.zonePick
       ? {
@@ -334,6 +384,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   // ── El rival: su espejo, dibujado por lo que el núcleo dejó ver (`codeOf`). ──
   const theirs = snap.theirs
+  const turnMine = snap.overlay.turnPlayer === seat
   const opponent = useMemo<DuelSideView>(
     () => ({
       state: theirs,
@@ -362,7 +413,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         ? { kind: 'thinking', text: waitingText }
         : snap.status === 'thinking'
           ? { kind: 'thinking', ...(canCancel ? { onCancel: () => session.cancel() } : {}) }
-          : shown?.type === 'select_chain'
+          : shown?.type === 'select_chain' && !shown.phaseWindow
             ? {
                 // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla.
                 kind: 'ask',
@@ -413,8 +464,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     rivalHand: <TheirHand count={theirs.hand.length} />,
     attackTargets,
     foreignKnown,
-    phase: state.phase,
-    myTurn: shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd',
+    // La fase de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
+    phase: turnMine ? state.phase : theirs.phase,
+    // Cambiás de fase en tus jugadas del turno, en una parada de tu DP o tu SP y en la ventana de una fase tuya.
+    myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
     respond,
     prompt: prompt ? (
       <AskPrompt
@@ -514,7 +567,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     nameOf,
     artOf,
     undoable: snap.answers.some((item) => item.seat === seat && (item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd')),
-    turnMine: snap.overlay.turnPlayer === seat,
+    turnMine,
   }
 }
 
