@@ -4,7 +4,7 @@ Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!: armás el de
 
 ## Cómo se corre
 
-Node.js 22 (`.nvmrc`; `engines`: `>=22.12.0`) y npm.
+Node.js 22 (`.nvmrc`; `engines`: `>=22.12.0`) y npm. Los tests piden 22.22.2 o más (`jsdom` 30): con uno anterior `npm test` termina con ~180 errores de `undici`.
 
 ```
 npm install

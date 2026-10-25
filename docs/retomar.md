@@ -30,7 +30,7 @@ dónde vive y qué no hay que romper:
 
 ```bash
 git pull
-npm ci        # Node 22 (.nvmrc)
+npm ci        # Node 22.22.2 o más (.nvmrc; ver README)
 npm run dev   # http://localhost:5173; también sirve /api/card-image, /api/live y /api/auto-data
 ```
 
