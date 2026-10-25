@@ -88,7 +88,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
-import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -429,6 +429,11 @@ const DOUBLE_CLICK_MS = 400
 const AUTOPLAY_MS = 1400
 /** Cuánto dura una marca de objetivo (Target) sobre una carta: pasado el plazo se quita sola. */
 const TARGET_MS = 5000
+/**
+ * El alto que se le deja como mínimo a la tira de los visores de pilas (`pileStrip`): la fila del título (~4.2 rem), un renglón de cartas con su aire (~9.3 rem) y el pie de «Elegir varias»
+ * (~3.8 rem). Con menos lugar entre la barra de arriba y la fila de las Zonas Extra, la tira pisa la barra antes que mostrar menos de un renglón.
+ */
+const STRIP_MIN_REM = 17.5
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
@@ -979,13 +984,14 @@ export function PracticeMat({
 
   const closeViewer = useCallback(() => {
     // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada). Vacío no hay nada que barajar: tocarlo sin cartas no deja un paso de más.
-    if (viewer === 'deck' && state.deck.length > 0) {
+    // En automático no: el deck lo lleva el núcleo y la mesa nunca despacha.
+    if (viewer === 'deck' && state.deck.length > 0 && !isAuto) {
       onDispatch({ type: 'shuffle', seed: randomSeed() })
       setShuffleKey((key) => key + 1)
     }
 
     setViewer(null)
-  }, [viewer, onDispatch, state.deck.length])
+  }, [viewer, onDispatch, state.deck.length, isAuto])
 
   // El visor no tapa el campo, así que se puede tocar otra pila con uno abierto: cambia lo que muestra. Dejar el deck por otra pila es dejar de mirarlo: se baraja, como al cerrarlo.
   const openViewer = useCallback(
@@ -1471,9 +1477,9 @@ export function PracticeMat({
         return
       }
 
-      // Tocar el deck es buscar en él: abre el visor (vacío, si no quedan cartas, como las otras pilas). Las demás opciones salen manteniéndolo apretado o con el teclado. En automático el deck no se mira (información oculta).
+      // Tocar el deck es buscar en él: abre el visor (vacío, si no quedan cartas, como las otras pilas). Las demás opciones salen manteniéndolo apretado o con el teclado. En automático sólo se
+      // mira, por nombre (Gastón, 2026-10-25: «debería poder ver mi deck, extra deck, gy y banish por más que esté en el modo automático»).
       if (source.id === DECK_TOP) {
-        if (duel?.auto) return
         setPicking(null)
         setMenu(null)
         setViewer('deck')
@@ -1482,7 +1488,7 @@ export function PracticeMat({
 
       openCard(source.id, rect)
     },
-    [openCard, duel?.auto],
+    [openCard],
   )
 
   /**
@@ -1500,11 +1506,10 @@ export function PracticeMat({
     [duel, picking, counterMode, state, kindOf, nameOf, play],
   )
 
-  /** Mantener apretado: el deck abre su menú de opciones (en la práctica y en un duelo) y un monstruo del campo cambia de posición (`holdPlay`). */
+  /** Mantener apretado: el deck abre su menú de opciones (en la práctica y en un duelo; en automático no se mantiene: ver la casilla) y un monstruo del campo cambia de posición (`holdPlay`). */
   const handleHold = useCallback(
     (source: MatDragSource, rect: DOMRect) => {
       if (source.id === DECK_TOP) {
-        if (duel?.auto) return false
         setPicking(null)
         setMenu({ kind: 'deck', rect })
         return true
@@ -1515,7 +1520,7 @@ export function PracticeMat({
       run?.()
       return run !== null
     },
-    [holdPlay, duel?.auto],
+    [holdPlay],
   )
 
   // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.
@@ -1568,7 +1573,9 @@ export function PracticeMat({
     if (!menu) return []
 
     // En automático los ítems son los que el núcleo ofrece (`ask-ui`): la de una carta, las fases; elegir uno cierra el menú y contesta. El deck y el lote no tienen menú.
-    const closing = (item: MenuItem): MenuItem => ({ ...item, onSelect: () => { setMenu(null); item.onSelect() }, children: item.children?.map(closing) })
+    // La jugada de una carta del visor también lo cierra, como en la manual: si no, taparía la casilla que el núcleo pregunte después.
+    const fromViewer = menu.kind === 'card' && viewer !== null && state[viewer].includes(menu.id)
+    const closing = (item: MenuItem): MenuItem => ({ ...item, onSelect: () => { setMenu(null); if (fromViewer && !item.children) setViewer(null); item.onSelect() }, children: item.children?.map(closing) })
 
     if (duel?.auto) return menu.kind === 'phases' ? duel.auto.phaseItems.map(closing) : menu.kind === 'card' ? (duel.auto.itemsFor(menu.id, menu.drop) ?? []).map(closing) : []
 
@@ -1698,7 +1705,7 @@ export function PracticeMat({
     }
 
     return blocked(rows)
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight, rivalUsedAt])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight, rivalUsedAt, viewer])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   // En la lista de efectos de «Activar efecto» cada uno lleva sus rasgos: los de la carta entera no se repiten arriba (cada dato se dice una sola vez).
@@ -1983,6 +1990,77 @@ export function PracticeMat({
   // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
   const choosing = picking !== null || counterMode !== null || pickingText !== null
 
+  // Los visores de las pilas en la mesa de un duelo de escritorio (salvo con el chat y el detalle, desde 1440 px: ahí va en la columna del chat) son una tira horizontal sobre la fila de las Zonas
+  // Extra, del ancho del campo, que no llega a tu mano (Gastón, 2026-10-25: «en el medio de la pantalla o sobre las extra monster zone para no tapar la mano y en horizontal»). Tapa el campo del
+  // rival y la fila del medio (las fases, el reloj); se esconde mientras se elige en el campo (una casilla, cartas, a quién atacar), que podría quedar debajo, salvo en el visor que elige.
+  const pileStrip = isDesktop && isDuel && !(duel?.aside && detail)
+  const stripOpen = pileStrip && (viewer !== null || rivalViewing || Boolean(duel?.auto?.viewer))
+  const stripHidden = pileStrip && (attackAsk !== null || (choosing && !duel?.auto?.viewer))
+  const slotRef = useRef<HTMLDivElement | null>(null)
+
+  // Dónde va la tira: se mide en pantalla (la vista 3D corre y agranda el campo) al abrirse y cuando cambian la ventana, el campo o el scroll de la columna, un cuadro después (primero se agranda el
+  // campo: ver `--field-zoom`). De ancho, las casillas, del Extra al Deck (la caja del campo es más ancha que su grilla y, agrandada, se sale de la columna) y, con laterales, sólo la columna del
+  // medio: el campo agrandado se mete en ellos, la tira no (las vidas, los botones, los avisos). De alto, hasta la barra de arriba (sin laterales es lo primero de la columna; con laterales va a los
+  // costados): la pisa sólo si no le queda lugar para un renglón de cartas (`STRIP_MIN_REM`). El lugar va en variables de la caja, sin otro dibujo.
+  useLayoutEffect(() => {
+    const slot = slotRef.current
+    const section = sectionRef.current
+    const field = fieldNode
+    const column = columnRef.current
+
+    if (!stripOpen || !slot || !section || !field || !column) return
+
+    let frame = 0
+    const measure = () => {
+      const box = section.getBoundingClientRect()
+      const area = column.getBoundingClientRect()
+      const row = field.querySelector('[data-drop="emz:0"]')?.getBoundingClientRect()
+      const first = field.querySelector('[data-drop="extra"]')?.getBoundingClientRect()
+      const last = field.querySelector('[data-drop="deck"]')?.getBoundingClientRect()
+
+      if (!row || !first || !last) return
+
+      const style = getComputedStyle(column)
+      const tracks = style.gridTemplateColumns.split(' ').map(parseFloat)
+      const middle = rails && tracks.length === 3 ? area.left + parseFloat(style.paddingLeft) + tracks[0]! + (parseFloat(style.columnGap) || 0) : null
+      const left = middle === null ? first.left : Math.max(first.left, middle)
+      const right = middle === null ? last.right : Math.min(last.right, middle + tracks[1]!)
+      const bar = rails ? null : column.firstElementChild?.getBoundingClientRect().bottom
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const top = Math.min(Math.max(area.top, bar ?? area.top) + 8, row.bottom - STRIP_MIN_REM * rem)
+
+      slot.style.setProperty('--strip-top', `${Math.round(top - box.top)}px`)
+      slot.style.setProperty('--strip-left', `${Math.round(left - box.left)}px`)
+      slot.style.setProperty('--strip-right', `${Math.round(box.right - right)}px`)
+      slot.style.setProperty('--strip-bottom', `${Math.round(box.bottom - row.bottom)}px`)
+    }
+    const later = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(measure)
+    }
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later)
+
+    measure()
+    observer?.observe(section)
+    observer?.observe(field)
+    column.addEventListener('scroll', later, { passive: true })
+
+    return () => {
+      observer?.disconnect()
+      column.removeEventListener('scroll', later)
+      cancelAnimationFrame(frame)
+    }
+  }, [stripOpen, fieldNode, view, rails])
+
+  // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
+  // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.
+  const autoViewer = duel?.auto?.viewer ?? null
+  const viewerPile = autoViewer?.pile ?? viewer
+  const byName = isAuto && viewerPile === 'deck'
+  const viewerIds = autoViewer ? [...autoViewer.ids] : viewer ? state[viewer] : []
+  const pickedIds = autoPick?.chosen ?? []
+  const viewerList = byName ? [...viewerIds].sort((a, b) => Number(pickedIds.includes(b)) - Number(pickedIds.includes(a)) || nameOf(a).localeCompare(nameOf(b))) : viewerIds
+
   // Deshacer de un duelo, abajo, donde llega el pulgar (en la práctica y en «Jugar solo automático» va arriba, con los íconos de la mesa: `MatBarActions`), y la ficha y la lista de pasos.
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
@@ -2204,21 +2282,21 @@ export function PracticeMat({
           {state.st.map((_, index) => cell('st', index, `s${index + 1}`))}
 
           {/* Deck: tocarlo es buscar (el visor), arrastrar su tope es robar (o mandarlo al cementerio, al destierro o al campo, según dónde se suelte) y mantenerlo apretado abre el menú; con el
-              teclado, el menú. Se baraja con cada mano nueva y reparte de a una. */}
+              teclado, el menú. Se baraja con cada mano nueva y reparte de a una. En automático sólo se mira: tocarlo o Enter abre el visor, sin arrastre ni menú. */}
           <div
             ref={deckRef}
             role="button"
             tabIndex={0}
             aria-label={`${PILE_TITLES.deck}: ${state.deck.length}`}
-            title={t('practice.mat.deckHelp')}
+            title={t(isAuto ? 'practice.mat.deckHelpAuto' : 'practice.mat.deckHelp')}
             data-drop="deck"
             data-over="false"
             data-targeted={rivalMarks?.piles.includes('deck') ? 'true' : 'false'}
             data-pointed={duel?.pointed?.pile === 'deck' ? 'true' : undefined}
-            className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus', HOLD_PRESS)}
+            className={cx(CELL, isAuto ? 'cursor-pointer' : state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus', HOLD_PRESS)}
             style={{ gridArea: 'deck' }}
-            {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true, hold: true })}
-            onKeyDown={(event) => activate(event, () => setMenu({ kind: 'deck', rect: event.currentTarget.getBoundingClientRect() }))}
+            {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true, hold: !isAuto, still: isAuto })}
+            onKeyDown={(event) => activate(event, () => (isAuto ? setViewer('deck') : setMenu({ kind: 'deck', rect: event.currentTarget.getBoundingClientRect() })))}
             onContextMenu={(event) => event.preventDefault()}
           >
             {/* El grosor del deck, debajo: se afina al robar. */}
@@ -2449,28 +2527,31 @@ export function PracticeMat({
       />
 
       {/*
-        El lugar de los visores de las pilas en escritorio (el de la mesa y, en un duelo, el del rival): no tapan el campo ni el detalle de la carta, ni los oscurecen, y el campo sigue vivo. Van en la columna de
-        la derecha mientras están abiertos (en la práctica, la de los pasos y combos; en un duelo con el detalle, desde 1440 px, la del chat), así el detalle fijo de la izquierda sigue a la vista y muestra la carta
-        que se toca o se apunta en el visor (Gastón, 2026-10-24: «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo acceder a la info»). En un duelo sin detalle (1101–1439 px: la derecha
-        es del chat y el campo no deja 20 rem a los costados), en un panel angosto (dos cartas) contra el borde izquierdo de la mesa, entre las vidas y el reloj del rival (arriba, 9 rem) y tu mano (abajo, 12 rem):
-        ahí el campo deja su margen más ancho. Ocupan la celda de la grilla sin cambiarla (`absolute`) y la caja no ataja toques: sólo el panel. En el celular el visor es la hoja de abajo (va por portal).
-        Las líneas van con su principio y su fin (`col-[3/4]`): en algo `absolute`, un fin `auto` (o una línea que la grilla no tiene) es el borde de la grilla y la caja se estiraría sobre la mesa.
+        El lugar de los visores de las pilas en escritorio (el de la mesa y, en un duelo, el del rival): no tapan el detalle de la carta ni oscurecen nada, y el campo sigue vivo. En la práctica van en la
+        columna de los pasos y combos y, en un duelo con el chat y el detalle (desde 1440 px), en la del chat, así el detalle fijo de la izquierda sigue a la vista y muestra la carta que se toca o se apunta
+        en el visor (Gastón, 2026-10-24: «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo acceder a la info»). En los demás duelos, la tira de `pileStrip`: la caja va de la barra
+        de arriba a la fila de las Zonas Extra y del ancho de las casillas (lo mide el efecto de la tira). Ocupan la celda de la grilla sin cambiarla (`absolute`) y la caja no ataja toques: sólo el panel. En el
+        celular el visor es la hoja de abajo (va por portal). Las líneas van con su principio y su fin (`col-[3/4]`): en algo `absolute`, un fin `auto` (o una línea que la grilla no tiene) es el borde de
+        la grilla y la caja se estiraría sobre la mesa.
       */}
       <div
+        ref={slotRef}
         data-pile-slot=""
         className={cx(
-          'pointer-events-none absolute z-[115] row-[1/3] grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]',
-          duel
-            ? cx('left-2 top-36 col-[1/2] max-h-[calc(100%-21rem)] w-48', Boolean(detail) && (sidePanel ? 'min-[1440px]:inset-2 min-[1440px]:col-[3/4] min-[1440px]:max-h-none min-[1440px]:w-auto' : 'min-[1440px]:col-[2/3]'))
-            : cx('inset-2 min-[1101px]:col-[2/3]', Boolean(detail) && 'min-[1440px]:col-[3/4]'),
+          'pointer-events-none absolute z-[115] grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]',
+          pileStrip
+            ? 'top-[var(--strip-top,0.5rem)] right-[var(--strip-right,0px)] bottom-[var(--strip-bottom,50%)] left-[var(--strip-left,0px)]'
+            : cx('row-[1/3] inset-2', duel ? 'col-[3/4]' : cx('min-[1101px]:col-[2/3]', Boolean(detail) && 'min-[1440px]:col-[3/4]')),
         )}
       >
         {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}
         {/* En automático, una búsqueda del núcleo (`duel.auto.viewer`) muestra sólo las candidatas; tocar una la elige, la X cancela si se puede (o termina, si se puede terminar sin elegir más). */}
+        <PileStripContext.Provider value={pileStrip}>
         <PileViewer
-          pile={duel?.auto?.viewer?.pile ?? viewer}
-          hidden={covered}
-          ids={duel?.auto?.viewer?.ids ? [...duel.auto.viewer.ids] : viewer ? state[viewer] : []}
+          pile={viewerPile}
+          hidden={covered || stripHidden}
+          ids={viewerList}
+          kicker={byName ? t('practice.dialog.byName') : undefined}
           info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
           targeted={targetedIds}
           // Tocar una carta del visor (también eligiendo varias) la muestra, fija, en el detalle de la izquierda, y pasarle el mouse también (mientras no haya otra fija), como una de la mano o del campo.
@@ -2492,6 +2573,7 @@ export function PracticeMat({
                 }
               : undefined
           }
+          // En automático, como una carta de la mano o del campo (`openCard`): la elige si la pregunta la ofrece; si no, su menú (sin jugadas, «Ver carta» donde no hay detalle fijo).
           onPick={(id, rect) => (duel?.auto ? openCard(id, rect) : setMenu({ kind: 'card', id, rect }))}
           // Elegir varias: «Elegir jugada» abre el menú del lote, pegado al botón (o la hoja, en el celular); la jugada cierra el visor.
           many={duel?.auto ? duel.auto.viewer?.many : {
@@ -2503,6 +2585,7 @@ export function PracticeMat({
           onClose={duel?.auto?.viewer ? (duel.auto.cardPick?.cancel ?? duel.auto.cardPick?.done?.onSelect ?? (() => {})) : closeViewer}
         />
         {rivalViewer}
+        </PileStripContext.Provider>
       </div>
 
       <SaveComboDialog isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />

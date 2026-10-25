@@ -3,10 +3,10 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import '@testing-library/jest-dom'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { MatPile } from '../app/practice-mat'
-import { PileViewer, type PileMany } from '../components/probability/MatDialogs'
+import { PileStripContext, PileViewer, type PileMany } from '../components/probability/MatDialogs'
 
 // El aviso de límite de copias de la carta lee el formato del store.
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
@@ -330,5 +330,46 @@ describe('el visor queda montado (así sale al cerrarse): arranca de cero al abr
     expect(search()).toHaveValue('')
     // El cementerio, la más reciente primero: Maxx C se ve antes que Ash Blossom.
     expect(pressed(dialog())).toEqual(['Maxx C (1.ª elegida)', 'Ash Blossom (2.ª elegida)'])
+  })
+})
+
+describe('en la mesa del duelo de escritorio es una tira: renglones de cartas que se deslizan de arriba abajo', () => {
+  const media = window.matchMedia
+
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  })
+
+  afterEach(() => {
+    window.matchMedia = media
+  })
+
+  const strip = (ids: string[]) =>
+    render(
+      <Provider store={store}>
+        <PileStripContext.Provider value>
+          <PileViewer pile="deck" ids={ids} info={(id) => ({ name: NAMES[id] ?? id, art: null })} targeted={new Set()} onPick={() => {}} onClose={() => {}} many={{ label: () => 'Elegir jugada', onPick: () => {} }} />
+        </PileStripContext.Provider>
+      </Provider>,
+    )
+
+  it('las cartas bajan de renglón y lo que sobra se desliza de arriba abajo, nunca a los costados (hasta tres renglones y un asomo); el buscador va en la fila del título y «Elegir varias», abajo', () => {
+    strip(Object.keys(NAMES))
+    const panel = screen.getByRole('dialog', { name: 'Main · 9' })
+    const list = within(panel).getByRole('list', { name: 'Cartas' })
+
+    expect(list).toHaveClass('flex', 'flex-wrap')
+    expect(list).not.toHaveClass('overflow-x-auto')
+    expect(list.parentElement).toHaveClass('overflow-y-auto', 'overflow-x-hidden')
+    expect(list.parentElement!.className).toContain('max-h-[calc(3*')
+    expect(panel).toHaveClass('w-full', 'max-h-full', 'self-end')
+    expect(panel.querySelector('header')).toContainElement(within(panel).getByRole('searchbox', { name: 'Buscar carta' }))
+    expect(within(panel).getByRole('button', { name: 'Elegir varias' }).closest('footer')).not.toBeNull()
+  })
+
+  it('con pocas cartas (sin buscador) mide lo justo: el ancho de sus cartas en fila', () => {
+    strip(['a', 'b'])
+
+    expect(screen.getByRole('dialog', { name: 'Main · 2' })).toHaveClass('w-max')
   })
 })

@@ -25,7 +25,7 @@ import { overline } from '../../ui/typography'
 import { CardSheet } from '../../probability/CardSheet'
 import { ConfirmDialog } from '../../probability/ConfirmDialog'
 import { LabScoreSheet } from '../../probability/LabScoreSheet'
-import { CardMenu, PILE_TITLES, PileViewer, type MenuItem } from '../../probability/MatDialogs'
+import { CardMenu, PILE_TITLES, PileStripContext, PileViewer, type MenuItem } from '../../probability/MatDialogs'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleCombo } from './duel-sample'
 
@@ -142,18 +142,21 @@ const OGRE = pileCard(59438930)
 const TALKER = pileCard(86066372)
 const SAMPLE_GY = [ASH, OGRE, TALKER, pileCard(83764718), pileCard(27204311), pileCard(38342335)]
 const SAMPLE_MAIN = [ASH, pileCard(5318639), OGRE, pileCard(14558127, 2), pileCard(53129443), pileCard(27204311), pileCard(10045474), pileCard(14558127, 3), pileCard(83764718), pileCard(24094653), pileCard(59438930, 2), pileCard(44095762), pileCard(53582587), pileCard(10045474, 2)]
+// La tira: un Main más largo (veintidós), así en el ancho de la mesa no entra en dos renglones y se ve que se desliza.
+const SAMPLE_DECK = [...SAMPLE_MAIN, ...[5318639, 53129443, 27204311, 83764718, 24094653, 44095762, 53582587, 10045474].map((passcode) => pileCard(passcode, 3))]
 // Los monstruos del Extra Deck de la muestra: los únicos que pueden volver al Extra.
 const SAMPLE_EXTRA = new Set([TALKER, pileCard(38342335)])
 
-type PileSample = 'plain' | 'two' | 'none' | 'search' | 'batch'
+type PileSample = 'plain' | 'two' | 'none' | 'search' | 'batch' | 'strip'
 
-/** Un estado del visor por muestra: qué pila, qué cartas, cuáles llevan la mira y si arranca eligiendo (y con cuáles). */
-const PILE_SAMPLES: Record<PileSample, { pile: MatPile; ids: string[]; targeted?: string[]; start?: string[] }> = {
+/** Un estado del visor por muestra: qué pila, qué cartas, cuáles llevan la mira y si arranca eligiendo (y con cuáles); `strip`, la tira de la mesa del duelo (el deck del automático: por nombre y sin elegir varias). */
+const PILE_SAMPLES: Record<PileSample, { pile: MatPile; ids: string[]; targeted?: string[]; start?: string[]; strip?: true }> = {
   plain: { pile: 'gy', ids: SAMPLE_GY, targeted: [pileCard(83764718)] },
   two: { pile: 'gy', ids: SAMPLE_GY, targeted: [ASH], start: [TALKER, ASH] },
   none: { pile: 'gy', ids: SAMPLE_GY, start: [] },
   search: { pile: 'deck', ids: SAMPLE_MAIN, start: [] },
   batch: { pile: 'gy', ids: SAMPLE_GY, start: [TALKER, ASH, OGRE] },
+  strip: { pile: 'deck', ids: SAMPLE_DECK, strip: true },
 }
 
 /** Lo que dice una opción que no admiten todas las elegidas, como lo va a decir la mesa: hasta tres nombres; desde cuatro, cuántas. */
@@ -222,6 +225,10 @@ export function DialogsSection() {
   const [ashMenu, setAshMenu] = useState<{ rect: DOMRect; ask?: string } | null>(null)
   const { nameOf, artOf } = useMemo(() => sampleCombo(), [])
   const pileShown = pileSample ? PILE_SAMPLES[pileSample] : null
+  // La caja de la última muestra abierta: la tira sale en la suya (al cerrarse no cambia de caja mientras sale).
+  const [lastPileSample, setLastPileSample] = useState<PileSample>('plain')
+
+  if (pileSample !== null && pileSample !== lastPileSample) setLastPileSample(pileSample)
   // Toda jugada cierra el visor, como en la mesa.
   const playSample = (label: string) => () => {
     setPileMenu(null)
@@ -319,9 +326,15 @@ export function DialogsSection() {
       </Presence>
       <CardMenu anchor={isDesktop ? (ashMenu?.rect ?? null) : null} kicker={PILE_TITLES.hand} title={nameOf(ASH)} items={inMenuBlocks(ashRows)} startExpanded={ashMenu?.ask} onClose={() => setAshMenu(null)} />
 
-      <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el campo ni el detalle de la carta: sin velo, en escritorio va en la columna de la derecha (los pasos o, desde 1440 px, el chat del duelo) o en un panel angosto contra el borde izquierdo de la mesa del duelo, y el campo sigue vivo; la carta que se toca o se apunta se lee en el detalle. En el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
+      <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el detalle de la carta: sin velo, en escritorio va en la columna de la derecha (los pasos o, desde 1440 px, el chat del duelo) o, en la mesa de los demás duelos, en la tira de la muestra siguiente, y el campo sigue vivo; la carta que se toca o se apunta se lee en el detalle. En el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
         <Button size="sm" onClick={() => setPileSample('plain')}>
           Abrir el cementerio
+        </Button>
+      </Specimen>
+
+      <Specimen title="Visor como tira" note={<>En la mesa del duelo de escritorio («Jugar solo» automático siempre; con un amigo, de 1101 a 1439 px) el visor es una tira ancha apoyada en la fila de las Zonas Extra, del ancho de las casillas y sin meterse en los laterales, que crece hacia arriba hasta la barra y no llega a la mano (<Tag>PileStripContext</Tag>): las cartas en renglones que se deslizan de arriba abajo (hasta tres y un asomo del siguiente; con menos alto, menos, nunca menos de uno), el buscador en la fila del título y la X o Escape para cerrarla. Con pocas cartas mide lo justo. Se esconde mientras se elige algo en el campo. Acá, el deck del duelo automático (por nombre, porque su orden no se sabe) en el alto que le deja la mesa a 1440 × 900: dos renglones y el asomo del tercero. En el celular, la hoja de siempre.</>}>
+        <Button size="sm" onClick={() => setPileSample('strip')}>
+          Abrir el deck como tira
         </Button>
       </Specimen>
 
@@ -359,21 +372,29 @@ export function DialogsSection() {
           Abrir con tres elegidas
         </Button>
       </Specimen>
-      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). No es un modal: en escritorio llena la caja donde va (en la mesa, la columna de la derecha); acá, una abajo a la derecha. En el celular, la hoja de abajo. */}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-180 grid h-[min(34rem,calc(100dvh-2rem))] w-80 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
-        <PileViewer
-          pile={pileShown?.pile ?? null}
-          ids={pileShown?.ids ?? []}
-          info={(id) => ({ name: nameOf(id), art: artOf(id) })}
-          targeted={new Set(pileShown?.targeted)}
-          onPick={(id, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
-          many={{
-            label: () => t('practice.many.choosePlay'),
-            onPick: (ids, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: t('practice.mat.cardCount', { count: ids.length }), rect, items: batchItems(ids) }),
-            start: pileShown?.start,
-          }}
-          onClose={() => setPileSample(null)}
-        />
+      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). No es un modal: en escritorio llena la caja donde va (en la mesa, la columna de la derecha); acá, una abajo a la derecha
+          (la tira, una abajo al medio, del ancho y del alto que le deja la mesa a 1440 × 900). En el celular, la hoja de abajo. */}
+      <div className={cx('pointer-events-none fixed bottom-4 z-180 grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]', PILE_SAMPLES[lastPileSample].strip ? 'inset-x-[max(1rem,calc(50%-23.25rem))] h-[22rem]' : 'right-4 h-[min(34rem,calc(100dvh-2rem))] w-80')}>
+        <PileStripContext.Provider value={Boolean(PILE_SAMPLES[lastPileSample].strip)}>
+          <PileViewer
+            pile={pileShown?.pile ?? null}
+            ids={pileShown?.strip ? [...pileShown.ids].sort((a, b) => nameOf(a).localeCompare(nameOf(b))) : (pileShown?.ids ?? [])}
+            kicker={pileShown?.strip ? t('practice.dialog.byName') : undefined}
+            info={(id) => ({ name: nameOf(id), art: artOf(id) })}
+            targeted={new Set(pileShown?.targeted)}
+            onPick={(id, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: nameOf(id), rect, items: cardItems(), card: id })}
+            many={
+              pileShown?.strip
+                ? undefined
+                : {
+                    label: () => t('practice.many.choosePlay'),
+                    onPick: (ids, rect) => pileShown && setPileMenu({ kicker: PILE_TITLES[pileShown.pile], title: t('practice.mat.cardCount', { count: ids.length }), rect, items: batchItems(ids) }),
+                    start: pileShown?.start,
+                  }
+            }
+            onClose={() => setPileSample(null)}
+          />
+        </PileStripContext.Provider>
       </div>
       <Presence>{pileMenu && !isDesktop ? <CardSheet name={pileMenu.title} kicker={pileMenu.kicker} plain={pileMenu.card === undefined} art={pileMenu.card ? artOf(pileMenu.card) : null} items={pileMenu.items} onClose={() => setPileMenu(null)} /> : null}</Presence>
       <CardMenu anchor={isDesktop ? (pileMenu?.rect ?? null) : null} kicker={pileMenu?.kicker ?? ''} title={pileMenu?.title ?? ''} items={pileMenu?.items ?? []} onClose={() => setPileMenu(null)} />

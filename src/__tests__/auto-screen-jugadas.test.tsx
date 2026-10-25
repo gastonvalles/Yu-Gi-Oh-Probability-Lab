@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
-import { act, loc, pos, stringId } from './support/auto-session-fake'
+import { act, fakeSession, loc, pos, SPOTS, stringId } from './support/auto-session-fake'
 import { core, dispatches, hand, handCard, inHand, lane, phaseButton, renderAuto, status } from './support/auto-screen-harness'
 import { pointer, tap, zone } from './support/practice-mat-harness'
 
@@ -170,7 +170,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('una carta sin jugada legal abre su hoja sin jugadas (lo dice y «Ver carta» la muestra), y el deck no se mira', () => {
+  it('una carta sin jugada legal abre su hoja sin jugadas (lo dice y «Ver carta» la muestra)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
@@ -181,10 +181,36 @@ describe('auto-screen · las jugadas', () => {
     expect(sheet).toHaveTextContent('No hay nada para hacer desde acá.')
     fireEvent.click(within(sheet).getByRole('button', { name: 'Ver carta' }))
     expect(screen.getByRole('dialog', { name: 'Detalle de Ash Blossom' })).toBeInTheDocument()
-    tap(screen.getByRole('button', { name: 'Main: 2' }))
-    expect(screen.queryByRole('dialog', { name: /Main/ })).toBeNull()
     expect(status()).toBeInTheDocument()
     expect(fake.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('el deck se mira por nombre (no en su orden: Imperm está arriba) y cerrarlo no baraja ni despacha', () => {
+    const fake = renderAuto(fakeSession(SPOTS.map((spot) => (spot.id === 'card-101-1' ? { ...spot, sequence: 0 } : spot.id === 'card-102-1' ? { ...spot, sequence: 1 } : spot))))
+
+    core(() => fake.ask(CHAIN))
+    expect(screen.getByRole('button', { name: 'Main: 2' })).toHaveAttribute('title', 'Main Deck · Tocá: ver las cartas que quedan, por nombre')
+    tap(screen.getByRole('button', { name: 'Main: 2' }))
+    const viewer = screen.getByRole('dialog', { name: 'Main · 2' })
+
+    expect(viewer).toHaveTextContent('Por nombre, no en el orden del deck')
+    expect(within(viewer).getByRole('list')).toHaveTextContent(/Droll.*Imperm/)
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByRole('dialog', { name: 'Main · 2' })).toBeNull()
+    expect(fake.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('Enter en el deck abre el visor (no un menú vacío) y una carta suya sin jugada abre su hoja con «Ver carta»', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(CHAIN))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Main: 2' }), { key: 'Enter' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Main · 2' })).getByRole('button', { name: /^Droll/ }))
+    fireEvent.click(within(screen.getByRole('region', { name: 'Droll' })).getByRole('button', { name: 'Ver carta' }))
+    expect(screen.getByRole('dialog', { name: 'Detalle de Droll' })).toBeInTheDocument()
     expect(dispatches).toBe(0)
   })
 
@@ -430,6 +456,38 @@ describe('auto-screen · mantener apretado', () => {
     fireEvent.pointerUp(attacker, { ...pointer, clientX: 10, clientY: 10 })
     expect(fake.answers).toHaveLength(1)
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Atacar'])
+    expect(dispatches).toBe(0)
+  })
+})
+
+describe('auto-screen · el visor de las pilas en escritorio', () => {
+  beforeEach(() => {
+    // Desde 1101 px (sin el detalle fijo, que llega a los 1440): el de la mesa del duelo.
+    const media = window.matchMedia
+
+    window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
+  })
+
+  it('es una tira ancha sobre la fila de las Zonas Extra, con renglones que se deslizan de arriba abajo; una casilla que pregunta el núcleo la esconde hasta contestar, y jugar una carta suya la cierra', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(IDLE))
+    fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+    const slot = document.querySelector<HTMLElement>('[data-pile-slot]')!
+    const list = within(within(slot).getByRole('dialog', { name: 'Extra · 1' })).getByRole('list')
+
+    expect(slot.className).toContain('top-[var(--strip-top,0.5rem)]')
+    expect(slot.className).toContain('bottom-[var(--strip-bottom,50%)]')
+    expect(list).toHaveClass('flex-wrap')
+    expect(list.parentElement).toHaveClass('overflow-y-auto')
+    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~0b110 >>> 0 }))
+    expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
+    core(() => fake.ask(IDLE))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: /^Zeus/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    expect(fake.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 1, index: 0 })
+    expect(screen.queryByRole('dialog', { name: 'Extra · 1' })).toBeNull()
     expect(dispatches).toBe(0)
   })
 })
