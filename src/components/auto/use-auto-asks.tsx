@@ -510,21 +510,19 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         : snap.status === 'thinking'
           ? { kind: 'thinking', ...(canCancel ? { onCancel: () => session.cancel() } : {}) }
           : shown?.type === 'select_chain' && !shown.phaseWindow
-            ? {
-                // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla.
-                kind: 'ask',
-                text: !shown.cancelable
-                  ? t('auto.lane.mustActivate', { cards: respondNames(shown.items.keys()) })
-                  : chain.length > 0
-                    ? t('auto.lane.respondTo', { card: linkName(chain[chain.length - 1]!), cards: respondNames(shown.items.keys()) })
-                    : t('auto.lane.respondNow', { cards: respondNames(shown.items.keys()) }),
-                actions: shown.cancelable ? [{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }] : [],
-              }
+            ? // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla. La que se puede pasar
+              // va al medio (`chainOffer`) y la línea queda libre.
+              shown.cancelable
+              ? null
+              : { kind: 'ask', text: t('auto.lane.mustActivate', { cards: respondNames(shown.items.keys()) }), actions: [] }
             : snap.faults.length > faultsBase.current && newFault
               ? { kind: 'ask', text: newFault.kind === 'script' ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') }) : t('auto.lane.error', { message: newFault.message }), actions: [] }
               : snap.unmapped.length > unmappedBase.current
                 ? { kind: 'ask', text: t('auto.lane.unmapped', { what: snap.unmapped[snap.unmapped.length - 1]! }), actions: [] }
                 : chainLane(chain, linkName)
+  // La cadena que se puede pasar, al medio de la mesa (como «¿Activás el efecto?»): se responde tocando la carta que brilla; sin nada más urgente en la línea (trabada, esperando, pensando).
+  const chainOffer = shown?.type === 'select_chain' && !shown.phaseWindow && shown.cancelable && lane === null ? shown : null
+  const respondedTo = chain.at(-1)
 
   // ── ATK/DEF de ahora de la carta del detalle (sólo las del campo los tienen): se busca por código entre las del campo de ese lado. ──
   const peeked = dock.shown
@@ -573,6 +571,18 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {...(promptCard ? { card: { name: nameOf(promptCard.ref, promptCard.code), art: artOf(promptCard.ref, promptCard.code) } } : {})}
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
+      />
+    ) : chainOffer ? (
+      <AskPrompt
+        key={askId ?? 0}
+        text={
+          respondedTo
+            ? t('auto.lane.respondTo', { card: linkName(respondedTo), cards: respondNames(chainOffer.items.keys()) })
+            : t('auto.lane.respondNow', { cards: respondNames(chainOffer.items.keys()) })
+        }
+        // La carta a la que se responde (el último eslabón), chica a la izquierda: se ve qué se está por resolver sin buscarla en la mesa.
+        {...(respondedTo ? { card: { name: linkName(respondedTo), art: artOf(respondedTo.card, respondedTo.code) } } : {})}
+        no={{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }}
       />
     ) : undefined,
     rivalFlights: { state: theirs, artOf: opponent.artOf },

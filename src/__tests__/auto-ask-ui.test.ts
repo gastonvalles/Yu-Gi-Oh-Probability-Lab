@@ -2,7 +2,8 @@ import { t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
 import { askView, itemsInto, namesList, openAsk, step, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
-import { createMatState, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
+import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
+import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
 import { gesturesOf, legal, playAsk, seeded } from './support/ask-ui-player'
 
 /** Una carta de la mesa falsa: de qué lado, dónde la tiene el núcleo y (en el campo) en qué posición. */
@@ -523,5 +524,53 @@ describe('ask-ui: soltar una carta de la mano en una casilla', () => {
     expect(askView(open({ ...place, count: 2 }, prefer('mz', 2))).auto).toBeNull()
     // La de las del rival no es la mía aunque tenga el mismo número.
     expect(askView(open(place, ctx(MESA, { prefer: { side: 'theirs', zone: 'mz', index: 2 } }))).auto).toBeNull()
+  })
+})
+
+describe('ask-ui: el menú de una carta, en el orden y los bloques de la mesa manual', () => {
+  // Mi mano: 100 (monstruo de nivel 4 con efecto), 900 (Mágica); mi campo: 200 (monstruo con efecto, en ataque), 950 (Mágica colocada); mi Extra: 500 (Sincronía).
+  const MONSTER: MatCardKind = { ...TOKEN_KIND, effect: true, level: 4 }
+  const KINDS: Record<string, MatCardKind> = {
+    'card-100-1': MONSTER,
+    'card-200-1': MONSTER,
+    'card-900-1': { ...TOKEN_KIND, monster: false, spell: true },
+    'card-950-1': { ...TOKEN_KIND, monster: false, spell: true },
+    'card-500-1': { ...MONSTER, extra: true, synchro: true, level: 6 },
+  }
+  const queries = mesa([
+    { side: 'mine', id: 'card-100-1', code: 100, location: L.HAND, sequence: 0 },
+    { side: 'mine', id: 'card-900-1', code: 900, location: L.HAND, sequence: 1 },
+    { side: 'mine', id: 'card-200-1', code: 200, location: L.MZONE, sequence: 0, pos: 'atk' },
+    { side: 'mine', id: 'card-950-1', code: 950, location: L.SZONE, sequence: 1, pos: 'set' },
+    { side: 'mine', id: 'card-500-1', code: 500, location: L.EXTRA, sequence: 0 },
+  ])
+  const idle: CoreAsk = {
+    type: 'select_idlecmd',
+    player: 0,
+    summons: [loc(100, L.HAND, 0)],
+    special_summons: [loc(500, L.EXTRA, 0), loc(100, L.HAND, 0)],
+    pos_changes: [loc(200, L.MZONE, 0)],
+    monster_sets: [loc(100, L.HAND, 0)],
+    spell_sets: [loc(900, L.HAND, 1)],
+    activates: [act(950, L.SZONE, 1), act(200, L.MZONE, 0), act(900, L.HAND, 1), act(100, L.HAND, 0)],
+    to_bp: false,
+    to_ep: true,
+    shuffle: false,
+  }
+
+  it('cada carta (mano, campo y Extra) ofrece lo legal en el mismo orden que la manual, también en los bloques de escritorio (sólo hay jugadas)', () => {
+    const view = askView(open(idle, ctx(queries)))
+
+    for (const id of Object.keys(KINDS)) {
+      const auto = view.items.get(id)!.map((item) => item.label)
+      const manual = listCardActions(queries.mine, id, (card) => KINDS[card]!, (card) => card)
+      const legalOnly = (labels: string[]) => labels.filter((label) => auto.includes(label))
+      const desktopManual = inMenuBlocks<{ label: string; divider?: boolean }>(manual.map((item) => ({ entry: { label: item.label }, place: menuPlaceOf(item, [id]) }))).map((entry) => entry.label)
+      const desktopAuto = inMenuBlocks<{ label: string; divider?: boolean }>(auto.map((label) => ({ entry: { label }, place: PLAY_PLACE }))).map((entry) => entry.label)
+
+      expect({ id, auto }).toEqual({ id, auto: legalOnly(manual.map((item) => item.label)) })
+      expect({ id, desktop: desktopAuto }).toEqual({ id, desktop: legalOnly(desktopManual) })
+    }
+    expect(view.items.get('card-100-1')!.map((item) => item.label)).toEqual(['normalSummon', 'set', 'specialSummon', 'activateEffect'].map((key) => t(`practice.menu.${key}` as 'practice.menu.set')))
   })
 })

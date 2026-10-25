@@ -55,3 +55,34 @@ export function classicCell(height: number): number {
 export function railsFit(width: number, height: number): boolean {
   return width > 0 && width >= COLUMN_PAD_PX + 2 * (RAIL_MIN_PX + RAIL_GAP_PX) + FIELD_GAPS_PX + FIELD_CELLS * classicCell(height)
 }
+
+/** Lo que importa de un rectángulo de la pantalla (un `DOMRect`). */
+interface Box {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+/**
+ * Dónde va (su `top`) la pregunta del medio de la mesa (`duel.prompt`) para no tapar lo que hay que tocar (`obstacles`: lo que brilla para responder, la tira de un visor), entre `min` y `max`.
+ * Si no tapa nada, se queda; si tapa, sube lo justo (hacia el campo del rival, donde no hay nada tuyo que tocar) y, si arriba no entra, baja. Sin lugar en ninguno de los dos, null.
+ */
+export function promptTop(prompt: Box, obstacles: readonly Box[], min: number, max: number, gap = 8): number | null {
+  const height = prompt.bottom - prompt.top
+  const hits = (top: number) => obstacles.filter((box) => box.left < prompt.right && box.right > prompt.left && box.top < top + height && box.bottom > top)
+  const slide = (up: boolean): number | null => {
+    let top = prompt.top
+
+    for (let step = 0; step <= obstacles.length; step += 1) {
+      const hit = hits(top)
+
+      if (hit.length === 0) return top >= min && top + height <= max ? top : null
+      top = up ? Math.min(...hit.map((box) => box.top)) - gap - height : Math.max(...hit.map((box) => box.bottom)) + gap
+    }
+
+    return null
+  }
+
+  return slide(true) ?? slide(false)
+}

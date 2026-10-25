@@ -4,13 +4,26 @@ import '@testing-library/jest-dom'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { FIELD_ZOOM_MAX, classicCell, fieldZoom, railsFit } from '../app/duel-rails'
+import { FIELD_ZOOM_MAX, classicCell, fieldZoom, promptTop, railsFit } from '../app/duel-rails'
 import { useHostToasts } from '../app/toast-box'
 import { AppToaster } from '../components/ui/AppToaster'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+})
+
+describe('la pregunta del medio no tapa lo que hay que tocar', () => {
+  const box = (top: number, bottom: number, left = 0, right = 100) => ({ top, bottom, left, right })
+  const prompt = box(400, 500)
+
+  it('sin nada abajo se queda; tapando una carta sube lo justo, también por encima de otra que queda en el camino; sin lugar arriba baja y, sin lugar en ninguno, no hay dónde', () => {
+    expect(promptTop(prompt, [box(600, 700), box(400, 500, 200, 300)], 0, 900)).toBe(400)
+    expect(promptTop(prompt, [box(450, 550)], 0, 900)).toBe(342)
+    expect(promptTop(prompt, [box(450, 550), box(300, 420)], 0, 900)).toBe(192)
+    expect(promptTop(prompt, [box(450, 550), box(0, 420)], 0, 900)).toBe(558)
+    expect(promptTop(prompt, [box(450, 550), box(0, 420), box(500, 900)], 0, 900)).toBeNull()
+  })
 })
 
 describe('cuándo hay laterales', () => {

@@ -455,11 +455,12 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
     case 'select_idlecmd': {
       const idle = (action: number) => (index: number): CoreAnswer => ({ type: 'select_idlecmd', action, index })
 
+      // En el orden de la mesa manual (`listCardActions`): Normal, Colocar, Especial, activar y, de una Mágica o Trampa, Colocar después de Activar.
       list(ask.summons, () => t('practice.menu.normalSummon'), idle(0), 'monster')
+      list(ask.monster_sets, () => t('practice.menu.set'), idle(3), 'monster')
       // La Invocación de Péndulo es la Especial de la escala (`EFFECT_SPSUMMON_PROC_G` en su zona).
       list(ask.special_summons, (card) => t(card.location === L.SZONE ? 'practice.menu.pendulumSummon' : 'practice.menu.specialSummon'), idle(1), 'monster')
       activations(ask.activates, idle(5))
-      list(ask.monster_sets, () => t('practice.menu.set'), idle(3), 'monster')
       list(ask.spell_sets, () => t('practice.menu.set'), idle(4), 'spell')
       list(
         ask.pos_changes,
