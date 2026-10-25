@@ -208,8 +208,9 @@ export const practice = {
   'practice.mat.turn': 'Turno {turn}',
   'practice.mat.field': 'Campo',
   'practice.mat.phases': 'Fases',
-  // Lo que se hace con el deck (su `title`): tocarlo, arrastrarlo y mantenerlo apretado.
+  // Lo que se hace con el deck (su `title`): tocarlo, arrastrarlo y mantenerlo apretado. En el duelo automático sólo se mira.
   'practice.mat.deckHelp': 'Main Deck · Tocá: buscar · Arrastrá: robar · Mantené: opciones',
+  'practice.mat.deckHelpAuto': 'Main Deck · Tocá: ver las cartas que quedan, por nombre',
   'practice.mat.currentStep': 'Paso actual',
   'practice.mat.confirm': 'Invocar',
   'practice.mat.pause': 'Pausar',
@@ -252,6 +253,8 @@ export const practice = {
   'practice.dialog.viewCard': 'Ver carta',
   'practice.dialog.searchCard': 'Buscar carta',
   'practice.dialog.noCards': 'No hay cartas acá.',
+  // Lo de arriba del título en el visor del deck del duelo automático: su orden no se sabe.
+  'practice.dialog.byName': 'Por nombre, no en el orden del deck',
   'practice.dialog.noMatch': 'Ninguna carta coincide con “{query}”.',
   'practice.dialog.cards': 'Cartas',
   'practice.dialog.cardFaceDown': '{name} (boca abajo)',

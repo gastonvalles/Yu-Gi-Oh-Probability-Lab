@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { Fragment, createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
@@ -454,23 +454,32 @@ interface PileViewerProps {
   onClose: () => void
   /** Las cartas del rival: sólo se sabe cómo se ven, no cómo se llaman, así que no hay nombre debajo ni buscador. */
   anonymous?: boolean
+  /** Lo de arriba del título (sin esto, «Mesa»): el deck del duelo automático dice que va por nombre, no en su orden. */
+  kicker?: string
 }
 
 /**
- * Las cartas de una pila. El deck y el Extra se muestran en su orden real (tope primero; al cerrar el
- * deck se baraja, como en la mesa real) y con buscador; cementerio y destierro, la más reciente primero.
+ * El visor como tira (lo pone la mesa del duelo en escritorio, para el suyo y el del rival: `PracticeMat`): ancha y apoyada abajo en la caja que le dan, con las cartas en renglones que se
+ * deslizan de arriba abajo (Gastón, 2026-10-25: «2 o 3 con scroll vertical»; hasta tres y un asomo del siguiente, menos si no hay alto, y nunca menos de uno) y el buscador en la fila del título.
+ */
+export const PileStripContext = createContext(false)
+
+/**
+ * Las cartas de una pila. El deck y el Extra se muestran en el orden de `ids` (el real: tope primero; al cerrar el
+ * deck se baraja, como en la mesa real; el deck del duelo automático va por nombre: su orden no se sabe) y con buscador; cementerio y destierro, la más reciente primero.
  * Con `many`, el pie ofrece elegir varias: tocar elige o suelta (aro ámbar y número de orden), Mayús+clic elige el tramo,
  * la principal le pasa las elegidas a quien abrió el visor y Escape sale del modo antes de cerrar el visor.
  * Es uno solo para todas las pilas y queda montado: al cerrarse sale (la inversa de su entrada) y cada vez que se abre arranca de cero.
  *
  * **No tapa el campo ni el detalle** (Gastón, 2026-10-24: «los modales de deck, extra, gy y banish tapan el campo pero no deberían hacerlo» y «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo
- * acceder a la info»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le da quien lo monta (una caja `grid` posicionada: la columna de la derecha o un rincón de la mesa, ver `PracticeMat`)
+ * acceder a la info»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le da quien lo monta (una caja `grid` posicionada: la columna de la derecha o, como tira, la fila de las Zonas Extra, ver `PracticeMat`)
  * y el campo sigue vivo: se tocan sus cartas y sus casillas con el visor abierto, y la carta que se toca o se apunta en el visor se lee en el detalle (`onPeek`, `onHover`).
  * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera;
  * con su asa se baja sin cerrarse, para ver la mano (`SheetHandle`).
  */
-export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, onHover, many, onClose, anonymous = false }: PileViewerProps) {
+export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker }: PileViewerProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const strip = useContext(PileStripContext) && desktop
   const [query, setQuery] = useState('')
   const [choosing, setChoosing] = useState(many?.start !== undefined)
   const [picked, setPicked] = useState<string[]>(() => [...(many?.start ?? [])])
@@ -585,8 +594,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
   const footer =
     many && canMany ? (
       // Mide lo mismo en los dos modos: los botones son del mismo alto y lo de la izquierda entra en dos renglones (el número a la izquierda, la acción a la derecha).
-      // Donde el pie es muy angosto (un celular de 320 px, el panel de escritorio), queda sólo el número: la palabra y la indicación siguen para el lector de pantalla. En el rincón de la mesa
-      // (12 rem) la principal baja a otro renglón, a la derecha.
+      // Donde el pie es muy angosto (un celular de 320 px, el panel de escritorio), queda sólo el número: la palabra y la indicación siguen para el lector de pantalla; si ni así entra, la
+      // principal baja a otro renglón, a la derecha.
       <div ref={footRef} className="@container flex w-full flex-wrap items-center justify-end gap-x-3 gap-y-2">
         <p id={statusId} role="status" className="m-0 line-clamp-2 min-w-0 flex-1 text-body leading-tight text-muted">
           {!choosing ? null : picked.length === 0 ? (
@@ -615,53 +624,64 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
       </div>
     ) : null
 
+  // Donde el buscador quedaría con menos de 9 rem, «Elegir todas» baja debajo de él: así se lee «Buscar carta» entero. En la tira va en la fila del título, a la derecha.
+  const search =
+    ids.length > 8 && !anonymous ? (
+      <div className={cx('flex flex-wrap items-center gap-2', strip && 'min-w-0 flex-1 justify-end')}>
+        <label className={cx('relative block min-w-36 flex-1', strip && 'max-w-xs')}>
+          <span className="sr-only">{t('practice.dialog.searchCard')}</span>
+          <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
+          <input
+            type="search"
+            value={query}
+            placeholder={t('practice.dialog.searchCard')}
+            autoComplete="off"
+            data-initial-focus=""
+            className={cx(field, 'h-10 w-full pl-9 pr-3 text-body pointer-coarse:h-11')}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        {choosing ? (
+          <Button variant="tertiary" size="sm" disabled={visibleIds.length === 0} onClick={pickVisible}>
+            {/* Las dos palabras ocupan el lugar de la más larga: el buscador no cambia de ancho al pasar de una a la otra. */}
+            <span className="grid">
+              <span className="col-start-1 row-start-1">{t(allVisible ? 'practice.many.none' : 'practice.many.all')}</span>
+              <span aria-hidden="true" className="invisible col-start-1 row-start-1">{t(allVisible ? 'practice.many.all' : 'practice.many.none')}</span>
+            </span>
+          </Button>
+        ) : null}
+      </div>
+    ) : null
+
   // El encabezado del `Modal`, más angosto: dónde y cuántas, y la X. En el celular va debajo del asa (que ya deja el aire de arriba).
   const header = (
-    <header className={cx('flex flex-none items-start justify-between gap-2 border-b border-border-subtle bg-surface-raised pl-3 pr-2', desktop ? 'py-2.5' : 'pb-2.5')}>
+    <header className={cx('flex flex-none justify-between gap-2 border-b border-border-subtle bg-surface-raised pl-3 pr-2', strip ? 'items-center py-2' : cx('items-start', desktop ? 'py-2.5' : 'pb-2.5'))}>
       <div className="grid min-w-0 gap-0.5">
-        <p className={cx('m-0', overline)}>{t('practice.mat.name')}</p>
+        <p className={cx('m-0', overline)}>{kicker ?? t('practice.mat.name')}</p>
         <Heading level="section" id={titleId}>
           {title}
         </Heading>
       </div>
+      {strip ? search : null}
       <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} />
     </header>
   )
 
   const content = (
     <>
-      <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain p-3">
-        {ids.length > 8 && !anonymous ? (
-          // Donde el buscador quedaría con menos de 9 rem (el rincón de la mesa) «Elegir todas» baja debajo de él: así se lee «Buscar carta» entero.
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative block min-w-36 flex-1">
-              <span className="sr-only">{t('practice.dialog.searchCard')}</span>
-              <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
-              <input
-                type="search"
-                value={query}
-                placeholder={t('practice.dialog.searchCard')}
-                autoComplete="off"
-                data-initial-focus=""
-                className={cx(field, 'h-10 w-full pl-9 pr-3 text-body pointer-coarse:h-11')}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-            {choosing ? (
-              <Button variant="tertiary" size="sm" disabled={visibleIds.length === 0} onClick={pickVisible}>
-                {/* Las dos palabras ocupan el lugar de la más larga: el buscador no cambia de ancho al pasar de una a la otra. */}
-                <span className="grid">
-                  <span className="col-start-1 row-start-1">{t(allVisible ? 'practice.many.none' : 'practice.many.all')}</span>
-                  <span aria-hidden="true" className="invisible col-start-1 row-start-1">{t(allVisible ? 'practice.many.all' : 'practice.many.none')}</span>
-                </span>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+      {/* En la tira, lo que se desliza de arriba abajo: hasta tres renglones y un asomo del cuarto (si hay más); con menos alto, lo que entre en su caja (la achica `max-h-full`), con un poco menos
+          de aire arriba para que asome el renglón siguiente. */}
+      <div className={cx('grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain', strip ? 'max-h-[calc(3*(4.5rem*614/421+1.25rem)+1rem+0.5rem+2rem)] grid-cols-[minmax(0,1fr)] px-3 pb-3 pt-2' : 'p-3')}>
+        {strip ? null : search}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
-        {/* En el celular, cinco por fila (como el campo); en la hoja de una tableta, las que entren de 5.25 rem; en el panel de escritorio, más angosto, las de 4.5 rem (tres en la columna de la derecha, dos en el rincón de la mesa). */}
-        <ul ref={gridRef} className={cx('m-0 grid list-none p-0', desktop ? 'grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2' : 'grid-cols-5 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2')} aria-label={t('practice.dialog.cards')}>
+        {/* En el celular, cinco por fila (como el campo); en la hoja de una tableta, las que entren de 5.25 rem; en el panel de escritorio, más angosto, las de 4.5 rem (tres en la columna de la derecha). En la tira,
+            renglones de cartas de 4.5 rem: con pocas, uno solo y la tira mide lo justo (su ancho es el de las cartas en fila); con más, bajan al renglón siguiente. */}
+        <ul
+          ref={gridRef}
+          className={cx('m-0 list-none p-0', strip ? 'flex flex-wrap gap-2' : desktop ? 'grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2' : 'grid grid-cols-5 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2')}
+          aria-label={t('practice.dialog.cards')}
+        >
           {visible.map((card) => {
             // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
             const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.faceUp ? t('practice.dialog.cardFaceUp', { name: card.name }) : card.name
@@ -669,7 +689,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
             const order = choosing ? picked.indexOf(card.id) : -1
 
             return (
-              <li key={card.id}>
+              <li key={card.id} className={strip ? 'w-18 flex-none' : undefined}>
                 <button
                   type="button"
                   aria-pressed={choosing ? order >= 0 : undefined}
@@ -709,8 +729,9 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
   return usePresence(
     open,
     !open || typeof document === 'undefined' ? null : desktop ? (
-      // Escritorio: llena la caja que le da quien lo monta, sin velo; con otro visor que sale mientras éste entra, los dos van en la misma celda (no se reparten el alto).
-      <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className={cx(surface.panel, 'pointer-events-auto col-start-1 row-start-1 flex min-h-0 flex-col overflow-hidden outline-none animate-sheet-in motion-reduce:animate-none')}>
+      // Escritorio: llena la caja que le da quien lo monta, sin velo; con otro visor que sale mientras éste entra, los dos van en la misma celda (no se reparten el alto). La tira va abajo de su
+      // caja y al medio, y no pasa de ella (de alto, lo que sobra se desliza); de ancho, el de sus cartas en fila o, con buscador, toda la caja: así no se achica ni corre mientras se escribe.
+      <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className={cx(surface.panel, 'pointer-events-auto col-start-1 row-start-1 flex min-h-0 flex-col overflow-hidden outline-none animate-sheet-in motion-reduce:animate-none', strip && cx('max-h-full max-w-full self-end justify-self-center', search ? 'w-full' : 'w-max'))}>
         {header}
         {content}
       </section>
