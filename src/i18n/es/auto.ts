@@ -53,7 +53,6 @@ export const auto = {
   'auto.phase.notYet': 'Todavía no',
 
   // La barra de arriba y «Más opciones».
-  'auto.bar.soundsHint': 'Las jugadas y las vidas.',
   'auto.bar.chain': 'Respuestas',
   'auto.bar.chainHint': 'Si te pregunta cuando podés responder a una cadena.',
   'auto.bar.place': 'Casilla',
@@ -61,7 +60,8 @@ export const auto = {
   'auto.bar.ask': 'Preguntar',
   'auto.bar.never': 'Nunca',
   'auto.bar.auto': 'Automática',
-  'auto.bar.restart': 'Reiniciar el duelo',
+  // «Nueva mano» (la barra) arma otro duelo; éste repite el mismo.
+  'auto.bar.restart': 'Reiniciar el mismo duelo',
   'auto.bar.restartHint': 'El mismo duelo desde el principio: las mismas cartas, en el mismo orden.',
   // Las handtraps del rival (el simulador de «Jugar solo») y la mano del rival de dorso.
   'auto.bar.handtrapsOn': '{cards} · {hand} en la mano',

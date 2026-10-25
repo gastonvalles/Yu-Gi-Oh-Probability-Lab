@@ -127,11 +127,11 @@ describe('auto-screen · los estados', () => {
     expect(screen.getByRole('alertdialog', { name: 'Perdiste' })).toHaveTextContent('Te quedaste sin puntos de vida.')
   })
 
-  it('«Más opciones» ofrece «Reiniciar el duelo»; lo que la mesa no puede mostrar va a la línea', () => {
+  it('«Más opciones» ofrece «Reiniciar el mismo duelo»; lo que la mesa no puede mostrar va a la línea', () => {
     const fake = renderAuto()
 
     fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el duelo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el mismo duelo' }))
     expect(fake.restarts).toBe(1)
     core(() => fake.set({ status: 'ready', replaying: false, unmapped: ['swap mz 0 <-> mz 1'] }))
     expect(lane()).toHaveTextContent('La mesa no puede mostrar: swap mz 0 <-> mz 1')

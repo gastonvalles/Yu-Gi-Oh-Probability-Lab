@@ -50,8 +50,7 @@ import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '..
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink } from '../../app/auto/ask-ui'
 import { playSfx } from '../../app/sfx'
-import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
-import { setDuelFullscreen, toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
+import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
 import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
@@ -85,13 +84,12 @@ import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { artOfDrawId } from '../duel/duel-art'
-import { HandtrapsMatButton } from '../duel/HandtrapPool'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
-import { MatViewToggle } from './MatViewToggle'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
@@ -185,6 +183,8 @@ export interface DuelMatLink {
   undoAvailable?: boolean
   /** La última jugada de la mesa cambió de manos un monstruo (la otra mesa ya la completó): no se deshace. */
   undoBlocked?: boolean
+  /** Deshacer va arriba, en la barra de la pantalla (`header`, con los íconos de la práctica: `MatBarActions`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). */
+  undoInHeader?: boolean
   /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
   control?: ControlOffer
   /** En qué turno del duelo van los dos juntos (`duelTurnNumber`): con él el asistente sabe si una activación es del mismo turno. Sin duelo, el turno de la mesa. */
@@ -623,10 +623,8 @@ export function PracticeMat({
   const hasRivalStrip = !isDuel && (state.rival?.hand.length ?? 0) > 0
   // Los sonidos de la práctica (Gastón, 2026-10-20: «en la práctica no suenan los efectos del duelo»): cada jugada, deshacer y los pasos de un combo. En un duelo suenan con `useDuelSounds`, las de los dos.
   usePracticeSounds(isDuel ? null : session)
-  const sounds = useSoundsOn()
-  // Ventana grande (Gastón, 2026-10-19: «la práctica no tiene modo pantalla completa y debería»): la práctica ocupa toda la pantalla, sin el menú lateral, como la mesa de un duelo. Es de la mesa: se apaga al salir.
-  const bigWindow = useDuelFullscreen()
 
+  // Ventana grande (Gastón, 2026-10-19: «la práctica no tiene modo pantalla completa y debería»): la práctica ocupa toda la pantalla, sin el menú lateral, como la mesa de un duelo. Es de la mesa: se apaga al salir.
   useEffect(() => {
     if (isDuel) return
 
@@ -1936,8 +1934,8 @@ export function PracticeMat({
   // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
   const choosing = picking !== null || counterMode !== null || pickingText !== null
 
-  // Deshacer, la ficha (o los contadores) y la lista de pasos: arriba en la práctica; en un duelo, abajo, donde llega el pulgar.
-  // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, arriba, sin caja.
+  // Deshacer de un duelo, abajo, donde llega el pulgar (en la práctica y en «Jugar solo automático» va arriba, con los íconos de la mesa: `MatBarActions`), y la ficha y la lista de pasos.
+  // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
   const undoButton = (
     <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
@@ -2031,40 +2029,29 @@ export function PracticeMat({
     >
       {/* El fondo de la mesa (la arena): la columna de la mesa, a todo el alto. Es decoración: va detrás de todo y no ocupa lugar en la grilla. */}
       <MatScene className={cx('absolute inset-0 -z-10 col-start-1 row-span-2 row-start-1', Boolean(detail) && 'min-[1440px]:col-start-2')} />
-      {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
+      {/* Barra (práctica): el turno a la izquierda y, a la derecha, los íconos de la mesa (`MatBarActions`, los mismos que en «Jugar solo automático») y (en el celu) el panel. En un duelo la barra es la de la pantalla (`duel.header`). */}
       {duel ? null : (
-        // En un celular angosto los 7 botones (de 44 px) y el turno no entran en una fila: se achican (40 px hasta 419 px de ancho, 36 hasta 379 px) y, en uno muy chico (menos de 340 px), el turno se esconde.
+        // En un celular angosto los botones y el turno no entran en una fila: se achican (`MAT_BAR_ROW`) y el turno se esconde.
         // Con el detalle fijo a la izquierda (columna 1), la barra va arriba de la mesa (columna 2), no encima del detalle.
-        <div className={cx('col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 max-[419px]:gap-0.5 max-[419px]:px-1 max-[419px]:[&>button]:size-10! max-[379px]:[&>button]:size-9! min-[1101px]:px-4 min-[1101px]:pt-3', Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
+        <div className={cx('col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
-          {onExit ? (
-            <IconButton tone="flat" size="sm" aria-label={t('practice.mat.exit')} title={t('practice.mat.exit')} onClick={onExit}>
-              <Icon name="chevron-left" />
-            </IconButton>
-          ) : null}
+          {onExit ? <MatExitButton onExit={onExit} /> : null}
           <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
-          <MatViewToggle className="ml-auto" />
-          {/* Los sonidos de las jugadas: el mismo ajuste que «Más opciones» de un duelo (se recuerda en el navegador). */}
-          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.sounds')} title={t(sounds ? 'practice.mat.soundsOff' : 'practice.mat.soundsOn')} aria-pressed={sounds} onClick={() => setSoundsOn(!sounds)}>
-            <Icon name={sounds ? 'volume' : 'volume-off'} />
-          </IconButton>
-          {/* Ventana grande: sin el menú lateral y, si el navegador deja, en pantalla completa. Sólo en escritorio: en el celular la mesa ya ocupa todo. */}
-          {isDesktop ? (
-            <IconButton tone="flat" size="sm" aria-label={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} title={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} aria-pressed={bigWindow} onClick={toggleDuelFullscreen}>
-              <Icon name={bigWindow ? 'minimize' : 'maximize'} />
-            </IconButton>
-          ) : null}
-          {/* El simulador de handtraps del rival: «Entrenar solo» entra directo a la mesa, así que se enciende y se elige el pool acá (y se reparte una mano nueva). Con menos de 340 px no entra. */}
-          <HandtrapsMatButton className="max-[339px]:hidden" onApply={onNewHand} />
-          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} onClick={onNewHand}>
-            <Icon name="refresh" />
-          </IconButton>
-          {undoButton}
-          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
-            <Icon name="save" />
-          </IconButton>
+          {/* Las handtraps del rival: «Entrenar solo» entra directo a la mesa, así que se encienden y se elige el pool acá; aplicar reparte una mano nueva. */}
+          <MatBarActions
+            className="ml-auto"
+            onUndo={() => {
+              setAutoplay(false)
+              onUndo()
+            }}
+            canUndo={session.cursor > 0}
+            onNewHand={onNewHand}
+            onHandtraps={onNewHand}
+            onSave={() => setSaving(true)}
+            canSave={session.cursor > 0}
+          />
           {stepsButton}
         </div>
       )}
@@ -2308,19 +2295,21 @@ export function PracticeMat({
           {duel ? (
             <div className="relative">
               <div
-                role="toolbar"
-                aria-label={t('practice.mat.name')}
+                // Con Deshacer arriba (`undoInHeader`) la fila no lleva botones (a lo sumo las vidas): no es una barra, y la de arriba es la única «Mesa».
+                role={duel.undoInHeader ? undefined : 'toolbar'}
+                aria-label={duel.undoInHeader ? undefined : t('practice.mat.name')}
                 inert={choosing}
-                className={cx('flex items-center justify-between max-[1101px]:grid max-[1101px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]', rails && 'flex-col! items-end! gap-2', choosing && 'max-[1101px]:opacity-35 min-[1101px]:invisible')}
+                // Con Deshacer arriba (`undoInHeader`), la fila guarda el alto del botón aunque no lleve nada: lo que se elige se apoya en el mismo lugar y el campo no se corre.
+                className={cx('flex items-center justify-between max-[1101px]:grid max-[1101px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]', duel.undoInHeader && 'min-h-11', rails && 'flex-col! items-end! gap-2', choosing && 'max-[1101px]:opacity-35 min-[1101px]:invisible')}
               >
                 <span className="pointer-events-auto flex items-center max-[1101px]:col-start-3 max-[1101px]:row-start-1 max-[1101px]:justify-self-end">
-                  {isDesktop ? null : undoButton}
+                  {isDesktop || duel.undoInHeader ? null : undoButton}
                   {duel.tools}
                 </span>
                 {isDesktop ? null : <span className="pointer-events-auto col-start-2 row-start-1">{duel.reactions}</span>}
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
-                  {isDesktop ? undoButton : null}
+                  {isDesktop && !duel.undoInHeader ? undoButton : null}
                   {duel.life}
                 </span>
               </div>
