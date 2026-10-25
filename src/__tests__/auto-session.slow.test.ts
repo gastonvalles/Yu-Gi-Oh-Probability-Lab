@@ -3,11 +3,13 @@ import path from 'node:path'
 import { cardMatchesOpcode, OcgLocation as L } from 'ocgcore-wasm'
 import { mirrorApply, openMirror } from '../app/mat-public'
 import { matReducer } from '../app/practice-mat'
+import { askView, openAsk } from '../app/auto/ask-ui'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
-import { randomLegalPolicy, type CardPicker, type Policy } from '../app/auto/policies'
+import { passivePolicy, randomLegalPolicy, type CardPicker, type Policy } from '../app/auto/policies'
+import { splitDesc } from '../app/auto/protocol'
 import { codeOfId, compare, readMat, readReal } from './support/core-compare'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
@@ -168,6 +170,34 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
     expect(tally.turns.every((turn) => turn >= TURNS)).toBe(true)
     expect(tally.restarts).toBe(pool.length)
     expect(tally.undos).toBe(pool.length)
+  })
+
+  it('una opción dice qué hace (el texto que nombra su `desc`): Radiant Typhoon Manifestation ofrece «Search 1 "Mystical Space Typhoon"», no «Efecto 1»', async () => {
+    const MANIFESTATION = 94103142
+    const MST = 5318639
+    const { filler } = await source.manifest()
+    // Sin monstruos «Radiant Typhoon» en el deck, de sus dos efectos el núcleo ofrece sólo el segundo (`Duel.SelectEffect`): una sola opción, la que la pantalla decía «Efecto 1».
+    const deck: DeckList = { main: [[MANIFESTATION, 1], [MST, 1], ...filler.slice(0, 38).map((code) => [code, 1] as const)] }
+    const session = createAutoSession({ loader, deck, seed: 1, hand: [MANIFESTATION], transport: localTransport({ wasmBinary: wasm }) })
+    let snapshot = await settled(session)
+
+    for (let n = 0; n < 20 && snapshot.status === 'ready' && snapshot.ask!.ask.type !== 'select_option'; n += 1) {
+      const { ask } = snapshot.ask!
+      const index = ask.type === 'select_idlecmd' ? ask.activates.findIndex((card) => card.code === MANIFESTATION) : -1
+
+      session.answer(index >= 0 ? { type: 'select_idlecmd', action: 5, index } : passivePolicy()(ask))
+      snapshot = await settled(session)
+    }
+    const pending = snapshot.ask!
+    const effectLabel = (_: number, description: string) => {
+      const { code, n } = splitDesc(description)
+
+      return snapshot.texts[code]?.[n] || null
+    }
+
+    expect(pending.ask).toEqual({ type: 'select_option', player: 0, options: [String((BigInt(MANIFESTATION) << 20n) | 3n)] })
+    expect(askView(openAsk(pending, { queries: session.adapter!, prefs: { chainMode: 'ask', placeMode: 'auto' }, effectLabel })).options?.options.map((option) => option.label)).toEqual(['Search 1 "Mystical Space Typhoon"'])
+    session.destroy()
   })
 
   it('una carta sin reglas (o sin datos) no deja arrancar: error con la lista', async () => {

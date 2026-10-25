@@ -31,6 +31,8 @@ interface AskOptionsProps {
   onPick: (ids: string[]) => void
   /** Sólo si la pregunta se puede cancelar: lleva la X y Escape la cierra. Sin esto (las del núcleo no se cancelan), hay que contestar. */
   onCancel?: () => void
+  /** Con `'one'`: una opción por fila, a la izquierda (la lista de efectos, como en la mesa manual). Sin esto, de a una por fila sólo si algún texto es largo. */
+  stacked?: boolean
 }
 
 /** Con un texto así de largo, una opción por fila. */
@@ -42,7 +44,7 @@ const LONG_LABEL = 22
  * Tipos a la vez (`FilterChips` exige una cuenta por chip y en el celular es una sola fila que se desliza): con `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan.
  * Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AskOptions({ title, kicker, options, mode, onPick, onCancel }: AskOptionsProps) {
+export function AskOptions({ title, kicker, options, mode, onPick, onCancel, stacked }: AskOptionsProps) {
   const leaving = useLeaving()
   const [chosen, setChosen] = useState<string[]>([])
   const count = mode === 'one' ? 0 : mode.count
@@ -78,7 +80,7 @@ export function AskOptions({ title, kicker, options, mode, onPick, onCancel }: A
     >
       {mode === 'one' ? (
         <div role="menu" aria-label={title}>
-          <Options items={options.map((option) => ({ label: option.label, lead: option.lead, disabled: option.disabled, onSelect: () => onPick([option.id]) }))} stacked={options.some((option) => option.label.length > LONG_LABEL)} />
+          <Options items={options.map((option) => ({ label: option.label, lead: option.lead, disabled: option.disabled, onSelect: () => onPick([option.id]) }))} stacked={stacked ?? options.some((option) => option.label.length > LONG_LABEL)} />
         </div>
       ) : (
         <div role="group" aria-label={title} className="flex flex-wrap gap-2">

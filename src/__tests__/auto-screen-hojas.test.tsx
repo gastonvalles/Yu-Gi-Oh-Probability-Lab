@@ -4,12 +4,13 @@ import '@testing-library/jest-dom'
 import { describe, expect, it } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
-import { loc, pos } from './support/auto-session-fake'
+import { loc, pos, stringId } from './support/auto-session-fake'
 import { core, dispatches, handCard, renderAuto } from './support/auto-screen-harness'
 
 // Las hojas y la pregunta del medio: una opción, un número, Tipos, Atributos, ordenar, sí o no, y el efecto preguntado.
 
-const OPTION: CoreAsk = { type: 'select_option', player: 0, options: ['6400', '6401', '1190'] }
+/** Un texto de Nibiru, «a la mano» y «al cementerio» del sistema, y un texto que Nibiru no tiene. */
+const OPTION: CoreAsk = { type: 'select_option', player: 0, options: [stringId(400, 2), '573', '574', stringId(400, 7)] }
 const NUMBER: CoreAsk = { type: 'announce_number', player: 0, options: ['1', '2', '4'] }
 const RACE: CoreAsk = { type: 'announce_race', player: 0, count: 2, available: String((1n << 13n) | 2n | 1n) }
 const ATTRIB: CoreAsk = { type: 'announce_attrib', player: 0, count: 1, available: 0b0110010 }
@@ -19,13 +20,14 @@ const EFFECTYN: CoreAsk = { type: 'select_effectyn', player: 0, ...pos(400, L.GR
 const MIXED: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 2, selects: [pos(400, L.GRAVE, 0, 5), pos(500, L.EXTRA, 0, 10)] }
 
 describe('auto-screen · las hojas', () => {
-  it('option: una hoja con una opción por efecto; tocar una contesta con su índice', () => {
+  it('option: una hoja con lo que hace cada opción (sin texto, «Activar efecto», nunca un número inventado) y la carta que pregunta arriba; tocar una contesta con su índice', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(OPTION))
     const sheet = screen.getByRole('dialog', { name: 'Elegí una opción' })
 
-    expect(within(sheet).getAllByRole('menuitem')).toHaveLength(3)
+    expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Destroy a monster', 'A la mano', 'Al cementerio', 'Activar efecto'])
+    expect(sheet).toHaveTextContent('Nibiru')
     fireEvent.click(within(sheet).getAllByRole('menuitem')[2]!)
     expect(fake.answers).toEqual([{ type: 'select_option', index: 2 }])
     expect(dispatches).toBe(0)
@@ -83,7 +85,7 @@ describe('auto-screen · las hojas', () => {
     expect(fake.answers[1]).toEqual({ type: 'sort_card', order: null })
   })
 
-  it('yesno: la pregunta del medio sin carta; «Hacerlo» contesta que sí', () => {
+  it('yesno: la pregunta del medio sin carta, con su texto si lo tiene (si no, «¿Lo hacés?»); «Hacerlo» contesta que sí', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(YESNO))
@@ -93,6 +95,8 @@ describe('auto-screen · las hojas', () => {
     fireEvent.click(within(prompt).getByRole('button', { name: 'Hacerlo' }))
     expect(fake.answers).toEqual([{ type: 'select_yesno', yes: true }])
     expect(dispatches).toBe(0)
+    core(() => fake.ask({ ...YESNO, description: stringId(400, 1) }))
+    expect(screen.getByTestId('duel-prompt-layer')).toHaveTextContent('Summon a Token')
   })
 
   it('effectyn: la pregunta nombra la carta, que brilla en su pila, y «No activar» contesta que no', () => {

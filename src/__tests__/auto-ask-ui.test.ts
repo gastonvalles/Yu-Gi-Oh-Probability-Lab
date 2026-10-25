@@ -66,6 +66,8 @@ const mine = (id: string): CardRef => ({ side: 'mine', id })
 const loc = (code: number, location: number, sequence: number, controller: Seat = 0) => ({ code, controller, location, sequence })
 const pos = (code: number, location: number, sequence: number, position: number, controller: Seat = 0) => ({ ...loc(code, location, sequence, controller), position })
 const act = (code: number, location: number, sequence: number, description = '0') => ({ ...loc(code, location, sequence), description, client_mode: 0 })
+/** El `desc` de un texto de una carta, como lo arma `aux.Stringid(code, n)` en los scripts. */
+const stringId = (code: number, n: number) => String((BigInt(code) << 20n) | BigInt(n))
 
 // Mi mano: 100 (monstruo), 900 (Mágica), 300 (Péndulo); mi campo: 200 en ataque (mz 0), 201 boca abajo (mz 1), 202 en defensa (mz 2), 950 una Trampa colocada (st 1), 960 la escala (st 0);
 // mi cementerio: 400; mi Extra: 500. El rival: 700 en su mz 0 y una colocada (st 2).
@@ -96,14 +98,14 @@ const ASKS: CoreAsk[] = [
     pos_changes: [loc(200, L.MZONE, 0), loc(201, L.MZONE, 1), loc(202, L.MZONE, 2)],
     monster_sets: [loc(100, L.HAND, 0)],
     spell_sets: [loc(900, L.HAND, 1)],
-    activates: [act(900, L.HAND, 1), act(950, L.SZONE, 1), act(400, L.GRAVE, 0, '6401'), act(400, L.GRAVE, 0, '6402'), act(300, L.HAND, 2, '1160')],
+    activates: [act(900, L.HAND, 1), act(950, L.SZONE, 1), act(400, L.GRAVE, 0, stringId(400, 1)), act(400, L.GRAVE, 0, stringId(400, 2)), act(300, L.HAND, 2, '1160')],
     to_bp: true,
     to_ep: true,
     shuffle: true,
   },
-  { type: 'select_effectyn', player: 0, ...pos(400, L.GRAVE, 0, 5), description: '6400' },
+  { type: 'select_effectyn', player: 0, ...pos(400, L.GRAVE, 0, 5), description: stringId(400, 0) },
   { type: 'select_yesno', player: 0, description: '31' },
-  { type: 'select_option', player: 0, options: ['6400', '6401', '1190'] },
+  { type: 'select_option', player: 0, options: [stringId(400, 0), stringId(400, 1), '573'] },
   { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 2, selects: [pos(100, L.HAND, 0, 10), pos(200, L.MZONE, 0, 1), pos(700, L.MZONE, 0, 1, 1)] },
   { type: 'select_chain', player: 0, spe_count: 1, forced: false, hint_timing: 0, hint_timing_other: 0, selects: [{ ...pos(950, L.SZONE, 1, 10), description: '0', client_mode: 0 }] },
   { type: 'select_place', player: 0, count: 1, field_mask: ~(0b11 | (1 << 5) | (1 << 13)) >>> 0 },
@@ -160,7 +162,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     }
   })
 
-  it('las jugadas del turno: cada carta con sus palabras de siempre, «¿cuál efecto?» en un segundo paso y todo lo legal a un toque (menos barajar la mano)', () => {
+  it('las jugadas del turno: cada carta con sus palabras de siempre, «¿cuál efecto?» en un segundo paso, todo lo legal a un toque (menos barajar la mano) y sólo brilla lo que se activa', () => {
     const view = askView(open(ASKS[1]!, ctx(MESA)))
     const labels = (id: string) => view.items.get(id)?.map((item) => item.label)
 
@@ -173,14 +175,14 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(labels('card-201-1')).toEqual([t('practice.menu.flipSummon')])
     expect(labels('card-202-1')).toEqual([t('practice.menu.toAttack')])
     expect(labels('card-950-1')).toEqual([t('practice.menu.activate')])
-    // Dos efectos del cementerio: una sola opción que pregunta cuál, cada uno con su número.
+    // Dos efectos del cementerio: una sola opción que pregunta cuál; sin texto, cada uno con la palabra de su activación (sin un número que no es el de la carta).
     const [grave] = view.items.get('card-400-1')!
 
     expect(grave).toMatchObject({ label: t('practice.menu.activateEffect') })
     expect(grave!.answer).toBeUndefined()
-    expect(grave!.children?.map((child) => [child.lead, child.label, child.answer])).toEqual([
-      [t('practice.menu.effectLead', { n: 1 }), t('practice.menu.activateEffect'), { type: 'select_idlecmd', action: 5, index: 2 }],
-      [t('practice.menu.effectLead', { n: 2 }), t('practice.menu.activateEffect'), { type: 'select_idlecmd', action: 5, index: 3 }],
+    expect(grave!.children?.map((child) => [child.label, child.answer])).toEqual([
+      [t('practice.menu.activateEffect'), { type: 'select_idlecmd', action: 5, index: 2 }],
+      [t('practice.menu.activateEffect'), { type: 'select_idlecmd', action: 5, index: 3 }],
     ])
     // Lo que el núcleo acepta, menos barajar la mano (la mesa no la ofrece), está a un toque.
     const offered = new Set(gesturesOf(view).map((gesture) => JSON.stringify(gesture.kind === 'item' ? gesture.answer : null)))
@@ -189,11 +191,16 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     const legalOnes = [...lists.flatMap((key, action) => ask[key].map((_, index) => ({ type: ask.type, action, index }))), { type: ask.type, action: 6, index: null }, { type: ask.type, action: 7, index: null }]
 
     expect(legalOnes.filter((answer) => !offered.has(JSON.stringify(answer)))).toEqual([])
-    expect(view.respond).toHaveLength(view.items.size)
+    // Brilla lo que se activa (la Mágica, la Trampa colocada, los efectos del cementerio, la escala); lo que sólo se invoca, se coloca o cambia de posición, no.
+    expect(view.respond).toEqual(['card-900-1', 'card-950-1', 'card-400-1', 'card-300-1'].map(mine))
     // La frase de cada efecto la pone la pantalla (la costura); nunca queda vacía.
-    const named = askView(open(ASKS[1]!, ctx(MESA, { effectLabel: (code, description) => (description === '6401' ? `${code}:1` : '') })))
+    const named = askView(open(ASKS[1]!, ctx(MESA, { effectLabel: (code, description) => (description === stringId(400, 1) ? `${code}:1` : '') })))
 
     expect(named.items.get('card-400-1')![0]!.children!.map((child) => child.label)).toEqual(['400:1', t('practice.menu.activateEffect')])
+    // Sin texto, la escala de un Péndulo dice «Activar como escala» también entre otros efectos.
+    const pendulum = { ...(ASKS[1] as Extract<CoreAsk, { type: 'select_idlecmd' }>), activates: [act(300, L.HAND, 2, stringId(300, 0)), act(300, L.HAND, 2, '1160')] }
+
+    expect(askView(open(pendulum, ctx(MESA))).items.get('card-300-1')![0]!.children!.map((child) => child.label)).toEqual([t('practice.menu.activateEffect'), t('practice.menu.asScale')])
   })
 
   it('las fases: Battle Phase y End Phase en Main 1; Main Phase 2 y End Phase en batalla; la de ahora marcada y las demás apagadas; terminar el turno es la End Phase', () => {
@@ -258,17 +265,26 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
   it('sí o no: el efecto con su carta (que brilla) y el sí o no a secas, cada uno con sus dos respuestas', () => {
     const effect = askView(open(ASKS[2]!, ctx(MESA)))
 
-    expect(effect.prompt).toEqual({ card: { ref: mine('card-400-1'), code: 400, place: 'pile', pile: 'gy' }, description: '6400', yes: { type: 'select_effectyn', yes: true }, no: { type: 'select_effectyn', yes: false } })
+    expect(effect.prompt).toEqual({ card: { ref: mine('card-400-1'), code: 400, place: 'pile', pile: 'gy' }, description: stringId(400, 0), yes: { type: 'select_effectyn', yes: true }, no: { type: 'select_effectyn', yes: false } })
     expect(effect.respond).toEqual([mine('card-400-1')])
     expect(step(open(ASKS[2]!, ctx(MESA)), { kind: 'item', answer: { type: 'select_effectyn', yes: true } }).answer).toEqual({ type: 'select_effectyn', yes: true })
     expect(askView(open(ASKS[3]!, ctx(MESA))).prompt).toMatchObject({ card: null, description: '31' })
     expect(askView(open(ASKS[3]!, ctx(MESA))).title).toBe('500')
   })
 
-  it('opciones, números y posiciones: un toque contesta; la posición con las palabras de la mesa y, si hay una sola, sola', () => {
-    const options = askView(open(ASKS[4]!, ctx(MESA, { effectLabel: (_, description) => (description === '1190' ? 'A la mano' : null) })))
+  it('opciones, números y posiciones: un toque contesta; una opción con su texto (o, si es «a la mano» del sistema, la palabra de la mesa); la posición con las palabras de la mesa y, si hay una sola, sola', () => {
+    const options = askView(open(ASKS[4]!, ctx(MESA, { effectLabel: (_, description) => (description === stringId(400, 1) ? 'Destroy a monster' : null) })))
 
-    expect(options.options).toEqual({ of: 'option', count: 1, options: [{ value: 0, description: '6400' }, { value: 1, description: '6401' }, { value: 2, description: '1190', label: 'A la mano' }], chosen: [] })
+    expect(options.options).toEqual({
+      of: 'option',
+      count: 1,
+      options: [
+        { value: 0, description: stringId(400, 0) },
+        { value: 1, description: stringId(400, 1), label: 'Destroy a monster' },
+        { value: 2, description: '573', label: t('practice.menu.toHand') },
+      ],
+      chosen: [],
+    })
     expect(step(open(ASKS[4]!, ctx(MESA)), { kind: 'option', value: 2 }).answer).toEqual({ type: 'select_option', index: 2 })
     expect(step(open(ASKS[4]!, ctx(MESA)), { kind: 'option', value: 3 }).answer).toBeUndefined()
     expect(askView(open(ASKS[19]!, ctx(MESA))).options?.options.map((option) => option.label)).toEqual(['1', '2', '4'])

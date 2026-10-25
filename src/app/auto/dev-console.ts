@@ -4,7 +4,7 @@ import { createDataLoader, httpSource } from './auto-data'
 import { createAutoSession, workerTransport, type AutoSession, type AutoSnapshot } from './auto-session'
 import type { DeckList } from './deck-map'
 import { freePlaces, passivePolicy, randomLegalPolicy } from './policies'
-import type { AutoEvent, CoreAnswer, CoreAsk } from './protocol'
+import { splitDesc, type AutoEvent, type CoreAnswer, type CoreAsk } from './protocol'
 
 /**
  * Consola de pruebas de los duelos automáticos: `/__auto/`, sólo con `vite serve` (la sirve el plugin `auto-data-dev` de vite.config.ts).
@@ -70,8 +70,12 @@ const nameOfId = (id: string) => {
 
   return real ? nameOf(Number(real[1])) : id.includes('token-') ? 'Token' : `? ${id}`
 }
-/** Un `desc`: del sistema (`!system` de strings.conf) o el texto `str<n>` de una carta (carta = desc >> 4). */
-const describe = (desc: string) => (BigInt(desc) < 10000n ? `system ${desc}` : `${nameOf(Number(BigInt(desc) >> 4n))} #${Number(BigInt(desc) & 15n)}`)
+/** Un `desc` (`splitDesc`): del sistema (`!system` de strings.conf, carta 0) o el texto n de una carta (`str1` es el 0). */
+const describe = (desc: string) => {
+  const { code, n } = splitDesc(desc)
+
+  return code === 0 ? `system ${n}` : `${nameOf(code)} #${n}`
+}
 
 function choices(ask: CoreAsk): [string, CoreAnswer][] {
   switch (ask.type) {

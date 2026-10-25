@@ -30,7 +30,7 @@ export interface CardRef {
 export interface ChainLink {
   card: CardRef | null
   code: number
-  /** El `desc` del efecto (u64 en texto): carta = desc >> 4, índice = desc & 15. */
+  /** El `desc` del efecto (u64 en texto; la carta y cuál de sus textos: `splitDesc`). */
   description: string
   state: 'chained' | 'solving' | 'solved' | 'negated' | 'disabled'
 }

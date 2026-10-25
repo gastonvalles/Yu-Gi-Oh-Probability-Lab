@@ -53,7 +53,7 @@ export interface DuelData {
   cards: OcgCardData[]
   scripts: Record<string, string>
   names: Record<number, string>
-  /** Los rótulos de los efectos por código (`strs`): el `desc` de una pregunta es carta << 4 | n. */
+  /** Los rótulos de los efectos por código (`strs`): el `desc` de una pregunta nombra la carta y cuál (`splitDesc`). */
   texts?: Record<number, string[]>
   version: string
 }

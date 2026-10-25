@@ -27,25 +27,34 @@ export function wasmBinary(): ArrayBuffer {
   return file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer
 }
 
-/** Las filas de `datas` (con el nombre de `texts` y el `ot`) como las sirve la ruta de desarrollo `/auto-data/cards` (vite.config.ts). */
+/** Las filas de `datas` (con el nombre y los rótulos de `texts`, y el `ot`) como las sirve la ruta de desarrollo `/auto-data/cards` (vite.config.ts). */
 export function cardRows(file = path.join(CORE_DATA_DIR, 'cards.cdb')): (CardRow & { ot: number })[] {
   const db = new DatabaseSync(file, { readOnly: true })
-  const rows = db.prepare('select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, d.ot, t.name from datas d left join texts t on t.id = d.id')
+  const strs = Array.from({ length: 16 }, (_, i) => `str${i + 1}`)
+  const rows = db.prepare(`select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, d.ot, t.name, ${strs.map((str) => `t.${str}`).join(', ')} from datas d left join texts t on t.id = d.id`)
 
   rows.setReadBigInts(true)
-  const out = (rows.all() as Record<string, bigint | string | null>[]).map((row) => ({
-    id: Number(row.id),
-    alias: Number(row.alias),
-    setcode: BigInt.asUintN(64, row.setcode as bigint).toString(),
-    type: Number(row.type),
-    atk: Number(row.atk),
-    def: Number(row.def),
-    level: Number(row.level),
-    race: BigInt.asUintN(64, row.race as bigint).toString(),
-    attribute: Number(row.attribute),
-    ot: Number(row.ot),
-    ...(typeof row.name === 'string' ? { name: row.name } : {}),
-  }))
+  const out = (rows.all() as Record<string, bigint | string | null>[]).map((row) => {
+    // Como `cardRowOf` (scripts/build-auto-data.mjs): sin los rótulos vacíos del final.
+    const labels = strs.map((str) => row[str]).map((text) => (typeof text === 'string' ? text : ''))
+
+    while (labels.at(-1) === '') labels.pop()
+
+    return {
+      id: Number(row.id),
+      alias: Number(row.alias),
+      setcode: BigInt.asUintN(64, row.setcode as bigint).toString(),
+      type: Number(row.type),
+      atk: Number(row.atk),
+      def: Number(row.def),
+      level: Number(row.level),
+      race: BigInt.asUintN(64, row.race as bigint).toString(),
+      attribute: Number(row.attribute),
+      ot: Number(row.ot),
+      ...(typeof row.name === 'string' ? { name: row.name } : {}),
+      ...(labels.length > 0 ? { strs: labels } : {}),
+    }
+  })
 
   db.close()
   return out

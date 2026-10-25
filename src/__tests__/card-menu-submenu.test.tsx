@@ -162,6 +162,19 @@ describe('el submenú del menú pegado a la carta', () => {
     expect(screen.getByRole('menuitem', { name: /^Desterrar/ })).not.toHaveAttribute('aria-haspopup')
     expect(screen.queryByRole('menu', { name: 'Desterrar' })).not.toBeInTheDocument()
   })
+
+  it('un grupo `wide` (la lista de efectos del duelo automático) abre un submenú ancho con las respuestas a la izquierda; el menú y los demás grupos, como siempre', () => {
+    const effects: MenuItem = { label: 'Activar efecto', onSelect: () => {}, wide: true, children: [{ label: 'Destroy 1 monster and add 1 monster from your Deck to your hand', onSelect: () => {} }] }
+
+    renderBare(<CardMenu anchor={ANCHOR} kicker="Zona de campo" title="Fire King Island" items={[...sampleItems(), effects]} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    expect(menuOf('Activar efecto')).toHaveClass('w-[min(22rem,calc(100vw-1rem))]')
+    expect(within(menuOf('Activar efecto')).getByRole('menuitem')).toHaveClass('text-left')
+    expect(screen.getByRole('menuitem', { name: 'Activar efecto' })).toHaveClass('text-center')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    expect(menuOf('Invocación Especial')).toHaveClass('w-36')
+    expect(within(menuOf('Invocación Especial')).getByRole('menuitem', { name: 'En ataque' })).toHaveClass('text-center')
+  })
 })
 
 describe('los menús de la mesa con submenús', () => {

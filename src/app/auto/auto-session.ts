@@ -82,7 +82,7 @@ export interface AutoSnapshot {
   replaying: boolean
   /** Los nombres del `.cdb` de las cartas del duelo (y de las fichas). */
   names: Readonly<Record<number, string>>
-  /** Los rótulos de los efectos (`str1`…`str16` del `.cdb`), por código: el `desc` de una pregunta es carta << 4 | n. */
+  /** Los rótulos de los efectos (`str1`…`str16` del `.cdb`), por código: el `desc` de una pregunta nombra la carta y cuál (`splitDesc`). */
   texts: Readonly<Record<number, readonly string[]>>
   /** Lo que el adaptador no pudo proyectar en la mesa, en orden (se vacía al rearmarse). */
   unmapped: readonly string[]

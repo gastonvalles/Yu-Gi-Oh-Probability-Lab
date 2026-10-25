@@ -4,7 +4,7 @@ import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, namesList, openAsk, step, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
-import type { Seat } from '../../app/auto/protocol'
+import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
@@ -186,15 +186,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
     [cardsById, codeOf],
   )
-  // El rótulo de un efecto o de una opción: el `strN` del `.cdb` que nombra el `desc` (carta = desc >> 4, n = desc & 15); los del sistema (< 10000) no viajan: la pantalla dice «Efecto n».
-  // Online, los del rival llegan con sus cartas (`cards`).
+  // El rótulo de un efecto o de una opción: el `strN` del `.cdb` que nombra el `desc` (`splitDesc`). Los del sistema (carta 0) no viajan: los nombra `ask-ui` o la
+  // pantalla dice «Activar efecto». Online, los del rival llegan con sus cartas (`cards`).
   const effectLabel = useCallback(
     (_code: number, description: string): string | null => {
-      const desc = BigInt(description)
-
-      if (desc < 10000n) return null
-      const code = Number(desc >> 4n)
-      const n = Number(desc & 15n)
+      const { code, n } = splitDesc(description)
 
       return snap.texts[code]?.[n] || cards?.get(code)?.strs?.[n] || null
     },
@@ -280,11 +276,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const menuItem = useCallback(
     (item: AskItem): AutoMenuItem => ({
       label: item.label,
-      ...(item.lead === undefined ? {} : { lead: item.lead }),
       ...(item.current ? { current: true } : {}),
       ...(item.disabled ? { disabled: true, hint: t('auto.phase.notYet') } : {}),
       onSelect: item.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : item.children ? () => setSub(item) : NOTHING,
-      ...(item.children ? { children: item.children.map(menuItem) } : {}),
+      // Los hijos son siempre los efectos de «Activar efecto»: como en la mesa manual, filas anchas y a la izquierda.
+      ...(item.children ? { children: item.children.map(menuItem), wide: true } : {}),
     }),
     [gesture],
   )
@@ -399,8 +395,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const prompt = shown?.prompt
   const promptCard = prompt?.card
   const options = shown?.options
-  const optionLabel = (option: { value: number; label?: string }, index: number) =>
-    option.label ?? (options?.of === 'race' ? (RACES[option.value] ?? String(option.value)) : options?.of === 'attribute' ? (ATTRIBUTES[option.value] ?? String(option.value)) : t('practice.menu.effectLead', { n: index + 1 }))
+  // Una opción sin texto no inventa un número (el orden de la pregunta no es el de la carta): dice «Activar efecto». La carta que pregunta (la que nombran sus opciones, si
+  // se la conoce) va arriba del título.
+  const optionLabel = (option: { value: number; label?: string }) =>
+    option.label ?? (options?.of === 'race' ? (RACES[option.value] ?? String(option.value)) : options?.of === 'attribute' ? (ATTRIBUTES[option.value] ?? String(option.value)) : t('practice.menu.activateEffect'))
+  const askingCode = options?.options.map((option) => (option.description ? splitDesc(option.description).code : 0)).find((code) => Boolean(snap.names[code] ?? cards?.get(code)?.name))
   const optionsTitle = options ? (options.of === 'position' ? t('auto.options.position') : options.of === 'number' ? t('auto.options.number') : options.of === 'race' ? t('auto.options.race', { count: options.count }) : options.of === 'attribute' ? t('auto.options.attribute', { count: options.count }) : t('auto.options.option')) : ''
   const list = pick && pick.surface === 'list' ? pick : null
   // Todas las de la pregunta, en su orden (las que ahora no valen van apagadas: `eligible`; las elegidas, con su aro).
@@ -420,7 +419,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     prompt: prompt ? (
       <AskPrompt
         key={askId ?? 0}
-        text={promptCard ? t('auto.ask.effect', { card: nameOf(promptCard.ref, promptCard.code) }) : t('auto.ask.fallback')}
+        // Un sí o no a secas dice su pregunta (el texto de su `desc`) cuando la tiene.
+        text={promptCard ? t('auto.ask.effect', { card: nameOf(promptCard.ref, promptCard.code) }) : (effectLabel(0, prompt.description) ?? t('auto.ask.fallback'))}
         {...(promptCard ? { card: { name: nameOf(promptCard.ref, promptCard.code), art: artOf(promptCard.ref, promptCard.code) } } : {})}
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
@@ -448,7 +448,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           <AskOptions
             key={`options-${askId}`}
             title={optionsTitle}
-            options={options.options.map((option, index): AskOption => ({ id: String(option.value), label: optionLabel(option, index) }))}
+            {...(askingCode ? { kicker: nameOf(null, askingCode) } : {})}
+            options={options.options.map((option): AskOption => ({ id: String(option.value), label: optionLabel(option) }))}
             mode={options.count > 1 || options.of === 'race' || options.of === 'attribute' ? { count: options.count } : 'one'}
             onPick={(ids) => gesture(...ids.map((id) => ({ kind: 'option' as const, value: Number(id) })))}
           />
@@ -456,11 +457,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       </Presence>
       <Presence>
         {sub?.children ? (
+          // Como la lista de efectos de la mesa manual: la carta arriba y un efecto por fila, a la izquierda.
           <AskOptions
             key={`sub-${askId}`}
             title={sub.label}
-            options={sub.children.map((child, index): AskOption => ({ id: String(index), label: child.label, ...(child.lead === undefined ? {} : { lead: child.lead }) }))}
+            {...(sub.children[0]?.effect ? { kicker: nameOf(null, sub.children[0].effect.code) } : {})}
+            options={sub.children.map((child, index): AskOption => ({ id: String(index), label: child.label }))}
             mode="one"
+            stacked
             onPick={([id]) => {
               const child = sub.children![Number(id)]
 

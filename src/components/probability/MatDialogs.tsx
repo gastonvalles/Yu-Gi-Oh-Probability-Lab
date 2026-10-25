@@ -69,6 +69,8 @@ export interface MenuItem {
    * costado (al pasar el mouse, con un clic, Enter o →); en la hoja del celular el toque hace `onSelect`, que abre el segundo paso de siempre.
    */
   children?: MenuItem[]
+  /** Con `children`: el submenú va ancho y con las respuestas a la izquierda, como el menú `wide` (la lista de efectos del duelo automático: cada respuesta es la frase de un efecto). */
+  wide?: boolean
   /** Arranca un bloque (apoyo, envíos, jugadas): en el menú pegado a la carta lleva una línea fina arriba. */
   divider?: boolean
 }
@@ -302,12 +304,12 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
     }
   }
 
-  /** Una fila: la de una jugada o la de una respuesta del submenú (`row`: su lugar en el menú; sin él, es del submenú). */
-  const renderRow = (item: MenuItem, index: number, row?: number) => {
+  /** Una fila: la de una jugada o la de una respuesta del submenú (`row`: su lugar en el menú; sin él, es del submenú; `inWide`: la de un submenú ancho). */
+  const renderRow = (item: MenuItem, index: number, row?: number, inWide = false) => {
     // Su lugar, si abre un submenú (una opción apagada no abre nada).
     const group = item.children && !item.disabled ? row : undefined
     // Las frases largas (la lista de efectos de «Activar efecto», con su número arriba y sus rasgos abajo) van a la izquierda: centradas se leen mal.
-    const left = wide || item.lead !== undefined
+    const left = wide || inWide || item.lead !== undefined
 
     return (
       <button
@@ -402,7 +404,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
           ref={subRef}
           role="menu"
           aria-label={sub.label}
-          className={cx(surface.panel, 'absolute left-0 top-0 w-36 px-1 py-1 animate-dialog-enter motion-reduce:animate-none')}
+          className={cx(surface.panel, 'absolute left-0 top-0 px-1 py-1 animate-dialog-enter motion-reduce:animate-none', sub.wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-36')}
           onClick={(event) => event.stopPropagation()}
           onMouseEnter={cancelIntent}
           onMouseLeave={() => hover(null)}
@@ -415,7 +417,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
             }
           }}
         >
-          {sub.children!.map((child, index) => renderRow(child, index))}
+          {sub.children!.map((child, index) => renderRow(child, index, undefined, sub.wide))}
         </div>
       ) : null}
     </div>,

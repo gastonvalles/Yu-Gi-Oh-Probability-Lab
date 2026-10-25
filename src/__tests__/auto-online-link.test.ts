@@ -3,7 +3,7 @@ import { cardData, type CardRow, type DataLoader, type DataSource } from '../app
 import { autoSaveStore, type AutoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession } from '../app/auto/auto-session'
 import type { DeckList } from '../app/auto/deck-map'
-import { createGuestLink, createHostLink, MANUAL_WAIT_MS, underControl, type OnlineLink } from '../app/auto/online'
+import { codesOf, createGuestLink, createHostLink, MANUAL_WAIT_MS, underControl, type OnlineLink } from '../app/auto/online'
 import { encodeAutoMessage, GUEST_ACCEPTS, HOST_ACCEPTS, isAutoText, parseAutoMessage, type AutoMessage, type AutoMessageKind } from '../app/auto/online-protocol'
 import { LOCATION as L, POSITION as P, type AutoCommand, type AutoEvent, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
@@ -115,6 +115,14 @@ function sameView(hostSession: AutoSession, guestSession: AutoSession, guestSeat
 
 describe('el enlace del duelo automático por enlace', () => {
   afterEach(() => vi.useRealTimers())
+
+  it('codesOf: las cartas de un evento, también las que nombran sus rótulos (`description` y las opciones de `select_option`); no los textos del sistema ni los números de `announce_number`', () => {
+    const ask = (body: CoreAsk): AutoEvent => ({ t: 'ask', seat: 0, askId: 1, ask: body })
+
+    expect([...codesOf(ask({ type: 'select_option', player: 0, options: [String((94103142n << 20n) | 3n), '573'] }))]).toEqual([94103142])
+    expect([...codesOf(ask({ type: 'select_yesno', player: 0, description: String(55n << 20n) }))]).toEqual([55])
+    expect([...codesOf(ask({ type: 'announce_number', player: 0, options: [String(94103142n << 20n)] }))]).toEqual([])
+  })
 
   it('en la sala: el anfitrión espera el deck del invitado, revisa los dos y los dos quedan listos; con las cartas sin reglas, nadie', async () => {
     const game = setup()

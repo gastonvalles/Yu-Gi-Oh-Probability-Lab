@@ -1,5 +1,5 @@
 import { OcgLocation, OcgPosition } from 'ocgcore-wasm'
-import { ANSWER_SHAPES, ASK_SHAPES, LOCATION, POSITION, parseAutoCommand, parseAutoEvent, type AutoEvent } from '../app/auto/protocol'
+import { ANSWER_SHAPES, ASK_SHAPES, LOCATION, POSITION, parseAutoCommand, parseAutoEvent, splitDesc, type AutoEvent } from '../app/auto/protocol'
 
 const create = { t: 'create', seed: 7, flags: '1', players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], decks: [{ main: [1, 2], extra: [], hand: [] }, { main: [3], extra: [4], hand: [3] }] }
 
@@ -7,6 +7,14 @@ describe('el protocolo de los duelos automáticos', () => {
   it('copia las constantes del núcleo sin importarlo', () => {
     expect(LOCATION).toMatchObject({ DECK: OcgLocation.DECK, HAND: OcgLocation.HAND, MZONE: OcgLocation.MZONE, SZONE: OcgLocation.SZONE, GRAVE: OcgLocation.GRAVE, REMOVED: OcgLocation.REMOVED, EXTRA: OcgLocation.EXTRA, OVERLAY: OcgLocation.OVERLAY })
     expect(POSITION).toMatchObject({ FACEUP_ATTACK: OcgPosition.FACEUP_ATTACK, FACEDOWN_DEFENSE: OcgPosition.FACEDOWN_DEFENSE, FACEUP: OcgPosition.FACEUP, FACEDOWN: OcgPosition.FACEDOWN })
+  })
+
+  it('parte el `desc` como lo arma `aux.Stringid` (carta << 20 | n, más de 32 bits); con carta 0 es un texto del sistema', () => {
+    // Lo que manda el núcleo para el `str4` de Radiant Typhoon Manifestation (94103142): «Search 1 "Mystical Space Typhoon"».
+    expect(splitDesc('98674296225795')).toEqual({ code: 94103142, n: 3 })
+    expect(splitDesc(String((999_999_999n << 20n) | 15n))).toEqual({ code: 999_999_999, n: 15 })
+    expect(splitDesc('573')).toEqual({ code: 0, n: 573 })
+    expect(splitDesc('0')).toEqual({ code: 0, n: 0 })
   })
 
   it('tiene una respuesta para cada una de las 21 preguntas', () => {

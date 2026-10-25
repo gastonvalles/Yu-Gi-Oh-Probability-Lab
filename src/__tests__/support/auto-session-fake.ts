@@ -46,6 +46,8 @@ export const CARDS: ReadonlyMap<string, MatCard> = new Map([
 export const loc = (code: number, location: number, sequence: number, controller: Seat = 0) => ({ code, controller, location, sequence })
 export const pos = (code: number, location: number, sequence: number, position: number, controller: Seat = 0) => ({ ...loc(code, location, sequence, controller), position })
 export const act = (code: number, location: number, sequence: number, description = '0') => ({ ...loc(code, location, sequence), description, client_mode: 0 })
+/** El `desc` de un texto de una carta, como lo arma `aux.Stringid(code, n)` en los scripts. */
+export const stringId = (code: number, n: number) => String((BigInt(code) << 20n) | BigInt(n))
 
 /** Las dos mesas a partir de los lugares. */
 function statesOf(cards: readonly Spot[]): Record<Side, MatState> {
@@ -129,8 +131,8 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     progress: { done: 1, total: 1 },
     replaying: false,
     names: { 700: 'Blue-Eyes White Dragon', 100: 'Ash Blossom', 400: 'Nibiru' },
-    // Los rótulos del `.cdb` por código (`desc` = código << 4 | n; menos de 10000 es del sistema): los dos efectos de Nibiru llevan los `desc` 10001 y 10002 (625 << 4 | n).
-    texts: { 625: ['', 'Summon a Token', 'Destroy a monster'] },
+    // Los rótulos del `.cdb` por código (el `desc` de un efecto es `stringId(código, n)`; con carta 0, un texto del sistema): los de Nibiru, `stringId(400, 1)` y `stringId(400, 2)`.
+    texts: { 400: ['', 'Summon a Token', 'Destroy a monster'] },
     unmapped: [],
     rivalHand: [],
   }
