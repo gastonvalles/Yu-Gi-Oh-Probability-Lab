@@ -1,18 +1,18 @@
 [
 ["SDLI-EN001","Common","1st Edition",0.19,90991,43096270,"Alexandrite Dragon"],
 ["SDLI-EN002","Super Rare","1st Edition",0.54,90992,40164421,"Minerva, Lightsworn Maiden"],
-["SDLI-EN003","Super Rare","1st Edition",0.34,90993,77558536,"Raiden, Hand of the Lightsworn"],
+["SDLI-EN003","Super Rare","1st Edition",0.37,90993,77558536,"Raiden, Hand of the Lightsworn"],
 ["SDLI-EN004","Common","1st Edition",0.62,90994,57774843,"Judgment Dragon"],
 ["SDLI-EN005","Common","1st Edition",0.24,90995,21785144,"Gragonith, Lightsworn Dragon"],
 ["SDLI-EN006","Common","1st Edition",0.35,90996,94381039,"Celestia, Lightsworn Angel"],
 ["SDLI-EN007","Common","1st Edition",0.36,90997,96235275,"Jain, Lightsworn Paladin"],
-["SDLI-EN008","Common","1st Edition",0.5,90998,22624373,"Lyla, Lightsworn Sorceress"],
+["SDLI-EN008","Common","1st Edition",0.48,90998,22624373,"Lyla, Lightsworn Sorceress"],
 ["SDLI-EN009","Common","1st Edition",0.2,90999,59019082,"Garoth, Lightsworn Warrior"],
 ["SDLI-EN010","Common","1st Edition",1.29,91001,58996430,"Wulf, Lightsworn Beast"],
 ["SDLI-EN011","Common","1st Edition",0.73,91002,44178886,"Ehren, Lightsworn Monk"],
 ["SDLI-EN012","Common","1st Edition",0.17,91000,95503687,"Lumina, Lightsworn Summoner"],
 ["SDLI-EN013","Common","1st Edition",1,91003,7183277,"Aurkus, Lightsworn Druid"],
-["SDLI-EN014","Common","1st Edition",0.32,91004,2420921,"Shire, Lightsworn Spirit"],
+["SDLI-EN014","Common","1st Edition",0.31,91004,2420921,"Shire, Lightsworn Spirit"],
 ["SDLI-EN015","Common","1st Edition",0.46,91005,21502796,"Ryko, Lightsworn Hunter"],
 ["SDLI-EN016","Common","1st Edition",0.36,91006,37742478,"Honest"],
 ["SDLI-EN017","Common","1st Edition",0.17,91007,30126992,"Lightray Diabolos"],
@@ -34,5 +34,5 @@
 ["SDLI-EN033","Common","1st Edition",0.29,91023,16255442,"Beckoning Light"],
 ["SDLI-EN034","Common","1st Edition",0.19,91024,73729209,"Skill Successor"],
 ["SDLI-EN035","Common","1st Edition",0.76,91025,78474168,"Breakthrough Skill"],
-["SDLI-EN036","Ultra Rare","1st Edition",0.9,91026,4779823,"Michael, the Arch-Lightsworn"]
+["SDLI-EN036","Ultra Rare","1st Edition",0.89,91026,4779823,"Michael, the Arch-Lightsworn"]
 ]

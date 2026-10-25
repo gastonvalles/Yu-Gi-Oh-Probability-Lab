@@ -45,7 +45,7 @@
 ["LOD-EN044","Common","Unlimited",3,476681,28596933,"A Wingbeat of Giant Dragon"],
 ["LOD-EN045","Common","Unlimited",null,476682,55991637,"Dragon's Gunfire"],
 ["LOD-EN046","Common","Unlimited",0.2,476684,81385346,"Stamping Destruction"],
-["LOD-EN047","Common","Unlimited",null,476689,27770341,"Super Rejuvenation"],
+["LOD-EN047","Common","Unlimited",0.5,476689,27770341,"Super Rejuvenation"],
 ["LOD-EN048","Common","Unlimited",null,476692,54178050,"Dragon's Rage"],
 ["LOD-EN049","Common","Unlimited",null,476693,80163754,"Burst Breath"],
 ["LOD-EN051","Common","Unlimited",0.1,476695,44203504,"Robotic Knight"],
