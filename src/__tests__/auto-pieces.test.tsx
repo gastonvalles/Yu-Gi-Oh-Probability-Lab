@@ -327,14 +327,43 @@ describe('AutoBar', () => {
     expect(lane()).toHaveClass('border-border-subtle')
   })
 
-  it('con laterales, el aviso va en el lateral (ocupa su alto, no flota sobre una fila)', () => {
+  it('con laterales, el aviso va en el lateral (ocupa su alto, no flota sobre una fila) y la caja del lateral no ataja toques', () => {
     const { container } = render(
       <DuelRailsContext.Provider value>
         <AutoBar {...props} lane={{ kind: 'thinking' }} />
       </DuelRailsContext.Provider>,
     )
+    const lane = container.querySelector('[data-lane="thinking"]')
 
-    expect(container.querySelector('[data-lane="thinking"]')).not.toHaveClass('absolute')
+    expect(lane).not.toHaveClass('absolute')
+    // La caja ocupa todo el lateral, encima del campo agrandado: sin esto tapaba el Extra Deck, el Field y el Banish del rival, aun vacía. Sólo lo que lleva adentro recibe toques.
+    expect(lane?.parentElement).toHaveClass('pointer-events-none', '*:pointer-events-auto')
     expect(screen.getByTestId('auto-phase')).toHaveTextContent('Main Phase 1')
+  })
+
+  it('con laterales, el texto del aviso ocupa su renglón y el botón va debajo, a la derecha, y se puede tocar', () => {
+    const onUndo = vi.fn()
+    // El CSS que genera Tailwind para esas dos clases (jsdom no carga el de la app): qué `pointer-events` le toca a cada uno.
+    const css = Object.assign(document.createElement('style'), { textContent: '.pointer-events-none { pointer-events: none } :is(.\\*\\:pointer-events-auto > *) { pointer-events: auto }' })
+
+    document.head.append(css)
+    const { container } = render(
+      <DuelRailsContext.Provider value>
+        <AutoBar {...props} lane={{ kind: 'ask', text: 'Podés responder a Radiant Typhoon Ascendance con Radiant Typhoon Manifestation', actions: [{ label: 'Deshacer', onSelect: onUndo, primary: true }] }} />
+      </DuelRailsContext.Provider>,
+    )
+    const lane = container.querySelector<HTMLElement>('[data-lane="ask"]')!
+    const undo = within(lane).getByRole('button', { name: 'Deshacer' })
+
+    // El texto se parte donde haga falta (sin el tope de dos renglones de la fila del celular) y el botón no le saca ancho: va en su renglón.
+    expect(within(lane).getByText(/^Podés responder/)).toHaveClass('[overflow-wrap:anywhere]')
+    expect(within(lane).getByText(/^Podés responder/)).not.toHaveClass('line-clamp-2')
+    expect(undo.parentElement).toHaveClass('basis-full', 'justify-end')
+    // La caja deja pasar los toques al campo y el botón los recibe (jsdom hereda `pointer-events`: sin `*:pointer-events-auto`, el botón quedaría en `none`).
+    expect(getComputedStyle(lane.parentElement!).pointerEvents).toBe('none')
+    expect(getComputedStyle(undo).pointerEvents).toBe('auto')
+    fireEvent.click(undo)
+    expect(onUndo).toHaveBeenCalledTimes(1)
+    css.remove()
   })
 })

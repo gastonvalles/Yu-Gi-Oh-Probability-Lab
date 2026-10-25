@@ -128,6 +128,7 @@ export const THINKING_CANCEL_MS = 1500
 /**
  * Lo que va en el lateral izquierdo debajo de las vidas (los avisos): se corre de lo que el campo agrandado se mete en el lateral (`--field-overhang`, lo mide la mesa), hasta dejarle 11 rem;
  * con menos, se apoya sobre el borde del campo, por encima (`z-20` en el contenedor). Antes el aviso ocupaba todo el lateral y la mesa en perspectiva lo tapaba (Gastón, 2026-10-24).
+ * La caja (todo el lateral, encima del campo agrandado) no ataja toques, sólo lo que lleva adentro (`pointer-events-none *:pointer-events-auto`): aun vacía, tapaba el Extra Deck, el Field y el Banish del rival (Gastón, 2026-10-25).
  */
 export const RAIL_LANE_STYLE: CSSProperties = { paddingRight: 'min(var(--field-overhang, 0px), max(0px, 100% - 11rem))' }
 /** Lo mismo para el lateral derecho (el resultado). */
@@ -180,7 +181,7 @@ function ThinkingCancel({ onCancel, label }: { onCancel: () => void; label?: str
   }, [])
 
   return shown ? (
-    <Button variant="tertiary" size="sm" className="px-2" onClick={onCancel}>
+    <Button variant="tertiary" size="sm" onClick={onCancel}>
       {label ?? t('common.cancel')}
     </Button>
   ) : null
@@ -189,13 +190,14 @@ function ThinkingCancel({ onCancel, label }: { onCancel: () => void; label?: str
 /** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo), tu pregunta de pasar de fase y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
 export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
   const place = rail ? 'flex-wrap py-2' : 'absolute inset-0 max-sm:pointer-events-auto'
-  const clamp = rail ? '' : 'line-clamp-2'
+  // En la fila de la línea del registro, dos renglones a lo sumo; en un lateral (angosto), los que necesite, y una palabra larga se parte en vez de salirse.
+  const text = cx('min-w-0 flex-1', rail ? '[overflow-wrap:anywhere]' : 'line-clamp-2')
 
   if (lane.kind === 'looking') {
     return (
       <div role="status" data-lane="looking" className={cx(place, 'flex items-center gap-2 rounded-card border border-border-subtle bg-card-background px-3 text-micro font-semibold leading-tight text-muted')}>
         <Icon name="eye" size={16} className="shrink-0 text-info-soft" />
-        <span className={cx(clamp, 'min-w-0 flex-1')}>{t(LOOK_TEXT[lane.what], { name: rivalName })}</span>
+        <span className={text}>{t(LOOK_TEXT[lane.what], { name: rivalName })}</span>
       </div>
     )
   }
@@ -206,27 +208,30 @@ export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice
   return (
     <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
       {lane.kind === 'thinking' ? <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-info motion-safe:animate-pulse" /> : null}
-      <span className={cx(clamp, 'min-w-0 flex-1')} title={laneText(lane, rivalName)}>
+      <span className={text} title={laneText(lane, rivalName)}>
         {laneText(lane, rivalName)}
       </span>
-      {lane.kind === 'undoAsked' ? (
-        <>
-          <Button variant="tertiary" size="sm" className="px-2" onClick={lane.onDeny}>
-            {t('duel.undo.deny')}
-          </Button>
-          <Button variant="primary" size="sm" className="px-3" onClick={lane.onAllow}>
-            {t('duel.undo.allow')}
-          </Button>
-        </>
-      ) : null}
-      {lane.kind === 'ask'
-        ? lane.actions.map((action) => (
-            <Button key={action.label} variant={action.primary ? 'primary' : 'tertiary'} size="sm" className={action.primary ? 'px-3' : 'px-2'} onClick={action.onSelect}>
-              {action.label}
+      {/* Los botones, al lado del texto; en un lateral, en su renglón, debajo y a la derecha (al lado, el texto quedaba de una palabra por renglón y el botón encima). Sin botones (o con «Cancelar» todavía esperando) no ocupa lugar. */}
+      <span className={cx('flex shrink-0 items-center gap-2 empty:hidden', rail && 'basis-full flex-wrap justify-end')}>
+        {lane.kind === 'undoAsked' ? (
+          <>
+            <Button variant="tertiary" size="sm" onClick={lane.onDeny}>
+              {t('duel.undo.deny')}
             </Button>
-          ))
-        : null}
-      {lane.kind === 'thinking' && lane.onCancel ? <ThinkingCancel onCancel={lane.onCancel} label={lane.cancelLabel} /> : null}
+            <Button variant="primary" size="sm" onClick={lane.onAllow}>
+              {t('duel.undo.allow')}
+            </Button>
+          </>
+        ) : null}
+        {lane.kind === 'ask'
+          ? lane.actions.map((action) => (
+              <Button key={action.label} variant={action.primary ? 'primary' : 'tertiary'} size="sm" onClick={action.onSelect}>
+                {action.label}
+              </Button>
+            ))
+          : null}
+        {lane.kind === 'thinking' && lane.onCancel ? <ThinkingCancel onCancel={lane.onCancel} label={lane.cancelLabel} /> : null}
+      </span>
     </div>
   )
 }
@@ -393,7 +398,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
             {phase ? <span data-testid="duel-phase" className="text-info">{phase}</span> : null}
           </span>
         </div>
-        <div ref={toastHost} data-testid="duel-rail-notices" className="relative z-20 col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4" style={RAIL_LANE_STYLE}>
+        <div ref={toastHost} data-testid="duel-rail-notices" className="pointer-events-none relative z-20 col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4 *:pointer-events-auto" style={RAIL_LANE_STYLE}>
           {lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}
           {status !== 'open' ? (
             <Callout tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
@@ -402,7 +407,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
           ) : null}
         </div>
         {result && !resultOpen ? (
-          <div className="relative z-20 col-start-3 row-start-2 flex min-h-0 flex-col items-stretch pt-4" style={RAIL_RESULT_STYLE}>
+          <div className="pointer-events-none relative z-20 col-start-3 row-start-2 flex min-h-0 flex-col items-stretch pt-4 *:pointer-events-auto" style={RAIL_RESULT_STYLE}>
             <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} reason={resultReason} rail />
           </div>
         ) : null}
