@@ -91,6 +91,27 @@ describe('los datos de un duelo automático', () => {
     expect(fresh.calls.scripts.length).toBeGreaterThan(0)
   })
 
+  it('baja también las filas que el núcleo lee por las cartas del deck: su alias y las que nombran sus scripts (también con una caché de antes)', async () => {
+    // 500 «se trata como» 600 y 601 es un arte alternativo de 600: al mirar su arquetipo el núcleo lee la fila de 600. 100 cambia de nombre a 700 o a 800.
+    const rows = new Map([row(100, EFFECT), row(500, NORMAL, { alias: 600 }), row(601, NORMAL, { alias: 600 }), row(600, NORMAL), row(700, NORMAL), row(800, NORMAL), row(900, TOKEN)].map((card) => [card.id, card]))
+    const scripts: Record<string, string> = { 'constant.lua': 'CARD_EIGHT_HUNDRED = 800', 'utility.lua': '', 'c100.lua': 'local s,id=GetID()\ns.listed_names={CARD_EIGHT_HUNDRED,700,id}' }
+    const calls: number[][] = []
+    const source: DataSource = {
+      manifest: async () => ({ version: 'v1', tokens: [900], filler: [] }),
+      cards: async (codes) => (calls.push([...codes]), codes.flatMap((code) => (rows.has(code) ? [rows.get(code)!] : []))),
+      script: async (name) => scripts[name] ?? null,
+    }
+    const { storage } = memoryCaches()
+    const old = Object.fromEntries([100, 500, 601, 900].map((code) => [code, rows.get(code)]))
+
+    await (await storage.open('auto-data-v1')).put('https://auto-data.cache/cards/all2', new Response(JSON.stringify({ value: old })))
+    const data = await createDataLoader(source, storage).load([{ main: [[100, 1], [500, 1], [601, 1]] }])
+
+    expect(calls).toEqual([[600, 800, 700]])
+    expect(data.cards.map((card) => card.code).sort()).toEqual([100, 500, 600, 601, 700, 800, 900])
+    expect(data.decks[0]).toEqual({ main: [100, 500, 601], extra: [], missing: [], noRules: [] })
+  })
+
   it('lee las filas del .cdb como el núcleo: escalas, flechas de Link y setcodes de 4 × u16', () => {
     expect(cardData(row(1, 0x1000021, { level: 4 | (3 << 16) | (5 << 24), setcode: String((0x10an << 16n) | 0x2bn) }))).toMatchObject({ level: 4, lscale: 5, rscale: 3, setcodes: [0x2b, 0x10a] })
     expect(cardData(row(2, 0x4000021, { def: 0b101, race: '-1' }))).toMatchObject({ defense: 0, link_marker: 5, race: 2n ** 64n - 1n })

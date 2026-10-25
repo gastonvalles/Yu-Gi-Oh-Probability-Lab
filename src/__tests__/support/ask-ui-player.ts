@@ -45,14 +45,14 @@ export interface Played {
   answer: CoreAnswer | null
   /** Se contestó sola (y por qué). */
   auto: AskView['auto']
-  /** No había nada que tocar, o se pasó el tope de toques. */
+  /** No había nada que tocar, o ni al azar (hasta el tope) ni sumando sin soltar se llegó a contestar. */
   stuck: boolean
   /** Toques ofrecidos que no hicieron nada (tiene que ser 0). */
   dead: number
   taps: number
 }
 
-/** Toca al azar lo ofrecido hasta que la pregunta contesta. */
+/** Toca al azar lo ofrecido hasta que la pregunta contesta (pasado el tope, sin soltar nada). */
 export function playAsk(state: AskState, random: () => number, cap = 400): Played {
   let current = state
   let dead = 0
@@ -71,7 +71,18 @@ export function playAsk(state: AskState, random: () => number, cap = 400): Playe
     current = result.state
   }
 
-  return { answer: null, auto: null, stuck: true, dead, taps: cap }
+  // Al tope, sin soltar: lo que contesta o, si no, lo primero que suma. Al azar se suelta tanto como se elige, y elegir casi todas (9 de las
+  // 10 de la mano, A Bao A Qu) es una caminata que vuelve atrás: unos 160 toques de media y una cola que pasa los 400, sin que a la pantalla
+  // le falte nada.
+  for (let taps = cap; ; taps += 1) {
+    const results = gesturesOf(askView(current)).map((gesture) => step(current, gesture))
+    const answer = results.find((result) => result.answer)?.answer
+    const grown = results.find((result) => result.state.chosen.length > current.chosen.length)
+
+    if (answer) return { answer, auto: null, stuck: false, dead, taps: taps + 1 }
+    if (!grown) return { answer: null, auto: null, stuck: true, dead, taps }
+    current = grown.state
+  }
 }
 
 /** mulberry32. */

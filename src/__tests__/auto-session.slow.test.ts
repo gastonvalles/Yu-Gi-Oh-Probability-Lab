@@ -10,7 +10,7 @@ import { localTransport, type AutoHost } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { passivePolicy, randomLegalPolicy, type CardPicker, type Policy } from '../app/auto/policies'
 import { splitDesc } from '../app/auto/protocol'
-import { codeOfId, compare, readMat, readReal } from './support/core-compare'
+import { codeOfId, compare, readMat, readReal, TRANSIT, xyzInTransit } from './support/core-compare'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -91,7 +91,9 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
       const live = hosts.at(-1)!.live!
       const code = (key: string) => codeOfId(key, {}) || (key.startsWith('token-') ? -1 : 0)
       const real = readReal(live.lib, live.handle, 0)
-      const own = compare(real, readMat(snapshot.mine, code), true).filter((diff) => !/^(mzone|szone):code .* -1≠/.test(diff))
+      // Un Xyz que junta sus materiales en el Extra (el núcleo pregunta dónde va y en qué posición): la mesa los deja en el campo hasta que sale.
+      const transit = xyzInTransit(live.lib, live.handle)
+      const own = compare(real, readMat(snapshot.mine, code), true).filter((diff) => !/^(mzone|szone):code .* -1≠/.test(diff) && !(transit && TRANSIT.test(diff)))
       const field = live.lib.duelQueryField(live.handle)
 
       for (const seat of [0, 1] as const) {

@@ -15,17 +15,21 @@ const play = (state: MatState, ...actions: MatAction[]) => actions.reduce(matRed
 const summoned = (state: MatState, id: string, index = 0) => play(state, { type: 'place', id, zone: 'mz', index, pos: 'atk' })
 
 describe('las jugadas de control en una mesa', () => {
-  it('dar saca la carta de la mesa: del campo (y manda sus materiales al cementerio), del cementerio o del destierro; no de la mano, el deck ni el Extra', () => {
+  it('dar saca la carta de la mesa: del campo (y manda sus materiales al cementerio) o de una pila; no un material ni una ficha', () => {
     const base = play(hostTable, { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'attach', id: 'card-1001-1', to: 'card-1000-1' })
     const given = matReducer(base, { type: 'give', id: 'card-1000-1' })
 
     expect(given.mz[0]).toBeNull()
     expect(given.gy).toContain('card-1001-1')
     expect(given.hand).not.toContain('card-1000-1')
-    // Una carta de la mano, del deck o del Extra no se da; una Mágica del campo, una del cementerio y una del destierro sí (las toma el rival).
-    expect(matReducer(hostTable, { type: 'give', id: hostTable.hand[0]! })).toBe(hostTable)
-    expect(matReducer(hostTable, { type: 'give', id: hostTable.deck[0]! })).toBe(hostTable)
-    expect(matReducer(hostTable, { type: 'give', id: hostTable.extra[0]! })).toBe(hostTable)
+    expect(matReducer(base, { type: 'give', id: 'card-1001-1' })).toBe(base)
+    const token = play(hostTable, { type: 'token', zone: 'mz', index: 1 })
+
+    expect(matReducer(token, { type: 'give', id: 'token-1' })).toBe(token)
+    // De la mano o del deck también: en un duelo automático el núcleo manda un Kaiju de la mano (o Allure Palace del deck) al campo del rival.
+    expect(matReducer(hostTable, { type: 'give', id: hostTable.hand[0]! }).hand).toEqual(hostTable.hand.slice(1))
+    expect(matReducer(hostTable, { type: 'give', id: hostTable.deck[0]! }).deck).toEqual(hostTable.deck.slice(1))
+    // Una Mágica del campo, una del cementerio y una del destierro (las toma el rival).
     expect(matReducer(play(hostTable, { type: 'place', id: 'card-1002-1', zone: 'st', index: 0, pos: 'atk' }), { type: 'give', id: 'card-1002-1' }).st[0]).toBeNull()
     expect(matReducer(play(hostTable, { type: 'move', id: 'card-1003-1', to: 'gy' }), { type: 'give', id: 'card-1003-1' }).gy).toEqual([])
     expect(matReducer(play(hostTable, { type: 'move', id: 'card-1004-1', to: 'banished' }), { type: 'give', id: 'card-1004-1' }).banished).toEqual([])

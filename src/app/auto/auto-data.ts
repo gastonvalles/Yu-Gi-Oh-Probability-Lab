@@ -3,12 +3,12 @@ import { mapDeck, needsScript, scriptClosure, type DeckList, type MappedDeck } f
 import type { AutoEvent } from './protocol'
 
 /**
- * Los datos de un duelo automático: las filas del `.cdb` de las cartas (y de las fichas, que el núcleo lee en caliente al crearlas) y
- * el cierre de scripts (§3.5 del diseño). Los lectores del núcleo son síncronos, así que todo se baja antes de crear el duelo, en
- * paralelo, con caché en memoria y, si existe, en la `Cache API` (un cajón por versión del manifiesto: datos o scripts nuevos, caché
- * nueva). La fuente es intercambiable (`DataSource`); la de la app es `/auto-data` del mismo origen: en desarrollo la sirve `vite serve`
- * (plugin `autoDataDev` de vite.config.ts) y en producción la función `api/auto-data.ts` (`VITE_AUTO_DATA_URL` la cambia). No importa el
- * paquete del núcleo (sólo sus tipos).
+ * Los datos de un duelo automático: las filas del `.cdb` de las cartas (y de las fichas, que el núcleo lee en caliente al crearlas, y de
+ * las que lee por ellas: su `alias` y lo que nombran sus scripts) y el cierre de scripts (§3.5 del diseño). Los lectores del núcleo son
+ * síncronos, así que todo se baja antes de crear el duelo, en paralelo, con caché en memoria y, si existe, en la `Cache API` (un cajón
+ * por versión del manifiesto: datos o scripts nuevos, caché nueva). La fuente es intercambiable (`DataSource`); la de la app es
+ * `/auto-data` del mismo origen: en desarrollo la sirve `vite serve` (plugin `autoDataDev` de vite.config.ts) y en producción la función
+ * `api/auto-data.ts` (`VITE_AUTO_DATA_URL` la cambia). No importa el paquete del núcleo (sólo sus tipos).
  */
 
 /** Una fila de `datas` como la sirve la fuente: los int64 (`setcode`, `race`) como texto decimal. `name` (de `texts`) es opcional. */
@@ -66,6 +66,10 @@ export interface DataLoader {
 
 const TYPE_LINK = 0x4000000
 const CACHE_PREFIX = 'auto-data-'
+/** `s.listed_names={…}`: las cartas que nombra un script, en números o en constantes (`CARD_DARK_MAGICIAN`). */
+const LISTED_NAMES = /\.listed_names\s*=\s*\{([^}]*)\}/g
+/** Una constante de código de las bibliotecas (`CARD_DARK_MAGICIAN = 46986414`) o de un script (`local CARD_X=…`). */
+const CODE_CONSTANT = /\b([A-Z][A-Z0-9_]*)\s*=\s*(\d+)\b/g
 
 /** La fila del `.cdb` como la lee `cardReader` (codificación de YGOPro: `level` = nivel | escala derecha << 16 | izquierda << 24; en los Link `def` son las flechas; `setcode`, 4 × u16). */
 export function cardData(row: CardRow): OcgCardData {
@@ -202,15 +206,16 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
 
       // `all2`: desde que las filas llevan `strs`, las guardadas antes (sin ellos) no sirven.
       if (rows.size === 0) for (const [code, row] of Object.entries(((await recall('cards', 'all2')) ?? {}) as Record<string, CardRow | null>)) rows.set(Number(code), row)
-      const wanted = codes.filter((code) => !rows.has(code))
-
-      tick()
-      if (wanted.length > 0) {
+      const fetchRows = async (wanted: number[]) => {
         const got = new Map((await source.cards(wanted)).map((row) => [row.id, row]))
 
         for (const code of wanted) rows.set(code, got.get(code) ?? null)
         keep('cards', 'all2', Object.fromEntries(rows))
       }
+      const wanted = codes.filter((code) => !rows.has(code))
+
+      tick()
+      if (wanted.length > 0) await fetchRows(wanted)
       done += 1
       tick()
 
@@ -240,12 +245,30 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
 
       const texts = Object.fromEntries(names.map((name) => [name, known.get(name)!]))
 
+      // El núcleo también lee filas de cartas que no están en los decks (sin la fila, la carta queda vacía y llega `card data not preloaded`):
+      // la del `alias` de cada carta (al mirar su arquetipo lee la de su nombre: el original de un arte alternativo o de un «se trata como») y
+      // las que nombran sus scripts (`listed_names`): la que cambia de nombre (`EFFECT_CHANGE_CODE`, «su nombre pasa a ser…») lee la de ése.
+      // Una caché de antes de esto no las tiene: se piden igual.
+      const constants = new Map(Object.values(texts).flatMap((text) => [...text.matchAll(CODE_CONSTANT)].map((match) => [match[1]!, Number(match[2])] as const)))
+      const named = Object.values(texts).flatMap((text) => [...text.matchAll(LISTED_NAMES)].flatMap((match) => match[1]!.split(',').map((item) => constants.get(item.trim()) ?? Number(item))))
+      const more = [...new Set([...[...data.values()].map((card) => card.alias), ...named])].filter((code) => code > 0 && !data.has(code))
+      const unknown = more.filter((code) => !rows.has(code))
+
+      if (unknown.length > 0) {
+        total += 1
+        tick()
+        await fetchRows(unknown)
+        done += 1
+        tick()
+      }
+      for (const code of more) if (rows.get(code)) data.set(code, cardData(rows.get(code)!))
+
       return {
         decks: lists.map((list) => mapDeck(list, resolve, (name) => typeof texts[name] === 'string')),
         cards: [...data.values()],
         scripts: texts,
-        names: Object.fromEntries(codes.flatMap((code) => (rows.get(code)?.name ? [[code, rows.get(code)!.name!]] : []))),
-        texts: Object.fromEntries(codes.flatMap((code) => (rows.get(code)?.strs?.length ? [[code, rows.get(code)!.strs!]] : []))),
+        names: Object.fromEntries([...data.keys()].flatMap((code) => (rows.get(code)?.name ? [[code, rows.get(code)!.name!]] : []))),
+        texts: Object.fromEntries([...data.keys()].flatMap((code) => (rows.get(code)?.strs?.length ? [[code, rows.get(code)!.strs!]] : []))),
         version: manifest.version,
       }
     },

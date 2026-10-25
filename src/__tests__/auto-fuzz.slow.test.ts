@@ -11,12 +11,13 @@ import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, runDuel, 
 
 /**
  * El fuzz del núcleo (lento: fuera de `npm test`, se corre con `npm run test:auto`). Dos bots al azar legal juegan duelos con decks del
- * meta y se cuentan los invariantes de F1: 0 RETRY, 0 mensajes sin manejar, 0 errores del núcleo, 0 cuelgues; el asiento filtrado nunca
- * ve lo oculto (un oráculo aparte, con el estado real que da `duelQueryLocation`); `rewind` reproduce los eventos y un duelo con semilla
- * fija se repite igual. Lo mismo con el rival de handtraps en el asiento 1 (`Rival`). Escribe el informe por carta y el de lentitud en
- * CORE_DATA_DIR (nunca en el repo). Parámetros: FUZZ_DECKS (20), FUZZ_DUELS por deck (4), FUZZ_HANDTRAP_DUELS por deck contra el rival
- * de handtraps (2), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S segundos por duelo (120: un duelo más largo se corta
- * y queda en el informe de lentitud, no cuenta como cuelgue). El avance va a fuzz-progress.log (y fuzz-progress-handtraps.log).
+ * meta y se cuentan los invariantes de F1: 0 RETRY, 0 mensajes sin manejar, 0 errores del núcleo (salvo `KNOWN_SCRIPT_ERRORS`), 0
+ * cuelgues; el asiento filtrado nunca ve lo oculto (un oráculo aparte, con el estado real que da `duelQueryLocation`); `rewind` reproduce
+ * los eventos y un duelo con semilla fija se repite igual. Lo mismo con el rival de handtraps en el asiento 1 (`Rival`). Escribe el
+ * informe por carta y el de lentitud en CORE_DATA_DIR (nunca en el repo). Parámetros: FUZZ_DECKS (20), FUZZ_DUELS por deck (4),
+ * FUZZ_HANDTRAP_DUELS por deck contra el rival de handtraps (2), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S
+ * segundos por duelo (120: un duelo más largo se corta y queda en el informe de lentitud, no cuenta como cuelgue). El avance va a
+ * fuzz-progress.log (y fuzz-progress-handtraps.log).
  */
 const DECKS = Number(process.env.FUZZ_DECKS ?? 20)
 const DUELS = Number(process.env.FUZZ_DUELS ?? 4)
@@ -31,6 +32,18 @@ const PLAYERS = [
 ]
 const FACEUP = 5
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
+/**
+ * Lista blanca: errores de scripts de Project Ignis comprobados con el núcleo (ni del anfitrión ni de la política: todas las respuestas
+ * fueron legales, sin `RETRY`). Se cuentan aparte (`knownScriptErrors`); cualquier otro error de script sigue contando en `coreErrors`.
+ */
+const KNOWN_SCRIPT_ERRORS = [
+  // Haggard Lizardose (9763474): su costo exige que quede un monstruo boca arriba con otro ATK que el del desterrado, pero desterrar
+  // cambia ese ATK si depende de lo desterrado (Vidolia del rival: −100 por carta desterrada; desterrar Droll & Lock Bird, de 0, deja a
+  // la propia Lizardose de 100 en 0). `atktg` no lo vuelve a mirar, el núcleo no pregunta un objetivo que no hay y `atkop` indexa el
+  // `nil` de `GetFirstTarget()`. Visto con FUZZ_SEED=1 (duelo 9/80: 733111 contra 737998) y CardScripts 532d283: sacarlo cuando el
+  // script lo chequee.
+  /"c9763474\.lua"\]:50: attempt to index a nil value \(local 'tc'\)/,
+]
 
 const name = (message: OcgMessage) => ocgMessageTypeStrings.get(message.type as never) as string
 
@@ -182,7 +195,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       return 0
     }
     const wasm = wasmBinary()
-    const tally = { duels: 0, ends: {} as Record<string, number>, questions: {} as Record<string, number>, retries: 0, unhandled: 0, coreErrors: 0, exceptions: 0, otherFaults: 0, stuck: 0, leaks: 0, rewindChecked: 0, rewindMismatch: 0, repeatChecked: 0, repeatMismatch: 0, hotScripts: {} as Record<string, number> }
+    const tally = { duels: 0, ends: {} as Record<string, number>, questions: {} as Record<string, number>, retries: 0, unhandled: 0, coreErrors: 0, knownScriptErrors: 0, exceptions: 0, otherFaults: 0, stuck: 0, leaks: 0, rewindChecked: 0, rewindMismatch: 0, repeatChecked: 0, repeatMismatch: 0, hotScripts: {} as Record<string, number> }
     const faults: { duel: number; message: string }[] = []
     const mismatches: { duel: number; kind: string; at: number; first: string; second: string }[] = []
     const differ = (duel: number, kind: string, first: string[], second: string[]) => {
@@ -277,7 +290,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
           if (lastCard) stat(lastCard).faulted += 1
           if (event.kind === 'retry') tally.retries += 1
           else if (event.kind === 'unhandled') tally.unhandled += 1
-          else if (event.kind === 'script') tally.coreErrors += 1
+          else if (event.kind === 'script') tally[KNOWN_SCRIPT_ERRORS.some((known) => known.test(event.message)) ? 'knownScriptErrors' : 'coreErrors'] += 1
           else if (event.kind === 'crash') tally.exceptions += 1
           else tally.otherFaults += 1
         }
