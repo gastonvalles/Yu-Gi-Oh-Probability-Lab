@@ -238,45 +238,76 @@ describe('AutoBar', () => {
     turn: 3,
     myTurn: true,
     phase: 'main1' as const,
-    sounds: true,
     chain: 'ask' as const,
     place: 'ask' as const,
     onExit: () => {},
-    onSounds: () => {},
+    onUndo: () => {},
+    canUndo: false,
+    onNewHand: () => {},
+    onHandtraps: () => {},
     onChain: () => {},
     onPlace: () => {},
     handtraps: { on: false, summary: 'Apagadas: el rival no usa nada.', onChange: () => {} },
     blind: false,
     onBlind: () => {},
   }
+  /** Escritorio (desde 1101 px): sin esto, jsdom es un celular. */
+  const desktop = () => {
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  }
+  const matchMedia = window.matchMedia
 
-  it('las vidas de los dos, el turno con la fase y la X de salir', () => {
+  afterEach(() => {
+    window.matchMedia = matchMedia
+  })
+
+  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar» y sus íconos en el mismo orden (deshacer apagado sin nada que deshacer) y, al final, el engranaje; debajo, el turno con la fase', () => {
     const onExit = vi.fn()
-    render(<AutoBar {...props} onExit={onExit} />)
+    const onUndo = vi.fn()
+    const onNewHand = vi.fn()
+    const { rerender } = render(<AutoBar {...props} onExit={onExit} onUndo={onUndo} onNewHand={onNewHand} />)
+    const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000' })).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
+    expect(names(within(toolbar).getAllByRole('button'))).toEqual(['Volver a Jugar', 'Cambiar a la vista superior', 'Sonidos', 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Más opciones del duelo'])
     expect(screen.getByText('Turno 3')).toBeInTheDocument()
     expect(screen.getByText('Tu turno')).toBeInTheDocument()
     expect(screen.getByTestId('auto-phase')).toHaveTextContent('Main Phase 1')
+    expect(within(toolbar).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Salir del duelo' }))
-    expect(onExit).toHaveBeenCalledTimes(1)
+    fireEvent.click(within(toolbar).getByRole('button', { name: 'Volver a Jugar' }))
+    fireEvent.click(within(toolbar).getByRole('button', { name: 'Nueva mano' }))
+    rerender(<AutoBar {...props} onExit={onExit} onUndo={onUndo} onNewHand={onNewHand} canUndo />)
+    fireEvent.click(within(toolbar).getByRole('button', { name: 'Deshacer' }))
+    expect([onExit, onNewHand, onUndo].map((spy) => spy.mock.calls.length)).toEqual([1, 1, 1])
+    // Salir es volver, como en la práctica: ya no hay X.
+    expect(screen.queryByRole('button', { name: 'Salir del duelo' })).toBeNull()
   })
 
-  it('«Más opciones»: los sonidos, las respuestas y la casilla entran y salen por props, y dice que el rival no juega', () => {
-    const onSounds = vi.fn()
+  it('las vidas de los dos: en escritorio, en la barra (con la ventana grande entre los íconos); en el celular no van arriba (van abajo, con `AutoLives` en la botonera de la mesa)', () => {
+    const { unmount } = render(<AutoBar {...props} />)
+
+    expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    unmount()
+
+    desktop()
+    render(<AutoBar {...props} />)
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
+    expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Cambiar a la vista superior', 'Sonidos', 'Ventana grande', 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Más opciones del duelo'])
+    expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
+  })
+
+  it('«Más opciones»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son el ícono de la barra, como en la práctica)', () => {
     const onChain = vi.fn()
     const onPlace = vi.fn()
-    render(<AutoBar {...props} onSounds={onSounds} onChain={onChain} onPlace={onPlace} />)
+    render(<AutoBar {...props} onChain={onChain} onPlace={onPlace} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 
-    fireEvent.click(within(dialog).getByRole('switch', { name: 'Sonidos del duelo' }))
+    expect(within(dialog).queryByRole('switch', { name: 'Sonidos del duelo' })).toBeNull()
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getByRole('radio', { name: 'Nunca' }))
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Casilla' })).getByRole('radio', { name: 'Automática' }))
-    expect(onSounds).toHaveBeenCalledWith(false)
     expect(onChain).toHaveBeenCalledWith('never')
     expect(onPlace).toHaveBeenCalledWith('auto')
     expect(dialog).toHaveTextContent('El rival no juega: sólo recibe.')

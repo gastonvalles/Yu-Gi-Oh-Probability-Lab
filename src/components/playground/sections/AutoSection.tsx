@@ -11,6 +11,7 @@ import { CardPicker, type PickCard } from '../../auto/CardPicker'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { MatScene } from '../../probability/MatArena'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../../probability/MatBarActions'
 import { CardMenu } from '../../probability/MatDialogs'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
@@ -105,8 +106,9 @@ export function AutoSection() {
         <Tag>{answer}</Tag>
       </Specimen>
 
-      <BarSample title="AutoBar · el núcleo resolviendo" note={<>La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
-      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (sonidos, respuestas, la casilla, «Handtraps del rival» con «Cambiar handtraps» y, encendidas, «A ciegas» —en la del núcleo resolviendo están apagadas y dice que el rival no juega—, «Reiniciar el duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
+      <BarActionsSample />
+      <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje, el turno y, en escritorio, las vidas (en el celular van abajo, en la botonera de la mesa). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
+      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Handtraps del rival» con «Cambiar handtraps» y, encendidas, «A ciegas» —en la del núcleo resolviendo están apagadas y dice que el rival no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
     </SpecimenGrid>
   )
 }
@@ -251,10 +253,37 @@ function SortSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
+/** Los íconos de la barra de la mesa, los mismos en la práctica y en el automático: lo que cambia es lo de cada una (guardar y los pasos; el engranaje). Deshacer y guardar, con y sin algo que deshacer. */
+function BarActionsSample() {
+  const [played, setPlayed] = useState(false)
+  const [taps, setTaps] = useState(0)
+  const tap = () => setTaps((count) => count + 1)
+
+  return (
+    <Specimen title="MatBarActions · los íconos de la mesa" layout="column" className="col-span-full" note={<>La vista, los sonidos, la ventana grande (sólo en escritorio), las handtraps del rival, «Nueva mano», deshacer y «Guardar combo» (con <Tag>onSave</Tag>): el mismo grupo, en el mismo orden, en la barra de la práctica y en la de «Jugar solo automático» (sin guardar; <Tag>auto</Tag> cambia la hoja de las handtraps). Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented label="Jugadas" variant="track" value={played ? 'some' : 'none'} onChange={(value) => setPlayed(value === 'some')} options={[{ value: 'none', label: 'Sin jugadas' }, { value: 'some', label: 'Con jugadas' }]} />
+        <Tag>{`Toques: ${taps}`}</Tag>
+      </div>
+      <div className="grid gap-2">
+        <span className="text-micro text-soft">La práctica</span>
+        <div role="toolbar" aria-label="Muestra de la práctica" className={MAT_BAR_ROW}>
+          <MatExitButton onExit={tap} />
+          <MatBarActions className="ml-auto" onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
+        </div>
+        <span className="text-micro text-soft">Jugar solo automático (sin «Guardar combo»; después va su engranaje)</span>
+        <div role="toolbar" aria-label="Muestra del automático" className={MAT_BAR_ROW}>
+          <MatExitButton onExit={tap} />
+          <MatBarActions className="ml-auto" auto onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} />
+        </div>
+      </div>
+    </Specimen>
+  )
+}
+
 /** La barra con la vida que cambia, los ajustes de verdad (en el estado de la muestra) y la vista con laterales (la grilla de la mesa en una ventana ancha). */
 function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode; lane: 'thinking' | 'chain' }) {
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
-  const [sounds, setSounds] = useState(true)
   const [chain, setChain] = useState<AutoChainMode>('ask')
   const [place, setPlace] = useState<AutoPlaceMode>('ask')
   const [layout, setLayout] = useState<'top' | 'rails'>('top')
@@ -274,10 +303,12 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
       myTurn={kind === 'chain'}
       phase={kind === 'chain' ? 'main1' : 'battle'}
       onExit={() => setPassed((count) => count + 1)}
+      onUndo={() => setPassed((count) => count + 1)}
+      canUndo={kind === 'chain'}
+      onNewHand={() => setPassed((count) => count + 1)}
+      onHandtraps={() => setPassed((count) => count + 1)}
       lane={lane}
       log={<DuelLogTicker feed={[{ id: 'e1', kind: 'event', side: 'mine', text: 'Activás Branded Fusion' }]} onOpen={() => undefined} />}
-      sounds={sounds}
-      onSounds={setSounds}
       chain={chain}
       onChain={setChain}
       place={place}

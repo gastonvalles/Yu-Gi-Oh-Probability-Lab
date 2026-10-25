@@ -58,7 +58,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `CardOverlay` · `CardZoom` · `CardFlip` | El detalle y la carta grande (`card-detail/`). Nada que se toque va adentro del elemento con `TILT_ART`: se inclinaría con la carta. |
 | `CardEffectText` · `CardEffectTraits` | Todo texto de efecto de carta va por `CardEffectText`, nunca en un `<p>` suelto. Ver `docs/motor-de-cartas.md`. |
 | `RarityFoil` | La excepción a «sin brillos de adorno», porque dice la rareza: sólo en la carta grande. Su trampa (la raíz sin capa propia), en `src/foil.css`. |
-| `PracticeMat` | La mesa (`probability/`), también la del duelo: no se mueve mientras se juega (regla 7) y sus cartas y zonas van rectas (regla 8). Ver `docs/duelo.md`. |
+| `PracticeMat` · `MatBarActions` | La mesa (`probability/`), también la del duelo: no se mueve mientras se juega (regla 7) y sus cartas y zonas van rectas (regla 8). Ver `docs/duelo.md`. `MatBarActions`: los íconos de su barra, iguales en todas las mesas. |
 | `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): sólo decoración y la excepción del lienzo plano (regla 9). |
 | `CardMenu` · `CardSheet` | El menú de una carta (`probability/`; muestra «Menú de una carta»; `wide` en una opción: submenú ancho y a la izquierda): sus reglas, en «Menús» de `docs/duelo.md`. |
 | `AskPrompt` · `AskOptions` · `CardPicker` · `SortSheet` · `AutoBar` | Las piezas de «Jugar solo automático (beta)» para lo que el campo no puede expresar (`auto/`): el sí o no centrado y sin fondo, las opciones en una hoja chica (`stacked`: una por fila), elegir cartas de una lista, ordenar el tope y la barra de arriba. Sus reglas, en su comentario y en `docs/duelos-automaticos.md`. |

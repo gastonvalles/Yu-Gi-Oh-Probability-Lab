@@ -94,8 +94,9 @@ export function AutoDuelRow() {
 /**
  * El simulador de handtraps dentro de la práctica: «Entrenar solo» entra directo a la mesa, sin pasar por las reglas de la sala, así que el botón de la barra de la mesa abre
  * la misma hoja. Aplicar guarda lo elegido y reparte una mano nueva (`onApply`), con el simulador encendido o apagado; se recuerda igual que lo de las reglas de la sala.
+ * En el duelo automático (`auto`) la hoja es la suya: aplicar arma el duelo de nuevo.
  */
-export function HandtrapsMatButton({ onApply, className }: { onApply: () => void; className?: string }) {
+export function HandtrapsMatButton({ onApply, auto = false, className }: { onApply: () => void; auto?: boolean; className?: string }) {
   const [config, setConfig] = useState<HandtrapConfig>(readHandtrapConfig)
   const [choosing, setChoosing] = useState(false)
   const apply = (next: HandtrapConfig) => {
@@ -123,7 +124,8 @@ export function HandtrapsMatButton({ onApply, className }: { onApply: () => void
       <HandtrapPicker
         isOpen={choosing}
         config={config}
-        dealsNew
+        dealsNew={!auto}
+        auto={auto}
         onClose={() => setChoosing(false)}
         // Elegir las handtraps es querer usarlas: el simulador queda encendido.
         onSave={(picks, hand) => apply({ enabled: true, picks, hand })}

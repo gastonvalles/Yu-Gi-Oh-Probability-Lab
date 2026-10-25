@@ -52,7 +52,6 @@ export const auto: Translated<typeof es> = {
   'auto.phase.notYet': 'Not yet',
 
   // The top bar and «More options».
-  'auto.bar.soundsHint': 'Plays and life points.',
   'auto.bar.chain': 'Responses',
   'auto.bar.chainHint': 'Whether it asks you when you can respond to a chain.',
   'auto.bar.place': 'Zone',
@@ -60,7 +59,8 @@ export const auto: Translated<typeof es> = {
   'auto.bar.ask': 'Ask',
   'auto.bar.never': 'Never',
   'auto.bar.auto': 'Automatic',
-  'auto.bar.restart': 'Restart the duel',
+  // «New hand» (the bar) sets up another duel; this one repeats the same.
+  'auto.bar.restart': 'Restart the same duel',
   'auto.bar.restartHint': 'The same duel from the start: the same cards, in the same order.',
   'auto.bar.handtrapsOn': '{cards} · {hand} in hand',
   'auto.bar.handtrapsOff': 'Off: the opponent uses nothing.',
