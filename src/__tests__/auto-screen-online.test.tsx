@@ -9,6 +9,7 @@ import { LOCATION as L, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import { createMatState, type MatState } from '../app/practice-mat'
+import { HOLD_MS } from '../app/use-mat-drag'
 import { showToastMessage } from '../app/use-toast-message'
 import { AutoDuelScreen } from '../components/auto/AutoDuelScreen'
 import { THINKING_CANCEL_MS } from '../components/duel/DuelBar'
@@ -169,6 +170,22 @@ describe('auto-screen-online · la mesa', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     expect(session.answers).toEqual([{ type: 'select_idlecmd', action: 0, index: 0 }])
     expect(dispatches).toBe(0)
+  })
+
+  it('mantener apretado un monstruo no le cambia la posición (no se deshace: un toque largo sin querer sería una jugada); al soltarlo es un toque', () => {
+    vi.useFakeTimers()
+    const { start } = setup()
+    const session = start()
+
+    core(() => session.ask({ ...IDLE, pos_changes: [loc(200, L.MZONE, 0)] }))
+    const maxx = screen.getByRole('button', { name: 'Maxx C' })
+
+    fireEvent.pointerDown(maxx, { button: 0, pointerId: 1, clientX: 10, clientY: 10 })
+    expect(maxx).not.toHaveAttribute('data-holding')
+    act(() => vi.advanceTimersByTime(HOLD_MS))
+    fireEvent.pointerUp(maxx, { button: 0, pointerId: 1, clientX: 10, clientY: 10 })
+    expect(session.answers).toEqual([])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a defensa'])
   })
 
   it('pensando: el anfitrión puede cortar al núcleo; el invitado (seat 1) espera sin Cancelar y ve el turno de Ana', () => {

@@ -416,6 +416,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // Como «No responder» de la línea: en la ventana de una fase tuya (`phaseWindow`) pasar es cambiar de fase, y eso va por el botón de fases.
     cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick) ? () => gesture({ kind: 'cancel' }) : null,
     dropped: held,
+    holdFor: (id) => {
+      // Como en la mesa manual, sólo donde se deshace: en el duelo por enlace un toque largo sin querer sería una jugada.
+      const item = canUndo && shown?.type === 'select_idlecmd' ? shown.items.get(id)?.find((entry) => entry.answer?.type === 'select_idlecmd' && entry.answer.action === 2) : undefined
+
+      return item?.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : null
+    },
   }
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
 

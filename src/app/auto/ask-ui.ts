@@ -200,6 +200,8 @@ export interface AutoLink {
   cancel: (() => void) | null
   /** La carta de la mano soltada en una casilla, con su jugada ya elegida: se dibuja ahí mientras el núcleo la cuenta (hasta que sale de la mano o vuelven tus jugadas del turno). */
   dropped: ({ id: string } & MatTarget) | null
+  /** Mantener apretado un monstruo del campo (sólo en «Jugar solo», que se deshace): cambiar su posición sin menú, si tus jugadas del turno lo ofrecen; null si no. */
+  holdFor: (id: string) => (() => void) | null
 }
 
 /** La forma de `MenuItem` (`MatDialogs.tsx`), para que la mesa use los ítems tal cual. */

@@ -1487,9 +1487,18 @@ export function PracticeMat({
 
   /**
    * Lo que hace mantener apretado un monstruo del campo: cambia de posición sin menú (`holdAction`: ataque ↔ defensa, boca abajo se voltea; un Link no tiene nada). Es sólo de la práctica: en un
-   * duelo, un toque largo sin querer le mandaría una jugada al rival. Eligiendo una zona, Sacrificios, materiales o contadores, tampoco: mantener una carta es tocarla.
+   * duelo, un toque largo sin querer le mandaría una jugada al rival (en «Jugar solo automático», que se deshace, también: lo ofrece el núcleo, `holdFor`). Eligiendo una zona, Sacrificios,
+   * materiales o contadores, tampoco: mantener una carta es tocarla.
    */
-  const holdPlay = useCallback((id: string) => (duel || picking || counterMode !== null ? null : holdAction(state, id, kindOf, nameOf)), [duel, picking, counterMode, state, kindOf, nameOf])
+  const holdPlay = useCallback(
+    (id: string): (() => void) | null => {
+      if (duel?.auto) return duel.auto.holdFor(id)
+      const action = duel || picking || counterMode !== null ? null : holdAction(state, id, kindOf, nameOf)
+
+      return action && (() => play(action))
+    },
+    [duel, picking, counterMode, state, kindOf, nameOf, play],
+  )
 
   /** Mantener apretado: el deck abre su menú de opciones (en la práctica y en un duelo) y un monstruo del campo cambia de posición (`holdPlay`). */
   const handleHold = useCallback(
@@ -1501,12 +1510,12 @@ export function PracticeMat({
         return true
       }
 
-      const action = holdPlay(source.id)
+      const run = holdPlay(source.id)
 
-      if (action) play(action)
-      return action !== null
+      run?.()
+      return run !== null
     },
-    [holdPlay, play, duel?.auto],
+    [holdPlay, duel?.auto],
   )
 
   // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.

@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
+import { HOLD_MS } from '../app/use-mat-drag'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
 import { act, loc, pos, stringId } from './support/auto-session-fake'
 import { core, dispatches, hand, handCard, inHand, lane, phaseButton, renderAuto, status } from './support/auto-screen-harness'
@@ -403,5 +404,32 @@ describe('auto-screen · soltar una carta de la mano en una casilla', () => {
     expect(st3).toHaveAttribute('data-over', 'false')
     fireEvent.pointerUp(card, { ...pointer, clientX: 80, clientY: 120 })
     expect(screen.queryByRole('menuitem')).toBeNull()
+  })
+})
+
+describe('auto-screen · mantener apretado', () => {
+  it('un monstruo del campo cambia de posición sin menú, como en la práctica; donde no hay cambio que hacer (la batalla) no se hunde y mantener es tocar', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(IDLE))
+    const maxx = screen.getByRole('button', { name: 'Maxx C' })
+
+    fireEvent.pointerDown(maxx, { ...pointer, clientX: 10, clientY: 10 })
+    expect(maxx).toHaveAttribute('data-holding', 'true')
+    core(() => void vi.advanceTimersByTime(HOLD_MS))
+    fireEvent.pointerUp(maxx, { ...pointer, clientX: 10, clientY: 10 })
+    expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 2, index: 0 }])
+    expect(screen.queryByRole('menuitem')).toBeNull()
+
+    core(() => fake.ask(BATTLE))
+    const attacker = screen.getByRole('button', { name: 'Maxx C' })
+
+    fireEvent.pointerDown(attacker, { ...pointer, clientX: 10, clientY: 10 })
+    expect(attacker).not.toHaveAttribute('data-holding')
+    core(() => void vi.advanceTimersByTime(HOLD_MS))
+    fireEvent.pointerUp(attacker, { ...pointer, clientX: 10, clientY: 10 })
+    expect(fake.answers).toHaveLength(1)
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Atacar'])
+    expect(dispatches).toBe(0)
   })
 })
