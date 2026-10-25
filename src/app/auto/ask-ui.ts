@@ -32,13 +32,20 @@ export interface AskContext {
   effectLabel?: (code: number, description: string) => string | null
   /** La carta a anunciar (el filtro del núcleo contra un catálogo). Sin él, `announce_card` no tiene respuesta: `auto.answer` es null. */
   announceCard?: (ask: AskOf<'announce_card'>) => number
+  /** La casilla donde se soltó la carta de la jugada elegida: si está libre, contesta una pregunta de una casilla (`select_place`) sin mostrarla. */
+  prefer?: ZoneTarget
 }
+
+/** La clase de casilla a la que una jugada saca una carta de la mano: una de monstruo o una de Mágicas y Trampas (la de campo y las escalas las distingue la mesa). */
+export type Into = 'monster' | 'spell'
 
 /** Una opción de un menú. Elegirla es el gesto `{ kind: 'item', answer }`; con `children` no contesta: abre el segundo paso («¿cuál efecto?»). */
 export interface AskItem {
   label: string
   answer?: CoreAnswer
   children?: AskItem[]
+  /** Adónde saca la carta (Invocar, Colocar, activar una Mágica o Trampa de la mano, una escala): soltarla en esa clase de casilla la ofrece (`itemsInto`). */
+  into?: Into
   /** El efecto que activa: para resaltar su frase en el detalle. */
   effect?: { code: number; description: string }
   /** En las fases: la de ahora, y las que el núcleo no ofrece. */
@@ -122,9 +129,9 @@ export interface AskView {
   title?: string
   /**
    * Se contesta sola, sin mostrar nada: `none`, una pregunta sin pantalla todavía (con su respuesta legal por defecto; null si no hay
-   * ninguna segura: `announce_card` sin catálogo); `forced`, una sola respuesta posible; `setting`, la decide un ajuste.
+   * ninguna segura: `announce_card` sin catálogo); `forced`, una sola respuesta posible; `setting`, la decide un ajuste; `drop`, la casilla donde se soltó la carta (`prefer`).
    */
-  auto: { answer: CoreAnswer | null; why: 'none' | 'forced' | 'setting' } | null
+  auto: { answer: CoreAnswer | null; why: 'none' | 'forced' | 'setting' | 'drop' } | null
   /** Los ítems de cada carta de mi mesa, por id (las jugadas, el ataque, la cadena). */
   items: ReadonlyMap<string, AskItem[]>
   phaseItems: AskItem[]
@@ -176,8 +183,11 @@ export interface AskState {
 
 /** El campo `duel.auto` de `DuelMatLink` (§1.1): lo que la mesa necesita para contestar tocando. Lo arma la pantalla con `askView` y `step`. */
 export interface AutoLink {
-  /** Las jugadas legales de una carta (como los `MenuItem` de la mesa), o null si no está en la pregunta. */
-  itemsFor: (id: string) => AutoMenuItem[] | null
+  /**
+   * Las jugadas legales de una carta (como los `MenuItem` de la mesa), o null si no está en la pregunta. Con `drop` (la casilla libre donde se soltó una carta de la mano), sólo las que
+   * la sacan a esa clase de casilla (`itemsInto`): elegir una deja la carta en esa casilla (`dropped`) y la casilla, para la pregunta de casillas que sigue (`AskContext.prefer`).
+   */
+  itemsFor: (id: string, drop?: MatTarget) => AutoMenuItem[] | null
   phaseItems: AutoMenuItem[]
   endTurn: (() => void) | null
   zonePick: { label: string; targets: MatTarget[]; onPick: (zone: MatSpot, index: number) => void } | null
@@ -186,6 +196,12 @@ export interface AutoLink {
   viewer: { pile: MatPile; ids: readonly string[]; many?: { label: (ids: readonly string[]) => string; onPick: (ids: string[], rect: DOMRect) => void; start?: readonly string[] } } | null
   /** Hay una pregunta pendiente para mí: sin ella, tocar una carta sólo la muestra en el detalle. */
   asking: boolean
+  /** Escape: cancelar lo que se elige en la mesa (cartas, Sacrificios) o «No responder» en una cadena; null si no se puede. */
+  cancel: (() => void) | null
+  /** La carta de la mano soltada en una casilla, con su jugada ya elegida: se dibuja ahí mientras el núcleo la cuenta (hasta que sale de la mano o vuelven tus jugadas del turno). */
+  dropped: ({ id: string } & MatTarget) | null
+  /** Mantener apretado un monstruo del campo (sólo en «Jugar solo», que se deshace): cambiar su posición sin menú, si tus jugadas del turno lo ofrecen; null si no. */
+  holdFor: (id: string) => (() => void) | null
 }
 
 /** La forma de `MenuItem` (`MatDialogs.tsx`), para que la mesa use los ítems tal cual. */
@@ -378,6 +394,16 @@ function activateLabel(card: Active, ref: CardRef | null, ctx: AskContext): stri
   return t('practice.menu.activateEffect')
 }
 
+/** Las jugadas que sacan una carta de la mano a la clase de casilla donde se la soltó (`into`); de un «¿cuál efecto?», sólo los que van ahí (si queda uno, sin preguntar). */
+export function itemsInto(items: readonly AskItem[], into: Into): AskItem[] {
+  return items.flatMap((item) => {
+    const children = item.children?.filter((child) => child.into === into)
+
+    if (!children) return item.into === into ? [item] : []
+    return children.length > 1 ? [{ ...item, children }] : children
+  })
+}
+
 /**
  * Los ítems de cada carta de mi mesa. «Activar efecto» de una carta con varias entradas pregunta cuál (`children`): cada uno con su texto o, sin él, con la palabra de su
  * activación. Sin número: el orden de la pregunta no es el del texto de la carta (el núcleo saca lo que ahora no se puede).
@@ -387,12 +413,14 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
   const add = (ref: CardRef | null, item: AskItem) => {
     if (ref?.side === 'mine') items.set(ref.id, [...(items.get(ref.id) ?? []), item])
   }
-  const list = <C extends Loc>(cards: readonly C[], label: (card: C, ref: CardRef | null) => string, answer: (index: number) => CoreAnswer) =>
+  const list = <C extends Loc>(cards: readonly C[], label: (card: C, ref: CardRef | null) => string, answer: (index: number) => CoreAnswer, into?: Into) =>
     cards.forEach((card, index) => {
       const ref = resolve(card)
 
-      add(ref, { label: label(card, ref), answer: answer(index) })
+      add(ref, { label: label(card, ref), answer: answer(index), ...(into ? { into } : {}) })
     })
+  // Activar una Mágica o una Trampa de la mano (o un Péndulo como escala) la pone en una casilla de Mágicas y Trampas; un efecto de un monstruo de la mano, no.
+  const intoOf = (card: Active): { into?: Into } => (card.location === L.HAND && (card.description === PENDULUM_SCALE || ((ctx.typeOf?.(card.code) ?? 0) & SPELL_TRAP) !== 0) ? { into: 'spell' } : {})
   const activations = (cards: readonly Active[], answer: (index: number) => CoreAnswer) => {
     const byCard = new Map<string, number[]>()
 
@@ -409,13 +437,14 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
       add(
         ref,
         indices.length === 1
-          ? { label, answer: answer(indices[0]!), effect: effect(indices[0]!) }
+          ? { label, answer: answer(indices[0]!), effect: effect(indices[0]!), ...intoOf(cards[indices[0]!]!) }
           : {
               label,
               children: indices.map((index) => ({
                 label: ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
                 answer: answer(index),
                 effect: effect(index),
+                ...intoOf(cards[index]!),
               })),
             },
       )
@@ -426,12 +455,12 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
     case 'select_idlecmd': {
       const idle = (action: number) => (index: number): CoreAnswer => ({ type: 'select_idlecmd', action, index })
 
-      list(ask.summons, () => t('practice.menu.normalSummon'), idle(0))
+      list(ask.summons, () => t('practice.menu.normalSummon'), idle(0), 'monster')
       // La Invocación de Péndulo es la Especial de la escala (`EFFECT_SPSUMMON_PROC_G` en su zona).
-      list(ask.special_summons, (card) => t(card.location === L.SZONE ? 'practice.menu.pendulumSummon' : 'practice.menu.specialSummon'), idle(1))
+      list(ask.special_summons, (card) => t(card.location === L.SZONE ? 'practice.menu.pendulumSummon' : 'practice.menu.specialSummon'), idle(1), 'monster')
       activations(ask.activates, idle(5))
-      list(ask.monster_sets, () => t('practice.menu.set'), idle(3))
-      list(ask.spell_sets, () => t('practice.menu.set'), idle(4))
+      list(ask.monster_sets, () => t('practice.menu.set'), idle(3), 'monster')
+      list(ask.spell_sets, () => t('practice.menu.set'), idle(4), 'spell')
       list(
         ask.pos_changes,
         (_, ref) => {
@@ -582,10 +611,14 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     case 'select_place': {
       // Por bit: las mías primero.
       base.targets = freeZones(ask.field_mask)
-      const first: CoreAnswer = { type: ask.type, places: base.targets.slice(0, ask.count).map((target) => placeOfBit(ask.player, target.bit)) }
+      // La casilla donde se soltó la carta, si se pide una sola y está libre: es de las que dice la máscara, así que siempre vale.
+      const wanted = ctx.prefer
+      const dropped = wanted && ask.count === 1 ? base.targets.find((target) => target.side === wanted.side && target.zone === wanted.zone && target.index === wanted.index) : undefined
+      const first: CoreAnswer = { type: ask.type, places: (dropped ? [dropped] : base.targets.slice(0, ask.count)).map((target) => placeOfBit(ask.player, target.bit)) }
 
-      // Una sola manera (tantas libres como casillas pide), un ajuste, o sólo casillas del rival (la mesa todavía no las enciende).
-      if (base.targets.length <= ask.count) auto(first, 'forced')
+      // La soltada, una sola manera (tantas libres como casillas pide), un ajuste, o sólo casillas del rival (la mesa todavía no las enciende).
+      if (dropped) auto(first, 'drop')
+      else if (base.targets.length <= ask.count) auto(first, 'forced')
       else if (ctx.prefs.placeMode === 'auto') auto(first, 'setting')
       else if (!base.targets.some((target) => target.side === 'mine')) auto(first, 'none')
       break

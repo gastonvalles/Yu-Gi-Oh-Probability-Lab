@@ -99,7 +99,7 @@ La tarjeta «Reglas del análisis» y su editor (`LabRules`, en `probability/`),
 
 ### La mesa: gestos
 
-Mantener apretada una carta del campo cambia su posición sin menú, **sólo en la práctica**: en un duelo, un toque largo sin querer le mandaría una jugada al rival. El resto de los gestos, en `app/use-mat-drag.ts` y `app/practice-mat.ts`.
+Mantener apretada una carta del campo cambia su posición sin menú donde se deshace (la práctica y «Jugar solo automático»): en un duelo, un toque largo sin querer le mandaría una jugada al rival. El resto, en `app/use-mat-drag.ts` y `app/practice-mat.ts`.
 
 ### La mesa: paneles de los costados con ancho a gusto
 

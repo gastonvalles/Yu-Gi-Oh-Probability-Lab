@@ -35,6 +35,7 @@ import {
   replayMat,
   TOKEN_KIND,
   type MatAction,
+  type MatCardKind,
   type MatMenuItem,
   type MatPhase,
   type MatPile,
@@ -352,6 +353,8 @@ const MAT_CARD = [
   CARD_HOVER,
   'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
+  // En el duelo automático no se arrastra (`still`): sólo se toca.
+  'data-[still=true]:cursor-pointer',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)] data-[glow-kind=respond]:[--glow-rgb:var(--warning-rgb)]!',
   'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
@@ -429,6 +432,11 @@ const TARGET_MS = 5000
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
+/**
+ * En el duelo automático, si una carta de la mano puede caer en esa casilla por lo que es (la clase, monstruo o Mágica y Trampa, la dicen sus jugadas): una Mágica de Campo, sólo en la
+ * de campo; las demás, nunca ahí; un Péndulo, como escala, sólo en las puntas de abajo; en una Zona Extra, nada de la mano.
+ */
+const fitsZone = (kind: MatCardKind, { zone, index }: MatTarget) => (zone === 'field' ? kind.fieldSpell : zone === 'st' ? !kind.fieldSpell && (!kind.pendulum || index === 0 || index === 4) : zone === 'mz')
 const zoneLabelOf = (spot: MatSpot, index: number) => (spot === 'field' ? ZONE_LABELS.field : t('practice.zone.numbered', { zone: ZONE_LABELS[spot], n: index + 1 }))
 
 function prefersReducedMotion(): boolean {
@@ -619,6 +627,7 @@ export function PracticeMat({
   const panels = useMatPanels(sectionRef, { left: Boolean(detail), right: sidePanel })
   const view = useMatView()
   const isDuel = Boolean(duel)
+  const isAuto = Boolean(duel?.auto)
   // La mano del rival del simulador de handtraps está arriba del campo (sólo en la práctica): el campo de la vista 3D no sube más que ella.
   const hasRivalStrip = !isDuel && (state.rival?.hand.length ?? 0) > 0
   // Los sonidos de la práctica (Gastón, 2026-10-20: «en la práctica no suenan los efectos del duelo»): cada jugada, deshacer y los pasos de un combo. En un duelo suenan con `useDuelSounds`, las de los dos.
@@ -633,6 +642,8 @@ export function PracticeMat({
 
   useEscapeKey(() => setPicking(null), picking !== null)
   useEscapeKey(() => setCounterMode(null), counterMode !== null)
+  // En automático, Escape cancela lo que se elige en la mesa (cartas, Sacrificios) o es «No responder» en una cadena, como su botón.
+  useEscapeKey(() => duel?.auto?.cancel?.(), Boolean(duel?.auto?.cancel))
 
   useEffect(() => {
     if (!flash) return
@@ -831,19 +842,20 @@ export function PracticeMat({
   }, [dealt, handTotal])
 
   // La carta soltada en una zona que todavía espera que se elija cómo sale (el menú de esa zona, o los Sacrificios o materiales) se queda en la zona,
-  // en vez de volver a la mano; si se cancela, vuelve. Sin jugada no hay cambio de estado: es sólo cómo se la dibuja mientras tanto.
+  // en vez de volver a la mano; si se cancela, vuelve. Sin jugada no hay cambio de estado: es sólo cómo se la dibuja mientras tanto. En automático, también mientras el núcleo la cuenta.
+  const autoDropped = duel?.auto?.dropped ?? null
   const pending = useMemo<({ id: string } & MatTarget) | null>(() => {
     const waiting =
       menu?.kind === 'card' && menu.drop
         ? { id: menu.id, ...menu.drop }
         : (picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.dropped && picking.zone
           ? { id: picking.action.id, ...picking.zone }
-          : null
+          : autoDropped
 
     // Sólo espera mientras la mesa sigue como estaba al soltarla (la carta en una pila y la zona libre): si cambió por debajo (deshacer, un arrastre
     // a esa zona), no hay nada que dibujar esperando y la carta se queda donde está.
     return waiting && locateCard(state, waiting.id)?.kind === 'pile' && !placedAt(state, waiting.zone, waiting.index) ? waiting : null
-  }, [menu, picking, state])
+  }, [menu, picking, state, autoDropped])
   const pendingId = pending?.id ?? null
 
   // Si la mesa cambia por debajo de lo que esperaba una elección (deshacer, un paso del panel, un arrastre, otro combo), el menú y los Sacrificios o
@@ -1293,8 +1305,15 @@ export function PracticeMat({
         onPeek({ name, card: apiCard })
       }
 
-      // En automático una carta que la pregunta ofrece se elige con el toque; una con jugadas legales abre su menú; las demás sólo se muestran en el detalle.
-      if (duel?.auto) return duel.auto.cardPick?.eligible.has(id) ? duel.auto.cardPick.onToggle(id) : duel.auto.itemsFor(id) ? setMenu({ kind: 'card', id, rect }) : undefined
+      // En automático una carta que la pregunta ofrece se elige con el toque; si no, abre su menú con las jugadas legales. Sin ninguna, el menú lo dice y ofrece «Ver carta» (como en la
+      // mesa manual, tocar siempre muestra algo); con el detalle fijo a la izquierda ya se ve ahí. Eligiendo cartas o una casilla, tocar otra no hace nada.
+      if (duel?.auto) {
+        const { cardPick, zonePick } = duel.auto
+
+        if (cardPick?.eligible.has(id)) cardPick.onToggle(id)
+        else if (duel.auto.itemsFor(id) || !(detail || cardPick || zonePick)) setMenu({ kind: 'card', id, rect })
+        return
+      }
 
       // Poniendo o quitando contadores: tocar una carta del campo suma o resta uno y se sigue; lo demás no hace nada.
       if (counterMode !== null) {
@@ -1324,7 +1343,7 @@ export function PracticeMat({
     },
     // pickTribute y pickMaterial leen `picking` y `state` del render actual.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picking, state, counterMode, cardOf, onPeek, duel?.auto],
+    [picking, state, counterMode, cardOf, onPeek, duel?.auto, detail],
   )
 
   /** Soltar una carta de una pila en una zona libre: el menú ofrece lo que la saca ahí (si es una sola jugada, sale así) y la carta se queda en la zona mientras se elige. */
@@ -1352,10 +1371,26 @@ export function PracticeMat({
     [state, kindOf, nameOf, choose, onDispatch, duel?.rivalEmz],
   )
 
+  /** En automático, lo que el núcleo deja hacer con una carta de la mano soltada en una casilla libre donde puede caer (`fitsZone`); null o vacío si nada. */
+  const autoDrop = useCallback(
+    (id: string, drop: MatTarget) => (state.hand.includes(id) && !placedAt(state, drop.zone, drop.index) && fitsZone(kindOf(id), drop) ? (duel?.auto?.itemsFor(id, drop) ?? null) : null),
+    [state, kindOf, duel?.auto],
+  )
+
   const handleDrop = useCallback(
     (source: MatDragSource, target: MatDropTarget | null) => {
-      // En automático nada se juega arrastrando (la mano sólo se reordena, que es local).
-      if (duel?.auto) return
+      // En automático sólo se suelta una carta de la mano en una casilla donde tiene jugada: el menú ofrece lo que la saca ahí (con una sola sin pregunta, se hace) y la carta se queda
+      // en la casilla mientras se elige y mientras el núcleo la cuenta (`duel.auto.dropped`). Si no hay nada, vuelve a la mano.
+      if (duel?.auto) {
+        if (target?.kind !== 'spot') return
+        const drop = { zone: target.spot, index: target.index }
+        const items = autoDrop(source.id, drop) ?? []
+        const anchor = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(drop.zone, drop.index)}"]`)
+
+        if (items.length === 1 && !items[0]!.children) items[0]!.onSelect()
+        else if (items.length > 0 && anchor) setMenu({ kind: 'card', id: source.id, rect: anchor.getBoundingClientRect(), drop })
+        return
+      }
       // Arrastrar el deck es robar: soltado fuera de toda zona (o en la mano, abajo) roba la carta del tope. Lo demás, soltado ahí, no hace nada.
       if (!target) {
         if (source.id === DECK_TOP && state.deck.length > 0) onDispatch({ type: 'draw', count: 1 })
@@ -1423,7 +1458,7 @@ export function PracticeMat({
       const pos = where.kind === 'spot' ? where.placed.pos : 'atk'
       onDispatch({ type: 'place', id: source.id, zone: target.spot, index: target.index, pos })
     },
-    [state, onDispatch, kindOf, dropInto, duel?.auto],
+    [state, onDispatch, kindOf, dropInto, duel?.auto, autoDrop],
   )
 
   const handleTap = useCallback(
@@ -1452,9 +1487,18 @@ export function PracticeMat({
 
   /**
    * Lo que hace mantener apretado un monstruo del campo: cambia de posición sin menú (`holdAction`: ataque ↔ defensa, boca abajo se voltea; un Link no tiene nada). Es sólo de la práctica: en un
-   * duelo, un toque largo sin querer le mandaría una jugada al rival. Eligiendo una zona, Sacrificios, materiales o contadores, tampoco: mantener una carta es tocarla.
+   * duelo, un toque largo sin querer le mandaría una jugada al rival (en «Jugar solo automático», que se deshace, también: lo ofrece el núcleo, `holdFor`). Eligiendo una zona, Sacrificios,
+   * materiales o contadores, tampoco: mantener una carta es tocarla.
    */
-  const holdPlay = useCallback((id: string) => (duel || picking || counterMode !== null ? null : holdAction(state, id, kindOf, nameOf)), [duel, picking, counterMode, state, kindOf, nameOf])
+  const holdPlay = useCallback(
+    (id: string): (() => void) | null => {
+      if (duel?.auto) return duel.auto.holdFor(id)
+      const action = duel || picking || counterMode !== null ? null : holdAction(state, id, kindOf, nameOf)
+
+      return action && (() => play(action))
+    },
+    [duel, picking, counterMode, state, kindOf, nameOf, play],
+  )
 
   /** Mantener apretado: el deck abre su menú de opciones (en la práctica y en un duelo) y un monstruo del campo cambia de posición (`holdPlay`). */
   const handleHold = useCallback(
@@ -1466,12 +1510,12 @@ export function PracticeMat({
         return true
       }
 
-      const action = holdPlay(source.id)
+      const run = holdPlay(source.id)
 
-      if (action) play(action)
-      return action !== null
+      run?.()
+      return run !== null
     },
-    [holdPlay, play, duel?.auto],
+    [holdPlay, duel?.auto],
   )
 
   // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.
@@ -1490,11 +1534,15 @@ export function PracticeMat({
   // La zona que enciende la mano (la otra fuente de arrastre): se recuerda para apagarla cuando cambia.
   const handLit = useRef<string | null>(null)
   const lightFromHand = useCallback(
-    (next: string | null) => {
-      lightZone(handLit.current, next)
-      handLit.current = next
+    (next: string | null, id?: string) => {
+      const target = next && isAuto ? parseDrop(next) : null
+      // En automático se enciende sólo la casilla donde esa carta tiene jugada.
+      const lit = !isAuto || (id && target?.kind === 'spot' && autoDrop(id, { zone: target.spot, index: target.index })?.length) ? next : null
+
+      lightZone(handLit.current, lit)
+      handLit.current = lit
     },
-    [lightZone],
+    [lightZone, isAuto, autoDrop],
   )
 
   // Red de seguridad: pase lo que pase con un arrastre (el celular lo corta sin avisar, la mano se vuelve a armar a mitad de camino…), al levantar el dedo ninguna casilla queda
@@ -1522,7 +1570,7 @@ export function PracticeMat({
     // En automático los ítems son los que el núcleo ofrece (`ask-ui`): la de una carta, las fases; elegir uno cierra el menú y contesta. El deck y el lote no tienen menú.
     const closing = (item: MenuItem): MenuItem => ({ ...item, onSelect: () => { setMenu(null); item.onSelect() }, children: item.children?.map(closing) })
 
-    if (duel?.auto) return menu.kind === 'phases' ? duel.auto.phaseItems.map(closing) : menu.kind === 'card' ? (duel.auto.itemsFor(menu.id) ?? []).map(closing) : []
+    if (duel?.auto) return menu.kind === 'phases' ? duel.auto.phaseItems.map(closing) : menu.kind === 'card' ? (duel.auto.itemsFor(menu.id, menu.drop) ?? []).map(closing) : []
 
     // Las fases: elegir una es pasar a ella (la Draw Phase después de la End Phase es pasar el turno). Sólo lo hace quien tiene el turno (el botón no abre si no es el tuyo).
     if (menu.kind === 'phases') {
@@ -1812,6 +1860,7 @@ export function PracticeMat({
             targeted={targetedIds.has(shown.id)}
             selected={selectedId === shown.id}
             hold={holdPlay(shown.id) !== null}
+            still={isAuto}
             bind={bind}
             onOpen={(rect) => openCard(shown.id, rect)}
           />
@@ -2569,6 +2618,8 @@ interface PlacedCardProps {
   pending: boolean
   /** Mantenerla apretada hace algo (en la práctica, cambiarla de posición): mientras se espera, se hunde. */
   hold: boolean
+  /** No se arrastra (el duelo automático): sólo se toca y, con `hold`, se mantiene. */
+  still: boolean
   bind: ReturnType<typeof useMatDrag>['bind']
   onOpen: (rect: DOMRect) => void
 }
@@ -2578,7 +2629,7 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, hold, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
   // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -2629,7 +2680,8 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
         data-glow={glow ? 'true' : 'false'}
         data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
         data-dim={dim ? 'true' : 'false'}
-        {...bind({ id: placed.id, name: card.name, art: artOf(card), hold })}
+        data-still={still || undefined}
+        {...bind({ id: placed.id, name: card.name, art: artOf(card), hold, still })}
         onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
         onContextMenu={(event) => event.preventDefault()}
       >

@@ -99,8 +99,8 @@ interface PracticeHandProps {
   onReorder: (ids: string[]) => void
   /** Toque sin arrastre: abre el menú de la carta. */
   onTap: (card: HandCardData, rect: DOMRect) => void
-  /** Mientras se arrastra fuera de la mano: la zona (`data-drop`) bajo el puntero, o null. */
-  onDragOver: (target: string | null) => void
+  /** Mientras se arrastra fuera de la mano: la zona (`data-drop`) bajo el puntero, o null, y la carta que se arrastra. */
+  onDragOver: (target: string | null, id: string) => void
   /** Se soltó sobre una zona de la mesa. */
   onDrop: (card: HandCardData, target: string) => void
   className?: string
@@ -126,6 +126,9 @@ function dropTargetAt(x: number, y: number, dragged: HTMLElement): { element: HT
   return element && drop ? { element, drop } : null
 }
 
+/** El lugar de una carta entre sus hermanas del DOM: cambia cuando React la mueve (la mano se reordenó). */
+const siblingIndex = (element: HTMLElement) => (element.parentElement ? Array.prototype.indexOf.call(element.parentElement.children, element) : -1)
+
 /**
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
@@ -139,7 +142,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
   const layout = useMemo(() => computeHandLayout(width, count, maxCardWidth, sizeSlots), [width, count, maxCardWidth, sizeSlots])
   // La carta arrastrada: sólo cuál es. Dónde está se escribe en su `transform` por el ref, un cuadro por vez, sin pasar por React.
   const [draggedId, setDraggedId] = useState<string | null>(null)
-  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement } | null>(null)
+  // `at`: su lugar en el DOM cuando tomó el puntero (ver `handlePointerEnd`).
+  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement; at: number } | null>(null)
   const cardsRef = useRef(cards)
   cardsRef.current = cards
   const layoutRef = useRef(layout)
@@ -165,6 +169,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
       moved: false,
       outside: null,
       element: event.currentTarget,
+      at: siblingIndex(event.currentTarget),
     }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -214,7 +219,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
 
     if (outside !== state.outside) {
       state.outside = outside
-      onDragOver(outside)
+      onDragOver(outside, state.id)
     }
 
     if (insideHand) {
@@ -259,6 +264,18 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
       return
     }
 
+    // Arrastrada por encima de otra, la mano se reordena y React mueve esta carta en el DOM (cambia de lugar entre sus hermanas): el navegador le saca el puntero,
+    // pero el arrastre sigue (si no, en diagonal hacia el campo la carta volvía a la mano a mitad de camino). Si se lo saca otra cosa (el celular, sin avisar), termina.
+    if (event.type === 'lostpointercapture' && state.element.isConnected && siblingIndex(state.element) !== state.at) {
+      try {
+        state.element.setPointerCapture(event.pointerId)
+        state.at = siblingIndex(state.element)
+        return
+      } catch {
+        // sin puntero
+      }
+    }
+
     dragRef.current = null
     window.cancelAnimationFrame(moveFrameRef.current)
     moveFrameRef.current = 0
@@ -268,7 +285,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
     const card = cardsRef.current.find((entry) => entry.id === id)
 
     if (state.outside !== null) {
-      onDragOver(null)
+      onDragOver(null, state.id)
     }
 
     if (!card) {
@@ -515,7 +532,7 @@ const HandCard = memo(function HandCard({
       onPointerMove={onPointerMove}
       onPointerUp={(event) => onPointerEnd(event, card.id)}
       onPointerCancel={(event) => onPointerEnd(event, card.id)}
-      // Un puntero que se pierde sin avisar (el navegador del celular, la mano que se arma de nuevo a mitad de camino) corta el arrastre: no queda una zona encendida.
+      // Un puntero que se pierde sin avisar (el navegador del celular) corta el arrastre: no queda una zona encendida. Si se perdió porque la mano se reordenó, se retoma (`handlePointerEnd`).
       onLostPointerCapture={(event) => onPointerEnd(event, card.id)}
       onKeyDown={(event) => onKeyDown(event, card.id)}
       onContextMenu={(event) => event.preventDefault()}

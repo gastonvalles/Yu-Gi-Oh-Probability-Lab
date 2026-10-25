@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, namesList, openAsk, step, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, itemsInto, namesList, openAsk, step, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { gesturesOf, legal, playAsk, seeded } from './support/ask-ui-player'
@@ -471,5 +471,57 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
       rock_paper_scissors: { answer: { type: 'rock_paper_scissors', value: 1 }, why: 'none' },
     })
     expect(askView(open(ASKS[18]!, ctx(MESA, { announceCard: () => 46986414 }))).auto).toEqual({ answer: { type: 'announce_card', code: 46986414 }, why: 'none' })
+  })
+})
+
+describe('ask-ui: soltar una carta de la mano en una casilla', () => {
+  const idle = ASKS[1] as Extract<CoreAsk, { type: 'select_idlecmd' }>
+
+  it('cada jugada dice adónde saca la carta (`into`) y `itemsInto` deja sólo las de la casilla soltada; de un «¿cuál efecto?», los que van ahí (uno solo, sin preguntar)', () => {
+    const view = askView(open(idle, ctx(MESA)))
+    const into = (id: string) => view.items.get(id)?.map((item) => [item.label, item.into ?? null])
+
+    expect(into('card-100-1')).toEqual([[t('practice.menu.normalSummon'), 'monster'], [t('practice.menu.set'), 'monster']])
+    expect(into('card-900-1')).toEqual([[t('practice.menu.activate'), 'spell'], [t('practice.menu.set'), 'spell']])
+    expect(into('card-300-1')).toEqual([[t('practice.menu.asScale'), 'spell']])
+    // Lo que no sale de la mano a una casilla no lo tiene: cambiar de posición, una Trampa ya colocada, un efecto del cementerio.
+    expect(into('card-200-1')).toEqual([[t('practice.menu.toDefense'), null]])
+    expect(into('card-950-1')).toEqual([[t('practice.menu.activate'), null]])
+    expect(view.items.get('card-400-1')![0]!.children!.map((child) => child.into ?? null)).toEqual([null, null])
+
+    expect(itemsInto(view.items.get('card-100-1')!, 'spell')).toEqual([])
+    expect(itemsInto(view.items.get('card-900-1')!, 'spell').map((item) => item.answer)).toEqual([
+      { type: 'select_idlecmd', action: 5, index: 0 },
+      { type: 'select_idlecmd', action: 4, index: 0 },
+    ])
+    // Un Péndulo con un efecto de la mano y la escala: abajo queda sólo la escala, sin el segundo paso; arriba, nada (Invocarlo es otra opción).
+    const pendulum = askView(open({ ...idle, activates: [act(300, L.HAND, 2, stringId(300, 0)), act(300, L.HAND, 2, '1160')] }, ctx(MESA))).items.get('card-300-1')!
+
+    expect(itemsInto(pendulum, 'spell')).toEqual([{ label: t('practice.menu.asScale'), answer: { type: 'select_idlecmd', action: 5, index: 1 }, effect: { code: 300, description: '1160' }, into: 'spell' }])
+    expect(itemsInto(pendulum, 'monster')).toEqual([])
+    // Una Rápida de la mano en una cadena también va abajo.
+    const chain = { ...(ASKS[6] as Extract<CoreAsk, { type: 'select_chain' }>), selects: [{ ...pos(900, L.HAND, 1, 10), description: '0', client_mode: 0 }] }
+
+    expect(askView(open(chain, ctx(MESA))).items.get('card-900-1')!.map((item) => item.into)).toEqual(['spell'])
+  })
+
+  it('la casilla soltada contesta la pregunta de una casilla sin mostrarla (también con «Casilla: automática»); ocupada, de otra clase o con varias casillas, se pregunta como siempre', () => {
+    /** Libres: mi mz 1, 2 y 3 y mi st 1 (los bits en 0). */
+    const place: CoreAsk = { type: 'select_place', player: 0, count: 1, field_mask: ~(0b1110 | (1 << 9)) >>> 0 }
+    const prefer = (zone: 'mz' | 'st', index: number, extra: Partial<AskContext> = {}) => ctx(MESA, { prefer: { side: 'mine', zone, index }, ...extra })
+    const auto = { prefs: { chainMode: 'ask' as const, placeMode: 'auto' as const } }
+    const at = (location: number, sequence: number) => ({ type: 'select_place', places: [{ player: 0, location, sequence }] })
+
+    expect(askView(open(place, prefer('mz', 2))).auto).toEqual({ answer: at(L.MZONE, 2), why: 'drop' })
+    expect(askView(open(place, prefer('st', 1))).auto).toEqual({ answer: at(L.SZONE, 1), why: 'drop' })
+    expect(askView(open(place, prefer('mz', 3, auto))).auto).toEqual({ answer: at(L.MZONE, 3), why: 'drop' })
+    // Ocupada (o que la máscara no da): se pregunta; con «automática», la primera libre.
+    expect(askView(open(place, prefer('mz', 0))).auto).toBeNull()
+    expect(askView(open(place, prefer('st', 2))).auto).toBeNull()
+    expect(askView(open(place, prefer('mz', 0, auto))).auto).toEqual({ answer: at(L.MZONE, 1), why: 'setting' })
+    // Dos casillas: la soltada no alcanza.
+    expect(askView(open({ ...place, count: 2 }, prefer('mz', 2))).auto).toBeNull()
+    // La de las del rival no es la mía aunque tenga el mismo número.
+    expect(askView(open(place, ctx(MESA, { prefer: { side: 'theirs', zone: 'mz', index: 2 } }))).auto).toBeNull()
   })
 })
