@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 
 import { DuelRailsContext } from '../../../app/duel-rails'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
 import { t } from '../../../i18n'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
@@ -10,6 +11,7 @@ import { CardPicker, type PickCard } from '../../auto/CardPicker'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { MatScene } from '../../probability/MatArena'
+import { CardMenu } from '../../probability/MatDialogs'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
@@ -43,8 +45,8 @@ const OPTION_SAMPLES: Array<{ id: string; title: string; note: string; open: str
     kicker: 'Branded Fusion',
     mode: 'one',
     options: () => [
-      { id: '0', label: 'Fusion Summon 1 Fusion Monster from your Extra Deck', lead: 'Efecto 1' },
-      { id: '1', label: 'Shuffle 1 "Fallen of Albaz" into the Deck', lead: 'Efecto 2', disabled: true },
+      { id: '0', label: 'Fusion Summon 1 Fusion Monster from your Extra Deck' },
+      { id: '1', label: 'Shuffle 1 "Fallen of Albaz" into the Deck', disabled: true },
     ],
   },
   {
@@ -92,6 +94,7 @@ export function AutoSection() {
       {OPTION_SAMPLES.map((sample) => (
         <OptionsSample key={sample.id} sample={sample} onAnswer={setAnswer} />
       ))}
+      <EffectsSample onAnswer={setAnswer} />
 
       <PickerSample title="Elegir cartas · de 1 a 2, cancelable" note="CardPicker con min 1 y max 2, de lugares distintos (cada una dice de dónde es) y una que todavía no tiene arte (el esqueleto quieto). Aro ámbar y número de orden; Mayús+clic, el tramo; nunca más de dos. «Cancelar» y Escape, porque la pregunta se puede cancelar. Flechas, Inicio y Fin recorren las cartas; Espacio elige." min={1} max={2} cancelable onAnswer={setAnswer} />
       <PickerSample title="Elegir cartas · una sola" note="Con max 1 el primer toque contesta, sin «Listo» (como en la mesa). No se puede cancelar: sin X ni pie." min={1} max={1} cancelable={false} onAnswer={setAnswer} />
@@ -172,6 +175,35 @@ function OptionsSample({ sample, onAnswer }: { sample: (typeof OPTION_SAMPLES)[n
           />
         ) : null}
       </Presence>
+    </Specimen>
+  )
+}
+
+/** Una carta con varios efectos: «Activar efecto ›» y su lista (en escritorio, el submenú ancho del menú de la carta; en el celular, la hoja del segundo paso). */
+function EffectsSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const label = t('practice.menu.activateEffect')
+  const effects = ['Destroy 1 monster and add 1 "Fire King" monster from your Deck to your hand', 'Special Summon 1 FIRE Winged Beast monster from your hand']
+  const pick = (effect: string) => {
+    setAnchor(null)
+    onAnswer(effect)
+  }
+
+  return (
+    <Specimen
+      title="Opciones · la lista de efectos"
+      note={
+        <>
+          Una carta con varios efectos: «{label} ›» abre la lista, cada efecto con su texto y sin número (el orden de la pregunta no es el del texto de la carta). Como la lista de efectos de la mesa manual: en escritorio, un submenú ancho con las filas a la izquierda (<Tag>wide</Tag> en la opción de <Tag>CardMenu</Tag>); en el celular, la hoja del segundo paso, con la carta arriba y un efecto por fila (<Tag>stacked</Tag> de <Tag>AskOptions</Tag>).
+        </>
+      }
+    >
+      <Button variant="secondary" size="sm" onClick={(event) => setAnchor(event.currentTarget.getBoundingClientRect())}>
+        Abrir el menú de Fire King Island
+      </Button>
+      <CardMenu anchor={isDesktop ? anchor : null} kicker={t('practice.zone.field')} title="Fire King Island" items={[{ label, onSelect: () => {}, wide: true, children: effects.map((effect) => ({ label: effect, onSelect: () => pick(effect) })) }]} startExpanded={label} onClose={() => setAnchor(null)} />
+      <Presence>{anchor && !isDesktop ? <AskOptions title={label} kicker="Fire King Island" options={effects.map((effect, index) => ({ id: String(index), label: effect }))} mode="one" stacked onPick={([id]) => pick(effects[Number(id)]!)} /> : null}</Presence>
     </Specimen>
   )
 }

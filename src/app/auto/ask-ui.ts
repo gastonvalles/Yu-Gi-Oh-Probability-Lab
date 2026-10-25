@@ -28,7 +28,7 @@ export interface AskContext {
   phase?: MatPhase | null
   /** La máscara de tipo del `.cdb` (como `AdapterOptions.typeOf`): una Mágica o Trampa de la mano dice «Activar». */
   typeOf?: (code: number) => number
-  /** El rótulo de un efecto (la frase de la capa 1b o el `strN` del `desc`: carta = desc >> 4, índice = desc & 15; < 10000, del sistema). */
+  /** El rótulo de un efecto: el `strN` de la carta que nombra el `desc` (`splitDesc`), o null si no tiene (un texto del sistema, una carta sin ese texto). */
   effectLabel?: (code: number, description: string) => string | null
   /** La carta a anunciar (el filtro del núcleo contra un catálogo). Sin él, `announce_card` no tiene respuesta: `auto.answer` es null. */
   announceCard?: (ask: AskOf<'announce_card'>) => number
@@ -37,7 +37,6 @@ export interface AskContext {
 /** Una opción de un menú. Elegirla es el gesto `{ kind: 'item', answer }`; con `children` no contesta: abre el segundo paso («¿cuál efecto?»). */
 export interface AskItem {
   label: string
-  lead?: string
   answer?: CoreAnswer
   children?: AskItem[]
   /** El efecto que activa: para resaltar su frase en el detalle. */
@@ -128,7 +127,7 @@ export interface AskView {
   items: ReadonlyMap<string, AskItem[]>
   phaseItems: AskItem[]
   endTurn: CoreAnswer | null
-  /** Lo que se puede tocar ahora (brilla en ámbar). */
+  /** Lo que brilla en ámbar: lo que se puede activar, lo que la pregunta pide elegir u ordenar y la carta del efecto preguntado (lo que sólo se invoca, se coloca, cambia de posición o ataca se toca igual, sin brillar). */
   respond: CardRef[]
   zonePick: ZonePick | null
   cardPick: CardPick | null
@@ -195,6 +194,8 @@ export interface AutoMenuItem {
   hint?: string
   onPreview?: (active: boolean) => void
   children?: AutoMenuItem[]
+  /** Con `children`: el submenú ancho y a la izquierda (la lista de efectos). */
+  wide?: boolean
   divider?: boolean
 }
 
@@ -204,6 +205,8 @@ type Active = Loc & { description: string }
 const SPELL_TRAP = 0x2 | 0x4
 /** La activación de un Monstruo de Péndulo como escala (`proc_pendulum.lua`). */
 const PENDULUM_SCALE = '1160'
+/** Los textos del sistema (`strings.conf` no viaja) que más usan las opciones, con las palabras de la mesa: agregar a la mano o mandar al cementerio (`aux.ToHandOrElse`). */
+const SYSTEM_OPTIONS = { '573': 'practice.menu.toHand', '574': 'practice.menu.toGy' } as const
 const PILE_OF: Partial<Record<number, MatPile>> = { [L.DECK]: 'deck', [L.HAND]: 'hand', [L.GRAVE]: 'gy', [L.REMOVED]: 'banished', [L.EXTRA]: 'extra' }
 /**
  * Sin pantalla todavía (§3 del diseño): quitar contadores y anunciar una carta (ronda 4), las casillas del rival (`select_disfield`: la mesa no
@@ -370,7 +373,10 @@ function activateLabel(card: Active, ref: CardRef | null, ctx: AskContext): stri
   return t('practice.menu.activateEffect')
 }
 
-/** Los ítems de cada carta de mi mesa. «Activar efecto» de una carta con varias entradas pregunta cuál (`children`, con «Efecto n»). */
+/**
+ * Los ítems de cada carta de mi mesa. «Activar efecto» de una carta con varias entradas pregunta cuál (`children`): cada uno con su texto o, sin él, con la palabra de su
+ * activación. Sin número: el orden de la pregunta no es el del texto de la carta (el núcleo saca lo que ahora no se puede).
+ */
 function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chain'>, resolve: (card: Loc) => CardRef | null, ctx: AskContext): Map<string, AskItem[]> {
   const items = new Map<string, AskItem[]>()
   const add = (ref: CardRef | null, item: AskItem) => {
@@ -401,9 +407,8 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
           ? { label, answer: answer(indices[0]!), effect: effect(indices[0]!) }
           : {
               label,
-              children: indices.map((index, n) => ({
-                label: ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) || t('practice.menu.activateEffect'),
-                lead: t('practice.menu.effectLead', { n: n + 1 }),
+              children: indices.map((index) => ({
+                label: ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
                 answer: answer(index),
                 effect: effect(index),
               })),
@@ -513,7 +518,8 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       break
     case 'select_option':
       base.options = ask.options.map((description, value) => {
-        const label = ctx.effectLabel?.(0, description)
+        const system = SYSTEM_OPTIONS[description as keyof typeof SYSTEM_OPTIONS]
+        const label = ctx.effectLabel?.(0, description) || (system ? t(system) : null)
 
         return { value, description, ...(label ? { label } : {}) }
       })
@@ -591,7 +597,8 @@ export function askView(state: AskState): AskView {
     case 'select_idlecmd':
     case 'select_battlecmd':
     case 'select_chain':
-      view.respond = [...base.items.keys()].map((id) => ({ side: 'mine', id }))
+      // Brilla lo que se activa (sólo las activaciones llevan `effect` o `children`); lo que sólo se invoca, se coloca, cambia de posición o ataca, no.
+      view.respond = [...base.items].flatMap(([id, items]) => (items.some((item) => item.effect || item.children) ? [{ side: 'mine' as const, id }] : []))
       view.cancelable = ask.type === 'select_chain' && !ask.forced
       break
     case 'select_effectyn':

@@ -18,6 +18,17 @@ export const LOCATION = { DECK: 1, HAND: 2, MZONE: 4, SZONE: 8, GRAVE: 16, REMOV
 /** Posiciones del núcleo (`POS_*`). */
 export const POSITION = { FACEUP_ATTACK: 1, FACEDOWN_ATTACK: 2, FACEUP_DEFENSE: 4, FACEDOWN_DEFENSE: 8, FACEUP: 5, FACEDOWN: 10 } as const
 
+/**
+ * El `desc` de un efecto o de una opción (u64 en texto), partido: la carta y cuál de sus textos nombra (`n` 0 es `str1`). Los scripts lo arman con
+ * `aux.Stringid(code, n) = (n & 0xfffff) | code << 20` (`utility.lua`): pasa los 32 bits, por eso va en `bigint`. Con carta 0 es un texto del sistema
+ * (`strings.conf`, que no viaja): `n` es su número.
+ */
+export function splitDesc(description: string): { code: number; n: number } {
+  const desc = BigInt(description)
+
+  return { code: Number(desc >> 20n), n: Number(desc & 0xfffffn) }
+}
+
 // ── El esquema ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // Un campo es un primitivo (`'int'`, `'seat'`, `'bool'`, `'u64'` texto decimal, `'str'`; con `?` al final, opcional), una lista (`[S]`),
 // un nulable (`['?', S]`) o un objeto de campos.

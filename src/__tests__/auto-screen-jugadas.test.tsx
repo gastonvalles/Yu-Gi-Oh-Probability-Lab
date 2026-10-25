@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { describe, expect, it } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
-import { act, loc, pos } from './support/auto-session-fake'
+import { act, loc, pos, stringId } from './support/auto-session-fake'
 import { core, dispatches, handCard, lane, phaseButton, renderAuto, status } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
 
@@ -18,7 +18,7 @@ const IDLE: CoreAsk = {
   pos_changes: [loc(200, L.MZONE, 0)],
   monster_sets: [loc(100, L.HAND, 0)],
   spell_sets: [loc(900, L.HAND, 1)],
-  activates: [act(900, L.HAND, 1), act(400, L.GRAVE, 0, '10001'), act(400, L.GRAVE, 0, '10002')],
+  activates: [act(900, L.HAND, 1), act(400, L.GRAVE, 0, stringId(400, 1)), act(400, L.GRAVE, 0, stringId(400, 2))],
   to_bp: true,
   to_ep: true,
   shuffle: false,
@@ -51,15 +51,26 @@ describe('auto-screen · las jugadas', () => {
     const sheet = screen.getByRole('dialog', { name: 'Activar efecto' })
     const effects = within(sheet).getAllByRole('menuitem')
 
-    expect(effects).toHaveLength(2)
-    // Cada efecto con su rótulo del `.cdb` (`strN`, el que nombra el `desc`), con «Efecto n» delante.
-    expect(effects[0]).toHaveTextContent('Efecto 1')
-    expect(effects[0]).toHaveTextContent('Summon a Token')
-    expect(effects[1]).toHaveTextContent('Efecto 2')
-    expect(effects[1]).toHaveTextContent('Destroy a monster')
+    // Cada efecto dice qué hace: su rótulo del `.cdb` (`strN`, el que nombra el `desc`), sin un «Efecto n» que no es el de la carta.
+    expect(effects.map((effect) => effect.textContent)).toEqual(['Summon a Token', 'Destroy a monster'])
+    // Como la lista de efectos de la mesa manual: la carta arriba y un efecto por fila, a la izquierda (aunque los textos sean cortos).
+    expect(sheet).toHaveTextContent('Nibiru')
+    expect(effects[0]).toHaveClass('text-left')
     fireEvent.click(effects[1]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 5, index: 2 }])
     expect(dispatches).toBe(0)
+  })
+
+  it('idle: brilla sólo lo que se activa; lo que sólo se invoca, se coloca o cambia de posición no brilla y se toca igual', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(IDLE))
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
+    expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-respond', 'true')
+    expect(handCard('Ash Blossom')).toHaveAttribute('data-glow', 'false')
+    expect(screen.getByRole('button', { name: 'Maxx C' })).toHaveAttribute('data-glow', 'false')
+    tap(handCard('Ash Blossom'))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
   })
 
   it('idle: una Mágica de la mano dice «Activar» (y «Colocar»)', () => {
@@ -110,6 +121,8 @@ describe('auto-screen · las jugadas', () => {
     expect(screen.getByRole('menuitem', { name: 'Main Phase 2' })).not.toHaveAttribute('aria-disabled')
     expect(screen.getByRole('menuitem', { name: /^Draw Phase/ })).toHaveAttribute('aria-disabled', 'true')
     fireEvent.keyDown(window, { key: 'Escape' })
+    // Lo que sólo puede atacar no brilla.
+    expect(screen.getByRole('button', { name: 'Maxx C' })).toHaveAttribute('data-glow', 'false')
     tap(screen.getByRole('button', { name: 'Maxx C' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Atacar' }))
     expect(fake.answers).toEqual([{ type: 'select_battlecmd', action: 1, index: 0 }])

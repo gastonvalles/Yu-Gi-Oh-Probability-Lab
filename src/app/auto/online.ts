@@ -20,7 +20,7 @@ import {
   type AutoCardInfo,
   type AutoMessage,
 } from './online-protocol'
-import type { AutoCommand, AutoEvent, CoreAnswer, Seat } from './protocol'
+import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat } from './protocol'
 
 /**
  * El enlace del duelo automático por enlace (diseño: `docs/duelos-automaticos.md`, «Duelo online»): lo que une la sala de siempre (`createDuel`: saludo, listos, tirada, chat,
@@ -139,8 +139,6 @@ const BATCH_BYTES = MAX_AUTO_BYTES - 512
 const CODE_KEYS = new Set(['code', 'card', 'cards', 'returned_to_extra'])
 /** Una pista de efecto (5), carta anunciada (8) o carta (10): su valor es un código. */
 const CARD_HINTS = new Set([5, 8, 10])
-/** Un rótulo de efecto es carta << 4 | n; menos de esto es un texto del sistema. */
-const SYSTEM_STRINGS = 10_000n
 
 /** Los códigos de carta que nombra un evento (los campos de carta, las pistas de carta y la carta de cada rótulo de efecto): de esos, el invitado recibe cómo es cada carta. */
 export function codesOf(value: unknown, out: Set<number> = new Set(), key = ''): Set<number> {
@@ -148,11 +146,16 @@ export function codesOf(value: unknown, out: Set<number> = new Set(), key = ''):
   else if (typeof value === 'number') {
     if (value > 0 && CODE_KEYS.has(key)) out.add(value)
   } else if (typeof value === 'string') {
-    if (key === 'description' && BigInt(value) >= SYSTEM_STRINGS) out.add(Number(BigInt(value) >> 4n))
+    // Un rótulo de efecto (`splitDesc`); con carta 0 es un texto del sistema.
+    const code = key === 'description' ? splitDesc(value).code : 0
+
+    if (code > 0) out.add(code)
   } else if (value !== null && typeof value === 'object') {
     const record = value as Record<string, unknown>
 
     if (record.type === 'hint' && CARD_HINTS.has(record.hint_type as number) && Number(record.hint) > 0) out.add(Number(record.hint))
+    // Las opciones de `select_option` también son rótulos (las de `announce_number` son números).
+    if (record.type === 'select_option') codesOf(record.options, out, 'description')
     for (const [field, item] of Object.entries(record)) codesOf(item, out, field)
   }
 
