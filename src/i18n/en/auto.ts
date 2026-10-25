@@ -86,6 +86,12 @@ export const auto: Translated<typeof es> = {
   'auto.lane.script': "{card}'s script failed: the duel goes on.",
   'auto.lane.error': 'Something went wrong: {message}',
 
+  // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
+  'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',
+  'auto.review.combo': 'Reviewing “{name}”: the duel waits where you left it.',
+  'auto.review.plays': 'Reviewing your plays: the duel waits where you left it.',
+  'auto.review.back': 'Back to the duel',
+
   // The loading cover.
   'auto.loading.start': 'Setting up the duel…',
   'auto.loading.rules': "Loading your cards' rules… {done} of {total}",

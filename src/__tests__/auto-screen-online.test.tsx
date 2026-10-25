@@ -188,6 +188,17 @@ describe('auto-screen-online · la mesa', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a defensa'])
   })
 
+  it('la mesa del duelo por enlace no lleva los pasos ni los combos de «Jugar solo» (su panel de la derecha es el chat)', () => {
+    const { start } = setup()
+    const session = start()
+
+    core(() => session.ask(IDLE))
+    expect(handCard('Ash Blossom')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Pasos y combos' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Guardar combo' })).toBeNull()
+  })
+
   it('pensando: el anfitrión puede cortar al núcleo; el invitado (seat 1) espera sin Cancelar y ve el turno de Ana', () => {
     vi.useFakeTimers()
     const { start } = setup('guest')

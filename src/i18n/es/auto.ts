@@ -88,6 +88,12 @@ export const auto = {
   'auto.lane.script': 'Falló el script de {card}: el duelo sigue.',
   'auto.lane.error': 'Algo falló: {message}',
 
+  // Los pasos y los combos (el panel de la práctica): la lista vacía (acá no se arrastra ni se mantiene) y el repaso de un combo o de tus jugadas en la misma mesa, con la salida.
+  'auto.steps.empty': 'Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.',
+  'auto.review.combo': 'Repasás “{name}”: el duelo te espera donde lo dejaste.',
+  'auto.review.plays': 'Repasás tus jugadas: el duelo te espera donde lo dejaste.',
+  'auto.review.back': 'Volver al duelo',
+
   // La portada de carga.
   'auto.loading.start': 'Preparando el duelo…',
   'auto.loading.rules': 'Cargando las reglas de tus cartas… {done} de {total}',

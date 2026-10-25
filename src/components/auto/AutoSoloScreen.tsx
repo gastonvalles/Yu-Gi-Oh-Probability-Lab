@@ -200,6 +200,8 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
     ...(told?.effect ? { rivalEffect: told.effect } : {}),
     // Deshacer va arriba, con los íconos de la práctica.
     undoInHeader: true,
+    // El panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos.
+    steps: true,
     ...(cover === undefined ? {} : { cover }),
   }
 

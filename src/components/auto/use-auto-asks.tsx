@@ -4,6 +4,7 @@ import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, itemsInto, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
+import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
@@ -151,7 +152,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     [allowed],
   )
   const settled = paced.cursor === paced.actions.length && !snap.replaying
-  const state = useMemo(() => replayMat(paced.initial, paced.actions, paced.cursor), [paced])
+  // Lo que se ve, como en la práctica: la mano de apertura plegada en la mesa del arranque (`foldOpeningHand`), así el paso 0 es «Mano inicial». Se pliega por contenido:
+  // deshacer re-simula y la jugada vuelve como otro objeto con las mismas cartas (la mano no se reparte de nuevo).
+  const first = paced.actions[0]
+  const openingKey = first?.type === 'draw' ? `${first.count}:${first.ids?.join() ?? ''}` : ''
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- por contenido (`openingKey`), no por objeto
+  const opening = useMemo(() => foldOpeningHand(paced.initial, first ? [first] : []), [paced.initial, openingKey])
+  // Las jugadas, hasta la que ya se contó: lo que el núcleo decidió y la mesa todavía no muestra (el ritmo, una parada de fase) no se adelanta en la lista de pasos.
+  const played = useMemo(() => paced.actions.slice(opening.skip, Math.max(opening.skip, paced.cursor)), [paced.actions, paced.cursor, opening.skip])
+  const state = useMemo(() => replayMat(opening.initial, played, played.length), [opening.initial, played])
   /** La mesa espera en tu DP o tu SP (una parada): el botón de fases la pasa. */
   const stopped = !frozen && !snap.replaying && paced.cursor === limit && limit < paced.actions.length
   /** Pedir pasar a una fase: la parada que deja se cruza ya (lo que sigue, a su ritmo). */
@@ -166,7 +175,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
   // Los nombres del `.cdb` (las cartas del rival, que no están en `cardsById`): la mesa los lee por el id de su primera copia.
   const names = useMemo(() => Object.fromEntries(Object.entries(snap.names).map(([code, name]) => [drawIdOf(Number(code)), name])), [snap.names])
-  const matSession = useMemo<MatSession>(() => ({ initial: paced.initial, actions: [...paced.actions], cursor: paced.cursor, names, replay: false }), [paced, names])
+  const matSession = useMemo<MatSession>(() => ({ initial: opening.initial, actions: played, cursor: played.length, names, replay: false }), [opening.initial, played, names])
 
   usePracticeSounds(matSession)
   // Las vidas que bajan o suben y el fin (las jugadas ya suenan con la mesa); rearmando no suena nada.

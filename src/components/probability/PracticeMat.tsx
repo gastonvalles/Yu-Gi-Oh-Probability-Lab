@@ -196,6 +196,11 @@ export interface DuelMatLink {
   cover?: ReactNode
   /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem (o lo que se le dé arrastrando su borde, como al de los pasos de la práctica). */
   aside?: ReactNode
+  /**
+   * «Jugar solo automático»: el panel de la práctica, «Pasos | Combos» (la cinta del núcleo, guardar y repasar combos, las salidas de la mano), a la derecha en escritorio
+   * y en una hoja en el celular, que se abre con su botón abajo a la derecha (donde va el chat en el duelo por enlace). Sin esto (el duelo por enlace), no hay pasos ni combos.
+   */
+  steps?: boolean
   /** Un panel fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`: el detalle de la carta que se tocó): la mesa le deja 20rem (o lo que se le dé arrastrando su borde) y no se mueve cuando cambia. */
   detail?: ReactNode
   /** Se hizo click en una carta tuya (de la mano, del campo o de un visor de pila): `detail` la muestra y queda fija hasta un click afuera o en otra carta. */
@@ -479,8 +484,9 @@ export function PracticeMat({
   const onHover = duel?.onHover ?? practiceHover
   const onRivalHover = duel?.onRivalHover
   const onHighlight = duel?.onHighlight ?? practiceHighlight
-  // Con el panel de la derecha (los pasos de la práctica o el chat de un duelo) y el detalle a la izquierda, la mesa queda entre los dos.
-  const sidePanel = !duel || Boolean(duel.aside)
+  // Con el panel de la derecha (los pasos de la práctica y de «Jugar solo automático», o el chat de un duelo) y el detalle a la izquierda, la mesa queda entre los dos.
+  const stepsPanel = !duel || Boolean(duel.steps)
+  const sidePanel = stepsPanel || Boolean(duel?.aside)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Celular en vertical: el campo del duelo se ajusta al alto de la pantalla para que se vea tu mano (ver `compact-field.ts`).
   const compact = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
@@ -1791,7 +1797,8 @@ export function PracticeMat({
       onLoad={loadFromPanel}
       onRename={renameCombo}
       onDelete={deleteCombo}
-      showCombos={!duel}
+      showCombos={stepsPanel}
+      {...(duel?.auto ? { emptyHint: t('auto.steps.empty') } : {})}
       className="min-h-0 flex-1"
     />
   )
@@ -2084,8 +2091,9 @@ export function PracticeMat({
       <Icon name="plus" />
     </IconButton>
   )
+  // La lista de pasos en el celular: en la práctica, arriba con los íconos de la mesa; en «Jugar solo automático», abajo a la derecha, en la caja de los botones del duelo (arriba ya va el engranaje).
   const stepsButton = (
-    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
+    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
       <Icon name="list" />
     </IconButton>
   )
@@ -2432,6 +2440,7 @@ export function PracticeMat({
                 <span className="pointer-events-auto flex items-center max-[1101px]:col-start-3 max-[1101px]:row-start-1 max-[1101px]:justify-self-end">
                   {isDesktop || duel.undoInHeader ? null : undoButton}
                   {duel.tools}
+                  {duel.steps ? stepsButton : null}
                 </span>
                 {isDesktop ? null : <span className="pointer-events-auto col-start-2 row-start-1">{duel.reactions}</span>}
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
@@ -2465,8 +2474,9 @@ export function PracticeMat({
         </>
       ) : null}
 
-      {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
-      {duel ? null : (
+      {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú.
+          El mismo en la práctica y en «Jugar solo automático» (`duel.steps`). */}
+      {stepsPanel ? (
         <>
           {rightHandle}
           <section className={cx('hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3', Boolean(detail) && 'min-[1440px]:col-start-3')} aria-label={t('practice.mat.stepsAndCombos')}>
@@ -2478,7 +2488,7 @@ export function PracticeMat({
             {panel}
           </Modal>
         </>
-      )}
+      ) : null}
 
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
       <Presence>{sheeted && menu ? (
@@ -2616,7 +2626,7 @@ export function PracticeMat({
           caption={duel.rivalEffect.caption}
           detail={duel.rivalEffect.detail}
           origin={(id) => cardPose(sectionRef.current, duel.rivalFlights?.state ?? null, id, 'theirs')}
-          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
         />
       ) : null}
 
@@ -2628,13 +2638,13 @@ export function PracticeMat({
       {/* Contestada, la pregunta sigue mientras sale (`Presence`; `PassPrompt` hace la salida) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
       <Presence>
         {duel?.prompt ? (
-          <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', Boolean(duel.aside) && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
+          <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none">{duel.prompt}</div>
           </div>
         ) : null}
       </Presence>
 
-      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', Boolean(duel.aside) && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
+      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
 
       {drag
         ? createPortal(
