@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { chainFeed, type ChainStep } from '../app/auto/chain-feed'
-import { actingOf, glowOf, pileGlowOf } from '../app/card-glow'
+import { LOCATION } from '../app/auto/protocol'
+import { FROM_HAND, actingOf, glowOf, linksOf, pileGlowOf, pileLinksOf } from '../app/card-glow'
 
 const sets = { can: new Set(['a', 'b']), act: new Set(['b', 'c']) }
 
@@ -36,4 +37,38 @@ describe('el brillo de una carta en un duelo', () => {
     expect(at(7)).toEqual([])
     expect(actingOf(null)).toEqual({ mine: new Set(), theirs: new Set() })
   })
+})
+
+describe('la insignia del eslabón (CL1, CL2…)', () => {
+  const link = (index: number, side: 'mine' | 'theirs', id: string, mine = side === 'mine', from?: number): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: { side, id }, code: 1, mine, ...(from === undefined ? {} : { from }) } })
+
+  it('cada carta de la cadena lleva su número, del lado donde está y con el color de quien la activó, también ya resuelta', () => {
+    const steps: ChainStep[] = [link(0, 'mine', 'm1'), link(1, 'theirs', 't1', false, FROM_HAND), link(2, 'mine', 't2', false), { kind: 'solving', at: 0, index: 2 }, { kind: 'solved', at: 0, index: 2 }]
+    const { mine, theirs } = linksOf(chainFeed(steps, steps.length))
+
+    expect(Object.fromEntries(mine)).toEqual({ m1: { numbers: [1], mine: true, fromHand: false }, t2: { numbers: [3], mine: false, fromHand: false } })
+    expect(Object.fromEntries(theirs)).toEqual({ t1: { numbers: [2], mine: false, fromHand: true } })
+    expect(linksOf(null)).toEqual({ mine: new Map(), theirs: new Map() })
+  })
+
+  it('una carta con dos eslabones los lleva los dos; una pila junta los de adentro, en orden', () => {
+    const { mine } = linksOf(chainFeed([link(0, 'mine', 'a'), link(1, 'mine', 'b'), link(2, 'mine', 'a')], 3))
+
+    expect(mine.get('a')?.numbers).toEqual([1, 3])
+    expect(pileLinksOf(['b', 'x', 'a'], mine)).toEqual({ numbers: [1, 2, 3], mine: true, fromHand: false })
+    expect(pileLinksOf(['x'], mine)).toBeNull()
+    expect(pileLinksOf(['a'], undefined)).toBeNull()
+  })
+
+  it('negada o sin efecto: la insignia lo lleva, con quién (si se sabe); la pila también', () => {
+    const steps: ChainStep[] = [link(0, 'mine', 'a'), link(1, 'theirs', 't'), { kind: 'solving', at: 0, index: 1 }, { kind: 'disabled', at: 0, index: 0, by: 2 }]
+    const { mine, theirs } = linksOf(chainFeed(steps, steps.length))
+
+    expect(mine.get('a')).toEqual({ numbers: [1], mine: true, fromHand: false, voided: { state: 'disabled', by: 2 } })
+    expect(theirs.get('t')).not.toHaveProperty('voided')
+    expect(pileLinksOf(['x', 'a'], mine)?.voided).toEqual({ state: 'disabled', by: 2 })
+    expect(linksOf(chainFeed([link(0, 'mine', 'a'), { kind: 'negated', at: 0, index: 0 }], 2)).mine.get('a')?.voided).toEqual({ state: 'negated' })
+  })
+
+  it('«desde la mano» es la mano del núcleo', () => expect(FROM_HAND).toBe(LOCATION.HAND))
 })

@@ -92,7 +92,7 @@ import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext,
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { CARD_HOVER, CARD_TRANSITION, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, chainLinkLabel, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
@@ -102,7 +102,7 @@ import { RivalHandStrip } from './RivalHandStrip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, glowFrame } from './practice-styles'
-import { glowOf, pileGlowOf } from '../../app/card-glow'
+import { glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
 
 export interface MatCard {
   name: string
@@ -174,6 +174,8 @@ export interface DuelMatLink {
   respond?: ReadonlySet<string>
   /** Mis cartas cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar (`act`), y la pila que tenga una adentro, también. */
   act?: ReadonlySet<string>
+  /** Mis cartas que están en la cadena a la vista, con sus eslabones (`linksOf` de `app/card-glow.ts`): llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
+  links?: ReadonlyMap<string, ChainBadgeData>
   /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
   prompt?: ReactNode
   /** El aviso de la cadena (duelo automático: `ChainNotice`): centrado arriba de la columna de la mesa, debajo de la barra y de su aviso; la capa deja pasar los toques. */
@@ -1851,6 +1853,7 @@ export function PracticeMat({
   const glowKindOf = useCallback((id: string): GlowKind | null => (duelLit ? glowOf(id, glowSets) : highlighted.has(id) ? (highlightKind ?? 'opening') : null), [duelLit, glowSets, highlighted, highlightKind])
   const dimUnlit = !duelLit && highlighted.size > 0
   const deckGlow = pileGlowOf(state.deck, glowSets)
+  const deckLink = pileLinksOf(state.deck, duel?.links)
   const targetedIds = useMemo(() => new Set([...state.targeted, ...(rivalMarks?.cards ?? [])]), [state.targeted, rivalMarks])
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
   // En el celular la hoja tapa la mano: una carta de la mano no se levanta (quedaba encima de los botones); la del campo sí lleva el marco.
@@ -1904,6 +1907,7 @@ export function PracticeMat({
             dim={dimUnlit && !highlighted.has(shown.id)}
             chosen={chosen ? chosenLabel : null}
             targeted={targetedIds.has(shown.id)}
+            link={duel?.links?.get(shown.id) ?? null}
             selected={selectedId === shown.id}
             hold={holdPlay(shown.id) !== null}
             still={isAuto}
@@ -1931,12 +1935,14 @@ export function PracticeMat({
     // Una carta marcada como objetivo adentro (se vea o no: no es siempre la de arriba) lleva la mira sobre la casilla.
     const marked = state[pile].some((id) => targetedIds.has(id)) || (rivalMarks?.piles.includes(pile) ?? false)
     const pileGlow = pileGlowOf(state[pile], glowSets)
+    const link = pileLinksOf(state[pile], duel?.links)
+    const label = `${PILE_TITLES[pile]}: ${count}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`
 
     return (
       <button
         key={pile}
         type="button"
-        aria-label={`${PILE_TITLES[pile]}: ${count}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`}
+        aria-label={link ? chainLinkLabel(label, link) : label}
         title={PILE_TITLES[pile]}
         data-drop={pile}
         data-over="false"
@@ -1958,6 +1964,7 @@ export function PracticeMat({
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
         </span>
+        {link ? <ChainBadge link={link} className="left-0 top-0" /> : null}
       </button>
     )
   }
@@ -2134,6 +2141,14 @@ export function PracticeMat({
     if (!hasPrompt || !box || !section) return
 
     let frame = 0
+    const unband = () => {
+      const chain = chainRef.current
+
+      if (!chain) return
+      delete chain.dataset.banded
+      chain.style.translate = ''
+      chain.style.visibility = ''
+    }
     const place = () => {
       box.style.translate = ''
       const layer = box.parentElement!.getBoundingClientRect()
@@ -2146,7 +2161,22 @@ export function PracticeMat({
       const max = Math.min(layer.bottom, window.innerHeight)
       // En el celular termina arriba de tus monstruos (`promptAbove`) y crece sobre el campo del rival: la mano y tu campo quedan a la vista. Sin lugar, va por la ranura de siempre.
       const floor = isDesktop ? undefined : section.querySelector('[data-drop="mz:0"]')?.getBoundingClientRect().top
-      const top = (floor === undefined ? null : promptAbove(at, glows, min, Math.min(floor, max))) ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
+      // Con la cadena a la vista (celular), no se pisan: la píldora queda en un renglón (`data-banded`) y sube al lugar del aviso de la línea (vacío mientras se pregunta), y la
+      // pregunta va debajo de ella. Si así no entra, gana la pregunta (es lo que hay que contestar): la píldora se aparta hasta que se conteste.
+      const notice = floor === undefined ? null : chainRef.current?.querySelector('[data-testid="chain-notice"]')
+      const chain = notice ? chainRef.current! : null
+      let ceiling = min
+
+      unband()
+      if (chain && notice) {
+        chain.dataset.banded = ''
+        chain.style.translate = rails || section.querySelector('[data-lane]') ? '' : `0 ${4 - CHAIN_BELOW_BAR_PX}px`
+        ceiling = Math.max(min, notice.getBoundingClientRect().bottom + 8)
+      }
+      const above = floor === undefined ? null : (promptAbove(at, glows, ceiling, Math.min(floor, max)) ?? (chain ? promptAbove(at, glows, min, Math.min(floor, max)) : null))
+
+      if (chain && (above === null || above < ceiling)) chain.style.visibility = 'hidden'
+      const top = above ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
 
       if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
     }
@@ -2161,14 +2191,17 @@ export function PracticeMat({
     place()
     later()
     observer?.observe(box)
+    // La cadena que aparece o cambia de alto con la pregunta abierta (sus pasos van con su ritmo) también la vuelve a ubicar.
+    if (chainRef.current) observer?.observe(chainRef.current)
     window.addEventListener('resize', later)
 
     return () => {
       observer?.disconnect()
       window.removeEventListener('resize', later)
       cancelAnimationFrame(frame)
+      unband()
     }
-  }, [hasPrompt, glowSets, stripOpen, state, view, rails, isDesktop])
+  }, [hasPrompt, hasChain, glowSets, stripOpen, state, view, rails, isDesktop])
 
   // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
   // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.
@@ -2431,7 +2464,7 @@ export function PracticeMat({
             ref={deckRef}
             role="button"
             tabIndex={0}
-            aria-label={`${PILE_TITLES.deck}: ${state.deck.length}`}
+            aria-label={deckLink ? chainLinkLabel(`${PILE_TITLES.deck}: ${state.deck.length}`, deckLink) : `${PILE_TITLES.deck}: ${state.deck.length}`}
             title={t(isAuto ? 'practice.mat.deckHelpAuto' : 'practice.mat.deckHelp')}
             data-drop="deck"
             data-over="false"
@@ -2457,6 +2490,7 @@ export function PracticeMat({
             ) : null}
             <PileBadge label={PILE_SHORT.deck} count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
+            {deckLink ? <ChainBadge link={deckLink} className="left-0 top-0" /> : null}
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
@@ -2509,6 +2543,7 @@ export function PracticeMat({
             maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
             glowOf={glowKindOf}
+            {...(duel?.links?.size ? { links: duel.links } : {})}
             dimUnlit={dimUnlit}
             muted={muted}
             flash={flash}
@@ -2758,7 +2793,7 @@ export function PracticeMat({
 
       {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
       {duel?.chain ? (
-        <div ref={chainRef} data-testid="duel-chain-layer" className={cx('pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
+        <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
           {duel.chain}
         </div>
       ) : null}
@@ -2836,6 +2871,8 @@ interface PlacedCardProps {
   chosen: string | null
   /** Marcada como objetivo. */
   targeted: boolean
+  /** Sus eslabones en la cadena a la vista (la insignia «CL1»), o null. */
+  link: ChainBadgeData | null
   /** Es la carta de la que se está viendo el menú. */
   selected: boolean
   /** La carta soltada que todavía espera que se elija cómo sale: está en la zona (como se la verá, si la elección es otra se acomoda) pero no se toca ni se arrastra, y lleva el marco de la carta del menú. */
@@ -2853,7 +2890,7 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, targeted, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, targeted, link, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
   // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -2861,6 +2898,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, ta
   if (materials > 0) label = t('practice.mat.cardMaterials', { label, count: materials })
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
   if (targeted) label = t('practice.card.targeted', { name: label })
+  if (link) label = chainLinkLabel(label, link)
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
   // El marco celeste: la carta del menú y la que espera en la zona (tiene el menú, o los Sacrificios, todavía por delante).
   const framed = selected || pending
@@ -2922,6 +2960,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, ta
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
       </div>
+      {link && !dragging ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
     </>
   )
 }

@@ -30,6 +30,17 @@ describe('chainFeed: la cadena paso a paso', () => {
     expect(ASH_CHAIN.filter((item) => item.kind === 'solving').map((item) => item.index)).toEqual([1, 0])
   })
 
+  it('quién negó (`by`) queda en la fila negada, sólo si el paso lo trae', () => {
+    const withBy = ASH_CHAIN.map((item) => (item.kind === 'disabled' ? { ...item, by: 2 } : item))
+
+    expect(chainFeed(withBy, 3)?.rows[0]).not.toHaveProperty('by')
+    expect(chainFeed(withBy, 4)).toMatchObject({ rows: [{ state: 'disabled', by: 2 }, { state: 'solving' }] })
+    // Al llegarle el turno y resolverse, sigue diciendo quién fue.
+    expect(chainFeed(withBy, 8)).toMatchObject({ done: true, rows: [{ state: 'disabled', by: 2 }, { state: 'solved' }] })
+    expect(chainFeed(withBy, 8)?.rows[1]).not.toHaveProperty('by')
+    expect(chainFeed(ASH_CHAIN, 8)?.rows[0]).not.toHaveProperty('by')
+  })
+
   it('una cadena nueva reemplaza a la anterior (otra key)', () => {
     const next = [...ASH_CHAIN, link(0, false, 1, 3), step('solving', 0, 3)]
 

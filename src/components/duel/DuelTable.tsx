@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 
+import { pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
 import { flatTransform, type Point } from '../../app/flat-quad'
@@ -11,7 +12,7 @@ import { THEIR_FAN_RISE, THEIR_HAND } from './their-hand'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, chainBadgeAt, chainLinkLabel, fxVars } from '../probability/MatFx'
 import { FieldArt, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
@@ -48,6 +49,8 @@ export interface DuelSideView {
   pickable?: ReadonlySet<string>
   /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar, y la pila que tenga una adentro, también. */
   act?: ReadonlySet<string>
+  /** Las cartas de este lado que están en la cadena a la vista, con sus eslabones: llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
+  links?: ReadonlyMap<string, ChainBadgeData>
 }
 
 /** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
@@ -352,6 +355,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   // De una carta de esta mesa se sabe su arte, no si es un Xyz; los materiales sólo se ponen debajo de uno (Invocación Xyz o «Adjuntar» a un Xyz), así que se muestran los que tenga. Boca abajo también: siguen debajo, a la vista.
   const materials = placed.materials.length
   const acting = side.act?.has(placed.id) ?? false
+  const link = side.links?.get(placed.id)
 
   return (
     <>
@@ -372,7 +376,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
       >
         <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180')}>
-          {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={label} className="block h-full w-full object-cover" />}
+          {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={link ? chainLinkLabel(label, link) : label} className="block h-full w-full object-cover" />}
         </span>
         {/* La cantidad queda derecha, como los contadores: es para leerla desde acá. */}
         <MaterialCount count={materials} sideways={sideways} />
@@ -382,6 +386,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: label })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
         {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
       </div>
+      {link ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
     </>
   )
 }
@@ -402,9 +407,11 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const marked = (side.marks?.piles.includes(pile) ?? false) || cards.some((id) => side.state.targeted.includes(id) || (side.marks?.cards.includes(id) ?? false))
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
   const acting = cards.some((id) => side.act?.has(id))
+  const link = pileLinksOf(cards, side.links)
+  const label = `${PILE_TITLES[pile]}: ${cards.length}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`} title={PILE_TITLES[pile]} data-drop={owner === 'mine' ? pile : undefined} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} data-glow={acting ? 'true' : 'false'} data-glow-kind={acting ? 'act' : undefined} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent] data-[glow=true]:z-6')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
+    <div role="group" aria-label={link ? chainLinkLabel(label, link) : label} title={PILE_TITLES[pile]} data-drop={owner === 'mine' ? pile : undefined} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} data-glow={acting ? 'true' : 'false'} data-glow-kind={acting ? 'act' : undefined} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent] data-[glow=true]:z-6')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {/* El grosor del deck y del Extra, en perspectiva con el campo: el canto que se ve es el de abajo (el que mira a quien juega), también en las pilas del rival. */}
       {pile === 'deck' || pile === 'extra' ? <PileStack count={cards.length} /> : null}
       {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}
@@ -429,6 +436,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
       {marked ? <TargetMark key={`mira:${shown}`} /> : null}
       </span>
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
+      {link ? <ChainBadge link={link} className="left-0 top-0" /> : null}
     </div>
   )
 }

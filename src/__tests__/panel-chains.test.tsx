@@ -58,6 +58,11 @@ describe('panelChainsOf', () => {
     expect([...chains.ends]).toEqual([
       [2, [{ chain: 1, links: [{ number: 1, name: 'Mía 73628505', state: 'disabled' }, { number: 2, name: 'Suya 14558127', state: 'solved' }] }]],
     ])
+    // Con quién la negó (`by`, del adaptador), la marca y el cierre lo llevan.
+    const withBy = panelChainsOf(steps.map((step) => (step.kind === 'disabled' ? { ...step, by: 2 } : step)), steps.length, actions, 1, nameOf)
+
+    expect(withBy.marks.get(1)?.result).toEqual({ negated: true, by: 2 })
+    expect(withBy.ends.get(2)?.[0]?.links[0]).toEqual({ number: 1, name: 'Mía 73628505', state: 'disabled', by: 2 })
   })
 
   it('el costo (como Pot of Desires con el núcleo): las cartas que se mueven entre el eslabón y el paso siguiente; la mira de un objetivo no es costo y la resolución tampoco', () => {
@@ -157,6 +162,20 @@ describe('la lista de pasos con cadenas', () => {
     expect(end).toHaveTextContent('Cadena 1 resuelta')
     expect(end).toHaveTextContent('CL1 Uno: Sin efecto · CL2 Ash (Rival): Resuelta')
     expect(within(end).queryByRole('button')).toBeNull()
+  })
+
+  it('negada con quién (`by`): «Resuelve: sin efecto · por CL2» al pie y «por CL2» en el cierre', () => {
+    render(
+      panel({
+        chains: {
+          marks: new Map([[1, { chain: 1, link: 1, result: { negated: true, by: 2 } }]]),
+          ends: new Map([[2, [{ chain: 1, links: [{ number: 1, name: 'Uno', state: 'disabled', by: 2 }, { number: 2, name: 'Ash (Rival)', state: 'solved' }] }]]]),
+        },
+      }),
+    )
+
+    expect(screen.getByText('Resuelve: sin efecto · por CL2')).toHaveClass('bg-danger', 'text-white')
+    expect(screen.getByText('CL1 Uno: Sin efecto por CL2 · CL2 Ash (Rival): Resuelta')).toBeInTheDocument()
   })
 
   it('en la lista compacta (sin detalles) no hay chips ni marca; el cierre queda', () => {

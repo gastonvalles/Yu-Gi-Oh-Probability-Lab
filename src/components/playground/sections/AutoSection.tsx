@@ -115,6 +115,7 @@ export function AutoSection() {
 
       <BandSample max={2} onAnswer={setAnswer} />
       <BandSample max={1} onAnswer={setAnswer} />
+      <ForcedSample onAnswer={setAnswer} />
 
       <SortSample onAnswer={setAnswer} />
 
@@ -321,6 +322,52 @@ function BandSample({ max, onAnswer }: { max: 1 | 2; onAnswer: (answer: string) 
   )
 }
 
+/** Varias obligatorias a la vez: la misma banda, con cuál va primero ya elegida y la principal que dice qué hace (como en la mesa: `use-auto-asks.tsx`). */
+function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const cards = GRAVE.slice(0, 2).map((card) => ({ ...card, place: t('practice.place.gy') }))
+  const [shown, setShown] = useState(true)
+  const [first, setFirst] = useState(cards[0]!.key)
+  const name = cards.find((card) => card.key === first)!.name
+
+  return (
+    <Specimen
+      title="Varias obligatorias · cuál va primero"
+      layout="column"
+      note={<>Cuando el núcleo obliga a activar dos o más a la vez (cada una con un solo efecto), la banda pregunta cuál entra primero en la cadena: la primera ya elegida, tocar otra la cambia y la principal dice qué hace («Activar X primero»). Sin «No responder». Con una sola, la línea de siempre («Tenés que activar X: tocala»). También se activa tocando la que brilla en la mesa. Archivo: <Tag>auto/CardPicker.tsx</Tag></>}
+    >
+      <div className="relative isolate h-96 overflow-hidden rounded-card border border-border-subtle">
+        <MatScene className="absolute inset-0 -z-10" />
+        <Presence>
+          {shown ? (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+                <PickBand
+                  title={t('auto.forced.title', { count: cards.length, link: 1 })}
+                  cards={cards}
+                  chosen={[first]}
+                  eligible={new Set(cards.map((card) => card.key))}
+                  multi={false}
+                  done
+                  onToggle={setFirst}
+                  onPick={() => {
+                    setShown(false)
+                    onAnswer(name)
+                  }}
+                  action={t('auto.forced.activate', { card: name })}
+                  note={t('auto.forced.hint')}
+                />
+              </div>
+            </div>
+          ) : null}
+        </Presence>
+      </div>
+      <Button variant="secondary" size="sm" className="w-fit" icon="refresh" disabled={shown} onClick={() => setShown(true)}>
+        Volver a preguntar
+      </Button>
+    </Specimen>
+  )
+}
+
 function SortSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const [open, setOpen] = useState(false)
 
@@ -373,11 +420,11 @@ function BarActionsSample() {
   )
 }
 
-/** Una cadena de tres de muestra (Branded Fusion, Ash del rival, Called by the Grave): Called niega a Ash mientras se resuelve, como lo cuenta el núcleo. */
+/** Una cadena de tres de muestra (Branded Fusion, Ash del rival, PSY-Framegear Gamma): Gamma niega a Ash mientras se resuelve, como lo cuenta el núcleo («Negada · por CL3»). */
 const CHAIN_CARDS = [
   { name: 'Branded Fusion', art: art(44362883), mine: true },
   { name: 'Ash Blossom & Joyous Spring', art: art(14558127), mine: false },
-  { name: 'Called by the Grave', art: art(24224830), mine: true },
+  { name: 'PSY-Framegear Gamma', art: art(38814750), mine: true },
 ]
 /** Cómo se ve después de cada paso (lo que arma `chainFeed` en la mesa; el catálogo no importa la lógica del núcleo): el estado de cada eslabón, del que habla la píldora y si ya se resuelve. */
 const CHAIN_FRAMES: Array<{ states: ChainRowState[]; focus: number; resolving?: true }> = [
@@ -396,6 +443,8 @@ function ChainSample() {
   const [count, setCount] = useState(3)
   const [open, setOpen] = useState(false)
   const [picked, setPicked] = useState<number | null>(null)
+  const [phone, setPhone] = useState(true)
+  const [banded, setBanded] = useState(false)
   const frame = CHAIN_FRAMES[count - 1]!
 
   return (
@@ -403,7 +452,7 @@ function ChainSample() {
       title="ChainNotice · la pila de la cadena"
       layout="column"
       className="col-span-full"
-      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el último eslabón mientras se arma («Cadena · CL3 · Vos») y, al resolverse, qué le pasa a cada uno con la carta en ámbar. La flecha despliega la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo: en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
+      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el último eslabón mientras se arma («Cadena · CL3 · Vos») y, al resolverse, qué le pasa a cada uno con la carta en ámbar. La flecha despliega la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) la píldora dice todo en dos renglones: «Cadena · 3 · Resuelve CL3» y qué pasa («Ash le quita el efecto a…» si se sabe quién lo negó); con una pregunta abierta en la mesa (<Tag>data-banded</Tag>) queda un renglón, sin flecha ni lista, y sube para que la pregunta entre debajo (si no entra, se aparta hasta que se conteste). Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>
@@ -413,15 +462,22 @@ function ChainSample() {
           Empezar de nuevo
         </Button>
         <Tag>{`Paso ${count} de ${CHAIN_FRAMES.length}`}</Tag>
+        <Button variant="tertiary" size="sm" aria-pressed={phone} onClick={() => setPhone((value) => !value)}>
+          Ver en el celular
+        </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={banded} disabled={!phone} onClick={() => setBanded((value) => !value)}>
+          Simular una pregunta abierta
+        </Button>
         {picked ? <Tag>{`Tocaste el CL${picked}: en la mesa se lee en el detalle`}</Tag> : null}
       </div>
-      <div className="relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
+      <div {...(phone && banded ? { 'data-banded': '' } : {})} className="group/chain relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
         <ChainNotice
-          rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state }))}
+          rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state, ...(state === 'negated' ? { by: 3 } : {}) }))}
           focus={frame.focus}
           resolving={frame.resolving === true}
           open={open}
+          compact={phone}
           onOpenChange={setOpen}
           onPick={(index) => setPicked(index + 1)}
         />

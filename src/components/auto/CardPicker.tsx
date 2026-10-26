@@ -150,14 +150,19 @@ interface PickBandProps {
   onPick: () => void
   /** Sólo si la pregunta se puede cancelar: «Cancelar», sin caja (y Escape, que lo da la mesa). */
   onCancel?: () => void
+  /** El texto de la principal, si dice qué hace («Activar Garunix primero»); sin esto, «Listo» o «Elegir N cartas». */
+  action?: string
+  /** La nota del pie, a la izquierda («Sin “No responder”: son obligatorias»); sin esto, eligiendo varias, cómo se elige. */
+  note?: string
 }
 
 /**
  * Elegir de una lista corta (hasta `BAND_MAX` cartas) sin tapar la mesa: una banda en una fila, en la ranura de la pregunta (`duel.prompt`, como `AskPrompt`: sin velo, ancha por
  * `data-prompt-row`). Arriba de dónde salen, el título con para qué y la cuenta, las cartas (`PickGrid`: flechas, Espacio y Enter) y, abajo, «Cancelar» sin caja y la principal al final.
  * Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
+ * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa.
  */
-export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel }: PickBandProps) {
+export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note }: PickBandProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
   const titleId = useId()
@@ -181,7 +186,7 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
       <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} className={BAND_COLUMNS[Math.max(4, Math.min(BAND_MAX, cards.length))]} />
       {primary || onCancel ? (
         <div className="flex flex-wrap items-center gap-2">
-          {multi ? <p className="m-0 mr-auto text-micro text-muted">{t('auto.band.hint')}</p> : null}
+          {note || multi ? <p className="m-0 mr-auto text-micro text-muted">{note ?? t('auto.band.hint')}</p> : null}
           <div className="ml-auto flex justify-end gap-2">
             {onCancel ? (
               <Button variant="tertiary" onClick={onCancel}>
@@ -190,7 +195,7 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
             ) : null}
             {primary ? (
               <Button variant="primary" disabled={!done} onClick={onPick}>
-                {chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length })}
+                {action ?? (chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length }))}
               </Button>
             ) : null}
           </div>

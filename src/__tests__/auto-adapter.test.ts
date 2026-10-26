@@ -137,12 +137,29 @@ describe('el adaptador: del núcleo a la mesa', () => {
 
     adapter.apply(events(0, ash))
     adapter.apply(events(0, { type: 'chain_solving', chain_size: 1 }, { type: 'chain_disabled', chain_size: 1 }, { type: 'chain_solved', chain_size: 1 }, { type: 'chain_end' }))
-    expect(adapter.overlay.negated).toEqual([{ card: { side: 'theirs', id: 'c1' }, code: 14558127, description: '0', state: 'disabled' }])
+    expect(adapter.overlay.negated).toMatchObject([{ card: { side: 'theirs', id: 'c1' }, code: 14558127, description: '0', state: 'disabled' }])
+    // Llegó sin efecto mientras se resolvía él mismo: no se sabe quién fue.
+    expect(adapter.overlay.negated[0]).not.toHaveProperty('by')
     adapter.apply(events(0, ash))
     expect(adapter.overlay.negated).toEqual([])
     adapter.apply({ t: 'stats', seat: 0, cards: [] })
     adapter.apply({ t: 'end', winner: 0, reason: 1 })
     expect(adapter.overlay.end).toEqual({ winner: 0, reason: 1 })
+  })
+
+  it('quién negó (`by`): el eslabón que se estaba resolviendo cuando llegó la negación; ninguno o el mismo, no se sabe', () => {
+    const adapter = make()
+    const link = (code: number, chain_size: number): WireEvent => ({ type: 'chaining', code, controller: 1, location: L.HAND, sequence: 0, position: 10, triggering_controller: 1, triggering_location: L.HAND, triggering_sequence: 0, description: '0', chain_size })
+    const negations = (out: { chain: { kind: string; index: number; by?: number }[] }) => out.chain.flatMap((step) => (step.kind === 'negated' || step.kind === 'disabled' ? [[step.kind, step.index + 1, step.by]] : []))
+
+    // Dos eslabones: CL2 le quita el efecto a CL1 mientras se resuelve (Ash sobre Terraforming).
+    expect(negations(adapter.apply(events(0, link(1, 1), link(2, 2), { type: 'chain_solving', chain_size: 2 }, { type: 'chain_disabled', chain_size: 1 }, { type: 'chain_solved', chain_size: 2 }, { type: 'chain_solving', chain_size: 1 }, { type: 'chain_solved', chain_size: 1 }, { type: 'chain_end' })))).toEqual([['disabled', 1, 2]])
+    expect(adapter.overlay.negated).toMatchObject([{ code: 1, state: 'disabled', by: 2 }])
+    // Tres: CL3 niega la activación de CL2 (Gamma sobre Ash), y CL1 se resuelve.
+    expect(negations(adapter.apply(events(0, link(1, 1), link(2, 2), link(3, 3), { type: 'chain_solving', chain_size: 3 }, { type: 'chain_negated', chain_size: 2 }, { type: 'chain_solved', chain_size: 3 }, { type: 'chain_solving', chain_size: 2 }, { type: 'chain_solved', chain_size: 2 }, { type: 'chain_solving', chain_size: 1 }, { type: 'chain_solved', chain_size: 1 }, { type: 'chain_end' })))).toEqual([['negated', 2, 3]])
+    // Sin efecto al llegarle el turno (un efecto que quedó: Effect Veiler) y una negación sin nada resolviéndose: sin `by`.
+    expect(negations(adapter.apply(events(0, link(1, 1), link(2, 2), { type: 'chain_solving', chain_size: 2 }, { type: 'chain_solved', chain_size: 2 }, { type: 'chain_solving', chain_size: 1 }, { type: 'chain_disabled', chain_size: 1 }, { type: 'chain_solved', chain_size: 1 }, { type: 'chain_end' })))).toEqual([['disabled', 1, undefined]])
+    expect(negations(adapter.apply(events(0, link(1, 1), { type: 'chain_negated', chain_size: 1 })))).toEqual([['negated', 1, undefined]])
   })
 
   it('el barajado que sigue a buscar es la misma jugada («Buscás X y barajás»), y lo que no sabe hacer queda en unmapped', () => {

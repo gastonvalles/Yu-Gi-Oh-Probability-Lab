@@ -92,6 +92,12 @@ export const auto: Translated<typeof es> = {
   'auto.pick.chosen': 'Chosen',
   'auto.phase.notYet': 'Not yet',
 
+  // The chain link badge on a card («CL1»): the short form is shown; the card's name says it in words.
+  'auto.link.badge': 'CL{numbers}',
+  'auto.link.label': '{name}, chain link {numbers}',
+  'auto.link.labelHand': '{name}, chain link {numbers}, activated from the hand',
+  'auto.link.void': '{label}. {state}',
+
   // The top bar and «More options».
   'auto.bar.chain': 'Responses',
   'auto.bar.chainHint': 'Whether it asks you when you can respond to a chain.',
@@ -118,6 +124,10 @@ export const auto: Translated<typeof es> = {
   'auto.lane.respondNow': 'You can activate {cards} now',
   'auto.lane.pass': "Don't respond",
   'auto.lane.mustActivate': 'You must activate {cards}: tap it',
+  // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).
+  'auto.forced.title': 'You must activate these {count}. Which goes first (CL{link})?',
+  'auto.forced.activate': 'Activate {card} first',
+  'auto.forced.hint': 'No “Don’t respond”: they’re mandatory.',
   'auto.lane.autoZone': 'The zone was picked for you',
   'auto.lane.unmapped': "The mat can't show: {what}",
   'auto.lane.script': "{card}'s script failed: the duel goes on.",
@@ -133,6 +143,13 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.solved': 'Resolved',
   'auto.chain.state.negated': 'Negated',
   'auto.chain.state.disabled': 'No effect',
+  // Negated or no effect, with the link that did it (the core doesn't say: the adapter works it out).
+  'auto.chain.by': '{state} · by CL{by}',
+  // Phones: the pill in two lines, «Chain · 2 · Resolves CL2» and what happens («Ash Blossom negates Ponix's effect», with who negated it when known).
+  'auto.chain.count': 'Chain · {count}',
+  'auto.chain.resolves': 'Resolves',
+  'auto.chain.void.negated': '{by} negates the activation of {card}',
+  'auto.chain.void.disabled': '{by} negates the effect of {card}',
   // Each link is tapped to read it in the detail: what the screen reader says.
   'auto.chain.linkMine': 'Chain Link {number}: {card}, yours. {state}',
   'auto.chain.linkTheirs': 'Chain Link {number}: {card}, your opponent’s. {state}',
@@ -143,10 +160,12 @@ export const auto: Translated<typeof es> = {
   'auto.steps.link': 'Chain {chain} · CL{link}',
   'auto.steps.cost': 'Chain {chain} · CL{link} · cost',
   'auto.steps.noEffect': 'Resolves: no effect',
+  'auto.steps.noEffectBy': 'Resolves: no effect · by CL{by}',
   'auto.steps.solvedStep': 'Resolves: step {step}',
   'auto.steps.solvedSteps': 'Resolves: steps {from}–{to}',
   'auto.steps.chainEnd': 'Chain {chain} resolved',
   'auto.steps.endLink': 'CL{link} {card}: {state}',
+  'auto.steps.endLinkBy': 'CL{link} {card}: {state} by CL{by}',
   'auto.steps.theirs': '{card} ({rival})',
   'auto.review.combo': 'Reviewing “{name}”: the duel waits where you left it.',
   'auto.review.plays': 'Reviewing your plays: the duel waits where you left it.',

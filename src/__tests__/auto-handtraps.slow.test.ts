@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
+import type { ChainStep } from '../app/auto/chain-feed'
 import { localTransport } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { passivePolicy } from '../app/auto/policies'
@@ -65,6 +66,27 @@ const chainingOf = (events: readonly WireEvent[], code: number, controller: 0 | 
 const has = (events: readonly WireEvent[], test: (event: WireEvent) => boolean) => events.some(test)
 const drewRival = (events: readonly WireEvent[]) => has(events, (event) => event.type === 'draw' && event.player === 1)
 const negatedLink = (events: readonly WireEvent[], kind: 'chain_disabled' | 'chain_negated', link: number) => has(events, (event) => event.type === kind && event.chain_size === link)
+/** Las handtraps de los escenarios que niegan un eslabón (`chain_negated` o `chain_disabled`). */
+const NEGATES = new Set([ASH, VEILER, IMPERM, BELLE, GAMMA, DOMINUS])
+/**
+ * Las que niegan con un efecto que queda (los efectos del monstruo, hasta el final del turno): el núcleo dice «sin efecto» cuando le llega el turno al eslabón negado, no mientras se resuelve
+ * la handtrap, así que no se sabe quién fue (sin `by`: la pantalla dice sólo «Sin efecto»).
+ */
+const BY_UNKNOWN = new Set([VEILER, IMPERM])
+/** El código del eslabón que negó cada negación (`ChainStep.by`), en orden; null si el adaptador no lo supo, -1 si apunta al mismo eslabón o a uno que no hay. */
+const negatorsOf = (steps: readonly ChainStep[]) => {
+  const links: number[] = []
+
+  return steps.flatMap((step) => {
+    if (step.kind === 'chain') {
+      if (step.index === 0) links.length = 0
+      links[step.index] = step.link?.code ?? 0
+    }
+    if (step.kind !== 'negated' && step.kind !== 'disabled') return []
+    if (step.by === undefined) return [null]
+    return [step.by >= 1 && step.by !== step.index + 1 && step.by <= links.length ? links[step.by - 1]! : -1]
+  })
+}
 const moved = (events: readonly WireEvent[], card: number, from: number, to: number) => has(events, (event) => event.type === 'move' && event.card === card && (event.from.location & from) !== 0 && (event.to.location & to) !== 0)
 
 /** Relleno de tu deck: Mágicas que nunca se juegan (así Foolish Burial y Monster Reborn sólo tienen el monstruo que se quiere). */
@@ -290,6 +312,12 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     session.destroy()
 
     expect({ status: snapshot.status, fault: snapshot.fault, faults, outcome }).toEqual({ status: 'ready', fault: null, faults: [], outcome: null })
+    // Quién negó (`ChainStep.by`, deducido por el adaptador: el núcleo no lo dice): toda negación de estos escenarios es de la handtrap y apunta a su eslabón, o no se sabe (`BY_UNKNOWN`).
+    const negators = negatorsOf(snapshot.chainSteps)
+
+    report.at(-1)!.negators = negators
+    expect(negators.length > 0).toBe(NEGATES.has(scenario.card))
+    expect(negators).toEqual(negators.map(() => (BY_UNKNOWN.has(scenario.card) ? null : scenario.card)))
     expect(handAtStart).toEqual([scenario.card])
     expect(snapshot.rivalHand).not.toContain(scenario.card)
   })
