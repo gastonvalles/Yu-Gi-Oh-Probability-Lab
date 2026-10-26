@@ -124,21 +124,10 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
   // El rival de handtraps (con el simulador encendido y alguna carta): su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
   const rivalOn = useMemo(() => autoRival(handtraps) !== null, [handtraps])
-  const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}) })
-  const { nameOf, artOf } = asks
-  // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo).
-  const chips = usePracticeChips(lab, asks.matSession)
-  // La hoja para cambiar las handtraps del rival.
-  const [choosing, setChoosing] = useState(false)
   // «Seguir en modo manual»: el diálogo (`opened` lo vuelve a «Nada» cada vez que se abre) y la partida que pasa, calculada sólo con él abierto. Sin una mesa todavía (cartas sin
   // reglas, el núcleo que no arrancó), una mano nueva: no hay nada que elegir.
   const [switching, setSwitching] = useState(false)
   const [opened, setOpened] = useState(0)
-  const rivalDeal = useMemo(() => dealRival(handtraps, snap.seed), [handtraps, snap.seed])
-  const handover = useMemo(
-    () => (switching ? manualHandover(snap, (id) => cardsById.get(id)?.name, rivalDeal ? { hand: rivalDeal.rival, names: rivalDeal.names } : undefined) : null),
-    [switching, snap, cardsById, rivalDeal],
-  )
   const openManual = onManual
     ? () => {
         if (snap.mineActions.length === 0) return onManual(null)
@@ -146,6 +135,17 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
         setSwitching(true)
       }
     : undefined
+  const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
+  const { nameOf, artOf } = asks
+  // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo).
+  const chips = usePracticeChips(lab, asks.matSession)
+  // La hoja para cambiar las handtraps del rival.
+  const [choosing, setChoosing] = useState(false)
+  const rivalDeal = useMemo(() => dealRival(handtraps, snap.seed), [handtraps, snap.seed])
+  const handover = useMemo(
+    () => (switching ? manualHandover(snap, (id) => cardsById.get(id)?.name, rivalDeal ? { hand: rivalDeal.rival, names: rivalDeal.names } : undefined) : null),
+    [switching, snap, cardsById, rivalDeal],
+  )
   const linkName = useCallback((link: ChainLink) => nameOf(link.card, link.code), [nameOf])
 
   // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,

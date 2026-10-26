@@ -189,7 +189,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('una carta sin jugada legal abre su hoja sin jugadas (lo dice y «Ver carta» la muestra)', () => {
+  it('una carta sin jugada legal abre su hoja sin jugadas (dice que el automático no la ofrece y «Ver carta» la muestra)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
@@ -197,7 +197,7 @@ describe('auto-screen · las jugadas', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
 
     expect(within(sheet).queryByRole('menuitem')).toBeNull()
-    expect(sheet).toHaveTextContent('No hay nada para hacer desde acá.')
+    expect(sheet).toHaveTextContent('Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora.')
     fireEvent.click(within(sheet).getByRole('button', { name: 'Ver carta' }))
     expect(screen.getByRole('dialog', { name: 'Detalle de Ash Blossom' })).toBeInTheDocument()
     expect(status()).toBeInTheDocument()

@@ -6,6 +6,7 @@ import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf } from '../../app/card-glow'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
+import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
@@ -34,6 +35,7 @@ import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { CardPicker, type PickCard } from './CardPicker'
 import { ChainNotice } from './ChainNotice'
+import { LimitsChip } from './LimitsChip'
 import { SortSheet } from './SortSheet'
 
 /**
@@ -92,6 +94,8 @@ export interface AutoAsksInput {
   rivalName?: string
   /** «Jugar solo» con handtraps (salvo «A ciegas»): la mano del rival boca arriba, por código; cada carta se toca o se apunta para verla. */
   rivalHand?: readonly number[]
+  /** «Jugar solo»: seguir en la mesa manual (`ManualDialog`), el atajo del menú de una carta sin jugadas. */
+  onManual?: () => void
 }
 
 export interface AutoAsks {
@@ -121,7 +125,7 @@ export interface AutoAsks {
   rivalViewer: ReactNode
 }
 
-export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand }: AutoAsksInput): AutoAsks {
+export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual }: AutoAsksInput): AutoAsks {
   const prefs = useAutoPrefs()
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   const dock = useDockPeek()
@@ -310,6 +314,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
     [snap.texts, cards],
   )
+  // Las restricciones que rigen sobre vos: el texto de su carta, tal cual (`effectLabel`); sin texto, de qué carta es.
+  const limitTexts = useMemo(
+    () => snap.overlay.limits[seat].map((description) => effectLabel(0, description) ?? t('auto.why.limitOf', { card: nameOf(null, splitDesc(description).code) })),
+    [snap.overlay.limits, seat, effectLabel, nameOf],
+  )
   const pickCardOf = (card: AskCard, key: string): PickCard => {
     const where = card.place === 'hand' ? PILE_TITLES.hand : card.place === 'pile' && card.pile ? PILE_TITLES[card.pile] : undefined
     const place = where && card.ref?.side === 'theirs' ? t('duel.zone.theirs', { zone: where }) : where
@@ -320,6 +329,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── La pregunta pendiente: se abre con la mesa del núcleo (`session.adapter`) en el mismo render en que llega (un rearme con pregunta es un solo commit); lo que se contesta solo, se
   // contesta en un efecto; lo demás espera a que la mesa termine de contar. ──
   const pending = snap.ask
+  const turnMine = snap.overlay.turnPlayer === seat
   const askId = pending?.askId ?? null
   /**
    * La carta de la mano que soltaste en una casilla y elegiste cómo sale (`itemsFor` con `drop`, en la pregunta `from`): la casilla contesta la primera pregunta de casillas que sigue
@@ -508,6 +518,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
       return item?.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : null
     },
+    // Repasando o con el duelo terminado, el menú vacío dice lo de siempre.
+    whyNot: reviewing || frozen || snap.status === 'ended' ? null : (id) => [...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: snap.overlay.normal[seat] }), ...limitTexts],
+    manual: onManual ?? null,
   }
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
@@ -516,7 +529,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   // ── El rival: su espejo, dibujado por lo que el núcleo dejó ver (`codeOf`). ──
   const theirs = snap.theirs
-  const turnMine = snap.overlay.turnPlayer === seat
   /** La carta del rival que se tocó, grande (como «Ver carta»), donde no está el detalle fijo de la izquierda. */
   const [rivalCard, setRivalCard] = useState<{ drawId: string; rect: DOMRect } | null>(null)
   const choosing = Boolean(shown?.cardPick || shown?.zonePick)
@@ -713,6 +725,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
     onHighlight: setHighlight,
     auto,
+    limits: reviewing ? null : <LimitsChip texts={limitTexts} />,
   }
 
   const pieces = (

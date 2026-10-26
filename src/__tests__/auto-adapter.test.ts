@@ -162,4 +162,23 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(describeMatAction(state, { type: 'draw', count: 1, ids: ['b'] }, (id) => id.toUpperCase())).toContain('B')
     expect(mapActionIds({ type: 'draw', count: 1, ids: ['b'] }, (id) => `x${id}`)).toEqual({ type: 'draw', count: 1, ids: ['xb'] })
   })
+
+  it('las restricciones del núcleo (player_hint 6 agrega, 7 quita) y la Invocación Normal o la Colocación del turno', () => {
+    const adapter = make()
+    const lock = String((27755794n << 20n) | 2n)
+    const hint = (player: number, kind: number, description = lock): WireEvent => ({ type: 'player_hint', player, player_hint: kind, description })
+
+    adapter.apply(events(0, { type: 'new_turn', player: 0 }, hint(0, 6), hint(1, 6), hint(0, 6)))
+    expect(adapter.overlay.limits).toEqual([[lock, lock], [lock]])
+    // Otras pistas del jugador no cuentan; quitar una que no está, tampoco.
+    adapter.apply(events(0, hint(0, 7), hint(0, 1), hint(1, 7, '9')))
+    expect(adapter.overlay.limits).toEqual([[lock], [lock]])
+    // Una Mágica colocada no es la Colocación de un monstruo; la primera del turno es la que queda.
+    adapter.apply(events(0, { type: 'set', code: 0, controller: 0, location: L.SZONE, sequence: 1, position: P.FACEDOWN_DEFENSE }))
+    expect(adapter.overlay.normal).toEqual([null, null])
+    adapter.apply(events(0, { type: 'set', code: 111, controller: 0, location: L.MZONE, sequence: 0, position: P.FACEDOWN_DEFENSE }, played('summoning', 222, at(0, L.MZONE, 1)), played('summoning', 777, at(1, L.MZONE, 0))))
+    expect(adapter.overlay.normal).toEqual(['set', 'summon'])
+    adapter.apply(events(0, { type: 'new_turn', player: 1 }))
+    expect(adapter.overlay.normal).toEqual([null, null])
+  })
 })

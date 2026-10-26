@@ -164,4 +164,16 @@ export const auto = {
   'auto.online.manualControl': 'No se pudo pasar a manual: hay una carta bajo el control del otro jugador.',
   'auto.online.manualDone': 'Siguen en modo manual: cada uno mueve sus cartas.',
   'auto.online.manualDoneDropped': 'Siguen en modo manual. Lo que estaba a medio jugar se descartó: la mesa quedó como estaba.',
+
+  // Una carta tuya sin jugadas: por qué (sólo lo que se sabe), el atajo a la mesa manual y las restricciones del núcleo (el texto de la carta, tal cual).
+  'auto.why.title': 'Ahora no tiene jugadas',
+  'auto.why.unknown': 'El automático no ofrece jugadas para esta carta ahora.',
+  'auto.why.rivalTurn': 'Es el turno del rival.',
+  'auto.why.summoned': 'Ya hiciste una Invocación Normal este turno.',
+  'auto.why.set': 'Ya Colocaste un monstruo este turno.',
+  'auto.why.monsterZones': 'Tus cinco zonas de monstruo están ocupadas.',
+  'auto.why.spellZones': 'Tus cinco zonas de magia y trampa están ocupadas.',
+  'auto.why.limitOf': 'Rige una restricción de {card}.',
+  'auto.why.mismatch': '¿No coincide con lo que esperabas?',
+  'auto.limits.label': { one: '{count} restricción activa', other: '{count} restricciones activas' },
 } as const

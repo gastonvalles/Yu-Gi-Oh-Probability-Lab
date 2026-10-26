@@ -1,4 +1,4 @@
-import { Fragment, createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { Fragment, createContext, type ReactNode, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
@@ -91,7 +91,34 @@ interface CardMenuProps {
   passThrough?: boolean
   /** Arranca con el submenú de la opción que se llama así ya abierto (así el catálogo lo muestra). */
   startExpanded?: string
+  /** Lo que dice sin jugadas (por defecto, «No hay nada para hacer desde acá»; en el duelo automático, `NoPlays`). */
+  empty?: ReactNode
   onClose: () => void
+}
+
+/**
+ * Una carta sin jugadas en el duelo automático: «Ahora no tiene jugadas», por qué si se sabe (cada razón, una línea; las restricciones, con el texto de su carta) o que el automático
+ * no ofrece ninguna, y debajo el atajo discreto a seguir en la mesa manual. Va en el menú pegado a la carta y en la hoja del celular, en el lugar de la lista vacía.
+ */
+export function NoPlays({ reasons, onManual }: { reasons: readonly string[]; onManual?: () => void }) {
+  return (
+    <div className="grid gap-1 px-2 py-1.5 text-left" data-testid="no-plays">
+      <p className="m-0 text-body font-semibold text-foreground">{t('auto.why.title')}</p>
+      {(reasons.length > 0 ? reasons : [t('auto.why.unknown')]).map((reason, index) => (
+        <p key={index} className="m-0 text-micro text-muted">
+          {reason}
+        </p>
+      ))}
+      {onManual ? (
+        <p className="m-0 mt-1 flex flex-wrap items-center gap-x-1 text-micro text-soft">
+          {t('auto.why.mismatch')}
+          <Button variant="tertiary" size="sm" onClick={onManual}>
+            {t('auto.bar.manual')}
+          </Button>
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 /** Si el foco llegó por el teclado (`:focus-visible`): un foco que se llevó el menú al abrirse con el mouse no cuenta. Donde el navegador no sabe el selector, no. */
@@ -141,7 +168,7 @@ export const GHOST_CLICK_MS = 350
  * Las opciones van al medio; una con `children` (›) abre al costado un submenú con sus respuestas, sin mover el menú: al pasar el mouse (con una espera, y sin cerrarse al ir en diagonal
  * hacia él), con un clic, Enter o →; se cierra al irse el mouse, con ← o con Escape (el primero cierra sólo el submenú y vuelve a su fila). ↑ ↓ Inicio y Fin recorren las opciones.
  */
-export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false, passThrough = false, startExpanded, onClose }: CardMenuProps) {
+export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false, passThrough = false, startExpanded, empty, onClose }: CardMenuProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const ref = useRef<HTMLDivElement | null>(null)
   const subRef = useRef<HTMLDivElement | null>(null)
@@ -380,7 +407,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
             {renderRow(item, index, index)}
           </Fragment>
         ))}
-        {items.length === 0 ? <p className="m-0 px-2 py-1.5 text-micro text-muted">{t('practice.dialog.empty')}</p> : null}
+        {items.length === 0 ? (empty ?? <p className="m-0 px-2 py-1.5 text-micro text-muted">{t('practice.dialog.empty')}</p>) : null}
         {onInspect ? (
           <>
             <div aria-hidden="true" className="my-1 border-t border-border-subtle" />

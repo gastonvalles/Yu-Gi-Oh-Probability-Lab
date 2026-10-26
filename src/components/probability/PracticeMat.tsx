@@ -88,7 +88,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
-import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -225,6 +225,8 @@ export interface DuelMatLink {
   rivalViewing?: boolean
   /** El reloj de turnos: va en el centro del campo, entre las dos Zonas Extra (la casilla `p2`, que en un duelo no lleva nada). */
   clock?: ReactNode
+  /** Duelo automático: las restricciones que rigen sobre vos (un chip que muestra sus textos), en la casilla `p2`, al lado del botón de las fases. */
+  limits?: ReactNode
   /** El duelo automático: las jugadas las decide el núcleo de reglas y la mesa sólo contesta sus preguntas (los menús, las casillas y las cartas que ofrece); nada se arrastra, se mantiene ni se despacha. */
   auto?: AutoLink
 }
@@ -1327,13 +1329,13 @@ export function PracticeMat({
         onPeek({ name, card: apiCard })
       }
 
-      // En automático una carta que la pregunta ofrece se elige con el toque; si no, abre su menú con las jugadas legales. Sin ninguna, el menú lo dice y ofrece «Ver carta» (como en la
-      // mesa manual, tocar siempre muestra algo); con el detalle fijo a la izquierda ya se ve ahí. Eligiendo cartas o una casilla, tocar otra no hace nada.
+      // En automático una carta que la pregunta ofrece se elige con el toque; si no, abre su menú con las jugadas legales. Sin ninguna, el menú dice por qué (`duel.auto.whyNot`), ofrece
+      // seguir en manual y, sin el detalle fijo a la izquierda, «Ver carta» (como en la mesa manual, tocar siempre muestra algo). Eligiendo cartas o una casilla, tocar otra no hace nada.
       if (duel?.auto) {
         const { cardPick, zonePick } = duel.auto
 
         if (cardPick?.eligible.has(id)) cardPick.onToggle(id)
-        else if (duel.auto.itemsFor(id) || !(detail || cardPick || zonePick)) setMenu({ kind: 'card', id, rect })
+        else if (duel.auto.itemsFor(id) || !(cardPick || zonePick)) setMenu({ kind: 'card', id, rect })
         return
       }
 
@@ -1365,7 +1367,7 @@ export function PracticeMat({
     },
     // pickTribute y pickMaterial leen `picking` y `state` del render actual.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picking, state, counterMode, cardOf, onPeek, duel?.auto, detail],
+    [picking, state, counterMode, cardOf, onPeek, duel?.auto],
   )
 
   /** Soltar una carta de una pila en una zona libre: el menú ofrece lo que la saca ahí (si es una sola jugada, sale así) y la carta se queda en la zona mientras se elige. */
@@ -2210,6 +2212,11 @@ export function PracticeMat({
       />
     ) : null
 
+  // Una carta tuya sin jugadas en automático: por qué (lo que se sabe) y el atajo a la mesa manual, en lugar de «No hay nada para hacer desde acá».
+  const whyNot = duel?.auto?.whyNot && menu?.kind === 'card' && !menu.drop ? duel.auto.whyNot(menu.id) : null
+  const manual = duel?.auto?.manual
+  const noPlays = whyNot ? <NoPlays reasons={whyNot} {...(manual ? { onManual: () => { setMenu(null); manual() } } : {})} /> : undefined
+
   // La fase de ahora y de quién es el turno: el botón de las fases (`p3`, en el medio del campo) es el mismo en un duelo y en la práctica; al tocarlo muestra las seis y elegir una pasa a ella (la Draw Phase
   // después de la End Phase pasa el turno: ahí sube la cuenta de turnos). En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien
   // tiene el turno; en la práctica el turno siempre es tuyo.
@@ -2363,7 +2370,7 @@ export function PracticeMat({
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {/* La fila del medio, de izquierda a derecha: el reloj de turnos (`p1`, entre el Banish del rival y la Zona Extra de monstruos), el + al medio del campo (`p2`, entre las dos Zonas Extra; también en la práctica) y el botón de la fase de ahora (`p3`), que al tocarlo muestra todas (Gastón, 2026-10-19). */}
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
-          <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel?.auto ? null : tokenButton}</div>
+          <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel?.auto ? duel.limits : tokenButton}</div>
           <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
               <button
                 type="button"
@@ -2606,6 +2613,7 @@ export function PracticeMat({
           traits={!choosingEffect}
           stacked={choosingEffect}
           asking={menu.kind !== 'token' && menu.kind !== 'phases' ? menu.ask?.label : undefined}
+          empty={noPlays}
           onBack={menuBack}
           onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
           passThrough={attackAsk !== null}
@@ -2632,6 +2640,7 @@ export function PracticeMat({
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
+        empty={noPlays}
         wide={choosingEffect}
         // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
         onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
