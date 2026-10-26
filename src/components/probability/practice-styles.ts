@@ -14,18 +14,20 @@ export const FX_RGB = {
   indigo: '129 140 248',
   teal: '45 212 191',
   amber: '251 191 36',
+  /** Lo que podés hacer ahora con una carta: el celeste casi blanco de `--playable-rgb` (`GlowKind` `can`). */
+  playable: '168 236 255',
 } as const
 
 export type FxTone = keyof typeof FX_RGB
 
 /**
- * El marco de adentro de una carta que brilla: una salida en verde, un problema en rojo y, en un duelo, la que se activa o se resuelve en dorado, con la luz que gira. La que podés usar (`can`) no lleva
- * marco: sólo el resplandor fino de afuera (`DUEL_GLOW`).
+ * El marco de adentro de una carta que brilla: una salida en verde, un problema en rojo y, en un duelo, lo que podés hacer en celeste casi blanco, quieto, y lo que se activa o se resuelve en dorado,
+ * con la luz que gira. Todos con el mismo peso que el aro de afuera (`DUEL_GLOW`).
  */
-export const GLOW_TONE = { opening: 'green', problem: 'red', act: 'gold' } as const satisfies Record<Exclude<GlowKind, 'can'>, FxTone>
+export const GLOW_TONE = { opening: 'green', problem: 'red', can: 'playable', act: 'gold' } as const satisfies Record<GlowKind, FxTone>
 
 /** El marco de adentro de una carta que brilla (`GLOW_TONE`), o nada. */
-export const glowFrame = (kind: GlowKind | null): { tone: FxTone; orbit: boolean } | null => (kind === null || kind === 'can' ? null : { tone: GLOW_TONE[kind], orbit: kind === 'act' })
+export const glowFrame = (kind: GlowKind | null): { tone: FxTone; orbit: boolean } | null => (kind === null ? null : { tone: GLOW_TONE[kind], orbit: kind === 'act' })
 
 /** Color de una salida (verde) o de un problema (rojo): lo heredan los botones y la explicación. */
 export const RULE_COLOR = {

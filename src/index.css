@@ -1712,7 +1712,7 @@
     /* Ojo / a medio hacer: ámbar de la paleta (el violeta es de lo tuyo: acción principal y selección). */
     --warning: #f7cb15;
     --warning-rgb: 247 203 21;
-    /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, tenue; el ámbar queda para lo que se activa o se resuelve. */
+    /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, con el peso de los otros brillos; el ámbar queda para lo que se activa o se resuelve. */
     --playable-rgb: 168 236 255;
     --danger: #da0000;
     --danger-rgb: 218 0 0;
