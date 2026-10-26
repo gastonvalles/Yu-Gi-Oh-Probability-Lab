@@ -34,8 +34,21 @@ const NO_UI = ['select_counter', 'select_disfield', 'sort_chain', 'announce_card
 const DROPS: ZoneTarget[] = [...(['mz', 'st'] as const).flatMap((zone) => [0, 1, 2, 3, 4].map((index) => ({ side: 'mine' as const, zone, index }))), { side: 'mine', zone: 'field', index: 0 }]
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
 
-/** Las respuestas legales de las preguntas de menú (las que se pueden enumerar), para ver qué no ofrece la pantalla. */
+type Activation = { code: number; controller: number; location: number; sequence: number; description: string }
+/** El mismo efecto de la misma carta que ya vino antes en la lista (un disparo por cada evento): la pantalla lo muestra una vez, con la primera. */
+const repeated = (list: readonly Activation[], index: number) => list.findIndex((other) => (['code', 'controller', 'location', 'sequence', 'description'] as const).every((key) => other[key] === list[index]![key])) !== index
+
+/** Las respuestas legales de las preguntas de menú (las que se pueden enumerar), para ver qué no ofrece la pantalla (sin las repetidas). */
 function legalAnswers(ask: CoreAsk): CoreAnswer[] | null {
+  return allLegal(ask)?.filter((answer) => {
+    if (answer.type === 'select_chain' && answer.index !== null && ask.type === 'select_chain') return !repeated(ask.selects, answer.index)
+    if (answer.type === 'select_battlecmd' && answer.action === 0 && answer.index !== null && ask.type === 'select_battlecmd') return !repeated(ask.chains, answer.index)
+    if (answer.type === 'select_idlecmd' && answer.action === 5 && answer.index !== null && ask.type === 'select_idlecmd') return !repeated(ask.activates, answer.index)
+    return true
+  }) ?? null
+}
+
+function allLegal(ask: CoreAsk): CoreAnswer[] | null {
   switch (ask.type) {
     case 'select_idlecmd':
       return [
