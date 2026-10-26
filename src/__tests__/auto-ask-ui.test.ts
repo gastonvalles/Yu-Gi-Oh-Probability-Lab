@@ -250,6 +250,10 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     const two = askView(open(chain([stringId(200, 2), stringId(200, 1), stringId(200, 2)]), ctx(MESA))).items.get('card-200-1')!
 
     expect(two[0]!.children!.map((child) => child.answer)).toEqual([0, 1].map((index) => ({ type: 'select_chain', index })))
+    // Dos efectos sin texto propio (descripción 0) no se pueden distinguir: ninguno se pierde.
+    const bare = askView(open(chain(['0', '0']), ctx(MESA))).items.get('card-200-1')!
+
+    expect(bare[0]!.children!.map((child) => child.answer)).toEqual([0, 1].map((index) => ({ type: 'select_chain', index })))
   })
 
   it('las fases: Battle Phase y End Phase en Main 1; Main Phase 2 y End Phase en batalla; la de ahora marcada y las demás apagadas; terminar el turno es la End Phase', () => {

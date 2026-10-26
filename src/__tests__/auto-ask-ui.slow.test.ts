@@ -36,7 +36,7 @@ const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets',
 
 type Activation = { code: number; controller: number; location: number; sequence: number; description: string }
 /** El mismo efecto de la misma carta que ya vino antes en la lista (un disparo por cada evento): la pantalla lo muestra una vez, con la primera. */
-const repeated = (list: readonly Activation[], index: number) => list.findIndex((other) => (['code', 'controller', 'location', 'sequence', 'description'] as const).every((key) => other[key] === list[index]![key])) !== index
+const repeated = (list: readonly Activation[], index: number) => list[index]!.description !== '0' && list.findIndex((other) => (['code', 'controller', 'location', 'sequence', 'description'] as const).every((key) => other[key] === list[index]![key])) !== index
 
 /** Las respuestas legales de las preguntas de menú (las que se pueden enumerar), para ver qué no ofrece la pantalla (sin las repetidas). */
 function legalAnswers(ask: CoreAsk): CoreAnswer[] | null {
