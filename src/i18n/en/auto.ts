@@ -59,9 +59,20 @@ export const auto: Translated<typeof es> = {
   'auto.sort.hint': 'Tap them in the order they go: the first one ends up on top.',
   'auto.sort.done': 'Use this order',
   'auto.sort.asIs': 'Keep the current order',
+  // Ordering the links that enter at once (their effects triggered together).
+  'auto.sort.chain': 'Order the chain',
+  'auto.sort.chainHint': 'Tap them in the order they enter the chain.',
+
+  // Removing counters (a sheet): how many from each card.
+  'auto.counter.title': { one: 'Remove {count} counter', other: 'Remove {count} counters' },
+  'auto.counter.hint': 'Choose from which cards: from each one, up to the ones it has.',
+  'auto.counter.has': 'Has {count}',
+  'auto.counter.remove': 'Counters to remove from {name}',
+  'auto.counter.done': 'Remove counters',
 
   // What is chosen on the mat (the status line below): zones and cards.
   'auto.pick.zone': { one: 'Choose {count} zone', other: 'Choose {count} zones' },
+  'auto.pick.disfield': { one: "Choose {count} zone that can't be used", other: "Choose {count} zones that can't be used" },
   'auto.pick.cards': { one: 'Choose {count} card', other: 'Choose {count} cards' },
   'auto.pick.range': 'Choose {min} to {max} cards',
   'auto.pick.tribute': 'Tributes: {chosen} of {total}',

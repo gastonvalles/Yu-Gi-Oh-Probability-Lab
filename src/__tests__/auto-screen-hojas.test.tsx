@@ -88,6 +88,39 @@ describe('auto-screen · las hojas', () => {
     expect(fake.answers[1]).toEqual({ type: 'sort_card', order: null })
   })
 
+  it('sort_chain: la misma hoja, con su título; «Ordenar así» contesta el orden de los eslabones', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask({ type: 'sort_chain', player: 0, cards: [loc(200, L.MZONE, 0), loc(400, L.GRAVE, 0)] }))
+    const sheet = screen.getByRole('dialog', { name: 'Ordená la cadena' })
+    const options = within(sheet).getAllByRole('option')
+
+    expect(sheet).toHaveTextContent('Tocalas en el orden en que entran en la cadena.')
+    fireEvent.click(options[1]!)
+    fireEvent.click(options[0]!)
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Ordenar así' }))
+    expect(fake.answers).toEqual([{ type: 'sort_chain', order: [1, 0] }])
+  })
+
+  it('select_counter: una fila por carta con cuántos tiene; «Sacar contadores» se enciende con el total justo y contesta cuántos de cada una', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask({ type: 'select_counter', player: 0, counter_type: 1, count: 2, cards: [{ ...loc(200, L.MZONE, 0), count: 2 }, { ...loc(700, L.MZONE, 0, 1), count: 3 }] }))
+    const sheet = screen.getByRole('dialog', { name: 'Sacá 2 contadores' })
+    const done = within(sheet).getByRole('button', { name: 'Sacar contadores' })
+    const more = (name: string) => within(within(sheet).getByRole('group', { name: `Contadores a sacar de ${name}` })).getByRole('button', { name: 'Uno más' })
+
+    expect(sheet).toHaveTextContent('Tiene 2')
+    expect(done).toBeDisabled()
+    fireEvent.click(more('Maxx C'))
+    expect(done).toBeDisabled()
+    fireEvent.click(within(sheet).getAllByRole('button', { name: 'Uno más' })[1]!)
+    // Con el total justo, ya no se suma más en ninguna.
+    expect(more('Maxx C')).toBeDisabled()
+    fireEvent.click(done)
+    expect(fake.answers).toEqual([{ type: 'select_counter', counters: [1, 1] }])
+  })
+
   it('yesno: la pregunta del medio sin carta, con su texto si lo tiene (si no, «¿Lo hacés?»); «Hacerlo» contesta que sí', () => {
     const fake = renderAuto()
 

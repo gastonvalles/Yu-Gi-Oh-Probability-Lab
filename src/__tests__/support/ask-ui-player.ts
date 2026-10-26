@@ -2,8 +2,8 @@ import { askView, step, type AskGesture, type AskItem, type AskState, type AskVi
 import { parseAnswer, type AskOf, type CoreAnswer, type CoreAsk } from '../../app/auto/protocol'
 
 /**
- * El jugador de las pruebas de `ask-ui.ts`: toca lo que la pantalla ofrece (`gesturesOf`: los ítems, las casillas mías, las cartas
- * elegibles, las opciones, Listo y Cancelar), al azar, hasta que la pregunta contesta. Y, escritas aparte de `ask-ui`, las reglas con que
+ * El jugador de las pruebas de `ask-ui.ts`: toca lo que la pantalla ofrece (`gesturesOf`: los ítems, las casillas de los dos lados, las cartas
+ * elegibles, los contadores, las opciones, Listo y Cancelar), al azar, hasta que la pregunta contesta. Y, escritas aparte de `ask-ui`, las reglas con que
  * el núcleo acepta una respuesta (`legal`, de `playerop.cpp`): la prueba rápida las usa en vez del núcleo.
  */
 
@@ -22,7 +22,7 @@ export function gesturesOf(view: AskView): AskGesture[] {
   items(view.phaseItems)
   if (view.endTurn) out.push({ kind: 'item', answer: view.endTurn })
   if (view.prompt) out.push({ kind: 'item', answer: view.prompt.yes }, { kind: 'item', answer: view.prompt.no })
-  for (const target of view.zonePick?.targets ?? []) if (target.side === 'mine') out.push({ kind: 'zone', ...target })
+  for (const target of view.zonePick?.targets ?? []) out.push({ kind: 'zone', ...target })
   if (view.cardPick) {
     for (const index of view.cardPick.eligible) {
       const ref = view.cardPick.cards[index]!.ref
@@ -35,6 +35,14 @@ export function gesturesOf(view: AskView): AskGesture[] {
   if (view.sort) {
     view.sort.cards.forEach((_, index) => out.push({ kind: 'pick', index }))
     if (view.sort.done) out.push({ kind: 'done' })
+  }
+  if (view.counters) {
+    const { cards, now, done } = view.counters
+
+    if (done) out.push({ kind: 'done' })
+    else cards.forEach((card, index) => {
+      if (now[index]! < (card.value ?? 0)) out.push({ kind: 'pick', index })
+    })
   }
   if (view.cancelable) out.push({ kind: 'cancel' })
 

@@ -13,7 +13,7 @@ import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, chainBadgeAt, chainLinkLabel, fxVars } from '../probability/MatFx'
-import { FieldArt, fieldArtSrc } from '../probability/MatArena'
+import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
 import { PileStack } from '../probability/PileStack'
@@ -47,6 +47,8 @@ export interface DuelSideView {
   onMark?: (target: MarkTarget, rect: DOMRect, place: string) => void
   /** Las cartas de este lado que se pueden elegir ahora (el duelo automático: a qué atacar, el objetivo de un efecto): laten como los monstruos que se pueden atacar en la mesa manual (`data-attack-target`). */
   pickable?: ReadonlySet<string>
+  /** Las casillas de este lado que se pueden elegir ahora (el duelo automático: la casilla del rival donde va un Kaiju, las que se inutilizan): llevan las marcas de elegir de la mesa y se tocan. */
+  zones?: { targets: readonly { zone: MatSpot; index: number }[]; onPick: (zone: MatSpot, index: number) => void }
   /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar, y la pila que tenga una adentro, también. */
   act?: ReadonlySet<string>
   /** Las cartas de este lado que están en la cadena a la vista, con sus eslabones: llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
@@ -330,10 +332,31 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
   const label = zoneLabel(owner, spot, index)
   // Las puntas de la fila de Mágicas y Trampas son zonas de péndulo. Espejado, el índice 0 del rival queda del lado derecho, como en la mesa real.
   const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
+  const zones = side.zones?.targets.some((target) => target.zone === spot && target.index === index) ? side.zones : null
+  const pick = zones ? () => zones.onPick(spot, index) : undefined
 
   return (
-    <div role="group" aria-label={label} data-pointed={placed !== null && side.point?.card === placed.id ? 'true' : undefined} className={spot === 'field' ? CELL : spot === 'st' ? CELL_SPELL : CELL_MONSTER} style={{ gridArea: area }}>
+    <div
+      role={pick ? 'button' : 'group'}
+      tabIndex={pick ? 0 : undefined}
+      aria-label={pick ? t('practice.zone.pick', { zone: label }) : label}
+      data-pick={pick ? 'true' : undefined}
+      data-pointed={placed !== null && side.point?.card === placed.id ? 'true' : undefined}
+      className={spot === 'field' ? CELL : spot === 'st' ? CELL_SPELL : CELL_MONSTER}
+      style={{ gridArea: area }}
+      onClick={pick}
+      onKeyDown={
+        pick
+          ? (event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              pick()
+            }
+          : undefined
+      }
+    >
       {spot === 'field' ? null : <ZoneLines kind={spot === 'st' ? 'spell' : 'monster'} />}
+      {pick ? <PickMarks diamond={!placed} /> : null}
       {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
       {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
       {placed ? <CardOnZone placed={placed} spot={spot} side={side} owner={owner} label={label} /> : null}

@@ -13,7 +13,7 @@ import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
-import { allMatIds, cardKindOf, createMatState, locateCard, replayMat, type MatAction, type MatPhase, type MatState, type MatTarget } from '../../app/practice-mat'
+import { allMatIds, cardKindOf, createMatState, locateCard, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
@@ -36,6 +36,7 @@ import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { BAND_MAX, CardPicker, PickBand, type PickCard } from './CardPicker'
 import { ChainNotice } from './ChainNotice'
+import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
 import { SortSheet } from './SortSheet'
 import { panelChainsOf } from './step-chains'
@@ -43,7 +44,7 @@ import { panelChainsOf } from './step-chains'
 /**
  * Lo que comparten las dos mesas del duelo automático (`AutoSoloScreen` y `AutoDuelScreen`, la del duelo por enlace): la mesa como la cuenta el núcleo (el ritmo: las jugadas de una
  * tanda se muestran de a una, `STEP_MS`, y tocar la mesa salta al final; al rearmarse, un solo commit), las preguntas contestadas en la mesa (`openAsk` / `askView` / `step` de
- * `ask-ui.ts`: los menús, las casillas y el brillo van por `duel.auto`; lo de afuera, `AskPrompt`, `AskOptions`, `CardPicker` y `SortSheet`, en `pieces`), el espejo del rival, la
+ * `ask-ui.ts`: los menús, las casillas y el brillo van por `duel.auto`; lo de afuera, `AskPrompt`, `AskOptions`, `CardPicker`, `SortSheet` y `CounterSheet`, en `pieces`), el espejo del rival, la
  * línea del registro y el detalle con el ATK/DEF de ahora. Cada pantalla le suma su barra, sus portadas y lo suyo (`mat` es la parte de `DuelMatLink` que sale de acá).
  * Online: las cartas del rival que el núcleo dejó ver llegan en `cards` (nombre y rótulos); la pregunta del otro es la línea `waitingText`; el invitado no puede cortar al núcleo.
  */
@@ -471,6 +472,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         }
       : null
   const viewerIds = pick && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
+  const zoneTargets = shown?.zonePick?.targets ?? []
+  const ownZones = zoneTargets.flatMap(({ side, zone, index }) => (side === 'mine' ? [{ zone, index }] : []))
+  const rivalEmz = zoneTargets.filter((target) => target.side === 'theirs' && target.zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === 1 - target.index))
   const auto: AutoLink = {
     itemsFor: (id, drop) => {
       const items = shown?.items.get(id)
@@ -491,11 +495,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
     phaseItems: (stopped ? stopPhaseItems(state.phase) : (shown?.phaseItems ?? [])).map(menuItem),
     endTurn: shown?.endTurn ? () => gesture({ kind: 'item', answer: shown.endTurn! }) : null,
+    // Las casillas tuyas, en tu mesa (las del rival, en su campo: `rivalZones`). Una Zona Extra del rival es, vista desde acá, la tuya de enfrente (`1 - index`): se toca ahí.
     zonePick: shown?.zonePick
       ? {
-          label: t('auto.pick.zone', { count: shown.zonePick.count }),
-          targets: shown.zonePick.targets.filter((target) => target.side === 'mine').map(({ zone, index }) => ({ zone, index })),
-          onPick: (zone, index) => gesture({ kind: 'zone', side: 'mine', zone, index }),
+          label: t(shown.type === 'select_disfield' ? 'auto.pick.disfield' : 'auto.pick.zone', { count: shown.zonePick.count }),
+          targets: [...ownZones, ...rivalEmz.map(({ index }) => ({ zone: 'emz' as const, index: 1 - index }))],
+          onPick: (zone, index) => gesture(zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === index) ? { kind: 'zone', side: 'theirs', zone, index: 1 - index } : { kind: 'zone', side: 'mine', zone, index }),
         }
       : null,
     cardPick,
@@ -577,6 +582,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
     return pick ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen) } : rivalPlays?.size ? { eligible: new Set(rivalPlays.keys()), chosen: [] } : null
   }, [pick, rivalPlays])
+  // Las casillas del rival que la pregunta deja elegir (donde va un Kaiju, las que se inutilizan): se encienden en su campo y se tocan. Sus Zonas Extra, en las tuyas (`zonePick`).
+  const rivalZones = useMemo(() => {
+    const targets = shown?.zonePick?.targets.flatMap(({ side, zone, index }) => (side === 'theirs' && zone !== 'emz' ? [{ zone, index }] : [])) ?? []
+
+    return targets.length > 0 ? { targets, onPick: (zone: MatSpot, index: number) => gesture({ kind: 'zone', side: 'theirs', zone, index }) } : null
+  }, [shown, gesture])
   /** El visor de una pila del rival (información pública): su Cementerio, su Destierro o lo boca arriba de su Extra. Repasando, su lado está vacío. */
   const [rivalPileOpen, setRivalPile] = useState<'gy' | 'banished' | 'extra' | null>(null)
   const rivalPile = reviewing ? null : rivalPileOpen
@@ -586,6 +597,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       artOf: (id) => artOf({ side: 'theirs', id }),
       handCount: theirs.hand.length,
       ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] } } : {}),
+      ...(rivalZones ? { zones: rivalZones } : {}),
       act: acting.theirs,
       links: links.theirs,
       // Tocar una carta suya la elige (o la activa: con varios efectos, pregunta cuál) si la pregunta la ofrece; si no, la muestra. Tocar su Cementerio, su Destierro o su Extra con
@@ -605,7 +617,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, rivalPicks, rivalPlays, showRival, rivalPeekOf, acting, links],
+    [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
@@ -886,8 +898,20 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {shown?.sort ? (
           <SortSheet
             key={`sort-${askId}`}
+            {...(shown.type === 'sort_chain' ? { title: t('auto.sort.chain'), hint: t('auto.sort.chainHint') } : {})}
             cards={shown.sort.cards.map((card, index) => pickCardOf(card, String(index)))}
             onSort={(keys) => (keys === null ? gesture({ kind: 'cancel' }) : gesture(...keys.map((key) => ({ kind: 'pick' as const, index: Number(key) })), { kind: 'done' }))}
+          />
+        ) : null}
+      </Presence>
+      <Presence>
+        {shown?.counters ? (
+          // Cuántos de cada carta: un toque por contador y «Listo» (la cuenta y los topes, otra vez en `ask-ui`).
+          <CounterSheet
+            key={`counters-${askId}`}
+            cards={shown.counters.cards.map((card, index) => ({ ...pickCardOf(card, String(index)), has: card.value ?? 0 }))}
+            need={shown.counters.need}
+            onPick={(counts) => gesture(...counts.flatMap((count, index) => Array.from({ length: count }, () => ({ kind: 'pick' as const, index }))), { kind: 'done' })}
           />
         ) : null}
       </Presence>

@@ -63,9 +63,20 @@ export const auto = {
   'auto.sort.hint': 'Tocalas en el orden en que van: la primera queda arriba.',
   'auto.sort.done': 'Ordenar así',
   'auto.sort.asIs': 'Dejar como está',
+  // Ordenar los eslabones que entran a la vez (sus efectos se dispararon juntos).
+  'auto.sort.chain': 'Ordená la cadena',
+  'auto.sort.chainHint': 'Tocalas en el orden en que entran en la cadena.',
+
+  // Sacar contadores (una hoja): cuántos de cada carta.
+  'auto.counter.title': { one: 'Sacá {count} contador', other: 'Sacá {count} contadores' },
+  'auto.counter.hint': 'Elegí de qué cartas: de cada una, hasta los que tiene.',
+  'auto.counter.has': 'Tiene {count}',
+  'auto.counter.remove': 'Contadores a sacar de {name}',
+  'auto.counter.done': 'Sacar contadores',
 
   // Lo que se elige en la mesa (la línea de estado de abajo): casillas y cartas.
   'auto.pick.zone': { one: 'Elegí {count} casilla', other: 'Elegí {count} casillas' },
+  'auto.pick.disfield': { one: 'Elegí {count} casilla que no se va a poder usar', other: 'Elegí {count} casillas que no se van a poder usar' },
   'auto.pick.cards': { one: 'Elegí {count} carta', other: 'Elegí {count} cartas' },
   'auto.pick.range': 'Elegí de {min} a {max} cartas',
   'auto.pick.tribute': 'Sacrificios: {chosen} de {total}',

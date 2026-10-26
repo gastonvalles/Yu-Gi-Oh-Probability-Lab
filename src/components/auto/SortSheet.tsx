@@ -8,6 +8,8 @@ import { PickGrid, usePicked, type PickCard } from './CardPicker'
 interface SortSheetProps {
   /** Lo que pide el núcleo, o «Ordená las cartas». */
   title?: string
+  /** Debajo del título: cómo se lee el orden (el tope del deck, o los eslabones de una cadena). */
+  hint?: string
   /** Arriba del título: la carta que hace ordenar. */
   kicker?: string
   /** En el orden de ahora (la primera, arriba). */
@@ -17,12 +19,12 @@ interface SortSheetProps {
 }
 
 /**
- * Ordenar cartas (`sort_card`: el tope del deck) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el aro ámbar y el número de `PickGrid`) y tocar una numerada la suelta
+ * Ordenar cartas (`sort_card`: el tope del deck; `sort_chain`: los eslabones que entran a la vez) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el aro ámbar y el número de `PickGrid`) y tocar una numerada la suelta
  * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera (en el celular, su asa
  * la baja sin contestar).
  * Va dentro de un `Presence` (así sale al contestarse).
  */
-export function SortSheet({ title = t('auto.sort.title'), kicker, cards, onSort }: SortSheetProps) {
+export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hint'), kicker, cards, onSort }: SortSheetProps) {
   const leaving = useLeaving()
   const [order, toggle] = usePicked(cards, cards.length)
 
@@ -38,7 +40,7 @@ export function SortSheet({ title = t('auto.sort.title'), kicker, cards, onSort 
       veil={false}
       kicker={kicker}
       title={title}
-      subtitle={t('auto.sort.hint')}
+      subtitle={hint}
       footer={
         <>
           <p role="status" className="m-0 mr-auto text-body tabular-nums text-muted">

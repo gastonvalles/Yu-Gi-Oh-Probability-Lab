@@ -10,6 +10,7 @@ import { AskPrompt } from '../../auto/AskPrompt'
 import { AutoBar, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { CardPicker, PickBand, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
+import { CounterSheet } from '../../auto/CounterSheet'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { MatScene } from '../../probability/MatArena'
@@ -119,6 +120,7 @@ export function AutoSection() {
       <ForcedSample onAnswer={setAnswer} />
 
       <SortSample onAnswer={setAnswer} />
+      <CounterSample onAnswer={setAnswer} />
 
       <Specimen title="Lo que contestó la última muestra" note="Cada hoja y cada pregunta de arriba le pasan lo elegido a quien la abrió; acá se ve qué devolvió.">
         <Tag>{answer}</Tag>
@@ -387,6 +389,33 @@ function SortSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
             onSort={(keys) => {
               setOpen(false)
               onAnswer(keys ? keys.join(', ') : 'como estaba')
+            }}
+          />
+        ) : null}
+      </Presence>
+    </Specimen>
+  )
+}
+
+function CounterSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Specimen title="Sacar contadores" note={<>select_counter: una fila por carta con cuántos tiene y un Stepper de 0 a lo que se le puede sacar (nunca más del total). «Sacar contadores» se enciende con el total justo. Hay que contestar: sin X ni Escape. Archivo: <Tag>auto/CounterSheet.tsx</Tag></>}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+        Abrir «Sacá 3 contadores»
+      </Button>
+      <Presence>
+        {open ? (
+          <CounterSheet
+            cards={[
+              { key: 'a', name: 'Endymion, the Mighty Master of Magic', art: art(3611830), has: 2 },
+              { key: 'b', name: 'Magical Citadel of Endymion', art: art(39910367), has: 5 },
+            ]}
+            need={3}
+            onPick={(counts) => {
+              setOpen(false)
+              onAnswer(counts.join(', '))
             }}
           />
         ) : null}

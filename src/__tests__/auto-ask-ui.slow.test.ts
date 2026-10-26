@@ -12,7 +12,7 @@ import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, scriptStore, wasmBina
 
 /**
  * El oráculo de legalidad de `ask-ui.ts` (lento: `npm run test:auto`). Con el núcleo real y un adaptador por asiento, un jugador al azar
- * que sólo toca lo que la pantalla ofrece (`gesturesOf`: ítems, casillas mías, cartas elegibles, opciones, Listo, Cancelar; nunca una
+ * que sólo toca lo que la pantalla ofrece (`gesturesOf`: ítems, casillas, cartas elegibles, contadores, opciones, Listo, Cancelar; nunca una
  * respuesta cruda) juega los dos asientos de duelos con decks del meta. Cuenta: `retry` (el núcleo rechazó lo ofrecido: tiene que ser 0),
  * respuestas que `parseAnswer` rechaza, preguntas sin gesto, toques ofrecidos que no hacen nada, lo que se contestó solo (y por qué) y lo
  * legal que no se ofrece en las preguntas de menú. Parámetros: ORACLE_DUELS (50), ORACLE_SEED (1), ORACLE_CAP preguntas por duelo (2000),
@@ -29,7 +29,7 @@ const PLAYERS = [
   { lp: 8000, hand: 5, draw: 1 },
   { lp: 8000, hand: 5, draw: 1 },
 ]
-const NO_UI = ['select_counter', 'select_disfield', 'sort_chain', 'rock_paper_scissors']
+const NO_UI = ['rock_paper_scissors']
 /** Las casillas propias donde se puede soltar una carta de la mano. */
 const DROPS: ZoneTarget[] = [...(['mz', 'st'] as const).flatMap((zone) => [0, 1, 2, 3, 4].map((index) => ({ side: 'mine' as const, zone, index }))), { side: 'mine', zone: 'field', index: 0 }]
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
@@ -220,8 +220,8 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
     writeFileSync(path.join(CORE_DATA_DIR, `oracle-${DUELS}-s${SEED}.json`), JSON.stringify(report, null, 1))
     console.log(JSON.stringify(report.tally))
 
-    // Lo que se contesta solo «sin pantalla» es sólo lo declarado: las cinco preguntas sin pantalla y las casillas que son todas del rival.
-    const undeclared = Object.keys(tally.auto).filter((key) => key.split(':')[1] === 'none' && !NO_UI.includes(key.split(':')[0]!) && !key.startsWith('select_place:'))
+    // Lo que se contesta solo «sin pantalla» es sólo lo declarado (`NO_UI`).
+    const undeclared = Object.keys(tally.auto).filter((key) => key.split(':')[1] === 'none' && !NO_UI.includes(key.split(':')[0]!))
 
     expect({ retries: tally.retries, stuck: tally.stuck, dead: tally.dead, unparsed: tally.unparsed, undeclared, nullAnswers: Object.keys(tally.auto).filter((key) => key.endsWith(':null')) }).toEqual({ retries: {}, stuck: {}, dead: 0, unparsed: 0, undeclared: [], nullAnswers: [] })
     // Lo legal que la pantalla no ofrece en las preguntas de menú: sólo barajar la mano (la mesa no lo tiene).

@@ -134,7 +134,7 @@ const ASKS: CoreAsk[] = [
   { type: 'rock_paper_scissors', player: 0 },
 ]
 
-const NO_UI = ['select_counter', 'select_disfield', 'sort_chain', 'rock_paper_scissors']
+const NO_UI = ['rock_paper_scissors']
 
 describe('namesList: los nombres de una línea del registro', () => {
   it('junta las copias de la misma carta con cuántas son y respeta el orden en que aparecen', () => {
@@ -533,8 +533,6 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
 
     expect(askView(open({ type: 'select_place', player: 0, count: 1, field_mask: ~(1 << 2) >>> 0 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_place', places: [{ player: 0, location: L.MZONE, sequence: 2 }] }, why: 'forced' })
     expect(askView(open(ASKS[7]!, ctx(MESA, { prefs: { chainMode: 'ask', placeMode: 'auto' } }))).auto).toEqual({ answer: { type: 'select_place', places: [{ player: 0, location: L.MZONE, sequence: 0 }] }, why: 'setting' })
-    // Sólo casillas del rival (la mesa todavía no las enciende): la primera, sola.
-    expect(askView(open({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 16) | (1 << 17)) >>> 0 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 0 }] }, why: 'none' })
   })
 
   it('ordenar: se tocan en el orden deseado, «Ordenar así» con todas y «Dejar como está» siempre', () => {
@@ -548,13 +546,10 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(step(state, { kind: 'cancel' }).answer).toEqual({ type: 'sort_card', order: null })
   })
 
-  it('sin pantalla todavía: contadores, casillas del rival, ordenar la cadena y piedra, papel o tijera se contestan solos con una respuesta legal', () => {
+  it('sin pantalla todavía: piedra, papel o tijera se contesta solo con una respuesta legal', () => {
     const autos = Object.fromEntries(ASKS.filter((ask) => NO_UI.includes(ask.type)).map((ask) => [ask.type, askView(open(ask, ctx(MESA))).auto]))
 
     expect(autos).toEqual({
-      select_counter: { answer: { type: 'select_counter', counters: [1, 2] }, why: 'none' },
-      select_disfield: { answer: { type: 'select_disfield', places: [{ player: 0, location: L.MZONE, sequence: 0 }] }, why: 'none' },
-      sort_chain: { answer: { type: 'sort_chain', order: null }, why: 'none' },
       rock_paper_scissors: { answer: { type: 'rock_paper_scissors', value: 1 }, why: 'none' },
     })
   })
@@ -761,5 +756,73 @@ describe('ask-ui: declarar una carta (`announce_card`)', () => {
     const cards = [1, 2, 3].map((code): AskCard => ({ ref: null, code, place: 'none' }))
 
     expect(listOrder(cards, (card) => names[card.code]!)).toEqual([1, 2, 0])
+  })
+})
+
+describe('ask-ui: las preguntas que antes se contestaban solas (contadores, casillas del rival, ordenar la cadena)', () => {
+  const byType = <T extends CoreAsk['type']>(type: T) => ASKS.find((ask) => ask.type === type) as Extract<CoreAsk, { type: T }>
+
+  it('sacar contadores: de a uno por carta, sin pasar los que tiene cada una ni el total; «Listo» con el total justo', () => {
+    const state = open(byType('select_counter'), ctx(MESA))
+    const view = askView(state)
+
+    expect(view.auto).toBeNull()
+    expect(view.counters).toMatchObject({ now: [0, 0], need: 3, done: false })
+    expect(view.counters?.cards.map((card) => card.value)).toEqual([1, 5])
+    expect(view.respond).toEqual([mine('card-200-1'), mine('card-960-1')])
+    // La primera tiene uno solo: el segundo toque no hace nada.
+    const one = tap(state, { kind: 'pick', index: 0 })
+
+    expect(step(one.state, { kind: 'pick', index: 0 })).toEqual({ state: one.state })
+    expect(step(one.state, { kind: 'done' })).toEqual({ state: one.state })
+    const full = tap(one.state, { kind: 'pick', index: 1 }, { kind: 'pick', index: 1 })
+
+    expect(askView(full.state).counters).toMatchObject({ now: [1, 2], done: true })
+    expect(step(full.state, { kind: 'pick', index: 1 })).toEqual({ state: full.state })
+    expect(step(full.state, { kind: 'done' }).answer).toEqual({ type: 'select_counter', counters: [1, 2] })
+    expect(tap(state, { kind: 'pick', index: 1 }, { kind: 'pick', index: 1 }, { kind: 'pick', index: 1 }, { kind: 'done' }).answer).toEqual({ type: 'select_counter', counters: [0, 3] })
+    expect(step(state, { kind: 'cancel' })).toEqual({ state })
+  })
+
+  it('sacar contadores con una sola manera (una carta con contadores, o todos los que hay) se contesta sola', () => {
+    const ask = byType('select_counter')
+
+    expect(askView(open({ ...ask, cards: [{ ...ask.cards[0]!, count: 0 }, ask.cards[1]!] }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_counter', counters: [0, 3] }, why: 'forced' })
+    expect(askView(open({ ...ask, count: 6 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_counter', counters: [1, 5] }, why: 'forced' })
+  })
+
+  it('inutilizar casillas: las tuyas y las del rival se encienden y se tocan (también con «Casilla: la primera libre»); con una sola manera, sola', () => {
+    // Libres: mi mz 0, la mz 1 y la st 2 del rival.
+    const ask: CoreAsk = { type: 'select_disfield', player: 0, count: 1, field_mask: ~(1 | (1 << 17) | (1 << 26)) >>> 0 }
+    const state = open(ask, ctx(MESA, { prefs: { chainMode: 'ask', placeMode: 'auto' } }))
+
+    expect(askView(state).zonePick?.targets).toEqual([
+      { side: 'mine', zone: 'mz', index: 0 },
+      { side: 'theirs', zone: 'mz', index: 1 },
+      { side: 'theirs', zone: 'st', index: 2 },
+    ])
+    expect(step(state, { kind: 'zone', side: 'theirs', zone: 'st', index: 2 }).answer).toEqual({ type: 'select_disfield', places: [{ player: 1, location: L.SZONE, sequence: 2 }] })
+    expect(step(state, { kind: 'zone', side: 'theirs', zone: 'mz', index: 0 })).toEqual({ state })
+    expect(askView(open({ ...ask, count: 3 }, ctx(MESA))).auto?.why).toBe('forced')
+  })
+
+  it('una casilla del rival (un Kaiju que va a su campo): se ofrecen las suyas y tocar una contesta con su lado', () => {
+    const state = open({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 16) | (1 << 17)) >>> 0 }, ctx(MESA))
+
+    expect(askView(state).auto).toBeNull()
+    expect(askView(state).zonePick?.targets).toEqual([
+      { side: 'theirs', zone: 'mz', index: 0 },
+      { side: 'theirs', zone: 'mz', index: 1 },
+    ])
+    expect(step(state, { kind: 'zone', side: 'theirs', zone: 'mz', index: 1 }).answer).toEqual({ type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 1 }] })
+  })
+
+  it('ordenar la cadena: como ordenar cartas, con su tipo; «Dejar como está» deja el orden del núcleo', () => {
+    const state = open(byType('sort_chain'), ctx(MESA))
+
+    expect(askView(state).sort?.cards.map((card) => card.ref)).toEqual([mine('card-200-1'), mine('card-950-1')])
+    expect(askView(state).respond).toEqual([mine('card-200-1'), mine('card-950-1')])
+    expect(tap(state, { kind: 'card', ref: mine('card-950-1') }, { kind: 'pick', index: 0 }, { kind: 'done' }).answer).toEqual({ type: 'sort_chain', order: [1, 0] })
+    expect(step(state, { kind: 'cancel' }).answer).toEqual({ type: 'sort_chain', order: null })
   })
 })
