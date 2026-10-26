@@ -151,6 +151,11 @@ export const auto = {
   'auto.chain.state.disabled': 'Sin efecto',
   // Negada o sin efecto, con el eslabón que lo hizo (el núcleo no lo dice: lo deduce el adaptador).
   'auto.chain.by': '{state} · por CL{by}',
+  // El celular: la píldora en dos renglones, «Cadena · 2 · Resuelve CL2» y qué pasa («Ash Blossom le quita el efecto a Ponix», con quién lo negó si se sabe).
+  'auto.chain.count': 'Cadena · {count}',
+  'auto.chain.resolves': 'Resuelve',
+  'auto.chain.void.negated': '{by} niega la activación de {card}',
+  'auto.chain.void.disabled': '{by} le quita el efecto a {card}',
   // Cada eslabón se toca para leerlo en el detalle: lo que lee el lector de pantalla.
   'auto.chain.linkMine': 'Eslabón {number}: {card}, tuyo. {state}',
   'auto.chain.linkTheirs': 'Eslabón {number}: {card}, del rival. {state}',

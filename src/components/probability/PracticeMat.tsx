@@ -2141,6 +2141,14 @@ export function PracticeMat({
     if (!hasPrompt || !box || !section) return
 
     let frame = 0
+    const unband = () => {
+      const chain = chainRef.current
+
+      if (!chain) return
+      delete chain.dataset.banded
+      chain.style.translate = ''
+      chain.style.visibility = ''
+    }
     const place = () => {
       box.style.translate = ''
       const layer = box.parentElement!.getBoundingClientRect()
@@ -2153,7 +2161,22 @@ export function PracticeMat({
       const max = Math.min(layer.bottom, window.innerHeight)
       // En el celular termina arriba de tus monstruos (`promptAbove`) y crece sobre el campo del rival: la mano y tu campo quedan a la vista. Sin lugar, va por la ranura de siempre.
       const floor = isDesktop ? undefined : section.querySelector('[data-drop="mz:0"]')?.getBoundingClientRect().top
-      const top = (floor === undefined ? null : promptAbove(at, glows, min, Math.min(floor, max))) ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
+      // Con la cadena a la vista (celular), no se pisan: la píldora queda en un renglón (`data-banded`) y sube al lugar del aviso de la línea (vacío mientras se pregunta), y la
+      // pregunta va debajo de ella. Si así no entra, gana la pregunta (es lo que hay que contestar): la píldora se aparta hasta que se conteste.
+      const notice = floor === undefined ? null : chainRef.current?.querySelector('[data-testid="chain-notice"]')
+      const chain = notice ? chainRef.current! : null
+      let ceiling = min
+
+      unband()
+      if (chain && notice) {
+        chain.dataset.banded = ''
+        chain.style.translate = rails || section.querySelector('[data-lane]') ? '' : `0 ${4 - CHAIN_BELOW_BAR_PX}px`
+        ceiling = Math.max(min, notice.getBoundingClientRect().bottom + 8)
+      }
+      const above = floor === undefined ? null : (promptAbove(at, glows, ceiling, Math.min(floor, max)) ?? (chain ? promptAbove(at, glows, min, Math.min(floor, max)) : null))
+
+      if (chain && (above === null || above < ceiling)) chain.style.visibility = 'hidden'
+      const top = above ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
 
       if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
     }
@@ -2168,14 +2191,17 @@ export function PracticeMat({
     place()
     later()
     observer?.observe(box)
+    // La cadena que aparece o cambia de alto con la pregunta abierta (sus pasos van con su ritmo) también la vuelve a ubicar.
+    if (chainRef.current) observer?.observe(chainRef.current)
     window.addEventListener('resize', later)
 
     return () => {
       observer?.disconnect()
       window.removeEventListener('resize', later)
       cancelAnimationFrame(frame)
+      unband()
     }
-  }, [hasPrompt, glowSets, stripOpen, state, view, rails, isDesktop])
+  }, [hasPrompt, hasChain, glowSets, stripOpen, state, view, rails, isDesktop])
 
   // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
   // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.
@@ -2767,7 +2793,7 @@ export function PracticeMat({
 
       {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
       {duel?.chain ? (
-        <div ref={chainRef} data-testid="duel-chain-layer" className={cx('pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
+        <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
           {duel.chain}
         </div>
       ) : null}

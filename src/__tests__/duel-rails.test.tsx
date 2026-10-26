@@ -36,6 +36,12 @@ describe('la pregunta del medio no tapa lo que hay que tocar', () => {
     expect(promptAbove(box(0, 310), [], 120, 400)).toBeNull()
     expect(promptAbove(prompt, [box(150, 580)], 120, 600)).toBeNull()
   })
+
+  it('con la cadena a la vista, el techo es la píldora (en un renglón, hasta 148, más 8): entra la banda que cabe debajo; la más alta no, y la píldora se aparta (`PracticeMat`)', () => {
+    // Medido con el núcleo a 740 de alto: tus monstruos en 402; «¿Activás el efecto?» mide 236 a 414 px (queda en 158) y 258 a 390 px (no entra debajo de 156).
+    expect(promptAbove(box(0, 236), [], 156, 402)).toBe(158)
+    expect(promptAbove(box(0, 258), [], 156, 402)).toBeNull()
+  })
 })
 
 describe('cuándo hay laterales', () => {

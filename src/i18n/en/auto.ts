@@ -145,6 +145,11 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.disabled': 'No effect',
   // Negated or no effect, with the link that did it (the core doesn't say: the adapter works it out).
   'auto.chain.by': '{state} · by CL{by}',
+  // Phones: the pill in two lines, «Chain · 2 · Resolves CL2» and what happens («Ash Blossom negates Ponix's effect», with who negated it when known).
+  'auto.chain.count': 'Chain · {count}',
+  'auto.chain.resolves': 'Resolves',
+  'auto.chain.void.negated': '{by} negates the activation of {card}',
+  'auto.chain.void.disabled': '{by} negates the effect of {card}',
   // Each link is tapped to read it in the detail: what the screen reader says.
   'auto.chain.linkMine': 'Chain Link {number}: {card}, yours. {state}',
   'auto.chain.linkTheirs': 'Chain Link {number}: {card}, your opponent’s. {state}',

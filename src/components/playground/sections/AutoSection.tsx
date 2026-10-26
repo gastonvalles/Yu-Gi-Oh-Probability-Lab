@@ -443,6 +443,8 @@ function ChainSample() {
   const [count, setCount] = useState(3)
   const [open, setOpen] = useState(false)
   const [picked, setPicked] = useState<number | null>(null)
+  const [phone, setPhone] = useState(true)
+  const [banded, setBanded] = useState(false)
   const frame = CHAIN_FRAMES[count - 1]!
 
   return (
@@ -450,7 +452,7 @@ function ChainSample() {
       title="ChainNotice · la pila de la cadena"
       layout="column"
       className="col-span-full"
-      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el último eslabón mientras se arma («Cadena · CL3 · Vos») y, al resolverse, qué le pasa a cada uno con la carta en ámbar. La flecha despliega la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
+      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el último eslabón mientras se arma («Cadena · CL3 · Vos») y, al resolverse, qué le pasa a cada uno con la carta en ámbar. La flecha despliega la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) la píldora dice todo en dos renglones: «Cadena · 3 · Resuelve CL3» y qué pasa («Ash le quita el efecto a…» si se sabe quién lo negó); con una pregunta abierta en la mesa (<Tag>data-banded</Tag>) queda un renglón, sin flecha ni lista, y sube para que la pregunta entre debajo (si no entra, se aparta hasta que se conteste). Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>
@@ -460,15 +462,22 @@ function ChainSample() {
           Empezar de nuevo
         </Button>
         <Tag>{`Paso ${count} de ${CHAIN_FRAMES.length}`}</Tag>
+        <Button variant="tertiary" size="sm" aria-pressed={phone} onClick={() => setPhone((value) => !value)}>
+          Ver en el celular
+        </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={banded} disabled={!phone} onClick={() => setBanded((value) => !value)}>
+          Simular una pregunta abierta
+        </Button>
         {picked ? <Tag>{`Tocaste el CL${picked}: en la mesa se lee en el detalle`}</Tag> : null}
       </div>
-      <div className="relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
+      <div {...(phone && banded ? { 'data-banded': '' } : {})} className="group/chain relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
         <ChainNotice
           rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state, ...(state === 'negated' ? { by: 3 } : {}) }))}
           focus={frame.focus}
           resolving={frame.resolving === true}
           open={open}
+          compact={phone}
           onOpenChange={setOpen}
           onPick={(index) => setPicked(index + 1)}
         />

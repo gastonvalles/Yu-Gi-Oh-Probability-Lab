@@ -18,7 +18,7 @@ import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
-import { DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { usePracticeSounds } from '../../app/use-practice-sounds'
 import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
@@ -128,6 +128,7 @@ export interface AutoAsks {
 export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual }: AutoAsksInput): AutoAsks {
   const prefs = useAutoPrefs()
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const dock = useDockPeek()
   const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
 
@@ -661,6 +662,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         focus={feed.focus}
         resolving={feed.resolving}
         open={chainOpen}
+        compact={!desktop}
         onOpenChange={setChainOpen}
         onPick={readLink}
       />

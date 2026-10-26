@@ -9,7 +9,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { pos } from './support/auto-session-fake'
 import { core, lane, renderAuto } from './support/auto-screen-harness'
 
-// La negación («Sin efecto · por CL2»: en la píldora, en la pila y sobre la carta) y varias obligatorias a la vez (se elige cuál va primero).
+// La negación («Sin efecto · por CL2» en la pila y sobre la carta; en la píldora del celular, «X le quita el efecto a Y») y varias obligatorias a la vez (se elige cuál va primero).
 
 const link = (index: number, card: CardRef): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from: L.MZONE } })
 const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep => ({ kind, at: 0, index, ...(by ? { by } : {}) })
@@ -27,7 +27,7 @@ describe('auto-screen · la cadena negada', () => {
     const before = cell().getBoundingClientRect()
 
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Sin efecto · por CL2 · CL1 · Vos')
+    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 2 · Resuelve CL2Carta le quita el efecto a Carta')
     // Sobre la carta: la insignia tachada y la franja roja con texto blanco; el nombre lo dice.
     expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
     expect(cell().querySelector('[data-chain-void]')).toHaveTextContent('Sin efecto · por CL2')
@@ -46,7 +46,7 @@ describe('auto-screen · la cadena negada', () => {
     act(() => vi.advanceTimersByTime(0))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Sin efecto · CL1 · Vos')
+    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 1 · Resuelve CL1Carta · Sin efecto')
     expect(document.querySelector('[data-chain-void]')).toHaveTextContent(/^Sin efecto$/)
   })
 })
