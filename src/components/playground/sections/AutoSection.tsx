@@ -120,7 +120,7 @@ export function AutoSection() {
       ))}
       <EffectsSample onAnswer={setAnswer} />
 
-      <PickerSample title="Elegir cartas · de 1 a 2, cancelable" note="CardPicker con min 1 y max 2, de lugares distintos (cada una dice de dónde es) y una que todavía no tiene arte (el esqueleto quieto). Aro ámbar y número de orden; Mayús+clic, el tramo; nunca más de dos. «Cancelar» y Escape, porque la pregunta se puede cancelar. Flechas, Inicio y Fin recorren las cartas; Espacio elige." min={1} max={2} cancelable onAnswer={setAnswer} />
+      <PickerSample title="Elegir cartas · de 1 a 2, cancelable" note="CardPicker con min 1 y max 2, de lugares distintos (cada una dice de dónde es) y una que todavía no tiene arte (el esqueleto quieto). La elegida, con el marco celeste que gira (el de la mano) y su número de orden; Mayús+clic, el tramo; nunca más de dos. «Cancelar» y Escape, porque la pregunta se puede cancelar. Flechas, Inicio y Fin recorren las cartas; Espacio elige." min={1} max={2} cancelable onAnswer={setAnswer} />
       <PickerSample title="Elegir cartas · una sola" note="Con max 1 el primer toque contesta, sin «Listo» (como en la mesa). No se puede cancelar: sin X ni pie." min={1} max={1} cancelable={false} onAnswer={setAnswer} />
       <PickerSample title="Declarar una carta · con buscador" note="Con 13 cartas o más (declarar una carta ofrece el deck entero y lo visto), un buscador por nombre arriba de la grilla; sin coincidencias, lo dice. Un toque declara." min={1} max={1} cancelable={false} many onAnswer={setAnswer} />
 

@@ -21,7 +21,7 @@ interface SortSheetProps {
 }
 
 /**
- * Ordenar cartas (`sort_card`: el tope del deck; `sort_chain`: los costos de un ataque, que no son eslabones: varios disparos a la vez se piden de a uno con `select_chain`) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el aro ámbar y el número de `PickGrid`) y tocar una numerada la suelta
+ * Ordenar cartas (`sort_card`: el tope del deck; `sort_chain`: los costos de un ataque, que no son eslabones: varios disparos a la vez se piden de a uno con `select_chain`) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el marco celeste y el número de `PickGrid`) y tocar una numerada la suelta
  * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera (en el celular, su asa
  * la baja sin contestar).
  * Va dentro de un `Presence` (así sale al contestarse).

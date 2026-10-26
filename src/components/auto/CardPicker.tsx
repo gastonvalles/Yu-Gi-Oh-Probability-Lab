@@ -4,11 +4,11 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { FxFrame, PICK_ORDER } from '../probability/MatFx'
 import { MatPrompt } from '../duel/MatPrompt'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
-import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { SearchField } from '../ui/SearchField'
 import { Skeleton } from '../ui/Skeleton'
@@ -27,7 +27,7 @@ interface PickGridProps {
   /** El nombre de la lista para el lector de pantalla. */
   label: string
   cards: readonly PickCard[]
-  /** Las elegidas, en el orden en que se eligieron: llevan el aro ámbar y su número. */
+  /** Las elegidas, en el orden en que se eligieron: llevan el marco celeste (`FxFrame`) y, eligiendo varias, su número. */
   chosen: readonly string[]
   /** Un toque, Espacio o Enter; `range` con Mayús (el tramo desde la última). */
   onToggle: (key: string, range: boolean) => void
@@ -42,7 +42,7 @@ interface PickGridProps {
 }
 
 /**
- * La grilla de cartas para elegir, con el aro ámbar y el número de orden de `PileViewer` eligiendo varias (no se extrajo de ahí: allá son botones con `aria-pressed` y acá un `listbox`). Se recorre con
+ * La grilla de cartas para elegir, con el marco de la elegida y el número de orden de `PileViewer` eligiendo varias (no se extrajo de ahí: allá son botones con `aria-pressed` y acá un `listbox`). Se recorre con
  * las flechas (arriba y abajo, una fila), Inicio y Fin, con un solo lugar de tabulación; Espacio o Enter eligen. Mientras llega el arte de una carta, un esqueleto quieto (son decenas a la vez).
  */
 export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, className, tabs = false }: PickGridProps) {
@@ -71,7 +71,7 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, clas
     <div role="listbox" aria-label={label} aria-multiselectable={multi || undefined} className={cx('grid gap-2', className)} onKeyDown={onKeyDown}>
       {cards.map((card, index) => {
         const order = chosen.indexOf(card.key)
-        // Eligiendo una sola, la elegida lleva una tilde (no un número de orden).
+        // Eligiendo una sola, la elegida lleva sólo el marco (sin número de orden).
         const name = order >= 0 && multi ? t('practice.many.order', { name: card.name, n: order + 1 }) : card.name
         const off = blocked(card)
 
@@ -97,10 +97,11 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, clas
                 <span className="min-w-0 truncate">{card.place}</span>
               </Badge>
             ) : null}
-            {/* La elegida, un aro ámbar de 2 px por fuera; al pasar el mouse, el mismo aro, tenue. */}
-            <span className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order >= 0 ? 'outline-2 outline-info' : 'group-hover:outline-2 group-hover:outline-info/45')}>
+            {/* La elegida lleva el marco celeste con la luz que gira de la carta elegida en la mano y en la mesa (`FxFrame`); al pasar el mouse, el aro fino de las cartas de la mesa. */}
+            <span className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}>
               {card.art === undefined ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
-              {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-warning-solid px-1 text-micro font-bold leading-none tabular-nums text-white">{multi ? order + 1 : <Icon name="check" size={14} />}</span> : null}
+              {order >= 0 ? <FxFrame tone="cyan" /> : null}
+              {order >= 0 && multi ? <span aria-hidden="true" className={PICK_ORDER}>{order + 1}</span> : null}
             </span>
             <span aria-hidden="true" data-pick-name="" className="grid min-w-0">
               <span className="truncate text-micro text-foreground min-[1101px]:line-clamp-2 min-[1101px]:whitespace-normal">{card.name}</span>
@@ -150,7 +151,7 @@ interface PickBandProps {
   /** De dónde salen todas, en la pestaña de arriba («Cementerio · 3»); si vienen de lugares distintos, cada carta lo dice debajo de su nombre. */
   place?: string
   cards: readonly PickCard[]
-  /** Las elegidas, en el orden en que se eligieron (aro ámbar y su número). */
+  /** Las elegidas, en el orden en que se eligieron (el marco celeste y su número). */
   chosen: readonly string[]
   eligible: ReadonlySet<string>
   /** Se eligen varias: el pie explica el toque y la principal contesta. Con una, el toque contesta. */
@@ -249,7 +250,7 @@ interface CardPickerProps {
 /**
  * Elegir de `min` a `max` cartas de una lista que no está en el campo ni en una sola pila (de varios lugares, o por código), en una hoja (`Modal sheet`; en el celular sale de abajo y su asa la baja sin
  * contestar, para ver la mano). Tocar elige o suelta
- * (aro ámbar y número de orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, la principal («Elegir 2 cartas»,
+ * (el marco celeste y el número de orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, la principal («Elegir 2 cartas»,
  * o «Listo» si se puede no elegir ninguna) se enciende con `min` (o con `done`) y el pie dice cuántas van. Con `SEARCH_FROM` cartas o más, un buscador por nombre arriba (filtra lo
  * que se ve; lo elegido queda). Va dentro de un `Presence` (así sale al contestarse).
  */

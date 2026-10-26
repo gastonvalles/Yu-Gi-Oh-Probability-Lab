@@ -222,12 +222,15 @@ describe('PickBand', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('las elegidas, con su estado; completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
+  it('las elegidas, con su estado, el marco que gira y su número (blanco); completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
     const onPick = vi.fn()
     const onToggle = vi.fn()
     band({ chosen: ['b', 'a'], done: true, onPick, onToggle })
+    const second = screen.getByRole('option', { name: /Fallen of Albaz/ })
 
     expect(screen.getByRole('option', { name: /Aluber/ })).toHaveAttribute('aria-selected', 'true')
+    expect(second.querySelector('[data-fx="frame"]')).not.toBeNull()
+    expect(within(second).getByText('2')).toHaveClass('text-white')
     fireEvent.click(screen.getByRole('option', { name: /Branded/ }))
     expect(onToggle).toHaveBeenCalledWith('c', false)
     fireEvent.click(screen.getByRole('button', { name: 'Elegir 2 cartas' }))
@@ -279,13 +282,18 @@ describe('RespondBand', () => {
     expect(onPass).toHaveBeenCalledTimes(1)
   })
 
-  it('la elegida, con su tilde; la principal contesta; el modo, sólo en escritorio', () => {
+  it('la elegida, con el marco celeste que gira (el de la mano, sin tilde); la principal contesta; el modo, sólo en escritorio', () => {
     const onChain = vi.fn()
     const onMode = vi.fn()
     respond({ chosen: 'b', onChain, mode: { value: 'ask', onChange: onMode } })
     const group = screen.getByRole('group', { name: 'Responder a la cadena' })
+    const chosen = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })
 
-    expect(within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })).toHaveAttribute('aria-selected', 'true')
+    expect(chosen).toHaveAttribute('aria-selected', 'true')
+    expect(chosen.querySelector('[data-fx="frame"] [data-fx="orbit"]')).not.toBeNull()
+    expect(chosen.querySelector('[data-fx="frame"]')).toHaveStyle({ '--fx-rgb': '56 189 248' })
+    expect(chosen.querySelector('svg, .outline-info, .outline-2')).toBeNull()
+    expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelector('[data-fx]')).toBeNull()
     fireEvent.click(within(group).getByRole('button', { name: 'Encadenar como CL3' }))
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })

@@ -104,6 +104,9 @@ export function FxFrame({ tone, orbit = true, shine = false }: FxFrameProps) {
   )
 }
 
+/** El número de orden de una carta elegida eligiendo varias, arriba a la derecha y sobre su marco: blanco sobre oscuro (`PickGrid`, `PileViewer`). */
+export const PICK_ORDER = 'absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-background/85 px-1 text-micro font-bold leading-none tabular-nums text-white'
+
 /** Las cuatro esquinas de la mira. */
 const BRACKETS = [
   'left-[7%] top-[5%] border-l-[3px] border-t-[3px]',
