@@ -193,7 +193,7 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
         <div className="flex h-14 shrink-0 items-center gap-3 border-b border-nav-raised px-4 pr-14">
           <Icon name="search" size={20} className="shrink-0 text-muted" />
           <input
-            data-initial-focus=""
+            data-initial-focus="type"
             role="combobox"
             aria-expanded="true"
             aria-controls={`${id}-list`}

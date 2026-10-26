@@ -1,7 +1,7 @@
 import { Fragment, createContext, type ReactNode, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
-import { useFocusTrap } from '../../app/use-focus-trap'
+import { opensKeyboard, useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
@@ -636,7 +636,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   useEscapeKey(onClose, open)
   useEscapeKey(exit, choosing && !hidden)
 
-  // Al abrirse, y al pasar a otra pila, el foco entra al panel: al buscador o, si no hay, a la primera carta. Sin trampa: no es un modal y Tab sale a la mesa.
+  // Al abrirse, y al pasar a otra pila, el foco entra al panel: al buscador (con puntero táctil no: abriría el teclado) o, si no, a la primera carta. Sin trampa: no es un modal y Tab sale a la mesa.
   useEffect(() => {
     if (!open) return
 
@@ -647,7 +647,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
     const frame = requestAnimationFrame(() => {
       const panel = panelRef.current
 
-      ;(panel?.querySelector<HTMLElement>('[data-initial-focus]') ?? gridRef.current?.querySelector<HTMLElement>('button') ?? panel)?.focus({ preventScroll: true })
+      ;([...(panel?.querySelectorAll<HTMLElement>('[data-initial-focus]') ?? [])].find((element) => !opensKeyboard(element)) ?? gridRef.current?.querySelector<HTMLElement>('button') ?? panel)?.focus({ preventScroll: true })
     })
 
     return () => cancelAnimationFrame(frame)

@@ -35,7 +35,8 @@ Cómo se lee un pedido de diseño y cómo se hace una mejora visual. Las reglas,
 
 - Todo se usa con teclado; ARIA donde el HTML no alcanza (`aria-label` en un botón sólo ícono, `aria-pressed` /
   `aria-current`, `role="meter"` en los anillos, `aria-busy` al cargar); contraste WCAG AA (4,5:1 el texto, 3:1 desde 24 px);
-  el mismo foco en todo (`shadow-focus`); objetivos táctiles de 44 px.
+  el mismo foco en todo (`shadow-focus`) y, con el dedo, nunca a un campo de texto al abrir algo (`opensKeyboard`);
+  objetivos táctiles de 44 px.
 - **Estados, siempre todos:** default, hover, focus, selected/active, disabled, error (`danger`), vacío (`EmptyState`),
   cargando (`Skeleton`, `aria-busy`) y éxito (toast o `Callout` `success`).
 - **Un error se muestra después de un intento, no al entrar:** lo que falta completar en algo recién abierto es una pista
