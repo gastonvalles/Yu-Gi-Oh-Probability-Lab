@@ -60,5 +60,15 @@ describe('la insignia del eslabón (CL1, CL2…)', () => {
     expect(pileLinksOf(['a'], undefined)).toBeNull()
   })
 
+  it('negada o sin efecto: la insignia lo lleva, con quién (si se sabe); la pila también', () => {
+    const steps: ChainStep[] = [link(0, 'mine', 'a'), link(1, 'theirs', 't'), { kind: 'solving', at: 0, index: 1 }, { kind: 'disabled', at: 0, index: 0, by: 2 }]
+    const { mine, theirs } = linksOf(chainFeed(steps, steps.length))
+
+    expect(mine.get('a')).toEqual({ numbers: [1], mine: true, fromHand: false, voided: { state: 'disabled', by: 2 } })
+    expect(theirs.get('t')).not.toHaveProperty('voided')
+    expect(pileLinksOf(['x', 'a'], mine)?.voided).toEqual({ state: 'disabled', by: 2 })
+    expect(linksOf(chainFeed([link(0, 'mine', 'a'), { kind: 'negated', at: 0, index: 0 }], 2)).mine.get('a')?.voided).toEqual({ state: 'negated' })
+  })
+
   it('«desde la mano» es la mano del núcleo', () => expect(FROM_HAND).toBe(LOCATION.HAND))
 })

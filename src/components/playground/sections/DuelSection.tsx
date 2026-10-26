@@ -102,15 +102,18 @@ export function DuelSection() {
  * pide `links` de cada lado (`linksOf` de `app/card-glow.ts`, por id).
  */
 function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
-  const [on, setOn] = useState(true)
+  const [mode, setMode] = useState<'on' | 'void' | 'off'>('on')
+  const on = mode !== 'off'
   const sides = useMemo(() => {
+    // «Negada»: CL2 (tuyo) queda sin efecto por el CL1 del rival.
+    const voided = (n: number) => (mode === 'void' && n === 2 ? { voided: { state: 'disabled' as const, by: 1 } } : {})
     const links = (ids: ReadonlyArray<string | undefined>, first: number, owner: boolean) =>
-      new Map<string, ChainBadgeData>(ids.flatMap((id, i) => (id ? [[id, { numbers: [first + i], mine: owner, fromHand: false }] as const] : [])))
+      new Map<string, ChainBadgeData>(ids.flatMap((id, i) => (id ? [[id, { numbers: [first + i], mine: owner, fromHand: false, ...voided(first + i) }] as const] : [])))
     const mine = links(['card-59438930-1', duel.mine.state.gy.at(-1), duel.mine.state.field?.id], 2, true)
     const theirs = links([duel.theirs.state.mz[0]?.id], 1, false)
 
     return { mine: { ...duel.mine, ...(on ? { links: mine } : {}) }, theirs: { ...duel.theirs, ...(on ? { links: theirs } : {}) } }
-  }, [duel, on])
+  }, [duel, on, mode])
 
   return (
     <Specimen
@@ -120,11 +123,11 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
       note={
         <>
           Mientras se ve el aviso de la cadena, cada carta que está en ella lleva su número arriba a la izquierda, montado sobre el borde (no tapa el nombre), en la carta o en la pila donde esté ahora, con el
-          color de sus vidas: violeta claro lo tuyo, ámbar lo del rival (una etiqueta llena; el ámbar de lo que se activa es un aro). No se toca ni mueve nada: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag>
+          color de sus vidas: violeta claro lo tuyo, ámbar lo del rival (una etiqueta llena; el ámbar de lo que se activa es un aro). No se toca ni mueve nada: el eslabón también va en el nombre de la carta. Negada o sin efecto, la insignia va tachada y una franja roja cruza la carta por el medio («Sin efecto · por CL1» si se sabe quién fue). Archivo: <Tag>probability/MatFx.tsx</Tag>
         </>
       }
     >
-      <Segmented label="Cadena" variant="track" value={on ? 'on' : 'off'} onChange={(value) => setOn(value === 'on')} options={[{ value: 'on', label: 'Con cadena' }, { value: 'off', label: 'Sin cadena' }]} />
+      <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'on', label: 'Con cadena' }, { value: 'void', label: 'Negada' }, { value: 'off', label: 'Sin cadena' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
     </Specimen>
   )

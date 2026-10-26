@@ -339,7 +339,7 @@ const RAIL = cx('relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2', 'befo
 
 /** Cómo resolvió un eslabón tuyo: sin efecto (rojo), o en qué pasos (verde). */
 function resultText(result: NonNullable<PanelChainMark['result']>): string {
-  if (result.negated) return t('auto.steps.noEffect')
+  if (result.negated) return result.by ? t('auto.steps.noEffectBy', { by: result.by }) : t('auto.steps.noEffect')
   if (result.to < result.from) return t('auto.chain.state.solved')
 
   return result.to === result.from ? t('auto.steps.solvedStep', { step: result.from }) : t('auto.steps.solvedSteps', { from: result.from, to: result.to })
@@ -347,7 +347,7 @@ function resultText(result: NonNullable<PanelChainMark['result']>): string {
 
 /**
  * El cierre de una cadena (duelo automático): no es un paso tuyo, así que no es una ficha ni se toca; va punteado, con el eslabón en el lugar del círculo, y dice cómo terminó cada
- * eslabón (los del rival también). «Quién negó a quién» el núcleo no lo dice: sólo el estado.
+ * eslabón (los del rival también) y, el negado, por cuál (`by`: lo deduce el adaptador; sin él, sólo el estado).
  */
 function ChainEndRow({ end }: { end: PanelChainEnd }) {
   return (
@@ -357,7 +357,13 @@ function ChainEndRow({ end }: { end: PanelChainEnd }) {
       </span>
       <p className="m-0 grid gap-0.5 rounded-card border border-dashed border-border-subtle px-3 py-2 text-micro">
         <span className="font-semibold text-foreground">{t('auto.steps.chainEnd', { chain: end.chain })}</span>
-        <span className="text-muted">{end.links.map((link) => t('auto.steps.endLink', { link: link.number, card: link.name, state: t(`auto.chain.state.${link.state}`) })).join(' · ')}</span>
+        <span className="text-muted">{end.links
+            .map((link) => {
+              const state = t(`auto.chain.state.${link.state}`)
+
+              return link.by ? t('auto.steps.endLinkBy', { link: link.number, card: link.name, state, by: link.by }) : t('auto.steps.endLink', { link: link.number, card: link.name, state })
+            })
+            .join(' · ')}</span>
       </p>
     </li>
   )

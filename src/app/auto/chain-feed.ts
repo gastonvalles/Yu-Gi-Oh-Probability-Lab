@@ -18,6 +18,8 @@ export interface ChainStep {
   index: number
   /** Sólo `chain`: la carta que se activó, si es tuya, el `desc` del efecto (`aux.Stringid(carta, n)`: qué texto del `.cdb` lo nombra; ver `linkPhrase`) y desde dónde se activó (`from`: el `triggering_location` del núcleo, una máscara `LOCATION`). */
   link?: { card: CardRef | null; code: number; mine: boolean; description?: string; from?: number }
+  /** Sólo `negated` y `disabled`: el eslabón que lo negó (1 = CL1), el que se estaba resolviendo (el núcleo no lo dice: lo deduce el adaptador). Sin él, no se sabe. */
+  by?: number
 }
 
 export type ChainRowState = ChainLink['state']
@@ -33,6 +35,8 @@ export interface ChainRow {
   /** Desde dónde se activó (`LOCATION` del núcleo), si se sabe. */
   from?: number
   state: ChainRowState
+  /** Negada o sin efecto: el eslabón que lo hizo (1 = CL1), si se sabe (`ChainStep.by`). */
+  by?: number
 }
 
 export interface ChainFeed {
@@ -82,6 +86,7 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
     focus = step.index
     // Una negada sigue negada al llegarle el turno y al resolverse: el núcleo la niega mientras se resuelve el eslabón que la niega (antes de llegar a ella).
     if ((row.state !== 'negated' && row.state !== 'disabled') || step.kind === 'negated' || step.kind === 'disabled') row.state = step.kind
+    if (step.by) row.by = step.by
   }
 
   return { key: start, rows: rows.filter(Boolean), resolving, done, focus }

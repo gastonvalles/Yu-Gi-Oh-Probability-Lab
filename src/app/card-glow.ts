@@ -34,6 +34,8 @@ export interface ChainBadgeData {
   numbers: number[]
   mine: boolean
   fromHand: boolean
+  /** Un eslabón de la carta quedó negado o sin efecto (la insignia va tachada, con la marca roja): su estado y quién lo negó (`ChainRow.by`), si se sabe. */
+  voided?: { state: 'negated' | 'disabled'; by?: number }
 }
 
 /**
@@ -47,9 +49,10 @@ export function linksOf(feed: ChainFeed | null): { mine: Map<string, ChainBadgeD
     if (!row.card) continue
     const fromHand = row.from === FROM_HAND
     const seen = links[row.card.side].get(row.card.id)
+    const voided = row.state === 'negated' || row.state === 'disabled' ? { voided: { state: row.state, ...(row.by ? { by: row.by } : {}) } } : {}
 
-    if (seen) links[row.card.side].set(row.card.id, { ...seen, numbers: [...seen.numbers, row.number], fromHand: seen.fromHand || fromHand })
-    else links[row.card.side].set(row.card.id, { numbers: [row.number], mine: row.mine, fromHand })
+    if (seen) links[row.card.side].set(row.card.id, { ...seen, numbers: [...seen.numbers, row.number], fromHand: seen.fromHand || fromHand, ...voided })
+    else links[row.card.side].set(row.card.id, { numbers: [row.number], mine: row.mine, fromHand, ...voided })
   }
   return links
 }
@@ -58,5 +61,7 @@ export function linksOf(feed: ChainFeed | null): { mine: Map<string, ChainBadgeD
 export function pileLinksOf(ids: readonly string[], links: ReadonlyMap<string, ChainBadgeData> | undefined): ChainBadgeData | null {
   const found = links?.size ? ids.flatMap((id) => links.get(id) ?? []) : []
 
-  return found[0] ? { numbers: found.flatMap((link) => link.numbers).sort((a, b) => a - b), mine: found[0].mine, fromHand: found.some((link) => link.fromHand) } : null
+  const voided = found.find((link) => link.voided)?.voided
+
+  return found[0] ? { numbers: found.flatMap((link) => link.numbers).sort((a, b) => a - b), mine: found[0].mine, fromHand: found.some((link) => link.fromHand), ...(voided ? { voided } : {}) } : null
 }

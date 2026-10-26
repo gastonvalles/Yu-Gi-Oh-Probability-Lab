@@ -101,6 +101,7 @@ export const auto = {
   'auto.link.badge': 'CL{numbers}',
   'auto.link.label': '{name}, eslabón {numbers} de la cadena',
   'auto.link.labelHand': '{name}, eslabón {numbers} de la cadena, activada desde la mano',
+  'auto.link.void': '{label}. {state}',
 
   // La barra de arriba y «Más opciones».
   'auto.bar.chain': 'Respuestas',
@@ -129,6 +130,10 @@ export const auto = {
   'auto.lane.respondNow': 'Podés activar {cards} ahora',
   'auto.lane.pass': 'No responder',
   'auto.lane.mustActivate': 'Tenés que activar {cards}: tocala',
+  // Varias obligatorias a la vez: se elige cuál entra primero en la cadena (la banda del medio).
+  'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero (CL{link})?',
+  'auto.forced.activate': 'Activar {card} primero',
+  'auto.forced.hint': 'Sin «No responder»: son obligatorias.',
   'auto.lane.autoZone': 'La casilla se eligió sola',
   'auto.lane.unmapped': 'La mesa no puede mostrar: {what}',
   'auto.lane.script': 'Falló el script de {card}: el duelo sigue.',
@@ -144,6 +149,8 @@ export const auto = {
   'auto.chain.state.solved': 'Resuelta',
   'auto.chain.state.negated': 'Negada',
   'auto.chain.state.disabled': 'Sin efecto',
+  // Negada o sin efecto, con el eslabón que lo hizo (el núcleo no lo dice: lo deduce el adaptador).
+  'auto.chain.by': '{state} · por CL{by}',
   // Cada eslabón se toca para leerlo en el detalle: lo que lee el lector de pantalla.
   'auto.chain.linkMine': 'Eslabón {number}: {card}, tuyo. {state}',
   'auto.chain.linkTheirs': 'Eslabón {number}: {card}, del rival. {state}',
@@ -154,10 +161,12 @@ export const auto = {
   'auto.steps.link': 'Cadena {chain} · CL{link}',
   'auto.steps.cost': 'Cadena {chain} · CL{link} · costo',
   'auto.steps.noEffect': 'Resuelve: sin efecto',
+  'auto.steps.noEffectBy': 'Resuelve: sin efecto · por CL{by}',
   'auto.steps.solvedStep': 'Resuelve: paso {step}',
   'auto.steps.solvedSteps': 'Resuelve: pasos {from}–{to}',
   'auto.steps.chainEnd': 'Cadena {chain} resuelta',
   'auto.steps.endLink': 'CL{link} {card}: {state}',
+  'auto.steps.endLinkBy': 'CL{link} {card}: {state} por CL{by}',
   'auto.steps.theirs': '{card} ({rival})',
   'auto.review.combo': 'Repasás “{name}”: el duelo te espera donde lo dejaste.',
   'auto.review.plays': 'Repasás tus jugadas: el duelo te espera donde lo dejaste.',

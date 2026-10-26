@@ -195,7 +195,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       return 0
     }
     const wasm = wasmBinary()
-    const tally = { duels: 0, ends: {} as Record<string, number>, questions: {} as Record<string, number>, retries: 0, unhandled: 0, coreErrors: 0, knownScriptErrors: 0, exceptions: 0, otherFaults: 0, stuck: 0, leaks: 0, rewindChecked: 0, rewindMismatch: 0, repeatChecked: 0, repeatMismatch: 0, hotScripts: {} as Record<string, number> }
+    const tally = { duels: 0, ends: {} as Record<string, number>, questions: {} as Record<string, number>, retries: 0, unhandled: 0, coreErrors: 0, knownScriptErrors: 0, exceptions: 0, otherFaults: 0, stuck: 0, leaks: 0, rewindChecked: 0, rewindMismatch: 0, repeatChecked: 0, repeatMismatch: 0, negations: 0, negationsBy: 0, badBy: 0, hotScripts: {} as Record<string, number> }
     const faults: { duel: number; message: string }[] = []
     const mismatches: { duel: number; kind: string; at: number; first: string; second: string }[] = []
     const differ = (duel: number, kind: string, first: string[], second: string[]) => {
@@ -213,6 +213,8 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
     }
     const leaks: { duel: number; seat: number; code: number; where: string }[] = []
     const perCard = new Map<number, { offered: number; played: number; faulted: number }>()
+    /** Quién negó (`by`), por carta: para leer en el informe que sean cartas que niegan. */
+    const negators = new Map<number, number>()
     const slow: { ms: number; card: number | null; ask: string; duel: number; decks: string[] }[] = []
     const times: number[] = []
     const slowDuels: { duel: number; decks: string[]; questions: number }[] = []
@@ -228,13 +230,27 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       let batch: OcgMessage[] = []
       // El adaptador del asiento 1, para el rival de handtraps: ve lo mismo que en la pantalla.
       let view: Adapter | null = null
+      // Los eslabones de la cadena en curso, por los pasos que anota el adaptador (una tanda trae la cadena entera: el `overlay` ya terminó al mirarlo).
+      const links: number[] = []
       const host = createAutoHost({
         core: { wasmBinary: wasm },
         cardReader: (code) => cards.get(code) ?? null,
         scriptReader: store.read,
         emit: (event) => {
           events.push(event)
-          view?.apply(event)
+          // Quién negó (`ChainStep.by`, deducido por el adaptador): siempre otro eslabón de la cadena en curso, nunca el negado ni uno que no está.
+          for (const step of view?.apply(event).chain ?? []) {
+            if (step.kind === 'chain') {
+              if (step.index === 0) links.length = 0
+              links[step.index] = step.link?.code ?? 0
+            }
+            if (step.kind !== 'negated' && step.kind !== 'disabled') continue
+            tally.negations += 1
+            if (step.by === undefined) continue
+            tally.negationsBy += 1
+            if (step.by < 1 || step.by > links.length || step.by === step.index + 1) tally.badBy += 1
+            else negators.set(links[step.by - 1]!, (negators.get(links[step.by - 1]!) ?? 0) + 1)
+          }
         },
         tap: (message) => batch.push(message),
       })
@@ -367,6 +383,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
         neverOffered: [...deckCodes].filter((code) => !perCard.get(code)?.offered).map(label),
         offeredNeverPlayed: [...deckCodes].filter((code) => perCard.get(code)?.offered && !perCard.get(code)?.played).map(label),
       },
+      negators: Object.fromEntries([...negators].map(([code, count]) => [label(code), count])),
       faults,
       leaks,
       mismatches,
@@ -375,7 +392,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
     writeFileSync(path.join(CORE_DATA_DIR, `fuzz-${pool.length}x${duels}-s${SEED}${suffix}.json`), JSON.stringify(report, null, 1))
     console.log(JSON.stringify({ ...report.parameters, ...report.tally, ms: report.msPerAnswer, cleanCards: report.cards.playedClean, neverOffered: report.cards.neverOffered.length, faultCards: report.cards.playedWithFault.length, ...('handtraps' in report ? { handtraps: report.handtraps } : {}) }))
 
-    expect({ retries: tally.retries, unhandled: tally.unhandled, coreErrors: tally.coreErrors, exceptions: tally.exceptions, stuck: tally.stuck, leaks: tally.leaks, rewindMismatch: tally.rewindMismatch, repeatMismatch: tally.repeatMismatch }).toEqual({
+    expect({ retries: tally.retries, unhandled: tally.unhandled, coreErrors: tally.coreErrors, exceptions: tally.exceptions, stuck: tally.stuck, leaks: tally.leaks, rewindMismatch: tally.rewindMismatch, repeatMismatch: tally.repeatMismatch, badBy: tally.badBy }).toEqual({
       retries: 0,
       unhandled: 0,
       coreErrors: 0,
@@ -384,6 +401,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       leaks: 0,
       rewindMismatch: 0,
       repeatMismatch: 0,
+      badBy: 0,
     })
   }
 })

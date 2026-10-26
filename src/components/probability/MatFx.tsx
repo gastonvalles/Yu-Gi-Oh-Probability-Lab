@@ -136,25 +136,40 @@ export function TargetMark() {
  */
 export const chainBadgeAt = (spot: MatSpot, sideways: boolean) => (spot === 'field' ? 'left-0 top-0' : sideways ? 'left-0 top-[15.71%]' : 'left-[15.71%] top-0')
 
+/** «Sin efecto · por CL2» (o «Negada»): el estado de un eslabón negado, con quién lo negó si se sabe. */
+const voidedText = ({ state, by }: NonNullable<ChainBadgeData['voided']>) => (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
+
 /** El nombre de una carta con su eslabón: la insignia es decorativa y esto es lo que se lee. */
-export const chainLinkLabel = (name: string, link: ChainBadgeData) => t(link.fromHand ? 'auto.link.labelHand' : 'auto.link.label', { name, numbers: link.numbers.join(', ') })
+export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
+  const label = t(link.fromHand ? 'auto.link.labelHand' : 'auto.link.label', { name, numbers: link.numbers.join(', ') })
+
+  return link.voided ? t('auto.link.void', { label, state: voidedText(link.voided) }) : label
+}
 
 /**
  * La insignia del eslabón de la cadena («CL1», «CL1·3» si la carta tiene dos), pegada arriba a la izquierda de la carta o de la pila (`className` la ubica), montada sobre el borde de arriba para
  * no tapar el nombre. Del color de quien la activó, el de sus vidas y el del número en la pila de la cadena (`PLAYER_COLOR`): violeta claro lo tuyo y ámbar lo del rival, llenos y con el texto
  * oscuro (sobre el arte un teñido no se lee, y el blanco no llega a 4,5:1 sobre esos dos). El ámbar del rival es una etiqueta llena; el de lo que se activa, un aro alrededor de la carta.
  * Sólo se mira: `aria-hidden`, y el eslabón va en el nombre de la carta (`chainLinkLabel`). Se va con el aviso de la cadena.
+ * Negado o sin efecto (`voided`): la insignia va tachada y una franja roja con texto blanco cruza la carta por el medio («Sin efecto · por CL2»: rojo = negado), encima y sin moverla.
  */
 export function ChainBadge({ link, className }: { link: ChainBadgeData; className?: string }) {
   return (
-    <span
-      aria-hidden="true"
-      data-chain-link={link.numbers.join(',')}
-      data-chain-owner={link.mine ? 'mine' : 'theirs'}
-      className={cx('pointer-events-none absolute z-11 -translate-y-1/2 whitespace-nowrap rounded-tag px-1 py-px text-micro font-extrabold leading-tight tabular-nums ring-1 ring-background', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].fill, className)}
-    >
-      {t('auto.link.badge', { numbers: link.numbers.join('·') })}
-    </span>
+    <>
+      <span
+        aria-hidden="true"
+        data-chain-link={link.numbers.join(',')}
+        data-chain-owner={link.mine ? 'mine' : 'theirs'}
+        className={cx('pointer-events-none absolute z-11 -translate-y-1/2 whitespace-nowrap rounded-tag px-1 py-px text-micro font-extrabold leading-tight tabular-nums ring-1 ring-background', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].fill, link.voided && 'line-through', className)}
+      >
+        {t('auto.link.badge', { numbers: link.numbers.join('·') })}
+      </span>
+      {link.voided ? (
+        <span aria-hidden="true" data-chain-void={link.voided.by ?? ''} className="pointer-events-none absolute inset-x-0 top-1/2 z-11 -translate-y-1/2 bg-danger px-0.5 py-px text-center text-micro font-bold leading-tight text-white">
+          {voidedText(link.voided)}
+        </span>
+      ) : null}
+    </>
   )
 }
 

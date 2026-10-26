@@ -42,8 +42,11 @@ export interface AutoOverlay {
   stats: Record<Side, Record<string, { attack: number; defense: number; level: number }>>
   /** La cadena en curso, del eslabón 1 en adelante. */
   chain: ChainLink[]
-  /** Lo que se negó (la activación o el efecto) en la cadena en curso o en la última, en orden: la cadena se resuelve de una y la pantalla lo cuenta después. Se vacía al empezar otra. */
-  negated: ChainLink[]
+  /**
+   * Lo que se negó (la activación o el efecto) en la cadena en curso o en la última, en orden: la cadena se resuelve de una y la pantalla lo cuenta después. Se vacía al empezar otra.
+   * `by`: el eslabón que lo negó (`ChainStep.by`). La pantalla no lee esto: lee `chainSteps`, que van al ritmo del aviso de la cadena.
+   */
+  negated: Array<ChainLink & { by?: number }>
   /** Las vidas, por asiento del núcleo. */
   lp: [number, number]
   /** El turno del núcleo (1 = el primero) y de quién es; la fase, con la constante del núcleo (`PHASE_*`: 1 Draw … 0x200 End). */
@@ -701,8 +704,13 @@ export function createAdapter(options: AdapterOptions): Adapter {
       case 'chain_negated':
       case 'chain_disabled': {
         const state = ({ chain_solving: 'solving', chain_solved: 'solved', chain_negated: 'negated', chain_disabled: 'disabled' } as const)[event.type]
+        const negation = state === 'negated' || state === 'disabled'
+        // Quién lo negó: el núcleo no lo dice, pero niega mientras resuelve un eslabón, así que es el que se está resolviendo (comprobado con el núcleo real en
+        // `auto-chain-feed.slow.test.ts`). Si es el mismo eslabón (llega sin efecto a su turno: un efecto continuo) o no se resuelve ninguno, no se sabe: sin `by`.
+        const solving = negation ? overlay.chain.findIndex((item, i) => item.state === 'solving' && i !== event.chain_size - 1) : -1
+        const by = solving >= 0 ? { by: solving + 1 } : {}
 
-        out.chain.push({ kind: state, at: out.mine.length, index: event.chain_size - 1 })
+        out.chain.push({ kind: state, at: out.mine.length, index: event.chain_size - 1, ...by })
 
         // Un eslabón resuelto sale de la cadena (como en el núcleo); los demás cambian de estado.
         const link = overlay.chain[event.chain_size - 1]
@@ -710,7 +718,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         overlay = {
           ...overlay,
           chain: state === 'solved' ? overlay.chain.slice(0, event.chain_size - 1) : overlay.chain.map((item, i) => (i === event.chain_size - 1 ? { ...item, state } : item)),
-          ...((state === 'negated' || state === 'disabled') && link ? { negated: [...overlay.negated, { ...link, state }] } : {}),
+          ...(negation && link ? { negated: [...overlay.negated, { ...link, state, ...by }] } : {}),
         }
         return
       }
