@@ -41,16 +41,37 @@ Cómo se lee un pedido de diseño y cómo se hace una mejora visual. Las reglas,
 - **Un error se muestra después de un intento, no al entrar:** lo que falta completar en algo recién abierto es una pista
   neutra; pasa a `danger` recién cuando se intentó guardar, y el foco va a lo primero que falta.
 
-## D) Heurísticas
+## D) Leyes de UX y heurísticas
 
-Hick (una acción principal; lo secundario se pliega o va a un menú), Fitts (44 px; en el celular, la acción principal abajo, al
-pulgar), jerarquía (cada dato una sola vez; el número que decide, el más grande o un anillo; hasta tres tamaños de texto por
-bloque) y framing («72 de cada 100» antes que «72,3 %»; una diferencia con ▲/▼ y el color que le conviene a quien la lee).
-Prueba social, escasez y reciprocidad no aplican: no hay venta.
+Siete leyes para decidir y para revisar un diseño: un boceto se mira contra ellas antes del «dale», y cada decisión dice cuál la respalda
+y cuál paga. Cada una dice qué exige acá y dónde ya se ve.
+
+- **Fitts** (el tiempo para llegar a un objetivo depende de su tamaño y su distancia): objetivos táctiles de 44 px; en el celular lo que
+  más se usa va abajo, al alcance del pulgar derecho, y la acción principal es grande y queda cerca de donde se decide; nada importante
+  chico ni pegado al borde. Ya está en: el pie de los diálogos (principal al final), la botonera de la mesa, G.4.
+- **Hick** (más opciones y más complejas, más tiempo para decidir): una acción principal por grupo; lo secundario se pliega o va a un
+  menú; una sola opción no necesita menú; en el duelo automático sólo se ofrecen las jugadas posibles. Ya está en: el menú de una carta
+  en bloques con la principal abajo.
+- **Zeigarnik** (lo que queda a medias se recuerda y se quiere cerrar): lo pendiente se ve y se retoma, y lo hecho no se pierde, p. ej.
+  «Quedan 2 efectos por preguntar». Ya está en: la práctica que no se pierde al salir de la pantalla, «Seguir en modo manual» con la
+  mano y el campo como estaban. Nunca un trabajo a medias que se pierde sin avisar.
+- **Jakob** (la gente pasa casi todo el tiempo en otros sitios y espera que éste ande igual): se imita lo conocido de las plataformas de
+  las que viene el duelista (Master Duel, DuelingBook, EDOPro) —mismo vocabulario, mismos lugares, mismas jugadas— y se mejora; no se
+  reinventa un patrón sin un motivo que se pueda decir. Las referencias se leen como en A.
+- **Gradiente de meta** (el esfuerzo crece al acercarse a la meta): lo que tiene un final muestra cuánto falta y el último paso es el
+  más fácil y el más claro. Ya está en: el contador al elegir cartas («· 0 de 2»).
+- **Von Restorff** (lo distinto es lo que se recuerda): en cada pantalla o grupo, un solo elemento que se distinga (el botón principal,
+  la carta que brilla, el eslabón que se resuelve); si todo resalta, nada resalta. El color siempre significa algo (`ui/tone.ts`; en la
+  mesa, celeste «podés hacer» y ámbar «se activa»).
+- **Miller** (la memoria de trabajo retiene unos 7 ± 2 elementos): agrupar en bloques cortos y no mostrar todo a la vez: los menús en
+  bloques (apoyo, envíos, jugadas), hasta 5 o 6 cartas en una fila antes de pasar a la ventana, hasta tres tamaños de texto por bloque.
+
+Además: jerarquía (cada dato una sola vez; el número que decide, el más grande o un anillo) y framing («72 de cada 100» antes que
+«72,3 %»; una diferencia con ▲/▼ y el color que le conviene a quien la lee). Prueba social, escasez y reciprocidad no aplican: no hay venta.
 
 ## E) Plantillas
 
-- **Crítica:** 3 cosas que funcionan · 3 prioridades con la solución (qué componente o token) · accesibilidad · responsive ·
+- **Crítica:** 3 cosas que funcionan · 3 prioridades con la solución (qué componente o token) · las leyes de D que cumple y las que paga · accesibilidad · responsive ·
   consistencia con `docs/design-system.md`.
 - **Componente:** para qué · props · variantes · estados · accesibilidad · hacer y no hacer · 3 usos reales; va en su
   comentario, en el índice de `docs/design-system.md` y con una muestra (`<Specimen>`) en `/playground`.
