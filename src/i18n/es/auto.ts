@@ -139,6 +139,9 @@ export const auto = {
   'auto.chain.state.solved': 'Resuelta',
   'auto.chain.state.negated': 'Negada',
   'auto.chain.state.disabled': 'Sin efecto',
+  // Cada eslabón se toca para leerlo en el detalle: lo que lee el lector de pantalla.
+  'auto.chain.linkMine': 'Eslabón {number}: {card}, tuyo. {state}',
+  'auto.chain.linkTheirs': 'Eslabón {number}: {card}, del rival. {state}',
 
   // Los pasos y los combos (el panel de la práctica): la lista vacía (acá no se arrastra ni se mantiene) y el repaso de un combo o de tus jugadas en la misma mesa, con la salida.
   'auto.steps.empty': 'Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.',
