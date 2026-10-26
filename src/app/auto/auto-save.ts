@@ -5,7 +5,7 @@ import { parseAnswer, type Seat } from './protocol'
 
 /**
  * El duelo automático por enlace guardado por el anfitrión (diseño: `docs/duelo-automatico-enlace.md`): con la semilla, su asiento, la mano de la sala, los dos
- * decks y las respuestas aceptadas de los dos, el núcleo vuelve a contar el duelo entero (`restore` de la sesión) si el anfitrión recarga la página, y el invitado lo recibe de
+ * decks y las respuestas aceptadas de los dos (y si ya se cortó para pasar a manual), el núcleo vuelve a contar el duelo entero (`restore` de la sesión) si el anfitrión recarga la página, y el invitado lo recibe de
  * nuevo. Nada más: ni nombres ni mensajes. Se escribe con cada respuesta aceptada, se reescribe en cada revancha, se borra cuando el duelo termina (o lo borra la pantalla al
  * abandonar) y vence como el guardado del duelo manual (`SAVE_TTL_MS`).
  */
@@ -19,6 +19,8 @@ export interface AutoSave {
   decks: { mine: DeckList; theirs: DeckList }
   answers: SessionAnswer[]
   savedAt: number
+  /** Se acordó pasar a manual y el anfitrión ya cortó (`dropped`: lo que quedó a medio jugar se descartó): rearmado, sigue cortado. Los guardados de antes no lo traen. */
+  cut?: { dropped: boolean }
 }
 
 export interface AutoSaveStore {
@@ -47,7 +49,7 @@ export function parseAutoSave(raw: string | null, now: number): AutoSave | null 
 
     if (!answers.every((item) => item?.answer)) return null
 
-    return { v: 1, seed: save.seed, seat: save.seat, hand: save.hand, decks: { mine: save.decks.mine, theirs: save.decks.theirs }, answers: answers as SessionAnswer[], savedAt: save.savedAt }
+    return { v: 1, seed: save.seed, seat: save.seat, hand: save.hand, decks: { mine: save.decks.mine, theirs: save.decks.theirs }, answers: answers as SessionAnswer[], savedAt: save.savedAt, ...(typeof save.cut?.dropped === 'boolean' ? { cut: { dropped: save.cut.dropped } } : {}) }
   } catch {
     return null
   }

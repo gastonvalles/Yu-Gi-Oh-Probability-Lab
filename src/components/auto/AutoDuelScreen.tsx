@@ -65,7 +65,7 @@ export interface AutoDuelScreenProps {
   code?: string
   /**
    * Los dos acordaron seguir en modo manual: la mesa propia del corte, para `duel.start` (la sala sigue como manual hasta la revancha). Sin esto, «Más opciones» no ofrece pasar.
-   * El invitado pasa con el corte del anfitrión; el anfitrión, cuando le llega la mesa manual del invitado.
+   * El invitado pasa con el corte del anfitrión; el anfitrión, con el pase acordado, cuando le llega la mesa manual del invitado.
    */
   onManual?: (table: MatState) => void
   /** Pruebas: el enlace de mentira (tiene que ser estable: cambiarlo arma otro enlace). */
@@ -139,6 +139,16 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
     presence.current = { ever: before.ever || peerPresent, now: peerPresent }
     if (link && role === 'guest' && before.ever && !before.now && peerPresent) link.resync()
   }, [link, role, peerPresent])
+
+  // El anfitrión cuya conexión se cayó y volvió (cambió de wifi a datos) le repone el duelo al invitado: el relay puede no haberle avisado que se fue, y entonces no lo pide.
+  const socket = useRef(status)
+
+  useEffect(() => {
+    const before = socket.current
+
+    socket.current = status
+    if (link && role === 'host' && before === 'reconnecting' && status === 'open') link.resync()
+  }, [link, role, status])
 
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const codeName = useCodeName(deck.cardsById, online?.cards)
@@ -250,14 +260,14 @@ function useCoreLife(duel: Duel, snapshot: DuelSnapshot, snap: AutoSnapshot, sea
 
 /**
  * El pase a manual de este lado: cómo terminó mi pedido (un aviso) y cuándo la sala sigue como manual (`onManual` con la mesa del corte). El invitado pasa con el corte del
- * anfitrión (`agreed`: su mesa ya tiene todo lo que contó el núcleo hasta ahí); el anfitrión, cuando le llega la mesa manual del invitado (también si recargó en el medio: su núcleo,
- * rearmado con lo guardado, está en el mismo punto). Una sola vez por mesa.
+ * anfitrión (`agreed`: su mesa ya tiene todo lo que contó el núcleo hasta ahí); el anfitrión, con el pase acordado, cuando le llega la mesa manual del invitado (también si recargó
+ * en el medio: su núcleo, rearmado con lo guardado, está en el mismo punto y sigue cortado). Sin acuerdo, una mesa manual del invitado no lo saca del automático. Una sola vez por mesa.
  */
 function usePassToManual({ snapshot, snap, online, rivalName, onManual }: { snapshot: DuelSnapshot; snap: AutoSnapshot; online: OnlineSnapshot; rivalName: string; onManual: ((table: MatState) => void) | undefined }) {
   const manual = online.manual ?? 'idle'
   const shown = useRef(manual)
   const passed = useRef(false)
-  const ready = snapshot.role === 'guest' ? manual === 'agreed' : snapshot.theirs !== null
+  const ready = snapshot.role === 'guest' ? manual === 'agreed' : snapshot.theirs !== null && (manual === 'switching' || manual === 'agreed')
 
   useEffect(() => {
     if (shown.current === manual) return

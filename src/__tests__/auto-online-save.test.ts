@@ -57,6 +57,9 @@ describe('el guardado del duelo automático por enlace', () => {
       expect(parseAutoSave(JSON.stringify(bad), 2000)).toBeNull()
     }
     expect(parseAutoSave('{', 2000)).toBeNull()
+    // El corte del pase a manual viaja con lo guardado; uno de antes (sin la marca) o con la marca rota se lee sin ella.
+    expect(parseAutoSave(JSON.stringify({ ...SAVE, cut: { dropped: true } }), 2000)).toEqual({ ...SAVE, cut: { dropped: true } })
+    expect(parseAutoSave(JSON.stringify({ ...SAVE, cut: 'sí' }), 2000)).toEqual(SAVE)
     store.clear()
     expect(store.read()).toBeNull()
     // Sin almacenamiento, no se recuerda nada (y no se rompe).
