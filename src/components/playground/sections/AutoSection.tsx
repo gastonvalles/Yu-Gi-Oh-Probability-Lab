@@ -127,6 +127,7 @@ export function AutoSection() {
       <BandSample max={2} onAnswer={setAnswer} />
       <BandSample max={1} onAnswer={setAnswer} />
       <ForcedSample onAnswer={setAnswer} />
+      <UnselectSample onAnswer={setAnswer} />
       <RespondSample onAnswer={setAnswer} />
       <LongTextSample />
       <UndoSample onAnswer={setAnswer} />
@@ -501,6 +502,75 @@ function LongTextSample() {
           <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine compact hand={12} />
         </div>
       </div>
+    </Specimen>
+  )
+}
+
+/** Tres cartas para «agregar a tu mano», de dos lugares: la muestra de elegir de a una. */
+const TYPHOONS: PickCard[] = [
+  { key: 'mst-deck', name: 'Mystical Space Typhoon', art: art(5318639), place: t('practice.place.deck') },
+  { key: 'mst-gy', name: 'Mystical Space Typhoon', art: art(5318639), place: t('practice.place.gy') },
+  { key: 'called', name: 'Called by the Grave', art: art(24224830), place: t('practice.place.deck') },
+]
+
+/**
+ * Elegir de a una (`select_unselect_card`): el núcleo vuelve a preguntar tras cada toque y la banda es la misma (`key` de la decisión, no de cada pregunta: en la mesa, `decision` de
+ * `use-auto-asks.tsx`): la cuenta y la elegida se actualizan en el lugar, sin salir ni volver a entrar, con el foco donde estaba y minimizada si lo estaba.
+ */
+function UnselectSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const [shown, setShown] = useState(true)
+  const [chosen, setChosen] = useState<string[]>([])
+  const [asks, setAsks] = useState(1)
+  const what = t('auto.pick.range', { min: 1, max: 2 })
+  const reply = (answer: string) => {
+    setShown(false)
+    setChosen([])
+    setAsks(1)
+    onAnswer(answer)
+  }
+  const toggle = (key: string) => {
+    const next = chosen.includes(key) ? chosen.filter((item) => item !== key) : [...chosen, key]
+
+    // Con dos, la pregunta está completa: el núcleo sigue solo.
+    if (next.length === 2) return reply(next.join(', '))
+    setChosen(next)
+    setAsks((count) => count + 1)
+  }
+
+  return (
+    <Specimen
+      title="Elegir de a una · la misma banda"
+      layout="column"
+      note={<>select_unselect_card («Elegí de 1 a 2 cartas para agregar a tu mano»): cada toque contesta y el núcleo vuelve a preguntar con la elegida. Es la misma decisión, así que es la misma banda: la cuenta pasa de 0/2 a 1/2, la elegida lleva el marco celeste (sin tilde) y aparece «Elegir 1 carta», sin que la banda salga y vuelva a entrar, con el foco en la carta tocada y minimizada si la minimizaste. Las cartas no se corren de lugar. Archivo: <Tag>auto/use-auto-asks.tsx</Tag></>}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag>{`Pregunta del núcleo n.º ${asks}`}</Tag>
+      </div>
+      <div className="relative isolate h-96 overflow-hidden rounded-card border border-border-subtle">
+        <MatScene className="absolute inset-0 -z-10" />
+        <Presence>
+          {shown ? (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+              <div className={PROMPT_BOX}>
+                <PickBand
+                  key="decision"
+                  title={`${t('auto.pick.for', { what, why: t('auto.pick.why.addToHand') })} · ${t('auto.pick.count', { chosen: chosen.length, max: 2 })}`}
+                  cards={TYPHOONS}
+                  chosen={chosen}
+                  eligible={new Set(TYPHOONS.map((card) => card.key))}
+                  multi={false}
+                  done={chosen.length > 0}
+                  onToggle={toggle}
+                  onPick={() => reply(chosen.join(', '))}
+                />
+              </div>
+            </div>
+          ) : null}
+        </Presence>
+      </div>
+      <Button variant="secondary" size="sm" className="w-fit" icon="refresh" disabled={shown} onClick={() => setShown(true)}>
+        Volver a preguntar
+      </Button>
     </Specimen>
   )
 }

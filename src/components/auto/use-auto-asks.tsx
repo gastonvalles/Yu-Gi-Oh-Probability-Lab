@@ -355,6 +355,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     return pending && adapter ? openAsk(pending, { queries: adapter, prefs: { chainMode: prefs.chain, placeMode: prefs.place }, phase: adapter.mine.phase, typeOf, effectLabel, ...prefer }) : null
   }
   const [opened, setOpened] = useState<{ askId: number | null; state: AskState | null }>({ askId: null, state: null })
+  /**
+   * La decisión de la pregunta (`of`: el número de su primera pregunta; es la `key` de su banda o su hoja). Un `select_unselect_card` se contesta de a una carta y el núcleo vuelve
+   * a preguntar con la elegida: con la misma cuenta (`sig`) es la misma decisión, así que su banda no sale ni se vuelve a montar (se actualiza en el lugar, con el foco y minimizada
+   * si lo estaba). Mientras el núcleo vuelve a preguntar, se sigue viendo la que se contestó (`hold`, quieta: los toques no van a ningún lado), salvo que lleguen jugadas (terminó).
+   * Dónde se elige lo decide su primera pregunta (`listed`: una lista aparte, en la banda o en la hoja): elegida una, las que quedan pueden estar todas en el deck, y no se pasa al visor.
+   */
+  const [decision, setDecision] = useState<{ of: number | null; sig: string; hold: AskState | null; actions: readonly MatAction[] | null; listed: { band: boolean } | null }>({ of: null, sig: '', hold: null, actions: null, listed: null })
   /** Una pregunta sin gesto ni respuesta segura (declarar una carta sin ninguna que ofrecer): la línea avisa (y, solo, ofrece deshacer). */
   const [stuck, setStuck] = useState<string | null>(null)
   /** El segundo paso de «Activar efecto» en el celular (en escritorio es el submenú del menú): el ítem padre, con sus efectos. */
@@ -369,6 +376,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     const type = pending?.ask.type
 
     setOpened({ askId, state: state && !askView(state).auto ? state : null })
+    if (pending) {
+      const sig = pending.ask.type === 'select_unselect_card' ? `${pending.seat}:${pending.ask.min}:${pending.ask.max}` : ''
+
+      const same = sig !== '' && decision.hold !== null && sig === decision.sig
+      const first = state ? askView(state).cardPick : null
+
+      setDecision({ of: same ? decision.of : askId, sig, hold: null, actions: null, listed: same ? decision.listed : first?.surface === 'list' ? { band: first.cards.length <= BAND_MAX } : null })
+    }
     setStuck(null)
     setSub(null)
     // La casilla soltada contesta sólo la primera pregunta de casillas; si no se pudo usar, la carta deja de esperar ahí.
@@ -376,11 +391,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }
   // Ya salió de la mano: lo que se soltó, se jugó.
   if (held && !state.hand.includes(held.id)) setDropped(null)
-  const askState = opened.askId === askId ? opened.state : null
+  const live = opened.askId === askId ? opened.state : null
+  const askState = live ?? (askId === null && decision.actions === snap.mineActions ? decision.hold : null)
 
   useEffect(() => {
-    askRef.current = askState
-  }, [askState])
+    askRef.current = live
+  }, [live])
 
   useEffect(() => {
     const view = pending ? askView(open() ?? openAsk(pending, { queries: session.adapter!, prefs: { chainMode: 'never', placeMode: 'auto' } })) : null
@@ -415,6 +431,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         if (next.answer) {
           askRef.current = null
           setOpened({ askId: current.askId, state: null })
+          // Elegir una carta de un `select_unselect_card` deja la decisión abierta: el núcleo vuelve a preguntar con la elegida.
+          const hold = next.answer.type === 'select_unselect_card' && next.answer.index !== null ? current : null
+          const actions = hold ? session.getSnapshot().mineActions : null
+
+          setDecision((now) => ({ ...now, hold, actions }))
           setSub(null)
           faultsBase.current = session.getSnapshot().faults.length
           unmappedBase.current = session.getSnapshot().unmapped.length
@@ -475,10 +496,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // Cuántas, para qué (el código de pista del núcleo, si está comprobado) y cuántas van: el mismo título en la mesa, en la banda y en la hoja.
   const pickLabel = pick ? pickTitle(pick, shown?.title) : ''
   // Una lista aparte (de varios lugares, por código, lo del rival): hasta `BAND_MAX` cartas, una banda en el medio de la mesa (`PickBand`); con más, la hoja (`CardPicker`).
-  const list = pick && pick.surface === 'list' ? pick : null
-  const band = list !== null && list.cards.length <= BAND_MAX
+  const list = pick && decision.listed ? pick : null
+  const band = list !== null && decision.listed!.band
   const cardPick: AutoLink['cardPick'] =
-    pick && pick.surface !== 'list'
+    pick && !list
       ? {
           label: pickLabel,
           eligible: new Set(mineIds(pick.eligible)),
@@ -489,7 +510,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           stats: pickStatsOf(state, mineIds([...pick.eligible, ...pick.chosen]), snap.overlay.stats.mine),
         }
       : null
-  const viewerIds = pick && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
+  const viewerIds = pick && !list && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
   const zoneTargets = shown?.zonePick?.targets ?? []
   const ownZones = zoneTargets.flatMap(({ side, zone, index }) => (side === 'mine' ? [{ zone, index }] : []))
   const rivalEmz = zoneTargets.filter((target) => target.side === 'theirs' && target.zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === 1 - target.index))
@@ -523,7 +544,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       : null,
     cardPick,
     viewer:
-      pick && pick.surface === 'pile' && pick.pile
+      pick && !list && pick.surface === 'pile' && pick.pile
         ? {
             pile: pick.pile,
             ids: viewerIds,
@@ -766,7 +787,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const askingCode = options?.options.map((option) => (option.description ? splitDesc(option.description).code : 0)).find((code) => Boolean(snap.names[code] ?? cards?.get(code)?.name))
   const optionsTitle = options ? (options.of === 'position' ? t('auto.options.position') : options.of === 'number' ? t('auto.options.number') : options.of === 'race' ? t('auto.options.race', { count: options.count }) : options.of === 'attribute' ? t('auto.options.attribute', { count: options.count }) : t('auto.options.option')) : ''
   // Todas las de la pregunta, en su orden (las que ahora no valen van apagadas: `eligible`; las elegidas, con su aro), salvo las del deck, que van por nombre (`listOrder`).
-  const listCards = list ? listOrder(list.cards, (card) => nameOf(card.ref, card.code)).map((i) => pickCardOf(list.cards[i]!, String(i))) : []
+  // Cada carta, por quién es (no por su índice: un `select_unselect_card` vuelve a preguntar con la elegida al final de la lista) y, en ese caso, siempre en el mismo orden (por
+  // lugar y nombre): mientras dura la decisión, ninguna se corre de lugar.
+  const listKeys = list ? list.cards.map((card, i) => (card.ref ? `${card.ref.side}:${card.ref.id}` : String(i))) : []
+  const listSort = (card: AskCard) => `${card.ref?.side ?? ''}|${card.place}|${card.pile ?? ''}|${nameOf(card.ref, card.code)}|${card.ref?.id ?? ''}`
+  const listShown = !list ? [] : list.type === 'select_unselect_card' ? list.cards.map((_, i) => i).sort((a, b) => listSort(list.cards[a]!).localeCompare(listSort(list.cards[b]!))) : listOrder(list.cards, (card) => nameOf(card.ref, card.code))
+  const listCards = listShown.map((i) => pickCardOf(list!.cards[i]!, listKeys[i]!))
   // En la banda, si todas salen del mismo lugar, el lugar va una vez, en la pestaña («Cementerio · 3»), y no debajo de cada carta.
   const sourceOf = (card: AskCard) => (card.place === 'hand' ? 'hand' : card.place === 'pile' ? card.pile : undefined)
   const lead = list?.cards[0]
@@ -775,10 +801,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const bandCards = bandPlace ? listCards.map(({ place: _place, ...card }) => card) : listCards
   const listProps = list
     ? {
-        chosen: list.chosen.map(String),
-        eligible: new Set(list.eligible.map(String)),
+        chosen: list.chosen.map((i) => listKeys[i]!),
+        eligible: new Set(list.eligible.map((i) => listKeys[i]!)),
         done: list.done,
-        onToggle: (key: string) => gesture({ kind: 'pick', index: Number(key) }),
+        onToggle: (key: string) => gesture({ kind: 'pick', index: listKeys.indexOf(key) }),
         ...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {}),
       }
     : null
@@ -868,9 +894,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {...(forced.length > 1 ? { note: t('auto.forced.hint') } : {})}
       />
     ) : band && listProps ? (
-      // `select_unselect_card` va de a una (cada toque contesta).
+      // `select_unselect_card` va de a una (cada toque contesta y el núcleo vuelve a preguntar: la misma banda, por `decision`).
       <PickBand
-        key={askId ?? 0}
+        key={decision.of ?? 0}
         title={pickLabel}
         {...(bandPlace ? { place: t('auto.band.from', { place: bandPlace, count: listCards.length }) } : {})}
         cards={bandCards}
@@ -957,7 +983,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {list && listProps && !band ? (
           // La cuenta la lleva `ask-ui` (lo elegido, lo que todavía vale, si «Listo» contesta): la hoja sólo la muestra. `select_unselect_card` va de a una (cada toque contesta).
           <CardPicker
-            key={`picker-${askId}`}
+            key={`picker-${decision.of}`}
             title={pickLabel}
             cards={listCards}
             min={list.min}
