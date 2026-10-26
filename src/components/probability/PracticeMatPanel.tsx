@@ -334,6 +334,10 @@ interface StepTileProps {
   chain?: PanelChainMark
 }
 
+/** Las props de una ficha no cambiaron: por referencia, salvo la marca de la cadena, que `panelChainsOf` vuelve a armar con cada jugada (se compara por lo que dice: es chica). */
+const sameTile = (a: StepTileProps, b: StepTileProps) =>
+  JSON.stringify(a.chain) === JSON.stringify(b.chain) && (Object.keys({ ...a, ...b }) as Array<keyof StepTileProps>).every((key) => key === 'chain' || Object.is(a[key], b[key]))
+
 /** La fila de la línea de tiempo: la columna del círculo, sobre la línea vertical que une los pasos, y la de la ficha. */
 const RAIL = cx('relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2', 'before:absolute before:left-[0.8125rem] before:top-0 before:-bottom-2 before:w-0.5 before:bg-border-subtle first:before:top-4 last:before:bottom-auto last:before:h-4')
 
@@ -526,4 +530,4 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
       </div>
     </li>
   )
-})
+}, sameTile)
