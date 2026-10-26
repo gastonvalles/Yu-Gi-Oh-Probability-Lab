@@ -845,7 +845,10 @@ export function createAdapter(options: AdapterOptions): Adapter {
       if (card) next[stat.controller === seat ? 'mine' : 'theirs'][matId(card, stat.controller)] = { attack: stat.attack, defense: stat.defense, level: stat.level }
     }
     // Un equipo dura mientras las dos cartas sigan en el campo.
-    overlay = { ...overlay, stats: next, equips: overlay.equips.filter((item) => item.card.id in next[item.card.side] && item.target.id in next[item.target.side]) }
+    const equips = overlay.equips.filter((item) => item.card.id in next[item.card.side] && item.target.id in next[item.target.side])
+
+    // Los mismos números (casi siempre: el núcleo los manda tras cada tanda) dejan el overlay como estaba, así la sesión no avisa por nada.
+    if (equips.length < overlay.equips.length || JSON.stringify(next) !== JSON.stringify(overlay.stats)) overlay = { ...overlay, stats: next, equips }
   }
 
   return {

@@ -265,16 +265,23 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   let rejected: string | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let destroyed = false
+  /** El último snapshot que se avisó: lo que llega sin cambiar nada (los `stats` y los `events` del rival, casi la mitad) no avisa, porque cada aviso es un render. */
+  let published = snapshot
 
+  /** Sin nada distinto (`Object.is`) el snapshot sigue siendo el mismo objeto (`useSyncExternalStore` compara por referencia); se avisa si cambió desde el último aviso. */
   function set(patch: Partial<AutoSnapshot>, notify = true) {
-    snapshot = { ...snapshot, ...patch }
-    if (notify) listeners.forEach((listener) => listener())
+    if ((Object.keys(patch) as (keyof AutoSnapshot)[]).some((key) => !Object.is(patch[key], snapshot[key]))) snapshot = { ...snapshot, ...patch }
+    if (!notify || snapshot === published) return
+    published = snapshot
+    listeners.forEach((listener) => listener())
   }
 
   const view = () => {
     const theirs = adapters[1 - me]!
+    const hand = rival ? theirs.mine.hand.map((id) => theirs.codeOf({ side: 'mine', id })) : []
+    const same = hand.length === snapshot.rivalHand.length && hand.every((code, i) => code === snapshot.rivalHand[i])
 
-    return { mine: adapters[me]!.mine, theirs: adapters[me]!.theirs.state, overlay: adapters[me]!.overlay, rivalHand: rival ? theirs.mine.hand.map((id) => theirs.codeOf({ side: 'mine', id })) : [] }
+    return { mine: adapters[me]!.mine, theirs: adapters[me]!.theirs.state, overlay: adapters[me]!.overlay, rivalHand: same ? snapshot.rivalHand : hand }
   }
 
   function stopTimer() {

@@ -185,6 +185,8 @@ function cardsOf(data: DuelData): Map<number, AutoCardInfo> {
   )
 }
 
+/** Las filas de un deck, para ver si el invitado mandó el mismo. */
+const rowsOf = (deck: DeckList) => JSON.stringify([deck.main, deck.extra ?? []])
 const badOf = (deck: MappedDeck | undefined) => [...new Set([...(deck?.missing ?? []), ...(deck?.noRules ?? [])])]
 
 function sessionPhase(session: AutoSession, room: DuelSnapshot | null): OnlinePhase {
@@ -370,6 +372,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let guestDeck: DeckList | null = null
   let check: (Check & { bad: number[] }) | null = null
   let checks = 0
+  // El último deck del invitado que se mandó a revisar (uno que cambió en pleno duelo se revisa en la revancha) y la versión de los datos con que se revisó (va a lo guardado).
+  let checked: DeckList | null = null
+  let dataVersion = ''
   let cards: ReadonlyMap<number, AutoCardInfo> = new Map()
   let outdated = false
   let wait: ReturnType<typeof setTimeout> | undefined
@@ -489,6 +494,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   async function runCheck(deck: DeckList) {
     const token = ++checks
 
+    checked = deck
     check = null
     refresh()
     let next: Check & { bad: number[] }
@@ -503,6 +509,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
         const bad = badOf(data.decks[1])
 
         cards = cardsOf(data)
+        dataVersion = data.version
         next = { ok: mine.length === 0 && bad.length === 0, mine, theirs: bad.length, bad, reason: null }
       }
     } catch {
@@ -510,8 +517,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     if (token !== checks || destroyed) return
     check = next
-    // Lo guardado ya no se puede jugar (otros datos en el despliegue, cartas sin reglas): el duelo se perdió.
-    if (restoring && !next.ok) {
+    // Lo guardado ya no se puede jugar (otros datos en el despliegue, cartas sin reglas): el duelo se perdió. Con otra versión de los datos tampoco se re-simula: las mismas
+    // respuestas podrían armar otro duelo sin que nadie lo note.
+    if (restoring && (!next.ok || (restoring.data && dataVersion && restoring.data !== dataVersion))) {
       restoring = null
       pending = false
       return lose()
@@ -547,7 +555,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     if (snap.replaying || snap.answers === savedAnswers) return
     savedAnswers = snap.answers
-    options.save.write({ v: 2, key: duelKey, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}) })
+    options.save.write({ v: 2, key: duelKey, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}), ...(dataVersion ? { data: dataVersion } : {}) })
   }
 
   function takeDeck(message: Extract<AutoMessage, { t: 'autoDeck' }>) {
@@ -562,7 +570,16 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       else sendCheck()
       return refresh()
     }
-    guestDeck = { main: message.main, extra: message.extra }
+    const deck = { main: message.main, extra: message.extra }
+
+    // En pleno duelo (o rearmándolo) no se baja nada: el mismo deck sólo repite la revisión y uno distinto se revisa en la revancha. El duelo sigue con el que se revisó (y
+    // con sus cartas, que el invitado necesita en su mesa).
+    if (session || restoring) {
+      if (guestDeck && rowsOf(guestDeck) === rowsOf(deck)) sendCheck()
+      else guestDeck = deck
+      return
+    }
+    guestDeck = deck
     void runCheck(guestDeck)
   }
 
@@ -825,7 +842,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
         pending = false
         lost = false
         request.reset()
-        sendCheck()
+        // Un deck que el invitado cambió en pleno duelo se revisa ahora; si no, vale la revisión de antes.
+        if (guestDeck && guestDeck !== checked) void runCheck(guestDeck)
+        else sendCheck()
       }
       // Rendirse termina el duelo para la sala: lo guardado ya no sirve (y un pedido de pasar a manual tampoco: no se corta un duelo terminado).
       cut()

@@ -1,8 +1,8 @@
 import { OcgDuelMode } from 'ocgcore-wasm'
 import { matReducer } from '../app/practice-mat'
 import { DATA_UNAVAILABLE, DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
-import { createAutoSession, MR5, workerTransport, type AutoSession, type AutoSnapshot, type TransportFactory } from '../app/auto/auto-session'
-import type { AutoCommand, AutoEvent, Seat } from '../app/auto/protocol'
+import { createAutoSession, MR5, workerTransport, type AutoSession, type AutoSnapshot, type SessionOptions, type TransportFactory } from '../app/auto/auto-session'
+import { LOCATION as L, type AutoCommand, type AutoEvent, type Seat } from '../app/auto/protocol'
 import { CHAIN, END, fakeHost, IDLE, loader, mapped, PASS } from './support/auto-core-fake'
 
 const tick = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -589,5 +589,130 @@ describe('la sesión del duelo por enlace', () => {
     solo.emit({ t: 'events', seat: 0, n: 0, events: [{ type: 'waiting' }] })
     expect(alone.getSnapshot().status).toBe('loading')
     alone.destroy()
+  })
+})
+
+describe('la sesión avisa sólo lo que cambia (cada aviso es un render)', () => {
+  /** Mis `stats`: la carta 1 en la mano con ese ataque. */
+  const stat = (attack: number): AutoEvent => ({ t: 'stats', seat: 0, cards: [{ code: 1, controller: 0, location: L.HAND, sequence: 0, position: 10, attack, defense: 0, level: 4 }] })
+
+  /** Una sesión con el anfitrión a mano, en mi primera pregunta y con una carta robada; cuenta los avisos desde ahí. */
+  async function live(options: Partial<SessionOptions> = {}) {
+    const remote = manualHost()
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: remote.factory, seed: 7, ...options })
+    let calls = 0
+
+    for (let i = 0; i < 100 && remote.sent.length === 0; i += 1) await tick(1)
+    remote.emit({ t: 'loading', done: 0, total: 1 })
+    remote.emit({ t: 'events', seat: 0, n: 0, events: [{ type: 'draw', player: 0, drawn: [{ code: 1, position: 10 }] }] })
+    remote.emit({ t: 'ask', seat: 0, askId: 1, ask: IDLE })
+    expect(session.getSnapshot().status).toBe('ready')
+    session.subscribe(() => (calls += 1))
+
+    return { remote, session, calls: () => calls }
+  }
+
+  it('lo del rival que no cambia nada (sus `events` y sus `stats`) no avisa y el snapshot es el mismo objeto; con handtraps, que robe sí', async () => {
+    const passive = await live()
+    const before = passive.session.getSnapshot()
+
+    passive.remote.emit({ t: 'events', seat: 1, n: 1, events: [{ type: 'draw', player: 1, drawn: [{ code: 0, position: 10 }] }] })
+    passive.remote.emit({ t: 'stats', seat: 1, cards: [] })
+    expect(passive.calls()).toBe(0)
+    expect(passive.session.getSnapshot()).toBe(before)
+    passive.session.destroy()
+
+    // Con handtraps su mano está en el snapshot (`rivalHand`): sus `stats` no la cambian, su robo sí.
+    const handtraps = await live({ rival: { main: [[7, 1]], hand: () => [] } })
+
+    handtraps.remote.emit({ t: 'stats', seat: 1, cards: [] })
+    expect(handtraps.calls()).toBe(0)
+    handtraps.remote.emit({ t: 'events', seat: 1, n: 1, events: [{ type: 'draw', player: 1, drawn: [{ code: 2, position: 10 }] }] })
+    const drawn = handtraps.session.getSnapshot()
+
+    expect(handtraps.calls()).toBe(1)
+    expect(drawn.rivalHand).toEqual([2])
+    handtraps.remote.emit({ t: 'stats', seat: 1, cards: [] })
+    expect(handtraps.calls()).toBe(1)
+    expect(handtraps.session.getSnapshot()).toBe(drawn)
+    handtraps.session.destroy()
+  })
+
+  it('mis `stats`: con los mismos números no avisan (el snapshot es el mismo objeto); con otros, sí', async () => {
+    const { remote, session, calls } = await live()
+
+    remote.emit(stat(1000))
+    const first = session.getSnapshot()
+
+    expect(calls()).toBe(1)
+    expect(Object.values(first.overlay.stats.mine)).toEqual([{ attack: 1000, defense: 0, level: 4 }])
+    remote.emit(stat(1000))
+    expect(calls()).toBe(1)
+    expect(session.getSnapshot()).toBe(first)
+    remote.emit(stat(1500))
+    expect(calls()).toBe(2)
+    expect(Object.values(session.getSnapshot().overlay.stats.mine)).toEqual([{ attack: 1500, defense: 0, level: 4 }])
+    session.destroy()
+  })
+
+  it('un duelo con deshacer, cancelar y reiniciar: cada aviso trae algo distinto y, fuera de una re-simulación, nada cambia sin avisar', async () => {
+    const host = fakeHost()
+    let session: AutoSession | null = null
+    let seen: AutoSnapshot | null = null
+    const contents: string[] = []
+    const lag: string[] = []
+    // Tras cada evento (menos el `loading`, que rearma la mesa callado hasta la primera tanda), lo que avisó es lo vigente y lo vigente es lo que proyecta el adaptador.
+    const check = (event: AutoEvent) => {
+      const snap = session?.getSnapshot()
+
+      if (!snap || snap.replaying || event.t === 'loading' || !session?.adapter) return
+      if (snap !== seen || snap.mine !== session.adapter.mine || snap.overlay !== session.adapter.overlay) lag.push(`${event.t} ${contents.length}`)
+    }
+    // Como el anfitrión de verdad, los `stats` de cada asiento después de cada tanda: los míos cambian cada dos preguntas; los del rival, nunca.
+    const factory: TransportFactory = (data) => {
+      const inner = host.factory(data)
+
+      return {
+        ...inner,
+        onEvent: (listener) =>
+          inner.onEvent((event) => {
+            listener(event)
+            check(event)
+            if (event.t !== 'events') return
+            const stats: AutoEvent = event.seat === 0 ? stat(1000 + 100 * Math.floor(event.n / 2)) : { t: 'stats', seat: 1, cards: [] }
+
+            listener(stats)
+            check(stats)
+          }),
+      }
+    }
+
+    session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: factory, seed: 3 })
+    session.subscribe(() => {
+      seen = session!.getSnapshot()
+      contents.push(JSON.stringify(seen))
+    })
+    await until(session, (s) => s.status === 'ready')
+    for (let n = 1; n <= 4; n += 1) {
+      session.answer(END)
+      await until(session, (s) => s.status === 'ready' && s.ask !== null && s.answers.length >= n)
+    }
+    expect(session.undo()).toBe(true)
+    await until(session, (s) => s.status === 'ready' && !s.replaying)
+    host.state.hold = true
+    session.answer(END)
+    host.state.hold = false
+    session.cancel()
+    await until(session, (s) => s.status === 'ready' && !s.replaying)
+    session.restart()
+    await until(session, (s) => s.status === 'ready' && !s.replaying && s.answers.length === 0)
+    session.answer(END)
+    const last = await until(session, (s) => s.status === 'ready' && s.answers.length === 1)
+
+    expect(lag).toEqual([])
+    expect(contents.filter((content, i) => content === contents[i - 1])).toEqual([])
+    expect(seen).toBe(last)
+    expect(Object.values(last.overlay.stats.mine)).toEqual([{ attack: 1000, defense: 0, level: 4 }])
+    session.destroy()
   })
 })
