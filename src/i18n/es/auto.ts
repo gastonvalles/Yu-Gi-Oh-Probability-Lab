@@ -142,6 +142,15 @@ export const auto = {
 
   // Los pasos y los combos (el panel de la práctica): la lista vacía (acá no se arrastra ni se mantiene) y el repaso de un combo o de tus jugadas en la misma mesa, con la salida.
   'auto.steps.empty': 'Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.',
+  // Las cadenas en la lista de pasos: el eslabón de tu activación, cómo resolvió y el renglón de cierre (cada eslabón, los del rival también).
+  'auto.steps.link': 'Cadena {chain} · CL{link}',
+  'auto.steps.cost': 'Cadena {chain} · CL{link} · costo',
+  'auto.steps.noEffect': 'Resuelve: sin efecto',
+  'auto.steps.solvedStep': 'Resuelve: paso {step}',
+  'auto.steps.solvedSteps': 'Resuelve: pasos {from}–{to}',
+  'auto.steps.chainEnd': 'Cadena {chain} resuelta',
+  'auto.steps.endLink': 'CL{link} {card}: {state}',
+  'auto.steps.theirs': '{card} ({rival})',
   'auto.review.combo': 'Repasás “{name}”: el duelo te espera donde lo dejaste.',
   'auto.review.plays': 'Repasás tus jugadas: el duelo te espera donde lo dejaste.',
   'auto.review.back': 'Volver al duelo',

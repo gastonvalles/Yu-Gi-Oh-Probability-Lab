@@ -17,7 +17,7 @@ import { Switch } from '../ui/Switch'
 import { ConfirmDialog } from './ConfirmDialog'
 import { SaveComboDialog } from './MatDialogs'
 import { MatSnapshot } from './MatSnapshot'
-import type { PanelStep } from './panel-steps'
+import type { PanelChainEnd, PanelChainMark, PanelChains, PanelStep } from './panel-steps'
 import { FX_RGB, type FxTone } from './practice-styles'
 
 type PanelTab = 'steps' | 'combos'
@@ -41,6 +41,8 @@ interface PracticeMatPanelProps {
   showCombos?: boolean
   /** Lo que dice la lista vacía, si no es el de la práctica (en «Jugar solo automático» no se arrastra ni se mantiene). */
   emptyHint?: string
+  /** «Jugar solo automático»: las cadenas (`panelChainsOf`): «Cadena 1 · CL1» y cómo resolvió en el paso de tu activación, y un renglón de cierre después de su último paso. */
+  chains?: PanelChains
   className?: string
 }
 
@@ -66,7 +68,7 @@ function writeDetails(on: boolean) {
 const NO_CARDS: PanelStep['cards'] = []
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, showCombos = true, emptyHint, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, showCombos = true, emptyHint, chains, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
   // ponytail: cada panel (el lateral y el del celular) lee la preferencia al abrirse; si se cambia en uno, el otro —que está escondido— la toma recién al volver a montarse.
   const [details, setDetails] = useState(readDetails)
@@ -105,7 +107,7 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
             {/* Una línea de tiempo: la última jugada arriba, como un registro, y la mano inicial al final. */}
             <ol className={cx('m-0 grid list-none content-start overflow-y-auto overflow-x-hidden p-0', details ? 'gap-2' : 'gap-1')} aria-label={t('practice.panel.plays')}>
               {steps
-                .map((step, index) => (
+                .flatMap((step, index) => [
                   <StepTile
                     key={index}
                     index={index + 1}
@@ -122,9 +124,15 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
                     onSeek={onSeek}
                     nameOf={nameOf}
                     artOf={artOf}
-                  />
-                ))
+                    {...(chains?.marks.has(index + 1) ? { chain: chains.marks.get(index + 1)! } : {})}
+                  />,
+                  // El cierre de una cadena va después de su último paso: con la lista al revés, arriba de él.
+                  ...(chains?.ends.get(index + 1) ?? []).map((end) => <ChainEndRow key={`end-${end.chain}`} end={end} />),
+                ])
                 .reverse()}
+              {[...(chains?.ends.get(0) ?? [])].reverse().map((end) => (
+                <ChainEndRow key={`end-${end.chain}`} end={end} />
+              ))}
               <StepTile index={0} label={t('practice.mat.startingHand')} divider={false} cards={NO_CARDS} after={initial} info={null} tone={null} active={cursor === 0} past={cursor > 0} details={details} onSeek={onSeek} nameOf={nameOf} artOf={artOf} />
             </ol>
           </>
@@ -322,6 +330,37 @@ interface StepTileProps {
   onSeek: (step: number) => void
   nameOf: (id: string) => string
   artOf: (id: string) => string | null
+  /** Duelo automático: el eslabón que sumó esta jugada (con los detalles, «Cadena 1 · CL1» junto a sus chips y abajo cómo resolvió). */
+  chain?: PanelChainMark
+}
+
+/** La fila de la línea de tiempo: la columna del círculo, sobre la línea vertical que une los pasos, y la de la ficha. */
+const RAIL = cx('relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2', 'before:absolute before:left-[0.8125rem] before:top-0 before:-bottom-2 before:w-0.5 before:bg-border-subtle first:before:top-4 last:before:bottom-auto last:before:h-4')
+
+/** Cómo resolvió un eslabón tuyo: sin efecto (rojo), o en qué pasos (verde). */
+function resultText(result: NonNullable<PanelChainMark['result']>): string {
+  if (result.negated) return t('auto.steps.noEffect')
+  if (result.to < result.from) return t('auto.chain.state.solved')
+
+  return result.to === result.from ? t('auto.steps.solvedStep', { step: result.from }) : t('auto.steps.solvedSteps', { from: result.from, to: result.to })
+}
+
+/**
+ * El cierre de una cadena (duelo automático): no es un paso tuyo, así que no es una ficha ni se toca; va punteado, con el eslabón en el lugar del círculo, y dice cómo terminó cada
+ * eslabón (los del rival también). «Quién negó a quién» el núcleo no lo dice: sólo el estado.
+ */
+function ChainEndRow({ end }: { end: PanelChainEnd }) {
+  return (
+    <li className={RAIL} data-chain-end={end.chain}>
+      <span aria-hidden="true" className="relative mt-1.5 grid size-7 place-items-center rounded-full border border-dashed border-border bg-background text-soft">
+        <Icon name="link" size={13} strokeWidth={2} />
+      </span>
+      <p className="m-0 grid gap-0.5 rounded-card border border-dashed border-border-subtle px-3 py-2 text-micro">
+        <span className="font-semibold text-foreground">{t('auto.steps.chainEnd', { chain: end.chain })}</span>
+        <span className="text-muted">{end.links.map((link) => t('auto.steps.endLink', { link: link.number, card: link.name, state: t(`auto.chain.state.${link.state}`) })).join(' · ')}</span>
+      </p>
+    </li>
+  )
 }
 
 /**
@@ -333,15 +372,20 @@ interface StepTileProps {
  * El botón es sólo el número y la frase (lo que se lee y lo que dicen las pruebas); su `::after` cubre la ficha entera, así se toca en cualquier lado y el foco la rodea. Es `memo`
  * con props estables: al avanzar un combo sólo cambian `active` y `past` de dos fichas.
  */
-const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, arrows, tone, active, past, details, onSeek, nameOf, artOf }: StepTileProps) {
+const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, arrows, tone, active, past, details, onSeek, nameOf, artOf, chain }: StepTileProps) {
   const ref = useRef<HTMLLIElement | null>(null)
   const originId = useId()
+  const chainId = useId()
+  const resultId = useId()
   const movesId = useId()
   const state = active ? 'current' : past ? 'past' : 'upcoming'
   const boxed = details && !divider
   const kind = boxed && info ? info.kind : null
   // «Robar» ya dice que sale del deck.
   const origin = kind && kind !== 'draw' ? info?.origin ?? null : null
+  // El eslabón va con los chips (sólo con los detalles): como ellos, es la descripción del botón, no su nombre.
+  const link = kind ? chain : undefined
+  const described = [origin && originId, link && chainId, link?.result && resultId].filter(Boolean).join(' ')
   const moves = boxed && active ? (info?.moves ?? []) : []
   const phase = PHASES.find((entry) => entry.id === after.phase)?.name ?? after.phase
 
@@ -370,7 +414,7 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
     <button
       type="button"
       aria-current={active ? 'step' : undefined}
-      aria-describedby={origin ? originId : undefined}
+      aria-describedby={described || undefined}
       data-divider={divider ? 'true' : 'false'}
       className={cx(
         'block w-full min-w-0 rounded-none bg-transparent p-0 text-left focus-visible:outline-none',
@@ -411,6 +455,11 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
                 {t(ORIGIN_KEY[origin])}
               </Badge>
             ) : null}
+            {link ? (
+              <Badge size="sm" shape="tag" tone="brand" id={chainId}>
+                {t(link.cost ? 'auto.steps.cost' : 'auto.steps.link', { chain: link.chain, link: link.link })}
+              </Badge>
+            ) : null}
           </span>
         ) : null}
         {button}
@@ -418,11 +467,9 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
     ) : (
       button
     )
-  const rail = cx('relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2', 'before:absolute before:left-[0.8125rem] before:top-0 before:-bottom-2 before:w-0.5 before:bg-border-subtle first:before:top-4 last:before:bottom-auto last:before:h-4')
-
   if (!boxed) {
     return (
-      <li ref={ref} className={rail}>
+      <li ref={ref} className={RAIL}>
         {/* 44 px de alto como mínimo (con o sin miniaturas, también las cabeceras): es un objetivo táctil y las filas quedan parejas, como la lista de siempre. */}
         <div className={cx('relative col-start-2 grid min-h-11 min-w-0 items-center rounded-control px-2 py-1 transition-colors duration-150 motion-reduce:transition-none', active ? 'bg-tint/14' : 'hover:bg-tint/8')}>{heading}</div>
       </li>
@@ -430,7 +477,7 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
   }
 
   return (
-    <li ref={ref} className={rail}>
+    <li ref={ref} className={RAIL}>
       <div className={cx('@container relative col-start-2 min-w-0 rounded-card border bg-card-background p-3 transition-colors duration-150 motion-reduce:transition-none', active ? 'border-info' : 'border-border-subtle hover:border-border')}>
         {/* Angosta (la columna de la mesa, el celular), el tablero va abajo; ancha (el diálogo en una tableta), a la derecha, como en la referencia. */}
         <div className="grid gap-2.5 @min-[30rem]:grid-cols-[minmax(0,1fr)_15rem] @min-[30rem]:items-start">
@@ -462,6 +509,14 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
           {/* Debajo de la frase, hasta 18 rem (más grande no dice más y aleja la ficha siguiente), con las flechas de lo que se movió. */}
           <MatSnapshot state={after} change={info?.change} arrows={arrows} artOf={artOf} className="w-full max-w-[18rem] @min-[30rem]:max-w-none" />
         </div>
+        {/* Cómo resolvió su eslabón, al pie de la ficha (abajo a la derecha, como el cierre de lo que hizo): sólo cuando ya se resolvió. */}
+        {link?.result ? (
+          <p className="m-0 mt-2.5 flex justify-end">
+            <Badge size="sm" shape="tag" solid tone={link.result.negated ? 'danger' : 'success'} id={resultId}>
+              {resultText(link.result)}
+            </Badge>
+          </p>
+        ) : null}
       </div>
     </li>
   )

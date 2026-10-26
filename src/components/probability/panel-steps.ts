@@ -1,3 +1,4 @@
+import type { ChainRowState } from '../../app/auto/chain-feed'
 import { matArrows, type MatArrow } from '../../app/mat-arrows'
 import { describeSteps, matStates, type StepInfo } from '../../app/mat-step-info'
 import { matStepCards } from '../../app/mat-steps'
@@ -44,3 +45,25 @@ export function panelStepsOf(initial: MatState, actions: readonly MatAction[], l
     tone: stepTone(states[index]!, action),
   }))
 }
+
+/** Tu jugada que sumó un eslabón (o que pagó su costo): en qué cadena del duelo (1 = la primera), qué eslabón (1 = CL1) y, ya resuelto, cómo: sin efecto, o los pasos que hizo (`from`–`to`; ninguno si `to < from`). */
+export interface PanelChainMark {
+  chain: number
+  link: number
+  /** Es una carta que se movió para pagar el costo de ese eslabón, no su activación (sin `result`). */
+  cost?: true
+  result: { negated: true } | { negated: false; from: number; to: number } | null
+}
+
+/** El renglón de cierre de una cadena terminada: cada eslabón (los del rival también) con su nombre y cómo terminó. */
+export interface PanelChainEnd {
+  chain: number
+  links: Array<{ number: number; name: string; state: ChainRowState }>
+}
+
+/** Lo de las cadenas en la lista de pasos (duelo automático: `panelChainsOf`, en `step-chains.ts` de las piezas del modo automático), por número de paso: la marca de cada activación tuya y los cierres que van después de ese paso (0 = después de la mano inicial). */
+export interface PanelChains {
+  marks: ReadonlyMap<number, PanelChainMark>
+  ends: ReadonlyMap<number, readonly PanelChainEnd[]>
+}
+
