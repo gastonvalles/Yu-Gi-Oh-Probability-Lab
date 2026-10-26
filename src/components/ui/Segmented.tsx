@@ -126,7 +126,8 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
               dense ? 'rounded-lg px-1' : look.base,
               active ? (option.tone && variant === 'track' ? TONE_ON[option.tone] : look.on) : look.off,
               variant === 'lens' ? null : size === 'md' ? 'min-h-10 text-body pointer-coarse:min-h-11' : 'min-h-9 text-micro pointer-coarse:min-h-11',
-              variant === 'cards' && size === 'md' && 'py-2',            )}
+              variant === 'cards' && size === 'md' && 'py-2',
+            )}
             onClick={() => onChange(option.value)}
           >
             {option.leading ? <span className="mb-0.5 grid place-items-center" aria-hidden="true">{option.leading}</span> : null}
