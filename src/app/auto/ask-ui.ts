@@ -139,6 +139,8 @@ export interface AskView {
   auto: { answer: CoreAnswer | null; why: 'none' | 'forced' | 'setting' | 'drop' } | null
   /** Los ítems de cada carta de mi mesa, por id (las jugadas, el ataque, la cadena). */
   items: ReadonlyMap<string, AskItem[]>
+  /** Los de las cartas que controla el rival y la pregunta deja activar (una obligatoria de su campo: el núcleo la ofrece a quien pregunta), por su id. */
+  theirs: ReadonlyMap<string, AskItem[]>
   phaseItems: AskItem[]
   endTurn: CoreAnswer | null
   /** Lo que brilla en celeste (`can` de `app/card-glow.ts`): lo que se puede activar o invocar de forma especial, lo que la pregunta pide elegir u ordenar y la carta del efecto preguntado (lo que sólo se invoca de forma normal, se coloca, cambia de posición o ataca se toca igual, sin brillar). */
@@ -168,6 +170,7 @@ export type AskGesture =
 interface Base {
   cards: AskCard[]
   items: Map<string, AskItem[]>
+  theirs: Map<string, AskItem[]>
   phaseItems: AskItem[]
   endTurn: CoreAnswer | null
   prompt: AskPromptView | null
@@ -432,13 +435,15 @@ export function itemsInto(items: readonly AskItem[], into: Into): AskItem[] {
 }
 
 /**
- * Los ítems de cada carta de mi mesa. «Activar efecto» de una carta con varias entradas pregunta cuál (`children`): cada uno con su texto o, sin él, con la palabra de su
- * activación. Sin número: el orden de la pregunta no es el del texto de la carta (el núcleo saca lo que ahora no se puede).
+ * Los ítems de cada carta, de mi mesa (`items`) y del rival (`theirs`: lo que la pregunta deja activar de una carta suya). «Activar efecto» de una carta con varias entradas pregunta
+ * cuál (`children`): cada uno con su texto o, sin él, con la palabra de su activación. Sin número: el orden de la pregunta no es el del texto de la carta (el núcleo saca lo que ahora no se puede).
  */
-function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chain'>, resolve: (card: Loc) => CardRef | null, ctx: AskContext): Map<string, AskItem[]> {
-  const items = new Map<string, AskItem[]>()
+function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chain'>, resolve: (card: Loc) => CardRef | null, ctx: AskContext): Pick<Base, 'items' | 'theirs'> {
+  const out: Pick<Base, 'items' | 'theirs'> = { items: new Map(), theirs: new Map() }
   const add = (ref: CardRef | null, item: AskItem) => {
-    if (ref?.side === 'mine') items.set(ref.id, [...(items.get(ref.id) ?? []), item])
+    const items = ref?.side === 'mine' ? out.items : out.theirs
+
+    if (ref) items.set(ref.id, [...(items.get(ref.id) ?? []), item])
   }
   const list = <C extends Loc>(cards: readonly C[], label: (card: C, ref: CardRef | null) => string, answer: (index: number) => CoreAnswer, into?: Into) =>
     cards.forEach((card, index) => {
@@ -449,18 +454,18 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
   // Activar una Mágica o una Trampa de la mano (o un Péndulo como escala) la pone en una casilla de Mágicas y Trampas; un efecto de un monstruo de la mano, no.
   const intoOf = (card: Active): { into?: Into } => (card.location === L.HAND && (card.description === PENDULUM_SCALE || ((ctx.typeOf?.(card.code) ?? 0) & SPELL_TRAP) !== 0) ? { into: 'spell' } : {})
   const activations = (cards: readonly Active[], answer: (index: number) => CoreAnswer) => {
-    const byCard = new Map<string, number[]>()
+    const byCard = new Map<string, { ref: CardRef; indices: number[] }>()
 
     cards.forEach((card, index) => {
       const ref = resolve(card)
-      const seen = ref?.side === 'mine' ? (byCard.get(ref.id) ?? []) : null
+      const key = ref && `${ref.side}:${ref.id}`
+      const seen = key ? (byCard.get(key)?.indices ?? []) : null
 
       // El mismo efecto dos veces (un disparo por cada evento: dos Juego Rápido encadenadas) es una sola fila, la primera: si se puede de nuevo, la próxima pregunta lo vuelve a traer.
       // Sin texto propio (`'0'`) no se distingue de otro efecto de la carta: quedan los dos.
-      if (seen && (card.description === '0' || !seen.some((other) => cards[other]!.description === card.description))) byCard.set(ref!.id, [...seen, index])
+      if (seen && (card.description === '0' || !seen.some((other) => cards[other]!.description === card.description))) byCard.set(key!, { ref: ref!, indices: [...seen, index] })
     })
-    for (const [id, indices] of byCard) {
-      const ref: CardRef = { side: 'mine', id }
+    for (const { ref, indices } of byCard.values()) {
       const effect = (index: number) => ({ code: cards[index]!.code, description: cards[index]!.description })
       const label = activateLabel(cards[indices[0]!]!, ref, ctx)
 
@@ -516,7 +521,7 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
       break
   }
 
-  return items
+  return out
 }
 
 /** Las ventanas de tus fases por el `hint_timing` de una cadena (`TIMING_DRAW_PHASE`, `TIMING_STANDBY_PHASE`, `TIMING_END_PHASE`): en el turno del rival vienen en `hint_timing_other`. */
@@ -610,7 +615,7 @@ export function effectAskText(prompt: AskPromptView & { card: AskCard }, cause: 
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {
   const { ask } = input
   const resolve = resolver(ctx.queries, ask.player)
-  const base: Base = { cards: [], items: new Map(), phaseItems: phaseItemsOf({}, ctx.phase), endTurn: null, prompt: null, options: [], targets: [], auto: null, phaseWindow: null }
+  const base: Base = { cards: [], items: new Map(), theirs: new Map(), phaseItems: phaseItemsOf({}, ctx.phase), endTurn: null, prompt: null, options: [], targets: [], auto: null, phaseWindow: null }
   const cardsOf = <C extends Loc>(list: readonly C[], value?: (card: C) => number) => list.map((card) => askCard(card, resolve(card), value?.(card)))
   const auto = (answer: CoreAnswer | null, why: NonNullable<AskView['auto']>['why']) => void (base.auto = { answer: answer && parseAnswer(answer), why })
 
@@ -626,13 +631,13 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
         ? { ...(ask.to_bp ? { battle: answer(6) } : {}), ...(ask.to_ep ? { end: answer(7) } : {}) }
         : { ...(ask.to_m2 ? { main2: answer(2) } : {}), ...(ask.to_ep ? { end: answer(3) } : {}) }
 
-      base.items = itemsOf(ask, resolve, ctx)
+      Object.assign(base, itemsOf(ask, resolve, ctx))
       base.phaseItems = phaseItemsOf(offered, ctx.phase)
       base.endTurn = offered.end ?? null
       break
     }
     case 'select_chain': {
-      base.items = itemsOf(ask, resolve, ctx)
+      Object.assign(base, itemsOf(ask, resolve, ctx))
       // «Preguntar» pregunta como EDOPro sin «Always chain»: sólo si algo responde de verdad a este momento (`spe_count` del núcleo: los disparos opcionales y los
       // efectos rápidos con el timing de ahora). Una carta que sólo «podría» activarse (una Trampa colocada, en cada paso del propio turno) no pregunta. Forzada, siempre.
       // Salvo en tus fases (la Draw, la Standby y la End Phase de tu turno: `hint_timing`) con algo que activar: ahí se juega como en la mesa manual (brilla lo que se
@@ -728,6 +733,7 @@ export function askView(state: AskState): AskView {
     ...(state.title === undefined ? {} : { title: state.title }),
     auto: base.auto,
     items: base.items,
+    theirs: base.theirs,
     phaseItems: base.phaseItems,
     endTurn: base.endTurn,
     respond: [],
@@ -747,8 +753,10 @@ export function askView(state: AskState): AskView {
     case 'select_battlecmd':
     case 'select_chain':
       // Brilla lo que se activa (sólo las activaciones llevan `effect` o `children`) y lo que se invoca de forma especial (`action` 1, también la de Péndulo, desde la mano, el campo, las pilas
-      // o el Extra); lo que se invoca de forma normal, se coloca, cambia de posición o ataca, no.
-      view.respond = [...base.items].flatMap(([id, items]) => (items.some((item) => item.effect || item.children || (item.answer?.type === 'select_idlecmd' && item.answer.action === 1)) ? [{ side: 'mine' as const, id }] : []))
+      // o el Extra); lo que se invoca de forma normal, se coloca, cambia de posición o ataca, no. Lo del rival que se activa, también (después de lo tuyo).
+      view.respond = (['mine', 'theirs'] as const).flatMap((side) =>
+        [...(side === 'mine' ? base.items : base.theirs)].flatMap(([id, items]) => (items.some((item) => item.effect || item.children || (item.answer?.type === 'select_idlecmd' && item.answer.action === 1)) ? [{ side, id }] : [])),
+      )
       view.cancelable = ask.type === 'select_chain' && !ask.forced
       break
     case 'select_effectyn':
@@ -906,7 +914,7 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
 
   switch (gesture.kind) {
     case 'item': {
-      const offered = [...[...view.items.values()].flat().flatMap((item) => [item, ...(item.children ?? [])]), ...view.phaseItems].flatMap((item) => (item.answer ? [item.answer] : []))
+      const offered = [...[...view.items.values(), ...view.theirs.values()].flat().flatMap((item) => [item, ...(item.children ?? [])]), ...view.phaseItems].flatMap((item) => (item.answer ? [item.answer] : []))
 
       if (view.endTurn) offered.push(view.endTurn)
       if (view.prompt) offered.push(view.prompt.yes, view.prompt.no)

@@ -81,6 +81,26 @@ describe('auto-screen · varias obligatorias', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
   })
 
+  it('una obligatoria de una carta del rival (la ofrece la pregunta): va en la banda con de dónde es, late en su campo y tocarla la activa', () => {
+    const fake = renderAuto()
+    const rival = { ...pos(700, L.MZONE, 0, 1, 1), description: '0', client_mode: 1 }
+
+    core(() => fake.ask({ ...FORCED, selects: [FORCED.selects[0]!, rival] }))
+    const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero (CL1)?' })
+
+    expect(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ })).toHaveTextContent('Rival, Campo')
+    fireEvent.click(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar Blue-Eyes White Dragon primero' }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
+
+    // Sola: la banda lo dice igual (puede no estar a la vista) y tocarla en su campo también la activa.
+    core(() => fake.ask({ ...FORCED, selects: [rival] }))
+    expect(screen.getByRole('group', { name: 'Tenés que activar Blue-Eyes White Dragon: tocala' })).toBeInTheDocument()
+    expect(document.querySelector('[data-attack-target="true"]')?.getAttribute('data-rival-card-id')).toBe('c1')
+    fireEvent.click(screen.getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }, { type: 'select_chain', index: 0 }])
+  })
+
   it('una sola obligatoria: la línea de siempre, sin banda', () => {
     const fake = renderAuto()
 

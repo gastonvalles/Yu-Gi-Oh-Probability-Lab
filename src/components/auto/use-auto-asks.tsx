@@ -378,7 +378,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
     if (!view?.auto) return
     if (view.auto.answer) session.answer(view.auto.answer)
-    else setStuck(pending!.ask.type)
+    else {
+      // La línea lo dice con palabras de la mesa; el tipo de la pregunta, en la consola.
+      console.warn('[auto] una pregunta sin respuesta segura:', pending!.ask.type)
+      setStuck(pending!.ask.type)
+    }
     // Sólo cuando llega otra pregunta: la mesa y los ajustes se leen en ese momento.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [askId])
@@ -566,12 +570,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
     [wide, lockDock],
   )
-  // Las cartas del rival que la pregunta deja elegir (a qué atacar, el objetivo de un efecto): laten y se eligen tocándolas; las elegidas llevan la mira.
+  // Las cartas del rival que la pregunta deja elegir (a qué atacar, el objetivo de un efecto) o activar (una obligatoria de su campo): laten y se tocan; las elegidas llevan la mira.
+  const rivalPlays = shown?.theirs
   const rivalPicks = useMemo(() => {
     const refs = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'theirs' ? [pick!.cards[i]!.ref!.id] : []))
 
-    return pick ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen) } : null
-  }, [pick])
+    return pick ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen) } : rivalPlays?.size ? { eligible: new Set(rivalPlays.keys()), chosen: [] } : null
+  }, [pick, rivalPlays])
   /** El visor de una pila del rival (información pública): su Cementerio, su Destierro o lo boca arriba de su Extra. Repasando, su lado está vacío. */
   const [rivalPileOpen, setRivalPile] = useState<'gy' | 'banished' | 'extra' | null>(null)
   const rivalPile = reviewing ? null : rivalPileOpen
@@ -583,7 +588,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] } } : {}),
       act: acting.theirs,
       links: links.theirs,
-      // Tocar una carta suya la elige si la pregunta la ofrece; si no, la muestra. Tocar su Cementerio, su Destierro o su Extra con cartas boca arriba abre (o cierra) su visor.
+      // Tocar una carta suya la elige (o la activa: con varios efectos, pregunta cuál) si la pregunta la ofrece; si no, la muestra. Tocar su Cementerio, su Destierro o su Extra con
+      // cartas boca arriba abre (o cierra) su visor.
       onMark: (target, rect) => {
         if ('pile' in target) {
           const pile = target.pile === 'gy' || target.pile === 'banished' || target.pile === 'extra' ? target.pile : null
@@ -591,11 +597,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           if (pile && (pile === 'extra' ? theirs.extraUp : theirs[pile]).length > 0) setRivalPile((current) => (current === pile ? null : pile))
           return
         }
-        if (rivalPicks?.eligible.has(target.card)) gesture({ kind: 'card', ref: { side: 'theirs', id: target.card } })
+        const plays = rivalPlays?.get(target.card)?.flatMap((item) => item.children ?? [item])
+
+        if (plays?.length === 1) gesture({ kind: 'item', answer: plays[0]!.answer! })
+        else if (plays) setSub({ label: t('practice.menu.activateEffect'), children: plays })
+        else if (rivalPicks?.eligible.has(target.card)) gesture({ kind: 'card', ref: { side: 'theirs', id: target.card } })
         else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, rivalPicks, showRival, rivalPeekOf, acting, links],
+    [theirs, artOf, gesture, rivalPicks, rivalPlays, showRival, rivalPeekOf, acting, links],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
@@ -603,21 +613,33 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── La línea del registro: lo que no frena (trabada, el rival eligiendo, pensando, la cadena con «No responder», un error de script, la cadena que se resuelve), lo más urgente primero. ──
   const chain = snap.overlay.chain
   const linkName = (link: ChainLink) => nameOf(link.card, link.code)
-  const respondNames = (ids: Iterable<string>) => namesList([...ids].map((id) => nameOf({ side: 'mine', id })))
+  // Lo que se activa en la cadena, de los dos lados: tus cartas y las del rival que la pregunta te deja activar (una obligatoria de su campo).
+  const activatable = shown?.type === 'select_chain' ? [...[...shown.items].map(([id, items]) => ({ ref: { side: 'mine' as const, id }, items })), ...[...shown.theirs].map(([id, items]) => ({ ref: { side: 'theirs' as const, id }, items }))] : []
+  const chainNames = namesList(activatable.map(({ ref }) => nameOf(ref)))
   const newFault = snap.faults[snap.faults.length - 1]
-  // Varias obligatorias a la vez (una cadena forzada con dos a `BAND_MAX` cartas, cada una con un solo efecto): se elige cuál entra primero en la banda del medio, con la elegida en
-  // «Activar X primero» (también se activa tocando la que brilla en la mesa). Con una sola, o si alguna tiene varios efectos (su menú pregunta cuál), la línea de siempre.
-  const forcedItems = shown?.type === 'select_chain' && !shown.phaseWindow && !shown.cancelable && shown.items.size >= 2 && shown.items.size <= BAND_MAX ? [...shown.items] : []
-  const forced = forcedItems.length > 0 && forcedItems.every(([, items]) => items.length === 1 && items[0]!.answer) ? forcedItems.map(([id, items]) => ({ id, answer: items[0]!.answer! })) : null
+  const lastUnmapped = snap.unmapped[snap.unmapped.length - 1]
+
+  // La línea lo dice con palabras de la mesa; el detalle técnico (el mensaje del núcleo, la nota del adaptador), en la consola.
+  useEffect(() => {
+    if (newFault) console.warn('[auto] el núcleo avisó un error:', newFault.kind, newFault.message)
+  }, [newFault])
+  useEffect(() => {
+    if (lastUnmapped) console.warn('[auto] la mesa no pudo mostrar:', lastUnmapped)
+  }, [lastUnmapped])
+  // Varias obligatorias a la vez (una cadena forzada con dos a `BAND_MAX` cartas, cada una con un solo efecto) o una del rival: se elige cuál entra primero en la banda del medio, con la
+  // elegida en «Activar X primero» (también se activa tocando la que brilla en la mesa). Con una sola tuya, o si alguna tiene varios efectos (su menú pregunta cuál), la línea de siempre.
+  const forcedItems =
+    shown?.type === 'select_chain' && !shown.phaseWindow && !shown.cancelable && activatable.length <= BAND_MAX && (activatable.length >= 2 || activatable.some(({ ref }) => ref.side === 'theirs')) ? activatable : []
+  const forced = forcedItems.length > 0 && forcedItems.every(({ items }) => items.length === 1 && items[0]!.answer) ? forcedItems.map(({ ref, items }) => ({ ref, key: `${ref.side}:${ref.id}`, item: items[0]! })) : null
   const [forcedPick, setForcedPick] = useState<string | null>(null)
-  const forcedFirst = forced ? (forced.find((card) => card.id === forcedPick) ?? forced[0]!) : null
+  const forcedFirst = forced ? (forced.find((card) => card.key === forcedPick) ?? forced[0]!) : null
   const lane: LaneNotice | null = review
     ? // Repasando: qué se mira y la salida, en el lugar de los avisos (no corre nada).
       { kind: 'ask', text: review.name === undefined ? t('auto.review.plays') : t('auto.review.combo', { name: review.name }), actions: [{ label: t('auto.review.back'), onSelect: back, primary: true }] }
     : frozen
     ? null
     : stuck
-      ? { kind: 'ask', text: t('auto.lane.error', { message: stuck }), actions: canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : [] }
+      ? { kind: 'ask', text: t('auto.lane.stuck'), actions: canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : [] }
       : snap.status === 'waiting' && waitingText !== null
         ? { kind: 'thinking', text: waitingText }
         : snap.status === 'thinking'
@@ -627,11 +649,18 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
               // va al medio (`chainOffer`) y la línea queda libre; varias obligatorias, también (`forced`).
               shown.cancelable || forced
               ? null
-              : { kind: 'ask', text: t('auto.lane.mustActivate', { cards: respondNames(shown.items.keys()) }), actions: [] }
+              : { kind: 'ask', text: t('auto.lane.mustActivate', { cards: chainNames }), actions: [] }
             : snap.faults.length > faultsBase.current && newFault
-              ? { kind: 'ask', text: newFault.kind === 'script' ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') }) : t('auto.lane.error', { message: newFault.message }), actions: [] }
+              ? {
+                  kind: 'ask',
+                  text:
+                    newFault.kind === 'script'
+                      ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') })
+                      : t(newFault.kind === 'retry' || newFault.kind === 'answer' ? 'auto.lane.rejected' : 'auto.lane.error'),
+                  actions: [],
+                }
               : snap.unmapped.length > unmappedBase.current
-                ? { kind: 'ask', text: t('auto.lane.unmapped', { what: snap.unmapped[snap.unmapped.length - 1]! }), actions: [] }
+                ? { kind: 'ask', text: t('auto.lane.unmapped'), actions: [] }
                 : null
   // La cadena que se puede pasar, al medio de la mesa (como «¿Activás el efecto?»): se responde tocando la carta que brilla; sin nada más urgente en la línea (trabada, esperando, pensando).
   // El aviso de la cadena: la última que empezó, como se ve con lo que ya se mostró (`feed`, más arriba); terminada, se va a los `CHAIN_LINGER_MS` salvo que la hayas desplegado (queda hasta plegarla).
@@ -760,31 +789,35 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         key={askId ?? 0}
         text={
           respondedTo
-            ? t('auto.lane.respondTo', { card: linkName(respondedTo), cards: respondNames(chainOffer.items.keys()) })
-            : t('auto.lane.respondNow', { cards: respondNames(chainOffer.items.keys()) })
+            ? t('auto.lane.respondTo', { card: linkName(respondedTo), cards: chainNames })
+            : t('auto.lane.respondNow', { cards: chainNames })
         }
         // La carta a la que se responde (el último eslabón), chica a la izquierda: se ve qué se está por resolver sin buscarla en la mesa.
         {...(respondedTo ? { card: { name: linkName(respondedTo), art: artOf(respondedTo.card, respondedTo.code) } } : {})}
         no={{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }}
       />
     ) : forced && forcedFirst && lane === null ? (
-      // Varias obligatorias: tocar elige cuál va primero (la primera, de entrada) y la principal la activa; sin «No responder».
+      // Varias obligatorias: tocar elige cuál va primero (la primera, de entrada) y la principal la activa; sin «No responder». Una del rival dice de dónde es y, si se sabe, qué hace.
       <PickBand
         key={askId ?? 0}
-        title={t('auto.forced.title', { count: forced.length, link: chain.length + 1 })}
-        cards={forced.map(({ id }): PickCard => {
-          const at = locateCard(state, id)
+        title={forced.length > 1 ? t('auto.forced.title', { count: forced.length, link: chain.length + 1 }) : t('auto.lane.mustActivate', { cards: nameOf(forcedFirst.ref) })}
+        cards={forced.map(({ ref, key, item }): PickCard => {
+          const at = locateCard(ref.side === 'mine' ? state : theirs, ref.id)
+          const pile = at?.kind === 'pile' ? PILE_TITLES[at.pile] : undefined
+          const where = ref.side === 'theirs' ? t('duel.zone.theirs', { zone: pile ?? t('practice.mat.field') }) : pile
+          const does = item.effect ? effectLabel(item.effect.code, item.effect.description) : null
+          const place = [where, does].filter(Boolean).join(' · ')
 
-          return { key: id, name: nameOf({ side: 'mine', id }), art: artOf({ side: 'mine', id }), ...(at?.kind === 'pile' ? { place: PILE_TITLES[at.pile] } : {}) }
+          return { key, name: nameOf(ref), art: artOf(ref), ...(place ? { place } : {}) }
         })}
-        chosen={[forcedFirst.id]}
-        eligible={new Set(forced.map((card) => card.id))}
+        chosen={[forcedFirst.key]}
+        eligible={new Set(forced.map((card) => card.key))}
         multi={false}
         done
         onToggle={setForcedPick}
-        onPick={() => gesture({ kind: 'item', answer: forcedFirst.answer })}
-        action={t('auto.forced.activate', { card: nameOf({ side: 'mine', id: forcedFirst.id }) })}
-        note={t('auto.forced.hint')}
+        onPick={() => gesture({ kind: 'item', answer: forcedFirst.item.answer! })}
+        action={forced.length > 1 ? t('auto.forced.activate', { card: nameOf(forcedFirst.ref) }) : forcedFirst.item.label}
+        {...(forced.length > 1 ? { note: t('auto.forced.hint') } : {})}
       />
     ) : band && listProps ? (
       // `select_unselect_card` va de a una (cada toque contesta).

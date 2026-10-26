@@ -135,9 +135,12 @@ export const auto = {
   'auto.forced.activate': 'Activar {card} primero',
   'auto.forced.hint': 'Sin «No responder»: son obligatorias.',
   'auto.lane.autoZone': 'La casilla se eligió sola',
-  'auto.lane.unmapped': 'La mesa no puede mostrar: {what}',
+  // Los avisos de algo que salió mal, con palabras de la mesa (el detalle técnico va a la consola).
+  'auto.lane.unmapped': 'La mesa no pudo mostrar una jugada del núcleo; el duelo sigue igual.',
   'auto.lane.script': 'Falló el script de {card}: el duelo sigue.',
-  'auto.lane.error': 'Algo falló: {message}',
+  'auto.lane.error': 'Algo falló en el núcleo, pero el duelo sigue.',
+  'auto.lane.rejected': 'El núcleo no aceptó esa respuesta: elegí de nuevo.',
+  'auto.lane.stuck': 'El automático todavía no sabe contestar esta pregunta del núcleo.',
 
   // El aviso de la cadena (la píldora de arriba de la mesa y su lista): cómo va y el estado de cada eslabón.
   'auto.chain.title': 'Cadena',
