@@ -442,8 +442,11 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
 
     cards.forEach((card, index) => {
       const ref = resolve(card)
+      const seen = ref?.side === 'mine' ? (byCard.get(ref.id) ?? []) : null
 
-      if (ref?.side === 'mine') byCard.set(ref.id, [...(byCard.get(ref.id) ?? []), index])
+      // El mismo efecto dos veces (un disparo por cada evento: dos Juego Rápido encadenadas) es una sola fila, la primera: si se puede de nuevo, la próxima pregunta lo vuelve a traer.
+      // Sin texto propio (`'0'`) no se distingue de otro efecto de la carta: quedan los dos.
+      if (seen && (card.description === '0' || !seen.some((other) => cards[other]!.description === card.description))) byCard.set(ref!.id, [...seen, index])
     })
     for (const [id, indices] of byCard) {
       const ref: CardRef = { side: 'mine', id }

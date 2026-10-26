@@ -234,6 +234,28 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(askView(open(pendulum, ctx(MESA))).items.get('card-300-1')![0]!.children!.map((child) => child.label)).toEqual([t('practice.menu.activateEffect'), t('practice.menu.asScale')])
   })
 
+  it('el mismo efecto dos veces (un disparo por cada Juego Rápido de la cadena) es una sola fila, la primera; dos efectos distintos de la carta siguen siendo dos', () => {
+    const chain = (descriptions: string[]): CoreAsk => ({
+      type: 'select_chain',
+      player: 0,
+      spe_count: 1,
+      forced: false,
+      hint_timing: 0,
+      hint_timing_other: 0,
+      selects: descriptions.map((description) => ({ ...pos(200, L.MZONE, 0, 1), description, client_mode: 0 })),
+    })
+    const once = askView(open(chain([stringId(200, 2), stringId(200, 2)]), ctx(MESA))).items.get('card-200-1')!
+
+    expect(once.map((item) => [item.children, item.answer])).toEqual([[undefined, { type: 'select_chain', index: 0 }]])
+    const two = askView(open(chain([stringId(200, 2), stringId(200, 1), stringId(200, 2)]), ctx(MESA))).items.get('card-200-1')!
+
+    expect(two[0]!.children!.map((child) => child.answer)).toEqual([0, 1].map((index) => ({ type: 'select_chain', index })))
+    // Dos efectos sin texto propio (descripción 0) no se pueden distinguir: ninguno se pierde.
+    const bare = askView(open(chain(['0', '0']), ctx(MESA))).items.get('card-200-1')!
+
+    expect(bare[0]!.children!.map((child) => child.answer)).toEqual([0, 1].map((index) => ({ type: 'select_chain', index })))
+  })
+
   it('las fases: Battle Phase y End Phase en Main 1; Main Phase 2 y End Phase en batalla; la de ahora marcada y las demás apagadas; terminar el turno es la End Phase', () => {
     const idle = askView(open(ASKS[1]!, ctx(MESA, { phase: 'main1' })))
 
