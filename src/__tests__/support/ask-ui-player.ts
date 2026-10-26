@@ -108,6 +108,15 @@ export function seeded(seed: number): () => number {
   }
 }
 
+/** Claves de duelo (64 hex) fijas para el anfitrión del enlace (`newKey`): cada una gasta un solo número de `random`, como la semilla de antes. */
+export function seededKey(random: () => number): () => string {
+  return () => {
+    const next = seeded(Math.floor(random() * 2 ** 32))
+
+    return Array.from({ length: 8 }, () => Math.floor(next() * 2 ** 32).toString(16).padStart(8, '0')).join('')
+  }
+}
+
 const distinctIn = (indices: readonly number[], size: number) => new Set(indices).size === indices.length && indices.every((i) => Number.isInteger(i) && i >= 0 && i < size)
 const popcount = (mask: bigint) => mask.toString(2).replace(/0/g, '').length
 

@@ -21,6 +21,9 @@ import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/mem
 
 const HOST_DECK: DeckList = { main: [[1, 5]] }
 const GUEST_DECK: DeckList = { main: [[2, 5]] }
+/** Claves de duelo fijas y distintas (64 hex, sin repetir trozos), para saber cuál usó cada duelo. */
+const keyOf = (n: number) => Array.from({ length: 8 }, (_, i) => (Math.imul(n * 8 + i + 1, 0x9e3779b1) >>> 0).toString(16).padStart(8, '0')).join('')
+const KEYS = [keyOf(1), keyOf(2), keyOf(3)]
 const row = (id: number): CardRow => ({ id, alias: 0, setcode: '0', type: 0x21, atk: 0, def: 0, level: 4, race: '1', attribute: 1, name: `Carta ${id}`, strs: [`Efecto de ${id}`] })
 const expand = (rows: DeckList['main'] = []) => rows.flatMap(([code, copies]) => Array<number>(copies).fill(code))
 
@@ -63,21 +66,21 @@ interface Game {
  * `flaky`: mientras `down`, lo que manda el anfitrión se pierde sin que nadie se entere (su red se cayó y el relay no lo sabe: la presencia no cambia); `lose` pierde los próximos
  * tantos mensajes y después sigue. `guestNow`: el reloj del invitado (sus respiros entre pedidos).
  */
-function setup({ seatOf, firstCode, enabled = true, noRules = [], seeds = [11, 22, 33], react, save, flaky, guestNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; seeds?: number[]; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number } = {}): Game {
+function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEYS], react, save, flaky, guestNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; keys?: string[]; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number } = {}): Game {
   const room = createMemoryRoom()
   const hostEnd = room.join()
   const guestEnd = room.join()
   const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings: { ...DEFAULT_SETTINGS, auto: true } })
   const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
   const core = fakeHost(seatOf, react, firstCode)
-  const random = () => (seeds.shift() ?? 99) / 2 ** 32
+  const newKey = () => keys.shift() ?? keyOf(99)
   const send = (text: string) => {
     if (!flaky || flaky.down) return
     if (flaky.lose) flaky.lose -= 1
     else hostEnd.send(text)
   }
   const transport = flaky ? { send, onMessage: hostEnd.onMessage.bind(hostEnd) } : hostEnd
-  const hostLink = createHostLink({ transport, loader: listLoader(noRules), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, random, ...(save ? { save } : {}) })
+  const hostLink = createHostLink({ transport, loader: listLoader(noRules), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, newKey, ...(save ? { save } : {}) })
   const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK, ...(guestNow ? { now: guestNow } : {}) })
 
   host.subscribe(() => hostLink.observe(host.getSnapshot()))
@@ -193,16 +196,16 @@ describe('el enlace del duelo automático por enlace', () => {
 
   it('al elegir quién empieza: el anfitrión arma el duelo con el asiento del invitado remoto, le cuenta cómo empieza y el invitado juega su pregunta; su mesa es la que el anfitrión calcula para él', async () => {
     // Beto va primero (asiento 0 del núcleo): las preguntas 0 y 1 son suyas, la 2 de Ana.
+    const logs = (['log', 'info', 'warn', 'error', 'debug'] as const).map((method) => vi.spyOn(console, method))
     const game = setup({ firstCode: 2 })
 
     await settle(game.room)
     await order(game, 1)
     const [init] = toGuest(game.room, 'autoInit') as Extract<AutoMessage, { t: 'autoInit' }>[]
 
-    // Cómo empieza abre un flujo nuevo (`s` 1); la semilla queda en el anfitrión (con ella el invitado sabría sus robos).
+    // Cómo empieza abre un flujo nuevo (`s` 1); la clave del duelo queda en el anfitrión (con ella el invitado sabría sus robos) y la semilla, con clave, no se usa.
     expect(init).toEqual({ t: 'autoInit', v: 2, s: 1, seat: 0, players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], mine: { main: [2, 2, 2, 2, 2], extra: [] }, theirs: { main: 5, extra: 0 } })
-    expect(game.core.commands[0]).toMatchObject({ t: 'create', seed: 11, decks: [{ main: [2, 2, 2, 2, 2] }, { main: [1, 1, 1, 1, 1] }] })
-    expect(game.room.sent.some((text) => text.includes('seed'))).toBe(false)
+    expect(game.core.commands[0]).toMatchObject({ t: 'create', key: KEYS[0], seed: 0, decks: [{ main: [2, 2, 2, 2, 2] }, { main: [1, 1, 1, 1, 1] }] })
     expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })
     expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 0 })
     const hosted = sessionOf(game.hostLink)
@@ -230,6 +233,16 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(guested.getSnapshot()).toMatchObject({ status: 'ready', ask: { seat: 0 } })
     expect(hosted.getSnapshot().answers.map((answer) => answer.seat)).toEqual([0, 0, 1])
     sameView(hosted, guested, 0)
+
+    // La clave no sale del anfitrión: ni entera ni sus mitades, en nada de lo que viaja por la sala (ni con nombre, ni la semilla), en lo que ve la pantalla ni en la consola.
+    const leaks = (text: string) => [KEYS[0]!, KEYS[0]!.slice(0, 32), KEYS[0]!.slice(32)].some((part) => text.includes(part))
+    const screen = game.hostLink.getSnapshot()
+
+    expect(game.room.sent.length).toBeGreaterThan(10)
+    expect(game.room.sent.filter((text) => leaks(text) || text.includes('"key"') || text.includes('seed'))).toEqual([])
+    expect(leaks(JSON.stringify({ ...screen, session: hosted.getSnapshot(), cards: [...screen.cards] }))).toBe(false)
+    expect(logs.flatMap((spy) => spy.mock.calls).filter((call) => leaks(call.map(String).join(' ')))).toEqual([])
+    for (const spy of logs) spy.mockRestore()
   })
 
   it('del invitado sólo vale la respuesta a la pregunta pendiente: una vieja, repetida o de otro tipo no llega al núcleo', async () => {
@@ -531,7 +544,7 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(hosted.getSnapshot().answers.map((answer) => answer.seat)).toEqual([0, 1])
   })
 
-  it('el fin del duelo, la revancha (otra sesión con otra semilla) y el anfitrión que recarga sin guardado: el duelo se pierde y la sala sigue', async () => {
+  it('el fin del duelo, la revancha (otra sesión con otra clave) y el anfitrión que recarga sin guardado: el duelo se pierde y la sala sigue', async () => {
     const game = setup({ firstCode: 2 })
 
     await settle(game.room)
@@ -556,7 +569,8 @@ describe('el enlace del duelo automático por enlace', () => {
       [1, 0],
       [1, 1],
     ])
-    expect(game.core.commands.filter((command) => command.t === 'create').map((command) => (command as Extract<AutoCommand, { t: 'create' }>).seed)).toEqual([11, 22])
+    // Una clave nueva por duelo y por revancha.
+    expect(game.core.commands.filter((command) => command.t === 'create').map((command) => (command as Extract<AutoCommand, { t: 'create' }>).key)).toEqual([KEYS[0], KEYS[1]])
     expect(sessionOf(game.hostLink)).not.toBe(firstHost)
     expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 0 })
     expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })

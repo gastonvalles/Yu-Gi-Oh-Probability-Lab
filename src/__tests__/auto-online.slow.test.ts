@@ -15,7 +15,7 @@ import { byteLength } from '../app/duel-relay-rules'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import type { Duelist } from '../app/life-calculator'
-import { playAsk, seeded } from './support/ask-ui-player'
+import { playAsk, seeded, seededKey } from './support/ask-ui-player'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 
@@ -130,7 +130,7 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
     // Lo que el anfitrión guarda (en un `localStorage` en memoria, con el mismo reloj que el enlace: lo guardado vence) para rearmar el duelo si recarga.
     const items = new Map<string, string>()
     const save = autoSaveStore(`PAR${pair}`, { getItem: (key) => items.get(key) ?? null, setItem: (key, value) => void items.set(key, value), removeItem: (key) => void items.delete(key) }, now)
-    const hostLinkOf = (transport: MemoryEnd) => createHostLink({ transport, loader: createDataLoader(source, null), deck: lists[hostId]!, handSize: 5, makeTransport, enabled: async () => true, now, random, save })
+    const hostLinkOf = (transport: MemoryEnd) => createHostLink({ transport, loader: createDataLoader(source, null), deck: lists[hostId]!, handSize: 5, makeTransport, enabled: async () => true, now, newKey: seededKey(random), save })
     let hostLink: OnlineLink = hostLinkOf(hostEnd)
     let guestLink: OnlineLink = createGuestLink({ transport: guestEnd, source, deck: lists[guestId]!, now })
     let offGuest = guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
@@ -262,8 +262,10 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
     })
     const create = commands.find((command): command is Extract<AutoCommand, { t: 'create' }> => command.t === 'create')!
 
-    // La semilla no viaja (ni por nombre ni por valor) y el Main del invitado va por código: con el orden real (`teamOrder`) sabría sus robos.
-    expect(room.sent.some((text) => text.includes('seed') || text.includes(String(create.seed)))).toBe(false)
+    // La clave del duelo no viaja (ni por nombre ni entera ni sus mitades) y el Main del invitado va por código: con el orden real (`teamOrder`) sabría sus robos.
+    const key = create.key!
+
+    expect(room.sent.some((text) => text.includes('seed') || text.includes('"key"') || [key, key.slice(0, 32), key.slice(32)].some((part) => text.includes(part)))).toBe(false)
     expect(bagOrder(create.decks[guestSeat]!.main)).not.toEqual(teamOrder(create, guestSeat))
     for (const message of messages) {
       if (message.t === 'autoInit') {

@@ -474,6 +474,42 @@ describe('la sesión del duelo por enlace', () => {
     session.destroy()
   })
 
+  it('con la clave del duelo: cada `create` la lleva (al arrancar, al cancelar, al deshacer con el núcleo caído y al reiniciar) con la semilla en 0, y el snapshot no la tiene', async () => {
+    const key = '0123456789abcdef'.repeat(4)
+    let emit: (event: AutoEvent) => void = () => {}
+    const host = fakeHost(() => 0, (_command, next) => ((emit = next), false))
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, key, thinkingMs: 10, remote: { deck: { main: [[2, 5]] } } })
+
+    await until(session, (s) => s.status === 'ready')
+    session.answer(END)
+    await until(session, (s) => s.status === 'ready' && s.answers.length === 1)
+    // Cancelar: otro anfitrión con el mismo `create`.
+    host.state.hold = true
+    session.answer(END)
+    await until(session, (s) => s.status === 'thinking')
+    host.state.hold = false
+    session.cancel()
+    await until(session, (s) => s.status === 'ready' && !s.replaying)
+    // Deshacer con el núcleo caído: otro anfitrión más, que re-simula hasta antes de esa jugada.
+    host.state.hold = true
+    session.answer(END)
+    await until(session, (s) => s.status === 'thinking')
+    emit({ t: 'fault', kind: 'crash', message: 'boom' })
+    await until(session, (s) => s.status === 'error')
+    host.state.hold = false
+    expect(session.undo()).toBe(true)
+    await until(session, (s) => s.status === 'ready' && !s.replaying)
+    session.restart()
+    await until(session, (s) => s.status === 'ready' && s.answers.length === 0 && !s.replaying)
+    const creates = host.commands.filter((command) => command.t === 'create') as Extract<AutoCommand, { t: 'create' }>[]
+
+    expect(creates).toHaveLength(4)
+    expect(creates.every((command) => command.key === key && command.seed === 0)).toBe(true)
+    expect(JSON.stringify(session.getSnapshot())).not.toContain(key)
+    expect(session.getSnapshot().seed).toBe(0)
+    session.destroy()
+  })
+
   it('rearmar un duelo guardado: el núcleo re-simula las respuestas y la sesión sigue desde la pregunta viva; el aviso de re-emisión va después del create', async () => {
     const host = fakeHost()
     const order: string[] = []
