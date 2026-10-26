@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 
+import type { PickStat } from '../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../app/card-glow'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
@@ -166,6 +167,40 @@ export function ChainBadge({ link, className }: { link: ChainBadgeData; classNam
     </span>
   )
 }
+
+/** El nombre de una carta con su ATK/DEF de ahora mientras se elige («Ponix, ATK 1900, DEF 1000, elegible»): la etiqueta es decorativa y esto es lo que se lee. */
+export const pickStatLabel = (name: string, stat: PickStat) =>
+  stat.defense === null ? t('auto.pick.statLink', { name, atk: stat.attack }) : t('auto.pick.stat', { name, atk: stat.attack, def: stat.defense })
+
+/**
+ * El ATK/DEF de ahora de un monstruo que se elige en el campo (`pickStatsOf`), abajo y al centro de su casilla, sobre el pie de la carta (donde la impresa lleva los suyos): no cambia
+ * la caja de la carta ni la de la casilla, y no se sale de ella. El ATK en blanco y la DEF apagada, como en la carta; sin DEF, un Link. Sólo se mira (`aria-hidden`): lo que se lee
+ * va en el nombre de la carta (`pickStatLabel`). Se va con la pregunta. Si la casilla no llega a los dos números de cuatro cifras (`@container`: el celular, de 56 a 65 px, y la mesa de escritorio
+ * angosta, de 63 a 73), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`), como se lee la carta; el nombre lleva los dos.
+ */
+export function StatTag({ stat, sideways = false, className }: { stat: PickStat; sideways?: boolean; className?: string }) {
+  const def = stat.defense !== null && sideways
+
+  return (
+    <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container', className)}>
+      <span data-pick-stat="" className="mx-auto block w-fit max-w-full whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle">
+        <span className={cx(def && '@max-[5rem]:hidden')}>{stat.attack}</span>
+        {stat.defense === null ? null : (
+          <span className={cx('font-semibold text-muted', def ? '@max-[5rem]:font-extrabold @max-[5rem]:text-foreground' : '@max-[5rem]:hidden')}>
+            <span className={cx(def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
+            {stat.defense}
+          </span>
+        )}
+      </span>
+    </span>
+  )
+}
+
+/**
+ * La barra entre el ATK y la DEF, con espacios finos: «2500 / 2000» mide 80 px y entra justo en la casilla de 1440 px (80–81). El corte (`@max-[5rem]`) es el de cuatro cifras y
+ * cuatro: un ATK de cinco cifras desborda unos 8 px el fondo de la etiqueta (se lee igual, no se corta); si se vuelve común, un corte por cantidad de cifras.
+ */
+const STAT_SEPARATOR = '\u2009/\u2009'
 
 /**
  * El arte de una carta cuyo eslabón quedó negado o sin efecto (Gastón: «una carta negada debe verse gris parpadeando»), mientras se ve el aviso de la cadena: en escala de grises y con el pulso

@@ -105,6 +105,8 @@ export const auto: Translated<typeof es> = {
   'auto.band.hint': 'Tap a card to choose it; tap it again to let it go.',
   'auto.pick.done': 'Done',
   'auto.pick.chosen': 'Chosen',
+  'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, selectable',
+  'auto.pick.statLink': '{name}, ATK {atk}, selectable',
   'auto.phase.notYet': 'Not yet',
 
   // The chain link badge on a card («CL1»): the short form is shown; the card's name says it in words.

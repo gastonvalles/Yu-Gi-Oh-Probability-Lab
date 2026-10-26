@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 
+import type { PickStat } from '../../app/auto/ask-ui'
 import { pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
@@ -12,7 +13,7 @@ import { THEIR_FAN_RISE, THEIR_HAND } from './their-hand'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars } from '../probability/MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel } from '../probability/MatFx'
 import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
@@ -47,6 +48,8 @@ export interface DuelSideView {
   onMark?: (target: MarkTarget, rect: DOMRect, place: string) => void
   /** Las cartas de este lado que se pueden elegir ahora (el duelo automático: a qué atacar, el objetivo de un efecto): laten como los monstruos que se pueden atacar en la mesa manual (`data-attack-target`). */
   pickable?: ReadonlySet<string>
+  /** El ATK/DEF de ahora de los monstruos que se eligen (`pickStatsOf`): una etiqueta debajo de cada uno (`StatTag`) y en su nombre. */
+  stats?: ReadonlyMap<string, PickStat>
   /** Las casillas de este lado que se pueden elegir ahora (el duelo automático: la casilla del rival donde va un Kaiju, las que se inutilizan): llevan las marcas de elegir de la mesa y se tocan. */
   zones?: { targets: readonly { zone: MatSpot; index: number }[]; onPick: (zone: MatSpot, index: number) => void }
   /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar, y la pila que tenga una adentro, también. */
@@ -379,6 +382,8 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   const materials = placed.materials.length
   const acting = side.act?.has(placed.id) ?? false
   const link = side.links?.get(placed.id)
+  const stat = side.stats?.get(placed.id)
+  const named = stat ? pickStatLabel(label, stat) : label
 
   return (
     <>
@@ -399,17 +404,18 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
       >
         <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180', link?.voided && VOIDED_ART)}>
-          {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={link ? chainLinkLabel(label, link) : label} className="block h-full w-full object-cover" />}
+          {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={link ? chainLinkLabel(named, link) : named} className="block h-full w-full object-cover" />}
         </span>
         {/* La cantidad queda derecha, como los contadores: es para leerla desde acá. */}
         <MaterialCount count={materials} sideways={sideways} />
         {acting ? <FxFrame tone="gold" /> : null}
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
-        {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: label })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
+        {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: named })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
         {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
       </div>
       {link ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
+      {stat ? <StatTag stat={stat} sideways={sideways} /> : null}
     </>
   )
 }

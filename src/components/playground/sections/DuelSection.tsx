@@ -8,6 +8,7 @@ import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { HANDTRAP_CATALOG, type HandtrapConfig } from '../../../app/handtraps'
+import type { PickStat } from '../../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../../app/card-glow'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
@@ -77,6 +78,7 @@ export function DuelSection() {
 
       <FieldArtSample duel={duel} />
       <ChainBadgeSample duel={duel} />
+      <StatTagSample duel={duel} />
       <MaterialSamples />
       <HoldSample />
       <ResizeHandleSample />
@@ -128,6 +130,36 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
       }
     >
       <Segmented label="Cadena" variant="track" value={mode} onChange={setMode} options={[{ value: 'on', label: 'Con cadena' }, { value: 'void', label: 'Negada' }, { value: 'off', label: 'Sin cadena' }]} />
+      <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+    </Specimen>
+  )
+}
+
+/**
+ * El ATK/DEF de ahora al elegir en el campo (`StatTag`): debajo de cada monstruo que la pregunta deja elegir, sobre el pie de la carta, sin cambiar ninguna caja. Las cifras son de muestra;
+ * en el duelo salen de `pickStatsOf` (lo que consulta el núcleo). El primero de cada lado es un Link (sin DEF).
+ */
+function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
+  const [on, setOn] = useState<'on' | 'off'>('on')
+  const sides = useMemo(() => {
+    const stats = (side: DuelSideView) =>
+      new Map<string, PickStat>([...side.state.mz, ...side.state.emz].flatMap((placed, i) => (placed && placed.pos !== 'set' ? [[placed.id, { attack: 1800 + 300 * i, defense: i === 0 ? null : 200 * i }] as const] : [])))
+
+    return on === 'on' ? { mine: { ...duel.mine, stats: stats(duel.mine) }, theirs: { ...duel.theirs, stats: stats(duel.theirs) } } : duel
+  }, [duel, on])
+
+  return (
+    <Specimen
+      title="ATK/DEF al elegir en el campo"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          Mientras el núcleo te pide elegir cartas del campo, cada monstruo elegible lleva su ATK/DEF de ahora (con lo que le cambiaron los efectos, no el impreso) abajo de su casilla: el ATK en blanco y la DEF apagada; un Link, sólo el ATK. Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000, elegible»), se va con la pregunta y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>)
+        </>
+      }
+    >
+      <Segmented label="Pregunta" variant="track" value={on} onChange={setOn} options={[{ value: 'on', label: 'Eligiendo' }, { value: 'off', label: 'Sin pregunta' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
     </Specimen>
   )

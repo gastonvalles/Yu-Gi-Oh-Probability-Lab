@@ -92,6 +92,30 @@ export interface CardPick {
   done: boolean
 }
 
+/** El ATK y la DEF de ahora de un monstruo del campo (con lo que le cambiaron los efectos), para la etiqueta de elegir. Sin `defense`, un Link. */
+export interface PickStat {
+  attack: number
+  defense: number | null
+}
+
+/**
+ * La etiqueta de ATK/DEF de elegir en el campo: de las cartas de `ids` (las elegibles y las elegidas de un lado), las que son un monstruo en una zona de monstruos de `mat` y tienen
+ * lo que consultó el anfitrión (`overlay.stats`: el ATK/DEF de ahora, nunca el impreso; una carta colocada del rival no lo trae). El núcleo no da el tipo: nivel 0 y DEF 0 es un Link
+ * (o un Xyz de DEF 0) y va sin DEF, que es callar un dato y no decir uno falso.
+ */
+export function pickStatsOf(mat: MatState, ids: Iterable<string>, stats: Readonly<Record<string, { attack: number; defense: number; level: number }>>): ReadonlyMap<string, PickStat> {
+  const monsters = new Set([...mat.mz, ...mat.emz].flatMap((placed) => (placed ? [placed.id] : [])))
+  const out = new Map<string, PickStat>()
+
+  for (const id of ids) {
+    const stat = monsters.has(id) ? stats[id] : undefined
+
+    if (stat) out.set(id, { attack: stat.attack, defense: stat.level === 0 && stat.defense === 0 ? null : stat.defense })
+  }
+
+  return out
+}
+
 export interface ZoneTarget extends MatTarget {
   side: Side
 }
@@ -214,7 +238,8 @@ export interface AutoLink {
   phaseItems: AutoMenuItem[]
   endTurn: (() => void) | null
   zonePick: { label: string; targets: MatTarget[]; onPick: (zone: MatSpot, index: number) => void } | null
-  cardPick: { label: string; eligible: ReadonlySet<string>; chosen: readonly string[]; onToggle: (id: string) => void; done: { label: string; onSelect: () => void } | null; cancel: (() => void) | null } | null
+  /** `stats`: el ATK/DEF de ahora de tus monstruos del campo que se eligen (`pickStatsOf`), debajo de cada uno mientras se elige. */
+  cardPick: { label: string; eligible: ReadonlySet<string>; chosen: readonly string[]; onToggle: (id: string) => void; done: { label: string; onSelect: () => void } | null; cancel: (() => void) | null; stats?: ReadonlyMap<string, PickStat> } | null
   /** El visor de pilas con sólo las candidatas (una búsqueda en el deck); `many` como `PileMany`. */
   viewer: { pile: MatPile; ids: readonly string[]; many?: { label: (ids: readonly string[]) => string; onPick: (ids: string[], rect: DOMRect) => void; start?: readonly string[] } } | null
   /** Hay una pregunta pendiente para mí: sin ella, tocar una carta sólo la muestra en el detalle. */

@@ -49,7 +49,7 @@ import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, 
 import { supportsAdditiveAnimation } from '../../app/motion'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptAbove, promptTop, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
-import type { AutoLink } from '../../app/auto/ask-ui'
+import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
 import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
@@ -92,7 +92,7 @@ import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext,
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars } from './MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
@@ -1917,6 +1917,7 @@ export function PracticeMat({
             glow={glowKindOf(shown.id)}
             dim={dimUnlit && !highlighted.has(shown.id)}
             chosen={chosen ? chosenLabel : null}
+            stat={duel?.auto?.cardPick?.stats?.get(shown.id) ?? null}
             targeted={targetedIds.has(shown.id)}
             link={duel?.links?.get(shown.id) ?? null}
             selected={selectedId === shown.id}
@@ -2880,6 +2881,8 @@ interface PlacedCardProps {
   dim: boolean
   /** Elegida como Sacrificio o como material (la etiqueta que lleva), o null. */
   chosen: string | null
+  /** Su ATK/DEF de ahora mientras se elige en el campo (`StatTag`), o null. */
+  stat: PickStat | null
   /** Marcada como objetivo. */
   targeted: boolean
   /** Sus eslabones en la cadena a la vista (la insignia «CL1»), o null. */
@@ -2901,12 +2904,13 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, targeted, link, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, stat, targeted, link, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
-  // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, etiqueta de elegida, con target): cada pedazo es su mensaje.
+  // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, su ATK/DEF al elegir, etiqueta de elegida, con target): cada pedazo es su mensaje.
   let label = placed.pos === 'set' ? t('practice.mat.cardFaceDown', { name: card.name }) : placed.pos === 'def' ? t('practice.mat.cardDefense', { name: card.name }) : card.name
   if (materials > 0) label = t('practice.mat.cardMaterials', { label, count: materials })
+  if (stat) label = pickStatLabel(label, stat)
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
   if (targeted) label = t('practice.card.targeted', { name: label })
   if (link) label = chainLinkLabel(label, link)
@@ -2972,6 +2976,8 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, ta
         {targeted ? <TargetMark /> : null}
       </div>
       {link && !dragging ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
+      {/* Parada, la carta llega al pie de la casilla: la etiqueta de elegida va ahí, y el ATK/DEF, encima. */}
+      {stat && !dragging ? <StatTag stat={stat} sideways={sideways} className={cx(chosen && !sideways && 'bottom-4.5')} /> : null}
     </>
   )
 }

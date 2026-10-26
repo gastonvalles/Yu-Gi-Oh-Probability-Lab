@@ -1,6 +1,6 @@
 import { applyLocale, loadLocale, t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, placeLabel, respondOffer, step, triggerPhrase, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, triggerPhrase, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -860,5 +860,25 @@ describe('ask-ui: las preguntas que antes se contestaban solas (contadores, casi
     expect(askView(state).respond).toEqual([mine('card-200-1'), mine('card-950-1')])
     expect(tap(state, { kind: 'card', ref: mine('card-950-1') }, { kind: 'pick', index: 0 }, { kind: 'done' }).answer).toEqual({ type: 'sort_chain', order: [1, 0] })
     expect(step(state, { kind: 'cancel' }).answer).toEqual({ type: 'sort_chain', order: null })
+  })
+})
+
+describe('pickStatsOf: el ATK/DEF de ahora al elegir en el campo', () => {
+  it('sólo los monstruos de las zonas de monstruos con lo consultado; nivel 0 y DEF 0 (un Link) va sin DEF', () => {
+    const mat = createMatState([], [], 0)
+    const at = (id: string) => ({ id, pos: 'atk' as const, counters: 0, materials: [] })
+
+    mat.mz[0] = at('a')
+    mat.mz[1] = at('set')
+    mat.emz[0] = at('link')
+    mat.st[0] = at('spell')
+    mat.hand.push('hand')
+    const stats = { a: { attack: 2400, defense: 200, level: 4 }, link: { attack: 2300, defense: 0, level: 0 }, spell: { attack: 0, defense: 0, level: 0 }, hand: { attack: 1, defense: 1, level: 1 } }
+
+    expect([...pickStatsOf(mat, ['a', 'set', 'link', 'spell', 'hand', 'nope'], stats)]).toEqual([
+      ['a', { attack: 2400, defense: 200 }],
+      ['link', { attack: 2300, defense: null }],
+    ])
+    expect(pickStatsOf(mat, [], stats).size).toBe(0)
   })
 })

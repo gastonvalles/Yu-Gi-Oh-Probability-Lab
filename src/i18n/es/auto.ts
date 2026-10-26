@@ -112,6 +112,8 @@ export const auto = {
   'auto.band.hint': 'Tocá una carta para elegirla; otra vez, para soltarla.',
   'auto.pick.done': 'Listo',
   'auto.pick.chosen': 'Elegida',
+  'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, elegible',
+  'auto.pick.statLink': '{name}, ATK {atk}, elegible',
   'auto.phase.notYet': 'Todavía no',
 
   // La insignia del eslabón sobre la carta («CL1»): se ve la sigla; el nombre de la carta lo dice con palabras.

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, linkSentence, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf, linksOf } from '../../app/card-glow'
@@ -470,6 +470,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           onToggle: (id) => gesture({ kind: 'card', ref: { side: 'mine', id } }),
           done: pick.done ? { label: t('auto.pick.done'), onSelect: () => gesture({ kind: 'done' }) } : null,
           cancel: shown?.cancelable ? () => gesture({ kind: 'cancel' }) : null,
+          stats: pickStatsOf(state, mineIds([...pick.eligible, ...pick.chosen]), snap.overlay.stats.mine),
         }
       : null
   const viewerIds = pick && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
@@ -581,8 +582,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const rivalPicks = useMemo(() => {
     const refs = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'theirs' ? [pick!.cards[i]!.ref!.id] : []))
 
-    return pick ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen) } : rivalPlays?.size ? { eligible: new Set(rivalPlays.keys()), chosen: [] } : null
-  }, [pick, rivalPlays])
+    return pick
+      ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen), stats: pickStatsOf(theirs, refs([...pick.eligible, ...pick.chosen]), snap.overlay.stats.theirs) }
+      : rivalPlays?.size
+        ? { eligible: new Set(rivalPlays.keys()), chosen: [], stats: null }
+        : null
+  }, [pick, rivalPlays, theirs, snap.overlay.stats])
   // Las casillas del rival que la pregunta deja elegir (donde va un Kaiju, las que se inutilizan): se encienden en su campo y se tocan. Sus Zonas Extra, en las tuyas (`zonePick`).
   const rivalZones = useMemo(() => {
     const targets = shown?.zonePick?.targets.flatMap(({ side, zone, index }) => (side === 'theirs' && zone !== 'emz' ? [{ zone, index }] : [])) ?? []
@@ -597,7 +602,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       state: theirs,
       artOf: (id) => artOf({ side: 'theirs', id }),
       handCount: theirs.hand.length,
-      ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] } } : {}),
+      ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] }, ...(rivalPicks.stats ? { stats: rivalPicks.stats } : {}) } : {}),
       ...(rivalZones ? { zones: rivalZones } : {}),
       act: acting.theirs,
       links: links.theirs,
