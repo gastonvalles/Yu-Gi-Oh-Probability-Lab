@@ -1,7 +1,9 @@
-import type { CSSProperties } from 'react'
+import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
+import { flatTransform, type Point } from '../../app/flat-quad'
+import { useMatView } from '../../app/mat-view'
 import { computeHandLayout, fanAngle } from '../../app/practice-hand-layout'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -178,15 +180,53 @@ export function TheirHand({
 }) {
   const open = cards && onCard ? onCard : undefined
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const view = useMatView()
+  const boxRef = useRef<HTMLDivElement | null>(null)
   const { cardWidth, maxWidth, room } = desktop ? THEIR_HAND.desktop : THEIR_HAND.mobile
   const shown = Math.min(cards?.length ?? count, 12)
   // El tamaño sale de una mano de 5 y no cambia al jugar; la separación sí (con más cartas se juntan más).
   const layout = computeHandLayout(maxWidth, Math.max(1, shown), cardWidth, 5)
   const span = layout.cardWidth + layout.step * Math.max(0, shown - 1)
-  const height = Math.round(layout.cardHeight)
+
+  // Cuelga del borde de arriba del campo, que en la vista 3D se inclina: la perspectiva la aplastaba (medido: de 0,686 a 1,1 de ancho sobre alto). Se la endereza
+  // (`flatTransform`): apoyada en el mismo punto, del ancho de su borde de abajo y con su proporción. Se rehace si cambia de tamaño ella, la mesa o la pantalla, o la vista.
+  useLayoutEffect(() => {
+    const box = boxRef.current
+
+    if (!box) return
+    const straighten = () => {
+      box.style.transform = ''
+      box.style.transformOrigin = ''
+      const corners = ['left:0;top:0', 'right:0;top:0', 'right:0;bottom:0', 'left:0;bottom:0'].map((place): Point => {
+        const mark = document.createElement('i')
+
+        mark.setAttribute('style', `position:absolute;width:0;height:0;${place}`)
+        box.appendChild(mark)
+        const { x, y } = mark.getBoundingClientRect()
+
+        mark.remove()
+        return [x, y]
+      }) as [Point, Point, Point, Point]
+      const flat = flatTransform(box.offsetWidth, box.offsetHeight, corners)
+
+      if (flat) {
+        box.style.transformOrigin = '0 0'
+        box.style.transform = flat
+      }
+    }
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(straighten)
+
+    straighten()
+    for (let node: HTMLElement | null = box; node; node = node.parentElement) if (node === box || getComputedStyle(node).transform !== 'none') observer?.observe(node)
+    window.addEventListener('resize', straighten)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', straighten)
+    }
+  }, [view])
 
   return (
-    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className={cx('relative shrink-0', THEIR_HAND_BOX_MOTION)} style={{ width: Math.max(span, layout.cardWidth), height: room }}>
+    <div ref={boxRef} data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className={cx('relative shrink-0', THEIR_HAND_BOX_MOTION)} style={{ width: Math.max(span, layout.cardWidth), height: room }}>
       <div role={open ? 'group' : 'img'} aria-label={cards ? t('duel.hand.theirsShown', { cards: cards.map((card) => card.name).join(', ') }) : t('duel.hand.theirs', { count })} className="absolute inset-0">
         {Array.from({ length: shown }, (_, index) => {
           // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
@@ -197,8 +237,9 @@ export function TheirHand({
             <span
               key={index}
               title={card?.name}
-              className={cx('absolute bottom-0 left-0 block overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
-              style={{ width: layout.cardWidth, height, transform: `translate(${index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
+              // El ancho manda y el alto sale de la proporción de la carta (nunca los dos fijos).
+              className={cx('absolute bottom-0 left-0 block aspect-[421/614] overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
+              style={{ width: layout.cardWidth, transform: `translate(${index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
               {card && open ? (

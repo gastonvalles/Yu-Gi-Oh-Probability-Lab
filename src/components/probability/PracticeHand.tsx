@@ -41,7 +41,8 @@ const FALLBACK_WIDTH = 340
 
 /** Carta de la mano: el estado (arrastre, brillo, atenuada, destello, objetivo) llega por data-attributes. */
 const HAND_CARD = [
-  'pointer-events-auto absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden outline-none will-change-transform',
+  // El ancho manda (`style`) y el alto sale de la proporción de la carta: nunca los dos fijos.
+  'pointer-events-auto absolute left-0 top-0 aspect-[421/614] cursor-grab touch-none select-none overflow-hidden outline-none will-change-transform',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
   '[--card-shadow:0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   // La sombra sale de `--card-shadow`: así el borde blanco de pasar el mouse y los aros de color se suman sin pisarse.
@@ -501,7 +502,6 @@ const HandCard = memo(function HandCard({
 
   const style: CSSProperties = {
     width: layout.cardWidth,
-    height: layout.cardHeight,
     // Arrastrada, la posición la escribe `PracticeHand` por el ref en cada cuadro: React no la toca (y al soltar vuelve a poner la de reposo).
     transform: state === 'dragging' ? undefined : transform,
     zIndex,
