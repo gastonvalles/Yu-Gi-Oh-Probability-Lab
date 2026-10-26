@@ -12,7 +12,6 @@ import { autoRival, poolCount, readHandtrapConfig, writeHandtrapConfig, type Aut
 import { randomSeed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
-import { TheirHand } from '../duel/DuelTable'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
@@ -115,15 +114,14 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   const [livesInBar, setLivesInBar] = useState(true)
   const rivalName = t('duel.bar.rival')
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
-  const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName })
+  // El rival de handtraps (con el simulador encendido y alguna carta): su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
+  const rivalOn = useMemo(() => autoRival(handtraps) !== null, [handtraps])
+  const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}) })
   const { nameOf, artOf } = asks
   // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo).
   const chips = usePracticeChips(lab, asks.matSession)
-  // El rival de handtraps (con el simulador encendido y alguna carta) y la hoja para cambiarlas.
-  const rivalOn = useMemo(() => autoRival(handtraps) !== null, [handtraps])
+  // La hoja para cambiar las handtraps del rival.
   const [choosing, setChoosing] = useState(false)
-  // Su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
-  const rivalCards = rivalOn && !prefs.blind ? snap.rivalHand.map((code) => ({ name: nameOf(null, code), art: artOf(null, code) })) : undefined
   const linkName = useCallback((link: ChainLink) => nameOf(link.card, link.code), [nameOf])
 
   // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,
@@ -198,7 +196,6 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
         onBlind={(on) => setAutoPref('blind', on)}
       />
     ),
-    ...(reviewing ? {} : { rivalHand: <TheirHand count={snap.theirs.hand.length} {...(rivalCards ? { cards: rivalCards } : {})} /> }),
     tools: null,
     // Las vidas de los dos: en escritorio, en la barra (`AutoBar`); en el celular, con los íconos de la práctica arriba, no entran: van abajo, donde va la tuya en el duelo por enlace. En una
     // fila de escritorio angosta (el panel de pasos, el detalle y el menú abiertos) tampoco: abajo, del tamaño del celular.
@@ -233,6 +230,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
         onLoadCombo={asks.review.load}
         onNewHand={NOTHING}
         duel={link}
+        rivalViewer={asks.rivalViewer}
         {...(chips.needCards ? {} : { footer: chips.footer, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
       />
       {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}

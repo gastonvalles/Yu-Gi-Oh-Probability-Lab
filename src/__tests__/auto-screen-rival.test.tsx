@@ -8,8 +8,9 @@ import { CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, type ChainStep } from '
 import { setAutoPref } from '../app/auto-prefs'
 import { readHandtrapConfig, writeHandtrapConfig } from '../app/handtraps'
 import { AutoSoloScreen, RIVAL_READ_MS, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
-import { CARDS, fakeSession, type FakeSession } from './support/auto-session-fake'
-import { dispatches } from './support/auto-screen-harness'
+import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
+import { CARDS, fakeSession, pos, SPOTS, type FakeSession } from './support/auto-session-fake'
+import { core, dispatches, renderAuto, status } from './support/auto-screen-harness'
 import { render } from './support/practice-mat-harness'
 
 // El rival de handtraps en la pantalla: con qué rival se arma el duelo, su mano boca arriba (o de dorso, «A ciegas») y cambiar las handtraps desde «Más opciones», que arma
@@ -47,7 +48,7 @@ function mount() {
   return { calls, fakes }
 }
 
-const rivalHand = () => screen.getByRole('img', { name: /^Mano del rival:/ })
+const rivalHand = () => screen.getByLabelText(/^Mano del rival:/)
 const more = () => {
   fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
 
@@ -171,5 +172,75 @@ describe('auto-screen · el rival de handtraps', () => {
 
     expect(within(sheet).getByRole('group', { name: 'Copias de Otra carta en el deck del rival' }).closest('li')).toHaveTextContent('Todavía no la usa solo')
     expect(within(sheet).getByRole('group', { name: `Copias de ${ASH.name} en el deck del rival` }).closest('li')).not.toHaveTextContent('Todavía no la usa solo')
+  })
+
+  it('su mano de handtraps boca arriba se toca para ver cada carta', () => {
+    writeHandtrapConfig({ enabled: true, picks: [{ ...ASH, copies: 1 }], hand: 1 })
+    const { fakes } = mount()
+
+    act(() => fakes[0]!.set({ rivalHand: [ASH.id], theirs: { ...fakes[0]!.getSnapshot().theirs, hand: ['c2'] } }))
+    fireEvent.click(within(rivalHand()).getByRole('button', { name: ASH.name }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(dispatches).toBe(0)
+  })
+})
+
+describe('auto-screen · el rival se toca', () => {
+  /** El rival: Blue-Eyes boca arriba (mz 0), una boca abajo que ya se mostró (mz 1), Nibiru en su cementerio y Ash desterrada boca abajo. */
+  const RIVAL = [
+    ...SPOTS,
+    { side: 'theirs' as const, id: 'c2', code: 100, location: L.MZONE, sequence: 1, pos: 'set' as const },
+    { side: 'theirs' as const, id: 'c3', code: 400, location: L.GRAVE, sequence: 0 },
+    { side: 'theirs' as const, id: 'c4', code: 100, location: L.REMOVED, sequence: 0 },
+  ]
+  const mountRival = () => {
+    const fake = fakeSession(RIVAL)
+
+    fake.set({ theirs: { ...fake.getSnapshot().theirs, facedown: ['c4'] } })
+    return renderAuto(fake)
+  }
+  const rivalCard = (n: number) => screen.getByRole('button', { name: `Rival, Zona de monstruo ${n}: marcar` })
+
+  it('una carta a la vista se ve en grande; una boca abajo no se muestra aunque se sepa cuál es; nada se juega', () => {
+    const fake = mountRival()
+
+    fireEvent.click(rivalCard(2))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(rivalCard(1))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(fake.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('su Cementerio y su Destierro abren su visor (lo boca abajo, de dorso y sin nombre); tocarlo otra vez lo cierra; su Deck no abre nada', () => {
+    mountRival()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Main: marcar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'GY: marcar' }))
+    expect(within(screen.getByRole('dialog', { name: /GY/ })).getByText('Nibiru')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'GY: marcar' }))
+    expect(screen.queryByRole('dialog', { name: /GY/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Banish: marcar' }))
+    const banished = screen.getByRole('dialog', { name: /Banish/ })
+
+    expect(banished).not.toHaveTextContent('Ash Blossom')
+    expect(banished).toHaveTextContent('Carta del rival')
+    expect(dispatches).toBe(0)
+  })
+
+  it('a qué atacar: sus monstruos laten (también el boca abajo), el estado lo dice y tocar uno contesta', () => {
+    const fake = mountRival()
+    const ask: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 1, selects: [pos(700, L.MZONE, 0, 1, 1), pos(0, L.MZONE, 1, 8, 1)] }
+
+    core(() => fake.ask(ask, '549'))
+    expect(status()).toHaveTextContent('Elegí a qué monstruo atacar')
+    const beating = [...document.querySelectorAll('[data-attack-target="true"]')].map((card) => card.getAttribute('data-rival-card-id'))
+
+    expect(beating).toEqual(['c1', 'c2'])
+    fireEvent.click(rivalCard(2))
+    expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
+    expect(document.querySelector('[data-attack-target]')).toBeNull()
+    expect(dispatches).toBe(0)
   })
 })

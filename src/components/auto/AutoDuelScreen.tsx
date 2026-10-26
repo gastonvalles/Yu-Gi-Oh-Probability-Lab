@@ -434,7 +434,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   return (
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
-      <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} />
+      <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
       {asks.pieces}
       {banner ? <TurnOrderBanner first={seat === 0} rival={rivalName} onDone={hideBanner} /> : null}
       {docked ? <RivalEmoji burst={signals.burst} name={rivalName} onDismiss={signals.dismissBurst} /> : null}
