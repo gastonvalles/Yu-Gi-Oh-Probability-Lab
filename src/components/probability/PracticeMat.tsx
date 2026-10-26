@@ -525,13 +525,17 @@ export function PracticeMat({
   const [fetched, setFetched] = useState<ReadonlyMap<number, MatCard>>(new Map())
   const requestedRef = useRef(new Set<number>())
 
+  // Sólo `foreignKnown` del duelo y por lo que dice, no todo `duel` (otro objeto en cada dibujo) ni su referencia (se rearma con cada aviso del rival): así `nameOf` y `artById` duran
+  // entre dibujos y las fichas de la lista de pasos no se rehacen todas.
+  const foreignKey = duel ? JSON.stringify(duel.foreignKnown) : ''
+  const foreignKnown = useMemo(() => (foreignKey ? (JSON.parse(foreignKey) as Readonly<Record<string, string>>) : null), [foreignKey])
   const cardOf = useCallback(
     (shown: string): MatCard => {
       if (isToken(shown)) return TOKEN_CARD
 
       // Un id del rival (el objetivo de un ataque, o una carta suya que controlo: `f.c12`) se resuelve por la carta que él mostró; si no mostró ninguna, no se sabe cuál es.
       // Una handtrap del rival simulado (`rival.card-…`) es la carta de su id, con su imagen desde el primer dibujo.
-      const id = duel && isOpaqueId(shown) ? duel.foreignKnown[shown] : duel && isForeignId(shown) ? duel.foreignKnown[opaqueOfForeign(shown)] : rivalCardOf(shown)
+      const id = foreignKnown && isOpaqueId(shown) ? foreignKnown[shown] : foreignKnown && isForeignId(shown) ? foreignKnown[opaqueOfForeign(shown)] : rivalCardOf(shown)
       if (id === undefined) return RIVAL_MONSTER
 
       const known = cardsById.get(id) ?? byCardId.get(cardIdOfDrawId(id))
@@ -545,7 +549,7 @@ export function PracticeMat({
       const art = artOfDrawId(id)
       return { name: session.names[shown] ?? UNKNOWN_CARD.name, apiCard: null, ...(art ? { art } : {}) }
     },
-    [cardsById, byCardId, fetched, session.names, duel],
+    [cardsById, byCardId, fetched, session.names, foreignKnown],
   )
 
   useEffect(() => {
@@ -1816,7 +1820,12 @@ export function PracticeMat({
   )
 
   // Los callbacks del panel y de los controles del replay son estables: así, con un destello o un cartel que se va, no se vuelven a dibujar (el panel es una lista de todos los pasos).
-  const seekFromPanel = useCallback((step: number) => { setAutoplay(false); onSeek(step); setPanelOpen(false) }, [onSeek])
+  // `onSeek` puede cambiar con cada jugada (el de «Jugar solo automático» mira tus jugadas): se lee del último dibujo, así el de cada ficha no cambia.
+  const onSeekRef = useRef(onSeek)
+  useLayoutEffect(() => {
+    onSeekRef.current = onSeek
+  }, [onSeek])
+  const seekFromPanel = useCallback((step: number) => { setAutoplay(false); onSeekRef.current(step); setPanelOpen(false) }, [])
   const loadFromPanel = useCallback((combo: SavedCombo) => { onLoadCombo(combo); setAutoplay(true); setPanelOpen(false) }, [onLoadCombo])
   const panel = (
     <PracticeMatPanel
