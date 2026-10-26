@@ -99,7 +99,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
   const states = statesOf(cards)
   const listeners = new Set<() => void>()
   const sideOf = (controller: Seat): Side => (controller === 0 ? 'mine' : 'theirs')
-  const overlay: Adapter['overlay'] = { stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [8000, 8000], turn: 1, turnPlayer: 0, phase: 4, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null] }
+  const overlay: Adapter['overlay'] = { stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [8000, 8000], turn: 1, turnPlayer: 0, phase: 4, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null], cause: null }
   const adapter: Adapter = {
     initial: { mine: states.mine, theirs: states.theirs },
     mine: states.mine,

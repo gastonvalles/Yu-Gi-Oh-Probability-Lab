@@ -1,6 +1,7 @@
 import { t } from '../../i18n'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
-import { spotOf, type Adapter, type CardRef, type Side } from './adapter'
+import { effectParts, effectSentences } from '../card-text'
+import { spotOf, type Adapter, type CardRef, type Side, type TriggerCause } from './adapter'
 import { passivePolicy } from './policies'
 import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
@@ -102,6 +103,10 @@ export interface ZonePick {
 export interface AskPromptView {
   /** La carta del efecto (`select_effectyn`); null en un sí o no a secas. */
   card: AskCard | null
+  /** Dónde está la carta del efecto: su casilla, su pila o debajo de un Xyz. */
+  at?: AskPlace
+  /** El núcleo pregunta por un efecto que se disparó (`desc` 221: «On [lugar], Activate Trigger Effect of [carta]?» de EDOPro). */
+  trigger?: boolean
   description: string
   yes: CoreAnswer
   no: CoreAnswer
@@ -233,6 +238,8 @@ const PENDULUM_SCALE = '1160'
 /** Los textos del sistema (`strings.conf` no viaja) que más usan las opciones, con las palabras de la mesa: agregar a la mano o mandar al cementerio (`aux.ToHandOrElse`). */
 const SYSTEM_OPTIONS = { '573': 'practice.menu.toHand', '574': 'practice.menu.toGy' } as const
 const PILE_OF: Partial<Record<number, MatPile>> = { [L.DECK]: 'deck', [L.HAND]: 'hand', [L.GRAVE]: 'gy', [L.REMOVED]: 'banished', [L.EXTRA]: 'extra' }
+/** El `desc` con que el núcleo pregunta por un efecto que se disparó (texto 221 del sistema). Medido con el núcleo real: no dice si quedan otros por preguntar. */
+const TRIGGER_DESC = '221'
 /**
  * Sin pantalla todavía (§3 del diseño): quitar contadores y anunciar una carta (ronda 4), las casillas del rival (`select_disfield`: la mesa no
  * las enciende), ordenar la cadena y piedra, papel o tijera (en el fuzz no aparecieron).
@@ -545,6 +552,61 @@ export function namesList(names: readonly string[]): string {
   return [...counts].map(([name, count]) => (count > 1 ? `${name} ×${count}` : name)).join(', ')
 }
 
+export type AskPlace = MatSpot | MatPile | 'material'
+
+/** «¿Activás el efecto…?» con su contexto: qué pasó justo antes, dónde está la carta y qué hace el efecto. Lo que no se sabe no se dice. */
+export interface EffectAskText {
+  /** «Efecto que se dispara», cuando el núcleo pregunta por uno (`trigger`). */
+  kicker: string | null
+  text: string
+  /** El lugar, corto, para la pestaña sobre la carta («Campo», «Cementerio»). */
+  place: string | null
+  /** La frase del efecto, tal cual la trae la carta: cuándo y qué hace (`triggerPhrase`). */
+  effect: { when: string; what: string } | null
+}
+
+const SUMMON_WORD = { normal: 'Normal', special: 'Special', flip: 'Flip' } as const
+
+/**
+ * Cuál de las frases del texto de la carta es el efecto que se disparó (el núcleo no lo dice: pregunta por la carta). Las candidatas son los efectos opcionales que se disparan
+ * («If …: You can …», «During …: You can …»). Una sola: ésa. Si hay varias, sólo la única que nombra lo que pasó: «this card is … Summoned» si la carta es la que se acaba de
+ * invocar así, o la fase que empezó. Si no, null: mejor no decir qué hace que decir otro efecto.
+ */
+export function triggerPhrase(text: string, code: number, cause: TriggerCause | null): { when: string; what: string } | null {
+  const optional = effectSentences(text)
+    .filter((sentence) => sentence.opening === 'trigger' || sentence.opening === 'during')
+    .map(effectParts)
+    .filter((parts) => /^You can\b/.test(parts.what))
+
+  if (optional.length === 1) return optional[0]!
+  if (!cause) return null
+  const word = cause.kind === 'phase' ? PHASES.find((phase) => phase.id === cause.phase)!.name : cause.codes.includes(code) ? SUMMON_WORD[cause.kind] : null
+  const named = word === null ? [] : optional.filter((parts) => (cause.kind === 'phase' ? parts.when.includes(word) : new RegExp(`\\bthis card is (?:\\w+ or )*(?:${word} )?(?:or \\w+ )*Summoned\\b`).test(parts.when)))
+
+  return named.length === 1 ? named[0]! : null
+}
+
+/** Lo que dice la pregunta de un efecto (`select_effectyn`): `nameOf` nombra una carta por código y `cardText` es el texto de la carta del efecto (en inglés, como el catálogo). */
+export function effectAskText(prompt: AskPromptView & { card: AskCard }, cause: TriggerCause | null, nameOf: (code: number) => string, cardText: string | null): EffectAskText {
+  const { code } = prompt.card
+  const card = nameOf(code)
+  const at = prompt.at
+  const place = at === undefined || at === 'material' ? null : at === 'mz' || at === 'emz' || at === 'st' || at === 'field' ? t('practice.mat.field') : t(`practice.place.${at}`)
+  const where = at === undefined ? null : t(`auto.ask.at.${at}`)
+  const text =
+    where === null
+      ? t('auto.ask.effect', { card })
+      : cause?.kind === 'phase'
+        ? t('auto.ask.during', { phase: PHASES.find((phase) => phase.id === cause.phase)!.name, card, place: where })
+        : cause && cause.codes.length === 1 && cause.codes[0] === code
+          ? t('auto.ask.afterOwn', { event: t(`auto.ask.event.${cause.kind}`), card, place: where })
+          : cause
+            ? t('auto.ask.after', { event: t(`auto.ask.event.${cause.kind}`), cards: namesList(cause.codes.map(nameOf)), card, place: where })
+            : t('auto.ask.effectAt', { card, place: where })
+
+  return { kicker: prompt.trigger ? t('auto.ask.kicker') : null, text, place, effect: prompt.trigger && cardText ? triggerPhrase(cardText, code, cause) : null }
+}
+
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {
   const { ask } = input
   const resolve = resolver(ctx.queries, ask.player)
@@ -589,9 +651,12 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       }
       break
     }
-    case 'select_effectyn':
-      base.prompt = { card: askCard(ask, resolve(ask)), description: ask.description, yes: { type: ask.type, yes: true }, no: { type: ask.type, yes: false } }
+    case 'select_effectyn': {
+      const at = isMaterial(ask) ? 'material' : (spotOf(ask.location, ask.sequence)?.zone ?? PILE_OF[ask.location])
+
+      base.prompt = { card: askCard(ask, resolve(ask)), ...(at ? { at } : {}), ...(ask.description === TRIGGER_DESC ? { trigger: true } : {}), description: ask.description, yes: { type: ask.type, yes: true }, no: { type: ask.type, yes: false } }
       break
+    }
     case 'select_yesno':
       base.prompt = { card: null, description: ask.description, yes: { type: ask.type, yes: true }, no: { type: ask.type, yes: false } }
       break

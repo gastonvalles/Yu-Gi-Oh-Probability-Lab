@@ -62,8 +62,14 @@ export interface AutoOverlay {
   limits: [string[], string[]]
   /** La primera Invocación Normal (`summon`) o Colocación de un monstruo (`set`) de cada asiento en este turno; null si no hubo. */
   normal: [NormalPlay | null, NormalPlay | null]
+  /**
+   * Lo último que pasó y puede disparar un efecto, para contarlo en la pregunta «¿Activás el efecto…?» (el núcleo no lo dice): la Invocación Normal, Especial o por Volteo de las cartas
+   * que se invocaron juntas, o el comienzo de una fase. Lo borra lo que abre otro momento (una activación, un ataque, el turno nuevo): lo que se dispara después ya no vino de ahí.
+   */
+  cause: TriggerCause | null
 }
 export type NormalPlay = 'summon' | 'set'
+export type TriggerCause = { kind: 'normal' | 'special' | 'flip'; codes: number[] } | { kind: 'phase'; phase: MatState['phase'] }
 /** `PHINT_DESC_ADD` y `PHINT_DESC_REMOVE` del núcleo. */
 const LIMIT_ADD = 6
 const LIMIT_REMOVE = 7
@@ -173,7 +179,7 @@ function copyIds(codes: readonly number[]): string[] {
   })
 }
 
-const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null] })
+const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null], cause: null })
 
 export function createAdapter(options: AdapterOptions): Adapter {
   const { seat, typeOf } = options
@@ -213,11 +219,20 @@ export function createAdapter(options: AdapterOptions): Adapter {
   let fromDeck: [{ at: number; before: MatState | Mirror } | null, { at: number; before: MatState | Mirror } | null] = [null, null]
   /** Las cartas que esta tanda puso boca arriba en las Mágicas y Trampas: su `chaining` no es otra activación (la jugada ya la cuenta). */
   let openedNow = new Set<Card>()
+  /** Una Invocación sin su `*summoned` todavía: las cartas que se invocan juntas van en la misma causa. */
+  let summoning = false
 
   const matId = (card: Card, controller: Seat) => (card.owner === controller ? card.id : `f.${card.id}`)
   const ref = (card: Card, controller: Seat): CardRef => ({ side: controller === seat ? 'mine' : 'theirs', id: matId(card, controller) })
   const stateOf = (player: Seat) => (player === seat ? mine : theirs.state)
   const note = (text: string): void => void out.unmapped.push(text)
+  const cause = (next: TriggerCause | null) => void (overlay = { ...overlay, cause: next })
+  function summon(kind: 'normal' | 'special' | 'flip', code: number) {
+    const now = overlay.cause
+
+    cause(summoning && now?.kind === kind ? { kind, codes: [...now.codes, code] } : { kind, codes: [code] })
+    summoning = true
+  }
 
   function emit(player: Seat, action: MatAction, deck = false) {
     const before = player === seat ? mine : theirs
@@ -555,6 +570,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
       case 'flipsummoning': {
         const card = cardAt(event, event.code)
 
+        if (event.type === 'flipsummoning') summon('flip', event.code)
+
         if (!card) return note(`${event.type}: nothing there`)
         learn(card, event.code, (event.position & P.FACEUP) !== 0)
         const id = matId(card, event.controller)
@@ -616,6 +633,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       case 'new_turn': {
         const previous = overlay.turnPlayer
 
+        cause(null)
         if (previous !== null) {
           passTurn(previous)
           // El mismo jugador otra vez: el turno del otro se saltó (pasa en su mesa también, así la cuenta de `duel-turn.ts` da a quien juega).
@@ -631,6 +649,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const kind = event.type === 'summoning' ? 'summon' : event.location === L.MZONE ? 'set' : null
         const normal: AutoOverlay['normal'] = [...overlay.normal]
 
+        if (event.type === 'summoning') summon('normal', event.code)
         if (kind && normal[event.controller] === null) {
           normal[event.controller] = kind
           overlay = { ...overlay, normal }
@@ -656,7 +675,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const phase = PHASE[event.phase]
         const player = overlay.turnPlayer
 
-        overlay = { ...overlay, phase: event.phase }
+        overlay = { ...overlay, phase: event.phase, cause: phase ? { kind: 'phase', phase } : null }
         if (!phase) return note(`new_phase: unknown phase ${event.phase}`)
         if (player !== null && stateOf(player).phase !== phase) emit(player, { type: 'phase', phase })
         return
@@ -668,7 +687,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         if (card) learn(card, event.code, isMaterial(event) || isPublic(event.location, event.position))
         const index = overlay.chain.length
 
-        overlay = { ...overlay, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }], ...(index === 0 ? { negated: [] } : {}) }
+        overlay = { ...overlay, cause: null, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }], ...(index === 0 ? { negated: [] } : {}) }
         // Una Mágica o Trampa que esta tanda dio vuelta o puso boca arriba ya cuenta como activada (la jugada la anota y destella).
         if (card && !openedNow.has(card)) emit(event.controller, { type: 'activate', id: matId(card, event.controller) })
         // Después de su activación: la mesa la muestra y recién ahí se suma el eslabón.
@@ -738,6 +757,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const attacker = cardAt(event.card)
         const target = event.target ? cardAt(event.target) : null
 
+        cause(null)
         if (!attacker) return note('attack: nothing there')
         return emit(event.card.controller, { type: 'attack', id: matId(attacker, event.card.controller), ...(target && event.target ? { target: matId(target, event.target.controller) } : {}) })
       }
@@ -791,6 +811,14 @@ export function createAdapter(options: AdapterOptions): Adapter {
       case 'swap_grave_deck':
       case 'reverse_deck':
         return note(`unsupported: ${event.type}`)
+
+      case 'spsummoning':
+        return summon('special', event.code)
+      case 'summoned':
+      case 'spsummoned':
+      case 'flipsummoned':
+        summoning = false
+        return
 
       default:
         if (!QUIET.has(event.type)) note(`unhandled: ${event.type}`)

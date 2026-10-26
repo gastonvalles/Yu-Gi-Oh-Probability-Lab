@@ -16,11 +16,13 @@ import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../../probability/MatBarActions'
 import { CardMenu } from '../../probability/MatDialogs'
 import { Button } from '../../ui/Button'
+import { cx } from '../../ui/cx'
 import { Segmented } from '../../ui/Segmented'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
 const ASH = { name: 'Ash Blossom & Joyous Spring', art: art(14558127) }
+const PONIX = { name: 'Legendary Fire King Ponix', art: art(90681088) }
 
 /** Cartas de muestra de lugares distintos (lo que no entra en una sola pila); la de Aluber, todavía sin arte (el esqueleto quieto). */
 const MIXED: PickCard[] = [
@@ -91,8 +93,9 @@ export function AutoSection() {
 
   return (
     <SpecimenGrid min="22rem">
-      <PromptSample withCard onAnswer={setAnswer} />
-      <PromptSample withCard={false} onAnswer={setAnswer} />
+      <PromptSample kind="card" onAnswer={setAnswer} />
+      <PromptSample kind="context" onAnswer={setAnswer} />
+      <PromptSample kind="plain" onAnswer={setAnswer} />
 
       {OPTION_SAMPLES.map((sample) => (
         <OptionsSample key={sample.id} sample={sample} onAnswer={setAnswer} />
@@ -117,34 +120,51 @@ export function AutoSection() {
 }
 
 /** La pregunta de sí o no sobre una mesa de muestra: la capa la centra sin mover nada (como `duel.prompt` en la mesa). Contestada, sale y la muestra la vuelve a preguntar con el botón. */
-function PromptSample({ withCard, onAnswer }: { withCard: boolean; onAnswer: (answer: string) => void }) {
+function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; onAnswer: (answer: string) => void }) {
   const [shown, setShown] = useState(true)
+  const withCard = kind !== 'plain'
   const yes = withCard ? t('practice.menu.activateEffect') : 'Pagar 1000 LP'
   const no = withCard ? t('auto.ask.skipEffect') : t('auto.ask.no')
   const reply = (label: string) => {
     setShown(false)
     onAnswer(label)
   }
+  const manual = t('auto.bar.manual')
 
   return (
     <Specimen
-      title={withCard ? 'Pregunta del núcleo · con la carta' : 'Pregunta del núcleo · sin carta'}
+      title={kind === 'card' ? 'Pregunta del núcleo · con la carta' : kind === 'context' ? 'Pregunta del núcleo · efecto que se dispara' : 'Pregunta del núcleo · sin carta'}
       layout="column"
       note={
-        withCard ? (
+        kind === 'card' ? (
           <>select_effectyn: la carta chica a la izquierda del texto. En la mesa va en la ranura <Tag>duel.prompt</Tag>: centrada, sin fondo, deja pasar los toques y no mueve nada. El foco va a la principal; Escape no la cierra. Archivo: <Tag>auto/AskPrompt.tsx</Tag></>
+        ) : kind === 'context' ? (
+          <>select_effectyn con desc 221: <Tag>kicker</Tag>, qué pasó y dónde está la carta en el texto (<Tag>effectAskText</Tag> de <Tag>ask-ui.ts</Tag>), la pestaña <Tag>place</Tag>, la frase del efecto tal cual (<Tag>effect</Tag>: lo que hace, resaltado) y el atajo <Tag>manual</Tag> a la izquierda. Con frase, la mesa le da más ancho.</>
         ) : (
           <>select_yesno: sólo el texto. Los botones dicen qué hacen («Hacerlo», o lo que diga el núcleo: «Pagar 1000 LP»), nunca «Sí» ni «No».</>
         )
       }
     >
-      <div className="relative isolate h-64 overflow-hidden rounded-card border border-border-subtle">
+      <div className={cx('relative isolate overflow-hidden rounded-card border border-border-subtle', kind === 'context' ? 'h-96' : 'h-64')}>
         <MatScene className="absolute inset-0 -z-10" />
         <Presence>
           {shown ? (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none">
-                <AskPrompt text={withCard ? t('auto.ask.effect', { card: ASH.name }) : '¿Pagás 1000 LP para activar Skill Drain?'} card={withCard ? ASH : undefined} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
+              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+                {kind === 'context' ? (
+                  <AskPrompt
+                    kicker={t('auto.ask.kicker')}
+                    text={t('auto.ask.afterOwn', { event: t('auto.ask.event.special'), card: PONIX.name, place: t('auto.ask.at.mz') })}
+                    card={PONIX}
+                    place={t('practice.mat.field')}
+                    effect={{ when: 'If this card is Normal or Special Summoned', what: 'You can add 1 "Fire King" Spell/Trap from your Deck to your hand.' }}
+                    manual={{ label: manual, onSelect: () => reply(manual) }}
+                    yes={{ label: yes, onSelect: () => reply(yes) }}
+                    no={{ label: no, onSelect: () => reply(no) }}
+                  />
+                ) : (
+                  <AskPrompt text={withCard ? t('auto.ask.effect', { card: ASH.name }) : '¿Pagás 1000 LP para activar Skill Drain?'} card={withCard ? ASH : undefined} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
+                )}
               </div>
             </div>
           ) : null}

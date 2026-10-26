@@ -13,6 +13,27 @@ export const auto = {
 
   // La pregunta de sí o no del núcleo, en el medio de la mesa. Activar un efecto dice «Activar efecto» (`practice.menu.activateEffect`): el texto ya nombra la carta.
   'auto.ask.effect': '¿Activás el efecto de {card}?',
+  // Con contexto: qué pasó justo antes (una Invocación o el comienzo de una fase) y dónde está la carta (`auto.ask.at.*`). El núcleo no dice si quedan otros efectos por preguntar.
+  'auto.ask.kicker': 'Efecto que se dispara',
+  'auto.ask.effectAt': '¿Activás el efecto de {card} ({place})?',
+  'auto.ask.afterOwn': 'Tras la {event} de {card} ({place}): ¿activás su efecto?',
+  'auto.ask.after': 'Tras la {event} de {cards}: ¿activás el efecto de {card} ({place})?',
+  'auto.ask.during': 'En la {phase}: ¿activás el efecto de {card} ({place})?',
+  'auto.ask.event.normal': 'Invocación Normal',
+  'auto.ask.event.special': 'Invocación Especial',
+  'auto.ask.event.flip': 'Invocación por Volteo',
+  'auto.ask.at.mz': 'en la Zona de Monstruos',
+  'auto.ask.at.emz': 'en la Zona de Monstruo Extra',
+  'auto.ask.at.st': 'en la Zona de Mágicas y Trampas',
+  'auto.ask.at.field': 'en la Zona de Campo',
+  'auto.ask.at.hand': 'en la mano',
+  'auto.ask.at.gy': 'en el Cementerio',
+  'auto.ask.at.banished': 'desterrada',
+  'auto.ask.at.deck': 'en el Deck',
+  'auto.ask.at.extra': 'en el Extra Deck',
+  'auto.ask.at.material': 'como Material Xyz',
+  // La frase del efecto, tal cual la trae la carta.
+  'auto.ask.what': 'Qué hace',
   'auto.ask.fallback': '¿Lo hacés?',
   'auto.ask.skipEffect': 'No activar',
   'auto.ask.yes': 'Hacerlo',
