@@ -3,6 +3,7 @@ import type { WireAct } from '../mat-public'
 import type { MatAction, MatState } from '../practice-mat'
 import { createAdapter, type Adapter, type AutoOverlay } from './adapter'
 import { DataUnavailableError, type DataLoader, type DuelData } from './auto-data'
+import type { ChainStep } from './chain-feed'
 import type { WorkerData } from './core-host.worker'
 import { teamOrder, type DeckList } from './deck-map'
 import { handtrapPolicy, passivePolicy, type RivalPolicy } from './policies'
@@ -62,6 +63,8 @@ export interface AutoSnapshot {
   mineActions: readonly MatAction[]
   /** Lo mismo para el espejo de la mesa del rival (`adapter.apply().theirs`). */
   theirsActs: readonly WireAct[]
+  /** Los mensajes de la cadena desde `initial`, en orden, con `at` contado en `mineActions` (`adapter.apply().chain`): el aviso de la cadena los muestra de a uno. */
+  chainSteps: readonly ChainStep[]
   /** Tu mesa y el espejo de la del rival al final de la última tanda (= `initial` + todas las jugadas). */
   mine: MatState
   theirs: MatState
@@ -210,6 +213,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     initial: blank.initial,
     mineActions: [],
     theirsActs: [],
+    chainSteps: [],
     mine: blank.mine,
     theirs: blank.theirs.state,
     overlay: blank.overlay,
@@ -289,7 +293,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         typeOf,
       }),
     )
-    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], unmapped: [], ...view() }, false)
+    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], chainSteps: [], unmapped: [], ...view() }, false)
   }
 
   /** Un anfitrión nuevo (otro Worker): arma el duelo con las primeras `to` respuestas ya dadas. Lo que mande el anterior ya no se escucha. */
@@ -326,6 +330,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         ...view(),
         ...(out.mine.length > 0 ? { mineActions: snapshot.mineActions.concat(out.mine) } : {}),
         ...(out.theirs.length > 0 ? { theirsActs: snapshot.theirsActs.concat(out.theirs) } : {}),
+        ...(out.chain.length > 0 ? { chainSteps: snapshot.chainSteps.concat(out.chain.map((step) => ({ ...step, at: step.at + snapshot.mineActions.length }))) } : {}),
         ...(out.unmapped.length > 0 ? { unmapped: snapshot.unmapped.concat(out.unmapped) } : {}),
       },
       !snapshot.replaying,

@@ -73,10 +73,6 @@ export const auto: Translated<typeof es> = {
   // The log line: what the engine does, the chain and the notices that don't stop the duel.
   'auto.lane.thinking': 'The rules engine is resolving…',
   'auto.lane.rivalChoosing': 'The opponent is choosing',
-  'auto.lane.chainLink': 'Chain {link}: {card}',
-  'auto.lane.chain': 'Chain {link}: {card} responds to {to}',
-  'auto.lane.resolve': '{card} resolves',
-  'auto.lane.negated': 'Negated: {card}',
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
   'auto.lane.respondNow': 'You can activate {cards} now',
   'auto.lane.pass': "Don't respond",
@@ -85,6 +81,17 @@ export const auto: Translated<typeof es> = {
   'auto.lane.unmapped': "The mat can't show: {what}",
   'auto.lane.script': "{card}'s script failed: the duel goes on.",
   'auto.lane.error': 'Something went wrong: {message}',
+
+  // The chain notice (the pill above the mat and its list): how it goes and the state of each link.
+  'auto.chain.title': 'Chain',
+  'auto.chain.show': 'Show the chain',
+  'auto.chain.hide': 'Hide the chain',
+  'auto.chain.list': 'Chain links, in resolution order',
+  'auto.chain.state.chained': 'Waiting',
+  'auto.chain.state.solving': 'Resolving',
+  'auto.chain.state.solved': 'Resolved',
+  'auto.chain.state.negated': 'Negated',
+  'auto.chain.state.disabled': 'No effect',
 
   // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
   'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',

@@ -1,6 +1,7 @@
 import { mirrorApply, openMirror, type Mirror, type WireAct } from '../mat-public'
 import { createMatState, matReducer, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type MatSummon, type MatTakeZone } from '../practice-mat'
 import { LOCATION as L, POSITION as P, type AutoEvent, type EventOf, type LocPos, type Seat, type WireEvent } from './protocol'
+import type { ChainStep } from './chain-feed'
 import { isPublic } from './referee'
 
 /**
@@ -74,6 +75,8 @@ export interface AdapterOutput {
   theirs: WireAct[]
   overlay: AutoOverlay
   unmapped: string[]
+  /** Los mensajes de la cadena de esta tanda, en orden, con cuántas jugadas de `mine` había (el aviso de la cadena los cuenta de a uno: `chain-feed.ts`). */
+  chain: ChainStep[]
 }
 
 /** Un lugar del núcleo, con el número de material si está debajo de un Xyz. */
@@ -625,10 +628,14 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const card = cardAt(event, event.code)
 
         if (card) learn(card, event.code, isMaterial(event) || isPublic(event.location, event.position))
-        overlay = { ...overlay, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }], ...(overlay.chain.length === 0 ? { negated: [] } : {}) }
-        if (!card) return note('chaining: nothing there')
+        const index = overlay.chain.length
+
+        overlay = { ...overlay, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }], ...(index === 0 ? { negated: [] } : {}) }
         // Una Mágica o Trampa que esta tanda dio vuelta o puso boca arriba ya cuenta como activada (la jugada la anota y destella).
-        if (!openedNow.has(card)) emit(event.controller, { type: 'activate', id: matId(card, event.controller) })
+        if (card && !openedNow.has(card)) emit(event.controller, { type: 'activate', id: matId(card, event.controller) })
+        // Después de su activación: la mesa la muestra y recién ahí se suma el eslabón.
+        out.chain.push({ kind: 'chain', at: out.mine.length, index, link: { card: card ? ref(card, event.controller) : null, code: event.code, mine: event.controller === seat } })
+        if (!card) return note('chaining: nothing there')
         return
       }
 
@@ -637,6 +644,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
       case 'chain_negated':
       case 'chain_disabled': {
         const state = ({ chain_solving: 'solving', chain_solved: 'solved', chain_negated: 'negated', chain_disabled: 'disabled' } as const)[event.type]
+
+        out.chain.push({ kind: state, at: out.mine.length, index: event.chain_size - 1 })
 
         // Un eslabón resuelto sale de la cadena (como en el núcleo); los demás cambian de estado.
         const link = overlay.chain[event.chain_size - 1]
@@ -651,6 +660,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
 
       case 'chain_end':
         overlay = { ...overlay, chain: [] }
+        out.chain.push({ kind: 'end', at: out.mine.length, index: -1 })
         // Las miras de los objetivos se van al terminar la cadena (las de `card_target` siguen hasta su `cancel_target`).
         for (const card of [...marks]) {
           const at = where(card)
@@ -773,7 +783,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       return overlay
     },
     apply(event) {
-      out = { mine: [], theirs: [], overlay, unmapped: [] }
+      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [] }
       fromDeck = [null, null]
       openedNow = new Set()
 

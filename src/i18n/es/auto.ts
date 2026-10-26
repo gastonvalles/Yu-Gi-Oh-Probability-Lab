@@ -75,10 +75,6 @@ export const auto = {
   // La línea del registro: lo que hace el núcleo, la cadena y los avisos que no frenan el duelo.
   'auto.lane.thinking': 'El núcleo está resolviendo…',
   'auto.lane.rivalChoosing': 'El rival está eligiendo',
-  'auto.lane.chainLink': 'Cadena {link}: {card}',
-  'auto.lane.chain': 'Cadena {link}: {card} responde a {to}',
-  'auto.lane.resolve': 'Se resuelve {card}',
-  'auto.lane.negated': 'Negada: {card}',
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
   'auto.lane.respondNow': 'Podés activar {cards} ahora',
   'auto.lane.pass': 'No responder',
@@ -87,6 +83,17 @@ export const auto = {
   'auto.lane.unmapped': 'La mesa no puede mostrar: {what}',
   'auto.lane.script': 'Falló el script de {card}: el duelo sigue.',
   'auto.lane.error': 'Algo falló: {message}',
+
+  // El aviso de la cadena (la píldora de arriba de la mesa y su lista): cómo va y el estado de cada eslabón.
+  'auto.chain.title': 'Cadena',
+  'auto.chain.show': 'Ver la cadena',
+  'auto.chain.hide': 'Ocultar la cadena',
+  'auto.chain.list': 'Eslabones de la cadena, en el orden en que se resuelven',
+  'auto.chain.state.chained': 'En espera',
+  'auto.chain.state.solving': 'Resolviendo',
+  'auto.chain.state.solved': 'Resuelta',
+  'auto.chain.state.negated': 'Negada',
+  'auto.chain.state.disabled': 'Sin efecto',
 
   // Los pasos y los combos (el panel de la práctica): la lista vacía (acá no se arrastra ni se mantiene) y el repaso de un combo o de tus jugadas en la misma mesa, con la salida.
   'auto.steps.empty': 'Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.',
