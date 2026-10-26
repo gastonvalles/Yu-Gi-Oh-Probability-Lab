@@ -187,6 +187,19 @@ describe('el adaptador: del núcleo a la mesa', () => {
     expect(adapter.mine.hand).toEqual(['card-333-1'])
     expect(adapter.apply(events(0, { type: 'reverse_deck' })).unmapped).toEqual(['unsupported: reverse_deck'])
   })
+
+  it('los mismos `stats` dejan el overlay como estaba (el mismo objeto: la sesión no avisa); otros números lo cambian', () => {
+    const adapter = make()
+    const stats = (attack: number): AutoEvent => ({ t: 'stats', seat: 0, cards: [{ code: 111, controller: 0, location: L.HAND, sequence: 0, position: 10, attack, defense: 0, level: 4 }] })
+
+    adapter.apply(events(0, { type: 'draw', player: 0, drawn: [{ code: 111, position: 10 }] }))
+    adapter.apply(stats(1000))
+    const before = adapter.overlay
+
+    expect(before.stats.mine).toEqual({ 'card-111-1': { attack: 1000, defense: 0, level: 4 } })
+    expect(adapter.apply(stats(1000)).overlay).toBe(before)
+    expect(adapter.apply(stats(1500)).overlay.stats.mine['card-111-1']?.attack).toBe(1500)
+  })
 })
 
 describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
