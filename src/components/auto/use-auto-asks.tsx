@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
-import { CHAIN_LINGER_MS, chainDwell, chainFeed, stepsUpTo } from '../../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf } from '../../app/card-glow'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
@@ -22,11 +22,12 @@ import { DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media
 import { usePracticeSounds } from '../../app/use-practice-sounds'
 import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
+import type { ApiCardReference } from '../../types'
 import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
 import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
 import { DUEL_AREAS, DUEL_AREAS_COMPACT, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
-import { RivalCardDetail } from '../duel/RivalCardDetail'
+import { RivalCardDetail, useRivalCard } from '../duel/RivalCardDetail'
 import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { cardIdOfDrawId } from '../probability/practice'
@@ -630,16 +631,34 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
     return () => window.clearTimeout(timer)
   }, [feed, chainOpen])
+  // Tocar un eslabón de la pila lo muestra para leerlo: en el detalle fijo (la tuya, con tu carta; la del rival, por su número: un eslabón está a la vista) o, sin detalle, grande
+  // como una carta del rival. Con la frase de su efecto resaltada en el detalle cuando no hay duda de cuál es (`linkPhrase`); se resalta mientras la pila está a la vista.
+  const [linkRead, setLinkRead] = useState<{ code: number; description?: string; card: ApiCardReference | null } | null>(null)
+  const linkRivalCard = useRivalCard(linkRead && !linkRead.card && linkRead.code ? drawIdOf(linkRead.code) : undefined)
+  const readLink = (index: number, rect: DOMRect) => {
+    const row = feed?.rows[index]
+
+    if (!row) return
+    const card = row.mine ? ((row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null) : null
+
+    setLinkRead({ code: row.code, card, ...(row.description ? { description: row.description } : {}) })
+    if (wide && card) lockDock({ name: nameOf(row.card, row.code), card })
+    else showRival(row.code ? { drawId: drawIdOf(row.code) } : { faceDown: true }, rect)
+  }
   const chainNotice =
     feed && !reviewing && !(feed.done && chainGone === feed.key) ? (
       <ChainNotice
-        rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state }))}
+        rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state }))}
         focus={feed.focus}
         resolving={feed.resolving}
         open={chainOpen}
         onOpenChange={setChainOpen}
+        onPick={readLink}
       />
     ) : null
+  const linkText = linkRead?.card ?? linkRivalCard
+  const linkRange = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
+  const linkHighlight: CardTextHighlight | null = linkRange && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...linkRange } : null
   const chainOffer = shown?.type === 'select_chain' && !shown.phaseWindow && shown.cancelable && lane === null ? shown : null
   const respondedTo = chain.at(-1)
 
@@ -753,7 +772,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     turnNumber: snap.overlay.turn,
     rivalEmz: theirs.emz.map(Boolean),
     // El ATK/DEF de ahora es del duelo vivo: repasando, el detalle muestra la carta impresa.
-    ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight} stats={reviewing ? null : dockStats} /> } : {}),
+    ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight ?? linkHighlight} stats={reviewing ? null : dockStats} /> } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
     onRivalHover: (id) => dock.hover(rivalPeekOf(id)),

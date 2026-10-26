@@ -52,7 +52,7 @@ export function DuelCardDock({ peek, highlight = null, stats = null }: { peek: C
   } else if ('faceDown' in peek) {
     view = <CardPeekView name={t('duel.dock.faceDown')} card={null} back onZoom={zoom} />
   } else if ('drawId' in peek) {
-    view = <RivalPeek key={peek.drawId} drawId={peek.drawId} now={stats} onZoom={zoom} />
+    view = <RivalPeek key={peek.drawId} drawId={peek.drawId} highlight={highlight} now={stats} onZoom={zoom} />
   } else {
     view = <CardPeekView name={peek.name} card={peek.card} highlight={highlight} now={stats} onZoom={zoom} />
   }
@@ -73,10 +73,11 @@ export function DuelCardDock({ peek, highlight = null, stats = null }: { peek: C
   )
 }
 
-function RivalPeek({ drawId, now = null, onZoom }: { drawId: string; now?: CardStatsNow | null; onZoom: (card: ApiCardReference, name: string) => void }) {
+/** Una carta por su número (la del rival, un eslabón de la cadena): el resaltado vale igual, si es de esta carta (lo mira `CardPeekView`). */
+function RivalPeek({ drawId, highlight = null, now = null, onZoom }: { drawId: string; highlight?: CardTextHighlight | null; now?: CardStatsNow | null; onZoom: (card: ApiCardReference, name: string) => void }) {
   const card = useRivalCard(drawId)
 
-  return <CardPeekView name={card?.name ?? t('duel.mark.rivalCard')} card={card} now={now} onZoom={onZoom} />
+  return <CardPeekView name={card?.name ?? t('duel.mark.rivalCard')} card={card} highlight={highlight} now={now} onZoom={onZoom} />
 }
 
 /** Un número que pasa de texto a cifra con el separador del idioma («1800» → «1.800»); lo que no es un número («?») queda como está. */

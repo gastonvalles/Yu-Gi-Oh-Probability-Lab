@@ -1,4 +1,6 @@
+import { effectSentences, type TextRange } from '../card-text'
 import type { CardRef, ChainLink } from './adapter'
+import { splitDesc } from './protocol'
 
 /**
  * La cadena paso a paso, para el aviso de la cadena (`ChainNotice`). El núcleo resuelve la cadena «de una» (los eslabones y su resolución llegan en una misma tanda) y el
@@ -14,8 +16,8 @@ export interface ChainStep {
   at: number
   /** El eslabón (0 = CL1); en `end`, -1. */
   index: number
-  /** Sólo `chain`: la carta que se activó y si es tuya. */
-  link?: { card: CardRef | null; code: number; mine: boolean }
+  /** Sólo `chain`: la carta que se activó, si es tuya y el `desc` del efecto (`aux.Stringid(carta, n)`: qué texto del `.cdb` lo nombra; ver `linkPhrase`). */
+  link?: { card: CardRef | null; code: number; mine: boolean; description?: string }
 }
 
 export type ChainRowState = ChainLink['state']
@@ -26,6 +28,8 @@ export interface ChainRow {
   card: CardRef | null
   code: number
   mine: boolean
+  /** El `desc` del efecto, si llegó (`ChainStep.link`). */
+  description?: string
   state: ChainRowState
 }
 
@@ -65,7 +69,7 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
       continue
     }
     if (step.kind === 'chain') {
-      rows[step.index] = { number: step.index + 1, card: step.link?.card ?? null, code: step.link?.code ?? 0, mine: step.link?.mine ?? false, state: 'chained' }
+      rows[step.index] = { number: step.index + 1, card: step.link?.card ?? null, code: step.link?.code ?? 0, mine: step.link?.mine ?? false, ...(step.link?.description ? { description: step.link.description } : {}), state: 'chained' }
       focus = step.index
       continue
     }
@@ -110,6 +114,18 @@ export const stepsUpTo = (steps: readonly ChainStep[], cursor: number) => {
 
   while (count < steps.length && steps[count]!.at <= cursor) count += 1
   return count
+}
+
+/**
+ * La frase del texto de la carta que es el efecto de un eslabón, para resaltarla en el detalle (tocar un eslabón de la pila): **sólo si no hay duda**. El núcleo dice qué texto
+ * del `.cdb` nombra el efecto (`description`), no qué frase de la carta es; así que vale sólo si ese `desc` es de la carta misma (no uno prestado por otra: un efecto que le dio
+ * otra carta, un arte alternativo) y su texto tiene **un solo** efecto que se activa (`effectSentences`). Con dos o más, null: mejor no resaltar nada que resaltar otro efecto.
+ */
+export function linkPhrase(text: string, code: number, description: string | undefined): TextRange | null {
+  if (!description || splitDesc(description).code !== code) return null
+  const sentences = effectSentences(text)
+
+  return sentences.length === 1 ? { start: sentences[0]!.start, end: sentences[0]!.start + sentences[0]!.text.length } : null
 }
 
 /** Cuánto se queda el aviso plegado después de que la cadena terminó. */

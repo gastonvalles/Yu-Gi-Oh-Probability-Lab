@@ -133,6 +133,9 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.solved': 'Resolved',
   'auto.chain.state.negated': 'Negated',
   'auto.chain.state.disabled': 'No effect',
+  // Each link is tapped to read it in the detail: what the screen reader says.
+  'auto.chain.linkMine': 'Chain Link {number}: {card}, yours. {state}',
+  'auto.chain.linkTheirs': 'Chain Link {number}: {card}, your opponent’s. {state}',
 
   // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
   'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',

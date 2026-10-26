@@ -1,4 +1,4 @@
-import { CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
+import { CHAIN_LINK_MS, CHAIN_SOLVE_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../app/auto/chain-feed'
 
 const link = (index: number, mine: boolean, code: number, at: number): ChainStep => ({ kind: 'chain', at, index, link: { card: { side: mine ? 'mine' : 'theirs', id: `x${code}` }, code, mine } })
 const step = (kind: ChainStep['kind'], index: number, at: number): ChainStep => ({ kind, at, index })
@@ -48,5 +48,25 @@ describe('chainFeed: la cadena paso a paso', () => {
     expect(stepsUpTo(ASH_CHAIN, 0)).toBe(0)
     expect(stepsUpTo(ASH_CHAIN, 1)).toBe(6)
     expect(stepsUpTo(ASH_CHAIN, 2)).toBe(8)
+  })
+})
+
+describe('linkPhrase: la frase del efecto de un eslabón, sólo sin duda', () => {
+  const ASH_TEXT =
+    'When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect.\r\n● Add a card from the Deck to the hand.\r\n● Special Summon from the Deck.\r\n● Send a card from the Deck to the GY.\r\nYou can only use this effect of "Ash Blossom & Joyous Spring" once per turn.'
+  const TWO_EFFECTS = 'If this card is Normal Summoned: You can add 1 "Test" card from your Deck to your hand. During your Main Phase: You can discard 1 card; Special Summon this card from your GY.'
+  const stringId = (code: number, n: number) => String((BigInt(code) << 20n) | BigInt(n))
+
+  it('un solo efecto que se activa y el `desc` de la misma carta: esa frase', () => {
+    const range = linkPhrase(ASH_TEXT, 14558127, stringId(14558127, 0))!
+
+    expect(ASH_TEXT.slice(range.start, range.end)).toBe('When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect.')
+  })
+
+  it('con dos efectos, sin `desc`, o con el de otra carta (un efecto prestado), nada', () => {
+    expect(linkPhrase(TWO_EFFECTS, 1, stringId(1, 0))).toBeNull()
+    expect(linkPhrase(ASH_TEXT, 14558127, undefined)).toBeNull()
+    expect(linkPhrase(ASH_TEXT, 14558127, '0')).toBeNull()
+    expect(linkPhrase(ASH_TEXT, 14558127, stringId(999, 0))).toBeNull()
   })
 })

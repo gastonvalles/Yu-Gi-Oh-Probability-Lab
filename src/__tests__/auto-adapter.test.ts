@@ -127,6 +127,8 @@ describe('el adaptador: del núcleo a la mesa', () => {
 
     expect(chained.theirs.map((wire) => wire.action)).toEqual([{ type: 'activate', id: 'c1' }])
     expect(adapter.overlay.chain).toEqual([{ card: { side: 'theirs', id: 'c1' }, code: 14558127, description: '232933232', state: 'chained' }])
+    // El paso de la cadena lleva el `desc` del efecto (la pila lo usa para resaltar su frase en el detalle).
+    expect(chained.chain).toMatchObject([{ kind: 'chain', index: 0, link: { code: 14558127, mine: false, description: '232933232' } }])
     adapter.apply(events(0, { type: 'chain_solving', chain_size: 1 }, { type: 'chain_solved', chain_size: 1 }))
     expect(adapter.overlay.chain).toEqual([])
     expect(adapter.overlay.negated).toEqual([])
