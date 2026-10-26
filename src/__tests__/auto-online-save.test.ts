@@ -4,7 +4,7 @@ import { autoSaveStore, parseAutoSave, type AutoSave } from '../app/auto/auto-sa
 import type { AutoSession } from '../app/auto/auto-session'
 import type { DeckList } from '../app/auto/deck-map'
 import { createGuestLink, createHostLink, type OnlineLink } from '../app/auto/online'
-import { isAutoText, parseAutoMessage } from '../app/auto/online-protocol'
+import { GUEST_ACCEPTS, isAutoText, parseAutoMessage } from '../app/auto/online-protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { SAVE_TTL_MS } from '../app/duel-save'
 import { createDuel } from '../app/duel-session'
@@ -109,6 +109,7 @@ describe('el guardado del duelo automático por enlace', () => {
     // Ana recarga: otra sala (que se entera por Beto de quién empezaba), otro enlace, otro núcleo; lo guardado sigue ahí.
     hostLink.destroy()
     hostEnd.close()
+    const mark = room.sent.length
     const hostEnd2 = room.join()
     const host2 = createDuel(hostEnd2, { role: 'host', name: 'Ana', sid: 'host-2', settings })
     const hostLink2 = createHostLink({ transport: hostEnd2, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0001', storage) })
@@ -131,6 +132,19 @@ describe('el guardado del duelo automático por enlace', () => {
 
     expect(toGuest.filter((message) => message.t === 'autoInit')).toHaveLength(2)
     expect(toGuest.filter((message) => message.t === 'autoReplay').at(-1)).toEqual({ t: 'autoReplay', skip: 2 })
+    // Lo que re-simula el núcleo rearmado le llega en lotes, detrás de cómo empieza y de cuántas saltar: ni un `autoEvent` suelto. Su pregunta llega detrás del último lote (la
+    // re-emisión ya la cerró el `waiting` de Ana).
+    const rebuilt = room.sent.slice(mark).filter(isAutoText).flatMap((text) => {
+      const message = parseAutoMessage(text)!
+
+      return GUEST_ACCEPTS.includes(message.t) ? [message] : []
+    })
+    const kinds = rebuilt.map((message) => message.t)
+
+    expect(kinds.indexOf('autoInit')).toBeLessThan(kinds.indexOf('autoReplay'))
+    expect(kinds.indexOf('autoReplay')).toBeLessThan(kinds.indexOf('autoBatch'))
+    expect(kinds.slice(kinds.lastIndexOf('autoBatch') + 1)).toEqual(['autoEvent'])
+    expect(rebuilt.filter((message) => message.t === 'autoEvent')).toEqual([{ t: 'autoEvent', event: expect.objectContaining({ t: 'ask', seat: 0, askId: hosted.getSnapshot().remoteAsk!.askId }) }])
     // Y sigue: Beto contesta (la pregunta 4 también es suya) y el núcleo lo cuenta a partir de lo rearmado.
     expect(sessionOf(guestLink).answer(END)).toBe(true)
     await settle(room)

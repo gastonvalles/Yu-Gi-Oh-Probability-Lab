@@ -276,36 +276,32 @@ export function createReassembler(now: () => number = Date.now): Reassembler {
   }
 }
 
-/**
- * El marcapasos de quien manda: una cola con `AUTO_RATE_PER_SECOND` por segundo. Un `key` repetido reemplaza al último de la cola si es de ese mismo `key` (los `stats` de un
- * asiento: sólo cuenta el último, y como no hay nada en el medio no cambia el orden respecto de los eventos).
- */
+/** El marcapasos de quien manda: una cola con `AUTO_RATE_PER_SECOND` por segundo, en orden y sin saltear nada. `clear` tira lo que todavía no salió (quien repone todo desde cero). */
 export interface Pacer {
-  push(text: string, key?: string): void
+  push(text: string): void
+  clear(): void
   destroy(): void
 }
 
 export function createPacer(send: (text: string) => void, now: () => number = Date.now): Pacer {
   const limiter = new RateLimiter(now(), AUTO_RATE_PER_SECOND, AUTO_BURST)
-  const queue: { text: string; key?: string }[] = []
+  const queue: string[] = []
   let timer: ReturnType<typeof setTimeout> | undefined
   let alive = true
 
   const drain = () => {
     timer = undefined
-    while (alive && queue.length > 0 && limiter.allow(now())) send(queue.shift()!.text)
+    while (alive && queue.length > 0 && limiter.allow(now())) send(queue.shift()!)
     if (alive && queue.length > 0) timer = setTimeout(drain, 1000 / AUTO_RATE_PER_SECOND)
   }
 
   return {
-    push(text, key) {
-      const last = queue.at(-1)
-
+    push(text) {
       if (!alive) return
-      if (key !== undefined && last?.key === key) last.text = text
-      else queue.push(key === undefined ? { text } : { text, key })
+      queue.push(text)
       if (timer === undefined) drain()
     },
+    clear: () => void (queue.length = 0),
     destroy() {
       alive = false
       clearTimeout(timer)

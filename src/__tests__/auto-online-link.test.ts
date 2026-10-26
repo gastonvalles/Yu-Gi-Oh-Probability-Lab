@@ -354,6 +354,32 @@ describe('el enlace del duelo automático por enlace', () => {
     sameView(hosted, sessionOf(game.guestLink), 0)
   })
 
+  it('re-simulando (Ana corta con su pregunta en pie), al invitado le llega todo en lotes y el último sale al terminar, aunque después no haya nada más que mandar', async () => {
+    const game = setup({ firstCode: 2 })
+
+    await settle(game.room)
+    await order(game, 1)
+    const guested = sessionOf(game.guestLink)
+    const hosted = sessionOf(game.hostLink)
+
+    guested.answer(END)
+    await settle(game.room)
+    guested.answer(END)
+    await settle(game.room)
+    expect(hosted.getSnapshot()).toMatchObject({ status: 'ready', ask: { seat: 1 } })
+    const mark = game.room.sent.length
+
+    hosted.cancel()
+    await settle(game.room)
+    const kinds = game.room.sent.slice(mark).map((text) => parseAutoMessage(text)!.t)
+
+    expect(kinds[0]).toBe('autoReplay')
+    expect(kinds.slice(1).every((kind) => kind === 'autoBatch')).toBe(true)
+    expect(kinds.length).toBeGreaterThan(1)
+    expect(guested.getSnapshot()).toMatchObject({ status: 'waiting', replaying: false })
+    sameView(hosted, guested, 0)
+  })
+
   it('el núcleo rechaza una respuesta: el invitado se entera sólo si era suya (la pregunta vuelve a él)', async () => {
     const room = createMemoryRoom()
     const hostEnd = room.join()
@@ -444,6 +470,57 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(host.getSnapshot().opening.ordered).toBe(true)
     expect(hostLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' }, session: null })
     expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+
+    // La revancha: Beto le manda su deck otra vez (el anfitrión recargado no lo tenía revisado) y los dos quedan listos para el próximo.
+    const decks = game.room.sent.filter((text) => text.startsWith('{"t":"autoDeck"')).length
+
+    host.rematch()
+    game.guest.rematch()
+    await settle(game.room)
+    expect(game.room.sent.filter((text) => text.startsWith('{"t":"autoDeck"')).length).toBeGreaterThan(decks)
+    expect(hostLink.getSnapshot()).toMatchObject({ phase: 'ready', problems: { reason: null } })
+    expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'ready', problems: { reason: null } })
+  })
+
+  it('lo que el invitado tiraría (un evento que no pasa su revisión) no se manda: el duelo se pierde para los dos', async () => {
+    let emit: (event: AutoEvent) => void = () => {}
+    const game = setup({ firstCode: 2, react: (_command, next) => ((emit = next), false) })
+
+    await settle(game.room)
+    await order(game, 1)
+    emit({ t: 'ask', seat: 0, askId: 900, ask: { type: 'select_nada' } as unknown as CoreAsk })
+    await settle(game.room)
+    expect(game.room.sent.some((text) => text.includes('select_nada'))).toBe(false)
+    expect(game.hostLink.getSnapshot().phase).toBe('lost')
+    expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+  })
+
+  it('un evento que no entra ni en 16 partes: el duelo se pierde, el núcleo se para y lo guardado se borra (al recargar no se rearma para perderse otra vez)', async () => {
+    const items = new Map<string, string>()
+    const save = autoSaveStore('ROOMBIG1', { getItem: (key) => items.get(key) ?? null, setItem: (key, value) => void items.set(key, value), removeItem: (key) => void items.delete(key) })
+    let emit: (event: AutoEvent) => void = () => {}
+    const game = setup({ firstCode: 2, save, react: (_command, next) => ((emit = next), false) })
+
+    await settle(game.room)
+    await order(game, 1)
+    sessionOf(game.guestLink).answer(END)
+    await settle(game.room)
+    expect(items.size).toBe(1)
+    const hosted = sessionOf(game.hostLink)
+
+    emit({ t: 'ask', seat: 0, askId: 900, ask: { type: 'announce_card', player: 0, opcodes: ['1'], cards: Array.from({ length: 30_000 }, (_, i) => 100_000_000 + i) } })
+    await settle(game.room)
+    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'lost', session: hosted })
+    expect(game.guestLink.getSnapshot().phase).toBe('lost')
+    expect(items.size).toBe(0)
+    // El núcleo ya no cuenta nada (ni al invitado).
+    const before = game.room.sent.length
+    const view = hosted.getSnapshot()
+
+    emit({ t: 'events', seat: 0, n: 9, events: [{ type: 'lpupdate', player: 0, lp: 7000 }] })
+    await settle(game.room)
+    expect(game.room.sent.length).toBe(before)
+    expect(hosted.getSnapshot()).toBe(view)
   })
 
   it('al invitado no le llega nada del asiento del anfitrión; en una sala manual, los mensajes automáticos no se escuchan', async () => {
