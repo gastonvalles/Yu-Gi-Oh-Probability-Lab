@@ -52,8 +52,9 @@ export type Infer<S> = S extends `${infer P}?`
           : ObjOf<S>
 
 const BAD = Symbol('bad')
-const MAX_LIST = 600
-const MAX_TEXT = 2000
+/** Los topes de una lista y de un texto: lo que los pasa no se lee (`null`), así que el anfitrión parte las tandas y recorta los textos (`core-host.ts`). */
+export const MAX_LIST = 600
+export const MAX_TEXT = 2000
 const U64 = /^\d{1,20}$/
 
 const isPlain = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)

@@ -5,13 +5,13 @@ import { createAdapter, type Adapter } from '../app/auto/adapter'
 import { createAutoHost } from '../app/auto/core-host'
 import { teamOrder } from '../app/auto/deck-map'
 import { handtrapPolicy, randomLegalPolicy, type CardPicker } from '../app/auto/policies'
-import type { AutoCommand, AutoEvent, CoreAnswer, CoreAsk, Seat } from '../app/auto/protocol'
+import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { autoRival, HANDTRAP_CATALOG, MAX_RIVAL_HAND } from '../app/handtraps'
 import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, runDuel, scriptStore, wasmBinary } from './support/core-data'
 
 /**
  * El fuzz del núcleo (lento: fuera de `npm test`, se corre con `npm run test:auto`). Dos bots al azar legal juegan duelos con decks del
- * meta y se cuentan los invariantes de F1: 0 RETRY, 0 mensajes sin manejar, 0 errores del núcleo (salvo `KNOWN_SCRIPT_ERRORS`), 0
+ * meta y se cuentan los invariantes de F1: 0 RETRY, 0 mensajes sin manejar, 0 eventos que del otro lado no se leen, 0 errores del núcleo (salvo `KNOWN_SCRIPT_ERRORS`), 0
  * cuelgues; el asiento filtrado nunca ve lo oculto (un oráculo aparte, con el estado real que da `duelQueryLocation`); `rewind` reproduce
  * los eventos y un duelo con semilla fija se repite igual. Lo mismo con el rival de handtraps en el asiento 1 (`Rival`). Escribe el
  * informe por carta y el de lentitud en CORE_DATA_DIR (nunca en el repo). Parámetros: FUZZ_DECKS (20), FUZZ_DUELS por deck (4),
@@ -195,7 +195,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       return 0
     }
     const wasm = wasmBinary()
-    const tally = { duels: 0, ends: {} as Record<string, number>, questions: {} as Record<string, number>, retries: 0, unhandled: 0, coreErrors: 0, knownScriptErrors: 0, exceptions: 0, otherFaults: 0, stuck: 0, leaks: 0, rewindChecked: 0, rewindMismatch: 0, repeatChecked: 0, repeatMismatch: 0, negations: 0, negationsBy: 0, badBy: 0, hotScripts: {} as Record<string, number> }
+    const tally = { duels: 0, ends: {} as Record<string, number>, questions: {} as Record<string, number>, retries: 0, unhandled: 0, unparseable: 0, coreErrors: 0, knownScriptErrors: 0, exceptions: 0, otherFaults: 0, stuck: 0, leaks: 0, rewindChecked: 0, rewindMismatch: 0, repeatChecked: 0, repeatMismatch: 0, negations: 0, negationsBy: 0, badBy: 0, hotScripts: {} as Record<string, number> }
     const faults: { duel: number; message: string }[] = []
     const mismatches: { duel: number; kind: string; at: number; first: string; second: string }[] = []
     const differ = (duel: number, kind: string, first: string[], second: string[]) => {
@@ -238,6 +238,8 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
         scriptReader: store.read,
         emit: (event) => {
           events.push(event)
+          // Lo que no sobrevive al viaje (JSON y `parseAutoEvent`) del otro lado se perdería: una tanda partida de más, un texto largo.
+          if (!parseAutoEvent(JSON.parse(JSON.stringify(event)))) tally.unparseable += 1
           // Quién negó (`ChainStep.by`, deducido por el adaptador): siempre otro eslabón de la cadena en curso, nunca el negado ni uno que no está.
           for (const step of view?.apply(event).chain ?? []) {
             if (step.kind === 'chain') {
@@ -395,9 +397,10 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
     writeFileSync(path.join(CORE_DATA_DIR, `fuzz-${pool.length}x${duels}-s${SEED}${suffix}.json`), JSON.stringify(report, null, 1))
     console.log(JSON.stringify({ ...report.parameters, ...report.tally, ms: report.msPerAnswer, cleanCards: report.cards.playedClean, neverOffered: report.cards.neverOffered.length, faultCards: report.cards.playedWithFault.length, ...('handtraps' in report ? { handtraps: report.handtraps } : {}) }))
 
-    expect({ retries: tally.retries, unhandled: tally.unhandled, coreErrors: tally.coreErrors, exceptions: tally.exceptions, stuck: tally.stuck, leaks: tally.leaks, rewindMismatch: tally.rewindMismatch, repeatMismatch: tally.repeatMismatch, badBy: tally.badBy }).toEqual({
+    expect({ retries: tally.retries, unhandled: tally.unhandled, unparseable: tally.unparseable, coreErrors: tally.coreErrors, exceptions: tally.exceptions, stuck: tally.stuck, leaks: tally.leaks, rewindMismatch: tally.rewindMismatch, repeatMismatch: tally.repeatMismatch, badBy: tally.badBy }).toEqual({
       retries: 0,
       unhandled: 0,
+      unparseable: 0,
       coreErrors: 0,
       exceptions: 0,
       stuck: 0,

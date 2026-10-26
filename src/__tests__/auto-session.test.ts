@@ -1,7 +1,7 @@
 import { OcgDuelMode } from 'ocgcore-wasm'
 import { matReducer } from '../app/practice-mat'
 import { DATA_UNAVAILABLE, DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
-import { createAutoSession, MR5, type AutoSession, type AutoSnapshot, type TransportFactory } from '../app/auto/auto-session'
+import { createAutoSession, MR5, workerTransport, type AutoSession, type AutoSnapshot, type TransportFactory } from '../app/auto/auto-session'
 import type { AutoCommand, AutoEvent, Seat } from '../app/auto/protocol'
 import { CHAIN, END, fakeHost, IDLE, loader, mapped, PASS } from './support/auto-core-fake'
 
@@ -339,6 +339,28 @@ describe('la sesión del duelo automático', () => {
     expect(host.state.transports).toBe(1)
     warn.mockRestore()
     session.destroy()
+  })
+
+  it('un evento del Worker que no se lee corta el duelo (crash) en vez de tirarse callado y dejarlo «pensando»', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    // Un Worker que, al crear, manda una tanda con un evento de otra forma.
+    vi.stubGlobal(
+      'Worker',
+      class {
+        onmessage: ((message: { data: unknown }) => void) | null = null
+        postMessage(command: { t: string }) {
+          if (command.t === 'create') setTimeout(() => this.onmessage?.({ data: { t: 'events', seat: 0, n: 0, events: [{ type: 'new_phase', phase: 'uno' }] } }))
+        }
+        terminate() {}
+      },
+    )
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: workerTransport() })
+
+    expect((await until(session, (s) => s.status === 'error')).fault).toEqual({ kind: 'crash', message: 'unreadable event from the core worker', cards: [] })
+    session.destroy()
+    vi.unstubAllGlobals()
+    warn.mockRestore()
   })
 })
 

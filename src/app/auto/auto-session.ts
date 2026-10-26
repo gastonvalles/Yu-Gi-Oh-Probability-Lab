@@ -176,9 +176,8 @@ export function workerTransport(): TransportFactory {
     let alive = true
 
     worker.onmessage = (message: MessageEvent<unknown>) => {
-      const event = parseAutoEvent(message.data)
-
-      if (alive && event) listener?.(event)
+      // Un evento que no se lee deja un hueco (una pregunta, una tanda): con él el duelo no puede seguir, y tirarlo callado dejaría la mesa «pensando».
+      if (alive) listener?.(parseAutoEvent(message.data) ?? { t: 'fault', kind: 'crash', message: 'unreadable event from the core worker' })
     }
     worker.onerror = (error) => {
       if (alive) listener?.({ t: 'fault', kind: 'crash', message: `worker error: ${error.message}` })
