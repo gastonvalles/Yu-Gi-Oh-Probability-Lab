@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
-import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, linkSentence, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf, linksOf } from '../../app/card-glow'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
-import { useAutoPrefs } from '../../app/auto-prefs'
+import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
-import type { CardTextHighlight } from '../../app/card-text'
+import { effectParts, type CardTextHighlight } from '../../app/card-text'
 import { allMatIds, cardKindOf, createMatState, locateCard, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
@@ -38,6 +38,7 @@ import { BAND_MAX, CardPicker, PickBand, type PickCard } from './CardPicker'
 import { ChainNotice } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
+import { RespondBand } from './RespondBand'
 import { SortSheet } from './SortSheet'
 import { panelChainsOf } from './step-chains'
 
@@ -658,7 +659,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           ? { kind: 'thinking', ...(canCancel ? { onCancel: () => session.cancel() } : {}) }
           : shown?.type === 'select_chain' && !shown.phaseWindow
             ? // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla. La que se puede pasar
-              // va al medio (`chainOffer`) y la línea queda libre; varias obligatorias, también (`forced`).
+              // va al medio (la banda de responder, `offer`) y la línea queda libre; varias obligatorias, también (`forced`).
               shown.cancelable || forced
               ? null
               : { kind: 'ask', text: t('auto.lane.mustActivate', { cards: chainNames }), actions: [] }
@@ -711,8 +712,22 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const linkText = linkRead?.card ?? linkRivalCard
   const linkRange = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
   const linkHighlight: CardTextHighlight | null = linkRange && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...linkRange } : null
-  const chainOffer = shown?.type === 'select_chain' && !shown.phaseWindow && shown.cancelable && lane === null ? shown : null
-  const respondedTo = chain.at(-1)
+  // La cadena que se puede pasar, en la banda de responder: a qué eslabón, con qué cartas (con su lugar) y qué haría la elegida. Con una sola de un solo efecto, ya viene elegida;
+  // una con varios efectos abre su lista (como su menú en la mesa).
+  const offer = shown && lane === null ? respondOffer(shown, chain) : null
+  // La elegida es de esta pregunta (`askState`, no su número: al reiniciar el duelo los números vuelven a empezar).
+  const [offerPick, setOfferPick] = useState<{ of: AskState; key: string } | null>(null)
+  const only = offer?.candidates.length === 1 && offer.candidates[0]!.answer ? offer.candidates[0]! : null
+  const offered = offer?.candidates.find((candidate) => offerPick !== null && offerPick.of === askState && candidate.key === offerPick.key) ?? only
+  const offeredText = offered?.effect && offered.ref.side === 'mine' ? ((cardsById.get(offered.ref.id)?.apiCard ?? byCode.get(offered.effect.code)?.apiCard)?.description ?? null) : null
+  const offeredSentence = offered?.effect && offeredText ? linkSentence(offeredText, offered.effect.code, offered.effect.description) : null
+  const pickOffer = (key: string) => {
+    const candidate = offer?.candidates.find((item) => item.key === key)
+
+    if (!candidate || !askState) return
+    if (candidate.answer) setOfferPick({ of: askState, key })
+    else setSub({ label: t('practice.menu.activateEffect'), children: candidate.items.flatMap((item) => item.children ?? [item]) })
+  }
 
   // ── ATK/DEF de ahora de la carta del detalle (sólo las del campo los tienen): se busca por código entre las del campo de ese lado. ──
   const peeked = dock.shown
@@ -796,17 +811,32 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
       />
-    ) : chainOffer ? (
-      <AskPrompt
+    ) : offer ? (
+      <RespondBand
         key={askId ?? 0}
-        text={
-          respondedTo
-            ? t('auto.lane.respondTo', { card: linkName(respondedTo), cards: chainNames })
-            : t('auto.lane.respondNow', { cards: chainNames })
-        }
-        // La carta a la que se responde (el último eslabón), chica a la izquierda: se ve qué se está por resolver sin buscarla en la mesa.
-        {...(respondedTo ? { card: { name: linkName(respondedTo), art: artOf(respondedTo.card, respondedTo.code) } } : {})}
-        no={{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }}
+        // A qué eslabón respondés (de quién es, si se sabe la carta) y su carta, chica a la izquierda: se ve qué se está por resolver sin buscarla en la mesa.
+        {...(offer.to
+          ? {
+              kicker: offer.to.link.card ? t('auto.respond.to', { link: offer.to.number, who: offer.to.link.card.side === 'mine' ? t('duel.bar.you') : rivalName }) : `CL${offer.to.number}`,
+              card: { name: linkName(offer.to.link), art: artOf(offer.to.link.card, offer.to.link.code) },
+            }
+          : {})}
+        title={offer.to ? t('auto.respond.title', { card: linkName(offer.to.link) }) : t('auto.respond.now')}
+        link={offer.link}
+        cards={offer.candidates.map(({ ref, key, at }): PickCard => {
+          const place = placeLabel(at)
+          const where = place && ref.side === 'theirs' ? t('duel.zone.theirs', { zone: place }) : place
+
+          return { key, name: nameOf(ref), art: artOf(ref), ...(where ? { place: where } : {}) }
+        })}
+        chosen={offered?.key ?? null}
+        onToggle={pickOffer}
+        response={offered ? { name: nameOf(offered.ref), effect: offeredSentence ? effectParts(offeredSentence) : null } : null}
+        onChain={() => {
+          if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
+        }}
+        onPass={() => gesture({ kind: 'cancel' })}
+        mode={{ value: prefs.chain, onChange: (mode) => setAutoPref('chain', mode) }}
       />
     ) : forced && forcedFirst && lane === null ? (
       // Varias obligatorias: tocar elige cuál va primero (la primera, de entrada) y la principal la activa; sin «No responder». Una del rival dice de dónde es y, si se sabe, qué hace.

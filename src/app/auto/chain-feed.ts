@@ -1,4 +1,4 @@
-import { effectSentences, type TextRange } from '../card-text'
+import { effectSentences, type EffectSentence, type TextRange } from '../card-text'
 import type { CardRef, ChainLink } from './adapter'
 import { splitDesc } from './protocol'
 
@@ -129,10 +129,17 @@ export const stepsUpTo = (steps: readonly ChainStep[], cursor: number) => {
  * otra carta, un arte alternativo) y su texto tiene **un solo** efecto que se activa (`effectSentences`). Con dos o más, null: mejor no resaltar nada que resaltar otro efecto.
  */
 export function linkPhrase(text: string, code: number, description: string | undefined): TextRange | null {
+  const sentence = linkSentence(text, code, description)
+
+  return sentence ? { start: sentence.start, end: sentence.start + sentence.text.length } : null
+}
+
+/** La frase del efecto de un eslabón (o de una respuesta que se ofrece), con la misma regla que `linkPhrase`: sólo si no hay duda; si no, null. */
+export function linkSentence(text: string, code: number, description: string | undefined): EffectSentence | null {
   if (!description || splitDesc(description).code !== code) return null
   const sentences = effectSentences(text)
 
-  return sentences.length === 1 ? { start: sentences[0]!.start, end: sentences[0]!.start + sentences[0]!.text.length } : null
+  return sentences.length === 1 ? sentences[0]! : null
 }
 
 /** Cuánto se queda el aviso plegado después de que la cadena terminó. */

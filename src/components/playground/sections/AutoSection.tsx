@@ -11,6 +11,7 @@ import { AutoBar, type AutoChainMode, type AutoPlaceMode } from '../../auto/Auto
 import { CardPicker, PickBand, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
+import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { MatScene } from '../../probability/MatArena'
@@ -122,6 +123,7 @@ export function AutoSection() {
       <BandSample max={2} onAnswer={setAnswer} />
       <BandSample max={1} onAnswer={setAnswer} />
       <ForcedSample onAnswer={setAnswer} />
+      <RespondSample onAnswer={setAnswer} />
 
       <SortSample onAnswer={setAnswer} />
       <CounterSample onAnswer={setAnswer} />
@@ -364,6 +366,60 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
                   }}
                   action={t('auto.forced.activate', { card: name })}
                   note={t('auto.forced.hint')}
+                />
+              </div>
+            </div>
+          ) : null}
+        </Presence>
+      </div>
+      <Button variant="secondary" size="sm" className="w-fit" icon="refresh" disabled={shown} onClick={() => setShown(true)}>
+        Volver a preguntar
+      </Button>
+    </Specimen>
+  )
+}
+
+/** Responder a una cadena (lámina 13): a qué eslabón, las candidatas con su lugar, qué haría la elegida y el modo de respuesta (en escritorio), como en la mesa (`use-auto-asks.tsx`). */
+function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const cards: PickCard[] = [
+    { key: 'ponix', name: PONIX.name, art: PONIX.art, place: t('practice.mat.field') },
+    { key: 'albaz', name: 'Fallen of Albaz', art: art(68468459), place: t('practice.place.gy') },
+    { key: 'veiler', name: 'Effect Veiler', art: art(97268402), place: t('practice.place.hand') },
+  ]
+  const [shown, setShown] = useState(true)
+  const [chosen, setChosen] = useState<string | null>(null)
+  const [mode, setMode] = useState<AutoChainMode>('ask')
+  const picked = cards.find((card) => card.key === chosen)
+  const reply = (answer: string) => {
+    setShown(false)
+    setChosen(null)
+    onAnswer(answer)
+  }
+
+  return (
+    <Specimen
+      title="Responder a una cadena"
+      layout="column"
+      note={<>Una cadena que se puede pasar: arriba a qué eslabón respondés y su carta; las candidatas con la pestaña de dónde están (tocar una la elige, con su tilde; con una sola, ya viene elegida); «Tu respuesta · CL3» con su nombre y, sólo si no hay duda, la frase de su efecto; «No responder» sin caja y «Encadenar como CL3» al final. En escritorio, el modo de respuesta a la izquierda del pie (en el celular, en «Más opciones»). Tocar la carta que brilla en la mesa sigue valiendo. Archivo: <Tag>auto/RespondBand.tsx</Tag></>}
+    >
+      <div className="relative isolate h-112 overflow-hidden rounded-card border border-border-subtle">
+        <MatScene className="absolute inset-0 -z-10" />
+        <Presence>
+          {shown ? (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+                <RespondBand
+                  kicker={t('auto.respond.to', { link: 2, who: t('duel.bar.rival') })}
+                  title={t('auto.respond.title', { card: ASH.name })}
+                  card={ASH}
+                  link={3}
+                  cards={cards}
+                  chosen={chosen}
+                  onToggle={setChosen}
+                  response={picked ? { name: picked.name, effect: picked.key === 'veiler' ? { when: "During your opponent's Main Phase (Quick Effect)", what: 'You can send this card from your hand to the GY, then target 1 Effect Monster your opponent controls; negate its effects until the end of this turn.' } : null } : null}
+                  onChain={() => reply(picked?.name ?? '')}
+                  onPass={() => reply(t('auto.lane.pass'))}
+                  mode={{ value: mode, onChange: setMode }}
                 />
               </div>
             </div>

@@ -30,7 +30,7 @@ import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/Prac
 import { Button } from '../ui/Button'
 import { Segmented } from '../ui/Segmented'
 import { AskPrompt } from './AskPrompt'
-import { Setting } from './AutoBar'
+import { chainModeHint, chainModeOptions, Setting } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckListOf } from './deck-list'
 import { sentinel, useAutoAsks } from './use-auto-asks'
@@ -368,8 +368,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   // «Más opciones» de la barra: lo mismo que en solo (las respuestas a la cadena y la casilla) y pasar a manual; los sonidos y reconectar ya están.
   const settings = (
     <>
-      <Setting title={t('auto.bar.chain')} hint={t('auto.bar.chainHint')}>
-        <Segmented label={t('auto.bar.chain')} value={prefs.chain} onChange={(mode) => setAutoPref('chain', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'never', label: t('auto.bar.never') }]} />
+      <Setting title={t('auto.bar.chain')} hint={chainModeHint(prefs.chain)}>
+        <Segmented label={t('auto.bar.chain')} value={prefs.chain} onChange={(mode) => setAutoPref('chain', mode)} fullWidth options={chainModeOptions()} />
       </Setting>
       <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
         <Segmented label={t('auto.bar.place')} value={prefs.place} onChange={(mode) => setAutoPref('place', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />

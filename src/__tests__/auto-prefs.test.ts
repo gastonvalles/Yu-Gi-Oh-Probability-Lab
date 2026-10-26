@@ -28,6 +28,8 @@ describe('las preferencias del duelo automático', () => {
     storage.setItem(AUTO_KEYS.place, 'auto')
     storage.setItem(AUTO_KEYS.blind, 'on')
     expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto', blind: true })
+    storage.setItem(AUTO_KEYS.chain, 'always')
+    expect(readAutoPrefs(() => storage).chain).toBe('always')
     storage.setItem(AUTO_KEYS.duel, 'si')
     storage.setItem(AUTO_KEYS.blind, 'si')
     storage.setItem(AUTO_KEYS.chain, 'siempre')

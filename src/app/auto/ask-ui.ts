@@ -1,7 +1,7 @@
 import { t, type MessageKey } from '../../i18n'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
 import { effectParts, effectSentences } from '../card-text'
-import { spotOf, type Adapter, type CardRef, type Side, type TriggerCause } from './adapter'
+import { spotOf, type Adapter, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
 import { passivePolicy } from './policies'
 import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
@@ -23,8 +23,8 @@ export interface AskQueries extends Pick<Adapter, 'idAt' | 'codeOf'> {
 
 export interface AskContext {
   queries: AskQueries
-  /** «Respuestas»: preguntar sólo si algo responde de verdad a este momento (`spe_count`), o nunca. «Casilla»: preguntar, o la primera libre. */
-  prefs: { chainMode: 'ask' | 'never'; placeMode: 'ask' | 'auto' }
+  /** «Respuestas»: preguntar siempre que se pueda responder, sólo si algo responde de verdad a este momento (`spe_count`), o nunca. «Casilla»: preguntar, o la primera libre. */
+  prefs: { chainMode: ChainMode; placeMode: 'ask' | 'auto' }
   /** La fase de ahora (la del overlay): marca la actual en `phaseItems`. */
   phase?: MatPhase | null
   /** La máscara de tipo del `.cdb` (como `AdapterOptions.typeOf`): una Mágica o Trampa de la mano dice «Activar». */
@@ -34,6 +34,9 @@ export interface AskContext {
   /** La casilla donde se soltó la carta de la jugada elegida: si está libre, contesta una pregunta de una casilla (`select_place`) sin mostrarla. */
   prefer?: ZoneTarget
 }
+
+/** Cuándo pregunta una cadena que se puede pasar: `always`, siempre que algo se pueda activar; `ask`, sólo si algo responde de verdad a este momento; `never`, nunca (las obligatorias, igual). */
+export type ChainMode = 'always' | 'ask' | 'never'
 
 /** La clase de casilla a la que una jugada saca una carta de la mano: una de monstruo o una de Mágicas y Trampas (la de campo y las escalas las distingue la mesa). */
 export type Into = 'monster' | 'spell'
@@ -47,6 +50,8 @@ export interface AskItem {
   into?: Into
   /** El efecto que activa: para resaltar su frase en el detalle. */
   effect?: { code: number; description: string }
+  /** Desde dónde se activa (una activación): su casilla, su pila o debajo de un Xyz. */
+  at?: AskPlace
   /** En las fases: la de ahora, y las que el núcleo no ofrece. */
   current?: boolean
   disabled?: boolean
@@ -264,6 +269,8 @@ const POSITIONS = [
 const NODES = 20_000
 
 const isMaterial = (card: Loc) => card.overlay_sequence !== undefined || (card.location & L.OVERLAY) !== 0
+/** Dónde está una carta de la pregunta: su casilla, su pila o debajo de un Xyz. */
+const placeOf = (card: Loc): AskPlace | null => (isMaterial(card) ? 'material' : (spotOf(card.location, card.sequence)?.zone ?? PILE_OF[card.location] ?? null))
 const sameRef = (a: CardRef | null, b: CardRef) => a !== null && a.side === b.side && a.id === b.id
 const answerKey = (answer: CoreAnswer) => JSON.stringify(parseAnswer(answer))
 
@@ -476,13 +483,16 @@ function itemsOf(ask: AskOf<'select_idlecmd' | 'select_battlecmd' | 'select_chai
     for (const { ref, indices } of byCard.values()) {
       const effect = (index: number) => ({ code: cards[index]!.code, description: cards[index]!.description })
       const label = activateLabel(cards[indices[0]!]!, ref, ctx)
+      // En una cadena, de dónde sale (la pestaña de la banda de responder).
+      const at = ask.type === 'select_chain' ? placeOf(cards[indices[0]!]!) : null
 
       add(
         ref,
         indices.length === 1
-          ? { label, answer: answer(indices[0]!), effect: effect(indices[0]!), ...intoOf(cards[indices[0]!]!) }
+          ? { label, answer: answer(indices[0]!), effect: effect(indices[0]!), ...intoOf(cards[indices[0]!]!), ...(at ? { at } : {}) }
           : {
               label,
+              ...(at ? { at } : {}),
               children: indices.map((index) => ({
                 label: ctx.effectLabel?.(cards[index]!.code, cards[index]!.description) || activateLabel(cards[index]!, ref, ctx),
                 answer: answer(index),
@@ -599,12 +609,55 @@ export function triggerPhrase(text: string, code: number, cause: TriggerCause | 
   return named.length === 1 ? named[0]! : null
 }
 
+/** El lugar, corto, para la pestaña sobre una carta: «Campo» (cualquier casilla), la pila («Mano», «Cementerio»…); debajo de un Xyz o sin saberlo, nada. */
+export const placeLabel = (at: AskPlace | null | undefined): string | null =>
+  at === undefined || at === null || at === 'material' ? null : at === 'mz' || at === 'emz' || at === 'st' || at === 'field' ? t('practice.mat.field') : t(`practice.place.${at}`)
+
+/** Una carta con la que se puede responder a una cadena (`respondOffer`). */
+export interface RespondCandidate {
+  ref: CardRef
+  /** `side:id`, único entre las candidatas. */
+  key: string
+  at: AskPlace | null
+  /** Lo que contesta elegirla, si tiene un solo efecto; con varios, null (su menú pregunta cuál: `items`). */
+  answer: CoreAnswer | null
+  effect: { code: number; description: string } | null
+  items: AskItem[]
+}
+
+/** La cadena que se puede pasar, como la banda de responder: a qué eslabón (el último), qué número tomaría tu respuesta y con qué cartas. */
+export interface RespondOffer {
+  /** El eslabón al que se responde y su número (1 = CL1); null si la cadena recién se abriría con tu respuesta. */
+  to: { link: ChainLink; number: number } | null
+  /** El número de eslabón de tu respuesta. */
+  link: number
+  candidates: RespondCandidate[]
+}
+
+/**
+ * La banda de responder de una cadena que se puede pasar (no la obligatoria ni la ventana de una fase tuya), con la cadena de ahora (`overlay.chain`: sólo eslabones que esperan
+ * mientras se arma). Tus cartas primero y después las del rival que la pregunta deja activar, en el orden de la pregunta. Null si la pregunta no es ésa.
+ */
+export function respondOffer(view: AskView, chain: readonly ChainLink[]): RespondOffer | null {
+  if (view.type !== 'select_chain' || view.phaseWindow || !view.cancelable) return null
+  const candidates = (['mine', 'theirs'] as const).flatMap((side) =>
+    [...(side === 'mine' ? view.items : view.theirs)].map(([id, items]): RespondCandidate => {
+      const single = items.length === 1 && !items[0]!.children ? items[0]! : null
+
+      return { ref: { side, id }, key: `${side}:${id}`, at: items[0]?.at ?? null, answer: single?.answer ?? null, effect: single?.effect ?? null, items }
+    }),
+  )
+  const last = chain.at(-1)
+
+  return { to: last ? { link: last, number: chain.length } : null, link: chain.length + 1, candidates }
+}
+
 /** Lo que dice la pregunta de un efecto (`select_effectyn`): `nameOf` nombra una carta por código y `cardText` es el texto de la carta del efecto (en inglés, como el catálogo). */
 export function effectAskText(prompt: AskPromptView & { card: AskCard }, cause: TriggerCause | null, nameOf: (code: number) => string, cardText: string | null): EffectAskText {
   const { code } = prompt.card
   const card = nameOf(code)
   const at = prompt.at
-  const place = at === undefined || at === 'material' ? null : at === 'mz' || at === 'emz' || at === 'st' || at === 'field' ? t('practice.mat.field') : t(`practice.place.${at}`)
+  const place = placeLabel(at)
   const where = at === undefined ? null : t(`auto.ask.at.${at}`)
   const text =
     where === null
@@ -649,9 +702,10 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       // «Preguntar» pregunta como EDOPro sin «Always chain»: sólo si algo responde de verdad a este momento (`spe_count` del núcleo: los disparos opcionales y los
       // efectos rápidos con el timing de ahora). Una carta que sólo «podría» activarse (una Trampa colocada, en cada paso del propio turno) no pregunta. Forzada, siempre.
       // Salvo en tus fases (la Draw, la Standby y la End Phase de tu turno: `hint_timing`) con algo que activar: ahí se juega como en la mesa manual (brilla lo que se
-      // activa y el botón de fases pasa). El post-robo (`0x210000`) no: serían dos paradas por fase. Con «Nunca», tampoco.
+      // activa y el botón de fases pasa). El post-robo (`0x210000`) no: serían dos paradas por fase. Con «Nunca», tampoco. «Siempre» (el «Always chain» de EDOPro) pregunta
+      // aunque nada responda de verdad.
       const own = !ask.forced && ask.selects.length > 0 ? (PHASE_WINDOWS.find(([bit]) => (ask.hint_timing & bit) !== 0)?.[1] ?? null) : null
-      const quiet = ctx.prefs.chainMode === 'never' || (ask.spe_count === 0 && !ask.forced && !own)
+      const quiet = ctx.prefs.chainMode === 'never' || (ctx.prefs.chainMode === 'ask' && ask.spe_count === 0 && !ask.forced && !own)
 
       if (quiet || ask.selects.length === 0) auto({ type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }, ask.selects.length === 0 ? 'forced' : 'setting')
       else if (own) {
@@ -665,7 +719,7 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       break
     }
     case 'select_effectyn': {
-      const at = isMaterial(ask) ? 'material' : (spotOf(ask.location, ask.sequence)?.zone ?? PILE_OF[ask.location])
+      const at = placeOf(ask)
 
       base.prompt = { card: askCard(ask, resolve(ask)), ...(at ? { at } : {}), ...(ask.description === TRIGGER_DESC ? { trigger: true } : {}), description: ask.description, yes: { type: ask.type, yes: true }, no: { type: ask.type, yes: false } }
       break
