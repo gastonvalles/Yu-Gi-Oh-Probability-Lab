@@ -151,27 +151,28 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
  * no tapar el nombre. Del color de quien la activó, el de sus vidas y el del número en la pila de la cadena (`PLAYER_COLOR`): violeta claro lo tuyo y ámbar lo del rival, llenos y con el texto
  * oscuro (sobre el arte un teñido no se lee, y el blanco no llega a 4,5:1 sobre esos dos). El ámbar del rival es una etiqueta llena; el de lo que se activa, un aro alrededor de la carta.
  * Sólo se mira: `aria-hidden`, y el eslabón va en el nombre de la carta (`chainLinkLabel`). Se va con el aviso de la cadena.
- * Negado o sin efecto (`voided`): la insignia va tachada y una franja roja con texto blanco cruza la carta por el medio («Sin efecto · por CL2»: rojo = negado), encima y sin moverla.
+ * Negado o sin efecto (`voided`): la insignia va tachada y el arte de la carta, gris y latiendo (`VOIDED_ART`).
  */
 export function ChainBadge({ link, className }: { link: ChainBadgeData; className?: string }) {
   return (
-    <>
-      <span
-        aria-hidden="true"
-        data-chain-link={link.numbers.join(',')}
-        data-chain-owner={link.mine ? 'mine' : 'theirs'}
-        className={cx('pointer-events-none absolute z-11 -translate-y-1/2 whitespace-nowrap rounded-tag px-1 py-px text-micro font-extrabold leading-tight tabular-nums ring-1 ring-background', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].fill, link.voided && 'line-through', className)}
-      >
-        {t('auto.link.badge', { numbers: link.numbers.join('·') })}
-      </span>
-      {link.voided ? (
-        <span aria-hidden="true" data-chain-void={link.voided.by ?? ''} className="pointer-events-none absolute inset-x-0 top-1/2 z-11 -translate-y-1/2 bg-danger px-0.5 py-px text-center text-micro font-bold leading-tight text-white">
-          {voidedText(link.voided)}
-        </span>
-      ) : null}
-    </>
+    <span
+      aria-hidden="true"
+      data-chain-link={link.numbers.join(',')}
+      data-chain-owner={link.mine ? 'mine' : 'theirs'}
+      data-chain-void={link.voided ? (link.voided.by ?? '') : undefined}
+      className={cx('pointer-events-none absolute z-11 -translate-y-1/2 whitespace-nowrap rounded-tag px-1 py-px text-micro font-extrabold leading-tight tabular-nums ring-1 ring-background', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].fill, link.voided && 'line-through', className)}
+    >
+      {t('auto.link.badge', { numbers: link.numbers.join('·') })}
+    </span>
   )
 }
+
+/**
+ * El arte de una carta cuyo eslabón quedó negado o sin efecto (Gastón: «una carta negada debe verse gris parpadeando»), mientras se ve el aviso de la cadena: en escala de grises y con el pulso
+ * de opacidad de `animate-fx-void` (1 s el ciclo: se ve latir en los 1,2 s del aviso y queda lejos de los 3 destellos por segundo de WCAG 2.3.1). Con movimiento reducido queda gris y quieta. Va en
+ * el arte y no en la carta: no le pisa las animaciones (destello, mira, retención), ni el aro, ni el giro 3D, y no cambia su caja. Lo que pasó lo dice el nombre (`chainLinkLabel`) y la insignia tachada.
+ */
+export const VOIDED_ART = 'grayscale motion-safe:animate-fx-void'
 
 /** Adónde salen las chispas de una invocación (en rem, desde el centro de la zona): un hexágono. */
 const SPARKS = [

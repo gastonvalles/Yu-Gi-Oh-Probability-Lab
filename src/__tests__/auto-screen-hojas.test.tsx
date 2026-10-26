@@ -88,17 +88,18 @@ describe('auto-screen · las hojas', () => {
     expect(fake.answers[1]).toEqual({ type: 'sort_card', order: null })
   })
 
-  it('sort_chain: la misma hoja, con su título; «Ordenar así» contesta el orden de los eslabones', () => {
+  it('sort_chain: la misma hoja para los costos de un ataque (no eslabones: sin «CLn»); «Pagar así» contesta el puesto de cada uno', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ type: 'sort_chain', player: 0, cards: [loc(200, L.MZONE, 0), loc(400, L.GRAVE, 0)] }))
-    const sheet = screen.getByRole('dialog', { name: 'Ordená la cadena' })
+    const sheet = screen.getByRole('dialog', { name: 'Ordená los costos del ataque' })
     const options = within(sheet).getAllByRole('option')
 
-    expect(sheet).toHaveTextContent('Tocalas en el orden en que entran en la cadena.')
+    expect(sheet).toHaveTextContent('Tocalos en el orden en que se pagan: el 1 se paga primero.')
+    expect(sheet).not.toHaveTextContent(/CL\d/)
     fireEvent.click(options[1]!)
     fireEvent.click(options[0]!)
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Ordenar así' }))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Pagar así' }))
     expect(fake.answers).toEqual([{ type: 'sort_chain', order: [1, 0] }])
   })
 

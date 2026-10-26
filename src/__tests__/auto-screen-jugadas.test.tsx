@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
+import { setAutoPref } from '../app/auto-prefs'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
 import { act, fakeSession, loc, pos, SPOTS, stringId } from './support/auto-session-fake'
@@ -133,31 +134,68 @@ describe('auto-screen · las jugadas', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('cadena: la carta que puede responder brilla, el medio de la mesa ofrece sólo «No responder» (la línea queda libre) y contesta null', () => {
+  it('cadena: la carta que puede responder brilla y el medio es la banda de responder (la línea queda libre): la única candidata, con su pestaña, ya elegida; «No responder» contesta null', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
     expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
     expect(lane()).toBeNull()
-    const prompt = within(screen.getByTestId('duel-prompt-layer'))
+    const band = within(screen.getByRole('group', { name: '¿Activás algo ahora?' }))
 
-    expect(prompt.getByRole('status')).toHaveTextContent('Podés activar Called by the Grave ahora')
-    expect(prompt.getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder'])
-    fireEvent.click(prompt.getByRole('button', { name: 'No responder' }))
+    expect(band.getByRole('option', { name: 'Called by the Grave, Mano' })).toHaveAttribute('aria-selected', 'true')
+    expect(band.getByText('Tu respuesta · CL1').parentElement).toHaveTextContent('Tu respuesta · CL1 Called by the Grave')
+    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder', 'Activar como CL1'])
+    fireEvent.click(band.getByRole('button', { name: 'No responder' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
   })
 
-  it('cadena con un eslabón: el medio dice a qué respondés, con su carta chica a la izquierda, en una sola fila con «No responder»', () => {
+  it('cadena con un eslabón: la banda dice a qué eslabón y de quién (su carta chica a la izquierda) y la principal encadena con el número que tomaría', () => {
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
 
     core(() => fake.set({ overlay: { ...overlay, chain: [{ card: { side: 'mine', id: 'card-200-1' }, code: 200, description: '0', state: 'chained' }] } }))
     core(() => fake.ask(CHAIN))
-    const prompt = screen.getByTestId('duel-prompt-layer').querySelector<HTMLElement>('[data-prompt="ask"]')!
+    const band = screen.getByRole('group', { name: '¿Encadenás a Maxx C?' })
 
-    expect(prompt).toHaveTextContent('Podés responder a Maxx C con Called by the Grave')
-    expect(within(prompt).getByRole('img', { name: 'Maxx C' })).toBeInTheDocument()
-    expect(prompt.className).toContain('flex')
+    expect(band).toHaveTextContent('Responder a CL1 · Vos')
+    expect(within(band).getByRole('img', { name: 'Maxx C' })).toBeInTheDocument()
+    fireEvent.click(within(band).getByRole('button', { name: 'Encadenar como CL2' }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
+  })
+
+  it('cadena con dos candidatas: ninguna elegida y la principal apagada; tocar una la elige y la principal la activa; una con dos efectos abre su lista', () => {
+    const fake = renderAuto()
+
+    const select = (description: string) => ({ ...pos(400, L.GRAVE, 0, 5), description, client_mode: 0 })
+
+    core(() => fake.ask({ ...CHAIN, selects: [...CHAIN.selects, select(stringId(400, 1)), select(stringId(400, 2))] }))
+    const band = within(screen.getByRole('group', { name: '¿Activás algo ahora?' }))
+
+    expect(band.getByRole('button', { name: 'Activar como CL1' })).toBeDisabled()
+    expect(band.getByText('Elegí con qué responder.')).toBeInTheDocument()
+    fireEvent.click(band.getByRole('option', { name: 'Nibiru, Cementerio' }))
+    expect(screen.getByRole('dialog', { name: 'Activar efecto' })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.click(band.getByRole('option', { name: 'Called by the Grave, Mano' }))
+    fireEvent.click(band.getByRole('button', { name: 'Activar como CL1' }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
+  })
+
+  it('el modo de respuesta en la banda: «Siempre» pregunta aunque nada responda de verdad (`spe_count` 0); «Cuando importa», no', () => {
+    const fake = renderAuto()
+
+    try {
+      core(() => fake.ask(CHAIN))
+      fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Preguntarme' })).getByRole('radio', { name: 'Siempre' }))
+      core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
+      expect(fake.answers).toEqual([])
+      expect(within(screen.getByRole('radiogroup', { name: 'Preguntarme' })).getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
+      fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Preguntarme' })).getByRole('radio', { name: 'Cuando importa' }))
+      core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
+      expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
+    } finally {
+      setAutoPref('chain', 'ask')
+    }
   })
 
   it('cadena obligatoria: sin «No responder», la línea dice que hay que activarla; tocar la carta y «Activar» contesta', () => {

@@ -59,9 +59,10 @@ export const auto: Translated<typeof es> = {
   'auto.sort.hint': 'Tap them in the order they go: the first one ends up on top.',
   'auto.sort.done': 'Use this order',
   'auto.sort.asIs': 'Keep the current order',
-  // Ordering the links that enter at once (their effects triggered together).
-  'auto.sort.chain': 'Order the chain',
-  'auto.sort.chainHint': 'Tap them in the order they enter the chain.',
+  // sort_chain: the costs of an attack (two or more at once, like Dark Elf and Toll), not chain links; number 1 is paid first.
+  'auto.sort.chain': 'Order the attack costs',
+  'auto.sort.chainHint': 'Tap them in the order they are paid: number 1 is paid first.',
+  'auto.sort.chainDone': 'Pay this way',
 
   // Removing counters (a sheet): how many from each card.
   'auto.counter.title': { one: 'Remove {count} counter', other: 'Remove {count} counters' },
@@ -114,11 +115,15 @@ export const auto: Translated<typeof es> = {
 
   // The top bar and «More options».
   'auto.bar.chain': 'Responses',
-  'auto.bar.chainHint': 'Whether it asks you when you can respond to a chain.',
   'auto.bar.place': 'Zone',
   'auto.bar.placeHint': 'Where each card goes: you choose, or it goes to the first free one.',
   'auto.bar.ask': 'Ask',
   'auto.bar.never': 'Never',
+  'auto.bar.always': 'Always',
+  'auto.bar.whenItMatters': 'When it matters',
+  'auto.bar.chainAlwaysHint': 'It asks you every time you could respond, even if nothing changes.',
+  'auto.bar.chainAskHint': 'It asks you only if something of yours really responds to this moment.',
+  'auto.bar.chainNeverHint': "It doesn't ask you; mandatory ones still do.",
   'auto.bar.auto': 'Automatic',
   // «New hand» (the bar) sets up another duel; this one repeats the same.
   'auto.bar.restart': 'Restart the same duel',
@@ -135,8 +140,17 @@ export const auto: Translated<typeof es> = {
   'auto.lane.thinking': 'The rules engine is resolving…',
   'auto.lane.rivalChoosing': 'The opponent is choosing',
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
-  'auto.lane.respondNow': 'You can activate {cards} now',
   'auto.lane.pass': "Don't respond",
+  // The band to respond to a chain: which link, with which cards and which number your response would take.
+  'auto.respond.to': 'Respond to CL{link} · {who}',
+  'auto.respond.title': 'Chain to {card}?',
+  'auto.respond.now': 'Activate something now?',
+  'auto.respond.cards': 'You can respond with',
+  'auto.respond.yours': 'Your response · CL{link}',
+  'auto.respond.pick': 'Pick what to respond with.',
+  'auto.respond.chain': 'Chain as CL{link}',
+  'auto.respond.start': 'Activate as CL1',
+  'auto.respond.mode': 'Ask me',
   'auto.lane.mustActivate': 'You must activate {cards}: tap it',
   // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).
   'auto.forced.title': 'You must activate these {count}. Which goes first (CL{link})?',

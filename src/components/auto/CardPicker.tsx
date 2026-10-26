@@ -7,6 +7,7 @@ import { CardArt } from '../CardArt'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { SearchField } from '../ui/SearchField'
 import { Skeleton } from '../ui/Skeleton'
@@ -35,13 +36,15 @@ interface PickGridProps {
   eligible?: ReadonlySet<string>
   /** Las columnas de la grilla. */
   className?: string
+  /** El lugar de cada carta en una pestaña sobre ella («Campo», «Mano»), como en «¿Activás el efecto?», y no debajo del nombre. */
+  tabs?: boolean
 }
 
 /**
  * La grilla de cartas para elegir, con el aro ámbar y el número de orden de `PileViewer` eligiendo varias (no se extrajo de ahí: allá son botones con `aria-pressed` y acá un `listbox`). Se recorre con
  * las flechas (arriba y abajo, una fila), Inicio y Fin, con un solo lugar de tabulación; Espacio o Enter eligen. Mientras llega el arte de una carta, un esqueleto quieto (son decenas a la vez).
  */
-export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, className }: PickGridProps) {
+export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, className, tabs = false }: PickGridProps) {
   const [active, setActive] = useState(0)
   const at = Math.min(active, cards.length - 1)
   const blocked = (card: PickCard) => eligible !== undefined && !eligible.has(card.key) && !chosen.includes(card.key)
@@ -67,7 +70,8 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, clas
     <div role="listbox" aria-label={label} aria-multiselectable={multi || undefined} className={cx('grid gap-2', className)} onKeyDown={onKeyDown}>
       {cards.map((card, index) => {
         const order = chosen.indexOf(card.key)
-        const name = order >= 0 ? t('practice.many.order', { name: card.name, n: order + 1 }) : card.name
+        // Eligiendo una sola, la elegida lleva una tilde (no un número de orden).
+        const name = order >= 0 && multi ? t('practice.many.order', { name: card.name, n: order + 1 }) : card.name
         const off = blocked(card)
 
         return (
@@ -87,14 +91,19 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, clas
               if (!off) onToggle(card.key, event.shiftKey)
             }}
           >
+            {tabs && card.place ? (
+              <Badge size="sm" shape="tag" wrap aria-hidden="true" className="justify-self-start">
+                {card.place}
+              </Badge>
+            ) : null}
             {/* La elegida, un aro ámbar de 2 px por fuera; al pasar el mouse, el mismo aro, tenue. */}
             <span className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order >= 0 ? 'outline-2 outline-info' : 'group-hover:outline-2 group-hover:outline-info/45')}>
               {card.art === undefined ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
-              {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-info px-1 text-micro font-bold leading-none tabular-nums text-info-foreground">{order + 1}</span> : null}
+              {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-info px-1 text-micro font-bold leading-none tabular-nums text-info-foreground">{multi ? order + 1 : <Icon name="check" size={14} />}</span> : null}
             </span>
-            <span aria-hidden="true" className="grid min-w-0">
+            <span aria-hidden="true" data-pick-name="" className="grid min-w-0">
               <span className="truncate text-micro text-foreground">{card.name}</span>
-              {card.place ? <span className="truncate text-micro text-soft">{card.place}</span> : null}
+              {card.place && !tabs ? <span className="truncate text-micro text-soft">{card.place}</span> : null}
             </span>
           </div>
         )

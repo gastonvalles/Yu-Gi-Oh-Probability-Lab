@@ -63,9 +63,10 @@ export const auto = {
   'auto.sort.hint': 'Tocalas en el orden en que van: la primera queda arriba.',
   'auto.sort.done': 'Ordenar así',
   'auto.sort.asIs': 'Dejar como está',
-  // Ordenar los eslabones que entran a la vez (sus efectos se dispararon juntos).
-  'auto.sort.chain': 'Ordená la cadena',
-  'auto.sort.chainHint': 'Tocalas en el orden en que entran en la cadena.',
+  // sort_chain: los costos de un ataque (dos o más a la vez, como Dark Elf y Toll), no eslabones; el 1 se paga primero (medido con el núcleo).
+  'auto.sort.chain': 'Ordená los costos del ataque',
+  'auto.sort.chainHint': 'Tocalos en el orden en que se pagan: el 1 se paga primero.',
+  'auto.sort.chainDone': 'Pagar así',
 
   // Sacar contadores (una hoja): cuántos de cada carta.
   'auto.counter.title': { one: 'Sacá {count} contador', other: 'Sacá {count} contadores' },
@@ -121,11 +122,15 @@ export const auto = {
 
   // La barra de arriba y «Más opciones».
   'auto.bar.chain': 'Respuestas',
-  'auto.bar.chainHint': 'Si te pregunta cuando podés responder a una cadena.',
   'auto.bar.place': 'Casilla',
   'auto.bar.placeHint': 'Dónde va cada carta: la elegís vos o va a la primera libre.',
   'auto.bar.ask': 'Preguntar',
   'auto.bar.never': 'Nunca',
+  'auto.bar.always': 'Siempre',
+  'auto.bar.whenItMatters': 'Cuando importa',
+  'auto.bar.chainAlwaysHint': 'Te pregunta cada vez que podrías responder, aunque no cambie nada.',
+  'auto.bar.chainAskHint': 'Te pregunta sólo si algo tuyo responde de verdad a este momento.',
+  'auto.bar.chainNeverHint': 'No te pregunta; las obligatorias, igual.',
   'auto.bar.auto': 'Automática',
   // «Nueva mano» (la barra) arma otro duelo; éste repite el mismo.
   'auto.bar.restart': 'Reiniciar el mismo duelo',
@@ -143,8 +148,17 @@ export const auto = {
   'auto.lane.thinking': 'El núcleo está resolviendo…',
   'auto.lane.rivalChoosing': 'El rival está eligiendo',
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
-  'auto.lane.respondNow': 'Podés activar {cards} ahora',
   'auto.lane.pass': 'No responder',
+  // La banda de responder a una cadena: a qué eslabón, con qué cartas y qué número tomaría tu respuesta.
+  'auto.respond.to': 'Responder a CL{link} · {who}',
+  'auto.respond.title': '¿Encadenás a {card}?',
+  'auto.respond.now': '¿Activás algo ahora?',
+  'auto.respond.cards': 'Podés responder con',
+  'auto.respond.yours': 'Tu respuesta · CL{link}',
+  'auto.respond.pick': 'Elegí con qué responder.',
+  'auto.respond.chain': 'Encadenar como CL{link}',
+  'auto.respond.start': 'Activar como CL1',
+  'auto.respond.mode': 'Preguntarme',
   'auto.lane.mustActivate': 'Tenés que activar {cards}: tocala',
   // Varias obligatorias a la vez: se elige cuál entra primero en la cadena (la banda del medio).
   'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero (CL{link})?',

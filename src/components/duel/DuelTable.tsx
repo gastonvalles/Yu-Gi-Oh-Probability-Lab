@@ -12,7 +12,7 @@ import { THEIR_FAN_RISE, THEIR_HAND } from './their-hand'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, chainBadgeAt, chainLinkLabel, fxVars } from '../probability/MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars } from '../probability/MatFx'
 import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
@@ -398,7 +398,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         data-glow-kind={acting ? 'act' : undefined}
         className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
       >
-        <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180')}>
+        <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180', link?.voided && VOIDED_ART)}>
           {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={link ? chainLinkLabel(label, link) : label} className="block h-full w-full object-cover" />}
         </span>
         {/* La cantidad queda derecha, como los contadores: es para leerla desde acá. */}
@@ -453,7 +453,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
             <CardBack className="h-full" />
           </span>
         </>
-      ) : cards.length > 0 ? (art ? <CardArt key={shown} remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none')} /> : <CardBack key={shown} className={cx('h-full', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none')} />) : null}
+      ) : cards.length > 0 ? (art ? <CardArt key={shown} remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} /> : <CardBack key={shown} className={cx('h-full', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} />) : null}
       <PileBadge label={PILE_SHORT[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark key={`mira:${shown}`} /> : null}

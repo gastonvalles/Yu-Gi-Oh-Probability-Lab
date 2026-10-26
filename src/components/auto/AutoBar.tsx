@@ -1,10 +1,11 @@
 import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
 
+import type { AutoPrefs } from '../../app/auto-prefs'
 import { useDuelRails } from '../../app/duel-rails'
 import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { useElementFits } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { t } from '../../i18n'
+import { t, type MessageKey } from '../../i18n'
 import { LaneBanner, LifeTile, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../probability/MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -14,11 +15,22 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
-import { Segmented } from '../ui/Segmented'
+import { Segmented, type SegmentedOption } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
 
-/** Si el núcleo pregunta cuando podés responder a una cadena (`ask`) o contesta «No responder» solo (`never`). */
-export type AutoChainMode = 'ask' | 'never'
+/** Cuándo te pregunta si respondés a una cadena: siempre que se pueda (`always`), sólo si algo responde de verdad (`ask`) o nunca (`never`: contesta «No responder» solo). */
+export type AutoChainMode = AutoPrefs['chain']
+
+const CHAIN_MODES = {
+  always: ['auto.bar.always', 'auto.bar.chainAlwaysHint'],
+  ask: ['auto.bar.whenItMatters', 'auto.bar.chainAskHint'],
+  never: ['auto.bar.never', 'auto.bar.chainNeverHint'],
+} as const satisfies Record<AutoChainMode, readonly [MessageKey, MessageKey]>
+
+/** Los tres modos de respuesta, en el orden de la pista («Siempre · Cuando importa · Nunca»), cada uno con lo que hace para el lector de pantalla: en «Más opciones» y en la banda de responder. */
+export const chainModeOptions = (): SegmentedOption<AutoChainMode>[] => (['always', 'ask', 'never'] as const).map((value) => ({ value, label: t(CHAIN_MODES[value][0]), detailLabel: t(CHAIN_MODES[value][1]) }))
+/** Lo que hace el modo elegido (la línea chica del ajuste). */
+export const chainModeHint = (mode: AutoChainMode) => t(CHAIN_MODES[mode][1])
 /** Si la casilla de cada carta la elegís vos (`ask`) o va a la primera libre (`auto`). */
 export type AutoPlaceMode = 'ask' | 'auto'
 
@@ -136,8 +148,8 @@ export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, on
   const dialogs = (
     <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" veil={false} title={t('duel.bar.more')}>
       <div className="grid gap-5">
-        <Setting title={t('auto.bar.chain')} hint={t('auto.bar.chainHint')}>
-          <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'never', label: t('auto.bar.never') }]} />
+        <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
+          <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
         </Setting>
         <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
           <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />

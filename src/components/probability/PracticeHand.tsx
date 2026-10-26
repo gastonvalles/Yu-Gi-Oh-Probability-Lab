@@ -27,7 +27,7 @@ import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import type { ChainBadgeData } from '../../app/card-glow'
-import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, chainLinkLabel, fxVars } from './MatFx'
+import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, VOIDED_ART, chainLinkLabel, fxVars } from './MatFx'
 import { CARD_BACK, glowFrame } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
@@ -558,7 +558,7 @@ const HandCard = memo(function HandCard({
         tilt
         remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
         name={card.name}
-        className="block h-full w-full bg-input object-cover"
+        className={cx('block h-full w-full bg-input object-cover', link?.voided && VOIDED_ART)}
         limitCard={card.apiCard}
         limitBadgeSize="sm"
       />

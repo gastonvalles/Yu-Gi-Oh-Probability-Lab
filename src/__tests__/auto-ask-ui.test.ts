@@ -1,6 +1,6 @@
 import { applyLocale, loadLocale, t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, step, triggerPhrase, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, placeLabel, respondOffer, step, triggerPhrase, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -298,7 +298,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     const view = askView(open(chain, ctx(MESA)))
 
     expect(view.respond).toEqual([mine('card-950-1')])
-    expect(view.items.get('card-950-1')).toEqual([{ label: t('practice.menu.activate'), answer: { type: 'select_chain', index: 0 }, effect: { code: 950, description: '0' } }])
+    expect(view.items.get('card-950-1')).toEqual([{ label: t('practice.menu.activate'), answer: { type: 'select_chain', index: 0 }, effect: { code: 950, description: '0' }, at: 'st' }])
     expect(view.cancelable).toBe(true)
     expect(step(open(chain, ctx(MESA)), { kind: 'cancel' }).answer).toEqual({ type: 'select_chain', index: null })
     expect(askView(open({ ...chain, forced: true }, ctx(MESA))).cancelable).toBe(false)
@@ -314,6 +314,42 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     // Sin nada que responda de verdad a este momento (`spe_count` 0: una Trampa colocada en cada paso del propio turno) «Preguntar» no pregunta; forzada, sí.
     expect(askView(open({ ...chain, spe_count: 0 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_chain', index: null }, why: 'setting' })
     expect(askView(open({ ...chain, spe_count: 0, forced: true }, ctx(MESA))).auto).toBeNull()
+    // «Siempre» pregunta igual (el «Always chain» de EDOPro); sin nada que activar, se contesta sola.
+    const always = ctx(MESA, { prefs: { chainMode: 'always', placeMode: 'ask' } })
+
+    expect(askView(open({ ...chain, spe_count: 0 }, always)).auto).toBeNull()
+    expect(askView(open({ ...chain, spe_count: 0, selects: [] }, always)).auto).toEqual({ answer: { type: 'select_chain', index: null }, why: 'forced' })
+  })
+
+  it('la banda de responder (`respondOffer`): a qué eslabón, el número de tu respuesta y las candidatas con su lugar; una con varios efectos no contesta de un toque', () => {
+    const select = (code: number, location: number, sequence: number, description = '0') => ({ ...pos(code, location, sequence, 10), description, client_mode: 0 })
+    const chain: Extract<CoreAsk, { type: 'select_chain' }> = {
+      type: 'select_chain',
+      player: 0,
+      spe_count: 1,
+      forced: false,
+      hint_timing: 0,
+      hint_timing_other: 0,
+      selects: [select(950, L.SZONE, 1), select(900, L.HAND, 1, stringId(900, 0)), select(400, L.GRAVE, 0, stringId(400, 1)), select(400, L.GRAVE, 0, stringId(400, 2))],
+    }
+    const link = { card: { side: 'theirs' as const, id: 'c1' }, code: 700, description: '0', state: 'chained' as const }
+    const offer = respondOffer(askView(open(chain, ctx(MESA))), [link])!
+
+    expect(offer.to).toEqual({ link, number: 1 })
+    expect(offer.link).toBe(2)
+    expect(offer.candidates.map(({ key, at, answer, effect }) => ({ key, at, answer, effect }))).toEqual([
+      { key: 'mine:card-950-1', at: 'st', answer: { type: 'select_chain', index: 0 }, effect: { code: 950, description: '0' } },
+      { key: 'mine:card-900-1', at: 'hand', answer: { type: 'select_chain', index: 1 }, effect: { code: 900, description: stringId(900, 0) } },
+      { key: 'mine:card-400-1', at: 'gy', answer: null, effect: null },
+    ])
+    expect(offer.candidates[2]!.items[0]!.children).toHaveLength(2)
+    expect([placeLabel('st'), placeLabel('hand'), placeLabel('gy'), placeLabel('material')]).toEqual([t('practice.mat.field'), t('practice.place.hand'), t('practice.place.gy'), null])
+    // Sin cadena todavía, tu respuesta la abre (CL1).
+    expect(respondOffer(askView(open(chain, ctx(MESA))), [])).toMatchObject({ to: null, link: 1 })
+    // La obligatoria, la ventana de una fase tuya y lo que no es una cadena no van en la banda.
+    expect(respondOffer(askView(open({ ...chain, forced: true }, ctx(MESA))), [])).toBeNull()
+    expect(respondOffer(askView(open({ ...chain, spe_count: 0, hint_timing: 0x1 }, ctx(MESA))), [])).toBeNull()
+    expect(respondOffer(askView(open(ASKS[0]!, ctx(MESA))), [])).toBeNull()
   })
 
   it('una obligatoria de una carta que controla el rival (Camellia, del oráculo: pregunta el asiento 1) también se ofrece: se toca en su campo y todo lo legal está a un toque', () => {
@@ -343,7 +379,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     const offered = new Set(gesturesOf(view).flatMap((gesture) => (gesture.kind === 'item' ? [JSON.stringify(gesture.answer)] : [])))
 
     expect([0, 1, 2].filter((index) => !offered.has(JSON.stringify({ type: 'select_chain', index })))).toEqual([])
-    expect(view.theirs.get('c9')).toEqual([{ label: t('practice.menu.activateEffect'), answer: { type: 'select_chain', index: 0 }, effect: { code: 63013339, description: '0' } }])
+    expect(view.theirs.get('c9')).toEqual([{ label: t('practice.menu.activateEffect'), answer: { type: 'select_chain', index: 0 }, effect: { code: 63013339, description: '0' }, at: 'mz' }])
     // Brilla (late en su campo) y no se mezcla con las tuyas.
     expect(view.respond).toContainEqual({ side: 'theirs', id: 'c9' })
     expect(view.items.has('c9')).toBe(false)

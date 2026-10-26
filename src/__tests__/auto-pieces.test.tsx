@@ -11,6 +11,7 @@ import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
 import { AutoBar } from '../components/auto/AutoBar'
 import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPicker'
+import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
 
@@ -200,6 +201,68 @@ describe('PickBand', () => {
   })
 })
 
+describe('RespondBand', () => {
+  const respond = (props: Partial<Parameters<typeof RespondBand>[0]> = {}) =>
+    render(
+      <RespondBand
+        kicker="Responder a CL2 · Rival"
+        title="¿Encadenás a Ash Blossom & Joyous Spring?"
+        card={{ name: 'Ash Blossom & Joyous Spring', art: null }}
+        link={3}
+        cards={CARDS.slice(0, 2)}
+        chosen={null}
+        onToggle={() => {}}
+        response={null}
+        onChain={() => {}}
+        onPass={() => {}}
+        {...props}
+      />,
+    )
+
+  it('a qué eslabón, las candidatas con la pestaña de su lugar (sin la línea de abajo), «No responder» sin caja y la principal al final, apagada sin elegida', () => {
+    const onPass = vi.fn()
+    respond({ onPass })
+    const group = screen.getByRole('group', { name: '¿Encadenás a Ash Blossom & Joyous Spring?' })
+
+    expect(group).toHaveAttribute('data-prompt-row')
+    expect(group).toHaveTextContent('Responder a CL2 · Rival')
+    expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
+    expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano')).toHaveClass('rounded-tag')
+    expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
+    expect(group).toHaveTextContent('Tu respuesta · CL3 Elegí con qué responder.')
+    expect(within(group).getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder', 'Encadenar como CL3'])
+    expect(within(group).getByRole('button', { name: 'Encadenar como CL3' })).toBeDisabled()
+    // Sin `mode`, sin el selector.
+    expect(within(group).queryByRole('radiogroup')).toBeNull()
+    fireEvent.click(within(group).getByRole('button', { name: 'No responder' }))
+    expect(onPass).toHaveBeenCalledTimes(1)
+  })
+
+  it('la elegida, con su tilde y qué haría (la frase de su efecto); la principal contesta; el modo, sólo en escritorio', () => {
+    const onChain = vi.fn()
+    const onMode = vi.fn()
+    respond({ chosen: 'b', response: { name: 'Aluber the Jester of Despia', effect: { when: 'During your opponent’s turn (Quick Effect)', what: 'You can negate the activation.' } }, onChain, mode: { value: 'ask', onChange: onMode } })
+    const group = screen.getByRole('group', { name: /Encadenás/ })
+
+    expect(within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })).toHaveAttribute('aria-selected', 'true')
+    expect(group).toHaveTextContent('Tu respuesta · CL3 Aluber the Jester of Despia “During your opponent’s turn (Quick Effect): You can negate the activation.”')
+    fireEvent.click(within(group).getByRole('button', { name: 'Encadenar como CL3' }))
+    expect(onChain).toHaveBeenCalledTimes(1)
+    const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
+
+    // En el celular (< 1101 px) se esconde: queda en «Más opciones».
+    expect(modes.parentElement).toHaveClass('max-[1101px]:hidden')
+    expect(within(modes).getByRole('radio', { name: 'Cuando importa' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(within(modes).getByRole('radio', { name: 'Siempre' }))
+    expect(onMode).toHaveBeenCalledWith('always')
+    cleanup()
+
+    // Sin cadena todavía, tu respuesta la abre.
+    respond({ link: 1, kicker: undefined, card: undefined, title: '¿Activás algo ahora?', chosen: 'a' })
+    expect(screen.getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
+  })
+})
+
 describe('CardPicker', () => {
   it('de 1 a 2: aro y número de orden, nunca más de dos, el pie dice cuántas y la principal se enciende con el mínimo', () => {
     const onPick = vi.fn()
@@ -373,6 +436,11 @@ describe('AutoBar', () => {
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 
     expect(within(dialog).queryByRole('switch', { name: 'Sonidos del duelo' })).toBeNull()
+    // Tres modos, y la línea chica dice qué hace el elegido.
+    expect(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Cuando importa', 'Nunca'])
+    expect(dialog).toHaveTextContent('Te pregunta sólo si algo tuyo responde de verdad a este momento.')
+    fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getByRole('radio', { name: 'Siempre' }))
+    expect(onChain).toHaveBeenCalledWith('always')
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getByRole('radio', { name: 'Nunca' }))
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Casilla' })).getByRole('radio', { name: 'Automática' }))
     expect(onChain).toHaveBeenCalledWith('never')
