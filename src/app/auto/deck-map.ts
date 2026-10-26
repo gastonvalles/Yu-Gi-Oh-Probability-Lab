@@ -96,7 +96,7 @@ export function teamOrder(create: { seed: number; decks: readonly { main: readon
  * Un script que carga otro: `Duel.LoadScript("x.lua")` (las bibliotecas) o `Duel.LoadCardScript(Alias)` con el nombre, el número o una
  * constante (la carta que delega en otra). Una variable (`Duel.LoadScript(code)`, dentro de `utility.lua`) no se puede seguir y no entra.
  */
-const LOAD_SCRIPT = /Duel\.Load(?:Card)?Script(?:Alias)?\(\s*(?:["']([^"']+)["']|(\d+)|([A-Z][A-Z0-9_]*))\s*\)/g
+const LOAD_SCRIPT = /Duel\.Load(?:Card)?Script(?:Alias)?\(\s*(?:["']([^"']+)["']|(\d+)|([A-Z][A-Z0-9_]*))\s*[,)]/g
 /** Una constante de código de las bibliotecas (`CARD_DARK_MAGICIAN = 46986414`) o de un script (`local CARD_X=…`). */
 export const CODE_CONSTANT = /\b([A-Z][A-Z0-9_]*)\s*=\s*(\d+)\b/g
 
