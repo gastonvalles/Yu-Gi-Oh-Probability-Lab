@@ -119,7 +119,7 @@ export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; i
                 className={cx(
                   'grid size-11 place-items-center rounded-full border-2 text-micro font-extrabold leading-none transition-colors',
                   item.current
-                    ? 'border-info bg-accent text-accent-foreground'
+                    ? 'border-info bg-primary text-white'
                     : item.disabled
                       ? 'border-border-subtle text-muted'
                       : 'border-border text-foreground group-hover:bg-tint/12',

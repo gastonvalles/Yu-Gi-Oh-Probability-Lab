@@ -93,17 +93,17 @@ export function PickGrid({ label, cards, chosen, onToggle, multi, eligible, clas
             }}
           >
             {tabs && card.place ? (
-              <Badge size="sm" shape="tag" wrap aria-hidden="true" className="justify-self-start">
-                {card.place}
+              <Badge size="sm" shape="tag" aria-hidden="true" className="min-w-0 max-w-full justify-self-start">
+                <span className="min-w-0 truncate">{card.place}</span>
               </Badge>
             ) : null}
             {/* La elegida, un aro ámbar de 2 px por fuera; al pasar el mouse, el mismo aro, tenue. */}
             <span className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order >= 0 ? 'outline-2 outline-info' : 'group-hover:outline-2 group-hover:outline-info/45')}>
               {card.art === undefined ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
-              {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-info px-1 text-micro font-bold leading-none tabular-nums text-info-foreground">{multi ? order + 1 : <Icon name="check" size={14} />}</span> : null}
+              {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-warning-solid px-1 text-micro font-bold leading-none tabular-nums text-white">{multi ? order + 1 : <Icon name="check" size={14} />}</span> : null}
             </span>
             <span aria-hidden="true" data-pick-name="" className="grid min-w-0">
-              <span className="truncate text-micro text-foreground">{card.name}</span>
+              <span className="truncate text-micro text-foreground min-[1101px]:line-clamp-2 min-[1101px]:whitespace-normal">{card.name}</span>
               {card.place && !tabs ? <span className="truncate text-micro text-soft">{card.place}</span> : null}
             </span>
           </div>

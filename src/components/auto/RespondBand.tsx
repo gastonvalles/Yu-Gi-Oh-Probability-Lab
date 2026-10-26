@@ -33,7 +33,7 @@ interface RespondBandProps {
 /**
  * Responder a una cadena (`select_chain` que se puede pasar) sin tapar la mesa: una banda en la ranura de la pregunta (`MatPrompt`: ancha, sin velo, minimizable), como `PickBand`.
  * Arriba, a qué eslabón respondés y el arte de su carta; las candidatas con la pestaña de dónde están (`PickGrid`: flechas, Espacio y Enter); y abajo «No responder» sin caja y la
- * principal al final («Encadenar como CL3»), que se enciende con una elegida. En escritorio, el modo arriba a la derecha. Tocar la carta que brilla en la mesa sigue valiendo (su
+ * principal al final («Encadenar como CL3»), que se enciende con una elegida. En escritorio, el modo debajo del título. Tocar la carta que brilla en la mesa sigue valiendo (su
  * menú, como siempre). Al aparecer, el foco va a las cartas. Escape es «No responder» (lo da la mesa), así que no la minimiza.
  */
 export function RespondBand({ title, card, link, cards, chosen, onToggle, onChain, onPass, mode }: RespondBandProps) {
@@ -56,16 +56,18 @@ export function RespondBand({ title, card, link, cards, chosen, onToggle, onChai
               <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
             </span>
           ) : null}
-          <p id={titleId} className="m-0 font-semibold [overflow-wrap:anywhere]">
-            {title}
-          </p>
-          {/* El modo, arriba a la derecha (en el pie, con «No responder» y la principal, no entra en una fila y la banda crecía). */}
-          {mode ? (
-            <div className="ml-auto grid shrink-0 justify-items-end gap-1 max-[1101px]:hidden">
-              <span className="text-micro text-muted">{t('auto.respond.mode')}</span>
-              <Segmented size="sm" dense label={t('auto.respond.mode')} value={mode.value} onChange={mode.onChange} options={chainModeOptions()} />
-            </div>
-          ) : null}
+          {/* El título, solo en su fila (no se parte a mitad de palabra); debajo, el modo con su nombre al lado: así no le aprieta la columna (en el pie, con «No responder» y la principal, no entra). */}
+          <div className="grid min-w-0 flex-1 gap-2">
+            <p id={titleId} className="m-0 font-semibold break-words">
+              {title}
+            </p>
+            {mode ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 max-[1101px]:hidden">
+                <span className="text-micro text-muted">{t('auto.respond.mode')}</span>
+                <Segmented size="sm" dense label={t('auto.respond.mode')} value={mode.value} onChange={mode.onChange} options={chainModeOptions()} />
+              </div>
+            ) : null}
+          </div>
         </>
       }
     >

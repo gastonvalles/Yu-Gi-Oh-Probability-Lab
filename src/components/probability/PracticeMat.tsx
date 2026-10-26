@@ -2494,7 +2494,7 @@ export function PracticeMat({
                 className={cx(
                   'grid size-11 place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
                   // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
-                  myTurn ? 'cursor-pointer border-info bg-info text-accent-foreground hover:bg-info-soft' : 'border-accent bg-accent text-accent-foreground',
+                  myTurn ? 'cursor-pointer border-info bg-warning-solid text-white hover:border-info-soft' : 'border-accent bg-primary text-white',
                 )}
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
@@ -2645,8 +2645,9 @@ export function PracticeMat({
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* La barra tiene su propia fila abajo de la mano, también en escritorio: antes subía sobre la franja de abajo de la mano, y con la mano ancha de una notebook (1280–1440 px, con el menú y el chat abiertos) las fases y Pasar turno quedaban encima de las cartas, entre el 55 y el 75 % de su área. */}
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
-        {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven. */}
-        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
+        {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven.
+            Repasando un combo en un duelo, los controles del replay toman también ese margen (abajo, al lado de la mano, está libre): en el lateral solo no entraban y se cortaban. */}
+        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails && !(duel && replayBar) ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido. Celular: las vidas a la izquierda, las dos reacciones en el medio (centradas, alineadas con las vidas y los botones) y deshacer y el chat a la derecha
               (el pulgar de quien juega con la derecha). Escritorio: deshacer junto a tus vidas, en la esquina opuesta a las del rival. */}
           {duel ? (
@@ -3024,9 +3025,9 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, st
         <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[135ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)}>
           <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
         </span>
-        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}
+        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning-solid px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white motion-reduce:animate-none">{placed.counters}</span> : null}
         <MaterialCount count={materials} sideways={sideways} />
-        {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
+        {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-primary py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-white">{chosen}</span> : null}
         {framed ? <FxFrame tone="cyan" /> : null}
         {frame ? <FxFrame tone={frame.tone} orbit={frame.orbit} /> : null}
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}

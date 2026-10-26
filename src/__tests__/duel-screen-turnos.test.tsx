@@ -797,8 +797,8 @@ describe('la pantalla del duelo', () => {
     // La fase de ahora va en ámbar si el turno es tuyo (lo que se toca) y la misma, vista por Beto, en violeta (es del rival).
     click(host, 'Main Phase 1')
     flush()
-    expect(phaseChip(host)).toHaveClass('bg-info')
-    expect(phaseChip(guest)).toHaveClass('bg-accent')
+    expect(phaseChip(host)).toHaveClass('bg-warning-solid')
+    expect(phaseChip(guest)).toHaveClass('bg-primary')
 
     // En la Main Phase 1 el botón abre las fases; llegar a la End Phase pregunta si se termina el turno, y «Seguir jugando» deja todo como está.
     click(host, 'End Phase')
@@ -815,8 +815,8 @@ describe('la pantalla del duelo', () => {
     confirmEndTurn()
     expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
     expect(phase(guest)).toBe(' · Draw Phase')
-    expect(phaseChip(guest)).toHaveClass('bg-info')
-    expect(phaseChip(host)).toHaveClass('bg-accent')
+    expect(phaseChip(guest)).toHaveClass('bg-warning-solid')
+    expect(phaseChip(host)).toHaveClass('bg-primary')
   })
 
   it('en escritorio «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases, sin preguntar', () => {

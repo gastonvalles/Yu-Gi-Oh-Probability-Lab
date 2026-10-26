@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -21,6 +21,24 @@ describe('los colores no se pierden en el violeta', () => {
     const colors = TIER_ORDER.map((tier) => tierColor(tier))
 
     expect(new Set(colors).size).toBe(colors.length)
+  })
+
+  // Gastón (2026-10-26): «siempre debe ser blanco». Violeta (`primary`), ámbar hondo (`warning-solid`), verde (`success-solid`) y rojo (`danger`), con el texto blanco; el ámbar y la
+  // lavanda claros no llevan texto (ni oscuro ni blanco: el blanco no se lee). Se revisa cada cadena de clases de la mesa, el duelo y los controles de `ui/`.
+  it('sobre un relleno de color, el texto es blanco (la mesa, el duelo y los controles)', () => {
+    const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]))
+    const files = ['auto', 'duel', 'probability', 'ui'].flatMap((dir) => walk(path.join(process.cwd(), 'src', 'components', dir))).filter((file) => /\.tsx?$/.test(file) && !file.includes('PracticeMatPanel'))
+    const fill = /\bbg-(accent|info|warning|success|danger|primary)(-solid)?(?![\w/-])/
+    const brightFill = /\bbg-(accent|info|warning|success)(?![\w/-])/
+    const darkText = /\btext-(accent-foreground|info-foreground|background|black)\b|\btext-\[#/
+    const bad = files.flatMap((file) =>
+      [...readFileSync(file, 'utf8').matchAll(/'[^'\n]*'|"[^"\n]*"|`[^`\n]*`/g)]
+        .map((match) => match[0])
+        .filter((classes) => (fill.test(classes) && darkText.test(classes)) || (brightFill.test(classes) && /\btext-white\b/.test(classes)))
+        .map((classes) => `${path.basename(file)}: ${classes}`),
+    )
+
+    expect(bad).toEqual([])
   })
 
   it('«ojo» (warning) es ámbar, no violeta: el violeta es de lo tuyo', () => {

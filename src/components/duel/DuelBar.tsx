@@ -535,7 +535,7 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
           <Icon name="chat" />
         </IconButton>
         {unread > 0 ? (
-          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-info px-1 text-[0.625rem] font-extrabold leading-4 text-background">
+          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-warning-solid px-1 text-[0.625rem] font-extrabold leading-4 text-white">
             {unread}
           </span>
         ) : null}
@@ -652,7 +652,16 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
       </span>
       <span className="grid min-w-0 content-center gap-1 min-[1101px]:flex-1">
         <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
-          <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{hand === undefined ? (label ?? name) : t('duel.bar.withHand', { name: label ?? name, count: hand })}</span>
+          {/* Con la mano, «Rival» y «Mano 3» son dos piezas que bajan a un segundo renglón si no entran (en una sola, cortada, decía «RIVAL · MA…»). */}
+          <span className="flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 text-micro font-semibold uppercase leading-none tracking-[0.06em]">
+            <span className={cx('min-w-0 truncate', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
+            {hand === undefined ? null : (
+              <>
+                {' '}
+                <span className="whitespace-nowrap text-muted">{t('duel.bar.handTag', { count: hand })}</span>
+              </>
+            )}
+          </span>
           {change ? (
             <span key={change.key} aria-hidden="true" style={{ animationDuration: `${DELTA_MS}ms` }} className={cx('shrink-0 animate-linger text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
               {change.delta < 0 ? '−' : '+'}

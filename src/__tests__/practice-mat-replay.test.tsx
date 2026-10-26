@@ -619,7 +619,7 @@ describe('la mesa de práctica', () => {
       expect(pills()[2]).toHaveClass('h-3.5', 'bg-info')
       expect(pills()[2]).not.toHaveClass('bg-[rgb(var(--pill)/0.95)]')
       // El botón de reproducir es ámbar, como el actual.
-      expect(screen.getByRole('button', { name: 'Reproducir' })).toHaveClass('bg-info')
+      expect(screen.getByRole('button', { name: 'Reproducir' })).toHaveClass('bg-warning-solid')
     })
 
     it('la línea de tiempo se maneja con el teclado como un deslizador y se toca o arrastra para ir a un paso', () => {

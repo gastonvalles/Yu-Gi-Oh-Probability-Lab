@@ -177,8 +177,8 @@ describe('la barra de la mesa es una sola', () => {
 
     expect(rival.closest('[data-corner="theirs"]')).not.toBeNull()
     expect(mine.closest('[data-corner="mine"]')).not.toBeNull()
-    expect(rival).toHaveTextContent(`Rival · Mano ${rivalHand}`)
-    expect(mine).toHaveTextContent(`Vos · Mano ${mineHand}`)
+    expect(rival).toHaveTextContent(`Rival Mano ${rivalHand}`)
+    expect(mine).toHaveTextContent(`Vos Mano ${mineHand}`)
     expect(after(rival)).toBe(false)
     expect(after(mine)).toBe(true)
     expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()

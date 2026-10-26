@@ -262,7 +262,7 @@ describe('RespondBand', () => {
     expect(group).toHaveAttribute('data-prompt-row')
     expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta/)
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
-    expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano')).toHaveClass('rounded-tag')
+    expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano').parentElement).toHaveClass('rounded-tag', 'whitespace-nowrap')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
     expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'No responder', 'Encadenar como CL3'])
     expect(within(group).getByRole('button', { name: 'Encadenar como CL3' })).toBeDisabled()
@@ -288,6 +288,10 @@ describe('RespondBand', () => {
 
     // En el celular (< 1101 px) se esconde: queda en «Más opciones».
     expect(modes.parentElement).toHaveClass('max-[1101px]:hidden')
+    // El título, solo en su fila y sin partirse a mitad de palabra («Respond / er»); el modo, debajo, en el mismo bloque (no le aprieta la columna).
+    const title = within(group).getByText('Responder a CL2 · Rival')
+    expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
+    expect(title.parentElement).toBe(modes.parentElement?.parentElement)
     expect(within(modes).getByRole('radio', { name: 'Cuando importa' })).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(within(modes).getByRole('radio', { name: 'Siempre' }))
     expect(onMode).toHaveBeenCalledWith('always')
@@ -466,11 +470,11 @@ describe('AutoBar', () => {
     expect(screen.queryByRole('button', { name: 'Más opciones del duelo' })).toBeNull()
   })
 
-  it('las vidas con la mano: «Rival · Mano 3» a la vista y «3 cartas en la mano» para el lector de pantalla (una sola, «Una carta en la mano»)', () => {
+  it('las vidas con la mano: «Rival» y «Mano 3» a la vista y «3 cartas en la mano» para el lector de pantalla (una sola, «Una carta en la mano»)', () => {
     render(<AutoLives rivalName="Rival" life={{ mine: 8000, theirs: 7000 }} hands={{ mine: 1, theirs: 3 }} />)
 
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' })).toHaveTextContent('Rival · Mano 3')
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' })).toHaveTextContent('Vos · Mano 1')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' })).toHaveTextContent('Rival Mano 3')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' })).toHaveTextContent('Vos Mano 1')
   })
 
   it('«Más opciones»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son el ícono de la barra, como en la práctica)', () => {

@@ -7,7 +7,7 @@ import { Presence } from '../../../app/use-presence'
 import { t } from '../../../i18n'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
-import { AutoBar, AutoDock, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
+import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { CardPicker, PickBand, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
@@ -128,6 +128,7 @@ export function AutoSection() {
       <ForcedSample onAnswer={setAnswer} />
       <RespondSample onAnswer={setAnswer} />
       <MinimizedSample />
+      <LongTextSample />
 
       <SortSample onAnswer={setAnswer} />
       <CounterSample onAnswer={setAnswer} />
@@ -404,7 +405,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Responder a una cadena"
       layout="column"
-      note={<>Una cadena que se puede pasar: arriba a qué eslabón respondés («Responder a CL2 · Rival», sin nombres) y el arte de su carta; las candidatas con la pestaña de dónde están (tocar una la elige, con su tilde; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL3» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). La flecha la minimiza (Escape es «No responder»). Tocar la carta que brilla en la mesa sigue valiendo. Archivo: <Tag>auto/RespondBand.tsx</Tag></>}
+      note={<>Una cadena que se puede pasar: arriba a qué eslabón respondés («Responder a CL2 · Rival», sin nombres) y el arte de su carta; las candidatas con la pestaña de dónde están (tocar una la elige, con su tilde; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL3» al final. El título va solo en su fila; en escritorio, el modo de respuesta debajo (en el celular, en «Más opciones»). La flecha la minimiza (Escape es «No responder»). Tocar la carta que brilla en la mesa sigue valiendo. Archivo: <Tag>auto/RespondBand.tsx</Tag></>}
     >
       <div className="relative isolate h-112 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
@@ -431,6 +432,40 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       <Button variant="secondary" size="sm" className="w-fit" icon="refresh" disabled={shown} onClick={() => setShown(true)}>
         Volver a preguntar
       </Button>
+    </Specimen>
+  )
+}
+
+/** Textos largos en cajas angostas (es y en): nada se parte a mitad de palabra ni se sale de su casilla, y sobre los rellenos de color el texto es blanco. */
+function LongTextSample() {
+  const [mode, setMode] = useState<AutoChainMode>('ask')
+  const [chosen, setChosen] = useState<string | null>('mst')
+  const cards: PickCard[] = [
+    { key: 'mst', name: 'Mystical Space Typhoon', art: art(5318639), place: 'Graveyard' },
+    { key: 'kirin', name: 'Fire King High Avatar Kirin', art: art(2526224), place: t('practice.place.hand') },
+    { key: 'imperm', name: 'Infinite Impermanence', art: art(10045474), place: 'Banished' },
+  ]
+  const modes = [
+    { value: 'always' as const, label: 'Always' },
+    { value: 'ask' as const, label: 'When it matters' },
+    { value: 'never' as const, label: 'Never' },
+  ]
+
+  return (
+    <Specimen
+      title="Textos largos · es y en"
+      layout="column"
+      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano bajan «Mano 5» a otro renglón. Elegido, ámbar hondo con texto blanco (<Tag>warning-solid</Tag>, 4,8:1).</>}
+    >
+      <div className="grid w-[min(22rem,100%)] gap-3">
+        <RespondBand title="Respond to CL2 · Opponent" card={ASH} link={3} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} mode={{ value: mode, onChange: setMode }} />
+        <Segmented label="Responses" value={mode} onChange={setMode} options={modes} fullWidth />
+        <Segmented label={t('auto.respond.mode')} value={mode} onChange={setMode} options={chainModeOptions()} fullWidth />
+        <div className="flex gap-2">
+          <LifeTile name="Opponent" life={7000} compact hand={5} />
+          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine compact hand={12} />
+        </div>
+      </div>
     </Specimen>
   )
 }

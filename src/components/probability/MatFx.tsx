@@ -149,8 +149,8 @@ export const chainLinkLabel = (name: string, link: ChainBadgeData) => {
 
 /**
  * La insignia del eslabón de la cadena («CL1», «CL1·3» si la carta tiene dos), pegada arriba a la izquierda de la carta o de la pila (`className` la ubica), montada sobre el borde de arriba para
- * no tapar el nombre. Del color de quien la activó, el de sus vidas y el del número en la pila de la cadena (`PLAYER_COLOR`): violeta claro lo tuyo y ámbar lo del rival, llenos y con el texto
- * oscuro (sobre el arte un teñido no se lee, y el blanco no llega a 4,5:1 sobre esos dos). El ámbar del rival es una etiqueta llena; el de lo que se activa, un aro alrededor de la carta.
+ * no tapar el nombre. Del color de quien la activó, el de sus vidas y el del número en la pila de la cadena (`PLAYER_COLOR`): violeta lo tuyo y ámbar lo del rival, llenos y hondos, con el texto
+ * blanco (sobre el arte un teñido no se lee). El ámbar del rival es una etiqueta llena; el de lo que se activa, un aro alrededor de la carta.
  * Sólo se mira: `aria-hidden`, y el eslabón va en el nombre de la carta (`chainLinkLabel`). Se va con el aviso de la cadena.
  * Negado o sin efecto (`voided`): la insignia va tachada y el arte de la carta, gris y latiendo (`VOIDED_ART`).
  */

@@ -808,7 +808,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
                     {card.faceDown ? <span className={CARD_BACK} /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                     {targeted.has(card.id) ? <TargetMark /> : null}
                     {card.faceUp ? <span className="absolute inset-x-0 bottom-0 z-2 bg-background/85 px-1 py-px text-center text-micro font-bold leading-tight text-white">{t('practice.dialog.faceUpTag')}</span> : null}
-                    {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-info px-1 text-micro font-bold leading-none tabular-nums text-info-foreground">{order + 1}</span> : null}
+                    {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-warning-solid px-1 text-micro font-bold leading-none tabular-nums text-white">{order + 1}</span> : null}
                   </span>
                   {anonymous ? null : <span className="truncate text-micro text-foreground">{label}</span>}
                 </button>
