@@ -96,7 +96,7 @@ import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, H
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
-import { panelStepsOf, type PanelChains } from './panel-steps'
+import { createPanelSteps, type PanelChains } from './panel-steps'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
 import { PileStack } from './PileStack'
@@ -583,8 +583,10 @@ export function PracticeMat({
   )
   const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
-  // La lista de pasos: la frase de cada jugada, sus miniaturas, si es un cambio de fase y, para su ficha, la mesa de después, la clase de jugada, lo que se mueve y su color. Una vez por combo, no por paso.
-  const panelSteps = useMemo(() => panelStepsOf(session.initial, session.actions, steps, nameOf, artById), [session.initial, session.actions, steps, nameOf, artById])
+  // La lista de pasos: la frase de cada jugada, sus miniaturas, si es un cambio de fase y, para su ficha, la mesa de después, la clase de jugada, lo que se mueve y su color. Una vez por combo, no por paso;
+  // y una jugada nueva calcula sólo la suya (`createPanelSteps`, uno por mesa).
+  const [panelStepsOf] = useState(createPanelSteps)
+  const panelSteps = useMemo(() => panelStepsOf(session.initial, session.actions, steps, nameOf, artById), [panelStepsOf, session.initial, session.actions, steps, nameOf, artById])
   const live = session.cursor === session.actions.length
   // El simulador de handtraps: en qué paso usó el rival cada carta, de los pasos que se ven (reproduciendo un combo, las de más adelante siguen en su mano).
   const rivalUsedAt = useMemo(() => {
