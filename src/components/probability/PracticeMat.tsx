@@ -123,6 +123,9 @@ const DESKTOP_HAND_GAP = 8
 /** Celular: cuánto se separan las manos del campo (la del rival sube, la tuya baja) sin moverlo: se corren con `transform` y `margin` de un elemento absoluto, que no cambian el alto de lo que se centra. */
 const MOBILE_HAND_GAP = 14
 
+/** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
+const CHAIN_BELOW_BAR_PX = 52
+
 export interface DuelMatLink {
   /** Las áreas de la grilla con los dos campos. */
   areas: string
@@ -170,6 +173,8 @@ export interface DuelMatLink {
   respond?: ReadonlySet<string>
   /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
   prompt?: ReactNode
+  /** El aviso de la cadena (duelo automático: `ChainNotice`): centrado arriba de la columna de la mesa, debajo de la barra y de su aviso; la capa deja pasar los toques. */
+  chain?: ReactNode
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
   pointed?: { card?: string; pile?: MatPile } | null
   /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
@@ -2071,6 +2076,27 @@ export function PracticeMat({
     }
   }, [stripOpen, fieldNode, view, rails])
 
+  // El aviso de la cadena (`duel.chain`), debajo de la barra y del lugar de su aviso (sin laterales la barra es lo primero de la columna; con laterales, arriba del campo).
+  const chainRef = useRef<HTMLDivElement | null>(null)
+  const hasChain = Boolean(duel?.chain)
+
+  useLayoutEffect(() => {
+    const layer = chainRef.current
+    const section = sectionRef.current
+
+    if (!hasChain || !layer || !section) return
+    const place = () => {
+      const top = section.getBoundingClientRect().top
+      const bar = rails ? null : columnRef.current?.firstElementChild?.getBoundingClientRect().bottom
+
+      layer.style.paddingTop = `${Math.round(bar == null ? 8 : bar - top + CHAIN_BELOW_BAR_PX)}px`
+    }
+
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [hasChain, rails, view])
+
   // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder ni la tira de un visor abierto. Si cae encima, se corre lo justo
   // (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Se mide al aparecer, cuando cambia lo que brilla o la tira, y con la ventana.
   const promptRef = useRef<HTMLDivElement | null>(null)
@@ -2692,6 +2718,13 @@ export function PracticeMat({
 
       {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
+
+      {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
+      {duel?.chain ? (
+        <div ref={chainRef} data-testid="duel-chain-layer" className={cx('pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
+          {duel.chain}
+        </div>
+      ) : null}
 
       {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
       {/* La pregunta del rival (pasar de fase): en el medio de la pantalla, centrada en la columna de la mesa (sin el chat ni el detalle). La capa deja pasar los toques; sólo la pregunta los recibe. */}

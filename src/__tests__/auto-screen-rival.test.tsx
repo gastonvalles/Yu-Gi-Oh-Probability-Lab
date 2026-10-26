@@ -3,6 +3,8 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { CardRef } from '../app/auto/adapter'
+import { CHAIN_LINGER_MS, CHAIN_LINK_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
 import { setAutoPref } from '../app/auto-prefs'
 import { readHandtrapConfig, writeHandtrapConfig } from '../app/handtraps'
 import { AutoSoloScreen, RIVAL_READ_MS, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
@@ -110,26 +112,54 @@ describe('auto-screen · el rival de handtraps', () => {
     expect(readHandtrapConfig().enabled).toBe(false)
   })
 
-  it('lo que activa el rival se cuenta después (la cadena se resuelve de una): la carta grande con a qué responde y, en la línea, lo que se negó; un rearme no lo repite', () => {
+  it('lo que activa el rival se cuenta después con la carta grande; la cadena va en su aviso, de a un eslabón y del último al primero (lo negado, en su eslabón); un rearme no lo repite', () => {
     const { fakes } = mount()
     const fake = fakes[0]!
     const overlay = fake.getSnapshot().overlay
     const mine = { card: { side: 'mine' as const, id: 'card-200-1' }, code: 200, description: '0', state: 'chained' as const }
-    const theirs = { card: { side: 'theirs' as const, id: 'c1' }, code: 700, description: '0', state: 'chained' as const }
+    const theirs = { card: { side: 'theirs' as const, id: 'c1' }, code: ASH.id, description: '0', state: 'chained' as const }
+    const link = (index: number, ref: { card: CardRef; code: number }): ChainStep => ({ kind: 'chain', at: 0, index, link: { card: ref.card, code: ref.code, mine: ref.card.side === 'mine' } })
+    const step = (kind: ChainStep['kind'], index: number): ChainStep => ({ kind, at: 0, index })
+    const notice = () => screen.getByTestId('chain-notice')
+    const pill = () => within(notice()).getByRole('status')
+    const two = [link(0, mine), link(1, theirs)]
 
     // Tu Maxx C (en tu campo) y el rival responde: después de su eslabón, el núcleo te pregunta (la mesa la ve abierta).
-    act(() => fake.set({ overlay: { ...overlay, chain: [mine] } }))
-    act(() => fake.set({ overlay: { ...overlay, chain: [mine, theirs] } }))
+    act(() => fake.set({ overlay: { ...overlay, chain: [mine] }, chainSteps: two.slice(0, 1) }))
+    act(() => vi.advanceTimersByTime(0))
+    expect(pill()).toHaveTextContent('Cadena · CL1 · VosMaxx C')
+    act(() => fake.set({ overlay: { ...overlay, chain: [mine, theirs] }, chainSteps: two }))
     expect(screen.getByText('Rival responde a Maxx C')).toBeInTheDocument()
-    // Se resuelve: la negación queda en la línea, también cuando la cadena ya terminó.
-    act(() => fake.set({ overlay: { ...overlay, chain: [], negated: [{ ...mine, state: 'disabled' }] } }))
-    expect(document.querySelector('[data-lane]')).toHaveTextContent('Negada: Maxx C')
-    act(() => vi.advanceTimersByTime(RIVAL_READ_MS + 10))
-    expect(screen.queryByText('Rival responde a Maxx C')).toBeNull()
+    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
+    expect(pill()).toHaveTextContent(`Cadena · CL2 · Rival${ASH.name}`)
+
+    // Se resuelve de una en el núcleo; la pantalla lo cuenta de a un eslabón, del último al primero.
+    const all = [...two, step('solving', 1), step('disabled', 0), step('solved', 1), step('solving', 0), step('solved', 0), step('end', -1)]
+
+    act(() => fake.set({ overlay: { ...overlay, chain: [], negated: [{ ...mine, state: 'disabled' }] }, chainSteps: all }))
+    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
+    expect(pill()).toHaveTextContent(`Resolviendo · CL2 · Rival${ASH.name}`)
+    fireEvent.click(within(notice()).getByRole('button', { name: 'Ver la cadena' }))
+    expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResolviendo`, 'CL1Maxx CVosEn espera'])
+    // Mientras se resuelve, Ash deja tu Maxx C sin efecto; al llegarle el turno no se cuenta otra vez.
+    act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
+    expect(pill()).toHaveTextContent('Sin efecto · CL1 · VosMaxx C')
+    expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResolviendo`, 'CL1Maxx CVosSin efecto'])
+    act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
+    expect(pill()).toHaveTextContent('Sin efecto · CL1 · VosMaxx C')
+    expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResuelta`, 'CL1Maxx CVosSin efecto'])
+    // Nada de la cadena en la línea.
     expect(document.querySelector('[data-lane]')).toBeNull()
 
+    // Desplegada, se queda; plegada, se va sola un rato después.
+    act(() => vi.advanceTimersByTime(RIVAL_READ_MS + CHAIN_LINGER_MS))
+    expect(screen.queryByText('Rival responde a Maxx C')).toBeNull()
+    fireEvent.click(within(notice()).getByRole('button', { name: 'Ocultar la cadena' }))
+    act(() => vi.advanceTimersByTime(CHAIN_LINGER_MS))
+    expect(screen.queryByTestId('chain-notice')).toBeNull()
+
     // Al rearmarse la mesa (deshacer) con esa cadena abierta, no se cuenta otra vez.
-    act(() => fake.set({ initial: { ...fake.getSnapshot().initial }, overlay: { ...overlay, chain: [mine, theirs] } }))
+    act(() => fake.set({ initial: { ...fake.getSnapshot().initial }, overlay: { ...overlay, chain: [mine, theirs] }, chainSteps: two }))
     expect(screen.queryByText('Rival responde a Maxx C')).toBeNull()
   })
 

@@ -303,7 +303,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   // Acordado el pase a manual, la mesa queda quieta (nada más se contesta) hasta que llega la mesa manual.
   const switching = manual === 'switching' || manual === 'agreed'
   // El anfitrión corre el núcleo: puede cortar lo que piensa. El invitado, no (el núcleo está en otro navegador).
-  const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null || switching })
+  const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null || switching, rivalName })
   const paused = !snapshot.peerPresent && result === null
   usePassToManual({ snapshot, snap, online, rivalName, onManual })
   // Al terminar, la tarjeta del resultado tapa la mesa hasta que se la cierra para mirarla.

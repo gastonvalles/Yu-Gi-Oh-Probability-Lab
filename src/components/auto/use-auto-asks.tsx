@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, itemsInto, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, stepsUpTo } from '../../app/auto/chain-feed'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
@@ -31,6 +32,7 @@ import type { DuelMatLink, MatCard } from '../probability/PracticeMat'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { CardPicker, type PickCard } from './CardPicker'
+import { ChainNotice } from './ChainNotice'
 import { SortSheet } from './SortSheet'
 
 /**
@@ -83,15 +85,17 @@ export interface AutoAsksInput {
   waitingText: string | null
   /** El duelo ya terminó para la sala (alguien se rindió): no se ofrece nada más que mirar. */
   frozen?: boolean
+  /** Cómo se llama el rival en el aviso de la cadena (de quién es cada eslabón). */
+  rivalName?: string
 }
 
 export interface AutoAsks {
   /** Tu mesa como se ve ahora (con el ritmo) y la sesión de la mesa que la reproduce. */
   state: MatState
   matSession: MatSession
-  /** La mesa terminó de contar la última tanda; `skipAhead` salta al final (tocar la mesa). */
+  /** La mesa terminó de contar la última tanda; `skipAhead` salta al final (tocar la mesa; los botones del aviso de la cadena, no: se toca para mirarla). */
   settled: boolean
-  skipAhead: () => void
+  skipAhead: (event?: { target: EventTarget | null }) => void
   lane: LaneNotice | null
   /** Lo que la mesa recibe del núcleo (`PracticeMat.duel`): falta lo de cada pantalla (la barra, tus vidas, los botones, las portadas). */
   mat: Omit<DuelMatLink, 'header' | 'tools' | 'life' | 'rivalTurnLabel'>
@@ -110,7 +114,7 @@ export interface AutoAsks {
   review: { active: boolean; load: (combo: SavedCombo) => void; seek: (step: number) => void; back: () => void }
 }
 
-export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false }: AutoAsksInput): AutoAsks {
+export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival') }: AutoAsksInput): AutoAsks {
   const prefs = useAutoPrefs()
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   const dock = useDockPeek()
@@ -123,6 +127,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const rearmAt = (initial: MatState, actions: readonly MatAction[], upTo: Allowed | null) => stopAt(initial, actions, trailingStops(initial, actions), upTo)
   const [paced, setPaced] = useState<Paced>(() => ({ initial: snap.initial.mine, actions: snap.mineActions, cursor: rearmAt(snap.initial.mine, snap.mineActions, null) }))
   const [seen, setSeen] = useState(snap.initial)
+  // La cadena (el aviso de arriba de la mesa, `ChainNotice`): sus mensajes (`snap.chainSteps`) se muestran de a uno con su tiempo (`chainDwell`), cada uno cuando la mesa contó
+  // hasta donde llegó, y la mesa no pasa del próximo hasta mostrarlo: primero los eslabones que se encadenan y después cada uno resolviéndose, con sus jugadas. Al rearmarse
+  // o al tocar la mesa, lo que ya pasó se da por visto. `chainGone`: la cadena terminada que ya se escondió.
+  const steps = snap.chainSteps
+  const [chainSeen, setChainSeen] = useState(() => stepsUpTo(snap.chainSteps, paced.cursor))
+  const [chainGone, setChainGone] = useState(() => chainFeed(snap.chainSteps, stepsUpTo(snap.chainSteps, paced.cursor))?.key ?? -1)
+  const [chainOpen, setChainOpen] = useState(false)
+  const chainShownAt = useRef(0)
   /**
    * El repaso («Jugar solo»): un combo guardado (`name`), o tus jugadas hasta un paso, en la misma mesa y con la lista de siempre. El duelo vivo espera donde estaba: ni el ritmo, ni
    * tocar la mesa, ni las paradas de fase lo mueven y no se muestra ninguna pregunta; la cinta (`paced`) se sigue rehaciendo sólo del núcleo. El lado del rival queda vacío.
@@ -137,8 +149,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     if (seen !== snap.initial) {
       const initial = sameStart(paced.initial, snap.initial.mine) ? paced.initial : snap.initial.mine
 
+      const cursor = rearmAt(initial, snap.mineActions, allowed)
+      const count = stepsUpTo(snap.chainSteps, cursor)
+
       setSeen(snap.initial)
-      setPaced({ initial, actions: snap.mineActions, cursor: rearmAt(initial, snap.mineActions, allowed) })
+      setPaced({ initial, actions: snap.mineActions, cursor })
+      setChainSeen(count)
+      setChainGone(chainFeed(snap.chainSteps, count)?.key ?? -1)
     } else if (paced.actions !== snap.mineActions) {
       setPaced({ ...paced, actions: snap.mineActions })
     }
@@ -147,23 +164,43 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // Hasta dónde puede contar la mesa: la próxima parada que no pediste dejar, o el final.
   const limit = useMemo(() => stopAt(paced.initial, paced.actions, paced.cursor, allowed), [paced, allowed])
 
+  // La mesa no pasa del próximo mensaje de la cadena que falta mostrar.
+  const chainNext = steps[chainSeen]?.at ?? Infinity
+
   useEffect(() => {
-    if (reviewing || paced.cursor >= limit) return
+    if (reviewing || paced.cursor >= Math.min(limit, chainNext)) return
     const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), STEP_MS)
 
     return () => window.clearTimeout(timer)
-  }, [paced, limit, reviewing])
+  }, [paced, limit, reviewing, chainNext])
+  // El próximo mensaje de la cadena, cuando la mesa llegó hasta él y el anterior se vio su rato (contado desde que se mostró: una tanda nueva no lo reinicia).
+  useEffect(() => {
+    if (reviewing || snap.replaying || chainNext > paced.cursor) return
+    const wait = Math.max(0, chainDwell(steps, chainSeen - 1) - (Date.now() - chainShownAt.current))
+    const timer = window.setTimeout(() => {
+      // Los que no se dejan ver solos (uno resuelto, el final) se muestran junto con el siguiente.
+      let next = chainSeen + 1
+
+      while (next < steps.length && chainDwell(steps, next - 1) === 0 && steps[next]!.at <= paced.cursor) next += 1
+      chainShownAt.current = Date.now()
+      setChainSeen(next)
+    }, wait)
+
+    return () => window.clearTimeout(timer)
+  }, [steps, chainSeen, chainNext, paced.cursor, reviewing, snap.replaying])
 
   // Tocar la mesa salta hasta la próxima parada (no la cruza); repasando, no.
-  const skipAhead = useCallback(() => {
-    if (reviewing) return
+  const skipAhead = useCallback((event?: { target: EventTarget | null }) => {
+    if (reviewing || (event?.target instanceof Element && event.target.closest('[data-testid="chain-notice"]'))) return
     setPaced((current) => {
       const to = stopAt(current.initial, current.actions, current.cursor, allowed)
 
       return to > current.cursor ? { ...current, cursor: to } : current
     })
-  }, [allowed, reviewing])
-  const settled = paced.cursor === paced.actions.length && !snap.replaying
+    // La cadena, hasta ahí también (lo que llegó después de la parada espera).
+    setChainSeen((count) => Math.max(count, stepsUpTo(steps, stopAt(paced.initial, paced.actions, paced.cursor, allowed))))
+  }, [allowed, reviewing, steps, paced])
+  const settled = paced.cursor === paced.actions.length && chainSeen >= steps.length && !snap.replaying
   // Lo que se ve, como en la práctica: la mano de apertura plegada en la mesa del arranque (`foldOpeningHand`), así el paso 0 es «Mano inicial». Se pliega por contenido:
   // deshacer re-simula y la jugada vuelve como otro objeto con las mismas cartas (la mano no se reparte de nuevo).
   const first = paced.actions[0]
@@ -519,8 +556,27 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
               ? { kind: 'ask', text: newFault.kind === 'script' ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') }) : t('auto.lane.error', { message: newFault.message }), actions: [] }
               : snap.unmapped.length > unmappedBase.current
                 ? { kind: 'ask', text: t('auto.lane.unmapped', { what: snap.unmapped[snap.unmapped.length - 1]! }), actions: [] }
-                : chainLane(chain, linkName)
+                : null
   // La cadena que se puede pasar, al medio de la mesa (como «¿Activás el efecto?»): se responde tocando la carta que brilla; sin nada más urgente en la línea (trabada, esperando, pensando).
+  // El aviso de la cadena: la última que empezó, como se ve con lo que ya se mostró; terminada, se va a los `CHAIN_LINGER_MS` salvo que la hayas desplegado (queda hasta plegarla).
+  const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
+
+  useEffect(() => {
+    if (!feed?.done || chainOpen) return
+    const timer = window.setTimeout(() => setChainGone(feed.key), CHAIN_LINGER_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [feed, chainOpen])
+  const chainNotice =
+    feed && !reviewing && !(feed.done && chainGone === feed.key) ? (
+      <ChainNotice
+        rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state }))}
+        focus={feed.focus}
+        resolving={feed.resolving}
+        open={chainOpen}
+        onOpenChange={setChainOpen}
+      />
+    ) : null
   const chainOffer = shown?.type === 'select_chain' && !shown.phaseWindow && shown.cancelable && lane === null ? shown : null
   const respondedTo = chain.at(-1)
 
@@ -586,6 +642,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       />
     ) : undefined,
     rivalFlights: { state: theirs, artOf: opponent.artOf },
+    ...(chainNotice ? { chain: chainNotice } : {}),
     turnNumber: snap.overlay.turn,
     rivalEmz: theirs.emz.map(Boolean),
     // El ATK/DEF de ahora es del duelo vivo: repasando, el detalle muestra la carta impresa.
@@ -689,23 +746,4 @@ function reviewMat(mat: AutoAsks['mat'], phase: MatPhase): AutoAsks['mat'] {
   const { rivalFlights: _flights, ...rest } = mat
 
   return { ...rest, opponent: <SideCells side={NO_RIVAL} owner="theirs" />, sharedZone: () => null, rivalHand: <TheirHand count={0} />, attackTargets: [], phase }
-}
-
-/** La cadena que se está resolviendo, un eslabón por vez: el último que no terminó. */
-function chainLane(chain: readonly ChainLink[], nameOf: (link: ChainLink) => string): LaneNotice | null {
-  const index = chain.findLastIndex((link) => link.state !== 'solved')
-
-  if (index < 0) return null
-  const link = chain[index]!
-  const card = nameOf(link)
-  const text =
-    link.state === 'solving'
-      ? t('auto.lane.resolve', { card })
-      : link.state === 'negated' || link.state === 'disabled'
-        ? t('auto.lane.negated', { card })
-        : index === 0
-          ? t('auto.lane.chainLink', { link: index + 1, card })
-          : t('auto.lane.chain', { link: index + 1, card, to: nameOf(chain[index - 1]!) })
-
-  return { kind: 'ask', text, actions: [] }
 }

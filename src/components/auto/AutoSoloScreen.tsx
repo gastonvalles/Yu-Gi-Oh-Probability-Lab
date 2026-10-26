@@ -12,7 +12,6 @@ import { autoRival, poolCount, readHandtrapConfig, writeHandtrapConfig, type Aut
 import { randomSeed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
-import type { LaneNotice } from '../duel/DuelBar'
 import { TheirHand } from '../duel/DuelTable'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
@@ -116,7 +115,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   const [livesInBar, setLivesInBar] = useState(true)
   const rivalName = t('duel.bar.rival')
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
-  const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null })
+  const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName })
   const { nameOf, artOf } = asks
   // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo).
   const chips = usePracticeChips(lab, asks.matSession)
@@ -128,25 +127,24 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   const linkName = useCallback((link: ChainLink) => nameOf(link.card, link.code), [nameOf])
 
   // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,
-  // con a qué responde (como en el duelo por enlace), y lo que se negó, en la línea. Se mira la cadena (una Trampa que activa desde la mano llega a la mesa colocada, no como
+  // con a qué responde (como en el duelo por enlace); lo que se negó lo dice su eslabón en el aviso de la cadena. Se mira la cadena (una Trampa que activa desde la mano llega a la mesa colocada, no como
   // «activar»): después de cada eslabón del rival el núcleo te pregunta, así que la mesa siempre lo ve abierto. Lo que vuelve a llegar al rearmarse la mesa no se cuenta otra vez. ──
-  const [told, setTold] = useState<{ effect?: NonNullable<DuelMatLink['rivalEffect']>; negated?: string } | null>(null)
-  const heard = useRef({ initial: snap.initial, chain: snap.overlay.chain.length, negated: snap.overlay.negated })
+  const [told, setTold] = useState<{ effect?: NonNullable<DuelMatLink['rivalEffect']> } | null>(null)
+  const heard = useRef({ initial: snap.initial, chain: snap.overlay.chain.length })
 
   useEffect(() => {
     const before = heard.current
     const now = snap.overlay
 
-    heard.current = { initial: snap.initial, chain: now.chain.length, negated: now.negated }
+    heard.current = { initial: snap.initial, chain: now.chain.length }
     if (snap.replaying || before.initial !== snap.initial) return
     const at = now.chain.findLastIndex((link, i) => i >= before.chain && link.card?.side === 'theirs')
     const link = now.chain[at]
     const effect = link
       ? { key: Date.now(), kind: 'activate' as const, cards: [{ id: link.card!.id, art: artOf(link.card, link.code), name: linkName(link) }], caption: at > 0 ? t('auto.rival.responds', { name: rivalName, to: linkName(now.chain[at - 1]!) }) : t('duel.announce.activate', { name: rivalName }), linger: true }
       : undefined
-    const negated = now.negated !== before.negated && now.negated.length > 0 && now.chain.length === 0 ? t('auto.lane.negated', { card: namesList(now.negated.map(linkName)) }) : undefined
 
-    if (effect || negated) setTold((current) => ({ ...current, ...(effect ? { effect } : {}), ...(negated ? { negated } : {}) }))
+    if (effect) setTold({ effect })
   }, [snap.initial, snap.overlay, snap.replaying, artOf, linkName, rivalName])
   useEffect(() => {
     if (!told) return
@@ -154,8 +152,6 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
 
     return () => window.clearTimeout(timer)
   }, [told])
-  // La línea del núcleo y, sin cadena abierta, lo que el rival negó (después de lo urgente, en el lugar de la narración de la cadena).
-  const lane: LaneNotice | null = asks.lane ?? (told?.negated && snap.overlay.chain.length === 0 ? { kind: 'ask', text: told.negated, actions: [] } : null)
 
   const cover = snap.fault ? (
     <FaultCover fault={snap.fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={() => session.restart()} onExit={onExit} />
@@ -186,7 +182,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
         onNewHand={() => session.restart(randomSeed())}
         // La hoja ya guardó las handtraps nuevas: el duelo se arma de nuevo con ellas (la misma semilla, como «Cambiar handtraps» de «Más opciones»).
         onHandtraps={() => onHandtraps(readHandtrapConfig())}
-        lane={lane}
+        lane={asks.lane}
         chain={prefs.chain}
         onChain={(mode) => setAutoPref('chain', mode)}
         place={prefs.place}

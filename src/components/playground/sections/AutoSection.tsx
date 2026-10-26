@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 
+import type { ChainRowState } from '../../../app/auto/chain-feed'
 import { DuelRailsContext } from '../../../app/duel-rails'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
@@ -8,6 +9,7 @@ import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
 import { AutoBar, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { CardPicker, type PickCard } from '../../auto/CardPicker'
+import { ChainNotice } from '../../auto/ChainNotice'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { MatScene } from '../../probability/MatArena'
@@ -106,6 +108,7 @@ export function AutoSection() {
         <Tag>{answer}</Tag>
       </Specimen>
 
+      <ChainSample />
       <BarActionsSample />
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje, el turno y, en escritorio, las vidas (en el celular van abajo, en la botonera de la mesa). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
       <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Handtraps del rival» con «Cambiar handtraps» y, encendidas, «A ciegas» —en la del núcleo resolviendo están apagadas y dice que el rival no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
@@ -281,6 +284,60 @@ function BarActionsSample() {
   )
 }
 
+/** Una cadena de tres de muestra (Branded Fusion, Ash del rival, Called by the Grave): Called niega a Ash mientras se resuelve, como lo cuenta el núcleo. */
+const CHAIN_CARDS = [
+  { name: 'Branded Fusion', art: art(44362883), mine: true },
+  { name: 'Ash Blossom & Joyous Spring', art: art(14558127), mine: false },
+  { name: 'Called by the Grave', art: art(24224830), mine: true },
+]
+/** Cómo se ve después de cada paso (lo que arma `chainFeed` en la mesa; el catálogo no importa la lógica del núcleo): el estado de cada eslabón, del que habla la píldora y si ya se resuelve. */
+const CHAIN_FRAMES: Array<{ states: ChainRowState[]; focus: number; resolving?: true }> = [
+  { states: ['chained'], focus: 0 },
+  { states: ['chained', 'chained'], focus: 1 },
+  { states: ['chained', 'chained', 'chained'], focus: 2 },
+  { states: ['chained', 'chained', 'solving'], focus: 2, resolving: true },
+  { states: ['chained', 'negated', 'solving'], focus: 1, resolving: true },
+  { states: ['chained', 'negated', 'solved'], focus: 1, resolving: true },
+  { states: ['solving', 'negated', 'solved'], focus: 0, resolving: true },
+  { states: ['solved', 'negated', 'solved'], focus: 0, resolving: true },
+]
+
+/** El aviso de la cadena, paso a paso con un botón (en la mesa los pasa el ritmo: `use-auto-asks.tsx`), sobre un pedazo de mesa: plegado y desplegado. */
+function ChainSample() {
+  const [count, setCount] = useState(3)
+  const [open, setOpen] = useState(false)
+  const frame = CHAIN_FRAMES[count - 1]!
+
+  return (
+    <Specimen
+      title="ChainNotice · la cadena"
+      layout="column"
+      className="col-span-full"
+      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el último eslabón mientras se arma («Cadena · CL3 · Vos») y, al resolverse, qué le pasa a cada uno con la carta en ámbar. La flecha despliega los eslabones en el orden en que se resuelven (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Sólo la píldora y la lista reciben toques. Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>
+          Mostrar el paso siguiente
+        </Button>
+        <Button variant="tertiary" size="sm" onClick={() => setCount(1)}>
+          Empezar de nuevo
+        </Button>
+        <Tag>{`Paso ${count} de ${CHAIN_FRAMES.length}`}</Tag>
+      </div>
+      <div className="relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
+        <MatScene className="absolute inset-0 -z-10" />
+        <ChainNotice
+          rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state }))}
+          focus={frame.focus}
+          resolving={frame.resolving === true}
+          open={open}
+          onOpenChange={setOpen}
+        />
+      </div>
+    </Specimen>
+  )
+}
+
 /** La barra con la vida que cambia, los ajustes de verdad (en el estado de la muestra) y la vista con laterales (la grilla de la mesa en una ventana ancha). */
 function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode; lane: 'thinking' | 'chain' }) {
   const [life, setLife] = useState({ mine: 8000, theirs: 8000 })
@@ -294,7 +351,7 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
   const lane: LaneNotice =
     kind === 'thinking'
       ? { kind: 'thinking', onCancel: () => setPassed((count) => count + 1) }
-      : { kind: 'ask', text: t('auto.lane.chain', { link: 2, card: 'Ash Blossom & Joyous Spring', to: 'Branded Fusion' }), actions: [{ label: t('auto.lane.pass'), onSelect: () => setPassed((count) => count + 1) }] }
+      : { kind: 'ask', text: t('auto.lane.respondTo', { card: 'Branded Fusion', cards: 'Ash Blossom & Joyous Spring' }), actions: [{ label: t('auto.lane.pass'), onSelect: () => setPassed((count) => count + 1) }] }
   const bar = (
     <AutoBar
       rivalName={t('duel.bar.rival')}
