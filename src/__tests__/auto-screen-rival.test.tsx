@@ -128,27 +128,27 @@ describe('auto-screen · el rival de handtraps', () => {
     // Tu Maxx C (en tu campo) y el rival responde: después de su eslabón, el núcleo te pregunta (la mesa la ve abierta).
     act(() => fake.set({ overlay: { ...overlay, chain: [mine] }, chainSteps: two.slice(0, 1) }))
     act(() => vi.advanceTimersByTime(0))
-    expect(pill()).toHaveTextContent('Cadena · 1 · CL1 · VosMaxx C')
+    expect(pill()).toHaveTextContent('Cadena · 1 · CL1 · VosEn espera')
     act(() => fake.set({ overlay: { ...overlay, chain: [mine, theirs] }, chainSteps: two }))
     expect(screen.getByText('Rival responde a Maxx C')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    expect(pill()).toHaveTextContent(`Cadena · 2 · CL2 · Rival${ASH.name}`)
+    expect(pill()).toHaveTextContent('Cadena · 2 · CL2 · RivalEn espera')
 
     // Se resuelve de una en el núcleo; la pantalla lo cuenta de a un eslabón, del último al primero.
     const all = [...two, step('solving', 1), step('disabled', 0), step('solved', 1), step('solving', 0), step('solved', 0), step('end', -1)]
 
     act(() => fake.set({ overlay: { ...overlay, chain: [], negated: [{ ...mine, state: 'disabled' }] }, chainSteps: all }))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    expect(pill()).toHaveTextContent(`Cadena · 2 · Resuelve CL2${ASH.name}`)
+    expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL2Resolviendo')
     fireEvent.click(within(notice()).getByRole('button', { name: 'Ver la cadena' }))
     expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResolviendo`, 'CL1Maxx CVosEn espera'])
     // Mientras se resuelve, Ash deja tu Maxx C sin efecto; al llegarle el turno no se cuenta otra vez.
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    // En el celular, dos renglones: quién se resuelve y qué le pasa (sin `by` no se sabe quién lo negó: el nombre y su estado).
-    expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL2Maxx C · Sin efecto')
+    // En el celular, dos renglones: quién se resuelve y qué le pasa (sin `by` no se sabe quién lo negó: sólo su estado; el nombre está en la pila).
+    expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL2Sin efecto')
     expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResolviendo`, 'CL1Maxx CVosSin efecto'])
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL1Maxx C · Sin efecto')
+    expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL1Sin efecto')
     expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResuelta`, 'CL1Maxx CVosSin efecto'])
     // Nada de la cadena en la línea.
     expect(document.querySelector('[data-lane]')).toBeNull()

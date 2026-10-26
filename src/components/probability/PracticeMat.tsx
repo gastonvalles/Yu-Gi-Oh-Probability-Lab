@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { isValidElement, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -47,13 +47,13 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
-import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptAbove, promptTop, railsFit } from '../../app/duel-rails'
+import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptAbove, promptFit, promptTop, railsFit, type Box } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
 import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
-import { cardPose, useCardFlights } from '../../app/use-card-flights'
+import { FLIGHT_MS, cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -85,6 +85,7 @@ import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { artOfDrawId } from '../duel/duel-art'
+import { PromptCrowdedContext } from '../duel/MatPrompt'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
@@ -127,6 +128,12 @@ const MOBILE_HAND_GAP = 14
 
 /** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
 const CHAIN_BELOW_BAR_PX = 52
+/** Lo que la pregunta del medio nunca tapa: las cartas de las Zonas Extra (las tuyas y las del rival, que van en las mismas casillas) y las de tu mano. */
+const KEEP_CARDS = '[data-drop^="emz:"] [data-card-id], [data-drop^="emz:"] [data-rival-card-id], [data-drop="hand"] [data-card-id]'
+/** Lo que tampoco tapa si puede: las Zonas Extra vacías, tus monstruos y las cartas del rival. */
+const MONSTER_CARDS = '[data-drop^="emz:"], [data-drop^="mz:"] [data-card-id], [data-rival-card-id]'
+/** Lo que el asa de una pregunta minimizada no tapa: toda carta (del campo, de las manos) y las pilas. */
+const MAT_CARDS = '[data-card-id], [data-rival-card-id], [data-rival-drop], [data-drop="deck"], [data-drop="extra"], [data-drop="gy"], [data-drop="banished"]'
 
 export interface DuelMatLink {
   /** Las áreas de la grilla con los dos campos. */
@@ -2151,10 +2158,14 @@ export function PracticeMat({
     return () => window.removeEventListener('resize', place)
   }, [hasChain, rails, view])
 
-  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder ni la tira de un visor abierto. Si cae encima, se corre lo justo
-  // (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
+  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder, las cartas de las Zonas Extra y de la mano, ni la tira de
+  // un visor abierto; si puede, tampoco los demás monstruos. Si cae encima, se corre lo justo (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Si no entra en
+  // ningún lado, esa pregunta abre minimizada (`PromptCrowdedContext`, por su `key`: la siguiente vuelve a probar). Minimizada (`data-minimized`), el asa va donde no tapa ninguna
+  // carta ni la píldora de la cadena y, si no hay hueco, arriba, debajo de la barra. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
   const promptRef = useRef<HTMLDivElement | null>(null)
   const hasPrompt = Boolean(duel?.prompt)
+  const promptKey = isValidElement(duel?.prompt) ? duel.prompt.key : null
+  const [crowdedKey, setCrowdedKey] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     const box = promptRef.current
@@ -2175,12 +2186,23 @@ export function PracticeMat({
       box.style.translate = ''
       const layer = box.parentElement!.getBoundingClientRect()
       const at = box.getBoundingClientRect()
+      const rects = (selector: string) => [...section.querySelectorAll(selector)].map((element) => element.getBoundingClientRect())
       const strip = stripOpen && slotRef.current ? [slotRef.current.getBoundingClientRect()] : []
-      const glows = [...section.querySelectorAll('[data-glow-kind="can"]')].map((element) => element.getBoundingClientRect())
-      // Sin lugar para todo, la tira abierta gana (es lo que se está mirando): al cerrarla, la pregunta vuelve a correrse de lo que brilla.
+      const glows = rects('[data-glow-kind="can"]')
       // Nunca sobre la barra de arriba (sin laterales es lo primero de la columna, como para la tira) ni fuera de la pantalla.
       const min = Math.max(layer.top, (rails ? null : columnRef.current?.firstElementChild?.getBoundingClientRect().bottom) ?? layer.top)
       const max = Math.min(layer.bottom, window.innerHeight)
+      const move = (top: number) => {
+        if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
+      }
+
+      unband()
+      if (box.querySelector('[data-minimized]')) {
+        const pill = chainRef.current?.querySelector('[data-testid="chain-notice"]')
+
+        move(promptTop(at, [...glows, ...strip, ...rects(MAT_CARDS), ...(pill ? [pill.getBoundingClientRect()] : [])], min, max) ?? min)
+        return
+      }
       // En el celular termina arriba de tus monstruos (`promptAbove`) y crece sobre el campo del rival: la mano y tu campo quedan a la vista. Sin lugar, va por la ranura de siempre.
       const floor = isDesktop ? undefined : section.querySelector('[data-drop="mz:0"]')?.getBoundingClientRect().top
       // Con la cadena a la vista (celular), no se pisan: la píldora queda en un renglón (`data-banded`) y sube al lugar del aviso de la línea (vacío mientras se pregunta), y la
@@ -2189,18 +2211,31 @@ export function PracticeMat({
       const chain = notice ? chainRef.current! : null
       let ceiling = min
 
-      unband()
       if (chain && notice) {
         chain.dataset.banded = ''
         chain.style.translate = rails || section.querySelector('[data-lane]') ? '' : `0 ${4 - CHAIN_BELOW_BAR_PX}px`
         ceiling = Math.max(min, notice.getBoundingClientRect().bottom + 8)
       }
-      const above = floor === undefined ? null : (promptAbove(at, glows, ceiling, Math.min(floor, max)) ?? (chain ? promptAbove(at, glows, min, Math.min(floor, max)) : null))
+      const aboveOf = (obstacles: readonly Box[]) => (floor === undefined ? null : (promptAbove(at, obstacles, ceiling, Math.min(floor, max)) ?? (chain ? promptAbove(at, obstacles, min, Math.min(floor, max)) : null)))
+      const among = (obstacles: readonly Box[]) => {
+        const above = aboveOf(obstacles)
+        const top = above ?? promptTop(at, [...obstacles, ...strip], min, max)
 
-      if (chain && (above === null || above < ceiling)) chain.style.visibility = 'hidden'
-      const top = above ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
+        return top === null ? null : { top, above }
+      }
+      // Sin tapar los monstruos si puede y nunca lo que brilla, las Zonas Extra ni la mano (`promptFit`). Si no entra, la pregunta abre minimizada; reabierta a mano, como antes:
+      // sin lugar para todo, la tira abierta gana (es lo que se está mirando).
+      let spot = promptFit(among, [...glows, ...rects(KEEP_CARDS)], rects(MONSTER_CARDS))
 
-      if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
+      if (!spot) {
+        // Con la tira de un visor abierta, la tira gana sin minimizar la pregunta (al cerrarla, vuelve a probar).
+        if (promptKey !== null && strip.length === 0) setCrowdedKey(promptKey)
+        const above = aboveOf(glows)
+
+        spot = { top: above ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top, above }
+      }
+      if (chain && (spot.above === null || spot.above < ceiling)) chain.style.visibility = 'hidden'
+      move(spot.top)
     }
     const later = () => {
       cancelAnimationFrame(frame)
@@ -2212,6 +2247,9 @@ export function PracticeMat({
 
     place()
     later()
+    // Una carta que llega a la mesa con la pregunta (la que se acaba de invocar y pregunta por su efecto) todavía vuela: se vuelve a ubicar cuando aterriza.
+    const landed = window.setTimeout(later, FLIGHT_MS + 50)
+
     observer?.observe(box)
     // La cadena que aparece o cambia de alto con la pregunta abierta (sus pasos van con su ritmo) también la vuelve a ubicar.
     if (chainRef.current) observer?.observe(chainRef.current)
@@ -2220,10 +2258,11 @@ export function PracticeMat({
     return () => {
       observer?.disconnect()
       window.removeEventListener('resize', later)
+      window.clearTimeout(landed)
       cancelAnimationFrame(frame)
       unband()
     }
-  }, [hasPrompt, hasChain, glowSets, stripOpen, state, view, rails, isDesktop])
+  }, [hasPrompt, promptKey, hasChain, glowSets, stripOpen, state, view, rails, isDesktop])
 
   // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
   // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.
@@ -2836,8 +2875,9 @@ export function PracticeMat({
       <Presence>
         {duel?.prompt ? (
           <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
-            <div ref={promptRef} className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
-              {duel.prompt}
+            {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
+            <div ref={promptRef} className="pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
+              <PromptCrowdedContext value={promptKey !== null && crowdedKey === promptKey}>{duel.prompt}</PromptCrowdedContext>
             </div>
           </div>
         ) : null}

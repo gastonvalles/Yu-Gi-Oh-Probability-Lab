@@ -14,6 +14,7 @@ import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPick
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
+import { PromptCrowdedContext } from '../components/duel/MatPrompt'
 
 // Las piezas del duelo automático (fuera del campo): cada una con sus estados, su teclado y sus topes. Son presentacionales: lo que contestan sale por props.
 // El arte de las cartas lee el formato del store (el límite de copias).
@@ -40,23 +41,26 @@ const CARDS: PickCard[] = [
 ]
 
 describe('AskPrompt', () => {
-  it('pregunta con la carta, lleva el foco a la principal (al final) y no se cierra con Escape', () => {
+  it('pregunta con el arte de la carta (su nombre, sólo en el nombre accesible), lleva el foco a la principal (al final); Escape no contesta: la minimiza', () => {
     const yes = vi.fn()
     const no = vi.fn()
-    const { container } = render(<AskPrompt text="¿Activás el efecto de Ash Blossom?" card={{ name: 'Ash Blossom', art: null }} yes={{ label: 'Activar efecto', onSelect: yes }} no={{ label: 'No activar', onSelect: no }} />)
+    const { container } = render(<AskPrompt text="¿Activás el efecto?" card={{ name: 'Ash Blossom', art: null }} yes={{ label: 'Activar efecto', onSelect: yes }} no={{ label: 'No activar', onSelect: no }} />)
     const prompt = screen.getByRole('status')
     const buttons = within(prompt).getAllByRole('button')
 
-    expect(prompt).toHaveTextContent('¿Activás el efecto de Ash Blossom?')
+    expect(prompt).toHaveTextContent('¿Activás el efecto?')
     expect(container.querySelector('[data-card-art]')).not.toBeNull()
-    expect(names(buttons)).toEqual(['No activar', 'Activar efecto'])
-    expect(buttons[1]).toHaveFocus()
+    expect(names(buttons)).toEqual(['Minimizar', 'No activar', 'Activar efecto'])
+    expect(buttons[2]).toHaveFocus()
 
     escape()
     expect(yes).not.toHaveBeenCalled()
     expect(no).not.toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveAttribute('data-minimized')
 
-    fireEvent.click(buttons[1]!)
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar la pregunta' }))
+    expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Activar efecto' }))
     expect(yes).toHaveBeenCalledTimes(1)
   })
 
@@ -67,15 +71,14 @@ describe('AskPrompt', () => {
     expect(screen.getByRole('button', { name: 'Pagar 1000 LP' })).toHaveFocus()
   })
 
-  it('con contexto: qué es arriba, la pestaña del lugar, la frase del efecto (lo que hace, resaltado), más ancha y «Seguir en modo manual» primero, lejos de la principal', () => {
+  it('con contexto: qué pasó arriba y la pestaña del lugar, sin el nombre ni lo que hace; con «Seguir en modo manual», más ancha y ese primero, lejos de la principal', () => {
     const manual = vi.fn()
     render(
       <AskPrompt
-        kicker="Efecto que se dispara"
-        text="Tras la Invocación Normal de Ponix (en la Zona de Monstruos): ¿activás su efecto?"
-        card={{ name: 'Ponix', art: null }}
+        kicker="Tras la Invocación Normal"
+        text="¿Activás el efecto?"
+        card={{ name: 'Legendary Fire King Ponix', art: null }}
         place="Campo"
-        effect={{ when: 'If this card is Normal or Special Summoned', what: 'You can add 1 "Fire King" Spell/Trap from your Deck to your hand.' }}
         manual={{ label: 'Seguir en modo manual', onSelect: manual }}
         yes={{ label: 'Activar efecto', onSelect: () => {} }}
         no={{ label: 'No activar', onSelect: () => {} }}
@@ -85,14 +88,42 @@ describe('AskPrompt', () => {
     const buttons = within(prompt).getAllByRole('button')
 
     expect(prompt).toHaveAttribute('data-prompt-row')
-    expect(prompt).toHaveTextContent('Efecto que se dispara')
-    expect(prompt).toHaveTextContent('Campo')
-    expect(prompt).toHaveTextContent('Qué hace “If this card is Normal or Special Summoned: You can add 1 "Fire King" Spell/Trap from your Deck to your hand.”')
-    expect(within(prompt).getByText(/^You can add 1/)).toHaveClass('font-semibold')
-    expect(names(buttons)).toEqual(['Seguir en modo manual', 'No activar', 'Activar efecto'])
-    expect(buttons[2]).toHaveFocus()
-    fireEvent.click(buttons[0]!)
+    expect(within(prompt).getByText('Campo')).toHaveClass('rounded-tag')
+    expect(within(prompt).getByText('Tras la Invocación Normal')).toHaveClass('text-micro')
+    expect(within(prompt).getByText('¿Activás el efecto?')).toHaveClass('font-semibold')
+    expect(prompt).not.toHaveTextContent(/Ponix|Qué hace/)
+    expect(names(buttons)).toEqual(['Minimizar', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
+    expect(buttons[3]).toHaveFocus()
+    fireEvent.click(buttons[1]!)
     expect(manual).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('MatPrompt: minimizar un cartel de la mesa', () => {
+  const ask = (key: number) => <AskPrompt key={key} text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
+
+  it('la flecha lo reduce a un asa de una línea con la pregunta (el foco va a su flecha) y la del asa lo reabre; minimizado es de esa pregunta: una nueva abre sola', () => {
+    const { rerender } = renderBare(<Provider store={store}>{ask(1)}</Provider>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
+    const handle = screen.getByRole('status', { name: '¿Activás el efecto?' })
+
+    expect(handle).toHaveAttribute('data-minimized')
+    expect(handle).toHaveTextContent(/^¿Activás el efecto\?$/)
+    expect(within(handle).getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Mostrar la pregunta' })).toHaveFocus()
+
+    rerender(<Provider store={store}>{ask(2)}</Provider>)
+    expect(screen.getByRole('status')).not.toHaveAttribute('data-minimized')
+    expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
+  })
+
+  it('la mesa lo abre minimizado si no entra sin tapar cartas (`PromptCrowdedContext`); igual se reabre', () => {
+    render(<PromptCrowdedContext value>{ask(1)}</PromptCrowdedContext>)
+
+    expect(screen.getByRole('status')).toHaveAttribute('data-minimized')
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar la pregunta' }))
+    expect(screen.getByRole('status')).not.toHaveAttribute('data-minimized')
   })
 })
 
@@ -178,8 +209,11 @@ describe('PickBand', () => {
     // Con pocas, 4 columnas (no quedan enormes); hasta 6, una por carta: siempre una fila.
     expect(within(group).getByRole('listbox')).toHaveClass('grid-cols-4')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
-    expect(within(group).getAllByRole('button').map((button) => button.textContent)).toEqual(['Cancelar', 'Listo'])
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'Cancelar', 'Listo'])
     expect(within(group).getByRole('button', { name: 'Listo' })).toBeDisabled()
+    // Con «Cancelar», Escape es de la mesa (cancela): la banda no se minimiza.
+    escape()
+    expect(group).toBeInTheDocument()
     fireEvent.click(within(group).getByRole('button', { name: 'Cancelar' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
@@ -197,7 +231,10 @@ describe('PickBand', () => {
     cleanup()
 
     band({ multi: false, title: 'Elegí 1 carta' })
-    expect(screen.queryAllByRole('button')).toEqual([])
+    expect(names(screen.queryAllByRole('button'))).toEqual(['Minimizar'])
+    // Sin «Cancelar», Escape la minimiza.
+    escape()
+    expect(screen.getByRole('group', { name: 'Elegí 1 carta' })).toHaveAttribute('data-minimized')
   })
 })
 
@@ -205,47 +242,46 @@ describe('RespondBand', () => {
   const respond = (props: Partial<Parameters<typeof RespondBand>[0]> = {}) =>
     render(
       <RespondBand
-        kicker="Responder a CL2 · Rival"
-        title="¿Encadenás a Ash Blossom & Joyous Spring?"
+        title="Responder a CL2 · Rival"
         card={{ name: 'Ash Blossom & Joyous Spring', art: null }}
         link={3}
         cards={CARDS.slice(0, 2)}
         chosen={null}
         onToggle={() => {}}
-        response={null}
         onChain={() => {}}
         onPass={() => {}}
         {...props}
       />,
     )
 
-  it('a qué eslabón, las candidatas con la pestaña de su lugar (sin la línea de abajo), «No responder» sin caja y la principal al final, apagada sin elegida', () => {
+  it('a qué eslabón (sin el nombre de su carta), las candidatas con la pestaña de su lugar, «No responder» sin caja y la principal al final, apagada sin elegida', () => {
     const onPass = vi.fn()
     respond({ onPass })
-    const group = screen.getByRole('group', { name: '¿Encadenás a Ash Blossom & Joyous Spring?' })
+    const group = screen.getByRole('group', { name: 'Responder a CL2 · Rival' })
 
     expect(group).toHaveAttribute('data-prompt-row')
-    expect(group).toHaveTextContent('Responder a CL2 · Rival')
+    expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta/)
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
     expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano')).toHaveClass('rounded-tag')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
-    expect(group).toHaveTextContent('Tu respuesta · CL3 Elegí con qué responder.')
-    expect(within(group).getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder', 'Encadenar como CL3'])
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'No responder', 'Encadenar como CL3'])
     expect(within(group).getByRole('button', { name: 'Encadenar como CL3' })).toBeDisabled()
     // Sin `mode`, sin el selector.
     expect(within(group).queryByRole('radiogroup')).toBeNull()
+    // Escape es «No responder» (lo da la mesa): la banda no se minimiza.
+    escape()
+    expect(group).not.toHaveAttribute('data-minimized')
     fireEvent.click(within(group).getByRole('button', { name: 'No responder' }))
     expect(onPass).toHaveBeenCalledTimes(1)
   })
 
-  it('la elegida, con su tilde y qué haría (la frase de su efecto); la principal contesta; el modo, sólo en escritorio', () => {
+  it('la elegida, con su tilde; la principal contesta; el modo, sólo en escritorio', () => {
     const onChain = vi.fn()
     const onMode = vi.fn()
-    respond({ chosen: 'b', response: { name: 'Aluber the Jester of Despia', effect: { when: 'During your opponent’s turn (Quick Effect)', what: 'You can negate the activation.' } }, onChain, mode: { value: 'ask', onChange: onMode } })
-    const group = screen.getByRole('group', { name: /Encadenás/ })
+    respond({ chosen: 'b', onChain, mode: { value: 'ask', onChange: onMode } })
+    const group = screen.getByRole('group', { name: 'Responder a CL2 · Rival' })
 
     expect(within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })).toHaveAttribute('aria-selected', 'true')
-    expect(group).toHaveTextContent('Tu respuesta · CL3 Aluber the Jester of Despia “During your opponent’s turn (Quick Effect): You can negate the activation.”')
     fireEvent.click(within(group).getByRole('button', { name: 'Encadenar como CL3' }))
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
@@ -258,7 +294,7 @@ describe('RespondBand', () => {
     cleanup()
 
     // Sin cadena todavía, tu respuesta la abre.
-    respond({ link: 1, kicker: undefined, card: undefined, title: '¿Activás algo ahora?', chosen: 'a' })
+    respond({ link: 1, card: undefined, title: '¿Activás algo ahora?', chosen: 'a' })
     expect(screen.getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
   })
 })

@@ -14,15 +14,18 @@ import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
+import { PromptCrowdedContext } from '../../duel/MatPrompt'
+import { PassPrompt } from '../../duel/PassPrompt'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../../probability/MatBarActions'
 import { CardMenu } from '../../probability/MatDialogs'
 import { Button } from '../../ui/Button'
-import { cx } from '../../ui/cx'
 import { Segmented } from '../../ui/Segmented'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
+/** La caja de la ranura de la pregunta, como en la mesa (`PracticeMat`): más ancha con una banda, del ancho del asa minimizada. */
+const PROMPT_BOX = 'pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]'
 const ASH = { name: 'Ash Blossom & Joyous Spring', art: art(14558127) }
 const PONIX = { name: 'Legendary Fire King Ponix', art: art(90681088) }
 
@@ -124,6 +127,7 @@ export function AutoSection() {
       <BandSample max={1} onAnswer={setAnswer} />
       <ForcedSample onAnswer={setAnswer} />
       <RespondSample onAnswer={setAnswer} />
+      <MinimizedSample />
 
       <SortSample onAnswer={setAnswer} />
       <CounterSample onAnswer={setAnswer} />
@@ -159,33 +163,32 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
       layout="column"
       note={
         kind === 'card' ? (
-          <>select_effectyn: la carta chica a la izquierda del texto. En la mesa va en la ranura <Tag>duel.prompt</Tag>: centrada, sin fondo, deja pasar los toques y no mueve nada. El foco va a la principal; Escape no la cierra. Archivo: <Tag>auto/AskPrompt.tsx</Tag></>
+          <>select_effectyn: el arte de la carta chico a la izquierda y «¿Activás el efecto?», sin su nombre ni lo que hace (están en su detalle). En la mesa va en la ranura <Tag>duel.prompt</Tag>: sin fondo, deja pasar los toques y no mueve nada. La flecha de arriba (o Escape) la minimiza a un asa de una línea; la del asa la reabre. El foco va a la principal. Archivos: <Tag>auto/AskPrompt.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>
         ) : kind === 'context' ? (
-          <>select_effectyn con desc 221: <Tag>kicker</Tag>, qué pasó y dónde está la carta en el texto (<Tag>effectAskText</Tag> de <Tag>ask-ui.ts</Tag>), la pestaña <Tag>place</Tag>, la frase del efecto tal cual (<Tag>effect</Tag>: lo que hace, resaltado) y el atajo <Tag>manual</Tag> a la izquierda. Con frase, la mesa le da más ancho.</>
+          <>select_effectyn con desc 221: <Tag>kicker</Tag> con qué pasó, sin nombres (<Tag>effectAskText</Tag> de <Tag>ask-ui.ts</Tag>), la pestaña <Tag>place</Tag> sobre el arte y el atajo <Tag>manual</Tag> a la izquierda (con él, la mesa le da más ancho).</>
         ) : (
           <>select_yesno: sólo el texto. Los botones dicen qué hacen («Hacerlo», o lo que diga el núcleo: «Pagar 1000 LP»), nunca «Sí» ni «No».</>
         )
       }
     >
-      <div className={cx('relative isolate overflow-hidden rounded-card border border-border-subtle', kind === 'context' ? 'h-96' : 'h-64')}>
+      <div className="relative isolate h-64 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
         <Presence>
           {shown ? (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+              <div className={PROMPT_BOX}>
                 {kind === 'context' ? (
                   <AskPrompt
-                    kicker={t('auto.ask.kicker')}
-                    text={t('auto.ask.afterOwn', { event: t('auto.ask.event.special'), card: PONIX.name, place: t('auto.ask.at.mz') })}
+                    kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })}
+                    text={t('auto.ask.effect')}
                     card={PONIX}
                     place={t('practice.mat.field')}
-                    effect={{ when: 'If this card is Normal or Special Summoned', what: 'You can add 1 "Fire King" Spell/Trap from your Deck to your hand.' }}
                     manual={{ label: manual, onSelect: () => reply(manual) }}
                     yes={{ label: yes, onSelect: () => reply(yes) }}
                     no={{ label: no, onSelect: () => reply(no) }}
                   />
                 ) : (
-                  <AskPrompt text={withCard ? t('auto.ask.effect', { card: ASH.name }) : '¿Pagás 1000 LP para activar Skill Drain?'} card={withCard ? ASH : undefined} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
+                  <AskPrompt text={withCard ? t('auto.ask.effect') : '¿Pagás 1000 LP para activar Skill Drain?'} card={withCard ? ASH : undefined} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
                 )}
               </div>
             </div>
@@ -309,7 +312,7 @@ function BandSample({ max, onAnswer }: { max: 1 | 2; onAnswer: (answer: string) 
         <Presence>
           {shown ? (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+              <div className={PROMPT_BOX}>
                 <PickBand
                   title={title}
                   place={t('auto.band.from', { place: t('practice.place.gy'), count: GRAVE.length })}
@@ -345,14 +348,14 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Varias obligatorias · cuál va primero"
       layout="column"
-      note={<>Cuando el núcleo obliga a activar dos o más a la vez (cada una con un solo efecto), la banda pregunta cuál entra primero en la cadena: la primera ya elegida, tocar otra la cambia y la principal dice qué hace («Activar X primero»). Sin «No responder». Con una sola, la línea de siempre («Tenés que activar X: tocala»). También se activa tocando la que brilla en la mesa. Archivo: <Tag>auto/CardPicker.tsx</Tag></>}
+      note={<>Cuando el núcleo obliga a activar dos o más a la vez (cada una con un solo efecto), la banda pregunta cuál entra primero en la cadena: la primera ya elegida, tocar otra la cambia y la principal dice con qué número entra («Activar como CL1»). Sin «No responder»: Escape la minimiza. Con una sola, la línea de siempre («Tenés que activar la carta que brilla: tocala»). También se activa tocando la que brilla en la mesa. Archivo: <Tag>auto/CardPicker.tsx</Tag></>}
     >
       <div className="relative isolate h-96 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
         <Presence>
           {shown ? (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+              <div className={PROMPT_BOX}>
                 <PickBand
                   title={t('auto.forced.title', { count: cards.length, link: 1 })}
                   cards={cards}
@@ -365,7 +368,7 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
                     setShown(false)
                     onAnswer(name)
                   }}
-                  action={t('auto.forced.activate', { card: name })}
+                  action={t('auto.respond.start')}
                   note={t('auto.forced.hint')}
                 />
               </div>
@@ -380,7 +383,7 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
-/** Responder a una cadena (lámina 13): a qué eslabón, las candidatas con su lugar, qué haría la elegida y el modo de respuesta (en escritorio), como en la mesa (`use-auto-asks.tsx`). */
+/** Responder a una cadena (lámina 13): a qué eslabón, las candidatas con su lugar y el modo de respuesta (en escritorio), como en la mesa (`use-auto-asks.tsx`). */
 function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const cards: PickCard[] = [
     { key: 'ponix', name: PONIX.name, art: PONIX.art, place: t('practice.mat.field') },
@@ -401,23 +404,21 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Responder a una cadena"
       layout="column"
-      note={<>Una cadena que se puede pasar: arriba a qué eslabón respondés y su carta; las candidatas con la pestaña de dónde están (tocar una la elige, con su tilde; con una sola, ya viene elegida); «Tu respuesta · CL3» con su nombre y, sólo si no hay duda, la frase de su efecto; «No responder» sin caja y «Encadenar como CL3» al final. En escritorio, el modo de respuesta a la izquierda del pie (en el celular, en «Más opciones»). Tocar la carta que brilla en la mesa sigue valiendo. Archivo: <Tag>auto/RespondBand.tsx</Tag></>}
+      note={<>Una cadena que se puede pasar: arriba a qué eslabón respondés («Responder a CL2 · Rival», sin nombres) y el arte de su carta; las candidatas con la pestaña de dónde están (tocar una la elige, con su tilde; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL3» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). La flecha la minimiza (Escape es «No responder»). Tocar la carta que brilla en la mesa sigue valiendo. Archivo: <Tag>auto/RespondBand.tsx</Tag></>}
     >
       <div className="relative isolate h-112 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
         <Presence>
           {shown ? (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+              <div className={PROMPT_BOX}>
                 <RespondBand
-                  kicker={t('auto.respond.to', { link: 2, who: t('duel.bar.rival') })}
-                  title={t('auto.respond.title', { card: ASH.name })}
+                  title={t('auto.respond.to', { link: 2, who: t('duel.bar.rival') })}
                   card={ASH}
                   link={3}
                   cards={cards}
                   chosen={chosen}
                   onToggle={setChosen}
-                  response={picked ? { name: picked.name, effect: picked.key === 'veiler' ? { when: "During your opponent's Main Phase (Quick Effect)", what: 'You can send this card from your hand to the GY, then target 1 Effect Monster your opponent controls; negate its effects until the end of this turn.' } : null } : null}
                   onChain={() => reply(picked?.name ?? '')}
                   onPass={() => reply(t('auto.lane.pass'))}
                   mode={{ value: mode, onChange: setMode }}
@@ -430,6 +431,36 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       <Button variant="secondary" size="sm" className="w-fit" icon="refresh" disabled={shown} onClick={() => setShown(true)}>
         Volver a preguntar
       </Button>
+    </Specimen>
+  )
+}
+
+/** Los carteles de la mesa, minimizados: el asa de cada uno (la mesa los abre así cuando no entran sin tapar cartas: `PromptCrowdedContext`). */
+function MinimizedSample() {
+  const none = { label: '', onSelect: () => {} }
+
+  return (
+    <Specimen
+      title="Carteles minimizados · el asa"
+      layout="column"
+      note={<>Cada cartel de la ranura <Tag>duel.prompt</Tag> se minimiza con su flecha a un asa de una línea con la pregunta corta; la flecha del asa («Mostrar la pregunta», 44 px) lo reabre. Minimizado es de esa pregunta (la siguiente abre sola) y la mesa lo pone donde no tapa ninguna carta ni la píldora de la cadena (si no hay hueco, arriba, debajo de la barra). Si el cartel abierto no entra sin tapar las Zonas Extra o la mano, abre así. Archivo: <Tag>duel/MatPrompt.tsx</Tag></>}
+    >
+      <PromptCrowdedContext value>
+        <div className="grid justify-items-start gap-2">
+          <div className={PROMPT_BOX}>
+            <AskPrompt text={t('auto.ask.effect')} card={PONIX} yes={none} no={none} />
+          </div>
+          <div className={PROMPT_BOX}>
+            <RespondBand title={t('auto.respond.to', { link: 2, who: t('duel.bar.rival') })} card={ASH} link={3} cards={[]} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />
+          </div>
+          <div className={PROMPT_BOX}>
+            <PickBand title={t('auto.forced.title', { count: 2, link: 1 })} cards={[]} chosen={[]} eligible={new Set()} multi={false} done onToggle={() => {}} onPick={() => {}} />
+          </div>
+          <div className={PROMPT_BOX}>
+            <PassPrompt name="Ana" phase="battle" endsTurn={false} responders={[]} onAllow={() => {}} onDeny={() => {}} />
+          </div>
+        </div>
+      </PromptCrowdedContext>
     </Specimen>
   )
 }
@@ -550,7 +581,7 @@ function ChainSample() {
       title="ChainNotice · la pila de la cadena"
       layout="column"
       className="col-span-full"
-      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el último eslabón mientras se arma («Cadena · CL3 · Vos») y, al resolverse, qué le pasa a cada uno con la carta en ámbar. La flecha despliega la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) la píldora dice todo en dos renglones: «Cadena · 3 · Resuelve CL3» y qué pasa («Ash le quita el efecto a…» si se sabe quién lo negó); con una pregunta abierta en la mesa (<Tag>data-banded</Tag>) queda un renglón, sin flecha ni lista, y sube para que la pregunta entre debajo (si no entra, se aparta hasta que se conteste). Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
+      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el eslabón del que habla («Cadena · CL3 · Vos») y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. La flecha despliega la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) arriba dice «Cadena · 3 · Resuelve CL3» mientras se resuelve; con una pregunta abierta en la mesa (<Tag>data-banded</Tag>) queda un renglón, sin flecha ni lista, y sube para que la pregunta entre debajo (si no entra, se aparta hasta que se conteste). Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>

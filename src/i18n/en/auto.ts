@@ -12,26 +12,13 @@ export const auto: Translated<typeof es> = {
   'auto.rival.responds': '{name} responds to {to}',
 
   // The engine's yes/no question, in the middle of the mat.
-  'auto.ask.effect': "Activate {card}'s effect?",
+  'auto.ask.effect': 'Activate the effect?',
   'auto.ask.kicker': 'Trigger effect',
-  'auto.ask.effectAt': 'Activate the effect of {card} ({place})?',
-  'auto.ask.afterOwn': 'After the {event} of {card} ({place}): activate its effect?',
-  'auto.ask.after': 'After the {event} of {cards}: activate the effect of {card} ({place})?',
-  'auto.ask.during': 'During the {phase}: activate the effect of {card} ({place})?',
+  'auto.ask.afterEvent': 'After the {event}',
+  'auto.ask.inPhase': 'During the {phase}',
   'auto.ask.event.normal': 'Normal Summon',
   'auto.ask.event.special': 'Special Summon',
   'auto.ask.event.flip': 'Flip Summon',
-  'auto.ask.at.mz': 'in the Monster Zone',
-  'auto.ask.at.emz': 'in the Extra Monster Zone',
-  'auto.ask.at.st': 'in the Spell & Trap Zone',
-  'auto.ask.at.field': 'in the Field Zone',
-  'auto.ask.at.hand': 'in your hand',
-  'auto.ask.at.gy': 'in the GY',
-  'auto.ask.at.banished': 'banished',
-  'auto.ask.at.deck': 'in the Deck',
-  'auto.ask.at.extra': 'in the Extra Deck',
-  'auto.ask.at.material': 'as Xyz Material',
-  'auto.ask.what': 'What it does',
   'auto.ask.fallback': 'Do you do it?',
   'auto.ask.skipEffect': "Don't activate",
   'auto.ask.yes': 'Do it',
@@ -145,18 +132,15 @@ export const auto: Translated<typeof es> = {
   'auto.lane.pass': "Don't respond",
   // The band to respond to a chain: which link, with which cards and which number your response would take.
   'auto.respond.to': 'Respond to CL{link} · {who}',
-  'auto.respond.title': 'Chain to {card}?',
+  'auto.respond.toLink': 'Respond to CL{link}',
   'auto.respond.now': 'Activate something now?',
   'auto.respond.cards': 'You can respond with',
-  'auto.respond.yours': 'Your response · CL{link}',
-  'auto.respond.pick': 'Pick what to respond with.',
   'auto.respond.chain': 'Chain as CL{link}',
   'auto.respond.start': 'Activate as CL1',
   'auto.respond.mode': 'Ask me',
-  'auto.lane.mustActivate': 'You must activate {cards}: tap it',
+  'auto.lane.mustActivate': { one: 'You must activate the glowing card: tap it', other: 'You must activate the {count} glowing cards: tap one' },
   // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).
   'auto.forced.title': 'You must activate these {count}. Which goes first (CL{link})?',
-  'auto.forced.activate': 'Activate {card} first',
   'auto.forced.hint': 'No “Don’t respond”: they’re mandatory.',
   'auto.lane.autoZone': 'The zone was picked for you',
   // What went wrong, in the mat's words (the technical detail goes to the console).
@@ -178,11 +162,9 @@ export const auto: Translated<typeof es> = {
   'auto.chain.state.disabled': 'No effect',
   // Negated or no effect, with the link that did it (the core doesn't say: the adapter works it out).
   'auto.chain.by': '{state} · by CL{by}',
-  // Phones: the pill in two lines, «Chain · 2 · Resolves CL2» and what happens («Ash Blossom negates Ponix's effect», with who negated it when known).
+  // Phones: on top of the pill, «Chain · 2 · Resolves CL2».
   'auto.chain.count': 'Chain · {count}',
   'auto.chain.resolves': 'Resolves',
-  'auto.chain.void.negated': '{by} negates the activation of {card}',
-  'auto.chain.void.disabled': '{by} negates the effect of {card}',
   // Each link is tapped to read it in the detail: what the screen reader says.
   'auto.chain.linkMine': 'Chain Link {number}: {card}, yours. {state}',
   'auto.chain.linkTheirs': 'Chain Link {number}: {card}, your opponent’s. {state}',

@@ -1,9 +1,10 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useId, useState, type KeyboardEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
-import { useLeaving, usePresence } from '../../app/use-presence'
+import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { MatPrompt } from '../duel/MatPrompt'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -167,32 +168,37 @@ interface PickBandProps {
 }
 
 /**
- * Elegir de una lista corta (hasta `BAND_MAX` cartas) sin tapar la mesa: una banda en una fila, en la ranura de la pregunta (`duel.prompt`, como `AskPrompt`: sin velo, ancha por
- * `data-prompt-row`). Arriba de dónde salen, el título con para qué y la cuenta, las cartas (`PickGrid`: flechas, Espacio y Enter) y, abajo, «Cancelar» sin caja y la principal al final.
+ * Elegir de una lista corta (hasta `BAND_MAX` cartas) sin tapar la mesa: una banda en una fila, en la ranura de la pregunta (`MatPrompt`, como `AskPrompt`: sin velo, ancha,
+ * minimizable). Arriba de dónde salen y el título con para qué y la cuenta, las cartas (`PickGrid`: flechas, Espacio y Enter) y, abajo, «Cancelar» sin caja y la principal al final.
  * Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
- * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa.
+ * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa. Sin «Cancelar», Escape la minimiza.
  */
 export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note }: PickBandProps) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const leaving = useLeaving()
   const titleId = useId()
   const primary = multi || done
 
-  useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('[role="option"][tabindex="0"]')?.focus({ preventScroll: true })
-  }, [])
-
-  return usePresence(
-    !leaving,
-    <div ref={ref} role="group" aria-labelledby={titleId} data-prompt="ask" data-prompt-row="" className="grid gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter">
-      {place ? (
-        <Badge size="sm" shape="tag" className="justify-self-start">
-          {place}
-        </Badge>
-      ) : null}
-      <p id={titleId} className="m-0 font-semibold">
-        {title}
-      </p>
+  return (
+    <MatPrompt
+      kind="ask"
+      row
+      role="group"
+      labelledBy={titleId}
+      label={title}
+      focus='[role="option"][tabindex="0"]'
+      escape={!onCancel}
+      head={
+        <div className="grid min-w-0 gap-3">
+          {place ? (
+            <Badge size="sm" shape="tag" className="justify-self-start">
+              {place}
+            </Badge>
+          ) : null}
+          <p id={titleId} className="m-0 font-semibold">
+            {title}
+          </p>
+        </div>
+      }
+    >
       <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} className={BAND_COLUMNS[Math.max(4, Math.min(BAND_MAX, cards.length))]} />
       {primary || onCancel ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -211,8 +217,7 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
           </div>
         </div>
       ) : null}
-    </div>,
-    () => [ref.current],
+    </MatPrompt>
   )
 }
 

@@ -136,20 +136,21 @@ describe('auto-screen · las hojas', () => {
     expect(screen.getByTestId('duel-prompt-layer')).toHaveTextContent('Summon a Token')
   })
 
-  it('effectyn: la pregunta nombra la carta y su lugar (en el texto y en la pestaña), la carta brilla en su pila y «No activar» contesta que no', () => {
+  it('effectyn: la pregunta, sin el nombre de la carta, con su lugar en la pestaña, la carta brilla en su pila y «No activar» contesta que no', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(EFFECTYN))
     const prompt = screen.getByTestId('duel-prompt-layer')
 
-    expect(prompt).toHaveTextContent('¿Activás el efecto de Nibiru (en el Cementerio)?')
+    expect(prompt).toHaveTextContent('¿Activás el efecto?')
+    expect(prompt).not.toHaveTextContent('Nibiru')
     expect(within(prompt).getByText('Cementerio')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-glow-kind', 'can')
     fireEvent.click(within(prompt).getByRole('button', { name: 'No activar' }))
     expect(fake.answers).toEqual([{ type: 'select_effectyn', yes: false }])
   })
 
-  it('un efecto que se dispara: «Efecto que se dispara», qué pasó justo antes y, a la izquierda, «Seguir en modo manual»', () => {
+  it('un efecto que se dispara: qué pasó justo antes, sin nombres, y, a la izquierda, «Seguir en modo manual»', () => {
     const fake = renderAuto()
 
     core(() => {
@@ -158,9 +159,9 @@ describe('auto-screen · las hojas', () => {
     })
     const prompt = screen.getByTestId('duel-prompt-layer')
 
-    expect(prompt).toHaveTextContent('Efecto que se dispara')
-    expect(prompt).toHaveTextContent('Tras la Invocación Normal de Blue-Eyes White Dragon: ¿activás el efecto de Nibiru (en el Cementerio)?')
-    expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['Seguir en modo manual', 'No activar', 'Activar efecto'])
+    expect(prompt).toHaveTextContent('Tras la Invocación Normal')
+    expect(prompt).not.toHaveTextContent(/Blue-Eyes|Nibiru/)
+    expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
   })
 
   it('una lista corta y mixta (cementerio y Extra) va en la banda del medio, sin velo: el título dice para qué, cada carta de dónde es, y «Cancelar» sin caja antes de la principal', () => {
@@ -173,7 +174,7 @@ describe('auto-screen · las hojas', () => {
 
     expect(band).toHaveAttribute('data-prompt-row')
     expect(options).toEqual(['Nibiru, GY', 'Zeus, Extra'])
-    expect(within(band).getAllByRole('button').map((button) => button.textContent)).toEqual(['Cancelar', 'Listo'])
+    expect(within(band).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Cancelar', 'Listo'])
     fireEvent.click(within(band).getAllByRole('option')[1]!)
     expect(band).toHaveAccessibleName('Elegí de 1 a 2 cartas para desterrar · 1/2')
     expect(within(band).getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true')
@@ -207,8 +208,8 @@ describe('auto-screen · las hojas', () => {
 
     expect(band).toHaveTextContent('Rival, Cementerio · 2')
     expect(within(band).getAllByRole('option').every((option) => !option.getAttribute('aria-label')!.includes(','))).toBe(true)
-    // Una sola, sin poder cancelar: sin pie; el toque contesta.
-    expect(within(band).queryAllByRole('button')).toEqual([])
+    // Una sola, sin poder cancelar: sin pie (sólo la flecha de minimizar); el toque contesta.
+    expect(within(band).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])
     fireEvent.click(within(band).getAllByRole('option')[1]!)
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
   })

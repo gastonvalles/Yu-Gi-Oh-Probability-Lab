@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
-import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, linkSentence, stepsUpTo } from '../../app/auto/chain-feed'
+import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf, linksOf } from '../../app/card-glow'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
@@ -12,7 +12,7 @@ import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/
 import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
-import { effectParts, type CardTextHighlight } from '../../app/card-text'
+import type { CardTextHighlight } from '../../app/card-text'
 import { allMatIds, cardKindOf, createMatState, locateCard, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
@@ -633,7 +633,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const linkName = (link: ChainLink) => nameOf(link.card, link.code)
   // Lo que se activa en la cadena, de los dos lados: tus cartas y las del rival que la pregunta te deja activar (una obligatoria de su campo).
   const activatable = shown?.type === 'select_chain' ? [...[...shown.items].map(([id, items]) => ({ ref: { side: 'mine' as const, id }, items })), ...[...shown.theirs].map(([id, items]) => ({ ref: { side: 'theirs' as const, id }, items }))] : []
-  const chainNames = namesList(activatable.map(({ ref }) => nameOf(ref)))
+  // «Tenés que activar…», sin nombres: la carta (o la pila) que hay que activar brilla.
+  const mustActivate = (count: number) => t('auto.lane.mustActivate', { count })
   const newFault = snap.faults[snap.faults.length - 1]
   const lastUnmapped = snap.unmapped[snap.unmapped.length - 1]
 
@@ -667,7 +668,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
               // va al medio (la banda de responder, `offer`) y la línea queda libre; varias obligatorias, también (`forced`).
               shown.cancelable || forced
               ? null
-              : { kind: 'ask', text: t('auto.lane.mustActivate', { cards: chainNames }), actions: [] }
+              : { kind: 'ask', text: mustActivate(activatable.length), actions: [] }
             : snap.faults.length > faultsBase.current && newFault
               ? {
                   kind: 'ask',
@@ -717,15 +718,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const linkText = linkRead?.card ?? linkRivalCard
   const linkRange = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
   const linkHighlight: CardTextHighlight | null = linkRange && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...linkRange } : null
-  // La cadena que se puede pasar, en la banda de responder: a qué eslabón, con qué cartas (con su lugar) y qué haría la elegida. Con una sola de un solo efecto, ya viene elegida;
-  // una con varios efectos abre su lista (como su menú en la mesa).
+  // La cadena que se puede pasar, en la banda de responder: a qué eslabón y con qué cartas (con su lugar). Con una sola de un solo efecto, ya viene elegida; una con varios efectos
+  // abre su lista (como su menú en la mesa).
   const offer = shown && lane === null ? respondOffer(shown, chain) : null
   // La elegida es de esta pregunta (`askState`, no su número: al reiniciar el duelo los números vuelven a empezar).
   const [offerPick, setOfferPick] = useState<{ of: AskState; key: string } | null>(null)
   const only = offer?.candidates.length === 1 && offer.candidates[0]!.answer ? offer.candidates[0]! : null
   const offered = offer?.candidates.find((candidate) => offerPick !== null && offerPick.of === askState && candidate.key === offerPick.key) ?? only
-  const offeredText = offered?.effect && offered.ref.side === 'mine' ? ((cardsById.get(offered.ref.id)?.apiCard ?? byCode.get(offered.effect.code)?.apiCard)?.description ?? null) : null
-  const offeredSentence = offered?.effect && offeredText ? linkSentence(offeredText, offered.effect.code, offered.effect.description) : null
   const pickOffer = (key: string) => {
     const candidate = offer?.candidates.find((item) => item.key === key)
 
@@ -749,7 +748,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── Lo que se muestra fuera del campo. ──
   const prompt = shown?.prompt
   const promptCard = prompt?.card
-  const effectAsk = prompt && promptCard ? effectAskText({ ...prompt, card: promptCard }, snap.overlay.cause, (code) => nameOf(code === promptCard.code ? promptCard.ref : null, code), byCode.get(promptCard.code)?.apiCard?.description ?? null) : null
+  const effectAsk = prompt && promptCard ? effectAskText(prompt, snap.overlay.cause) : null
   const options = shown?.options
   // Una opción sin texto no inventa un número (el orden de la pregunta no es el de la carta): dice «Activar efecto». La carta que pregunta (la que nombran sus opciones, si
   // se la conoce) va arriba del título.
@@ -806,12 +805,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     prompt: prompt ? (
       <AskPrompt
         key={askId ?? 0}
-        // Un sí o no a secas dice su pregunta (el texto de su `desc`) cuando la tiene; el de un efecto, qué pasó, dónde está la carta y qué hace (`effectAsk`).
+        // Un sí o no a secas dice su pregunta (el texto de su `desc`) cuando la tiene; el de un efecto, «¿Activás el efecto?» con qué pasó y su lugar (`effectAsk`): la carta, por su arte.
         text={effectAsk?.text ?? effectLabel(0, prompt.description) ?? t('auto.ask.fallback')}
         {...(promptCard ? { card: { name: nameOf(promptCard.ref, promptCard.code), art: artOf(promptCard.ref, promptCard.code) } } : {})}
         {...(effectAsk?.kicker ? { kicker: effectAsk.kicker } : {})}
         {...(effectAsk?.place ? { place: effectAsk.place } : {})}
-        {...(effectAsk?.effect ? { effect: effectAsk.effect } : {})}
         {...(promptCard && onManual ? { manual: { label: t('auto.bar.manual'), onSelect: onManual } } : {})}
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
@@ -819,14 +817,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ) : offer ? (
       <RespondBand
         key={askId ?? 0}
-        // A qué eslabón respondés (de quién es, si se sabe la carta) y su carta, chica a la izquierda: se ve qué se está por resolver sin buscarla en la mesa.
-        {...(offer.to
-          ? {
-              kicker: offer.to.link.card ? t('auto.respond.to', { link: offer.to.number, who: offer.to.link.card.side === 'mine' ? t('duel.bar.you') : rivalName }) : `CL${offer.to.number}`,
-              card: { name: linkName(offer.to.link), art: artOf(offer.to.link.card, offer.to.link.code) },
-            }
-          : {})}
-        title={offer.to ? t('auto.respond.title', { card: linkName(offer.to.link) }) : t('auto.respond.now')}
+        // A qué eslabón respondés (de quién es, si se sabe la carta) y el arte de su carta, chica a la izquierda: se ve qué se está por resolver sin buscarla en la mesa.
+        {...(offer.to ? { card: { name: linkName(offer.to.link), art: artOf(offer.to.link.card, offer.to.link.code) } } : {})}
+        title={
+          offer.to
+            ? offer.to.link.card
+              ? t('auto.respond.to', { link: offer.to.number, who: offer.to.link.card.side === 'mine' ? t('duel.bar.you') : rivalName })
+              : t('auto.respond.toLink', { link: offer.to.number })
+            : t('auto.respond.now')
+        }
         link={offer.link}
         cards={offer.candidates.map(({ ref, key, at }): PickCard => {
           const place = placeLabel(at)
@@ -836,7 +835,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         })}
         chosen={offered?.key ?? null}
         onToggle={pickOffer}
-        response={offered ? { name: nameOf(offered.ref), effect: offeredSentence ? effectParts(offeredSentence) : null } : null}
         onChain={() => {
           if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
         }}
@@ -844,16 +842,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         mode={{ value: prefs.chain, onChange: (mode) => setAutoPref('chain', mode) }}
       />
     ) : forced && forcedFirst && lane === null ? (
-      // Varias obligatorias: tocar elige cuál va primero (la primera, de entrada) y la principal la activa; sin «No responder». Una del rival dice de dónde es y, si se sabe, qué hace.
+      // Varias obligatorias: tocar elige cuál va primero (la primera, de entrada) y la principal la activa; sin «No responder». Una del rival dice de dónde es.
       <PickBand
         key={askId ?? 0}
-        title={forced.length > 1 ? t('auto.forced.title', { count: forced.length, link: chain.length + 1 }) : t('auto.lane.mustActivate', { cards: nameOf(forcedFirst.ref) })}
-        cards={forced.map(({ ref, key, item }): PickCard => {
+        title={forced.length > 1 ? t('auto.forced.title', { count: forced.length, link: chain.length + 1 }) : mustActivate(1)}
+        cards={forced.map(({ ref, key }): PickCard => {
           const at = locateCard(ref.side === 'mine' ? state : theirs, ref.id)
           const pile = at?.kind === 'pile' ? PILE_TITLES[at.pile] : undefined
-          const where = ref.side === 'theirs' ? t('duel.zone.theirs', { zone: pile ?? t('practice.mat.field') }) : pile
-          const does = item.effect ? effectLabel(item.effect.code, item.effect.description) : null
-          const place = [where, does].filter(Boolean).join(' · ')
+          const place = ref.side === 'theirs' ? t('duel.zone.theirs', { zone: pile ?? t('practice.mat.field') }) : pile
 
           return { key, name: nameOf(ref), art: artOf(ref), ...(place ? { place } : {}) }
         })}
@@ -863,7 +859,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         done
         onToggle={setForcedPick}
         onPick={() => gesture({ kind: 'item', answer: forcedFirst.item.answer! })}
-        action={forced.length > 1 ? t('auto.forced.activate', { card: nameOf(forcedFirst.ref) }) : forcedFirst.item.label}
+        action={forced.length > 1 ? (chain.length === 0 ? t('auto.respond.start') : t('auto.respond.chain', { link: chain.length + 1 })) : forcedFirst.item.label}
         {...(forced.length > 1 ? { note: t('auto.forced.hint') } : {})}
       />
     ) : band && listProps ? (

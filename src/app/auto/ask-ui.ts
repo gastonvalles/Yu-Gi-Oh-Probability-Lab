@@ -1,6 +1,5 @@
 import { t, type MessageKey } from '../../i18n'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
-import { effectParts, effectSentences } from '../card-text'
 import { spotOf, type Adapter, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
 import { passivePolicy } from './policies'
 import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
@@ -602,36 +601,13 @@ export function namesList(names: readonly string[]): string {
 
 export type AskPlace = MatSpot | MatPile | 'material'
 
-/** «¿Activás el efecto…?» con su contexto: qué pasó justo antes, dónde está la carta y qué hace el efecto. Lo que no se sabe no se dice. */
+/** «¿Activás el efecto?» con lo mínimo para decidir: qué pasó justo antes, sin nombres, y dónde está la carta (la carta la dice su arte; lo que hace, su detalle). */
 export interface EffectAskText {
-  /** «Efecto que se dispara», cuando el núcleo pregunta por uno (`trigger`). */
+  /** Un efecto que se dispara (`trigger`): qué pasó («Tras la Invocación Normal», «En la Standby Phase») o, sin saberlo, «Efecto que se dispara». */
   kicker: string | null
   text: string
   /** El lugar, corto, para la pestaña sobre la carta («Campo», «Cementerio»). */
   place: string | null
-  /** La frase del efecto, tal cual la trae la carta: cuándo y qué hace (`triggerPhrase`). */
-  effect: { when: string; what: string } | null
-}
-
-const SUMMON_WORD = { normal: 'Normal', special: 'Special', flip: 'Flip' } as const
-
-/**
- * Cuál de las frases del texto de la carta es el efecto que se disparó (el núcleo no lo dice: pregunta por la carta). Las candidatas son los efectos opcionales que se disparan
- * («If …: You can …», «During …: You can …»). Una sola: ésa. Si hay varias, sólo la única que nombra lo que pasó: «this card is … Summoned» si la carta es la que se acaba de
- * invocar así, o la fase que empezó. Si no, null: mejor no decir qué hace que decir otro efecto.
- */
-export function triggerPhrase(text: string, code: number, cause: TriggerCause | null): { when: string; what: string } | null {
-  const optional = effectSentences(text)
-    .filter((sentence) => sentence.opening === 'trigger' || sentence.opening === 'during')
-    .map(effectParts)
-    .filter((parts) => /^You can\b/.test(parts.what))
-
-  if (optional.length === 1) return optional[0]!
-  if (!cause) return null
-  const word = cause.kind === 'phase' ? PHASES.find((phase) => phase.id === cause.phase)!.name : cause.codes.includes(code) ? SUMMON_WORD[cause.kind] : null
-  const named = word === null ? [] : optional.filter((parts) => (cause.kind === 'phase' ? parts.when.includes(word) : new RegExp(`\\bthis card is (?:\\w+ or )*(?:${word} )?(?:or \\w+ )*Summoned\\b`).test(parts.when)))
-
-  return named.length === 1 ? named[0]! : null
 }
 
 /** El lugar, corto, para la pestaña sobre una carta: «Campo» (cualquier casilla), la pila («Mano», «Cementerio»…); debajo de un Xyz o sin saberlo, nada. */
@@ -677,25 +653,17 @@ export function respondOffer(view: AskView, chain: readonly ChainLink[]): Respon
   return { to: last ? { link: last, number: chain.length } : null, link: chain.length + 1, candidates }
 }
 
-/** Lo que dice la pregunta de un efecto (`select_effectyn`): `nameOf` nombra una carta por código y `cardText` es el texto de la carta del efecto (en inglés, como el catálogo). */
-export function effectAskText(prompt: AskPromptView & { card: AskCard }, cause: TriggerCause | null, nameOf: (code: number) => string, cardText: string | null): EffectAskText {
-  const { code } = prompt.card
-  const card = nameOf(code)
-  const at = prompt.at
-  const place = placeLabel(at)
-  const where = at === undefined ? null : t(`auto.ask.at.${at}`)
-  const text =
-    where === null
-      ? t('auto.ask.effect', { card })
-      : cause?.kind === 'phase'
-        ? t('auto.ask.during', { phase: PHASES.find((phase) => phase.id === cause.phase)!.name, card, place: where })
-        : cause && cause.codes.length === 1 && cause.codes[0] === code
-          ? t('auto.ask.afterOwn', { event: t(`auto.ask.event.${cause.kind}`), card, place: where })
-          : cause
-            ? t('auto.ask.after', { event: t(`auto.ask.event.${cause.kind}`), cards: namesList(cause.codes.map(nameOf)), card, place: where })
-            : t('auto.ask.effectAt', { card, place: where })
+/** Lo que dice la pregunta de un efecto (`select_effectyn`). */
+export function effectAskText(prompt: AskPromptView, cause: TriggerCause | null): EffectAskText {
+  const kicker = !prompt.trigger
+    ? null
+    : cause?.kind === 'phase'
+      ? t('auto.ask.inPhase', { phase: PHASES.find((phase) => phase.id === cause.phase)!.name })
+      : cause
+        ? t('auto.ask.afterEvent', { event: t(`auto.ask.event.${cause.kind}`) })
+        : t('auto.ask.kicker')
 
-  return { kicker: prompt.trigger ? t('auto.ask.kicker') : null, text, place, effect: prompt.trigger && cardText ? triggerPhrase(cardText, code, cause) : null }
+  return { kicker, text: t('auto.ask.effect'), place: placeLabel(prompt.at) }
 }
 
 export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, ctx: AskContext): AskState {

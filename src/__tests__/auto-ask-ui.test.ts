@@ -1,6 +1,6 @@
 import { applyLocale, loadLocale, t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, triggerPhrase, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -691,12 +691,7 @@ describe('ask-ui: el menú de una carta, en el orden y los bloques de la mesa ma
   })
 })
 
-describe('ask-ui: la pregunta de un efecto que se dispara, con su contexto', () => {
-  const PONIX = 'If your monster(s) that was originally FIRE is destroyed by battle or card effect: You can Special Summon this card from your hand. If this card is Normal or Special Summoned: You can add 1 "Fire King" Spell/Trap from your Deck to your hand. During the next Standby Phase after this card was destroyed and sent to the GY: Add this card from the GY to your hand. You can only use each effect of "Legendary Fire King Ponix" once per turn.'
-  const ONE = 'Cannot be Special Summoned. If this card is sent to the GY: You can draw 1 card.'
-  const STANDBY = 'If this card is Normal Summoned: You can draw 1 card. During your Standby Phase: You can gain 500 LP.'
-  const names: Record<number, string> = { 1: 'Ponix', 2: 'Sangan', 3: 'Raigeki' }
-  const nameOf = (code: number) => names[code] ?? '?'
+describe('ask-ui: la pregunta de un efecto que se dispara, con lo mínimo para decidir', () => {
   const prompt = (code: number, at: 'mz' | 'gy' | 'hand' | 'material', trigger = true) => ({ card: { ref: mine(`card-${code}-1`), code, place: 'field' as const }, at, ...(trigger ? { trigger } : {}), description: trigger ? '221' : '0', yes: { type: 'select_effectyn' as const, yes: true }, no: { type: 'select_effectyn' as const, yes: false } })
 
   it('el núcleo pregunta por la carta en su lugar: `at` es su casilla o su pila y `trigger`, el `desc` 221', () => {
@@ -705,31 +700,14 @@ describe('ask-ui: la pregunta de un efecto que se dispara, con su contexto', () 
     expect(askView(open(ask, ctx(mesa([{ side: 'mine', id: 'card-400-1', code: 400, location: L.MZONE, sequence: 2 }])))).prompt).toMatchObject({ at: 'mz', trigger: true })
   })
 
-  it('la frase: la única opcional que se dispara, o la única que nombra lo que pasó (la Invocación de la carta, la fase); si no, ninguna', () => {
-    const summon = { when: 'If this card is Normal or Special Summoned', what: 'You can add 1 "Fire King" Spell/Trap from your Deck to your hand.' }
+  it('«¿Activás el efecto?» sin nombres: arriba qué pasó (la Invocación, la fase; sin saberlo, «Efecto que se dispara»), la pestaña dice el lugar; sin `trigger`, nada arriba', () => {
+    const text = t('auto.ask.effect')
 
-    expect(triggerPhrase(ONE, 2, null)).toEqual({ when: 'If this card is sent to the GY', what: 'You can draw 1 card.' })
-    // Dos opcionales (la tercera es obligatoria): decide la Invocación de esta carta, Normal o Especial; la de otra carta, un ataque o nada, no.
-    expect(triggerPhrase(PONIX, 1, { kind: 'normal', codes: [1] })).toEqual(summon)
-    expect(triggerPhrase(PONIX, 1, { kind: 'special', codes: [5, 1] })).toEqual(summon)
-    expect(triggerPhrase(PONIX, 1, { kind: 'flip', codes: [1] })).toBeNull()
-    expect(triggerPhrase(PONIX, 1, { kind: 'special', codes: [5] })).toBeNull()
-    expect(triggerPhrase(PONIX, 1, null)).toBeNull()
-    expect(triggerPhrase(STANDBY, 1, { kind: 'phase', phase: 'standby' })).toEqual({ when: 'During your Standby Phase', what: 'You can gain 500 LP.' })
-    expect(triggerPhrase(STANDBY, 1, { kind: 'phase', phase: 'end' })).toBeNull()
-  })
-
-  it('el texto cuenta qué pasó y dónde está la carta; la pestaña dice el lugar; sin `trigger`, ni «Efecto que se dispara» ni frase', () => {
-    expect(effectAskText(prompt(1, 'mz'), { kind: 'special', codes: [1] }, nameOf, PONIX)).toEqual({
-      kicker: t('auto.ask.kicker'),
-      text: t('auto.ask.afterOwn', { event: t('auto.ask.event.special'), card: 'Ponix', place: t('auto.ask.at.mz') }),
-      place: t('practice.mat.field'),
-      effect: { when: 'If this card is Normal or Special Summoned', what: 'You can add 1 "Fire King" Spell/Trap from your Deck to your hand.' },
-    })
-    expect(effectAskText(prompt(2, 'gy'), { kind: 'normal', codes: [1, 3] }, nameOf, ONE)).toMatchObject({ text: t('auto.ask.after', { event: t('auto.ask.event.normal'), cards: 'Ponix, Raigeki', card: 'Sangan', place: t('auto.ask.at.gy') }), place: t('practice.place.gy') })
-    expect(effectAskText(prompt(1, 'hand'), { kind: 'phase', phase: 'end' }, nameOf, null)).toMatchObject({ text: t('auto.ask.during', { phase: 'End Phase', card: 'Ponix', place: t('auto.ask.at.hand') }), effect: null })
-    expect(effectAskText(prompt(2, 'material', false), null, nameOf, ONE)).toEqual({ kicker: null, text: t('auto.ask.effectAt', { card: 'Sangan', place: t('auto.ask.at.material') }), place: null, effect: null })
-    expect(effectAskText({ ...prompt(2, 'gy'), at: undefined }, null, nameOf, ONE).text).toBe(t('auto.ask.effect', { card: 'Sangan' }))
+    expect(effectAskText(prompt(1, 'mz'), { kind: 'special', codes: [1] })).toEqual({ kicker: t('auto.ask.afterEvent', { event: t('auto.ask.event.special') }), text, place: t('practice.mat.field') })
+    expect(effectAskText(prompt(2, 'gy'), { kind: 'normal', codes: [1, 3] })).toEqual({ kicker: t('auto.ask.afterEvent', { event: t('auto.ask.event.normal') }), text, place: t('practice.place.gy') })
+    expect(effectAskText(prompt(1, 'hand'), { kind: 'phase', phase: 'end' })).toEqual({ kicker: t('auto.ask.inPhase', { phase: 'End Phase' }), text, place: t('practice.place.hand') })
+    expect(effectAskText(prompt(2, 'gy'), null)).toMatchObject({ kicker: t('auto.ask.kicker') })
+    expect(effectAskText(prompt(2, 'material', false), { kind: 'normal', codes: [2] })).toEqual({ kicker: null, text, place: null })
   })
 })
 

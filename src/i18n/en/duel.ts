@@ -39,6 +39,8 @@ export const duel: Translated<typeof es> = {
   'duel.undo.denied': "{name} didn't allow taking back the play.",
   'duel.undo.expired': "{name} didn't answer: the play stays.",
   'duel.undo.waiting': 'Waiting for an answer…',
+  'duel.prompt.minimize': 'Minimize',
+  'duel.prompt.show': 'Show the question',
   'duel.pass.ask': '{name} wants to move to the {phase}. Anything to do first?',
   'duel.pass.askEnd': '{name} wants to end their turn. Anything to do first?',
   'duel.pass.askWith': '{name} wants to move to the {phase}. You can respond with {cards}.',
