@@ -131,7 +131,7 @@ describe('el guardado del duelo automático por enlace', () => {
     const toGuest = room.sent.filter(isAutoText).map((text) => parseAutoMessage(text)!)
 
     expect(toGuest.filter((message) => message.t === 'autoInit')).toHaveLength(2)
-    expect(toGuest.filter((message) => message.t === 'autoReplay').at(-1)).toEqual({ t: 'autoReplay', skip: 2 })
+    expect(toGuest.filter((message) => message.t === 'autoReplay').at(-1)).toMatchObject({ t: 'autoReplay', skip: 2 })
     // Lo que re-simula el núcleo rearmado le llega en lotes, detrás de cómo empieza y de cuántas saltar: ni un `autoEvent` suelto. Su pregunta llega detrás del último lote (la
     // re-emisión ya la cerró el `waiting` de Ana).
     const rebuilt = room.sent.slice(mark).filter(isAutoText).flatMap((text) => {
@@ -144,7 +144,7 @@ describe('el guardado del duelo automático por enlace', () => {
     expect(kinds.indexOf('autoInit')).toBeLessThan(kinds.indexOf('autoReplay'))
     expect(kinds.indexOf('autoReplay')).toBeLessThan(kinds.indexOf('autoBatch'))
     expect(kinds.slice(kinds.lastIndexOf('autoBatch') + 1)).toEqual(['autoEvent'])
-    expect(rebuilt.filter((message) => message.t === 'autoEvent')).toEqual([{ t: 'autoEvent', event: expect.objectContaining({ t: 'ask', seat: 0, askId: hosted.getSnapshot().remoteAsk!.askId }) }])
+    expect(rebuilt.filter((message) => message.t === 'autoEvent')).toEqual([{ t: 'autoEvent', s: expect.any(Number), event: expect.objectContaining({ t: 'ask', seat: 0, askId: hosted.getSnapshot().remoteAsk!.askId }) }])
     // Y sigue: Beto contesta (la pregunta 4 también es suya) y el núcleo lo cuenta a partir de lo rearmado.
     expect(sessionOf(guestLink).answer(END)).toBe(true)
     await settle(room)

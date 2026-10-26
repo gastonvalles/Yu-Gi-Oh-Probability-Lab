@@ -30,6 +30,23 @@ describe('el adaptador: del núcleo a la mesa', () => {
     expect(adapter.mine.hand).toEqual(['card-555-1'])
   })
 
+  it('con `bag` el deck propio es bolsa desde el arranque: se roba por código (no por secuencia) y la mesa no depende del orden en que llegó la lista', () => {
+    const bagged = createAdapter({ seat: 0, mine: { deck: [111, 222, 333, 444], extra: [] }, theirs: { deck: 3, extra: 0 }, typeOf: () => 1, bag: true })
+    const other = createAdapter({ seat: 0, mine: { deck: [444, 333, 111, 222], extra: [] }, theirs: { deck: 3, extra: 0 }, typeOf: () => 1, bag: true })
+    const draw = events(0, { type: 'draw', player: 0, drawn: [{ code: 333, position: 10 }] })
+    const search = (code: number) => events(0, move(code, at(0, L.DECK, 0, P.FACEDOWN_DEFENSE), at(0, L.HAND, 1, P.FACEDOWN_DEFENSE)))
+
+    expect(bagged.apply(draw).mine).toEqual([{ type: 'draw', count: 1, ids: ['card-333-1'] }])
+    expect(other.apply(draw).mine).toEqual([{ type: 'draw', count: 1, ids: ['card-333-1'] }])
+    // Buscar del deck trae una secuencia: en la bolsa cuenta el código; sin código, una cualquiera (no la de esa secuencia, que sería la de abajo).
+    expect(bagged.apply(search(111)).mine).toEqual([{ type: 'move', id: 'card-111-1', to: 'hand' }])
+    expect(other.apply(search(111)).mine).toEqual([{ type: 'move', id: 'card-111-1', to: 'hand' }])
+    expect(bagged.apply(search(0)).mine).toEqual([{ type: 'move', id: 'card-222-1', to: 'hand' }])
+    expect(bagged.mine.hand).toEqual(['card-333-1', 'card-111-1', 'card-222-1'])
+    // Sin `bag`, una secuencia se sigue tal cual: la 0 es la de abajo.
+    expect(make().apply(search(0)).mine).toEqual([{ type: 'move', id: 'card-555-1', to: 'hand' }])
+  })
+
   it('el espejo del rival: ids opacos, y el código sólo cuando el núcleo lo muestra', () => {
     const adapter = make()
     const drawn = adapter.apply(events(0, { type: 'draw', player: 1, drawn: [{ code: 0, position: 10 }, { code: 0, position: 10 }] }))

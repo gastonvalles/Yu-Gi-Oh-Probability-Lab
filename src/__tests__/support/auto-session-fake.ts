@@ -78,10 +78,9 @@ export interface FakeSession extends AutoSession {
   cancels: number
   restarts: number
   destroyed: boolean
-  /** El duelo por enlace: las respuestas del asiento remoto que se aceptaron, las re-emisiones pedidas (`expectReplay`) y las re-simulaciones. */
+  /** El duelo por enlace: las respuestas del asiento remoto que se aceptaron y las re-emisiones pedidas (`expectReplay`). */
   remoteAnswers: { askId: number; answer: CoreAnswer }[]
   replays: number[]
-  resimulations: number
   /** Lo que haría el núcleo: cada una avisa a quien escucha. */
   ask(ask: CoreAsk, title?: string): void
   /** Elige el otro asiento (una persona): `waiting` y, si se pasa, su pregunta como `remoteAsk` (la del anfitrión). */
@@ -182,7 +181,6 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     },
     remoteAnswers: [],
     replays: [],
-    resimulations: 0,
     answerRemote(askId, answer) {
       const pending = snapshot.remoteAsk
 
@@ -195,10 +193,6 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     expectReplay(skip) {
       fake.replays.push(skip)
       set({ ask: null, replaying: true })
-    },
-    resimulate() {
-      fake.resimulations += 1
-      set({ ask: null, remoteAsk: null, replaying: true })
     },
     viewOf: (seat) => (seat === 0 ? { mine: snapshot.mine, theirs: snapshot.theirs, overlay: snapshot.overlay } : null),
     destroy() {

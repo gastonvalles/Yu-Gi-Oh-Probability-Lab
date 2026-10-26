@@ -6,7 +6,7 @@ import { createDataLoader } from '../app/auto/auto-data'
 import { autoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession, PendingAsk, TransportFactory } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
+import { bagOrder, teamOrder, type DeckList } from '../app/auto/deck-map'
 import { codesOf, createGuestLink, createHostLink, type OnlineLink } from '../app/auto/online'
 import { createReassembler, GUEST_ACCEPTS, isAutoText, MAX_WHOLE_BYTES, parseAutoMessage, type AutoMessage } from '../app/auto/online-protocol'
 import { randomLegalPolicy, type Policy } from '../app/auto/policies'
@@ -262,9 +262,12 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
     })
     const create = commands.find((command): command is Extract<AutoCommand, { t: 'create' }> => command.t === 'create')!
 
+    // La semilla no viaja (ni por nombre ni por valor) y el Main del invitado va por código: con el orden real (`teamOrder`) sabría sus robos.
+    expect(room.sent.some((text) => text.includes('seed') || text.includes(String(create.seed)))).toBe(false)
+    expect(bagOrder(create.decks[guestSeat]!.main)).not.toEqual(teamOrder(create, guestSeat))
     for (const message of messages) {
       if (message.t === 'autoInit') {
-        expect(message).toMatchObject({ seed: create.seed, seat: guestSeat, mine: create.decks[guestSeat], theirs: { main: create.decks[1 - guestSeat]!.main.length, extra: create.decks[1 - guestSeat]!.extra.length } })
+        expect(message).toMatchObject({ seat: guestSeat, mine: { main: bagOrder(create.decks[guestSeat]!.main), extra: create.decks[guestSeat]!.extra }, theirs: { main: create.decks[1 - guestSeat]!.main.length, extra: create.decks[1 - guestSeat]!.extra.length } })
         continue
       }
       if (message.t !== 'autoEvent' && message.t !== 'autoBatch') continue

@@ -409,7 +409,37 @@ describe('la sesión del duelo por enlace', () => {
     session.destroy()
   })
 
-  it('antes de cada re-emisión dice cuántas respuestas del remoto vienen dadas; re-simular vuelve a la pregunta remota que esperaba', async () => {
+  it('el deck del asiento del invitado es bolsa desde el arranque (la semilla no viaja): el anfitrión lo proyecta por código, y el invitado igual, venga en el orden que venga', async () => {
+    const withDecks = (a: number[], b: number[]): DataLoader => ({ ...loader(), load: async () => ({ ...(await loader().load([])), decks: [mapped(a), mapped(b)] }) })
+    const sorted = ['card-1-1', 'card-1-2', 'card-2-1', 'card-2-2', 'card-3-1', 'card-4-1']
+    // El anfitrión (asiento 0) con el remoto en el 1, los dos con las mismas cartas: el suyo en el orden de la semilla, el del remoto por código.
+    const host = fakeHost()
+    const hosted = createAutoSession({ loader: withDecks([3, 1, 2, 1, 2, 4], [3, 1, 2, 1, 2, 4]), deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, remote: { deck: { main: [[3, 5]] } } })
+
+    await until(hosted, (s) => s.status === 'ready')
+    expect(hosted.getSnapshot().initial.mine.deck).not.toEqual(sorted)
+    expect(hosted.viewOf!(1)!.mine.deck).toEqual(sorted)
+    hosted.destroy()
+
+    // El invitado (asiento 1, `typeOf`): su deck llega en cualquier orden y la mesa es la misma: por código, y robar saca la carta que dice el núcleo, esté donde esté.
+    const guests = [[5, 4, 4, 6, 4], [4, 6, 5, 4, 4]].map((mine) => {
+      const remote = manualHost()
+      const session = createAutoSession({ loader: withDecks(mine, [2, 2, 2, 2, 2]), deck: { main: [[4, 5]] }, transport: remote.factory, seat: 1, typeOf: () => 0 })
+
+      return { remote, session }
+    })
+
+    for (const { remote, session } of guests) {
+      for (let i = 0; i < 100 && remote.sent.length === 0; i += 1) await tick(1)
+      remote.emit({ t: 'loading', done: 0, total: 1 })
+      remote.emit({ t: 'events', seat: 1, n: 0, events: [{ type: 'draw', player: 1, drawn: [{ code: 6, position: 10 }, { code: 4, position: 10 }] }] })
+      expect(session.getSnapshot().initial.mine.deck).toEqual(['card-4-1', 'card-4-2', 'card-4-3', 'card-5-1', 'card-6-1'])
+      expect(session.getSnapshot().mine.hand).toEqual(['card-6-1', 'card-4-1'])
+      session.destroy()
+    }
+  })
+
+  it('antes de cada re-emisión dice cuántas respuestas del remoto vienen dadas; cancelar (re-simular) vuelve a la pregunta remota que esperaba', async () => {
     const host = fakeHost()
     const replays: number[] = []
     const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, remote: { deck: { main: [[2, 5]] }, onReplay: (skip) => replays.push(skip) } })
@@ -428,8 +458,8 @@ describe('la sesión del duelo por enlace', () => {
     const waiting = await until(session, (s) => s.status === 'waiting' && s.remoteAsk !== null && s.answers.length === 5)
 
     expect(replays).toEqual([])
-    session.resimulate()
-    expect(session.getSnapshot()).toMatchObject({ remoteAsk: null, replaying: true })
+    session.cancel()
+    expect(session.getSnapshot()).toMatchObject({ replaying: true })
     expect(replays).toEqual([1])
     const back = await until(session, (s) => s.status === 'waiting' && s.remoteAsk !== null && !s.replaying)
 

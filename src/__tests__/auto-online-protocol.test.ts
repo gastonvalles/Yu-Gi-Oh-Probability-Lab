@@ -25,8 +25,8 @@ const GOOD: AutoMessage[] = [
   { t: 'autoDeck', v, main: [[14558127, 3], [23434538, 2]], extra: [[1, 1]] },
   { t: 'autoCheck', v, ok: false, bad: [99], theirsBad: 2 },
   { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 0, reason: 'lost' },
-  { t: 'autoInit', v, seed: 2 ** 32 - 1, seat: 1, players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], mine: { main: [5, 6, 7], extra: [8], hand: [] }, theirs: { main: 40, extra: 15 } },
-  { t: 'autoReplay', skip: 12 },
+  { t: 'autoInit', v, s: 1, seat: 1, players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], mine: { main: [5, 6, 7], extra: [8] }, theirs: { main: 40, extra: 15 } },
+  { t: 'autoReplay', skip: 12, s: 10_000_000 },
   EVENT,
   { t: 'autoEvent', event: { t: 'loading', done: 0, total: 3 } },
   { t: 'autoBatch', events: [{ t: 'loading', done: 0, total: 3 }, { t: 'end', winner: 0, reason: 1 }], cards: [{ code: 9, type: 1 }] },
@@ -50,9 +50,11 @@ describe('el protocolo del duelo automático por enlace', () => {
       expect(parseAutoMessage(text)).toEqual(message)
       expect(parseMessage(text)).toBeNull()
     }
-    // Una copia: lo que sobra no pasa.
+    // Una copia: lo que sobra no pasa. El número de orden se queda sólo en lo que manda el anfitrión; la semilla no viaja (ni se lee).
     expect(parseAutoMessage('{"t":"autoResync","x":1}')).toEqual({ t: 'autoResync' })
     expect(parseAutoMessage(JSON.stringify({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true, hack: 1 } }))).toEqual({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true } })
+    expect(parseAutoMessage('{"t":"autoResync","s":3}')).toEqual({ t: 'autoResync' })
+    expect(parseAutoMessage(JSON.stringify({ ...GOOD[3], seed: 7 }))).toEqual(GOOD[3])
   })
 
   it('cada lado acepta sólo lo que manda el otro (pasar a manual lo piden los dos), y entre los dos cubren todos los mensajes', () => {
@@ -79,12 +81,17 @@ describe('el protocolo del duelo automático por enlace', () => {
       { t: 'autoCheck', v, ok: false, bad: [0], theirsBad: 0 },
       { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 0, reason: 'otra' },
       { ...init, seat: 2 },
-      { ...init, seed: 2 ** 32 },
       { ...init, players: [init.players[0]] },
       { ...init, players: [{ lp: 0, hand: 5, draw: 1 }, init.players[1]] },
-      { ...init, mine: { main: [5], extra: [], hand: [5, 6] } },
-      { ...init, mine: { main: [0], extra: [], hand: [] } },
+      { ...init, mine: { main: [0], extra: [] } },
       { ...init, theirs: { main: 201, extra: 0 } },
+      // El número de orden: un entero de 1 a 10 millones, también en lo que no lo lleva.
+      { ...init, s: 0 },
+      { ...init, s: -1 },
+      { ...init, s: 1.5 },
+      { ...init, s: 10_000_001 },
+      { ...init, s: '1' },
+      { t: 'autoResync', s: 'x' },
       { t: 'autoReplay', skip: -1 },
       { t: 'autoReplay', skip: 20_001 },
       { t: 'autoEvent', event: { t: 'events', seat: 3, n: 0, events: [] } },
