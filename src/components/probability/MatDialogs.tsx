@@ -7,6 +7,7 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
 import { useSheetDrag } from '../../app/use-sheet-drag'
 import { normalizeSearchText } from '../../app/utils'
+import type { DuelGlow } from '../../app/card-glow'
 import type { MatPile } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
@@ -444,6 +445,8 @@ interface PileViewerProps {
   info: (id: string) => MatCardInfo
   /** Cartas marcadas como objetivo: llevan la mira (como en la mano y en el campo). */
   targeted: ReadonlySet<string>
+  /** En un duelo, las que podés usar ahora (celeste) y las que se activan (ámbar), como en la mesa: `app/card-glow.ts`. */
+  glow?: (id: string) => DuelGlow | null
   onPick: (id: string, rect: DOMRect) => void
   /** Cada toque de una carta, también eligiendo varias: la mesa la muestra en el detalle fijo de la izquierda. */
   onPeek?: (id: string) => void
@@ -477,7 +480,7 @@ export const PileStripContext = createContext(false)
  * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera;
  * con su asa se baja sin cerrarse, para ver la mano (`SheetHandle`).
  */
-export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker }: PileViewerProps) {
+export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker }: PileViewerProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const strip = useContext(PileStripContext) && desktop
   const [query, setQuery] = useState('')
@@ -687,6 +690,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
             const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.faceUp ? t('practice.dialog.cardFaceUp', { name: card.name }) : card.name
             const named = targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : anonymous ? label : undefined
             const order = choosing ? picked.indexOf(card.id) : -1
+            const lit = glow?.(card.id) ?? null
 
             return (
               <li key={card.id} className={strip ? 'w-21 flex-none' : undefined}>
@@ -705,6 +709,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
                 >
                   <span
                     data-targeted={targeted.has(card.id) ? 'true' : 'false'}
+                    data-glow={lit ? 'true' : 'false'}
+                    data-glow-kind={lit ?? undefined}
                     // La elegida, un aro ámbar de 2 px por fuera (la mira del Target es un brillo por fuera y adentro: conviven); al pasar el mouse, el mismo aro, tenue.
                     className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD, choosing && (order >= 0 ? 'outline-2 outline-info' : 'group-hover:outline-2 group-hover:outline-info/45'))}
                     style={fxVars('red')}

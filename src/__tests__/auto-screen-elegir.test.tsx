@@ -28,7 +28,7 @@ describe('auto-screen · elegir', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CARD))
-    expect(handCard('Ash Blossom')).toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Ash Blossom')).toHaveAttribute('data-glow-kind', 'can')
     expect(status()).toHaveTextContent('Elegí de 1 a 2 cartas · 0 de 2')
     tap(handCard('Ash Blossom'))
     expect(status()).toHaveTextContent('1 de 2')
@@ -83,7 +83,7 @@ describe('auto-screen · elegir', () => {
     core(() => fake.ask(SUM))
     expect(status()).toHaveTextContent('Niveles: 0 de 4')
     // 3 + nada no llega a 4 exacto y 3 + 4 se pasa: la de 3 no se ofrece.
-    expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'can')
     tap(screen.getByRole('button', { name: 'Maxx C' }))
     expect(fake.answers).toEqual([{ type: 'select_sum', indices: [0] }])
   })

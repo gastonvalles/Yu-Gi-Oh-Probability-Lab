@@ -4,6 +4,7 @@ import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, itemsInto, listOrder, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, stepsUpTo } from '../../app/auto/chain-feed'
+import { actingOf } from '../../app/card-glow'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
@@ -509,6 +510,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
   }
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
+  const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
+  // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).
+  const acting = useMemo(() => actingOf(reviewing ? null : feed), [feed, reviewing])
 
   // ── El rival: su espejo, dibujado por lo que el núcleo dejó ver (`codeOf`). ──
   const theirs = snap.theirs
@@ -554,6 +558,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       artOf: (id) => artOf({ side: 'theirs', id }),
       handCount: theirs.hand.length,
       ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] } } : {}),
+      act: acting.theirs,
       // Tocar una carta suya la elige si la pregunta la ofrece; si no, la muestra. Tocar su Cementerio, su Destierro o su Extra con cartas boca arriba abre (o cierra) su visor.
       onMark: (target, rect) => {
         if ('pile' in target) {
@@ -566,7 +571,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, rivalPicks, showRival, rivalPeekOf],
+    [theirs, artOf, gesture, rivalPicks, showRival, rivalPeekOf, acting],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
@@ -599,9 +604,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
                 ? { kind: 'ask', text: t('auto.lane.unmapped', { what: snap.unmapped[snap.unmapped.length - 1]! }), actions: [] }
                 : null
   // La cadena que se puede pasar, al medio de la mesa (como «¿Activás el efecto?»): se responde tocando la carta que brilla; sin nada más urgente en la línea (trabada, esperando, pensando).
-  // El aviso de la cadena: la última que empezó, como se ve con lo que ya se mostró; terminada, se va a los `CHAIN_LINGER_MS` salvo que la hayas desplegado (queda hasta plegarla).
-  const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
-
+  // El aviso de la cadena: la última que empezó, como se ve con lo que ya se mostró (`feed`, más arriba); terminada, se va a los `CHAIN_LINGER_MS` salvo que la hayas desplegado (queda hasta plegarla).
   useEffect(() => {
     if (!feed?.done || chainOpen) return
     const timer = window.setTimeout(() => setChainGone(feed.key), CHAIN_LINGER_MS)
@@ -671,6 +674,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // Cambiás de fase en tus jugadas del turno, en una parada de tu DP o tu SP y en la ventana de una fase tuya.
     myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
     respond,
+    act: acting.mine,
     prompt: prompt ? (
       <AskPrompt
         key={askId ?? 0}
@@ -788,6 +792,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         return { name: open ? nameOf({ side: 'theirs', id }) : t('duel.mark.rivalCard'), art: open ? artOf({ side: 'theirs', id }) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
       }}
       targeted={rivalTargeted}
+      glow={(id) => (acting.theirs.has(id) ? 'act' : null)}
       onPick={(id, rect) => {
         if (!wide) showRival(rivalPeekOf(id), rect)
       }}

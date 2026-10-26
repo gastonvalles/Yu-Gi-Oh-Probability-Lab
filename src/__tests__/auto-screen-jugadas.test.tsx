@@ -63,12 +63,14 @@ describe('auto-screen · las jugadas', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('idle: brilla sólo lo que se activa; lo que sólo se invoca, se coloca o cambia de posición no brilla y se toca igual', () => {
+  it('idle: brilla en celeste lo que se activa o se invoca de forma especial (también en las pilas); lo que sólo se invoca, se coloca o cambia de posición no brilla y se toca igual', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
-    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
-    expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-respond', 'true')
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
+    expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-glow-kind', 'can')
+    // La Invocación Especial desde el Extra: brilla su casilla.
+    expect(document.querySelector('button[data-drop="extra"]')).toHaveAttribute('data-glow-kind', 'can')
     expect(handCard('Ash Blossom')).toHaveAttribute('data-glow', 'false')
     expect(screen.getByRole('button', { name: 'Maxx C' })).toHaveAttribute('data-glow', 'false')
     tap(handCard('Ash Blossom'))
@@ -135,7 +137,7 @@ describe('auto-screen · las jugadas', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(CHAIN))
-    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
     expect(lane()).toBeNull()
     const prompt = within(screen.getByTestId('duel-prompt-layer'))
 
@@ -175,7 +177,7 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
     expect(lane()).toBeNull()
-    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'can')
   })
 
   it('cadena: tocar la carta que responde y «Activar» contesta con su índice', () => {
@@ -248,7 +250,7 @@ describe('auto-screen · las jugadas', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     // En tu Draw Phase con una Rápida, pasar es cambiar de fase: eso va por el botón de fases.
     core(() => fake.ask({ ...CHAIN, spe_count: 0, hint_timing: 0x1 }))
-    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(fake.answers).toEqual([])
     core(() => fake.ask(CHAIN))

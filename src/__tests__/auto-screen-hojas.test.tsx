@@ -109,7 +109,7 @@ describe('auto-screen · las hojas', () => {
     const prompt = screen.getByTestId('duel-prompt-layer')
 
     expect(prompt).toHaveTextContent('¿Activás el efecto de Nibiru?')
-    expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-respond', 'true')
+    expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-glow-kind', 'can')
     fireEvent.click(within(prompt).getByRole('button', { name: 'No activar' }))
     expect(fake.answers).toEqual([{ type: 'select_effectyn', yes: false }])
   })
@@ -125,7 +125,7 @@ describe('auto-screen · las hojas', () => {
     fireEvent.click(within(sheet).getAllByRole('option')[1]!)
     fireEvent.click(within(sheet).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
-    expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'can')
   })
 
   it('las del deck de una lista mixta se muestran por nombre, no en el orden del deck, y se contesta con el índice del núcleo', () => {
