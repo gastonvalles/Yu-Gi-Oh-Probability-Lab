@@ -31,8 +31,6 @@ export interface AskContext {
   typeOf?: (code: number) => number
   /** El rótulo de un efecto: el `strN` de la carta que nombra el `desc` (`splitDesc`), o null si no tiene (un texto del sistema, una carta sin ese texto). */
   effectLabel?: (code: number, description: string) => string | null
-  /** La carta a anunciar (el filtro del núcleo contra un catálogo). Sin él, `announce_card` no tiene respuesta: `auto.answer` es null. */
-  announceCard?: (ask: AskOf<'announce_card'>) => number
   /** La casilla donde se soltó la carta de la jugada elegida: si está libre, contesta una pregunta de una casilla (`select_place`) sin mostrarla. */
   prefer?: ZoneTarget
 }
@@ -67,8 +65,8 @@ export interface AskCard {
 }
 
 export interface CardPick {
-  type: 'select_card' | 'select_unselect_card' | 'select_tribute' | 'select_sum'
-  /** En unselect_card, las elegibles y después las ya elegidas (su índice es la respuesta); en una suma, las de `selects` y después las fijas. */
+  type: 'select_card' | 'select_unselect_card' | 'select_tribute' | 'select_sum' | 'announce_card'
+  /** En unselect_card, las elegibles y después las ya elegidas (su índice es la respuesta); en una suma, las de `selects` y después las fijas; al declarar, las que se ofrecen (por código). */
   cards: AskCard[]
   /** Las elegidas, en el orden en que se tocaron (las fijas y las ya elegidas, siempre). */
   chosen: number[]
@@ -134,7 +132,7 @@ export interface AskView {
   title?: string
   /**
    * Se contesta sola, sin mostrar nada: `none`, una pregunta sin pantalla todavía (con su respuesta legal por defecto; null si no hay
-   * ninguna segura: `announce_card` sin catálogo); `forced`, una sola respuesta posible; `setting`, la decide un ajuste; `drop`, la casilla donde se soltó la carta (`prefer`).
+   * ninguna segura: `announce_card` sin cartas que ofrecer); `forced`, una sola respuesta posible; `setting`, la decide un ajuste; `drop`, la casilla donde se soltó la carta (`prefer`).
    */
   auto: { answer: CoreAnswer | null; why: 'none' | 'forced' | 'setting' | 'drop' } | null
   /** Los ítems de cada carta de mi mesa, por id (las jugadas, el ataque, la cadena). */
@@ -244,10 +242,10 @@ const PILE_OF: Partial<Record<number, MatPile>> = { [L.DECK]: 'deck', [L.HAND]: 
 /** El `desc` con que el núcleo pregunta por un efecto que se disparó (texto 221 del sistema). Medido con el núcleo real: no dice si quedan otros por preguntar. */
 const TRIGGER_DESC = '221'
 /**
- * Sin pantalla todavía (§3 del diseño): quitar contadores y anunciar una carta (ronda 4), las casillas del rival (`select_disfield`: la mesa no
+ * Sin pantalla todavía (§3 del diseño): quitar contadores (ronda 4), las casillas del rival (`select_disfield`: la mesa no
  * las enciende), ordenar la cadena y piedra, papel o tijera (en el fuzz no aparecieron).
  */
-const NO_UI = new Set<AskType>(['select_counter', 'select_disfield', 'sort_chain', 'announce_card', 'rock_paper_scissors'])
+const NO_UI = new Set<AskType>(['select_counter', 'select_disfield', 'sort_chain', 'rock_paper_scissors'])
 const POSITIONS = [
   [P.FACEUP_ATTACK, 'practice.menu.attack'],
   [P.FACEDOWN_ATTACK, 'practice.attack.faceDown'],
@@ -315,11 +313,12 @@ function surfaceOf(cards: readonly AskCard[]): { surface: CardPick['surface']; p
 
 /**
  * El orden en que se muestran las candidatas de una lista aparte (índices de `cards`: la respuesta sigue siendo la del núcleo). Las que están en un deck, el tuyo o el del rival, van por
- * nombre y en los lugares que ocupaban: el núcleo las manda en el orden del deck y verlo regalaría qué se roba primero (el visor del deck de `PracticeMat` también va por nombre).
+ * nombre y en los lugares que ocupaban: el núcleo las manda en el orden del deck y verlo regalaría qué se roba primero (el visor del deck de `PracticeMat` también va por nombre). Las
+ * que sólo se nombran por código (las que se pueden declarar), también.
  */
 export function listOrder(cards: readonly AskCard[], nameOf: (card: AskCard) => string): number[] {
   const order = cards.map((_, index) => index)
-  const slots = order.filter((index) => cards[index]!.pile === 'deck')
+  const slots = order.filter((index) => cards[index]!.pile === 'deck' || cards[index]!.place === 'none')
   const byName = [...slots].sort((a, b) => nameOf(cards[a]!).localeCompare(nameOf(cards[b]!)) || a - b)
 
   slots.forEach((slot, rank) => {
@@ -619,8 +618,8 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
   const cardsOf = <C extends Loc>(list: readonly C[], value?: (card: C) => number) => list.map((card) => askCard(card, resolve(card), value?.(card)))
   const auto = (answer: CoreAnswer | null, why: NonNullable<AskView['auto']>['why']) => void (base.auto = { answer: answer && parseAnswer(answer), why })
 
-  // Sin pantalla todavía: lo que contestaría el rival pasivo (siempre legal; anunciar una carta, sólo con catálogo).
-  if (NO_UI.has(ask.type)) auto(ask.type === 'announce_card' && !ctx.announceCard ? null : passivePolicy(ctx.announceCard && ((card) => ctx.announceCard!(card)))(ask), 'none')
+  // Sin pantalla todavía: lo que contestaría el rival pasivo (siempre legal).
+  if (NO_UI.has(ask.type)) auto(passivePolicy()(ask), 'none')
 
   switch (ask.type) {
     case 'select_idlecmd':
@@ -701,6 +700,11 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       break
     case 'sort_card':
       base.cards = cardsOf(ask.cards)
+      break
+    // Declarar una carta: una de las que ofrece el anfitrión, por código (no están en la mesa). Sin ninguna (un anfitrión de antes), no hay respuesta segura.
+    case 'announce_card':
+      base.cards = (ask.cards ?? []).map((code) => ({ ref: null, code, place: 'none' }))
+      if (base.cards.length === 0) auto(null, 'none')
       break
     case 'select_place': {
       // Por bit: las mías primero.
@@ -790,6 +794,10 @@ export function askView(state: AskState): AskView {
       view.respond = view.cardPick.eligible.flatMap((i) => (base.cards[i]!.ref ? [base.cards[i]!.ref!] : []))
       view.cancelable = ask.type === 'select_unselect_card' ? ask.can_cancel && !ask.can_finish : ask.type !== 'select_sum' && ask.can_cancel
       break
+    // Una de una lista aparte: el toque contesta.
+    case 'announce_card':
+      view.cardPick = { type: ask.type, cards: base.cards, chosen: [], locked: [], eligible: base.cards.map((_, i) => i), surface: 'list', pile: null, min: 1, max: 1, count: { now: 0, need: 1 }, done: false }
+      break
   }
 
   return view
@@ -826,6 +834,7 @@ const PICK_PURPOSE: Readonly<Record<string, Extract<MessageKey, `auto.pick.why.$
 
 /** El título de una elección de cartas: cuántas, para qué (si el código de pista está comprobado) y, si se eligen varias, cuántas van («Elegí 2 cartas para desterrar · 1/2»). */
 export function pickTitle(pick: CardPick, hint?: string): string {
+  if (pick.type === 'announce_card') return t('auto.pick.announce')
   if (pick.type === 'select_tribute') return t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need })
   if (pick.type === 'select_sum') return t('auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
   if (pick.type === 'select_card' && hint === ATTACK_TARGET_HINT) return t('auto.pick.attackTarget')
@@ -952,6 +961,7 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
 
       if (!pick?.eligible.includes(index)) return same
       if (ask.type === 'select_unselect_card') return answer({ type: ask.type, index })
+      if (ask.type === 'announce_card') return answer({ type: ask.type, code: pick.cards[index]!.code })
       if (state.chosen.includes(index)) return next(state.chosen.filter((i) => i !== index))
       const after = next([...state.chosen, index])
       const now = askView(after.state).cardPick!

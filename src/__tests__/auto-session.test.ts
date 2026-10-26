@@ -288,6 +288,47 @@ describe('la sesión del duelo automático', () => {
     session.destroy()
   })
 
+  it('el núcleo rechaza la respuesta del rival: la repregunta va con otra (legal y la misma con la misma semilla) y el duelo sigue; sin otra, tres rechazos cortan', async () => {
+    /** Tras mi jugada, el rival declara una carta; el núcleo rechaza la 11 (y, con `strict`, todas) y, aceptada otra, vuelve a mí. */
+    const duel = async (cards: number[], strict = false) => {
+      let id = 2000
+      const ask = (emit: (event: AutoEvent) => void) => emit({ t: 'ask', seat: 1, askId: (id += 1), ask: { type: 'announce_card', player: 1, opcodes: ['1073741840'], cards } })
+      const host = fakeHost(
+        () => 0,
+        (command, emit) => {
+          if (command.t !== 'answer') return false
+          if (command.answer.type === 'select_idlecmd') ask(emit)
+          else if (command.answer.type === 'announce_card' && (strict || command.answer.code === 11)) {
+            emit({ t: 'fault', kind: 'retry', message: 'RETRY' })
+            ask(emit)
+          } else emit({ t: 'ask', seat: 0, askId: (id += 1), ask: IDLE })
+          return true
+        },
+      )
+      const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 5 })
+
+      await until(session, (s) => s.status === 'ready')
+      session.answer(END)
+      const done = await until(session, (s) => s.status === 'error' || (s.status === 'ready' && s.answers.length === 2))
+
+      session.destroy()
+      return { done, sent: host.commands.flatMap((command) => (command.t === 'answer' && command.answer.type === 'announce_card' ? [command.answer.code] : [])) }
+    }
+
+    const first = await duel([11, 22, 33])
+
+    // El pasivo declara la primera (11, rechazada); la de reserva, otra de las ofrecidas.
+    expect(first.sent[0]).toBe(11)
+    expect(first.sent).toHaveLength(2)
+    expect([22, 33]).toContain(first.sent[1])
+    expect(first.done.answers).toEqual([{ seat: 0, answer: END }, { seat: 1, answer: { type: 'announce_card', code: first.sent[1] } }])
+    expect(first.done.faults).toEqual([{ kind: 'retry', message: 'RETRY', cards: [] }])
+    expect((await duel([11, 22, 33])).sent).toEqual(first.sent)
+    // Sin otra que ofrecer (o rechazadas todas), tres rechazos seguidos cortan igual.
+    expect((await duel([11])).done.fault?.kind).toBe('retry')
+    expect((await duel([11, 22, 33], true)).done.fault?.kind).toBe('retry')
+  })
+
   it('el núcleo caído antes de una jugada tuya no tiene a dónde volver: deshacer no hace nada', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const host = fakeHost(() => 0, (command, emit) => (command.t === 'create' && (emit({ t: 'fault', kind: 'crash', message: 'worker error' }), true)))

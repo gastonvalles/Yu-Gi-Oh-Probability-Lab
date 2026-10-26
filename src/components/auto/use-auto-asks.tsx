@@ -346,7 +346,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     return pending && adapter ? openAsk(pending, { queries: adapter, prefs: { chainMode: prefs.chain, placeMode: prefs.place }, phase: adapter.mine.phase, typeOf, effectLabel, ...prefer }) : null
   }
   const [opened, setOpened] = useState<{ askId: number | null; state: AskState | null }>({ askId: null, state: null })
-  /** Una pregunta sin gesto ni respuesta segura (anunciar una carta sin catálogo): la línea avisa (y, solo, ofrece deshacer). */
+  /** Una pregunta sin gesto ni respuesta segura (declarar una carta sin ninguna que ofrecer): la línea avisa (y, solo, ofrece deshacer). */
   const [stuck, setStuck] = useState<string | null>(null)
   /** El segundo paso de «Activar efecto» en el celular (en escritorio es el submenú del menú): el ítem padre, con sus efectos. */
   const [sub, setSub] = useState<AskItem | null>(null)

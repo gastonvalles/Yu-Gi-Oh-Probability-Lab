@@ -51,6 +51,8 @@ export const auto: Translated<typeof es> = {
   'auto.picker.cards': 'Cards to choose from',
   'auto.picker.choose': { one: 'Choose {count} card', other: 'Choose {count} cards' },
   'auto.picker.status': '{chosen} of {max}',
+  'auto.picker.search': 'Search by name',
+  'auto.picker.noMatches': 'No cards match “{query}”.',
 
   // Ordering cards (the top of the deck).
   'auto.sort.title': 'Order the cards',
@@ -66,6 +68,7 @@ export const auto: Translated<typeof es> = {
   'auto.pick.sum': 'Levels: {chosen} of {total}',
   'auto.pick.counter': 'Counters: {chosen} of {total}',
   'auto.pick.attackTarget': 'Choose which monster to attack',
+  'auto.pick.announce': 'Declare a card name',
   'auto.pick.for': '{what} {why}',
   'auto.pick.count': '{chosen}/{max}',
   'auto.pick.why.tribute': 'to Tribute',

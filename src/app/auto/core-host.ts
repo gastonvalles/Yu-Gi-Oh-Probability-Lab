@@ -1,4 +1,5 @@
 import createCore, {
+  cardMatchesOpcode,
   OcgCoreInternal,
   OcgLocation,
   OcgPosition,
@@ -121,6 +122,19 @@ export function freeDuel(lib: OcgCoreSync, handle: OcgDuelHandle): void {
   lib[OcgCoreInternal].callbacks.delete(callback)
 }
 
+/** Dónde trae un evento códigos de carta: `code` y `card` de un lugar, las listas de `cards` y de `returned_to_extra`. */
+const CODE_KEYS = new Set(['code', 'card', 'cards', 'returned_to_extra'])
+
+/** Los códigos de carta de un evento ya filtrado para un asiento (`eventFor`): lo que ese asiento vio. Lo que no puede ver viaja con código 0 y no cuenta. */
+export function seenCodes(value: unknown, out: Set<number>, key = ''): Set<number> {
+  if (Array.isArray(value)) for (const item of value) seenCodes(item, out, key)
+  else if (typeof value === 'number') {
+    if (value > 0 && CODE_KEYS.has(key)) out.add(value)
+  } else if (value !== null && typeof value === 'object') for (const [field, item] of Object.entries(value)) seenCodes(item, out, field)
+
+  return out
+}
+
 const HINTS = new Set(['card_hint', 'player_hint'])
 
 /** Los eventos con cada tramo de pistas seguidas (`card_hint`, `player_hint`) en un orden fijo: el núcleo no lo garantiza entre corridas. */
@@ -235,8 +249,28 @@ export function createAutoHost(options: HostOptions): AutoHost {
   let nextAskId = 1
   let started = false
   let ended = false
+  /**
+   * Las cartas que cada asiento conoce: su deck (la lista que armó) y lo que vio en el duelo (los eventos que le llegaron, ya filtrados). De ahí salen las que puede
+   * declarar (`announce_card`): nunca el deck, la mano ni el Extra boca abajo del otro, que en el duelo por enlace viajarían al invitado. Se rearma con cada re-simulación.
+   */
+  let known: [Set<number>, Set<number>] = [new Set(), new Set()]
 
   const fault = (kind: FaultKind, message: string, cards?: number[]) => emit({ t: 'fault', kind, message, ...(cards ? { cards } : {}) })
+
+  /** Las que `seat` puede declarar: las que conoce y cumplen el filtro (`cardMatchesOpcode`: la regla del núcleo; un arte alternativo no vale, su original sí). */
+  function declarable(seat: Seat, opcodes: readonly string[]): number[] {
+    const filter = opcodes.map(BigInt)
+    const codes = new Set<number>()
+
+    for (const code of known[seat]) {
+      const card = options.cardReader(code)
+      const original = card?.alias ? options.cardReader(card.alias) : null
+
+      for (const named of [card, original]) if (named && cardMatchesOpcode(named, filter)) codes.add(named.code)
+    }
+
+    return [...codes].sort((a, b) => a - b)
+  }
 
   function free() {
     if (live) freeDuel(live.lib, live.handle)
@@ -248,7 +282,9 @@ export function createAutoHost(options: HostOptions): AutoHost {
 
   function ask(next: { seat: Seat; ask: CoreAsk; title?: string }) {
     pending = { askId: nextAskId++, ...next }
-    emit({ t: 'ask', seat: next.seat, askId: pending.askId, ask: askFor(next.seat, next.ask), ...(next.title === undefined ? {} : { title: next.title }) })
+    const asked = next.ask.type === 'announce_card' ? { ...next.ask, cards: declarable(next.seat, next.ask.opcodes) } : next.ask
+
+    emit({ t: 'ask', seat: next.seat, askId: pending.askId, ask: askFor(next.seat, asked), ...(next.title === undefined ? {} : { title: next.title }) })
   }
 
   function stats(lib: OcgCoreSync, handle: OcgDuelHandle) {
@@ -303,7 +339,10 @@ export function createAutoHost(options: HostOptions): AutoHost {
               for (const seat of [0, 1] as const) {
                 const seen = eventFor(seat, event)
 
-                if (seen) events[seat].push(seen)
+                if (seen) {
+                  events[seat].push(seen)
+                  seenCodes(seen, known[seat])
+                }
               }
             }
           } else if (!name || !IGNORED.has(name)) fault('unhandled', `unhandled message: ${name ?? message.type}`)
@@ -380,6 +419,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
       return
     }
 
+    known = [0, 1].map((team) => new Set([...command.decks[team]!.main, ...command.decks[team]!.extra])) as typeof known
     emit({ t: 'loading', done: 0, total: codes.length })
     const lib = await createCore({ sync: true, ...options.core })
     const team = (player: CreateCommand['players'][number]) => ({ startingLP: player.lp, startingDrawCount: player.hand, drawCountPerTurn: player.draw })

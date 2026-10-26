@@ -285,8 +285,11 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
                   if (leaks.length < 30) leaks.push({ duel: d, seat, code, where: `hint ${code}` })
                 }
               }
+              // Las que se ofrecen para declarar (`announce_card`) son las suyas (o el original de un arte alternativo suyo) y las que vio alguna vez en el duelo (`history`), aunque ahora no se vean.
+              const declarable = (code: number) => history[seat]!.has(code) || [...now.own[seat]].some((own) => cards.get(own)?.alias === code)
+
               for (const code of codesIn(event.t === 'events' ? event.events : event.t === 'ask' ? event.ask : event.t === 'stats' ? event.cards : [])) {
-                if (code !== 0 && !allowed.has(code) && !(event.t === 'ask' && (now.own[seat].has(code) || event.ask.type === 'select_position'))) {
+                if (code !== 0 && !allowed.has(code) && !(event.t === 'ask' && (now.own[seat].has(code) || event.ask.type === 'select_position' || (event.ask.type === 'announce_card' && declarable(code))))) {
                   tally.leaks += 1
                   if (leaks.length < 30) leaks.push({ duel: d, seat, code, where: event.t === 'events' ? JSON.stringify(event.events.find((item) => codesIn(item).includes(code))).slice(0, 300) : event.t })
                 }

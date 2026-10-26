@@ -151,4 +151,29 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
     expect(dispatches).toBe(0)
   })
+
+  it('declarar una carta: pocas, en la banda (el toque la declara); muchas, en la hoja con un buscador por nombre', () => {
+    const fake = renderAuto()
+    const announce = (cards: number[]): CoreAsk => ({ type: 'announce_card', player: 0, opcodes: ['1073741840'], cards })
+
+    core(() => fake.ask(announce([400, 100])))
+    const band = screen.getByRole('group', { name: 'Declará el nombre de una carta' })
+
+    // Por nombre: Ash Blossom antes que Nibiru.
+    expect(within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Ash Blossom', 'Nibiru'])
+    fireEvent.click(within(band).getByRole('option', { name: 'Nibiru' }))
+    expect(fake.answers).toEqual([{ type: 'announce_card', code: 400 }])
+
+    core(() => fake.ask(announce([100, 101, 102, 200, 400, ...Array.from({ length: 9 }, (_, i) => 5000 + i)])))
+    const sheet = screen.getByRole('dialog', { name: 'Declará el nombre de una carta' })
+
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'nib' } })
+    expect(within(sheet).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Nibiru'])
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'zzz' } })
+    expect(within(sheet).getByText('No hay cartas con «zzz».')).toBeInTheDocument()
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'droll' } })
+    fireEvent.click(within(sheet).getByRole('option', { name: 'Droll' }))
+    expect(fake.answers[1]).toEqual({ type: 'announce_card', code: 101 })
+    expect(dispatches).toBe(0)
+  })
 })

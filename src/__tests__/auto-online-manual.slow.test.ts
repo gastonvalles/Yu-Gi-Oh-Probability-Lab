@@ -85,7 +85,7 @@ describe.skipIf(!hasCoreData)('pasar a manual con el núcleo real (npm run test:
   }
 
   function play(session: AutoSession, pending: PendingAsk, random: () => number, fallback: Policy): CoreAnswer {
-    const state = openAsk({ askId: pending.askId, ask: pending.ask, ...(pending.title === undefined ? {} : { title: pending.title }) }, { queries: session.adapter!, prefs: PREFS, typeOf, announceCard: (ask) => pickCard(ask, random) })
+    const state = openAsk({ askId: pending.askId, ask: pending.ask, ...(pending.title === undefined ? {} : { title: pending.title }) }, { queries: session.adapter!, prefs: PREFS, typeOf })
     const played = playAsk(state, random)
 
     return played.answer && parseAnswer(played.answer) ? played.answer : fallback(pending.ask)

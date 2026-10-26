@@ -113,7 +113,7 @@ function sumCheck(values: readonly number[], i: number, acc: number): boolean {
   return (acc > o1 && sumCheck(values, i + 1, acc - o1)) || (o2 > 0 && acc > o2 && sumCheck(values, i + 1, acc - o2))
 }
 
-/** Si el núcleo acepta esa respuesta a esa pregunta (sin `RETRY`), con sus mismas reglas. `announce_card` sólo se mira por forma. */
+/** Si el núcleo acepta esa respuesta a esa pregunta (sin `RETRY`), con sus mismas reglas. `announce_card` sólo se mira por forma (y, si las trae, que sea una de sus `cards`). */
 export function legal(ask: CoreAsk, answer: CoreAnswer): boolean {
   if (answer.type !== ask.type || !parseAnswer(answer)) return false
   const a = answer as never
@@ -198,7 +198,7 @@ export function legal(ask: CoreAsk, answer: CoreAnswer): boolean {
       return (chosen & ~available) === 0n && popcount(chosen) === ask.count
     }
     case 'announce_card':
-      return (a as { code: number }).code > 0
+      return (a as { code: number }).code > 0 && (ask.cards?.includes((a as { code: number }).code) ?? true)
     case 'rock_paper_scissors':
       return [1, 2, 3].includes((a as { value: number }).value)
   }

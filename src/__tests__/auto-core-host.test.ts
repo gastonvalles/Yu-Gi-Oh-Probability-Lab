@@ -1,7 +1,8 @@
 import createCore, { OcgCoreInternal, OcgDuelMode, OcgResponseType, type OcgCardData } from 'ocgcore-wasm'
-import { canonical, createAutoHost, send, toResponse } from '../app/auto/core-host'
+import { canonical, createAutoHost, seenCodes, send, toResponse } from '../app/auto/core-host'
 import { passivePolicy, randomLegalPolicy } from '../app/auto/policies'
-import type { AutoEvent, CoreAnswer } from '../app/auto/protocol'
+import type { AutoEvent, CoreAnswer, Seat, WireEvent } from '../app/auto/protocol'
+import { eventFor } from '../app/auto/referee'
 import { hasCoreData, loadCards, runDuel, scriptStore, wasmBinary } from './support/core-data'
 
 const MR5 = String(OcgDuelMode.MODE_MR5)
@@ -45,6 +46,19 @@ describe('el anfitrión del núcleo', () => {
 
     expect(canonical([phase, player, card(1), card(0), phase, card(3), card(2)])).toEqual(canonical([phase, card(0), player, card(1), phase, card(2), card(3)]))
     expect(canonical([card(1), phase, card(0)])).toEqual([card(1), phase, card(0)])
+  })
+
+  it('lo que un asiento vio sale de los eventos que le llegaron: lo que el árbitro tapó (código 0) no cuenta', () => {
+    const seen = (seat: Seat, event: WireEvent) => [...seenCodes(eventFor(seat, event), new Set())]
+    const draw: WireEvent = { type: 'draw', player: 1, drawn: [{ code: 46986414, position: 10 }] }
+    const chaining: WireEvent = { type: 'chaining', code: 14558127, controller: 1, location: 2, sequence: 0, position: 10, triggering_controller: 1, triggering_location: 2, triggering_sequence: 0, description: '0', chain_size: 1 }
+    const toHand: WireEvent = { type: 'move', card: 89631139, from: { controller: 1, location: 1, sequence: 0, position: 10 }, to: { controller: 1, location: 2, sequence: 0, position: 10 } }
+
+    expect(seen(0, draw)).toEqual([])
+    expect(seen(1, draw)).toEqual([46986414])
+    expect(seen(0, toHand)).toEqual([])
+    expect(seen(0, chaining)).toEqual([14558127])
+    expect(seen(0, { type: 'shuffle_hand', player: 1, cards: [46986414, 89631139] })).toEqual([])
   })
 
   it('no arranca sin wasmBinary ni locateFile (el paquete bajaría el wasm en base64)', () => {
@@ -93,6 +107,33 @@ describe('el anfitrión del núcleo', () => {
       await auto.handle({ t: 'rewind', to: 3 })
       expect(auto.answers).toHaveLength(3)
       expect(events.slice(mark).filter((event) => event.t === 'events')).toEqual(original)
+    })
+
+    it('declarar una carta ofrece las del filtro que quien declara conoce: su deck sí, el deck del otro no; la ofrecida se acepta', async () => {
+      const PROHIBITION = 43711255
+      const events: AutoEvent[] = []
+      const auto = host(events)
+
+      // Yo, con Prohibition en la mano y Blue-Eyes en el deck; el rival, sólo Dark Magician (no se vio nunca).
+      await auto.handle({ t: 'create', seed: 3, flags: MR5, players: PLAYERS, decks: [{ main: [PROHIBITION, ...Array(9).fill(89631139)], extra: [], hand: [PROHIBITION] }, deck(Array(10).fill(46986414))] })
+      let announced: Extract<AutoEvent, { t: 'ask' }> | undefined
+
+      for (let i = 0; i < 30 && !announced; i += 1) {
+        const asked = events.filter((event) => event.t === 'ask').at(-1) as Extract<AutoEvent, { t: 'ask' }>
+        const activate = asked.ask.type === 'select_idlecmd' && asked.seat === 0 ? asked.ask.activates.findIndex((card) => card.code === PROHIBITION) : -1
+
+        if (asked.ask.type === 'announce_card') announced = asked
+        else await auto.handle({ t: 'answer', askId: asked.askId, answer: activate >= 0 ? { type: 'select_idlecmd', action: 5, index: activate } : passivePolicy()(asked.ask) })
+      }
+
+      expect(announced?.seat).toBe(0)
+      const offered = announced!.ask.type === 'announce_card' ? (announced!.ask.cards ?? []) : []
+
+      expect(offered).toEqual(expect.arrayContaining([PROHIBITION, 89631139]))
+      expect(offered).not.toContain(46986414)
+      await auto.handle({ t: 'answer', askId: announced!.askId, answer: { type: 'announce_card', code: 89631139 } })
+      expect(events.filter((event) => event.t === 'fault')).toEqual([])
+      expect(auto.answers.at(-1)).toEqual({ type: 'announce_card', code: 89631139 })
     })
 
     it('no crea el duelo si una carta no tiene datos o reglas', async () => {

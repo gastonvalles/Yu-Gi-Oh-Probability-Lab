@@ -5,9 +5,9 @@ import { LOCATION, type AskOf, type CoreAnswer, type CoreAsk, type Seat } from '
 /**
  * Quién contesta cuando no contesta una persona (§3.8 del diseño). Todas son puras y deterministas: `passivePolicy` es el rival que no
  * hace nada (deja jugar tu combo con reglas de verdad), `handtrapPolicy` el que además usa sus handtraps contra lo tuyo y
- * `randomLegalPolicy` el bot del fuzz (una respuesta legal al azar; nunca un modo para el usuario). Anunciar una carta pide evaluar el
- * filtro del núcleo contra una base de cartas que estas funciones no tienen: lo hace `pickCard`, que pasa quien las usa (en el fuzz,
- * `cardMatchesOpcode` del paquete sobre el `.cdb`); sin él, se anuncia 0 y el núcleo vuelve a preguntar.
+ * `randomLegalPolicy` el bot del fuzz (una respuesta legal al azar; nunca un modo para el usuario; la sesión también la usa cuando el núcleo
+ * rechaza una respuesta del rival). Anunciar una carta elige entre las que ofrece la pregunta (`cards`, del anfitrión) o, con `pickCard`, entre
+ * las que da quien las usa (en el fuzz, `cardMatchesOpcode` del paquete sobre todo el `.cdb`); sin ninguna, se anuncia 0 y el núcleo vuelve a preguntar.
  */
 
 export type Policy = (ask: CoreAsk) => CoreAnswer
@@ -147,7 +147,7 @@ export function passivePolicy(pickCard?: CardPicker): Policy {
       case 'announce_attrib':
         return { type: ask.type, attributes: Number(bits(BigInt(ask.available)).slice(0, ask.count).reduce((mask, bit) => mask | bit, 0n)) }
       case 'announce_card':
-        return { type: ask.type, code: pickCard?.(ask, () => 0) ?? 0 }
+        return { type: ask.type, code: pickCard?.(ask, () => 0) ?? ask.cards?.[0] ?? 0 }
       case 'announce_number':
         return { type: ask.type, index: 0 }
       case 'rock_paper_scissors':
@@ -321,7 +321,7 @@ export function randomLegalPolicy(seed: number, pickCard?: CardPicker): Policy {
       case 'announce_attrib':
         return { type: ask.type, attributes: Number(someBits(String(ask.available), ask.count)) }
       case 'announce_card':
-        return { type: ask.type, code: pickCard?.(ask, random) ?? 0 }
+        return { type: ask.type, code: pickCard?.(ask, random) ?? (ask.cards?.length ? pick(ask.cards) : 0) }
       case 'announce_number':
         return { type: ask.type, index: between(0, ask.options.length - 1) }
       case 'rock_paper_scissors':

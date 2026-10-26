@@ -6,7 +6,7 @@ import { DataUnavailableError, type DataLoader, type DuelData } from './auto-dat
 import type { ChainStep } from './chain-feed'
 import type { WorkerData } from './core-host.worker'
 import { teamOrder, type DeckList } from './deck-map'
-import { handtrapPolicy, passivePolicy, type RivalPolicy } from './policies'
+import { handtrapPolicy, passivePolicy, randomLegalPolicy, type RivalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
 
 /**
@@ -254,6 +254,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   let answers: SessionAnswer[] = []
   let inFlight: (SessionAnswer & { askId: number }) | null = null
   let retries = 0
+  /** La última respuesta que el núcleo rechazó (en JSON): la de reserva del rival no la repite. */
+  let rejected: string | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let destroyed = false
 
@@ -321,6 +323,19 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     inFlight = { seat, askId, answer }
     transport!.send({ t: 'answer', askId, answer })
     startTimer()
+  }
+
+  /**
+   * El rival, cuando el núcleo le rechazó la respuesta (`retry`): su política es determinista y repetiría la misma (un `announce_card` sin candidatas, una suma que agota
+   * la búsqueda), así que contesta una legal al azar (`randomLegalPolicy`, con la semilla del duelo, las respuestas que van y los rechazos: el mismo duelo, la misma),
+   * distinta de la rechazada si la encuentra. Los `MAX_RETRIES` rechazos seguidos siguen cortando el duelo.
+   */
+  function fallback(ask: CoreAsk): CoreAnswer {
+    const random = randomLegalPolicy((snapshot.seed ^ Math.imul(answers.length + 1, 0x9e3779b1) ^ retries) >>> 0)
+    let answer = random(ask)
+
+    for (let tries = 0; tries < 8 && JSON.stringify(answer) === rejected; tries += 1) answer = random(ask)
+    return answer
   }
 
   function commit() {
@@ -400,8 +415,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         stopTimer()
         // El duelo por enlace: la contesta una persona en otro navegador (`answerRemote`).
         if (!controlled(event.seat) && options.remote) return set({ status: 'waiting', remoteAsk: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, ask: null, replaying: false, answers })
-        // El rival contesta solo, con lo que ve su adaptador; la pantalla se entera recién con la pregunta tuya.
-        if (!controlled(event.seat)) return send(event.seat, event.askId, policy(event.ask, adapters[event.seat]!))
+        // El rival contesta solo, con lo que ve su adaptador (o, si el núcleo le rechazó la de recién, con la de reserva); la pantalla se entera recién con la pregunta tuya.
+        if (!controlled(event.seat)) return send(event.seat, event.askId, retries > 0 ? fallback(event.ask) : policy(event.ask, adapters[event.seat]!))
 
         return set({ status: 'ready', ask: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, replaying: false, answers })
       }
@@ -415,6 +430,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         if (event.kind === 'retry') {
           const remote = options.remote !== undefined && inFlight !== null && inFlight.seat !== me
 
+          rejected = inFlight && JSON.stringify(inFlight.answer)
           inFlight = null
           retries += 1
           if (retries >= MAX_RETRIES) return fail('retry', `the core rejected ${MAX_RETRIES} answers in a row${remote ? ' from the remote seat' : ''}: ${event.message}`)

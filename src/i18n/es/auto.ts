@@ -54,6 +54,9 @@ export const auto = {
   'auto.picker.cards': 'Cartas para elegir',
   'auto.picker.choose': { one: 'Elegir {count} carta', other: 'Elegir {count} cartas' },
   'auto.picker.status': '{chosen} de {max}',
+  // Con muchas cartas (las que se pueden declarar), un buscador por nombre arriba de la grilla.
+  'auto.picker.search': 'Buscar por nombre',
+  'auto.picker.noMatches': 'No hay cartas con «{query}».',
 
   // Ordenar cartas (el tope del deck).
   'auto.sort.title': 'Ordená las cartas',
@@ -69,6 +72,8 @@ export const auto = {
   'auto.pick.sum': 'Niveles: {chosen} de {total}',
   'auto.pick.counter': 'Contadores: {chosen} de {total}',
   'auto.pick.attackTarget': 'Elegí a qué monstruo atacar',
+  // Declarar una carta (Prohibition, Crossout Designator): «Declarar» es la palabra de las cartas.
+  'auto.pick.announce': 'Declará el nombre de una carta',
   // Para qué se eligen (el pedido del núcleo, `pickTitle`): «Elegí 2 cartas para desterrar · 1/2». La cuenta es de lo elegido contra lo pedido.
   'auto.pick.for': '{what} {why}',
   'auto.pick.count': '{chosen}/{max}',
