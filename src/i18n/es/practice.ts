@@ -11,8 +11,7 @@ export const practice = {
   'practice.pile.short.hand': 'Mano',
   'practice.pile.short.gy': 'Cem.',
   'practice.pile.short.banished': 'Dest.',
-  'practice.view.toTop': 'Cambiar a la vista superior',
-  'practice.view.to3d': 'Cambiar a la vista 3D',
+  'practice.view.3d': 'Vista 3D',
 
   'practice.zone.mz': 'Zona de monstruo',
   'practice.zone.emz': 'Zona extra de monstruo',
@@ -200,8 +199,11 @@ export const practice = {
   'practice.mat.undoPlay': 'Deshacer la última jugada',
   'practice.mat.saveCombo': 'Guardar combo',
   'practice.mat.sounds': 'Sonidos',
-  'practice.mat.soundsOn': 'Activar los sonidos',
-  'practice.mat.soundsOff': 'Silenciar los sonidos',
+  // El menú ⋯ de la barra de la mesa: lo que se ajusta una vez y lo que se toca de vez en cuando.
+  'practice.mat.more': 'Más opciones',
+  'practice.mat.groupTable': 'La mesa',
+  'practice.mat.groupDuel': 'El duelo',
+  'practice.mat.saveNone': 'sin jugadas',
   'practice.mat.stepsAndCombos': 'Pasos y combos',
   // Los bordes de los paneles de los costados (escritorio): se arrastran para cambiarles el ancho.
   'practice.mat.resizeDetail': 'Cambiar el ancho del detalle de la carta',

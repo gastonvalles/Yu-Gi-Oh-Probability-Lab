@@ -461,7 +461,7 @@ function HandtrapSamples() {
           Abrir la hoja (desde las reglas de Solo)
         </Button>
         <HandtrapPicker isOpen={open} config={SAMPLE_HAND} onClose={() => setOpen(false)} onSave={() => setOpen(false)} />
-        {/* «Entrenar solo» entra directo a la mesa: el botón de la barra de la mesa (`HandtrapsMatButton`) abre esta misma hoja, que avisa que aplicar reparte una mano nueva y, con el simulador encendido, ofrece apagarlo. */}
+        {/* «Entrenar solo» entra directo a la mesa: «Handtraps del rival» del ⋯ de la mesa (`useHandtrapsSheet`) abre esta misma hoja, que avisa que aplicar reparte una mano nueva y, con el simulador encendido, ofrece apagarlo. */}
         <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpenFromMat(true)}>
           Abrir la hoja como se ve desde la mesa
         </Button>

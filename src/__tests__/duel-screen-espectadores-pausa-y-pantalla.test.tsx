@@ -799,12 +799,11 @@ describe('la pantalla del duelo', () => {
     const bar = within(host.container)
     const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).parentElement!.closest('div')!
 
-    // Vida, reloj, la vista, rendirse, el engranaje (reconectar) y salir: la misma fila, que no se parte.
+    // Vida, reloj, el ⋯ (la vista, los sonidos, reconectar, rendirse) y salir: la misma fila, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
     expect(bar.getAllByRole('button', { name: /^Puntos de vida de / }).some((tile) => top.contains(tile))).toBe(true)
-    for (const name of ['Cambiar a la vista superior', 'Rendirme', 'Más opciones del duelo', 'Salir del duelo']) {
-      expect(top).toBe(rowOf(name))
-    }
+    expect(top).toBe(bar.getByRole('button', { name: 'Más opciones' }).closest('div')!.parentElement!.closest('div'))
+    expect(top).toBe(rowOf('Salir del duelo'))
     expect(top).not.toHaveClass('flex-wrap')
 
     // El turno: otra fila, que tampoco se parte (el chat bajó a la botonera de abajo).
@@ -1271,7 +1270,7 @@ describe('la pantalla del duelo', () => {
     openTable(host, guest)
 
     expect(within(host.container).queryByTestId('duel-rail-notices')).not.toBeInTheDocument()
-    expect(within(host.container).getByTestId('duel-phase')).toHaveTextContent('· Draw Phase')
+    expect(within(host.container).getByTestId('duel-phase')).toHaveTextContent('DPDraw Phase')
   })
 
   it('con laterales (escritorio ancho) la barra se reparte a los costados del campo: vidas y reloj a la izquierda; íconos, turno, tus vidas y deshacer a la derecha', () => {
@@ -1287,8 +1286,8 @@ describe('la pantalla del duelo', () => {
     // La caja de los avisos no ataja toques (sólo sus avisos): ocupa todo el lateral, encima del campo, y tapaba el Extra Deck, el Field y el Banish del rival aun vacía.
     expect(notices).toHaveClass('col-start-1', 'z-20', 'pointer-events-none', '*:pointer-events-auto')
     expect(view.container.querySelector('[data-lp="theirs"]')?.parentElement).toHaveClass('col-start-1', 'row-start-1')
-    expect(within(view.container).getByRole('button', { name: 'Rendirme' }).closest('.col-start-3')).not.toBeNull()
-    expect(within(view.container).getByTestId('duel-phase')).toHaveTextContent(/^Draw Phase$/)
+    expect(within(view.container).getByRole('button', { name: 'Más opciones' }).closest('.col-start-3')).not.toBeNull()
+    expect(within(view.container).getByTestId('duel-phase')).toHaveTextContent(/^DPDraw Phase$/)
     expect(within(view.container).getByRole('button', { name: 'Deshacer' }).closest('.col-start-3')).not.toBeNull()
     expect(view.container.querySelector('[data-lp="mine"]')?.closest('.col-start-3')).not.toBeNull()
   })

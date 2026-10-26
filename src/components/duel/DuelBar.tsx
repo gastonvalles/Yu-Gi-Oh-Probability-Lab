@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
-import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import { useDuelRails } from '../../app/duel-rails'
 import type { Activity } from '../../app/duel-protocol'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
-import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { STARTING_LP, duelClockMs, formatClock } from '../../app/life-calculator'
@@ -14,7 +12,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { useSwipeAway } from '../../app/use-swipe-away'
 import { sacudir } from '../probability/AttackFx'
-import { MatViewToggle } from '../probability/MatViewToggle'
+import { MatMoreMenu } from '../probability/MatBarActions'
 import { DELTA_MS, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -24,8 +22,8 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import type { OverflowItem } from '../ui/OverflowMenu'
 import { SideDrawer } from '../ui/SideDrawer'
-import { Switch } from '../ui/Switch'
 import { TONE, type Tone } from '../ui/tone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
@@ -236,8 +234,20 @@ export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice
   )
 }
 
-/** Los íconos sueltos de la barra de arriba (la vista, rendirse, el engranaje y salir): 40 px cada uno (36 en un celular angosto, 32 en uno de 320 px) para que entren con la hamburguesa, las vidas y el reloj. */
-export const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
+/**
+ * La fase de ahora en la barra de toda mesa: la píldora violeta honda con aro ámbar y texto blanco (la misma marca que la fase de ahora en `PhaseRow`), con la sigla adelante («DP Draw Phase»).
+ * No se corta: lo que cede lugar es de quién es el turno.
+ */
+export function PhasePill({ phase, testId }: { phase: MatPhase; testId: string }) {
+  const entry = PHASES.find((item) => item.id === phase)
+
+  return entry ? (
+    <span data-testid={testId} className="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-info bg-primary px-2.5 text-body font-bold leading-none text-white">
+      <span aria-hidden="true" className="text-micro">{entry.short}</span>
+      {entry.name}
+    </span>
+  ) : null
+}
 
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
@@ -248,8 +258,6 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   const [conceding, setConceding] = useState(false)
   // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  const bigWindow = useDuelFullscreen()
-  const sounds = useSoundsOn()
   const rails = useDuelRails()
   // Con laterales, los avisos de toda la app se apoyan en el medio del lateral izquierdo.
   const toastHost = useRef<HTMLDivElement | null>(null)
@@ -268,30 +276,15 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   const abandoning = result === null && peerPresent && onAbandon !== undefined
   // La fase que se ve es la de quien tiene el turno: así los dos saben en qué punto va.
   const phaseId = phaseOf !== undefined ? phaseOf : (turn === 'mine' ? snapshot.mine : snapshot.theirs?.state)?.phase
-  const phase = PHASES.find((entry) => entry.id === phaseId)?.name
 
   const dialogs = (
     <>
-      <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" veil={false} title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
-        <div className="grid gap-4">
-          {/* Los sonidos del duelo (jugadas, vidas, chat): se recuerdan en este navegador. */}
-          <div className="flex items-center justify-between gap-3">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-semibold text-foreground">{t('duel.bar.sounds')}</span>
-              <span className="text-micro text-soft">{t('duel.bar.soundsHint')}</span>
-            </span>
-            <Switch checked={sounds} onChange={setSoundsOn} label={t('duel.bar.sounds')} />
-          </div>
-          {/* Reconectar también: lo tocan los dos, y el duelo sigue en cuanto el relay le dice a cada uno que el otro está. */}
-          <div className="grid gap-2">
-            <Button variant="tertiary" icon="refresh" className="justify-start" fullWidth onClick={() => { setMoreOpen(false); onReconnect() }}>
-              {t('duel.bar.reconnect')}
-            </Button>
-            <p className="m-0 px-1 text-micro text-soft">{t('duel.bar.reconnectHint')}</p>
-          </div>
-          {extraSettings}
-        </div>
-      </Modal>
+      {/* «Opciones del duelo» del ⋯ (el duelo automático: las respuestas a la cadena y la casilla). */}
+      {extraSettings ? (
+        <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" veil={false} title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
+          <div className="grid gap-4">{extraSettings}</div>
+        </Modal>
+      ) : null}
 
       <ConfirmDialog
         veil={false}
@@ -325,26 +318,18 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       />
     </>
   )
-  // Los íconos de la barra (la vista, la ventana grande, rendirse, el engranaje y salir): en una fila arriba a la derecha, o en el lateral derecho.
+  // La barra (Gastón, 2026-10-26: «muchos íconos juntos»): a la vista el ⋯ y salir; en el ⋯, «La mesa» (la vista 3D, los sonidos, la ventana grande) y lo del duelo: reconectar (lo tocan los dos y el
+  // duelo sigue en cuanto el relay le dice a cada uno que el otro está), rendirme (pide confirmar; terminado el duelo, o sin rival, no hay a quién) y, en el automático, sus opciones. Deshacer va abajo.
   const actions = (
     <>
-      {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
-      <MatViewToggle className={HEADER_ICON} />
-      {/* Ventana grande: el duelo ocupa toda la pantalla (sin el menú lateral; y, si el navegador deja, en pantalla completa). Sólo en escritorio: en el celular la mesa ya ocupa todo. */}
-      {docked ? (
-        <IconButton tone="flat" size="sm" aria-label={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} title={bigWindow ? t('duel.bar.bigWindowOff') : t('duel.bar.bigWindowOn')} aria-pressed={bigWindow} className={HEADER_ICON} onClick={toggleDuelFullscreen}>
-          <Icon name={bigWindow ? 'minimize' : 'maximize'} />
-        </IconButton>
-      ) : null}
-      {/* Rendirse queda a la vista, junto a salir (arriba, lejos de donde se juega) y pide confirmar. Terminado el duelo, o sin rival, no hay a quién rendirse. */}
-      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.concede')} title={t('duel.bar.concede')} className={cx(HEADER_ICON, 'disabled:opacity-35')} disabled={Boolean(result) || !peerPresent} onClick={() => setConceding(true)}>
-        <Icon name="flag" />
-      </IconButton>
-      {/* El engranaje: lo que se toca poco (reconectar). */}
-      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.more')} title={t('duel.bar.more')} aria-haspopup="dialog" aria-expanded={moreOpen} className={HEADER_ICON} onClick={() => setMoreOpen(true)}>
-        <Icon name="gear" />
-      </IconButton>
-      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className={HEADER_ICON} onClick={() => setLeaving(true)}>
+      <MatMoreMenu
+        items={[
+          { group: t('practice.mat.groupDuel'), label: t('duel.bar.reconnect'), icon: 'refresh', hint: t('duel.bar.reconnectHint'), onSelect: onReconnect },
+          { label: t('duel.bar.concede'), icon: 'flag', disabled: Boolean(result) || !peerPresent, onSelect: () => setConceding(true) },
+          ...(extraSettings ? [{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: () => setMoreOpen(true) } satisfies OverflowItem] : []),
+        ]}
+      />
+      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
         <Icon name="x" />
       </IconButton>
     </>
@@ -397,7 +382,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
           <span className="sr-only">{t('practice.mat.turn', { turn: turnNumber })}</span>
           <span className="grid justify-items-end text-right text-lead font-bold leading-tight">
             <span className={turn === 'mine' ? 'text-accent' : 'text-info-soft'}>{turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}</span>
-            {phase ? <span data-testid="duel-phase" className="text-info">{phase}</span> : null}
+            {phaseId ? <PhasePill phase={phaseId} testId="duel-phase" /> : null}
           </span>
         </div>
         <div ref={toastHost} data-testid="duel-rail-notices" className="pointer-events-none relative z-20 col-start-1 row-start-2 flex min-h-0 flex-col items-stretch gap-2 pt-4 *:pointer-events-auto" style={RAIL_LANE_STYLE}>
@@ -440,8 +425,8 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
         <span className="sr-only">{t('practice.mat.turn', { turn: turnNumber })}</span>
         <span className="min-w-0 truncate text-lead font-bold">
           <span className={turn === 'mine' ? 'text-accent' : 'text-info-soft'}>{turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}</span>
-          {phase ? <span data-testid="duel-phase" className="text-info">{` · ${phase}`}</span> : null}
         </span>
+        {phaseId ? <PhasePill phase={phaseId} testId="duel-phase" /> : null}
       </div>
 
       {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un aviso se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve).

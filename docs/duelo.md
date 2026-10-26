@@ -63,7 +63,7 @@ Quien mira lleva cada lado como lo lleva el rival (`duel-spectator.ts`): ve lo m
 ## Reconexión y cierre de sala
 
 - Mientras falta uno de los dos, el duelo queda en pausa: la mesa se tapa y el reloj de la ronda se detiene, así el tiempo afuera no cuenta.
-- **Reconectar** (el engranaje de la barra y el cartel de pausa; lo tocan los dos) tira la conexión y abre otra: el relay vuelve a decir quién está y destraba una pausa por un aviso que no llegó.
+- **Reconectar** (el ⋯ de la barra y el cartel de pausa; lo tocan los dos) tira la conexión y abre otra: el relay vuelve a decir quién está y destraba una pausa por un aviso que no llegó.
 - **Límite:** el relay no reserva el asiento. Otra persona con el enlace puede ocupar el lugar de quien salió; sólo recupera su mesa quien tiene lo guardado en su navegador.
 - **La sala muere al terminar el duelo** (uno suelto o un Match ganado): si el rival se va, a los 5 s (`ROOM_CLOSE_S`) la sala se cierra para todos (`duel.endRoom()`; el porqué, en `docs/duelo-relay.md`). Mientras tanto, a otra identidad que la del rival que jugó no se le cuenta nada (`stranger`) y quien ocupa su lugar no cuenta como presente hasta saludar (`peerGreeted`): un tercero no reinicia la cuenta. Un Match que sigue no cuenta como terminado. La sala pública del anfitrión no vuelve a la lista de las que esperan rival: un tercero entraría a ver la mesa de quien se quedó (`rivalLeft` en `DuelScreen.tsx`).
 

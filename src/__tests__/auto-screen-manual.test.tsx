@@ -7,6 +7,7 @@ import { autoPrefs, setAutoPref } from '../app/auto-prefs'
 import type { MatAction } from '../app/practice-mat'
 import { IDLE } from './support/auto-core-fake'
 import { core, dispatches, renderAuto } from './support/auto-screen-harness'
+import { tapMenu } from './support/mat-menu'
 
 // Cuatro jugadas mías sobre la mesa falsa (en la mano, Ash Blossom y Called by the Grave; arriba del deck, Droll), con la pregunta de la quinta esperando.
 const PLAYS: MatAction[][] = [[{ type: 'move', id: 'card-900-1', to: 'gy' }], [{ type: 'move', id: 'card-100-1', to: 'banished' }], [{ type: 'draw', count: 1, ids: ['card-101-1'] }], [{ type: 'move', id: 'card-101-1', to: 'gy' }]]
@@ -21,7 +22,7 @@ describe('auto-screen · seguir en modo manual', () => {
 
     core(() => fake.set({ mineActions: PLAYS.flat(), playStarts: [0, 1, 2, 3, 4] }))
     core(() => fake.ask(IDLE))
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     expect(screen.getByText(/La partida sigue en la mesa manual/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Seguir en modo manual' }))
 
@@ -52,12 +53,12 @@ describe('auto-screen · seguir en modo manual', () => {
 
     core(() => fake.set({ mineActions: PLAYS.flat(), playStarts: [0, 1, 2, 3, 4] }))
     core(() => fake.ask(IDLE))
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     fireEvent.click(screen.getByRole('button', { name: 'Seguir en modo manual' }))
     fireEvent.click(within(dialog()).getByRole('radio', { name: /^2 jugadas/ }))
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancelar' }))
     expect(onManual).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     fireEvent.click(screen.getByRole('button', { name: 'Seguir en modo manual' }))
     expect(within(dialog()).getByRole('radio', { name: 'Nada: seguir desde acá' })).toHaveAttribute('aria-checked', 'true')
   })
@@ -79,7 +80,7 @@ describe('auto-screen · seguir en modo manual', () => {
     const fake = renderAuto()
 
     core(() => fake.set({ mineActions: PLAYS.flat(), playStarts: [0, 1, 2, 3, 4], replaying: true }))
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     fireEvent.click(screen.getByRole('button', { name: 'Seguir en modo manual' }))
     expect(within(dialog()).getByRole('button', { name: 'Seguir en manual' })).toBeDisabled()
     expect(dialog()).toHaveTextContent('Rearmando la mesa…')

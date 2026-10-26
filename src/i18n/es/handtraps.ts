@@ -6,9 +6,9 @@ export const handtraps = {
   'handtraps.row.choose': 'Elegir…',
   'handtraps.row.chooseLabel': 'Elegir… las handtraps del rival',
 
-  // En la barra de la mesa de «Entrenar solo».
-  'handtraps.mat.on': 'Handtraps del rival: encendido',
-  'handtraps.mat.off': 'Handtraps del rival: apagado',
+  // En el menú ⋯ de la barra de la mesa: cómo está el simulador.
+  'handtraps.mat.on': 'prendidas',
+  'handtraps.mat.off': 'apagadas',
 
   // La hoja: cuántas copias de cada una tiene el rival en su deck y cuántas cartas tiene en la mano (se reparten al azar).
   'handtraps.picker.subtitle': 'Elegí cuántas copias de cada una tiene el rival; su mano se reparte al azar.',

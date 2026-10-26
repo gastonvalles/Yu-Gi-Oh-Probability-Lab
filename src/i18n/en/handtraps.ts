@@ -8,9 +8,9 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.row.choose': 'Choose…',
   'handtraps.row.chooseLabel': "Choose… the opponent's hand traps",
 
-  // In the toolbar of the «Train solo» mat.
-  'handtraps.mat.on': "Opponent's hand traps: on",
-  'handtraps.mat.off': "Opponent's hand traps: off",
+  // In the ⋯ menu of the mat toolbar: how the simulator is set.
+  'handtraps.mat.on': 'on',
+  'handtraps.mat.off': 'off',
 
   // The sheet: how many copies of each one the opponent has in their deck and how many cards they hold (dealt at random).
   'handtraps.picker.subtitle': 'Choose how many copies of each one the opponent has; their hand is dealt at random.',

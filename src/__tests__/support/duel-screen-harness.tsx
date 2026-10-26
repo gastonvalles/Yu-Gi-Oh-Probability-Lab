@@ -55,8 +55,8 @@ export const effectMonster = { ygoprodeckId: 1, frameType: 'effect', cardType: '
 export const monsters = new Map([...mainIds, ...extraIds].map((id) => [id, { name: `Monstruo ${id.replace(/\D/g, '')}`, apiCard: effectMonster }]))
 
 /**
- * En el celular, Reconectar, Rendirme y Salir del duelo van detrás de «Más opciones del duelo» (en escritorio están a la vista): abre la hoja y devuelve el botón.
- * La hoja queda abierta; `closeMore` la cierra.
+ * Reconectar y Rendirme van en el ⋯ de la barra («Más opciones», grupo «El duelo»); Salir del duelo, a la vista: abre el ⋯ de esa pantalla (si no está abierto) y devuelve la fila.
+ * El menú queda abierto; `closeMore` lo cierra.
  */
 const MORE_OPTIONS = ['Reconectar', 'Rendirme', 'Salir del duelo']
 
@@ -65,9 +65,11 @@ export const moreButton = (view: RenderResult, name: string): HTMLElement => {
 
   if (inline) return inline
 
-  fireEvent.click(within(view.container).getByRole('button', { name: 'Más opciones del duelo' }))
+  if (!within(view.container).queryByRole('menu')) fireEvent.click(within(view.container).getByRole('button', { name: 'Más opciones' }))
+  const row = [...within(view.container).getByRole('menu').querySelectorAll<HTMLElement>('[role^="menuitem"]')].find((element) => element.textContent?.startsWith(name))
 
-  return within(screen.getByRole('dialog', { name: 'Más opciones del duelo' })).getByRole('button', { name })
+  if (!row) throw new Error(`El ⋯ de la mesa no tiene «${name}»`)
+  return row
 }
 
 /** La moneda, el dado y los juegos están dentro del + (el botón «Ficha»): se abre su menú y se elige. */

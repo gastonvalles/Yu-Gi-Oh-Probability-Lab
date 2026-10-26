@@ -8,6 +8,7 @@ import { HOLD_MS } from '../app/use-mat-drag'
 import { setSoundsOn, soundsOn } from '../app/sound-prefs'
 import type { MatCard } from '../components/probability/PracticeMat'
 import { CARDS, Harness, INITIAL, card, commits, endTurn, goToPhase, hand, phaseButton, pointer, render, status, tap, zone } from './support/practice-mat-harness'
+import { menuRow, tapMenu } from './support/mat-menu'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 
@@ -406,8 +407,8 @@ describe('la mesa de práctica', () => {
     const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
     expect(toolbar.firstElementChild).toBe(screen.getByLabelText('Turno 1'))
-    // Los botones de la barra van a la derecha: el primero es el de la vista (superior o 3D).
-    expect(screen.getByRole('button', { name: 'Cambiar a la vista superior' })).toHaveClass('ml-auto')
+    // Los botones de la barra van a la derecha: el primero es deshacer (el resto, en el ⋯).
+    expect(screen.getByRole('button', { name: 'Deshacer' })).toHaveClass('ml-auto')
   })
 
   it('las jugadas de la práctica suenan como las del duelo (Gastón: «en la práctica no suenan los efectos»): una fase nueva, y deshacer', () => {
@@ -422,19 +423,18 @@ describe('la mesa de práctica', () => {
     expect(playSfx).toHaveBeenCalledTimes(2)
   })
 
-  it('el botón «Sonidos» de la barra los apaga y los vuelve a prender (el mismo ajuste que «Más opciones» de un duelo), y se recuerda', () => {
+  it('«Sonidos» del ⋯ de la barra los apaga y los vuelve a prender (el mismo ajuste que en un duelo): su interruptor dice cómo están, el menú no se cierra, y se recuerda', () => {
     render(<Harness />)
 
-    const button = screen.getByRole('button', { name: 'Sonidos' })
+    const row = menuRow('Sonidos')
 
     try {
       expect(soundsOn()).toBe(true)
-      expect(button).toHaveAttribute('aria-pressed', 'true')
-      expect(button).toHaveAttribute('title', 'Silenciar los sonidos')
+      expect(row).toHaveAttribute('role', 'menuitemcheckbox')
+      expect(row).toHaveAttribute('aria-checked', 'true')
 
-      fireEvent.click(button)
-      expect(button).toHaveAttribute('aria-pressed', 'false')
-      expect(button).toHaveAttribute('title', 'Activar los sonidos')
+      fireEvent.click(row)
+      expect(menuRow('Sonidos')).toHaveAttribute('aria-checked', 'false')
       expect(soundsOn()).toBe(false)
       expect(localStorage.getItem('ygo-lab:duel-sounds')).toBe('off')
     } finally {
@@ -442,7 +442,7 @@ describe('la mesa de práctica', () => {
     }
   })
 
-  it('la vista de la mesa: en 3D el campo va inclinado; con «Cambiar a la vista superior» queda plano y el botón dice a cuál vuelve; se recuerda', () => {
+  it('la vista de la mesa: en 3D el campo va inclinado; apagando «Vista 3D» en el ⋯ queda plano y el interruptor lo dice; se recuerda', () => {
     localStorage.removeItem('ygo-lab:mat-view')
     render(<Harness />)
 
@@ -451,23 +451,26 @@ describe('la mesa de práctica', () => {
     expect(field).toHaveAttribute('data-tilted', 'true')
     expect(field.className).toContain('rotateX')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cambiar a la vista superior' }))
+    expect(menuRow('Vista 3D')).toHaveAttribute('aria-checked', 'true')
+    tapMenu('Vista 3D')
+    expect(menuRow('Vista 3D')).toHaveAttribute('aria-checked', 'false')
     expect(field).not.toHaveAttribute('data-tilted')
     expect(field.className).not.toContain('rotateX')
     expect(localStorage.getItem('ygo-lab:mat-view')).toBe('top')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cambiar a la vista 3D' }))
+    tapMenu('Vista 3D')
     expect(field).toHaveAttribute('data-tilted', 'true')
     expect(localStorage.getItem('ygo-lab:mat-view')).toBe('3d')
   })
 
-  it('en un celular angosto la mesa no se ensancha por su barra: la columna mide la pantalla y los botones se achican (jsdom no mide: se comprueban las clases que lo garantizan)', () => {
+  it('en un celular angosto la mesa no se ensancha por su barra: la columna mide la pantalla y la barra lleva pocos íconos de 44 px (jsdom no mide: se comprueban las clases que lo garantizan)', () => {
     render(<Harness />)
 
     // Sin esto la columna crece hasta lo más ancho que tenga adentro (la barra: ~402 px) y en un celular de 360 a 400 px se corta todo el lado derecho.
     expect(screen.getByRole('region', { name: 'Mesa de práctica' }).className).toContain('grid-cols-[minmax(0,1fr)]')
-    expect(screen.getByRole('toolbar', { name: 'Mesa' }).className).toContain('max-[419px]:[&>button]:size-10!')
-    expect(screen.getByRole('toolbar', { name: 'Mesa' }).className).toContain('max-[379px]:[&>button]:size-9!')
+    // A la vista: salir (si hay), deshacer, el ⋯ y los pasos; todos de 44 px (`size-11`), sin achicarse.
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button').length).toBeLessThanOrEqual(4)
+    for (const button of within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button')) expect(button.className).toContain('size-11')
   })
 
   it('la barra de abajo va arriba de la mano: una carta seleccionada o recién robada (z 50) no la tapa', () => {
@@ -791,7 +794,7 @@ describe('la mesa de práctica', () => {
     tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
+    tapMenu('Guardar combo')
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
     expect(dialog.parentElement!.querySelector('.animate-nav-scrim')).toBeNull()
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Uno' } })

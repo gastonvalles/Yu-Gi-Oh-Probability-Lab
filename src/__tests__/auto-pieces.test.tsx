@@ -15,6 +15,7 @@ import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
 import { PromptCrowdedContext } from '../components/duel/MatPrompt'
+import { menuRow, tapMenu } from './support/mat-menu'
 
 // Las piezas del duelo automático (fuera del campo): cada una con sus estados, su teclado y sus topes. Son presentacionales: lo que contestan sale por props.
 // El arte de las cartas lee el formato del store (el límite de copias).
@@ -431,21 +432,23 @@ describe('AutoBar', () => {
     window.matchMedia = matchMedia
   })
 
-  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar» y sus íconos en el mismo orden (deshacer apagado sin nada que deshacer) y, al final, el engranaje; debajo, el turno con la fase', () => {
+  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar», deshacer (apagado sin nada que deshacer) y el ⋯, que lleva al final «Opciones del duelo»; debajo, el turno con la fase en su píldora', () => {
     const onExit = vi.fn()
     const onUndo = vi.fn()
     const onNewHand = vi.fn()
     const { rerender } = render(<AutoBar {...props} onExit={onExit} onUndo={onUndo} onNewHand={onNewHand} />)
     const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
-    expect(names(within(toolbar).getAllByRole('button'))).toEqual(['Volver a Jugar', 'Cambiar a la vista superior', 'Sonidos', 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Más opciones del duelo'])
+    expect(names(within(toolbar).getAllByRole('button'))).toEqual(['Volver a Jugar', 'Deshacer', 'Más opciones'])
     expect(screen.getByText('Turno 3')).toBeInTheDocument()
     expect(screen.getByText('Tu turno')).toBeInTheDocument()
-    expect(screen.getByTestId('auto-phase')).toHaveTextContent('Main Phase 1')
+    expect(screen.getByTestId('auto-phase')).toHaveTextContent('M1Main Phase 1')
+    expect(screen.getByTestId('auto-phase')).toHaveClass('bg-primary', 'border-info', 'text-white')
     expect(within(toolbar).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
 
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Volver a Jugar' }))
-    fireEvent.click(within(toolbar).getByRole('button', { name: 'Nueva mano' }))
+    tapMenu('Nueva mano')
     rerender(<AutoBar {...props} onExit={onExit} onUndo={onUndo} onNewHand={onNewHand} canUndo />)
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Deshacer' }))
     expect([onExit, onNewHand, onUndo].map((spy) => spy.mock.calls.length)).toEqual([1, 1, 1])
@@ -457,17 +460,18 @@ describe('AutoBar', () => {
     const { unmount } = render(<AutoBar {...props} dock />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Más opciones del duelo' })).toBeInTheDocument()
+    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
     unmount()
 
     desktop()
     const { rerender } = render(<AutoBar {...props} />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Cambiar a la vista superior', 'Sonidos', 'Ventana grande', 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Más opciones del duelo'])
+    expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Deshacer', 'Más opciones'])
     expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
+    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
     rerender(<AutoBar {...props} dock />)
-    expect(screen.queryByRole('button', { name: 'Más opciones del duelo' })).toBeNull()
+    expect(() => menuRow('Opciones del duelo')).toThrow()
   })
 
   it('las vidas con la mano: «Rival» y «Mano 3» a la vista y «3 cartas en la mano» para el lector de pantalla (una sola, «Una carta en la mano»)', () => {
@@ -477,15 +481,15 @@ describe('AutoBar', () => {
     expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' })).toHaveTextContent('Vos Mano 1')
   })
 
-  it('«Más opciones»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son el ícono de la barra, como en la práctica)', () => {
+  it('«Opciones del duelo»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son de «La mesa», en el ⋯, como en la práctica)', () => {
     const onChain = vi.fn()
     const onPlace = vi.fn()
     render(<AutoBar {...props} onChain={onChain} onPlace={onPlace} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 
-    expect(within(dialog).queryByRole('switch', { name: 'Sonidos del duelo' })).toBeNull()
+    expect(within(dialog).queryByRole('switch')).toBeNull()
     // Tres modos, y la línea chica dice qué hace el elegido.
     expect(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Cuando importa', 'Nunca'])
     expect(dialog).toHaveTextContent('Te pregunta sólo si algo tuyo responde de verdad a este momento.')
@@ -506,7 +510,7 @@ describe('AutoBar', () => {
     const onBlind = vi.fn()
     render(<AutoBar {...props} handtraps={{ on: true, summary: 'Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano', onChange }} onBlind={onBlind} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 
     expect(dialog).toHaveTextContent('Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano')

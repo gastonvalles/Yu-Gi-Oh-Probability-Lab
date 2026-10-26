@@ -12,6 +12,7 @@ import type { CardEntry, CardRole } from '../types'
 import { CARDS, fakeSession, loc, SPOTS, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, handCard, inHand, phaseButton, renderAuto } from './support/auto-screen-harness'
 import { Harness, render, zone } from './support/practice-mat-harness'
+import { menuRow, tapMenu } from './support/mat-menu'
 
 // «Jugar solo automático» con el panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos. La mesa nunca despacha: lo que se
 // anota es lo que contó el núcleo.
@@ -119,7 +120,7 @@ describe('auto-screen · los pasos de la práctica', () => {
 
 /** Lo guardado, tal cual: la misma clave y la misma lista que la práctica manual. */
 const stored = () => JSON.parse(localStorage.getItem('ygo-lab:practice-combos') ?? '[]') as SavedCombo[]
-const saveButton = () => within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Guardar combo' })
+const saveButton = () => menuRow('Guardar combo')
 /** Un duelo con la Main Phase 1 y una Invocación Normal ya contadas. */
 function played(): FakeSession {
   const fake = renderAuto(openingSession())
@@ -299,7 +300,7 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(handCard('Droll (target)')).toBeInTheDocument()
     expect(dispatches).toBe(0)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el mismo duelo' }))
     expect(fake.restarts).toBe(1)
     expect(lane()?.textContent ?? '').not.toMatch(/Repasás/)

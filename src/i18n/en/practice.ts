@@ -12,8 +12,7 @@ export const practice: Translated<typeof es> = {
   'practice.pile.short.hand': 'Hand',
   'practice.pile.short.gy': 'GY',
   'practice.pile.short.banished': 'Banish',
-  'practice.view.toTop': 'Switch to the top view',
-  'practice.view.to3d': 'Switch to the 3D view',
+  'practice.view.3d': '3D view',
 
   'practice.zone.mz': 'Monster Zone',
   'practice.zone.emz': 'Extra Monster Zone',
@@ -192,8 +191,11 @@ export const practice: Translated<typeof es> = {
   'practice.mat.undoPlay': 'Undo your last play',
   'practice.mat.saveCombo': 'Save combo',
   'practice.mat.sounds': 'Sounds',
-  'practice.mat.soundsOn': 'Turn sounds on',
-  'practice.mat.soundsOff': 'Mute sounds',
+  // The ⋯ menu of the mat toolbar: what you set once and what you use now and then.
+  'practice.mat.more': 'More options',
+  'practice.mat.groupTable': 'The table',
+  'practice.mat.groupDuel': 'The duel',
+  'practice.mat.saveNone': 'no plays yet',
   'practice.mat.stepsAndCombos': 'Steps and combos',
   'practice.mat.resizeDetail': 'Resize the card detail',
   'practice.mat.resizePanel': 'Resize the panel',

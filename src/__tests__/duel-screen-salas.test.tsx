@@ -996,7 +996,7 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Salir del duelo')
     // Confirmar es otra acción, en un diálogo: cancelar no saca a nadie.
     fireEvent.click(screen.getByRole('button', { name: 'Seguir jugando' }))
-    expect(within(guest.container).getByRole('button', { name: 'Más opciones del duelo' })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: 'Más opciones' })).toBeInTheDocument()
 
     click(guest, 'Salir del duelo')
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Abandonar y perder' }))

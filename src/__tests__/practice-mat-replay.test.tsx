@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatState, replayMat, type MatAction } from '../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT } from '../app/use-card-flights'
 import { CARDS, Harness, INITIAL, WITH_ART, endTurn, goToPhase, hand, pointer, render, status, tap, zone } from './support/practice-mat-harness'
+import { tapMenu } from './support/mat-menu'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 
@@ -778,7 +779,7 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de magia y trampa 1: elegir' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
+    tapMenu('Guardar combo')
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Línea básica' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }))
@@ -832,7 +833,7 @@ describe('la mesa de práctica', () => {
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
+    tapMenu('Guardar combo')
     const saving = screen.getByRole('dialog', { name: 'Guardar combo' })
     fireEvent.change(within(saving).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Línea básica' } })
     fireEvent.click(within(saving).getByRole('button', { name: 'Guardar' }))

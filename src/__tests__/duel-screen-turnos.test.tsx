@@ -12,7 +12,7 @@ import { DuelScreen } from '../components/duel/DuelScreen'
 import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
-import { createDuelHarness, asDesktop, asSocket, calculator, closeCalculator, effectMonster, handOf, mainIds, monsters, myLife, openCalculator, openGames, phaseChip, render, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
+import { createDuelHarness, asDesktop, asSocket, calculator, closeCalculator, effectMonster, handOf, mainIds, monsters, moreButton, myLife, openCalculator, openGames, phaseChip, render, summonFirst, tap, typeInto, zoneOf } from './support/duel-screen-harness'
 
 // La pantalla del duelo arma dos mesas completas por prueba: sola cada una tarda un par de segundos, pero con toda la suite corriendo a la vez alguna pasaba los 5 s de siempre (la de «atacar» fallaba una de cada tantas corridas).
 vi.setConfig({ testTimeout: 20_000 })
@@ -514,17 +514,17 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').textContent
+    const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').lastChild?.textContent
     const banner = (view: RenderResult) => view.container.querySelector('[data-fx="banner"]')?.textContent ?? ''
 
-    expect(phase(host)).toBe(' · Draw Phase')
-    expect(phase(guest)).toBe(' · Draw Phase')
+    expect(phase(host)).toBe('Draw Phase')
+    expect(phase(guest)).toBe('Draw Phase')
 
     // Ana pasa a la Main Phase 1: Beto lo ve en la barra y en un cartel con el nombre de Ana.
     click(host, 'Main Phase 1')
     flush()
-    expect(phase(host)).toBe(' · Main Phase 1')
-    expect(phase(guest)).toBe(' · Main Phase 1')
+    expect(phase(host)).toBe('Main Phase 1')
+    expect(phase(guest)).toBe('Main Phase 1')
     expect(banner(guest)).toContain('Ana')
     expect(banner(guest)).toContain('Main Phase 1')
 
@@ -538,7 +538,7 @@ describe('la pantalla del duelo', () => {
     const handOfGuest = handOf(guest).getAllByRole('listitem').length
     click(host, 'End Phase')
     flush()
-    expect(phase(guest)).toBe(' · End Phase')
+    expect(phase(guest)).toBe('End Phase')
     expect(within(guest.container).queryByText('Tu turno')).not.toBeInTheDocument()
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest)
     expect(phaseChip(guest)).toBeDisabled()
@@ -551,8 +551,8 @@ describe('la pantalla del duelo', () => {
     confirmEndTurn()
     expect(within(host.container).getAllByText('Turno de Beto').length).toBeGreaterThan(0)
     expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
-    expect(phase(guest)).toBe(' · Draw Phase')
-    expect(phase(host)).toBe(' · Draw Phase')
+    expect(phase(guest)).toBe('Draw Phase')
+    expect(phase(host)).toBe('Draw Phase')
     expect(banner(guest)).toContain('Tu turno')
     expect(banner(host)).toContain('Turno de Beto')
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest + 1)
@@ -562,29 +562,27 @@ describe('la pantalla del duelo', () => {
     // Y Beto juega su turno: Ana lo ve fase por fase.
     click(guest, 'Battle Phase')
     flush()
-    expect(phase(host)).toBe(' · Battle Phase')
+    expect(phase(host)).toBe('Battle Phase')
     expect(phaseChip(host)).toHaveAccessibleName('Fases: Battle Phase')
   })
 
-  it('en escritorio la barra tiene un botón de ventana grande (el duelo en toda la pantalla), que se apaga al tocarlo otra vez', () => {
+  it('en escritorio el ⋯ de la barra tiene la ventana grande (el duelo en toda la pantalla), con su interruptor: se prende y se apaga al tocarla otra vez', () => {
     asDesktop()
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    const on = within(host.container).getByRole('button', { name: 'Ventana grande' })
-    expect(on).toHaveAttribute('aria-pressed', 'false')
-    fireEvent.click(on)
-    expect(within(host.container).getByRole('button', { name: 'Salir de la ventana grande' })).toHaveAttribute('aria-pressed', 'true')
-
-    fireEvent.click(within(host.container).getByRole('button', { name: 'Salir de la ventana grande' }))
-    expect(within(host.container).getByRole('button', { name: 'Ventana grande' })).toHaveAttribute('aria-pressed', 'false')
+    expect(moreButton(host, 'Ventana grande')).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(moreButton(host, 'Ventana grande'))
+    expect(moreButton(host, 'Ventana grande')).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(moreButton(host, 'Ventana grande'))
+    expect(moreButton(host, 'Ventana grande')).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('en el celular no hay botón de ventana grande: la mesa ya ocupa toda la pantalla', () => {
+  it('en el celular no hay ventana grande: la mesa ya ocupa toda la pantalla', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    expect(within(host.container).queryByRole('button', { name: 'Ventana grande' })).not.toBeInTheDocument()
+    expect(() => moreButton(host, 'Ventana grande')).toThrow()
   })
 
   it('pasar de fase le pregunta al rival si no va a hacer nada más: él ve la pregunta en el medio de la pantalla y deja pasar o juega antes, y quien pasa espera con la fase sin cambiar', () => {
@@ -790,7 +788,7 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').textContent
+    const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').lastChild?.textContent
     const ask = () => screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })
 
     expect(within(host.container).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
@@ -806,7 +804,7 @@ describe('la pantalla del duelo', () => {
     expect(within(ask()).getByText('El turno pasa a Beto.')).toBeInTheDocument()
     fireEvent.click(within(ask()).getByRole('button', { name: 'Seguir jugando' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(phase(guest)).toBe(' · End Phase')
+    expect(phase(guest)).toBe('End Phase')
     expect(within(guest.container).queryByText('Tu turno')).not.toBeInTheDocument()
 
     // Para darle el turno a Beto hay que volver a tocar el botón de la End Phase (ya no abre las fases: pregunta).
@@ -814,7 +812,7 @@ describe('la pantalla del duelo', () => {
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
     confirmEndTurn()
     expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
-    expect(phase(guest)).toBe(' · Draw Phase')
+    expect(phase(guest)).toBe('Draw Phase')
     expect(phaseChip(guest)).toHaveClass('bg-warning-solid')
     expect(phaseChip(host)).toHaveClass('bg-primary')
   })

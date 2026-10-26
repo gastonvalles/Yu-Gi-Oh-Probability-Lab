@@ -22,6 +22,8 @@ import { CardMenu } from '../../probability/MatDialogs'
 import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
+import { cx } from '../../ui/cx'
+import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
@@ -588,17 +590,18 @@ function CounterSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
-/** Los íconos de la barra de la mesa, los mismos en la práctica y en el automático: lo que cambia es lo de cada una (guardar y los pasos; el engranaje). Deshacer y guardar, con y sin algo que deshacer. */
+/** La barra de la mesa, la misma en la práctica y en el automático: salir, deshacer y el ⋯ (cerrado y abierto); lo que cambia es lo de cada una al final del ⋯. Deshacer y guardar, con y sin jugadas. */
 function BarActionsSample() {
   const [played, setPlayed] = useState(false)
   const [taps, setTaps] = useState(0)
   const tap = () => setTaps((count) => count + 1)
 
   return (
-    <Specimen title="MatBarActions · los íconos de la mesa" layout="column" className="col-span-full" note={<>La vista, los sonidos, la ventana grande (sólo en escritorio), las handtraps del rival, «Nueva mano», deshacer y «Guardar combo» (con <Tag>onSave</Tag>): el mismo grupo, en el mismo orden, en la barra de la práctica y en la de «Jugar solo automático» (sin guardar; <Tag>auto</Tag> cambia la hoja de las handtraps). Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
+    <Specimen title="MatBarActions · tres a la vista y el ⋯" layout="column" className="col-span-full" note={<>A la vista sólo salir, deshacer y el ⋯ (blancos de 44 px; ámbar al apuntar, al enfocar o con el menú abierto: nada queda en ámbar por estar prendido). En el ⋯, <Tag>MatMoreMenu</Tag>: «La mesa» (la vista 3D, los sonidos y la ventana grande, sólo en escritorio, cada uno con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo», apagado «sin jugadas», y lo de cada mesa: el automático suma «Opciones del duelo» en el celular). El duelo por enlace arma su ⋯ con el mismo grupo «La mesa». Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Cambiá el idioma para verlo en inglés. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Segmented label="Jugadas" variant="track" value={played ? 'some' : 'none'} onChange={(value) => setPlayed(value === 'some')} options={[{ value: 'none', label: 'Sin jugadas' }, { value: 'some', label: 'Con jugadas' }]} />
         <Tag>{`Toques: ${taps}`}</Tag>
+        <LanguageSwitcher />
       </div>
       <div className="grid gap-2">
         <span className="text-micro text-soft">La práctica</span>
@@ -606,10 +609,11 @@ function BarActionsSample() {
           <MatExitButton onExit={tap} />
           <MatBarActions className="ml-auto" onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={played} />
         </div>
-        <span className="text-micro text-soft">Jugar solo automático (sin «Guardar combo»; después va su engranaje)</span>
-        <div role="toolbar" aria-label="Muestra del automático" className={MAT_BAR_ROW}>
+        <span className="text-micro text-soft">Jugar solo automático, con el ⋯ abierto (en el celular suma «Opciones del duelo» al final)</span>
+        {/* El menú abierto cae debajo de la barra: se le deja su alto para que no tape la muestra siguiente. */}
+        <div role="toolbar" aria-label="Muestra del automático" className={cx('mb-96', MAT_BAR_ROW)}>
           <MatExitButton onExit={tap} />
-          <MatBarActions className="ml-auto" auto onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} />
+          <MatBarActions className="ml-auto" auto menuOpen onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} more={[{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: tap }]} />
         </div>
       </div>
     </Specimen>
