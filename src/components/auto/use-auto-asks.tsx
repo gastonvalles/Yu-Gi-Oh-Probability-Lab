@@ -22,11 +22,11 @@ import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { artOfDrawId } from '../duel/duel-art'
 import type { LaneNotice } from '../duel/DuelBar'
-import { DuelCardDock } from '../duel/DuelCardDock'
+import { DuelCardDock, type CardPeek } from '../duel/DuelCardDock'
 import { DUEL_AREAS, DUEL_AREAS_COMPACT, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { RivalCardDetail } from '../duel/RivalCardDetail'
 import { useDockPeek } from '../duel/use-dock-peek'
-import { PILE_TITLES } from '../probability/MatDialogs'
+import { PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { cardIdOfDrawId } from '../probability/practice'
 import type { DuelMatLink, MatCard } from '../probability/PracticeMat'
 import { AskOptions, type AskOption } from './AskOptions'
@@ -52,6 +52,8 @@ const ATTRIBUTES = ['EARTH', 'WATER', 'FIRE', 'WIND', 'LIGHT', 'DARK', 'DIVINE']
 const SPELL = 0x2
 const TRAP = 0x4
 const MONSTER = 0x1
+/** El título de la pregunta de a qué monstruo atacar (`HINTMSG_ATTACKTARGET` del núcleo). */
+const ATTACK_TARGET_HINT = '549'
 
 /** La mesa como la ve la pantalla: la mesa del arranque, las jugadas que ya llegaron y hasta cuál se muestra. */
 interface Paced {
@@ -87,6 +89,8 @@ export interface AutoAsksInput {
   frozen?: boolean
   /** Cómo se llama el rival en el aviso de la cadena (de quién es cada eslabón). */
   rivalName?: string
+  /** «Jugar solo» con handtraps (salvo «A ciegas»): la mano del rival boca arriba, por código; cada carta se toca o se apunta para verla. */
+  rivalHand?: readonly number[]
 }
 
 export interface AutoAsks {
@@ -112,9 +116,11 @@ export interface AutoAsks {
    * y `back` vuelve al duelo donde estaba. Repasar no despacha ni le contesta nada al núcleo.
    */
   review: { active: boolean; load: (combo: SavedCombo) => void; seek: (step: number) => void; back: () => void }
+  /** El visor del Cementerio, el Destierro o el Extra boca arriba del rival (`PracticeMat.rivalViewer`): va en el mismo lugar que el tuyo. */
+  rivalViewer: ReactNode
 }
 
-export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival') }: AutoAsksInput): AutoAsks {
+export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand }: AutoAsksInput): AutoAsks {
   const prefs = useAutoPrefs()
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   const dock = useDockPeek()
@@ -433,7 +439,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const pick = shown?.cardPick ?? null
   const mineIds = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'mine' ? [pick!.cards[i]!.ref!.id] : []))
   const pickLabel = pick
-    ? pick.type === 'select_tribute'
+    ? pick.type === 'select_card' && shown?.title === ATTACK_TARGET_HINT
+      ? t('auto.pick.attackTarget')
+      : pick.type === 'select_tribute'
       ? t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need })
       : pick.type === 'select_sum'
         ? t('auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
@@ -509,23 +517,56 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const [rivalCard, setRivalCard] = useState<{ drawId: string; rect: DOMRect } | null>(null)
   const choosing = Boolean(shown?.cardPick || shown?.zonePick)
   const lockDock = dock.lock
+  /**
+   * Lo que se muestra de una carta del rival: sólo lo que está a la vista (boca arriba en su campo, en su Cementerio, su Destierro boca arriba o su Extra boca arriba); lo demás, de dorso,
+   * aunque el adaptador sepa su código (una carta que volvió a la mano o se colocó después de mostrarse). Nunca su Deck, su mano ni su Extra boca abajo.
+   */
+  const rivalPeekOf = useCallback(
+    (id: string): CardPeek => {
+      const placed = [...theirs.mz, ...theirs.emz, ...theirs.st, theirs.field].find((card) => card?.id === id)
+      const open = placed ? placed.pos !== 'set' : theirs.extraUp.includes(id) || ((theirs.gy.includes(id) || theirs.banished.includes(id)) && !theirs.facedown.includes(id))
+      const code = open ? codeOf({ side: 'theirs', id }) : 0
+
+      return code ? { drawId: drawIdOf(code) } : { faceDown: true }
+    },
+    [theirs, codeOf],
+  )
+  /** Mostrar una carta del rival: en el detalle de la izquierda o, sin él, grande (como «Ver carta»); una de dorso, sólo en el detalle. */
+  const showRival = useCallback(
+    (peek: CardPeek, rect: DOMRect) => {
+      if (wide) lockDock(peek)
+      else if ('drawId' in peek) setRivalCard({ drawId: peek.drawId, rect })
+    },
+    [wide, lockDock],
+  )
+  // Las cartas del rival que la pregunta deja elegir (a qué atacar, el objetivo de un efecto): laten y se eligen tocándolas; las elegidas llevan la mira.
+  const rivalPicks = useMemo(() => {
+    const refs = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'theirs' ? [pick!.cards[i]!.ref!.id] : []))
+
+    return pick ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen) } : null
+  }, [pick])
+  /** El visor de una pila del rival (información pública): su Cementerio, su Destierro o lo boca arriba de su Extra. Repasando, su lado está vacío. */
+  const [rivalPileOpen, setRivalPile] = useState<'gy' | 'banished' | 'extra' | null>(null)
+  const rivalPile = reviewing ? null : rivalPileOpen
   const opponent = useMemo<DuelSideView>(
     () => ({
       state: theirs,
       artOf: (id) => artOf({ side: 'theirs', id }),
       handCount: theirs.hand.length,
-      // Tocar una carta suya elige (cuando la pregunta pide elegir: el objetivo de un ataque, una carta de su campo); si no, la muestra: en el detalle de la izquierda o, sin él, grande.
+      ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] } } : {}),
+      // Tocar una carta suya la elige si la pregunta la ofrece; si no, la muestra. Tocar su Cementerio, su Destierro o su Extra con cartas boca arriba abre (o cierra) su visor.
       onMark: (target, rect) => {
-        if (!('card' in target)) return
-        const ref: CardRef = { side: 'theirs', id: target.card }
-        const code = codeOf(ref)
+        if ('pile' in target) {
+          const pile = target.pile === 'gy' || target.pile === 'banished' || target.pile === 'extra' ? target.pile : null
 
-        if (choosing) gesture({ kind: 'card', ref })
-        else if (wide) lockDock(code ? { drawId: drawIdOf(code) } : { faceDown: true })
-        else if (code) setRivalCard({ drawId: drawIdOf(code), rect })
+          if (pile && (pile === 'extra' ? theirs.extraUp : theirs[pile]).length > 0) setRivalPile((current) => (current === pile ? null : pile))
+          return
+        }
+        if (rivalPicks?.eligible.has(target.card)) gesture({ kind: 'card', ref: { side: 'theirs', id: target.card } })
+        else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, choosing, wide, lockDock, codeOf],
+    [theirs, artOf, gesture, rivalPicks, showRival, rivalPeekOf],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
@@ -611,7 +652,18 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     areasCompact: DUEL_AREAS_COMPACT,
     opponent: <SideCells side={opponent} owner="theirs" />,
     sharedZone: (index) => sharedZoneCard(opponent, index),
-    rivalHand: <TheirHand count={theirs.hand.length} />,
+    rivalHand: (
+      <TheirHand
+        count={theirs.hand.length}
+        {...(rivalHand
+          ? {
+              cards: rivalHand.map((code) => ({ name: nameOf(null, code), art: artOf(null, code) })),
+              onCard: (index: number, rect: DOMRect) => showRival({ drawId: drawIdOf(rivalHand[index]!) }, rect),
+              onCardHover: (index: number) => dock.hover({ drawId: drawIdOf(rivalHand[index]!) }),
+            }
+          : {})}
+      />
+    ),
     attackTargets,
     foreignKnown,
     // La fase de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
@@ -649,10 +701,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight} stats={reviewing ? null : dockStats} /> } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
-    onRivalHover: (id) => {
-      const code = codeOf({ side: 'theirs', id })
-
-      dock.hover(code ? { drawId: drawIdOf(code) } : { faceDown: true })
+    onRivalHover: (id) => dock.hover(rivalPeekOf(id)),
+    rivalViewing: rivalPile !== null,
+    // Abrir una pila tuya cierra la del rival: van en el mismo lugar.
+    onActivity: (activity) => {
+      if (activity !== null && activity !== 'choosing') setRivalPile(null)
     },
     onHighlight: setHighlight,
     auto,
@@ -721,7 +774,31 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     </>
   )
 
+  const rivalTargeted = useMemo(() => new Set(theirs.targeted), [theirs.targeted])
+  const rivalViewer = (
+    <PileViewer
+      pile={rivalPile}
+      // Eligiendo en la mesa (o con la mesa tapada por el final) se esconde sin cerrarse, como el tuyo.
+      hidden={choosing || frozen || snap.status === 'ended' || Boolean(snap.fault)}
+      ids={rivalPile ? (rivalPile === 'extra' ? theirs.extraUp : theirs[rivalPile]) : []}
+      info={(id) => {
+        const peek = rivalPeekOf(id)
+        const open = 'drawId' in peek
+
+        return { name: open ? nameOf({ side: 'theirs', id }) : t('duel.mark.rivalCard'), art: open ? artOf({ side: 'theirs', id }) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
+      }}
+      targeted={rivalTargeted}
+      onPick={(id, rect) => {
+        if (!wide) showRival(rivalPeekOf(id), rect)
+      }}
+      onPeek={(id) => lockDock(rivalPeekOf(id))}
+      onHover={(id) => dock.hover(rivalPeekOf(id))}
+      onClose={() => setRivalPile(null)}
+    />
+  )
+
   return {
+    rivalViewer,
     state: reviewState ?? state,
     matSession: review?.session ?? matSession,
     settled,

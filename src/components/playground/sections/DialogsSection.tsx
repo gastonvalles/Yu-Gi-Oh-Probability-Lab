@@ -226,10 +226,6 @@ export function DialogsSection() {
   const [ashMenu, setAshMenu] = useState<{ rect: DOMRect; ask?: string } | null>(null)
   const { nameOf, artOf } = useMemo(() => sampleCombo(), [])
   const pileShown = pileSample ? PILE_SAMPLES[pileSample] : null
-  // La caja de la última muestra abierta: la tira sale en la suya (al cerrarse no cambia de caja mientras sale).
-  const [lastPileSample, setLastPileSample] = useState<PileSample>('plain')
-
-  if (pileSample !== null && pileSample !== lastPileSample) setLastPileSample(pileSample)
   // Toda jugada cierra el visor, como en la mesa.
   const playSample = (label: string) => () => {
     setPileMenu(null)
@@ -336,15 +332,15 @@ export function DialogsSection() {
       </Presence>
       <CardMenu anchor={isDesktop ? (ashMenu?.rect ?? null) : null} kicker={PILE_TITLES.hand} title={nameOf(ASH)} items={inMenuBlocks(ashRows)} startExpanded={ashMenu?.ask} onClose={() => setAshMenu(null)} />
 
-      <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el detalle de la carta: sin velo, en escritorio va en la columna de la derecha (los pasos o, desde 1440 px, el chat del duelo) o, en la mesa de los demás duelos, en la tira de la muestra siguiente, y el campo sigue vivo; la carta que se toca o se apunta se lee en el detalle. En el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
+      <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el detalle de la carta ni las columnas de los costados: sin velo, en escritorio es la ventana de la muestra siguiente, en todas las mesas, y el campo sigue vivo; la carta que se toca o se apunta se lee en el detalle. En el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
         <Button size="sm" onClick={() => setPileSample('plain')}>
           Abrir el cementerio
         </Button>
       </Specimen>
 
-      <Specimen title="Visor como tira" note={<>En la mesa del duelo de escritorio («Jugar solo» automático siempre; con un amigo, de 1101 a 1439 px) el visor es una tira ancha apoyada en la fila de las Zonas Extra, del ancho de las casillas y sin meterse en los laterales, que crece hacia arriba hasta la barra y no llega a la mano (<Tag>PileStripContext</Tag>): las cartas en renglones que se deslizan de arriba abajo (hasta tres y un asomo del siguiente; con menos alto, menos, nunca menos de uno), el buscador en la fila del título y la X o Escape para cerrarla. Con pocas cartas mide lo justo. Se esconde mientras se elige algo en el campo. Acá, el deck del duelo automático (por nombre, porque su orden no se sabe) en el alto que le deja la mesa a 1440 × 900: dos renglones y el asomo del tercero. En el celular, la hoja de siempre.</>}>
+      <Specimen title="Visor como ventana" note={<>En toda mesa de escritorio (la práctica, el duelo, «Jugar solo» automático y el duelo automático) el visor es una ventana ancha que flota sobre el centro de la mesa, apoyada en la fila de las Zonas Extra y de hasta 56 rem, centrada en el campo y sin meterse en los laterales ni en las columnas de los costados (<Tag>PileStripContext</Tag>). Crece hacia arriba hasta la barra (la pisa si no entran dos renglones) y no llega a tu mano; en la práctica, sin el campo del rival arriba, baja sobre tus zonas lo que le falte. Cartas de 5,25 rem en renglones que se deslizan de arriba abajo (hasta tres; con menos alto, menos, nunca menos de uno), el buscador en la fila del título y la X o Escape para cerrarla. Con pocas cartas mide lo justo. Se esconde mientras se elige algo en el campo. Acá, el deck del duelo automático (por nombre, porque su orden no se sabe) en el alto que le deja la mesa a 1440 × 900. En el celular, la hoja de siempre.</>}>
         <Button size="sm" onClick={() => setPileSample('strip')}>
-          Abrir el deck como tira
+          Abrir el deck
         </Button>
       </Specimen>
 
@@ -382,10 +378,10 @@ export function DialogsSection() {
           Abrir con tres elegidas
         </Button>
       </Specimen>
-      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). No es un modal: en escritorio llena la caja donde va (en la mesa, la columna de la derecha); acá, una abajo a la derecha
-          (la tira, una abajo al medio, del ancho y del alto que le deja la mesa a 1440 × 900). En el celular, la hoja de abajo. */}
-      <div className={cx('pointer-events-none fixed bottom-4 z-180 grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]', PILE_SAMPLES[lastPileSample].strip ? 'inset-x-[max(1rem,calc(50%-23.25rem))] h-[22rem]' : 'right-4 h-[min(34rem,calc(100dvh-2rem))] w-80')}>
-        <PileStripContext.Provider value={Boolean(PILE_SAMPLES[lastPileSample].strip)}>
+      {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). No es un modal: en escritorio llena la caja donde va (en la mesa, la que mide la ventana); acá, una abajo al medio,
+          de hasta 56 rem y del alto que le deja la mesa a 1440 × 900. En el celular, la hoja de abajo. */}
+      <div className={cx('pointer-events-none fixed bottom-4 z-180 grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]', 'inset-x-[max(1rem,calc(50%-28rem))] h-[min(28rem,calc(100dvh-2rem))]')}>
+        <PileStripContext.Provider value>
           <PileViewer
             pile={pileShown?.pile ?? null}
             ids={pileShown?.strip ? [...pileShown.ids].sort((a, b) => nameOf(a).localeCompare(nameOf(b))) : (pileShown?.ids ?? [])}

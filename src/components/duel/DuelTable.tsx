@@ -42,6 +42,8 @@ export interface DuelSideView {
   point?: { card?: string; pile?: MatPile } | null
   /** Marcar algo de este lado (el del rival, desde quien juega del otro): quien llama abre su menú pegado a `rect`, con `place` por título. Sin esto, la mesa es de sólo lectura. */
   onMark?: (target: MarkTarget, rect: DOMRect, place: string) => void
+  /** Las cartas de este lado que se pueden elegir ahora (el duelo automático: a qué atacar, el objetivo de un efecto): laten como los monstruos que se pueden atacar en la mesa manual (`data-attack-target`). */
+  pickable?: ReadonlySet<string>
 }
 
 /** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
@@ -158,6 +160,8 @@ export function TheirHand({
   marked = false,
   pointed = false,
   onMark,
+  onCard,
+  onCardHover,
 }: {
   count: number
   /** Boca arriba, en su orden (sin esto, de dorso). */
@@ -168,7 +172,11 @@ export function TheirHand({
   pointed?: boolean
   /** Tocarla para marcarla (sólo quien juega contra ese rival). */
   onMark?: (rect: DOMRect) => void
+  /** Boca arriba: tocar una carta (su lugar en `cards`) la muestra, y apuntarla con el mouse también. */
+  onCard?: (index: number, rect: DOMRect) => void
+  onCardHover?: (index: number) => void
 }) {
+  const open = cards && onCard ? onCard : undefined
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const { cardWidth, maxWidth, room } = desktop ? THEIR_HAND.desktop : THEIR_HAND.mobile
   const shown = Math.min(cards?.length ?? count, 12)
@@ -179,7 +187,7 @@ export function TheirHand({
 
   return (
     <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className={cx('relative shrink-0', THEIR_HAND_BOX_MOTION)} style={{ width: Math.max(span, layout.cardWidth), height: room }}>
-      <div role="img" aria-label={cards ? t('duel.hand.theirsShown', { cards: cards.map((card) => card.name).join(', ') }) : t('duel.hand.theirs', { count })} className="absolute inset-0">
+      <div role={open ? 'group' : 'img'} aria-label={cards ? t('duel.hand.theirsShown', { cards: cards.map((card) => card.name).join(', ') }) : t('duel.hand.theirs', { count })} className="absolute inset-0">
         {Array.from({ length: shown }, (_, index) => {
           // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
           const raise = (((shown - 1) / 2) ** 2 - Math.abs(index - (shown - 1) / 2) ** 2) * THEIR_FAN_RISE
@@ -193,6 +201,15 @@ export function TheirHand({
               style={{ width: layout.cardWidth, height, transform: `translate(${index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
+              {card && open ? (
+                <button
+                  type="button"
+                  aria-label={card.name}
+                  className="absolute inset-0 cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={(event) => open(index, event.currentTarget.getBoundingClientRect())}
+                  onPointerEnter={(event) => (event.pointerType === 'touch' ? undefined : onCardHover?.(index))}
+                />
+              ) : null}
             </span>
           )
         })}
@@ -305,6 +322,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         data-flash={flash ? 'true' : 'false'}
         data-flash-kind={flash?.kind}
         data-targeted={targeted ? 'true' : 'false'}
+        data-attack-target={side.pickable?.has(placed.id) ? 'true' : undefined}
         className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
       >
         <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180')}>

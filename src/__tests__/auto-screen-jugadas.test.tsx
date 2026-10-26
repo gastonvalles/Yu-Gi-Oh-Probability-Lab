@@ -486,7 +486,7 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
   })
 
   // La tira sobre las Zonas Extra es la de las mesas sin columna a la derecha (el duelo por enlace sin el detalle: `auto-screen-online`).
-  it('con los pasos y combos a la derecha, va en su columna, como en la práctica (no tapa el campo ni tu mano); jugar una carta suya lo cierra', () => {
+  it('con los pasos y combos a la derecha, igual es la ventana que flota sobre la mesa (la columna queda a la vista); jugar una carta suya lo cierra', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(IDLE))
@@ -494,8 +494,8 @@ describe('auto-screen · el visor de las pilas en escritorio', () => {
     const slot = document.querySelector<HTMLElement>('[data-pile-slot]')!
 
     expect(within(slot).getByRole('dialog', { name: 'Extra · 1' })).toBeInTheDocument()
-    expect(slot.className).toContain('min-[1101px]:col-[2/3]')
-    expect(slot.className).not.toContain('--strip-top')
+    expect(slot.className).toContain('top-[var(--strip-top,0.5rem)]')
+    expect(slot.className).not.toContain('col-[')
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: /^Zeus/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
     expect(fake.answers.at(-1)).toEqual({ type: 'select_idlecmd', action: 1, index: 0 })
