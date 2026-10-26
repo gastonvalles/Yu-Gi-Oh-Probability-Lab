@@ -58,6 +58,9 @@ sus despliegues).
 - **Quien tiene el código de sala entra** (no hay cuentas); con dos jugadores adentro, el resto queda afuera o mira.
 - **El enlace de espectador es el mismo código:** quien lo use sin el modo espectador puede ocupar el lugar de un jugador que se
   cayó. Evitarlo pide un secreto por jugador, y eso rompe volver recargando; se aceptó para no perder un duelo por un corte.
+- **El azar del duelo automático por enlace:** la baraja y el núcleo salen de una clave de 256 bits del anfitrión, pero el
+  RNG del núcleo (xoshiro256**) no es criptográfico: monedas, dados y barajadas a la vista dan pocos bits usables por duelo (invertir el estado pide salidas enteras de 64 bits, que el invitado nunca ve; una barajada propia sí le muestra el orden que va descubriendo), la
+  misma exposición que EDOPro. El anfitrión ve todo (corre el núcleo): el modo sigue siendo «entre amigos».
 - **`style-src 'unsafe-inline'`:** React escribe estilos en línea y sin eso la interfaz se rompe; no permite ejecutar scripts.
 - **Los scripts de efectos** se bajan de la rama principal de ProjectIgnis/CardScripts sin fijar un commit y sólo se leen como
   datos (nunca se ejecutan): un cambio de formato o malicioso mostraría efectos incorrectos hasta que se note.

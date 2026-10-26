@@ -257,8 +257,10 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
         tap: (message) => batch.push(message),
       })
       const seed = (SEED * 100_003 + d) >>> 0
+      // Los duelos impares van con una clave de 256 bits (el camino del duelo por enlace), derivada de la semilla para que el fuzz siga siendo reproducible.
+      const key = d % 2 === 1 ? seed.toString(16).padStart(8, '0').repeat(8) : undefined
       const hand = rival === 'handtraps' ? setup.hand(seed) : []
-      const create: Extract<AutoCommand, { t: 'create' }> = { t: 'create', seed, flags: MR5, players: [PLAYERS[0]!, { ...PLAYERS[1]!, hand: hand.length || PLAYERS[1]!.hand }], decks: [{ main: a.main, extra: a.extra, hand: [] }, { main: b.main, extra: b.extra, hand }] }
+      const create: Extract<AutoCommand, { t: 'create' }> = { t: 'create', seed, ...(key ? { key } : {}), flags: MR5, players: [PLAYERS[0]!, { ...PLAYERS[1]!, hand: hand.length || PLAYERS[1]!.hand }], decks: [{ main: a.main, extra: a.extra, hand: [] }, { main: b.main, extra: b.extra, hand }] }
       const second = rival === 'handtraps' ? handtrapPolicy(setup.main.map(([code]) => code)) : null
 
       if (second) view = createAdapter({ seat: 1, mine: { deck: teamOrder(create, 1), extra: b.extra }, theirs: { deck: a.main.length, extra: a.extra.length }, typeOf: (code) => cards.get(code)?.type ?? 0 })

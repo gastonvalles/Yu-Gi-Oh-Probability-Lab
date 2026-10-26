@@ -1,4 +1,5 @@
-import { deckOrder, mapDeck, scriptClosure, scriptName } from '../app/auto/deck-map'
+import { deckOrder, mapDeck, scriptClosure, scriptName, teamOrder } from '../app/auto/deck-map'
+import { shuffleWithSeed } from '../app/practice-mat'
 import { hasCoreData, scriptStore } from './support/core-data'
 
 const EFFECT = 0x21
@@ -44,6 +45,26 @@ describe('del deck al núcleo', () => {
     expect(deckOrder(main, 3, [8, 1])).toEqual(order)
     expect(deckOrder(main, 4)).not.toEqual(deckOrder(main, 3))
     expect(() => deckOrder(main, 3, [9])).toThrow()
+  })
+
+  it('el orden de cada deck: sin clave, el de siempre (semilla + equipo); con clave, otro por equipo, que sólo depende de la clave', () => {
+    const main = Array.from({ length: 40 }, (_, i) => i + 1)
+    const decks = [
+      { main, hand: [] },
+      { main, hand: [40, 3] },
+    ]
+    const create = { seed: 7, decks }
+    const [a, b] = ['a1'.repeat(32), '5c'.repeat(32)] as const
+
+    // Lo guardado con semilla se rearma con esto: no cambia.
+    expect(teamOrder(create, 0)).toEqual(shuffleWithSeed(main, 7))
+    expect(teamOrder(create, 1)).toEqual([40, 3, ...shuffleWithSeed(main.filter((code) => code !== 40 && code !== 3), 8)])
+    expect(teamOrder({ ...create, key: a }, 1).slice(0, 2)).toEqual([40, 3])
+    expect([...teamOrder({ ...create, key: a }, 1)].sort((x, y) => x - y)).toEqual(main)
+    expect(teamOrder({ ...create, key: a }, 0)).toEqual(teamOrder({ seed: 99, decks, key: a }, 0))
+    expect(teamOrder({ ...create, key: a }, 0)).not.toEqual(teamOrder(create, 0))
+    expect(teamOrder({ ...create, key: a }, 0)).not.toEqual(teamOrder({ ...create, key: b }, 0))
+    expect(teamOrder({ ...create, key: a }, 0)).not.toEqual(teamOrder({ ...create, decks: [decks[0]!, decks[0]!], key: a }, 1))
   })
 
   it('arma el cierre de scripts: las bibliotecas en cadena y el script de cada carta', () => {

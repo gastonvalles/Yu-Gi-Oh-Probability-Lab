@@ -3,8 +3,10 @@ import { cardData, type CardRow, type DataLoader, type DataSource } from '../app
 import { autoSaveStore, parseAutoSave, type AutoSave } from '../app/auto/auto-save'
 import type { AutoSession } from '../app/auto/auto-session'
 import type { DeckList } from '../app/auto/deck-map'
+import { isDuelKey } from '../app/auto/duel-key'
 import { createGuestLink, createHostLink, type OnlineLink } from '../app/auto/online'
 import { GUEST_ACCEPTS, isAutoText, parseAutoMessage } from '../app/auto/online-protocol'
+import type { AutoCommand } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { SAVE_TTL_MS } from '../app/duel-save'
 import { createDuel } from '../app/duel-session'
@@ -41,7 +43,10 @@ function memoryStorage() {
   return { items, getItem: (key: string) => items.get(key) ?? null, setItem: (key: string, value: string) => void items.set(key, value), removeItem: (key: string) => void items.delete(key) }
 }
 
-const SAVE: AutoSave = { v: 1, seed: 7, seat: 1, hand: 5, decks: { mine: HOST_DECK, theirs: GUEST_DECK }, answers: [{ seat: 0, answer: END }], savedAt: 1000 }
+const KEY = '0123456789abcdef'.repeat(4)
+const SAVE: AutoSave = { v: 2, key: KEY, seat: 1, hand: 5, decks: { mine: HOST_DECK, theirs: GUEST_DECK }, answers: [{ seat: 0, answer: END }], savedAt: 1000 }
+/** Lo guardado de antes de la clave (con la semilla de 32 bits; `JSON.stringify` no escribe la clave `undefined`). */
+const V1 = { ...SAVE, v: 1, key: undefined, seed: 7 }
 
 describe('el guardado del duelo automático por enlace', () => {
   it('lee lo que escribió, si tiene forma de duelo y no venció', () => {
@@ -53,7 +58,8 @@ describe('el guardado del duelo automático por enlace', () => {
     expect([...storage.items.keys()]).toEqual(['ygo-lab:auto-save:ABCDEFGH'])
     expect(store.read()).toEqual(SAVE)
     expect(autoSaveStore('ABCDEFGH', storage, () => 1000 + SAVE_TTL_MS + 1).read()).toBeNull()
-    for (const bad of [{ ...SAVE, v: 2 }, { ...SAVE, seat: 2 }, { ...SAVE, seed: -1 }, { ...SAVE, answers: [{ seat: 0, answer: { type: 'nada' } }] }, { ...SAVE, decks: { mine: { main: [[0, 1]] }, theirs: GUEST_DECK } }]) {
+    // La versión 1 (con semilla, aunque no haya vencido) no se lee, ni una clave que no sea de 64 hex en minúscula.
+    for (const bad of [V1, { ...V1, key: KEY }, { ...SAVE, v: 1 }, { ...SAVE, v: 3 }, { ...SAVE, key: undefined }, { ...SAVE, key: KEY.slice(1) }, { ...SAVE, key: KEY.toUpperCase() }, { ...SAVE, key: `${KEY.slice(1)}g` }, { ...SAVE, key: 7 }, { ...SAVE, seat: 2 }, { ...SAVE, answers: [{ seat: 0, answer: { type: 'nada' } }] }, { ...SAVE, decks: { mine: { main: [[0, 1]] }, theirs: GUEST_DECK } }]) {
       expect(parseAutoSave(JSON.stringify(bad), 2000)).toBeNull()
     }
     expect(parseAutoSave('{', 2000)).toBeNull()
@@ -78,7 +84,8 @@ describe('el guardado del duelo automático por enlace', () => {
     const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings })
     const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
     // Beto va primero (asiento 0): las preguntas 0 y 1 son suyas, la 2 de Ana, la 3 de Beto.
-    const hostLink = createHostLink({ transport: hostEnd, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0001', storage) })
+    const core = fakeHost(undefined, undefined, 2)
+    const hostLink = createHostLink({ transport: hostEnd, loader, deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => true, save: autoSaveStore('ROOM0001', storage) })
     const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK })
     const sessionOf = (link: OnlineLink) => link.getSnapshot().session!
 
@@ -104,7 +111,14 @@ describe('el guardado del duelo automático por enlace', () => {
     const before = sessionOf(guestLink).getSnapshot()
 
     expect(before).toMatchObject({ status: 'ready', ask: { seat: 0 } })
-    expect(JSON.parse(storage.items.get('ygo-lab:auto-save:ROOM0001')!)).toMatchObject({ seat: 1, hand: 5, answers: [{ seat: 0 }, { seat: 0 }, { seat: 1, answer: PASS }] })
+    const saved = JSON.parse(storage.items.get('ygo-lab:auto-save:ROOM0001')!) as AutoSave
+    const create = core.commands.find((command) => command.t === 'create') as Extract<AutoCommand, { t: 'create' }>
+
+    // Lo guardado lleva la clave del duelo (la que recibió el núcleo), no la semilla.
+    expect(saved).toMatchObject({ v: 2, seat: 1, hand: 5, answers: [{ seat: 0 }, { seat: 0 }, { seat: 1, answer: PASS }] })
+    expect(isDuelKey(saved.key)).toBe(true)
+    expect(saved.key).toBe(create.key)
+    expect(saved).not.toHaveProperty('seed')
 
     // Ana recarga: otra sala (que se entera por Beto de quién empezaba), otro enlace, otro núcleo; lo guardado sigue ahí.
     hostLink.destroy()
@@ -112,7 +126,8 @@ describe('el guardado del duelo automático por enlace', () => {
     const mark = room.sent.length
     const hostEnd2 = room.join()
     const host2 = createDuel(hostEnd2, { role: 'host', name: 'Ana', sid: 'host-2', settings })
-    const hostLink2 = createHostLink({ transport: hostEnd2, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0001', storage) })
+    const core2 = fakeHost(undefined, undefined, 2)
+    const hostLink2 = createHostLink({ transport: hostEnd2, loader, deck: HOST_DECK, handSize: 5, makeTransport: core2.factory, enabled: async () => true, save: autoSaveStore('ROOM0001', storage) })
 
     host2.subscribe(() => hostLink2.observe(host2.getSnapshot()))
     hostLink2.observe(host2.getSnapshot())
@@ -121,6 +136,8 @@ describe('el guardado del duelo automático por enlace', () => {
     const after = sessionOf(guestLink).getSnapshot()
 
     expect(hostLink2.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })
+    // El mismo duelo: el núcleo rearmado recibe el mismo `create` (la misma clave), con las respuestas de antes.
+    expect(core2.commands[0]).toEqual({ ...create, answers: [END, END, PASS] })
     expect(hosted.getSnapshot()).toMatchObject({ status: 'waiting', remoteAsk: { seat: 0 } })
     expect(hosted.getSnapshot().answers).toHaveLength(3)
     expect(guestLink.getSnapshot().phase).toBe('playing')
@@ -156,6 +173,51 @@ describe('el guardado del duelo automático por enlace', () => {
     await settle(room)
     expect(hostLink2.getSnapshot().phase).toBe('ended')
     expect(storage.items.size).toBe(0)
+    hostLink2.destroy()
+    guestLink.destroy()
+  })
+
+  it('el anfitrión que recarga con un guardado de antes de la clave (v1, sin vencer) no lo rearma: el duelo se pierde y la sala sigue', async () => {
+    const storage = memoryStorage()
+    const room = createMemoryRoom()
+    const hostEnd = room.join()
+    const guestEnd = room.join()
+    const settings = { ...DEFAULT_SETTINGS, auto: true }
+    const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings })
+    const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
+    const hostLink = createHostLink({ transport: hostEnd, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0002', storage) })
+    const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK })
+
+    host.subscribe(() => hostLink.observe(host.getSnapshot()))
+    guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
+    await settle(room)
+    host.setReady(true)
+    guest.setReady(true)
+    await settle(room)
+    host.chooseMethod('rps')
+    await settle(room)
+    host.pickRps('rock')
+    guest.pickRps('scissors')
+    await settle(room)
+    host.chooseFirst(1)
+    await settle(room)
+    guestLink.getSnapshot().session!.answer(END)
+    await settle(room)
+    // La página de antes de la clave había escrito su versión (con la semilla) y Ana recarga con la de ahora.
+    hostLink.destroy()
+    hostEnd.close()
+    storage.items.set('ygo-lab:auto-save:ROOM0002', JSON.stringify({ ...V1, savedAt: Date.now() }))
+    const hostEnd2 = room.join()
+    const host2 = createDuel(hostEnd2, { role: 'host', name: 'Ana', sid: 'host-2', settings })
+    const core2 = fakeHost(undefined, undefined, 2)
+    const hostLink2 = createHostLink({ transport: hostEnd2, loader, deck: HOST_DECK, handSize: 5, makeTransport: core2.factory, enabled: async () => true, save: autoSaveStore('ROOM0002', storage) })
+
+    host2.subscribe(() => hostLink2.observe(host2.getSnapshot()))
+    hostLink2.observe(host2.getSnapshot())
+    await settle(room)
+    expect(hostLink2.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' }, session: null })
+    expect(guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+    expect(core2.commands).toEqual([])
     hostLink2.destroy()
     guestLink.destroy()
   })

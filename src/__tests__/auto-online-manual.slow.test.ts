@@ -14,7 +14,7 @@ import { createDuel } from '../app/duel-session'
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../app/duel-turn'
 import type { Duelist } from '../app/life-calculator'
 import type { MatPhase, MatState } from '../app/practice-mat'
-import { playAsk, seeded } from './support/ask-ui-player'
+import { playAsk, seeded, seededKey } from './support/ask-ui-player'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 
@@ -104,7 +104,7 @@ describe.skipIf(!hasCoreData)('pasar a manual con el núcleo real (npm run test:
     const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
     let clock = 0
     const now = () => (clock += 100)
-    const hostLink = createHostLink({ transport: hostEnd, loader: createDataLoader(source, null), deck: lists[hostId]!, handSize: 5, makeTransport: localTransport({ wasmBinary: wasm }), enabled: async () => true, now, random })
+    const hostLink = createHostLink({ transport: hostEnd, loader: createDataLoader(source, null), deck: lists[hostId]!, handSize: 5, makeTransport: localTransport({ wasmBinary: wasm }), enabled: async () => true, now, newKey: seededKey(random) })
     const guestLink = createGuestLink({ transport: guestEnd, source, deck: lists[guestId]!, now })
 
     host.subscribe(() => hostLink.observe(host.getSnapshot()))

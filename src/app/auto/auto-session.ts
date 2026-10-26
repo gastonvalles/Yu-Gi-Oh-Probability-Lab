@@ -105,6 +105,11 @@ export interface SessionOptions {
   transport: TransportFactory
   /** La semilla del duelo (u32); sin ella, una al azar. */
   seed?: number
+  /**
+   * El anfitrión del duelo por enlace: la clave del duelo (`duel-key.ts`, 256 bits), de la que salen las barajas y el estado del núcleo en lugar de la semilla, que con clave vale 0
+   * y no se usa (32 bits se prueban todos desde la mano de arranque). Va en cada `create`, también al reiniciar, cancelar y deshacer, y nunca en el snapshot.
+   */
+  key?: string
   /** La mano fija: esas cartas arriba, en ese orden (passcodes del deck). */
   hand?: number[]
   /** Cuántas cartas robás al empezar (la mano de apertura del Lab); el rival, 5. */
@@ -218,7 +223,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const blank = emptyAdapter()
   let snapshot: AutoSnapshot = {
     status: 'loading',
-    seed: (options.seed ?? Math.floor(Math.random() * 2 ** 32)) >>> 0,
+    seed: options.key !== undefined ? 0 : (options.seed ?? Math.floor(Math.random() * 2 ** 32)) >>> 0,
     initial: blank.initial,
     mineActions: [],
     theirsActs: [],
@@ -486,7 +491,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       const player = options.remote ? mine_ : hand.length > 0 ? { ...PLAYER, hand: hand.length } : PLAYER
 
       // El asiento 0 del núcleo siempre empieza: tu deck va ahí, salvo que vayas segundo.
-      return { t: 'create', seed, flags: MR5, players: me === 0 ? [mine_, player] : [player, mine_], decks: me === 0 ? [own, other] : [other, own] }
+      return { t: 'create', seed, ...(options.key === undefined ? {} : { key: options.key }), flags: MR5, players: me === 0 ? [mine_, player] : [player, mine_], decks: me === 0 ? [own, other] : [other, own] }
     }
     create = build(snapshot.seed)
     try {

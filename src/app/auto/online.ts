@@ -5,6 +5,7 @@ import { cardData, type DataLoader, type DataSource, type DuelData } from './aut
 import type { AutoSave, AutoSaveStore } from './auto-save'
 import { createAutoSession, type AutoSession, type AutoSnapshot, type HostTransport, type SessionAnswer, type TransportFactory } from './auto-session'
 import { bagOrder, type DeckList, type MappedDeck } from './deck-map'
+import { newDuelKey } from './duel-key'
 import {
   AUTO_PROTOCOL_VERSION,
   chunkAutoText,
@@ -31,7 +32,8 @@ import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat
  *
  * El anfitrión es de confianza (tiene la mano del invitado en memoria: es para jugar con amigos); el invitado no: todo lo que manda pasa por `parseAutoMessage`, sólo vale la
  * respuesta a la pregunta pendiente y lo demás tiene tope de frecuencia. Lo que el anfitrión le manda va por un marcapasos (`createPacer`), en orden y numerado (`s`: el invitado
- * nota un hueco y pide el duelo de nuevo), y se anota (`log`) para reponérselo entero si se cae y vuelve. La semilla no viaja: el invitado tiene su deck como bolsa (sin orden)
+ * nota un hueco y pide el duelo de nuevo), y se anota (`log`) para reponérselo entero si se cae y vuelve. Las barajas y el núcleo salen de una clave de
+ * 256 bits por duelo (`duel-key.ts`; la semilla de 32 bits se adivinaba desde la mano de arranque), que no viaja ni se muestra: el invitado tiene su deck como bolsa (sin orden)
  * desde el arranque, y el anfitrión proyecta su vista igual. El anfitrión que recarga la página rearma el duelo con lo guardado (`save`, `auto-save.ts`); sin eso, el duelo se
  * pierde (la sala sigue): «lost».
  *
@@ -103,7 +105,8 @@ export interface HostLinkOptions {
   /** El guardado del duelo de esta sala (`autoSaveStore(sala)`): el enlace lo escribe con cada respuesta, lo borra al terminar y lo usa si la página se recargó a mitad de duelo. Abandonar lo borra la pantalla. */
   save?: AutoSaveStore
   now?: () => number
-  random?: () => number
+  /** La clave de cada duelo nuevo (y de cada revancha): `newDuelKey` (256 bits de `crypto.getRandomValues`); las pruebas la fijan. */
+  newKey?: () => string
 }
 
 export interface GuestLinkOptions {
@@ -353,7 +356,7 @@ function snapshotStore() {
 export function createHostLink(options: HostLinkOptions): OnlineLink {
   const { transport, loader } = options
   const now = options.now ?? Date.now
-  const random = options.random ?? Math.random
+  const newKey = options.newKey ?? newDuelKey
   const store = snapshotStore()
   const pacer = createPacer((text) => transport.send(text), now)
   // Un invitado no puede hacer que el anfitrión baje datos ni re-emita el duelo sin parar (ni que le pregunte sin parar).
@@ -398,6 +401,8 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let remoteDeck: DeckList | null = null
   let saving = false
   let savedAnswers: readonly SessionAnswer[] | null = null
+  // La clave del duelo que corre (la de lo guardado, si se rearma): sólo va a la sesión y a lo guardado, nunca al invitado ni a `refresh`.
+  let duelKey = ''
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -542,7 +547,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     if (snap.replaying || snap.answers === savedAnswers) return
     savedAnswers = snap.answers
-    options.save.write({ v: 1, seed: snap.seed, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}) })
+    options.save.write({ v: 2, key: duelKey, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}) })
   }
 
   function takeDeck(message: Extract<AutoMessage, { t: 'autoDeck' }>) {
@@ -566,7 +571,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     lastStats = null
   }
 
-  /** Cómo empieza el duelo abre un flujo nuevo (`s` 1). Sin la semilla y con el Main del invitado por código: su orden es del anfitrión. */
+  /** Cómo empieza el duelo abre un flujo nuevo (`s` 1). Sin la clave y con el Main del invitado por código: su orden es del anfitrión. */
   function sendInit() {
     if (!init || !seats) return
     const { host, guest } = seats
@@ -697,7 +702,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     batchBytes = 0
   }
 
-  /** El `create` que manda la sesión es el duelo que se le cuenta al invitado (`autoInit`): la misma semilla, los mismos decks y el mismo orden. Pasando a manual, el núcleo no recibe más respuestas. */
+  /** El `create` que manda la sesión es el duelo que se le cuenta al invitado (`autoInit`, sin la clave): los mismos decks y el mismo orden. Pasando a manual, el núcleo no recibe más respuestas. */
   const watch = (inner: HostTransport): HostTransport => ({
     send(command) {
       if (command.t === 'answer' && request.frozen) return
@@ -751,10 +756,17 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     resendLater = false
     saving = true
     savedAnswers = null
+    // Una clave nueva por duelo y por revancha; rearmando, la de lo guardado (el mismo duelo).
+    try {
+      duelKey = saved?.key ?? newKey()
+    } catch {
+      // Sin poder sortear la clave (un contexto sin Web Crypto) no hay duelo que jugar: se pierde y la sala sigue, en vez de colgarse en «listo».
+      return lose()
+    }
     session = createAutoSession({
       loader,
       deck: hostDeck,
-      seed: saved?.seed ?? Math.floor(random() * 2 ** 32) >>> 0,
+      key: duelKey,
       seat: host,
       handSize: hand,
       remote: { deck: remoteDeck, onReplay: (skip) => void post({ t: 'autoReplay', skip }) },
@@ -808,7 +820,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
           begin()
         } else if (!session) recover()
       } else if (!next.opening.ordered && before?.opening.ordered) {
-        // La revancha: la sala vuelve a definir quién empieza; el próximo `ordered` arma otra sesión, con otra semilla.
+        // La revancha: la sala vuelve a definir quién empieza; el próximo `ordered` arma otra sesión, con otra clave.
         drop()
         pending = false
         lost = false
@@ -1016,7 +1028,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     })
 
     relay = port
-    // Sin semilla: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado).
+    // Sin la clave: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado).
     session = createAutoSession({
       loader: guestLoader(init, source),
       deck: options.deck,
