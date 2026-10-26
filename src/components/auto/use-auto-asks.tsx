@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, itemsInto, listOrder, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf } from '../../app/card-glow'
@@ -651,6 +651,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── Lo que se muestra fuera del campo. ──
   const prompt = shown?.prompt
   const promptCard = prompt?.card
+  const effectAsk = prompt && promptCard ? effectAskText({ ...prompt, card: promptCard }, snap.overlay.cause, (code) => nameOf(code === promptCard.code ? promptCard.ref : null, code), byCode.get(promptCard.code)?.apiCard?.description ?? null) : null
   const options = shown?.options
   // Una opción sin texto no inventa un número (el orden de la pregunta no es el de la carta): dice «Activar efecto». La carta que pregunta (la que nombran sus opciones, si
   // se la conoce) va arriba del título.
@@ -690,9 +691,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     prompt: prompt ? (
       <AskPrompt
         key={askId ?? 0}
-        // Un sí o no a secas dice su pregunta (el texto de su `desc`) cuando la tiene.
-        text={promptCard ? t('auto.ask.effect', { card: nameOf(promptCard.ref, promptCard.code) }) : (effectLabel(0, prompt.description) ?? t('auto.ask.fallback'))}
+        // Un sí o no a secas dice su pregunta (el texto de su `desc`) cuando la tiene; el de un efecto, qué pasó, dónde está la carta y qué hace (`effectAsk`).
+        text={effectAsk?.text ?? effectLabel(0, prompt.description) ?? t('auto.ask.fallback')}
         {...(promptCard ? { card: { name: nameOf(promptCard.ref, promptCard.code), art: artOf(promptCard.ref, promptCard.code) } } : {})}
+        {...(effectAsk?.kicker ? { kicker: effectAsk.kicker } : {})}
+        {...(effectAsk?.place ? { place: effectAsk.place } : {})}
+        {...(effectAsk?.effect ? { effect: effectAsk.effect } : {})}
+        {...(promptCard && onManual ? { manual: { label: t('auto.bar.manual'), onSelect: onManual } } : {})}
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
       />

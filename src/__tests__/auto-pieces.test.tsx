@@ -65,6 +65,34 @@ describe('AskPrompt', () => {
     expect(container.querySelector('[data-card-art]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Pagar 1000 LP' })).toHaveFocus()
   })
+
+  it('con contexto: qué es arriba, la pestaña del lugar, la frase del efecto (lo que hace, resaltado), más ancha y «Seguir en modo manual» primero, lejos de la principal', () => {
+    const manual = vi.fn()
+    render(
+      <AskPrompt
+        kicker="Efecto que se dispara"
+        text="Tras la Invocación Normal de Ponix (en la Zona de Monstruos): ¿activás su efecto?"
+        card={{ name: 'Ponix', art: null }}
+        place="Campo"
+        effect={{ when: 'If this card is Normal or Special Summoned', what: 'You can add 1 "Fire King" Spell/Trap from your Deck to your hand.' }}
+        manual={{ label: 'Seguir en modo manual', onSelect: manual }}
+        yes={{ label: 'Activar efecto', onSelect: () => {} }}
+        no={{ label: 'No activar', onSelect: () => {} }}
+      />,
+    )
+    const prompt = screen.getByRole('status')
+    const buttons = within(prompt).getAllByRole('button')
+
+    expect(prompt).toHaveAttribute('data-prompt-row')
+    expect(prompt).toHaveTextContent('Efecto que se dispara')
+    expect(prompt).toHaveTextContent('Campo')
+    expect(prompt).toHaveTextContent('Qué hace “If this card is Normal or Special Summoned: You can add 1 "Fire King" Spell/Trap from your Deck to your hand.”')
+    expect(within(prompt).getByText(/^You can add 1/)).toHaveClass('font-semibold')
+    expect(names(buttons)).toEqual(['Seguir en modo manual', 'No activar', 'Activar efecto'])
+    expect(buttons[2]).toHaveFocus()
+    fireEvent.click(buttons[0]!)
+    expect(manual).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('AskOptions', () => {

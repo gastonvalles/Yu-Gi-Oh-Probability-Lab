@@ -102,16 +102,31 @@ describe('auto-screen · las hojas', () => {
     expect(screen.getByTestId('duel-prompt-layer')).toHaveTextContent('Summon a Token')
   })
 
-  it('effectyn: la pregunta nombra la carta, que brilla en su pila, y «No activar» contesta que no', () => {
+  it('effectyn: la pregunta nombra la carta y su lugar (en el texto y en la pestaña), la carta brilla en su pila y «No activar» contesta que no', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(EFFECTYN))
     const prompt = screen.getByTestId('duel-prompt-layer')
 
-    expect(prompt).toHaveTextContent('¿Activás el efecto de Nibiru?')
+    expect(prompt).toHaveTextContent('¿Activás el efecto de Nibiru (en el Cementerio)?')
+    expect(within(prompt).getByText('Cementerio')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 1' })).toHaveAttribute('data-glow-kind', 'can')
     fireEvent.click(within(prompt).getByRole('button', { name: 'No activar' }))
     expect(fake.answers).toEqual([{ type: 'select_effectyn', yes: false }])
+  })
+
+  it('un efecto que se dispara: «Efecto que se dispara», qué pasó justo antes y, a la izquierda, «Seguir en modo manual»', () => {
+    const fake = renderAuto()
+
+    core(() => {
+      fake.set({ overlay: { ...fake.getSnapshot().overlay, cause: { kind: 'normal', codes: [700] } } })
+      fake.ask({ ...EFFECTYN, description: '221' })
+    })
+    const prompt = screen.getByTestId('duel-prompt-layer')
+
+    expect(prompt).toHaveTextContent('Efecto que se dispara')
+    expect(prompt).toHaveTextContent('Tras la Invocación Normal de Blue-Eyes White Dragon: ¿activás el efecto de Nibiru (en el Cementerio)?')
+    expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['Seguir en modo manual', 'No activar', 'Activar efecto'])
   })
 
   it('una lista mixta (cementerio y Extra) va en la hoja de elegir cartas, con de dónde es cada una', () => {

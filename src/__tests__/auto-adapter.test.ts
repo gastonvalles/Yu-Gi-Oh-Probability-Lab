@@ -181,4 +181,18 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     adapter.apply(events(0, { type: 'new_turn', player: 1 }))
     expect(adapter.overlay.normal).toEqual([null, null])
   })
+
+  it('lo que pudo disparar un efecto (`cause`): las que se invocan juntas, la fase que empieza; una activación, un ataque o el turno nuevo lo borran', () => {
+    const adapter = make()
+    const cause = (...list: WireEvent[]) => (adapter.apply(events(0, ...list)), adapter.overlay.cause)
+
+    expect(cause({ type: 'new_turn', player: 0 })).toBeNull()
+    expect(cause({ type: 'new_phase', phase: 0x200 })).toEqual({ kind: 'phase', phase: 'end' })
+    // Dos a la vez son una Invocación; la que sigue a su `spsummoned`, otra. Lo que viene después y no abre otro momento (un movimiento, el fin de la cadena) no la borra.
+    expect(cause(played('spsummoning', 222, at(0, L.MZONE, 1)), played('spsummoning', 333, at(0, L.MZONE, 2)), { type: 'spsummoned' }, { type: 'chain_end' })).toEqual({ kind: 'special', codes: [222, 333] })
+    expect(cause(played('summoning', 111, at(0, L.MZONE, 0)), { type: 'summoned' })).toEqual({ kind: 'normal', codes: [111] })
+    expect(cause({ type: 'flipsummoning', code: 111, controller: 0, location: L.MZONE, sequence: 0, position: P.FACEUP_ATTACK })).toEqual({ kind: 'flip', codes: [111] })
+    expect(cause({ type: 'chaining', code: 111, controller: 0, location: L.MZONE, sequence: 0, position: P.FACEUP_ATTACK, triggering_controller: 0, triggering_location: L.MZONE, triggering_sequence: 0, description: '0', chain_size: 1 })).toBeNull()
+    expect(cause(played('spsummoning', 222, at(0, L.MZONE, 1)), { type: 'attack', card: at(0, L.MZONE, 1), target: null })).toBeNull()
+  })
 })
