@@ -162,4 +162,16 @@ export const auto: Translated<typeof es> = {
   'auto.online.manualControl': "Couldn't switch to manual: a card is under the other player's control.",
   'auto.online.manualDone': 'You go on in manual mode: each of you moves your own cards.',
   'auto.online.manualDoneDropped': 'You go on in manual mode. What was half played was dropped: the table stayed as it was.',
+
+  // A card of yours with no plays: why (only what is known), the shortcut to the manual table and the core's restrictions (the card's own text, as is).
+  'auto.why.title': 'No plays right now',
+  'auto.why.unknown': 'The automatic duel offers no plays for this card right now.',
+  'auto.why.rivalTurn': "It's your opponent's turn.",
+  'auto.why.summoned': 'You already Normal Summoned this turn.',
+  'auto.why.set': 'You already Set a monster this turn.',
+  'auto.why.monsterZones': 'Your five Monster Zones are taken.',
+  'auto.why.spellZones': 'Your five Spell & Trap Zones are taken.',
+  'auto.why.limitOf': 'A restriction from {card} applies.',
+  'auto.why.mismatch': 'Not what you expected?',
+  'auto.limits.label': { one: '{count} active restriction', other: '{count} active restrictions' },
 }

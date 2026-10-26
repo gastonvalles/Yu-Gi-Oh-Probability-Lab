@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
@@ -36,6 +36,8 @@ interface CardSheetProps {
   onBack?: () => void
   /** Ver la carta entera (el detalle). */
   onInspect?: () => void
+  /** Lo que dice sin jugadas (por defecto, «No hay nada para hacer desde acá»; en el duelo automático, `NoPlays`). */
+  empty?: ReactNode
   /** Sin carta: sólo el encabezado con el título (las fases). */
   plain?: boolean
   /** La hoja no tapa la mesa: el fondo deja pasar los toques (se elige tocando una carta del campo, p. ej. a quién atacar) y no se lleva el foco. */
@@ -90,7 +92,7 @@ export function Options({ items, stacked }: { items: readonly MenuItem[]; stacke
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
  * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen. Quien la monta sólo abierta la envuelve en un `Presence` y así, al cerrarse, baja y se funde.
  */
-export function CardSheet({ name, kicker, art, back = false, apiCard = null, traits = true, stacked = false, items, asking, onBack, onInspect, plain = false, passThrough = false, onClose }: CardSheetProps) {
+export function CardSheet({ name, kicker, art, back = false, apiCard = null, traits = true, stacked = false, items, asking, onBack, onInspect, empty, plain = false, passThrough = false, onClose }: CardSheetProps) {
   const backdropRef = useRef<HTMLDivElement | null>(null)
   const ref = useRef<HTMLElement | null>(null)
   const openedAtRef = useRef(performance.now())
@@ -181,7 +183,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, tra
         {/* Las jugadas, `role="menu"`, y cada una un `menuitem`, como en el menú pegado a la carta: las del juego primero y las de apoyo después, todas en la misma grilla. */}
         <div role="menu" aria-label={name} className={cx(onBack ? 'mt-1' : 'mt-3', stacked && 'max-h-[min(55dvh,28rem)] overflow-y-auto')}>
           {/* Sin jugadas (en el duelo automático, lo que el núcleo no deja hacer ahora), lo dice, como el menú pegado a la carta. */}
-          {items.length === 0 ? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p> : <Options items={asking !== undefined ? items : [...plays, ...support]} stacked={stacked} />}
+          {items.length === 0 ? (empty ?? <p className="m-0 text-micro text-muted">{t('practice.dialog.empty')}</p>) : <Options items={asking !== undefined ? items : [...plays, ...support]} stacked={stacked} />}
         </div>
       </section>
     </>,

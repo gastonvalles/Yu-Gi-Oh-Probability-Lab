@@ -55,7 +55,18 @@ export interface AutoOverlay {
   /** Las casillas que el núcleo deshabilitó (`field_mask`, como en `select_place`). */
   disabled: number
   end: { winner: number; reason: number } | null
+  /**
+   * Lo que rige sobre cada asiento («no podés Invocar de Modo Especial, salvo monstruos VIENTO»): el `desc` del texto de cada efecto con `EFFECT_FLAG_CLIENT_HINT`, por asiento.
+   * `player_hint` 6 lo agrega y 7 lo quita (el núcleo lo manda al vencer el efecto: con `RESET_PHASE|PHASE_END`, en la End Phase).
+   */
+  limits: [string[], string[]]
+  /** La primera Invocación Normal (`summon`) o Colocación de un monstruo (`set`) de cada asiento en este turno; null si no hubo. */
+  normal: [NormalPlay | null, NormalPlay | null]
 }
+export type NormalPlay = 'summon' | 'set'
+/** `PHINT_DESC_ADD` y `PHINT_DESC_REMOVE` del núcleo. */
+const LIMIT_ADD = 6
+const LIMIT_REMOVE = 7
 
 export interface AdapterOptions {
   /** El asiento que mira (0 = el que empieza). */
@@ -125,12 +136,12 @@ const MAT_PILE: Record<number, MatPile> = { [L.DECK]: 'deck', [L.HAND]: 'hand', 
 const PHASE: Record<number, MatState['phase']> = { 1: 'draw', 2: 'standby', 4: 'main1', 8: 'battle', 0x10: 'battle', 0x20: 'battle', 0x40: 'battle', 0x80: 'battle', 0x100: 'main2', 0x200: 'end' }
 /**
  * Mensajes que no cambian la mesa ni el overlay, cada uno con su porqué: las pistas y los textos son para la pantalla (`hint`, `card_hint`,
- * `player_hint`, `show_hint`); `set`, `summoning`, `spsummoning` y sus `*ed` acompañan a un `move` que ya puso la carta (el adaptador los
- * mira de adelante para saber cómo llegó); `chained` repite el `chaining`; `card_selected`, `random_selected`, `missed_effect`, `battle`,
+ * `show_hint`; `player_hint` sólo cuenta en `limits`); `spsummoning` y los `*ed` acompañan a un `move` que ya puso la carta (el adaptador los
+ * mira de adelante para saber cómo llegó; `set` y `summoning` sólo cuentan en `normal`); `chained` repite el `chaining`; `card_selected`, `random_selected`, `missed_effect`, `battle`,
  * `attack_disabled`, `damage_step_*`, las monedas y los dados son animaciones o avisos; `deck_top` dice que la de arriba está boca arriba (la
  * mesa no tiene esa marca); `match_kill` y `waiting`, del duelo y no de la mesa.
  */
-const QUIET = new Set<WireEvent['type']>(['hint', 'card_hint', 'player_hint', 'show_hint', 'set', 'summoning', 'spsummoning', 'summoned', 'spsummoned', 'flipsummoned', 'chained', 'card_selected', 'random_selected', 'missed_effect', 'battle', 'attack_disabled', 'damage_step_start', 'damage_step_end', 'toss_coin', 'toss_dice', 'hand_res', 'deck_top', 'match_kill', 'waiting'])
+const QUIET = new Set<WireEvent['type']>(['hint', 'card_hint', 'show_hint', 'spsummoning', 'summoned', 'spsummoned', 'flipsummoned', 'chained', 'card_selected', 'random_selected', 'missed_effect', 'battle', 'attack_disabled', 'damage_step_start', 'damage_step_end', 'toss_coin', 'toss_dice', 'hand_res', 'deck_top', 'match_kill', 'waiting'])
 
 /** Jugadas que no mueven cartas. */
 const STILL = new Set<MatAction['type']>(['reveal', 'target', 'activate', 'counter', 'attack', 'declare'])
@@ -162,7 +173,7 @@ function copyIds(codes: readonly number[]): string[] {
   })
 }
 
-const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null })
+const freshOverlay = (lp: [number, number]): AutoOverlay => ({ stats: { mine: {}, theirs: {} }, chain: [], negated: [], lp: [...lp], turn: 0, turnPlayer: null, phase: 0, equips: [], disabled: 0, end: null, limits: [[], []], normal: [null, null] })
 
 export function createAdapter(options: AdapterOptions): Adapter {
   const { seat, typeOf } = options
@@ -610,7 +621,34 @@ export function createAdapter(options: AdapterOptions): Adapter {
           // El mismo jugador otra vez: el turno del otro se saltó (pasa en su mesa también, así la cuenta de `duel-turn.ts` da a quien juega).
           if (previous === event.player) passTurn((1 - previous) as Seat)
         }
-        overlay = { ...overlay, turn: overlay.turn + 1, turnPlayer: event.player as Seat }
+        overlay = { ...overlay, turn: overlay.turn + 1, turnPlayer: event.player as Seat, normal: [null, null] }
+        return
+      }
+
+      // La Invocación Normal y la Colocación de un monstruo del turno (una Mágica o Trampa colocada también es `set`, en las Mágicas y Trampas).
+      case 'summoning':
+      case 'set': {
+        const kind = event.type === 'summoning' ? 'summon' : event.location === L.MZONE ? 'set' : null
+        const normal: AutoOverlay['normal'] = [...overlay.normal]
+
+        if (kind && normal[event.controller] === null) {
+          normal[event.controller] = kind
+          overlay = { ...overlay, normal }
+        }
+        return
+      }
+
+      case 'player_hint': {
+        if (event.player_hint !== LIMIT_ADD && event.player_hint !== LIMIT_REMOVE) return
+        const player = event.player as Seat
+        const own = overlay.limits[player]
+        const at = own.indexOf(event.description)
+        const limits: AutoOverlay['limits'] = [...overlay.limits]
+
+        if (event.player_hint === LIMIT_ADD) limits[player] = [...own, event.description]
+        else if (at >= 0) limits[player] = own.filter((_, i) => i !== at)
+        else return
+        overlay = { ...overlay, limits }
         return
       }
 

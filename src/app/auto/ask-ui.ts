@@ -202,6 +202,10 @@ export interface AutoLink {
   dropped: ({ id: string } & MatTarget) | null
   /** Mantener apretado un monstruo del campo (sólo en «Jugar solo», que se deshace): cambiar su posición sin menú, si tus jugadas del turno lo ofrecen; null si no. */
   holdFor: (id: string) => (() => void) | null
+  /** Por qué una carta tuya no tiene jugadas ahora, lo que se sabe (`no-plays.ts` y las restricciones del núcleo, con su texto); null repasando o con el duelo terminado. */
+  whyNot: ((id: string) => string[]) | null
+  /** El atajo a la mesa manual desde el menú de una carta sin jugadas («Jugar solo»); null si no hay. */
+  manual: (() => void) | null
 }
 
 /** La forma de `MenuItem` (`MatDialogs.tsx`), para que la mesa use los ítems tal cual. */
