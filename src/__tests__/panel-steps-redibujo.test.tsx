@@ -7,7 +7,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { createMatState, describeMatSteps, matReducer, type MatAction, type MatState } from '../app/practice-mat'
 import { STEP_MS } from '../components/auto/AutoSoloScreen'
 import { PracticeMatPanel } from '../components/probability/PracticeMatPanel'
-import { createPanelSteps, panelStepsOf, type PanelChains } from '../components/probability/panel-steps'
+import { createPanelSteps, panelStepsOf } from '../components/probability/panel-steps'
 import { fakeSession, loc, SPOTS } from './support/auto-session-fake'
 import { core, phaseButton, renderAuto } from './support/auto-screen-harness'
 import { render } from './support/practice-mat-harness'
@@ -47,13 +47,7 @@ describe('la lista de pasos · qué fichas se dibujan de nuevo', () => {
     state = matReducer(state, action)
   }
   const labels = describeMatSteps(table, actions, nameOf)
-  /** Una marca de cadena en cada paso par, armada de nuevo en cada llamada (como `panelChainsOf` con cada jugada). */
-  const chainsOf = (count: number): PanelChains => ({
-    marks: new Map(Array.from({ length: count }, (_, index) => index + 1).filter((step) => step % 2 === 0).map((step) => [step, { chain: 1, link: step, result: { negated: false, from: step, to: step } }])),
-    ends: new Map(),
-  })
-
-  it('una jugada más dibuja la ficha nueva y la que deja de ser la actual; las marcas de cadena iguales pero rearmadas no rehacen las demás', () => {
+  it('una jugada más dibuja la ficha nueva y la que deja de ser la actual', () => {
     const stepsOf = createPanelSteps()
     // Los callbacks de la mesa son estables (`useCallback`); acá, los mismos de siempre.
     const nothing = () => {}
@@ -62,7 +56,7 @@ describe('la lista de pasos · qué fichas se dibujan de nuevo', () => {
       const [count, set] = useState(30)
 
       setCount = set
-      return <PracticeMatPanel steps={stepsOf(table, actions.slice(0, count), labels, nameOf, artOf)} initial={table} cursor={count} onSeek={nothing} nameOf={nameOf} artOf={artOf} combos={NO_COMBOS} deckName="Test" onLoad={nothing} onRename={nothing} onDelete={nothing} showCombos={false} chains={chainsOf(count)} />
+      return <PracticeMatPanel steps={stepsOf(table, actions.slice(0, count), labels, nameOf, artOf)} initial={table} cursor={count} onSeek={nothing} nameOf={nameOf} artOf={artOf} combos={NO_COMBOS} deckName="Test" onLoad={nothing} onRename={nothing} onDelete={nothing} showCombos={false} />
     }
     const boxed = (step: number) => (panelStepsOf(table, actions, labels, nameOf, artOf)[step - 1]!.divider ? 0 : 1)
 

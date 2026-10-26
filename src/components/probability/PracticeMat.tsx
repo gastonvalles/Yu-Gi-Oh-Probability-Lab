@@ -98,7 +98,7 @@ import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, H
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
-import { createPanelSteps, type PanelChains } from './panel-steps'
+import { createPanelSteps } from './panel-steps'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
 import { PileStack } from './PileStack'
@@ -226,8 +226,6 @@ export interface DuelMatLink {
    * y en una hoja en el celular, que se abre con su botón abajo a la derecha (donde va el chat en el duelo por enlace). Sin esto (el duelo por enlace), no hay pasos ni combos.
    */
   steps?: boolean
-  /** Las cadenas en esa lista de pasos (`panelChainsOf`): sin esto (un combo guardado que se repasa), los pasos van sin ellas. */
-  stepChains?: PanelChains
   /** Un panel fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`: el detalle de la carta que se tocó): la mesa le deja 20rem (o lo que se le dé arrastrando su borde) y no se mueve cuando cambia. */
   detail?: ReactNode
   /** Se hizo click en una carta tuya (de la mano, del campo o de un visor de pila): `detail` la muestra y queda fija hasta un click afuera o en otra carta. */
@@ -1859,7 +1857,6 @@ export function PracticeMat({
       onDelete={deleteCombo}
       showCombos={stepsPanel}
       {...(duel?.auto ? { emptyHint: t('auto.steps.empty') } : {})}
-      {...(duel?.stepChains ? { chains: duel.stepChains } : {})}
       className="min-h-0 flex-1"
     />
   )

@@ -40,7 +40,6 @@ import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
 import { RespondBand } from './RespondBand'
 import { SortSheet } from './SortSheet'
-import { panelChainsOf } from './step-chains'
 
 /**
  * Lo que comparten las dos mesas del duelo automático (`AutoSoloScreen` y `AutoDuelScreen`, la del duelo por enlace): la mesa como la cuenta el núcleo (el ritmo: las jugadas de una
@@ -532,18 +531,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
-  // Las cadenas en la lista de pasos, con lo que el aviso ya mostró (`chainSeen`): la marca de tu activación, cómo resolvió y el cierre. Rearmándose, las jugadas y la cadena no coinciden: nada.
-  const stepChains = useMemo(
-    () =>
-      snap.replaying
-        ? null
-        : panelChainsOf(steps, chainSeen, paced.actions, opening.skip, (link) => {
-            const name = link.code ? nameOf(null, link.code) : nameOf(link.card)
-
-            return link.mine ? name : t('auto.steps.theirs', { card: name, rival: rivalName })
-          }),
-    [snap.replaying, steps, chainSeen, paced.actions, opening.skip, nameOf, rivalName],
-  )
   // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).
   const acting = useMemo(() => actingOf(reviewing ? null : feed), [feed, reviewing])
   // La insignia «CL1», «CL2»… de cada carta de la cadena: mientras se ve su aviso (se va con él, a los `CHAIN_LINGER_MS` de terminar).
@@ -793,8 +780,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ),
     attackTargets,
     foreignKnown,
-    // Un combo guardado no lleva sus cadenas: repasándolo, los pasos van sin ellas (tus jugadas, sí: son las mismas).
-    ...(stepChains && review?.name === undefined ? { stepChains } : {}),
     // La fase de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
     phase: turnMine ? state.phase : theirs.phase,
     // Cambiás de fase en tus jugadas del turno, en una parada de tu DP o tu SP y en la ventana de una fase tuya.

@@ -7,13 +7,12 @@ import { passivePolicy } from '../app/auto/policies'
 import { LOCATION } from '../app/auto/protocol'
 import { linksOf, pileLinksOf } from '../app/card-glow'
 import { autoRival, type HandtrapConfig } from '../app/handtraps'
-import { panelChainsOf } from '../components/auto/step-chains'
 import { cardRows, hasCoreData, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
  * El aviso de la cadena contra el núcleo real (lento: `npm run test:auto`; se salta sin datos): activás Terraforming, el rival responde con Ash Blossom y la cadena de dos
  * eslabones llega de una. Los pasos que anota el adaptador (`chainSteps`) la cuentan en orden: CL1 tuyo, CL2 suyo, se resuelve primero CL2 y después CL1 (sin efecto), y fin.
- * Y el costo, para la lista de pasos: el núcleo lo paga después de anotar el eslabón.
+ * Y el costo: el núcleo lo paga después de anotar el eslabón.
  */
 
 const ASH = 14558127
@@ -101,13 +100,6 @@ describe.skipIf(!hasCoreData)('el aviso de la cadena contra el núcleo real (npm
     expect(snapshot.theirs.gy).toContain(ash.id)
     expect(pileLinksOf(snapshot.mine.gy, links.mine)).toEqual({ numbers: [1], mine: true, fromHand: false, voided: { state: 'disabled', by: 2 } })
     expect(pileLinksOf(snapshot.theirs.gy, links.theirs)).toEqual({ numbers: [2], mine: false, fromHand: true })
-    // La lista de pasos (`panelChainsOf`, sin plegar nada): «sin efecto» en la jugada de Terraforming (la que la abrió) y el cierre con los dos eslabones después del último paso de la cadena.
-    const panel = panelChainsOf(steps, steps.length, snapshot.mineActions, 0, (link) => String(link.code))
-    const [markAt] = [...panel.marks].find(([, mark]) => mark.result?.negated) ?? []
-
-    expect(snapshot.mineActions[markAt! - 1]).toMatchObject({ id: chain[0]!.link!.card!.id })
-    expect(panel.marks.get(markAt!)?.result).toEqual({ negated: true, by: 2 })
-    expect(panel.ends.get(chain.at(-1)!.at)?.[0]?.links).toEqual([{ number: 1, name: String(TERRAFORMING), state: 'disabled', by: 2 }, { number: 2, name: String(ASH), state: 'solved' }])
   }, 60_000)
 
   // Tres eslabones: Terraforming, Ash y tu respuesta a Ash. Cada caso, como lo cuenta el adaptador: los eslabones, las negaciones ([CLn, by]) y el estado final de cada fila.
@@ -146,9 +138,14 @@ describe.skipIf(!hasCoreData)('el aviso de la cadena contra el núcleo real (npm
   ])('el costo llega después del eslabón y antes de resolverse: %s', async (_, card, cost, opened) => {
     const filler = [SOGEN, POT, TERRAFORMING, ASH, 83764718, 5318639, 44095762, 53129443, 10045474].map((code): [number, number] => [code, 3])
     const snapshot = await activateFromHand(card, { main: [[card, 3], ...filler], extra: [] })
-    const panel = panelChainsOf(snapshot.chainSteps, snapshot.chainSteps.length, snapshot.mineActions, 0, String)
-    const marks = [...panel.marks].map(([at, mark]) => [snapshot.mineActions[at - 1]!.type, mark.cost ?? false] as const)
+    // El eslabón se anota después de su activación (la jugada que la abrió) y el costo son las cartas que se mueven entre él y el paso siguiente de la cadena.
+    const steps = snapshot.chainSteps
+    const k = steps.findIndex((step) => step.kind === 'chain' && step.link?.code === card)
+    const link = steps[k]!
+    const id = link.link!.card!.id
+    const opening = snapshot.mineActions.slice(0, link.at).reverse().find((action) => (action.type === 'activate' || action.type === 'place' || action.type === 'position') && action.id === id)
 
-    expect(marks).toEqual([[opened, false], ...Array.from({ length: cost }, () => ['move', true] as const)])
+    expect(opening?.type).toBe(opened)
+    expect(snapshot.mineActions.slice(link.at, steps[k + 1]!.at).filter((action) => action.type === 'move')).toHaveLength(cost)
   }, 60_000)
 })
