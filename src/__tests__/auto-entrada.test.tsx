@@ -14,10 +14,30 @@ import { deckState, fortyCardMain, storeWith } from './support/deck-fixtures'
 // `practice-*` y `auto-screen-*`): acá importa cuál se abre.
 vi.mock('../components/deck-mode/lazy-steps', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../components/deck-mode/lazy-steps')>()),
-  LazyPracticeSection: () => <p>mesa manual</p>,
+  LazyPracticeSection: ({ session }: { session: { actions: unknown[]; cursor: number; replay: boolean } }) => (
+    <>
+      <p>mesa manual</p>
+      <p data-testid="manual-session">{`${session.actions.length}·${session.cursor}·${session.replay}`}</p>
+    </>
+  ),
   preloadHeavySteps: () => {},
 }))
-vi.mock('../components/auto/AutoSoloScreen', () => ({ AutoSoloScreen: () => <p>mesa automática</p> }))
+// «Seguir en manual» de mentira: una partida con dos jugadas.
+vi.mock('../components/auto/AutoSoloScreen', async () => {
+  const { createMatState } = await import('../app/practice-mat')
+  const game = { initial: createMatState(['card-1-1'], [], 0), actions: [{ type: 'phase', phase: 'standby' }, { type: 'phase', phase: 'main1' }], names: {} }
+
+  return {
+    AutoSoloScreen: ({ onManual }: { onManual?: (value: typeof game | null) => void }) => (
+      <>
+        <p>mesa automática</p>
+        <button type="button" onClick={() => onManual?.(game)}>
+          seguir
+        </button>
+      </>
+    ),
+  }
+})
 
 const SWITCH = { name: 'Duelo automático (beta)' }
 /** jsdom no tiene `Worker`: el navegador «puede» correr el núcleo sólo cuando la prueba le pone uno. */
@@ -109,6 +129,29 @@ describe('«Entrenar solo» abre la mesa que dice el interruptor', () => {
     act(() => setAutoPref('duel', false))
     expect(await screen.findByText('mesa manual')).toBeInTheDocument()
     expect(screen.queryByText('mesa automática')).toBeNull()
+  })
+
+  it('«Seguir en modo manual» abre la manual con la partida (en vivo, con su historial) sin tocar el interruptor; al volver al lobby de Jugar, otra vez la automática', async () => {
+    withWorker()
+    // Cambiar de pantalla sube el contenido (jsdom no lo tiene).
+    HTMLElement.prototype.scrollTo = () => {}
+    setAutoPref('duel', true)
+    practice()
+    fireEvent.click(await screen.findByRole('button', { name: 'seguir' }))
+
+    expect(await screen.findByText('mesa manual')).toBeInTheDocument()
+    // Las dos jugadas, con el cursor al final y sin los controles de un combo: Deshacer y los Pasos siguen.
+    expect(screen.getByTestId('manual-session')).toHaveTextContent('2·2·false')
+    expect(autoPrefs().duel).toBe(true)
+    const go = (hash: string) =>
+      act(() => {
+        window.history.replaceState(null, '', hash)
+        window.dispatchEvent(new HashChangeEvent('hashchange'))
+      })
+
+    go('#duel')
+    go('#practice')
+    expect(await screen.findByText('mesa automática')).toBeInTheDocument()
   })
 
   it('en un navegador que no puede correr el núcleo, la preferencia no se usa: siempre la manual', async () => {

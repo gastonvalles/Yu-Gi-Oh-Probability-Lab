@@ -22,9 +22,9 @@ export function useMatSession() {
   const [session, setSession] = useState<MatSession | null>(null)
   const state = useMemo(() => (session ? replayMat(session.initial, session.actions, session.cursor) : null), [session])
 
-  /** Nueva mesa; con jugadas (un combo cargado) arranca en el paso 0 para reproducirlo. */
-  const start = useCallback((initial: MatState, actions: MatAction[] = [], names: Record<string, string> = {}) => {
-    setSession({ initial, actions, cursor: 0, names, replay: actions.length > 0 })
+  /** Nueva mesa; con jugadas (un combo cargado) arranca en el paso 0 para reproducirlo. `live`: sigue en vivo después de la última (la partida que viene del automático). */
+  const start = useCallback((initial: MatState, actions: MatAction[] = [], names: Record<string, string> = {}, live = false) => {
+    setSession({ initial, actions, cursor: live ? actions.length : 0, names, replay: !live && actions.length > 0 })
   }, [])
 
   /** Una jugada nueva: lo que seguía en una reproducción se descarta (el combo guardado no cambia). */

@@ -59,7 +59,7 @@ interface AutoBarProps {
   onPlace: (mode: AutoPlaceMode) => void
   /** «Reiniciar el mismo duelo» de «Más opciones»: desde el principio, con las mismas cartas (sin esto, no se ofrece). */
   onRestart?: () => void
-  /** «Jugar en modo manual» de «Más opciones»: apaga el duelo automático y queda la mesa manual con el mismo deck (sin esto, no se ofrece). */
+  /** «Seguir en modo manual» de «Más opciones»: abre el diálogo para seguir la partida en la mesa manual (sin esto, no se ofrece). */
   onManual?: () => void
   /** «Handtraps del rival»: si las usa, lo que tiene y «Cambiar handtraps» (la pantalla abre la hoja del simulador; al aplicar, el duelo empieza de nuevo). Apagadas, el rival es el pasivo. */
   handtraps: { on: boolean; summary: string; onChange: () => void }

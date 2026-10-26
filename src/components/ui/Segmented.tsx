@@ -26,9 +26,10 @@ const DETAIL_TONE = { success: 'font-semibold text-success-soft', danger: 'font-
 /**
  * track: pista lavanda con la opción elegida en ámbar · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
  * cards: tarjetas (como las fechas del diseño) · lens: la pista lavanda con una tarjeta por opción y su anillo arriba (la lente del Lab: Promedio / Yendo 1º / Yendo 2º). Lo elegido es ámbar, como en toda la app (el violeta es de los fondos y de la acción principal): en la pista y las pastillas,
- * relleno ámbar con el texto oscuro; en `cards`, el borde y el texto ámbar.
+ * relleno ámbar con el texto oscuro; en `cards`, el borde y el texto ámbar · list: las tarjetas una debajo de otra, alineadas a la izquierda y con el detalle que se parte (opciones con
+ * una frase, como «Volver atrás» de «Seguir en manual»).
  */
-type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards' | 'lens'
+type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards' | 'lens' | 'list'
 
 interface SegmentedProps<T extends string> {
   value: T
@@ -51,6 +52,7 @@ const GROUP: Record<SegmentedVariant, string> = {
   scroll: 'flex gap-2',
   cards: 'grid auto-cols-fr grid-flow-col gap-2',
   lens: 'grid auto-cols-fr grid-flow-col gap-1 rounded-card bg-lavender p-1',
+  list: 'grid gap-2',
 }
 
 /** Opción elegida con color propio (verde / rojo) en lugar del ámbar de lo elegido, con el texto blanco y sin brillo debajo (regla 9 de docs/design-system.md). */
@@ -91,11 +93,17 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
     on: 'text-info-soft inset-ring-2 inset-ring-info',
     off: 'text-foreground hover:bg-tint/10',
   },
+  list: {
+    base: 'rounded-card border px-3 py-2',
+    on: 'border-info bg-card-background text-info-soft',
+    off: 'border-border-subtle bg-card-background text-foreground hover:bg-surface-hover',
+  },
 }
 
 /** Selector de una opción entre pocas (turno, tipo de regla, filtro): mismo control en toda la app. */
 export function Segmented<T extends string>({ value, onChange, options, label, variant = 'track', size = 'md', fullWidth = false, dense = false, className }: SegmentedProps<T>) {
   const look = ITEM[variant]
+  const list = variant === 'list'
   const id = useId()
 
   return (
@@ -113,7 +121,8 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             aria-describedby={option.detailLabel ? `${id}-${option.value}` : undefined}
             data-active={active ? 'true' : 'false'}
             className={cx(
-              'grid min-w-0 content-center justify-items-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+              'grid min-w-0 content-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+              list ? 'justify-items-start text-left' : 'justify-items-center',
               dense ? 'rounded-lg px-1' : look.base,
               active ? (option.tone && variant === 'track' ? TONE_ON[option.tone] : look.on) : look.off,
               variant === 'lens' ? null : size === 'md' ? 'min-h-10 text-body pointer-coarse:min-h-11' : 'min-h-9 text-micro pointer-coarse:min-h-11',
@@ -122,13 +131,13 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             onClick={() => onChange(option.value)}
           >
             {option.leading ? <span className="mb-0.5 grid place-items-center" aria-hidden="true">{option.leading}</span> : null}
-            <span className={cx('flex items-center justify-center gap-1.5 text-center', dense ? 'whitespace-nowrap' : 'max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap')}>
+            <span className={cx('flex items-center gap-1.5', list ? 'justify-start' : 'justify-center text-center', dense ? 'whitespace-nowrap' : 'max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap')}>
               {option.label}
               {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}
             </span>
             {option.detail ? (
               // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (oscuro sobre el ámbar, ámbar en la tarjeta, blanco sobre el verde o el rojo).
-              <span aria-hidden={option.detailLabel ? true : undefined} className={cx('whitespace-nowrap text-micro tabular-nums', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
+              <span aria-hidden={option.detailLabel ? true : undefined} className={cx('text-micro tabular-nums', list ? 'min-w-0 break-words' : 'whitespace-nowrap', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
                 {option.detail}
               </span>
             ) : null}

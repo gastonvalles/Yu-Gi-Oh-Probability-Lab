@@ -91,6 +91,11 @@ export interface AutoSnapshot {
   unmapped: readonly string[]
   /** Con el rival de handtraps, su mano como la ve él (códigos, en su orden): la pantalla la muestra salvo «A ciegas». Vacía con el pasivo. */
   rivalHand: readonly number[]
+  /**
+   * Dónde empieza cada jugada tuya en `mineActions`: cuántas había al llegar cada pregunta de jugada tuya (`select_idlecmd` / `select_battlecmd`) de la tanda vigente, sin
+   * repetir (la última es la que espera, si `ask` es una de ésas). Recortar ahí da la mesa de deshacer hasta esa pregunta: «Seguir en manual» vuelve atrás así, sin el núcleo.
+   */
+  playStarts: readonly number[]
 }
 
 export interface SessionOptions {
@@ -157,6 +162,8 @@ export const MR5 = '190464'
 const PLAYER = { lp: 8000, hand: 5, draw: 1 }
 const FATAL = new Set<FaultKind>(['rules', 'setup', 'crash'])
 const MAX_RETRIES = 3
+/** Las preguntas cuya respuesta es una jugada: lo que deshace `undo`. */
+const PLAY_ASKS = new Set<string>(['select_idlecmd', 'select_battlecmd'])
 
 type CreateCommand = Extract<AutoCommand, { t: 'create' }>
 
@@ -228,6 +235,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     texts: {},
     unmapped: [],
     rivalHand: [],
+    playStarts: [],
   }
   let data: DuelData | null = null
   let create: CreateCommand | null = null
@@ -293,7 +301,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         typeOf,
       }),
     )
-    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], chainSteps: [], unmapped: [], ...view() }, false)
+    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], chainSteps: [], unmapped: [], playStarts: [], ...view() }, false)
   }
 
   /** Un anfitrión nuevo (otro Worker): arma el duelo con las primeras `to` respuestas ya dadas. Lo que mande el anterior ya no se escucha. */
@@ -376,6 +384,10 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         return set({ status: 'ended', ask: null, remoteAsk: null, replaying: false, answers })
 
       case 'ask': {
+        const at = snapshot.mineActions.length
+
+        // También las ya contestadas que se re-simulan: se rearman con la mesa.
+        if (controlled(event.seat) && PLAY_ASKS.has(event.ask.type) && snapshot.playStarts.at(-1) !== at) set({ playStarts: [...snapshot.playStarts, at] }, false)
         if (skip > 0) {
           skip -= 1
           return
