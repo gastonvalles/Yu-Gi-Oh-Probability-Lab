@@ -28,12 +28,13 @@ export const LANDING_TONE: Record<LandingTone, FxTone> = { normal: 'gold', speci
 export const STAGE_TONE: Record<SpotlightKind | ShowcaseKind, FxTone> = { ...SPOTLIGHT_TONE, ...LANDING_TONE, hand: 'cyan', gy: 'violet', banish: 'amber', extra: 'cyan', deck: 'cyan', attach: 'indigo' }
 
 /**
- * El brillo de una carta en un duelo (`app/card-glow.ts`), por fuera y quieto: lo que podés hacer ahora, un resplandor fino celeste casi blanco (`--playable-rgb`); lo que se activa o se resuelve, el aro
- * ámbar. Dos atributos en cada selector: le ganan al aro de una regla del Lab (`data-glow`) y al de la carta con el menú abierto. Lo llevan las cartas (en `FX_CARD`) y la casilla del Deck.
+ * El brillo de una carta en un duelo (`app/card-glow.ts`), por fuera y quieto, con el peso del de una salida o un problema del Lab (aro de 3 px y un resplandor grande, un poco más para el celeste, que es claro): lo que podés hacer ahora, en celeste
+ * casi blanco (`--playable-rgb`); lo que se activa o se resuelve, en ámbar. Dos atributos en cada selector: le ganan al aro de una regla del Lab (`data-glow`) y al de la carta con el menú abierto. Lo
+ * llevan las cartas (en `FX_CARD`) y la casilla del Deck.
  */
 export const DUEL_GLOW = [
-  'data-[glow=true]:data-[glow-kind=can]:[box-shadow:var(--card-shadow),0_0_0_1px_rgb(var(--playable-rgb)/0.9),0_0_12px_2px_rgb(var(--playable-rgb)/0.5)]',
-  'data-[glow=true]:data-[glow-kind=act]:[box-shadow:var(--card-shadow),0_0_0_2px_rgb(var(--warning-rgb)),0_0_22px_4px_rgb(var(--warning-rgb)/0.65)]',
+  'data-[glow=true]:data-[glow-kind=can]:[box-shadow:var(--card-shadow),0_0_0_3px_rgb(var(--playable-rgb)),0_0_32px_8px_rgb(var(--playable-rgb)/0.8)]',
+  'data-[glow=true]:data-[glow-kind=act]:[box-shadow:var(--card-shadow),0_0_0_3px_rgb(var(--warning-rgb)),0_0_32px_8px_rgb(var(--warning-rgb)/0.8)]',
 ].join(' ')
 
 /**
