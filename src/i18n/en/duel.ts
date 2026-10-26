@@ -275,6 +275,8 @@ export const duel: Translated<typeof es> = {
   'duel.bar.theirTurn': "{name}'s turn",
   'duel.bar.lifeOf': "{name}'s life points",
   'duel.bar.openCalculator': 'Open the life calculator',
+  'duel.bar.withHand': '{name} · Hand {count}',
+  'duel.bar.handCount': { one: 'One card in hand', other: '{count} cards in hand' },
   'duel.bar.clock': 'Round clock: {time}',
   'duel.bar.clockStart': 'Start the clock',
   'duel.bar.clockPause': 'Pause the clock',

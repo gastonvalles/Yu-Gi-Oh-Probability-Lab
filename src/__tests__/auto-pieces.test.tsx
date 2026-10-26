@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
-import { AutoBar } from '../components/auto/AutoBar'
+import { AutoBar, AutoLives } from '../components/auto/AutoBar'
 import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPicker'
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
@@ -413,18 +413,28 @@ describe('AutoBar', () => {
     expect(screen.queryByRole('button', { name: 'Salir del duelo' })).toBeNull()
   })
 
-  it('las vidas de los dos: en escritorio, en la barra (con la ventana grande entre los íconos); en el celular no van arriba (van abajo, con `AutoLives` en la botonera de la mesa)', () => {
-    const { unmount } = render(<AutoBar {...props} />)
+  it('las vidas no van en la barra sin laterales (en escritorio van en las esquinas del campo; en el celular, abajo: las pone la pantalla); con la botonera (`dock`), el engranaje sale de la barra sólo en escritorio', () => {
+    const { unmount } = render(<AutoBar {...props} dock />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Más opciones del duelo' })).toBeInTheDocument()
     unmount()
 
     desktop()
-    render(<AutoBar {...props} />)
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000' })).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
+    const { rerender } = render(<AutoBar {...props} />)
+
+    expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
     expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Cambiar a la vista superior', 'Sonidos', 'Ventana grande', 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Más opciones del duelo'])
     expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
+    rerender(<AutoBar {...props} dock />)
+    expect(screen.queryByRole('button', { name: 'Más opciones del duelo' })).toBeNull()
+  })
+
+  it('las vidas con la mano: «Rival · Mano 3» a la vista y «3 cartas en la mano» para el lector de pantalla (una sola, «Una carta en la mano»)', () => {
+    render(<AutoLives rivalName="Rival" life={{ mine: 8000, theirs: 7000 }} hands={{ mine: 1, theirs: 3 }} />)
+
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' })).toHaveTextContent('Rival · Mano 3')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' })).toHaveTextContent('Vos · Mano 1')
   })
 
   it('«Más opciones»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son el ícono de la barra, como en la práctica)', () => {

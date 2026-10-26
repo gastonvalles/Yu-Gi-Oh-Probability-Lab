@@ -152,6 +152,13 @@ export interface DuelMatLink {
   /** Lo que el + ofrece además de la ficha y los contadores en un duelo (la moneda, el dado y los juegos): cada uno abre lo suyo. */
   plusItems?: ReadonlyArray<{ label: string; onSelect: () => void }>
   life: ReactNode
+  /** Escritorio sin laterales: las vidas del rival en la esquina de arriba a la derecha del campo, encima de su borde y al costado de su mano (lámina 07). */
+  corner?: ReactNode
+  /**
+   * Escritorio: la botonera redonda (`AutoDock`), abajo a la derecha, en la fila de abajo de la mano; con ella, tus vidas (`life`) van a la izquierda de esa fila, en la esquina opuesta a las del
+   * rival (como en Master Duel).
+   */
+  dock?: ReactNode
   /** El cartel de lo que el rival avanzó (una fase suya, o que empieza tu turno); cambiar `key` lo vuelve a mostrar. */
   notice?: { key: number; phase: MatPhase; who?: string; label?: string }
   /** El texto del cartel cuando terminás tu turno (volvés de la End Phase a la Draw Phase) y pasa al rival ("Turno de Ana"). */
@@ -2388,7 +2395,13 @@ export function PracticeMat({
           <MatSaveContext.Provider value={saveLink}>{duel?.header}</MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
+        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'relative my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
+        {/* Las vidas del rival en la esquina de arriba a la derecha (escritorio sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
+        {duel?.corner && isDesktop && !rails ? (
+          <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: THEIR_HAND.desktop.room }}>
+            {duel.corner}
+          </div>
+        ) : null}
         {/* Celular: la mano del rival y el campo van juntos y centrados: el alto que sobra se reparte arriba y abajo (ni pegado a la barra ni un hueco antes de tu mano). Escritorio: sin envoltorio y el campo se centra. */}
         {/* Con la mano del rival del simulador de handtraps, también en escritorio van juntos y centrados la franja y el campo (lo que va junto, se junta). */}
         <div className={cx('flex flex-col gap-2', hasRivalStrip ? cx('my-auto', RIVAL_STRIP_GROUP) : cx('min-[1101px]:contents', !duel && 'max-[1101px]:my-auto'))}>
@@ -2616,12 +2629,13 @@ export function PracticeMat({
                   {isDesktop || duel.undoInHeader ? null : undoButton}
                   {duel.tools}
                   {duel.steps ? stepsButton : null}
+                  {isDesktop && duel.dock ? duel.life : null}
                 </span>
                 {isDesktop ? null : <span className="pointer-events-auto col-start-2 row-start-1">{duel.reactions}</span>}
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
                   {isDesktop && !duel.undoInHeader ? undoButton : null}
-                  {duel.life}
+                  {isDesktop && duel.dock ? duel.dock : duel.life}
                 </span>
               </div>
               )}

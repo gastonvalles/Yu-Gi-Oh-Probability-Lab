@@ -13,12 +13,13 @@ import { autoRival, dealRival, poolCount, readHandtrapConfig, writeHandtrapConfi
 import { randomSeed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
+import { LifeTile } from '../duel/DuelBar'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
-import { AutoBar, AutoLives } from './AutoBar'
+import { AutoBar, AutoDock, AutoLives, type AutoOptions } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckListOf } from './deck-list'
 import { ManualDialog } from './ManualDialog'
@@ -31,7 +32,7 @@ export { STEP_MS } from './use-auto-asks'
  * núcleo de reglas (`createAutoSession`: `ocgcore` en un Worker; el rival, pasivo o con las handtraps del simulador de «Jugar solo», que usa solo: su mano va boca arriba en el lugar de la
  * mano del rival, salvo «A ciegas», y lo que activa se cuenta grande en el centro). La pantalla **nunca despacha una jugada**: las jugadas las cuenta el núcleo y las preguntas se
  * contestan en la mesa, con lo que comparte con el duelo por enlace (`useAutoAsks`: el ritmo de a un paso, los menús, las casillas y el brillo, las piezas de afuera, la línea).
- * Acá queda lo de jugar solo: la barra (`AutoBar`: la de la práctica, con las vidas de los dos), el rival de handtraps y su hoja, deshacer, «Nueva mano», reiniciar, la ventana grande
+ * Acá queda lo de jugar solo: la barra (`AutoBar`: la de la práctica), las vidas (en escritorio, en las esquinas del campo) y la botonera de escritorio (`AutoDock`), el rival de handtraps y su hoja, deshacer, «Nueva mano», reiniciar, la ventana grande
  * y las portadas (carga, error, fin). Lo que no tiene pantalla todavía se contesta solo; si no hay respuesta segura, la línea avisa y ofrece deshacer (la sesión nunca queda colgada).
  */
 
@@ -118,8 +119,10 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  // En escritorio, si las vidas entran en la barra (lo mide ella: con el panel de pasos la columna de la mesa es más angosta).
-  const [livesInBar, setLivesInBar] = useState(true)
+  // Con laterales (lo sabe la barra) las vidas van en el izquierdo; sin ellos, en escritorio, en las esquinas del campo.
+  const [rails, setRails] = useState(false)
+  // «Pasos» de la botonera (escritorio): muestra u oculta el panel de la derecha.
+  const [stepsOpen, setStepsOpen] = useState(true)
   const rivalName = t('duel.bar.rival')
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
   // El rival de handtraps (con el simulador encendido y alguna carta): su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
@@ -186,16 +189,35 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   ) : undefined
 
   const life = { mine: snap.overlay.lp[0], theirs: snap.overlay.lp[1] }
+  // Las cartas de cada mano, junto a las vidas en escritorio (las tuyas, las de la mesa que se ve: repasando, las del paso).
+  const hands = { mine: asks.state.hand.length, theirs: snap.theirs.hand.length }
   // Repasando un combo (o tus jugadas) la mesa es la del repaso: el turno de la barra es el del paso que se mira, y la portada (el fin, un error), la mano del rival y lo que activa
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
+  // Lo que se ajusta: en «Más opciones» de la barra (celular) y en la botonera (escritorio).
+  const options: AutoOptions = {
+    chain: prefs.chain,
+    onChain: (mode) => setAutoPref('chain', mode),
+    place: prefs.place,
+    onPlace: (mode) => setAutoPref('place', mode),
+    onRestart: () => session.restart(),
+    ...(openManual ? { onManual: openManual } : {}),
+    handtraps: {
+      on: rivalOn,
+      summary: rivalOn ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) }) : t('auto.bar.handtrapsOff'),
+      onChange: () => setChoosing(true),
+    },
+    blind: prefs.blind,
+    onBlind: (on) => setAutoPref('blind', on),
+  }
   const link: DuelMatLink = {
     ...asks.mat,
     header: (
       <AutoBar
         rivalName={rivalName}
         life={life}
-        onLivesInBar={setLivesInBar}
+        hands={hands}
+        onRails={setRails}
         turn={reviewing ? asks.state.turn : snap.overlay.turn}
         myTurn={asks.turnMine}
         phase={snap.overlay.turn > 0 ? asks.mat.phase : null}
@@ -207,37 +229,32 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
         // La hoja ya guardó las handtraps nuevas: el duelo se arma de nuevo con ellas (la misma semilla, como «Cambiar handtraps» de «Más opciones»).
         onHandtraps={() => onHandtraps(readHandtrapConfig())}
         lane={asks.lane}
-        chain={prefs.chain}
-        onChain={(mode) => setAutoPref('chain', mode)}
-        place={prefs.place}
-        onPlace={(mode) => setAutoPref('place', mode)}
-        onRestart={() => session.restart()}
-        {...(openManual ? { onManual: openManual } : {})}
-        handtraps={{
-          on: rivalOn,
-          summary: rivalOn ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) }) : t('auto.bar.handtrapsOff'),
-          onChange: () => setChoosing(true),
-        }}
-        blind={prefs.blind}
-        onBlind={(on) => setAutoPref('blind', on)}
+        dock
+        {...options}
       />
     ),
     tools: null,
-    // Las vidas de los dos: en escritorio, en la barra (`AutoBar`); en el celular, con los íconos de la práctica arriba, no entran: van abajo, donde va la tuya en el duelo por enlace. En una
-    // fila de escritorio angosta (el panel de pasos, el detalle y el menú abiertos) tampoco: abajo, del tamaño del celular.
+    // Las vidas: en el celular, las dos abajo (con los íconos de la práctica arriba no entran), donde va la tuya en el duelo por enlace; con laterales, en el izquierdo (`AutoBar`); en
+    // escritorio, en las esquinas del campo (lámina 07): la del rival arriba a la derecha y la tuya abajo a la izquierda, cada una con las cartas de su mano.
     // Suben 12 px sobre el borde de la mano (`-mt-3`): la botonera mide lo que medía con Deshacer (44 px) y el campo no se corre, tampoco en una pantalla alta (ahí no hay scroll y su alto cuenta).
-    life:
-      docked && livesInBar ? null : (
-        <span className="-mt-3 flex items-center gap-2">
-          <AutoLives rivalName={rivalName} life={life} compact={docked} />
+    life: docked ? (
+      rails ? null : (
+        <span className="-mt-3 flex" data-corner="mine">
+          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact hand={hands.mine} />
         </span>
-      ),
+      )
+    ) : (
+      <span className="-mt-3 flex items-center gap-2">
+        <AutoLives rivalName={rivalName} life={life} />
+      </span>
+    ),
+    ...(docked ? { corner: <LifeTile name={rivalName} life={life.theirs} compact hand={hands.theirs} />, dock: <AutoDock {...options} steps={{ open: stepsOpen, onToggle: () => setStepsOpen((open) => !open) }} /> } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),
     // Deshacer va arriba, con los íconos de la práctica.
     undoInHeader: true,
-    // El panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos.
-    steps: true,
+    // El panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos. En escritorio, «Pasos» de la botonera lo oculta.
+    steps: stepsOpen || !docked,
     ...(cover === undefined || reviewing ? {} : { cover }),
   }
 
