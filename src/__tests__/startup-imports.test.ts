@@ -26,6 +26,7 @@ const NOT_AT_STARTUP = [
   'src/components/auto/deck-list.ts',
   'src/app/auto/auto-save.ts',
   'src/app/auto/deck-map.ts',
+  'src/app/auto/duel-key.ts',
   'src/app/auto/end-reasons.ts',
   'src/app/auto/dev-console.ts',
   'src/app/auto/policies.ts',
