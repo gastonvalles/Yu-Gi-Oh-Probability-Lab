@@ -16,8 +16,8 @@ export interface ChainStep {
   at: number
   /** El eslabón (0 = CL1); en `end`, -1. */
   index: number
-  /** Sólo `chain`: la carta que se activó, si es tuya y el `desc` del efecto (`aux.Stringid(carta, n)`: qué texto del `.cdb` lo nombra; ver `linkPhrase`). */
-  link?: { card: CardRef | null; code: number; mine: boolean; description?: string }
+  /** Sólo `chain`: la carta que se activó, si es tuya, el `desc` del efecto (`aux.Stringid(carta, n)`: qué texto del `.cdb` lo nombra; ver `linkPhrase`) y desde dónde se activó (`from`: el `triggering_location` del núcleo, una máscara `LOCATION`). */
+  link?: { card: CardRef | null; code: number; mine: boolean; description?: string; from?: number }
 }
 
 export type ChainRowState = ChainLink['state']
@@ -30,6 +30,8 @@ export interface ChainRow {
   mine: boolean
   /** El `desc` del efecto, si llegó (`ChainStep.link`). */
   description?: string
+  /** Desde dónde se activó (`LOCATION` del núcleo), si se sabe. */
+  from?: number
   state: ChainRowState
 }
 
@@ -69,7 +71,7 @@ export function chainFeed(steps: readonly ChainStep[], count: number): ChainFeed
       continue
     }
     if (step.kind === 'chain') {
-      rows[step.index] = { number: step.index + 1, card: step.link?.card ?? null, code: step.link?.code ?? 0, mine: step.link?.mine ?? false, ...(step.link?.description ? { description: step.link.description } : {}), state: 'chained' }
+      rows[step.index] = { number: step.index + 1, card: step.link?.card ?? null, code: step.link?.code ?? 0, mine: step.link?.mine ?? false, ...(step.link?.description ? { description: step.link.description } : {}), ...(step.link?.from === undefined ? {} : { from: step.link.from }), state: 'chained' }
       focus = step.index
       continue
     }

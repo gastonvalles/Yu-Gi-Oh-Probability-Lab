@@ -97,6 +97,11 @@ export const auto = {
   'auto.pick.chosen': 'Elegida',
   'auto.phase.notYet': 'Todavía no',
 
+  // La insignia del eslabón sobre la carta («CL1»): se ve la sigla; el nombre de la carta lo dice con palabras.
+  'auto.link.badge': 'CL{numbers}',
+  'auto.link.label': '{name}, eslabón {numbers} de la cadena',
+  'auto.link.labelHand': '{name}, eslabón {numbers} de la cadena, activada desde la mano',
+
   // La barra de arriba y «Más opciones».
   'auto.bar.chain': 'Respuestas',
   'auto.bar.chainHint': 'Si te pregunta cuando podés responder a una cadena.',

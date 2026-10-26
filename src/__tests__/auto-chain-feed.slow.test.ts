@@ -4,6 +4,8 @@ import { chainFeed } from '../app/auto/chain-feed'
 import { localTransport } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { passivePolicy } from '../app/auto/policies'
+import { LOCATION } from '../app/auto/protocol'
+import { linksOf, pileLinksOf } from '../app/card-glow'
 import { autoRival, type HandtrapConfig } from '../app/handtraps'
 import { panelChainsOf } from '../components/auto/step-chains'
 import { cardRows, hasCoreData, nodeSource, scriptStore, wasmBinary } from './support/core-data'
@@ -78,6 +80,18 @@ describe.skipIf(!hasCoreData)('el aviso de la cadena contra el núcleo real (npm
     expect(chain.every((step, i) => step.at <= snapshot.mineActions.length && (i === 0 || step.at >= chain[i - 1]!.at))).toBe(true)
     expect(['place', 'activate']).toContain(snapshot.mineActions[chain[0]!.at - 1]?.type)
     expect(chainFeed(steps, start + chain.length)).toMatchObject({ done: true, rows: [{ number: 1, code: TERRAFORMING, state: 'disabled' }, { number: 2, code: ASH, state: 'solved' }] })
+    // Desde dónde se activó cada una (`triggering_location`): Terraforming ya en su casilla de Mágicas y Trampas; Ash, desde la mano del rival (el rótulo «desde la mano» de su insignia).
+    expect(chain.flatMap((step) => (step.link ? [step.link.from] : []))).toEqual([LOCATION.SZONE, LOCATION.HAND])
+    // La insignia se busca por id en la mesa de ahora: terminada la cadena, las dos cartas están en su Cementerio y sus insignias con ellas.
+    const links = linksOf(chainFeed(steps, start + chain.length))
+    const terraforming = chain[0]!.link!.card!
+    const ash = chain[1]!.link!.card!
+
+    expect([terraforming.side, ash.side]).toEqual(['mine', 'theirs'])
+    expect(snapshot.mine.gy).toContain(terraforming.id)
+    expect(snapshot.theirs.gy).toContain(ash.id)
+    expect(pileLinksOf(snapshot.mine.gy, links.mine)).toEqual({ numbers: [1], mine: true, fromHand: false })
+    expect(pileLinksOf(snapshot.theirs.gy, links.theirs)).toEqual({ numbers: [2], mine: false, fromHand: true })
     // La lista de pasos (`panelChainsOf`, sin plegar nada): «sin efecto» en la jugada de Terraforming (la que la abrió) y el cierre con los dos eslabones después del último paso de la cadena.
     const panel = panelChainsOf(steps, steps.length, snapshot.mineActions, 0, (link) => String(link.code))
     const [markAt] = [...panel.marks].find(([, mark]) => mark.result?.negated) ?? []

@@ -92,6 +92,11 @@ export const auto: Translated<typeof es> = {
   'auto.pick.chosen': 'Chosen',
   'auto.phase.notYet': 'Not yet',
 
+  // The chain link badge on a card («CL1»): the short form is shown; the card's name says it in words.
+  'auto.link.badge': 'CL{numbers}',
+  'auto.link.label': '{name}, chain link {numbers}',
+  'auto.link.labelHand': '{name}, chain link {numbers}, activated from the hand',
+
   // The top bar and «More options».
   'auto.bar.chain': 'Responses',
   'auto.bar.chainHint': 'Whether it asks you when you can respond to a chain.',

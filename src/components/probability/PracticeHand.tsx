@@ -26,7 +26,8 @@ import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, fxVars } from './MatFx'
+import type { ChainBadgeData } from '../../app/card-glow'
+import { ChainBadge, FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, chainLinkLabel, fxVars } from './MatFx'
 import { CARD_BACK, glowFrame } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
@@ -79,6 +80,8 @@ interface PracticeHandProps {
   fanDegrees: number
   /** Por qué brilla cada carta: una salida (verde) o un problema (rojo) del Lab o, en un duelo, lo que podés hacer (celeste) y lo que se activa (ámbar): `app/card-glow.ts`. */
   glowOf: (id: string) => GlowKind | null
+  /** En un duelo, las cartas que están en la cadena a la vista: llevan la insignia de su eslabón («CL1») y su nombre lo dice. */
+  links?: ReadonlyMap<string, ChainBadgeData>
   /** Las que no brillan se oscurecen (una salida o un problema del Lab; en un duelo, no: la mano sigue a la vista). */
   dimUnlit: boolean
   /** Mano no jugable: las cartas se ven grises. */
@@ -135,7 +138,7 @@ const siblingIndex = (element: HTMLElement) => (element.parentElement ? Array.pr
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowOf, dimUnlit, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowOf, links, dimUnlit, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   // El tamaño de la carta sale de la mano inicial (no cambia al jugar o robar), pero la separación, el abanico y el centrado salen de las cartas que hay: al salir una, las que quedan se vuelven a centrar.
@@ -338,6 +341,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
   const onCardPointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>, id: string) => latest.current.handlePointerEnd(event, id), [])
   const onCardKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>, id: string) => latest.current.handleKeyDown(event, id), [])
   const deckRect = useCallback(() => latest.current.getDeckRect(), [])
+  /** El lugar de la carta `index` en el abanico, en reposo: un poco más abajo y más inclinada cuanto más lejos del centro. */
+  const restTransform = (index: number) => `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + Math.abs(index - (count - 1) / 2) ** 2 * 1.6}px, 0) rotate(${fanAngle(index, count, fanDegrees)}deg)`
 
   return (
     <div
@@ -350,10 +355,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
     >
       {cards.map((card, index) => {
         const isDragged = draggedId === card.id
-        const angle = fanAngle(index, count, fanDegrees)
-        const arch = Math.abs(index - (count - 1) / 2) ** 2 * 1.6
         // El lugar que le toca en el abanico; la carta arrastrada lo ignora (ver `HandCard`) y vuelve a él al soltarse.
-        const transform = `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + arch}px, 0) rotate(${angle}deg)`
+        const transform = restTransform(index)
         const flashing = flash?.id === card.id
         const selected = selectedId === card.id
 
@@ -370,6 +373,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
             dim={dimUnlit && glowOf(card.id) === null}
             flash={flashing ? flash : null}
             targeted={targeted.has(card.id)}
+            link={links?.get(card.id) ?? null}
             selected={selected}
             getDeckRect={deckRect}
             flyIn={dealsFromDeck ? dealsFromDeck(card.id) : true}
@@ -381,6 +385,18 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowO
           />
         )
       })}
+      {/* La insignia de la cadena, sobre el borde de arriba de su carta y con su mismo lugar en el abanico (la carta recorta lo que se sale). Van después de todas las cartas: no cambian su lugar entre hermanas. */}
+      {links
+        ? cards.map((card, index) => {
+            const link = links.get(card.id)
+
+            return link && draggedId !== card.id ? (
+              <span key={`cl:${card.id}`} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 z-60" style={{ width: layout.cardWidth, transform: restTransform(index) }}>
+                <ChainBadge link={link} className="left-0 top-0" />
+              </span>
+            ) : null
+          })
+        : null}
       {cards.length === 0 ? <span className="absolute inset-0 grid place-items-center text-micro text-soft">{t('practice.hand.empty')}</span> : null}
     </div>
   )
@@ -397,6 +413,8 @@ interface HandCardProps {
   dim: boolean
   flash: { key: number; kind: SpotlightKind } | null
   targeted: boolean
+  /** Sus eslabones en la cadena a la vista: van en su nombre (la insignia la dibuja la mano). */
+  link: ChainBadgeData | null
   selected: boolean
   getDeckRect: () => DOMRect | null
   /** false: la carta llega de otro lado de la mesa (la trae el vuelo entre zonas), sin el reparto desde el mazo. */
@@ -421,6 +439,7 @@ const HandCard = memo(function HandCard({
   dim,
   flash,
   targeted,
+  link,
   selected,
   getDeckRect,
   flyIn,
@@ -497,6 +516,7 @@ const HandCard = memo(function HandCard({
   }, [])
 
   const frame = glowFrame(glow)
+  const label = targeted ? t('practice.card.targeted', { name: card.name }) : card.name
   const style: CSSProperties = {
     width: layout.cardWidth,
     // Arrastrada, la posición la escribe `PracticeHand` por el ref en cada cuadro: React no la toca (y al soltar vuelve a poner la de reposo).
@@ -511,7 +531,7 @@ const HandCard = memo(function HandCard({
       ref={elementRef}
       role="listitem"
       tabIndex={0}
-      aria-label={targeted ? t('practice.card.targeted', { name: card.name }) : card.name}
+      aria-label={link ? chainLinkLabel(label, link) : label}
       title={card.name}
       data-card-id={card.id}
       className={HAND_CARD}

@@ -1,11 +1,13 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 
+import type { ChainBadgeData } from '../../app/card-glow'
 import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../app/mat-effects'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
-import { PHASES, type MatPhase } from '../../app/practice-mat'
+import { PHASES, type MatPhase, type MatSpot } from '../../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT, type CardPose } from '../../app/use-card-flights'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { PLAYER_COLOR } from '../duel/player-color'
 import { cx } from '../ui/cx'
 import { CARD_BACK, FX_RGB, type FxTone } from './practice-styles'
 
@@ -124,6 +126,34 @@ export function TargetMark() {
       <span className="absolute left-1/2 top-1/2 aspect-square w-[46%] -translate-x-1/2 -translate-y-1/2 animate-fx-spin rounded-full border-2 border-dashed border-[color:rgb(var(--fx-rgb))] motion-reduce:animate-none" />
       <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:rgb(var(--fx-rgb))] shadow-[0_0_8px_3px_rgb(var(--fx-rgb)/0.9)]" />
       <span className="absolute left-1/2 top-1/2 aspect-square w-[56%] -translate-x-1/2 -translate-y-1/2 animate-fx-ping rounded-full border-2 border-[color:rgb(var(--fx-rgb))] motion-reduce:hidden" />
+    </span>
+  )
+}
+
+/**
+ * Dónde va la insignia de la cadena en una casilla del campo: en la esquina de arriba a la izquierda de la carta como se ve (parada, del alto de la casilla y centrada; acostada, del ancho y
+ * centrada; en la zona de campo, la casilla entera). Va en la casilla y no en la carta, que recorta lo que se sale.
+ */
+export const chainBadgeAt = (spot: MatSpot, sideways: boolean) => (spot === 'field' ? 'left-0 top-0' : sideways ? 'left-0 top-[15.71%]' : 'left-[15.71%] top-0')
+
+/** El nombre de una carta con su eslabón: la insignia es decorativa y esto es lo que se lee. */
+export const chainLinkLabel = (name: string, link: ChainBadgeData) => t(link.fromHand ? 'auto.link.labelHand' : 'auto.link.label', { name, numbers: link.numbers.join(', ') })
+
+/**
+ * La insignia del eslabón de la cadena («CL1», «CL1·3» si la carta tiene dos), pegada arriba a la izquierda de la carta o de la pila (`className` la ubica), montada sobre el borde de arriba para
+ * no tapar el nombre. Del color de quien la activó, el de sus vidas y el del número en la pila de la cadena (`PLAYER_COLOR`): violeta claro lo tuyo y ámbar lo del rival, llenos y con el texto
+ * oscuro (sobre el arte un teñido no se lee, y el blanco no llega a 4,5:1 sobre esos dos). El ámbar del rival es una etiqueta llena; el de lo que se activa, un aro alrededor de la carta.
+ * Sólo se mira: `aria-hidden`, y el eslabón va en el nombre de la carta (`chainLinkLabel`). Se va con el aviso de la cadena.
+ */
+export function ChainBadge({ link, className }: { link: ChainBadgeData; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-chain-link={link.numbers.join(',')}
+      data-chain-owner={link.mine ? 'mine' : 'theirs'}
+      className={cx('pointer-events-none absolute z-11 -translate-y-1/2 whitespace-nowrap rounded-tag px-1 py-px text-micro font-extrabold leading-tight tabular-nums ring-1 ring-background', PLAYER_COLOR[link.mine ? 'mine' : 'theirs'].fill, className)}
+    >
+      {t('auto.link.badge', { numbers: link.numbers.join('·') })}
     </span>
   )
 }

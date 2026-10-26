@@ -8,6 +8,7 @@ import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
 import { HANDTRAP_CATALOG, type HandtrapConfig } from '../../../app/handtraps'
+import type { ChainBadgeData } from '../../../app/card-glow'
 import { ArenaPanel } from '../../duel/ArenaPanel'
 import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
 import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
@@ -75,6 +76,7 @@ export function DuelSection() {
       </Specimen>
 
       <FieldArtSample duel={duel} />
+      <ChainBadgeSample duel={duel} />
       <MaterialSamples />
       <HoldSample />
       <ResizeHandleSample />
@@ -92,6 +94,39 @@ export function DuelSection() {
 
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+/**
+ * La insignia del eslabón: una cadena de cuatro sobre la mesa de muestra (CL1 un monstruo del rival en ataque, CL2 uno tuyo en defensa, CL3 tu Cementerio y CL4 tu Zona de campo). Las
+ * pide `links` de cada lado (`linksOf` de `app/card-glow.ts`, por id).
+ */
+function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
+  const [on, setOn] = useState(true)
+  const sides = useMemo(() => {
+    const links = (ids: ReadonlyArray<string | undefined>, first: number, owner: boolean) =>
+      new Map<string, ChainBadgeData>(ids.flatMap((id, i) => (id ? [[id, { numbers: [first + i], mine: owner, fromHand: false }] as const] : [])))
+    const mine = links(['card-59438930-1', duel.mine.state.gy.at(-1), duel.mine.state.field?.id], 2, true)
+    const theirs = links([duel.theirs.state.mz[0]?.id], 1, false)
+
+    return { mine: { ...duel.mine, ...(on ? { links: mine } : {}) }, theirs: { ...duel.theirs, ...(on ? { links: theirs } : {}) } }
+  }, [duel, on])
+
+  return (
+    <Specimen
+      title="La insignia del eslabón (CL1, CL2…)"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          Mientras se ve el aviso de la cadena, cada carta que está en ella lleva su número arriba a la izquierda, montado sobre el borde (no tapa el nombre), en la carta o en la pila donde esté ahora, con el
+          color de sus vidas: violeta claro lo tuyo, ámbar lo del rival (una etiqueta llena; el ámbar de lo que se activa es un aro). No se toca ni mueve nada: el eslabón también va en el nombre de la carta. Archivo: <Tag>probability/MatFx.tsx</Tag>
+        </>
+      }
+    >
+      <Segmented label="Cadena" variant="track" value={on ? 'on' : 'off'} onChange={(value) => setOn(value === 'on')} options={[{ value: 'on', label: 'Con cadena' }, { value: 'off', label: 'Sin cadena' }]} />
+      <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
+    </Specimen>
   )
 }
 

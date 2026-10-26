@@ -25,3 +25,38 @@ export function actingOf(feed: ChainFeed | null): { mine: Set<string>; theirs: S
   for (const row of feed?.rows ?? []) if (row.card && (row.state === 'chained' || row.state === 'solving')) acting[row.card.side].add(row.card.id)
   return acting
 }
+
+/** `LOCATION.HAND` del núcleo (`auto/protocol.ts`; el test los compara): copiado para que la mesa de práctica, que importa este módulo, no cargue el protocolo. */
+export const FROM_HAND = 2
+
+/** La insignia de la cadena de una carta: sus eslabones (CL1 = 1; una carta con dos eslabones, «CL1·3»), si la activaste vos y si alguno se activó desde la mano. */
+export interface ChainBadgeData {
+  numbers: number[]
+  mine: boolean
+  fromHand: boolean
+}
+
+/**
+ * Las cartas de la cadena que se ve (`chainFeed`), por id y del lado de la mesa donde están, con sus eslabones: todos, también los ya resueltos o negados, mientras la cadena esté a la
+ * vista. Quien la dibuja la busca por id en la mesa de ahora, así la insignia sigue a la carta si cambia de lugar (una carta descartada como costo pasa a la pila del Cementerio).
+ */
+export function linksOf(feed: ChainFeed | null): { mine: Map<string, ChainBadgeData>; theirs: Map<string, ChainBadgeData> } {
+  const links = { mine: new Map<string, ChainBadgeData>(), theirs: new Map<string, ChainBadgeData>() }
+
+  for (const row of feed?.rows ?? []) {
+    if (!row.card) continue
+    const fromHand = row.from === FROM_HAND
+    const seen = links[row.card.side].get(row.card.id)
+
+    if (seen) links[row.card.side].set(row.card.id, { ...seen, numbers: [...seen.numbers, row.number], fromHand: seen.fromHand || fromHand })
+    else links[row.card.side].set(row.card.id, { numbers: [row.number], mine: row.mine, fromHand })
+  }
+  return links
+}
+
+/** La insignia de una pila: los eslabones de las cartas de adentro, juntos y en orden (del color de la primera), o null si no hay ninguna en la cadena. */
+export function pileLinksOf(ids: readonly string[], links: ReadonlyMap<string, ChainBadgeData> | undefined): ChainBadgeData | null {
+  const found = links?.size ? ids.flatMap((id) => links.get(id) ?? []) : []
+
+  return found[0] ? { numbers: found.flatMap((link) => link.numbers).sort((a, b) => a - b), mine: found[0].mine, fromHand: found.some((link) => link.fromHand) } : null
+}

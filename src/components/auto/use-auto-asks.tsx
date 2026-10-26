@@ -4,7 +4,7 @@ import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
-import { actingOf } from '../../app/card-glow'
+import { actingOf, linksOf } from '../../app/card-glow'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
@@ -534,6 +534,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
   // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).
   const acting = useMemo(() => actingOf(reviewing ? null : feed), [feed, reviewing])
+  // La insignia «CL1», «CL2»… de cada carta de la cadena: mientras se ve su aviso (se va con él, a los `CHAIN_LINGER_MS` de terminar).
+  const links = useMemo(() => linksOf(feed && !reviewing && !(feed.done && chainGone === feed.key) ? feed : null), [feed, reviewing, chainGone])
 
   // ── El rival: su espejo, dibujado por lo que el núcleo dejó ver (`codeOf`). ──
   const theirs = snap.theirs
@@ -579,6 +581,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       handCount: theirs.hand.length,
       ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] } } : {}),
       act: acting.theirs,
+      links: links.theirs,
       // Tocar una carta suya la elige si la pregunta la ofrece; si no, la muestra. Tocar su Cementerio, su Destierro o su Extra con cartas boca arriba abre (o cierra) su visor.
       onMark: (target, rect) => {
         if ('pile' in target) {
@@ -591,7 +594,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, rivalPicks, showRival, rivalPeekOf, acting],
+    [theirs, artOf, gesture, rivalPicks, showRival, rivalPeekOf, acting, links],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
@@ -730,6 +733,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
     respond,
     act: acting.mine,
+    links: links.mine,
     prompt: prompt ? (
       <AskPrompt
         key={askId ?? 0}
