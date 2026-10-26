@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { describe, expect, it } from 'vitest'
 
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
-import { loc, pos, stringId } from './support/auto-session-fake'
+import { fakeSession, loc, pos, SPOTS, stringId } from './support/auto-session-fake'
 import { core, dispatches, handCard, renderAuto } from './support/auto-screen-harness'
 
 // Las hojas y la pregunta del medio: una opción, un número, Tipos, Atributos, ordenar, sí o no, y el efecto preguntado.
@@ -129,31 +129,66 @@ describe('auto-screen · las hojas', () => {
     expect(within(prompt).getAllByRole('button').map((button) => button.textContent)).toEqual(['Seguir en modo manual', 'No activar', 'Activar efecto'])
   })
 
-  it('una lista mixta (cementerio y Extra) va en la hoja de elegir cartas, con de dónde es cada una', () => {
+  it('una lista corta y mixta (cementerio y Extra) va en la banda del medio, sin velo: el título dice para qué, cada carta de dónde es, y «Cancelar» sin caja antes de la principal', () => {
     const fake = renderAuto()
 
-    core(() => fake.ask(MIXED))
-    const sheet = screen.getByRole('dialog', { name: 'Elegí de 1 a 2 cartas · 0 de 2' })
-    const options = within(sheet).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
+    core(() => fake.ask(MIXED, '503'))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    const band = within(screen.getByTestId('duel-prompt-layer')).getByRole('group', { name: 'Elegí de 1 a 2 cartas para desterrar · 0/2' })
+    const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
+    expect(band).toHaveAttribute('data-prompt-row')
     expect(options).toEqual(['Nibiru, GY', 'Zeus, Extra'])
-    fireEvent.click(within(sheet).getAllByRole('option')[1]!)
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Elegir 1 carta' }))
+    expect(within(band).getAllByRole('button').map((button) => button.textContent)).toEqual(['Cancelar', 'Listo'])
+    fireEvent.click(within(band).getAllByRole('option')[1]!)
+    expect(band).toHaveAccessibleName('Elegí de 1 a 2 cartas para desterrar · 1/2')
+    expect(within(band).getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(within(band).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
     expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'can')
   })
 
-  it('las del deck de una lista mixta se muestran por nombre, no en el orden del deck, y se contesta con el índice del núcleo', () => {
+  it('las del deck de una lista mixta se muestran por nombre, no en el orden del deck, y se contesta con el índice del núcleo; Escape cancela', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(MIXED_DECK))
-    const sheet = screen.getByRole('dialog', { name: 'Elegí de 1 a 2 cartas · 0 de 2' })
-    const options = within(sheet).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
+    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas · 0/2' })
+    const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
     // El núcleo las manda Imperm, Droll, Nibiru: Droll (la segunda) sale primero y su respuesta sigue siendo el índice 1.
     expect(options).toEqual(['Droll, Main', 'Imperm, Main', 'Nibiru, GY'])
-    fireEvent.click(within(sheet).getAllByRole('option')[0]!)
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Elegir 1 carta' }))
+    fireEvent.click(within(band).getAllByRole('option')[0]!)
+    fireEvent.click(within(band).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
+    core(() => fake.ask(MIXED_DECK))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(fake.answers[1]).toEqual({ type: 'select_card', indices: null })
+  })
+
+  it('todas del mismo lugar (el Cementerio del rival): el lugar va una vez, en la pestaña, con cuántas son', () => {
+    const fake = renderAuto(fakeSession([...SPOTS, { side: 'theirs', id: 'g1', code: 700, location: L.GRAVE, sequence: 0 }, { side: 'theirs', id: 'g2', code: 701, location: L.GRAVE, sequence: 1 }]))
+
+    core(() => fake.ask({ type: 'select_card', player: 0, can_cancel: false, min: 1, max: 1, selects: [pos(700, L.GRAVE, 0, 5, 1), pos(701, L.GRAVE, 1, 5, 1)] }, '504'))
+    const band = screen.getByRole('group', { name: 'Elegí 1 carta para enviar al Cementerio' })
+
+    expect(band).toHaveTextContent('Rival, Cementerio · 2')
+    expect(within(band).getAllByRole('option').every((option) => !option.getAttribute('aria-label')!.includes(','))).toBe(true)
+    // Una sola, sin poder cancelar: sin pie; el toque contesta.
+    expect(within(band).queryAllByRole('button')).toEqual([])
+    fireEvent.click(within(band).getAllByRole('option')[1]!)
+    expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
+  })
+
+  it('con más de 6 cartas, la hoja de siempre (con el mismo título)', () => {
+    const fake = renderAuto()
+    const seven = Array.from({ length: 7 }, (_, i) => pos(800 + i, L.REMOVED, i, 5, 1))
+
+    core(() => fake.ask({ type: 'select_card', player: 0, can_cancel: true, min: 1, max: 1, selects: seven }, '503'))
+    expect(screen.queryByTestId('duel-prompt-layer')).toBeNull()
+    const sheet = screen.getByRole('dialog', { name: 'Elegí 1 carta para desterrar' })
+
+    expect(within(sheet).getAllByRole('option')).toHaveLength(7)
+    fireEvent.click(within(sheet).getAllByRole('option')[6]!)
+    expect(fake.answers).toEqual([{ type: 'select_card', indices: [6] }])
   })
 })

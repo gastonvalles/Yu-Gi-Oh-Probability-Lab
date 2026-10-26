@@ -29,9 +29,9 @@ describe('auto-screen · elegir', () => {
 
     core(() => fake.ask(CARD))
     expect(handCard('Ash Blossom')).toHaveAttribute('data-glow-kind', 'can')
-    expect(status()).toHaveTextContent('Elegí de 1 a 2 cartas · 0 de 2')
+    expect(status()).toHaveTextContent('Elegí de 1 a 2 cartas · 0/2')
     tap(handCard('Ash Blossom'))
-    expect(status()).toHaveTextContent('1 de 2')
+    expect(status()).toHaveTextContent('· 1/2')
     fireEvent.click(within(status()).getByRole('button', { name: 'Listo' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [0] }])
     expect(dispatches).toBe(0)
@@ -110,11 +110,11 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers).toEqual([{ type: 'select_position', position: 4 }])
   })
 
-  it('una suma en la hoja aparte: la cuenta la lleva el núcleo (lo que no suma va apagado) y la que completa contesta sola', () => {
+  it('una suma en una lista corta (la banda): la cuenta la lleva el núcleo (lo que no suma va apagado) y la que completa contesta sola', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(SUM_LIST))
-    const sheet = screen.getByRole('dialog', { name: /Niveles/ })
+    const sheet = screen.getByRole('group', { name: /Niveles/ })
     const ash = within(sheet).getByRole('option', { name: /Ash Blossom/ })
 
     expect(ash).toHaveAttribute('aria-disabled', 'true')
@@ -125,16 +125,16 @@ describe('auto-screen · elegir', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('unselect en la hoja aparte, de a una: tocar contesta, y con `can_finish` hay «Listo»', () => {
+  it('unselect en una lista corta (la banda), de a una: tocar contesta, y con `can_finish` hay «Listo»', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(UNSELECT_LIST))
-    const sheet = screen.getByRole('dialog', { name: /Elegí/ })
+    const sheet = screen.getByRole('group', { name: /Elegí/ })
 
     fireEvent.click(within(sheet).getByRole('button', { name: 'Listo' }))
     expect(fake.answers).toEqual([{ type: 'select_unselect_card', index: null }])
     core(() => fake.ask(UNSELECT_LIST))
-    fireEvent.click(within(screen.getByRole('dialog', { name: /Elegí/ })).getByRole('option', { name: /Nibiru/ }))
+    fireEvent.click(within(screen.getByRole('group', { name: /Elegí/ })).getByRole('option', { name: /Nibiru/ }))
     expect(fake.answers[1]).toEqual({ type: 'select_unselect_card', index: 1 })
   })
 

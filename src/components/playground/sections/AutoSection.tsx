@@ -8,7 +8,7 @@ import { t } from '../../../i18n'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
 import { AutoBar, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
-import { CardPicker, type PickCard } from '../../auto/CardPicker'
+import { CardPicker, PickBand, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
@@ -32,6 +32,14 @@ const MIXED: PickCard[] = [
   { key: 'd', name: 'Mirrorjade the Iceblade Dragon', art: art(44146295), place: 'Extra Deck' },
   { key: 'e', name: 'Effect Veiler', art: art(97268402), place: 'Mano del rival' },
   { key: 'f', name: 'Infinite Impermanence', art: art(10045474), place: 'Destierro' },
+]
+/** Cinco del mismo lugar (el Cementerio): la banda dice el lugar una vez, en la pestaña. */
+const GRAVE: PickCard[] = [
+  { key: 'a', name: 'Fallen of Albaz', art: art(68468459) },
+  { key: 'b', name: 'Legendary Fire King Ponix', art: art(90681088) },
+  { key: 'c', name: 'Mirrorjade the Iceblade Dragon', art: art(44146295) },
+  { key: 'd', name: 'Ash Blossom & Joyous Spring', art: art(14558127) },
+  { key: 'e', name: 'Effect Veiler', art: art(97268402) },
 ]
 const DECK_TOP: PickCard[] = [
   { key: 'x', name: 'Called by the Grave', art: art(24224830) },
@@ -104,6 +112,9 @@ export function AutoSection() {
 
       <PickerSample title="Elegir cartas · de 1 a 2, cancelable" note="CardPicker con min 1 y max 2, de lugares distintos (cada una dice de dónde es) y una que todavía no tiene arte (el esqueleto quieto). Aro ámbar y número de orden; Mayús+clic, el tramo; nunca más de dos. «Cancelar» y Escape, porque la pregunta se puede cancelar. Flechas, Inicio y Fin recorren las cartas; Espacio elige." min={1} max={2} cancelable onAnswer={setAnswer} />
       <PickerSample title="Elegir cartas · una sola" note="Con max 1 el primer toque contesta, sin «Listo» (como en la mesa). No se puede cancelar: sin X ni pie." min={1} max={1} cancelable={false} onAnswer={setAnswer} />
+
+      <BandSample max={2} onAnswer={setAnswer} />
+      <BandSample max={1} onAnswer={setAnswer} />
 
       <SortSample onAnswer={setAnswer} />
 
@@ -248,6 +259,64 @@ function PickerSample({ title, note, min, max, cancelable, onAnswer }: { title: 
       <Presence>
         {open ? <CardPicker title="Elegí qué agregar a tu mano" kicker="Branded Fusion" cards={max === 1 ? MIXED.slice(0, 4) : MIXED} min={min} max={max} onPick={(keys) => close(keys.join(', '))} onCancel={cancelable ? () => close('cancelada') : undefined} /> : null}
       </Presence>
+    </Specimen>
+  )
+}
+
+/** La banda de una lista corta (hasta 6) sobre una mesa de muestra, en la misma capa que la pregunta del núcleo: lo elegido lo lleva la muestra, como `ask-ui` en la mesa. */
+function BandSample({ max, onAnswer }: { max: 1 | 2; onAnswer: (answer: string) => void }) {
+  const [shown, setShown] = useState(true)
+  const [chosen, setChosen] = useState<string[]>([])
+  const reply = (answer: string) => {
+    setShown(false)
+    setChosen([])
+    onAnswer(answer)
+  }
+  const toggle = (key: string) => {
+    if (max === 1) return reply(key)
+    setChosen((current) => (current.includes(key) ? current.filter((item) => item !== key) : current.length < max ? [...current, key] : current))
+  }
+  const what = max === 1 ? t('auto.pick.cards', { count: 1 }) : t('auto.pick.cards', { count: 2 })
+  const title = `${t('auto.pick.for', { what, why: t('auto.pick.why.specialSummon') })}${max > 1 ? ` · ${t('auto.pick.count', { chosen: chosen.length, max })}` : ''}`
+
+  return (
+    <Specimen
+      title={max === 1 ? 'Elegir de una lista corta · una sola' : 'Elegir de una lista corta · 2, cancelable'}
+      layout="column"
+      note={
+        max === 1 ? (
+          <>Con una sola, el toque contesta: sin pie si no se puede cancelar ni terminar sin elegir.</>
+        ) : (
+          <>Hasta 6 cartas, una banda en una fila en la ranura de la pregunta (<Tag>duel.prompt</Tag>, ancha por <Tag>data-prompt-row</Tag>), sin velo; con más, la hoja de abajo. La pestaña dice de dónde salen (si todas salen del mismo lugar) y el título, para qué (<Tag>pickTitle</Tag> de <Tag>ask-ui.ts</Tag>: el código de pista del núcleo, sólo los comprobados) y cuántas van. «Cancelar» sin caja y la principal al final, que se enciende al completar. Archivo: <Tag>auto/CardPicker.tsx</Tag></>
+        )
+      }
+    >
+      <div className="relative isolate h-96 overflow-hidden rounded-card border border-border-subtle">
+        <MatScene className="absolute inset-0 -z-10" />
+        <Presence>
+          {shown ? (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+              <div className="pointer-events-auto w-[min(24rem,100%)] has-data-leaving:pointer-events-none has-data-prompt-row:w-[min(34rem,100%)]">
+                <PickBand
+                  title={title}
+                  place={t('auto.band.from', { place: t('practice.place.gy'), count: GRAVE.length })}
+                  cards={GRAVE}
+                  chosen={chosen}
+                  eligible={new Set(chosen.length < max ? GRAVE.map((card) => card.key) : chosen)}
+                  multi={max > 1}
+                  done={chosen.length === max}
+                  onToggle={toggle}
+                  onPick={() => reply(chosen.join(', '))}
+                  {...(max > 1 ? { onCancel: () => reply('cancelada') } : {})}
+                />
+              </div>
+            </div>
+          ) : null}
+        </Presence>
+      </div>
+      <Button variant="secondary" size="sm" className="w-fit" icon="refresh" disabled={shown} onClick={() => setShown(true)}>
+        Volver a preguntar
+      </Button>
     </Specimen>
   )
 }

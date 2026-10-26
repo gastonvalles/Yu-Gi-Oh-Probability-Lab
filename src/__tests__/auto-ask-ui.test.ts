@@ -1,6 +1,6 @@
-import { t } from '../i18n'
+import { applyLocale, loadLocale, t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, step, triggerPhrase, type AskCard, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, step, triggerPhrase, type AskCard, type CardPick, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -667,5 +667,38 @@ describe('ask-ui: la pregunta de un efecto que se dispara, con su contexto', () 
     expect(effectAskText(prompt(1, 'hand'), { kind: 'phase', phase: 'end' }, nameOf, null)).toMatchObject({ text: t('auto.ask.during', { phase: 'End Phase', card: 'Ponix', place: t('auto.ask.at.hand') }), effect: null })
     expect(effectAskText(prompt(2, 'material', false), null, nameOf, ONE)).toEqual({ kicker: null, text: t('auto.ask.effectAt', { card: 'Sangan', place: t('auto.ask.at.material') }), place: null, effect: null })
     expect(effectAskText({ ...prompt(2, 'gy'), at: undefined }, null, nameOf, ONE).text).toBe(t('auto.ask.effect', { card: 'Sangan' }))
+  })
+})
+
+describe('ask-ui: el título de una elección de cartas dice para qué', () => {
+  const pick = (over: Partial<CardPick> = {}): CardPick => ({ type: 'select_card', cards: [], chosen: [], locked: [], eligible: [], surface: 'list', pile: null, min: 2, max: 2, count: { now: 1, need: 2 }, done: false, ...over })
+
+  afterEach(() => applyLocale('es'))
+
+  it('con un código de pista comprobado, para qué; con la cuenta de lo elegido si se eligen varias; sin código (o uno sin comprobar), el genérico', () => {
+    expect(pickTitle(pick(), '503')).toBe('Elegí 2 cartas para desterrar · 1/2')
+    expect(pickTitle(pick({ min: 1, max: 1, count: { now: 0, need: 1 } }), '509')).toBe('Elegí 1 carta para Invocar de forma Especial')
+    expect(pickTitle(pick({ min: 1, max: 3, count: { now: 0, need: 3 } }), '504')).toBe('Elegí de 1 a 3 cartas para enviar al Cementerio · 0/3')
+    expect(pickTitle(pick({ type: 'select_unselect_card' }), '533')).toBe('Elegí 2 cartas como Material de Enlace · 1/2')
+    // 575 (negar) y 514 (boca arriba) no se comprobaron; un texto de carta (`aux.Stringid`) tampoco.
+    expect(pickTitle(pick(), '575')).toBe('Elegí 2 cartas · 1/2')
+    expect(pickTitle(pick(), '514')).toBe('Elegí 2 cartas · 1/2')
+    expect(pickTitle(pick(), String((12345n << 20n) | 1n))).toBe('Elegí 2 cartas · 1/2')
+    expect(pickTitle(pick())).toBe('Elegí 2 cartas · 1/2')
+  })
+
+  it('a qué atacar, los Sacrificios y las sumas siguen con su título', () => {
+    expect(pickTitle(pick({ min: 1, max: 1 }), '549')).toBe('Elegí a qué monstruo atacar')
+    expect(pickTitle(pick({ type: 'select_tribute', count: { now: 1, need: 2 } }), '500')).toBe('Sacrificios: 1 de 2')
+    expect(pickTitle(pick({ type: 'select_sum', count: { now: 3, need: 8 } }), '500')).toBe('Niveles: 3 de 8')
+  })
+
+  it('en inglés', async () => {
+    await loadLocale('en')
+    applyLocale('en')
+    expect(pickTitle(pick(), '503')).toBe('Choose 2 cards to banish · 1/2')
+    expect(pickTitle(pick({ min: 1, max: 1 }), '506')).toBe('Choose 1 card to add to your hand')
+    expect(pickTitle(pick(), '511')).toBe('Choose 2 cards as Fusion Material · 1/2')
+    expect(pickTitle(pick(), '575')).toBe('Choose 2 cards · 1/2')
   })
 })
