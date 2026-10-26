@@ -31,7 +31,7 @@ function quarterRound(x: Uint32Array, a: number, b: number, c: number, d: number
 
 /** El bloque de ChaCha20 (RFC 8439 §2.3): «expand 32-byte k», 8 palabras de clave, contador de 32 bits y 3 de nonce, 20 rondas y la suma final; palabras little-endian. */
 export function chachaBlock(key: Uint32Array, counter: number, nonce: Uint32Array): Uint32Array {
-  if (key.length !== 8 || nonce.length !== 3) throw new Error('ChaCha20: la clave son 8 palabras y el nonce, 3')
+  if (key.length !== 8 || nonce.length !== 3) throw new Error('ChaCha20: the key is 8 words and the nonce is 3')
   const input = Uint32Array.of(0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, ...key, counter, ...nonce)
   const x = input.slice()
 
@@ -51,8 +51,8 @@ export function chachaBlock(key: Uint32Array, counter: number, nonce: Uint32Arra
 
 /** Las palabras de 32 bits del flujo `stream`, en orden: bloques con nonce `[stream, 0, 0]` y el contador desde 0. Lanza si la clave o el flujo no sirven. */
 function keyStream(key: string, stream: number): () => number {
-  if (!isDuelKey(key)) throw new Error('Clave de duelo inválida')
-  if (!Number.isInteger(stream) || stream < 0 || stream > 0xffffffff) throw new Error(`Flujo de la clave inválido: ${stream}`)
+  if (!isDuelKey(key)) throw new Error('invalid duel key')
+  if (!Number.isInteger(stream) || stream < 0 || stream > 0xffffffff) throw new Error(`invalid duel key stream: ${stream}`)
   const words = new Uint32Array(8)
   for (let at = 0; at < 32; at += 1) words[at >> 2] = words[at >> 2]! | (parseInt(key.slice(at * 2, at * 2 + 2), 16) << (8 * (at & 3)))
   const nonce = Uint32Array.of(stream, 0, 0)
