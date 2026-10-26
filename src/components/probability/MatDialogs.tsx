@@ -15,7 +15,7 @@ import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
-import { Icon } from '../ui/Icon'
+import { Icon, type IconName } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { SheetHandle } from '../ui/SheetHandle'
@@ -451,6 +451,69 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
     </div>,
     document.body,
   ) : null, () => [rootRef.current])
+}
+
+/** El ícono de la jugada de la etiqueta: el rayo de activar, la mira de atacar; lo demás (invocar, colocar, usar), el de jugar. */
+const tagIcon = (label: string): IconName =>
+  [t('practice.menu.activateEffect'), t('practice.menu.activate'), t('practice.menu.asScale')].includes(label)
+    ? 'zap'
+    : [t('practice.menu.battleAttack'), t('practice.menu.attackDirectly')].includes(label)
+      ? 'target'
+      : 'play'
+
+/**
+ * Una carta con una sola jugada (escritorio): en vez del menú de un renglón, la jugada sale como una etiqueta pegada a la carta (arriba; abajo si no entra), violeta, con su ícono, 44 px y el
+ * borde celeste de lo que podés hacer. Un toque para ver, otro para hacer: tocar la etiqueta la hace; Escape o tocar afuera la suelta. Sin velo: el fondo es transparente. Para el lector de
+ * pantalla, un botón con la jugada y la carta («Activar efecto · Fire King High Avatar Kirin»).
+ */
+export function PlayTag({ anchor, item, name, onClose }: { anchor: DOMRect | null; item: MenuItem | null; name: string; onClose: () => void }) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const openedAtRef = useRef(0)
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
+  const open = anchor !== null && item !== null
+
+  useEscapeKey(onClose, open)
+  useFocusTrap(rootRef, open)
+
+  useLayoutEffect(() => {
+    const tag = rootRef.current?.firstElementChild as HTMLElement | null | undefined
+
+    if (!anchor || !tag) {
+      setPosition(null)
+      return
+    }
+
+    openedAtRef.current = performance.now()
+    // Como el menú: centrada sobre la carta y dentro de la pantalla, con medidas de layout (la entrada arranca achicada).
+    const margin = 8
+    const { offsetWidth: width, offsetHeight: height } = tag
+    const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), Math.max(margin, window.innerWidth - width - margin))
+    const above = anchor.top - height - 6
+
+    setPosition({ left, top: above >= margin ? above : Math.min(anchor.bottom + 6, Math.max(margin, window.innerHeight - height - margin)) })
+  }, [anchor, item?.label])
+
+  if (!open || typeof document === 'undefined') return null
+
+  return createPortal(
+    <div ref={rootRef} className="fixed inset-0 z-210" onClick={() => (performance.now() - openedAtRef.current >= GHOST_CLICK_MS ? onClose() : undefined)}>
+      <Button
+        variant="primary"
+        icon={tagIcon(item.label)}
+        aria-label={`${item.label} · ${name}`}
+        data-initial-focus=""
+        className={cx('absolute border-2 border-[rgb(var(--playable-rgb))] animate-dialog-enter motion-reduce:animate-none', position ? 'visible' : 'invisible')}
+        style={position ?? { left: 0, top: 0 }}
+        onClick={(event) => {
+          event.stopPropagation()
+          item.onSelect()
+        }}
+      >
+        {item.label}
+      </Button>
+    </div>,
+    document.body,
+  )
 }
 
 /** Elegir varias cartas de la pila para una misma jugada (enviarlas a un lugar, barajarlas, adjuntarlas, Target). */

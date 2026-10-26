@@ -25,7 +25,7 @@ import { overline } from '../../ui/typography'
 import { CardSheet } from '../../probability/CardSheet'
 import { ConfirmDialog } from '../../probability/ConfirmDialog'
 import { LabScoreSheet } from '../../probability/LabScoreSheet'
-import { CardMenu, PILE_TITLES, PileStripContext, PileViewer, type MenuItem } from '../../probability/MatDialogs'
+import { CardMenu, PILE_TITLES, PileStripContext, PileViewer, PlayTag, type MenuItem } from '../../probability/MatDialogs'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleCombo } from './duel-sample'
 
@@ -224,6 +224,8 @@ export function DialogsSection() {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // El menú de una carta de la mano (Ash Blossom): dónde se tocó y, si se abrió con una pregunta, cuál (en escritorio, su submenú abierto; en el celular, su segundo paso).
   const [ashMenu, setAshMenu] = useState<{ rect: DOMRect; ask?: string } | null>(null)
+  // La etiqueta de una sola jugada: dónde se tocó.
+  const [loneAt, setLoneAt] = useState<DOMRect | null>(null)
   const { nameOf, artOf } = useMemo(() => sampleCombo(), [])
   const pileShown = pileSample ? PILE_SAMPLES[pileSample] : null
   // Toda jugada cierra el visor, como en la mesa.
@@ -331,6 +333,18 @@ export function DialogsSection() {
         ) : null}
       </Presence>
       <CardMenu anchor={isDesktop ? (ashMenu?.rect ?? null) : null} kicker={PILE_TITLES.hand} title={nameOf(ASH)} items={inMenuBlocks(ashRows)} startExpanded={ashMenu?.ask} onClose={() => setAshMenu(null)} />
+
+      <Specimen title="Una sola jugada" note={<>En escritorio, una carta con una sola jugada directa y nada más en el menú (con el detalle fijo a la izquierda, sin «Ver carta») no abre el menú de un renglón: la jugada sale como una etiqueta pegada a la carta (<Tag>PlayTag</Tag>), violeta, con su ícono, 44 px y el borde celeste de lo que podés hacer. Otro toque la hace; Escape o tocar afuera la suelta. Con varias jugadas, el menú de arriba. En el celular, la hoja de siempre.</>}>
+        <Button size="sm" onClick={(event) => setLoneAt(event.currentTarget.getBoundingClientRect())}>
+          Tocar Ash Blossom
+        </Button>
+      </Specimen>
+      <PlayTag
+        anchor={loneAt}
+        item={{ label: t('practice.menu.activateEffect'), onSelect: () => { setLoneAt(null); showToastMessage(`Jugada de muestra: ${t('practice.menu.activateEffect')}`, 'info') } }}
+        name={nameOf(ASH)}
+        onClose={() => setLoneAt(null)}
+      />
 
       <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el detalle de la carta ni las columnas de los costados: sin velo, en escritorio es la ventana de la muestra siguiente, en todas las mesas, y el campo sigue vivo; la carta que se toca o se apunta se lee en el detalle. En el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>
         <Button size="sm" onClick={() => setPileSample('plain')}>

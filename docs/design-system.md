@@ -60,7 +60,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `RarityFoil` | La excepción a «sin brillos de adorno», porque dice la rareza: sólo en la carta grande. Su trampa (la raíz sin capa propia), en `src/foil.css`. |
 | `PracticeMat` · `MatBarActions` | La mesa (`probability/`), también la del duelo: no se mueve mientras se juega (regla 7) y sus cartas y zonas van rectas (regla 8). Ver `docs/duelo.md`. `MatBarActions`: los íconos de su barra, iguales en todas las mesas. |
 | `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): sólo decoración y la excepción del lienzo plano (regla 9). |
-| `CardMenu` · `CardSheet` | El menú de una carta (`probability/`; muestra «Menú de una carta»; `wide` en una opción: submenú ancho): sus reglas, en «Menús» de `docs/duelo.md`. |
+| `CardMenu` · `CardSheet` · `PlayTag` | El menú de una carta y la etiqueta de una sola jugada (`probability/`; `wide`: submenú ancho): reglas en «Menús» de `docs/duelo.md`. |
 | `AskPrompt` · `AskOptions` · `CardPicker` · `SortSheet` · `AutoBar` · `ChainNotice` | Las piezas de «Jugar solo automático» para lo que el campo no puede expresar (`auto/`): el sí o no centrado y sin fondo, las opciones en una hoja (`stacked`), elegir cartas de una lista, ordenar el tope, la barra de arriba y la cadena. Sus reglas, en `docs/duelos-automaticos.md`. |
 | `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal ni lleva velo y no tapa tu mano ni el detalle; en escritorio es una ventana sobre la mesa. Su lugar y elegir varias, en `docs/duelo.md`. |
 | `DuelTable` · `PracticeMatPanel` · `MatSnapshot` · `MaterialStack` · `RivalHandStrip` · `HandtrapPool` · `DuelMedal` | La mesa y el duelo (`probability/`, `duel/`). |
