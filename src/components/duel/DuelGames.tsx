@@ -39,7 +39,7 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
   const [conceding, setConceding] = useState(false)
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" title={t('duel.games.title')} ariaLabel={t('duel.games.title')}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} title={t('duel.games.title')} ariaLabel={t('duel.games.title')}>
       <div className="grid gap-4">
         {peerPresent ? null : <Callout tone="warning" icon="alert">{t('duel.games.needRival')}</Callout>}
 

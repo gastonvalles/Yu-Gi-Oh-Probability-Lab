@@ -391,7 +391,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
           <p className="m-0 border-t border-border-subtle px-4 py-3 text-micro text-muted">{t("duel.watch.noWrite")}</p>
         </aside>
       ) : (
-        <SideDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} title={t("duel.watch.chat")}>
+        <SideDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} veil={false} title={t("duel.watch.chat")}>
           <WatchChat snapshot={snapshot} nameOf={nameOf} />
         </SideDrawer>
       )}

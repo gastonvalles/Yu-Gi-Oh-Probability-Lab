@@ -62,6 +62,7 @@ export function AskOptions({ title, kicker, options, mode, onPick, onCancel, sta
       dismissible={Boolean(onCancel)}
       size="keypad"
       lowerable
+      veil={false}
       kicker={kicker}
       title={title}
       ariaLabel={title}

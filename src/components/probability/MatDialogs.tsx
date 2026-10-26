@@ -793,7 +793,7 @@ export function SaveComboDialog({ isOpen, defaultName, rename = false, onSave, o
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
       <form className="grid gap-3" onSubmit={submit}>
         <label className="grid gap-1">
           <span className="text-body text-muted">{t('practice.dialog.name')}</span>

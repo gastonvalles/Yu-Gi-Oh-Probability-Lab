@@ -242,6 +242,8 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, auto = false,
       isOpen={isOpen}
       onClose={onClose}
       size="md"
+      // Abierta desde la mesa (la práctica o el duelo automático), sin velo como los demás menús de la mesa; desde el lobby, con velo.
+      veil={!dealsNew && !auto}
       title={t('handtraps.title')}
       subtitle={t('handtraps.picker.subtitle')}
       footer={

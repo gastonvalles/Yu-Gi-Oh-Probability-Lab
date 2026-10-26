@@ -272,7 +272,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
 
   const dialogs = (
     <>
-      <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
+      <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" veil={false} title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
         <div className="grid gap-4">
           {/* Los sonidos del duelo (jugadas, vidas, chat): se recuerdan en este navegador. */}
           <div className="flex items-center justify-between gap-3">
@@ -294,6 +294,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       </Modal>
 
       <ConfirmDialog
+        veil={false}
         isOpen={conceding}
         title={t('duel.bar.concedeTitle')}
         description={t('duel.bar.concedeText', { name: rivalName })}
@@ -308,6 +309,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       />
 
       <ConfirmDialog
+        veil={false}
         isOpen={leaving}
         title={abandoning ? t('duel.bar.abandonTitle') : t('duel.bar.leaveTitle')}
         description={abandoning ? t('duel.bar.abandonText', { name: rivalName }) : result !== null ? t('duel.bar.leaveDoneText') : t('duel.bar.leaveText')}
@@ -539,7 +541,7 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
         ) : null}
       </span>
 
-      <SideDrawer isOpen={open} onClose={onClose} title={t('duel.chat.title', { name: rivalName })}>
+      <SideDrawer isOpen={open} onClose={onClose} veil={false} title={t('duel.chat.title', { name: rivalName })}>
         <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} feed={feed} fill />
       </SideDrawer>
     </>

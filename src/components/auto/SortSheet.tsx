@@ -35,6 +35,7 @@ export function SortSheet({ title = t('auto.sort.title'), kicker, cards, onSort 
       dismissible={false}
       size="keypad"
       lowerable
+      veil={false}
       kicker={kicker}
       title={title}
       subtitle={t('auto.sort.hint')}

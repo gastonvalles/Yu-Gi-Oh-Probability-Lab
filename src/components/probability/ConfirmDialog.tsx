@@ -13,6 +13,8 @@ interface ConfirmDialogProps {
   onCancel: () => void
   onConfirm: () => void
   title: string
+  /** false = sin velo, como los demás menús de la mesa (`Modal`). */
+  veil?: boolean
 }
 
 export function ConfirmDialog({
@@ -25,6 +27,7 @@ export function ConfirmDialog({
   onCancel,
   onConfirm,
   title,
+  veil = true,
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -32,6 +35,7 @@ export function ConfirmDialog({
       onClose={onCancel}
       size="keypad"
       role="alertdialog"
+      veil={veil}
       title={title}
       footer={
         <>

@@ -793,6 +793,7 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
     fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
+    expect(dialog.parentElement!.querySelector('.animate-nav-scrim')).toBeNull()
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Uno' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     const aside = screen.getByRole('region', { name: 'Pasos y combos' })

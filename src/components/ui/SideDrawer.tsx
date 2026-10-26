@@ -30,13 +30,15 @@ interface SideDrawerProps {
   title: ReactNode
   children: ReactNode
   size?: SideDrawerSize
+  /** false = sin velo (el chat de la mesa): lo de atrás no se oscurece y tocarlo igual cierra el panel, como en `Modal`. */
+  veil?: boolean
 }
 
 /**
  * Un panel que entra por la derecha y ocupa la mitad de la pantalla (con un mínimo para que en el celular entre lo que lleva), sobre un velo que deja ver lo de atrás:
  * para algo que se consulta mientras se juega, como el chat. Se monta en <body>; se cierra con la X, el velo o Escape.
  */
-export function SideDrawer({ isOpen, onClose, title, children, size = 'half' }: SideDrawerProps) {
+export function SideDrawer({ isOpen, onClose, title, children, size = 'half', veil = true }: SideDrawerProps) {
   const titleId = useId()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
@@ -48,14 +50,14 @@ export function SideDrawer({ isOpen, onClose, title, children, size = 'half' }: 
   // Al cerrarse sale por donde entró (`usePresence`): el panel vuelve a la derecha y el velo se funde.
   return usePresence(isOpen, isOpen && typeof document !== 'undefined' ? createPortal(
     <div ref={rootRef} className="fixed inset-0 z-180 flex justify-end">
-      <div aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/45 motion-reduce:animate-none" onClick={onClose} />
+      <div aria-hidden="true" className={cx('absolute inset-0', veil && 'animate-nav-scrim bg-background/45 motion-reduce:animate-none')} onClick={onClose} />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cx('relative flex h-full animate-side-drawer flex-col overflow-hidden rounded-r-none border-r-0 outline-none motion-reduce:animate-none', PANEL_SIZE[size], surface.panel)}
+        className={cx('relative flex h-full animate-side-drawer flex-col overflow-hidden rounded-r-none border-r-0 outline-none motion-reduce:animate-none', PANEL_SIZE[size], veil ? surface.panel : surface.floating)}
       >
         <header className="flex items-start justify-between gap-2 border-b border-border-subtle px-3 py-3">
           <Heading level="card" id={titleId}>

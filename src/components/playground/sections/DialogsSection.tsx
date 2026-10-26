@@ -214,6 +214,7 @@ function LowerSample() {
 export function DialogsSection() {
   const [size, setSize] = useState<(typeof SIZES)[number] | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [veilless, setVeilless] = useState(false)
   const [zoomOpen, setZoomOpen] = useState(false)
   const [zoomArt, setZoomArt] = useState('print-1')
   const [confirm, setConfirm] = useState<ConfirmSample | null>(null)
@@ -271,6 +272,15 @@ export function DialogsSection() {
         ))}
         <Modal isOpen={size !== null} onClose={() => setSize(null)} size={size ?? 'sm'} kicker="Diálogo" icon="info" title={`Tamaño ${size ?? ''}`} subtitle="Un diálogo de prueba." footer={<Button onClick={() => setSize(null)}>Cerrar</Button>}>
           <p className="m-0 text-body text-muted">El contenido del diálogo scrollea adentro si no entra.</p>
+        </Modal>
+      </Specimen>
+
+      <Specimen title="Modal sin velo" note={<>Los menús de la mesa (<Tag>veil={'{false}'}</Tag>, también en <Tag>ConfirmDialog</Tag> y <Tag>SideDrawer</Tag>): no oscurecen el fondo, así el campo se sigue viendo; el panel despega con el borde marcado (<Tag>surface.floating</Tag>) y la sombra. El foco, Escape y tocar afuera, como siempre.</>}>
+        <Button size="sm" onClick={() => setVeilless(true)}>
+          Abrir sin velo
+        </Button>
+        <Modal isOpen={veilless} onClose={() => setVeilless(false)} size="keypad" veil={false} title="Elegí la posición">
+          <p className="m-0 text-body text-muted">Lo de atrás se ve tal cual.</p>
         </Modal>
       </Specimen>
 

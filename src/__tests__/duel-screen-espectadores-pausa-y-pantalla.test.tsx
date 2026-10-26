@@ -374,6 +374,7 @@ describe('la pantalla del duelo', () => {
     expect(view.getByRole('button', { name: /Chat de los jugadores \(1 sin leer\)/ })).toBeInTheDocument()
     fireEvent.click(view.getByRole('button', { name: /Chat de los jugadores/ }))
     const log = within(screen.getByRole('log', { name: 'Chat de los jugadores' }))
+    expect(document.querySelector('.animate-nav-scrim')).toBeNull()
     expect(log.getByText('¿respondés?')).toBeInTheDocument()
     expect(log.getByText('Ana')).toBeInTheDocument()
     expect(within(screen.getAllByRole('dialog').at(-1)!).queryByRole('textbox')).not.toBeInTheDocument()

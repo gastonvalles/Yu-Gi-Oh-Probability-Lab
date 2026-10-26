@@ -78,6 +78,8 @@ describe('AskOptions', () => {
     const onPick = vi.fn()
     render(<AskOptions title="Elegí la posición" kicker="Fallen of Albaz" options={POSITIONS} mode="one" onPick={onPick} />)
     const dialog = screen.getByRole('dialog', { name: 'Elegí la posición' })
+    // Sin velo: la mesa de atrás se sigue viendo.
+    expect(dialog.parentElement!.querySelector('.animate-nav-scrim')).toBeNull()
     const items = within(dialog).getAllByRole('menuitem')
 
     expect(names(items)).toEqual(['En ataque', 'En defensa', 'Poner boca abajo'])

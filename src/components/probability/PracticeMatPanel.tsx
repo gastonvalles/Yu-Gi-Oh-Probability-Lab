@@ -206,6 +206,7 @@ function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: Saved
       />
 
       <ConfirmDialog
+        veil={false}
         isOpen={deleting !== null}
         title={deleting ? t('practice.panel.deleteTitle', { name: deleting.name }) : ''}
         description={t('practice.panel.deleteBody')}
