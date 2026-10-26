@@ -1,5 +1,5 @@
 [
-["LOB-EN000","Secret Rare","Unlimited",4.05,486041,39111158,"Tri-Horned Dragon"],
+["LOB-EN000","Secret Rare","Unlimited",4.13,486041,39111158,"Tri-Horned Dragon"],
 ["LOB-EN001","Ultra Rare","Unlimited",40.32,486054,89631139,"Blue-Eyes White Dragon"],
 ["LOB-EN002","Common","Unlimited",0.2,486042,76184692,"Hitotsu-Me Giant"],
 ["LOB-EN003","Super Rare","Unlimited",6.69,486043,45231177,"Flame Swordsman"],
@@ -57,9 +57,9 @@
 ["LOB-EN055","Common","Unlimited",0.15,486121,76103675,"Sparks"],
 ["LOB-EN056","Common","Unlimited",0.2,486122,46130346,"Hinotama"],
 ["LOB-EN057","Rare","Unlimited",0.26,486124,66788016,"Fissure"],
-["LOB-EN058","Super Rare","Unlimited",2.78,486128,4206964,"Trap Hole"],
+["LOB-EN058","Super Rare","Unlimited",2.83,486128,4206964,"Trap Hole"],
 ["LOB-EN059","Super Rare","Unlimited",1.83,486129,24094653,"Polymerization"],
-["LOB-EN060","Common","Unlimited",0.24,486130,51482758,"Remove Trap"],
+["LOB-EN060","Common","Unlimited",0.25,486130,51482758,"Remove Trap"],
 ["LOB-EN061","Rare","Unlimited",0.18,486131,83887306,"Two-Pronged Attack"],
 ["LOB-EN062","Super Rare","Unlimited",2.77,486132,15025844,"Mystical Elf"],
 ["LOB-EN063","Common","Unlimited",0.19,486133,72842870,"Tyhone"],
@@ -104,7 +104,7 @@
 ["LOB-EN102","Rare","Unlimited",0.27,486180,9293977,"Metal Dragon"],
 ["LOB-EN103","Common","Unlimited",0.12,486181,85326399,"Spike Seadra"],
 ["LOB-EN104","Common","Unlimited",0.13,486182,45042329,"Tripwire Beast"],
-["LOB-EN105","Common","Unlimited",0.17,486183,10202894,"Skull Red Bird"],
+["LOB-EN105","Common","Unlimited",0.16,486183,10202894,"Skull Red Bird"],
 ["LOB-EN106","Rare","Unlimited",0.23,486184,9076207,"Armed Ninja"],
 ["LOB-EN107","Rare","Unlimited",0.29,486185,95952802,"Flower Wolf"],
 ["LOB-EN108","Super Rare","Unlimited",2.1,486186,54652250,"Man-Eater Bug"],
@@ -123,6 +123,6 @@
 ["LOB-EN121","Ultra Rare","Unlimited",15.98,486199,44519536,"Left Leg of the Forbidden One"],
 ["LOB-EN122","Ultra Rare","Unlimited",21.24,486200,70903634,"Right Arm of the Forbidden One"],
 ["LOB-EN123","Ultra Rare","Unlimited",19.79,486201,7902349,"Left Arm of the Forbidden One"],
-["LOB-EN124","Ultra Rare","Unlimited",20.04,486202,33396948,"Exodia the Forbidden One"],
+["LOB-EN124","Ultra Rare","Unlimited",19.87,486202,33396948,"Exodia the Forbidden One"],
 ["LOB-EN125","Secret Rare","Unlimited",4.15,486203,66889139,"Gaia the Dragon Champion"]
 ]

@@ -1,7 +1,7 @@
 [
 ["PSV-EN000","Secret Rare","Unlimited",63.47,476229,77585513,"Jinzo"],
 ["PSV-EN001","Common","Unlimited",0.4,476230,90908427,"Steel Ogre Grotto #2"],
-["PSV-EN002","Common","Unlimited",0.98,476232,78423643,"Three-Headed Geedo"],
+["PSV-EN002","Common","Unlimited",null,476232,78423643,"Three-Headed Geedo"],
 ["PSV-EN003","Super Rare","Unlimited",null,476233,27911549,"Parasite Paracide"],
 ["PSV-EN004","Common","Unlimited",3,476234,86198326,"7 Completed"],
 ["PSV-EN005","Rare","Unlimited",0.45,476236,49587034,"Lightforce Sword"],
@@ -40,7 +40,7 @@
 ["PSV-EN040","Rare","Unlimited",2.25,476295,79106360,"Morphing Jar #2"],
 ["PSV-EN041","Common","Unlimited",null,476296,42599677,"Flame Champion"],
 ["PSV-EN042","Common","Unlimited",0.98,476297,78984772,"Twin-Headed Fire Dragon"],
-["PSV-EN043","Common","Unlimited",0.14,476298,5388481,"Darkfire Soldier #1"],
+["PSV-EN043","Common","Unlimited",null,476298,5388481,"Darkfire Soldier #1"],
 ["PSV-EN044","Common","Unlimited",0.04,476299,31477025,"Mr. Volcano"],
 ["PSV-EN045","Common","Unlimited",0.1,476300,78861134,"Darkfire Soldier #2"],
 ["PSV-EN046","Common","Unlimited",0.5,476301,4266839,"Kiseitai"],

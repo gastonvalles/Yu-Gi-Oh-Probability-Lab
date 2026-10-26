@@ -1,7 +1,7 @@
 [
 ["DCR-EN002","Common","Unlimited",0.75,476804,11987744,"Nin-Ken Dog"],
 ["DCR-EN003","Common","Unlimited",null,476805,47372349,"Acrobat Monkey"],
-["DCR-EN004","Common","Unlimited",null,476806,85489096,"Arsenal Summoner"],
+["DCR-EN004","Common","Unlimited",1.59,476806,85489096,"Arsenal Summoner"],
 ["DCR-EN005","Common","Unlimited",0.15,476807,74367458,"Guardian Elma"],
 ["DCR-EN006","Ultra Rare","Unlimited",null,476808,10755153,"Guardian Ceal"],
 ["DCR-EN009","Common","Unlimited",null,476811,9633505,"Guardian Kay'est"],
@@ -41,7 +41,6 @@
 ["DCR-EN049","Rare","Unlimited",4.94,476857,82732705,"Skill Drain"],
 ["DCR-EN050","Common","Unlimited",null,476858,28121403,"Really Eternal Rest"],
 ["DCR-EN051","Ultra Rare","Unlimited",null,476859,52824910,"Kaiser Glider"],
-["DCR-EN052","Ultra Rare","Unlimited",0.75,476860,36261276,"Interdimensional Matter Transporter"],
 ["DCR-EN054","Common","Unlimited",1.8,476862,49003308,"Gagagigo"],
 ["DCR-EN055","Common","Unlimited",0.41,476863,86498013,"D.D. Trainer"],
 ["DCR-EN056","Common","Unlimited",null,476864,12482652,"Ojama Green"],

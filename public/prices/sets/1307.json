@@ -1,5 +1,5 @@
 [
-["SDCR-EN001","Super Rare","1st Edition",0.3,79482,23893227,"Cyber Dragon Core"],
+["SDCR-EN001","Super Rare","1st Edition",0.28,79482,23893227,"Cyber Dragon Core"],
 ["SDCR-EN001","Super Rare","Unlimited",0.14,79482,23893227,"Cyber Dragon Core"],
 ["SDCR-EN002","Super Rare","1st Edition",0.31,79483,59281922,"Cyber Dragon Drei"],
 ["SDCR-EN002","Super Rare","Unlimited",0.21,79483,59281922,"Cyber Dragon Drei"],
@@ -8,7 +8,7 @@
 ["SDCR-EN003","Common","Unlimited",0.22,79484,70095154,"Cyber Dragon","White"],
 ["SDCR-EN003","Common","Unlimited",0.29,79485,70095154,"Cyber Dragon","Black"],
 ["SDCR-EN004","Common","1st Edition",0.2,79486,5373478,"Cyber Dragon Zwei"],
-["SDCR-EN004","Common","Unlimited",0.11,79486,5373478,"Cyber Dragon Zwei"],
+["SDCR-EN004","Common","Unlimited",0.12,79486,5373478,"Cyber Dragon Zwei"],
 ["SDCR-EN005","Common","1st Edition",0.15,79487,26439287,"Proto-Cyber Dragon"],
 ["SDCR-EN005","Common","Unlimited",0.11,79487,26439287,"Proto-Cyber Dragon"],
 ["SDCR-EN006","Common","1st Edition",0.19,79488,3657444,"Cyber Valley"],
@@ -33,13 +33,13 @@
 ["SDCR-EN015","Common","Unlimited",0.12,79497,86170989,"Falchion Beta"],
 ["SDCR-EN016","Common","1st Edition",0.42,79498,2851070,"Reflect Bounder"],
 ["SDCR-EN016","Common","Unlimited",0.46,79498,2851070,"Reflect Bounder"],
-["SDCR-EN017","Common","1st Edition",0.5,79499,15717011,"The Light - Hex-Sealed Fusion"],
+["SDCR-EN017","Common","1st Edition",0.48,79499,15717011,"The Light - Hex-Sealed Fusion"],
 ["SDCR-EN017","Common","Unlimited",0.41,79499,15717011,"The Light - Hex-Sealed Fusion"],
 ["SDCR-EN018","Common","1st Edition",0.41,79500,95956346,"Shining Angel"],
 ["SDCR-EN018","Common","Unlimited",0.21,79500,95956346,"Shining Angel"],
 ["SDCR-EN019","Common","1st Edition",0.29,79501,86686671,"Cyber Repair Plant"],
 ["SDCR-EN019","Common","Unlimited",0.23,79501,86686671,"Cyber Repair Plant"],
-["SDCR-EN020","Common","1st Edition",0.21,79502,52875873,"Evolution Burst"],
+["SDCR-EN020","Common","1st Edition",0.22,79502,52875873,"Evolution Burst"],
 ["SDCR-EN020","Common","Unlimited",0.11,79502,52875873,"Evolution Burst"],
 ["SDCR-EN021","Common","1st Edition",4.68,79503,48130397,"Super Polymerization"],
 ["SDCR-EN021","Common","Unlimited",3.71,79503,48130397,"Super Polymerization"],
@@ -48,7 +48,7 @@
 ["SDCR-EN023","Common","1st Edition",0.15,79505,23171610,"Limiter Removal"],
 ["SDCR-EN023","Common","Unlimited",0.16,79505,23171610,"Limiter Removal"],
 ["SDCR-EN024","Common","1st Edition",0.4,79506,22046459,"Megamorph"],
-["SDCR-EN024","Common","Unlimited",0.39,79506,22046459,"Megamorph"],
+["SDCR-EN024","Common","Unlimited",0.4,79506,22046459,"Megamorph"],
 ["SDCR-EN025","Common","1st Edition",0.64,79507,9622164,"D.D.R. - Different Dimension Reincarnation"],
 ["SDCR-EN025","Common","Unlimited",0.68,79507,9622164,"D.D.R. - Different Dimension Reincarnation"],
 ["SDCR-EN026","Common","1st Edition",0.37,79508,5318639,"Mystical Space Typhoon"],
@@ -76,5 +76,5 @@
 ["SDCR-EN037","Ultra Rare","1st Edition",0.88,79519,74157028,"Cyber Twin Dragon"],
 ["SDCR-EN037","Ultra Rare","Unlimited",0.58,79519,74157028,"Cyber Twin Dragon"],
 ["SDCR-EN038","Ultra Rare","1st Edition",2.77,79520,58069384,"Cyber Dragon Nova"],
-["SDCR-EN038","Ultra Rare","Unlimited",2.46,79520,58069384,"Cyber Dragon Nova"]
+["SDCR-EN038","Ultra Rare","Unlimited",2.4,79520,58069384,"Cyber Dragon Nova"]
 ]

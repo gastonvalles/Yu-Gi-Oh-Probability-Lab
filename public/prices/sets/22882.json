@@ -14,7 +14,7 @@
 ["MRD-EN012","Common","Unlimited",0.3,476274,67494157,"Crawling Dragon"],
 ["MRD-EN013","Common","Unlimited",null,476275,20277860,"Armored Zombie"],
 ["MRD-EN014","Rare","Unlimited",0.45,476276,28933734,"Mask of Darkness"],
-["MRD-EN015","Common","Unlimited",0.29,476281,16972957,"Doma The Angel of Silence"],
+["MRD-EN015","Common","Unlimited",null,476281,16972957,"Doma The Angel of Silence"],
 ["MRD-EN016","Rare","Unlimited",null,476283,15150365,"White Magical Hat"],
 ["MRD-EN017","Common","Unlimited",0.17,476287,16768387,"Big Eye"],
 ["MRD-EN018","Ultra Rare","Unlimited",24.99,476288,11901678,"Black Skull Dragon"],
@@ -141,5 +141,5 @@
 ["MRD-EN140","Common","Unlimited",0.29,476793,56830749,"Share the Pain"],
 ["MRD-EN141","Common","Unlimited",null,476794,83225447,"Stim-Pack"],
 ["MRD-EN142","Super Rare","Unlimited",10.91,476795,19613556,"Heavy Storm"],
-["MRD-EN143","Secret Rare","Unlimited",90,476796,41462083,"Thousand Dragon"]
+["MRD-EN143","Secret Rare","Unlimited",65,476796,41462083,"Thousand Dragon"]
 ]

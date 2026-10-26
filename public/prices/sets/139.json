@@ -16,7 +16,7 @@
 ["5DS1-EN008","Common","1st Edition",0.13,32946,60606759,"Renge, Gatekeeper of Dark World"],
 ["5DS1-EN008","Common","Unlimited",0.07,32946,60606759,"Renge, Gatekeeper of Dark World"],
 ["5DS1-EN009","Common","1st Edition",0.15,32928,26976414,"Atlantean Pikeman"],
-["5DS1-EN009","Common","Unlimited",0.1,32928,26976414,"Atlantean Pikeman"],
+["5DS1-EN009","Common","Unlimited",0.09,32928,26976414,"Atlantean Pikeman"],
 ["5DS1-EN010","Common","1st Edition",0.21,32951,36472900,"Sonic Chick"],
 ["5DS1-EN010","Common","Unlimited",0.16,32951,36472900,"Sonic Chick"],
 ["5DS1-EN011","Common","1st Edition",0.78,28392,63977008,"Junk Synchron"],
@@ -62,7 +62,7 @@
 ["5DS1-EN031","Common","1st Edition",0.81,32960,36361633,"Threatening Roar"],
 ["5DS1-EN031","Common","Unlimited",0.62,32960,36361633,"Threatening Roar"],
 ["5DS1-EN032","Common","1st Edition",2.89,28966,98427577,"Scrap-Iron Scarecrow"],
-["5DS1-EN032","Common","Unlimited",2.91,28966,98427577,"Scrap-Iron Scarecrow"],
+["5DS1-EN032","Common","Unlimited",3.01,28966,98427577,"Scrap-Iron Scarecrow"],
 ["5DS1-EN033","Common","1st Edition",0.13,32943,34815282,"Miniaturize"],
 ["5DS1-EN033","Common","Unlimited",0.11,32943,34815282,"Miniaturize"],
 ["5DS1-EN034","Common","1st Edition",0.14,32953,18807109,"Spellbinding Circle"],
@@ -83,6 +83,6 @@
 ["5DS1-EN041","Ultra Rare","Unlimited",0.65,28391,60800381,"Junk Warrior"],
 ["5DS1-EN042","Super Rare","1st Edition",1.27,27600,97204936,"Gaia Knight, the Force of Earth"],
 ["5DS1-EN042","Super Rare","Unlimited",1.12,27600,97204936,"Gaia Knight, the Force of Earth"],
-["5DS1-EN043","Super Rare","1st Edition",2.36,32933,23693634,"Colossal Fighter"],
+["5DS1-EN043","Super Rare","1st Edition",2.4,32933,23693634,"Colossal Fighter"],
 ["5DS1-EN043","Super Rare","Unlimited",2.16,32933,23693634,"Colossal Fighter"]
 ]

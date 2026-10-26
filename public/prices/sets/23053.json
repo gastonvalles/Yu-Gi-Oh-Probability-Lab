@@ -5,7 +5,7 @@
 ["SRL-EN003","Super Rare","Unlimited",1.44,486498,65169794,"Black Pendant"],
 ["SRL-EN004","Common","Unlimited",0.23,486499,38552107,"Horn of Light"],
 ["SRL-EN005","Common","Unlimited",0.19,486500,99597615,"Malevolent Nuzzler"],
-["SRL-EN006","Ultra Rare","Unlimited",13.21,486501,18807109,"Spellbinding Circle"],
+["SRL-EN006","Ultra Rare","Unlimited",13.24,486501,18807109,"Spellbinding Circle"],
 ["SRL-EN007","Common","Unlimited",0.08,486502,55998462,"Metal Fish"],
 ["SRL-EN008","Common","Unlimited",0.14,486503,11324436,"Electric Snake"],
 ["SRL-EN009","Common","Unlimited",0.07,486504,73081602,"Queen Bird"],
@@ -47,7 +47,7 @@
 ["SRL-EN045","Ultra Rare","Unlimited",6.93,486540,42829885,"The Forceful Sentry"],
 ["SRL-EN046","Common","Unlimited",0.48,486541,79323590,"Chain Energy"],
 ["SRL-EN047","Ultra Rare","Unlimited",8.4,486542,5318639,"Mystical Space Typhoon"],
-["SRL-EN048","Super Rare","Unlimited",6.45,486543,42703248,"Giant Trunade"],
+["SRL-EN048","Super Rare","Unlimited",6.55,486543,42703248,"Giant Trunade"],
 ["SRL-EN049","Super Rare","Unlimited",6.3,486544,74191942,"Painful Choice"],
 ["SRL-EN050","Common","Unlimited",0.09,486545,596051,"Snake Fang"],
 ["SRL-EN051","Super Rare","Unlimited",3.98,486548,41426869,"Black Illusion Ritual"],
@@ -72,7 +72,7 @@
 ["SRL-EN070","Common","Unlimited",0.09,486568,2964201,"Ryu-Ran"],
 ["SRL-EN071","Rare","Unlimited",0.31,486570,38369349,"Manga Ryu-Ran"],
 ["SRL-EN072","Ultra Rare","Unlimited",23.37,486571,65458948,"Toon Mermaid"],
-["SRL-EN073","Ultra Rare","Unlimited",26.46,486572,91842653,"Toon Summoned Skull"],
+["SRL-EN073","Ultra Rare","Unlimited",26.33,486572,91842653,"Toon Summoned Skull"],
 ["SRL-EN074","Common","Unlimited",0.18,493508,90020065,"Jigen Bakudan"],
 ["SRL-EN075","Rare","Unlimited",0.19,486573,62397231,"Hyozanryu"],
 ["SRL-EN076","Super Rare","Unlimited",4.07,486574,15259703,"Toon World"],
@@ -102,5 +102,5 @@
 ["SRL-EN100","Common","Unlimited",0.27,486598,81777047,"Luminous Spark"],
 ["SRL-EN101","Common","Unlimited",0.24,486599,18161786,"Mystic Plasma Zone"],
 ["SRL-EN102","Super Rare","Unlimited",4.5,486600,44656491,"Messenger of Peace"],
-["SRL-EN103","Secret Rare","Unlimited",4.08,486601,66516792,"Serpent Night Dragon"]
+["SRL-EN103","Secret Rare","Unlimited",4.42,486601,66516792,"Serpent Night Dragon"]
 ]

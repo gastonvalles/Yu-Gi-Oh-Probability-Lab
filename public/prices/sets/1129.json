@@ -1,8 +1,8 @@
 [
 ["YS13-ENV01","Ultra Rare","1st Edition",0.68,69072,66970002,"Number C39: Utopia Ray V"],
 ["YS13-ENV01","Ultra Rare","Unlimited",0.19,69072,66970002,"Number C39: Utopia Ray V"],
-["YS13-ENV02","Ultra Rare","1st Edition",0.54,69073,92365601,"Rank-Up-Magic Limited Barian's Force"],
-["YS13-ENV02","Ultra Rare","Unlimited",0.39,69073,92365601,"Rank-Up-Magic Limited Barian's Force"],
+["YS13-ENV02","Ultra Rare","1st Edition",0.57,69073,92365601,"Rank-Up-Magic Limited Barian's Force"],
+["YS13-ENV02","Ultra Rare","Unlimited",0.4,69073,92365601,"Rank-Up-Magic Limited Barian's Force"],
 ["YS13-ENV03","Common","1st Edition",0.23,69074,29353756,"ZW - Eagle Claw"],
 ["YS13-ENV03","Common","Unlimited",null,69074,29353756,"ZW - Eagle Claw"],
 ["YS13-ENV04","Common","1st Edition",0.21,69075,65758454,"Ganbara Lancer"],
@@ -10,7 +10,6 @@
 ["YS13-ENV05","Common","1st Edition",0.26,69076,92142169,"Bite Bug"],
 ["YS13-ENV05","Common","Unlimited",null,69076,92142169,"Bite Bug"],
 ["YS13-ENV06","Common","1st Edition",0.25,69077,28637168,"Crane Crane"],
-["YS13-ENV06","Common","Limited",null,69077,28637168,"Crane Crane"],
 ["YS13-ENV06","Common","Unlimited",null,69077,28637168,"Crane Crane"],
 ["YS13-ENV07","Common","1st Edition",0.32,69078,54635862,"Gentlemander"],
 ["YS13-ENV07","Common","Unlimited",null,69078,54635862,"Gentlemander"],
