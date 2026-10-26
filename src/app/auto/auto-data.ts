@@ -1,5 +1,5 @@
 import type { OcgCardData } from 'ocgcore-wasm'
-import { mapDeck, needsScript, scriptClosure, type DeckList, type MappedDeck } from './deck-map'
+import { CODE_CONSTANT, mapDeck, needsScript, scriptClosure, type DeckList, type MappedDeck } from './deck-map'
 import type { AutoEvent } from './protocol'
 
 /**
@@ -68,8 +68,6 @@ const TYPE_LINK = 0x4000000
 const CACHE_PREFIX = 'auto-data-'
 /** `s.listed_names={…}`: las cartas que nombra un script, en números o en constantes (`CARD_DARK_MAGICIAN`). */
 const LISTED_NAMES = /\.listed_names\s*=\s*\{([^}]*)\}/g
-/** Una constante de código de las bibliotecas (`CARD_DARK_MAGICIAN = 46986414`) o de un script (`local CARD_X=…`). */
-const CODE_CONSTANT = /\b([A-Z][A-Z0-9_]*)\s*=\s*(\d+)\b/g
 
 /** La fila del `.cdb` como la lee `cardReader` (codificación de YGOPro: `level` = nivel | escala derecha << 16 | izquierda << 24; en los Link `def` son las flechas; `setcode`, 4 × u16). */
 export function cardData(row: CardRow): OcgCardData {
