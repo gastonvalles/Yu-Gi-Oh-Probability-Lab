@@ -88,7 +88,7 @@ import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
-import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -1762,6 +1762,11 @@ export function PracticeMat({
   const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? '' : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: menu?.kind === 'batch' ? menu.ids.length : state.deck.length }))
   // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
   const sheeted = !isDesktop && menu !== null && !covered
+  // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
+  const menuInspect = menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined
+  // Una carta tocada con una sola jugada directa y nada más en el menú (sin «Ver carta», sin pregunta ni submenú): en escritorio, en vez del menú de un renglón, la etiqueta pegada a la carta
+  // (`PlayTag`); otro toque la hace. En el celular sigue la hoja (también un toque más, y es donde se lee la carta).
+  const lonePlay = isDesktop && menu?.kind === 'card' && !menu.ask && !menu.drop && !menuInspect && menuItems.length === 1 && !menuItems[0]!.children && !menuItems[0]!.disabled ? menuItems[0]! : null
   // La flecha de volver de la hoja: del segundo paso a las jugadas, y de la posición de la ficha a lo que agrega el +. No la lleva la pregunta con la que el menú abrió directo (la carta soltada en una
   // zona con una sola jugada, que pregunta): no hay a dónde volver.
   const menuBack =
@@ -2636,17 +2641,17 @@ export function PracticeMat({
         />
 
       <CardMenu
-        anchor={covered || sheeted ? null : (menu?.rect ?? null)}
+        anchor={covered || sheeted || lonePlay ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
         empty={noPlays}
         wide={choosingEffect}
-        // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
-        onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        onInspect={menuInspect}
         passThrough={attackAsk !== null}
         onClose={() => setMenu(null)}
       />
+      <PlayTag anchor={covered || !lonePlay ? null : (menu?.rect ?? null)} item={lonePlay} name={menuTitle} onClose={() => setMenu(null)} />
 
       {/*
         El lugar de los visores de las pilas en escritorio (el de la mesa y, en un duelo, el del rival): la ventana de `pileStrip`, de la barra de arriba a la fila de las Zonas Extra (lo mide su efecto). No

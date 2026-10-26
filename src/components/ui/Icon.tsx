@@ -242,6 +242,7 @@ const PATHS = {
     </>
   ),
   chart: <path d="M5 20v-8M12 20V5M19 20v-5" />,
+  zap: <path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" />,
 
   // — Acciones —
   x: <path d="M6 6l12 12M18 6 6 18" />,
