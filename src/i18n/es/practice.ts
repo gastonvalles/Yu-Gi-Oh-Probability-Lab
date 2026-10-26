@@ -196,6 +196,8 @@ export const practice = {
   'practice.mat.newHand': 'Nueva mano',
   'practice.mat.exit': 'Volver a Jugar',
   'practice.mat.undo': 'Deshacer',
+  // El aviso que sale después de activar algo: el botón dice «Deshacer»; el lector de pantalla, qué se deshace.
+  'practice.mat.undoPlay': 'Deshacer la última jugada',
   'practice.mat.saveCombo': 'Guardar combo',
   'practice.mat.sounds': 'Sonidos',
   'practice.mat.soundsOn': 'Activar los sonidos',

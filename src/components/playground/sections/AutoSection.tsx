@@ -19,6 +19,7 @@ import { PassPrompt } from '../../duel/PassPrompt'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../../probability/MatBarActions'
 import { CardMenu } from '../../probability/MatDialogs'
+import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
@@ -129,6 +130,7 @@ export function AutoSection() {
       <RespondSample onAnswer={setAnswer} />
       <MinimizedSample />
       <LongTextSample />
+      <UndoSample onAnswer={setAnswer} />
 
       <SortSample onAnswer={setAnswer} />
       <CounterSample onAnswer={setAnswer} />
@@ -230,6 +232,36 @@ function OptionsSample({ sample, onAnswer }: { sample: (typeof OPTION_SAMPLES)[n
   )
 }
 
+/** El aviso de «Deshacer» después de activar algo: «Activar» lo muestra de nuevo (se va solo a los `UNDO_CHIP_MS`). */
+function UndoSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const [play, setPlay] = useState<UndoPlay | null>({ key: 1, art: 'https://images.ygoprodeck.com/images/cards_small/57554544.jpg' })
+  const shown = useUndoPlay(play)
+
+  return (
+    <Specimen
+      title="Deshacer · el aviso de lo que activaste"
+      note={
+        <>
+          Sale al activar algo (o invocar de forma especial lo que brilla), en «Jugar solo automático» y en la práctica: el arte chico de la carta y «Deshacer», sin el nombre ni qué hace; sin arte, el ícono. Hace lo mismo que el Deshacer de la barra, que sigue en su lugar. Se va solo a los {UNDO_CHIP_MS / 1000} s, con otra jugada o si ya no se puede deshacer; en la mesa va donde no tapa cartas (abajo, junto a Pasos o entre tus vidas y la botonera; en la práctica, abajo de la barra). Archivo: <Tag>probability/UndoChip.tsx</Tag>
+        </>
+      }
+    >
+      <Button variant="secondary" size="sm" onClick={() => setPlay({ key: Date.now(), art: 'https://images.ygoprodeck.com/images/cards_small/57554544.jpg' })}>
+        Activar Fire King Island
+      </Button>
+      {shown ? (
+        <UndoChip
+          art={shown.art}
+          onUndo={() => {
+            setPlay(null)
+            onAnswer(t('practice.mat.undo'))
+          }}
+        />
+      ) : null}
+    </Specimen>
+  )
+}
+
 /** Una carta con varios efectos: «Activar efecto ›» y su lista (en escritorio, el submenú ancho del menú de la carta; en el celular, la hoja del segundo paso). */
 function EffectsSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -246,7 +278,7 @@ function EffectsSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       title="Opciones · la lista de efectos"
       note={
         <>
-          Una carta con varios efectos: «{label} ›» abre la lista, cada efecto con su texto y sin número (el orden de la pregunta no es el del texto de la carta). Como la lista de efectos de la mesa manual: en escritorio, un submenú ancho con las filas a la izquierda (<Tag>wide</Tag> en la opción de <Tag>CardMenu</Tag>); en el celular, la hoja del segundo paso, con la carta arriba y un efecto por fila (<Tag>stacked</Tag> de <Tag>AskOptions</Tag>).
+          Una carta con varios efectos: «{label} ›» abre la lista, cada efecto con su texto y sin número (el orden de la pregunta no es el del texto de la carta). Como la lista de efectos de la mesa manual: en escritorio, un submenú ancho con las filas a la izquierda (<Tag>wide</Tag> en la opción de <Tag>CardMenu</Tag>); en el celular, la hoja del segundo paso, con la carta arriba y un efecto por fila (<Tag>stacked</Tag> de <Tag>AskOptions</Tag>) y «Cancelar» abajo (todavía no se contestó nada: <Tag>onCancel</Tag>).
         </>
       }
     >
@@ -254,7 +286,7 @@ function EffectsSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
         Abrir el menú de Fire King Island
       </Button>
       <CardMenu anchor={isDesktop ? anchor : null} kicker={t('practice.zone.field')} title="Fire King Island" items={[{ label, onSelect: () => {}, wide: true, children: effects.map((effect) => ({ label: effect, onSelect: () => pick(effect) })) }]} startExpanded={label} onClose={() => setAnchor(null)} />
-      <Presence>{anchor && !isDesktop ? <AskOptions title={label} kicker="Fire King Island" options={effects.map((effect, index) => ({ id: String(index), label: effect }))} mode="one" stacked onPick={([id]) => pick(effects[Number(id)]!)} /> : null}</Presence>
+      <Presence>{anchor && !isDesktop ? <AskOptions title={label} kicker="Fire King Island" options={effects.map((effect, index) => ({ id: String(index), label: effect }))} mode="one" stacked onCancel={() => setAnchor(null)} onPick={([id]) => pick(effects[Number(id)]!)} /> : null}</Presence>
     </Specimen>
   )
 }

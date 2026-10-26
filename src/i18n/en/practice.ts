@@ -189,6 +189,7 @@ export const practice: Translated<typeof es> = {
   'practice.mat.newHand': 'New hand',
   'practice.mat.exit': 'Back to Play',
   'practice.mat.undo': 'Undo',
+  'practice.mat.undoPlay': 'Undo your last play',
   'practice.mat.saveCombo': 'Save combo',
   'practice.mat.sounds': 'Sounds',
   'practice.mat.soundsOn': 'Turn sounds on',

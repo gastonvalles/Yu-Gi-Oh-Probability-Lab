@@ -51,7 +51,25 @@ export interface SessionFault {
 export interface SessionAnswer {
   seat: Seat
   answer: CoreAnswer
+  /** Una activación que elegiste fuera de tus jugadas (responder en una cadena, «¿Activás el efecto?»; no una obligatoria): `undo` también vuelve a antes de ésta. No se guarda. */
+  activation?: true
 }
+
+/**
+ * La carta que activás (o invocás de forma especial: las que brillan) con esta respuesta, por código; null si no es eso (pasar, cambiar de fase, invocar de forma normal, una activación
+ * obligatoria). Es lo que se avisa con «Deshacer» y, fuera de tus jugadas, lo que `undo` marca (`activation`).
+ */
+export function activatedCode(ask: CoreAsk, answer: CoreAnswer): number | null {
+  if (ask.type === 'select_idlecmd' && answer.type === ask.type && answer.index !== null) return (answer.action === 5 ? ask.activates : answer.action === 1 ? ask.special_summons : [])[answer.index]?.code ?? null
+  if (ask.type === 'select_battlecmd' && answer.type === ask.type && answer.action === 0 && answer.index !== null) return ask.chains[answer.index]?.code ?? null
+  if (ask.type === 'select_chain' && answer.type === ask.type && !ask.forced && answer.index !== null) return ask.selects[answer.index]?.code ?? null
+  if (ask.type === 'select_effectyn' && answer.type === ask.type && answer.yes) return ask.code
+
+  return null
+}
+
+/** Una respuesta a la que `undo` vuelve: una jugada (`select_idlecmd` / `select_battlecmd`) o una activación elegida (`activation`). */
+export const undoPoint = (item: SessionAnswer) => item.activation === true || item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd'
 
 export interface AutoSnapshot {
   /** `loading` hasta la primera pregunta; `ready` con una pregunta en `ask`; `thinking` si el núcleo tarda más de ~400 ms; `error` con `fault`. */
@@ -144,7 +162,10 @@ export interface AutoSession {
   readonly adapter: Adapter | null
   /** Contesta la pregunta pendiente; `false` si no hay o la respuesta es de otro tipo. */
   answer(answer: CoreAnswer): boolean
-  /** Vuelve a antes de tu última jugada (la última respuesta tuya a un `select_idlecmd` o `select_battlecmd`), también con el núcleo caído o trabado (`crash`, `retry`); `false` si no hay. */
+  /**
+   * Vuelve a antes de tu última jugada (la última respuesta tuya a un `select_idlecmd` o `select_battlecmd`) o de tu última activación elegida (`activation`: responder en una cadena,
+   * también en el turno del rival), también con el núcleo caído o trabado (`crash`, `retry`); `false` si no hay.
+   */
   undo(): boolean
   /** Corta lo que el núcleo está pensando: deja la respuesta en vuelo y vuelve a la pregunta de antes. */
   cancel(): void
@@ -165,7 +186,7 @@ export const MR5 = '190464'
 const PLAYER = { lp: 8000, hand: 5, draw: 1 }
 const FATAL = new Set<FaultKind>(['rules', 'setup', 'crash'])
 const MAX_RETRIES = 3
-/** Las preguntas cuya respuesta es una jugada: lo que deshace `undo`. */
+/** Las preguntas cuya respuesta es una jugada (`playStarts`). */
 const PLAY_ASKS = new Set<string>(['select_idlecmd', 'select_battlecmd'])
 
 type CreateCommand = Extract<AutoCommand, { t: 'create' }>
@@ -334,8 +355,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     transport.send(to > 0 ? { ...create!, answers: answers.slice(0, to).map((item) => item.answer) } : create!)
   }
 
-  function send(seat: Seat, askId: number, answer: CoreAnswer) {
-    inFlight = { seat, askId, answer }
+  function send(seat: Seat, askId: number, answer: CoreAnswer, activation = false) {
+    inFlight = { seat, askId, answer, ...(activation ? { activation } : {}) }
     transport!.send({ t: 'answer', askId, answer })
     startTimer()
   }
@@ -355,7 +376,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
   function commit() {
     if (!inFlight) return
-    answers = [...answers, { seat: inFlight.seat, answer: inFlight.answer }]
+    answers = [...answers, { seat: inFlight.seat, answer: inFlight.answer, ...(inFlight.activation ? { activation: true as const } : {}) }]
     inFlight = null
     retries = 0
   }
@@ -534,13 +555,14 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
       if (!pending || snapshot.status !== 'ready' || answer.type !== pending.ask.type) return false
       set({ ask: null })
-      send(pending.seat, pending.askId, answer)
+      // Fuera de tus jugadas (que ya se deshacen por su tipo), una activación elegida también es adonde vuelve `undo`.
+      send(pending.seat, pending.askId, answer, !PLAY_ASKS.has(answer.type) && activatedCode(pending.ask, answer) !== null)
 
       return true
     },
     undo() {
       const all = inFlight ? [...answers, inFlight] : answers
-      const to = all.findLastIndex((item) => controlled(item.seat) && (item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd'))
+      const to = all.findLastIndex((item) => controlled(item.seat) && undoPoint(item))
 
       const stuck = snapshot.status === 'error'
 

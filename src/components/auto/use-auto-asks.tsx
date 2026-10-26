@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
 import { askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
-import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
+import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf, linksOf } from '../../app/card-glow'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
@@ -32,6 +32,7 @@ import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { cardIdOfDrawId } from '../probability/practice'
 import type { DuelMatLink, MatCard } from '../probability/PracticeMat'
+import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { BAND_MAX, CardPicker, PickBand, type PickCard } from './CardPicker'
@@ -113,7 +114,7 @@ export interface AutoAsks {
   pieces: ReactNode
   nameOf: (ref: CardRef | null, code?: number) => string
   artOf: (ref: CardRef | null, code?: number) => string | null
-  /** Hay una jugada tuya que deshacer (la última respuesta tuya a un `select_idlecmd` o `select_battlecmd`). */
+  /** Hay una jugada tuya que deshacer (una respuesta tuya a un `select_idlecmd` o `select_battlecmd`, o una activación elegida: `undoPoint`). */
   undoable: boolean
   /** El turno es tuyo. */
   turnMine: boolean
@@ -306,6 +307,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
     [cardsById, codeOf],
   )
+  /** El arte por código, el de tu carta si es tuya (el de la mesa: el de afuera puede no cargar). */
+  const artOfCode = useCallback((code: number) => {
+    const mine = byCode.get(code)
+
+    return mine?.art ?? mine?.apiCard?.imageUrlSmall ?? artOf(null, code)
+  }, [byCode, artOf])
   // El rótulo de un efecto o de una opción: el `strN` del `.cdb` que nombra el `desc` (`splitDesc`). Los del sistema (carta 0) no viajan: los nombra `ask-ui` o la
   // pantalla dice «Activar efecto». Online, los del rival llegan con sus cartas (`cards`).
   const effectLabel = useCallback(
@@ -388,6 +395,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [askId])
 
+  /**
+   * Tu última activación (o Invocación Especial de una que brilla), para su aviso de «Deshacer» (`UndoChip`): con la mesa en la que se hizo (deshacer, reiniciar o cortar al núcleo la
+   * rearman y el aviso se va). Otra jugada tuya lo saca: Deshacer volvería a antes de ésa, no de la activación.
+   */
+  const [lastPlay, setLastPlay] = useState<(UndoPlay & { initial: AutoSnapshot['initial'] }) | null>(null)
+
   /** Los toques, en orden; el que completa la pregunta la contesta y los demás se descartan. */
   const gesture = useCallback(
     (...gestures: AskGesture[]) => {
@@ -404,14 +417,17 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           setSub(null)
           faultsBase.current = session.getSnapshot().faults.length
           unmappedBase.current = session.getSnapshot().unmapped.length
-          session.answer(next.answer)
+          const { initial } = session.getSnapshot()
+          const code = activatedCode(current.ask, next.answer)
+
+          if (session.answer(next.answer) && canUndo && (code !== null || undoPoint({ seat, answer: next.answer }))) setLastPlay(code === null ? null : { key: Date.now(), art: artOfCode(code), initial })
           return
         }
       }
       askRef.current = current
       setOpened({ askId: current.askId, state: current })
     },
-    [session],
+    [session, canUndo, seat, artOfCode],
   )
 
   const view = useMemo(() => (askState ? askView(askState) : null), [askState])
@@ -761,7 +777,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       }
     : null
 
+  // El aviso de «Deshacer» de tu última activación: mientras dura, con la mesa de entonces y el duelo esperándote (pensando, rearmando o repasando, no).
+  const timedPlay = useUndoPlay(lastPlay)
+  const undoPlay = timedPlay && timedPlay.initial === snap.initial && snap.status === 'ready' && !snap.replaying && !reviewing && !frozen ? { key: timedPlay.key, art: timedPlay.art } : null
+
   const mat: AutoAsks['mat'] = {
+    undoPlay,
     areas: DUEL_AREAS,
     areasCompact: DUEL_AREAS_COMPACT,
     opponent: <SideCells side={opponent} owner="theirs" />,
@@ -902,6 +923,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             options={sub.children.map((child, index): AskOption => ({ id: String(index), label: child.label }))}
             mode="one"
             stacked
+            // Todavía no se contestó nada: elegir el efecto es parte de tocar la carta, así que se cierra como su menú.
+            onCancel={() => setSub(null)}
             onPick={([id]) => {
               const child = sub.children![Number(id)]
 
@@ -984,7 +1007,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     pieces,
     nameOf,
     artOf,
-    undoable: !reviewing && snap.answers.some((item) => item.seat === seat && (item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd')),
+    undoable: !reviewing && snap.answers.some((item) => item.seat === seat && undoPoint(item)),
     // Lo que se repasa es tuyo.
     turnMine: reviewing || turnMine,
     review: { active: reviewing, load, seek, back },

@@ -101,6 +101,7 @@ import { PracticeMatPanel } from './PracticeMatPanel'
 import { createPanelSteps } from './panel-steps'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
+import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, glowFrame } from './practice-styles'
@@ -211,6 +212,8 @@ export interface DuelMatLink {
   undoBlocked?: boolean
   /** Deshacer va arriba, en la barra de la pantalla (`header`, con los íconos de la práctica: `MatBarActions`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). */
   undoInHeader?: boolean
+  /** «Jugar solo automático»: tu última activación, mientras se puede deshacer y dura su aviso (`UndoChip`, en la fila de abajo; tocarlo es `onUndo`). */
+  undoPlay?: UndoPlay | null
   /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
   control?: ControlOffer
   /** En qué turno del duelo van los dos juntos (`duelTurnNumber`): con él el asistente sabe si una activación es del mismo turno. Sin duelo, el turno de la mesa. */
@@ -941,6 +944,12 @@ export function PracticeMat({
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
   useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
 
+  // El aviso de «Deshacer» de lo que acabás de activar: en la práctica, la jugada `at` (se ve mientras es la última y no se deshizo); en el automático lo arma la pantalla (`duel.undoPlay`).
+  const practice = !duel
+  const [manualPlay, setManualPlay] = useState<(UndoPlay & { at: number }) | null>(null)
+  const timedPlay = useUndoPlay(manualPlay)
+  const undoPlay = duel ? (duel.undoPlay ?? null) : timedPlay && !session.replay && session.cursor === timedPlay.at && session.actions.length === timedPlay.at ? timedPlay : null
+
   // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
@@ -1107,6 +1116,8 @@ export function PracticeMat({
       const repeated = repeatedTurnRule(session.initial, session.actions.slice(0, session.cursor), played)
 
       onDispatch(played)
+      // La práctica: lo que activaste, con su aviso de «Deshacer» (otra jugada lo saca).
+      if (practice) setManualPlay(activated === null ? null : { key: Date.now(), art: artOf(cardOf(activated)), at: session.cursor + 1 })
       if (activated !== null) recordUsage(played, activated)
       if (repeated !== null) showToastMessage(t(repeated === 'normalSummon' ? 'practice.assistant.normalAgain' : 'practice.assistant.pendulumAgain'), 'warning')
       setMenu(null)
@@ -1129,7 +1140,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer, searching, recordUsage, state, kindOf, session.initial, session.actions, session.cursor],
+    [onDispatch, viewer, closeViewer, searching, recordUsage, state, kindOf, session.initial, session.actions, session.cursor, practice, cardOf],
   )
 
   // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).
@@ -2273,8 +2284,13 @@ export function PracticeMat({
   // Deshacer de un duelo, abajo, donde llega el pulgar (en la práctica y en «Jugar solo automático» va arriba, con los íconos de la mesa: `MatBarActions`), y la ficha y la lista de pasos.
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
+  // El mismo Deshacer en la barra, abajo y en el aviso de lo que acabás de activar (`undoChip`).
+  const undoLast = () => {
+    setAutoplay(false)
+    onUndo()
+  }
   const undoButton = (
-    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={undoLast}>
       <Icon name="undo" />
     </IconButton>
   )
@@ -2393,7 +2409,7 @@ export function PracticeMat({
       {duel ? null : (
         // En un celular angosto los botones y el turno no entran en una fila: se achican (`MAT_BAR_ROW`) y el turno se esconde.
         // Con el detalle fijo a la izquierda (columna 1), la barra va arriba de la mesa (columna 2), no encima del detalle.
-        <div className={cx('col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
+        <div className={cx('relative col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
           {onExit ? <MatExitButton onExit={onExit} /> : null}
           <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
@@ -2402,10 +2418,7 @@ export function PracticeMat({
           {/* Las handtraps del rival: «Entrenar solo» entra directo a la mesa, así que se encienden y se elige el pool acá; aplicar reparte una mano nueva. */}
           <MatBarActions
             className="ml-auto"
-            onUndo={() => {
-              setAutoplay(false)
-              onUndo()
-            }}
+            onUndo={undoLast}
             canUndo={session.cursor > 0}
             onNewHand={onNewHand}
             onHandtraps={onNewHand}
@@ -2413,6 +2426,12 @@ export function PracticeMat({
             canSave={session.cursor > 0}
           />
           {stepsButton}
+          {/* Lo que acabás de activar se deshace desde acá también: abajo de la barra, a la derecha, en el aire que queda arriba del campo (no tapa cartas). */}
+          {undoPlay ? (
+            <div className="absolute right-2 top-full z-30 mt-2 min-[1101px]:right-4">
+              <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} />
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -2676,6 +2695,13 @@ export function PracticeMat({
                 </span>
               </div>
               )}
+              {/* Lo que acabás de activar («Jugar solo automático»), con su Deshacer: en esta fila, en el lugar libre (celular: junto a Pasos; escritorio: entre tus vidas y la botonera; con
+                  laterales, arriba de lo apilado). Flota: no corre nada. Eligiendo, la fila es de lo que falta elegir. */}
+              {undoPlay && !choosing ? (
+                <div className={cx('absolute z-10', rails ? 'bottom-full right-0 mb-2' : 'top-1/2 -translate-y-1/2 max-[1101px]:right-13 min-[1101px]:left-1/2 min-[1101px]:-translate-x-1/2')}>
+                  <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} />
+                </div>
+              ) : null}
               {status}
             </div>
           ) : (

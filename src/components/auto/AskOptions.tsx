@@ -29,7 +29,7 @@ interface AskOptionsProps {
   mode: 'one' | { count: number }
   /** Las elegidas, en el orden en que se eligieron. */
   onPick: (ids: string[]) => void
-  /** Sólo si la pregunta se puede cancelar: lleva la X y Escape la cierra. Sin esto (las del núcleo no se cancelan), hay que contestar. */
+  /** Sólo si se puede cancelar (el segundo paso de «Activar efecto», que todavía no contestó nada): la X, Escape y, con `'one'`, «Cancelar» abajo. Sin esto (las del núcleo no se cancelan), hay que contestar. */
   onCancel?: () => void
   /** Con `'one'`: una opción por fila, a la izquierda (la lista de efectos, como en la mesa manual). Sin esto, de a una por fila sólo si algún texto es largo. */
   stacked?: boolean
@@ -67,7 +67,13 @@ export function AskOptions({ title, kicker, options, mode, onPick, onCancel, sta
       title={title}
       ariaLabel={title}
       footer={
-        mode === 'one' ? undefined : (
+        mode === 'one' ? (
+          onCancel ? (
+            <Button variant="tertiary" size="sm" className="mr-auto" onClick={onCancel}>
+              {t('common.cancel')}
+            </Button>
+          ) : undefined
+        ) : (
           <>
             <p role="status" className="m-0 mr-auto text-body tabular-nums text-muted">
               {t('auto.picker.status', { chosen: chosen.length, max: count })}
