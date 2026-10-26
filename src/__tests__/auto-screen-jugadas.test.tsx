@@ -97,10 +97,10 @@ describe('auto-screen · las jugadas', () => {
     const items = screen.getAllByRole('menuitem')
 
     expect(items).toHaveLength(6)
-    expect(items[0]).toHaveTextContent('Draw PhaseTodavía no')
+    expect(items[0]).toHaveAccessibleName('Draw Phase · Todavía no')
     expect(items[0]).toHaveAttribute('aria-disabled', 'true')
     expect(items[2]).toHaveAttribute('aria-current', 'true')
-    expect(items[3]).toHaveTextContent('Battle Phase')
+    expect(items[3]).toHaveAccessibleName('Ir a Battle Phase')
     expect(items[3]).not.toHaveAttribute('aria-disabled')
     fireEvent.click(items[3]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 6, index: null }])
@@ -112,7 +112,7 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(IDLE))
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'End Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a End Phase' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 7, index: null }])
     // Sin pregunta, el botón de la fase se apaga: no hay nada que contestar.
     expect(phaseButton()).toBeDisabled()
@@ -123,7 +123,7 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(BATTLE))
     fireEvent.click(phaseButton())
-    expect(screen.getByRole('menuitem', { name: 'Main Phase 2' })).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByRole('menuitem', { name: 'Ir a Main Phase 2' })).not.toHaveAttribute('aria-disabled')
     expect(screen.getByRole('menuitem', { name: /^Draw Phase/ })).toHaveAttribute('aria-disabled', 'true')
     fireEvent.keyDown(window, { key: 'Escape' })
     // Lo que sólo puede atacar no brilla.
@@ -143,24 +143,43 @@ describe('auto-screen · las jugadas', () => {
     const band = within(screen.getByRole('group', { name: '¿Activás algo ahora?' }))
 
     expect(band.getByRole('option', { name: 'Called by the Grave, Mano' })).toHaveAttribute('aria-selected', 'true')
-    expect(band.getByText('Tu respuesta · CL1').parentElement).toHaveTextContent('Tu respuesta · CL1 Called by the Grave')
-    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder', 'Activar como CL1'])
+    expect(screen.getByRole('group', { name: '¿Activás algo ahora?' })).not.toHaveTextContent('Tu respuesta')
+    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'No responder', 'Activar como CL1'])
     fireEvent.click(band.getByRole('button', { name: 'No responder' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
   })
 
-  it('cadena con un eslabón: la banda dice a qué eslabón y de quién (su carta chica a la izquierda) y la principal encadena con el número que tomaría', () => {
+  it('cadena con un eslabón: la banda dice a qué eslabón y de quién, sin nombres (su carta chica a la izquierda, por su arte) y la principal encadena con el número que tomaría', () => {
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
 
     core(() => fake.set({ overlay: { ...overlay, chain: [{ card: { side: 'mine', id: 'card-200-1' }, code: 200, description: '0', state: 'chained' }] } }))
     core(() => fake.ask(CHAIN))
-    const band = screen.getByRole('group', { name: '¿Encadenás a Maxx C?' })
+    const band = screen.getByRole('group', { name: 'Responder a CL1 · Vos' })
 
-    expect(band).toHaveTextContent('Responder a CL1 · Vos')
+    expect(band).not.toHaveTextContent('Maxx C')
     expect(within(band).getByRole('img', { name: 'Maxx C' })).toBeInTheDocument()
     fireEvent.click(within(band).getByRole('button', { name: 'Encadenar como CL2' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
+  })
+
+  it('minimizada, la banda de responder es un asa de una línea: la carta que brilla sigue respondiendo y la pregunta siguiente vuelve a abrirse sola', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(CHAIN))
+    fireEvent.click(within(screen.getByRole('group', { name: '¿Activás algo ahora?' })).getByRole('button', { name: 'Minimizar' }))
+    const handle = screen.getByTestId('duel-prompt-layer').querySelector('[data-minimized]')
+
+    expect(handle).toHaveTextContent(/^¿Activás algo ahora\?$/)
+    expect(screen.queryByRole('option')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Mostrar la pregunta' })).toHaveFocus()
+    tap(handCard('Called by the Grave'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
+
+    core(() => fake.ask(CHAIN))
+    expect(screen.getByTestId('duel-prompt-layer').querySelector('[data-minimized]')).toBeNull()
+    expect(screen.getByRole('option', { name: 'Called by the Grave, Mano' })).toBeInTheDocument()
   })
 
   it('cadena con dos candidatas: ninguna elegida y la principal apagada; tocar una la elige y la principal la activa; una con dos efectos abre su lista', () => {
@@ -172,7 +191,7 @@ describe('auto-screen · las jugadas', () => {
     const band = within(screen.getByRole('group', { name: '¿Activás algo ahora?' }))
 
     expect(band.getByRole('button', { name: 'Activar como CL1' })).toBeDisabled()
-    expect(band.getByText('Elegí con qué responder.')).toBeInTheDocument()
+    expect(band.queryByText(/Elegí con qué/)).toBeNull()
     fireEvent.click(band.getByRole('option', { name: 'Nibiru, Cementerio' }))
     expect(screen.getByRole('dialog', { name: 'Activar efecto' })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -202,7 +221,7 @@ describe('auto-screen · las jugadas', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...CHAIN, forced: true }))
-    expect(lane()).toHaveTextContent('Tenés que activar Called by the Grave: tocala')
+    expect(lane()).toHaveTextContent('Tenés que activar la carta que brilla: tocala')
     expect(within(lane()!).queryByRole('button')).toBeNull()
     tap(handCard('Called by the Grave'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))

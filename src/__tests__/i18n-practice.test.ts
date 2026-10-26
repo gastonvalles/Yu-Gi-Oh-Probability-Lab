@@ -277,7 +277,7 @@ describe('la mesa dibujada en inglés', () => {
 
     // El cartel de la fase lleva el turno en el idioma activo y la mira de un objetivo, su nombre.
     fireEvent.click(screen.getByRole('button', { name: /^Phases:/ }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'End Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Go to End Phase' }))
     fireEvent.click(within(screen.getByRole('alertdialog', { name: 'End your turn?' })).getByRole('button', { name: 'End turn' }))
     expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Turn 2Draw Phase')
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))

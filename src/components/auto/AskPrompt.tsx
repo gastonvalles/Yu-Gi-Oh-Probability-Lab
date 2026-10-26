@@ -1,8 +1,5 @@
-import { useEffect, useRef } from 'react'
-
-import { useLeaving, usePresence } from '../../app/use-presence'
-import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { MatPrompt } from '../duel/MatPrompt'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 
@@ -13,7 +10,7 @@ export interface AskChoice {
 }
 
 interface AskPromptProps {
-  /** La pregunta entera («¿Activás el efecto de Ash Blossom & Joyous Spring?»). */
+  /** La pregunta, corta y sin el nombre de la carta («¿Activás el efecto?»): la carta la dice su arte. */
   text: string
   /** La carta que pregunta (`select_effectyn`): chica, a la izquierda del texto. Sin ella (`select_yesno`), sólo el texto. */
   card?: { name: string; art: string | null }
@@ -21,63 +18,55 @@ interface AskPromptProps {
   yes: AskChoice
   /** Lo que no hace nada, sin caja y a la izquierda («No activar»). */
   no: AskChoice
-  /** Arriba de todo, chico: qué clase de pregunta es («Efecto que se dispara»). */
+  /** Arriba de la pregunta, chico: qué pasó, sin nombres («Tras la Invocación Normal», «En la Standby Phase»). */
   kicker?: string
   /** El lugar de la carta, en una pestaña sobre ella («Campo», «Cementerio»). */
   place?: string
-  /** Qué hace el efecto, con la frase de la carta tal cual: cuándo (`when`) y lo que hace (`what`, resaltado). La caja se hace más ancha. */
-  effect?: { when: string; what: string }
   /** El atajo a la mesa manual («Seguir en modo manual»), sin caja y a la izquierda, lejos de la principal. Sólo en escritorio: en el celular está en «Más opciones». */
   manual?: AskChoice
 }
 
 /**
- * Una pregunta de sí o no del núcleo de reglas (`select_effectyn`, `select_yesno`) en el medio de la mesa: la pone `PracticeMat` en la ranura `duel.prompt`, centrada en su columna, sin fondo y sin
- * mover nada (la capa deja pasar los toques; sólo la pregunta los recibe), como `PassPrompt`. Hay que contestarla: no se cierra con Escape y, al aparecer, el foco va a la principal (sin desplazar
- * la página). Una cadena que se puede pasar no va acá: va en `RespondBand`. Contestada, se achica y se funde (la mesa la pone dentro de un `Presence`). Los dos botones dicen qué hacen: nunca «Sí» ni «No».
- * Un efecto que se disparó lleva su contexto (`effectAskText` de `ask-ui.ts`): qué pasó y dónde está la carta en el texto, la pestaña del lugar y la frase del efecto.
+ * Una pregunta de sí o no del núcleo de reglas (`select_effectyn`, `select_yesno`) en la mesa (`MatPrompt`: la ranura `duel.prompt`, sin velo, minimizable). Lo mínimo para decidir:
+ * qué pasó (`kicker`, sin nombres), la carta por su arte con la pestaña de su lugar y «¿Activás el efecto?»; lo que hace la carta está en su detalle. Hay que contestarla: Escape
+ * la minimiza y, al aparecer, el foco va a la principal (sin desplazar la página). Una cadena que se puede pasar no va acá: va en `RespondBand`. Los dos botones dicen qué hacen.
  */
-export function AskPrompt({ text, card, yes, no, kicker, place, effect, manual }: AskPromptProps) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const leaving = useLeaving()
-
-  useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('[data-ask-primary]')?.focus({ preventScroll: true })
-  }, [])
-
+export function AskPrompt({ text, card, yes, no, kicker, place, manual }: AskPromptProps) {
   const art = card ? (
     <span className="relative block aspect-[421/614] w-11 shrink-0 overflow-hidden bg-input">
       <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
     </span>
   ) : null
-  // Con contexto (el efecto que se disparó): lo que es arriba, la pestaña del lugar sobre la carta, la frase del efecto debajo de la pregunta y el atajo a la manual a la izquierda;
-  // la mesa le da más ancho (`data-prompt-row`).
-  return usePresence(!leaving, (
-    <div ref={ref} role="status" data-prompt="ask" {...(effect ? { 'data-prompt-row': '' } : {})} className="grid gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter">
-      {kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
-      <div className="flex items-center gap-3">
-        {place ? (
-          <span className="grid shrink-0 justify-items-start gap-1">
-            <Badge size="sm" shape="tag">
-              {place}
-            </Badge>
-            {art}
-          </span>
-        ) : (
-          art
-        )}
-        <div className="grid min-w-0 gap-1">
-          <p className="m-0 font-semibold">{text}</p>
-          {effect ? (
-            <p className="m-0 text-micro text-muted">
-              <span className="font-semibold text-warning-soft">{t('auto.ask.what')}</span> “{effect.when ? `${effect.when}: ` : ''}
-              <span className="font-semibold text-foreground">{effect.what}</span>”
-            </p>
-          ) : null}
-        </div>
-      </div>
+
+  return (
+    <MatPrompt
+      kind="ask"
+      // Con el atajo a la manual, más ancho: los tres botones en una fila.
+      row={Boolean(manual)}
+      label={text}
+      focus="[data-ask-primary]"
+      escape
+      head={
+        <>
+          {place ? (
+            <span className="grid shrink-0 justify-items-start gap-1">
+              <Badge size="sm" shape="tag">
+                {place}
+              </Badge>
+              {art}
+            </span>
+          ) : (
+            art
+          )}
+          <div className="grid min-w-0 gap-1">
+            {kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
+            <p className="m-0 font-semibold">{text}</p>
+          </div>
+        </>
+      }
+    >
       <div className="flex flex-wrap items-center gap-2">
-        {/* En el celular no va en la banda (tres acciones no entran en una fila y la banda tiene que caber arriba de tus monstruos): queda en «Más opciones». */}
+        {/* En el celular no va en el cartel (tres acciones no entran en una fila y tiene que caber arriba de tus monstruos): queda en «Más opciones». */}
         {manual ? (
           <Button variant="tertiary" className="shrink-0 max-[1101px]:hidden" onClick={manual.onSelect}>
             {manual.label}
@@ -92,6 +81,6 @@ export function AskPrompt({ text, card, yes, no, kicker, place, effect, manual }
           </Button>
         </div>
       </div>
-    </div>
-  ), () => [ref.current])
+    </MatPrompt>
+  )
 }

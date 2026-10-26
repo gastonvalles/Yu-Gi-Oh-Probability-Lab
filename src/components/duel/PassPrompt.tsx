@@ -1,9 +1,7 @@
-import { useRef } from 'react'
-
 import { PHASES, type MatPhase } from '../../app/practice-mat'
-import { useLeaving, usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
+import { MatPrompt } from './MatPrompt'
 
 /** Las cartas que pueden responder, por nombre y sin repetir: hasta dos y «y N más» (la mesa muestra cuáles brillan). */
 export function respondersText(names: readonly string[]): string {
@@ -34,18 +32,15 @@ interface PassPromptProps {
  * de la pantalla, no arriba»; antes iba sobre la línea del registro, arriba, y en el celular se cortaba en «Ana quiere pasar a la Batt…»): es lo único que hay que contestar, así que se ve donde se mira y los dos botones
  * quedan al alcance. No es un diálogo: no tiene fondo que tape la mesa ni bloquea nada (las cartas que pueden responder siguen brillando abajo) y la mesa no se corre al aparecer (la pone `PracticeMat` encima, centrada
  * en su columna). Una principal (Dejar pasar) y lo que descarta sin caja (Jugar antes), a la izquierda.
- * Contestada, se achica y se funde (la inversa de su entrada): la mesa la pone dentro de un `Presence`.
+ * Se minimiza a un asa como las del duelo automático (`MatPrompt`; Escape también). Contestada, se achica y se funde (la inversa de su entrada): la mesa la pone dentro de un `Presence`.
  */
 export function PassPrompt({ name, phase, endsTurn, responders, onAllow, onDeny }: PassPromptProps) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const leaving = useLeaving()
   const phaseName = PHASES.find((entry) => entry.id === phase)?.name ?? phase
   const cards = respondersText(responders)
   const text = cards !== '' ? t(endsTurn ? 'duel.pass.askEndWith' : 'duel.pass.askWith', { name, phase: phaseName, cards }) : t(endsTurn ? 'duel.pass.askEnd' : 'duel.pass.ask', { name, phase: phaseName })
 
-  return usePresence(!leaving, (
-    <div ref={ref} role="status" data-prompt="passAsked" className="grid gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter">
-      <p className="m-0 font-semibold">{text}</p>
+  return (
+    <MatPrompt kind="passAsked" label={text} escape head={<p className="m-0 font-semibold">{text}</p>}>
       <div className="flex justify-end gap-2">
         <Button variant="tertiary" onClick={onDeny}>
           {t('duel.pass.deny')}
@@ -54,6 +49,6 @@ export function PassPrompt({ name, phase, endsTurn, responders, onAllow, onDeny 
           {t('duel.pass.allow')}
         </Button>
       </div>
-    </div>
-  ), () => [ref.current])
+    </MatPrompt>
+  )
 }

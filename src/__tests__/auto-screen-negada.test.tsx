@@ -9,7 +9,7 @@ import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { pos } from './support/auto-session-fake'
 import { core, handCard, lane, renderAuto } from './support/auto-screen-harness'
 
-// La negación («Sin efecto · por CL2» en la pila y en el nombre de la carta; en la píldora del celular, «X le quita el efecto a Y»; la carta, gris y latiendo) y varias obligatorias a la vez (se elige cuál va primero).
+// La negación («Sin efecto · por CL2» en la pila y en el nombre de la carta, también en la píldora, sin nombres; la carta, gris y latiendo) y varias obligatorias a la vez (se elige cuál va primero).
 
 const link = (index: number, card: CardRef, from: number = L.MZONE): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from } })
 const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep => ({ kind, at: 0, index, ...(by ? { by } : {}) })
@@ -30,7 +30,7 @@ describe('auto-screen · la cadena negada', () => {
     expect(grayed()).toEqual([])
 
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 2 · Resuelve CL2Carta le quita el efecto a Carta')
+    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 2 · Resuelve CL2Sin efecto · por CL2')
     // Sobre la carta: la insignia tachada y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
     expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
     expect(cell().querySelector('[data-chain-link]')).toHaveAttribute('data-chain-void', '2')
@@ -80,19 +80,19 @@ describe('auto-screen · varias obligatorias', () => {
     ],
   }
 
-  it('una banda en el medio: cuál va primero (CL1), la primera ya elegida, sin «No responder»; tocar otra la cambia y la principal la activa', () => {
+  it('una banda en el medio: cuál va primero (CL1), la primera ya elegida, sin «No responder»; tocar otra la cambia y la principal la activa con su número («Activar como CL1»)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(FORCED))
     const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero (CL1)?' })
 
-    // La línea de «Tenés que activar X: tocala» es para una sola.
+    // La línea de «Tenés que activar la carta que brilla: tocala» es para una sola.
     expect(lane()).toBeNull()
     expect(band).toHaveTextContent('Sin «No responder»: son obligatorias.')
     expect(within(band).queryByRole('button', { name: 'No responder' })).toBeNull()
-    expect(within(band).getByRole('button', { name: 'Activar Called by the Grave primero' })).toBeEnabled()
+    expect(within(band).getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
     fireEvent.click(within(band).getByRole('option', { name: /Ash Blossom/ }))
-    fireEvent.click(within(band).getByRole('button', { name: 'Activar Ash Blossom primero' }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar como CL1' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
   })
 
@@ -105,12 +105,12 @@ describe('auto-screen · varias obligatorias', () => {
 
     expect(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ })).toHaveTextContent('Rival, Campo')
     fireEvent.click(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ }))
-    fireEvent.click(within(band).getByRole('button', { name: 'Activar Blue-Eyes White Dragon primero' }))
+    fireEvent.click(within(band).getByRole('button', { name: 'Activar como CL1' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }])
 
     // Sola: la banda lo dice igual (puede no estar a la vista) y tocarla en su campo también la activa.
     core(() => fake.ask({ ...FORCED, selects: [rival] }))
-    expect(screen.getByRole('group', { name: 'Tenés que activar Blue-Eyes White Dragon: tocala' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Tenés que activar la carta que brilla: tocala' })).toBeInTheDocument()
     expect(document.querySelector('[data-attack-target="true"]')?.getAttribute('data-rival-card-id')).toBe('c1')
     fireEvent.click(screen.getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 1 }, { type: 'select_chain', index: 0 }])
@@ -120,7 +120,7 @@ describe('auto-screen · varias obligatorias', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...FORCED, selects: FORCED.selects.slice(0, 1) }))
-    expect(lane()).toHaveTextContent('Tenés que activar Called by the Grave: tocala')
+    expect(lane()).toHaveTextContent('Tenés que activar la carta que brilla: tocala')
     expect(screen.queryByRole('group', { name: /¿Cuál va primero/ })).toBeNull()
   })
 })

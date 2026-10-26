@@ -208,6 +208,9 @@ export const practice = {
   'practice.mat.turn': 'Turno {turn}',
   'practice.mat.field': 'Campo',
   'practice.mat.phases': 'Fases',
+  // Las fases en una línea, abiertas desde el botón de la fase de ahora (`PhaseRow`).
+  'practice.phaseRow.title': 'Pasar a la fase',
+  'practice.phaseRow.goTo': 'Ir a {phase}',
   // Lo que se hace con el deck (su `title`): tocarlo, arrastrarlo y mantenerlo apretado. En el duelo automático sólo se mira.
   'practice.mat.deckHelp': 'Main Deck · Tocá: buscar · Arrastrá: robar · Mantené: opciones',
   'practice.mat.deckHelpAuto': 'Main Deck · Tocá: ver las cartas que quedan, por nombre',

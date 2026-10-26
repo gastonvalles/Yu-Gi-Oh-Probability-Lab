@@ -31,10 +31,10 @@ interface ChainNoticeProps {
   rows: readonly ChainNoticeRow[]
   /** El eslabón del que habla la píldora (índice en `rows`): el último que se sumó o el último que cambió al resolverse. */
   focus: number
-  /** Ya empezó a resolverse: la píldora deja de decir «Cadena» y dice qué le pasa al eslabón. */
+  /** Ya empezó a resolverse: en el celular, la píldora dice cuál resuelve («Resuelve CL2»). */
   resolving: boolean
   open: boolean
-  /** El celular (menos de 1101 px): la píldora dice todo en dos renglones, «Cadena · 2 · Resuelve CL2» y qué pasa (ver arriba). */
+  /** El celular (menos de 1101 px): «Cadena · 2 · Resuelve CL2» arriba (ver abajo). */
   compact?: boolean
   onOpenChange: (open: boolean) => void
   /** Se tocó un eslabón (índice en `rows`, y dónde está la fila): quien la usa lo muestra en el detalle o, sin detalle, grande. */
@@ -44,21 +44,13 @@ interface ChainNoticeProps {
 const STATE_TONE: Record<ChainRowState, Tone> = { chained: 'neutral', solving: 'info', solved: 'success', negated: 'danger', disabled: 'warning' }
 const stateLabel = ({ state, by }: Pick<ChainNoticeRow, 'state' | 'by'>) => (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
 const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
-/** El celular, segundo renglón: qué le pasa al eslabón. Negado por un eslabón que se conoce, la frase («Ash Blossom le quita el efecto a Ponix»); si no, el nombre y, si ya le pasó algo, su estado. */
-const saysOf = (rows: readonly ChainNoticeRow[], row: ChainNoticeRow) => {
-  const by = row.state === 'negated' || row.state === 'disabled' ? rows.find((link) => link.number === row.by) : undefined
-
-  if (by) return t(`auto.chain.void.${row.state as 'negated' | 'disabled'}`, { by: by.name, card: row.name })
-  return row.state === 'chained' || row.state === 'solving' ? row.name : `${row.name} · ${stateLabel(row)}`
-}
 
 /**
  * La pila de la cadena (duelo automático: «Jugar solo» y el duelo por enlace). La pone la mesa en `duel.chain`, centrada arriba de su columna, debajo de la barra.
- * - **Plegada** (la píldora): el ícono de la cadena con cuántos eslabones tiene, «Cadena · CL2 · Rival» mientras se arma (el último eslabón) o «Resolviendo · CL2 · Vos» mientras
- *   se resuelve (el dueño, en su color), con la carta en ámbar debajo, y la flecha que la despliega (44 px, `aria-expanded`).
- * - **En el celular** (`compact`): dos renglones que dicen todo, «Cadena · 2 · Resuelve CL2» (el eslabón en el color de su dueño) y qué pasa: «Ash Blossom le quita el efecto a Ponix» si se
- *   sabe quién lo negó (`by`), si no el nombre y su estado. Mientras la mesa tiene una pregunta abierta, la capa lleva `data-banded` (`group/chain`, `PracticeMat`): queda el primer
- *   renglón, sin flecha ni lista, para que la pregunta entre debajo.
+ * - **Plegada** (la píldora): el ícono de la cadena con cuántos eslabones tiene, «Cadena · CL2 · Rival» (el eslabón del que habla y su dueño, en su color) y debajo, en ámbar, qué
+ *   le pasa, corto y sin nombres («En espera», «Sin efecto · por CL2»: la carta la marca su insignia en la mesa), y la flecha que la despliega (44 px, `aria-expanded`).
+ * - **En el celular** (`compact`): igual, con «Cadena · 2 · Resuelve CL2» arriba mientras se resuelve (el eslabón en el color de su dueño). Mientras la mesa tiene una pregunta
+ *   abierta, la capa lleva `data-banded` (`group/chain`, `PracticeMat`): queda el primer renglón, sin flecha ni lista, para que la pregunta entre debajo.
  * - **Desplegada**: debajo, la pila en el orden en que se resuelve (el último eslabón arriba): número, carta, de quién y su estado (en espera, resolviendo, resuelta, negada o sin efecto, con quién lo negó si se sabe: «Sin
  *   efecto · por CL2», también en la píldora). Tiene tope de alto y se desplaza sola.
  * - **El color del dueño** (violeta claro lo tuyo, ámbar lo del rival: el de las vidas, `PLAYER_COLOR`) va en la etiqueta del número, rellena, y en el «de quién». No se confunde
@@ -74,7 +66,6 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
   const row = rows[focus] ?? rows[rows.length - 1]
 
   if (!row) return null
-  const lead = resolving ? stateLabel(row) : t('auto.chain.title')
   // El celular, al resolverse: el eslabón que se está resolviendo (el que niega a otro sigue «Resolviendo» mientras lo niega); entre uno y otro, el último que cambió.
   const solver = rows.find((link) => link.state === 'solving') ?? row
   const clOf = (number: number) => (
@@ -88,33 +79,24 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
           <Icon name="link" size={18} />
           {compact ? null : <span className="text-micro font-bold tabular-nums leading-none text-foreground">{rows.length}</span>}
         </span>
-        {compact ? (
-          <p role="status" className="m-0 grid min-w-0 flex-1 leading-tight">
-            <span className="truncate text-micro text-muted">
-              {`${t('auto.chain.count', { count: rows.length })} · `}
-              {resolving ? (
-                <>
-                  {`${t('auto.chain.resolves')} `}
-                  {clOf(solver.number)}
-                </>
-              ) : (
-                <>
-                  {`CL${row.number} · `}
-                  <span className={cx('font-semibold', colorOf(row.mine).text)}>{row.who}</span>
-                </>
-              )}
-            </span>
-            <span className="truncate text-body font-semibold text-info group-data-banded/chain:hidden">{saysOf(rows, row)}</span>
-          </p>
-        ) : (
-          <p role="status" className="m-0 grid min-w-0 flex-1 leading-tight">
-            <span className="truncate text-micro text-muted">
-              {`${lead} · CL${row.number} · `}
-              <span className={cx('font-semibold', colorOf(row.mine).text)}>{row.who}</span>
-            </span>
-            <span className={cx('truncate text-body font-semibold text-info', row.state === 'negated' && 'line-through')}>{row.name}</span>
-          </p>
-        )}
+        <p role="status" className="m-0 grid min-w-0 flex-1 leading-tight">
+          <span className="truncate text-micro text-muted">
+            {compact ? `${t('auto.chain.count', { count: rows.length })} · ` : `${t('auto.chain.title')} · `}
+            {compact && resolving ? (
+              <>
+                {`${t('auto.chain.resolves')} `}
+                {clOf(solver.number)}
+              </>
+            ) : (
+              <>
+                {`CL${row.number} · `}
+                <span className={cx('font-semibold', colorOf(row.mine).text)}>{row.who}</span>
+              </>
+            )}
+          </span>
+          {/* Qué le pasa al eslabón, corto y sin nombres («Sin efecto · por CL2»): la carta la marca su insignia CLn en la mesa y su nombre está en la pila. */}
+          <span className="truncate text-body font-semibold text-info group-data-banded/chain:hidden">{stateLabel(row)}</span>
+        </p>
         <IconButton size="lg" className="group-data-banded/chain:hidden" aria-expanded={open} aria-controls={listId} aria-label={open ? t('auto.chain.hide') : t('auto.chain.show')} title={open ? t('auto.chain.hide') : t('auto.chain.show')} onClick={() => onOpenChange(!open)}>
           <Icon name={open ? 'chevron-up' : 'chevron-down'} />
         </IconButton>

@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, expect, it } from 'vitest'
 
 import { ChainNotice, type ChainNoticeRow } from '../components/auto/ChainNotice'
 import { PLAYER_COLOR } from '../components/duel/player-color'
 
-// La píldora de la cadena: en el celular (`compact`), dos renglones que dicen todo; en escritorio, como siempre.
+// La píldora de la cadena: dos renglones cortos y sin nombres de cartas (los nombres van en la pila desplegada); en el celular (`compact`), arriba dice cuántos y cuál resuelve.
 
 const PONIX: ChainNoticeRow = { number: 1, who: 'Vos', mine: true, name: 'Ponix', art: null, state: 'chained' }
 const ASH: ChainNoticeRow = { number: 2, who: 'Rival', mine: false, name: 'Ash Blossom', art: null, state: 'chained' }
@@ -15,26 +15,21 @@ const pill = (rows: ChainNoticeRow[], props: { focus?: number; resolving?: boole
   return screen.getByRole('status')
 }
 
-describe('ChainNotice en el celular: «Cadena · N · Resuelve CLn» y qué pasa', () => {
-  it('negado por un eslabón que se conoce: la frase con los dos nombres, y el que se resuelve en el color de su dueño', () => {
+describe('ChainNotice en el celular: «Cadena · N · Resuelve CLn» y qué pasa, sin nombres', () => {
+  it('negado por un eslabón que se conoce: el estado corto con su número, y el que se resuelve en el color de su dueño', () => {
     const status = pill([{ ...PONIX, state: 'disabled', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true })
 
-    expect(status).toHaveTextContent('Cadena · 2 · Resuelve CL2Ash Blossom le quita el efecto a Ponix')
-    expect(screen.getByText('CL2')).toHaveClass(PLAYER_COLOR.theirs.text)
+    expect(status).toHaveTextContent(/^Cadena · 2 · Resuelve CL2Sin efecto · por CL2$/)
+    expect(screen.getAllByText('CL2')[0]).toHaveClass(PLAYER_COLOR.theirs.text)
   })
 
-  it('negada la activación: «niega la activación de»; sin `by`, el nombre y su estado (sin «por»)', () => {
-    expect(pill([{ ...PONIX, state: 'negated', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true })).toHaveTextContent('Ash Blossom niega la activación de Ponix')
-    cleanup()
-    const status = pill([{ ...PONIX, state: 'disabled' }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true })
-
-    expect(status).toHaveTextContent('Cadena · 2 · Resuelve CL2Ponix · Sin efecto')
-    expect(status).not.toHaveTextContent('por')
+  it('negada la activación, con y sin `by`', () => {
+    expect(pill([{ ...PONIX, state: 'negated', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true })).toHaveTextContent(/Negada · por CL2$/)
   })
 
-  it('mientras se arma: cuántos eslabones, el último y de quién; el número no se repite junto al ícono', () => {
+  it('mientras se arma: cuántos eslabones, el último y de quién, y su estado; el número no se repite junto al ícono', () => {
     pill([PONIX])
-    expect(screen.getByTestId('chain-notice')).toHaveTextContent(/^Cadena · 1 · CL1 · VosPonix$/)
+    expect(screen.getByTestId('chain-notice')).toHaveTextContent(/^Cadena · 1 · CL1 · VosEn espera$/)
   })
 
   it('accesible: el estado se lee entero, la flecha dice qué hace (44 px) y, con una pregunta abierta en la mesa, queda un renglón sin flecha ni lista', () => {
@@ -47,8 +42,8 @@ describe('ChainNotice en el celular: «Cadena · N · Resuelve CLn» y qué pasa
   })
 })
 
-describe('ChainNotice en escritorio: como siempre', () => {
-  it('el estado con quién lo negó y el nombre debajo', () => {
-    expect(pill([{ ...PONIX, state: 'disabled', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true, compact: false })).toHaveTextContent('Sin efecto · por CL2 · CL1 · VosPonix')
+describe('ChainNotice en escritorio', () => {
+  it('el eslabón y de quién arriba; debajo, su estado con quién lo negó, sin el nombre', () => {
+    expect(pill([{ ...PONIX, state: 'disabled', by: 2 }, { ...ASH, state: 'solving' }], { focus: 0, resolving: true, compact: false })).toHaveTextContent(/^Cadena · CL1 · VosSin efecto · por CL2$/)
   })
 })

@@ -618,7 +618,9 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey }:
  * subir o bajar) con la diferencia («−1000») saliendo al lado. En el celular, sin corazón: la fila no se parte. El borde de la tarjeta es de su dueño (violeta el tuyo, ámbar el del rival). Tocarla abre la calculadora.
  * Las dos miden lo mismo de alto.
  */
-export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, big = false, compact = false }: {
+export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, big = false, compact = false, hand }: {
+  /** Cuántas cartas tiene en la mano: junto al nombre («Rival · Mano 3») y en lo que oye el lector de pantalla (las esquinas del campo de «Jugar solo automático»). */
+  hand?: number
   /** El de la botonera de abajo (tus vidas): más ancho y con el número más grande. */
   big?: boolean
   /** La del celular también en escritorio (sin corazón, 56 px de alto): las de «Jugar solo automático» cuando bajan a la botonera porque en la barra no entran. */
@@ -650,7 +652,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
       </span>
       <span className="grid min-w-0 content-center gap-1 min-[1101px]:flex-1">
         <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
-          <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
+          <span className={cx('min-w-0 truncate text-micro font-semibold uppercase leading-none tracking-[0.06em]', mine ? tone.text : 'text-foreground')}>{hand === undefined ? (label ?? name) : t('duel.bar.withHand', { name: label ?? name, count: hand })}</span>
           {change ? (
             <span key={change.key} aria-hidden="true" style={{ animationDuration: `${DELTA_MS}ms` }} className={cx('shrink-0 animate-linger text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
               {change.delta < 0 ? '−' : '+'}
@@ -667,6 +669,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
       ) : null}
     </>
   )
+  const handNote = hand === undefined ? '' : `. ${t('duel.bar.handCount', { count: hand })}`
   // Las dos vidas miden lo mismo de alto (la del rival arriba, la tuya abajo).
   const style = cx(
     'relative flex h-14 shrink-0 items-center gap-3 rounded-card border bg-card-background px-2 text-left',
@@ -676,11 +679,11 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   )
 
   return onClick ? (
-    <button ref={setTile} type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-info/60 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button ref={setTile} type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}${handNote}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-info/60 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <div ref={setTile} role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}`} className={style}>
+    <div ref={setTile} role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}${handNote}`} className={style}>
       {body}
     </div>
   )

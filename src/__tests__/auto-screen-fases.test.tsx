@@ -38,7 +38,7 @@ function rearm(fake: FakeSession, actions: MatAction[], ask: CoreAsk | null) {
 const phaseIs = (name: string) => expect(phaseButton()).toHaveAccessibleName(`Fases: ${name}`)
 const goTo = (name: string) => {
   fireEvent.click(phaseButton())
-  fireEvent.click(screen.getByRole('menuitem', { name }))
+  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 
@@ -50,11 +50,11 @@ describe('auto-screen · las fases son manuales', () => {
     phaseIs('Draw Phase')
     expect(phaseButton()).toBeEnabled()
     fireEvent.click(phaseButton())
-    expect(screen.getByRole('menuitem', { name: 'Standby Phase' })).not.toHaveAttribute('aria-disabled')
-    expect(screen.getByRole('menuitem', { name: 'Main Phase 1' })).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByRole('menuitem', { name: 'Ir a Standby Phase' })).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByRole('menuitem', { name: 'Ir a Main Phase 1' })).not.toHaveAttribute('aria-disabled')
     // Sin pasar por la M1 no hay batalla (el núcleo no la deja), ni vuelta atrás.
     expect(screen.getByRole('menuitem', { name: /^Battle Phase/ })).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Standby Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Standby Phase' }))
     phaseIs('Standby Phase')
     expect(phaseButton()).toBeEnabled()
     // En la DP y la SP no hay jugadas que ofrecer: tocar una carta sólo la muestra.

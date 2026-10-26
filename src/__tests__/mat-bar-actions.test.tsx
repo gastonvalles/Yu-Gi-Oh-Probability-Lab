@@ -91,9 +91,9 @@ describe('la barra de la mesa es una sola', () => {
 
       expect(shared(auto)).toEqual(shared(practice))
       expect(shared(practice).map((button) => button.name)).toEqual(['Cambiar a la vista superior', 'Sonidos', ...(layout === 'escritorio' ? ['Ventana grande'] : []), 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Guardar combo'])
-      // Lo de cada una, después: los pasos (la práctica; los del automático van abajo a la derecha); el engranaje (el automático).
+      // Lo de cada una, después: los pasos (la práctica; los del automático van abajo a la derecha); el engranaje (el automático; en escritorio va en la botonera de abajo).
       expect(practice.slice(practice.findIndex((button) => button.name === 'Guardar combo') + 1).map((button) => button.name)).toEqual(['Pasos y combos'])
-      expect(auto.slice(auto.findIndex((button) => button.name === 'Guardar combo') + 1).map((button) => button.name)).toEqual(['Más opciones del duelo'])
+      expect(auto.slice(auto.findIndex((button) => button.name === 'Guardar combo') + 1).map((button) => button.name)).toEqual(layout === 'escritorio' ? [] : ['Más opciones del duelo'])
       // La flecha de «Volver a Jugar»: en la práctica y en el automático, a la izquierda de los íconos (en el celular, en la misma fila).
       expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
       if (layout === 'celular') expect([practice[0]!.name, auto[0]!.name]).toEqual(['Volver a Jugar', 'Volver a Jugar'])
@@ -157,19 +157,69 @@ describe('la barra de la mesa es una sola', () => {
     expect(undo()).toBeDisabled()
   })
 
-  it('las vidas de los dos: en el celular, abajo (en la botonera, donde va la tuya en el duelo por enlace: arriba no entran con los íconos); en escritorio, en la barra', () => {
+  it('las vidas de los dos: en el celular, abajo (en la botonera, donde va la tuya en el duelo por enlace: arriba no entran con los íconos); en escritorio, en las esquinas del campo, con las cartas de cada mano', () => {
     const field = () => screen.getByLabelText('Campo')
     const after = (element: HTMLElement) => Boolean(field().compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)
 
     renderAuto()
     expect(after(screen.getByRole('group', { name: 'Puntos de vida de Rival: 8000' }))).toBe(true)
     expect(after(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' }))).toBe(true)
+    expect(document.querySelector('[data-corner]')).toBeNull()
     cleanup()
 
+    // Escritorio (lámina 07): el rival arriba a la derecha del campo y vos abajo a la izquierda, cada uno con cuántas cartas tiene en la mano; en la barra de arriba, ninguna.
     desktop()
-    renderAuto()
-    expect(after(screen.getByRole('group', { name: 'Puntos de vida de Rival: 8000' }))).toBe(false)
-    expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
+    const fake = renderAuto()
+    const rival = screen.getByRole('group', { name: /^Puntos de vida de Rival: 8000\. .+ en la mano$/ })
+    const mine = screen.getByRole('group', { name: /^Puntos de vida de Vos: 8000\. .+ en la mano$/ })
+    const mineHand = within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem').length
+    const rivalHand = fake.getSnapshot().theirs.hand.length
+
+    expect(rival.closest('[data-corner="theirs"]')).not.toBeNull()
+    expect(mine.closest('[data-corner="mine"]')).not.toBeNull()
+    expect(rival).toHaveTextContent(`Rival · Mano ${rivalHand}`)
+    expect(mine).toHaveTextContent(`Vos · Mano ${mineHand}`)
+    expect(after(rival)).toBe(false)
+    expect(after(mine)).toBe(true)
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+  })
+
+  it('la botonera de escritorio: «Automático» (prendido) abre «Seguir en modo manual», «Cadena» cambia las respuestas, «Pasos» oculta y muestra el panel, «Opciones» trae el resto de «Más opciones»', () => {
+    desktop()
+    const onManual = vi.fn()
+    renderAuto(fakeSession(), () => {}, onManual)
+    const dock = screen.getByRole('group', { name: 'Botonera del duelo' })
+    const button = (name: RegExp) => within(dock).getByRole('button', { name })
+
+    expect(within(dock).getAllByRole('button').map((element) => element.textContent)).toEqual(['Automático', 'Cadena', 'Pasos', 'Opciones'])
+    // El modo de ahora: prendido. El camino de vuelta (de manual a automático) no existe: tocarlo es «Seguir en modo manual» (sin una jugada tuya todavía, una mano nueva en la mesa manual, sin diálogo).
+    expect(button(/^Automático/)).toHaveAccessibleName('Automático: seguir en modo manual')
+    expect(button(/^Automático/)).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(button(/^Automático/))
+    expect(onManual).toHaveBeenCalledWith(null)
+
+    fireEvent.click(button(/^Cadena/))
+    const chain = screen.getByRole('dialog', { name: 'Respuestas a la cadena' })
+
+    fireEvent.click(within(chain).getByRole('radio', { name: 'Siempre' }))
+    expect(button(/^Cadena/)).toHaveAccessibleName('Cadena: Siempre')
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.getByRole('region', { name: 'Pasos y combos' })).toBeInTheDocument()
+    fireEvent.click(button(/^Pasos/))
+    expect(button(/^Pasos/)).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('region', { name: 'Pasos y combos' })).toBeNull()
+    fireEvent.click(button(/^Pasos/))
+    expect(screen.getByRole('region', { name: 'Pasos y combos' })).toBeInTheDocument()
+
+    // Lo que tiene botón en la botonera no se repite en «Opciones».
+    fireEvent.click(button(/opciones/i))
+    const more = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+
+    expect(within(more).getByRole('radiogroup', { name: 'Casilla' })).toBeInTheDocument()
+    expect(within(more).queryByRole('radiogroup', { name: 'Respuestas' })).toBeNull()
+    expect(within(more).queryByRole('button', { name: 'Seguir en modo manual' })).toBeNull()
+    expect(within(more).getByRole('button', { name: 'Reiniciar el mismo duelo' })).toBeInTheDocument()
   })
 
   it('la hoja de las handtraps de la práctica sigue diciendo que aplicar reparte otra mano', () => {

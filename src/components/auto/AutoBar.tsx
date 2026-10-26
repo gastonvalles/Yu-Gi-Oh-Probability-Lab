@@ -1,9 +1,8 @@
-import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 
 import type { AutoPrefs } from '../../app/auto-prefs'
 import { useDuelRails } from '../../app/duel-rails'
 import { PHASES, type MatPhase } from '../../app/practice-mat'
-import { useElementFits } from '../../app/use-element-width'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t, type MessageKey } from '../../i18n'
 import { LaneBanner, LifeTile, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
@@ -12,7 +11,7 @@ import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
-import { Icon } from '../ui/Icon'
+import { Icon, type IconName } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Segmented, type SegmentedOption } from '../ui/Segmented'
@@ -34,20 +33,33 @@ export const chainModeHint = (mode: AutoChainMode) => t(CHAIN_MODES[mode][1])
 /** Si la casilla de cada carta la elegís vos (`ask`) o va a la primera libre (`auto`). */
 export type AutoPlaceMode = 'ask' | 'auto'
 
-/**
- * Cuánto tiene que medir la fila de escritorio para llevar las vidas: la flecha (44 px), las dos vidas (36 rem cada una) y los ocho íconos (44 px), con su aire. Con el panel de pasos a
- * la derecha (y el detalle o el menú abiertos) la columna de la mesa es más angosta: las vidas bajan a la botonera, como en el celular (`onLivesInBar`).
- */
-const LIVES_IN_BAR_PX = 740
-/** Sin medir (o en las pruebas, sin diseño), entran. */
-const livesFit = (width: number) => width === 0 || width >= LIVES_IN_BAR_PX
+/** Lo que se ajusta del duelo: en «Más opciones» (el engranaje de la barra) y, en escritorio, en la botonera (`AutoDock`). El estado entra y sale por acá (la pantalla lo guarda en las preferencias). */
+export interface AutoOptions {
+  chain: AutoChainMode
+  onChain: (mode: AutoChainMode) => void
+  place: AutoPlaceMode
+  onPlace: (mode: AutoPlaceMode) => void
+  /** «Reiniciar el mismo duelo» de «Más opciones»: desde el principio, con las mismas cartas (sin esto, no se ofrece). */
+  onRestart?: () => void
+  /** «Seguir en modo manual»: abre el diálogo para seguir la partida en la mesa manual (sin esto, no se ofrece). */
+  onManual?: () => void
+  /** «Handtraps del rival»: si las usa, lo que tiene y «Cambiar handtraps» (la pantalla abre la hoja del simulador; al aplicar, el duelo empieza de nuevo). Apagadas, el rival es el pasivo. */
+  handtraps: { on: boolean; summary: string; onChange: () => void }
+  /** «A ciegas» (sólo con handtraps): la mano del rival de dorso. */
+  blind: boolean
+  onBlind: (on: boolean) => void
+}
 
-interface AutoBarProps {
+interface AutoBarProps extends AutoOptions {
   rivalName: string
-  /** Los puntos de vida de los dos (los cuentan y destellan como en el duelo: `LifeTile`). En el celular no van acá: van abajo (`AutoLives` en `duel.life`). */
+  /** Los puntos de vida de los dos (los cuentan y destellan como en el duelo: `LifeTile`): acá sólo con laterales (en el izquierdo). Sin ellos van en las esquinas del campo (escritorio) o abajo (celular): los pone la pantalla. */
   life: { mine: number; theirs: number }
-  /** Si las vidas van en la barra (con laterales, o en una fila de escritorio que las tiene): sin lugar, la pantalla las pone abajo (`duel.life`), como en el celular. */
-  onLivesInBar?: (inBar: boolean) => void
+  /** Las cartas de la mano de cada uno, junto a su nombre en las vidas (sin esto, no se dicen). */
+  hands?: { mine: number; theirs: number }
+  /** Si la mesa va con laterales (las vidas, en el izquierdo): sin ellos, la pantalla pone las vidas en la mesa. */
+  onRails?: (rails: boolean) => void
+  /** En escritorio el engranaje va en la botonera de la mesa (`AutoDock`), no en la barra. */
+  dock?: boolean
   /** El turno del duelo (desde 1) y si es tuyo. */
   turn: number
   myTurn: boolean
@@ -64,20 +76,6 @@ interface AutoBarProps {
   lane?: LaneNotice | null
   /** La línea del registro (sólo en el celular; `DuelLogTicker`). */
   log?: ReactNode
-  /** «Más opciones»: el estado entra y sale por acá (la pantalla lo guarda en las preferencias). */
-  chain: AutoChainMode
-  onChain: (mode: AutoChainMode) => void
-  place: AutoPlaceMode
-  onPlace: (mode: AutoPlaceMode) => void
-  /** «Reiniciar el mismo duelo» de «Más opciones»: desde el principio, con las mismas cartas (sin esto, no se ofrece). */
-  onRestart?: () => void
-  /** «Seguir en modo manual» de «Más opciones»: abre el diálogo para seguir la partida en la mesa manual (sin esto, no se ofrece). */
-  onManual?: () => void
-  /** «Handtraps del rival»: si las usa, lo que tiene y «Cambiar handtraps» (la pantalla abre la hoja del simulador; al aplicar, el duelo empieza de nuevo). Apagadas, el rival es el pasivo. */
-  handtraps: { on: boolean; summary: string; onChange: () => void }
-  /** «A ciegas» (sólo con handtraps): la mano del rival de dorso. */
-  blind: boolean
-  onBlind: (on: boolean) => void
 }
 
 /** Un ajuste de «Más opciones» con su nombre, su línea chica y el control debajo (también los del duelo automático por enlace, en «Más opciones» de `DuelBar`). */
@@ -94,63 +92,31 @@ export function Setting({ title, hint, children }: { title: string; hint: string
 }
 
 /**
- * Las vidas de los dos (`LifeTile`: las cuenta, destella y sacude como en el duelo): en escritorio, en la barra; en el celular, abajo, en la botonera de la mesa (donde va la tuya en el duelo por
- * enlace). En escritorio, si en la barra no entran, también abajo y del tamaño del celular (`compact`): la botonera no crece.
+ * Las vidas de los dos (`LifeTile`: las cuenta, destella y sacude como en el duelo): en el celular, abajo, en la botonera de la mesa (donde va la tuya en el duelo por enlace); con laterales, en el
+ * izquierdo. En escritorio sin laterales van separadas, en las esquinas del campo (la pantalla: `duel.corner` y `duel.life`).
  */
-export function AutoLives({ rivalName, life, compact = false }: { rivalName: string; life: { mine: number; theirs: number }; compact?: boolean }) {
+export function AutoLives({ rivalName, life, hands }: { rivalName: string; life: { mine: number; theirs: number }; hands?: { mine: number; theirs: number } }) {
   return (
     <>
-      <LifeTile name={rivalName} life={life.theirs} compact={compact} />
-      <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact={compact} />
+      <LifeTile name={rivalName} life={life.theirs} {...(hands ? { hand: hands.theirs } : {})} />
+      <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine {...(hands ? { hand: hands.mine } : {})} />
     </>
   )
 }
 
 /**
- * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace. Es la barra de la práctica: la flecha de
- * «Volver a Jugar» a la izquierda y los mismos íconos, en el mismo orden (`MatBarActions`: la vista, los sonidos, la ventana grande, las handtraps del rival, «Nueva mano» y deshacer), y lo propio del
- * automático: el engranaje con «Más opciones» (respuestas a la cadena, la casilla, las handtraps del rival y «A ciegas», reiniciar el mismo duelo y jugar en modo manual), el turno con la fase y,
- * en escritorio, las vidas de los dos (en el celular van abajo: con los íconos no entran en la fila; tampoco en una fila de escritorio angosta, con el panel de pasos: `onLivesInBar`). En el
- * celular la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto
- * cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
+ * «Más opciones» del duelo: las respuestas a la cadena, la casilla, las handtraps del rival y «A ciegas», reiniciar el mismo duelo y seguir en modo manual. Desde la botonera (`inDock`) no repite lo
+ * que ahí tiene su botón (las respuestas y el modo manual). Sin velo: la mesa se sigue viendo.
  */
-export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, onExit, onUndo, canUndo, onNewHand, onHandtraps, lane = null, log, chain, onChain, place, onPlace, onRestart, onManual, handtraps, blind, onBlind }: AutoBarProps) {
-  const [moreOpen, setMoreOpen] = useState(false)
-  const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  const rails = useDuelRails()
-  // La fila de escritorio se mide (no la ventana): el ancho que deja la mesa depende del menú, del detalle y del panel de pasos.
-  const [row, setRow] = useState<HTMLDivElement | null>(null)
-  const roomy = useElementFits(useMemo(() => ({ current: row }), [row]), livesFit)
-  const livesInBar = rails || (docked && roomy)
-
-  useLayoutEffect(() => onLivesInBar?.(livesInBar), [livesInBar, onLivesInBar])
-  const laneOpen = lane !== null
-  const phaseName = PHASES.find((entry) => entry.id === phase)?.name
-  const whose = myTurn ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })
-  const turnChip = turn > 0 ? <span data-testid="auto-turn" className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn })}</span> : null
-  const turnLine = (
-    <span className="min-w-0 truncate text-lead font-bold">
-      <span className={myTurn ? 'text-accent' : 'text-info-soft'}>{whose}</span>
-      {phaseName ? <span data-testid="auto-phase" className="text-info">{` · ${phaseName}`}</span> : null}
-    </span>
-  )
-
-  const lives = <AutoLives rivalName={rivalName} life={life} />
-  // Los íconos de la práctica y, al final, el engranaje (lo propio del automático, donde la práctica tiene «Guardar combo» y los pasos).
-  const actions = (first?: string) => (
-    <>
-      <MatBarActions auto className={first} onUndo={onUndo} canUndo={canUndo} onNewHand={onNewHand} onHandtraps={onHandtraps} />
-      <IconButton tone="flat" size="sm" aria-label={t('duel.bar.more')} title={t('duel.bar.more')} aria-haspopup="dialog" aria-expanded={moreOpen} onClick={() => setMoreOpen(true)}>
-        <Icon name="gear" />
-      </IconButton>
-    </>
-  )
-  const dialogs = (
-    <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" veil={false} title={t('duel.bar.more')}>
+function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, onPlace, onRestart, onManual, handtraps, blind, onBlind }: AutoOptions & { isOpen: boolean; onClose: () => void; inDock?: boolean }) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="keypad" veil={false} title={t('duel.bar.more')}>
       <div className="grid gap-5">
-        <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
-          <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
-        </Setting>
+        {inDock ? null : (
+          <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
+            <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
+          </Setting>
+        )}
         <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
           <Segmented label={t('auto.bar.place')} value={place} onChange={onPlace} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
         </Setting>
@@ -160,7 +126,7 @@ export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, on
             className="justify-self-start"
             aria-haspopup="dialog"
             onClick={() => {
-              setMoreOpen(false)
+              onClose()
               handtraps.onChange()
             }}
           >
@@ -185,7 +151,7 @@ export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, on
               icon="refresh"
               className="justify-self-start"
               onClick={() => {
-                setMoreOpen(false)
+                onClose()
                 onRestart()
               }}
             >
@@ -193,14 +159,14 @@ export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, on
             </Button>
           </Setting>
         ) : null}
-        {onManual ? (
+        {onManual && !inDock ? (
           <Setting title={t('auto.bar.manual')} hint={t('auto.bar.manualHint')}>
             <Button
               variant="secondary"
               icon="hand"
               className="justify-self-start"
               onClick={() => {
-                setMoreOpen(false)
+                onClose()
                 onManual()
               }}
             >
@@ -211,6 +177,90 @@ export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, on
       </div>
     </Modal>
   )
+}
+
+/**
+ * Un botón de la botonera: el círculo de 40 px con su ícono y el nombre debajo; se toca todo el botón (56 × 56), como las fases de `PhaseRow`. `on`: el modo que está prendido (violeta con aro
+ * ámbar); uno que se prende y apaga (`aria-pressed`), con el ícono ámbar.
+ */
+function DockButton({ icon, label, on = false, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string; on?: boolean }) {
+  return (
+    <button type="button" className={cx('group grid min-w-14 cursor-pointer justify-items-center gap-1 rounded-control border-0 bg-transparent p-0 outline-none focus-visible:shadow-focus', className)} {...props}>
+      <span aria-hidden="true" className={cx('grid size-10 place-items-center rounded-full border-2 transition-colors', on ? 'border-info bg-accent text-accent-foreground' : 'border-border text-foreground group-hover:bg-tint/12 group-aria-pressed:text-info')}>
+        <Icon name={icon} size={20} />
+      </span>
+      <span aria-hidden="true" className={cx('whitespace-nowrap text-micro font-semibold leading-none', on ? 'text-info' : 'text-foreground')}>
+        {label}
+      </span>
+    </button>
+  )
+}
+
+/**
+ * La botonera redonda de «Jugar solo automático» en escritorio (abajo a la derecha de la mesa, lámina 07), con lo que se toca del duelo y no es una jugada; cada botón con su nombre debajo:
+ * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; el camino de vuelta no existe), «Cadena» (las respuestas: Siempre · Cuando importa · Nunca), «Pasos» (muestra u
+ * oculta el panel de la derecha) y «Opciones» (el resto de «Más opciones», que sale de la barra de arriba). Lo que ya está en la barra (deshacer, la vista, los sonidos) no se repite.
+ * Mide 56 px de alto y sube 12 sobre el borde de la mano (`-mt-3`, como las vidas): la fila de abajo no crece y el campo no se mueve.
+ */
+export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: boolean; onToggle: () => void } }) {
+  const [open, setOpen] = useState<'chain' | 'more' | null>(null)
+  const close = () => setOpen(null)
+  const { chain, onChain, onManual } = options
+
+  return (
+    <div role="group" aria-label={t('auto.dock.label')} data-mat-dock="" className="-mt-3 flex items-start gap-1">
+      {onManual ? <DockButton icon="play" label={t('auto.dock.auto')} on aria-pressed="true" aria-haspopup="dialog" aria-label={t('auto.dock.autoName')} onClick={onManual} /> : null}
+      <DockButton icon="link" label={t('auto.dock.chain')} aria-haspopup="dialog" aria-label={t('auto.dock.chainName', { mode: t(CHAIN_MODES[chain][0]) })} onClick={() => setOpen('chain')} />
+      <DockButton icon="list" label={t('auto.dock.steps')} aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} onClick={steps.onToggle} />
+      <DockButton icon="gear" label={t('auto.dock.options')} aria-haspopup="dialog" aria-label={t('duel.bar.more')} onClick={() => setOpen('more')} />
+      <Modal isOpen={open === 'chain'} onClose={close} size="keypad" veil={false} title={t('auto.dock.chainTitle')}>
+        <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
+          <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
+        </Setting>
+      </Modal>
+      <MoreOptions isOpen={open === 'more'} onClose={close} inDock {...options} />
+    </div>
+  )
+}
+
+/**
+ * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace. Es la barra de la práctica: la flecha de
+ * «Volver a Jugar» a la izquierda y los mismos íconos, en el mismo orden (`MatBarActions`: la vista, los sonidos, la ventana grande, las handtraps del rival, «Nueva mano» y deshacer), y lo propio del
+ * automático: el engranaje con «Más opciones» (en escritorio, con `dock`, va en la botonera de la mesa: `AutoDock`), el turno con la fase y, con laterales, las vidas de los dos (sin ellos van en
+ * las esquinas del campo o abajo, en el celular: las pone la pantalla). En el celular la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados
+ * debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
+ */
+export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, myTurn, phase, onExit, onUndo, canUndo, onNewHand, onHandtraps, lane = null, log, ...options }: AutoBarProps) {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const rails = useDuelRails()
+
+  useLayoutEffect(() => onRails?.(rails), [rails, onRails])
+  const laneOpen = lane !== null
+  const phaseName = PHASES.find((entry) => entry.id === phase)?.name
+  const whose = myTurn ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })
+  const turnChip = turn > 0 ? <span data-testid="auto-turn" className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn })}</span> : null
+  const turnLine = (
+    <span className="min-w-0 truncate text-lead font-bold">
+      <span className={myTurn ? 'text-accent' : 'text-info-soft'}>{whose}</span>
+      {phaseName ? <span data-testid="auto-phase" className="text-info">{` · ${phaseName}`}</span> : null}
+    </span>
+  )
+
+  const lives = <AutoLives rivalName={rivalName} life={life} {...(hands ? { hands } : {})} />
+  // Los íconos de la práctica y, al final, el engranaje (lo propio del automático, donde la práctica tiene «Guardar combo» y los pasos). En escritorio con la botonera, el engranaje va en ella.
+  const gear = !(dock && docked)
+  const actions = (first?: string) => (
+    <>
+      <MatBarActions auto className={first} onUndo={onUndo} canUndo={canUndo} onNewHand={onNewHand} onHandtraps={onHandtraps} />
+      {gear ? (
+        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.more')} title={t('duel.bar.more')} aria-haspopup="dialog" aria-expanded={moreOpen} onClick={() => setMoreOpen(true)}>
+          <Icon name="gear" />
+        </IconButton>
+      ) : null}
+    </>
+  )
+  const dialogs = gear ? <MoreOptions isOpen={moreOpen} onClose={() => setMoreOpen(false)} {...options} /> : null
 
   // Con laterales (escritorio ancho), las piezas van a la grilla de la mesa como las de `DuelBar`: arriba a la izquierda la flecha y las vidas, y los avisos debajo; arriba a la derecha los íconos
   // (de 40 px, como los de `DuelBar`: el lateral más angosto tiene lugar para cinco por fila), el turno y la fase.
@@ -241,11 +291,10 @@ export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, on
 
   if (docked) {
     return (
-      // Escritorio: una sola fila, del alto de las vidas. A la izquierda la flecha y las vidas; a la derecha los íconos y, debajo, el turno (en una notebook, en la fila de las vidas no entran juntos).
-      // Si las vidas no entran (bajan a la botonera), la fila guarda su alto (`min-h-18`, el de una vida): el campo queda donde estaba.
-      <div ref={setRow} className="relative flex items-center gap-1.5 px-0.5 pt-1.5">
+      // Escritorio: una sola fila. A la izquierda la flecha; a la derecha los íconos y, debajo, el turno. Las vidas van en las esquinas del campo (las pone la pantalla); la fila guarda el alto
+      // de cuando las llevaba (`min-h-18`): el campo queda donde estaba.
+      <div className="relative flex items-center gap-1.5 px-0.5 pt-1.5">
         <MatExitButton onExit={onExit} />
-        {livesInBar ? lives : null}
         <div className="ml-auto flex min-h-18 min-w-0 flex-col items-end justify-center gap-0.5">
           <div role="toolbar" aria-label={t('practice.mat.name')} className="-mr-1 flex items-center gap-1">
             {actions()}

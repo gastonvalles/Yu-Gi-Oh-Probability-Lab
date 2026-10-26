@@ -11,29 +11,14 @@ export const auto = {
   // El cartel de la carta que el rival activa en respuesta (su nombre ya va debajo de la carta).
   'auto.rival.responds': '{name} responde a {to}',
 
-  // La pregunta de sí o no del núcleo, en el medio de la mesa. Activar un efecto dice «Activar efecto» (`practice.menu.activateEffect`): el texto ya nombra la carta.
-  'auto.ask.effect': '¿Activás el efecto de {card}?',
-  // Con contexto: qué pasó justo antes (una Invocación o el comienzo de una fase) y dónde está la carta (`auto.ask.at.*`). El núcleo no dice si quedan otros efectos por preguntar.
+  // La pregunta de sí o no del núcleo, en la mesa: corta y sin el nombre de la carta (la dice su arte). Arriba, chico, qué pasó justo antes, sin nombres.
+  'auto.ask.effect': '¿Activás el efecto?',
   'auto.ask.kicker': 'Efecto que se dispara',
-  'auto.ask.effectAt': '¿Activás el efecto de {card} ({place})?',
-  'auto.ask.afterOwn': 'Tras la {event} de {card} ({place}): ¿activás su efecto?',
-  'auto.ask.after': 'Tras la {event} de {cards}: ¿activás el efecto de {card} ({place})?',
-  'auto.ask.during': 'En la {phase}: ¿activás el efecto de {card} ({place})?',
+  'auto.ask.afterEvent': 'Tras la {event}',
+  'auto.ask.inPhase': 'En la {phase}',
   'auto.ask.event.normal': 'Invocación Normal',
   'auto.ask.event.special': 'Invocación Especial',
   'auto.ask.event.flip': 'Invocación por Volteo',
-  'auto.ask.at.mz': 'en la Zona de Monstruos',
-  'auto.ask.at.emz': 'en la Zona de Monstruo Extra',
-  'auto.ask.at.st': 'en la Zona de Mágicas y Trampas',
-  'auto.ask.at.field': 'en la Zona de Campo',
-  'auto.ask.at.hand': 'en la mano',
-  'auto.ask.at.gy': 'en el Cementerio',
-  'auto.ask.at.banished': 'desterrada',
-  'auto.ask.at.deck': 'en el Deck',
-  'auto.ask.at.extra': 'en el Extra Deck',
-  'auto.ask.at.material': 'como Material Xyz',
-  // La frase del efecto, tal cual la trae la carta.
-  'auto.ask.what': 'Qué hace',
   'auto.ask.fallback': '¿Lo hacés?',
   'auto.ask.skipEffect': 'No activar',
   'auto.ask.yes': 'Hacerlo',
@@ -112,6 +97,8 @@ export const auto = {
   'auto.band.hint': 'Tocá una carta para elegirla; otra vez, para soltarla.',
   'auto.pick.done': 'Listo',
   'auto.pick.chosen': 'Elegida',
+  'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, elegible',
+  'auto.pick.statLink': '{name}, ATK {atk}, elegible',
   'auto.phase.notYet': 'Todavía no',
 
   // La insignia del eslabón sobre la carta («CL1»): se ve la sigla; el nombre de la carta lo dice con palabras.
@@ -149,20 +136,18 @@ export const auto = {
   'auto.lane.rivalChoosing': 'El rival está eligiendo',
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
   'auto.lane.pass': 'No responder',
-  // La banda de responder a una cadena: a qué eslabón, con qué cartas y qué número tomaría tu respuesta.
+  // La banda de responder a una cadena: a qué eslabón (sin nombres: la carta la dice su arte), con qué cartas y qué número tomaría tu respuesta.
   'auto.respond.to': 'Responder a CL{link} · {who}',
-  'auto.respond.title': '¿Encadenás a {card}?',
+  'auto.respond.toLink': 'Responder a CL{link}',
   'auto.respond.now': '¿Activás algo ahora?',
   'auto.respond.cards': 'Podés responder con',
-  'auto.respond.yours': 'Tu respuesta · CL{link}',
-  'auto.respond.pick': 'Elegí con qué responder.',
   'auto.respond.chain': 'Encadenar como CL{link}',
   'auto.respond.start': 'Activar como CL1',
   'auto.respond.mode': 'Preguntarme',
-  'auto.lane.mustActivate': 'Tenés que activar {cards}: tocala',
+  // Sin nombres: lo que hay que activar brilla en la mesa.
+  'auto.lane.mustActivate': { one: 'Tenés que activar la carta que brilla: tocala', other: 'Tenés que activar las {count} cartas que brillan: tocá una' },
   // Varias obligatorias a la vez: se elige cuál entra primero en la cadena (la banda del medio).
   'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero (CL{link})?',
-  'auto.forced.activate': 'Activar {card} primero',
   'auto.forced.hint': 'Sin «No responder»: son obligatorias.',
   'auto.lane.autoZone': 'La casilla se eligió sola',
   // Los avisos de algo que salió mal, con palabras de la mesa (el detalle técnico va a la consola).
@@ -184,11 +169,9 @@ export const auto = {
   'auto.chain.state.disabled': 'Sin efecto',
   // Negada o sin efecto, con el eslabón que lo hizo (el núcleo no lo dice: lo deduce el adaptador).
   'auto.chain.by': '{state} · por CL{by}',
-  // El celular: la píldora en dos renglones, «Cadena · 2 · Resuelve CL2» y qué pasa («Ash Blossom le quita el efecto a Ponix», con quién lo negó si se sabe).
+  // El celular: arriba en la píldora, «Cadena · 2 · Resuelve CL2».
   'auto.chain.count': 'Cadena · {count}',
   'auto.chain.resolves': 'Resuelve',
-  'auto.chain.void.negated': '{by} niega la activación de {card}',
-  'auto.chain.void.disabled': '{by} le quita el efecto a {card}',
   // Cada eslabón se toca para leerlo en el detalle: lo que lee el lector de pantalla.
   'auto.chain.linkMine': 'Eslabón {number}: {card}, tuyo. {state}',
   'auto.chain.linkTheirs': 'Eslabón {number}: {card}, del rival. {state}',
@@ -240,6 +223,15 @@ export const auto = {
   'auto.entry.unsupported': 'Tu navegador no puede correr el motor de reglas.',
   'auto.bar.manual': 'Seguir en modo manual',
   'auto.bar.manualHint': 'La partida sigue en la mesa manual, con todas las opciones. Si el automático se equivocó, podés volver atrás unas jugadas.',
+  // La botonera redonda de escritorio (abajo a la derecha): el nombre visible va dentro del nombre accesible.
+  'auto.dock.label': 'Botonera del duelo',
+  'auto.dock.auto': 'Automático',
+  'auto.dock.autoName': 'Automático: seguir en modo manual',
+  'auto.dock.chain': 'Cadena',
+  'auto.dock.chainName': 'Cadena: {mode}',
+  'auto.dock.chainTitle': 'Respuestas a la cadena',
+  'auto.dock.steps': 'Pasos',
+  'auto.dock.options': 'Opciones',
   'auto.manual.text': 'La mesa sigue como está y con todas las opciones. Si el automático se equivocó, volvé atrás y rehacé esas jugadas a mano.',
   'auto.manual.back': 'Volver atrás',
   'auto.manual.none': 'Nada: seguir desde acá',

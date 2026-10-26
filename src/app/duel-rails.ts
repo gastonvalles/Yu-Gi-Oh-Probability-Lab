@@ -57,7 +57,7 @@ export function railsFit(width: number, height: number): boolean {
 }
 
 /** Lo que importa de un rectángulo de la pantalla (un `DOMRect`). */
-interface Box {
+export interface Box {
   top: number
   bottom: number
   left: number
@@ -94,5 +94,14 @@ export function promptTop(prompt: Box, obstacles: readonly Box[], min: number, m
 export function promptAbove(prompt: Box, obstacles: readonly Box[], min: number, floor: number, gap = 8): number | null {
   const bottom = floor - gap
 
-  return promptTop({ ...prompt, top: bottom - (prompt.bottom - prompt.top), bottom }, obstacles, min, bottom, gap)
+  // Sin `...prompt`: un `DOMRect` tiene sus medidas en el prototipo y el spread las perdía (los costados quedaban sin definir y nada chocaba).
+  return promptTop({ top: bottom - (prompt.bottom - prompt.top), bottom, left: prompt.left, right: prompt.right }, obstacles, min, bottom, gap)
+}
+
+/**
+ * La pregunta abierta entre las cartas (`place` la ubica sin tapar unos obstáculos: `promptAbove` o `promptTop`): primero sin tapar ninguna de `keep` (lo que brilla, las cartas de las
+ * Zonas Extra y de la mano) ni de `soft` (los demás monstruos); si no entra, sin tapar las de `keep`. Si tampoco, null: la pregunta abre minimizada.
+ */
+export function promptFit<T>(place: (obstacles: readonly Box[]) => T | null, keep: readonly Box[], soft: readonly Box[]): T | null {
+  return place([...keep, ...soft]) ?? place(keep)
 }

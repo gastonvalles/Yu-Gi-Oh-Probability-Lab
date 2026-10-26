@@ -598,7 +598,7 @@ describe('la pantalla del duelo', () => {
 
     // Ana toca la Battle Phase: la fase no cambia hasta que Beto conteste; él ve la pregunta (sin diálogo que tape la mesa).
     fireEvent.click(phaseChip(host))
-    fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
     flush()
     expect(chip(host)).toHaveAccessibleName(/Main Phase 1|Draw Phase|Standby Phase/)
     expect(lane(host, 'passAsking')).toHaveTextContent('Le preguntás a Beto si no hace nada más…')
@@ -622,7 +622,7 @@ describe('la pantalla del duelo', () => {
 
     // Lo vuelve a intentar y Beto lo deja pasar: la fase pasa en las dos pantallas.
     fireEvent.click(phaseChip(host))
-    fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
     flush()
     fireEvent.click(within(prompt(guest)!).getByRole('button', { name: 'Dejar pasar' }))
     flush()
@@ -647,7 +647,7 @@ describe('la pantalla del duelo', () => {
       expect(glowing(guest)).toBe(0)
 
       fireEvent.click(phaseChip(host))
-      fireEvent.click(screen.getByRole('menuitem', { name: /^Battle Phase/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
       flush()
       // La mano de Beto (cinco cartas distintas por nombre) brilla y el aviso nombra a dos y «y 3 más».
       expect(prompt(guest)).toHaveTextContent(/^Ana quiere pasar a la Battle Phase\. Podés responder con Monstruo \d+, Monstruo \d+ y 3 más\./)
@@ -769,13 +769,13 @@ describe('la pantalla del duelo', () => {
     expect(phaseChip(host)).toHaveTextContent('DP')
     fireEvent.click(phaseChip(host))
     // Sin información de más: el menú no repite la fase de ahora como título, la marca en la lista.
-    const menu = screen.getByRole('menu', { name: 'Fases' })
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase'])
-    expect(within(menu).getAllByText('Draw Phase')).toHaveLength(1)
-    expect(screen.getByRole('menuitem', { name: 'Draw Phase' })).toHaveAttribute('aria-current', 'true')
-    expect(screen.getByRole('menuitem', { name: 'Battle Phase' })).not.toHaveAttribute('aria-current')
+    const menu = screen.getByRole('menu', { name: 'Pasar a la fase' })
+    expect(screen.getAllByRole('menuitem').map((item) => item.getAttribute('aria-label'))).toEqual(['Fase actual: Draw Phase', 'Ir a Standby Phase', 'Ir a Main Phase 1', 'Ir a Battle Phase', 'Ir a Main Phase 2', 'Ir a End Phase'])
+    expect(within(menu).getAllByText('Draw')).toHaveLength(1)
+    expect(screen.getByRole('menuitem', { name: 'Fase actual: Draw Phase' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' })).not.toHaveAttribute('aria-current')
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Battle Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
     letPass()
     expect(phaseChip(host)).toHaveTextContent('BP')
     expect(phaseChip(guest)).toHaveTextContent('BP')

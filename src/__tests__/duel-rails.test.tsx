@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { FIELD_ZOOM_MAX, classicCell, fieldZoom, promptAbove, promptTop, railsFit } from '../app/duel-rails'
+import { FIELD_ZOOM_MAX, classicCell, fieldZoom, promptAbove, promptFit, promptTop, railsFit } from '../app/duel-rails'
 import { useHostToasts } from '../app/toast-box'
 import { AppToaster } from '../components/ui/AppToaster'
 
@@ -41,6 +41,34 @@ describe('la pregunta del medio no tapa lo que hay que tocar', () => {
     // Medido con el núcleo a 740 de alto: tus monstruos en 402; «¿Activás el efecto?» mide 236 a 414 px (queda en 158) y 258 a 390 px (no entra debajo de 156).
     expect(promptAbove(box(0, 236), [], 156, 402)).toBe(158)
     expect(promptAbove(box(0, 258), [], 156, 402)).toBeNull()
+  })
+
+  it('nunca tapa una carta de las Zonas Extra (ni la mano ni lo que brilla); los demás monstruos, si puede; sin lugar, null (la pregunta abre minimizada)', () => {
+    // El celular: tus monstruos en 600, la Zona Extra (un Link tuyo, que no brilla) de 500 a 590, los monstruos del rival de 380 a 470; la barra hasta 120.
+    const emz = box(500, 590)
+    const rival = box(380, 470)
+    const above = (min: number) => (obstacles: readonly ReturnType<typeof box>[]) => promptAbove(prompt, obstacles, min, 600)
+
+    // Sin cuidar nada, la banda de 100 tapaba la Zona Extra (de 492 a 592).
+    expect(above(120)([])).toBe(492)
+    // Hay lugar arriba de los monstruos del rival: no tapa ni la Zona Extra ni a ellos.
+    expect(promptFit(above(120), [emz], [rival])).toBe(272)
+    // Arriba no entra (la barra baja hasta 300): tapa a los monstruos del rival, nunca la Zona Extra.
+    expect(promptFit(above(300), [emz], [rival])).toBe(392)
+    // Tampoco entra sobre la Zona Extra: no hay dónde.
+    expect(promptFit(above(450), [emz], [rival])).toBeNull()
+  })
+
+  it('con la caja medida de verdad (un `DOMRect`, con sus medidas en el prototipo) también choca', () => {
+    class Rect {
+      constructor(private readonly box: { top: number; bottom: number; left: number; right: number }) {}
+      get top() { return this.box.top }
+      get bottom() { return this.box.bottom }
+      get left() { return this.box.left }
+      get right() { return this.box.right }
+    }
+
+    expect(promptAbove(new Rect(prompt), [box(540, 580)], 0, 600)).toBe(432)
   })
 })
 
