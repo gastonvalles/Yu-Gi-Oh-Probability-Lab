@@ -13,6 +13,10 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Los datos del núcleo de reglas (`npm run sync:core`), fuera del checkout: con ellos `npm test` corre también las pruebas con el núcleo de verdad.
+    env:
+      CORE_DATA_DIR: /tmp/ygo-lab-core-data
+      CARD_SCRIPTS_DIR: /tmp/ygo-lab-card-scripts
     steps:
       # Acciones fijadas por commit (no por tag movible): lo que corre es exactamente lo que se revisó.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,5 +32,24 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+
+      # Guardados por la versión que fija el lock: se bajan (~20 s) sólo si la caché no los tiene.
+      - id: core-data
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.CORE_DATA_DIR }}
+            ${{ env.CARD_SCRIPTS_DIR }}
+          key: core-data-${{ hashFiles('auto-data.lock.json', 'scripts/sync-core-data.mjs') }}
+      - if: steps.core-data.outputs.cache-hit != 'true'
+        run: npm run sync:core
+
       - run: npm test
+      # Un fuzz corto con el núcleo de verdad (~1 min; el entero y las otras lentas, `npm run test:auto` a mano): 4 decks del meta, cada uno
+      # con un duelo contra otro deck y uno contra el rival de handtraps.
+      - run: npm run test:auto -- auto-fuzz
+        env:
+          FUZZ_DECKS: 4
+          FUZZ_DUELS: 1
+          FUZZ_HANDTRAP_DUELS: 1
       - run: npm run build
