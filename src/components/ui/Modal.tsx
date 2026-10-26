@@ -72,6 +72,11 @@ interface ModalProps {
    * velo se va y los toques llegan a lo de atrás; lo de adentro queda como estaba (inerte) y el foco, en el asa. Cerrar sigue siendo la X, Escape o el botón de siempre.
    */
   lowerable?: boolean
+  /**
+   * false = sin velo: el fondo no se oscurece (los menús de la mesa: con uno abierto el campo se sigue viendo, como con el visor de una pila). Lo demás queda igual (el foco, Escape,
+   * tocar afuera); el panel despega del fondo con un borde más marcado (`surface.floating`).
+   */
+  veil?: boolean
   children: ReactNode
 }
 
@@ -100,6 +105,7 @@ export function Modal({
   closeSize = 'md',
   closeClassName,
   lowerable = false,
+  veil = true,
   children,
 }: ModalProps) {
   const id = useId()
@@ -166,7 +172,7 @@ export function Modal({
       }
     >
       {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. Con la hoja bajada se aclara: se ve la mesa. */}
-      <div aria-hidden="true" className={cx('pointer-events-none absolute inset-0 animate-nav-scrim transition-[background-color] duration-200 motion-reduce:animate-none motion-reduce:transition-none', lowered ? 'bg-transparent' : 'bg-background/80')} />
+      {veil ? <div aria-hidden="true" className={cx('pointer-events-none absolute inset-0 animate-nav-scrim transition-[background-color] duration-200 motion-reduce:animate-none motion-reduce:transition-none', lowered ? 'bg-transparent' : 'bg-background/80')} /> : null}
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -181,7 +187,7 @@ export function Modal({
           lowered && 'pointer-events-auto',
           sheet ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
           'sm:max-h-[calc(100dvh-2rem)]',
-          surface.panel,
+          veil ? surface.panel : surface.floating,
           SIZE_CLASS[size],
         )}
         onClick={(event) => event.stopPropagation()}

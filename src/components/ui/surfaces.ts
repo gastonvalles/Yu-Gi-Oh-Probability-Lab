@@ -12,6 +12,8 @@ import { TONE } from './tone'
 export const surface = {
   /** Contenedor flotante grande (modal, drawer). */
   panel: 'rounded-panel border border-border-subtle bg-card-background shadow-overlay',
+  /** El mismo panel sin velo detrás (los menús de la mesa): el borde un punto más marcado lo despega del campo, como la tira del visor de una pila. */
+  floating: 'rounded-panel border border-border bg-card-background shadow-overlay',
   card: 'rounded-card border border-border-subtle bg-card-background shadow-card',
   /** Contenedor de cada paso: sólo ordena (las tarjetas de adentro son las que tienen fondo). */
   stepShell: '',

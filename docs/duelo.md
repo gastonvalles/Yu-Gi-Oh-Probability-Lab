@@ -32,7 +32,7 @@ La de la práctica, con el campo del rival espejado arriba y las Extra Monster Z
 
 ### El visor de una pila no tapa tu mano ni el detalle
 
-`PileViewer` no es un modal y no lleva velo: con él abierto el campo sigue vivo (se tocan sus cartas y casillas) y no se mueve ni cambia de tamaño.
+Ningún menú de la mesa oscurece el fondo (`veil={false}`); `PileViewer` ni es un modal: con él abierto el campo sigue vivo (se tocan sus cartas y casillas) y no se mueve ni cambia de tamaño.
 
 - Desde 1440 px ocupa la columna de la derecha (los pasos en la práctica, el chat en el duelo) y el detalle de la carta queda a la vista: tocar o apuntar una carta del visor la muestra ahí (una del rival boca abajo, sólo como tal). Sin esa columna (la automática de «Jugar solo» siempre; con un amigo, de 1101 a 1439 px) es una tira ancha apoyada en el borde de abajo de la fila de las Zonas Extra (la mesa mide esa fila y las casillas del Extra al Deck): crece hacia arriba hasta la barra y no llega a tu mano, a tus zonas ni a las vidas; sus cartas van en renglones que se deslizan de arriba abajo; tapa el campo del rival y las fases, y se esconde mientras se elige en el campo. Bajo 1101 px es la hoja de abajo (hasta 55 dvh), que se cierra al tocar afuera.
 - La caja que lo aloja es `absolute` en la grilla de la mesa y no ataja toques, sólo el panel. Trampa: en algo `absolute`, un fin de línea `auto` es el borde de la grilla y la caja se estira sobre la mesa; se escribe con principio y fin (`col-[3/4]`).

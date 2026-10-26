@@ -176,6 +176,7 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
       dismissible={Boolean(onCancel)}
       size="sheet"
       lowerable
+      veil={false}
       kicker={kicker}
       title={title}
       subtitle={min === max ? t('auto.pick.cards', { count: max }) : t('auto.pick.range', { min, max })}

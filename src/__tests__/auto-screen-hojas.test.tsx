@@ -25,6 +25,7 @@ describe('auto-screen · las hojas', () => {
 
     core(() => fake.ask(OPTION))
     const sheet = screen.getByRole('dialog', { name: 'Elegí una opción' })
+    expect(sheet.parentElement!.querySelector('.animate-nav-scrim')).toBeNull()
 
     expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Destroy a monster', 'A la mano', 'Al cementerio', 'Activar efecto'])
     expect(sheet).toHaveTextContent('Nibiru')

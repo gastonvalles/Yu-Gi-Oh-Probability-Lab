@@ -164,7 +164,7 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
 })
 
 describe('las hojas del duelo automático se bajan sin contestar la pregunta', () => {
-  it('elegir cartas: el asa la baja (el velo se va y los toques pasan), nada se contesta ni se cancela, Tab se queda en el asa y al subirla sigue lo elegido', () => {
+  it('elegir cartas: el asa la baja (los toques pasan a la mesa, que nunca tuvo velo), nada se contesta ni se cancela, Tab se queda en el asa y al subirla sigue lo elegido', () => {
     narrow()
     const onPick = vi.fn()
     const onCancel = vi.fn()
@@ -182,7 +182,7 @@ describe('las hojas del duelo automático se bajan sin contestar la pregunta', (
     expect(grip).toHaveAccessibleName('Subir la hoja: Elegí qué agregar a tu mano')
     expect(grip).toHaveFocus()
     expect(root).toHaveClass('pointer-events-none')
-    expect(root.firstElementChild).toHaveClass('bg-transparent')
+    expect(root.querySelector('.animate-nav-scrim')).toBeNull()
     expect(within(dialog).getByRole('listbox').closest('[inert]')).not.toBeNull()
     expect(within(dialog).getByRole('button', { name: 'Elegir 1 carta' }).closest('[inert]')).not.toBeNull()
     fireEvent.keyDown(document, { key: 'Tab' })

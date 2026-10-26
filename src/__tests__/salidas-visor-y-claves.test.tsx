@@ -144,8 +144,8 @@ describe('guardar o renombrar un combo: el campo arranca con el nombre al abrirs
     expect(root.inert).toBe(false)
     expect(root).not.toHaveAttribute('data-leaving')
     expect(root.style.pointerEvents).toBe('')
-    // La salida había quedado quieta en su último cuadro (transparente): vuelve al revés.
-    expect(calls.filter(({ element }) => root.contains(element)).map(({ animation }) => vi.mocked(animation.reverse).mock.calls.length)).toEqual([1, 1])
+    // La salida había quedado quieta en su último cuadro (transparente): vuelve al revés. Es el panel solo: un menú de la mesa no lleva velo.
+    expect(calls.filter(({ element }) => root.contains(element)).map(({ animation }) => vi.mocked(animation.reverse).mock.calls.length)).toEqual([1])
   })
 
   it('sin la Web Animations API se desmonta enseguida, y al abrirse otra vez arranca con el nombre de ahora', () => {

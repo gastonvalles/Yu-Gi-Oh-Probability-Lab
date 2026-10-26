@@ -134,7 +134,7 @@ export function AutoBar({ rivalName, life, onLivesInBar, turn, myTurn, phase, on
     </>
   )
   const dialogs = (
-    <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" title={t('duel.bar.more')}>
+    <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" veil={false} title={t('duel.bar.more')}>
       <div className="grid gap-5">
         <Setting title={t('auto.bar.chain')} hint={t('auto.bar.chainHint')}>
           <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'never', label: t('auto.bar.never') }]} />

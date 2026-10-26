@@ -2544,7 +2544,7 @@ export function PracticeMat({
             {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           </section>
 
-          <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
+          <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" veil={false} kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
             {panel}
           </Modal>
         </>
@@ -2571,7 +2571,7 @@ export function PracticeMat({
       ) : null}</Presence>
 
       {/* Celular: sin «Pasar turno», la End Phase pregunta si se termina el turno. «Seguir jugando» deja todo como está; para pasar el turno hay que volver a tocar el botón de la End Phase. */}
-      <ConfirmDialog
+      <ConfirmDialog veil={false}
           isOpen={endingTurn && !isDesktop && !covered && myTurn && phaseNow === 'end'}
           title={t('practice.mat.endTurnTitle')}
           description={duel ? t('practice.mat.endTurnText', { name: duel.control?.rival ?? t('duel.bar.rival') }) : t('practice.mat.endTurnSolo')}
