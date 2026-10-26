@@ -4,7 +4,7 @@ import { autoSaveStore, type AutoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession } from '../app/auto/auto-session'
 import type { DeckList } from '../app/auto/deck-map'
 import { codesOf, createGuestLink, createHostLink, MANUAL_WAIT_MS, underControl, type OnlineLink } from '../app/auto/online'
-import { encodeAutoMessage, GUEST_ACCEPTS, HOST_ACCEPTS, isAutoText, parseAutoMessage, type AutoMessage, type AutoMessageKind, type HostMessage } from '../app/auto/online-protocol'
+import { AUTO_PROTOCOL_VERSION, encodeAutoMessage, GUEST_ACCEPTS, HOST_ACCEPTS, isAutoText, parseAutoMessage, type AutoMessage, type AutoMessageKind, type HostMessage } from '../app/auto/online-protocol'
 import { LOCATION as L, POSITION as P, type AutoCommand, type AutoEvent, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel, type Duel } from '../app/duel-session'
@@ -27,11 +27,12 @@ const KEYS = [keyOf(1), keyOf(2), keyOf(3)]
 const row = (id: number): CardRow => ({ id, alias: 0, setcode: '0', type: 0x21, atk: 0, def: 0, level: 4, race: '1', attribute: 1, name: `Carta ${id}`, strs: [`Efecto de ${id}`] })
 const expand = (rows: DeckList['main'] = []) => rows.flatMap(([code, copies]) => Array<number>(copies).fill(code))
 
-/** Arma cada deck con lo que se le pide; los códigos de `noRules` no tienen script. */
-function listLoader(noRules: number[] = []): DataLoader {
+/** Arma cada deck con lo que se le pide; los códigos de `noRules` no tienen script. Cada carga anota en `loads` los decks pedidos. */
+function listLoader(noRules: number[] = [], loads: (readonly DeckList[])[] = []): DataLoader {
   return {
     manifest: async () => ({ version: 't', tokens: [], filler: [] }),
     async load(lists) {
+      loads.push(lists)
       const decks = lists.map((list) => ({ main: expand(list.main), extra: expand(list.extra), missing: [], noRules: [...new Set(expand(list.main).filter((code) => noRules.includes(code)))] }))
       const codes = [...new Set(decks.flatMap((deck) => [...deck.main, ...deck.extra]))]
 
@@ -60,13 +61,15 @@ interface Game {
   hostLink: OnlineLink
   guestLink: OnlineLink
   core: ReturnType<typeof fakeHost>
+  /** Lo que bajó el anfitrión: los decks de cada carga. */
+  loads: (readonly DeckList[])[]
 }
 
 /**
  * `flaky`: mientras `down`, lo que manda el anfitrión se pierde sin que nadie se entere (su red se cayó y el relay no lo sabe: la presencia no cambia); `lose` pierde los próximos
- * tantos mensajes y después sigue. `guestNow`: el reloj del invitado (sus respiros entre pedidos).
+ * tantos mensajes y después sigue. `guestNow` y `hostNow`: el reloj de cada uno (sus respiros entre pedidos y sus topes de frecuencia).
  */
-function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEYS], noCrypto = false, react, save, flaky, guestNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; keys?: string[]; noCrypto?: boolean; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number } = {}): Game {
+function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEYS], noCrypto = false, react, save, flaky, guestNow, hostNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; keys?: string[]; noCrypto?: boolean; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number; hostNow?: () => number } = {}): Game {
   const room = createMemoryRoom()
   const hostEnd = room.join()
   const guestEnd = room.join()
@@ -84,7 +87,8 @@ function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEY
     else hostEnd.send(text)
   }
   const transport = flaky ? { send, onMessage: hostEnd.onMessage.bind(hostEnd) } : hostEnd
-  const hostLink = createHostLink({ transport, loader: listLoader(noRules), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, newKey, ...(save ? { save } : {}) })
+  const loads: (readonly DeckList[])[] = []
+  const hostLink = createHostLink({ transport, loader: listLoader(noRules, loads), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, newKey, ...(save ? { save } : {}), ...(hostNow ? { now: hostNow } : {}) })
   const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK, ...(guestNow ? { now: guestNow } : {}) })
 
   host.subscribe(() => hostLink.observe(host.getSnapshot()))
@@ -92,7 +96,7 @@ function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEY
   hostLink.observe(host.getSnapshot())
   guestLink.observe(guest.getSnapshot())
 
-  return { room, hostEnd, guestEnd, host, guest, hostLink, guestLink, core }
+  return { room, hostEnd, guestEnd, host, guest, hostLink, guestLink, core, loads }
 }
 
 /** Los dos listos, piedra-papel-tijera (gana Ana) y Ana elige quién empieza (0 Ana, 1 Beto). */
@@ -439,6 +443,58 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(other.guestLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { reason: 'version' } })
   })
 
+  it('un autoDeck en pleno duelo no baja nada: el mismo deck repite la revisión y uno distinto se revisa en la revancha (el duelo sigue con sus cartas); en la sala se revisa como siempre', async () => {
+    // El reloj del anfitrión se adelanta en cada deck: su tope (0,5 por segundo) no es lo que se prueba.
+    let skew = 0
+    const game = setup({ firstCode: 2, noRules: [3], hostNow: () => Date.now() + skew })
+    const sendDeck = (main: [number, number][]) => {
+      skew += 5000
+      game.room.inject(game.hostEnd, encodeAutoMessage({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main, extra: [] }))
+    }
+    const checks = () => toGuest(game.room, 'autoCheck')
+
+    await settle(game.room)
+    // En la sala: otro deck se baja y se revisa (la 3 no tiene reglas) y volver al de antes, también.
+    let loads = game.loads.length
+
+    sendDeck([[3, 5]])
+    await settle(game.room)
+    expect(game.loads).toHaveLength(loads + 1)
+    expect(checks().at(-1)).toMatchObject({ ok: false, bad: [3] })
+    sendDeck([[2, 5]])
+    await settle(game.room)
+    expect(game.loads).toHaveLength(loads + 2)
+    expect(game.hostLink.getSnapshot().phase).toBe('ready')
+    await order(game, 1)
+    expect(game.hostLink.getSnapshot().phase).toBe('playing')
+    loads = game.loads.length
+    const sent = checks().length
+    const { cards } = game.hostLink.getSnapshot()
+
+    // El mismo deck (el invitado volvió): sólo la revisión de antes.
+    sendDeck([[2, 5]])
+    await settle(game.room)
+    expect(game.loads).toHaveLength(loads)
+    expect(checks()).toHaveLength(sent + 1)
+    expect(checks().at(-1)).toMatchObject({ ok: true, bad: [] })
+    // Otro (un invitado modificado puede mandar cualquiera): nada se baja, el anfitrión no pierde las cartas del duelo y el duelo sigue.
+    sendDeck([[3, 5]])
+    await settle(game.room)
+    expect(game.loads).toHaveLength(loads)
+    expect(game.hostLink.getSnapshot().phase).toBe('playing')
+    expect(game.hostLink.getSnapshot().cards).toBe(cards)
+    expect(checks()).toHaveLength(sent + 1)
+    // La revancha lo revisa: con la 3 sin reglas, nadie queda listo.
+    game.guest.concede()
+    await settle(game.room)
+    game.host.rematch()
+    game.guest.rematch()
+    await settle(game.room)
+    expect(game.loads.slice(loads)).toEqual([[HOST_DECK, { main: [[3, 5]], extra: [] }]])
+    expect(checks().at(-1)).toMatchObject({ ok: false, bad: [3] })
+    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { theirs: 1 } })
+  })
+
   it('el anfitrión corta lo que piensa el núcleo: el invitado recibe la re-emisión y vuelve a su pregunta; un pedido suyo en medio espera a que termine', async () => {
     const game = setup({ firstCode: 2 })
 
@@ -526,7 +582,7 @@ describe('el enlace del duelo automático por enlace', () => {
     host.subscribe(() => hostLink.observe(host.getSnapshot()))
     guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
     await settle(room)
-    await order({ room, hostEnd, guestEnd, host, guest, hostLink, guestLink, core }, 0)
+    await order({ room, hostEnd, guestEnd, host, guest, hostLink, guestLink, core, loads: [] }, 0)
     const hosted = sessionOf(hostLink)
     const guested = sessionOf(guestLink)
 

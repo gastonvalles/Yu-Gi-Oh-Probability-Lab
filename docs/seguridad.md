@@ -20,7 +20,8 @@ sus despliegues).
   usado como clave, devolvería algo heredado). Los nombres y el chat se limpian de controles y de las marcas que dan vuelta o
   esconden el texto (`stripHidden`); los ajustes del duelo sólo los fija el anfitrión; de las jugadas del rival se guardan como
   mucho 400 para deshacer (`MAX_MIRROR_ACTS`: quien las manda a ráfagas no congela a quien las recibe), y la identidad de una
-  carta secreta nunca viaja: ids opacos y sólo se revela lo que el rival puede ver (`mat-public.ts`).
+  carta secreta nunca viaja: ids opacos y sólo se revela lo que el rival puede ver (`mat-public.ts`). En el duelo automático por
+  enlace sólo el deck del invitado (`autoDeck`, con tope de frecuencia) hace bajar datos al anfitrión, y en pleno duelo no baja nada.
 - **El proxy de imágenes** (`api/card-image.ts`): sólo rutas con la forma de una imagen de carta o de set de YGOPRODeck, con el
   host fijo y sin seguir redirecciones; sólo los parámetros `path` y `w` (cada valor distinto sería otra copia en el CDN); sólo
   JPEG, PNG o WebP, con tope de bytes y de píxeles; lo que falla es un 502 que no se guarda. Sale con

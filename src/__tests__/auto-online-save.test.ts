@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import { cardData, type CardRow, type DataLoader, type DataSource } from '../app/auto/auto-data'
 import { autoSaveStore, parseAutoSave, type AutoSave } from '../app/auto/auto-save'
 import type { AutoSession } from '../app/auto/auto-session'
@@ -66,6 +66,9 @@ describe('el guardado del duelo automático por enlace', () => {
     // El corte del pase a manual viaja con lo guardado; uno de antes (sin la marca) o con la marca rota se lee sin ella.
     expect(parseAutoSave(JSON.stringify({ ...SAVE, cut: { dropped: true } }), 2000)).toEqual({ ...SAVE, cut: { dropped: true } })
     expect(parseAutoSave(JSON.stringify({ ...SAVE, cut: 'sí' }), 2000)).toEqual(SAVE)
+    // La versión de los datos también; una que no es texto se lee sin ella.
+    expect(parseAutoSave(JSON.stringify({ ...SAVE, data: 'abc' }), 2000)).toEqual({ ...SAVE, data: 'abc' })
+    expect(parseAutoSave(JSON.stringify({ ...SAVE, data: 7 }), 2000)).toEqual(SAVE)
     store.clear()
     expect(store.read()).toBeNull()
     // Sin almacenamiento, no se recuerda nada (y no se rompe).
@@ -73,6 +76,30 @@ describe('el guardado del duelo automático por enlace', () => {
 
     none.write(SAVE)
     expect(none.read()).toBeNull()
+  })
+
+  it('al entrar a una sala se barren los guardados de todas que ya no sirven (vencidos, v1 o rotos); uno vigente y lo que no es del duelo automático quedan', () => {
+    const storage = memoryStorage()
+    const keyed = { ...storage, get length() { return storage.items.size }, key: (i: number) => [...storage.items.keys()][i] ?? null }
+    const at = (room: string) => `ygo-lab:auto-save:${room}`
+    const now = () => SAVE.savedAt + SAVE_TTL_MS
+    const fill = () => {
+      storage.items.set(at('VENCIDO1'), JSON.stringify({ ...SAVE, savedAt: 0 }))
+      storage.items.set(at('VIGENTE1'), JSON.stringify(SAVE))
+      storage.items.set(at('VIEJO001'), JSON.stringify(V1))
+      storage.items.set(at('ROTO0001'), '{')
+      storage.items.set('ygo-lab:duel-save:VENCIDO1', '{')
+      storage.items.set('otra-cosa', '{')
+    }
+
+    fill()
+    autoSaveStore('NUEVA001', keyed, now)
+    expect([...storage.items.keys()]).toEqual([at('VIGENTE1'), 'ygo-lab:duel-save:VENCIDO1', 'otra-cosa'])
+    // Un almacenamiento sin `key` ni `length` (o que no deja leer) no se barre, y no se rompe.
+    fill()
+    autoSaveStore('NUEVA001', storage, now)
+    autoSaveStore('NUEVA001', { ...keyed, key: () => { throw new Error('denied') } }, now)
+    expect(storage.items.size).toBe(6)
   })
 
   it('el anfitrión que recarga la página rearma el duelo con lo guardado y el invitado vuelve a la misma mesa y a la misma pregunta', async () => {
@@ -115,7 +142,7 @@ describe('el guardado del duelo automático por enlace', () => {
     const create = core.commands.find((command) => command.t === 'create') as Extract<AutoCommand, { t: 'create' }>
 
     // Lo guardado lleva la clave del duelo (la que recibió el núcleo), no la semilla.
-    expect(saved).toMatchObject({ v: 2, seat: 1, hand: 5, answers: [{ seat: 0 }, { seat: 0 }, { seat: 1, answer: PASS }] })
+    expect(saved).toMatchObject({ v: 2, seat: 1, hand: 5, answers: [{ seat: 0 }, { seat: 0 }, { seat: 1, answer: PASS }], data: 't' })
     expect(isDuelKey(saved.key)).toBe(true)
     expect(saved.key).toBe(create.key)
     expect(saved).not.toHaveProperty('seed')
@@ -177,7 +204,8 @@ describe('el guardado del duelo automático por enlace', () => {
     guestLink.destroy()
   })
 
-  it('el anfitrión que recarga con un guardado de antes de la clave (v1, sin vencer) no lo rearma: el duelo se pierde y la sala sigue', async () => {
+  /** Beto (asiento 0) contesta su primera pregunta y Ana recarga la página con lo guardado cambiado por `edit` (lo que escribió otra página u otro despliegue). */
+  async function reloadWith(edit: (saved: AutoSave) => object) {
     const storage = memoryStorage()
     const room = createMemoryRoom()
     const hostEnd = room.join()
@@ -203,10 +231,11 @@ describe('el guardado del duelo automático por enlace', () => {
     await settle(room)
     guestLink.getSnapshot().session!.answer(END)
     await settle(room)
-    // La página de antes de la clave había escrito su versión (con la semilla) y Ana recarga con la de ahora.
     hostLink.destroy()
     hostEnd.close()
-    storage.items.set('ygo-lab:auto-save:ROOM0002', JSON.stringify({ ...V1, savedAt: Date.now() }))
+    const saved = JSON.parse(storage.items.get('ygo-lab:auto-save:ROOM0002')!) as AutoSave
+
+    storage.items.set('ygo-lab:auto-save:ROOM0002', JSON.stringify(edit(saved)))
     const hostEnd2 = room.join()
     const host2 = createDuel(hostEnd2, { role: 'host', name: 'Ana', sid: 'host-2', settings })
     const core2 = fakeHost(undefined, undefined, 2)
@@ -215,11 +244,36 @@ describe('el guardado del duelo automático por enlace', () => {
     host2.subscribe(() => hostLink2.observe(host2.getSnapshot()))
     hostLink2.observe(host2.getSnapshot())
     await settle(room)
-    expect(hostLink2.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' }, session: null })
-    expect(guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
-    expect(core2.commands).toEqual([])
-    hostLink2.destroy()
-    guestLink.destroy()
+    onTestFinished(() => {
+      hostLink2.destroy()
+      guestLink.destroy()
+    })
+
+    return { saved, hostLink: hostLink2, guestLink, core: core2 }
+  }
+
+  it('el anfitrión que recarga con un guardado de antes de la clave (v1, sin vencer) no lo rearma: el duelo se pierde y la sala sigue', async () => {
+    // La página de antes de la clave había escrito su versión (con la semilla) y Ana recarga con la de ahora.
+    const game = await reloadWith(() => ({ ...V1, savedAt: Date.now() }))
+
+    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' }, session: null })
+    expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+    expect(game.core.commands).toEqual([])
+  })
+
+  it('lo guardado anota la versión de los datos: si el despliegue trae otra, el duelo se pierde sin re-simularlo; la misma, o un guardado de antes sin anotarla, se rearma', async () => {
+    const other = await reloadWith((saved) => ({ ...saved, data: 'otra' }))
+
+    expect(other.saved.data).toBe('t')
+    expect(other.hostLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' }, session: null })
+    expect(other.guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+    expect(other.core.commands).toEqual([])
+    for (const edit of [(saved: AutoSave) => saved, (saved: AutoSave) => ({ ...saved, data: undefined })]) {
+      const game = await reloadWith(edit)
+
+      expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })
+      expect(game.core.commands[0]).toMatchObject({ t: 'create', answers: [END] })
+    }
   })
 })
 

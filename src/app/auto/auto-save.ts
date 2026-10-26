@@ -23,6 +23,11 @@ export interface AutoSave {
   savedAt: number
   /** Se acordó pasar a manual y el anfitrión ya cortó (`dropped`: lo que quedó a medio jugar se descartó): rearmado, sigue cortado. Los guardados de antes no lo traen. */
   cut?: { dropped: boolean }
+  /**
+   * La versión de los datos (`/auto-data`: cdb y scripts) con que se jugó: si al rearmar el despliegue trae otra, el duelo se da por perdido en vez de re-simularlo (un script
+   * cambiado puede aceptar las mismas respuestas y armar otro duelo). Los guardados de antes no la traen y se re-simulan. Un cambio del paquete del núcleo no lo cubre.
+   */
+  data?: string
 }
 
 export interface AutoSaveStore {
@@ -51,17 +56,42 @@ export function parseAutoSave(raw: string | null, now: number): AutoSave | null 
 
     if (!answers.every((item) => item?.answer)) return null
 
-    return { v: 2, key: save.key, seat: save.seat, hand: save.hand, decks: { mine: save.decks.mine, theirs: save.decks.theirs }, answers: answers as SessionAnswer[], savedAt: save.savedAt, ...(typeof save.cut?.dropped === 'boolean' ? { cut: { dropped: save.cut.dropped } } : {}) }
+    return { v: 2, key: save.key, seat: save.seat, hand: save.hand, decks: { mine: save.decks.mine, theirs: save.decks.theirs }, answers: answers as SessionAnswer[], savedAt: save.savedAt, ...(typeof save.cut?.dropped === 'boolean' ? { cut: { dropped: save.cut.dropped } } : {}), ...(typeof save.data === 'string' ? { data: save.data } : {}) }
   } catch {
     return null
   }
 }
 
-type KeyStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+type KeyStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> & Partial<Pick<Storage, 'key' | 'length'>>
 
-/** El guardado de una sala en el navegador (`localStorage`); sin almacenamiento (o lleno), no se recuerda nada y recargar pierde el duelo, como sin guardado. */
+/**
+ * Borra los guardados de cualquier sala que ya no sirven (vencidos, v1 o rotos): los de una pestaña cerrada a mitad de duelo no los lee nadie más. Uno vigente (otra pestaña
+ * jugando) queda. Las claves se juntan antes de borrar: borrar mientras se recorre `key(i)` saltea algunas.
+ */
+function sweep(storage: KeyStore, now: number) {
+  if (!storage.key || storage.length === undefined) return
+  const keys: string[] = []
+
+  for (let i = 0; i < storage.length; i += 1) {
+    const key = storage.key(i)
+
+    if (key?.startsWith(PREFIX)) keys.push(key)
+  }
+  for (const key of keys) if (!parseAutoSave(storage.getItem(key), now)) storage.removeItem(key)
+}
+
+/**
+ * El guardado de una sala en el navegador (`localStorage`); sin almacenamiento (o lleno), no se recuerda nada y recargar pierde el duelo, como sin guardado. Se crea al entrar a
+ * una sala (no al arrancar la app) y ahí se barren los guardados vencidos de todas.
+ */
 export function autoSaveStore(room: string, storage: KeyStore | null = typeof localStorage === 'undefined' ? null : localStorage, now: () => number = Date.now): AutoSaveStore {
   const key = `${PREFIX}${room}`
+
+  try {
+    if (storage) sweep(storage, now())
+  } catch {
+    // Sin almacenamiento no hay nada que barrer.
+  }
 
   return {
     read() {
