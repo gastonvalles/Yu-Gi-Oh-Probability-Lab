@@ -240,6 +240,7 @@ export const auto: Translated<typeof es> = {
   'auto.online.lost': 'The duel was lost: the host reloaded the page.',
   'auto.online.cut': 'The duel was cut short: {name} sent invalid plays.',
   'auto.online.broken': "The duel was cut short and can't go on.",
+  'auto.online.again': 'Play another duel',
   'auto.online.deckOutWin': "{name} couldn't draw.",
 
   // Going on with the link duel in manual mode (from «More options»): the row, the request to the other player, the wait and how it ended.

@@ -248,6 +248,7 @@ export const auto = {
   'auto.online.lost': 'El duelo se perdió: el anfitrión recargó la página.',
   'auto.online.cut': 'El duelo se cortó: {name} mandó jugadas inválidas.',
   'auto.online.broken': 'El duelo se cortó y no se puede seguir.',
+  'auto.online.again': 'Jugar otro duelo',
   'auto.online.deckOutWin': '{name} no pudo robar.',
 
   // Seguir el duelo por enlace en modo manual (desde «Más opciones»): la fila, el pedido al otro, la espera y cómo terminó.

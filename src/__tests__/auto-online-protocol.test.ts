@@ -162,7 +162,7 @@ describe('el protocolo del duelo automático por enlace', () => {
     expect(reassembler.push(part(7, 0, 2))).toBe('01')
   })
 
-  it('el marcapasos manda la ráfaga y después 25 por segundo, en orden; un stats repetido al final de la cola reemplaza al anterior y nunca pisa eventos', () => {
+  it('el marcapasos manda la ráfaga y después 25 por segundo, en orden y sin saltear nada; `clear` tira lo que no salió', () => {
     vi.useFakeTimers()
     const sent: string[] = []
     const pacer = createPacer((text) => sent.push(text), Date.now)
@@ -175,15 +175,20 @@ describe('el protocolo del duelo automático por enlace', () => {
     vi.advanceTimersByTime(5000)
     expect(sent).toEqual(Array.from({ length: 100 }, (_, i) => `m${i}`))
 
-    // Con la cola llena: stats, stats (reemplaza), evento, stats (no reemplaza: hay un evento en el medio).
+    // Con la cola llena, dos iguales seguidos salen los dos (quien numere los mensajes no ve huecos); `clear` deja salir sólo lo que se suma después.
     sent.length = 0
     for (let i = 0; i < 60; i += 1) pacer.push(`x${i}`)
-    pacer.push('stats-1', 'stats')
-    pacer.push('stats-2', 'stats')
-    pacer.push('events', undefined)
-    pacer.push('stats-3', 'stats')
+    pacer.push('stats')
+    pacer.push('stats')
     vi.advanceTimersByTime(10_000)
-    expect(sent.slice(-3)).toEqual(['stats-2', 'events', 'stats-3'])
+    expect(sent.slice(-3)).toEqual(['x59', 'stats', 'stats'])
+    sent.length = 0
+    for (let i = 0; i < 60; i += 1) pacer.push(`y${i}`)
+    pacer.clear()
+    pacer.push('z')
+    vi.advanceTimersByTime(10_000)
+    expect(sent).toEqual([...Array.from({ length: sent.length - 1 }, (_, i) => `y${i}`), 'z'])
+    expect(sent.length).toBeLessThan(61)
 
     pacer.push('a')
     pacer.destroy()

@@ -26,6 +26,8 @@ import {
   ASK_SHAPES,
   EVENT_SHAPES,
   IGNORED_MESSAGES,
+  MAX_LIST,
+  MAX_TEXT,
   readShape,
   type AskType,
   type AutoCommand,
@@ -155,6 +157,14 @@ export function canonical(events: readonly WireEvent[]): WireEvent[] {
   return out
 }
 
+/** El texto en `MAX_TEXT` como mucho (un error de Lua trae la pila entera): más largo, `parseAutoEvent` no lo lee y el `fault` se perdería. No parte un par sustituto. */
+export function clip(text: string): string {
+  if (text.length <= MAX_TEXT) return text
+  const cut = text.slice(0, MAX_TEXT - 1)
+
+  return `${/[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut}…`
+}
+
 /** La respuesta en el formato del paquete. */
 export function toResponse(answer: CoreAnswer): OcgResponse {
   switch (answer.type) {
@@ -255,7 +265,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
    */
   let known: [Set<number>, Set<number>] = [new Set(), new Set()]
 
-  const fault = (kind: FaultKind, message: string, cards?: number[]) => emit({ t: 'fault', kind, message, ...(cards ? { cards } : {}) })
+  const fault = (kind: FaultKind, message: string, cards?: number[]) => emit({ t: 'fault', kind, message: clip(message), ...(cards ? { cards } : {}) })
 
   /** Las que `seat` puede declarar: las que conoce y cumplen el filtro (`cardMatchesOpcode`: la regla del núcleo; un arte alternativo no vale, su original sí). */
   function declarable(seat: Seat, opcodes: readonly string[]): number[] {
@@ -355,8 +365,12 @@ export function createAutoHost(options: HostOptions): AutoHost {
     }
 
     if (question) events[1 - question.seat]!.push({ type: 'waiting' })
+    // Una tanda de más de `MAX_LIST` no se lee del otro lado: viaja en varias, en orden y con el mismo `n`. Un `move` que quede al final de una
+    // pierde el `summoning` que lo sigue (el adaptador lo busca en la misma tanda): la mesa no dice si fue Normal o Especial, nada más.
     for (const seat of [0, 1] as const) {
-      if (events[seat].length > 0) emit({ t: 'events', seat, n: answers.length, events: canonical(events[seat]) })
+      const told = canonical(events[seat])
+
+      for (let i = 0; i < told.length; i += MAX_LIST) emit({ t: 'events', seat, n: answers.length, events: told.slice(i, i + MAX_LIST) })
     }
     stats(lib, handle)
 
@@ -484,7 +498,9 @@ export function createAutoHost(options: HostOptions): AutoHost {
           if (pending && command.askId === pending.askId) give(command.answer)
           break
         case 'rewind':
-          if (setup && command.to <= answers.length) {
+          // Más allá de lo jugado no hay a dónde volver: callarlo dejaría a quien lo pidió esperando la re-emisión para siempre.
+          if (command.to > answers.length) fault('crash', `cannot rewind to ${command.to}: there are ${answers.length} answers`)
+          else if (setup) {
             const keep = answers.slice(0, command.to)
 
             answers.length = 0

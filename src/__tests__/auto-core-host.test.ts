@@ -1,7 +1,7 @@
-import createCore, { OcgCoreInternal, OcgDuelMode, OcgResponseType, type OcgCardData } from 'ocgcore-wasm'
-import { canonical, createAutoHost, seenCodes, send, toResponse } from '../app/auto/core-host'
+import createCore, { OcgCoreInternal, OcgDuelMode, OcgMessageType, OcgResponseType, type OcgCardData } from 'ocgcore-wasm'
+import { canonical, clip, createAutoHost, seenCodes, send, toResponse } from '../app/auto/core-host'
 import { passivePolicy, randomLegalPolicy } from '../app/auto/policies'
-import type { AutoEvent, CoreAnswer, Seat, WireEvent } from '../app/auto/protocol'
+import { parseAutoEvent, type AutoEvent, type CoreAnswer, type Seat, type WireEvent } from '../app/auto/protocol'
 import { eventFor } from '../app/auto/referee'
 import { hasCoreData, loadCards, runDuel, scriptStore, wasmBinary } from './support/core-data'
 
@@ -63,6 +63,87 @@ describe('el anfitrión del núcleo', () => {
 
   it('no arranca sin wasmBinary ni locateFile (el paquete bajaría el wasm en base64)', () => {
     expect(() => createAutoHost({ core: {}, cardReader: () => null, scriptReader: () => null, emit: () => {} })).toThrow()
+  })
+
+  it('recorta un texto largo sin partir un par sustituto', () => {
+    expect(clip('corto')).toBe('corto')
+    expect(clip(`${'a'.repeat(1998)}😀b`)).toBe(`${'a'.repeat(1998)}…`)
+    expect(clip('b'.repeat(5000))).toHaveLength(2000)
+  })
+
+  // Nada de lo que emite se pierde del otro lado: cada evento pasa `parseAutoEvent` tal como viaja (JSON).
+  describe('con un núcleo de mentira', () => {
+    const wire = (events: AutoEvent[]) => events.map((event) => parseAutoEvent(JSON.parse(JSON.stringify(event))))
+    const idle = { type: OcgMessageType.SELECT_IDLECMD, player: 0, summons: [], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: false, to_ep: true, shuffle: false }
+
+    /** El anfitrión sobre un núcleo que, en cada tanda, cuenta `phases` cambios de fase, avisa un error de script de `error` caracteres y pregunta al asiento 0. */
+    async function fakeCore(phases: number, error = 0) {
+      vi.resetModules()
+      vi.doMock('ocgcore-wasm', async (original) => {
+        const real = await original<typeof import('ocgcore-wasm')>()
+        let report: (type: number, text: string) => void = () => {}
+        const lib = {
+          [real.OcgCoreInternal]: { callbacks: new Map() },
+          createDuel(options: { errorHandler: typeof report }) {
+            report = options.errorHandler
+            return { [Symbol('internal')]: { handle: 1, callback: 1 } }
+          },
+          loadScript: () => true,
+          duelNewCard() {},
+          startDuel() {},
+          destroyDuel() {},
+          duelProcess() {
+            if (error) report(0, 'x'.repeat(error))
+            return real.OcgProcessResult.WAITING
+          },
+          duelGetMessage: () => [...Array.from({ length: phases }, () => ({ type: real.OcgMessageType.NEW_PHASE, phase: 1 })), idle],
+          duelQueryLocation: () => [],
+        }
+
+        return { ...real, default: async () => lib }
+      })
+      const { createAutoHost: create } = await import('../app/auto/core-host')
+
+      vi.doUnmock('ocgcore-wasm')
+      const events: AutoEvent[] = []
+      const auto = create({ core: { wasmBinary: new ArrayBuffer(0) }, cardReader: (code) => ({ code, type: 0x11 }) as OcgCardData, scriptReader: () => '', emit: (event) => events.push(event) })
+      const deck = { main: [1, 1, 1, 1, 1], extra: [], hand: [] }
+
+      await auto.handle({ t: 'create', seed: 1, flags: MR5, players: PLAYERS, decks: [deck, deck] })
+      return { auto, events }
+    }
+
+    it('parte una tanda de más de 600 eventos en varias, en orden y con el mismo n', async () => {
+      const { events } = await fakeCore(700)
+      const told = wire(events).filter((event): event is Extract<AutoEvent, { t: 'events' }> => event?.t === 'events')
+
+      expect(wire(events)).not.toContain(null)
+      expect(told.map((event) => [event.seat, event.n, event.events.length])).toEqual([
+        [0, 0, 600],
+        [0, 0, 100],
+        [1, 0, 600],
+        [1, 0, 101],
+      ])
+      expect(told.filter((event) => event.seat === 1).flatMap((event) => event.events)).toEqual([...Array<WireEvent>(700).fill({ type: 'new_phase', phase: 1 }), { type: 'waiting' }])
+    })
+
+    it('un error de script larguísimo llega recortado (no se pierde)', async () => {
+      const { events } = await fakeCore(1, 5000)
+      const faults = wire(events).filter((event) => event?.t === 'fault')
+
+      expect(faults).toHaveLength(1)
+      expect(faults[0]).toMatchObject({ kind: 'script', message: expect.stringMatching(/^error: x+…$/) })
+    })
+
+    it('un rewind más allá de lo jugado avisa (crash) en vez de callarse; hasta lo jugado, re-simula', async () => {
+      const { auto, events } = await fakeCore(1)
+      const mark = events.length
+
+      await auto.handle({ t: 'rewind', to: 1 })
+      expect(wire(events.slice(mark))).toEqual([{ t: 'fault', kind: 'crash', message: 'cannot rewind to 1: there are 0 answers' }])
+      await auto.handle({ t: 'rewind', to: 0 })
+      expect(events.slice(mark + 1).some((event) => event.t === 'ask')).toBe(true)
+    })
   })
 
   describe.skipIf(!hasCoreData)('con el núcleo y los scripts de verdad', () => {

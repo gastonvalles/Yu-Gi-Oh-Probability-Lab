@@ -1,5 +1,6 @@
 import { DATA_UNAVAILABLE } from '../../app/auto/auto-data'
 import type { AutoSnapshot } from '../../app/auto/auto-session'
+import type { DuelSnapshot } from '../../app/duel-session'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
@@ -28,10 +29,13 @@ export function LoadingCover({ progress, rival = false, note }: { progress: Auto
 /**
  * Lo que no deja jugar: cartas sin reglas (con la lista, y «Jugar en modo manual»: una mano nueva), o el núcleo que no arrancó, se cayó o se trabó («Reintentar», con `onUndo` «Volver
  * a antes de tu última jugada» y, con `onManual`, «Seguir en modo manual» desde la última jugada buena). El texto es uno por clase de falla: el detalle técnico (`fault.message`)
- * queda en la consola. El duelo por enlace la usa sin `onRetry` (no hay nada que reintentar: sólo volver) y con su `title` (el duelo se perdió o se cortó), que ya lo dice todo.
+ * queda en la consola. El duelo por enlace la usa sin `onRetry` (no hay nada que reintentar) y con su `title` (el duelo se perdió o se cortó), que ya lo dice todo; con `rematch` la sala
+ * sigue: «Jugar otro duelo» es la principal (pedir o aceptar la revancha, que no necesita un resultado), apagada si ya la pediste (con la espera, como en `ResultCard`) o sin rival.
  */
-export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, onUndo, onManual, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; title?: string; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry?: () => void; onUndo?: () => void; onManual?: () => void; onExit: () => void }) {
+export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, onUndo, onManual, rematch, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; title?: string; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry?: () => void; onUndo?: () => void; onManual?: () => void; rematch?: { snapshot: DuelSnapshot; rival: string; onRematch: () => void }; onExit: () => void }) {
   const rules = fault.kind === 'rules'
+  const asked = rematch?.snapshot.rematch
+  const note = asked?.mine ? t('duel.result.rematchWaiting', { name: rematch!.rival }) : asked?.theirs ? t('duel.result.rematchOffered', { name: rematch!.rival }) : null
   const title = titleText ?? (rules ? t('auto.fault.rules', { count: fault.cards.length }) : fault.kind === 'crash' ? t('auto.fault.crash') : fault.kind === 'retry' ? t('auto.fault.stuck') : t('auto.fault.setup'))
   const text = rules
     ? t('auto.fault.rulesText')
@@ -63,9 +67,14 @@ export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, on
             ))}
           </ul>
         ) : null}
+        {note ? (
+          <p role="status" className="m-0 text-micro text-soft">
+            {note}
+          </p>
+        ) : null}
         <div className="flex flex-wrap justify-end gap-2">
-          {/* Sin nada que reintentar, salir es lo único que queda: va como la principal. */}
-          <Button variant={onRetry ? 'tertiary' : 'primary'} onClick={onExit}>
+          {/* Sin nada que reintentar ni otro duelo que jugar, salir es lo único que queda: va como la principal. */}
+          <Button variant={onRetry || rematch ? 'tertiary' : 'primary'} onClick={onExit}>
             {t('auto.fault.back')}
           </Button>
           {onRetry && onManual && !rules ? (
@@ -88,6 +97,12 @@ export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, on
           {onUndo ? (
             <Button variant="primary" icon="undo" onClick={onUndo}>
               {t('auto.fault.undo')}
+            </Button>
+          ) : null}
+          {rematch ? (
+            // Al aparecer la portada, el foco va acá: es lo que sigue.
+            <Button variant="primary" autoFocus disabled={rematch.snapshot.rematch.mine || !rematch.snapshot.peerPresent} onClick={rematch.onRematch}>
+              {t('auto.online.again')}
             </Button>
           ) : null}
         </div>

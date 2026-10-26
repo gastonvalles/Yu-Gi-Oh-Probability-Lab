@@ -133,8 +133,6 @@ const NONE: number[] = []
 const NO_PROBLEMS: OnlineSnapshot['problems'] = { mine: NONE, theirs: 0, reason: null }
 /** Cuánto espera el anfitrión el deck del invitado: un cliente sin el duelo automático nunca lo manda. */
 const DECK_WAIT_MS = 10_000
-/** Más que esto de registro y al invitado que vuelve no se le manda: el anfitrión re-simula (el núcleo vuelve a contar todo). Un duelo del fuzz de 2.000 respuestas anda por ahí. */
-export const MAX_LOG_BYTES = 2 * 1024 * 1024
 /** El invitado no pide el duelo de nuevo más de una vez en este lapso (la pantalla y el enlace se pueden enterar de la misma vuelta). */
 const HELLO_GAP_MS = 2000
 /** Lo que mide como mucho un `autoBatch`: un poco menos que `MAX_AUTO_BYTES` (el sobre y los nombres de las cartas). */
@@ -376,12 +374,15 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let init: CreateCommand | null = null
   // Lo mandado al invitado desde la última tanda (`loading` 0), para reponérselo: los códigos de los que ya sabe cómo son, el último `stats` y una respuesta suya rechazada.
   let log: AutoEvent[] = []
-  let logBytes = 0
   let sent = new Set<number>()
   let lastStats: string | null = null
   let heldRetry: AutoEvent | null = null
   let resendLater = false
   let partId = 0
+  // El lote que se arma mientras se re-simula (o se re-emite el registro): sale entero en un `autoBatch` al llenarse, antes de cualquier otro mensaje y al terminar.
+  let batch: AutoEvent[] = []
+  let batchCards: AutoCardInfo[] = []
+  let batchBytes = 0
   // El duelo guardado: el deck y la mano con que se juega (los de lo guardado, si se rearma), lo que se va a rearmar y lo último escrito (`saving`: mientras el duelo sigue).
   let hostDeck = options.deck
   let hand = options.handSize
@@ -389,8 +390,6 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let remoteDeck: DeckList | null = null
   let saving = false
   let savedAnswers: readonly SessionAnswer[] | null = null
-  // Ya cortado, el invitado que vuelve recibe el duelo y otra vez el corte: si hubo que re-simular, cuando termina.
-  let repeatLater = false
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -412,20 +411,41 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       manual: request.state,
       manualDropped: request.dropped,
     })
-  const request = manualRequest(true, (message) => void post(message), refresh, cut)
+  const request = manualRequest(true, post, refresh, cut)
 
-  /** Todo lo que va al invitado pasa por acá, en orden: lo grande se trocea. Devuelve el texto, o null si no entra ni en `MAX_PARTS` partes. */
-  function post(message: AutoMessage, key?: string): string | null {
+  /**
+   * Todo lo que va al invitado pasa por acá, en orden (detrás del lote pendiente): lo grande se trocea. Antes se lee como lo leería el invitado: lo que él tiraría sin avisar
+   * (algo que `parseAutoMessage` no acepta, o que no entra ni en `MAX_PARTS` partes) no se manda y el duelo se pierde.
+   */
+  function post(message: AutoMessage) {
+    flush()
     const text = encodeAutoMessage(message)
 
     partId = (partId % 1_000_000) + 1
-    const parts = chunkAutoText(text, partId)
+    const parts = parseAutoMessage(text, MAX_WHOLE_BYTES) ? chunkAutoText(text, partId) : []
 
-    if (parts.length === 0) return null
-    if (parts[0] === text) pacer.push(text, key)
-    else parts.forEach((part) => pacer.push(part))
+    if (parts.length === 0) return lose()
+    parts.forEach((part) => pacer.push(part))
+  }
 
-    return text
+  /** Suma un evento (y las cartas que estrena) al lote; si no entra, sale el que había. */
+  function enqueue(event: AutoEvent, more: AutoCardInfo[]) {
+    const bytes = JSON.stringify(event).length + JSON.stringify(more).length
+
+    if (batchBytes + bytes > BATCH_BYTES) flush()
+    batch.push(event)
+    batchCards.push(...more)
+    batchBytes += bytes
+  }
+
+  function flush() {
+    if (batch.length === 0) return
+    const message: AutoMessage = { t: 'autoBatch', events: batch, ...(batchCards.length > 0 ? { cards: batchCards } : {}) }
+
+    batch = []
+    batchCards = []
+    batchBytes = 0
+    post(message)
   }
 
   function sendCheck() {
@@ -478,7 +498,6 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     if (restoring && !next.ok) {
       restoring = null
       pending = false
-      options.save?.clear()
       return lose()
     }
     sendCheck()
@@ -531,7 +550,6 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
   function restartLog() {
     log = []
-    logBytes = 0
     lastStats = null
   }
 
@@ -558,15 +576,25 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     return out
   }
 
-  /** El duelo se perdió (el anfitrión recargó, el núcleo se cayó, algo no se pudo mandar): los dos lo ven y la sala sigue. */
+  /**
+   * El duelo se perdió (el anfitrión recargó, el núcleo se cayó, algo no se pudo mandar): los dos lo ven y la sala sigue. El núcleo se para (la mesa queda a la vista) y lo
+   * guardado se borra: rearmarlo al recargar volvería a perderlo.
+   */
   function lose() {
     if (lost) return
     lost = true
+    saving = false
+    session?.destroy()
+    options.save?.clear()
     sendCheck()
     refresh()
   }
 
-  /** Lo que cuenta el núcleo, al invitado: lo de su asiento, el fin, la carga y lo que corta el duelo; cada mensaje en el registro. */
+  /**
+   * Lo que cuenta el núcleo, al invitado: lo de su asiento, el fin, la carga y lo que corta el duelo; cada evento en el registro. Re-simulando (cancelar, rearmar lo guardado)
+   * va en lotes, como la reposición. La sesión avisa antes de procesar cada evento: el que cierra la re-emisión (una pregunta) entra al lote, que sale al terminar (`onSession`);
+   * si la cierra el `waiting` del asiento del anfitrión, la pregunta del invitado ya va suelta, detrás.
+   */
   function forward(event: AutoEvent) {
     if (!seats) return
     if (event.t === 'fault') {
@@ -590,53 +618,31 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     if (retry && event.t === 'ask') post({ t: 'autoEvent', event: retry })
     const more = fresh(event)
-    const text = post({ t: 'autoEvent', event, ...(more.length > 0 ? { cards: more } : {}) }, event.t === 'stats' ? 'stats' : undefined)
 
-    if (text === null) return lose()
     log.push(event)
-    logBytes += text.length
+    if (session?.getSnapshot().replaying) enqueue(event, more)
+    else post({ t: 'autoEvent', event, ...(more.length > 0 ? { cards: more } : {}) })
   }
 
   /** Re-emite el registro en `autoBatch` (cada evento tal cual, en orden), con las cartas otra vez: quien vuelve puede ser una página nueva. */
   function sendLog() {
-    let batch: AutoEvent[] = []
-    let infos: AutoCardInfo[] = []
-    let size = 0
-    const flush = () => {
-      if (batch.length > 0) post({ t: 'autoBatch', events: batch, ...(infos.length > 0 ? { cards: infos } : {}) })
-      batch = []
-      infos = []
-      size = 0
-    }
-
-    for (const event of log) {
-      const more = fresh(event)
-      const bytes = JSON.stringify(event).length + JSON.stringify(more).length
-
-      if (batch.length > 0 && size + bytes > BATCH_BYTES) flush()
-      batch.push(event)
-      infos.push(...more)
-      size += bytes
-    }
+    for (const event of log) enqueue(event, fresh(event))
     flush()
   }
 
   /** El invitado pide el duelo de nuevo: si se puede jugar y, si hay duelo, cómo empezó, cuántas preguntas suyas ya pasaron y todo lo que se le mandó desde la última tanda. */
   function resend() {
+    // Re-simulando, el registro está a medio armar: se manda entero cuando termina.
+    if (!lost && session?.getSnapshot().replaying) {
+      resendLater = true
+      return sendCheck()
+    }
+    // Lo que todavía no salió se repite entero: dos pedidos seguidos no apilan el registro dos veces.
+    pacer.clear()
     sendCheck()
     sent = new Set()
     if (lost || !session || !init) return
-    // Re-simulando, el registro está a medio armar: se manda entero cuando termina.
-    if (session.getSnapshot().replaying) {
-      resendLater = true
-      return
-    }
     sendInit()
-    // Un registro enorme no se re-emite: el núcleo vuelve a contar todo (y `onReplay` manda el `autoReplay`).
-    if (logBytes > MAX_LOG_BYTES) {
-      repeatLater = request.state === 'agreed'
-      return session.resimulate()
-    }
     const asks = log.filter((event) => event.t === 'ask').length
 
     post({ t: 'autoReplay', skip: Math.max(0, asks - (session.getSnapshot().remoteAsk ? 1 : 0)) })
@@ -668,6 +674,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     session = null
     seats = null
     init = null
+    batch = []
+    batchCards = []
+    batchBytes = 0
   }
 
   /** El `create` que manda la sesión es el duelo que se le cuenta al invitado (`autoInit`): la misma semilla, los mismos decks y el mismo orden. Pasando a manual, el núcleo no recibe más respuestas. */
@@ -687,14 +696,12 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   function onSession() {
     const snap = session?.getSnapshot()
 
+    // Terminó la re-emisión: sale lo que quedó en el lote.
+    if (snap && !snap.replaying) flush()
     if (snap?.status === 'error') lose()
     if (resendLater && snap && !snap.replaying) {
       resendLater = false
       resend()
-    }
-    if (repeatLater && snap && !snap.replaying) {
-      repeatLater = false
-      request.repeat()
     }
     cut()
     if (phase() === 'ended' || phase() === 'lost') request.drop()
@@ -714,7 +721,6 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     restoring = null
     drop()
     lost = false
-    repeatLater = false
     request.reset()
     if (saved?.cut) request.restore(saved.cut.dropped)
     const host: Seat = saved?.seat ?? (room.starter === 0 ? 0 : 1)
@@ -1038,6 +1044,11 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       // La revancha: el anfitrión arma otra sesión al próximo `ordered` y la cuenta con otro `autoInit`.
       if (!next.opening.ordered && before?.opening.ordered) {
         drop()
+        // El anfitrión que perdió el duelo pudo haber recargado sin revisar mi deck: se lo mando de nuevo (aunque recién lo haya hecho al volver).
+        if (lost) {
+          lastHello = -Infinity
+          hello()
+        }
         lost = false
         request.reset()
       }

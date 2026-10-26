@@ -341,6 +341,45 @@ describe('auto-screen-online · la mesa', () => {
     expect(calls.leave).toBe(1)
   })
 
+  it('la sala sigue tras perder el duelo: «Jugar otro duelo» (con el foco) pide la revancha, espera al rival apagado y, cuando la acepta, vuelve a la sala', () => {
+    const { start, link, calls, duels, flush } = setup('guest')
+
+    start()
+    core(() => link.set({ phase: 'lost', problems: { mine: [], theirs: 0, reason: 'lost' } }))
+    const cover = screen.getByRole('alertdialog', { name: 'El duelo se perdió: el anfitrión recargó la página.' })
+    const again = within(cover).getByRole('button', { name: 'Jugar otro duelo' })
+
+    expect(again).toHaveFocus()
+    expect(again).toBeEnabled()
+    fireEvent.click(again)
+    expect(calls.rematch).toBe(1)
+    expect(duels.guest.getSnapshot().rematch.mine).toBe(true)
+    expect(within(cover).getByRole('button', { name: 'Jugar otro duelo' })).toBeDisabled()
+    expect(within(cover).getByRole('status')).toHaveTextContent('Esperando a Ana…')
+    // Ana la acepta: la sala vuelve a definir quién empieza y la portada se va.
+    flush()
+    act(() => duels.host.rematch())
+    flush()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByRole('region', { name: 'Sala' })).toBeInTheDocument()
+  })
+
+  it('perdido el duelo, si el rival la pidió primero «Jugar otro duelo» la acepta; sin rival en la sala, queda apagado', () => {
+    const { start, link, duels, ends, flush } = setup()
+
+    start()
+    core(() => link.set({ phase: 'lost', problems: { mine: [], theirs: 0, reason: 'lost' } }))
+    act(() => duels.guest.rematch())
+    flush()
+    const cover = screen.getByRole('alertdialog', { name: 'El duelo se perdió: el anfitrión recargó la página.' })
+
+    expect(within(cover).getByRole('status')).toHaveTextContent('Beto quiere la revancha.')
+    expect(within(cover).getByRole('button', { name: 'Jugar otro duelo' })).toBeEnabled()
+    act(() => ends.guest.disconnect())
+    flush()
+    expect(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Jugar otro duelo' })).toBeDisabled()
+  })
+
   it('ganar por deck-out: el resultado dice la razón del núcleo, y queda en la barra al mirar la mesa', () => {
     const { start, duels, flush } = setup()
     const session = start()
