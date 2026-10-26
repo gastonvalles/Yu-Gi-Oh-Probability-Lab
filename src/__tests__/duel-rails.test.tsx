@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { FIELD_ZOOM_MAX, classicCell, fieldZoom, promptTop, railsFit } from '../app/duel-rails'
+import { FIELD_ZOOM_MAX, classicCell, fieldZoom, promptAbove, promptTop, railsFit } from '../app/duel-rails'
 import { useHostToasts } from '../app/toast-box'
 import { AppToaster } from '../components/ui/AppToaster'
 
@@ -23,6 +23,18 @@ describe('la pregunta del medio no tapa lo que hay que tocar', () => {
     expect(promptTop(prompt, [box(450, 550), box(300, 420)], 0, 900)).toBe(192)
     expect(promptTop(prompt, [box(450, 550), box(0, 420)], 0, 900)).toBe(558)
     expect(promptTop(prompt, [box(450, 550), box(0, 420), box(500, 900)], 0, 900)).toBeNull()
+  })
+
+  it('en el celular termina arriba de tus monstruos, sea cual sea la ranura; si tapa algo que brilla sólo sube y, sin lugar entre la barra y tus monstruos, va por la ranura de siempre', () => {
+    // Tus monstruos desde 600: la banda de 100 termina en 592, venga de arriba o de abajo.
+    expect(promptAbove(prompt, [], 0, 600)).toBe(492)
+    expect(promptAbove(box(650, 750), [], 0, 600)).toBe(492)
+    // La mano y tu campo (abajo de 600) no la mueven; una carta del rival que brilla, sí: sube por encima.
+    expect(promptAbove(prompt, [box(620, 700), box(700, 844)], 0, 600)).toBe(492)
+    expect(promptAbove(prompt, [box(540, 580)], 0, 600)).toBe(432)
+    // Con la barra hasta 120: una banda de 310 no entra arriba de tus monstruos en 400, ni una de 100 si lo que brilla llega hasta 150.
+    expect(promptAbove(box(0, 310), [], 120, 400)).toBeNull()
+    expect(promptAbove(prompt, [box(150, 580)], 120, 600)).toBeNull()
   })
 })
 

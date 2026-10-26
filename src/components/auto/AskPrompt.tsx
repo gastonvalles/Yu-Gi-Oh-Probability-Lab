@@ -28,7 +28,7 @@ interface AskPromptProps {
   place?: string
   /** Qué hace el efecto, con la frase de la carta tal cual: cuándo (`when`) y lo que hace (`what`, resaltado). La caja se hace más ancha. */
   effect?: { when: string; what: string }
-  /** El atajo a la mesa manual («Seguir en modo manual»), sin caja y a la izquierda, lejos de la principal. */
+  /** El atajo a la mesa manual («Seguir en modo manual»), sin caja y a la izquierda, lejos de la principal. Sólo en escritorio: en el celular está en «Más opciones». */
   manual?: AskChoice
 }
 
@@ -85,8 +85,9 @@ export function AskPrompt({ text, card, yes, no, kicker, place, effect, manual }
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        {/* En el celular no va en la banda (tres acciones no entran en una fila y la banda tiene que caber arriba de tus monstruos): queda en «Más opciones». */}
         {manual ? (
-          <Button variant="tertiary" className="shrink-0" onClick={manual.onSelect}>
+          <Button variant="tertiary" className="shrink-0 max-[1101px]:hidden" onClick={manual.onSelect}>
             {manual.label}
           </Button>
         ) : null}

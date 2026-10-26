@@ -47,7 +47,7 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
-import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptTop, railsFit } from '../../app/duel-rails'
+import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptAbove, promptTop, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink } from '../../app/auto/ask-ui'
 import { playSfx } from '../../app/sfx'
@@ -2120,7 +2120,7 @@ export function PracticeMat({
   }, [hasChain, rails, view])
 
   // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder ni la tira de un visor abierto. Si cae encima, se corre lo justo
-  // (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Se mide al aparecer, cuando cambia lo que brilla o la tira, y con la ventana.
+  // (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
   const promptRef = useRef<HTMLDivElement | null>(null)
   const hasPrompt = Boolean(duel?.prompt)
 
@@ -2141,7 +2141,9 @@ export function PracticeMat({
       // Nunca sobre la barra de arriba (sin laterales es lo primero de la columna, como para la tira) ni fuera de la pantalla.
       const min = Math.max(layer.top, (rails ? null : columnRef.current?.firstElementChild?.getBoundingClientRect().bottom) ?? layer.top)
       const max = Math.min(layer.bottom, window.innerHeight)
-      const top = promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
+      // En el celular termina arriba de tus monstruos (`promptAbove`) y crece sobre el campo del rival: la mano y tu campo quedan a la vista. Sin lugar, va por la ranura de siempre.
+      const floor = isDesktop ? undefined : section.querySelector('[data-drop="mz:0"]')?.getBoundingClientRect().top
+      const top = (floor === undefined ? null : promptAbove(at, glows, min, Math.min(floor, max))) ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top
 
       if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
     }
@@ -2150,15 +2152,20 @@ export function PracticeMat({
       frame = requestAnimationFrame(place)
     }
 
+    // Anclada abajo, si la pregunta cambia de alto (otra pregunta en la misma ranura, una línea más) se vuelve a ubicar.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later)
+
     place()
     later()
+    observer?.observe(box)
     window.addEventListener('resize', later)
 
     return () => {
+      observer?.disconnect()
       window.removeEventListener('resize', later)
       cancelAnimationFrame(frame)
     }
-  }, [hasPrompt, glowSets, stripOpen, state, view, rails])
+  }, [hasPrompt, glowSets, stripOpen, state, view, rails, isDesktop])
 
   // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
   // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.

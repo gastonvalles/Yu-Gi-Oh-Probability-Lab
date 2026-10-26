@@ -86,3 +86,13 @@ export function promptTop(prompt: Box, obstacles: readonly Box[], min: number, m
 
   return slide(true) ?? slide(false)
 }
+
+/**
+ * En el celular la pregunta termina arriba de tus monstruos (`floor`: el borde de arriba de su fila, con `gap`) y crece hacia el campo del rival: tu campo y la mano quedan a la vista. Si tapa algo que
+ * brilla, sólo sube (`promptTop` con `floor` de tope); sin lugar entre `min` y tus monstruos, null (va por la ranura de siempre).
+ */
+export function promptAbove(prompt: Box, obstacles: readonly Box[], min: number, floor: number, gap = 8): number | null {
+  const bottom = floor - gap
+
+  return promptTop({ ...prompt, top: bottom - (prompt.bottom - prompt.top), bottom }, obstacles, min, bottom, gap)
+}
