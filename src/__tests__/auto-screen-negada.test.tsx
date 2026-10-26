@@ -7,31 +7,39 @@ import type { CardRef } from '../app/auto/adapter'
 import { CHAIN_LINK_MS, CHAIN_SOLVE_MS, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
 import { pos } from './support/auto-session-fake'
-import { core, lane, renderAuto } from './support/auto-screen-harness'
+import { core, handCard, lane, renderAuto } from './support/auto-screen-harness'
 
-// La negación («Sin efecto · por CL2» en la pila y sobre la carta; en la píldora del celular, «X le quita el efecto a Y») y varias obligatorias a la vez (se elige cuál va primero).
+// La negación («Sin efecto · por CL2» en la pila y en el nombre de la carta; en la píldora del celular, «X le quita el efecto a Y»; la carta, gris y latiendo) y varias obligatorias a la vez (se elige cuál va primero).
 
-const link = (index: number, card: CardRef): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from: L.MZONE } })
+const link = (index: number, card: CardRef, from: number = L.MZONE): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from } })
 const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep => ({ kind, at: 0, index, ...(by ? { by } : {}) })
+const grayed = () => [...document.querySelectorAll('.grayscale')]
 
 describe('auto-screen · la cadena negada', () => {
-  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: la píldora, la pila y la carta dicen «Sin efecto · por CL2», sin moverla', () => {
+  it('Maxx C (CL1) queda sin efecto por el CL2 del rival: la píldora, la pila y el nombre dicen «Sin efecto · por CL2», la carta se ve gris y latiendo, sin moverla, y se va con el aviso', () => {
     const fake = renderAuto()
     const cell = () => document.querySelector('[data-card-id="card-200-1"]')!.parentElement!
+    const chain = [link(0, { side: 'mine', id: 'card-200-1' }), link(1, { side: 'theirs', id: 'c1' }), step('solving', 1), step('disabled', 0, 2)]
 
-    core(() => fake.set({ chainSteps: [link(0, { side: 'mine', id: 'card-200-1' }), link(1, { side: 'theirs', id: 'c1' }), step('solving', 1), step('disabled', 0, 2)] }))
+    core(() => fake.set({ chainSteps: chain }))
     // Los pasos se muestran de a uno, con su ritmo.
     act(() => vi.advanceTimersByTime(0))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
     const before = cell().getBoundingClientRect()
+    expect(grayed()).toEqual([])
 
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
     expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 2 · Resuelve CL2Carta le quita el efecto a Carta')
-    // Sobre la carta: la insignia tachada y la franja roja con texto blanco; el nombre lo dice.
+    // Sobre la carta: la insignia tachada y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
     expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
-    expect(cell().querySelector('[data-chain-void]')).toHaveTextContent('Sin efecto · por CL2')
-    expect(cell().querySelector('[data-chain-void]')).toHaveClass('bg-danger', 'text-white', 'pointer-events-none')
+    expect(cell().querySelector('[data-chain-link]')).toHaveAttribute('data-chain-void', '2')
+    const art = cell().querySelector('[data-card-id] > .grayscale')
+
+    expect(art).toHaveClass('grayscale', 'motion-safe:animate-fx-void')
+    expect(art).not.toHaveClass('animate-fx-void')
+    expect(grayed()).toEqual([art])
+    expect(cell()).not.toHaveTextContent('Sin efecto')
     expect(screen.getByRole('button', { name: 'Maxx C, eslabón 1 de la cadena. Sin efecto · por CL2' })).toBeInTheDocument()
     expect(cell().getBoundingClientRect()).toEqual(before)
     // La pila: la fila de la carta negada.
@@ -39,15 +47,22 @@ describe('auto-screen · la cadena negada', () => {
     expect(screen.getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })).toBeInTheDocument()
   })
 
-  it('sin `by` (no se sabe quién fue): sólo «Sin efecto», y la marca sin «por»', () => {
+  it('negada desde la mano o en el Cementerio: el arte de esa carta, gris (sin `by`, el nombre dice sólo «Negada»); se va con el aviso', () => {
     const fake = renderAuto()
+    const chain = [link(0, { side: 'mine', id: 'card-100-1' }, L.HAND), link(1, { side: 'mine', id: 'card-400-1' }, L.GRAVE), step('negated', 1), step('negated', 0)]
 
-    core(() => fake.set({ chainSteps: [link(0, { side: 'mine', id: 'card-200-1' }), step('solving', 0), step('disabled', 0)] }))
+    core(() => fake.set({ chainSteps: chain }))
     act(() => vi.advanceTimersByTime(0))
-    act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 1 · Resuelve CL1Carta · Sin efecto')
-    expect(document.querySelector('[data-chain-void]')).toHaveTextContent(/^Sin efecto$/)
+    for (let i = 0; i < 4; i += 1) act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
+    expect(handCard('Ash Blossom, eslabón 1 de la cadena, activada desde la mano. Negada').querySelector('.grayscale')).toHaveClass('motion-safe:animate-fx-void')
+    expect(screen.getByRole('button', { name: 'GY: 1, eslabón 2 de la cadena. Negada' }).querySelector('.grayscale')).toHaveClass('motion-safe:animate-fx-void')
+    expect(grayed()).toHaveLength(2)
+
+    // Termina la cadena: el gris se va con el aviso y la insignia.
+    core(() => fake.set({ chainSteps: [...chain, step('end', -1)] }))
+    for (let i = 0; i < 12; i += 1) act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
+    expect(screen.queryByTestId('chain-notice')).toBeNull()
+    expect(grayed()).toEqual([])
   })
 })
 

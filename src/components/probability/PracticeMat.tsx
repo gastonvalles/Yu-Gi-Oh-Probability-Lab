@@ -92,7 +92,7 @@ import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext,
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, chainLinkLabel, fxVars } from './MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
@@ -1970,7 +1970,7 @@ export function PracticeMat({
         {pile === 'extra' ? <PileStack count={count} /> : null}
         {/* El recorte va en un contenedor aparte: el botón no recorta, así el área que se toca (`before` de `CELL`) puede salirse 4 px de la casilla. */}
         <span className="absolute inset-0 overflow-hidden">
-          {back ? <span key={shown} className={cx(CARD_BACK, swapped && 'animate-pop motion-reduce:animate-none')} /> : shown ? <CardArt key={shown} remoteUrl={artOf(cardOf(shown))} name={cardOf(shown).name} className={cx('block h-full w-full object-cover', swapped && 'animate-pop motion-reduce:animate-none')} /> : null}
+          {back ? <span key={shown} className={cx(CARD_BACK, swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} /> : shown ? <CardArt key={shown} remoteUrl={artOf(cardOf(shown))} name={cardOf(shown).name} className={cx('block h-full w-full object-cover', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} /> : null}
           <PileBadge label={PILE_SHORT[pile]} count={count} />
           {/* La mira vuelve a caer cuando cambia la carta que se ve; su clave no puede ser la de la carta, que es su hermana (React las confundía). */}
           {marked ? <TargetMark key={`mira:${shown}`} /> : null}
@@ -2492,7 +2492,7 @@ export function PracticeMat({
             {/* El grosor del deck, debajo: se afina al robar. */}
             <PileStack count={state.deck.length} />
             {state.deck.length > 0 ? (
-              <span key={shuffleKey} className={cx('absolute inset-0', shuffleKey > 0 && 'animate-riffle-lift motion-reduce:animate-none')}>
+              <span key={shuffleKey} className={cx('absolute inset-0', shuffleKey > 0 && 'animate-riffle-lift motion-reduce:animate-none', deckLink?.voided && VOIDED_ART)}>
                 <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', shuffleKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />
                 <span className={cx(CARD_BACK, '[transform:translate(-1.5px,1.5px)]', shuffleKey > 0 && 'animate-riffle-right motion-reduce:animate-none')} />
                 {/* Cada carta repartida le da un tirón a la de arriba. */}
@@ -2960,7 +2960,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, ta
         onContextMenu={(event) => event.preventDefault()}
       >
         {/* El cambio de brillo (boca abajo se ve atenuada) espera a que la carta, al darse vuelta, esté de canto. */}
-        <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[135ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none')}>
+        <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[135ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)}>
           <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
         </span>
         {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}

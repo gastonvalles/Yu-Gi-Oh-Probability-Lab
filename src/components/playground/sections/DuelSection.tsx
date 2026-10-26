@@ -123,7 +123,7 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
       note={
         <>
           Mientras se ve el aviso de la cadena, cada carta que está en ella lleva su número arriba a la izquierda, montado sobre el borde (no tapa el nombre), en la carta o en la pila donde esté ahora, con el
-          color de sus vidas: violeta claro lo tuyo, ámbar lo del rival (una etiqueta llena; el ámbar de lo que se activa es un aro). No se toca ni mueve nada: el eslabón también va en el nombre de la carta. Negada o sin efecto, la insignia va tachada y una franja roja cruza la carta por el medio («Sin efecto · por CL1» si se sabe quién fue). Archivo: <Tag>probability/MatFx.tsx</Tag>
+          color de sus vidas: violeta claro lo tuyo, ámbar lo del rival (una etiqueta llena; el ámbar de lo que se activa es un aro). No se toca ni mueve nada: el eslabón también va en el nombre de la carta. Negada o sin efecto, la insignia va tachada y la carta se ve gris y latiendo (un pulso por segundo; con movimiento reducido, gris y quieta), sin moverse ni tapar el arte; su nombre suma «Sin efecto · por CL1» si se sabe quién fue. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>VOIDED_ART</Tag>)
         </>
       }
     >

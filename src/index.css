@@ -140,6 +140,8 @@
   --animate-fx-lock: fx-lock 480ms var(--ease-snap) both;
   --animate-fx-ping: fx-ping 750ms var(--ease-out) both;
   --animate-fx-spin: fx-spin 6s linear infinite;
+  /* Una carta negada (`VOIDED_ART`): el pulso de Tailwind a un ciclo por segundo, para que se vea latir en lo que dura el aviso (1,2 s; WCAG 2.3.1 pide menos de 3 destellos por segundo). */
+  --animate-fx-void: pulse 1s ease-in-out infinite;
   /* El destello de una invocación espera (`animation-delay` en línea) a que la carta aterrice: una variable con `var()` en el token se resolvería en la raíz, no en el elemento. Las ondas y las chispas empiezan en `opacity: 1`, así que van sin relleno hacia atrás (`forwards`) y con `opacity-0` de base: no se ven durante la espera. */
   --animate-fx-flash: fx-flash 560ms var(--ease-out) both;
   --animate-fx-shock: fx-shock 720ms var(--ease-snap) forwards;
