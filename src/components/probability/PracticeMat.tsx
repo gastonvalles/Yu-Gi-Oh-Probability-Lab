@@ -440,10 +440,12 @@ const AUTOPLAY_MS = 1400
 /** Cuánto dura una marca de objetivo (Target) sobre una carta: pasado el plazo se quita sola. */
 const TARGET_MS = 5000
 /**
- * El alto que se le deja como mínimo a la tira de los visores de pilas (`pileStrip`): la fila del título (~4.2 rem), un renglón de cartas con su aire (~9.3 rem) y el pie de «Elegir varias»
- * (~3.8 rem). Con menos lugar entre la barra de arriba y la fila de las Zonas Extra, la tira pisa la barra antes que mostrar menos de un renglón.
+ * El alto que se le deja como mínimo a la ventana de los visores de pilas (`pileStrip`): la fila del título (~4.2 rem), dos renglones de cartas de 5,25 rem con su aire (~9.4 rem cada uno), el asomo del
+ * tercero (~1.5 rem) y el pie de «Elegir varias» (~3.8 rem). Con menos lugar entre la barra de arriba y la fila de las Zonas Extra, pisa la barra (nunca sale de la columna).
  */
-const STRIP_MIN_REM = 17.5
+const STRIP_MIN_REM = 28
+/** El ancho máximo de la ventana de los visores: unas nueve cartas por renglón. */
+const STRIP_MAX_REM = 56
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
@@ -2013,19 +2015,18 @@ export function PracticeMat({
   // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
   const choosing = picking !== null || counterMode !== null || pickingText !== null
 
-  // Los visores de las pilas en la mesa de un duelo de escritorio (salvo con el chat y el detalle, desde 1440 px: ahí va en la columna del chat) son una tira horizontal sobre la fila de las Zonas
-  // Extra, del ancho del campo, que no llega a tu mano (Gastón, 2026-10-25: «en el medio de la pantalla o sobre las extra monster zone para no tapar la mano y en horizontal»). Tapa el campo del
-  // rival y la fila del medio (las fases, el reloj); se esconde mientras se elige en el campo (una casilla, cartas, a quién atacar), que podría quedar debajo, salvo en el visor que elige.
-  // Con los pasos y combos a la derecha («Jugar solo automático»), el visor va en su columna, como en la práctica.
-  const pileStrip = isDesktop && isDuel && !stepsPanel && !(duel?.aside && detail)
+  // Los visores de las pilas en escritorio, en todas las mesas (la práctica, el duelo, «Jugar solo» automático y el duelo automático), son una ventana ancha que flota sobre el centro de la mesa, sin velo, y
+  // termina en la fila de las Zonas Extra: no llega a tus zonas ni a tu mano, y las columnas de los costados (pasos, chat, detalle) quedan a la vista (Gastón, 2026-10-25: «debe ser un modal nuevo como
+  // la referencia»). Tapa el campo del rival y la fila del medio (las fases, el reloj); se esconde mientras se elige en el campo (una casilla, cartas, a quién atacar), salvo en el visor que elige.
+  const pileStrip = isDesktop
   const stripOpen = pileStrip && (viewer !== null || rivalViewing || Boolean(duel?.auto?.viewer))
   const stripHidden = pileStrip && (attackAsk !== null || (choosing && !duel?.auto?.viewer))
   const slotRef = useRef<HTMLDivElement | null>(null)
 
-  // Dónde va la tira: se mide en pantalla (la vista 3D corre y agranda el campo) al abrirse y cuando cambian la ventana, el campo o el scroll de la columna, un cuadro después (primero se agranda el
-  // campo: ver `--field-zoom`). De ancho, las casillas, del Extra al Deck (la caja del campo es más ancha que su grilla y, agrandada, se sale de la columna) y, con laterales, sólo la columna del
-  // medio: el campo agrandado se mete en ellos, la tira no (las vidas, los botones, los avisos). De alto, hasta la barra de arriba (sin laterales es lo primero de la columna; con laterales va a los
-  // costados): la pisa sólo si no le queda lugar para un renglón de cartas (`STRIP_MIN_REM`). El lugar va en variables de la caja, sin otro dibujo.
+  // Dónde va la ventana: se mide en pantalla (la vista 3D corre y agranda el campo) al abrirse y cuando cambian la ventana, el campo o el scroll de la columna, un cuadro después (primero se agranda el
+  // campo: ver `--field-zoom`). De ancho, hasta `STRIP_MAX_REM`, centrada en el campo y dentro de la columna de la mesa (con laterales, sólo la del medio: el campo agrandado se mete en ellos, la
+  // ventana no). De alto, hasta la barra de arriba (sin laterales es lo primero de la columna; con laterales va a los costados): la pisa sólo si no le queda lugar para dos renglones (`STRIP_MIN_REM`).
+  // El lugar va en variables de la caja, sin otro dibujo.
   useLayoutEffect(() => {
     const slot = slotRef.current
     const section = sectionRef.current
@@ -2047,16 +2048,23 @@ export function PracticeMat({
       const style = getComputedStyle(column)
       const tracks = style.gridTemplateColumns.split(' ').map(parseFloat)
       const middle = rails && tracks.length === 3 ? area.left + parseFloat(style.paddingLeft) + tracks[0]! + (parseFloat(style.columnGap) || 0) : null
-      const left = middle === null ? first.left : Math.max(first.left, middle)
-      const right = middle === null ? last.right : Math.min(last.right, middle + tracks[1]!)
-      const bar = rails ? null : column.firstElementChild?.getBoundingClientRect().bottom
+      const from = middle ?? area.left + parseFloat(style.paddingLeft)
+      const to = middle === null ? area.right - parseFloat(style.paddingRight) : middle + tracks[1]!
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      const top = Math.min(Math.max(area.top, bar ?? area.top) + 8, row.bottom - STRIP_MIN_REM * rem)
+      const width = Math.min(STRIP_MAX_REM * rem, to - from)
+      const left = Math.min(Math.max((first.left + last.right) / 2 - width / 2, from), to - width)
+      const right = left + width
+      const bar = rails ? null : column.firstElementChild?.getBoundingClientRect().bottom
+      const top = Math.max(area.top + 8, Math.min(Math.max(area.top, bar ?? area.top) + 8, row.bottom - STRIP_MIN_REM * rem))
 
       slot.style.setProperty('--strip-top', `${Math.round(top - box.top)}px`)
       slot.style.setProperty('--strip-left', `${Math.round(left - box.left)}px`)
       slot.style.setProperty('--strip-right', `${Math.round(box.right - right)}px`)
-      slot.style.setProperty('--strip-bottom', `${Math.round(box.bottom - row.bottom)}px`)
+      // Sin el campo del rival arriba (la práctica) no hay lugar sobre las Zonas Extra: baja lo que le falte para dos renglones, sin llegar a tu mano.
+      const hand = section.querySelector('[data-drop="hand"]')?.getBoundingClientRect()
+      const bottom = isDuel ? row.bottom : Math.max(row.bottom, Math.min(top + STRIP_MIN_REM * rem, (hand?.top ?? box.bottom) - 8))
+
+      slot.style.setProperty('--strip-bottom', `${Math.round(box.bottom - bottom)}px`)
     }
     const later = () => {
       cancelAnimationFrame(frame)
@@ -2074,7 +2082,7 @@ export function PracticeMat({
       column.removeEventListener('scroll', later)
       cancelAnimationFrame(frame)
     }
-  }, [stripOpen, fieldNode, view, rails])
+  }, [stripOpen, fieldNode, view, rails, isDuel])
 
   // El aviso de la cadena (`duel.chain`), debajo de la barra y del lugar de su aviso (sin laterales la barra es lo primero de la columna; con laterales, arriba del campo).
   const chainRef = useRef<HTMLDivElement | null>(null)
@@ -2623,21 +2631,16 @@ export function PracticeMat({
       />
 
       {/*
-        El lugar de los visores de las pilas en escritorio (el de la mesa y, en un duelo, el del rival): no tapan el detalle de la carta ni oscurecen nada, y el campo sigue vivo. En la práctica van en la
-        columna de los pasos y combos y, en un duelo con el chat y el detalle (desde 1440 px), en la del chat, así el detalle fijo de la izquierda sigue a la vista y muestra la carta que se toca o se apunta
-        en el visor (Gastón, 2026-10-24: «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo acceder a la info»). En los demás duelos, la tira de `pileStrip`: la caja va de la barra
-        de arriba a la fila de las Zonas Extra y del ancho de las casillas (lo mide el efecto de la tira). Ocupan la celda de la grilla sin cambiarla (`absolute`) y la caja no ataja toques: sólo el panel. En el
-        celular el visor es la hoja de abajo (va por portal). Las líneas van con su principio y su fin (`col-[3/4]`): en algo `absolute`, un fin `auto` (o una línea que la grilla no tiene) es el borde de
-        la grilla y la caja se estiraría sobre la mesa.
+        El lugar de los visores de las pilas en escritorio (el de la mesa y, en un duelo, el del rival): la ventana de `pileStrip`, de la barra de arriba a la fila de las Zonas Extra (lo mide su efecto). No
+        tapan el detalle de la carta ni las columnas de los costados ni oscurecen nada, y el campo sigue vivo (Gastón, 2026-10-24: «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo
+        acceder a la info»). La caja va `absolute` (no cambia la grilla) y no ataja toques: sólo el panel. En el celular el visor es la hoja de abajo (va por portal).
       */}
       <div
         ref={slotRef}
         data-pile-slot=""
         className={cx(
           'pointer-events-none absolute z-[115] grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]',
-          pileStrip
-            ? 'top-[var(--strip-top,0.5rem)] right-[var(--strip-right,0px)] bottom-[var(--strip-bottom,50%)] left-[var(--strip-left,0px)]'
-            : cx('row-[1/3] inset-2', stepsPanel ? cx('min-[1101px]:col-[2/3]', Boolean(detail) && 'min-[1440px]:col-[3/4]') : 'col-[3/4]'),
+          'top-[var(--strip-top,0.5rem)] right-[var(--strip-right,0px)] bottom-[var(--strip-bottom,50%)] left-[var(--strip-left,0px)]',
         )}
       >
         {/* Un solo visor, siempre montado (así sale al cerrarse): cada vez que se abre arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). La pausa lo esconde sin cerrarlo. */}

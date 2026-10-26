@@ -459,7 +459,7 @@ interface PileViewerProps {
 }
 
 /**
- * El visor como tira (lo pone la mesa del duelo en escritorio, para el suyo y el del rival: `PracticeMat`): ancha y apoyada abajo en la caja que le dan, con las cartas en renglones que se
+ * El visor como ventana (lo pone toda mesa en escritorio, para el suyo y el del rival: `PracticeMat`): ancha y apoyada abajo en la caja que le dan, con las cartas en renglones que se
  * deslizan de arriba abajo (Gastón, 2026-10-25: «2 o 3 con scroll vertical»; hasta tres y un asomo del siguiente, menos si no hay alto, y nunca menos de uno) y el buscador en la fila del título.
  */
 export const PileStripContext = createContext(false)
@@ -472,7 +472,7 @@ export const PileStripContext = createContext(false)
  * Es uno solo para todas las pilas y queda montado: al cerrarse sale (la inversa de su entrada) y cada vez que se abre arranca de cero.
  *
  * **No tapa el campo ni el detalle** (Gastón, 2026-10-24: «los modales de deck, extra, gy y banish tapan el campo pero no deberían hacerlo» y «el detalle de la carta se ve opacado cuando estoy en un modal y no puedo
- * acceder a la info»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le da quien lo monta (una caja `grid` posicionada: la columna de la derecha o, como tira, la fila de las Zonas Extra, ver `PracticeMat`)
+ * acceder a la info»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le da quien lo monta (una caja `grid` posicionada: la ventana que flota sobre la mesa hasta la fila de las Zonas Extra, ver `PracticeMat`)
  * y el campo sigue vivo: se tocan sus cartas y sus casillas con el visor abierto, y la carta que se toca o se apunta en el visor se lee en el detalle (`onPeek`, `onHover`).
  * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera;
  * con su asa se baja sin cerrarse, para ver la mano (`SheetHandle`).
@@ -669,14 +669,14 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
 
   const content = (
     <>
-      {/* En la tira, lo que se desliza de arriba abajo: hasta tres renglones y un asomo del cuarto (si hay más); con menos alto, lo que entre en su caja (la achica `max-h-full`), con un poco menos
+      {/* En la tira, lo que se desliza de arriba abajo: hasta tres renglones (si hay más); con menos alto, lo que entre en su caja (la achica `max-h-full`), con un poco menos
           de aire arriba para que asome el renglón siguiente. */}
-      <div className={cx('grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain', strip ? 'max-h-[calc(3*(4.5rem*614/421+1.25rem)+1rem+0.5rem+2rem)] grid-cols-[minmax(0,1fr)] px-3 pb-3 pt-2' : 'p-3')}>
+      <div className={cx('grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain', strip ? 'max-h-[calc(3*(5.25rem*614/421+1.25rem)+1rem+0.5rem+0.75rem)] grid-cols-[minmax(0,1fr)] px-3 pb-3 pt-2' : 'p-3')}>
         {strip ? null : search}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
         {/* En el celular, cinco por fila (como el campo); en la hoja de una tableta, las que entren de 5.25 rem; en el panel de escritorio, más angosto, las de 4.5 rem (tres en la columna de la derecha). En la tira,
-            renglones de cartas de 4.5 rem: con pocas, uno solo y la tira mide lo justo (su ancho es el de las cartas en fila); con más, bajan al renglón siguiente. */}
+            renglones de cartas de 5.25 rem: con pocas, uno solo y la tira mide lo justo (su ancho es el de las cartas en fila); con más, bajan al renglón siguiente. */}
         <ul
           ref={gridRef}
           className={cx('m-0 list-none p-0', strip ? 'flex flex-wrap gap-2' : desktop ? 'grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2' : 'grid grid-cols-5 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2')}
@@ -689,7 +689,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, onPick, 
             const order = choosing ? picked.indexOf(card.id) : -1
 
             return (
-              <li key={card.id} className={strip ? 'w-18 flex-none' : undefined}>
+              <li key={card.id} className={strip ? 'w-21 flex-none' : undefined}>
                 <button
                   type="button"
                   aria-pressed={choosing ? order >= 0 : undefined}

@@ -289,7 +289,7 @@ describe('el deck: tocar es buscar, arrastrar es robar y mantenerlo apretado abr
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
   })
 
-  it('con el detalle fijo (desde 1440 px) el visor va en la columna de la derecha y deja el detalle a la vista; tocar o apuntar una carta del visor la muestra ahí', () => {
+  it('con el detalle fijo (desde 1440 px) el visor es la ventana que flota sobre la mesa y deja el detalle a la vista; tocar o apuntar una carta del visor la muestra ahí', () => {
     const onPeek = vi.fn()
     const onHover = vi.fn()
 
@@ -297,9 +297,9 @@ describe('el deck: tocar es buscar, arrastrar es robar y mantenerlo apretado abr
     tap(deck())
     const slot = document.querySelector('[data-pile-slot]')!
 
-    // La columna de los pasos (la tercera, con el detalle a la izquierda): nunca la del detalle.
-    expect(slot.className).toContain('min-[1440px]:col-[3/4]')
-    expect(slot.className).not.toContain('col-[1/2]')
+    // La ventana que mide la mesa (no una columna): ni la del detalle ni la de los pasos.
+    expect(slot.className).toContain('top-[var(--strip-top,0.5rem)]')
+    expect(slot.className).not.toContain('col-[')
 
     const nibiru = within(screen.getByRole('dialog', { name: 'Main · 4' })).getByRole('button', { name: 'Nibiru' })
 
