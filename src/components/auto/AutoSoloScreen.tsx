@@ -175,8 +175,10 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
     return () => window.clearTimeout(timer)
   }, [told])
 
+  // El núcleo se cayó o se trabó a mitad del duelo: además de reiniciar, volver a antes de tu última jugada (la sesión arma otro núcleo).
+  const recoverable = (snap.fault?.kind === 'crash' || snap.fault?.kind === 'retry') && asks.undoable
   const cover = snap.fault ? (
-    <FaultCover fault={snap.fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={() => session.restart()} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+    <FaultCover fault={snap.fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={() => session.restart()} {...(recoverable ? { onUndo: () => session.undo() } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
   ) : snap.status === 'ended' && snap.overlay.end ? (
     <EndCover end={snap.overlay.end} lp={snap.overlay.lp} rival={rivalName} onAgain={() => session.restart()} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
   ) : snap.status === 'loading' ? (

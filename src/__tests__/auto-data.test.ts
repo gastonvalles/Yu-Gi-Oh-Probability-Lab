@@ -1,4 +1,4 @@
-import { cardData, createDataLoader, DataUnavailableError, httpSource, preloadedReaders, type CardRow, type DataSource } from '../app/auto/auto-data'
+import { cardData, createDataLoader, DATA_UNAVAILABLE, DataUnavailableError, httpSource, preloadedReaders, type CardRow, type DataSource } from '../app/auto/auto-data'
 
 const row = (id: number, type: number, extra: Partial<CardRow> = {}): CardRow => ({ id, alias: 0, setcode: '0', type, atk: 1000, def: 1000, level: 4, race: '1', attribute: 1, name: `card ${id}`, ...extra })
 const EFFECT = 0x21
@@ -112,15 +112,35 @@ describe('los datos de un duelo automático', () => {
     expect(data.decks[0]).toEqual({ main: [100, 500, 601], extra: [], missing: [], noRules: [] })
   })
 
+  it('un pedido que falló no queda guardado: el próximo intento (reintentar) lo vuelve a pedir', async () => {
+    const { source, calls } = fakeSource()
+    // Falla primero el manifiesto, después las cartas, después un script; la cuarta vez anda.
+    const broken = ['manifest', 'cards', 'script']
+    const fails = (what: string) => broken[0] === what && broken.shift() !== undefined
+    const flaky: DataSource = {
+      manifest: async () => (fails('manifest') ? Promise.reject(new TypeError('Failed to fetch')) : source.manifest()),
+      cards: async (codes) => (fails('cards') ? Promise.reject(new TypeError('Failed to fetch')) : source.cards(codes)),
+      script: async (name) => (fails('script') ? Promise.reject(new TypeError('Failed to fetch')) : source.script(name)),
+    }
+    const loader = createDataLoader(flaky, null)
+
+    for (let i = 0; i < 3; i += 1) await expect(loader.load([deck])).rejects.toThrow('Failed to fetch')
+    const data = await loader.load([deck])
+
+    expect(data.decks[0]).toEqual({ main: [100, 100, 100, 300, 400, 400], extra: [200], missing: [999], noRules: [300] })
+    expect(Object.keys(data.scripts).sort()).toEqual(['c100.lua', 'c200.lua', 'constant.lua', 'proc_a.lua', 'proc_b.lua', 'utility.lua'])
+    expect(calls.cards).toHaveLength(1)
+  })
+
   it('lee las filas del .cdb como el núcleo: escalas, flechas de Link y setcodes de 4 × u16', () => {
     expect(cardData(row(1, 0x1000021, { level: 4 | (3 << 16) | (5 << 24), setcode: String((0x10an << 16n) | 0x2bn) }))).toMatchObject({ level: 4, lscale: 5, rscale: 3, setcodes: [0x2b, 0x10a] })
     expect(cardData(row(2, 0x4000021, { def: 0b101, race: '-1' }))).toMatchObject({ defense: 0, link_marker: 5, race: 2n ** 64n - 1n })
   })
 
-  it('por HTTP: un 404 es «no existe»; lo que el servidor explica en { error } llega tal cual, y otro fallo dice dónde', async () => {
+  it('por HTTP: un 404 es «no existe»; el código que el servidor manda en { error } llega tal cual, y otro fallo dice dónde', async () => {
     const responses: Record<string, () => Response> = {
       '/d/script/c1.lua': () => new Response('not found', { status: 404 }),
-      '/d/manifest': () => Response.json({ error: 'Los datos del duelo automático no están disponibles ahora' }, { status: 503 }),
+      '/d/manifest': () => Response.json({ error: DATA_UNAVAILABLE }, { status: 503 }),
       '/d/cards?codes=1': () => new Response('<html>', { status: 502 }),
     }
 
@@ -130,7 +150,7 @@ describe('los datos de un duelo automático', () => {
 
     await expect(source.script('c1.lua')).resolves.toBeNull()
     expect(failure).toBeInstanceOf(DataUnavailableError)
-    expect((failure as Error).message).toBe('Los datos del duelo automático no están disponibles ahora')
+    expect((failure as Error).message).toBe(DATA_UNAVAILABLE)
     await expect(source.cards([1])).rejects.toThrow('auto-data: 502 on /cards?codes=1')
     vi.unstubAllGlobals()
   })

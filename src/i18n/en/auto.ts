@@ -183,6 +183,12 @@ export const auto: Translated<typeof es> = {
   'auto.fault.setup': "The duel couldn't be created",
   'auto.fault.crash': 'The rules engine crashed',
   'auto.fault.retry': 'Try again',
+  'auto.fault.setupText': 'It may be your connection: check it and try again.',
+  'auto.fault.unavailable': "The automatic duel isn't available right now: try again later.",
+  'auto.fault.crashText': 'A rules engine error stopped the duel.',
+  'auto.fault.stuck': 'The duel got stuck',
+  'auto.fault.stuckText': "The rules engine rejected three answers in a row and can't go on from here.",
+  'auto.fault.undo': 'Go back to before your last play',
 
   // The end (the title and life points use `duel.result.*`).
   'auto.end.again': 'Play again',

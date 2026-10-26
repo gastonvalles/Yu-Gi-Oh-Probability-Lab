@@ -107,9 +107,38 @@ describe('auto-screen · los estados', () => {
     core(() => fake.fault({ kind: 'crash', message: 'worker error', cards: [] }))
     const cover = screen.getByRole('alertdialog', { name: 'El núcleo se cayó' })
 
-    expect(cover).toHaveTextContent('worker error')
+    // El detalle técnico no va a la vista: un texto por clase de falla. Sin una jugada tuya no hay a dónde volver.
+    expect(cover).toHaveTextContent('Un error del núcleo cortó el duelo.')
+    expect(cover).not.toHaveTextContent('worker error')
+    expect(within(cover).queryByRole('button', { name: 'Volver a antes de tu última jugada' })).toBeNull()
     fireEvent.click(within(cover).getByRole('button', { name: 'Reintentar' }))
     expect(fake.restarts).toBe(1)
+  })
+
+  it('trabado a mitad del duelo: su título, y volver a antes de tu última jugada es la principal', () => {
+    const fake = renderAuto()
+
+    core(() => fake.set({ answers: [{ seat: 0, answer: { type: 'select_idlecmd', action: 7, index: null } }] }))
+    core(() => fake.fault({ kind: 'retry', message: 'the core rejected 3 answers in a row: RETRY', cards: [] }))
+    const cover = screen.getByRole('alertdialog', { name: 'El duelo se trabó' })
+
+    expect(cover).toHaveTextContent('El núcleo rechazó tres respuestas seguidas')
+    expect(within(cover).getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
+    fireEvent.click(within(cover).getByRole('button', { name: 'Volver a antes de tu última jugada' }))
+    expect(fake.undos).toBe(1)
+    expect(fake.restarts).toBe(0)
+  })
+
+  it('sin datos: el código del servidor se dice en el idioma de la app; otro fallo de la bajada, una pista sin el detalle', () => {
+    const fake = renderAuto()
+
+    core(() => fake.fault({ kind: 'setup', message: 'unavailable', cards: [] }))
+    expect(screen.getByRole('alertdialog', { name: 'No se pudo crear el duelo' })).toHaveTextContent('El duelo automático no está disponible ahora: probá más tarde.')
+    core(() => fake.fault({ kind: 'setup', message: 'could not load the duel data: Failed to fetch', cards: [] }))
+    const cover = screen.getByRole('alertdialog', { name: 'No se pudo crear el duelo' })
+
+    expect(cover).toHaveTextContent('Puede ser la conexión: revisala y reintentá.')
+    expect(cover).not.toHaveTextContent('Failed to fetch')
   })
 
   it('el fin: quién ganó y por qué (los códigos del núcleo: 1 las vidas, 2 sin robar), y «Jugar otra vez»', () => {

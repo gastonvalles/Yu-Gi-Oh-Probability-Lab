@@ -189,6 +189,12 @@ export const auto = {
   'auto.fault.setup': 'No se pudo crear el duelo',
   'auto.fault.crash': 'El núcleo se cayó',
   'auto.fault.retry': 'Reintentar',
+  'auto.fault.setupText': 'Puede ser la conexión: revisala y reintentá.',
+  'auto.fault.unavailable': 'El duelo automático no está disponible ahora: probá más tarde.',
+  'auto.fault.crashText': 'Un error del núcleo cortó el duelo.',
+  'auto.fault.stuck': 'El duelo se trabó',
+  'auto.fault.stuckText': 'El núcleo rechazó tres respuestas seguidas y no puede seguir desde acá.',
+  'auto.fault.undo': 'Volver a antes de tu última jugada',
 
   // El fin (el título y las vidas, con los de `duel.result.*`).
   'auto.end.again': 'Jugar otra vez',
