@@ -129,12 +129,12 @@ const ASKS: CoreAsk[] = [
   { type: 'select_unselect_card', player: 0, can_finish: true, can_cancel: false, min: 1, max: 3, select_cards: [pos(100, L.HAND, 0, 10), pos(400, L.GRAVE, 0, 5)], unselect_cards: [pos(200, L.MZONE, 0, 1)] },
   { type: 'announce_race', player: 0, count: 2, available: String((1n << 40n) | 4n | 1n) },
   { type: 'announce_attrib', player: 0, count: 1, available: 0b0110010 },
-  { type: 'announce_card', player: 0, opcodes: ['46986414', '1073741840'] },
+  { type: 'announce_card', player: 0, opcodes: ['46986414', '1073741840'], cards: [46986414, 89631139] },
   { type: 'announce_number', player: 0, options: ['1', '2', '4'] },
   { type: 'rock_paper_scissors', player: 0 },
 ]
 
-const NO_UI = ['select_counter', 'select_disfield', 'sort_chain', 'announce_card', 'rock_paper_scissors']
+const NO_UI = ['rock_paper_scissors']
 
 describe('namesList: los nombres de una línea del registro', () => {
   it('junta las copias de la misma carta con cuántas son y respeta el orden en que aparecen', () => {
@@ -180,7 +180,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
 
     for (const ask of ASKS) {
       const random = seeded(ask.type.length)
-      const context = ctx(MESA, { announceCard: () => 46986414 })
+      const context = ctx(MESA)
 
       for (let run = 0; run < 60; run += 1) {
         const played = playAsk(open(ask, context), random)
@@ -533,8 +533,6 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
 
     expect(askView(open({ type: 'select_place', player: 0, count: 1, field_mask: ~(1 << 2) >>> 0 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_place', places: [{ player: 0, location: L.MZONE, sequence: 2 }] }, why: 'forced' })
     expect(askView(open(ASKS[7]!, ctx(MESA, { prefs: { chainMode: 'ask', placeMode: 'auto' } }))).auto).toEqual({ answer: { type: 'select_place', places: [{ player: 0, location: L.MZONE, sequence: 0 }] }, why: 'setting' })
-    // Sólo casillas del rival (la mesa todavía no las enciende): la primera, sola.
-    expect(askView(open({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 16) | (1 << 17)) >>> 0 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 0 }] }, why: 'none' })
   })
 
   it('ordenar: se tocan en el orden deseado, «Ordenar así» con todas y «Dejar como está» siempre', () => {
@@ -548,17 +546,12 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(step(state, { kind: 'cancel' }).answer).toEqual({ type: 'sort_card', order: null })
   })
 
-  it('sin pantalla todavía: contadores, casillas del rival, ordenar la cadena, anunciar una carta y piedra, papel o tijera se contestan solos con una respuesta legal (anunciar, sólo con catálogo)', () => {
+  it('sin pantalla todavía: piedra, papel o tijera se contesta solo con una respuesta legal', () => {
     const autos = Object.fromEntries(ASKS.filter((ask) => NO_UI.includes(ask.type)).map((ask) => [ask.type, askView(open(ask, ctx(MESA))).auto]))
 
     expect(autos).toEqual({
-      select_counter: { answer: { type: 'select_counter', counters: [1, 2] }, why: 'none' },
-      select_disfield: { answer: { type: 'select_disfield', places: [{ player: 0, location: L.MZONE, sequence: 0 }] }, why: 'none' },
-      sort_chain: { answer: { type: 'sort_chain', order: null }, why: 'none' },
-      announce_card: { answer: null, why: 'none' },
       rock_paper_scissors: { answer: { type: 'rock_paper_scissors', value: 1 }, why: 'none' },
     })
-    expect(askView(open(ASKS[18]!, ctx(MESA, { announceCard: () => 46986414 }))).auto).toEqual({ answer: { type: 'announce_card', code: 46986414 }, why: 'none' })
   })
 })
 
@@ -734,5 +727,102 @@ describe('ask-ui: el título de una elección de cartas dice para qué', () => {
     expect(pickTitle(pick({ min: 1, max: 1 }), '506')).toBe('Choose 1 card to add to your hand')
     expect(pickTitle(pick(), '511')).toBe('Choose 2 cards as Fusion Material · 1/2')
     expect(pickTitle(pick(), '575')).toBe('Choose 2 cards · 1/2')
+  })
+})
+
+describe('ask-ui: declarar una carta (`announce_card`)', () => {
+  const announce = (cards?: number[]): CoreAsk => ({ type: 'announce_card', player: 0, opcodes: ['46986414', '1073741840'], ...(cards ? { cards } : {}) })
+
+  it('es una elección de una carta de una lista aparte, por código: el toque la declara', () => {
+    const state = open(announce([46986414, 89631139]), ctx(MESA))
+    const pick = askView(state).cardPick!
+
+    expect(askView(state).auto).toBeNull()
+    expect(pick).toMatchObject({ type: 'announce_card', surface: 'list', min: 1, max: 1, eligible: [0, 1], done: false })
+    expect(pick.cards).toEqual([{ ref: null, code: 46986414, place: 'none' }, { ref: null, code: 89631139, place: 'none' }])
+    expect(askView(state).cancelable).toBe(false)
+    expect(step(state, { kind: 'pick', index: 1 }).answer).toEqual({ type: 'announce_card', code: 89631139 })
+    expect(step(state, { kind: 'pick', index: 2 }).answer).toBeUndefined()
+    expect(pickTitle(pick)).toBe('Declará el nombre de una carta')
+  })
+
+  it('sin cartas que ofrecer (un anfitrión de antes, o ninguna cumple el filtro), no hay respuesta segura: la línea avisa', () => {
+    expect(askView(open(announce(), ctx(MESA))).auto).toEqual({ answer: null, why: 'none' })
+    expect(askView(open(announce([]), ctx(MESA))).auto).toEqual({ answer: null, why: 'none' })
+  })
+
+  it('las que se declaran van por nombre (el orden del anfitrión es por código)', () => {
+    const names: Record<number, string> = { 1: 'Zeta', 2: 'Alfa', 3: 'Mima' }
+    const cards = [1, 2, 3].map((code): AskCard => ({ ref: null, code, place: 'none' }))
+
+    expect(listOrder(cards, (card) => names[card.code]!)).toEqual([1, 2, 0])
+  })
+})
+
+describe('ask-ui: las preguntas que antes se contestaban solas (contadores, casillas del rival, ordenar la cadena)', () => {
+  const byType = <T extends CoreAsk['type']>(type: T) => ASKS.find((ask) => ask.type === type) as Extract<CoreAsk, { type: T }>
+
+  it('sacar contadores: de a uno por carta, sin pasar los que tiene cada una ni el total; «Listo» con el total justo', () => {
+    const state = open(byType('select_counter'), ctx(MESA))
+    const view = askView(state)
+
+    expect(view.auto).toBeNull()
+    expect(view.counters).toMatchObject({ now: [0, 0], need: 3, done: false })
+    expect(view.counters?.cards.map((card) => card.value)).toEqual([1, 5])
+    expect(view.respond).toEqual([mine('card-200-1'), mine('card-960-1')])
+    // La primera tiene uno solo: el segundo toque no hace nada.
+    const one = tap(state, { kind: 'pick', index: 0 })
+
+    expect(step(one.state, { kind: 'pick', index: 0 })).toEqual({ state: one.state })
+    expect(step(one.state, { kind: 'done' })).toEqual({ state: one.state })
+    const full = tap(one.state, { kind: 'pick', index: 1 }, { kind: 'pick', index: 1 })
+
+    expect(askView(full.state).counters).toMatchObject({ now: [1, 2], done: true })
+    expect(step(full.state, { kind: 'pick', index: 1 })).toEqual({ state: full.state })
+    expect(step(full.state, { kind: 'done' }).answer).toEqual({ type: 'select_counter', counters: [1, 2] })
+    expect(tap(state, { kind: 'pick', index: 1 }, { kind: 'pick', index: 1 }, { kind: 'pick', index: 1 }, { kind: 'done' }).answer).toEqual({ type: 'select_counter', counters: [0, 3] })
+    expect(step(state, { kind: 'cancel' })).toEqual({ state })
+  })
+
+  it('sacar contadores con una sola manera (una carta con contadores, o todos los que hay) se contesta sola', () => {
+    const ask = byType('select_counter')
+
+    expect(askView(open({ ...ask, cards: [{ ...ask.cards[0]!, count: 0 }, ask.cards[1]!] }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_counter', counters: [0, 3] }, why: 'forced' })
+    expect(askView(open({ ...ask, count: 6 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_counter', counters: [1, 5] }, why: 'forced' })
+  })
+
+  it('inutilizar casillas: las tuyas y las del rival se encienden y se tocan (también con «Casilla: la primera libre»); con una sola manera, sola', () => {
+    // Libres: mi mz 0, la mz 1 y la st 2 del rival.
+    const ask: CoreAsk = { type: 'select_disfield', player: 0, count: 1, field_mask: ~(1 | (1 << 17) | (1 << 26)) >>> 0 }
+    const state = open(ask, ctx(MESA, { prefs: { chainMode: 'ask', placeMode: 'auto' } }))
+
+    expect(askView(state).zonePick?.targets).toEqual([
+      { side: 'mine', zone: 'mz', index: 0 },
+      { side: 'theirs', zone: 'mz', index: 1 },
+      { side: 'theirs', zone: 'st', index: 2 },
+    ])
+    expect(step(state, { kind: 'zone', side: 'theirs', zone: 'st', index: 2 }).answer).toEqual({ type: 'select_disfield', places: [{ player: 1, location: L.SZONE, sequence: 2 }] })
+    expect(step(state, { kind: 'zone', side: 'theirs', zone: 'mz', index: 0 })).toEqual({ state })
+    expect(askView(open({ ...ask, count: 3 }, ctx(MESA))).auto?.why).toBe('forced')
+  })
+
+  it('una casilla del rival (un Kaiju que va a su campo): se ofrecen las suyas y tocar una contesta con su lado', () => {
+    const state = open({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 16) | (1 << 17)) >>> 0 }, ctx(MESA))
+
+    expect(askView(state).auto).toBeNull()
+    expect(askView(state).zonePick?.targets).toEqual([
+      { side: 'theirs', zone: 'mz', index: 0 },
+      { side: 'theirs', zone: 'mz', index: 1 },
+    ])
+    expect(step(state, { kind: 'zone', side: 'theirs', zone: 'mz', index: 1 }).answer).toEqual({ type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 1 }] })
+  })
+
+  it('ordenar la cadena: como ordenar cartas, con su tipo; «Dejar como está» deja el orden del núcleo', () => {
+    const state = open(byType('sort_chain'), ctx(MESA))
+
+    expect(askView(state).sort?.cards.map((card) => card.ref)).toEqual([mine('card-200-1'), mine('card-950-1')])
+    expect(askView(state).respond).toEqual([mine('card-200-1'), mine('card-950-1')])
+    expect(tap(state, { kind: 'card', ref: mine('card-950-1') }, { kind: 'pick', index: 0 }, { kind: 'done' }).answer).toEqual({ type: 'sort_chain', order: [1, 0] })
+    expect(step(state, { kind: 'cancel' }).answer).toEqual({ type: 'sort_chain', order: null })
   })
 })

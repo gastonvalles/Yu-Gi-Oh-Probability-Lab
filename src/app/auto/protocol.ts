@@ -31,14 +31,25 @@ export function splitDesc(description: string): { code: number; n: number } {
 
 // ── El esquema ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // Un campo es un primitivo (`'int'`, `'seat'`, `'bool'`, `'u64'` texto decimal, `'str'`; con `?` al final, opcional), una lista (`[S]`),
-// un nulable (`['?', S]`) o un objeto de campos.
+// un nulable (`['?', S]`), un opcional de cualquier forma (`['opt', S]`: un campo nuevo, que quien no lo conoce no manda) o un objeto de campos.
 
 type Prim = 'int' | 'seat' | 'bool' | 'u64' | 'str'
-type Shape = Prim | `${Prim}?` | readonly [Shape] | readonly ['?', Shape] | { readonly [key: string]: Shape }
+type Shape = Prim | `${Prim}?` | readonly [Shape] | readonly ['?', Shape] | readonly ['opt', Shape] | { readonly [key: string]: Shape }
+type Optional = `${string}?` | readonly ['opt', unknown]
 type PrimOf<P> = P extends 'int' ? number : P extends 'seat' ? Seat : P extends 'bool' ? boolean : P extends 'u64' | 'str' ? string : never
 type Flat<T> = { [K in keyof T]: T[K] }
-type ObjOf<S> = Flat<{ -readonly [K in keyof S as S[K] extends `${string}?` ? never : K]: Infer<S[K]> } & { -readonly [K in keyof S as S[K] extends `${string}?` ? K : never]?: Infer<S[K]> }>
-export type Infer<S> = S extends `${infer P}?` ? PrimOf<P> : S extends Prim ? PrimOf<S> : S extends readonly ['?', infer E] ? Infer<E> | null : S extends readonly [infer E] ? Infer<E>[] : ObjOf<S>
+type ObjOf<S> = Flat<{ -readonly [K in keyof S as S[K] extends Optional ? never : K]: Infer<S[K]> } & { -readonly [K in keyof S as S[K] extends Optional ? K : never]?: Infer<S[K]> }>
+export type Infer<S> = S extends `${infer P}?`
+  ? PrimOf<P>
+  : S extends Prim
+    ? PrimOf<S>
+    : S extends readonly ['?', infer E]
+      ? Infer<E> | null
+      : S extends readonly ['opt', infer E]
+        ? Infer<E>
+        : S extends readonly [infer E]
+          ? Infer<E>[]
+          : ObjOf<S>
 
 const BAD = Symbol('bad')
 const MAX_LIST = 600
@@ -64,7 +75,7 @@ function read(shape: Shape, value: unknown): unknown {
   }
 
   if (Array.isArray(shape)) {
-    if (shape.length === 2) return value === null ? null : read(shape[1] as Shape, value)
+    if (shape.length === 2) return value === null && shape[0] === '?' ? null : read(shape[1] as Shape, value)
     if (!Array.isArray(value) || value.length > MAX_LIST) return BAD
     const out: unknown[] = []
 
@@ -82,7 +93,7 @@ function read(shape: Shape, value: unknown): unknown {
   const out: Record<string, unknown> = {}
 
   for (const [key, field] of Object.entries(shape as Record<string, Shape>)) {
-    if (value[key] === undefined && typeof field === 'string' && field.endsWith('?')) continue
+    if (value[key] === undefined && (typeof field === 'string' ? field.endsWith('?') : Array.isArray(field) && field[0] === 'opt')) continue
     const next = read(field, value[key])
 
     if (next === BAD) return BAD
@@ -135,8 +146,11 @@ export const ASK_SHAPES = {
   select_unselect_card: { player: 'seat', can_finish: 'bool', can_cancel: 'bool', min: 'int', max: 'int', select_cards: [CARD_POS], unselect_cards: [CARD_POS] },
   announce_race: { player: 'seat', count: 'int', available: 'u64' },
   announce_attrib: { player: 'seat', count: 'int', available: 'int' },
-  /** `opcodes`: un filtro en notación polaca (OPCODE_*) que la carta anunciada tiene que cumplir. */
-  announce_card: { player: 'seat', opcodes: ['u64'] },
+  /**
+   * `opcodes`: un filtro en notación polaca (OPCODE_*) que la carta anunciada tiene que cumplir. `cards`: las que se ofrecen, las del filtro que quien declara ya conoce (su
+   * deck y lo que vio en el duelo: `core-host.ts`); sin `cards` (un anfitrión de antes) no hay qué ofrecer.
+   */
+  announce_card: { player: 'seat', opcodes: ['u64'], cards: ['opt', ['int']] },
   announce_number: { player: 'seat', options: ['u64'] },
   rock_paper_scissors: { player: 'seat' },
 } as const

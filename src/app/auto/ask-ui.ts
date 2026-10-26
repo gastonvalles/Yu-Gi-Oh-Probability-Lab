@@ -31,8 +31,6 @@ export interface AskContext {
   typeOf?: (code: number) => number
   /** El rótulo de un efecto: el `strN` de la carta que nombra el `desc` (`splitDesc`), o null si no tiene (un texto del sistema, una carta sin ese texto). */
   effectLabel?: (code: number, description: string) => string | null
-  /** La carta a anunciar (el filtro del núcleo contra un catálogo). Sin él, `announce_card` no tiene respuesta: `auto.answer` es null. */
-  announceCard?: (ask: AskOf<'announce_card'>) => number
   /** La casilla donde se soltó la carta de la jugada elegida: si está libre, contesta una pregunta de una casilla (`select_place`) sin mostrarla. */
   prefer?: ZoneTarget
 }
@@ -67,8 +65,8 @@ export interface AskCard {
 }
 
 export interface CardPick {
-  type: 'select_card' | 'select_unselect_card' | 'select_tribute' | 'select_sum'
-  /** En unselect_card, las elegibles y después las ya elegidas (su índice es la respuesta); en una suma, las de `selects` y después las fijas. */
+  type: 'select_card' | 'select_unselect_card' | 'select_tribute' | 'select_sum' | 'announce_card'
+  /** En unselect_card, las elegibles y después las ya elegidas (su índice es la respuesta); en una suma, las de `selects` y después las fijas; al declarar, las que se ofrecen (por código). */
   cards: AskCard[]
   /** Las elegidas, en el orden en que se tocaron (las fijas y las ya elegidas, siempre). */
   chosen: number[]
@@ -95,7 +93,7 @@ export interface ZoneTarget extends MatTarget {
 
 export interface ZonePick {
   count: number
-  /** Las casillas libres (relativas a quien elige); la pantalla enciende las mías. */
+  /** Las casillas libres (relativas a quien elige), de los dos lados: la pantalla las enciende donde están. */
   targets: ZoneTarget[]
   chosen: ZoneTarget[]
 }
@@ -128,13 +126,24 @@ export interface AskSortView {
   done: boolean
 }
 
+/** Sacar contadores (`select_counter`): de qué cartas y cuántos de cada una. */
+export interface AskCounterView {
+  /** Las cartas con contadores; `value`, cuántos tiene cada una (lo más que se le saca). */
+  cards: AskCard[]
+  /** Cuántos se sacan de cada una (por índice de `cards`). */
+  now: number[]
+  /** Cuántos pide el núcleo, en total. */
+  need: number
+  done: boolean
+}
+
 export interface AskView {
   askId: number
   type: AskType
   title?: string
   /**
    * Se contesta sola, sin mostrar nada: `none`, una pregunta sin pantalla todavía (con su respuesta legal por defecto; null si no hay
-   * ninguna segura: `announce_card` sin catálogo); `forced`, una sola respuesta posible; `setting`, la decide un ajuste; `drop`, la casilla donde se soltó la carta (`prefer`).
+   * ninguna segura: `announce_card` sin cartas que ofrecer); `forced`, una sola respuesta posible; `setting`, la decide un ajuste; `drop`, la casilla donde se soltó la carta (`prefer`).
    */
   auto: { answer: CoreAnswer | null; why: 'none' | 'forced' | 'setting' | 'drop' } | null
   /** Los ítems de cada carta de mi mesa, por id (las jugadas, el ataque, la cadena). */
@@ -150,6 +159,7 @@ export interface AskView {
   prompt: AskPromptView | null
   options: AskOptionsView | null
   sort: AskSortView | null
+  counters: AskCounterView | null
   /** Cancelar (o «No responder», o «Dejar como está») contesta ahora. */
   cancelable: boolean
   /** Una ventana de tu fase (la Draw, la Standby o la End Phase de tu turno): como en la mesa manual, sin cartel; el botón de fases la pasa. */
@@ -160,7 +170,7 @@ export type AskGesture =
   | { kind: 'item'; answer: CoreAnswer }
   /** Tocar una carta de la mesa. */
   | { kind: 'card'; ref: CardRef }
-  /** Tocar una carta de una lista (`cards`, también las que no están en la mesa). */
+  /** Tocar una carta de una lista (`cards`, también las que no están en la mesa); sacando contadores, uno más de esa carta. */
   | { kind: 'pick'; index: number }
   | { kind: 'zone'; side: Side; zone: MatSpot; index: number }
   | { kind: 'option'; value: number }
@@ -243,11 +253,8 @@ const SYSTEM_OPTIONS = { '573': 'practice.menu.toHand', '574': 'practice.menu.to
 const PILE_OF: Partial<Record<number, MatPile>> = { [L.DECK]: 'deck', [L.HAND]: 'hand', [L.GRAVE]: 'gy', [L.REMOVED]: 'banished', [L.EXTRA]: 'extra' }
 /** El `desc` con que el núcleo pregunta por un efecto que se disparó (texto 221 del sistema). Medido con el núcleo real: no dice si quedan otros por preguntar. */
 const TRIGGER_DESC = '221'
-/**
- * Sin pantalla todavía (§3 del diseño): quitar contadores y anunciar una carta (ronda 4), las casillas del rival (`select_disfield`: la mesa no
- * las enciende), ordenar la cadena y piedra, papel o tijera (en el fuzz no aparecieron).
- */
-const NO_UI = new Set<AskType>(['select_counter', 'select_disfield', 'sort_chain', 'announce_card', 'rock_paper_scissors'])
+/** Sin pantalla todavía (§3 del diseño): piedra, papel o tijera (en el fuzz no apareció). */
+const NO_UI = new Set<AskType>(['rock_paper_scissors'])
 const POSITIONS = [
   [P.FACEUP_ATTACK, 'practice.menu.attack'],
   [P.FACEDOWN_ATTACK, 'practice.attack.faceDown'],
@@ -315,11 +322,12 @@ function surfaceOf(cards: readonly AskCard[]): { surface: CardPick['surface']; p
 
 /**
  * El orden en que se muestran las candidatas de una lista aparte (índices de `cards`: la respuesta sigue siendo la del núcleo). Las que están en un deck, el tuyo o el del rival, van por
- * nombre y en los lugares que ocupaban: el núcleo las manda en el orden del deck y verlo regalaría qué se roba primero (el visor del deck de `PracticeMat` también va por nombre).
+ * nombre y en los lugares que ocupaban: el núcleo las manda en el orden del deck y verlo regalaría qué se roba primero (el visor del deck de `PracticeMat` también va por nombre). Las
+ * que sólo se nombran por código (las que se pueden declarar), también.
  */
 export function listOrder(cards: readonly AskCard[], nameOf: (card: AskCard) => string): number[] {
   const order = cards.map((_, index) => index)
-  const slots = order.filter((index) => cards[index]!.pile === 'deck')
+  const slots = order.filter((index) => cards[index]!.pile === 'deck' || cards[index]!.place === 'none')
   const byName = [...slots].sort((a, b) => nameOf(cards[a]!).localeCompare(nameOf(cards[b]!)) || a - b)
 
   slots.forEach((slot, rank) => {
@@ -619,8 +627,8 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
   const cardsOf = <C extends Loc>(list: readonly C[], value?: (card: C) => number) => list.map((card) => askCard(card, resolve(card), value?.(card)))
   const auto = (answer: CoreAnswer | null, why: NonNullable<AskView['auto']>['why']) => void (base.auto = { answer: answer && parseAnswer(answer), why })
 
-  // Sin pantalla todavía: lo que contestaría el rival pasivo (siempre legal; anunciar una carta, sólo con catálogo).
-  if (NO_UI.has(ask.type)) auto(ask.type === 'announce_card' && !ctx.announceCard ? null : passivePolicy(ctx.announceCard && ((card) => ctx.announceCard!(card)))(ask), 'none')
+  // Sin pantalla todavía: lo que contestaría el rival pasivo (siempre legal).
+  if (NO_UI.has(ask.type)) auto(passivePolicy()(ask), 'none')
 
   switch (ask.type) {
     case 'select_idlecmd':
@@ -700,7 +708,23 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       base.cards = cardsOf([...ask.select_cards, ...ask.unselect_cards])
       break
     case 'sort_card':
+    case 'sort_chain':
       base.cards = cardsOf(ask.cards)
+      break
+    // Declarar una carta: una de las que ofrece el anfitrión, por código (no están en la mesa). Sin ninguna (un anfitrión de antes), no hay respuesta segura.
+    case 'announce_card':
+      base.cards = (ask.cards ?? []).map((code) => ({ ref: null, code, place: 'none' }))
+      if (base.cards.length === 0) auto(null, 'none')
+      break
+    case 'select_counter':
+      base.cards = cardsOf(ask.cards, (card) => card.count)
+      // Una sola manera: una sola carta con contadores, o todos los que hay.
+      if (ask.cards.filter((card) => card.count > 0).length === 1 || ask.cards.reduce((sum, card) => sum + card.count, 0) === ask.count) auto(passivePolicy()(ask), 'forced')
+      break
+    case 'select_disfield':
+      // Las casillas a inutilizar, tuyas o del rival: sin ajuste (cuál se pierde importa), salvo que haya una sola manera.
+      base.targets = freeZones(ask.field_mask)
+      if (base.targets.length <= ask.count) auto(passivePolicy()(ask), 'forced')
       break
     case 'select_place': {
       // Por bit: las mías primero.
@@ -710,11 +734,10 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       const dropped = wanted && ask.count === 1 ? base.targets.find((target) => target.side === wanted.side && target.zone === wanted.zone && target.index === wanted.index) : undefined
       const first: CoreAnswer = { type: ask.type, places: (dropped ? [dropped] : base.targets.slice(0, ask.count)).map((target) => placeOfBit(ask.player, target.bit)) }
 
-      // La soltada, una sola manera (tantas libres como casillas pide), un ajuste, o sólo casillas del rival (la mesa todavía no las enciende).
+      // La soltada, una sola manera (tantas libres como casillas pide) o un ajuste. Las del rival (un Kaiju) se encienden en su campo.
       if (dropped) auto(first, 'drop')
       else if (base.targets.length <= ask.count) auto(first, 'forced')
       else if (ctx.prefs.placeMode === 'auto') auto(first, 'setting')
-      else if (!base.targets.some((target) => target.side === 'mine')) auto(first, 'none')
       break
     }
   }
@@ -742,6 +765,7 @@ export function askView(state: AskState): AskView {
     prompt: base.prompt,
     options: null,
     sort: null,
+    counters: null,
     cancelable: false,
     phaseWindow: base.phaseWindow,
   }
@@ -775,13 +799,22 @@ export function askView(state: AskState): AskView {
       }
       break
     case 'select_place':
+    case 'select_disfield':
       view.zonePick = { count: ask.count, targets: base.targets.map(({ side, zone, index }) => ({ side, zone, index })), chosen: base.targets.filter((target) => chosen.includes(target.bit)).map(({ side, zone, index }) => ({ side, zone, index })) }
       break
     case 'sort_card':
+    case 'sort_chain':
       view.sort = { cards: base.cards, order: [...chosen], done: chosen.length === base.cards.length }
       view.respond = base.cards.flatMap((card) => (card.ref ? [card.ref] : []))
       view.cancelable = true
       break
+    case 'select_counter': {
+      const now = base.cards.map((_, i) => chosen.filter((index) => index === i).length)
+
+      view.counters = { cards: base.cards, now, need: ask.count, done: chosen.length === ask.count }
+      view.respond = base.cards.flatMap((card) => (card.ref && card.value ? [card.ref] : []))
+      break
+    }
     case 'select_card':
     case 'select_tribute':
     case 'select_sum':
@@ -789,6 +822,10 @@ export function askView(state: AskState): AskView {
       view.cardPick = cardPickOf(ask, base.cards, chosen)
       view.respond = view.cardPick.eligible.flatMap((i) => (base.cards[i]!.ref ? [base.cards[i]!.ref!] : []))
       view.cancelable = ask.type === 'select_unselect_card' ? ask.can_cancel && !ask.can_finish : ask.type !== 'select_sum' && ask.can_cancel
+      break
+    // Una de una lista aparte: el toque contesta.
+    case 'announce_card':
+      view.cardPick = { type: ask.type, cards: base.cards, chosen: [], locked: [], eligible: base.cards.map((_, i) => i), surface: 'list', pile: null, min: 1, max: 1, count: { now: 0, need: 1 }, done: false }
       break
   }
 
@@ -826,6 +863,7 @@ const PICK_PURPOSE: Readonly<Record<string, Extract<MessageKey, `auto.pick.why.$
 
 /** El título de una elección de cartas: cuántas, para qué (si el código de pista está comprobado) y, si se eligen varias, cuántas van («Elegí 2 cartas para desterrar · 1/2»). */
 export function pickTitle(pick: CardPick, hint?: string): string {
+  if (pick.type === 'announce_card') return t('auto.pick.announce')
   if (pick.type === 'select_tribute') return t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need })
   if (pick.type === 'select_sum') return t('auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
   if (pick.type === 'select_card' && hint === ATTACK_TARGET_HINT) return t('auto.pick.attackTarget')
@@ -926,12 +964,13 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
     case 'cancel':
       if (!view.cancelable) return same
       if (ask.type === 'select_card' || ask.type === 'select_tribute') return answer({ type: ask.type, indices: null })
-      if (ask.type === 'sort_card') return answer({ type: ask.type, order: null })
+      if (ask.type === 'sort_card' || ask.type === 'sort_chain') return answer({ type: ask.type, order: null })
       if (ask.type === 'select_chain' || ask.type === 'select_unselect_card') return answer({ type: ask.type, index: null })
       return same
 
     case 'done':
-      if (view.sort?.done) return answer({ type: 'sort_card', order: view.sort.cards.map((_, i) => view.sort!.order.indexOf(i)) })
+      if (view.sort?.done && (ask.type === 'sort_card' || ask.type === 'sort_chain')) return answer({ type: ask.type, order: view.sort.cards.map((_, i) => view.sort!.order.indexOf(i)) })
+      if (view.counters) return view.counters.done ? answer({ type: 'select_counter', counters: view.counters.now }) : same
       if (!view.cardPick?.done) return same
       return answer(cardAnswer(ask, view.cardPick))
 
@@ -948,10 +987,13 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
         if (index < 0 || index >= view.sort.cards.length) return same
         return next(state.chosen.includes(index) ? state.chosen.filter((i) => i !== index) : [...state.chosen, index])
       }
+      // Uno más de esa carta, si le quedan y todavía falta sacar.
+      if (view.counters) return view.counters.now[index]! < (view.counters.cards[index]?.value ?? 0) && !view.counters.done ? next([...state.chosen, index]) : same
       const pick = view.cardPick
 
       if (!pick?.eligible.includes(index)) return same
       if (ask.type === 'select_unselect_card') return answer({ type: ask.type, index })
+      if (ask.type === 'announce_card') return answer({ type: ask.type, code: pick.cards[index]!.code })
       if (state.chosen.includes(index)) return next(state.chosen.filter((i) => i !== index))
       const after = next([...state.chosen, index])
       const now = askView(after.state).cardPick!
@@ -967,7 +1009,7 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
       if (state.chosen.includes(target.bit)) return next(state.chosen.filter((bit) => bit !== target.bit))
       const chosen = [...state.chosen, target.bit]
 
-      return chosen.length === view.zonePick.count ? answer({ type: 'select_place', places: chosen.map((bit) => placeOfBit(ask.player, bit)) }) : next(chosen)
+      return chosen.length === view.zonePick.count ? answer({ type: ask.type === 'select_disfield' ? ask.type : 'select_place', places: chosen.map((bit) => placeOfBit(ask.player, bit)) }) : next(chosen)
     }
 
     case 'option': {

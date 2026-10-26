@@ -8,6 +8,7 @@ import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
+import { SearchField } from '../ui/SearchField'
 import { Skeleton } from '../ui/Skeleton'
 
 /** Una carta para elegir u ordenar. */
@@ -206,6 +207,9 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
   )
 }
 
+/** Desde cuántas cartas la hoja trae un buscador por nombre (las que se pueden declarar son un deck entero). */
+const SEARCH_FROM = 13
+
 interface CardPickerProps {
   /** Lo que pide el núcleo (el `HINT_SELECTMSG`), o «Elegí cartas». */
   title: string
@@ -232,7 +236,8 @@ interface CardPickerProps {
  * Elegir de `min` a `max` cartas de una lista que no está en el campo ni en una sola pila (de varios lugares, o por código), en una hoja (`Modal sheet`; en el celular sale de abajo y su asa la baja sin
  * contestar, para ver la mano). Tocar elige o suelta
  * (aro ámbar y número de orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, la principal («Elegir 2 cartas»,
- * o «Listo» si se puede no elegir ninguna) se enciende con `min` (o con `done`) y el pie dice cuántas van. Va dentro de un `Presence` (así sale al contestarse).
+ * o «Listo» si se puede no elegir ninguna) se enciende con `min` (o con `done`) y el pie dice cuántas van. Con `SEARCH_FROM` cartas o más, un buscador por nombre arriba (filtra lo
+ * que se ve; lo elegido queda). Va dentro de un `Presence` (así sale al contestarse).
  */
 export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done }: CardPickerProps) {
   const leaving = useLeaving()
@@ -244,6 +249,9 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
   const ready = done ?? chosen.length >= min
   // Con `max` 1, el pie sólo si hay «Listo» (terminar sin elegir) o «Cancelar».
   const finish = single && done === true
+  const [query, setQuery] = useState('')
+  const needle = query.trim().toLocaleLowerCase()
+  const shown = needle ? cards.filter((card) => card.name.toLocaleLowerCase().includes(needle)) : cards
 
   // Sin cancelar, Escape no cierra esto ni lo que haya abajo: hay que contestar.
   useEscapeKey(() => {}, !onCancel && !leaving)
@@ -281,7 +289,12 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
         )
       }
     >
-      <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} className="grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]" />
+      {cards.length >= SEARCH_FROM ? <SearchField label={t('auto.picker.search')} placeholder={t('auto.picker.search')} value={query} onChange={setQuery} className="mb-3" /> : null}
+      {shown.length > 0 ? (
+        <PickGrid label={t('auto.picker.cards')} cards={shown} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} className="grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]" />
+      ) : (
+        <p className="m-0 text-body text-muted">{t('auto.picker.noMatches', { query: query.trim() })}</p>
+      )}
     </Modal>
   )
 }

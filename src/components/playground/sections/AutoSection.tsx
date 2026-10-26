@@ -10,6 +10,7 @@ import { AskPrompt } from '../../auto/AskPrompt'
 import { AutoBar, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
 import { CardPicker, PickBand, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
+import { CounterSheet } from '../../auto/CounterSheet'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, type LaneNotice } from '../../duel/DuelBar'
 import { MatScene } from '../../probability/MatArena'
@@ -112,12 +113,14 @@ export function AutoSection() {
 
       <PickerSample title="Elegir cartas · de 1 a 2, cancelable" note="CardPicker con min 1 y max 2, de lugares distintos (cada una dice de dónde es) y una que todavía no tiene arte (el esqueleto quieto). Aro ámbar y número de orden; Mayús+clic, el tramo; nunca más de dos. «Cancelar» y Escape, porque la pregunta se puede cancelar. Flechas, Inicio y Fin recorren las cartas; Espacio elige." min={1} max={2} cancelable onAnswer={setAnswer} />
       <PickerSample title="Elegir cartas · una sola" note="Con max 1 el primer toque contesta, sin «Listo» (como en la mesa). No se puede cancelar: sin X ni pie." min={1} max={1} cancelable={false} onAnswer={setAnswer} />
+      <PickerSample title="Declarar una carta · con buscador" note="Con 13 cartas o más (declarar una carta ofrece el deck entero y lo visto), un buscador por nombre arriba de la grilla; sin coincidencias, lo dice. Un toque declara." min={1} max={1} cancelable={false} many onAnswer={setAnswer} />
 
       <BandSample max={2} onAnswer={setAnswer} />
       <BandSample max={1} onAnswer={setAnswer} />
       <ForcedSample onAnswer={setAnswer} />
 
       <SortSample onAnswer={setAnswer} />
+      <CounterSample onAnswer={setAnswer} />
 
       <Specimen title="Lo que contestó la última muestra" note="Cada hoja y cada pregunta de arriba le pasan lo elegido a quien la abrió; acá se ve qué devolvió.">
         <Tag>{answer}</Tag>
@@ -245,7 +248,9 @@ function EffectsSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
-function PickerSample({ title, note, min, max, cancelable, onAnswer }: { title: string; note: string; min: number; max: number; cancelable: boolean; onAnswer: (answer: string) => void }) {
+function PickerSample({ title, note, min, max, cancelable, many = false, onAnswer }: { title: string; note: string; min: number; max: number; cancelable: boolean; many?: boolean; onAnswer: (answer: string) => void }) {
+  const cards = many ? [...MIXED, ...GRAVE.map((card) => ({ ...card, key: `g${card.key}` })), ...MIXED.map((card) => ({ ...card, key: `m${card.key}` }))] : max === 1 ? MIXED.slice(0, 4) : MIXED
+
   const [open, setOpen] = useState(false)
   const close = (answer: string) => {
     setOpen(false)
@@ -258,7 +263,7 @@ function PickerSample({ title, note, min, max, cancelable, onAnswer }: { title: 
         Abrir la hoja
       </Button>
       <Presence>
-        {open ? <CardPicker title="Elegí qué agregar a tu mano" kicker="Branded Fusion" cards={max === 1 ? MIXED.slice(0, 4) : MIXED} min={min} max={max} onPick={(keys) => close(keys.join(', '))} onCancel={cancelable ? () => close('cancelada') : undefined} /> : null}
+        {open ? <CardPicker title={many ? 'Declará el nombre de una carta' : 'Elegí qué agregar a tu mano'} kicker={many ? 'Prohibition' : 'Branded Fusion'} cards={cards} min={min} max={max} onPick={(keys) => close(keys.join(', '))} onCancel={cancelable ? () => close('cancelada') : undefined} /> : null}
       </Presence>
     </Specimen>
   )
@@ -384,6 +389,33 @@ function SortSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
             onSort={(keys) => {
               setOpen(false)
               onAnswer(keys ? keys.join(', ') : 'como estaba')
+            }}
+          />
+        ) : null}
+      </Presence>
+    </Specimen>
+  )
+}
+
+function CounterSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Specimen title="Sacar contadores" note={<>select_counter: una fila por carta con cuántos tiene y un Stepper de 0 a lo que se le puede sacar (nunca más del total). «Sacar contadores» se enciende con el total justo. Hay que contestar: sin X ni Escape. Archivo: <Tag>auto/CounterSheet.tsx</Tag></>}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+        Abrir «Sacá 3 contadores»
+      </Button>
+      <Presence>
+        {open ? (
+          <CounterSheet
+            cards={[
+              { key: 'a', name: 'Endymion, the Mighty Master of Magic', art: art(3611830), has: 2 },
+              { key: 'b', name: 'Magical Citadel of Endymion', art: art(39910367), has: 5 },
+            ]}
+            need={3}
+            onPick={(counts) => {
+              setOpen(false)
+              onAnswer(counts.join(', '))
             }}
           />
         ) : null}

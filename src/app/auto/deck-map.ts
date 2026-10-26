@@ -92,29 +92,47 @@ export function teamOrder(create: { seed: number; decks: readonly { main: readon
   return deckOrder(deck.main, (create.seed + team) >>> 0, deck.hand)
 }
 
-const LOAD_SCRIPT = /Duel\.LoadScript\(\s*["']([^"']+)["']/g
+/**
+ * Un script que carga otro: `Duel.LoadScript("x.lua")` (las bibliotecas) o `Duel.LoadCardScript(Alias)` con el nombre, el número o una
+ * constante (la carta que delega en otra). Una variable (`Duel.LoadScript(code)`, dentro de `utility.lua`) no se puede seguir y no entra.
+ */
+const LOAD_SCRIPT = /Duel\.Load(?:Card)?Script(?:Alias)?\(\s*(?:["']([^"']+)["']|(\d+)|([A-Z][A-Z0-9_]*))\s*[,)]/g
+/** Una constante de código de las bibliotecas (`CARD_DARK_MAGICIAN = 46986414`) o de un script (`local CARD_X=…`). */
+export const CODE_CONSTANT = /\b([A-Z][A-Z0-9_]*)\s*=\s*(\d+)\b/g
 
 /**
  * Los scripts que el duelo necesita antes de empezar: las bibliotecas (`constant.lua`, `utility.lua` y lo que esas cargan con
- * `Duel.LoadScript`, en cadena) y el de cada carta distinta. `read` es el lector de scripts; lo que falta no entra (lo dice `mapDeck`).
+ * `Duel.LoadScript`, en cadena), el de cada carta distinta y lo que ésos cargan (el arte alternativo lejano de Polymerization hace
+ * `Duel.LoadCardScriptAlias(CARD_POLYMERIZATION)` y no trae nada más). Hay que seguirlos acá: `Duel.LoadCardScript` ignora un script que
+ * falta y la carta queda sin efecto, sin avisar. `read` es el lector de scripts; lo que falta no entra (lo dice `mapDeck`).
  */
 export function scriptClosure(cards: readonly CoreCardInfo[], read: (name: string) => string | null): string[] {
   const names = new Set<string>()
+  const constants = new Map<string, string>()
   const queue = ['constant.lua', 'utility.lua']
+  const drain = () => {
+    while (queue.length > 0) {
+      const name = queue.shift()!
 
-  while (queue.length > 0) {
-    const name = queue.shift()!
+      if (names.has(name)) continue
+      const text = read(name)
 
-    if (names.has(name)) continue
-    const text = read(name)
+      if (text === null) continue
+      names.add(name)
+      for (const match of text.matchAll(CODE_CONSTANT)) constants.set(match[1]!, match[2]!)
+      for (const [, literal, number, constant] of text.matchAll(LOAD_SCRIPT)) {
+        const code = number ?? (constant && constants.get(constant))
 
-    if (text === null) continue
-    names.add(name)
-    for (const match of text.matchAll(LOAD_SCRIPT)) queue.push(match[1]!)
+        if (literal) queue.push(literal)
+        else if (code) queue.push(`c${code}.lua`)
+      }
+    }
   }
-  for (const card of cards) {
-    if (read(scriptName(card)) !== null) names.add(scriptName(card))
-  }
+
+  // Las bibliotecas primero: definen las constantes que nombran las cartas.
+  drain()
+  queue.push(...cards.map(scriptName))
+  drain()
 
   return [...names]
 }

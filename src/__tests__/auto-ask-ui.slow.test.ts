@@ -1,6 +1,6 @@
 import { appendFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { cardMatchesOpcode, OcgDuelMode } from 'ocgcore-wasm'
+import { OcgDuelMode } from 'ocgcore-wasm'
 import { createAdapter } from '../app/auto/adapter'
 import { askView, openAsk, type AskContext, type AskView, type ZoneTarget } from '../app/auto/ask-ui'
 import { createAutoHost } from '../app/auto/core-host'
@@ -12,7 +12,7 @@ import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, scriptStore, wasmBina
 
 /**
  * El oráculo de legalidad de `ask-ui.ts` (lento: `npm run test:auto`). Con el núcleo real y un adaptador por asiento, un jugador al azar
- * que sólo toca lo que la pantalla ofrece (`gesturesOf`: ítems, casillas mías, cartas elegibles, opciones, Listo, Cancelar; nunca una
+ * que sólo toca lo que la pantalla ofrece (`gesturesOf`: ítems, casillas, cartas elegibles, contadores, opciones, Listo, Cancelar; nunca una
  * respuesta cruda) juega los dos asientos de duelos con decks del meta. Cuenta: `retry` (el núcleo rechazó lo ofrecido: tiene que ser 0),
  * respuestas que `parseAnswer` rechaza, preguntas sin gesto, toques ofrecidos que no hacen nada, lo que se contestó solo (y por qué) y lo
  * legal que no se ofrece en las preguntas de menú. Parámetros: ORACLE_DUELS (50), ORACLE_SEED (1), ORACLE_CAP preguntas por duelo (2000),
@@ -29,7 +29,7 @@ const PLAYERS = [
   { lp: 8000, hand: 5, draw: 1 },
   { lp: 8000, hand: 5, draw: 1 },
 ]
-const NO_UI = ['select_counter', 'select_disfield', 'sort_chain', 'announce_card', 'rock_paper_scissors']
+const NO_UI = ['rock_paper_scissors']
 /** Las casillas propias donde se puede soltar una carta de la mano. */
 const DROPS: ZoneTarget[] = [...(['mz', 'st'] as const).flatMap((zone) => [0, 1, 2, 3, 4].map((index) => ({ side: 'mine' as const, zone, index }))), { side: 'mine', zone: 'field', index: 0 }]
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
@@ -95,7 +95,6 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
     const { cards, names } = loadCards()
     const store = scriptStore()
     const decks = metaDecks(cards, store)
-    const cardList = [...cards.values()]
     const typeOf = (code: number) => cards.get(code)?.type ?? 0
     const wasm = wasmBinary()
     const tally = {
@@ -136,18 +135,6 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
       )
       // Uno de cada cinco, con los ajustes: «Respuestas: Nunca» y «Casilla: automática».
       const prefs: AskContext['prefs'] = d % 5 === 4 ? { chainMode: 'never', placeMode: 'auto' } : { chainMode: 'ask', placeMode: 'ask' }
-      const announceCard: AskContext['announceCard'] = (ask) => {
-        const opcodes = ask.opcodes.map(BigInt)
-        const from = Math.floor(random() * cardList.length)
-
-        for (let k = 0; k < cardList.length; k += 1) {
-          const card = cardList[(from + k) % cardList.length]!
-
-          if (cardMatchesOpcode(card, opcodes as never)) return card.code
-        }
-
-        return 0
-      }
       const fallback = randomLegalPolicy(seed)
       // La casilla donde «se soltó» la carta (`prefer`), al azar entre las propias, libres u ocupadas: la que la máscara da contesta sola (`drop`) y el núcleo nunca la rechaza.
       const drops = seeded(seed + 1)
@@ -177,7 +164,7 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
         }
         const { ask } = asked
         const uiStart = performance.now()
-        const state = openAsk(asked, { queries: adapters[asked.seat]!, prefs, typeOf, announceCard, prefer: DROPS[Math.floor(drops() * DROPS.length)]! })
+        const state = openAsk(asked, { queries: adapters[asked.seat]!, prefs, typeOf, prefer: DROPS[Math.floor(drops() * DROPS.length)]! })
         const view = askView(state)
         const legalOnes = view.auto ? null : legalAnswers(ask)
 
@@ -233,8 +220,8 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
     writeFileSync(path.join(CORE_DATA_DIR, `oracle-${DUELS}-s${SEED}.json`), JSON.stringify(report, null, 1))
     console.log(JSON.stringify(report.tally))
 
-    // Lo que se contesta solo «sin pantalla» es sólo lo declarado: las cinco preguntas sin pantalla y las casillas que son todas del rival.
-    const undeclared = Object.keys(tally.auto).filter((key) => key.split(':')[1] === 'none' && !NO_UI.includes(key.split(':')[0]!) && !key.startsWith('select_place:'))
+    // Lo que se contesta solo «sin pantalla» es sólo lo declarado (`NO_UI`).
+    const undeclared = Object.keys(tally.auto).filter((key) => key.split(':')[1] === 'none' && !NO_UI.includes(key.split(':')[0]!))
 
     expect({ retries: tally.retries, stuck: tally.stuck, dead: tally.dead, unparsed: tally.unparsed, undeclared, nullAnswers: Object.keys(tally.auto).filter((key) => key.endsWith(':null')) }).toEqual({ retries: {}, stuck: {}, dead: 0, unparsed: 0, undeclared: [], nullAnswers: [] })
     // Lo legal que la pantalla no ofrece en las preguntas de menú: sólo barajar la mano (la mesa no lo tiene).

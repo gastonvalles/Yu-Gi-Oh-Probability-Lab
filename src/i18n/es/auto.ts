@@ -54,21 +54,37 @@ export const auto = {
   'auto.picker.cards': 'Cartas para elegir',
   'auto.picker.choose': { one: 'Elegir {count} carta', other: 'Elegir {count} cartas' },
   'auto.picker.status': '{chosen} de {max}',
+  // Con muchas cartas (las que se pueden declarar), un buscador por nombre arriba de la grilla.
+  'auto.picker.search': 'Buscar por nombre',
+  'auto.picker.noMatches': 'No hay cartas con «{query}».',
 
   // Ordenar cartas (el tope del deck).
   'auto.sort.title': 'Ordená las cartas',
   'auto.sort.hint': 'Tocalas en el orden en que van: la primera queda arriba.',
   'auto.sort.done': 'Ordenar así',
   'auto.sort.asIs': 'Dejar como está',
+  // Ordenar los eslabones que entran a la vez (sus efectos se dispararon juntos).
+  'auto.sort.chain': 'Ordená la cadena',
+  'auto.sort.chainHint': 'Tocalas en el orden en que entran en la cadena.',
+
+  // Sacar contadores (una hoja): cuántos de cada carta.
+  'auto.counter.title': { one: 'Sacá {count} contador', other: 'Sacá {count} contadores' },
+  'auto.counter.hint': 'Elegí de qué cartas: de cada una, hasta los que tiene.',
+  'auto.counter.has': 'Tiene {count}',
+  'auto.counter.remove': 'Contadores a sacar de {name}',
+  'auto.counter.done': 'Sacar contadores',
 
   // Lo que se elige en la mesa (la línea de estado de abajo): casillas y cartas.
   'auto.pick.zone': { one: 'Elegí {count} casilla', other: 'Elegí {count} casillas' },
+  'auto.pick.disfield': { one: 'Elegí {count} casilla que no se va a poder usar', other: 'Elegí {count} casillas que no se van a poder usar' },
   'auto.pick.cards': { one: 'Elegí {count} carta', other: 'Elegí {count} cartas' },
   'auto.pick.range': 'Elegí de {min} a {max} cartas',
   'auto.pick.tribute': 'Sacrificios: {chosen} de {total}',
   'auto.pick.sum': 'Niveles: {chosen} de {total}',
   'auto.pick.counter': 'Contadores: {chosen} de {total}',
   'auto.pick.attackTarget': 'Elegí a qué monstruo atacar',
+  // Declarar una carta (Prohibition, Crossout Designator): «Declarar» es la palabra de las cartas.
+  'auto.pick.announce': 'Declará el nombre de una carta',
   // Para qué se eligen (el pedido del núcleo, `pickTitle`): «Elegí 2 cartas para desterrar · 1/2». La cuenta es de lo elegido contra lo pedido.
   'auto.pick.for': '{what} {why}',
   'auto.pick.count': '{chosen}/{max}',

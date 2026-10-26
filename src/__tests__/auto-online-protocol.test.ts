@@ -191,4 +191,16 @@ describe('el protocolo del duelo automático por enlace', () => {
     pacer.push('b')
     expect(sent.at(-1)).not.toBe('b')
   })
+
+  it('declarar una carta viaja con sus candidatas (un deck entero y lo visto, por código) en un solo mensaje, y sin ellas también', () => {
+    const cards = Array.from({ length: 150 }, (_, i) => 99_999_000 - i * 977)
+    const message: AutoMessage = { t: 'autoEvent', event: { t: 'ask', seat: 1, askId: 41, ask: { type: 'announce_card', player: 1, opcodes: ['1', '1073741840'], cards } } }
+    const text = encodeAutoMessage(message)
+
+    expect(byteLength(text)).toBeLessThan(MAX_AUTO_BYTES)
+    expect(parseAutoMessage(text)).toEqual(message)
+    const old: AutoMessage = { t: 'autoEvent', event: { t: 'ask', seat: 1, askId: 41, ask: { type: 'announce_card', player: 1, opcodes: ['1'] } } }
+
+    expect(parseAutoMessage(encodeAutoMessage(old))).toEqual(old)
+  })
 })

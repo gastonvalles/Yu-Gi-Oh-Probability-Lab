@@ -93,4 +93,12 @@ describe('el protocolo de los duelos automáticos', () => {
 
     for (const value of bad) expect(parseAutoEvent(value)).toBeNull()
   })
+
+  it('declarar una carta: `cards` es opcional (un anfitrión de antes no lo manda) y, si viene, es una lista de códigos', () => {
+    const ask = (extra: object) => ({ t: 'ask', seat: 0, askId: 3, ask: { type: 'announce_card', player: 0, opcodes: ['1', '1073741840'], ...extra } })
+
+    expect(parseAutoEvent(ask({}))).toEqual(ask({}))
+    expect(parseAutoEvent(JSON.stringify(ask({ cards: [46986414, 89631139] })))).toEqual(ask({ cards: [46986414, 89631139] }))
+    for (const cards of [null, [1.5], ['46986414'], 46986414]) expect(parseAutoEvent(ask({ cards }))).toBeNull()
+  })
 })

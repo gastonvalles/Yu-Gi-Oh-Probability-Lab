@@ -99,6 +99,27 @@ describe('auto-screen · elegir', () => {
     expect(dispatches).toBe(0)
   })
 
+  it('place y disfield con casillas del rival: se encienden en su campo (su Zona Extra, en la tuya de enfrente) y tocar una contesta con su lado', () => {
+    const fake = renderAuto()
+
+    // Libres sólo del rival: su mz 1 (bit 17) y su Zona Extra 0 (bit 21), que desde acá es tu Zona Extra 2.
+    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 17) | (1 << 21)) >>> 0 }))
+    expect(screen.queryByRole('button', { name: 'Zona de monstruo 2: elegir' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Zona extra de monstruo 2: elegir' }))
+    expect(fake.answers).toEqual([{ type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 5 }] }])
+    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 17) | (1 << 21)) >>> 0 }))
+    fireEvent.click(screen.getByRole('button', { name: 'Rival, Zona de monstruo 2: elegir' }))
+    expect(fake.answers[1]).toEqual({ type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 1 }] })
+
+    // Inutilizar: tu mz 2 (bit 1) y la Mágica y Trampa 1 del rival (bit 24); el estado dice para qué.
+    core(() => fake.ask({ type: 'select_disfield', player: 0, count: 1, field_mask: ~((1 << 1) | (1 << 24)) >>> 0 }))
+    expect(status()).toHaveTextContent('Elegí 1 casilla que no se va a poder usar')
+    expect(screen.getByRole('button', { name: 'Zona de monstruo 2: elegir' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Rival, Zona de magia y trampa 1: elegir' }))
+    expect(fake.answers[2]).toEqual({ type: 'select_disfield', places: [{ player: 1, location: L.SZONE, sequence: 0 }] })
+    expect(dispatches).toBe(0)
+  })
+
   it('position: la hoja ofrece sólo las posiciones permitidas y una contesta', () => {
     const fake = renderAuto()
 
@@ -149,6 +170,31 @@ describe('auto-screen · elegir', () => {
     expect(shown.filter((text) => /Droll|Imperm|Ash|Maxx|Nibiru/.test(text))).toEqual(['DDroll', 'IImperm'])
     fireEvent.click(within(viewer).getByRole('button', { name: /Imperm/ }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
+    expect(dispatches).toBe(0)
+  })
+
+  it('declarar una carta: pocas, en la banda (el toque la declara); muchas, en la hoja con un buscador por nombre', () => {
+    const fake = renderAuto()
+    const announce = (cards: number[]): CoreAsk => ({ type: 'announce_card', player: 0, opcodes: ['1073741840'], cards })
+
+    core(() => fake.ask(announce([400, 100])))
+    const band = screen.getByRole('group', { name: 'Declará el nombre de una carta' })
+
+    // Por nombre: Ash Blossom antes que Nibiru.
+    expect(within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Ash Blossom', 'Nibiru'])
+    fireEvent.click(within(band).getByRole('option', { name: 'Nibiru' }))
+    expect(fake.answers).toEqual([{ type: 'announce_card', code: 400 }])
+
+    core(() => fake.ask(announce([100, 101, 102, 200, 400, ...Array.from({ length: 9 }, (_, i) => 5000 + i)])))
+    const sheet = screen.getByRole('dialog', { name: 'Declará el nombre de una carta' })
+
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'nib' } })
+    expect(within(sheet).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Nibiru'])
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'zzz' } })
+    expect(within(sheet).getByText('No hay cartas con «zzz».')).toBeInTheDocument()
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Buscar por nombre' }), { target: { value: 'droll' } })
+    fireEvent.click(within(sheet).getByRole('option', { name: 'Droll' }))
+    expect(fake.answers[1]).toEqual({ type: 'announce_card', code: 101 })
     expect(dispatches).toBe(0)
   })
 })
