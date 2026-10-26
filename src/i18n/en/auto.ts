@@ -59,9 +59,10 @@ export const auto: Translated<typeof es> = {
   'auto.sort.hint': 'Tap them in the order they go: the first one ends up on top.',
   'auto.sort.done': 'Use this order',
   'auto.sort.asIs': 'Keep the current order',
-  // Ordering the links that enter at once (their effects triggered together).
-  'auto.sort.chain': 'Order the chain',
-  'auto.sort.chainHint': 'Tap them in the order they enter the chain.',
+  // sort_chain: the costs of an attack (two or more at once, like Dark Elf and Toll), not chain links; number 1 is paid first.
+  'auto.sort.chain': 'Order the attack costs',
+  'auto.sort.chainHint': 'Tap them in the order they are paid: number 1 is paid first.',
+  'auto.sort.chainDone': 'Pay this way',
 
   // Removing counters (a sheet): how many from each card.
   'auto.counter.title': { one: 'Remove {count} counter', other: 'Remove {count} counters' },

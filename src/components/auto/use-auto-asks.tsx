@@ -898,7 +898,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {shown?.sort ? (
           <SortSheet
             key={`sort-${askId}`}
-            {...(shown.type === 'sort_chain' ? { title: t('auto.sort.chain'), hint: t('auto.sort.chainHint') } : {})}
+            {...(shown.type === 'sort_chain' ? { title: t('auto.sort.chain'), hint: t('auto.sort.chainHint'), done: t('auto.sort.chainDone') } : {})}
             cards={shown.sort.cards.map((card, index) => pickCardOf(card, String(index)))}
             onSort={(keys) => (keys === null ? gesture({ kind: 'cancel' }) : gesture(...keys.map((key) => ({ kind: 'pick' as const, index: Number(key) })), { kind: 'done' }))}
           />

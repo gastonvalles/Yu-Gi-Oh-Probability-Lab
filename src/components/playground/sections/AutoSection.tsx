@@ -47,6 +47,10 @@ const DECK_TOP: PickCard[] = [
   { key: 'y', name: 'Ash Blossom & Joyous Spring', art: art(14558127) },
   { key: 'z', name: 'Effect Veiler', art: art(97268402) },
 ]
+const ATTACK_COSTS: PickCard[] = [
+  { key: 'elf', name: 'Dark Elf', art: art(21417692), place: 'Zona de monstruos' },
+  { key: 'toll', name: 'Toll', art: art(82003859), place: 'Zona de Mágicas y Trampas' },
+]
 const TYPES = ['Aqua', 'Beast', 'Beast-Warrior', 'Creator God', 'Cyberse', 'Dinosaur', 'Divine-Beast', 'Dragon', 'Fairy', 'Fiend', 'Fish', 'Illusion', 'Insect', 'Machine', 'Plant', 'Psychic', 'Pyro', 'Reptile', 'Rock', 'Sea Serpent', 'Spellcaster', 'Thunder', 'Warrior', 'Winged Beast', 'Wyrm', 'Zombie']
 
 /** Las cuatro hojas de `AskOptions` de la muestra, con su forma de contestar. */
@@ -374,20 +378,25 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
 }
 
 function SortSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<'deck' | 'costs' | null>(null)
 
   return (
-    <Specimen title="Ordenar cartas" note={<>sort_card: tocalas en el orden en que van (la primera queda arriba) y se numeran; tocar una numerada la suelta. «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: sin X ni Escape. Archivo: <Tag>auto/SortSheet.tsx</Tag></>}>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        Abrir «Ordená las cartas»
-      </Button>
+    <Specimen title="Ordenar cartas" note={<>sort_card: tocalas en el orden en que van (la primera queda arriba) y se numeran; tocar una numerada la suelta. «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: sin X ni Escape. sort_chain es la misma hoja para los costos de un ataque (Dark Elf y Toll): el 1 se paga primero, sin «CLn» (no son eslabones). Archivo: <Tag>auto/SortSheet.tsx</Tag></>}>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" onClick={() => setOpen('deck')}>
+          Abrir «Ordená las cartas»
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setOpen('costs')}>
+          Abrir «Ordená los costos del ataque»
+        </Button>
+      </div>
       <Presence>
         {open ? (
           <SortSheet
-            kicker="Pot of Desires"
-            cards={DECK_TOP}
+            {...(open === 'deck' ? { kicker: 'Pot of Desires' } : { title: t('auto.sort.chain'), hint: t('auto.sort.chainHint'), done: t('auto.sort.chainDone') })}
+            cards={open === 'deck' ? DECK_TOP : ATTACK_COSTS}
             onSort={(keys) => {
-              setOpen(false)
+              setOpen(null)
               onAnswer(keys ? keys.join(', ') : 'como estaba')
             }}
           />

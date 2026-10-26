@@ -63,9 +63,10 @@ export const auto = {
   'auto.sort.hint': 'Tocalas en el orden en que van: la primera queda arriba.',
   'auto.sort.done': 'Ordenar así',
   'auto.sort.asIs': 'Dejar como está',
-  // Ordenar los eslabones que entran a la vez (sus efectos se dispararon juntos).
-  'auto.sort.chain': 'Ordená la cadena',
-  'auto.sort.chainHint': 'Tocalas en el orden en que entran en la cadena.',
+  // sort_chain: los costos de un ataque (dos o más a la vez, como Dark Elf y Toll), no eslabones; el 1 se paga primero (medido con el núcleo).
+  'auto.sort.chain': 'Ordená los costos del ataque',
+  'auto.sort.chainHint': 'Tocalos en el orden en que se pagan: el 1 se paga primero.',
+  'auto.sort.chainDone': 'Pagar así',
 
   // Sacar contadores (una hoja): cuántos de cada carta.
   'auto.counter.title': { one: 'Sacá {count} contador', other: 'Sacá {count} contadores' },
