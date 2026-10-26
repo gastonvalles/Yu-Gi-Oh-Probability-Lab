@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardRef, ChainLink, Side } from '../../app/auto/adapter'
-import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { askView, effectAskText, itemsInto, listOrder, namesList, openAsk, pickTitle, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import type { AutoSession, AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf } from '../../app/card-glow'
@@ -33,7 +33,7 @@ import { cardIdOfDrawId } from '../probability/practice'
 import type { DuelMatLink, MatCard } from '../probability/PracticeMat'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
-import { CardPicker, type PickCard } from './CardPicker'
+import { BAND_MAX, CardPicker, PickBand, type PickCard } from './CardPicker'
 import { ChainNotice } from './ChainNotice'
 import { LimitsChip } from './LimitsChip'
 import { SortSheet } from './SortSheet'
@@ -55,8 +55,6 @@ const ATTRIBUTES = ['EARTH', 'WATER', 'FIRE', 'WIND', 'LIGHT', 'DARK', 'DIVINE']
 const SPELL = 0x2
 const TRAP = 0x4
 const MONSTER = 0x1
-/** El título de la pregunta de a qué monstruo atacar (`HINTMSG_ATTACKTARGET` del núcleo). */
-const ATTACK_TARGET_HINT = '549'
 
 /** La mesa como la ve la pantalla: la mesa del arranque, las jugadas que ya llegaron y hasta cuál se muestra. */
 interface Paced {
@@ -449,15 +447,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // ── Lo que la mesa recibe de la pregunta (`duel.auto`). ──
   const pick = shown?.cardPick ?? null
   const mineIds = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'mine' ? [pick!.cards[i]!.ref!.id] : []))
-  const pickLabel = pick
-    ? pick.type === 'select_card' && shown?.title === ATTACK_TARGET_HINT
-      ? t('auto.pick.attackTarget')
-      : pick.type === 'select_tribute'
-      ? t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need })
-      : pick.type === 'select_sum'
-        ? t('auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
-        : `${pick.min === pick.max ? t('auto.pick.cards', { count: pick.max }) : t('auto.pick.range', { min: pick.min, max: pick.max })}${pick.max > 1 ? ` · ${t('auto.picker.status', { chosen: pick.count.now, max: pick.count.need })}` : ''}`
-    : ''
+  // Cuántas, para qué (el código de pista del núcleo, si está comprobado) y cuántas van: el mismo título en la mesa, en la banda y en la hoja.
+  const pickLabel = pick ? pickTitle(pick, shown?.title) : ''
+  // Una lista aparte (de varios lugares, por código, lo del rival): hasta `BAND_MAX` cartas, una banda en el medio de la mesa (`PickBand`); con más, la hoja (`CardPicker`).
+  const list = pick && pick.surface === 'list' ? pick : null
+  const band = list !== null && list.cards.length <= BAND_MAX
   const cardPick: AutoLink['cardPick'] =
     pick && pick.surface !== 'list'
       ? {
@@ -509,7 +503,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         : null,
     asking: shown !== null,
     // Como «No responder» de la línea: en la ventana de una fase tuya (`phaseWindow`) pasar es cambiar de fase, y eso va por el botón de fases.
-    cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick) ? () => gesture({ kind: 'cancel' }) : null,
+    cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick || band) ? () => gesture({ kind: 'cancel' }) : null,
     // La carta soltada es del duelo vivo: repasando, no se dibuja sobre la mesa del repaso.
     dropped: reviewing ? null : held,
     holdFor: (id) => {
@@ -659,9 +653,23 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     option.label ?? (options?.of === 'race' ? (RACES[option.value] ?? String(option.value)) : options?.of === 'attribute' ? (ATTRIBUTES[option.value] ?? String(option.value)) : t('practice.menu.activateEffect'))
   const askingCode = options?.options.map((option) => (option.description ? splitDesc(option.description).code : 0)).find((code) => Boolean(snap.names[code] ?? cards?.get(code)?.name))
   const optionsTitle = options ? (options.of === 'position' ? t('auto.options.position') : options.of === 'number' ? t('auto.options.number') : options.of === 'race' ? t('auto.options.race', { count: options.count }) : options.of === 'attribute' ? t('auto.options.attribute', { count: options.count }) : t('auto.options.option')) : ''
-  const list = pick && pick.surface === 'list' ? pick : null
   // Todas las de la pregunta, en su orden (las que ahora no valen van apagadas: `eligible`; las elegidas, con su aro), salvo las del deck, que van por nombre (`listOrder`).
   const listCards = list ? listOrder(list.cards, (card) => nameOf(card.ref, card.code)).map((i) => pickCardOf(list.cards[i]!, String(i))) : []
+  // En la banda, si todas salen del mismo lugar, el lugar va una vez, en la pestaña («Cementerio · 3»), y no debajo de cada carta.
+  const sourceOf = (card: AskCard) => (card.place === 'hand' ? 'hand' : card.place === 'pile' ? card.pile : undefined)
+  const lead = list?.cards[0]
+  const from = band && list && lead?.ref && sourceOf(lead) && list.cards.every((card) => card.ref?.side === lead.ref!.side && sourceOf(card) === sourceOf(lead)) ? sourceOf(lead)! : null
+  const bandPlace = from ? (lead!.ref!.side === 'theirs' ? t('duel.zone.theirs', { zone: t(`practice.place.${from}`) }) : t(`practice.place.${from}`)) : null
+  const bandCards = bandPlace ? listCards.map(({ place: _place, ...card }) => card) : listCards
+  const listProps = list
+    ? {
+        chosen: list.chosen.map(String),
+        eligible: new Set(list.eligible.map(String)),
+        done: list.done,
+        onToggle: (key: string) => gesture({ kind: 'pick', index: Number(key) }),
+        ...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {}),
+      }
+    : null
 
   const mat: AutoAsks['mat'] = {
     areas: DUEL_AREAS,
@@ -712,6 +720,17 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         // La carta a la que se responde (el último eslabón), chica a la izquierda: se ve qué se está por resolver sin buscarla en la mesa.
         {...(respondedTo ? { card: { name: linkName(respondedTo), art: artOf(respondedTo.card, respondedTo.code) } } : {})}
         no={{ label: t('auto.lane.pass'), onSelect: () => gesture({ kind: 'cancel' }) }}
+      />
+    ) : band && listProps ? (
+      // `select_unselect_card` va de a una (cada toque contesta).
+      <PickBand
+        key={askId ?? 0}
+        title={pickLabel}
+        {...(bandPlace ? { place: t('auto.band.from', { place: bandPlace, count: listCards.length }) } : {})}
+        cards={bandCards}
+        multi={list.type !== 'select_unselect_card' && list.max > 1}
+        onPick={() => gesture({ kind: 'done' })}
+        {...listProps}
       />
     ) : undefined,
     rivalFlights: { state: theirs, artOf: opponent.artOf },
@@ -775,7 +794,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         ) : null}
       </Presence>
       <Presence>
-        {list ? (
+        {list && listProps && !band ? (
           // La cuenta la lleva `ask-ui` (lo elegido, lo que todavía vale, si «Listo» contesta): la hoja sólo la muestra. `select_unselect_card` va de a una (cada toque contesta).
           <CardPicker
             key={`picker-${askId}`}
@@ -783,12 +802,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             cards={listCards}
             min={list.min}
             max={list.type === 'select_unselect_card' ? 1 : list.max}
-            chosen={list.chosen.map(String)}
-            eligible={new Set(list.eligible.map(String))}
-            done={list.done}
-            onToggle={(key) => gesture({ kind: 'pick', index: Number(key) })}
             onPick={() => gesture({ kind: 'done' })}
-            {...(shown?.cancelable ? { onCancel: () => gesture({ kind: 'cancel' }) } : {})}
+            {...listProps}
           />
         ) : null}
       </Presence>

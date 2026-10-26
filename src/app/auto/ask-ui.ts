@@ -1,4 +1,4 @@
-import { t } from '../../i18n'
+import { t, type MessageKey } from '../../i18n'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
 import { effectParts, effectSentences } from '../card-text'
 import { spotOf, type Adapter, type CardRef, type Side, type TriggerCause } from './adapter'
@@ -785,6 +785,47 @@ export function askView(state: AskState): AskView {
   }
 
   return view
+}
+
+/** El título de la pregunta de a qué monstruo atacar (`HINTMSG_ATTACKTARGET`). */
+export const ATTACK_TARGET_HINT = '549'
+
+/**
+ * Para qué se eligen las cartas: el `HINT_SELECTMSG` que precede a la pregunta (`AskState.title`), con las palabras de las cartas (`strings.conf` no viaja). Sólo los códigos
+ * comprobados con el núcleo real (decks del meta jugados al azar legal): lo que les pasó a las elegidas es lo que dice el texto (500 al Cementerio desde el campo o la mano, 504 al
+ * Cementerio, 506 a la mano, 509 al campo, 551 objetivo…). Los demás (los de filtro, «boca arriba»; los que no se pudieron ver, negar o cambiar el ATK; los textos de una carta) dejan el título genérico.
+ */
+const PICK_PURPOSE: Readonly<Record<string, Extract<MessageKey, `auto.pick.why.${string}`>>> = {
+  '500': 'auto.pick.why.tribute',
+  '501': 'auto.pick.why.discard',
+  '502': 'auto.pick.why.destroy',
+  '503': 'auto.pick.why.banish',
+  '504': 'auto.pick.why.toGy',
+  '505': 'auto.pick.why.returnToHand',
+  '506': 'auto.pick.why.addToHand',
+  '507': 'auto.pick.why.toDeck',
+  '508': 'auto.pick.why.normalSummon',
+  '509': 'auto.pick.why.specialSummon',
+  '510': 'auto.pick.why.set',
+  '511': 'auto.pick.why.fusion',
+  '512': 'auto.pick.why.synchro',
+  '519': 'auto.pick.why.detach',
+  '526': 'auto.pick.why.reveal',
+  '527': 'auto.pick.why.place',
+  '533': 'auto.pick.why.link',
+  '551': 'auto.pick.why.target',
+}
+
+/** El título de una elección de cartas: cuántas, para qué (si el código de pista está comprobado) y, si se eligen varias, cuántas van («Elegí 2 cartas para desterrar · 1/2»). */
+export function pickTitle(pick: CardPick, hint?: string): string {
+  if (pick.type === 'select_tribute') return t('auto.pick.tribute', { chosen: pick.count.now, total: pick.count.need })
+  if (pick.type === 'select_sum') return t('auto.pick.sum', { chosen: pick.count.now, total: pick.count.need })
+  if (pick.type === 'select_card' && hint === ATTACK_TARGET_HINT) return t('auto.pick.attackTarget')
+  const what = pick.min === pick.max ? t('auto.pick.cards', { count: pick.max }) : t('auto.pick.range', { min: pick.min, max: pick.max })
+  const why = hint === undefined ? undefined : PICK_PURPOSE[hint]
+  const title = why ? t('auto.pick.for', { what, why: t(why) }) : what
+
+  return pick.max > 1 ? `${title} · ${t('auto.pick.count', { chosen: pick.count.now, max: pick.count.need })}` : title
 }
 
 function cardPickOf(ask: AskOf<'select_card' | 'select_tribute' | 'select_sum' | 'select_unselect_card'>, cards: AskCard[], chosen: readonly number[]): CardPick {

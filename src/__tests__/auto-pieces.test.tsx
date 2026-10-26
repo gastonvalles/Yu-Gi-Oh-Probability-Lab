@@ -10,7 +10,7 @@ import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
 import { AutoBar } from '../components/auto/AutoBar'
-import { CardPicker, type PickCard } from '../components/auto/CardPicker'
+import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPicker'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
 
@@ -160,6 +160,43 @@ describe('AskOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'LIGHT' }))
     expect(screen.getByRole('button', { name: 'DARK' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'LIGHT' })).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+describe('PickBand', () => {
+  const band = (props: Partial<Parameters<typeof PickBand>[0]> = {}) =>
+    render(<PickBand title="Elegí 2 cartas para desterrar · 0/2" place="Cementerio · 3" cards={CARDS.slice(0, 3)} chosen={[]} eligible={new Set(['a', 'b', 'c'])} multi done={false} onToggle={() => {}} onPick={() => {}} {...props} />)
+
+  it('una fila con su pestaña y su título (el nombre del grupo); el foco va a la primera carta; «Cancelar» sin caja y la principal al final, apagada hasta completar', () => {
+    const onCancel = vi.fn()
+    band({ onCancel })
+    const group = screen.getByRole('group', { name: 'Elegí 2 cartas para desterrar · 0/2' })
+
+    expect(group).toHaveAttribute('data-prompt-row')
+    expect(group).toHaveTextContent('Cementerio · 3')
+    // Con pocas, 4 columnas (no quedan enormes); hasta 6, una por carta: siempre una fila.
+    expect(within(group).getByRole('listbox')).toHaveClass('grid-cols-4')
+    expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
+    expect(within(group).getAllByRole('button').map((button) => button.textContent)).toEqual(['Cancelar', 'Listo'])
+    expect(within(group).getByRole('button', { name: 'Listo' })).toBeDisabled()
+    fireEvent.click(within(group).getByRole('button', { name: 'Cancelar' }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('las elegidas, con su estado; completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
+    const onPick = vi.fn()
+    const onToggle = vi.fn()
+    band({ chosen: ['b', 'a'], done: true, onPick, onToggle })
+
+    expect(screen.getByRole('option', { name: /Aluber/ })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(screen.getByRole('option', { name: /Branded/ }))
+    expect(onToggle).toHaveBeenCalledWith('c', false)
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir 2 cartas' }))
+    expect(onPick).toHaveBeenCalledTimes(1)
+    cleanup()
+
+    band({ multi: false, title: 'Elegí 1 carta' })
+    expect(screen.queryAllByRole('button')).toEqual([])
   })
 })
 

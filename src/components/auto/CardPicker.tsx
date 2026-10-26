@@ -1,9 +1,10 @@
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
-import { useLeaving } from '../../app/use-presence'
+import { useLeaving, usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
@@ -125,6 +126,79 @@ export function usePicked(cards: readonly PickCard[], max: number) {
   }
 
   return [chosen, toggle] as const
+}
+
+/** Hasta cuántas cartas van en la banda; con más, la hoja (`CardPicker`). */
+export const BAND_MAX = 6
+/** Una sola fila: tantas columnas como cartas, entre 4 (con pocas, no quedan enormes) y 6 (a 390 px, cada una de ~48 px). */
+const BAND_COLUMNS: Record<number, string> = { 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6' }
+
+interface PickBandProps {
+  /** Cuántas, para qué y cuántas van (`pickTitle`): «Elegí 2 cartas para desterrar · 1/2». */
+  title: string
+  /** De dónde salen todas, en la pestaña de arriba («Cementerio · 3»); si vienen de lugares distintos, cada carta lo dice debajo de su nombre. */
+  place?: string
+  cards: readonly PickCard[]
+  /** Las elegidas, en el orden en que se eligieron (aro ámbar y su número). */
+  chosen: readonly string[]
+  eligible: ReadonlySet<string>
+  /** Se eligen varias: el pie explica el toque y la principal contesta. Con una, el toque contesta. */
+  multi: boolean
+  /** La principal se enciende (y contesta) cuando la pregunta está completa. */
+  done: boolean
+  onToggle: (key: string) => void
+  onPick: () => void
+  /** Sólo si la pregunta se puede cancelar: «Cancelar», sin caja (y Escape, que lo da la mesa). */
+  onCancel?: () => void
+}
+
+/**
+ * Elegir de una lista corta (hasta `BAND_MAX` cartas) sin tapar la mesa: una banda en una fila, en la ranura de la pregunta (`duel.prompt`, como `AskPrompt`: sin velo, ancha por
+ * `data-prompt-row`). Arriba de dónde salen, el título con para qué y la cuenta, las cartas (`PickGrid`: flechas, Espacio y Enter) y, abajo, «Cancelar» sin caja y la principal al final.
+ * Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
+ */
+export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel }: PickBandProps) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const leaving = useLeaving()
+  const titleId = useId()
+  const primary = multi || done
+
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('[role="option"][tabindex="0"]')?.focus({ preventScroll: true })
+  }, [])
+
+  return usePresence(
+    !leaving,
+    <div ref={ref} role="group" aria-labelledby={titleId} data-prompt="ask" data-prompt-row="" className="grid gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter">
+      {place ? (
+        <Badge size="sm" shape="tag" className="justify-self-start">
+          {place}
+        </Badge>
+      ) : null}
+      <p id={titleId} className="m-0 font-semibold">
+        {title}
+      </p>
+      <PickGrid label={t('auto.picker.cards')} cards={cards} chosen={chosen} eligible={eligible} onToggle={onToggle} multi={multi} className={BAND_COLUMNS[Math.max(4, Math.min(BAND_MAX, cards.length))]} />
+      {primary || onCancel ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {multi ? <p className="m-0 mr-auto text-micro text-muted">{t('auto.band.hint')}</p> : null}
+          <div className="ml-auto flex justify-end gap-2">
+            {onCancel ? (
+              <Button variant="tertiary" onClick={onCancel}>
+                {t('common.cancel')}
+              </Button>
+            ) : null}
+            {primary ? (
+              <Button variant="primary" disabled={!done} onClick={onPick}>
+                {chosen.length === 0 ? t('auto.pick.done') : t('auto.picker.choose', { count: chosen.length })}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>,
+    () => [ref.current],
+  )
 }
 
 interface CardPickerProps {
