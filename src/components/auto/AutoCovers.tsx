@@ -1,5 +1,4 @@
 import type { AutoSnapshot } from '../../app/auto/auto-session'
-import { setAutoPref } from '../../app/auto-prefs'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
@@ -26,10 +25,10 @@ export function LoadingCover({ progress, rival = false, note }: { progress: Auto
 }
 
 /**
- * Lo que no deja jugar: cartas sin reglas (con la lista, y «Jugar en modo manual»), o el núcleo que no arrancó o se cayó («Reintentar»). El duelo por enlace la usa sin `onRetry`
- * (no hay nada que reintentar: sólo volver) y con su `title` (el duelo se perdió o se cortó).
+ * Lo que no deja jugar: cartas sin reglas (con la lista, y «Jugar en modo manual»: una mano nueva), o el núcleo que no arrancó o se cayó («Reintentar» o, con `onManual`, «Seguir en
+ * modo manual» desde la última jugada buena). El duelo por enlace la usa sin `onRetry` (no hay nada que reintentar: sólo volver) y con su `title` (el duelo se perdió o se cortó).
  */
-export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; title?: string; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry?: () => void; onExit: () => void }) {
+export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, onManual, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; title?: string; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry?: () => void; onManual?: () => void; onExit: () => void }) {
   const rules = fault.kind === 'rules'
   const title = titleText ?? (rules ? t('auto.fault.rules', { count: fault.cards.length }) : fault.kind === 'crash' ? t('auto.fault.crash') : t('auto.fault.setup'))
   const text = rules ? t('auto.fault.rulesText') : fault.message
@@ -52,15 +51,22 @@ export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, on
             ))}
           </ul>
         ) : null}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {/* Sin nada que reintentar, salir es lo único que queda: va como la principal. */}
           <Button variant={onRetry ? 'tertiary' : 'primary'} onClick={onExit}>
             {t('auto.fault.back')}
           </Button>
-          {!onRetry ? null : rules ? (
-            <Button variant="primary" onClick={() => setAutoPref('duel', false)}>
-              {t('auto.fault.manual')}
+          {onRetry && onManual && !rules ? (
+            <Button variant="secondary" icon="hand" onClick={onManual}>
+              {t('auto.bar.manual')}
             </Button>
+          ) : null}
+          {!onRetry ? null : rules ? (
+            onManual ? (
+              <Button variant="primary" onClick={onManual}>
+                {t('auto.fault.manual')}
+              </Button>
+            ) : null
           ) : (
             <Button variant="primary" icon="refresh" onClick={onRetry}>
               {t('auto.fault.retry')}

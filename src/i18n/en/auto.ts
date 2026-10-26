@@ -119,10 +119,18 @@ export const auto: Translated<typeof es> = {
   'auto.end.effectWin': 'You won by a card effect.',
   'auto.end.effectLose': 'You lost by a card effect.',
 
-  // The lobby switch in a browser that can't run the engine, and going back to the manual table from «More options».
+  // The lobby switch in a browser that can't run the engine, and continuing the game on the manual table from «More options» (or from the engine error).
   'auto.entry.unsupported': "Your browser can't run the rules engine.",
-  'auto.bar.manual': 'Play in manual mode',
-  'auto.bar.manualHint': 'Turns off the automatic rules and opens the manual table with the same deck.',
+  'auto.bar.manual': 'Continue in manual mode',
+  'auto.bar.manualHint': 'The game continues on the manual table, with every option. If the automatic mode got something wrong, you can go back a few plays.',
+  'auto.manual.text': 'The table stays as it is, with every option. If the automatic mode got something wrong, go back and redo those plays by hand.',
+  'auto.manual.back': 'Go back',
+  'auto.manual.none': 'Nothing: continue from here',
+  'auto.manual.plays': { one: '{count} play', other: '{count} plays' },
+  'auto.manual.rivalHand': "Only the opponent's hand of hand traps carries over: not their field or their graveyard.",
+  'auto.manual.rivalNone': "The opponent doesn't carry over: the manual table is just yours.",
+  'auto.manual.busy': 'Rebuilding the table…',
+  'auto.manual.confirm': 'Continue in manual',
 
   // The automatic link duel: what the room tells whoever is waiting (below the deck), the line while the other one chooses and what cuts the duel short.
   'auto.online.waitingDeck': "Waiting for {name}'s deck…",

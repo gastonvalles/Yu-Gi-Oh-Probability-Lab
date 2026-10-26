@@ -153,10 +153,13 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
         session.answer(bot(snapshot.ask!.ask))
         snapshot = await settled(session)
         if ((before.ask!.ask.type === 'select_idlecmd' || before.ask!.ask.type === 'select_battlecmd') && snapshot.status === 'ready') {
+          // La jugada empieza donde estaba la mesa al preguntar: recortar ahí («Seguir en manual») da la mesa de deshacer.
+          expect(snapshot.playStarts).toContain(before.mineActions.length)
           expect(session.undo()).toBe(true)
           const back = await settled(session)
 
           expect(view(back)).toEqual(view(before))
+          expect(back.mineActions).toEqual(snapshot.mineActions.slice(0, before.mineActions.length))
           tally.undos += 1
           break
         }

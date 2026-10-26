@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
+import type { ManualGame } from '../../app/auto/manual-handover'
 import { canRunAuto, useAutoPrefs } from '../../app/auto-prefs'
 import { clearPlayReturn, readPlayReturn } from '../../app/play-return'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -143,7 +144,7 @@ export function DeckModeScreen() {
   const searchAvailable = (!isDeckBuilderStep || !isDesktopDeckBuilder) && !isPracticeStep && (!isDuelStep || duelConnect === null || duelLobby)
   const searchActive = searchOpen && searchAvailable
   // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
-  const practice = usePracticeSession({
+  const { props: practice, resume: resumePractice } = usePracticeSession({
     active: isPracticeStep,
     handSize: controller.probability.handSize,
     derivedMainCards: controller.probability.derivedMainCards,
@@ -156,7 +157,11 @@ export function DeckModeScreen() {
   })
   // El duelo automático (beta): con el interruptor del lobby de Jugar prendido (y un navegador que pueda correr el núcleo), «Entrenar solo» abre la mesa contra el núcleo de reglas en vez de la práctica.
   const autoPrefs = useAutoPrefs()
-  const autoSolo = autoPrefs.duel && canRunAuto()
+  // «Seguir en manual» del automático es de esta partida, no del interruptor (que queda como estaba): al volver al lobby de Jugar, se olvida.
+  const [manualHere, setManualHere] = useState(false)
+
+  if (manualHere && activeStep === 'duel') setManualHere(false)
+  const autoSolo = autoPrefs.duel && canRunAuto() && !manualHere
   // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -349,7 +354,7 @@ export function DeckModeScreen() {
           </Heading>
           {autoSolo && matDeck.mainIds.length > 0 ? (
             // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá.
-            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} {...(practice ? { lab: practice } : {})} />
+            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} />
           ) : practice ? (
             <LazyPracticeSection {...practice} />
           ) : (
@@ -517,7 +522,7 @@ function usePracticeSession({
   disabledGenericRuleIds,
   systemRuleNames,
   hasCompletedClassification,
-}: PracticeSessionInput): PracticeScreenProps | null {
+}: PracticeSessionInput): { props: PracticeScreenProps | null; resume: (game: ManualGame) => void } {
   const activePatterns = useMemo(
     () => buildActiveRuleSet(derivedMainCards, curatePatterns(patterns, derivedMainCards), disabledGenericRuleIds, systemRuleNames),
     [patterns, derivedMainCards, disabledGenericRuleIds, systemRuleNames],
@@ -540,6 +545,14 @@ function usePracticeSession({
     start(rival ? { ...table, rival: rival.rival } : table, [], rival?.names)
   }, [start, mainIds, extraIds, handSize])
   const loadCombo = useCallback((combo: SavedCombo) => start(combo.initial, combo.actions, combo.names), [start])
+  // La partida del automático («Seguir en manual»): en vivo, con todo su historial (Deshacer y los Pasos siguen), y sin repartir otra mano al entrar.
+  const resume = useCallback(
+    (game: ManualGame) => {
+      dealtWith.current = JSON.stringify(readHandtrapConfig())
+      start(game.initial, game.actions, game.names, true)
+    },
+    [start],
+  )
 
   // Al entrar a la práctica ya se roban las cartas de la mano (también si la mano de antes, sin jugadas, se repartió con otras handtraps del rival).
   useEffect(() => {
@@ -553,10 +566,10 @@ function usePracticeSession({
   }, [active, session, mainIds.length, handSize, newHand])
 
   if (!session || !state) {
-    return null
+    return { props: null, resume }
   }
 
-  return {
+  const props: PracticeScreenProps = {
     handSize,
     derivedMainCards,
     patterns: activePatterns,
@@ -575,4 +588,6 @@ function usePracticeSession({
     onLoadCombo: loadCombo,
     onNewHand: newHand,
   }
+
+  return { props, resume }
 }

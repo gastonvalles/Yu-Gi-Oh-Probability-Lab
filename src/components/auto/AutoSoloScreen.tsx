@@ -6,9 +6,10 @@ import { createDataLoader, httpSource } from '../../app/auto/auto-data'
 import { createAutoSession, workerTransport, type AutoSession } from '../../app/auto/auto-session'
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
+import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
-import { autoRival, poolCount, readHandtrapConfig, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
+import { autoRival, dealRival, poolCount, readHandtrapConfig, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
 import { randomSeed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
@@ -20,6 +21,7 @@ import { CloseButton } from '../ui/IconButton'
 import { AutoBar, AutoLives } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckListOf } from './deck-list'
+import { ManualDialog } from './ManualDialog'
 import { sentinel, useAutoAsks } from './use-auto-asks'
 
 export { STEP_MS } from './use-auto-asks'
@@ -43,6 +45,11 @@ export interface AutoSoloScreenProps {
   handSize?: number
   /** La flecha de la barra («Volver a Jugar», como en la práctica): vuelve al lobby. */
   onExit: () => void
+  /**
+   * «Seguir en modo manual» (de «Más opciones», del error del núcleo o del final): la partida, para seguirla en la mesa manual (vuelta atrás las jugadas que se eligieron), o `null`
+   * si no llegó a empezar (cartas sin reglas: una mano nueva). Sin esto, no se ofrece.
+   */
+  onManual?: (game: ManualGame | null) => void
   /** Las reglas del Lab: con esto, las salidas y problemas de tu mano de apertura (los chips de la práctica) debajo de los pasos o sobre tu mano. */
   lab?: PracticeLab
   /**
@@ -58,7 +65,7 @@ const NOTHING = () => {}
 
 const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options) => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...options })
 
-export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, lab, connect = connectLive }: AutoSoloScreenProps) {
+export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, connect = connectLive }: AutoSoloScreenProps) {
   // Las handtraps del rival: las del simulador de «Jugar solo» (`app/handtraps.ts`); cambiarlas arma otra sesión con la misma semilla.
   const [handtraps, setHandtraps] = useState<HandtrapConfig>(readHandtrapConfig)
   const [live, setLive] = useState<{ session: AutoSession; n: number } | null>(null)
@@ -86,7 +93,7 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   }, [])
 
   return live ? (
-    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} />
+    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} {...(onManual ? { onManual } : {})} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} />
   ) : (
     <LoadingCover progress={{ done: 0, total: 0 }} rival={autoRival(handtraps) !== null} />
   )
@@ -97,6 +104,7 @@ interface AutoDuelProps {
   cardsById: ReadonlyMap<string, MatCard>
   deckName: string
   onExit: () => void
+  onManual?: AutoSoloScreenProps['onManual']
   /** Las handtraps del rival (encendidas, las usa) y cambiarlas desde «Más opciones» (el duelo empieza de nuevo). */
   handtraps: HandtrapConfig
   onHandtraps: (next: HandtrapConfig) => void
@@ -106,7 +114,7 @@ interface AutoDuelProps {
 /** Sin las reglas del Lab (las pruebas), no hay chips: un deck vacío no alcanza para una mano. */
 const NO_LAB: PracticeLab = { handSize: 5, derivedMainCards: [], patterns: [], hasCompletedClassification: true, reviewPendingPatternCount: 0 }
 
-function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps, lab }: AutoDuelProps) {
+function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, onHandtraps, lab }: AutoDuelProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -122,6 +130,22 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   const chips = usePracticeChips(lab, asks.matSession)
   // La hoja para cambiar las handtraps del rival.
   const [choosing, setChoosing] = useState(false)
+  // «Seguir en modo manual»: el diálogo (`opened` lo vuelve a «Nada» cada vez que se abre) y la partida que pasa, calculada sólo con él abierto. Sin una mesa todavía (cartas sin
+  // reglas, el núcleo que no arrancó), una mano nueva: no hay nada que elegir.
+  const [switching, setSwitching] = useState(false)
+  const [opened, setOpened] = useState(0)
+  const rivalDeal = useMemo(() => dealRival(handtraps, snap.seed), [handtraps, snap.seed])
+  const handover = useMemo(
+    () => (switching ? manualHandover(snap, (id) => cardsById.get(id)?.name, rivalDeal ? { hand: rivalDeal.rival, names: rivalDeal.names } : undefined) : null),
+    [switching, snap, cardsById, rivalDeal],
+  )
+  const openManual = onManual
+    ? () => {
+        if (snap.mineActions.length === 0) return onManual(null)
+        setOpened((count) => count + 1)
+        setSwitching(true)
+      }
+    : undefined
   const linkName = useCallback((link: ChainLink) => nameOf(link.card, link.code), [nameOf])
 
   // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,
@@ -152,9 +176,9 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
   }, [told])
 
   const cover = snap.fault ? (
-    <FaultCover fault={snap.fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={() => session.restart()} onExit={onExit} />
+    <FaultCover fault={snap.fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={() => session.restart()} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
   ) : snap.status === 'ended' && snap.overlay.end ? (
-    <EndCover end={snap.overlay.end} lp={snap.overlay.lp} rival={rivalName} onAgain={() => session.restart()} onExit={onExit} />
+    <EndCover end={snap.overlay.end} lp={snap.overlay.lp} rival={rivalName} onAgain={() => session.restart()} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
   ) : snap.status === 'loading' ? (
     <LoadingCover progress={snap.progress} rival={rivalOn} />
   ) : undefined
@@ -186,7 +210,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
         place={prefs.place}
         onPlace={(mode) => setAutoPref('place', mode)}
         onRestart={() => session.restart()}
-        onManual={() => setAutoPref('duel', false)}
+        {...(openManual ? { onManual: openManual } : {})}
         handtraps={{
           on: rivalOn,
           summary: rivalOn ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) }) : t('auto.bar.handtrapsOff'),
@@ -253,12 +277,24 @@ function AutoDuel({ session, cardsById, deckName, onExit, handtraps, onHandtraps
           : {})}
       />
       {asks.pieces}
+      <ManualDialog
+        key={opened}
+        isOpen={switching}
+        plays={handover?.plays ?? []}
+        busy={snap.replaying}
+        rivalHand={rivalDeal !== null}
+        onClose={() => setSwitching(false)}
+        onConfirm={(back) => {
+          setSwitching(false)
+          if (handover) onManual?.(handover.session(back))
+        }}
+      />
     </div>
   )
 }
 
-/** El final: quién ganó y por qué, y «Jugar otra vez» (la misma semilla: el mismo duelo). */
-function EndCover({ end, lp, rival, onAgain, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; rival: string; onAgain: () => void; onExit: () => void }) {
+/** El final: quién ganó y por qué, y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
+function EndCover({ end, lp, rival, onAgain, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; rival: string; onAgain: () => void; onManual?: () => void; onExit: () => void }) {
   const won = end.winner === 0
   const title = end.winner === 2 ? t('duel.result.title.draw') : won ? t('duel.result.title.win') : t('duel.result.title.lose')
   // Por qué: las vidas (el núcleo dice 0, o alguien quedó en 0), sin robar (con las vidas enteras y una razón del núcleo, no de un script: en un duelo solo sin reloj no hay otra) o el efecto de una carta.
@@ -282,9 +318,16 @@ function EndCover({ end, lp, rival, onAgain, onExit }: { end: { winner: number; 
           {reason}
         </p>
         <p className="m-0 text-micro tabular-nums text-soft">{`${t('duel.bar.you')} ${lp[0]} · ${rival} ${lp[1]}`}</p>
-        <Button variant="primary" icon="refresh" onClick={onAgain}>
-          {t('auto.end.again')}
-        </Button>
+        <div className="flex flex-wrap justify-center gap-2">
+          {onManual ? (
+            <Button variant="secondary" icon="hand" onClick={onManual}>
+              {t('auto.bar.manual')}
+            </Button>
+          ) : null}
+          <Button variant="primary" icon="refresh" onClick={onAgain}>
+            {t('auto.end.again')}
+          </Button>
+        </div>
       </div>
     </div>
   )

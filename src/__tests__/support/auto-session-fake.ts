@@ -136,6 +136,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     texts: { 400: ['', 'Summon a Token', 'Destroy a monster'] },
     unmapped: [],
     rivalHand: [],
+    playStarts: [],
   }
   let askId = 0
   const set = (patch: Partial<AutoSnapshot>) => {

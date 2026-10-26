@@ -121,10 +121,18 @@ export const auto = {
   'auto.end.effectWin': 'Ganaste por el efecto de una carta.',
   'auto.end.effectLose': 'Perdiste por el efecto de una carta.',
 
-  // El interruptor del lobby en un navegador que no puede correr el núcleo, y volver a la mesa manual desde «Más opciones».
+  // El interruptor del lobby en un navegador que no puede correr el núcleo, y seguir la partida en la mesa manual desde «Más opciones» (o desde el error del núcleo).
   'auto.entry.unsupported': 'Tu navegador no puede correr el motor de reglas.',
-  'auto.bar.manual': 'Jugar en modo manual',
-  'auto.bar.manualHint': 'Apaga las reglas automáticas y abre la mesa manual con tu mismo deck.',
+  'auto.bar.manual': 'Seguir en modo manual',
+  'auto.bar.manualHint': 'La partida sigue en la mesa manual, con todas las opciones. Si el automático se equivocó, podés volver atrás unas jugadas.',
+  'auto.manual.text': 'La mesa sigue como está y con todas las opciones. Si el automático se equivocó, volvé atrás y rehacé esas jugadas a mano.',
+  'auto.manual.back': 'Volver atrás',
+  'auto.manual.none': 'Nada: seguir desde acá',
+  'auto.manual.plays': { one: '{count} jugada', other: '{count} jugadas' },
+  'auto.manual.rivalHand': 'Del rival pasa sólo su mano de handtraps: su campo y su cementerio, no.',
+  'auto.manual.rivalNone': 'El rival no pasa: la mesa manual es sólo tuya.',
+  'auto.manual.busy': 'Rearmando la mesa…',
+  'auto.manual.confirm': 'Seguir en manual',
 
   // El duelo automático por enlace: lo que la sala le dice a quien espera (debajo del deck), la línea mientras elige el otro y lo que corta el duelo.
   'auto.online.waitingDeck': 'Esperando el deck de {name}…',

@@ -187,6 +187,10 @@ export function ButtonsSection() {
             onChange={setCards}
             options={options.map((option, at) => (option.value === cards ? { ...option, detail: ['5 cartas', '6 cartas', '5 y 6 cartas'][at] } : { ...option, detail: ['▲7', '▼2', '='][at], detailTone: (['success', 'danger', undefined] as const)[at], detailLabel: ['7 más con B', '2 menos con B', 'igual en las dos'][at] }))}
           />
+          {/* En lista: una opción por renglón con su frase («Volver atrás» de «Seguir en manual»). */}
+          <div className="w-full max-w-sm">
+            <Segmented label="Lista" variant="list" value={cards} onChange={setCards} options={options.map((option, at) => ({ ...option, detail: ['Invocación Normal: Ash Blossom', 'Invocación Especial: S:P Little Knight', 'Battle Phase'][at] }))} />
+          </div>
         </Specimen>
 
         <Specimen

@@ -1,6 +1,6 @@
 // Lo que comparten las pruebas de pantalla del duelo automático (`auto-screen-*.test.tsx`): monta `AutoSoloScreen` con la sesión de mentira y cuenta los commits y los despachos (el centinela).
 import { act, screen, within } from '@testing-library/react'
-import { Profiler, type ReactElement } from 'react'
+import { Profiler, type ComponentProps, type ReactElement } from 'react'
 import { afterEach, beforeEach, vi, type MockInstance } from 'vitest'
 
 import { AutoSoloScreen } from '../../components/auto/AutoSoloScreen'
@@ -39,10 +39,10 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-export function renderAuto(fake: FakeSession = fakeSession(), onExit = () => {}): FakeSession {
+export function renderAuto(fake: FakeSession = fakeSession(), onExit = () => {}, onManual: ComponentProps<typeof AutoSoloScreen>['onManual'] = () => {}): FakeSession {
   const ui: ReactElement = (
     <Profiler id="auto" onRender={() => { commits += 1 }}>
-      <AutoSoloScreen mainIds={[...CARDS.keys()].filter((id) => id !== 'card-500-1')} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={onExit} connect={() => fake} />
+      <AutoSoloScreen mainIds={[...CARDS.keys()].filter((id) => id !== 'card-500-1')} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={onExit} onManual={onManual} connect={() => fake} />
     </Profiler>
   )
 

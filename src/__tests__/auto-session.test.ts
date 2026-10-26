@@ -107,7 +107,11 @@ describe('la sesión del duelo automático', () => {
     const mark = await until(session, (s) => s.answers.length === 3 && s.ask !== null)
 
     session.answer(END)
-    await until(session, (s) => s.answers.length === 4 && s.ask !== null)
+    const later = await until(session, (s) => s.answers.length === 4 && s.ask !== null)
+
+    // Cada pregunta de jugada mía marca dónde empieza (la viva, la última); recortar ahí es lo mismo que deshacer («Seguir en manual» no le pide nada al núcleo).
+    expect(mark.playStarts.at(-1)).toBe(mark.mineActions.length)
+    expect(later.playStarts).toContain(mark.mineActions.length)
     expect(session.undo()).toBe(true)
     expect(session.getSnapshot().replaying).toBe(true)
     const back = await until(session, (s) => s.ask !== null && !s.replaying)
@@ -120,6 +124,9 @@ describe('la sesión del duelo automático', () => {
     expect(back.initial).not.toBe(mark.initial)
     expect(back.initial).toEqual(mark.initial)
     expect(back.mineActions).toEqual(mark.mineActions)
+    expect(back.mineActions).toEqual(later.mineActions.slice(0, mark.mineActions.length))
+    // Re-simulando, las marcas se rearman con la mesa: las mismas que había.
+    expect(back.playStarts).toEqual(mark.playStarts)
     // Una respuesta a la pregunta de antes del deshacer ya no vale: tiene otro askId.
     expect(back.ask!.askId).not.toBe(mark.ask!.askId)
     session.destroy()
