@@ -50,7 +50,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `Heading` · `SectionHeader` · `StepHero` · `StepPage` | Todo título pasa por `Heading` (`ui/typography.ts`). **Los hipervínculos** usan `textLink`: ámbar y un solo estilo (`link-rules.test.ts`). |
 | `ProgressRing` · `SegmentedRing` | Los anillos (`ui/`): ver «Anillos». |
 | `Segmented` · `Switch` · `FilterChips` · `MultiSelect` · `Stepper` · `SearchField` · `ScrollRow` · `OverflowMenu` · `Badge` | Los controles (`ui/`); lo elegido, en ámbar. `Switch disabled`: no se puede usar y el porqué va en el texto de al lado. |
-| `Modal` | Todo diálogo (`ui/Modal.tsx`); sus tamaños, en la regla 10. Una confirmación es `ConfirmDialog` y su texto sigue la muestra «Confirmación». |
+| `Modal` | Todo diálogo (`ui/Modal.tsx`); sus tamaños, en la regla 10. Una confirmación es `ConfirmDialog` y su texto sigue la muestra «Confirmación». En la mesa, `veil={false}`: sin velo (también `ConfirmDialog` y `SideDrawer`). |
 | `SheetHandle` | El asa de una hoja que sale de abajo en el celular (`ui/SheetHandle.tsx` + `app/use-sheet-drag.ts`): la baja a una tira de 28 px, sin cerrarla, para ver la mano, y la sube; la llevan el visor de una pila y `Modal lowerable`. |
 | `SideDrawer` | Panel por la derecha (`ui/SideDrawer.tsx`): dos anchos y nada más, para que dos cajones encimados se cubran justo. |
 | `Icon` | El único set (`ui/Icon.tsx`): nada de SVG suelto. El $ de los precios va sin círculo: el del círculo no está en el registro, a propósito. |
@@ -62,7 +62,7 @@ Cada uno se explica en el comentario de su archivo; la tabla dice dónde está y
 | `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): sólo decoración y la excepción del lienzo plano (regla 9). |
 | `CardMenu` · `CardSheet` | El menú de una carta (`probability/`; muestra «Menú de una carta»; `wide` en una opción: submenú ancho): sus reglas, en «Menús» de `docs/duelo.md`. |
 | `AskPrompt` · `AskOptions` · `CardPicker` · `SortSheet` · `AutoBar` | Las piezas de «Jugar solo automático (beta)» para lo que el campo no puede expresar (`auto/`): el sí o no centrado y sin fondo, las opciones en una hoja chica (`stacked`), elegir cartas de una lista, ordenar el tope y la barra de arriba. Sus reglas, en su comentario y en `docs/duelos-automaticos.md`. |
-| `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal ni lleva velo y no tapa tu mano ni el detalle; en un duelo de escritorio sin columna derecha, es una tira. Su lugar y elegir varias, en «El visor de una pila no tapa tu mano ni el detalle» y «Elegir varias cartas de una pila» de `docs/duelo.md`. |
+| `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal ni lleva velo y no tapa tu mano ni el detalle; en un duelo de escritorio sin columna derecha, es una tira. Su lugar y elegir varias, en `docs/duelo.md`. |
 | `DuelTable` · `PracticeMatPanel` · `MatSnapshot` · `MaterialStack` · `RivalHandStrip` · `HandtrapPool` · `DuelMedal` | La mesa y el duelo (`probability/`, `duel/`). |
 | `TierStrip` · `TierMakerBoard` | Las tier lists (`meta/`). |
 | `DeckZoneHeader` · `StepErrorBoundary` · `ResizeHandle` · `Mascot` | `components/DeckZoneHeader.tsx`, `ui/` y `mascot/`. |
