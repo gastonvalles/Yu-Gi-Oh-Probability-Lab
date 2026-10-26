@@ -350,7 +350,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   const faultTitle = snap.fault?.kind === 'retry' ? t('auto.online.cut', { name: rivalName }) : online.phase === 'lost' && !snap.fault ? (online.problems.reason === 'lost' ? t('auto.online.lost') : t('auto.online.broken')) : undefined
 
   const cover = fault ? (
-    <FaultCover fault={fault} {...(faultTitle ? { title: faultTitle } : {})} nameOf={(code) => asks.nameOf(null, code)} artOf={(code) => asks.artOf(null, code)} onExit={onLeave} />
+    <FaultCover fault={fault} {...(faultTitle ? { title: faultTitle } : {})} nameOf={(code) => asks.nameOf(null, code)} artOf={(code) => asks.artOf(null, code)} rematch={{ snapshot, rival: rivalName, onRematch }} onExit={onLeave} />
   ) : paused ? (
     <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
   ) : resultOpen ? (

@@ -111,6 +111,8 @@ describe('auto-screen · los estados', () => {
     expect(cover).toHaveTextContent('Un error del núcleo cortó el duelo.')
     expect(cover).not.toHaveTextContent('worker error')
     expect(within(cover).queryByRole('button', { name: 'Volver a antes de tu última jugada' })).toBeNull()
+    // Sin sala no hay otro duelo que pedir (eso es del duelo por enlace): «Reintentar».
+    expect(within(cover).queryByRole('button', { name: 'Jugar otro duelo' })).toBeNull()
     fireEvent.click(within(cover).getByRole('button', { name: 'Reintentar' }))
     expect(fake.restarts).toBe(1)
   })
