@@ -11,6 +11,8 @@
  * Este módulo no importa el paquete del núcleo (lo importa la UI): sus constantes son copias, y un test las compara con las del paquete.
  */
 
+import { isDuelKey } from './duel-key'
+
 export type Seat = 0 | 1
 
 /** Lugares del núcleo (`LOCATION_*`). Un material de Xyz viaja como `MZONE | OVERLAY`. La zona de Campo es `SZONE` 5. */
@@ -294,8 +296,12 @@ const PLAYER = { lp: 'int', hand: 'int', draw: 'int' } as const
 const DECK = { main: ['int'], extra: ['int'], hand: ['int'] } as const
 
 const COMMAND_SHAPES = {
-  /** `seed`: la semilla de todo el duelo (u32, como las de la mesa). `flags`: las reglas (u64 en texto; `MODE_MR5` por defecto). `decks[0]` empieza. */
-  create: { seed: 'int', flags: 'u64', players: [PLAYER], decks: [DECK] },
+  /**
+   * `seed`: la semilla de todo el duelo (u32, como las de la mesa). `key`: la del anfitrión del duelo por enlace, 256 bits en hex
+   * (`duel-key.ts`): con ella el orden de los decks y el núcleo salen de la clave y `seed` no se usa (va igual: 32 bits se prueban todos
+   * desde la mano inicial). `flags`: las reglas (u64 en texto; `MODE_MR5` por defecto). `decks[0]` empieza.
+   */
+  create: { seed: 'int', key: ['opt', 'str'], flags: 'u64', players: [PLAYER], decks: [DECK] },
   answer: { askId: 'int', answer: {} },
   /** Deshacer: re-simula desde la semilla con las primeras `to` respuestas (y vuelve a mandar todos los eventos, desde cero). */
   rewind: { to: 'int' },
@@ -386,7 +392,7 @@ export function parseAutoCommand(input: unknown): AutoCommand | null {
       const body = readShape(COMMAND_SHAPES.create, raw)
       const deckOk = (deck: Infer<typeof DECK>) => deck.main.length <= 200 && deck.extra.length <= 100 && deck.hand.length <= deck.main.length && [...deck.main, ...deck.extra].every((code) => code > 0)
 
-      if (!body || !inRange(body.seed, 0, MAX_SEED) || body.players.length !== 2 || body.decks.length !== 2 || !body.decks.every(deckOk)) return null
+      if (!body || !inRange(body.seed, 0, MAX_SEED) || (body.key !== undefined && !isDuelKey(body.key)) || body.players.length !== 2 || body.decks.length !== 2 || !body.decks.every(deckOk)) return null
       if (!body.players.every((p) => inRange(p.lp, 1, MAX_LP) && inRange(p.hand, 0, 60) && inRange(p.draw, 0, 60))) return null
       if (raw.answers === undefined) return { t: 'create', ...body }
       const answers = Array.isArray(raw.answers) && raw.answers.length <= MAX_ANSWERS ? raw.answers.map(parseAnswer) : null

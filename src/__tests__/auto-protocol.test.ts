@@ -33,6 +33,15 @@ describe('el protocolo de los duelos automáticos', () => {
     expect(parseAutoCommand({ t: 'destroy', x: 1 })).toEqual({ t: 'destroy' })
   })
 
+  it('el create del duelo por enlace lleva la clave (hex de 64, en minúsculas); una que no es así descarta el comando', () => {
+    const key = 'a1'.repeat(32)
+
+    expect(parseAutoCommand({ ...create, key })).toEqual({ ...create, key })
+    expect(parseAutoCommand(JSON.stringify({ ...create, key }))).toEqual({ ...create, key })
+    expect(parseAutoCommand(create)).not.toHaveProperty('key')
+    for (const bad of [key.toUpperCase(), key.slice(1), `${key}0`, `${key.slice(1)}g`, '', null, 1234, ['a1']]) expect(parseAutoCommand({ ...create, key: bad })).toBeNull()
+  })
+
   it('rechaza los comandos mal formados', () => {
     const bad = [
       null,

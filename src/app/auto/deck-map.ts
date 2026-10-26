@@ -1,4 +1,5 @@
 import { shuffleWithSeed } from '../practice-mat'
+import { shuffleWithKey } from './duel-key'
 
 /**
  * De nuestros decks a lo que el núcleo necesita antes de `startDuel` (§3.5 y §3.10 del diseño): los códigos del `.cdb`, el orden del
@@ -71,8 +72,8 @@ export function mapDeck(list: DeckList, resolve: (passcode: number) => CoreCardI
   return { main: expand(list.main), extra: expand(list.extra), missing: [...missing], noRules: [...noRules] }
 }
 
-/** El orden del deck, de arriba hacia abajo: la mano fija primero (en ese orden) y el resto barajado con la semilla. */
-export function deckOrder(main: readonly number[], seed: number, hand: readonly number[] = []): number[] {
+/** El orden del deck, de arriba hacia abajo: la mano fija primero (en ese orden) y el resto barajado con la semilla (o con la función que se pase: la de la clave, en `teamOrder`). */
+export function deckOrder(main: readonly number[], seed: number | ((rest: number[]) => number[]), hand: readonly number[] = []): number[] {
   const rest = [...main]
 
   for (const code of hand) {
@@ -82,17 +83,22 @@ export function deckOrder(main: readonly number[], seed: number, hand: readonly 
     rest.splice(at, 1)
   }
 
-  return [...hand, ...shuffleWithSeed(rest, seed)]
+  return [...hand, ...(typeof seed === 'number' ? shuffleWithSeed(rest, seed) : seed(rest))]
 }
 
 /** El Main sin orden (por código): el del invitado del duelo por enlace, que no sabe cómo se barajó (la semilla no viaja) y lo tiene como bolsa desde el arranque. */
 export const bagOrder = (main: readonly number[]): number[] => [...main].sort((a, b) => a - b)
 
-/** El Main del deck `team` tal como lo pone el anfitrión (`core-host.ts`), de arriba hacia abajo: lo reproduce cualquiera que tenga el `create`. */
-export function teamOrder(create: { seed: number; decks: readonly { main: readonly number[]; hand: readonly number[] }[] }, team: number): number[] {
+/**
+ * El Main del deck `team` tal como lo pone el anfitrión (`core-host.ts`), de arriba hacia abajo: lo reproduce cualquiera que tenga el `create`.
+ * Con `key` (el duelo por enlace) cada deck sale de su flujo de la clave (el `team`); sin ella, de la semilla más el `team`, como siempre
+ * (lo guardado con semilla depende de que no cambie).
+ */
+export function teamOrder(create: { seed: number; key?: string; decks: readonly { main: readonly number[]; hand: readonly number[] }[] }, team: number): number[] {
   const deck = create.decks[team]!
+  const { key } = create
 
-  return deckOrder(deck.main, (create.seed + team) >>> 0, deck.hand)
+  return deckOrder(deck.main, key === undefined ? (create.seed + team) >>> 0 : (rest) => shuffleWithKey(rest, key, team), deck.hand)
 }
 
 /**

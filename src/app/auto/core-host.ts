@@ -21,6 +21,7 @@ import createCore, {
 import { preloadedReaders } from './auto-data'
 import type { TransportFactory } from './auto-session'
 import { needsScript, scriptName, teamOrder } from './deck-map'
+import { coreSeedOf, isDuelKey } from './duel-key'
 import { askFor, eventFor, statsFor } from './referee'
 import {
   ASK_SHAPES,
@@ -47,7 +48,7 @@ import {
  * síncronos e inyectados: en Node salen de archivos, en el navegador los traerá precargados quien lo use.
  *
  * Lo que el núcleo 11.0 y el paquete 0.1.6 no hacen y se resuelve acá (medido en F0):
- * - `constant.lua` y `utility.lua` no se cargan solos; el deck inicial no se baraja (lo baraja `deckOrder` con la semilla) y siempre
+ * - `constant.lua` y `utility.lua` no se cargan solos; el deck inicial no se baraja (lo baraja `teamOrder`, con la semilla o la clave) y siempre
  *   empieza el jugador 0 (el deck que va primero).
  * - `MSG_WIN` no corta el duelo: el fin es el primer `win`.
  * - Una instancia nueva por duelo (y por cada `rewind`). Aun así, entre dos corridas iguales el núcleo puede contar en otro orden las
@@ -92,7 +93,7 @@ const STAT_FLAGS = (OcgQueryFlags.CODE | OcgQueryFlags.POSITION | OcgQueryFlags.
 const jsonify = (value: unknown): unknown =>
   typeof value === 'bigint' ? value.toString() : Array.isArray(value) ? value.map(jsonify) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, jsonify(item)])) : value
 
-/** La semilla del núcleo (Xoshiro256**, nunca toda en 0) a partir de la semilla u32 del duelo. */
+/** La semilla del núcleo (Xoshiro256**, nunca toda en 0) a partir de la semilla u32 del duelo; con la clave del duelo por enlace es `coreSeedOf`. */
 const coreSeed = (seed: number): [bigint, bigint, bigint, bigint] => [BigInt(seed) + 1n, 0x9e3779b97f4a7c15n, BigInt(seed) * 0x2545f491n + 7n, 0xd1b54a32d192ed03n]
 
 /** El handle interno del paquete (el puntero del duelo y la entrada de sus lectores). */
@@ -424,6 +425,11 @@ export function createAutoHost(options: HostOptions): AutoHost {
       return
     }
 
+    // Una clave que no es la de `duel-key.ts` no pasa `parseAutoCommand`; ésta llegó sin pasar por él. El texto no la repite: la clave no sale del anfitrión.
+    if (command.key !== undefined && !isDuelKey(command.key)) {
+      fault('setup', 'invalid duel key')
+      return
+    }
     let orders: number[][]
 
     try {
@@ -439,7 +445,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
     const team = (player: CreateCommand['players'][number]) => ({ startingLP: player.lp, startingDrawCount: player.hand, drawCountPerTurn: player.draw })
     const handle = lib.createDuel({
       flags: BigInt(command.flags),
-      seed: coreSeed(command.seed),
+      seed: command.key === undefined ? coreSeed(command.seed) : coreSeedOf(command.key),
       team1: team(command.players[0]!),
       team2: team(command.players[1]!),
       cardReader: (code) => options.cardReader(code),
