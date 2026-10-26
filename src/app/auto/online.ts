@@ -757,7 +757,12 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     saving = true
     savedAnswers = null
     // Una clave nueva por duelo y por revancha; rearmando, la de lo guardado (el mismo duelo).
-    duelKey = saved?.key ?? newKey()
+    try {
+      duelKey = saved?.key ?? newKey()
+    } catch {
+      // Sin poder sortear la clave (un contexto sin Web Crypto) no hay duelo que jugar: se pierde y la sala sigue, en vez de colgarse en «listo».
+      return lose()
+    }
     session = createAutoSession({
       loader,
       deck: hostDeck,

@@ -66,14 +66,18 @@ interface Game {
  * `flaky`: mientras `down`, lo que manda el anfitrión se pierde sin que nadie se entere (su red se cayó y el relay no lo sabe: la presencia no cambia); `lose` pierde los próximos
  * tantos mensajes y después sigue. `guestNow`: el reloj del invitado (sus respiros entre pedidos).
  */
-function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEYS], react, save, flaky, guestNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; keys?: string[]; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number } = {}): Game {
+function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEYS], noCrypto = false, react, save, flaky, guestNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; keys?: string[]; noCrypto?: boolean; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number } = {}): Game {
   const room = createMemoryRoom()
   const hostEnd = room.join()
   const guestEnd = room.join()
   const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings: { ...DEFAULT_SETTINGS, auto: true } })
   const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
   const core = fakeHost(seatOf, react, firstCode)
-  const newKey = () => keys.shift() ?? keyOf(99)
+  const newKey = () => {
+    if (noCrypto) throw new Error('no Web Crypto')
+
+    return keys.shift() ?? keyOf(99)
+  }
   const send = (text: string) => {
     if (!flaky || flaky.down) return
     if (flaky.lose) flaky.lose -= 1
@@ -954,5 +958,15 @@ describe('pasar a manual', () => {
     await settle(game.room)
     expect(answers(core)).toEqual([])
     hostLink.destroy()
+  })
+
+  it('sin poder sortear la clave (un contexto sin Web Crypto) el duelo se pierde: la sala no queda colgada en «listo» y el núcleo no arranca con una semilla fija', async () => {
+    const game = setup({ noCrypto: true })
+
+    await order(game, 0)
+    expect(game.core.commands.filter((command) => command.t === 'create')).toEqual([])
+    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+    expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+    game.hostLink.destroy()
   })
 })

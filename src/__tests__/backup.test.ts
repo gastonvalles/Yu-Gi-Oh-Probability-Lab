@@ -37,10 +37,12 @@ describe('la copia de seguridad', () => {
     localStorage.setItem('ygo-lab:saved-builds', '[1]')
     localStorage.setItem('ygo-lab:duel-save:ABCDEFG2:host', '{"v":1}')
     localStorage.setItem('ygo-lab:duel-role:ABCDEFG2', 'host')
+    // El duelo automático guardado lleva la clave del duelo: tampoco viaja.
+    localStorage.setItem('ygo-lab:auto-save:ABCDEFG2', '{"v":2}')
 
     expect(Object.keys(collectBackup(localStorage).entries)).toEqual(['ygo-lab:saved-builds'])
 
-    const file = '{"app":"ygo-probability-lab","entries":{"ygo-lab:saved-builds":"[2]","ygo-lab:duel-save:HJKMNPQ3:guest":"{}","ygo-lab:duel-role:HJKMNPQ3":"guest"}}'
+    const file = '{"app":"ygo-probability-lab","entries":{"ygo-lab:saved-builds":"[2]","ygo-lab:duel-save:HJKMNPQ3:guest":"{}","ygo-lab:duel-role:HJKMNPQ3":"guest","ygo-lab:auto-save:HJKMNPQ3":"{}"}}'
 
     expect(parseBackup(file).entries).toEqual({ 'ygo-lab:saved-builds': '[2]' })
   })

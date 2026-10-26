@@ -10,8 +10,9 @@ import { isRecord } from './utils'
 const BACKUP_APP = 'ygo-probability-lab'
 
 const PREFIXES = ['ygo-lab:', 'ygo-probability-lab:']
-// Las cachés se regeneran solas, y la mesa guardada de un duelo y quién lo creó son de esa pestaña y vencen en horas: no van (ni se restauran, que sería reabrir un duelo ajeno).
-const SKIPPED = /cache|chunk-reload|duel-save:|duel-role:/
+// Las cachés se regeneran solas, y la mesa guardada de un duelo y quién lo creó son de esa pestaña y vencen en horas: no van (ni se restauran, que sería reabrir un duelo ajeno). El duelo
+// automático guardado (`auto-save:`) lleva además la clave que baraja y siembra el núcleo: en un archivo, quien lo tuviera reproduciría ese duelo.
+const SKIPPED = /cache|chunk-reload|duel-save:|duel-role:|auto-save:/
 
 export interface LabBackup {
   app: typeof BACKUP_APP
