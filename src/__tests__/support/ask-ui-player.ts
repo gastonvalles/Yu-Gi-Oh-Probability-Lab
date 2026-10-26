@@ -18,7 +18,7 @@ export function gesturesOf(view: AskView): AskGesture[] {
     }
   }
 
-  for (const list of view.items.values()) items(list)
+  for (const list of [...view.items.values(), ...view.theirs.values()]) items(list)
   items(view.phaseItems)
   if (view.endTurn) out.push({ kind: 'item', answer: view.endTurn })
   if (view.prompt) out.push({ kind: 'item', answer: view.prompt.yes }, { kind: 'item', answer: view.prompt.no })

@@ -32,8 +32,8 @@ import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat
  * reponérselo entero si se cae y vuelve. El anfitrión que recarga la página rearma el duelo con lo guardado (`save`, `auto-save.ts`); sin eso, el duelo se pierde (la sala sigue): «lost».
  *
  * Pasar a manual (`manual`, `autoManual`): lo pide cualquiera y el otro acepta o no. El que corta es el anfitrión, con el núcleo quieto (una pregunta esperando): su `yes` va detrás de
- * todo lo que contó y desde ahí el núcleo no recibe nada más. El invitado pasa a manual al recibirlo (su mesa ya es la del corte) y el anfitrión, cuando le llega la mesa manual del
- * invitado (`AutoDuelScreen`): así, si el anfitrión recarga en el medio, rearma el duelo con lo guardado y pasa igual.
+ * todo lo que contó y desde ahí el núcleo no recibe nada más. El invitado pasa a manual al recibirlo (su mesa ya es la del corte) y el anfitrión, con el pase acordado, cuando le
+ * llega la mesa manual del invitado (`AutoDuelScreen`): así, si el anfitrión recarga en el medio, rearma el duelo con lo guardado (que dice que cortó: `cut`) y pasa igual.
  */
 
 /** Lo que el enlace necesita del relay: mandar y escuchar texto (un `DuelTransport` lo cumple; en las pruebas, un par en memoria). */
@@ -75,7 +75,11 @@ export interface OnlineLink {
   subscribe(listener: () => void): () => void
   /** La sala avanza: el enlace mira `peerPresent`, `ready`, `opening.ordered`, `starter`, `conceded` y `settings.auto` y hace lo suyo. Se llama con cada snapshot de `createDuel`. */
   observe(snapshot: DuelSnapshot): void
-  /** El invitado volvió a conectarse (o entró): pide el duelo de nuevo. Lo llama la pantalla en cada `peerPresent` que pasa de false a true después del primero. */
+  /**
+   * El invitado volvió a conectarse (o entró): pide el duelo de nuevo. Lo llama la pantalla en cada `peerPresent` que pasa de false a true después del primero. El anfitrión
+   * que se reconectó (cambió de red: lo que mandó con la conexión caída se perdió y el relay puede no haberle avisado al invitado) se lo repone: lo llama la pantalla cuando su
+   * conexión vuelve a abrirse.
+   */
   resync(): void
   /** Seguir en modo manual: `true` lo pide (o acepta el pedido del otro); `false` lo rechaza o retira el mío. Sólo con el duelo en juego y el otro en la sala. */
   manual?(yes: boolean): void
@@ -299,6 +303,11 @@ function manualRequest(host: boolean, say: (message: ManualMessage) => void, cha
       yes()
       go('agreed')
     },
+    /** El anfitrión rearma un duelo que ya había cortado (lo dice lo guardado): sigue cortado, sin repetir el `yes` (al invitado que vuelve se le repite con el duelo). */
+    restore(midway: boolean) {
+      dropped = midway
+      go('agreed')
+    },
     /** El anfitrión no pudo cortar (el duelo terminó, o una carta está bajo el control del otro). */
     refused(why?: 'control') {
       say({ t: 'autoManual', step: 'no', ...(why ? { why } : {}) })
@@ -492,7 +501,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     void runCheck(guestDeck)
   }
 
-  /** Lo que se guarda para rearmar el duelo: con cada respuesta aceptada (no mientras se re-simula); terminado el duelo, se borra. */
+  /** Lo que se guarda para rearmar el duelo: con cada respuesta aceptada (no mientras se re-simula) y con el corte del pase a manual; terminado el duelo, se borra. */
   function persist() {
     if (!options.save || !saving || !session || !seats) return
     const snap = session.getSnapshot()
@@ -503,7 +512,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     if (snap.replaying || snap.answers === savedAnswers) return
     savedAnswers = snap.answers
-    options.save.write({ v: 1, seed: snap.seed, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now() })
+    options.save.write({ v: 1, seed: snap.seed, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}) })
   }
 
   function takeDeck(message: Extract<AutoMessage, { t: 'autoDeck' }>) {
@@ -647,6 +656,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     if (snap.replaying || (!snap.ask && !snap.remoteAsk)) return
     if (underControl(snap.mine) || underControl(snap.theirs)) return request.refused('control')
     request.agreed(midPlay(snap))
+    // Lo guardado dice que se cortó: si el anfitrión recarga antes de pasar, rearma el duelo cortado.
+    savedAnswers = null
+    persist()
   }
 
   function drop() {
@@ -704,6 +716,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     lost = false
     repeatLater = false
     request.reset()
+    if (saved?.cut) request.restore(saved.cut.dropped)
     const host: Seat = saved?.seat ?? (room.starter === 0 ? 0 : 1)
 
     seats = { host, guest: (1 - host) as Seat }
@@ -784,7 +797,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       persist()
       refresh()
     },
-    resync() {},
+    resync() {
+      if (!destroyed && room?.settings.auto) resend()
+    },
     manual(yes) {
       if (!destroyed && (!yes || (phase() === 'playing' && room?.peerPresent))) request.want(yes)
     },

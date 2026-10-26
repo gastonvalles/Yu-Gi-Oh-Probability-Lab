@@ -1,6 +1,6 @@
 import { OcgDuelMode } from 'ocgcore-wasm'
 import { matReducer } from '../app/practice-mat'
-import { DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
+import { DATA_UNAVAILABLE, DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
 import { createAutoSession, MR5, type AutoSession, type AutoSnapshot, type TransportFactory } from '../app/auto/auto-session'
 import type { AutoCommand, AutoEvent, Seat } from '../app/auto/protocol'
 import { CHAIN, END, fakeHost, IDLE, loader, mapped, PASS } from './support/auto-core-fake'
@@ -132,6 +132,37 @@ describe('la sesión del duelo automático', () => {
     session.destroy()
   })
 
+  it('deshacer en carrera: lo que queda de la tanda vieja (la pregunta del rival) no se contesta ni suma una respuesta, también con dos seguidos', async () => {
+    const host = fakeHost()
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 3 })
+    const sentAnswers = () => host.commands.filter((command) => command.t === 'answer').length
+
+    await until(session, (s) => s.status === 'ready')
+    session.answer(END)
+    const mark = await until(session, (s) => s.answers.length === 1 && s.ask !== null)
+
+    // Mi jugada y deshacer antes de que el anfitrión la lea: la tanda vieja trae la pregunta del rival (la 2) antes del `loading` del rewind.
+    session.answer(END)
+    expect(session.undo()).toBe(true)
+    const back = await until(session, (s) => s.ask !== null && !s.replaying)
+
+    expect(back.answers).toEqual(mark.answers)
+    expect(back.overlay).toEqual(mark.overlay)
+    expect(sentAnswers()).toBe(2)
+
+    // Dos seguidos (dos tandas pedidas): sólo cuenta la última, y vuelve a contestarse.
+    session.answer(END)
+    expect(session.undo()).toBe(true)
+    expect(session.undo()).toBe(true)
+    const first = await until(session, (s) => s.ask !== null && !s.replaying && s.answers.length === 0)
+
+    expect(first.overlay.lp[0]).toBe(8000)
+    expect(sentAnswers()).toBe(3)
+    expect(session.answer(END)).toBe(true)
+    expect((await until(session, (s) => s.answers.length === 1 && s.ask !== null)).answers).toEqual([{ seat: 0, answer: END }])
+    session.destroy()
+  })
+
   it('reiniciar con la misma semilla arma el mismo duelo; con otra, otro', async () => {
     const host = fakeHost(() => 0)
     const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 11 })
@@ -179,17 +210,39 @@ describe('la sesión del duelo automático', () => {
     session.destroy()
   })
 
-  it('sin los datos en el despliegue, el error dice lo que explica el servidor, tal cual; otro fallo de la bajada lleva el contexto', async () => {
+  it('sin los datos en el despliegue, el error lleva el código del servidor, tal cual; otro fallo de la bajada lleva el contexto, y los dos van a la consola', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const failing = (error: Error): DataLoader => ({ manifest: async () => Promise.reject(error), load: async () => Promise.reject(error) })
     const host = fakeHost()
-    const session = createAutoSession({ loader: failing(new DataUnavailableError('Los datos del duelo automático no están disponibles ahora')), deck: { main: [[1, 5]] }, transport: host.factory })
+    const session = createAutoSession({ loader: failing(new DataUnavailableError(DATA_UNAVAILABLE)), deck: { main: [[1, 5]] }, transport: host.factory })
     const other = createAutoSession({ loader: failing(new TypeError('Failed to fetch')), deck: { main: [[1, 5]] }, transport: host.factory })
 
-    expect((await until(session, (s) => s.status === 'error')).fault).toEqual({ kind: 'setup', message: 'Los datos del duelo automático no están disponibles ahora', cards: [] })
+    expect((await until(session, (s) => s.status === 'error')).fault).toEqual({ kind: 'setup', message: DATA_UNAVAILABLE, cards: [] })
     expect((await until(other, (s) => s.status === 'error')).fault?.message).toBe('could not load the duel data: Failed to fetch')
     expect(host.commands).toEqual([])
+    expect(warn).toHaveBeenCalledWith('[auto] setup: could not load the duel data: Failed to fetch')
+    warn.mockRestore()
     session.destroy()
     other.destroy()
+  })
+
+  it('si los datos no llegaron, reintentar los vuelve a pedir y el duelo arranca', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const host = fakeHost()
+    const ok = loader()
+    let failures = 1
+    const flaky: DataLoader = { manifest: ok.manifest, load: async (decks, onProgress) => (failures-- > 0 ? Promise.reject(new TypeError('Failed to fetch')) : ok.load(decks, onProgress)) }
+    const session = createAutoSession({ loader: flaky, deck: { main: [[1, 5]] }, transport: host.factory, seed: 5 })
+
+    await until(session, (s) => s.status === 'error')
+    session.restart()
+    expect(session.getSnapshot()).toMatchObject({ status: 'loading', fault: null })
+    const ready = await until(session, (s) => s.status === 'ready')
+
+    expect(ready.seed).toBe(5)
+    expect(host.commands).toMatchObject([{ t: 'create', seed: 5 }])
+    warn.mockRestore()
+    session.destroy()
   })
 
   it('una carta sin reglas no deja arrancar: error con la lista y sin crear el duelo', async () => {
@@ -223,6 +276,27 @@ describe('la sesión del duelo automático', () => {
 
     expect(failed.fault?.kind).toBe('retry')
     expect(failed.faults).toEqual([{ kind: 'script', message: 'lua: oops', cards: [1] }, ...Array(2).fill({ kind: 'retry', message: 'RETRY', cards: [] })])
+
+    // Trabado, deshacer arma otro anfitrión y vuelve a antes de mi jugada (sin empezar de cero la sesión).
+    expect(session.undo()).toBe(true)
+    expect(session.getSnapshot()).toMatchObject({ status: 'thinking', fault: null, replaying: true, answers: [] })
+    const back = await until(session, (s) => s.status === 'ready' && !s.replaying)
+
+    expect(host.state.transports).toBe(2)
+    expect(host.commands.at(-1)).toEqual(host.commands[0])
+    expect(back.ask).toMatchObject({ seat: 0, ask: IDLE })
+    session.destroy()
+  })
+
+  it('el núcleo caído antes de una jugada tuya no tiene a dónde volver: deshacer no hace nada', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const host = fakeHost(() => 0, (command, emit) => (command.t === 'create' && (emit({ t: 'fault', kind: 'crash', message: 'worker error' }), true)))
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory })
+
+    expect((await until(session, (s) => s.status === 'error')).fault?.kind).toBe('crash')
+    expect(session.undo()).toBe(false)
+    expect(host.state.transports).toBe(1)
+    warn.mockRestore()
     session.destroy()
   })
 })

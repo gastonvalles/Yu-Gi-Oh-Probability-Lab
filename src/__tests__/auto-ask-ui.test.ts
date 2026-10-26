@@ -316,6 +316,40 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(askView(open({ ...chain, spe_count: 0, forced: true }, ctx(MESA))).auto).toBeNull()
   })
 
+  it('una obligatoria de una carta que controla el rival (Camellia, del oráculo: pregunta el asiento 1) también se ofrece: se toca en su campo y todo lo legal está a un toque', () => {
+    const forced: CoreAsk = {
+      type: 'select_chain',
+      player: 1,
+      spe_count: 0,
+      forced: true,
+      hint_timing: 32,
+      hint_timing_other: 0,
+      selects: [
+        { ...pos(63013339, L.MZONE, 3, 1, 0), description: '0', client_mode: 1 },
+        { ...pos(98338152, L.SZONE, 4, 10, 1), description: '103115026071552', client_mode: 0 },
+        { ...pos(76072561, L.MZONE, 6, 1, 1), description: '79767861723137', client_mode: 0 },
+      ],
+    }
+    const queries = mesa(
+      [
+        { side: 'theirs', id: 'c9', code: 63013339, location: L.MZONE, sequence: 3 },
+        { side: 'mine', id: 'card-98338152-1', code: 98338152, location: L.SZONE, sequence: 4, pos: 'set' },
+        { side: 'mine', id: 'card-76072561-1', code: 76072561, location: L.MZONE, sequence: 6 },
+      ],
+      { seat: 1 },
+    )
+    const state = open(forced, ctx(queries))
+    const view = askView(state)
+    const offered = new Set(gesturesOf(view).flatMap((gesture) => (gesture.kind === 'item' ? [JSON.stringify(gesture.answer)] : [])))
+
+    expect([0, 1, 2].filter((index) => !offered.has(JSON.stringify({ type: 'select_chain', index })))).toEqual([])
+    expect(view.theirs.get('c9')).toEqual([{ label: t('practice.menu.activateEffect'), answer: { type: 'select_chain', index: 0 }, effect: { code: 63013339, description: '0' } }])
+    // Brilla (late en su campo) y no se mezcla con las tuyas.
+    expect(view.respond).toContainEqual({ side: 'theirs', id: 'c9' })
+    expect(view.items.has('c9')).toBe(false)
+    expect(step(state, { kind: 'item', answer: { type: 'select_chain', index: 0 } }).answer).toEqual({ type: 'select_chain', index: 0 })
+  })
+
   it('sí o no: el efecto con su carta (que brilla) y el sí o no a secas, cada uno con sus dos respuestas', () => {
     const effect = askView(open(ASKS[2]!, ctx(MESA)))
 

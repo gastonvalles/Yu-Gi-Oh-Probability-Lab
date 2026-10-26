@@ -139,11 +139,11 @@ export interface AutoSession {
   readonly adapter: Adapter | null
   /** Contesta la pregunta pendiente; `false` si no hay o la respuesta es de otro tipo. */
   answer(answer: CoreAnswer): boolean
-  /** Vuelve a antes de tu última jugada (la última respuesta tuya a un `select_idlecmd` o `select_battlecmd`); `false` si no hay. */
+  /** Vuelve a antes de tu última jugada (la última respuesta tuya a un `select_idlecmd` o `select_battlecmd`), también con el núcleo caído o trabado (`crash`, `retry`); `false` si no hay. */
   undo(): boolean
   /** Corta lo que el núcleo está pensando: deja la respuesta en vuelo y vuelve a la pregunta de antes. */
   cancel(): void
-  /** Empieza de nuevo: con la misma semilla, el mismo duelo. */
+  /** Empieza de nuevo: con la misma semilla, el mismo duelo. Si los datos no llegaron, los vuelve a pedir. */
   restart(seed?: number): void
   /** La respuesta del asiento remoto a `remoteAsk`; `false` si no es la pendiente o es de otro tipo. */
   answerRemote(askId: number, answer: CoreAnswer): boolean
@@ -280,6 +280,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
   /** La sesión se corta: el anfitrión se termina (nada más se contesta) hasta `restart` o `cancel`, que arman otro. */
   function fail(kind: FaultKind, message: string, cards: number[] = []) {
+    // El detalle (en inglés, técnico) va a la consola (`warn`: el `[auto]` de `error` es el centinela de la mesa); la portada dice qué pasó con sus textos.
+    console.warn(`[auto] ${kind}: ${message}`)
     stopTimer()
     transport?.terminate()
     set({ status: 'error', fault: { kind, message, cards }, ask: null, remoteAsk: null, replaying: false })
@@ -359,6 +361,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       if (current) {
         project()
         skip = to
+        // Lo que estaba en vuelo era de una tanda vieja (el anfitrión ya la descartó): no se suma en la primera pregunta viva.
+        inFlight = null
       }
       return
     }
@@ -440,7 +444,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     try {
       data = await loading
     } catch (error) {
-      // Lo que explica el servidor (`{ error }`: un despliegue sin los datos de la beta) va tal cual; lo demás, con el contexto.
+      // El código del servidor (`{ error }`: un despliegue sin los datos de la beta) va tal cual, y la portada lo traduce; lo demás, con el contexto.
       return fail('setup', error instanceof DataUnavailableError ? error.message : `could not load the duel data: ${error instanceof Error ? error.message : String(error)}`)
     }
     if (destroyed) return
@@ -507,9 +511,22 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       const all = inFlight ? [...answers, inFlight] : answers
       const to = all.findLastIndex((item) => controlled(item.seat) && (item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd'))
 
-      if (to < 0 || !transport || snapshot.status === 'error') return false
+      const stuck = snapshot.status === 'error'
+
+      // Con el duelo cortado sólo si el núcleo se cayó o se trabó (`crash`, `retry`): sin datos, sin duelo o sin reglas no hay jugada a la que volver.
+      if (to < 0 || !transport || (stuck && snapshot.fault?.kind !== 'crash' && snapshot.fault?.kind !== 'retry')) return false
       answers = all.slice(0, to)
       inFlight = null
+      // El anfitrión de antes se terminó (`fail`): uno nuevo, que re-simula hasta antes de esa jugada (y rearma el Worker si murió).
+      if (stuck) {
+        retries = 0
+        set({ ask: null, remoteAsk: null, replaying: true, status: 'thinking', fault: null, answers })
+        boot(to)
+        startTimer()
+        return true
+      }
+      // Lo que queda de la tanda de ahora hasta el `loading` del rewind ya no cuenta (ni se contesta: el rival sumaría una respuesta fantasma).
+      current = false
       streams.push(to)
       replayed(to)
       transport.send({ t: 'rewind', to })
@@ -526,7 +543,13 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       startTimer()
     },
     restart(seed = snapshot.seed) {
-      if (!create || !build || !data || destroyed) return
+      if (destroyed) return
+      // Los datos no llegaron (`setup`): se vuelven a pedir desde el principio (el cargador no guarda lo que falló).
+      if (!data && snapshot.status === 'error') {
+        set({ seed: seed >>> 0, status: 'loading', fault: null, progress: { done: 0, total: 0 } })
+        return void start()
+      }
+      if (!create || !build || !data) return
       create = build(seed >>> 0)
       answers = []
       inFlight = null
@@ -547,6 +570,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     expectReplay(skip) {
       streams.push(skip)
       inFlight = null
+      // Como al deshacer: lo que llegue antes del `loading` de la re-emisión es de la tanda vieja.
+      current = false
       set({ ask: null, replaying: true })
     },
     resimulate() {

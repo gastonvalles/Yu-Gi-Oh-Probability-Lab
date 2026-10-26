@@ -59,7 +59,8 @@ interface Game {
   core: ReturnType<typeof fakeHost>
 }
 
-function setup({ seatOf, firstCode, enabled = true, noRules = [], seeds = [11, 22, 33], react, save }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; seeds?: number[]; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore } = {}): Game {
+/** `flaky`: mientras `down`, lo que manda el anfitrión se pierde sin que nadie se entere (su red se cayó y el relay no lo sabe: la presencia no cambia). */
+function setup({ seatOf, firstCode, enabled = true, noRules = [], seeds = [11, 22, 33], react, save, flaky }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; seeds?: number[]; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean } } = {}): Game {
   const room = createMemoryRoom()
   const hostEnd = room.join()
   const guestEnd = room.join()
@@ -67,7 +68,8 @@ function setup({ seatOf, firstCode, enabled = true, noRules = [], seeds = [11, 2
   const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
   const core = fakeHost(seatOf, react, firstCode)
   const random = () => (seeds.shift() ?? 99) / 2 ** 32
-  const hostLink = createHostLink({ transport: hostEnd, loader: listLoader(noRules), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, random, ...(save ? { save } : {}) })
+  const transport = flaky ? { send: (text: string) => void (flaky.down || hostEnd.send(text)), onMessage: hostEnd.onMessage.bind(hostEnd) } : hostEnd
+  const hostLink = createHostLink({ transport, loader: listLoader(noRules), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, random, ...(save ? { save } : {}) })
   const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK })
 
   host.subscribe(() => hostLink.observe(host.getSnapshot()))
@@ -285,6 +287,36 @@ describe('el enlace del duelo automático por enlace', () => {
     for (let i = 0; i < 10; i += 1) game.room.inject(game.hostEnd, encodeAutoMessage({ t: 'autoResync' }))
     await settle(game.room)
     expect(toGuest(game.room, 'autoInit').length - inits).toBeLessThanOrEqual(2)
+  })
+
+  it('el anfitrión que se reconecta (se le cayó la red sin que el relay se entere) le repone al invitado lo que se perdió; reponerlo de más no duplica nada', async () => {
+    const flaky = { down: false }
+    const game = setup({ firstCode: 2, flaky })
+
+    await settle(game.room)
+    await order(game, 1)
+    const hosted = sessionOf(game.hostLink)
+
+    // Beto contesta con la red de Ana caída: lo que sigue (su próxima pregunta) no le llega y queda esperando.
+    flaky.down = true
+    sessionOf(game.guestLink).answer(END)
+    await settle(game.room)
+    expect(hosted.getSnapshot().remoteAsk).not.toBeNull()
+    expect(sessionOf(game.guestLink).getSnapshot().ask).toBeNull()
+    // Vuelve la conexión de Ana (la pantalla lo ve): Beto recibe el duelo otra vez, con su pregunta.
+    flaky.down = false
+    game.hostLink.resync()
+    await settle(game.room)
+    expect(sessionOf(game.guestLink).getSnapshot()).toMatchObject({ status: 'ready', ask: { askId: hosted.getSnapshot().remoteAsk!.askId } })
+    sameView(hosted, sessionOf(game.guestLink), 0)
+    // Dos veces seguidas: la misma mesa, sin jugadas repetidas, y el duelo sigue.
+    game.hostLink.resync()
+    await settle(game.room)
+    sameView(hosted, sessionOf(game.guestLink), 0)
+    expect(sessionOf(game.guestLink).answer(END)).toBe(true)
+    await settle(game.room)
+    expect(answers(game.core)).toHaveLength(2)
+    sameView(hosted, sessionOf(game.guestLink), 0)
   })
 
   it('el anfitrión corta lo que piensa el núcleo: el invitado recibe la re-emisión y vuelve a su pregunta; un pedido suyo en medio espera a que termine', async () => {
@@ -686,7 +718,7 @@ describe('pasar a manual', () => {
     sameView(game.hosted, sessionOf(again), 0)
   })
 
-  it('el anfitrión que recarga después del corte rearma el núcleo en el mismo punto (no recibió nada más) y no vuelve a cortar solo', async () => {
+  it('el anfitrión que recarga después del corte rearma el núcleo en el mismo punto (no recibió nada más) y sigue cortado, sin repetir el corte solo', async () => {
     const items = new Map<string, string>()
     const save = () => autoSaveStore('ROOMMAN1', { getItem: (key) => items.get(key) ?? null, setItem: (key, value) => void items.set(key, value), removeItem: (key) => void items.delete(key) })
     const game = await playing({ save: save() })
@@ -705,9 +737,12 @@ describe('pasar a manual', () => {
     game.guestLink.destroy()
     game.hostLink.destroy()
     game.hostEnd.close()
+    const yeses = () => game.room.sent.filter((text) => text.includes('"step":"yes"')).length
+    const said = yeses()
     const hostEnd = game.room.join()
     const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-2', settings: { ...DEFAULT_SETTINGS, auto: true } })
-    const hostLink = createHostLink({ transport: hostEnd, loader: listLoader(), deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: save() })
+    const core = fakeHost(undefined, undefined, 2)
+    const hostLink = createHostLink({ transport: hostEnd, loader: listLoader(), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => true, save: save() })
 
     host.subscribe(() => hostLink.observe(host.getSnapshot()))
     hostLink.observe(host.getSnapshot())
@@ -717,7 +752,12 @@ describe('pasar a manual', () => {
     expect(rebuilt).toMatchObject({ status: 'ready', replaying: false, ask: { seat: 1 } })
     expect(rebuilt.answers).toEqual(cutAt.answers)
     expect(rebuilt.mine).toEqual(cutAt.mine)
-    expect(manualOf(hostLink)).toBe('idle')
+    expect(hostLink.getSnapshot()).toMatchObject({ manual: 'agreed', manualDropped: false })
+    expect(yeses()).toBe(said)
+    // Sigue cortado: lo de Ana tampoco llega al núcleo rearmado.
+    sessionOf(hostLink).answer(PASS)
+    await settle(game.room)
+    expect(answers(core)).toEqual([])
     hostLink.destroy()
   })
 })

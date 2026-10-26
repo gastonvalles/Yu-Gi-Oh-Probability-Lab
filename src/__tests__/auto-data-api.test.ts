@@ -6,6 +6,7 @@ import { gzipSync } from 'node:zlib'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { autoDataHandler } from '../../api/auto-data'
+import { DATA_UNAVAILABLE } from '../app/auto/auto-data'
 import { buildAutoData, cardsByCodes, versionOf } from '../../scripts/build-auto-data.mjs'
 
 const ROOT = new URL('../../', import.meta.url)
@@ -186,12 +187,12 @@ describe('los datos del duelo automático en producción (scripts/build-auto-dat
     expect(await response.text()).toContain('GetID')
   })
 
-  it('sin los datos (un build que no los pudo armar) contesta 503 con un mensaje que la beta muestra tal cual', async () => {
+  it('sin los datos (un build que no los pudo armar) contesta 503 con el código que la beta traduce', async () => {
     const response = await autoDataHandler(join(work, 'nada'))(new Request('https://ygo.example/api/auto-data?path=manifest'))
 
     expect(response.status).toBe(503)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
-    expect(await response.json()).toEqual({ error: 'Los datos del duelo automático no están disponibles ahora' })
+    expect(await response.json()).toEqual({ error: DATA_UNAVAILABLE })
   })
 
   it('un build común no toca la red: sólo arma los datos en Vercel o con AUTO_DATA_BUILD', async () => {

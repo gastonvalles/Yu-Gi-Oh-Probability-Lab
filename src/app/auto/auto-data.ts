@@ -92,7 +92,9 @@ export function cardData(row: CardRow): OcgCardData {
   }
 }
 
-/** Lo que el servidor explica en `{ error }` (un despliegue sin los datos de la beta): la sesión lo muestra tal cual. */
+/** El código que manda el servidor en `{ error }` cuando el despliegue no tiene los datos de la beta (la copia de `api/auto-data.ts`; un test los compara). */
+export const DATA_UNAVAILABLE = 'unavailable'
+/** Lo que el servidor explica en `{ error }`, un código (`DATA_UNAVAILABLE`): la sesión lo deja como mensaje de la falla y la portada lo traduce. */
 export class DataUnavailableError extends Error {}
 
 /** La fuente por HTTP: `<base>/manifest`, `<base>/cards?codes=…` y `<base>/script/<nombre>` (404 = no existe). */

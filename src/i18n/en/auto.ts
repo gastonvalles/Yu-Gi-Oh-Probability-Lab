@@ -129,9 +129,12 @@ export const auto: Translated<typeof es> = {
   'auto.forced.activate': 'Activate {card} first',
   'auto.forced.hint': 'No “Don’t respond”: they’re mandatory.',
   'auto.lane.autoZone': 'The zone was picked for you',
-  'auto.lane.unmapped': "The mat can't show: {what}",
+  // What went wrong, in the mat's words (the technical detail goes to the console).
+  'auto.lane.unmapped': "The mat couldn't show one of the rules engine's plays; the duel goes on.",
   'auto.lane.script': "{card}'s script failed: the duel goes on.",
-  'auto.lane.error': 'Something went wrong: {message}',
+  'auto.lane.error': 'Something went wrong in the rules engine, but the duel goes on.',
+  'auto.lane.rejected': "The rules engine didn't accept that answer: choose again.",
+  'auto.lane.stuck': "Automatic mode can't answer this rules engine question yet.",
 
   // The chain notice (the pill above the mat and its list): how it goes and the state of each link.
   'auto.chain.title': 'Chain',
@@ -183,6 +186,12 @@ export const auto: Translated<typeof es> = {
   'auto.fault.setup': "The duel couldn't be created",
   'auto.fault.crash': 'The rules engine crashed',
   'auto.fault.retry': 'Try again',
+  'auto.fault.setupText': 'It may be your connection: check it and try again.',
+  'auto.fault.unavailable': "The automatic duel isn't available right now: try again later.",
+  'auto.fault.crashText': 'A rules engine error stopped the duel.',
+  'auto.fault.stuck': 'The duel got stuck',
+  'auto.fault.stuckText': "The rules engine rejected three answers in a row and can't go on from here.",
+  'auto.fault.undo': 'Go back to before your last play',
 
   // The end (the title and life points use `duel.result.*`).
   'auto.end.again': 'Play again',

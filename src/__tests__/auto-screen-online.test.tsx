@@ -8,6 +8,7 @@ import type { RoomAutoState } from '../app/auto/online'
 import { LOCATION as L, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
+import type { SocketStatus } from '../app/duel-socket'
 import { createMatState, type MatState } from '../app/practice-mat'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { showToastMessage } from '../app/use-toast-message'
@@ -58,15 +59,28 @@ function setup(role: 'host' | 'guest' = 'host') {
   const calls = { leave: 0, abandon: 0, rematch: 0, manual: [] as MatState[] }
   const me = duels[role]
   const connect = () => link
+  // La conexión propia con el relay (el `status` de la pantalla): la prueba la corta y la vuelve a abrir.
+  const socket = { status: 'open' as SocketStatus, listeners: new Set<() => void>() }
+  const subscribeSocket = (listener: () => void) => {
+    socket.listeners.add(listener)
+
+    return () => void socket.listeners.delete(listener)
+  }
+  const setStatus = (status: SocketStatus) =>
+    act(() => {
+      socket.status = status
+      socket.listeners.forEach((listener) => listener())
+    })
 
   function Screen() {
     const snapshot = useSyncExternalStore(me.subscribe, me.getSnapshot)
+    const status = useSyncExternalStore(subscribeSocket, () => socket.status)
 
     return (
       <AutoDuelScreen
         duel={me}
         snapshot={snapshot}
-        status="open"
+        status={status}
         transport={ends[role]}
         myName={role === 'host' ? 'Ana' : 'Beto'}
         deck={DECK}
@@ -108,7 +122,7 @@ function setup(role: 'host' | 'guest' = 'host') {
     return session
   }
 
-  return { room, ends, duels, link, calls, flush, start }
+  return { room, ends, duels, link, calls, flush, start, setStatus }
 }
 
 const note = () => screen.queryByRole('note')
@@ -150,6 +164,21 @@ describe('auto-screen-online · la sala', () => {
     act(() => ends.host.reconnect())
     flush()
     expect(link.resyncs).toBe(1)
+  })
+
+  it('el anfitrión cuya conexión se cae y vuelve le repone el duelo al invitado (aunque el relay no le haya avisado que se fue); el invitado no, por su conexión', () => {
+    const host = setup()
+
+    host.setStatus('reconnecting')
+    expect(host.link.resyncs).toBe(0)
+    host.setStatus('open')
+    expect(host.link.resyncs).toBe(1)
+
+    const guest = setup('guest')
+
+    guest.setStatus('reconnecting')
+    guest.setStatus('open')
+    expect(guest.link.resyncs).toBe(0)
   })
 })
 
@@ -446,10 +475,22 @@ describe('auto-screen-online · pasar a manual', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('el anfitrión sigue a mano cuando le llega la mesa manual del invitado (aunque haya recargado y no sepa del acuerdo)', () => {
-    const { start, duels, flush, calls } = setup()
+  it('sin acuerdo, una mesa manual del invitado (un cliente modificado) no saca al anfitrión del automático', () => {
+    const { start, duels, flush, calls, link } = setup()
+
+    start()
+    act(() => duels.guest.start(createMatState(['card-1-1', 'card-2-1'], [], 1)))
+    flush()
+    expect(duels.host.getSnapshot().theirs).not.toBeNull()
+    core(() => link.set({ manual: 'asked' }))
+    expect(calls.manual).toEqual([])
+  })
+
+  it('con el pase acordado (o rearmado ya cortado tras recargar), el anfitrión sigue a mano cuando le llega la mesa manual del invitado', () => {
+    const { start, duels, flush, calls, link } = setup()
     const session = start()
 
+    core(() => link.set({ manual: 'agreed' }))
     expect(calls.manual).toEqual([])
     act(() => duels.guest.start(createMatState(['card-1-1', 'card-2-1'], [], 1)))
     flush()

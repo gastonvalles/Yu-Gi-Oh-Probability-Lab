@@ -1,3 +1,4 @@
+import { DATA_UNAVAILABLE } from '../../app/auto/auto-data'
 import type { AutoSnapshot } from '../../app/auto/auto-session'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -25,13 +26,24 @@ export function LoadingCover({ progress, rival = false, note }: { progress: Auto
 }
 
 /**
- * Lo que no deja jugar: cartas sin reglas (con la lista, y «Jugar en modo manual»: una mano nueva), o el núcleo que no arrancó o se cayó («Reintentar» o, con `onManual`, «Seguir en
- * modo manual» desde la última jugada buena). El duelo por enlace la usa sin `onRetry` (no hay nada que reintentar: sólo volver) y con su `title` (el duelo se perdió o se cortó).
+ * Lo que no deja jugar: cartas sin reglas (con la lista, y «Jugar en modo manual»: una mano nueva), o el núcleo que no arrancó, se cayó o se trabó («Reintentar», con `onUndo` «Volver
+ * a antes de tu última jugada» y, con `onManual`, «Seguir en modo manual» desde la última jugada buena). El texto es uno por clase de falla: el detalle técnico (`fault.message`)
+ * queda en la consola. El duelo por enlace la usa sin `onRetry` (no hay nada que reintentar: sólo volver) y con su `title` (el duelo se perdió o se cortó), que ya lo dice todo.
  */
-export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, onManual, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; title?: string; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry?: () => void; onManual?: () => void; onExit: () => void }) {
+export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, onUndo, onManual, onExit }: { fault: NonNullable<AutoSnapshot['fault']>; title?: string; nameOf: (code: number) => string; artOf: (code: number) => string | null; onRetry?: () => void; onUndo?: () => void; onManual?: () => void; onExit: () => void }) {
   const rules = fault.kind === 'rules'
-  const title = titleText ?? (rules ? t('auto.fault.rules', { count: fault.cards.length }) : fault.kind === 'crash' ? t('auto.fault.crash') : t('auto.fault.setup'))
-  const text = rules ? t('auto.fault.rulesText') : fault.message
+  const title = titleText ?? (rules ? t('auto.fault.rules', { count: fault.cards.length }) : fault.kind === 'crash' ? t('auto.fault.crash') : fault.kind === 'retry' ? t('auto.fault.stuck') : t('auto.fault.setup'))
+  const text = rules
+    ? t('auto.fault.rulesText')
+    : titleText !== undefined
+      ? null
+      : fault.kind === 'crash'
+        ? t('auto.fault.crashText')
+        : fault.kind === 'retry'
+          ? t('auto.fault.stuckText')
+          : fault.message === DATA_UNAVAILABLE
+            ? t('auto.fault.unavailable')
+            : t('auto.fault.setupText')
 
   return (
     <div role="alertdialog" aria-modal="true" aria-label={title} className="relative grid h-full place-items-center overflow-y-auto bg-background/85 p-6">
@@ -68,10 +80,16 @@ export function FaultCover({ fault, title: titleText, nameOf, artOf, onRetry, on
               </Button>
             ) : null
           ) : (
-            <Button variant="primary" icon="refresh" onClick={onRetry}>
+            // Con a dónde volver, volver es la principal: reintentar empieza desde el turno 1.
+            <Button variant={onUndo ? 'secondary' : 'primary'} icon="refresh" onClick={onRetry}>
               {t('auto.fault.retry')}
             </Button>
           )}
+          {onUndo ? (
+            <Button variant="primary" icon="undo" onClick={onUndo}>
+              {t('auto.fault.undo')}
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

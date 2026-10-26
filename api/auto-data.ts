@@ -14,8 +14,8 @@ interface AutoData extends DataManifest {
  * terminaría en la caché de la app con la versión nueva. La app ya guarda todo por versión (`createDataLoader`): repetir no cuesta pedidos.
  */
 const CACHE = 'public, max-age=0, s-maxage=86400'
-/** Lo que ve quien abre la beta en un despliegue cuyo build no pudo armar los datos (la app lo muestra tal cual). */
-const UNAVAILABLE = 'Los datos del duelo automático no están disponibles ahora'
+/** Un despliegue cuyo build no pudo armar los datos: un código, y la app lo dice en el idioma de quien la usa (`DATA_UNAVAILABLE` de `src/app/auto/auto-data.ts`; un test los compara). */
+const UNAVAILABLE = 'unavailable'
 
 const reply = (body: string, type: string, status = 200) => new Response(body, { status, headers: { 'Content-Type': type, 'Cache-Control': CACHE } })
 
