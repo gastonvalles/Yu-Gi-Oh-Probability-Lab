@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import type { CardRef, Side } from '../app/auto/adapter'
-import { askView, itemsInto, namesList, openAsk, step, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
+import { askView, itemsInto, listOrder, namesList, openAsk, step, type AskCard, type AskContext, type AskGesture, type AskQueries, type AskState } from '../app/auto/ask-ui'
 import { ASK_SHAPES, LOCATION as L, parseAnswer, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { createMatState, listCardActions, TOKEN_KIND, type MatCardKind, type MatPile, type MatPos, type MatState } from '../app/practice-mat'
 import { PLAY_PLACE, inMenuBlocks, menuPlaceOf } from '../app/mat-menu-order'
@@ -141,6 +141,36 @@ describe('namesList: los nombres de una línea del registro', () => {
     expect(namesList(['Kirin', 'Ponix', 'Kirin', 'Kirin'])).toBe('Kirin ×3, Ponix')
     expect(namesList(['Ponix'])).toBe('Ponix')
     expect(namesList([])).toBe('')
+  })
+})
+
+describe('listOrder: una lista de candidatas no regala el orden del deck', () => {
+  // El nombre de cada carta es su código en esta lista: `NAMES[code]`.
+  const shown = (names: readonly string[], cards: readonly AskCard[]) => listOrder(cards, (card) => names[card.code]!).map((i) => names[cards[i]!.code]!)
+  const card = (code: number, place: AskCard['place'], pile?: MatPile): AskCard => ({ ref: null, code, place, ...(pile ? { pile } : {}) })
+
+  it('las del deck (tuyo o del rival) van por nombre en los lugares que ocupaban; el resto, donde estaba', () => {
+    const names = ['Zeta', 'Mima', 'Alfa', 'Beta', 'Zulú', 'Dos']
+    const cards = [card(0, 'hand'), card(1, 'pile', 'deck'), card(2, 'pile', 'deck'), card(3, 'pile', 'gy'), card(4, 'none', 'deck'), card(5, 'field')]
+
+    expect(listOrder(cards, (c) => names[c.code]!)).toEqual([0, 2, 1, 3, 4, 5])
+    expect(shown(names, cards)).toEqual(['Zeta', 'Alfa', 'Mima', 'Beta', 'Zulú', 'Dos'])
+  })
+
+  it('es una permutación (la respuesta sigue siendo el índice del núcleo) y no depende del orden en que llegan las del deck', () => {
+    const names = ['Ceres', 'Argos', 'Bruma', 'Argos']
+    const deck = names.map((_, code) => card(code, 'pile', 'deck'))
+
+    expect([...listOrder(deck, (c) => names[c.code]!)].sort()).toEqual([0, 1, 2, 3])
+    expect(shown(names, deck)).toEqual(['Argos', 'Argos', 'Bruma', 'Ceres'])
+    expect(shown(names, [...deck].reverse())).toEqual(shown(names, deck))
+  })
+
+  it('sin cartas del deck no cambia nada', () => {
+    const names = ['Zeta', 'Alfa', 'Beta']
+    const cards = [card(0, 'hand'), card(1, 'pile', 'gy'), card(2, 'material')]
+
+    expect(listOrder(cards, (c) => names[c.code]!)).toEqual([0, 1, 2])
   })
 })
 

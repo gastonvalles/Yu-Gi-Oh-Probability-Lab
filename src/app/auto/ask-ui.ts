@@ -299,6 +299,22 @@ function surfaceOf(cards: readonly AskCard[]): { surface: CardPick['surface']; p
   return piles.size === 1 && pile ? { surface: 'pile', pile } : { surface: 'list', pile: null }
 }
 
+/**
+ * El orden en que se muestran las candidatas de una lista aparte (índices de `cards`: la respuesta sigue siendo la del núcleo). Las que están en un deck, el tuyo o el del rival, van por
+ * nombre y en los lugares que ocupaban: el núcleo las manda en el orden del deck y verlo regalaría qué se roba primero (el visor del deck de `PracticeMat` también va por nombre).
+ */
+export function listOrder(cards: readonly AskCard[], nameOf: (card: AskCard) => string): number[] {
+  const order = cards.map((_, index) => index)
+  const slots = order.filter((index) => cards[index]!.pile === 'deck')
+  const byName = [...slots].sort((a, b) => nameOf(cards[a]!).localeCompare(nameOf(cards[b]!)) || a - b)
+
+  slots.forEach((slot, rank) => {
+    order[slot] = byName[rank]!
+  })
+
+  return order
+}
+
 /** Las casillas libres de una pregunta de casillas (el bit en 0), las que la mesa tiene: byte 0 y 1 las mías, 2 y 3 las del rival. */
 function freeZones(mask: number): (ZoneTarget & { bit: number })[] {
   return Array.from({ length: 32 }, (_, bit) => bit).flatMap((bit) => {
