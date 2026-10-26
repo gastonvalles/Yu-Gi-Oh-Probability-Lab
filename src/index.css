@@ -851,15 +851,15 @@
     }
   }
 
-  /* Un monstruo del rival que se puede atacar: el aro respira en ámbar, lo que se ofrece (`[data-attack-target]`, más abajo; el violeta es de los fondos y de lo tuyo). Una casilla que se puede elegir lleva en cambio las marcas de `PickMarks`. */
+  /* Un monstruo del rival que se puede atacar o elegir: el aro respira en el celeste de lo que podés hacer (`--playable-rgb`; `[data-attack-target]`, más abajo). Una casilla que se puede elegir lleva en cambio las marcas de `PickMarks`. */
   @keyframes fx-pick {
     0%,
     100% {
-      box-shadow: 0 0 0 2px rgb(var(--info-rgb) / 0.55), 0 0 12px rgb(var(--info-rgb) / 0.35), inset 0 0 12px rgb(var(--info-rgb) / 0.2);
+      box-shadow: 0 0 0 1px rgb(var(--playable-rgb) / 0.6), 0 0 10px rgb(var(--playable-rgb) / 0.3);
     }
 
     50% {
-      box-shadow: 0 0 0 2px rgb(var(--info-rgb) / 0.95), 0 0 24px 4px rgb(var(--info-rgb) / 0.65), inset 0 0 20px rgb(var(--info-rgb) / 0.35);
+      box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.95), 0 0 18px 3px rgb(var(--playable-rgb) / 0.55);
     }
   }
 
@@ -1367,14 +1367,6 @@
   }
 }
 
-/* «Podés responder con…»: la casilla del cementerio con una carta que puede responder lleva un aro ámbar quieto (las cartas sueltas llevan el brillo ámbar de la mano y del campo). */
-[data-respond='true'] {
-  z-index: 6;
-  box-shadow:
-    0 0 0 3px rgb(var(--warning-rgb) / 0.95),
-    0 0 18px 4px rgb(var(--warning-rgb) / 0.6);
-}
-
 /*
  * La mesa como escena (Gastón, 2026-10-20: «comparado con la imagen que te envié, el nuestro es totalmente simplón»; sólo estética: la mesa funciona igual). El lienzo de la app es de un solo color; la mesa es la
  * excepción: una arena de la misma familia índigo, con luz (un pozo violeta debajo del campo), hondura (una viñeta y una placa levantada con sombra con desplazamiento) y un marco con esquinas y rombos.
@@ -1720,6 +1712,8 @@
     /* Ojo / a medio hacer: ámbar de la paleta (el violeta es de lo tuyo: acción principal y selección). */
     --warning: #f7cb15;
     --warning-rgb: 247 203 21;
+    /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, tenue; el ámbar queda para lo que se activa o se resuelve. */
+    --playable-rgb: 168 236 255;
     --danger: #da0000;
     --danger-rgb: 218 0 0;
 
@@ -1973,12 +1967,12 @@
 }
 
 /*
- * Eligiendo a quién atacar, los monstruos del rival que se pueden atacar laten como una zona que se puede elegir, en ámbar (`PracticeMat` les pone `data-attack-target` mientras el menú de «Atacar» está abierto).
- * Con movimiento reducido queda el aro quieto, del mismo ámbar.
+ * Eligiendo a quién atacar (o una carta del rival que pide el núcleo), los monstruos que se pueden elegir laten en el celeste de lo que podés hacer (`PracticeMat` les pone `data-attack-target` mientras el menú de «Atacar» está abierto).
+ * Con movimiento reducido queda el aro quieto, del mismo celeste.
  */
 [data-attack-target='true'] {
   cursor: pointer;
-  box-shadow: 0 0 0 2px rgb(var(--info-rgb) / 0.9), 0 0 16px 2px rgb(var(--info-rgb) / 0.55);
+  box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.9), 0 0 14px 2px rgb(var(--playable-rgb) / 0.5);
 }
 
 @media (prefers-reduced-motion: no-preference) {

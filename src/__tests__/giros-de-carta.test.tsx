@@ -45,8 +45,8 @@ describe('repartir una carta desde el mazo', () => {
           sizeSlots={5}
           maxCardWidth={110}
           fanDegrees={2.2}
-          highlighted={new Set()}
-          highlightKind={null}
+          glowOf={() => null}
+          dimUnlit={false}
           muted={false}
           flash={null}
           targeted={new Set()}

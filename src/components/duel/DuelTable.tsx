@@ -46,6 +46,8 @@ export interface DuelSideView {
   onMark?: (target: MarkTarget, rect: DOMRect, place: string) => void
   /** Las cartas de este lado que se pueden elegir ahora (el duelo automático: a qué atacar, el objetivo de un efecto): laten como los monstruos que se pueden atacar en la mesa manual (`data-attack-target`). */
   pickable?: ReadonlySet<string>
+  /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar, y la pila que tenga una adentro, también. */
+  act?: ReadonlySet<string>
 }
 
 /** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
@@ -349,6 +351,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   const back = (owner === 'theirs' && faceDown) || art === null
   // De una carta de esta mesa se sabe su arte, no si es un Xyz; los materiales sólo se ponen debajo de uno (Invocación Xyz o «Adjuntar» a un Xyz), así que se muestran los que tenga. Boca abajo también: siguen debajo, a la vista.
   const materials = placed.materials.length
+  const acting = side.act?.has(placed.id) ?? false
 
   return (
     <>
@@ -364,6 +367,8 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         data-flash-kind={flash?.kind}
         data-targeted={targeted ? 'true' : 'false'}
         data-attack-target={side.pickable?.has(placed.id) ? 'true' : undefined}
+        data-glow={acting ? 'true' : 'false'}
+        data-glow-kind={acting ? 'act' : undefined}
         className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', CARD_TRANSITION, 'motion-reduce:transition-none', CARD_HOVER, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
       >
         <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180')}>
@@ -371,6 +376,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         </span>
         {/* La cantidad queda derecha, como los contadores: es para leerla desde acá. */}
         <MaterialCount count={materials} sideways={sideways} />
+        {acting ? <FxFrame tone="gold" /> : null}
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: label })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
@@ -395,9 +401,10 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   // La pila entera marcada, o una carta de adentro marcada como objetivo (se vea o no): la mira queda sobre la pila. Y lo que destella (activar, marcar) adentro, también.
   const marked = (side.marks?.piles.includes(pile) ?? false) || cards.some((id) => side.state.targeted.includes(id) || (side.marks?.cards.includes(id) ?? false))
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
+  const acting = cards.some((id) => side.act?.has(id))
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`} title={PILE_TITLES[pile]} data-drop={owner === 'mine' ? pile : undefined} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`} title={PILE_TITLES[pile]} data-drop={owner === 'mine' ? pile : undefined} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} data-glow={acting ? 'true' : 'false'} data-glow-kind={acting ? 'act' : undefined} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent] data-[glow=true]:z-6')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {/* El grosor del deck y del Extra, en perspectiva con el campo: el canto que se ve es el de abajo (el que mira a quien juega), también en las pilas del rival. */}
       {pile === 'deck' || pile === 'extra' ? <PileStack count={cards.length} /> : null}
       {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}

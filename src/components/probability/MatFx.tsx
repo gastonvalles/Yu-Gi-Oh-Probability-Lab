@@ -28,6 +28,15 @@ export const LANDING_TONE: Record<LandingTone, FxTone> = { normal: 'gold', speci
 export const STAGE_TONE: Record<SpotlightKind | ShowcaseKind, FxTone> = { ...SPOTLIGHT_TONE, ...LANDING_TONE, hand: 'cyan', gy: 'violet', banish: 'amber', extra: 'cyan', deck: 'cyan', attach: 'indigo' }
 
 /**
+ * El brillo de una carta en un duelo (`app/card-glow.ts`), por fuera y quieto: lo que podés hacer ahora, un resplandor fino celeste casi blanco (`--playable-rgb`); lo que se activa o se resuelve, el aro
+ * ámbar. Dos atributos en cada selector: le ganan al aro de una regla del Lab (`data-glow`) y al de la carta con el menú abierto. Lo llevan las cartas (en `FX_CARD`) y la casilla del Deck.
+ */
+export const DUEL_GLOW = [
+  'data-[glow=true]:data-[glow-kind=can]:[box-shadow:var(--card-shadow),0_0_0_1px_rgb(var(--playable-rgb)/0.9),0_0_12px_2px_rgb(var(--playable-rgb)/0.5)]',
+  'data-[glow=true]:data-[glow-kind=act]:[box-shadow:var(--card-shadow),0_0_0_2px_rgb(var(--warning-rgb)),0_0_22px_4px_rgb(var(--warning-rgb)/0.65)]',
+].join(' ')
+
+/**
  * Estados de una carta destacada (la de la mano y la del campo los comparten): el aro de afuera es el `box-shadow` de la carta, que se anima
  * según lo que le pasa (activada, revelada o declarada: se enciende y se expande; marcada como objetivo: late). Piden `--card-shadow` y `--fx-rgb`.
  */
@@ -36,6 +45,7 @@ export const FX_CARD = [
   // Dos atributos en cada selector (más específico que el brillo de una regla o la marca de objetivo): si coinciden, el destello de activar gana.
   'motion-safe:data-[flash=true]:data-[flash-kind=activate]:animate-fx-halo motion-safe:data-[flash=true]:data-[flash-kind=reveal]:animate-fx-halo motion-safe:data-[flash=true]:data-[flash-kind=declare]:animate-fx-halo',
   'motion-safe:data-[targeted=true]:animate-fx-target-glow',
+  DUEL_GLOW,
   // La carta de la que se está viendo el menú: aro y resplandor celestes fijos (el marco de adentro lleva la luz que gira).
   'data-[selected=true]:z-10 data-[selected=true]:[box-shadow:var(--card-shadow),0_0_0_2px_rgb(56_189_248/0.9),0_0_22px_4px_rgb(56_189_248/0.55)]',
   // Sin animaciones, el aro queda fijo.

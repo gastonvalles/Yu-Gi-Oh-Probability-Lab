@@ -222,8 +222,9 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     const legalOnes = [...lists.flatMap((key, action) => ask[key].map((_, index) => ({ type: ask.type, action, index }))), { type: ask.type, action: 6, index: null }, { type: ask.type, action: 7, index: null }]
 
     expect(legalOnes.filter((answer) => !offered.has(JSON.stringify(answer)))).toEqual([])
-    // Brilla lo que se activa (la Mágica, la Trampa colocada, los efectos del cementerio, la escala); lo que sólo se invoca, se coloca o cambia de posición, no.
-    expect(view.respond).toEqual(['card-900-1', 'card-950-1', 'card-400-1', 'card-300-1'].map(mine))
+    // Brilla lo que se invoca de forma especial (también por Péndulo) y lo que se activa (la Mágica, la Trampa colocada, los efectos del cementerio, la escala); lo que sólo se invoca de forma
+    // normal, se coloca o cambia de posición, no.
+    expect(view.respond).toEqual(['card-500-1', 'card-960-1', 'card-900-1', 'card-950-1', 'card-400-1', 'card-300-1'].map(mine))
     // La frase de cada efecto la pone la pantalla (la costura); nunca queda vacía.
     const named = askView(open(ASKS[1]!, ctx(MESA, { effectLabel: (code, description) => (description === stringId(400, 1) ? `${code}:1` : '') })))
 

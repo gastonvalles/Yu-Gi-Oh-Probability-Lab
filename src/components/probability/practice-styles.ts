@@ -18,8 +18,14 @@ export const FX_RGB = {
 
 export type FxTone = keyof typeof FX_RGB
 
-/** El color del marco de una carta que brilla: una salida en verde, un problema en rojo y, en un duelo, una carta que puede responder en ámbar (el color del efecto rápido). */
-export const GLOW_TONE = { opening: 'green', problem: 'red', respond: 'amber' } as const satisfies Record<GlowKind, FxTone>
+/**
+ * El marco de adentro de una carta que brilla: una salida en verde, un problema en rojo y, en un duelo, la que se activa o se resuelve en dorado, con la luz que gira. La que podés usar (`can`) no lleva
+ * marco: sólo el resplandor fino de afuera (`DUEL_GLOW`).
+ */
+export const GLOW_TONE = { opening: 'green', problem: 'red', act: 'gold' } as const satisfies Record<Exclude<GlowKind, 'can'>, FxTone>
+
+/** El marco de adentro de una carta que brilla (`GLOW_TONE`), o nada. */
+export const glowFrame = (kind: GlowKind | null): { tone: FxTone; orbit: boolean } | null => (kind === null || kind === 'can' ? null : { tone: GLOW_TONE[kind], orbit: kind === 'act' })
 
 /** Color de una salida (verde) o de un problema (rojo): lo heredan los botones y la explicación. */
 export const RULE_COLOR = {

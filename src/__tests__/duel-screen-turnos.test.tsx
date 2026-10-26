@@ -642,7 +642,7 @@ describe('la pantalla del duelo', () => {
       const { host, guest } = startDuel({ cardsById: quick })
       openTable(host, guest)
       const prompt = (view: RenderResult) => view.container.querySelector<HTMLElement>('[data-prompt="passAsked"]')
-      const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="respond"]').length
+      const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="can"]').length
 
       expect(glowing(guest)).toBe(0)
 
@@ -675,7 +675,7 @@ describe('la pantalla del duelo', () => {
       const { host, guest } = startDuel({ cardsById: cards })
       openTable(host, guest)
       const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
-      const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="respond"]').length
+      const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="can"]').length
 
       summonFirst(host)
       flush()

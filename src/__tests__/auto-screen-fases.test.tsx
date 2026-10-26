@@ -142,7 +142,7 @@ describe('auto-screen · las fases son manuales', () => {
 
     rearm(fake, [], windowAt(0x1))
     phaseIs('Draw Phase')
-    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
     expect(lane()).toBeNull()
     tap(handCard('Called by the Grave'))
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Activar'])
@@ -169,7 +169,7 @@ describe('auto-screen · las fases son manuales', () => {
     core(() => fake.ask(windowAt(0x2)))
     expect(fake.answers).toEqual([PASS, PASS])
     step()
-    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'can')
     core(() => fake.events([to('main1')]))
     core(() => fake.ask(IDLE))
     step()
@@ -182,7 +182,7 @@ describe('auto-screen · las fases son manuales', () => {
 
     rearm(fake, [...START, to('end')], windowAt(0x20))
     phaseIs('End Phase')
-    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Called by the Grave')).toHaveAttribute('data-glow-kind', 'can')
     // En el celular, el botón de la End Phase pregunta si terminás el turno (como en la mesa manual).
     fireEvent.click(phaseButton())
     fireEvent.click(within(screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })).getByRole('button', { name: 'Terminar turno' }))
@@ -191,7 +191,7 @@ describe('auto-screen · las fases son manuales', () => {
     act(() => setAutoPref('chain', 'never'))
     core(() => fake.ask(windowAt(0x1)))
     expect(fake.answers).toEqual([PASS, PASS])
-    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'respond')
+    expect(handCard('Called by the Grave')).not.toHaveAttribute('data-glow-kind', 'can')
   })
 
   it('en el turno del rival, la mesa y la barra muestran su fase y el botón de fases queda apagado', () => {

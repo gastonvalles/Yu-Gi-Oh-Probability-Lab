@@ -136,7 +136,7 @@ export interface AskView {
   items: ReadonlyMap<string, AskItem[]>
   phaseItems: AskItem[]
   endTurn: CoreAnswer | null
-  /** Lo que brilla en ámbar: lo que se puede activar, lo que la pregunta pide elegir u ordenar y la carta del efecto preguntado (lo que sólo se invoca, se coloca, cambia de posición o ataca se toca igual, sin brillar). */
+  /** Lo que brilla en celeste (`can` de `app/card-glow.ts`): lo que se puede activar o invocar de forma especial, lo que la pregunta pide elegir u ordenar y la carta del efecto preguntado (lo que sólo se invoca de forma normal, se coloca, cambia de posición o ataca se toca igual, sin brillar). */
   respond: CardRef[]
   zonePick: ZonePick | null
   cardPick: CardPick | null
@@ -677,8 +677,9 @@ export function askView(state: AskState): AskView {
     case 'select_idlecmd':
     case 'select_battlecmd':
     case 'select_chain':
-      // Brilla lo que se activa (sólo las activaciones llevan `effect` o `children`); lo que sólo se invoca, se coloca, cambia de posición o ataca, no.
-      view.respond = [...base.items].flatMap(([id, items]) => (items.some((item) => item.effect || item.children) ? [{ side: 'mine' as const, id }] : []))
+      // Brilla lo que se activa (sólo las activaciones llevan `effect` o `children`) y lo que se invoca de forma especial (`action` 1, también la de Péndulo, desde la mano, el campo, las pilas
+      // o el Extra); lo que se invoca de forma normal, se coloca, cambia de posición o ataca, no.
+      view.respond = [...base.items].flatMap(([id, items]) => (items.some((item) => item.effect || item.children || (item.answer?.type === 'select_idlecmd' && item.answer.action === 1)) ? [{ side: 'mine' as const, id }] : []))
       view.cancelable = ask.type === 'select_chain' && !ask.forced
       break
     case 'select_effectyn':

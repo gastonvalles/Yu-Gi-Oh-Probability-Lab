@@ -27,7 +27,7 @@ import type { ApiCardReference, GlowKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { FX_CARD, FxFrame, HAND_CARD_HOVER, SPOTLIGHT_TONE, TargetMark, fxVars } from './MatFx'
-import { CARD_BACK, GLOW_TONE } from './practice-styles'
+import { CARD_BACK, glowFrame } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
 const TOP_ROOM = 8
@@ -57,8 +57,8 @@ const HAND_CARD = [
   'data-[state=dragging]:[transition:filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]',
   'data-[muted=true]:grayscale data-[muted=true]:brightness-70',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
-  // Salidas en verde, problemas en rojo, y en un duelo las cartas que pueden responder en ámbar.
-  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)] data-[glow-kind=respond]:[--glow-rgb:var(--warning-rgb)]!',
+  // Salidas en verde y problemas en rojo; en un duelo, lo que podés hacer y lo que se activa (`DUEL_GLOW`, en `FX_CARD`).
+  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
   'data-[glow=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
   // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
   FX_CARD,
@@ -77,9 +77,10 @@ interface PracticeHandProps {
   sizeSlots: number
   maxCardWidth: number
   fanDegrees: number
-  highlighted: ReadonlySet<string>
-  /** Tipo de la regla que ilumina las cartas: las salidas brillan en verde y los problemas en rojo. */
-  highlightKind: GlowKind | null
+  /** Por qué brilla cada carta: una salida (verde) o un problema (rojo) del Lab o, en un duelo, lo que podés hacer (celeste) y lo que se activa (ámbar): `app/card-glow.ts`. */
+  glowOf: (id: string) => GlowKind | null
+  /** Las que no brillan se oscurecen (una salida o un problema del Lab; en un duelo, no: la mano sigue a la vista). */
+  dimUnlit: boolean
   /** Mano no jugable: las cartas se ven grises. */
   muted: boolean
   /** Carta que acaba de destacarse (destella), una clave que cambia en cada destaque y para qué fue. */
@@ -134,7 +135,7 @@ const siblingIndex = (element: HTMLElement) => (element.parentElement ? Array.pr
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, glowOf, dimUnlit, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   // El tamaño de la carta sale de la mano inicial (no cambia al jugar o robar), pero la separación, el abanico y el centrado salen de las cartas que hay: al salir una, las que quedan se vuelven a centrar.
@@ -151,8 +152,6 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
   layoutRef.current = layout
 
   const ids = cards.map((card) => card.id)
-  // Las que brillan por una salida o un problema oscurecen al resto de la mano; las que pueden responder, no (la mano sigue a la vista).
-  const hasHighlight = highlighted.size > 0 && highlightKind !== 'respond'
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>, id: string) => {
     if (event.button !== 0 || !containerRef.current) {
@@ -366,10 +365,9 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
             transform={transform}
             zIndex={isDragged ? 100 : flashing || selected ? 50 : index + 1}
             state={isDragged ? 'dragging' : 'rest'}
-            glow={highlighted.has(card.id)}
-            glowKind={highlightKind}
+            glow={glowOf(card.id)}
             muted={muted}
-            dim={hasHighlight && !highlighted.has(card.id)}
+            dim={dimUnlit && glowOf(card.id) === null}
             flash={flashing ? flash : null}
             targeted={targeted.has(card.id)}
             selected={selected}
@@ -394,8 +392,7 @@ interface HandCardProps {
   transform: string
   zIndex: number
   state: 'rest' | 'dragging'
-  glow: boolean
-  glowKind: GlowKind | null
+  glow: GlowKind | null
   muted: boolean
   dim: boolean
   flash: { key: number; kind: SpotlightKind } | null
@@ -420,7 +417,6 @@ const HandCard = memo(function HandCard({
   zIndex,
   state,
   glow,
-  glowKind,
   muted,
   dim,
   flash,
@@ -500,6 +496,7 @@ const HandCard = memo(function HandCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const frame = glowFrame(glow)
   const style: CSSProperties = {
     width: layout.cardWidth,
     // Arrastrada, la posición la escribe `PracticeHand` por el ref en cada cuadro: React no la toca (y al soltar vuelve a poner la de reposo).
@@ -520,7 +517,7 @@ const HandCard = memo(function HandCard({
       className={HAND_CARD}
       data-state={state}
       data-glow={glow ? 'true' : 'false'}
-      data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
+      data-glow-kind={glow ?? undefined}
       data-dim={dim ? 'true' : 'false'}
       data-muted={muted ? 'true' : 'false'}
       data-flash={flash ? 'true' : 'false'}
@@ -547,7 +544,7 @@ const HandCard = memo(function HandCard({
       />
       <div ref={backRef} data-back className={CARD_BACK} aria-hidden="true" />
       {selected ? <FxFrame tone="cyan" /> : null}
-      {glow ? <FxFrame tone={GLOW_TONE[glowKind ?? 'opening']} orbit={false} /> : null}
+      {frame ? <FxFrame tone={frame.tone} orbit={frame.orbit} /> : null}
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}
     </div>

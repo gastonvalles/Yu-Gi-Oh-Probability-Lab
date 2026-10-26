@@ -92,7 +92,7 @@ import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileStripContext, PileView
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { CARD_HOVER, CARD_TRANSITION, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
+import { CARD_HOVER, CARD_TRANSITION, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
@@ -101,7 +101,8 @@ import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
-import { CARD_BACK, CARD_BACK_URL, GLOW_TONE } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL, glowFrame } from './practice-styles'
+import { glowOf, pileGlowOf } from '../../app/card-glow'
 
 export interface MatCard {
   name: string
@@ -169,8 +170,10 @@ export interface DuelMatLink {
   rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean; /** La carta que el rival sumó a su mano sin robar (su id real): el detalle de la izquierda se queda en ella hasta que se toque otra. */ peekId?: string; /** El efecto que activó, si eligió uno entre varios: cuándo se activa («Efecto 2 · When…») y qué hace, **textual**, para que quien tiene que decidir si responde lo lea. */ detail?: { lead: string; text: string } }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
-  /** Mis cartas que pueden responder ahora (el rival preguntó si hacés algo antes de pasar de fase): brillan en ámbar, y la casilla del cementerio lleva un aro si hay una adentro. */
+  /** Mis cartas con las que podés hacer algo ahora (activar, invocar de forma especial, responder, elegir): brillan en celeste (`can` de `app/card-glow.ts`), y la pila que tenga una adentro, también. */
   respond?: ReadonlySet<string>
+  /** Mis cartas cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar (`act`), y la pila que tenga una adentro, también. */
+  act?: ReadonlySet<string>
   /** Lo que hay que contestar ahora (la pregunta del rival de pasar de fase): va en el medio de la mesa, centrado en su columna y encima del campo, sin fondo que la tape ni empujar nada. */
   prompt?: ReactNode
   /** El aviso de la cadena (duelo automático: `ChainNotice`): centrado arriba de la columna de la mesa, debajo de la barra y de su aviso; la capa deja pasar los toques. */
@@ -366,7 +369,7 @@ const MAT_CARD = [
   // En el duelo automático no se arrastra (`still`): sólo se toca.
   'data-[still=true]:cursor-pointer',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
-  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)] data-[glow-kind=respond]:[--glow-rgb:var(--warning-rgb)]!',
+  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
   'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
   // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
   FX_CARD,
@@ -1832,10 +1835,12 @@ export function PracticeMat({
   const chosenLabel = duel?.auto?.cardPick ? t('auto.pick.chosen') : picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
   // Las cartas con la mira: las que marqué yo y las que marcó el rival (de las pilas enteras y de la mano, también se marca lo de adentro).
   const rivalMarks = duel?.marksOnMine
-  // Las cartas que brillan: cuando el rival pregunta si hacés algo antes, las que pueden responder (ámbar); si no, las de la salida o el problema del Lab.
-  const responders = duel?.respond
-  const glowing = responders && responders.size > 0 ? responders : highlighted
-  const glowKind: GlowKind | null = responders && responders.size > 0 ? 'respond' : highlightKind
+  // Las cartas que brillan: en un duelo, lo que podés hacer (celeste) y lo que se activa (ámbar); si no hay nada de eso, las de la salida o el problema del Lab (que oscurecen al resto).
+  const glowSets = useMemo(() => ({ can: duel?.respond, act: duel?.act }), [duel?.respond, duel?.act])
+  const duelLit = Boolean(glowSets.can?.size || glowSets.act?.size)
+  const glowKindOf = useCallback((id: string): GlowKind | null => (duelLit ? glowOf(id, glowSets) : highlighted.has(id) ? (highlightKind ?? 'opening') : null), [duelLit, glowSets, highlighted, highlightKind])
+  const dimUnlit = !duelLit && highlighted.size > 0
+  const deckGlow = pileGlowOf(state.deck, glowSets)
   const targetedIds = useMemo(() => new Set([...state.targeted, ...(rivalMarks?.cards ?? [])]), [state.targeted, rivalMarks])
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
   // En el celular la hoja tapa la mano: una carta de la mano no se levanta (quedaba encima de los botones); la del campo sí lleva el marco.
@@ -1885,9 +1890,8 @@ export function PracticeMat({
             pending={waiting !== null}
             dragging={drag?.source.id === shown.id}
             flash={flash?.id === shown.id ? flash : null}
-            glow={glowing.has(shown.id)}
-            glowKind={glowKind}
-            dim={glowKind !== 'respond' && glowing.size > 0 && !glowing.has(shown.id)}
+            glow={glowKindOf(shown.id)}
+            dim={dimUnlit && !highlighted.has(shown.id)}
             chosen={chosen ? chosenLabel : null}
             targeted={targetedIds.has(shown.id)}
             selected={selectedId === shown.id}
@@ -1916,6 +1920,7 @@ export function PracticeMat({
     const back = pile === 'extra' ? count > 0 && up.length === 0 : shown !== null && state.facedown.includes(shown)
     // Una carta marcada como objetivo adentro (se vea o no: no es siempre la de arriba) lleva la mira sobre la casilla.
     const marked = state[pile].some((id) => targetedIds.has(id)) || (rivalMarks?.piles.includes(pile) ?? false)
+    const pileGlow = pileGlowOf(state[pile], glowSets)
 
     return (
       <button
@@ -1926,10 +1931,12 @@ export function PracticeMat({
         data-drop={pile}
         data-over="false"
         data-targeted={marked ? 'true' : 'false'}
-        data-respond={pile === 'gy' && state.gy.some((id) => responders?.has(id)) ? 'true' : undefined}
+        // Una carta adentro con la que podés hacer algo, o que se activa: la casilla brilla como ella (el Extra, por todas, también las de dorso).
+        data-glow={pileGlow ? 'true' : 'false'}
+        data-glow-kind={pileGlow ?? undefined}
         data-pointed={duel?.pointed?.pile === pile ? 'true' : undefined}
         // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
-        className={cx(CELL, 'cursor-pointer rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
+        className={cx(CELL, 'cursor-pointer rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent] data-[glow=true]:z-6')}
         style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => openViewer(pile)}
       >
@@ -2122,7 +2129,7 @@ export function PracticeMat({
       const layer = box.parentElement!.getBoundingClientRect()
       const at = box.getBoundingClientRect()
       const strip = stripOpen && slotRef.current ? [slotRef.current.getBoundingClientRect()] : []
-      const glows = [...section.querySelectorAll('[data-glow-kind="respond"], [data-respond="true"]')].map((element) => element.getBoundingClientRect())
+      const glows = [...section.querySelectorAll('[data-glow-kind="can"]')].map((element) => element.getBoundingClientRect())
       // Sin lugar para todo, la tira abierta gana (es lo que se está mirando): al cerrarla, la pregunta vuelve a correrse de lo que brilla.
       // Nunca sobre la barra de arriba (sin laterales es lo primero de la columna, como para la tira) ni fuera de la pantalla.
       const min = Math.max(layer.top, (rails ? null : columnRef.current?.firstElementChild?.getBoundingClientRect().bottom) ?? layer.top)
@@ -2144,7 +2151,7 @@ export function PracticeMat({
       window.removeEventListener('resize', later)
       cancelAnimationFrame(frame)
     }
-  }, [hasPrompt, responders, stripOpen, state, view, rails])
+  }, [hasPrompt, glowSets, stripOpen, state, view, rails])
 
   // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
   // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.
@@ -2408,7 +2415,9 @@ export function PracticeMat({
             data-over="false"
             data-targeted={rivalMarks?.piles.includes('deck') ? 'true' : 'false'}
             data-pointed={duel?.pointed?.pile === 'deck' ? 'true' : undefined}
-            className={cx(CELL, isAuto ? 'cursor-pointer' : state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus', HOLD_PRESS)}
+            data-glow={deckGlow ? 'true' : 'false'}
+            data-glow-kind={deckGlow ?? undefined}
+            className={cx(CELL, isAuto ? 'cursor-pointer' : state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus', HOLD_PRESS, DUEL_GLOW, '[--card-shadow:0_0_0_0_transparent] data-[glow=true]:z-6')}
             style={{ gridArea: 'deck' }}
             {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true, hold: !isAuto, still: isAuto })}
             onKeyDown={(event) => activate(event, () => (isAuto ? setViewer('deck') : setMenu({ kind: 'deck', rect: event.currentTarget.getBoundingClientRect() })))}
@@ -2477,8 +2486,8 @@ export function PracticeMat({
             sizeSlots={Math.max(session.initial.hand.length, 1)}
             maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
-            highlighted={glowing}
-            highlightKind={glowKind}
+            glowOf={glowKindOf}
+            dimUnlit={dimUnlit}
             muted={muted}
             flash={flash}
             targeted={targetedIds}
@@ -2653,6 +2662,7 @@ export function PracticeMat({
           kicker={byName ? t('practice.dialog.byName') : undefined}
           info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
           targeted={targetedIds}
+          glow={(id) => glowOf(id, glowSets)}
           // Tocar una carta del visor (también eligiendo varias) la muestra, fija, en el detalle de la izquierda, y pasarle el mouse también (mientras no haya otra fija), como una de la mano o del campo.
           onPeek={
             onPeek
@@ -2796,8 +2806,7 @@ interface PlacedCardProps {
   dragging: boolean
   /** El destaque en curso (activar, mostrar, declarar o marcar como objetivo), con su clave; null = quieta. */
   flash: { key: number; kind: SpotlightKind } | null
-  glow: boolean
-  glowKind: GlowKind | null
+  glow: GlowKind | null
   dim: boolean
   /** Elegida como Sacrificio o como material (la etiqueta que lleva), o null. */
   chosen: string | null
@@ -2820,7 +2829,7 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, targeted, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
   // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -2831,6 +2840,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
   // El marco celeste: la carta del menú y la que espera en la zona (tiene el menú, o los Sacrificios, todavía por delante).
   const framed = selected || pending
+  const frame = glowFrame(glow)
 
   const cardRef = useRef<HTMLDivElement | null>(null)
   const previousPos = useRef(placed.pos)
@@ -2869,7 +2879,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
         data-targeted={targeted ? 'true' : 'false'}
         data-selected={framed ? 'true' : 'false'}
         data-glow={glow ? 'true' : 'false'}
-        data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
+        data-glow-kind={glow ?? undefined}
         data-dim={dim ? 'true' : 'false'}
         data-still={still || undefined}
         {...bind({ id: placed.id, name: card.name, art: artOf(card), hold, still })}
@@ -2884,7 +2894,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
         <MaterialCount count={materials} sideways={sideways} />
         {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
         {framed ? <FxFrame tone="cyan" /> : null}
-        {glow ? <FxFrame tone={GLOW_TONE[glowKind ?? 'opening']} orbit={false} /> : null}
+        {frame ? <FxFrame tone={frame.tone} orbit={frame.orbit} /> : null}
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
       </div>
