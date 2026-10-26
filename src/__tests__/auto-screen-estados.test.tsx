@@ -80,7 +80,7 @@ describe('auto-screen · los estados', () => {
     expect(fake.answers).toEqual([{ type: 'select_disfield', places: [{ player: 0, location: L.MZONE, sequence: 0 }] }])
     core(() => fake.ask(ANNOUNCE))
     expect(fake.answers).toHaveLength(1)
-    expect(lane()).toHaveTextContent('Algo falló: announce_card')
+    expect(lane()).toHaveTextContent('El automático todavía no sabe contestar esta pregunta del núcleo.')
     fireEvent.click(within(lane()!).getByRole('button', { name: 'Deshacer' }))
     expect(fake.undos).toBe(1)
   })
@@ -163,7 +163,7 @@ describe('auto-screen · los estados', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el mismo duelo' }))
     expect(fake.restarts).toBe(1)
     core(() => fake.set({ status: 'ready', replaying: false, unmapped: ['swap mz 0 <-> mz 1'] }))
-    expect(lane()).toHaveTextContent('La mesa no puede mostrar: swap mz 0 <-> mz 1')
+    expect(lane()).toHaveTextContent('La mesa no pudo mostrar una jugada del núcleo; el duelo sigue igual.')
   })
 
   it('la carga: la portada dice cuántas reglas van y la mesa queda detrás', () => {

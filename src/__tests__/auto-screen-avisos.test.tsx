@@ -19,11 +19,11 @@ describe('auto-screen · los avisos de la línea', () => {
     expect(lane()).not.toHaveTextContent('swap')
     expect(warn).toHaveBeenCalledWith('[auto] la mesa no pudo mostrar:', 'unsupported: swap')
 
-    core(() => fake.fault({ kind: 'unhandled', message: 'unhandled message 42' }, false))
+    core(() => fake.fault({ kind: 'unhandled', message: 'unhandled message 42', cards: [] }, false))
     expect(lane()).toHaveTextContent('Algo falló en el núcleo, pero el duelo sigue.')
     expect(warn).toHaveBeenCalledWith('[auto] el núcleo avisó un error:', 'unhandled', 'unhandled message 42')
 
-    core(() => fake.fault({ kind: 'retry', message: 'RETRY: the core rejected the answer to select_card' }, false))
+    core(() => fake.fault({ kind: 'retry', message: 'RETRY: the core rejected the answer to select_card', cards: [] }, false))
     expect(lane()).toHaveTextContent('El núcleo no aceptó esa respuesta: elegí de nuevo.')
 
     core(() => fake.ask(ANNOUNCE))
