@@ -205,6 +205,7 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
     session.destroy()
   })
 
+  // Busca la carta sin script leyendo scripts del disco fila por fila (`store.has`): con el disco frío (antivirus, otro proceso leyendo lo mismo) pasa de los 15 s por defecto.
   it('una carta sin reglas (o sin datos) no deja arrancar: error con la lista', async () => {
     const effectWithoutScript = rows.find((row) => (row.type & 0x21) === 0x21 && row.alias === 0 && (row.ot & 3) !== 0 && !store.has(`c${row.id}.lua`))!
     const deck = { main: [...lists[pool[0]!]!.main, [effectWithoutScript.id, 1], [1, 1]] } as DeckList
@@ -213,5 +214,5 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
 
     expect(failed.fault).toMatchObject({ kind: 'rules' })
     expect([...failed.fault!.cards].sort()).toEqual([1, effectWithoutScript.id].sort())
-  })
+  }, 120_000)
 })
