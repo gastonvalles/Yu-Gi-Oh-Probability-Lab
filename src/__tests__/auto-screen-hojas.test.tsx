@@ -18,6 +18,8 @@ const SORT: CoreAsk = { type: 'sort_card', player: 0, cards: [loc(100, L.HAND, 0
 const YESNO: CoreAsk = { type: 'select_yesno', player: 0, description: '31' }
 const EFFECTYN: CoreAsk = { type: 'select_effectyn', player: 0, ...pos(400, L.GRAVE, 0, 5), description: '6400' }
 const MIXED: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 2, selects: [pos(400, L.GRAVE, 0, 5), pos(500, L.EXTRA, 0, 10)] }
+/** Con dos cartas del deck, en el orden en que el núcleo las manda (Imperm antes que Droll), y una del Cementerio. */
+const MIXED_DECK: CoreAsk = { type: 'select_card', player: 0, can_cancel: true, min: 1, max: 2, selects: [pos(102, L.DECK, 0, 8), pos(101, L.DECK, 1, 8), pos(400, L.GRAVE, 0, 5)] }
 
 describe('auto-screen · las hojas', () => {
   it('option: una hoja con lo que hace cada opción (sin texto, «Activar efecto», nunca un número inventado) y la carta que pregunta arriba; tocar una contesta con su índice', () => {
@@ -124,5 +126,19 @@ describe('auto-screen · las hojas', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
     expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow-kind', 'respond')
+  })
+
+  it('las del deck de una lista mixta se muestran por nombre, no en el orden del deck, y se contesta con el índice del núcleo', () => {
+    const fake = renderAuto()
+
+    core(() => fake.ask(MIXED_DECK))
+    const sheet = screen.getByRole('dialog', { name: 'Elegí de 1 a 2 cartas · 0 de 2' })
+    const options = within(sheet).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
+
+    // El núcleo las manda Imperm, Droll, Nibiru: Droll (la segunda) sale primero y su respuesta sigue siendo el índice 1.
+    expect(options).toEqual(['Droll, Main', 'Imperm, Main', 'Nibiru, GY'])
+    fireEvent.click(within(sheet).getAllByRole('option')[0]!)
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Elegir 1 carta' }))
+    expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
   })
 })
