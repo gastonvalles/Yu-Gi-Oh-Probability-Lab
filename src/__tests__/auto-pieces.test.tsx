@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
-import { AutoBar, AutoLives } from '../components/auto/AutoBar'
+import { AutoBar } from '../components/auto/AutoBar'
 import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPicker'
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
@@ -474,11 +474,16 @@ describe('AutoBar', () => {
     expect(() => menuRow('Opciones del duelo')).toThrow()
   })
 
-  it('las vidas con la mano: «Rival» y «Mano 3» a la vista y «3 cartas en la mano» para el lector de pantalla (una sola, «Una carta en la mano»)', () => {
-    render(<AutoLives rivalName="Rival" life={{ mine: 8000, theirs: 7000 }} hands={{ mine: 1, theirs: 3 }} />)
+  it('con laterales, las vidas van cada una de su lado del lateral izquierdo: el rival arriba (junto a la flecha) y vos abajo, con las cartas de cada mano', () => {
+    desktop()
+    render(
+      <DuelRailsContext.Provider value>
+        <AutoBar {...props} hands={{ mine: 1, theirs: 3 }} />
+      </DuelRailsContext.Provider>,
+    )
 
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' })).toHaveTextContent('Rival Mano 3')
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' })).toHaveTextContent('Vos Mano 1')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' }).parentElement).toHaveClass('col-start-1', 'row-start-1')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' }).parentElement).toHaveClass('col-start-1', 'row-start-3')
   })
 
   it('«Opciones del duelo»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son de «La mesa», en el ⋯, como en la práctica)', () => {

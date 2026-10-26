@@ -160,7 +160,7 @@ export interface DuelMatLink {
   /** Lo que el + ofrece además de la ficha y los contadores en un duelo (la moneda, el dado y los juegos): cada uno abre lo suyo. */
   plusItems?: ReadonlyArray<{ label: string; onSelect: () => void }>
   life: ReactNode
-  /** Escritorio sin laterales: las vidas del rival en la esquina de arriba a la derecha del campo, encima de su borde y al costado de su mano (lámina 07). */
+  /** Sin laterales: las vidas del rival en la esquina de arriba a la derecha del campo, encima de su borde y al costado de su mano (lámina 07; en el celular, sólo con su mano a la vista: se apoya en su lugar). */
   corner?: ReactNode
   /**
    * Escritorio: la botonera redonda (`AutoDock`), abajo a la derecha, en la fila de abajo de la mano; con ella, tus vidas (`life`) van a la izquierda de esa fila, en la esquina opuesta a las del
@@ -2451,9 +2451,9 @@ export function PracticeMat({
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
         <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'relative my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
-        {/* Las vidas del rival en la esquina de arriba a la derecha (escritorio sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
-        {duel?.corner && isDesktop && !rails ? (
-          <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: THEIR_HAND.desktop.room }}>
+        {/* Las vidas del rival en la esquina de arriba a la derecha (sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
+        {duel?.corner && !rails && (isDesktop || duel.rivalHand) ? (
+          <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room }}>
             {duel.corner}
           </div>
         ) : null}

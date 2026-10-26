@@ -143,6 +143,7 @@ export function AutoSection() {
 
       <ChainSample />
       <BarActionsSample />
+      <LifePlateSample />
       <DockSample />
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje (en la mesa de escritorio va en la botonera), el turno y, con laterales, las vidas (sin ellos, van en las esquinas del campo en escritorio y abajo en el celular). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
       <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Handtraps del rival» con «Cambiar handtraps» y, encendidas, «A ciegas» —en la del núcleo resolviendo están apagadas y dice que el rival no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
@@ -489,7 +490,7 @@ function LongTextSample() {
     <Specimen
       title="Textos largos · es y en"
       layout="column"
-      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano bajan «Mano 5» a otro renglón. Elegido, ámbar hondo con texto blanco (<Tag>warning-solid</Tag>, 4,8:1).</>}
+      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, ámbar hondo con texto blanco (<Tag>warning-solid</Tag>, 4,8:1).</>}
     >
       <div className="grid w-[min(22rem,100%)] gap-3">
         <RespondBand title="Respond to CL2 · Opponent" card={ASH} link={3} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} mode={{ value: mode, onChange: setMode }} />
@@ -586,6 +587,42 @@ function CounterSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
           />
         ) : null}
       </Presence>
+    </Specimen>
+  )
+}
+
+/**
+ * Las vidas de la mesa (`LifeTile`), la placa con barra: los estados (8000, bajando —el −1000, el destello y la sacudida—, la mitad, un cuarto y 0), la del celular (`compact`) y, en un lateral, el rival arriba y
+ * vos abajo. «Recibir 1000» las baja de verdad: la sacudida es la de la mesa.
+ */
+function LifePlateSample() {
+  const [mine, setMine] = useState(8000)
+
+  return (
+    <Specimen title="LifeTile · la placa con barra" layout="column" className="col-span-full" note={<>Cada jugador de su lado: la chapa del dueño rellena con el texto blanco (violeta, <Tag>primary</Tag>; ámbar hondo, <Tag>warning-solid</Tag>), las cartas de la mano, el número blanco (33 px en escritorio, 24 en el celular) y la barra de 8000 en su color: la excepción escrita a «los porcentajes son anillos», sólo para las vidas (<Tag>role="meter"</Tag>). Con la mitad o menos el corazón pasa a ámbar; con un cuarto, corazón y barra en rojo; en 0, el número también. Relieve tonal (<Tag>life-plate</Tag>). Archivo: <Tag>duel/DuelBar.tsx</Tag></>}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" size="sm" onClick={() => setMine((life) => Math.max(0, life - 1000))}>
+          Recibir 1000
+        </Button>
+        <Button variant="tertiary" size="sm" onClick={() => setMine(8000)}>
+          Volver a 8000
+        </Button>
+      </div>
+      <div className="relative isolate flex flex-wrap items-start gap-3 overflow-hidden rounded-card border border-border-subtle p-3">
+        <MatScene className="absolute inset-0 -z-10" />
+        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={mine} mine hand={5} />
+        <LifeTile name={t('duel.bar.rival')} life={8000} hand={5} />
+        <LifeTile name={t('duel.bar.rival')} life={3600} hand={3} />
+        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={1500} mine hand={2} />
+        <LifeTile name={t('duel.bar.rival')} life={0} hand={0} />
+        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={mine} mine compact hand={5} />
+        <LifeTile name={t('duel.bar.rival')} life={8000} compact hand={5} />
+      </div>
+      <div className="relative isolate grid h-56 w-56 content-between overflow-hidden rounded-card border border-border-subtle p-3">
+        <MatScene className="absolute inset-0 -z-10" />
+        <LifeTile name={t('duel.bar.rival')} life={8000} hand={5} />
+        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={mine} mine hand={5} />
+      </div>
     </Specimen>
   )
 }
@@ -703,10 +740,10 @@ function DockSample() {
       <div className="relative isolate grid min-h-48 grid-cols-[minmax(0,1fr)_auto] content-between gap-3 overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
         <span className="col-start-2 flex">
-          <LifeTile name={t('duel.bar.rival')} life={7000} compact hand={3} />
+          <LifeTile name={t('duel.bar.rival')} life={7000} hand={3} />
         </span>
         <span className="col-start-1 flex self-end">
-          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine compact hand={5} />
+          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine hand={5} />
         </span>
         <span className="col-start-2 flex self-end pt-3">
           <AutoDock

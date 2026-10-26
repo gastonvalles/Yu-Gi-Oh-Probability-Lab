@@ -185,31 +185,29 @@ describe('la barra de la mesa es una sola', () => {
     expect(undo()).toBeDisabled()
   })
 
-  it('las vidas de los dos: en el celular, abajo (en la botonera, donde va la tuya en el duelo por enlace: arriba no entran con los íconos); en escritorio, en las esquinas del campo, con las cartas de cada mano', () => {
+  it('las vidas, cada una de su lado (Gastón: «la vida de ambos jugadores junta»), en el celular y en escritorio: el rival arriba a la derecha del campo, junto a su mano, y vos abajo a la izquierda, junto a la tuya, cada uno con las cartas de su mano y su barra de 8000', () => {
     const field = () => screen.getByLabelText('Campo')
     const after = (element: HTMLElement) => Boolean(field().compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)
 
-    renderAuto()
-    expect(after(screen.getByRole('group', { name: 'Puntos de vida de Rival: 8000' }))).toBe(true)
-    expect(after(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' }))).toBe(true)
-    expect(document.querySelector('[data-corner]')).toBeNull()
-    cleanup()
+    for (const layout of ['celular', 'escritorio'] as const) {
+      if (layout === 'escritorio') desktop()
+      const fake = renderAuto()
+      const rival = screen.getByRole('group', { name: /^Puntos de vida de Rival: 8000\. .+ en la mano$/ })
+      const mine = screen.getByRole('group', { name: /^Puntos de vida de Vos: 8000\. .+ en la mano$/ })
+      const mineHand = within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem').length
+      const rivalHand = fake.getSnapshot().theirs.hand.length
 
-    // Escritorio (lámina 07): el rival arriba a la derecha del campo y vos abajo a la izquierda, cada uno con cuántas cartas tiene en la mano; en la barra de arriba, ninguna.
-    desktop()
-    const fake = renderAuto()
-    const rival = screen.getByRole('group', { name: /^Puntos de vida de Rival: 8000\. .+ en la mano$/ })
-    const mine = screen.getByRole('group', { name: /^Puntos de vida de Vos: 8000\. .+ en la mano$/ })
-    const mineHand = within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem').length
-    const rivalHand = fake.getSnapshot().theirs.hand.length
-
-    expect(rival.closest('[data-corner="theirs"]')).not.toBeNull()
-    expect(mine.closest('[data-corner="mine"]')).not.toBeNull()
-    expect(rival).toHaveTextContent(`Rival Mano ${rivalHand}`)
-    expect(mine).toHaveTextContent(`Vos Mano ${mineHand}`)
-    expect(after(rival)).toBe(false)
-    expect(after(mine)).toBe(true)
-    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+      expect(rival.closest('[data-corner="theirs"]')).not.toBeNull()
+      expect(mine.closest('[data-corner="mine"]')).not.toBeNull()
+      // La chapa, las cartas de la mano y el número; la barra es un medidor de 8000.
+      expect(rival).toHaveTextContent(`Rival${rivalHand}8000`)
+      expect(mine).toHaveTextContent(`Vos${mineHand}8000`)
+      expect(within(rival).getByRole('meter', { name: 'Puntos de vida de Rival' })).toHaveAttribute('aria-valuenow', '8000')
+      expect(after(rival)).toBe(false)
+      expect(after(mine)).toBe(true)
+      expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+      cleanup()
+    }
   })
 
   it('la botonera de escritorio: «Automático» (prendido) abre «Seguir en modo manual», «Cadena» cambia las respuestas, «Pasos» oculta y muestra el panel, «Opciones» trae el resto de «Más opciones»', () => {

@@ -1200,15 +1200,16 @@ describe('la pantalla del duelo', () => {
     for (const view of [guest, host]) {
       const { mineLife, theirLife, mineLine, theirLine } = colors(view)
 
-      // El tuyo, verde: la casilla de tus vidas (borde y número) y tu globo, con tu nombre.
-      expect(mineLife).toHaveClass('border-accent/50')
-      expect(mineLife.querySelector('span.font-extrabold.tabular-nums')).toHaveClass('text-accent')
+      // El tuyo, violeta: la placa de tus vidas (borde y chapa; el número va blanco) y tu globo, con tu nombre.
+      expect(mineLife).toHaveClass('border-accent/60')
+      expect(mineLife.querySelector('span.uppercase')).toHaveClass('bg-primary', 'text-white')
+      expect(mineLife.querySelector('span.font-extrabold.tabular-nums')).toHaveClass('text-foreground')
       expect(mineLine).toHaveClass('bg-accent/20')
       expect(mineLine.querySelector('span')).toHaveClass('text-accent')
 
-      // El del rival, celeste, también en sus dos lugares.
-      expect(theirLife).toHaveClass('border-info/50')
-      expect(theirLife.querySelector('span.font-extrabold.tabular-nums')).toHaveClass('text-info-soft')
+      // El del rival, ámbar, también en sus dos lugares.
+      expect(theirLife).toHaveClass('border-info/55')
+      expect(theirLife.querySelector('span.uppercase')).toHaveClass('bg-warning-solid', 'text-white')
       expect(theirLine).toHaveClass('bg-info/20')
       expect(theirLine.querySelector('span')).toHaveClass('text-info-soft')
     }
@@ -1234,12 +1235,12 @@ describe('la pantalla del duelo', () => {
 
     const life = (name: string) => within(watcher.container).getByRole('group', { name: new RegExp(`Puntos de vida de ${name}`) })
 
-    expect(life('Ana')).toHaveClass('border-accent/50')
-    expect(life('Beto')).toHaveClass('border-info/50')
+    expect(life('Ana')).toHaveClass('border-accent/60')
+    expect(life('Beto')).toHaveClass('border-info/55')
 
     click(watcher, /Ver desde el otro lado/)
-    expect(life('Ana')).toHaveClass('border-accent/50')
-    expect(life('Beto')).toHaveClass('border-info/50')
+    expect(life('Ana')).toHaveClass('border-accent/60')
+    expect(life('Beto')).toHaveClass('border-info/55')
 
     click(watcher, /Chat de los jugadores/)
     const log = within(screen.getByRole('dialog')).getByRole('log')

@@ -91,19 +91,6 @@ export function Setting({ title, hint, children }: { title: string; hint: string
 }
 
 /**
- * Las vidas de los dos (`LifeTile`: las cuenta, destella y sacude como en el duelo): en el celular, abajo, en la botonera de la mesa (donde va la tuya en el duelo por enlace); con laterales, en el
- * izquierdo. En escritorio sin laterales van separadas, en las esquinas del campo (la pantalla: `duel.corner` y `duel.life`).
- */
-export function AutoLives({ rivalName, life, hands }: { rivalName: string; life: { mine: number; theirs: number }; hands?: { mine: number; theirs: number } }) {
-  return (
-    <>
-      <LifeTile name={rivalName} life={life.theirs} {...(hands ? { hand: hands.theirs } : {})} />
-      <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine {...(hands ? { hand: hands.mine } : {})} />
-    </>
-  )
-}
-
-/**
  * «Más opciones» del duelo: las respuestas a la cadena, la casilla, las handtraps del rival y «A ciegas», reiniciar el mismo duelo y seguir en modo manual. Desde la botonera (`inDock`) no repite lo
  * que ahí tiene su botón (las respuestas y el modo manual). Sin velo: la mesa se sigue viendo.
  */
@@ -245,7 +232,6 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
     </>
   )
 
-  const lives = <AutoLives rivalName={rivalName} life={life} {...(hands ? { hands } : {})} />
   // Los íconos de la práctica (deshacer y el ⋯) y, al final del ⋯, «Opciones del duelo» (lo propio del automático). En escritorio con la botonera, las opciones van en ella.
   const gear = !(dock && docked)
   const actions = (first?: string) => (
@@ -258,9 +244,13 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
   if (rails) {
     return (
       <>
+        {/* Las vidas, cada una de su lado del lateral izquierdo: el rival arriba, junto a la flecha, y vos abajo (Gastón, 2026-10-26: «la vida de ambos jugadores junta»). */}
         <div className="col-start-1 row-start-1 flex min-w-0 items-start gap-2">
           <MatExitButton onExit={onExit} />
-          <div className="flex min-w-0 flex-col items-start gap-2">{lives}</div>
+          <LifeTile name={rivalName} life={life.theirs} compact {...(hands ? { hand: hands.theirs } : {})} />
+        </div>
+        <div className="col-start-1 row-start-3 flex min-w-0 items-end">
+          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact {...(hands ? { hand: hands.mine } : {})} />
         </div>
         <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-2', MAT_BAR_ROW)}>

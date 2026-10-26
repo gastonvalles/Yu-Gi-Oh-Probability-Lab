@@ -594,23 +594,27 @@ interface DuelLifeProps {
 
 /** Tus puntos de vida, abajo junto a las fases: se tocan para abrir la calculadora (sincronizada con el duelo, sin salir de él). */
 export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey }: DuelLifeProps) {
-  return <LifeTile name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={snapshot.life.lp[snapshot.me]} mine big bubble={signal} bubbleKey={signalKey} onClick={onOpen} />
+  return <LifeTile name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={snapshot.life.lp[snapshot.me]} mine bubble={signal} bubbleKey={signalKey} onClick={onOpen} />
 }
 
 /**
- * Las vidas de un jugador (Gastón, 2026-10-19: «la vida de ambos jugadores puede mejorarse mucho»; el anillo se probó y no le gustó): en escritorio, un **corazón** que cambia de color con la salud (verde con más
- * de la mitad, ámbar desde ahí hasta un cuarto y rojo debajo: es una estadística) y late al cambiar; el nombre arriba y el número grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al
- * subir o bajar) con la diferencia («−1000») saliendo al lado. En el celular, sin corazón: la fila no se parte. El borde de la tarjeta es de su dueño (violeta el tuyo, ámbar el del rival). Tocarla abre la calculadora.
- * Las dos miden lo mismo de alto.
+ * Las vidas de un jugador, una placa (Gastón, 2026-10-26: «la vida de ambos jugadores junta y con estética plana»; el anillo se probó en 2026-10-19 y no le gustó): la chapa del dueño rellena y honda con el
+ * texto blanco (violeta la tuya, ámbar hondo la del rival), las cartas de la mano a su lado (`hand`, «▯ 5»), el número blanco y grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al
+ * subir o bajar; en 0, rojo) con la diferencia («−1000») al lado, y debajo la **barra de 8000** en el color del dueño (en rojo con un cuarto o menos): la excepción escrita a «los porcentajes son anillos», sólo
+ * para las vidas (`role="meter"`). En escritorio, además, el **corazón** que cambia de color con la salud (verde con más de la mitad, ámbar hasta un cuarto, rojo debajo) y late al cambiar. Flota sobre la mesa
+ * (`life-plate`: relieve tonal, la mesa es la excepción a «sin brillos»). Al bajar se sacude como en el impacto. Tocarla abre la calculadora (`onClick`).
+ * - Tamaños: en escritorio, el número a 33 px, con el corazón y 72 px de alto (`compact`: 56, sin corazón y del ancho justo, para no tapar la mano del rival en una mesa angosta); en el
+ *   celular, 56 px, el número a 24 y sin corazón. Miden lo que medían las de antes: nada se corre.
+ * - Usos: las esquinas del campo y los laterales de «Jugar solo automático», la barra y la botonera del duelo por enlace (`DuelBar`, `DuelLife`), la pantalla de quien mira.
  */
-export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, big = false, compact = false, hand }: {
-  /** Cuántas cartas tiene en la mano: junto al nombre («Rival · Mano 3») y en lo que oye el lector de pantalla (las esquinas del campo de «Jugar solo automático»). */
+export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, compact = false, hand, handOnDesktop = false }: {
+  /** Cuántas cartas tiene en la mano: junto a la chapa («▯ 5») y en lo que oye el lector de pantalla («5 cartas en la mano»). */
   hand?: number
-  /** El de la botonera de abajo (tus vidas): más ancho y con el número más grande. */
-  big?: boolean
-  /** La del celular también en escritorio (sin corazón, 56 px de alto): las de «Jugar solo automático» cuando bajan a la botonera porque en la barra no entran. */
+  /** Las cartas de la mano a la vista sólo en escritorio (lo oye igual el lector de pantalla): la del rival en el celular va pegada a sus dorsos, que ya se cuentan, y así no los tapa. */
+  handOnDesktop?: boolean
+  /** 56 px de alto y sin corazón también en escritorio (las esquinas de «Jugar solo automático»: la tuya sube sobre tu mano sin taparla y la del rival no tapa la suya). */
   compact?: boolean
-  name: string; /** Lo que se ve en la casilla, si no es el nombre (tus vidas dicen «Vos»; el nombre queda para el lector de pantalla). */ label?: string; life: number; mine?: boolean; /** Un aviso que sale un instante junto a las vidas, con el color de su dueño: el rival, debajo; el propio, arriba. */ bubble?: string | null; /** Cambia con cada señal (aunque diga lo mismo): el globo vuelve a entrar. */ bubbleKey?: number; /** De qué jugador es el color (por defecto, el tuyo si es "mine"): quien mira pone el suyo a cada uno. */ color?: PlayerSide; onClick?: () => void }) {
+  name: string; /** Lo que dice la chapa, si no es el nombre (tus vidas dicen «Vos»; el nombre queda para el lector de pantalla). */ label?: string; life: number; mine?: boolean; /** Un aviso que sale un instante junto a las vidas, con el color de su dueño: el rival, debajo; el propio, arriba. */ bubble?: string | null; /** Cambia con cada señal (aunque diga lo mismo): el globo vuelve a entrar. */ bubbleKey?: number; /** De qué jugador es el color (por defecto, el tuyo si es "mine"): quien mira pone el suyo a cada uno. */ color?: PlayerSide; onClick?: () => void }) {
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
   const tone = PLAYER_COLOR[color ?? side]
@@ -630,23 +634,27 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   }, [change])
   const ratio = Math.min(1, Math.max(0, life / STARTING_LP))
   const health: Tone = ratio > 0.5 ? 'success' : ratio > 0.25 ? 'warning' : 'danger'
+  // En escritorio, 72 px de alto (`compact`: 56, lo que medían las esquinas del automático: la tuya sube sólo 12 px sobre la mano y no la tapa).
+  const tall = !compact
+  const lifeOf = t('duel.bar.lifeOf', { name })
   const body = (
     <>
       <span key={change?.key ?? 'idle'} aria-hidden="true" className={cx('shrink-0', compact ? 'hidden' : 'max-[1101px]:hidden', TONE[health].text, change && 'animate-pop motion-reduce:animate-none')}>
-        <Icon name="heart" size={big ? 32 : 28} variant="bold" />
+        <Icon name="heart" size={28} variant="bold" />
       </span>
-      <span className="grid min-w-0 content-center gap-1 min-[1101px]:flex-1">
-        <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
-          {/* Con la mano, «Rival» y «Mano 3» son dos piezas que bajan a un segundo renglón si no entran (en una sola, cortada, decía «RIVAL · MA…»). */}
-          <span className="flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 text-micro font-semibold uppercase leading-none tracking-[0.06em]">
-            <span className={cx('min-w-0 truncate', mine ? tone.text : 'text-foreground')}>{label ?? name}</span>
-            {hand === undefined ? null : (
-              <>
-                {' '}
-                <span className="whitespace-nowrap text-muted">{t('duel.bar.handTag', { count: hand })}</span>
-              </>
-            )}
-          </span>
+      <span className={cx('grid min-w-0 flex-1 content-center gap-0.5', tall && 'min-[1101px]:gap-1')}>
+        <span className="flex min-w-0 items-center justify-between gap-1.5">
+          <span className={cx('min-w-0 truncate rounded-full px-2 text-micro font-bold uppercase leading-4 tracking-wider shadow-card max-[379px]:px-1.5', tall && 'min-[1101px]:leading-5', tone.fill)}>{label ?? name}</span>
+          {hand === undefined ? null : (
+            <span aria-hidden="true" className={cx('inline-flex shrink-0 items-center gap-0.5 text-micro font-semibold leading-none tabular-nums text-muted', handOnDesktop && 'max-[1101px]:hidden')}>
+              <Icon name="card" size={14} strokeWidth={1.8} />
+              {hand}
+            </span>
+          )}
+        </span>
+        <span className="flex min-w-0 items-baseline justify-between gap-1.5">
+          {/* A 33 px el renglón recorta 2 px arriba y abajo (los números no tienen ni rasgos que suban ni que bajen): entra en 56 px con la chapa y la barra. */}
+          <span className={cx('min-w-0 truncate text-title font-extrabold leading-none tabular-nums transition-colors duration-200 min-[1101px]:-my-0.5 min-[1101px]:text-stat', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>{shown}</span>
           {change ? (
             <span key={change.key} aria-hidden="true" style={{ animationDuration: `${DELTA_MS}ms` }} className={cx('shrink-0 animate-linger text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
               {change.delta < 0 ? '−' : '+'}
@@ -654,7 +662,10 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
             </span>
           ) : null}
         </span>
-        <span className={cx('max-w-full shrink-0 truncate font-extrabold leading-none tabular-nums transition-colors duration-200', big ? 'text-stat' : 'text-title', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : tone.text)}>{shown}</span>
+        {/* La barra de 8000 (con más, llena): la excepción a los anillos, sólo para las vidas. La lee el lector de pantalla como un medidor; el número ya lo dice la placa. */}
+        <span role="meter" aria-label={lifeOf} aria-valuemin={0} aria-valuemax={STARTING_LP} aria-valuenow={Math.min(life, STARTING_LP)} aria-valuetext={String(life)} className={cx('block h-1 overflow-hidden rounded-full bg-tint/16', tall && 'min-[1101px]:h-1.5')}>
+          <span className={cx('block h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none', health === 'danger' ? 'bg-danger-soft' : tone.bar)} style={{ width: `${ratio * 100}%` }} />
+        </span>
       </span>
       {bubble ? (
         <span key={bubbleKey} role="status" style={{ animationDuration: `${SIGNAL_MS}ms` }} className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-linger rounded-card border bg-card-background normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', isEmojiSignal(bubble) ? 'px-3 py-1 text-display leading-none' : 'truncate px-2.5 py-1 text-body font-semibold', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
@@ -665,19 +676,14 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   )
   const handNote = hand === undefined ? '' : `. ${t('duel.bar.handCount', { count: hand })}`
   // Las dos vidas miden lo mismo de alto (la del rival arriba, la tuya abajo).
-  const style = cx(
-    'relative flex h-14 shrink-0 items-center gap-3 rounded-card border bg-card-background px-2 text-left',
-    !compact && 'min-[1101px]:h-[4.5rem] min-[1101px]:px-3',
-    big ? 'min-w-28 min-[1101px]:min-w-44' : compact ? 'min-w-[5.25rem]' : 'min-w-[5.25rem] min-[1101px]:min-w-36 max-[339px]:min-w-16',
-    tone.border,
-  )
+  const style = cx('life-plate relative flex h-14 min-w-21 shrink-0 items-center gap-2.5 rounded-card border px-2.5 text-left max-[379px]:min-w-18 max-[379px]:px-1.5 max-[339px]:min-w-16 min-[1101px]:px-3', tall && 'min-[1101px]:h-18 min-[1101px]:min-w-52', tone.border)
 
   return onClick ? (
-    <button ref={setTile} type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}${handNote}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-info/60 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button ref={setTile} type="button" data-lp={side} aria-label={`${lifeOf}: ${life}${handNote}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-info/60 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <div ref={setTile} role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}${handNote}`} className={style}>
+    <div ref={setTile} role="group" data-lp={side} aria-label={`${lifeOf}: ${life}${handNote}`} className={style}>
       {body}
     </div>
   )
