@@ -164,7 +164,7 @@ export function createDuelHarness(sala: () => { memory: MemoryRoom; connect: Due
 
   const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') =>
     typeof name === 'string' && role === 'button' && PHASE_NAMES.includes(name)
-      ? (fireEvent.click(phaseChip(view)), fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })), letPass())
+      ? (fireEvent.click(phaseChip(view)), fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^(Ir a |Fase actual: )?${name}`) })), letPass())
       : fireEvent.click(typeof name === 'string' && role === 'button' && MORE_OPTIONS.includes(name) ? moreButton(view, name) : within(view.container).getByRole(role, { name }))
 
   /** La hoja «Reglas del duelo» (está en un portal, fuera de la pantalla): se abre desde el renglón de las reglas del inicio de Jugar. */

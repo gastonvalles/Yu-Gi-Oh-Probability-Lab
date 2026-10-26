@@ -200,6 +200,8 @@ export const practice: Translated<typeof es> = {
   'practice.mat.turn': 'Turn {turn}',
   'practice.mat.field': 'Field',
   'practice.mat.phases': 'Phases',
+  'practice.phaseRow.title': 'Go to phase',
+  'practice.phaseRow.goTo': 'Go to {phase}',
   'practice.mat.deckHelp': 'Main Deck · Tap: search · Drag: draw · Hold: options',
   'practice.mat.deckHelpAuto': 'Main Deck · Tap: see the cards left, by name',
   'practice.mat.currentStep': 'Current step',

@@ -97,10 +97,10 @@ describe('auto-screen · las jugadas', () => {
     const items = screen.getAllByRole('menuitem')
 
     expect(items).toHaveLength(6)
-    expect(items[0]).toHaveTextContent('Draw PhaseTodavía no')
+    expect(items[0]).toHaveAccessibleName('Draw Phase · Todavía no')
     expect(items[0]).toHaveAttribute('aria-disabled', 'true')
     expect(items[2]).toHaveAttribute('aria-current', 'true')
-    expect(items[3]).toHaveTextContent('Battle Phase')
+    expect(items[3]).toHaveAccessibleName('Ir a Battle Phase')
     expect(items[3]).not.toHaveAttribute('aria-disabled')
     fireEvent.click(items[3]!)
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 6, index: null }])
@@ -112,7 +112,7 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(IDLE))
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'End Phase' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a End Phase' }))
     expect(fake.answers).toEqual([{ type: 'select_idlecmd', action: 7, index: null }])
     // Sin pregunta, el botón de la fase se apaga: no hay nada que contestar.
     expect(phaseButton()).toBeDisabled()
@@ -123,7 +123,7 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(BATTLE))
     fireEvent.click(phaseButton())
-    expect(screen.getByRole('menuitem', { name: 'Main Phase 2' })).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByRole('menuitem', { name: 'Ir a Main Phase 2' })).not.toHaveAttribute('aria-disabled')
     expect(screen.getByRole('menuitem', { name: /^Draw Phase/ })).toHaveAttribute('aria-disabled', 'true')
     fireEvent.keyDown(window, { key: 'Escape' })
     // Lo que sólo puede atacar no brilla.

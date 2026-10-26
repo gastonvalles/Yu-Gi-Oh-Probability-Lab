@@ -93,7 +93,7 @@ export const phaseButton = () => screen.getByRole('button', { name: /^Fases:/ })
 
 export const goToPhase = (name: string) => {
   fireEvent.click(phaseButton())
-  fireEvent.click(screen.getByRole('menuitem', { name }))
+  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
 }
 
 /** Pasar el turno, como se pueda: en el celular la End Phase pregunta si se termina; en escritorio aparece «Pasar turno» pegado al botón. */

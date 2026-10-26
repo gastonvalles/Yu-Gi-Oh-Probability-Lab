@@ -86,7 +86,7 @@ describe('«Jugar solo automático» · la lista de pasos y los avisos del núcl
     core(() => fake.set({ initial: { ...fake.getSnapshot().initial }, mineActions: START, status: 'ready', replaying: false }))
     core(() => fake.ask(IDLE))
     fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Main Phase 1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Main Phase 1' }))
     step()
     core(() => fake.events([SUMMON]))
     step()

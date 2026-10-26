@@ -26,6 +26,7 @@ import { CardSheet } from '../../probability/CardSheet'
 import { ConfirmDialog } from '../../probability/ConfirmDialog'
 import { LabScoreSheet } from '../../probability/LabScoreSheet'
 import { CardMenu, PILE_TITLES, PileStripContext, PileViewer, PlayTag, type MenuItem } from '../../probability/MatDialogs'
+import { PhaseRow } from '../../probability/PhaseRow'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleCombo } from './duel-sample'
 
@@ -226,6 +227,8 @@ export function DialogsSection() {
   const [ashMenu, setAshMenu] = useState<{ rect: DOMRect; ask?: string } | null>(null)
   // La etiqueta de una sola jugada: dónde se tocó.
   const [loneAt, setLoneAt] = useState<DOMRect | null>(null)
+  // Las fases en una línea: dónde está el botón de la fase que la abrió.
+  const [phasesAt, setPhasesAt] = useState<DOMRect | null>(null)
   const { nameOf, artOf } = useMemo(() => sampleCombo(), [])
   const pileShown = pileSample ? PILE_SAMPLES[pileSample] : null
   // Toda jugada cierra el visor, como en la mesa.
@@ -344,6 +347,23 @@ export function DialogsSection() {
         item={{ label: t('practice.menu.activateEffect'), onSelect: () => { setLoneAt(null); showToastMessage(`Jugada de muestra: ${t('practice.menu.activateEffect')}`, 'info') } }}
         name={nameOf(ASH)}
         onClose={() => setLoneAt(null)}
+      />
+
+      <Specimen title="Fases en una línea" note={<>El botón de la fase de ahora (el «M1» del campo) abre las seis fases en una línea (<Tag>PhaseRow</Tag>), arriba de él y sin velo, en todos los tamaños: la sigla en un círculo de 44 px y el nombre debajo. La de ahora, violeta con aro ámbar; las que todavía no, apagadas pero enfocables («Todavía no» para el lector). Las opciones son las del menú de fases (qué se puede elegir lo deciden la mesa o el núcleo). ← → recorren, Enter elige; «Cancelar», Escape o tocar afuera la cierran. Bajo 1101 px «Cancelar» sube a la fila del título para que entre en 390 px. Acá, la Main Phase 1 del duelo automático.</>}>
+        <Button size="sm" onClick={(event) => setPhasesAt(event.currentTarget.getBoundingClientRect())}>
+          Tocar M1
+        </Button>
+      </Specimen>
+      <PhaseRow
+        anchor={phasesAt}
+        items={['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase'].map((label, index) => ({
+          label,
+          current: index === 2 || undefined,
+          disabled: index < 2 || undefined,
+          hint: index < 2 ? t('auto.phase.notYet') : undefined,
+          onSelect: () => { setPhasesAt(null); showToastMessage(`Fase de muestra: ${label}`, 'info') },
+        }))}
+        onClose={() => setPhasesAt(null)}
       />
 
       <Specimen title="Visor de una pila" note={<>El Main, el Extra, el cementerio y el destierro se miran acá (<Tag>probability/MatDialogs.tsx</Tag>, <Tag>PileViewer</Tag>). No tapa el detalle de la carta ni las columnas de los costados: sin velo, en escritorio es la ventana de la muestra siguiente, en todas las mesas, y el campo sigue vivo; la carta que se toca o se apunta se lee en el detalle. En el celular es la hoja de abajo (hasta 55 dvh) y se cierra al tocar afuera. Tocar una carta abre su menú; abajo, «Elegir varias» (sólo con dos cartas o más). Una carta lleva la mira del Target.</>}>

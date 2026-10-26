@@ -14,7 +14,7 @@ import { buildPracticeDeck, evaluatePracticeHand } from '../components/probabili
 /** La fase de ahora es un solo botón en el medio del campo (el mismo que en un duelo): al tocarlo muestra las seis y elegir una pasa a ella. */
 const goToPhase = (name: string) => {
   fireEvent.click(screen.getByRole('button', { name: /^Fases:/ }))
-  fireEvent.click(screen.getByRole('menuitem', { name }))
+  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
 }
 import { PracticeSection } from '../components/probability/PracticeSection'
 import type { CardEntry, CardRole } from '../types'

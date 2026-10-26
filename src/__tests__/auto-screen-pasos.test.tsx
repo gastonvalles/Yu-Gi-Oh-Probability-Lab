@@ -40,7 +40,7 @@ function rearm(fake: FakeSession, actions: MatAction[], ask: CoreAsk | null) {
 }
 const goTo = (name: string) => {
   fireEvent.click(phaseButton())
-  fireEvent.click(screen.getByRole('menuitem', { name }))
+  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 const panel = () => screen.getByRole('region', { name: 'Pasos y combos' })

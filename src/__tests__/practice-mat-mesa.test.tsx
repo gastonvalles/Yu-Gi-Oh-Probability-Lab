@@ -315,8 +315,8 @@ describe('la mesa de práctica', () => {
     expect(status()).toHaveClass('sr-only')
 
     fireEvent.click(phaseButton())
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase'])
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Battle Phase' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.getAttribute('aria-label'))).toEqual(['Fase actual: Draw Phase', 'Ir a Standby Phase', 'Ir a Main Phase 1', 'Ir a Battle Phase', 'Ir a Main Phase 2', 'Ir a End Phase'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Battle Phase' }))
     expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
     // En vivo no hay Anterior ni Siguiente: se vuelve con Deshacer, arriba.
     expect(screen.queryByRole('button', { name: 'Anterior' })).not.toBeInTheDocument()

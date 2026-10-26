@@ -90,6 +90,7 @@ import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-fiel
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
+import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel } from './MatFx'
@@ -1771,7 +1772,9 @@ export function PracticeMat({
   // Las fases no llevan título: el nombre de la de ahora ya está en la lista, marcado. Varias cartas: cuántas («3 cartas»).
   const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? '' : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: menu?.kind === 'batch' ? menu.ids.length : state.deck.length }))
   // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
-  const sheeted = !isDesktop && menu !== null && !covered
+  // Las fases no: en todos los tamaños son la línea que sale del botón de la fase (`PhaseRow`).
+  const phasesOpen = menu?.kind === 'phases' && !covered
+  const sheeted = !isDesktop && menu !== null && menu.kind !== 'phases' && !covered
   // Con el detalle fijo a la izquierda (desde 1440 px) «Ver carta» no hace falta: tocar una carta ya lo muestra ahí. Con menos ancho, es la forma de verlo.
   const menuInspect = menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) && !detail ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined
   // Una carta tocada con una sola jugada directa y nada más en el menú (sin «Ver carta», sin pregunta ni submenú): en escritorio, en vez del menú de un renglón, la etiqueta pegada a la carta
@@ -2428,7 +2431,8 @@ export function PracticeMat({
           ) : null}
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
-          {/* La fila del medio, de izquierda a derecha: el reloj de turnos (`p1`, entre el Banish del rival y la Zona Extra de monstruos), el + al medio del campo (`p2`, entre las dos Zonas Extra; también en la práctica) y el botón de la fase de ahora (`p3`), que al tocarlo muestra todas (Gastón, 2026-10-19). */}
+          {/* La fila del medio, de izquierda a derecha: el reloj de turnos (`p1`, entre el Banish del rival y la Zona Extra de monstruos), el + al medio del campo (`p2`, entre las dos Zonas Extra; también en la práctica) y el botón de la fase de ahora (`p3`), que al tocarlo muestra todas (Gastón, 2026-10-19) en una línea
+              que sale de él (`PhaseRow`, lámina 06). */}
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
           <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel?.auto ? duel.limits : tokenButton}</div>
           <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
@@ -2665,16 +2669,16 @@ export function PracticeMat({
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera (y baja: `Presence` la deja montada mientras sale). */}
       <Presence>{sheeted && menu ? (
         <CardSheet
-          name={menu.kind === 'phases' ? menuKicker : menuTitle}
-          kicker={menu.kind === 'phases' ? undefined : menuKicker}
-          plain={menu.kind === 'phases' || menu.kind === 'batch'}
+          name={menuTitle}
+          kicker={menuKicker}
+          plain={menu.kind === 'batch'}
           art={menuCard ? artOf(menuCard) : null}
           back={menuCard === null}
           apiCard={menuCard?.apiCard ?? null}
           items={menuItems}
           traits={!choosingEffect}
           stacked={choosingEffect}
-          asking={menu.kind !== 'token' && menu.kind !== 'phases' ? menu.ask?.label : undefined}
+          asking={menu.kind !== 'token' ? menu.ask?.label : undefined}
           empty={noPlays}
           onBack={menuBack}
           onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
@@ -2697,8 +2701,10 @@ export function PracticeMat({
           }}
         />
 
+      {/* Las fases en una línea, con las mismas opciones que armaba el menú (`menuItems`): qué fase se puede elegir lo deciden la mesa manual o el núcleo, no la línea. */}
+      <PhaseRow anchor={phasesOpen ? menu.rect : null} items={phasesOpen ? menuItems : []} onClose={() => setMenu(null)} />
       <CardMenu
-        anchor={covered || sheeted || lonePlay ? null : (menu?.rect ?? null)}
+        anchor={covered || sheeted || lonePlay || phasesOpen ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
