@@ -85,6 +85,9 @@ export function deckOrder(main: readonly number[], seed: number, hand: readonly 
   return [...hand, ...shuffleWithSeed(rest, seed)]
 }
 
+/** El Main sin orden (por código): el del invitado del duelo por enlace, que no sabe cómo se barajó (la semilla no viaja) y lo tiene como bolsa desde el arranque. */
+export const bagOrder = (main: readonly number[]): number[] => [...main].sort((a, b) => a - b)
+
 /** El Main del deck `team` tal como lo pone el anfitrión (`core-host.ts`), de arriba hacia abajo: lo reproduce cualquiera que tenga el `create`. */
 export function teamOrder(create: { seed: number; decks: readonly { main: readonly number[]; hand: readonly number[] }[] }, team: number): number[] {
   const deck = create.decks[team]!

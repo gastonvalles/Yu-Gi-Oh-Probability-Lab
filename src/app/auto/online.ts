@@ -4,7 +4,7 @@ import { allMatIds, isForeignId, type MatState } from '../practice-mat'
 import { cardData, type DataLoader, type DataSource, type DuelData } from './auto-data'
 import type { AutoSave, AutoSaveStore } from './auto-save'
 import { createAutoSession, type AutoSession, type AutoSnapshot, type HostTransport, type SessionAnswer, type TransportFactory } from './auto-session'
-import type { DeckList, MappedDeck } from './deck-map'
+import { bagOrder, type DeckList, type MappedDeck } from './deck-map'
 import {
   AUTO_PROTOCOL_VERSION,
   chunkAutoText,
@@ -14,11 +14,13 @@ import {
   GUEST_ACCEPTS,
   HOST_ACCEPTS,
   isAutoText,
+  isHostMessage,
   MAX_AUTO_BYTES,
   MAX_WHOLE_BYTES,
   parseAutoMessage,
   type AutoCardInfo,
   type AutoMessage,
+  type HostMessage,
 } from './online-protocol'
 import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat } from './protocol'
 
@@ -28,8 +30,10 @@ import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat
  * por el árbitro; el invitado corre la misma sesión sobre ese flujo, sin núcleo, y contesta con la misma `ask-ui`. Los textos viajan por el mismo relay que el protocolo manual.
  *
  * El anfitrión es de confianza (tiene la mano del invitado en memoria: es para jugar con amigos); el invitado no: todo lo que manda pasa por `parseAutoMessage`, sólo vale la
- * respuesta a la pregunta pendiente y lo demás tiene tope de frecuencia. Lo que el anfitrión le manda va por un marcapasos (`createPacer`), en orden, y se anota (`log`) para
- * reponérselo entero si se cae y vuelve. El anfitrión que recarga la página rearma el duelo con lo guardado (`save`, `auto-save.ts`); sin eso, el duelo se pierde (la sala sigue): «lost».
+ * respuesta a la pregunta pendiente y lo demás tiene tope de frecuencia. Lo que el anfitrión le manda va por un marcapasos (`createPacer`), en orden y numerado (`s`: el invitado
+ * nota un hueco y pide el duelo de nuevo), y se anota (`log`) para reponérselo entero si se cae y vuelve. La semilla no viaja: el invitado tiene su deck como bolsa (sin orden)
+ * desde el arranque, y el anfitrión proyecta su vista igual. El anfitrión que recarga la página rearma el duelo con lo guardado (`save`, `auto-save.ts`); sin eso, el duelo se
+ * pierde (la sala sigue): «lost».
  *
  * Pasar a manual (`manual`, `autoManual`): lo pide cualquiera y el otro acepta o no. El que corta es el anfitrión, con el núcleo quieto (una pregunta esperando): su `yes` va detrás de
  * todo lo que contó y desde ahí el núcleo no recibe nada más. El invitado pasa a manual al recibirlo (su mesa ya es la del corte) y el anfitrión, con el pase acordado, cuando le
@@ -135,6 +139,8 @@ const NO_PROBLEMS: OnlineSnapshot['problems'] = { mine: NONE, theirs: 0, reason:
 const DECK_WAIT_MS = 10_000
 /** El invitado no pide el duelo de nuevo más de una vez en este lapso (la pantalla y el enlace se pueden enterar de la misma vuelta). */
 const HELLO_GAP_MS = 2000
+/** Mientras le falta algo (`stale`), el invitado lo vuelve a pedir cada tanto: lo que el anfitrión le permite (`resyncLimit`, 0,2 por segundo). */
+const STALE_PING_MS = 5000
 /** Lo que mide como mucho un `autoBatch`: un poco menos que `MAX_AUTO_BYTES` (el sobre y los nombres de las cartas). */
 const BATCH_BYTES = MAX_AUTO_BYTES - 512
 
@@ -202,7 +208,7 @@ function midPlay(snap: AutoSnapshot): boolean {
   return snap.overlay.chain.length > 0 || (pending !== null && (!CALM.has(pending.ask.type) || (pending.ask.type === 'select_chain' && pending.ask.forced)))
 }
 
-type ManualMessage = Extract<AutoMessage, { t: 'autoManual' }>
+type ManualMessage = Extract<HostMessage, { t: 'autoManual' }>
 
 /**
  * El pedido de seguir en modo manual de un lado (lo usan los dos enlaces; ver `ManualState`). Lo que hace el anfitrión al acordarse (el corte) es `onAgree`: termina en `agreed`
@@ -379,6 +385,8 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let heldRetry: AutoEvent | null = null
   let resendLater = false
   let partId = 0
+  // El número de orden de lo que va al invitado: vuelve a 0 (el próximo sale con 1) donde empieza un flujo nuevo, `sendInit` y `resend`.
+  let seq = 0
   // El lote que se arma mientras se re-simula (o se re-emite el registro): sale entero en un `autoBatch` al llenarse, antes de cualquier otro mensaje y al terminar.
   let batch: AutoEvent[] = []
   let batchCards: AutoCardInfo[] = []
@@ -404,7 +412,8 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   const refresh = () =>
     store.set({
       phase: phase(),
-      problems: lost ? { mine: NONE, theirs: 0, reason: 'lost' } : check ? { mine: check.mine, theirs: check.theirs, reason: check.reason } : NO_PROBLEMS,
+      // Perdido por otra versión del invitado: la pantalla no dice «el anfitrión recargó» (y en la revancha, «versión»).
+      problems: lost ? { mine: NONE, theirs: 0, reason: check?.reason === 'version' ? 'version' : 'lost' } : check ? { mine: check.mine, theirs: check.theirs, reason: check.reason } : NO_PROBLEMS,
       session,
       cards,
       seat: seats?.host ?? null,
@@ -414,17 +423,19 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   const request = manualRequest(true, post, refresh, cut)
 
   /**
-   * Todo lo que va al invitado pasa por acá, en orden (detrás del lote pendiente): lo grande se trocea. Antes se lee como lo leería el invitado: lo que él tiraría sin avisar
-   * (algo que `parseAutoMessage` no acepta, o que no entra ni en `MAX_PARTS` partes) no se manda y el duelo se pierde.
+   * Todo lo que va al invitado pasa por acá, en orden (detrás del lote pendiente) y numerado (`s`, antes de trocear: las partes no lo llevan); lo grande se trocea. Antes se lee
+   * como lo leería el invitado: lo que él tiraría sin avisar (algo que `parseAutoMessage` no acepta, o que no entra ni en `MAX_PARTS` partes) no se manda y el duelo se pierde.
    */
-  function post(message: AutoMessage) {
+  function post(message: HostMessage) {
     flush()
-    const text = encodeAutoMessage(message)
+    const text = encodeAutoMessage({ ...message, s: seq + 1 })
 
     partId = (partId % 1_000_000) + 1
     const parts = parseAutoMessage(text, MAX_WHOLE_BYTES) ? chunkAutoText(text, partId) : []
 
+    // Lo que no se manda no gasta número: el aviso de que se perdió sale sin hueco.
     if (parts.length === 0) return lose()
+    seq += 1
     parts.forEach((part) => pacer.push(part))
   }
 
@@ -440,7 +451,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
   function flush() {
     if (batch.length === 0) return
-    const message: AutoMessage = { t: 'autoBatch', events: batch, ...(batchCards.length > 0 ? { cards: batchCards } : {}) }
+    const message: HostMessage = { t: 'autoBatch', events: batch, ...(batchCards.length > 0 ? { cards: batchCards } : {}) }
 
     batch = []
     batchCards = []
@@ -541,7 +552,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       checks += 1
       guestDeck = null
       check = { ok: false, mine: NONE, theirs: 0, bad: NONE, reason: 'version' }
-      sendCheck()
+      // A mitad de duelo (el invitado volvió con otra versión) no puede seguir jugándolo: se pierde, y en la revancha los dos ven «versión».
+      if (session) lose()
+      else sendCheck()
       return refresh()
     }
     guestDeck = { main: message.main, extra: message.extra }
@@ -553,11 +566,14 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     lastStats = null
   }
 
+  /** Cómo empieza el duelo abre un flujo nuevo (`s` 1). Sin la semilla y con el Main del invitado por código: su orden es del anfitrión. */
   function sendInit() {
     if (!init || !seats) return
     const { host, guest } = seats
+    const mine = init.decks[guest]!
 
-    post({ t: 'autoInit', v: AUTO_PROTOCOL_VERSION, seed: init.seed, seat: guest, players: [init.players[0]!, init.players[1]!], mine: init.decks[guest]!, theirs: { main: init.decks[host]!.main.length, extra: init.decks[host]!.extra.length } })
+    seq = 0
+    post({ t: 'autoInit', v: AUTO_PROTOCOL_VERSION, seat: guest, players: [init.players[0]!, init.players[1]!], mine: { main: bagOrder(mine.main), extra: mine.extra }, theirs: { main: init.decks[host]!.main.length, extra: init.decks[host]!.extra.length } })
   }
 
   /** Las cartas de un evento que el invitado todavía no sabe cómo son (las anota como mandadas). */
@@ -637,8 +653,10 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       resendLater = true
       return sendCheck()
     }
-    // Lo que todavía no salió se repite entero: dos pedidos seguidos no apilan el registro dos veces.
+    // Lo que todavía no salió se repite entero: dos pedidos seguidos no apilan el registro dos veces. La reposición es un flujo nuevo (`s` desde 1), haya duelo o no.
+    flush()
     pacer.clear()
+    seq = 0
     sendCheck()
     sent = new Set()
     if (lost || !session || !init) return
@@ -860,8 +878,9 @@ function relayTransport(answer: (askId: number, answer: CoreAnswer) => void) {
 
 /**
  * Los datos del invitado: su deck ya en códigos del núcleo, como lo puso el anfitrión (`autoInit.mine`: no mapea nada, así un desfase de datos entre despliegues no desalinea las
- * mesas), y del anfitrión sólo cuántas cartas tiene (ceros: el adaptador del rival sólo necesita cuántas). Sus filas, para nombres y rótulos; si no llegan, la pantalla tiene los
- * nombres del builder. Los decks van en el orden de las listas pedidas (la mía y la del rival), como `loader.load`: la sesión los pone en el orden de los asientos.
+ * mesas; el Main por código, sin orden), y del anfitrión sólo cuántas cartas tiene (ceros: el adaptador del rival sólo necesita cuántas). Sus filas, para nombres y rótulos; si
+ * no llegan, la pantalla tiene los nombres del builder. Los decks van en el orden de las listas pedidas (la mía y la del rival), como `loader.load`: la sesión los pone en el
+ * orden de los asientos.
  */
 function guestLoader(init: InitMessage, source: DataSource): DataLoader {
   return {
@@ -903,6 +922,10 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   let relay: ReturnType<typeof relayTransport> | null = null
   let seat: Seat | null = null
   let cards: ReadonlyMap<number, AutoCardInfo> = new Map()
+  // El número de orden del último mensaje aplicado (0: ninguno todavía) y si falta algo (`stale`: nada se aplica hasta el próximo flujo, que se pide cada `STALE_PING_MS`).
+  let last = 0
+  let stale = false
+  let ping: ReturnType<typeof setTimeout> | undefined
   // Un anfitrión modificado tampoco puede preguntar sin parar.
   const manualLimit = new RateLimiter(now(), 1, 4)
 
@@ -938,6 +961,42 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     send({ t: 'autoResync' })
   }
 
+  /** Falta algo: pide el duelo de nuevo (sin el deck) ahora y cada `STALE_PING_MS`, hasta que llegue otro flujo. Con el mismo respiro que `hello`. */
+  function nudge() {
+    clearTimeout(ping)
+    ping = setTimeout(nudge, STALE_PING_MS)
+    if (now() - lastHello < HELLO_GAP_MS) return
+    lastHello = now()
+    send({ t: 'autoResync' })
+  }
+
+  function caughtUp() {
+    stale = false
+    clearTimeout(ping)
+    ping = undefined
+  }
+
+  /**
+   * Si el mensaje viene en orden (ver `s` en `online-protocol.ts`): `1` abre un flujo y es la base nueva; el que sigue al último se aplica; otro (un hueco, uno repetido o
+   * de un flujo viejo; sin número) deja al invitado sin aplicar nada hasta el próximo `1`. Un websocket no duplica ni desordena: lo que llega fuera de orden no se aplica nunca.
+   */
+  function inOrder(s: number | undefined): boolean {
+    if (s === 1) {
+      last = 1
+      caughtUp()
+      return true
+    }
+    if (!stale && s === last + 1) {
+      last = s
+      return true
+    }
+    if (!stale) {
+      stale = true
+      nudge()
+    }
+    return false
+  }
+
   function drop() {
     unwatch()
     unwatch = () => {}
@@ -957,12 +1016,11 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     })
 
     relay = port
+    // Sin semilla: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado).
     session = createAutoSession({
       loader: guestLoader(init, source),
       deck: options.deck,
-      seed: init.seed,
       seat: init.seat,
-      hand: init.mine.hand,
       handSize: init.players[init.seat].hand,
       typeOf: (code) => cards.get(code)?.type ?? 0,
       transport: port.factory,
@@ -987,19 +1045,25 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
 
   function handle(message: AutoMessage | null) {
     if (!message || !GUEST_ACCEPTS.includes(message.t)) return
+    if (message.t === 'autoPart') {
+      const whole = parts.push(message)
+      const inner = whole === null ? null : parseAutoMessage(whole, MAX_WHOLE_BYTES)
+
+      if (inner && inner.t !== 'autoPart') handle(inner)
+      return
+    }
+    if (!isHostMessage(message)) return
+    // Un anfitrión de otra versión no numera (o numera distinto): lo único que se le lee es que no es la misma versión.
+    if (message.t === 'autoCheck' && message.v !== AUTO_PROTOCOL_VERSION) {
+      check = { ok: false, mine: NONE, theirs: 0, reason: 'version' }
+      return refresh()
+    }
+    if (!inOrder(message.s)) return
     switch (message.t) {
-      case 'autoPart': {
-        const whole = parts.push(message)
-        const inner = whole === null ? null : parseAutoMessage(whole, MAX_WHOLE_BYTES)
-
-        if (inner && inner.t !== 'autoPart') handle(inner)
-        return
-      }
-
       case 'autoCheck':
         // El anfitrión perdió el duelo: la revisión de los decks sigue valiendo para el próximo.
         if (message.reason === 'lost') lost = true
-        else check = message.v === AUTO_PROTOCOL_VERSION ? { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null } : { ok: false, mine: NONE, theirs: 0, reason: 'version' }
+        else check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null }
         return refresh()
 
       case 'autoInit':
@@ -1063,6 +1127,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     destroy() {
       destroyed = true
       request.destroy()
+      caughtUp()
       drop()
       off()
       store.clear()

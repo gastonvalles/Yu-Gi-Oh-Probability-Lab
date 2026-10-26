@@ -80,10 +80,12 @@ const LIMIT_REMOVE = 7
 export interface AdapterOptions {
   /** El asiento que mira (0 = el que empieza). */
   seat: Seat
-  /** Mis cartas, como las puso el anfitrión: el Main de arriba hacia abajo (`teamOrder` de `deck-map.ts`) y el Extra en su orden. */
+  /** Mis cartas, como las puso el anfitrión: el Main de arriba hacia abajo (`teamOrder` de `deck-map.ts`; con `bag`, por código) y el Extra en su orden. */
   mine: { deck: readonly number[]; extra: readonly number[] }
   /** Del rival sólo se sabe cuántas cartas tiene. */
   theirs: { deck: number; extra: number }
+  /** Mi deck es bolsa desde el arranque (el invitado del duelo por enlace, que no sabe su orden; y el anfitrión al proyectarlo): se roba y se saca por código, nunca por secuencia. */
+  bag?: boolean
   /** Las vidas iniciales de cada asiento. */
   lp?: [number, number]
   /** La máscara de tipo de una carta (`type` del `.cdb`); 0 si no se sabe. Distingue Fusión / Sincronía / Xyz / Enlace / Péndulo. */
@@ -210,6 +212,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
   places[rival].extra = theirExtra.map((id) => ({ id, owner: rival, code: 0 }))
   // El deck del rival es bolsa desde el principio: su orden nunca es seguro para quien mira (un `sort_card` del rival lo cambia sin decir nada).
   bags[rival].add(L.DECK)
+  if (options.bag) bags[seat].add(L.DECK)
 
   const initial = { mine: createMatState(myDeck, myExtra, 0), theirs: createMatState(theirDeck, theirExtra, 0) }
   let mine = initial.mine

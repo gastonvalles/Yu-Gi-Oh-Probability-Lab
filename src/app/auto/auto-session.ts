@@ -5,7 +5,7 @@ import { createAdapter, type Adapter, type AutoOverlay } from './adapter'
 import { DataUnavailableError, type DataLoader, type DuelData } from './auto-data'
 import type { ChainStep } from './chain-feed'
 import type { WorkerData } from './core-host.worker'
-import { teamOrder, type DeckList } from './deck-map'
+import { bagOrder, teamOrder, type DeckList } from './deck-map'
 import { handtrapPolicy, passivePolicy, randomLegalPolicy, type RivalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
 
@@ -149,8 +149,6 @@ export interface AutoSession {
   answerRemote(askId: number, answer: CoreAnswer): boolean
   /** El invitado: lo que sigue es una re-emisión desde cero con `skip` preguntas mías ya contestadas (no se avisa a nadie hasta la viva). */
   expectReplay(skip: number): void
-  /** Re-simular ahora mismo con todas las respuestas aceptadas (el anfitrión, cuando el invitado pide el duelo de nuevo y el registro no alcanza). */
-  resimulate(): void
   /** Sólo para pruebas: la mesa, el espejo y el overlay de `seat` como los proyecta esta sesión (el anfitrión calcula la vista del invitado: tiene que ser la que el invitado arma). */
   viewOf?(seat: Seat): { mine: MatState; theirs: MatState; overlay: AutoOverlay } | null
   /** Al salir de la pantalla: termina el Worker y libera el duelo. */
@@ -207,6 +205,11 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const controlled = (seat: Seat) => options.control === 'both' || seat === me
   /** El duelo por enlace (el anfitrión con `remote`, el invitado con `typeOf`): el otro asiento es una persona, y cuando elige ella se espera (`waiting`). */
   const online = options.remote !== undefined || options.typeOf !== undefined
+  /**
+   * El asiento del invitado del duelo por enlace (el remoto para el anfitrión, el mío para el invitado): su deck es bolsa desde el arranque y va por código, porque la semilla no
+   * viaja y el invitado no sabe su orden; el anfitrión lo proyecta igual, así la vista que calcula para él es la que él arma.
+   */
+  const bagged: Seat | null = options.remote ? ((1 - me) as Seat) : options.typeOf ? me : null
   const thinkingMs = options.thinkingMs ?? 400
   // En el duelo por enlace el otro asiento es una persona: ni handtraps ni relleno.
   const rival = options.remote ? null : (options.rival ?? null)
@@ -298,10 +301,11 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     adapters = ([0, 1] as const).map((seat) =>
       createAdapter({
         seat,
-        mine: { deck: teamOrder(command, seat), extra: command.decks[seat]!.extra },
+        mine: { deck: seat === bagged ? bagOrder(command.decks[seat]!.main) : teamOrder(command, seat), extra: command.decks[seat]!.extra },
         theirs: { deck: command.decks[1 - seat]!.main.length, extra: command.decks[1 - seat]!.extra.length },
         lp: [PLAYER.lp, PLAYER.lp],
         typeOf,
+        bag: seat === bagged,
       }),
     )
     set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], chainSteps: [], unmapped: [], playStarts: [], ...view() }, false)
@@ -588,13 +592,6 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       // Como al deshacer: lo que llegue antes del `loading` de la re-emisión es de la tanda vieja.
       current = false
       set({ ask: null, replaying: true })
-    },
-    resimulate() {
-      if (!create || !data || destroyed || snapshot.status === 'error') return
-      inFlight = null
-      set({ ask: null, remoteAsk: null, replaying: true })
-      boot(answers.length)
-      startTimer()
     },
     viewOf(seat) {
       const adapter = adapters[seat]

@@ -9,7 +9,8 @@ import { parseAnswer, parseAutoEvent, type AutoEvent, type CoreAnswer, type Seat
  * 16 KB por mensaje y 30 por segundo (ráfaga de 60).
  */
 
-export const AUTO_PROTOCOL_VERSION = 1
+/** 2: lo del anfitrión va numerado (`s`) y la semilla no viaja (el deck del invitado va por código, sin orden). Otra versión enfrente se ve antes del duelo; a mitad de uno, se pierde. */
+export const AUTO_PROTOCOL_VERSION = 2
 /** Más de esto se trocea en `autoPart` (deja margen al tope de 16 KB del relay: el sobre del `autoEvent` y, si algún día va cifrado, el base64). */
 export const MAX_AUTO_BYTES = 12 * 1024
 export const MAX_PARTS = 16
@@ -35,13 +36,19 @@ export interface AutoCardInfo {
   strs?: string[]
 }
 
-export type AutoMessage =
-  /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver). */
-  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][] }
+/**
+ * Lo que el anfitrión le manda al invitado va numerado (`s`, desde 1, puesto al mandar: los `autoPart` no lo llevan, el mensaje entero sí). `1` abre un flujo (el anfitrión
+ * recargó, rearmó o le repone el duelo); el que sigue al último se aplica; cualquier otro es un hueco (su conexión caída descartó algo) y el invitado no aplica nada más hasta
+ * el próximo `1`, pidiendo el duelo de nuevo. Lo manda el invitado (`autoManual`) sin `s`.
+ */
+type Numbered =
   /** Anfitrión → invitado: si se puede jugar con esos dos decks. `bad`: los códigos del invitado sin reglas; `theirsBad`: cuántas del anfitrión. `reason` cuando no es por reglas. */
   | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost' }
-  /** Anfitrión → invitado: el duelo que empieza. `seat` es el asiento del invitado; `mine` su deck en códigos del núcleo como lo puso el anfitrión; `theirs`, sólo cuántas cartas tiene el anfitrión. */
-  | { t: 'autoInit'; v: number; seed: number; seat: Seat; players: [AutoPlayerWire, AutoPlayerWire]; mine: { main: number[]; extra: number[]; hand: number[] }; theirs: { main: number; extra: number } }
+  /**
+   * Anfitrión → invitado: el duelo que empieza. `seat` es el asiento del invitado; `mine` su deck en códigos del núcleo como lo puso el anfitrión, el Main por código (el orden
+   * no viaja: con él, o con la semilla, el invitado sabría sus próximos robos); `theirs`, sólo cuántas cartas tiene el anfitrión.
+   */
+  | { t: 'autoInit'; v: number; seat: Seat; players: [AutoPlayerWire, AutoPlayerWire]; mine: { main: number[]; extra: number[] }; theirs: { main: number; extra: number } }
   /** Anfitrión → invitado: lo que sigue es una re-emisión desde cero; las primeras `skip` preguntas tuyas ya están contestadas (no animes, no preguntes). */
   | { t: 'autoReplay'; skip: number }
   /** Anfitrión → invitado: un evento del anfitrión del núcleo ya filtrado para tu asiento, con los datos de las cartas que ves por primera vez. */
@@ -51,12 +58,6 @@ export type AutoMessage =
    * vuelve: con un evento por mensaje y 25 por segundo, un duelo largo tardaría minutos.
    */
   | { t: 'autoBatch'; events: AutoEvent[]; cards?: AutoCardInfo[] }
-  /** Un trozo de un mensaje grande (`id` lo agrupa, `i` de `n`): se reensambla y se vuelve a parsear. */
-  | { t: 'autoPart'; id: number; i: number; n: number; text: string }
-  /** Invitado → anfitrión: la respuesta a la pregunta pendiente (`askId` es el de esa pregunta; otro, se descarta). */
-  | { t: 'autoAnswer'; askId: number; answer: CoreAnswer }
-  /** Invitado → anfitrión: me perdí algo (o acabo de entrar): mandame el duelo de nuevo. */
-  | { t: 'autoResync' }
   /**
    * Los dos: seguir este duelo en modo manual. `ask` lo pide, `no` lo rechaza y `cancel` lo retira. `yes` del invitado acepta el pedido del anfitrión; el `yes` del anfitrión es el
    * corte (va detrás de todo lo que contó el núcleo: el invitado pasa a manual al recibirlo), con `dropped` si quedó algo a medio jugar. Un `no` del anfitrión con `why: 'control'`:
@@ -64,6 +65,19 @@ export type AutoMessage =
    */
   | { t: 'autoManual'; step: ManualStep; dropped?: true; why?: 'control' }
 
+export type AutoMessage =
+  | (Numbered & { s?: number })
+  /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver). */
+  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][] }
+  /** Un trozo de un mensaje grande (`id` lo agrupa, `i` de `n`): se reensambla y se vuelve a parsear. */
+  | { t: 'autoPart'; id: number; i: number; n: number; text: string }
+  /** Invitado → anfitrión: la respuesta a la pregunta pendiente (`askId` es el de esa pregunta; otro, se descarta). */
+  | { t: 'autoAnswer'; askId: number; answer: CoreAnswer }
+  /** Invitado → anfitrión: me perdí algo (o acabo de entrar): mandame el duelo de nuevo. */
+  | { t: 'autoResync' }
+
+/** Lo que el anfitrión le manda al invitado: lo que va numerado. */
+export type HostMessage = Extract<AutoMessage, Numbered>
 export type ManualStep = 'ask' | 'yes' | 'no' | 'cancel'
 export type AutoMessageKind = AutoMessage['t']
 /** Lo que cada lado acepta recibir (se descarta lo demás, sin avisar). */
@@ -81,10 +95,15 @@ export const isAutoText = (text: string): boolean => text.startsWith('{"t":"auto
 export const MAX_WHOLE_BYTES = MAX_PARTS * MAX_AUTO_BYTES
 
 const MAX_CODE = 999_999_999_999
-const MAX_SEED = 2 ** 32 - 1
+const MAX_U32 = 2 ** 32 - 1
 const MAX_ASK_ID = 1_000_000
+/** A 25 mensajes por segundo, días de duelo sin reponer. */
+const MAX_SEQ = 10_000_000
 const REASONS = ['version', 'off', 'data', 'lost'] as const
 const MANUAL_STEPS: readonly unknown[] = ['ask', 'yes', 'no', 'cancel'] satisfies ManualStep[]
+const NUMBERED = new Set<AutoMessageKind>(['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoManual'] satisfies HostMessage['t'][])
+/** Si es de lo que manda el anfitrión (lo numerado). */
+export const isHostMessage = (message: AutoMessage): message is HostMessage => NUMBERED.has(message.t)
 
 const isPlain = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const isInt = (value: unknown, min: number, max: number): value is number => Number.isSafeInteger(value) && (value as number) >= min && (value as number) <= max
@@ -109,7 +128,7 @@ function cardInfos(value: unknown): AutoCardInfo[] | null {
   const out: AutoCardInfo[] = []
 
   for (const card of value) {
-    if (!isPlain(card) || !isInt(card.code, 1, MAX_CODE) || !isInt(card.type, 0, MAX_SEED)) return null
+    if (!isPlain(card) || !isInt(card.code, 1, MAX_CODE) || !isInt(card.type, 0, MAX_U32)) return null
     if (card.name !== undefined && !text(card.name, 200)) return null
     if (card.strs !== undefined && !(Array.isArray(card.strs) && card.strs.length <= 16 && card.strs.every((str) => text(str, 2000)))) return null
     out.push({ code: card.code, type: card.type, ...(card.name === undefined ? {} : { name: card.name }), ...(card.strs === undefined ? {} : { strs: [...(card.strs as string[])] }) })
@@ -129,7 +148,8 @@ function events(value: unknown): AutoEvent[] | null {
 
 /**
  * Una copia con forma conocida (y dentro de los topes) o `null`. `maxBytes`: el tope del texto (el del relay; para un mensaje reensamblado de sus partes, `MAX_WHOLE_BYTES`).
- * Quién puede mandar qué lo mira cada enlace (`HOST_ACCEPTS`, `GUEST_ACCEPTS`).
+ * Quién puede mandar qué lo mira cada enlace (`HOST_ACCEPTS`, `GUEST_ACCEPTS`). El número de orden (`s`) se queda sólo en lo que va numerado; uno que no es un entero
+ * en rango tira el mensaje (un anfitrión viejo no lo pone: el invitado sólo le entiende el `autoCheck` que dice la versión).
  */
 export function parseAutoMessage(input: string, maxBytes = MAX_MESSAGE_BYTES): AutoMessage | null {
   if (input.length > maxBytes || byteLength(input) > maxBytes) return null
@@ -140,8 +160,13 @@ export function parseAutoMessage(input: string, maxBytes = MAX_MESSAGE_BYTES): A
   } catch {
     return null
   }
-  if (!isPlain(raw)) return null
+  if (!isPlain(raw) || (raw.s !== undefined && !isInt(raw.s, 1, MAX_SEQ))) return null
+  const message = parseBody(raw)
 
+  return message && raw.s !== undefined && isHostMessage(message) ? { ...message, s: raw.s } : message
+}
+
+function parseBody(raw: Record<string, unknown>): AutoMessage | null {
   switch (raw.t) {
     case 'autoDeck': {
       const main = deckRows(raw.main, 200, 200)
@@ -161,13 +186,12 @@ export function parseAutoMessage(input: string, maxBytes = MAX_MESSAGE_BYTES): A
 
     case 'autoInit': {
       const players = Array.isArray(raw.players) && raw.players.length === 2 ? raw.players.map(player) : null
-      const mine = isPlain(raw.mine) ? { main: ints(raw.mine.main, 200), extra: ints(raw.mine.extra, 100), hand: ints(raw.mine.hand, 200) } : null
+      const mine = isPlain(raw.mine) ? { main: ints(raw.mine.main, 200), extra: ints(raw.mine.extra, 100) } : null
       const theirs = isPlain(raw.theirs) && isInt(raw.theirs.main, 0, 200) && isInt(raw.theirs.extra, 0, 100) ? { main: raw.theirs.main, extra: raw.theirs.extra } : null
 
-      if (!isInt(raw.v, 0, 1000) || !isInt(raw.seed, 0, MAX_SEED) || (raw.seat !== 0 && raw.seat !== 1) || !players?.every((item) => item !== null) || !theirs) return null
-      if (!mine?.main || !mine.extra || !mine.hand || mine.hand.length > mine.main.length) return null
+      if (!isInt(raw.v, 0, 1000) || (raw.seat !== 0 && raw.seat !== 1) || !players?.every((item) => item !== null) || !theirs || !mine?.main || !mine.extra) return null
 
-      return { t: 'autoInit', v: raw.v, seed: raw.seed, seat: raw.seat, players: players as [AutoPlayerWire, AutoPlayerWire], mine: { main: mine.main, extra: mine.extra, hand: mine.hand }, theirs }
+      return { t: 'autoInit', v: raw.v, seat: raw.seat, players: players as [AutoPlayerWire, AutoPlayerWire], mine: { main: mine.main, extra: mine.extra }, theirs }
     }
 
     case 'autoReplay':

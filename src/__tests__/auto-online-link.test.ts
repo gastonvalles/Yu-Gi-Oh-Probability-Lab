@@ -4,7 +4,7 @@ import { autoSaveStore, type AutoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession } from '../app/auto/auto-session'
 import type { DeckList } from '../app/auto/deck-map'
 import { codesOf, createGuestLink, createHostLink, MANUAL_WAIT_MS, underControl, type OnlineLink } from '../app/auto/online'
-import { encodeAutoMessage, GUEST_ACCEPTS, HOST_ACCEPTS, isAutoText, parseAutoMessage, type AutoMessage, type AutoMessageKind } from '../app/auto/online-protocol'
+import { encodeAutoMessage, GUEST_ACCEPTS, HOST_ACCEPTS, isAutoText, parseAutoMessage, type AutoMessage, type AutoMessageKind, type HostMessage } from '../app/auto/online-protocol'
 import { LOCATION as L, POSITION as P, type AutoCommand, type AutoEvent, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel, type Duel } from '../app/duel-session'
@@ -59,8 +59,11 @@ interface Game {
   core: ReturnType<typeof fakeHost>
 }
 
-/** `flaky`: mientras `down`, lo que manda el anfitrión se pierde sin que nadie se entere (su red se cayó y el relay no lo sabe: la presencia no cambia). */
-function setup({ seatOf, firstCode, enabled = true, noRules = [], seeds = [11, 22, 33], react, save, flaky }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; seeds?: number[]; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean } } = {}): Game {
+/**
+ * `flaky`: mientras `down`, lo que manda el anfitrión se pierde sin que nadie se entere (su red se cayó y el relay no lo sabe: la presencia no cambia); `lose` pierde los próximos
+ * tantos mensajes y después sigue. `guestNow`: el reloj del invitado (sus respiros entre pedidos).
+ */
+function setup({ seatOf, firstCode, enabled = true, noRules = [], seeds = [11, 22, 33], react, save, flaky, guestNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; seeds?: number[]; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number } = {}): Game {
   const room = createMemoryRoom()
   const hostEnd = room.join()
   const guestEnd = room.join()
@@ -68,9 +71,14 @@ function setup({ seatOf, firstCode, enabled = true, noRules = [], seeds = [11, 2
   const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
   const core = fakeHost(seatOf, react, firstCode)
   const random = () => (seeds.shift() ?? 99) / 2 ** 32
-  const transport = flaky ? { send: (text: string) => void (flaky.down || hostEnd.send(text)), onMessage: hostEnd.onMessage.bind(hostEnd) } : hostEnd
+  const send = (text: string) => {
+    if (!flaky || flaky.down) return
+    if (flaky.lose) flaky.lose -= 1
+    else hostEnd.send(text)
+  }
+  const transport = flaky ? { send, onMessage: hostEnd.onMessage.bind(hostEnd) } : hostEnd
   const hostLink = createHostLink({ transport, loader: listLoader(noRules), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, random, ...(save ? { save } : {}) })
-  const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK })
+  const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK, ...(guestNow ? { now: guestNow } : {}) })
 
   host.subscribe(() => hostLink.observe(host.getSnapshot()))
   guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
@@ -107,6 +115,9 @@ function toGuest(room: MemoryRoom, kind?: AutoMessageKind): AutoMessage[] {
 
 const sessionOf = (link: OnlineLink) => link.getSnapshot().session!
 const answers = (core: ReturnType<typeof fakeHost>) => core.commands.filter((command): command is Extract<AutoCommand, { t: 'answer' }> => command.t === 'answer')
+const resyncs = (room: MemoryRoom) => room.sent.filter((text) => text.startsWith('{"t":"autoResync"')).length
+/** El número de orden del último mensaje que el anfitrión mandó. */
+const lastSeq = (room: MemoryRoom) => (toGuest(room).at(-1) as HostMessage).s!
 /** La mesa del invitado es la que el anfitrión calcula para su asiento. */
 function sameView(hostSession: AutoSession, guestSession: AutoSession, guestSeat: Seat) {
   const view = hostSession.viewOf!(guestSeat)!
@@ -156,7 +167,7 @@ describe('el enlace del duelo automático por enlace', () => {
     const other = setup()
 
     await settle(other.room)
-    other.room.inject(other.hostEnd, encodeAutoMessage({ t: 'autoDeck', v: 2, main: [], extra: [] }))
+    other.room.inject(other.hostEnd, encodeAutoMessage({ t: 'autoDeck', v: 1, main: [], extra: [] }))
     await settle(other.room)
     expect(other.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { reason: 'version' } })
     expect(other.guestLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { reason: 'version' } })
@@ -188,8 +199,10 @@ describe('el enlace del duelo automático por enlace', () => {
     await order(game, 1)
     const [init] = toGuest(game.room, 'autoInit') as Extract<AutoMessage, { t: 'autoInit' }>[]
 
-    expect(init).toMatchObject({ seed: 11, seat: 0, players: [{ hand: 5 }, { hand: 5 }], mine: { main: [2, 2, 2, 2, 2], extra: [], hand: [] }, theirs: { main: 5, extra: 0 } })
+    // Cómo empieza abre un flujo nuevo (`s` 1); la semilla queda en el anfitrión (con ella el invitado sabría sus robos).
+    expect(init).toEqual({ t: 'autoInit', v: 2, s: 1, seat: 0, players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], mine: { main: [2, 2, 2, 2, 2], extra: [] }, theirs: { main: 5, extra: 0 } })
     expect(game.core.commands[0]).toMatchObject({ t: 'create', seed: 11, decks: [{ main: [2, 2, 2, 2, 2] }, { main: [1, 1, 1, 1, 1] }] })
+    expect(game.room.sent.some((text) => text.includes('seed'))).toBe(false)
     expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })
     expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 0 })
     const hosted = sessionOf(game.hostLink)
@@ -275,7 +288,7 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(after.replaying).toBe(false)
     sameView(sessionOf(game.hostLink), sessionOf(again), 0)
     // Lo mandado viajó en tandas, con un `autoReplay` adelante que salta las 2 preguntas de Beto ya contestadas (la tercera respuesta fue de Ana).
-    expect(toGuest(game.room, 'autoReplay').at(-1)).toEqual({ t: 'autoReplay', skip: 2 })
+    expect(toGuest(game.room, 'autoReplay').at(-1)).toMatchObject({ t: 'autoReplay', skip: 2 })
     expect(toGuest(game.room, 'autoBatch').length).toBeGreaterThan(0)
     // Y sigue jugando.
     expect(sessionOf(again).answer(END)).toBe(true)
@@ -319,6 +332,96 @@ describe('el enlace del duelo automático por enlace', () => {
     sameView(hosted, sessionOf(game.guestLink), 0)
   })
 
+  it('se pierde un mensaje del anfitrión (y llega el que sigue): el invitado nota el hueco por el número, pide el duelo solo y queda con la misma mesa y su pregunta', async () => {
+    const flaky = { down: false, lose: 0 }
+    let clock = 0
+    const game = setup({ firstCode: 2, flaky, guestNow: () => (clock += 3000) })
+
+    await settle(game.room)
+    await order(game, 1)
+    const hosted = sessionOf(game.hostLink)
+    const asked = resyncs(game.room)
+
+    // Beto contesta; la jugada que sigue se pierde en la red de Ana y la pregunta que viene detrás llega con un hueco.
+    flaky.lose = 1
+    sessionOf(game.guestLink).answer(END)
+    await settle(game.room)
+    expect(flaky.lose).toBe(0)
+    expect(resyncs(game.room)).toBe(asked + 1)
+    expect(sessionOf(game.guestLink).getSnapshot()).toMatchObject({ status: 'ready', ask: { askId: hosted.getSnapshot().remoteAsk!.askId } })
+    sameView(hosted, sessionOf(game.guestLink), 0)
+    // La reposición abrió otro flujo (desde 1) y el duelo sigue.
+    expect(toGuest(game.room, 'autoInit').at(-1)).toMatchObject({ s: 1 })
+    expect(sessionOf(game.guestLink).answer(END)).toBe(true)
+    await settle(game.room)
+    expect(answers(game.core)).toHaveLength(2)
+    sameView(hosted, sessionOf(game.guestLink), 0)
+  })
+
+  it('un número repetido o de atrás tampoco se aplica, y desde ahí nada hasta el próximo 1 (ni lo que venga en orden): se pide el duelo de nuevo, una vez por hueco', async () => {
+    const flaky = { down: false }
+    let clock = 0
+    const game = setup({ firstCode: 2, flaky, guestNow: () => (clock += 3000) })
+
+    await settle(game.room)
+    await order(game, 1)
+    const hosted = sessionOf(game.hostLink)
+    const lp = (value: number, s: number) => encodeAutoMessage({ t: 'autoEvent', event: { t: 'events', seat: 0, n: 9, events: [{ type: 'lpupdate', player: 0, lp: value }] }, s })
+    const guestLp = () => sessionOf(game.guestLink).getSnapshot().overlay.lp[0]
+    const last = lastSeq(game.room)
+    const asked = resyncs(game.room)
+
+    // Ana no contesta (su red cayó): se ve qué hace Beto con cada número.
+    flaky.down = true
+    game.room.inject(game.guestEnd, lp(1234, last - 1))
+    game.room.flush()
+    expect(guestLp()).not.toBe(1234)
+    expect(resyncs(game.room)).toBe(asked + 1)
+    for (const [value, s] of [
+      [1235, last + 1],
+      [1236, last],
+      [1237, last + 2],
+    ]) {
+      game.room.inject(game.guestEnd, lp(value!, s!))
+      game.room.flush()
+      expect(guestLp()).not.toBe(value)
+    }
+    expect(resyncs(game.room)).toBe(asked + 1)
+
+    // Vuelve la red de Ana y repone el duelo (desde 1): Beto lo toma y aplica lo que sigue en orden.
+    flaky.down = false
+    game.hostLink.resync()
+    await settle(game.room)
+    sameView(hosted, sessionOf(game.guestLink), 0)
+    game.room.inject(game.guestEnd, lp(1238, lastSeq(game.room) + 1))
+    game.room.flush()
+    expect(guestLp()).toBe(1238)
+    // Otro hueco, otro pedido.
+    game.room.inject(game.guestEnd, lp(1239, lastSeq(game.room) + 3))
+    game.room.flush()
+    expect(guestLp()).toBe(1238)
+    expect(resyncs(game.room)).toBe(asked + 2)
+    game.guestLink.destroy()
+  })
+
+  it('otra versión a mitad de duelo (el invitado volvió con una vieja): el duelo se pierde y el anfitrión ve «versión»; al invitado, un anfitrión viejo le dice la versión sin numerar', async () => {
+    const game = setup({ firstCode: 2 })
+
+    await settle(game.room)
+    await order(game, 1)
+    game.room.inject(game.hostEnd, encodeAutoMessage({ t: 'autoDeck', v: 1, main: [[2, 5]], extra: [] }))
+    await settle(game.room)
+    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'version' } })
+    expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'lost', problems: { reason: 'lost' } })
+
+    const other = setup()
+
+    await settle(other.room)
+    other.room.inject(other.guestEnd, '{"t":"autoCheck","v":1,"ok":true,"bad":[],"theirsBad":0}')
+    other.room.flush()
+    expect(other.guestLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { reason: 'version' } })
+  })
+
   it('el anfitrión corta lo que piensa el núcleo: el invitado recibe la re-emisión y vuelve a su pregunta; un pedido suyo en medio espera a que termine', async () => {
     const game = setup({ firstCode: 2 })
 
@@ -347,7 +450,7 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(toGuest(game.room, 'autoInit')).toHaveLength(inits + 1)
     const back = sessionOf(game.guestLink).getSnapshot()
 
-    expect(toGuest(game.room, 'autoReplay')).toContainEqual({ t: 'autoReplay', skip: 1 })
+    expect(toGuest(game.room, 'autoReplay').map((message) => (message as Extract<AutoMessage, { t: 'autoReplay' }>).skip)).toContain(1)
     expect(back).toMatchObject({ status: 'ready', replaying: false, ask: { seat: 0 } })
     expect(back.ask!.askId).toBe(hosted.getSnapshot().remoteAsk!.askId)
     expect({ mine: back.mine, theirs: back.theirs, overlay: back.overlay }).toEqual({ mine: before.mine, theirs: before.theirs, overlay: before.overlay })
@@ -449,10 +552,11 @@ describe('el enlace del duelo automático por enlace', () => {
     await settle(game.room)
     const inits = toGuest(game.room, 'autoInit') as Extract<AutoMessage, { t: 'autoInit' }>[]
 
-    expect(inits.map((init) => [init.seed, init.seat])).toEqual([
-      [11, 0],
-      [22, 1],
+    expect(inits.map((init) => [init.s, init.seat])).toEqual([
+      [1, 0],
+      [1, 1],
     ])
+    expect(game.core.commands.filter((command) => command.t === 'create').map((command) => (command as Extract<AutoCommand, { t: 'create' }>).seed)).toEqual([11, 22])
     expect(sessionOf(game.hostLink)).not.toBe(firstHost)
     expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 0 })
     expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })
@@ -612,7 +716,7 @@ describe('pasar a manual', () => {
     expect(game.hostLink.getSnapshot()).toMatchObject({ manual: 'agreed', manualDropped: false })
     await settle(game.room)
     expect(game.guestLink.getSnapshot()).toMatchObject({ manual: 'agreed', manualDropped: false })
-    expect(game.box.guest.at(-1)).toEqual({ t: 'autoManual', step: 'yes' })
+    expect(game.box.guest.at(-1)).toMatchObject({ t: 'autoManual', step: 'yes' })
     sameView(game.hosted, game.guested, 0)
 
     // Desde el corte el núcleo no recibe nada: ni lo de Ana ni lo de Beto (que tampoco lo manda).
@@ -713,7 +817,7 @@ describe('pasar a manual', () => {
     game.hosted.cancel()
     await settle(game.room)
     expect([manualOf(game.hostLink), manualOf(game.guestLink)]).toEqual(['agreed', 'agreed'])
-    expect(game.box.guest.at(-1)).toEqual({ t: 'autoManual', step: 'yes' })
+    expect(game.box.guest.at(-1)).toMatchObject({ t: 'autoManual', step: 'yes' })
     sameView(game.hosted, game.guested, 0)
   })
 
@@ -738,7 +842,7 @@ describe('pasar a manual', () => {
     await settle(game.room)
     expect(game.hostLink.getSnapshot()).toMatchObject({ manual: 'agreed', manualDropped: true })
     expect(game.guestLink.getSnapshot()).toMatchObject({ manual: 'agreed', manualDropped: true })
-    expect(game.box.guest.at(-1)).toEqual({ t: 'autoManual', step: 'yes', dropped: true })
+    expect(game.box.guest.at(-1)).toMatchObject({ t: 'autoManual', step: 'yes', dropped: true })
   })
 
   it('con una carta bajo el control del otro el anfitrión no corta: los dos lo ven y el duelo sigue en automático', async () => {
@@ -766,7 +870,7 @@ describe('pasar a manual', () => {
     game.hostLink.manual!(true)
     await settle(game.room)
     expect([manualOf(game.hostLink), manualOf(game.guestLink)]).toEqual(['blocked', 'blocked'])
-    expect(game.box.guest.at(-1)).toEqual({ t: 'autoManual', step: 'no', why: 'control' })
+    expect(game.box.guest.at(-1)).toMatchObject({ t: 'autoManual', step: 'no', why: 'control' })
     // Sigue el automático.
     const sent = answers(game.core).length
 
