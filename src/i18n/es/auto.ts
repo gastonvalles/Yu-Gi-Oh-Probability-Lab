@@ -136,9 +136,8 @@ export const auto = {
   'auto.lane.rivalChoosing': 'El rival está eligiendo',
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
   'auto.lane.pass': 'No responder',
-  // La banda de responder a una cadena: a qué eslabón (sin nombres: la carta la dice su arte), con qué cartas y qué número tomaría tu respuesta.
-  'auto.respond.to': 'Responder a CL{link} · {who}',
-  'auto.respond.toLink': 'Responder a CL{link}',
+  // La banda de responder a una cadena (a qué eslabón lo dice la pila de arriba): con qué cartas y qué número tomaría tu respuesta.
+  'auto.respond.title': 'Responder a la cadena',
   'auto.respond.now': '¿Activás algo ahora?',
   'auto.respond.cards': 'Podés responder con',
   'auto.respond.chain': 'Encadenar como CL{link}',
@@ -147,7 +146,7 @@ export const auto = {
   // Sin nombres: lo que hay que activar brilla en la mesa.
   'auto.lane.mustActivate': { one: 'Tenés que activar la carta que brilla: tocala', other: 'Tenés que activar las {count} cartas que brillan: tocá una' },
   // Varias obligatorias a la vez: se elige cuál entra primero en la cadena (la banda del medio).
-  'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero (CL{link})?',
+  'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero?',
   'auto.forced.hint': 'Sin «No responder»: son obligatorias.',
   'auto.lane.autoZone': 'La casilla se eligió sola',
   // Los avisos de algo que salió mal, con palabras de la mesa (el detalle técnico va a la consola).

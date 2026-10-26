@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
@@ -6,9 +6,6 @@ import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
-
-/** La mesa avisa que el cartel abierto no entra sin tapar cartas (las Zonas Extra, la mano, lo que brilla): abre minimizado. */
-export const PromptCrowdedContext = createContext(false)
 
 interface MatPromptProps {
   /** Lo que dice el asa minimizada: la pregunta, corta («¿Activás el efecto?»). */
@@ -33,15 +30,14 @@ interface MatPromptProps {
  * Un cartel que la mesa pone en la ranura de la pregunta (`duel.prompt`: «¿Activás el efecto?», responder a una cadena, elegir de una lista, la pregunta del rival de pasar
  * de fase), sin velo y sin mover nada. Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲») que la mesa pone donde no
  * tapa ninguna carta: minimizado, todo lo de abajo se toca (la carta que brilla sigue contestando) y la pregunta sigue pendiente; la flecha del asa («Mostrar la pregunta») lo
- * reabre. Minimizado es de esta pregunta (cada una lo monta de nuevo: una nueva abre sola) y la mesa lo abre minimizado si no entra sin tapar cartas (`PromptCrowdedContext`).
+ * reabre. Siempre abre entero, aunque no entre sin tapar cartas (la mesa lo pone donde menos tapa): sólo lo minimiza la persona. Minimizado es de esta decisión (quien lo usa le da
+ * una `key` por decisión: las repreguntas de la misma lo actualizan en el lugar y una nueva abre entera).
  * Lleva `data-minimized` minimizado (la mesa lo ubica distinto). Contestado, se achica y se funde (va dentro de un `Presence`).
  */
 export function MatPrompt({ label, head, children, kind, row = false, role = 'status', labelledBy, focus, escape = false, className }: MatPromptProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
-  const crowded = useContext(PromptCrowdedContext)
-  const [fold, setFold] = useState<boolean | null>(null)
-  const minimized = fold ?? crowded
+  const [minimized, setFold] = useState(false)
 
   useEscapeKey(() => setFold(true), escape && !minimized && !leaving)
   useEffect(() => {

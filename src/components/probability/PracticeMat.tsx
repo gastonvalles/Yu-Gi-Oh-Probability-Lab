@@ -85,7 +85,6 @@ import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { artOfDrawId } from '../duel/duel-art'
-import { PromptCrowdedContext } from '../duel/MatPrompt'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
@@ -129,7 +128,9 @@ const MOBILE_HAND_GAP = 14
 
 /** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
 const CHAIN_BELOW_BAR_PX = 52
-/** Lo que la pregunta del medio nunca tapa: las cartas de las Zonas Extra (las tuyas y las del rival, que van en las mismas casillas) y las de tu mano. */
+/** Lo que mide un eslabón de la lista de la cadena (con el aire de la lista): con menos lugar que eso, la pila queda en su resumen mientras se pregunta. */
+const CHAIN_ROW_PX = 56
+/** Lo que la pregunta del medio no tapa mientras haya lugar: las cartas de las Zonas Extra (las tuyas y las del rival, que van en las mismas casillas) y las de tu mano. */
 const KEEP_CARDS = '[data-drop^="emz:"] [data-card-id], [data-drop^="emz:"] [data-rival-card-id], [data-drop="hand"] [data-card-id]'
 /** Lo que tampoco tapa si puede: las Zonas Extra vacías, tus monstruos y las cartas del rival. */
 const MONSTER_CARDS = '[data-drop^="emz:"], [data-drop^="mz:"] [data-card-id], [data-rival-card-id]'
@@ -2166,14 +2167,13 @@ export function PracticeMat({
     return () => window.removeEventListener('resize', place)
   }, [hasChain, rails, view])
 
-  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder, las cartas de las Zonas Extra y de la mano, ni la tira de
-  // un visor abierto; si puede, tampoco los demás monstruos. Si cae encima, se corre lo justo (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Si no entra en
-  // ningún lado, esa pregunta abre minimizada (`PromptCrowdedContext`, por su `key`: la siguiente vuelve a probar). Minimizada (`data-minimized`), el asa va donde no tapa ninguna
-  // carta ni la píldora de la cadena y, si no hay hueco, arriba, debajo de la barra. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
+  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder, las cartas de las Zonas Extra y de la mano, la pila de la
+  // cadena ni la tira de un visor abierto; si puede, tampoco los demás monstruos. Si cae encima, se corre lo justo (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo.
+  // Si no entra en ningún lado, abre entera igual donde menos tapa (sin tapar lo que brilla, si puede): la minimiza la persona. Minimizada (`data-minimized`), el asa va donde no tapa
+  // ninguna carta ni la píldora de la cadena y, si no hay hueco, arriba, debajo de la barra. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
   const promptRef = useRef<HTMLDivElement | null>(null)
   const hasPrompt = Boolean(duel?.prompt)
   const promptKey = isValidElement(duel?.prompt) ? duel.prompt.key : null
-  const [crowdedKey, setCrowdedKey] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     const box = promptRef.current
@@ -2186,9 +2186,9 @@ export function PracticeMat({
       const chain = chainRef.current
 
       if (!chain) return
-      delete chain.dataset.banded
+      delete chain.dataset.squeezed
       chain.style.translate = ''
-      chain.style.visibility = ''
+      chain.querySelector<HTMLElement>('[data-chain-list]')?.style.removeProperty('max-height')
     }
     const place = () => {
       box.style.translate = ''
@@ -2213,36 +2213,40 @@ export function PracticeMat({
       }
       // En el celular termina arriba de tus monstruos (`promptAbove`) y crece sobre el campo del rival: la mano y tu campo quedan a la vista. Sin lugar, va por la ranura de siempre.
       const floor = isDesktop ? undefined : section.querySelector('[data-drop="mz:0"]')?.getBoundingClientRect().top
-      // Con la cadena a la vista (celular), no se pisan: la píldora queda en un renglón (`data-banded`) y sube al lugar del aviso de la línea (vacío mientras se pregunta), y la
-      // pregunta va debajo de ella. Si así no entra, gana la pregunta (es lo que hay que contestar): la píldora se aparta hasta que se conteste.
-      const notice = floor === undefined ? null : chainRef.current?.querySelector('[data-testid="chain-notice"]')
-      const chain = notice ? chainRef.current! : null
+      // La pila de la cadena arriba y la pregunta debajo, sin taparla: en el celular la pila sube al lugar del aviso de la línea (vacío mientras se pregunta) y la pregunta va debajo
+      // de su píldora (`ceiling`). La lista se acorta a lo que queda (se desplaza) y, sin lugar ni para un eslabón, la pila queda en su resumen mientras se pregunta (`data-squeezed`,
+      // con su flecha). Si ni la píldora entra, la pregunta la tapa y la persona minimiza lo que le estorbe.
+      const notice = chainRef.current?.querySelector('[data-testid="chain-notice"]') ?? null
+      const pile = notice ? [notice.getBoundingClientRect()] : []
+      const chain = notice && floor !== undefined ? chainRef.current! : null
       let ceiling = min
 
       if (chain && notice) {
-        chain.dataset.banded = ''
-        chain.style.translate = rails || section.querySelector('[data-lane]') ? '' : `0 ${4 - CHAIN_BELOW_BAR_PX}px`
-        ceiling = Math.max(min, notice.getBoundingClientRect().bottom + 8)
-      }
-      const aboveOf = (obstacles: readonly Box[]) => (floor === undefined ? null : (promptAbove(at, obstacles, ceiling, Math.min(floor, max)) ?? (chain ? promptAbove(at, obstacles, min, Math.min(floor, max)) : null)))
-      const among = (obstacles: readonly Box[]) => {
-        const above = aboveOf(obstacles)
-        const top = above ?? promptTop(at, [...obstacles, ...strip], min, max)
+        // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
+        const lift = rails || section.querySelector('[data-lane]') ? 0 : Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - min)))
 
-        return top === null ? null : { top, above }
+        chain.style.translate = lift > 0 ? `0 ${-lift}px` : ''
+        ceiling = Math.max(min, (notice.firstElementChild ?? notice).getBoundingClientRect().bottom + 8)
       }
-      // Sin tapar los monstruos si puede y nunca lo que brilla, las Zonas Extra ni la mano (`promptFit`). Si no entra, la pregunta abre minimizada; reabierta a mano, como antes:
-      // sin lugar para todo, la tira abierta gana (es lo que se está mirando).
-      let spot = promptFit(among, [...glows, ...rects(KEEP_CARDS)], rects(MONSTER_CARDS))
+      const among = (top: number) => (obstacles: readonly Box[]) => {
+        const above = floor === undefined ? null : promptAbove(at, obstacles, top, Math.min(floor, max))
+        const y = above ?? promptTop(at, [...obstacles, ...strip], top, max)
 
-      if (!spot) {
-        // Con la tira de un visor abierta, la tira gana sin minimizar la pregunta (al cerrarla, vuelve a probar).
-        if (promptKey !== null && strip.length === 0) setCrowdedKey(promptKey)
-        const above = aboveOf(glows)
-
-        spot = { top: above ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top, above }
+        return y === null ? null : { top: y, above }
       }
-      if (chain && (spot.above === null || spot.above < ceiling)) chain.style.visibility = 'hidden'
+      // Sin tapar los monstruos si puede y nunca lo que brilla, las Zonas Extra, la mano ni la pila de la cadena (`promptFit`; en el celular, la píldora la cuida `ceiling`). Si
+      // no entra, abre entera igual donde menos tapa: sin tapar la pila (dice a qué se responde; lo que brilla está también en el cartel) o lo que brilla y, si no, la tira abierta gana.
+      const spot =
+        promptFit(among(ceiling), [...glows, ...rects(KEEP_CARDS), ...(chain ? [] : pile)], rects(MONSTER_CARDS)) ??
+        ((above) => ({ top: above ?? promptTop(at, [...pile, ...strip], min, max) ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top, above }))(floor === undefined ? null : promptAbove(at, glows, min, Math.min(floor, max)))
+      const list = chain?.querySelector<HTMLElement>('[data-chain-list]')
+
+      if (chain && list) {
+        const room = spot.top - 8 - list.getBoundingClientRect().top
+
+        if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
+        else if (room < list.getBoundingClientRect().height) list.style.maxHeight = `${Math.floor(room)}px`
+      }
       move(spot.top)
     }
     const later = () => {
@@ -2901,7 +2905,7 @@ export function PracticeMat({
           <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
             <div ref={promptRef} className="pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
-              <PromptCrowdedContext value={promptKey !== null && crowdedKey === promptKey}>{duel.prompt}</PromptCrowdedContext>
+              {duel.prompt}
             </div>
           </div>
         ) : null}

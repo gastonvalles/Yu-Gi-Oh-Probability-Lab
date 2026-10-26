@@ -14,7 +14,6 @@ import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPick
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
-import { PromptCrowdedContext } from '../components/duel/MatPrompt'
 import { menuRow, tapMenu } from './support/mat-menu'
 
 // Las piezas del duelo automático (fuera del campo): cada una con sus estados, su teclado y sus topes. Son presentacionales: lo que contestan sale por props.
@@ -119,12 +118,16 @@ describe('MatPrompt: minimizar un cartel de la mesa', () => {
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
   })
 
-  it('la mesa lo abre minimizado si no entra sin tapar cartas (`PromptCrowdedContext`); igual se reabre', () => {
-    render(<PromptCrowdedContext value>{ask(1)}</PromptCrowdedContext>)
+  it('abre siempre entero y nunca se minimiza solo: con la misma `key` (la misma decisión) se actualiza en el lugar, minimizado si lo estaba', () => {
+    const { rerender } = render(ask(1))
+    const open = screen.getByRole('status')
 
+    expect(open).not.toHaveAttribute('data-minimized')
+    rerender(ask(1))
+    expect(screen.getByRole('status')).toBe(open)
+    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
+    rerender(ask(1))
     expect(screen.getByRole('status')).toHaveAttribute('data-minimized')
-    fireEvent.click(screen.getByRole('button', { name: 'Mostrar la pregunta' }))
-    expect(screen.getByRole('status')).not.toHaveAttribute('data-minimized')
   })
 })
 
@@ -243,8 +246,7 @@ describe('RespondBand', () => {
   const respond = (props: Partial<Parameters<typeof RespondBand>[0]> = {}) =>
     render(
       <RespondBand
-        title="Responder a CL2 · Rival"
-        card={{ name: 'Ash Blossom & Joyous Spring', art: null }}
+        title="Responder a la cadena"
         link={3}
         cards={CARDS.slice(0, 2)}
         chosen={null}
@@ -255,13 +257,14 @@ describe('RespondBand', () => {
       />,
     )
 
-  it('a qué eslabón (sin el nombre de su carta), las candidatas con la pestaña de su lugar, «No responder» sin caja y la principal al final, apagada sin elegida', () => {
+  it('qué se decide (a qué eslabón lo dice la pila de la cadena: ni su número ni su carta), las candidatas con la pestaña de su lugar, «No responder» sin caja y la principal al final, apagada sin elegida', () => {
     const onPass = vi.fn()
     respond({ onPass })
-    const group = screen.getByRole('group', { name: 'Responder a CL2 · Rival' })
+    const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
     expect(group).toHaveAttribute('data-prompt-row')
-    expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta/)
+    expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta|CL2|Rival/)
+    expect(group.querySelector('img')).toBeNull()
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
     expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano').parentElement).toHaveClass('rounded-tag', 'whitespace-nowrap')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
@@ -280,7 +283,7 @@ describe('RespondBand', () => {
     const onChain = vi.fn()
     const onMode = vi.fn()
     respond({ chosen: 'b', onChain, mode: { value: 'ask', onChange: onMode } })
-    const group = screen.getByRole('group', { name: 'Responder a CL2 · Rival' })
+    const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
     expect(within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })).toHaveAttribute('aria-selected', 'true')
     fireEvent.click(within(group).getByRole('button', { name: 'Encadenar como CL3' }))
@@ -290,7 +293,7 @@ describe('RespondBand', () => {
     // En el celular (< 1101 px) se esconde: queda en «Más opciones».
     expect(modes.parentElement).toHaveClass('max-[1101px]:hidden')
     // El título, solo en su fila y sin partirse a mitad de palabra («Respond / er»); el modo, debajo, en el mismo bloque (no le aprieta la columna).
-    const title = within(group).getByText('Responder a CL2 · Rival')
+    const title = within(group).getByText('Responder a la cadena')
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
     expect(title.parentElement).toBe(modes.parentElement?.parentElement)
     expect(within(modes).getByRole('radio', { name: 'Cuando importa' })).toHaveAttribute('aria-checked', 'true')
@@ -299,7 +302,7 @@ describe('RespondBand', () => {
     cleanup()
 
     // Sin cadena todavía, tu respuesta la abre.
-    respond({ link: 1, card: undefined, title: '¿Activás algo ahora?', chosen: 'a' })
+    respond({ link: 1, title: '¿Activás algo ahora?', chosen: 'a' })
     expect(screen.getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
   })
 })

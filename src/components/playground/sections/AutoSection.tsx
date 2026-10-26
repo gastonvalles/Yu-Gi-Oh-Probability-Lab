@@ -14,8 +14,6 @@ import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
-import { PromptCrowdedContext } from '../../duel/MatPrompt'
-import { PassPrompt } from '../../duel/PassPrompt'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../../probability/MatBarActions'
 import { CardMenu } from '../../probability/MatDialogs'
@@ -130,7 +128,6 @@ export function AutoSection() {
       <BandSample max={1} onAnswer={setAnswer} />
       <ForcedSample onAnswer={setAnswer} />
       <RespondSample onAnswer={setAnswer} />
-      <MinimizedSample />
       <LongTextSample />
       <UndoSample onAnswer={setAnswer} />
 
@@ -393,7 +390,7 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
               <div className={PROMPT_BOX}>
                 <PickBand
-                  title={t('auto.forced.title', { count: cards.length, link: 1 })}
+                  title={t('auto.forced.title', { count: cards.length })}
                   cards={cards}
                   chosen={[first]}
                   eligible={new Set(cards.map((card) => card.key))}
@@ -419,7 +416,7 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
-/** Responder a una cadena (lámina 13): a qué eslabón, las candidatas con su lugar y el modo de respuesta (en escritorio), como en la mesa (`use-auto-asks.tsx`). */
+/** Responder a una cadena (lámina 13) debajo de la pila de la cadena, como en la mesa (`use-auto-asks.tsx`): las candidatas con su lugar y el modo de respuesta (en escritorio). */
 function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const cards: PickCard[] = [
     { key: 'ponix', name: PONIX.name, art: PONIX.art, place: t('practice.mat.field') },
@@ -429,6 +426,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const [shown, setShown] = useState(true)
   const [chosen, setChosen] = useState<string | null>(null)
   const [mode, setMode] = useState<AutoChainMode>('ask')
+  const [chainOpen, setChainOpen] = useState(true)
   const picked = cards.find((card) => card.key === chosen)
   const reply = (answer: string) => {
     setShown(false)
@@ -440,18 +438,20 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Responder a una cadena"
       layout="column"
-      note={<>Una cadena que se puede pasar: arriba a qué eslabón respondés («Responder a CL2 · Rival», sin nombres) y el arte de su carta; las candidatas con la pestaña de dónde están (tocar una la elige, con su tilde; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL3» al final. El título va solo en su fila; en escritorio, el modo de respuesta debajo (en el celular, en «Más opciones»). La flecha la minimiza (Escape es «No responder»). Tocar la carta que brilla en la mesa sigue valiendo. Archivo: <Tag>auto/RespondBand.tsx</Tag></>}
+      note={<>Una cadena que se puede pasar. La pila de la cadena, arriba, abre desplegada y dice a qué eslabón respondés (número, dueño, carta y estado); la banda, debajo, abre entera y dice sólo qué se decide («Responder a la cadena»): cada dato una vez. Las candidatas con la pestaña de dónde están (tocar una la elige, con el marco celeste; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL2» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). Nada se minimiza ni se esconde solo: la flecha de la banda la reduce a un asa («Responder a la cadena ▲», Escape es «No responder») y la de la pila, a su píldora. Tocar la carta que brilla en la mesa sigue valiendo. Archivos: <Tag>auto/RespondBand.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>}
     >
-      <div className="relative isolate h-112 overflow-hidden rounded-card border border-border-subtle">
+      <div className="relative isolate h-128 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
+        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
+          <ChainNotice rows={[{ number: 1, who: t('duel.bar.rival'), mine: false, ...ASH, state: 'chained' }]} focus={0} resolving={false} open={chainOpen} onOpenChange={setChainOpen} onPick={() => {}} />
+        </div>
         <Presence>
           {shown ? (
-            <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 grid place-items-center px-4">
               <div className={PROMPT_BOX}>
                 <RespondBand
-                  title={t('auto.respond.to', { link: 2, who: t('duel.bar.rival') })}
-                  card={ASH}
-                  link={3}
+                  title={t('auto.respond.title')}
+                  link={2}
                   cards={cards}
                   chosen={chosen}
                   onToggle={setChosen}
@@ -493,7 +493,7 @@ function LongTextSample() {
       note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, ámbar hondo con texto blanco (<Tag>warning-solid</Tag>, 4,8:1).</>}
     >
       <div className="grid w-[min(22rem,100%)] gap-3">
-        <RespondBand title="Respond to CL2 · Opponent" card={ASH} link={3} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} mode={{ value: mode, onChange: setMode }} />
+        <RespondBand title="Respond to the chain" link={2} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} mode={{ value: mode, onChange: setMode }} />
         <Segmented label="Responses" value={mode} onChange={setMode} options={modes} fullWidth />
         <Segmented label={t('auto.respond.mode')} value={mode} onChange={setMode} options={chainModeOptions()} fullWidth />
         <div className="flex gap-2">
@@ -501,36 +501,6 @@ function LongTextSample() {
           <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={8000} mine compact hand={12} />
         </div>
       </div>
-    </Specimen>
-  )
-}
-
-/** Los carteles de la mesa, minimizados: el asa de cada uno (la mesa los abre así cuando no entran sin tapar cartas: `PromptCrowdedContext`). */
-function MinimizedSample() {
-  const none = { label: '', onSelect: () => {} }
-
-  return (
-    <Specimen
-      title="Carteles minimizados · el asa"
-      layout="column"
-      note={<>Cada cartel de la ranura <Tag>duel.prompt</Tag> se minimiza con su flecha a un asa de una línea con la pregunta corta; la flecha del asa («Mostrar la pregunta», 44 px) lo reabre. Minimizado es de esa pregunta (la siguiente abre sola) y la mesa lo pone donde no tapa ninguna carta ni la píldora de la cadena (si no hay hueco, arriba, debajo de la barra). Si el cartel abierto no entra sin tapar las Zonas Extra o la mano, abre así. Archivo: <Tag>duel/MatPrompt.tsx</Tag></>}
-    >
-      <PromptCrowdedContext value>
-        <div className="grid justify-items-start gap-2">
-          <div className={PROMPT_BOX}>
-            <AskPrompt text={t('auto.ask.effect')} card={PONIX} yes={none} no={none} />
-          </div>
-          <div className={PROMPT_BOX}>
-            <RespondBand title={t('auto.respond.to', { link: 2, who: t('duel.bar.rival') })} card={ASH} link={3} cards={[]} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />
-          </div>
-          <div className={PROMPT_BOX}>
-            <PickBand title={t('auto.forced.title', { count: 2, link: 1 })} cards={[]} chosen={[]} eligible={new Set()} multi={false} done onToggle={() => {}} onPick={() => {}} />
-          </div>
-          <div className={PROMPT_BOX}>
-            <PassPrompt name="Ana" phase="battle" endsTurn={false} responders={[]} onAllow={() => {}} onDeny={() => {}} />
-          </div>
-        </div>
-      </PromptCrowdedContext>
     </Specimen>
   )
 }
@@ -675,13 +645,13 @@ const CHAIN_FRAMES: Array<{ states: ChainRowState[]; focus: number; resolving?: 
   { states: ['solved', 'negated', 'solved'], focus: 0, resolving: true },
 ]
 
-/** El aviso de la cadena, paso a paso con un botón (en la mesa los pasa el ritmo: `use-auto-asks.tsx`), sobre un pedazo de mesa: plegado y desplegado. */
+/** El aviso de la cadena, paso a paso con un botón (en la mesa los pasa el ritmo: `use-auto-asks.tsx`), sobre un pedazo de mesa: desplegado (como abre) y plegado. */
 function ChainSample() {
   const [count, setCount] = useState(3)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const [picked, setPicked] = useState<number | null>(null)
   const [phone, setPhone] = useState(true)
-  const [banded, setBanded] = useState(false)
+  const [squeezed, setSqueezed] = useState(false)
   const frame = CHAIN_FRAMES[count - 1]!
 
   return (
@@ -689,7 +659,7 @@ function ChainSample() {
       title="ChainNotice · la pila de la cadena"
       layout="column"
       className="col-span-full"
-      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): la píldora dice el eslabón del que habla («Cadena · CL3 · Vos») y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. La flecha despliega la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) arriba dice «Cadena · 3 · Resuelve CL3» mientras se resuelve; con una pregunta abierta en la mesa (<Tag>data-banded</Tag>) queda un renglón, sin flecha ni lista, y sube para que la pregunta entre debajo (si no entra, se aparta hasta que se conteste). Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
+      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): cada cadena abre desplegada (sólo la pliega la persona): la píldora es el título («Cadena · 3») y debajo, la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Plegada, la píldora resume el eslabón del que habla («Cadena · CL3 · Vos»; la cuenta, sólo si no es ese número) y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo la píldora y la lista reciben toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) plegada dice «Cadena · 3 · Resuelve CL2» mientras se resuelve; con una pregunta abierta debajo, la mesa acorta la lista a lo que queda (<Tag>data-chain-list</Tag>, se desplaza) y, sin lugar ni para un eslabón, queda el resumen de la píldora mientras se pregunta (<Tag>data-squeezed</Tag>): la píldora no se esconde. Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>
@@ -702,12 +672,12 @@ function ChainSample() {
         <Button variant="tertiary" size="sm" aria-pressed={phone} onClick={() => setPhone((value) => !value)}>
           Ver en el celular
         </Button>
-        <Button variant="tertiary" size="sm" aria-pressed={banded} disabled={!phone} onClick={() => setBanded((value) => !value)}>
-          Simular una pregunta abierta
+        <Button variant="tertiary" size="sm" aria-pressed={squeezed} onClick={() => setSqueezed((value) => !value)}>
+          Simular una pregunta sin lugar
         </Button>
         {picked ? <Tag>{`Tocaste el CL${picked}: en la mesa se lee en el detalle`}</Tag> : null}
       </div>
-      <div {...(phone && banded ? { 'data-banded': '' } : {})} className="group/chain relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
+      <div {...(squeezed ? { 'data-squeezed': '' } : {})} className="group/chain relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
         <MatScene className="absolute inset-0 -z-10" />
         <ChainNotice
           rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state, ...(state === 'negated' ? { by: 3 } : {}) }))}

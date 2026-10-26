@@ -130,9 +130,8 @@ export const auto: Translated<typeof es> = {
   'auto.lane.rivalChoosing': 'The opponent is choosing',
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
   'auto.lane.pass': "Don't respond",
-  // The band to respond to a chain: which link, with which cards and which number your response would take.
-  'auto.respond.to': 'Respond to CL{link} · {who}',
-  'auto.respond.toLink': 'Respond to CL{link}',
+  // The band to respond to a chain (which link is said by the chain stack above): with which cards and which number your response would take.
+  'auto.respond.title': 'Respond to the chain',
   'auto.respond.now': 'Activate something now?',
   'auto.respond.cards': 'You can respond with',
   'auto.respond.chain': 'Chain as CL{link}',
@@ -140,7 +139,7 @@ export const auto: Translated<typeof es> = {
   'auto.respond.mode': 'Ask me',
   'auto.lane.mustActivate': { one: 'You must activate the glowing card: tap it', other: 'You must activate the {count} glowing cards: tap one' },
   // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).
-  'auto.forced.title': 'You must activate these {count}. Which goes first (CL{link})?',
+  'auto.forced.title': 'You must activate these {count}. Which goes first?',
   'auto.forced.hint': 'No “Don’t respond”: they’re mandatory.',
   'auto.lane.autoZone': 'The zone was picked for you',
   // What went wrong, in the mat's words (the technical detail goes to the console).
