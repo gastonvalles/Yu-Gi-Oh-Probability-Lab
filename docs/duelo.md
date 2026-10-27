@@ -28,7 +28,7 @@ La de la práctica, con el campo del rival espejado arriba y las Extra Monster Z
 ### El campo en un celular en vertical
 
 - Bajo 640 px hay cinco columnas y las pilas van en una fila aparte, con el Extra y el Deck en los extremos (`DUEL_AREAS_COMPACT`). Las áreas van por variables CSS (`--areas`, `--areas-compact`), porque un estilo en línea no cambia con un medio; el arrastre, los menús y el protocolo no se enteran.
-- La casilla es cuadrada para que una carta en defensa no pise a la vecina, y la limita el alto de la pantalla (`compactDuelFieldStyle`): agrandar más las cartas pediría desplazar o acercar el campo.
+- La casilla es cuadrada para que una carta en defensa no pise a la vecina, y la limita el alto de la pantalla (`compactDuelFieldStyle` bajo 640 px y `mediumDuelFieldStyle` de 640 a 1100 px: el campo y tu mano entran sin scroll desde unos 760 px de alto): agrandar más las cartas pediría desplazar o acercar el campo.
 
 ### El visor de una pila no tapa tu mano ni el detalle
 
