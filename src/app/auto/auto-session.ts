@@ -267,7 +267,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   /** Con la mesa rearmada, el núcleo todavía va por una fase anterior a la de la mesa (las pasa al empezar; las fases del núcleo crecen con la del turno). */
   // (El asiento 0 es el que tiene el turno: su mesa dice hasta qué fase; los dos adaptadores ven las mismas fases del núcleo.)
   const catchingUp = () => adapters[0] !== undefined && adapters[0]!.overlay.phase < (CORE_PHASE[adapters[0]!.mine.phase] ?? 0)
-  const policy: RivalPolicy = rival ? handtrapPolicy(rival.main.map(([code]) => code)) : passivePolicy()
+  /** Con la semilla del duelo: la mano de piedra, papel o tijera del rival es al azar pero la misma con la misma semilla. */
+  const rivalPolicy = (seed: number): RivalPolicy => (rival ? handtrapPolicy(rival.main.map(([code]) => code), passivePolicy(undefined, seed)) : passivePolicy(undefined, seed))
   const listeners = new Set<() => void>()
   const blank = emptyAdapter()
   // La mesa del rival rearmada y el código de cada id suyo (`resume.theirs`, o la que arma `build` en jugar solo).
@@ -297,6 +298,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     rivalHand: [],
     playStarts: [],
   }
+  let policy = rivalPolicy(snapshot.seed)
   let data: DuelData | null = null
   let create: CreateCommand | null = null
   /** El `create` de una semilla (reiniciar con otra semilla le reparte otra mano al rival de handtraps). */
@@ -667,6 +669,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       }
       if (!create || !build || !data) return
       create = build(seed >>> 0)
+      policy = rivalPolicy(seed >>> 0)
       answers = []
       inFlight = null
       retries = 0

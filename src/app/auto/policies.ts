@@ -96,10 +96,12 @@ function counterPick(ask: AskOf<'select_counter'>, pick: (open: number[]) => num
 /**
  * El rival pasivo: End Phase si puede (si no, Battle Phase y después lo primero que haya); en batalla, End Phase o Main Phase 2; no
  * encadena salvo que sea obligatorio; dice que no; elige las primeras `min`; la primera posición, casilla, opción o número; deja el
- * orden como está.
+ * orden como está; en piedra, papel o tijera saca una mano al azar, la misma con la misma semilla.
  */
-export function passivePolicy(pickCard?: CardPicker): Policy {
+export function passivePolicy(pickCard?: CardPicker, seed = 0): Policy {
   const first = (n: number) => Array.from({ length: n }, (_, i) => i)
+  // Lo único que no es fijo: la mano de piedra, papel o tijera (si no, la mano que le gana ganaría siempre). Con la semilla del duelo y avanzando en cada pregunta: un empate no se repite.
+  const hand = mulberry32(seed)
 
   return (ask) => {
     switch (ask.type) {
@@ -151,7 +153,7 @@ export function passivePolicy(pickCard?: CardPicker): Policy {
       case 'announce_number':
         return { type: ask.type, index: 0 }
       case 'rock_paper_scissors':
-        return { type: ask.type, value: 1 }
+        return { type: ask.type, value: 1 + Math.floor(hand() * 3) }
     }
   }
 }
