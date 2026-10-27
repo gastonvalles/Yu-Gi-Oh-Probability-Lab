@@ -193,6 +193,8 @@ const PATHS = {
     </>
   ),
 
+  /** Una carta: las de la mano en las vidas de la mesa («▯ 5»). */
+  card: <rect x="6.5" y="3.5" width="11" height="17" rx="1.8" />,
   hand: (
     <>
       <rect x="8.5" y="2" width="7" height="11" rx="1.2" />

@@ -26,7 +26,7 @@ const DETAIL_TONE = { success: 'font-semibold text-success-soft', danger: 'font-
 /**
  * track: pista lavanda con la opción elegida en ámbar · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
  * cards: tarjetas (como las fechas del diseño) · lens: la pista lavanda con una tarjeta por opción y su anillo arriba (la lente del Lab: Promedio / Yendo 1º / Yendo 2º). Lo elegido es ámbar, como en toda la app (el violeta es de los fondos y de la acción principal): en la pista y las pastillas,
- * relleno ámbar con el texto oscuro; en `cards`, el borde y el texto ámbar · list: las tarjetas una debajo de otra, alineadas a la izquierda y con el detalle que se parte (opciones con
+ * relleno ámbar hondo con el texto blanco; en `cards`, el borde y el texto ámbar · list: las tarjetas una debajo de otra, alineadas a la izquierda y con el detalle que se parte (opciones con
  * una frase, como «Volver atrás» de «Seguir en manual»).
  */
 type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards' | 'lens' | 'list'
@@ -47,7 +47,8 @@ interface SegmentedProps<T extends string> {
 }
 
 const GROUP: Record<SegmentedVariant, string> = {
-  track: 'grid auto-cols-fr grid-flow-col gap-1 rounded-control bg-lavender p-1',
+  // Partes iguales mientras entren; si no, cada opción mide al menos su texto («Cuando importa» no se sale de su píldora).
+  track: 'grid auto-cols-[minmax(min-content,1fr)] grid-flow-col gap-1 rounded-control bg-lavender p-1',
   chips: 'flex flex-wrap gap-2',
   scroll: 'flex gap-2',
   cards: 'grid auto-cols-fr grid-flow-col gap-2',
@@ -61,8 +62,8 @@ const TONE_ON = {
   danger: 'bg-danger text-white',
 } as const
 
-/** Lo elegido: ámbar con el texto oscuro (sin hover: una opción elegida no se apaga al tocarla). */
-const ON = 'bg-info text-info-foreground'
+/** Lo elegido: el ámbar hondo con el texto blanco (4,8:1; sin hover: una opción elegida no se apaga al tocarla). */
+const ON = 'bg-warning-solid text-white'
 
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {
@@ -136,7 +137,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
               {option.count !== undefined ? <span className="text-micro font-semibold tabular-nums opacity-70">{option.count}</span> : null}
             </span>
             {option.detail ? (
-              // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (oscuro sobre el ámbar, ámbar en la tarjeta, blanco sobre el verde o el rojo).
+              // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (blanco sobre el ámbar, el verde o el rojo; ámbar en la tarjeta).
               <span aria-hidden={option.detailLabel ? true : undefined} className={cx('text-micro tabular-nums', list ? 'min-w-0 break-words' : 'whitespace-nowrap', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
                 {option.detail}
               </span>

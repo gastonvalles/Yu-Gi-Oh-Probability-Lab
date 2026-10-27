@@ -9,12 +9,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
-import { AutoBar, AutoLives } from '../components/auto/AutoBar'
+import { AutoBar } from '../components/auto/AutoBar'
 import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPicker'
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
-import { PromptCrowdedContext } from '../components/duel/MatPrompt'
+import { menuRow, tapMenu } from './support/mat-menu'
 
 // Las piezas del duelo automático (fuera del campo): cada una con sus estados, su teclado y sus topes. Son presentacionales: lo que contestan sale por props.
 // El arte de las cartas lee el formato del store (el límite de copias).
@@ -118,12 +118,16 @@ describe('MatPrompt: minimizar un cartel de la mesa', () => {
     expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
   })
 
-  it('la mesa lo abre minimizado si no entra sin tapar cartas (`PromptCrowdedContext`); igual se reabre', () => {
-    render(<PromptCrowdedContext value>{ask(1)}</PromptCrowdedContext>)
+  it('abre siempre entero y nunca se minimiza solo: con la misma `key` (la misma decisión) se actualiza en el lugar, minimizado si lo estaba', () => {
+    const { rerender } = render(ask(1))
+    const open = screen.getByRole('status')
 
+    expect(open).not.toHaveAttribute('data-minimized')
+    rerender(ask(1))
+    expect(screen.getByRole('status')).toBe(open)
+    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
+    rerender(ask(1))
     expect(screen.getByRole('status')).toHaveAttribute('data-minimized')
-    fireEvent.click(screen.getByRole('button', { name: 'Mostrar la pregunta' }))
-    expect(screen.getByRole('status')).not.toHaveAttribute('data-minimized')
   })
 })
 
@@ -218,12 +222,15 @@ describe('PickBand', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('las elegidas, con su estado; completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
+  it('las elegidas, con su estado, el marco que gira y su número (blanco); completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
     const onPick = vi.fn()
     const onToggle = vi.fn()
     band({ chosen: ['b', 'a'], done: true, onPick, onToggle })
+    const second = screen.getByRole('option', { name: /Fallen of Albaz/ })
 
     expect(screen.getByRole('option', { name: /Aluber/ })).toHaveAttribute('aria-selected', 'true')
+    expect(second.querySelector('[data-fx="frame"]')).not.toBeNull()
+    expect(within(second).getByText('2')).toHaveClass('text-white')
     fireEvent.click(screen.getByRole('option', { name: /Branded/ }))
     expect(onToggle).toHaveBeenCalledWith('c', false)
     fireEvent.click(screen.getByRole('button', { name: 'Elegir 2 cartas' }))
@@ -242,8 +249,7 @@ describe('RespondBand', () => {
   const respond = (props: Partial<Parameters<typeof RespondBand>[0]> = {}) =>
     render(
       <RespondBand
-        title="Responder a CL2 · Rival"
-        card={{ name: 'Ash Blossom & Joyous Spring', art: null }}
+        title="Responder a la cadena"
         link={3}
         cards={CARDS.slice(0, 2)}
         chosen={null}
@@ -254,15 +260,16 @@ describe('RespondBand', () => {
       />,
     )
 
-  it('a qué eslabón (sin el nombre de su carta), las candidatas con la pestaña de su lugar, «No responder» sin caja y la principal al final, apagada sin elegida', () => {
+  it('qué se decide (a qué eslabón lo dice la pila de la cadena: ni su número ni su carta), las candidatas con la pestaña de su lugar, «No responder» sin caja y la principal al final, apagada sin elegida', () => {
     const onPass = vi.fn()
     respond({ onPass })
-    const group = screen.getByRole('group', { name: 'Responder a CL2 · Rival' })
+    const group = screen.getByRole('group', { name: 'Responder a la cadena' })
 
     expect(group).toHaveAttribute('data-prompt-row')
-    expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta/)
+    expect(group).not.toHaveTextContent(/Ash Blossom|Tu respuesta|CL2|Rival/)
+    expect(group.querySelector('img')).toBeNull()
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
-    expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano')).toHaveClass('rounded-tag')
+    expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano').parentElement).toHaveClass('rounded-tag', 'whitespace-nowrap')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
     expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'No responder', 'Encadenar como CL3'])
     expect(within(group).getByRole('button', { name: 'Encadenar como CL3' })).toBeDisabled()
@@ -275,26 +282,35 @@ describe('RespondBand', () => {
     expect(onPass).toHaveBeenCalledTimes(1)
   })
 
-  it('la elegida, con su tilde; la principal contesta; el modo, sólo en escritorio', () => {
+  it('la elegida, con el marco celeste que gira (el de la mano, sin tilde); la principal contesta; el modo, sólo en escritorio', () => {
     const onChain = vi.fn()
     const onMode = vi.fn()
     respond({ chosen: 'b', onChain, mode: { value: 'ask', onChange: onMode } })
-    const group = screen.getByRole('group', { name: 'Responder a CL2 · Rival' })
+    const group = screen.getByRole('group', { name: 'Responder a la cadena' })
+    const chosen = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })
 
-    expect(within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' })).toHaveAttribute('aria-selected', 'true')
+    expect(chosen).toHaveAttribute('aria-selected', 'true')
+    expect(chosen.querySelector('[data-fx="frame"] [data-fx="orbit"]')).not.toBeNull()
+    expect(chosen.querySelector('[data-fx="frame"]')).toHaveStyle({ '--fx-rgb': '56 189 248' })
+    expect(chosen.querySelector('svg, .outline-info, .outline-2')).toBeNull()
+    expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelector('[data-fx]')).toBeNull()
     fireEvent.click(within(group).getByRole('button', { name: 'Encadenar como CL3' }))
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
 
     // En el celular (< 1101 px) se esconde: queda en «Más opciones».
     expect(modes.parentElement).toHaveClass('max-[1101px]:hidden')
+    // El título, solo en su fila y sin partirse a mitad de palabra («Respond / er»); el modo, debajo, en el mismo bloque (no le aprieta la columna).
+    const title = within(group).getByText('Responder a la cadena')
+    expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
+    expect(title.parentElement).toBe(modes.parentElement?.parentElement)
     expect(within(modes).getByRole('radio', { name: 'Cuando importa' })).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(within(modes).getByRole('radio', { name: 'Siempre' }))
     expect(onMode).toHaveBeenCalledWith('always')
     cleanup()
 
     // Sin cadena todavía, tu respuesta la abre.
-    respond({ link: 1, card: undefined, title: '¿Activás algo ahora?', chosen: 'a' })
+    respond({ link: 1, title: '¿Activás algo ahora?', chosen: 'a' })
     expect(screen.getByRole('button', { name: 'Activar como CL1' })).toBeEnabled()
   })
 })
@@ -427,21 +443,23 @@ describe('AutoBar', () => {
     window.matchMedia = matchMedia
   })
 
-  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar» y sus íconos en el mismo orden (deshacer apagado sin nada que deshacer) y, al final, el engranaje; debajo, el turno con la fase', () => {
+  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar», deshacer (apagado sin nada que deshacer) y el ⋯, que lleva al final «Opciones del duelo»; debajo, el turno con la fase en su píldora', () => {
     const onExit = vi.fn()
     const onUndo = vi.fn()
     const onNewHand = vi.fn()
     const { rerender } = render(<AutoBar {...props} onExit={onExit} onUndo={onUndo} onNewHand={onNewHand} />)
     const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
-    expect(names(within(toolbar).getAllByRole('button'))).toEqual(['Volver a Jugar', 'Cambiar a la vista superior', 'Sonidos', 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Más opciones del duelo'])
+    expect(names(within(toolbar).getAllByRole('button'))).toEqual(['Volver a Jugar', 'Deshacer', 'Más opciones'])
     expect(screen.getByText('Turno 3')).toBeInTheDocument()
     expect(screen.getByText('Tu turno')).toBeInTheDocument()
-    expect(screen.getByTestId('auto-phase')).toHaveTextContent('Main Phase 1')
+    expect(screen.getByTestId('auto-phase')).toHaveTextContent('M1Main Phase 1')
+    expect(screen.getByTestId('auto-phase')).toHaveClass('bg-primary', 'border-info', 'text-white')
     expect(within(toolbar).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
 
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Volver a Jugar' }))
-    fireEvent.click(within(toolbar).getByRole('button', { name: 'Nueva mano' }))
+    tapMenu('Nueva mano')
     rerender(<AutoBar {...props} onExit={onExit} onUndo={onUndo} onNewHand={onNewHand} canUndo />)
     fireEvent.click(within(toolbar).getByRole('button', { name: 'Deshacer' }))
     expect([onExit, onNewHand, onUndo].map((spy) => spy.mock.calls.length)).toEqual([1, 1, 1])
@@ -453,35 +471,41 @@ describe('AutoBar', () => {
     const { unmount } = render(<AutoBar {...props} dock />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Más opciones del duelo' })).toBeInTheDocument()
+    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
     unmount()
 
     desktop()
     const { rerender } = render(<AutoBar {...props} />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Cambiar a la vista superior', 'Sonidos', 'Ventana grande', 'Handtraps del rival', 'Nueva mano', 'Deshacer', 'Más opciones del duelo'])
+    expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Deshacer', 'Más opciones'])
     expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
+    expect(menuRow('Opciones del duelo')).toBeInTheDocument()
     rerender(<AutoBar {...props} dock />)
-    expect(screen.queryByRole('button', { name: 'Más opciones del duelo' })).toBeNull()
+    expect(() => menuRow('Opciones del duelo')).toThrow()
   })
 
-  it('las vidas con la mano: «Rival · Mano 3» a la vista y «3 cartas en la mano» para el lector de pantalla (una sola, «Una carta en la mano»)', () => {
-    render(<AutoLives rivalName="Rival" life={{ mine: 8000, theirs: 7000 }} hands={{ mine: 1, theirs: 3 }} />)
+  it('con laterales, las vidas van cada una de su lado del lateral izquierdo: el rival arriba (junto a la flecha) y vos abajo, con las cartas de cada mano', () => {
+    desktop()
+    render(
+      <DuelRailsContext.Provider value>
+        <AutoBar {...props} hands={{ mine: 1, theirs: 3 }} />
+      </DuelRailsContext.Provider>,
+    )
 
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' })).toHaveTextContent('Rival · Mano 3')
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' })).toHaveTextContent('Vos · Mano 1')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' }).parentElement).toHaveClass('col-start-1', 'row-start-1')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' }).parentElement).toHaveClass('col-start-1', 'row-start-3')
   })
 
-  it('«Más opciones»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son el ícono de la barra, como en la práctica)', () => {
+  it('«Opciones del duelo»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son de «La mesa», en el ⋯, como en la práctica)', () => {
     const onChain = vi.fn()
     const onPlace = vi.fn()
     render(<AutoBar {...props} onChain={onChain} onPlace={onPlace} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 
-    expect(within(dialog).queryByRole('switch', { name: 'Sonidos del duelo' })).toBeNull()
+    expect(within(dialog).queryByRole('switch')).toBeNull()
     // Tres modos, y la línea chica dice qué hace el elegido.
     expect(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Cuando importa', 'Nunca'])
     expect(dialog).toHaveTextContent('Te pregunta sólo si algo tuyo responde de verdad a este momento.')
@@ -502,7 +526,7 @@ describe('AutoBar', () => {
     const onBlind = vi.fn()
     render(<AutoBar {...props} handtraps={{ on: true, summary: 'Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano', onChange }} onBlind={onBlind} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 
     expect(dialog).toHaveTextContent('Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano')

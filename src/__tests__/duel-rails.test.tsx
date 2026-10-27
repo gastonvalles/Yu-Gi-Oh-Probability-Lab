@@ -37,13 +37,13 @@ describe('la pregunta del medio no tapa lo que hay que tocar', () => {
     expect(promptAbove(prompt, [box(150, 580)], 120, 600)).toBeNull()
   })
 
-  it('con la cadena a la vista, el techo es la píldora (en un renglón, hasta 148, más 8): entra la banda que cabe debajo; la más alta no, y la píldora se aparta (`PracticeMat`)', () => {
+  it('con la cadena a la vista, el techo es la pila (la píldora y un eslabón, más 8): entra la banda que cabe debajo; la más alta no (`PracticeMat` la abre igual y acorta la lista: ninguna se esconde)', () => {
     // Medido con el núcleo a 740 de alto: tus monstruos en 402; «¿Activás el efecto?» mide 236 a 414 px (queda en 158) y 258 a 390 px (no entra debajo de 156).
     expect(promptAbove(box(0, 236), [], 156, 402)).toBe(158)
     expect(promptAbove(box(0, 258), [], 156, 402)).toBeNull()
   })
 
-  it('nunca tapa una carta de las Zonas Extra (ni la mano ni lo que brilla); los demás monstruos, si puede; sin lugar, null (la pregunta abre minimizada)', () => {
+  it('no tapa una carta de las Zonas Extra (ni la mano ni lo que brilla) ni, si puede, los demás monstruos; sin lugar, null (la mesa la abre entera igual donde menos tapa)', () => {
     // El celular: tus monstruos en 600, la Zona Extra (un Link tuyo, que no brilla) de 500 a 590, los monstruos del rival de 380 a 470; la barra hasta 120.
     const emz = box(500, 590)
     const rival = box(380, 470)

@@ -1,8 +1,8 @@
 import { OcgDuelMode } from 'ocgcore-wasm'
 import { matReducer } from '../app/practice-mat'
 import { DATA_UNAVAILABLE, DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
-import { createAutoSession, MR5, workerTransport, type AutoSession, type AutoSnapshot, type SessionOptions, type TransportFactory } from '../app/auto/auto-session'
-import { LOCATION as L, type AutoCommand, type AutoEvent, type Seat } from '../app/auto/protocol'
+import { activatedCode, createAutoSession, MR5, workerTransport, type AutoSession, type AutoSnapshot, type SessionOptions, type TransportFactory } from '../app/auto/auto-session'
+import { LOCATION as L, type AskOf, type AutoCommand, type AutoEvent, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { CHAIN, END, fakeHost, IDLE, loader, mapped, PASS } from './support/auto-core-fake'
 
 const tick = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -130,6 +130,46 @@ describe('la sesión del duelo automático', () => {
     // Una respuesta a la pregunta de antes del deshacer ya no vale: tiene otro askId.
     expect(back.ask!.askId).not.toBe(mark.ask!.askId)
     session.destroy()
+  })
+
+  it('deshacer vuelve a antes de mi respuesta en una cadena (una activación elegida), no a mi última jugada; la obligatoria no cuenta', async () => {
+    // Todo es mío: la pregunta 1 es una cadena con una carta (obligatoria según `forced`), las demás, mis jugadas.
+    const run = async (forced: boolean) => {
+      const respond: CoreAsk = { ...(CHAIN as AskOf<'select_chain'>), player: 0, forced, selects: [{ code: 1, controller: 0, location: L.HAND, sequence: 0, position: 10, description: '0', client_mode: 0 }] }
+      const host = fakeHost(() => 0, undefined, 1, (k) => (k === 1 ? respond : IDLE))
+      const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 3 })
+
+      await until(session, (s) => s.status === 'ready')
+      session.answer(END)
+      await until(session, (s) => s.ask?.ask.type === 'select_chain')
+      session.answer({ type: 'select_chain', index: 0 })
+      const after = await until(session, (s) => s.answers.length === 2 && s.ask !== null)
+
+      expect(after.answers[1]).toEqual({ seat: 0, answer: { type: 'select_chain', index: 0 }, ...(forced ? {} : { activation: true }) })
+      expect(session.undo()).toBe(true)
+      await until(session, (s) => s.ask !== null && !s.replaying)
+      session.destroy()
+      return host.commands.at(-1)
+    }
+
+    expect(await run(false)).toEqual({ t: 'rewind', to: 1 })
+    expect(await run(true)).toEqual({ t: 'rewind', to: 0 })
+  })
+
+  it('activatedCode: la carta que se activa o se invoca de forma especial; ni pasar, ni una fase, ni una obligatoria', () => {
+    const card = { code: 9, controller: 0 as const, location: L.HAND, sequence: 0 }
+    const chain = CHAIN as AskOf<'select_chain'>
+    const idle: CoreAsk = { ...(IDLE as AskOf<'select_idlecmd'>), activates: [{ ...card, description: '0', client_mode: 0 }], special_summons: [{ ...card, code: 8 }], summons: [{ ...card, code: 7 }] }
+
+    expect(activatedCode(idle, { type: 'select_idlecmd', action: 5, index: 0 })).toBe(9)
+    expect(activatedCode(idle, { type: 'select_idlecmd', action: 1, index: 0 })).toBe(8)
+    expect(activatedCode(idle, { type: 'select_idlecmd', action: 0, index: 0 })).toBeNull()
+    expect(activatedCode(idle, END)).toBeNull()
+    expect(activatedCode({ ...chain, selects: [{ ...card, position: 10, description: '0', client_mode: 0 }] }, { type: 'select_chain', index: 0 })).toBe(9)
+    expect(activatedCode({ ...chain, forced: true, selects: [{ ...card, position: 10, description: '0', client_mode: 0 }] }, { type: 'select_chain', index: 0 })).toBeNull()
+    expect(activatedCode(CHAIN, PASS)).toBeNull()
+    expect(activatedCode({ type: 'select_effectyn', player: 0, ...card, position: 10, description: '0' }, { type: 'select_effectyn', yes: true })).toBe(9)
+    expect(activatedCode({ type: 'select_effectyn', player: 0, ...card, position: 10, description: '0' }, { type: 'select_effectyn', yes: false })).toBeNull()
   })
 
   it('deshacer en carrera: lo que queda de la tanda vieja (la pregunta del rival) no se contesta ni suma una respuesta, también con dos seguidos', async () => {

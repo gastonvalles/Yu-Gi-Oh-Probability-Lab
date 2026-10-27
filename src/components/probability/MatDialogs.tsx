@@ -1,7 +1,7 @@
 import { Fragment, createContext, type ReactNode, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
-import { useFocusTrap } from '../../app/use-focus-trap'
+import { opensKeyboard, useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
@@ -21,7 +21,7 @@ import { Modal } from '../ui/Modal'
 import { SheetHandle } from '../ui/SheetHandle'
 import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
-import { FX_CARD, TargetMark, fxVars } from './MatFx'
+import { FX_CARD, FxFrame, PICK_ORDER, TargetMark, fxVars } from './MatFx'
 import { CARD_BACK } from './practice-styles'
 
 /** Nombres de las casillas, los mismos que usa el builder (Main / Extra) y los del juego en inglés para las pilas. El texto se arma al leerlo, en el idioma de ese momento. */
@@ -636,7 +636,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   useEscapeKey(onClose, open)
   useEscapeKey(exit, choosing && !hidden)
 
-  // Al abrirse, y al pasar a otra pila, el foco entra al panel: al buscador o, si no hay, a la primera carta. Sin trampa: no es un modal y Tab sale a la mesa.
+  // Al abrirse, y al pasar a otra pila, el foco entra al panel: al buscador (con puntero táctil no: abriría el teclado) o, si no, a la primera carta. Sin trampa: no es un modal y Tab sale a la mesa.
   useEffect(() => {
     if (!open) return
 
@@ -647,7 +647,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
     const frame = requestAnimationFrame(() => {
       const panel = panelRef.current
 
-      ;(panel?.querySelector<HTMLElement>('[data-initial-focus]') ?? gridRef.current?.querySelector<HTMLElement>('button') ?? panel)?.focus({ preventScroll: true })
+      ;([...(panel?.querySelectorAll<HTMLElement>('[data-initial-focus]') ?? [])].find((element) => !opensKeyboard(element)) ?? gridRef.current?.querySelector<HTMLElement>('button') ?? panel)?.focus({ preventScroll: true })
     })
 
     return () => cancelAnimationFrame(frame)
@@ -801,14 +801,15 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
                     data-targeted={targeted.has(card.id) ? 'true' : 'false'}
                     data-glow={lit ? 'true' : 'false'}
                     data-glow-kind={lit ?? undefined}
-                    // La elegida, un aro ámbar de 2 px por fuera (la mira del Target es un brillo por fuera y adentro: conviven); al pasar el mouse, el mismo aro, tenue.
-                    className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD, choosing && (order >= 0 ? 'outline-2 outline-info' : 'group-hover:outline-2 group-hover:outline-info/45'))}
+                    // La elegida, el marco celeste con la luz que gira (`FxFrame`, como en la mano y la mesa; la mira del Target conviven); al pasar el mouse, el aro fino de la mesa.
+                    className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD, choosing && order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}
                     style={fxVars('red')}
                   >
                     {card.faceDown ? <span className={CARD_BACK} /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                     {targeted.has(card.id) ? <TargetMark /> : null}
                     {card.faceUp ? <span className="absolute inset-x-0 bottom-0 z-2 bg-background/85 px-1 py-px text-center text-micro font-bold leading-tight text-white">{t('practice.dialog.faceUpTag')}</span> : null}
-                    {order >= 0 ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-4 grid h-5 min-w-5 place-items-center rounded-full bg-info px-1 text-micro font-bold leading-none tabular-nums text-info-foreground">{order + 1}</span> : null}
+                    {order >= 0 ? <FxFrame tone="cyan" /> : null}
+                    {order >= 0 ? <span aria-hidden="true" className={PICK_ORDER}>{order + 1}</span> : null}
                   </span>
                   {anonymous ? null : <span className="truncate text-micro text-foreground">{label}</span>}
                 </button>

@@ -136,9 +136,8 @@ export const auto = {
   'auto.lane.rivalChoosing': 'El rival está eligiendo',
   'auto.lane.respondTo': 'Podés responder a {card} con {cards}',
   'auto.lane.pass': 'No responder',
-  // La banda de responder a una cadena: a qué eslabón (sin nombres: la carta la dice su arte), con qué cartas y qué número tomaría tu respuesta.
-  'auto.respond.to': 'Responder a CL{link} · {who}',
-  'auto.respond.toLink': 'Responder a CL{link}',
+  // La banda de responder a una cadena (a qué eslabón lo dice la pila de arriba): con qué cartas y qué número tomaría tu respuesta.
+  'auto.respond.title': 'Responder a la cadena',
   'auto.respond.now': '¿Activás algo ahora?',
   'auto.respond.cards': 'Podés responder con',
   'auto.respond.chain': 'Encadenar como CL{link}',
@@ -147,7 +146,7 @@ export const auto = {
   // Sin nombres: lo que hay que activar brilla en la mesa.
   'auto.lane.mustActivate': { one: 'Tenés que activar la carta que brilla: tocala', other: 'Tenés que activar las {count} cartas que brillan: tocá una' },
   // Varias obligatorias a la vez: se elige cuál entra primero en la cadena (la banda del medio).
-  'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero (CL{link})?',
+  'auto.forced.title': 'Tenés que activar estas {count}. ¿Cuál va primero?',
   'auto.forced.hint': 'Sin «No responder»: son obligatorias.',
   'auto.lane.autoZone': 'La casilla se eligió sola',
   // Los avisos de algo que salió mal, con palabras de la mesa (el detalle técnico va a la consola).
@@ -178,17 +177,6 @@ export const auto = {
 
   // Los pasos y los combos (el panel de la práctica): la lista vacía (acá no se arrastra ni se mantiene) y el repaso de un combo o de tus jugadas en la misma mesa, con la salida.
   'auto.steps.empty': 'Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.',
-  // Las cadenas en la lista de pasos: el eslabón de tu activación, cómo resolvió y el renglón de cierre (cada eslabón, los del rival también).
-  'auto.steps.link': 'Cadena {chain} · CL{link}',
-  'auto.steps.cost': 'Cadena {chain} · CL{link} · costo',
-  'auto.steps.noEffect': 'Resuelve: sin efecto',
-  'auto.steps.noEffectBy': 'Resuelve: sin efecto · por CL{by}',
-  'auto.steps.solvedStep': 'Resuelve: paso {step}',
-  'auto.steps.solvedSteps': 'Resuelve: pasos {from}–{to}',
-  'auto.steps.chainEnd': 'Cadena {chain} resuelta',
-  'auto.steps.endLink': 'CL{link} {card}: {state}',
-  'auto.steps.endLinkBy': 'CL{link} {card}: {state} por CL{by}',
-  'auto.steps.theirs': '{card} ({rival})',
   'auto.review.combo': 'Repasás “{name}”: el duelo te espera donde lo dejaste.',
   'auto.review.plays': 'Repasás tus jugadas: el duelo te espera donde lo dejaste.',
   'auto.review.back': 'Volver al duelo',

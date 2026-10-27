@@ -85,7 +85,6 @@ import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { artOfDrawId } from '../duel/duel-art'
-import { PromptCrowdedContext } from '../duel/MatPrompt'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from './compact-field'
 import { stepTone } from './step-tone'
@@ -98,9 +97,10 @@ import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, H
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
-import { createPanelSteps, type PanelChains } from './panel-steps'
+import { createPanelSteps } from './panel-steps'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
+import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
 import { CARD_BACK, CARD_BACK_URL, glowFrame } from './practice-styles'
@@ -128,7 +128,9 @@ const MOBILE_HAND_GAP = 14
 
 /** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
 const CHAIN_BELOW_BAR_PX = 52
-/** Lo que la pregunta del medio nunca tapa: las cartas de las Zonas Extra (las tuyas y las del rival, que van en las mismas casillas) y las de tu mano. */
+/** Lo que mide un eslabón de la lista de la cadena (con el aire de la lista): con menos lugar que eso, la pila queda en su resumen mientras se pregunta. */
+const CHAIN_ROW_PX = 56
+/** Lo que la pregunta del medio no tapa mientras haya lugar: las cartas de las Zonas Extra (las tuyas y las del rival, que van en las mismas casillas) y las de tu mano. */
 const KEEP_CARDS = '[data-drop^="emz:"] [data-card-id], [data-drop^="emz:"] [data-rival-card-id], [data-drop="hand"] [data-card-id]'
 /** Lo que tampoco tapa si puede: las Zonas Extra vacías, tus monstruos y las cartas del rival. */
 const MONSTER_CARDS = '[data-drop^="emz:"], [data-drop^="mz:"] [data-card-id], [data-rival-card-id]'
@@ -159,7 +161,7 @@ export interface DuelMatLink {
   /** Lo que el + ofrece además de la ficha y los contadores en un duelo (la moneda, el dado y los juegos): cada uno abre lo suyo. */
   plusItems?: ReadonlyArray<{ label: string; onSelect: () => void }>
   life: ReactNode
-  /** Escritorio sin laterales: las vidas del rival en la esquina de arriba a la derecha del campo, encima de su borde y al costado de su mano (lámina 07). */
+  /** Sin laterales: las vidas del rival en la esquina de arriba a la derecha del campo, encima de su borde y al costado de su mano (lámina 07; en el celular, sólo con su mano a la vista: se apoya en su lugar). */
   corner?: ReactNode
   /**
    * Escritorio: la botonera redonda (`AutoDock`), abajo a la derecha, en la fila de abajo de la mano; con ella, tus vidas (`life`) van a la izquierda de esa fila, en la esquina opuesta a las del
@@ -211,6 +213,8 @@ export interface DuelMatLink {
   undoBlocked?: boolean
   /** Deshacer va arriba, en la barra de la pantalla (`header`, con los íconos de la práctica: `MatBarActions`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). */
   undoInHeader?: boolean
+  /** «Jugar solo automático»: tu última activación, mientras se puede deshacer y dura su aviso (`UndoChip`, en la fila de abajo; tocarlo es `onUndo`). */
+  undoPlay?: UndoPlay | null
   /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
   control?: ControlOffer
   /** En qué turno del duelo van los dos juntos (`duelTurnNumber`): con él el asistente sabe si una activación es del mismo turno. Sin duelo, el turno de la mesa. */
@@ -226,8 +230,6 @@ export interface DuelMatLink {
    * y en una hoja en el celular, que se abre con su botón abajo a la derecha (donde va el chat en el duelo por enlace). Sin esto (el duelo por enlace), no hay pasos ni combos.
    */
   steps?: boolean
-  /** Las cadenas en esa lista de pasos (`panelChainsOf`): sin esto (un combo guardado que se repasa), los pasos van sin ellas. */
-  stepChains?: PanelChains
   /** Un panel fijo a la izquierda de la mesa, sólo en pantallas anchas (`DUEL_DETAIL_DOCK_MEDIA_QUERY`: el detalle de la carta que se tocó): la mesa le deja 20rem (o lo que se le dé arrastrando su borde) y no se mueve cuando cambia. */
   detail?: ReactNode
   /** Se hizo click en una carta tuya (de la mano, del campo o de un visor de pila): `detail` la muestra y queda fija hasta un click afuera o en otra carta. */
@@ -943,6 +945,12 @@ export function PracticeMat({
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
   useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
 
+  // El aviso de «Deshacer» de lo que acabás de activar: en la práctica, la jugada `at` (se ve mientras es la última y no se deshizo); en el automático lo arma la pantalla (`duel.undoPlay`).
+  const practice = !duel
+  const [manualPlay, setManualPlay] = useState<(UndoPlay & { at: number }) | null>(null)
+  const timedPlay = useUndoPlay(manualPlay)
+  const undoPlay = duel ? (duel.undoPlay ?? null) : timedPlay && !session.replay && session.cursor === timedPlay.at && session.actions.length === timedPlay.at ? timedPlay : null
+
   // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
@@ -1109,6 +1117,8 @@ export function PracticeMat({
       const repeated = repeatedTurnRule(session.initial, session.actions.slice(0, session.cursor), played)
 
       onDispatch(played)
+      // La práctica: lo que activaste, con su aviso de «Deshacer» (otra jugada lo saca).
+      if (practice) setManualPlay(activated === null ? null : { key: Date.now(), art: artOf(cardOf(activated)), at: session.cursor + 1 })
       if (activated !== null) recordUsage(played, activated)
       if (repeated !== null) showToastMessage(t(repeated === 'normalSummon' ? 'practice.assistant.normalAgain' : 'practice.assistant.pendulumAgain'), 'warning')
       setMenu(null)
@@ -1131,7 +1141,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer, searching, recordUsage, state, kindOf, session.initial, session.actions, session.cursor],
+    [onDispatch, viewer, closeViewer, searching, recordUsage, state, kindOf, session.initial, session.actions, session.cursor, practice, cardOf],
   )
 
   // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).
@@ -1859,7 +1869,6 @@ export function PracticeMat({
       onDelete={deleteCombo}
       showCombos={stepsPanel}
       {...(duel?.auto ? { emptyHint: t('auto.steps.empty') } : {})}
-      {...(duel?.stepChains ? { chains: duel.stepChains } : {})}
       className="min-h-0 flex-1"
     />
   )
@@ -2158,14 +2167,13 @@ export function PracticeMat({
     return () => window.removeEventListener('resize', place)
   }, [hasChain, rails, view])
 
-  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder, las cartas de las Zonas Extra y de la mano, ni la tira de
-  // un visor abierto; si puede, tampoco los demás monstruos. Si cae encima, se corre lo justo (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo. Si no entra en
-  // ningún lado, esa pregunta abre minimizada (`PromptCrowdedContext`, por su `key`: la siguiente vuelve a probar). Minimizada (`data-minimized`), el asa va donde no tapa ninguna
-  // carta ni la píldora de la cadena y, si no hay hueco, arriba, debajo de la barra. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
+  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder, las cartas de las Zonas Extra y de la mano, la pila de la
+  // cadena ni la tira de un visor abierto; si puede, tampoco los demás monstruos. Si cae encima, se corre lo justo (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo.
+  // Si no entra en ningún lado, abre entera igual donde menos tapa (sin tapar lo que brilla, si puede): la minimiza la persona. Minimizada (`data-minimized`), el asa va donde no tapa
+  // ninguna carta ni la píldora de la cadena y, si no hay hueco, arriba, debajo de la barra. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
   const promptRef = useRef<HTMLDivElement | null>(null)
   const hasPrompt = Boolean(duel?.prompt)
   const promptKey = isValidElement(duel?.prompt) ? duel.prompt.key : null
-  const [crowdedKey, setCrowdedKey] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     const box = promptRef.current
@@ -2178,9 +2186,9 @@ export function PracticeMat({
       const chain = chainRef.current
 
       if (!chain) return
-      delete chain.dataset.banded
+      delete chain.dataset.squeezed
       chain.style.translate = ''
-      chain.style.visibility = ''
+      chain.querySelector<HTMLElement>('[data-chain-list]')?.style.removeProperty('max-height')
     }
     const place = () => {
       box.style.translate = ''
@@ -2205,36 +2213,40 @@ export function PracticeMat({
       }
       // En el celular termina arriba de tus monstruos (`promptAbove`) y crece sobre el campo del rival: la mano y tu campo quedan a la vista. Sin lugar, va por la ranura de siempre.
       const floor = isDesktop ? undefined : section.querySelector('[data-drop="mz:0"]')?.getBoundingClientRect().top
-      // Con la cadena a la vista (celular), no se pisan: la píldora queda en un renglón (`data-banded`) y sube al lugar del aviso de la línea (vacío mientras se pregunta), y la
-      // pregunta va debajo de ella. Si así no entra, gana la pregunta (es lo que hay que contestar): la píldora se aparta hasta que se conteste.
-      const notice = floor === undefined ? null : chainRef.current?.querySelector('[data-testid="chain-notice"]')
-      const chain = notice ? chainRef.current! : null
+      // La pila de la cadena arriba y la pregunta debajo, sin taparla: en el celular la pila sube al lugar del aviso de la línea (vacío mientras se pregunta) y la pregunta va debajo
+      // de su píldora (`ceiling`). La lista se acorta a lo que queda (se desplaza) y, sin lugar ni para un eslabón, la pila queda en su resumen mientras se pregunta (`data-squeezed`,
+      // con su flecha). Si ni la píldora entra, la pregunta la tapa y la persona minimiza lo que le estorbe.
+      const notice = chainRef.current?.querySelector('[data-testid="chain-notice"]') ?? null
+      const pile = notice ? [notice.getBoundingClientRect()] : []
+      const chain = notice && floor !== undefined ? chainRef.current! : null
       let ceiling = min
 
       if (chain && notice) {
-        chain.dataset.banded = ''
-        chain.style.translate = rails || section.querySelector('[data-lane]') ? '' : `0 ${4 - CHAIN_BELOW_BAR_PX}px`
-        ceiling = Math.max(min, notice.getBoundingClientRect().bottom + 8)
-      }
-      const aboveOf = (obstacles: readonly Box[]) => (floor === undefined ? null : (promptAbove(at, obstacles, ceiling, Math.min(floor, max)) ?? (chain ? promptAbove(at, obstacles, min, Math.min(floor, max)) : null)))
-      const among = (obstacles: readonly Box[]) => {
-        const above = aboveOf(obstacles)
-        const top = above ?? promptTop(at, [...obstacles, ...strip], min, max)
+        // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
+        const lift = rails || section.querySelector('[data-lane]') ? 0 : Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - min)))
 
-        return top === null ? null : { top, above }
+        chain.style.translate = lift > 0 ? `0 ${-lift}px` : ''
+        ceiling = Math.max(min, (notice.firstElementChild ?? notice).getBoundingClientRect().bottom + 8)
       }
-      // Sin tapar los monstruos si puede y nunca lo que brilla, las Zonas Extra ni la mano (`promptFit`). Si no entra, la pregunta abre minimizada; reabierta a mano, como antes:
-      // sin lugar para todo, la tira abierta gana (es lo que se está mirando).
-      let spot = promptFit(among, [...glows, ...rects(KEEP_CARDS)], rects(MONSTER_CARDS))
+      const among = (top: number) => (obstacles: readonly Box[]) => {
+        const above = floor === undefined ? null : promptAbove(at, obstacles, top, Math.min(floor, max))
+        const y = above ?? promptTop(at, [...obstacles, ...strip], top, max)
 
-      if (!spot) {
-        // Con la tira de un visor abierta, la tira gana sin minimizar la pregunta (al cerrarla, vuelve a probar).
-        if (promptKey !== null && strip.length === 0) setCrowdedKey(promptKey)
-        const above = aboveOf(glows)
-
-        spot = { top: above ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top, above }
+        return y === null ? null : { top: y, above }
       }
-      if (chain && (spot.above === null || spot.above < ceiling)) chain.style.visibility = 'hidden'
+      // Sin tapar los monstruos si puede y nunca lo que brilla, las Zonas Extra, la mano ni la pila de la cadena (`promptFit`; en el celular, la píldora la cuida `ceiling`). Si
+      // no entra, abre entera igual donde menos tapa: sin tapar la pila (dice a qué se responde; lo que brilla está también en el cartel) o lo que brilla y, si no, la tira abierta gana.
+      const spot =
+        promptFit(among(ceiling), [...glows, ...rects(KEEP_CARDS), ...(chain ? [] : pile)], rects(MONSTER_CARDS)) ??
+        ((above) => ({ top: above ?? promptTop(at, [...pile, ...strip], min, max) ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top, above }))(floor === undefined ? null : promptAbove(at, glows, min, Math.min(floor, max)))
+      const list = chain?.querySelector<HTMLElement>('[data-chain-list]')
+
+      if (chain && list) {
+        const room = spot.top - 8 - list.getBoundingClientRect().top
+
+        if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
+        else if (room < list.getBoundingClientRect().height) list.style.maxHeight = `${Math.floor(room)}px`
+      }
       move(spot.top)
     }
     const later = () => {
@@ -2276,8 +2288,13 @@ export function PracticeMat({
   // Deshacer de un duelo, abajo, donde llega el pulgar (en la práctica y en «Jugar solo automático» va arriba, con los íconos de la mesa: `MatBarActions`), y la ficha y la lista de pasos.
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
+  // El mismo Deshacer en la barra, abajo y en el aviso de lo que acabás de activar (`undoChip`).
+  const undoLast = () => {
+    setAutoplay(false)
+    onUndo()
+  }
   const undoButton = (
-    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={undoLast}>
       <Icon name="undo" />
     </IconButton>
   )
@@ -2396,7 +2413,7 @@ export function PracticeMat({
       {duel ? null : (
         // En un celular angosto los botones y el turno no entran en una fila: se achican (`MAT_BAR_ROW`) y el turno se esconde.
         // Con el detalle fijo a la izquierda (columna 1), la barra va arriba de la mesa (columna 2), no encima del detalle.
-        <div className={cx('col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
+        <div className={cx('relative col-start-1 row-start-1 px-2 pt-2 max-[419px]:px-1 min-[1101px]:px-4 min-[1101px]:pt-3', MAT_BAR_ROW, Boolean(detail) && 'min-[1440px]:col-start-2')} role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
           {onExit ? <MatExitButton onExit={onExit} /> : null}
           <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
@@ -2405,10 +2422,7 @@ export function PracticeMat({
           {/* Las handtraps del rival: «Entrenar solo» entra directo a la mesa, así que se encienden y se elige el pool acá; aplicar reparte una mano nueva. */}
           <MatBarActions
             className="ml-auto"
-            onUndo={() => {
-              setAutoplay(false)
-              onUndo()
-            }}
+            onUndo={undoLast}
             canUndo={session.cursor > 0}
             onNewHand={onNewHand}
             onHandtraps={onNewHand}
@@ -2416,6 +2430,12 @@ export function PracticeMat({
             canSave={session.cursor > 0}
           />
           {stepsButton}
+          {/* Lo que acabás de activar se deshace desde acá también: abajo de la barra, a la derecha, en el aire que queda arriba del campo (no tapa cartas). */}
+          {undoPlay ? (
+            <div className="absolute right-2 top-full z-30 mt-2 min-[1101px]:right-4">
+              <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} />
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -2435,9 +2455,9 @@ export function PracticeMat({
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
         <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'relative my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
-        {/* Las vidas del rival en la esquina de arriba a la derecha (escritorio sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
-        {duel?.corner && isDesktop && !rails ? (
-          <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: THEIR_HAND.desktop.room }}>
+        {/* Las vidas del rival en la esquina de arriba a la derecha (sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
+        {duel?.corner && !rails && (isDesktop || duel.rivalHand) ? (
+          <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room }}>
             {duel.corner}
           </div>
         ) : null}
@@ -2497,7 +2517,7 @@ export function PracticeMat({
                 className={cx(
                   'grid size-11 place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
                   // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
-                  myTurn ? 'cursor-pointer border-info bg-info text-accent-foreground hover:bg-info-soft' : 'border-accent bg-accent text-accent-foreground',
+                  myTurn ? 'cursor-pointer border-info bg-warning-solid text-white hover:border-info-soft' : 'border-accent bg-primary text-white',
                 )}
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
@@ -2648,8 +2668,9 @@ export function PracticeMat({
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* La barra tiene su propia fila abajo de la mano, también en escritorio: antes subía sobre la franja de abajo de la mano, y con la mano ancha de una notebook (1280–1440 px, con el menú y el chat abiertos) las fases y Pasar turno quedaban encima de las cartas, entre el 55 y el 75 % de su área. */}
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
-        {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven. */}
-        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
+        {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven.
+            Repasando un combo en un duelo, los controles del replay toman también ese margen (abajo, al lado de la mano, está libre): en el lateral solo no entraban y se cortaban. */}
+        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails && !(duel && replayBar) ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido. Celular: las vidas a la izquierda, las dos reacciones en el medio (centradas, alineadas con las vidas y los botones) y deshacer y el chat a la derecha
               (el pulgar de quien juega con la derecha). Escritorio: deshacer junto a tus vidas, en la esquina opuesta a las del rival. */}
           {duel ? (
@@ -2678,6 +2699,13 @@ export function PracticeMat({
                 </span>
               </div>
               )}
+              {/* Lo que acabás de activar («Jugar solo automático»), con su Deshacer: en esta fila, en el lugar libre (celular: junto a Pasos; escritorio: entre tus vidas y la botonera; con
+                  laterales, arriba de lo apilado). Flota: no corre nada. Eligiendo, la fila es de lo que falta elegir. */}
+              {undoPlay && !choosing ? (
+                <div className={cx('absolute z-10', rails ? 'bottom-full right-0 mb-2' : 'top-1/2 -translate-y-1/2 max-[1101px]:right-13 min-[1101px]:left-1/2 min-[1101px]:-translate-x-1/2')}>
+                  <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} />
+                </div>
+              ) : null}
               {status}
             </div>
           ) : (
@@ -2877,7 +2905,7 @@ export function PracticeMat({
           <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
             <div ref={promptRef} className="pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
-              <PromptCrowdedContext value={promptKey !== null && crowdedKey === promptKey}>{duel.prompt}</PromptCrowdedContext>
+              {duel.prompt}
             </div>
           </div>
         ) : null}
@@ -3027,9 +3055,9 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, st
         <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[135ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)}>
           <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
         </span>
-        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}
+        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning-solid px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white motion-reduce:animate-none">{placed.counters}</span> : null}
         <MaterialCount count={materials} sideways={sideways} />
-        {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
+        {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-primary py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-white">{chosen}</span> : null}
         {framed ? <FxFrame tone="cyan" /> : null}
         {frame ? <FxFrame tone={frame.tone} orbit={frame.orbit} /> : null}
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}

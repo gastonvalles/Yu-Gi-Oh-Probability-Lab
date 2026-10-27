@@ -62,7 +62,12 @@ function FakeAutoDuel(props: AutoDuelScreenProps) {
 const autoOf = (view: RenderResult) => within(view.container).queryByTestId('auto-duel')
 const pile = (view: RenderResult, owner: 'mine' | 'theirs', name: string) => view.container.querySelector(owner === 'mine' ? `[data-drop="${name}"]` : `[data-rival-drop="${name}"]`)?.getAttribute('aria-label')
 const rivalCards = (view: RenderResult) => view.container.querySelectorAll('[data-rival-card-id]').length
-const turnLine = (view: RenderResult) => within(view.container).getByTestId('duel-phase').parentElement!.textContent
+// De quién es el turno y la fase (la píldora: su sigla y su nombre).
+const turnLine = (view: RenderResult) => {
+  const pill = within(view.container).getByTestId('duel-phase')
+
+  return `${pill.previousElementSibling!.textContent} · ${pill.lastChild!.textContent}`
+}
 
 beforeEach(() => {
   memory = createMemoryRoom()

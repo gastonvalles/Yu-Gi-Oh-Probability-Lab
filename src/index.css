@@ -1422,6 +1422,15 @@
   }
 }
 
+/* La placa de vidas (`LifeTile`): flota sobre la mesa (la mesa es la excepción a «sin brillos»): degradado índigo de arriba abajo, un filo de luz de 1 px arriba, uno oscuro abajo y su sombra. El borde, del color del dueño. */
+@utility life-plate {
+  background-image: linear-gradient(180deg, var(--surface-raised), var(--card-background) 52%, var(--background));
+  box-shadow:
+    inset 0 1px 0 rgb(var(--foreground-rgb) / 0.12),
+    inset 0 -1px 0 rgb(0 0 0 / 0.35),
+    0 10px 26px rgb(0 0 0 / 0.5);
+}
+
 /*
  * El arte de la magia de campo activada (`FieldArt`; Gastón, 2026-10-21): la única imagen del tapete. Cubre la mitad de quien la activó (el lugar lo da `grid-area`, en línea), bien visible (al 60 %: con 45 % «quedó muy tenue», Gastón; a 70 % las etiquetas chicas de las pilas se apagaban sobre un arte oscuro) y sin
  * desenfoque ni filtros (rendimiento). Una máscara (dos degradés que se cruzan) la desvanece en todos sus bordes, sin cortes rectos, y más hacia la fila del medio (arriba la tuya, abajo la del
@@ -1646,6 +1655,7 @@
   --color-success-soft: var(--success-soft);
   --color-success-solid: var(--success-solid);
   --color-warning-soft: var(--warning-soft);
+  --color-warning-solid: var(--warning-solid);
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
   /* El texto (y el pulgar del interruptor) sobre un relleno ámbar: el índigo del fondo (12,3:1; el blanco sobre ámbar no se lee, 1,5:1). */
@@ -1714,6 +1724,8 @@
     /* Ojo / a medio hacer: ámbar de la paleta (el violeta es de lo tuyo: acción principal y selección). */
     --warning: #f7cb15;
     --warning-rgb: 247 203 21;
+    /* El ámbar de un relleno con texto blanco (lo elegido, lo del rival, los contadores): el ámbar con 45 % de negro, como `--success-solid` (blanco 4,8:1; sobre el claro, 1,6:1). */
+    --warning-solid: color-mix(in srgb, #f7cb15 55%, black);
     /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, con el peso de los otros brillos; el ámbar queda para lo que se activa o se resuelve. */
     --playable-rgb: 168 236 255;
     --danger: #da0000;

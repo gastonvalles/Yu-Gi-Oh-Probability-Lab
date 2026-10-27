@@ -6,9 +6,18 @@ const FOCUSABLE =
 // Pila de trampas activas: con un diálogo sobre un panel, sólo la de arriba mueve el foco.
 const activeTraps: symbol[] = []
 
+const TYPING = 'input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="file"]), textarea, [contenteditable]:not([contenteditable="false"])'
+
+/**
+ * Enfocarlo al abrir algo abriría el teclado del celular sin que nadie lo pidiera: un campo de texto con puntero táctil. Se escribe al tocarlo; sólo una superficie que existe
+ * para escribir (el buscador de la app) lo marca `data-initial-focus="type"`. Con mouse, el buscador de un visor sigue recibiendo el foco al abrirse.
+ */
+export const opensKeyboard = (element: Element) =>
+  element.matches(TYPING) && element.getAttribute('data-initial-focus') !== 'type' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+
 /**
  * Comportamiento de foco de un diálogo modal: al abrir mueve el foco adentro (a `[data-initial-focus]`,
- * si no al primer control, si no al panel), Tab/Shift+Tab giran dentro del panel y al cerrar el foco
+ * si no al primer control, si no al panel; nunca a lo que abriría el teclado: `opensKeyboard`), Tab/Shift+Tab giran dentro del panel y al cerrar el foco
  * vuelve a donde estaba. El panel debería tener `tabIndex={-1}` para poder recibir foco si está vacío.
  */
 export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true): void {
@@ -24,8 +33,7 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true):
     const previousFocus = document.activeElement
 
     const frame = requestAnimationFrame(() => {
-      const target =
-        panel.querySelector<HTMLElement>('[data-initial-focus]') ?? panel.querySelector<HTMLElement>(FOCUSABLE) ?? panel
+      const target = [...panel.querySelectorAll<HTMLElement>('[data-initial-focus]'), ...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].find((element) => !opensKeyboard(element)) ?? panel
       target.focus({ preventScroll: true })
     })
 

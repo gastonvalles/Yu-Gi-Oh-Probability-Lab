@@ -278,7 +278,7 @@ function PhaseTag({ short, name, active }: { short: string; name: string; active
       aria-label={active ? t('duel.phase.current', { phase: name }) : name}
       className={cx(
         'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none min-[1101px]:text-micro',
-        active ? 'border-accent bg-accent text-accent-foreground' : 'border-tint/25 text-soft',
+        active ? 'border-accent bg-primary text-white' : 'border-tint/25 text-soft',
       )}
     >
       {short}
@@ -412,7 +412,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: named })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
-        {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
+        {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning-solid px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
       </div>
       {link ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
       {stat ? <StatTag stat={stat} sideways={sideways} /> : null}

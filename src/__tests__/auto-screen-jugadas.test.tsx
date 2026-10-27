@@ -149,18 +149,36 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
   })
 
-  it('cadena con un eslabón: la banda dice a qué eslabón y de quién, sin nombres (su carta chica a la izquierda, por su arte) y la principal encadena con el número que tomaría', () => {
+  it('cadena con un eslabón: a qué eslabón y de quién lo dice la pila de la cadena, desplegada arriba; la banda, debajo, sólo «Responder a la cadena» (sin repetir el eslabón ni su carta) y la principal encadena con el número que tomaría', () => {
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
 
     core(() => fake.set({ overlay: { ...overlay, chain: [{ card: { side: 'mine', id: 'card-200-1' }, code: 200, description: '0', state: 'chained' }] } }))
     core(() => fake.ask(CHAIN))
-    const band = screen.getByRole('group', { name: 'Responder a CL1 · Vos' })
+    const band = screen.getByRole('group', { name: 'Responder a la cadena' })
 
-    expect(band).not.toHaveTextContent('Maxx C')
-    expect(within(band).getByRole('img', { name: 'Maxx C' })).toBeInTheDocument()
+    expect(band).not.toHaveTextContent(/Maxx C|CL1|Vos/)
+    expect(within(band).queryByRole('img', { name: 'Maxx C' })).toBeNull()
     fireEvent.click(within(band).getByRole('button', { name: 'Encadenar como CL2' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
+  })
+
+  it('sin lugar libre (todo choca), la banda de responder abre entera igual y la pila de la cadena sigue a la vista y desplegada: nada se minimiza ni se esconde solo', () => {
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, top: 0, left: 0, bottom: 800, right: 400, width: 400, height: 800, toJSON: () => ({}) })
+    const fake = renderAuto()
+    const overlay = fake.getSnapshot().overlay
+    const mine = { side: 'mine' as const, id: 'card-200-1' }
+
+    core(() => fake.set({ overlay: { ...overlay, chain: [{ card: mine, code: 200, description: '0', state: 'chained' }] }, chainSteps: [{ kind: 'chain', at: 0, index: 0, link: { card: mine, code: 200, mine: true } }] }))
+    core(() => vi.advanceTimersByTime(0))
+    core(() => fake.ask(CHAIN))
+    const notice = screen.getByTestId('chain-notice')
+
+    expect(screen.getByRole('group', { name: 'Responder a la cadena' })).not.toHaveAttribute('data-minimized')
+    expect(screen.getByTestId('duel-prompt-layer').querySelector('[data-minimized]')).toBeNull()
+    expect(within(notice).getByRole('list', { name: /Eslabones/ })).toBeInTheDocument()
+    expect(screen.getByTestId('duel-chain-layer').style.visibility).toBe('')
+    spy.mockRestore()
   })
 
   it('minimizada, la banda de responder es un asa de una línea: la carta que brilla sigue respondiendo y la pregunta siguiente vuelve a abrirse sola', () => {

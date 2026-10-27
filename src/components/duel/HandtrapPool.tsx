@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 
 import { cardSmallImageUrl, type Expansion } from '../../app/card-prices'
 import {
@@ -22,7 +22,6 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
-import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { SearchField } from '../ui/SearchField'
 import { Stepper } from '../ui/Stepper'
@@ -92,11 +91,11 @@ export function AutoDuelRow() {
 }
 
 /**
- * El simulador de handtraps dentro de la práctica: «Entrenar solo» entra directo a la mesa, sin pasar por las reglas de la sala, así que el botón de la barra de la mesa abre
- * la misma hoja. Aplicar guarda lo elegido y reparte una mano nueva (`onApply`), con el simulador encendido o apagado; se recuerda igual que lo de las reglas de la sala.
+ * El simulador de handtraps dentro de la mesa: «Entrenar solo» entra directo a la mesa, sin pasar por las reglas de la sala, así que «Handtraps del rival» del menú ⋯ de la barra (`MatMoreMenu`)
+ * abre la misma hoja (`open`; la hoja es `sheet`). Aplicar guarda lo elegido y reparte una mano nueva (`onApply`), con el simulador encendido o apagado; se recuerda igual que lo de las reglas de la sala.
  * En el duelo automático (`auto`) la hoja es la suya: aplicar arma el duelo de nuevo.
  */
-export function HandtrapsMatButton({ onApply, auto = false, className }: { onApply: () => void; auto?: boolean; className?: string }) {
+export function useHandtrapsSheet({ onApply, auto = false }: { onApply: () => void; auto?: boolean }): { config: HandtrapConfig; open: () => void; sheet: ReactNode } {
   const [config, setConfig] = useState<HandtrapConfig>(readHandtrapConfig)
   const [choosing, setChoosing] = useState(false)
   const apply = (next: HandtrapConfig) => {
@@ -107,20 +106,10 @@ export function HandtrapsMatButton({ onApply, auto = false, className }: { onApp
     onApply()
   }
 
-  return (
-    <>
-      <IconButton
-        tone="flat"
-        size="sm"
-        className={className}
-        aria-label={t('handtraps.title')}
-        title={t(config.enabled ? 'handtraps.mat.on' : 'handtraps.mat.off')}
-        aria-haspopup="dialog"
-        aria-pressed={config.enabled}
-        onClick={() => setChoosing(true)}
-      >
-        <Icon name="hand" />
-      </IconButton>
+  return {
+    config,
+    open: () => setChoosing(true),
+    sheet: (
       <HandtrapPicker
         isOpen={choosing}
         config={config}
@@ -131,8 +120,8 @@ export function HandtrapsMatButton({ onApply, auto = false, className }: { onApp
         onSave={(picks, hand) => apply({ enabled: true, picks, hand })}
         onTurnOff={config.enabled ? () => apply({ ...config, enabled: false }) : undefined}
       />
-    </>
-  )
+    ),
+  }
 }
 
 /** La lista de la hoja: una columna en el celular y dos desde 640 px, sin cajas (sólo la que está en el deck del rival se marca). */
@@ -160,7 +149,7 @@ export function HandtrapPoolCard({ card, copies, onChange, note }: HandtrapPoolC
       <span aria-hidden="true" className="relative aspect-[421/614] w-10 shrink-0 overflow-hidden rounded-none bg-input">
         <CardArt remoteUrl={cardSmallImageUrl(card.id)} name={card.name} className={cx('block h-full w-full object-cover transition-opacity duration-150 motion-reduce:transition-none', !chosen && 'opacity-55')} />
         {chosen ? (
-          <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-info text-info-foreground">
+          <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-warning-solid text-white">
             <Icon name="check" size={11} strokeWidth={3} />
           </span>
         ) : null}

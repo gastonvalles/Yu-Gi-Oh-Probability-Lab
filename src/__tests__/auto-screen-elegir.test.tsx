@@ -178,6 +178,46 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers[1]).toEqual({ type: 'select_unselect_card', index: 1 })
   })
 
+  it('unselect de 1 a 2 para agregar a tu mano: el núcleo vuelve a preguntar tras cada toque y es la misma banda (el mismo nodo: no sale ni vuelve a entrar, las cartas no se corren); otra decisión, otra banda', () => {
+    const fake = renderAuto()
+    const first: CoreAsk = { type: 'select_unselect_card', player: 0, can_finish: false, can_cancel: true, min: 1, max: 2, select_cards: [pos(100, L.HAND, 0, 10), pos(400, L.GRAVE, 0, 5)], unselect_cards: [] }
+
+    core(() => fake.ask(first, '506'))
+    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 0/2' })
+    const order = within(band).getAllByRole('option')
+    const nibiru = within(band).getByRole('option', { name: /Nibiru/ })
+
+    fireEvent.click(nibiru)
+    expect(fake.answers).toEqual([{ type: 'select_unselect_card', index: 1 }])
+    // Mientras el núcleo vuelve a preguntar, sigue la misma (quieta).
+    expect(screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 0/2' })).toBe(band)
+    core(() => fake.ask({ ...first, can_finish: true, select_cards: [first.select_cards[0]!], unselect_cards: [first.select_cards[1]!] }, '506'))
+    const again = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para agregar a tu mano · 1/2' })
+
+    expect(again).toBe(band)
+    expect(within(again).getAllByRole('option')).toEqual(order)
+    expect(nibiru).toHaveAttribute('aria-selected', 'true')
+    expect(nibiru.querySelector('[data-fx="frame"]')).not.toBeNull()
+    fireEvent.click(within(again).getByRole('button', { name: 'Elegir 1 carta' }))
+    expect(fake.answers[1]).toEqual({ type: 'select_unselect_card', index: null })
+
+    core(() => fake.ask(UNSELECT_LIST))
+    expect(screen.getByRole('group', { name: /de 1 a 3/ })).not.toBe(band)
+  })
+
+  it('unselect: si tras elegir quedan todas en el deck (el núcleo saca las que ya no valen), sigue la misma banda y no se pasa al visor del deck', () => {
+    const fake = renderAuto()
+    const first: CoreAsk = { type: 'select_unselect_card', player: 0, can_finish: false, can_cancel: true, min: 1, max: 2, select_cards: [pos(101, L.DECK, 1, 10), pos(102, L.DECK, 0, 10), pos(400, L.GRAVE, 0, 5)], unselect_cards: [] }
+
+    core(() => fake.ask(first, '506'))
+    const band = screen.getByRole('group', { name: /agregar a tu mano · 0\/2$/ })
+
+    fireEvent.click(within(band).getByRole('option', { name: /Droll/ }))
+    core(() => fake.ask({ ...first, can_finish: true, select_cards: [first.select_cards[1]!], unselect_cards: [first.select_cards[0]!] }, '506'))
+    expect(screen.getByRole('group', { name: /agregar a tu mano · 1\/2$/ })).toBe(band)
+    expect(screen.queryByRole('dialog', { name: /^Main/ })).toBeNull()
+  })
+
   it('buscar en el deck: el visor muestra sólo las candidatas y tocar una contesta', () => {
     const fake = renderAuto()
 

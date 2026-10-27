@@ -100,7 +100,7 @@ export function promptAbove(prompt: Box, obstacles: readonly Box[], min: number,
 
 /**
  * La pregunta abierta entre las cartas (`place` la ubica sin tapar unos obstáculos: `promptAbove` o `promptTop`): primero sin tapar ninguna de `keep` (lo que brilla, las cartas de las
- * Zonas Extra y de la mano) ni de `soft` (los demás monstruos); si no entra, sin tapar las de `keep`. Si tampoco, null: la pregunta abre minimizada.
+ * Zonas Extra y de la mano) ni de `soft` (los demás monstruos); si no entra, sin tapar las de `keep`. Si tampoco, null: quien la usa la abre entera igual donde menos tapa.
  */
 export function promptFit<T>(place: (obstacles: readonly Box[]) => T | null, keep: readonly Box[], soft: readonly Box[]): T | null {
   return place([...keep, ...soft]) ?? place(keep)

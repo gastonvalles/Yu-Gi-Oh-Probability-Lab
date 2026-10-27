@@ -30,7 +30,7 @@ describe('auto-screen · la cadena negada', () => {
     expect(grayed()).toEqual([])
 
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 2 · Resuelve CL2Sin efecto · por CL2')
+    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 2Resuelve CL2Sin efecto · por CL2')
     // Sobre la carta: la insignia tachada y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
     expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
     expect(cell().querySelector('[data-chain-link]')).toHaveAttribute('data-chain-void', '2')
@@ -42,8 +42,7 @@ describe('auto-screen · la cadena negada', () => {
     expect(cell()).not.toHaveTextContent('Sin efecto')
     expect(screen.getByRole('button', { name: 'Maxx C, eslabón 1 de la cadena. Sin efecto · por CL2' })).toBeInTheDocument()
     expect(cell().getBoundingClientRect()).toEqual(before)
-    // La pila: la fila de la carta negada.
-    fireEvent.click(within(screen.getByTestId('chain-notice')).getByRole('button', { name: 'Ver la cadena' }))
+    // La pila (abre desplegada): la fila de la carta negada.
     expect(screen.getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })).toBeInTheDocument()
   })
 
@@ -80,11 +79,11 @@ describe('auto-screen · varias obligatorias', () => {
     ],
   }
 
-  it('una banda en el medio: cuál va primero (CL1), la primera ya elegida, sin «No responder»; tocar otra la cambia y la principal la activa con su número («Activar como CL1»)', () => {
+  it('una banda en el medio: cuál va primero (el número lo dice la principal), la primera ya elegida, sin «No responder»; tocar otra la cambia y la principal la activa con su número («Activar como CL1»)', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(FORCED))
-    const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero (CL1)?' })
+    const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero?' })
 
     // La línea de «Tenés que activar la carta que brilla: tocala» es para una sola.
     expect(lane()).toBeNull()
@@ -101,7 +100,7 @@ describe('auto-screen · varias obligatorias', () => {
     const rival = { ...pos(700, L.MZONE, 0, 1, 1), description: '0', client_mode: 1 }
 
     core(() => fake.ask({ ...FORCED, selects: [FORCED.selects[0]!, rival] }))
-    const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero (CL1)?' })
+    const band = screen.getByRole('group', { name: 'Tenés que activar estas 2. ¿Cuál va primero?' })
 
     expect(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ })).toHaveTextContent('Rival, Campo')
     fireEvent.click(within(band).getByRole('option', { name: /Blue-Eyes White Dragon/ }))

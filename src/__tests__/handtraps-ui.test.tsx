@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HANDTRAP_CONFIG_KEY, readHandtrapConfig, type HandtrapConfig } from '../app/handtraps'
 import type { MatState } from '../app/practice-mat'
-import { HandtrapPicker, HandtrapsMatButton, HandtrapsRow } from '../components/duel/HandtrapPool'
+import { HandtrapPicker, HandtrapsRow } from '../components/duel/HandtrapPool'
+import { MatBarActions } from '../components/probability/MatBarActions'
 import { RivalHandStrip } from '../components/probability/RivalHandStrip'
 import { Harness, INITIAL, render, status } from './support/practice-mat-harness'
 
@@ -248,15 +249,21 @@ describe('la fila de las reglas de Solo', () => {
   })
 })
 
-describe('el botón de la barra de la mesa (Entrenar solo)', () => {
-  const open = () => fireEvent.click(screen.getByRole('button', { name: 'Handtraps del rival' }))
+describe('«Handtraps del rival» del ⋯ de la barra de la mesa (Entrenar solo)', () => {
+  const HandtrapsMatButton = ({ onApply }: { onApply: () => void }) => <MatBarActions onUndo={() => {}} canUndo={false} onNewHand={() => {}} onHandtraps={onApply} />
+  // El estado se lee en el ⋯, en la fila («prendidas» o «apagadas»); tocarla abre la hoja.
+  const row = () => {
+    if (!screen.queryByRole('menu')) fireEvent.click(screen.getByRole('button', { name: 'Más opciones' }))
+    return screen.getByRole('menuitem', { name: /^Handtraps del rival/ })
+  }
+  const open = () => fireEvent.click(row())
 
   it('abre la hoja; usar las handtraps las guarda, enciende el simulador y reparte una mano nueva', () => {
     const onApply = vi.fn()
 
     render(<HandtrapsMatButton onApply={onApply} />)
 
-    expect(screen.getByRole('button', { name: 'Handtraps del rival' })).toHaveAttribute('aria-pressed', 'false')
+    expect(row()).toHaveTextContent('apagadas')
     open()
     expect(screen.getByText('Al aplicar, se reparte una mano nueva.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Apagar el simulador' })).not.toBeInTheDocument()
@@ -266,7 +273,7 @@ describe('el botón de la barra de la mesa (Entrenar solo)', () => {
 
     expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }], hand: 4 })
     expect(onApply).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: 'Handtraps del rival' })).toHaveAttribute('aria-pressed', 'true')
+    expect(row()).toHaveTextContent('prendidas')
   })
 
   it('con el simulador encendido ofrece apagarlo: se guarda apagado (con las mismas handtraps y la misma mano) y se reparte una mano nueva', () => {
@@ -276,7 +283,7 @@ describe('el botón de la barra de la mesa (Entrenar solo)', () => {
     const onApply = vi.fn()
 
     render(<HandtrapsMatButton onApply={onApply} />)
-    expect(screen.getByRole('button', { name: 'Handtraps del rival' })).toHaveAttribute('aria-pressed', 'true')
+    expect(row()).toHaveTextContent('prendidas')
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Apagar el simulador' }))
 

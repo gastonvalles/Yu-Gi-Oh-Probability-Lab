@@ -15,10 +15,23 @@ const SIZE = {
   lg: { track: 'h-6.5 w-11 p-0.75', thumb: 'size-5', on: 'translate-x-4.5' },
 } as const
 
+const track = (checked: boolean, size: 'md' | 'lg') => cx('inline-flex shrink-0 items-center rounded-full transition-colors', SIZE[size].track, checked ? 'bg-info' : 'bg-tint/20')
+
+function Thumb({ checked, size }: { checked: boolean; size: 'md' | 'lg' }) {
+  return <span className={cx('pointer-events-none inline-block rounded-full transition-[transform,background-color]', SIZE[size].thumb, checked ? cx(SIZE[size].on, 'bg-info-foreground') : 'translate-x-0 bg-soft')} />
+}
+
+/** Lo que se ve del interruptor, sin ser un botón: para una fila que ya es el control (un `menuitemcheckbox` del menú ⋯ de la mesa dice su estado con `aria-checked`; un botón no va dentro de otro). */
+export function SwitchMark({ checked, size = 'md' }: { checked: boolean; size?: 'md' | 'lg' }) {
+  return (
+    <span aria-hidden="true" className={track(checked, size)}>
+      <Thumb checked={checked} size={size} />
+    </span>
+  )
+}
+
 /** Interruptor accesible (role="switch"); `label` es el nombre para lectores de pantalla. Encendido va en ámbar con el pulgar oscuro, como todo lo elegido. */
 export function Switch({ checked, onChange, label, size = 'md', disabled = false }: SwitchProps) {
-  const look = SIZE[size]
-
   return (
     <button
       type="button"
@@ -28,13 +41,12 @@ export function Switch({ checked, onChange, label, size = 'md', disabled = false
       disabled={disabled}
       className={cx(
         // El ::before invisible agranda el área de toque a ~44 px sin cambiar el tamaño visual.
-        'relative inline-flex shrink-0 cursor-pointer items-center rounded-full transition-colors before:absolute before:-inset-3 before:content-[""] focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40',
-        look.track,
-        checked ? 'bg-info' : 'bg-tint/20',
+        'relative cursor-pointer before:absolute before:-inset-3 before:content-[""] focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40',
+        track(checked, size),
       )}
       onClick={() => onChange(!checked)}
     >
-      <span className={cx('pointer-events-none inline-block rounded-full transition-[transform,background-color]', look.thumb, checked ? cx(look.on, 'bg-info-foreground') : 'translate-x-0 bg-soft')} />
+      <Thumb checked={checked} size={size} />
     </button>
   )
 }

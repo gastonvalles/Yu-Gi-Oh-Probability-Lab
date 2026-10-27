@@ -237,7 +237,7 @@ export function CategoryPicker({ index, currentMatcher, derivedMainCards: allCar
                           <span className="shrink-0 font-normal tabular-nums text-muted">{formatCopies(getRemainingCopies(card, usedCopies))}</span>
                           <span
                             aria-hidden="true"
-                            className={cx('grid size-5 shrink-0 place-items-center rounded-full border-[1.5px]', selected ? 'border-info bg-info text-info-foreground' : 'border-border-strong')}
+                            className={cx('grid size-5 shrink-0 place-items-center rounded-full border-[1.5px]', selected ? 'border-info bg-warning-solid text-white' : 'border-border-strong')}
                           >
                             {selected ? <Icon name="check" size={12} strokeWidth={3} /> : null}
                           </span>

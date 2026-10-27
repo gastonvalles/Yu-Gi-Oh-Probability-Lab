@@ -8,6 +8,7 @@ import { STEP_MS } from '../components/auto/AutoSoloScreen'
 import { THINKING_CANCEL_MS } from '../components/duel/DuelBar'
 import { loc } from './support/auto-session-fake'
 import { commits, core, dispatches, hand, handCard, inHand, lane, phaseButton, renderAuto } from './support/auto-screen-harness'
+import { tapMenu } from './support/mat-menu'
 
 // Los estados que no son una jugada: pensando y cancelar, el rearme en un solo commit, el ritmo de a un paso, los errores, el fin y la carga.
 
@@ -161,7 +162,7 @@ describe('auto-screen · los estados', () => {
   it('«Más opciones» ofrece «Reiniciar el mismo duelo»; lo que la mesa no puede mostrar va a la línea', () => {
     const fake = renderAuto()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar el mismo duelo' }))
     expect(fake.restarts).toBe(1)
     core(() => fake.set({ status: 'ready', replaying: false, unmapped: ['swap mz 0 <-> mz 1'] }))

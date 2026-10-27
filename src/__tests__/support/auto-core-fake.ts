@@ -20,9 +20,10 @@ export const loader = (mine = mapped([1, 1, 1, 1, 1])): DataLoader => ({
  * Un anfitrión de mentira con las reglas del de verdad que la sesión usa: cada tanda empieza con `loading` 0, re-simular vuelve a mandar
  * todo desde cero, una respuesta vieja se descarta. La pregunta k es del asiento `seatOf(k)`; antes de cada una las vidas del asiento 0
  * bajan a 8000 - k (así la mesa dice cuántas respuestas lleva) y, en las tres primeras, el asiento 0 roba una carta (una jugada de la
- * mesa); el asiento que no elige recibe `waiting`, como del núcleo. `hold` deja colgada la próxima respuesta (el núcleo «pensando»).
+ * mesa); el asiento que no elige recibe `waiting`, como del núcleo. `hold` deja colgada la próxima respuesta (el núcleo «pensando»). `askOf` cambia qué se pregunta (por defecto,
+ * `IDLE` al asiento 0 y `CHAIN` al 1).
  */
-export function fakeHost(seatOf: (k: number) => Seat = (k) => (k % 3 === 2 ? 1 : 0), react?: (command: AutoCommand, emit: (event: AutoEvent) => void) => boolean, firstCode = 1) {
+export function fakeHost(seatOf: (k: number) => Seat = (k) => (k % 3 === 2 ? 1 : 0), react?: (command: AutoCommand, emit: (event: AutoEvent) => void) => boolean, firstCode = 1, askOf = (_k: number, seat: Seat): CoreAsk => (seat === 0 ? IDLE : CHAIN)) {
   const commands: AutoCommand[] = []
   const state = { hold: false, transports: 0 }
   let askId = 0
@@ -49,7 +50,7 @@ export function fakeHost(seatOf: (k: number) => Seat = (k) => (k % 3 === 2 ? 1 :
           ],
         })
       }
-      emit({ t: 'ask', seat, askId: pending.askId, ask: seat === 0 ? IDLE : CHAIN })
+      emit({ t: 'ask', seat, askId: pending.askId, ask: askOf(k, seat) })
     }
     const run = (replay: readonly CoreAnswer[]) => {
       emit({ t: 'loading', done: 0, total: 1 })

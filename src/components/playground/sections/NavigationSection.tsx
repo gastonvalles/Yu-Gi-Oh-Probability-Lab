@@ -4,7 +4,7 @@ import { describeMatSteps } from '../../../app/practice-mat'
 import type { SavedCombo } from '../../../app/saved-combos'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
 import { MatSnapshot } from '../../probability/MatSnapshot'
-import { panelStepsOf, type PanelChains } from '../../probability/panel-steps'
+import { panelStepsOf } from '../../probability/panel-steps'
 import type { FxTone } from '../../probability/practice-styles'
 import { PracticeMatPanel } from '../../probability/PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
@@ -95,30 +95,6 @@ type StepListWidth = keyof typeof STEP_LIST_WIDTHS
 const NO_COMBOS: SavedCombo[] = []
 const noop = () => {}
 
-/** Las cadenas de la muestra, sobre los pasos de `sampleCombo`: la Mágica del paso 3 resuelve en el 4; en la segunda, tu CL1 (paso 5) resuelve en el 7, tu CL2 (paso 6) queda sin efecto y el rival encadenó CL3. */
-const SAMPLE_CHAINS: PanelChains = {
-  marks: new Map([
-    [3, { chain: 1, link: 1, result: { negated: false, from: 4, to: 4 } }],
-    [5, { chain: 2, link: 1, result: { negated: false, from: 7, to: 7 } }],
-    [6, { chain: 2, link: 2, result: { negated: true } }],
-  ]),
-  ends: new Map([
-    [
-      8,
-      [
-        {
-          chain: 2,
-          links: [
-            { number: 1, name: 'Ghost Ogre & Snow Rabbit', state: 'solved' },
-            { number: 2, name: 'Monster Reborn', state: 'disabled' },
-            { number: 3, name: 'Ash Blossom & Joyous Spring (Rival)', state: 'solved' },
-          ],
-        },
-      ],
-    ],
-  ]),
-}
-
 /**
  * La lista de pasos de la mesa con un combo de muestra (`sampleCombo`): la línea de tiempo con los círculos, las cabeceras de fase, las fichas con su chip, su tablero y,
  * la del paso actual, abierta con «Qué se mueve». Se avanza con los botones (como el reproductor) y el interruptor «Detalles» de cada una la vuelve la lista compacta.
@@ -156,20 +132,6 @@ function StepListSamples() {
         <Segmented label="Ancho de la muestra" variant="chips" size="sm" value={width} onChange={setWidth} options={(Object.keys(STEP_LIST_WIDTHS) as StepListWidth[]).map((key) => ({ value: key, label: STEP_LIST_WIDTHS[key].label }))} />
         <div className={cx('h-[44rem] max-w-full overflow-hidden rounded-card border border-border-subtle bg-background p-3', STEP_LIST_WIDTHS[width].className)}>
           <PracticeMatPanel steps={steps} initial={combo.initial} cursor={cursor} onSeek={setCursor} nameOf={combo.nameOf} artOf={combo.artOf} combos={NO_COMBOS} deckName="" onLoad={noop} onRename={noop} onDelete={noop} showCombos={false} className="h-full" />
-        </div>
-      </Specimen>
-
-      <Specimen
-        title="Lista de pasos con cadenas"
-        layout="column"
-        note={
-          <>
-            «Jugar solo automático» (<Tag>panelChainsOf</Tag>, de los pasos de la cadena del adaptador): la ficha de tu activación suma <Tag>Cadena 1 · CL1</Tag> a sus chips (lila: es lo tuyo, no el ámbar de lo que se activa) y, ya resuelto, al pie cómo resolvió: en verde los pasos que hizo, en rojo <Tag>Resuelve: sin efecto</Tag>. Las cartas que pagan su costo (las que se mueven entre el eslabón y el paso siguiente de la cadena) llevan <Tag>Cadena 1 · CL1 · costo</Tag>. Después del último paso de una cadena de dos o más eslabones (o con alguno del rival), un renglón de cierre punteado, que no se toca: cada eslabón con cómo terminó. Quién negó a quién el núcleo no lo dice: no se muestra. Un combo guardado no lleva cadenas. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>probability/panel-steps.ts</Tag>
-          </>
-        }
-      >
-        <div className="h-[44rem] w-[22rem] max-w-full overflow-hidden rounded-card border border-border-subtle bg-background p-3">
-          <PracticeMatPanel steps={steps.slice(0, 8)} initial={combo.initial} cursor={8} onSeek={noop} nameOf={combo.nameOf} artOf={combo.artOf} combos={NO_COMBOS} deckName="" onLoad={noop} onRename={noop} onDelete={noop} showCombos={false} chains={SAMPLE_CHAINS} className="h-full" />
         </div>
       </Specimen>
 

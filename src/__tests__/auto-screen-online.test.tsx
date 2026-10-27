@@ -19,6 +19,7 @@ import { core, dispatches, handCard, lane } from './support/auto-screen-harness'
 import { CARDS, fakeSession, loc } from './support/auto-session-fake'
 import { createMemoryRoom } from './support/memory-room'
 import { render, tap } from './support/practice-mat-harness'
+import { tapMenu } from './support/mat-menu'
 
 vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
 
@@ -430,7 +431,7 @@ describe('auto-screen-online · la mesa', () => {
 
 describe('auto-screen-online · pasar a manual', () => {
   const moreOptions = () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del duelo' }))
+    tapMenu('Opciones del duelo')
 
     return within(screen.getByRole('dialog', { name: 'Más opciones del duelo' }))
   }

@@ -19,7 +19,7 @@ import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/Prac
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
-import { AutoBar, AutoDock, AutoLives, type AutoOptions } from './AutoBar'
+import { AutoBar, AutoDock, type AutoOptions } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckListOf } from './deck-list'
 import { ManualDialog } from './ManualDialog'
@@ -234,21 +234,16 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
       />
     ),
     tools: null,
-    // Las vidas: en el celular, las dos abajo (con los íconos de la práctica arriba no entran), donde va la tuya en el duelo por enlace; con laterales, en el izquierdo (`AutoBar`); en
-    // escritorio, en las esquinas del campo (lámina 07): la del rival arriba a la derecha y la tuya abajo a la izquierda, cada una con las cartas de su mano.
-    // Suben 12 px sobre el borde de la mano (`-mt-3`): la botonera mide lo que medía con Deshacer (44 px) y el campo no se corre, tampoco en una pantalla alta (ahí no hay scroll y su alto cuenta).
-    life: docked ? (
-      rails ? null : (
-        <span className="-mt-3 flex" data-corner="mine">
-          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact hand={hands.mine} />
-        </span>
-      )
-    ) : (
-      <span className="-mt-3 flex items-center gap-2">
-        <AutoLives rivalName={rivalName} life={life} />
+    // Las vidas, cada una de su lado y con las cartas de su mano (Gastón, 2026-10-26: «la vida de ambos jugadores junta»): la del rival junto a su mano (arriba a la derecha del campo, `corner`) y la
+    // tuya abajo a la izquierda, junto a la tuya; con laterales, las dos en el izquierdo (`AutoBar`: el rival arriba, vos abajo). Miden 56 px (`compact`) y la tuya sube 12 sobre el borde
+    // de la mano (`-mt-3`) sin tapar sus cartas: la botonera mide lo que medía con Deshacer (44 px) y el campo no se corre, tampoco en una pantalla alta (ahí no hay scroll y su alto cuenta).
+    life: rails ? null : (
+      <span className="-mt-3 flex" data-corner="mine">
+        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact hand={hands.mine} />
       </span>
     ),
-    ...(docked ? { corner: <LifeTile name={rivalName} life={life.theirs} compact hand={hands.theirs} />, dock: <AutoDock {...options} steps={{ open: stepsOpen, onToggle: () => setStepsOpen((open) => !open) }} /> } : {}),
+    corner: <LifeTile name={rivalName} life={life.theirs} compact hand={hands.theirs} handOnDesktop />,
+    ...(docked ? { dock: <AutoDock {...options} steps={{ open: stepsOpen, onToggle: () => setStepsOpen((open) => !open) }} /> } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),
     // Deshacer va arriba, con los íconos de la práctica.

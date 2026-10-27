@@ -52,7 +52,7 @@ const toneStyle = variants({
       outline: cx('rounded-full border border-tint/30 hover:border-info/80', BARE),
       tile: cx('rounded-card bg-card-background [&_svg]:stroke-[1.5]', BARE),
       primary: 'rounded-full bg-primary text-primary-foreground hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
-      play: 'rounded-full bg-info text-accent-foreground hover:bg-info-soft active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
+      play: 'rounded-full bg-warning-solid text-white hover:brightness-110 active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
       swatch: 'rounded-full active:opacity-70 disabled:pointer-events-none disabled:opacity-40 aria-pressed:shadow-focus',
     },
   },

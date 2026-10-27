@@ -155,7 +155,7 @@ export function MobileCardSearch({
               autoCapitalize="none"
               spellCheck={false}
               autoFocus
-              data-initial-focus
+              data-initial-focus="type"
               className={`${field} h-11 w-full pl-9 pr-11 text-base [-webkit-appearance:none] [appearance:none] [&::-webkit-search-cancel-button]:hidden`}
             />
             {status === 'loading' ? (

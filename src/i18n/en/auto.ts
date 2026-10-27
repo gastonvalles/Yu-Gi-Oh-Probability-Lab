@@ -130,9 +130,8 @@ export const auto: Translated<typeof es> = {
   'auto.lane.rivalChoosing': 'The opponent is choosing',
   'auto.lane.respondTo': 'You can respond to {card} with {cards}',
   'auto.lane.pass': "Don't respond",
-  // The band to respond to a chain: which link, with which cards and which number your response would take.
-  'auto.respond.to': 'Respond to CL{link} · {who}',
-  'auto.respond.toLink': 'Respond to CL{link}',
+  // The band to respond to a chain (which link is said by the chain stack above): with which cards and which number your response would take.
+  'auto.respond.title': 'Respond to the chain',
   'auto.respond.now': 'Activate something now?',
   'auto.respond.cards': 'You can respond with',
   'auto.respond.chain': 'Chain as CL{link}',
@@ -140,7 +139,7 @@ export const auto: Translated<typeof es> = {
   'auto.respond.mode': 'Ask me',
   'auto.lane.mustActivate': { one: 'You must activate the glowing card: tap it', other: 'You must activate the {count} glowing cards: tap one' },
   // Several mandatory ones at once: you pick which one enters the chain first (the band in the middle).
-  'auto.forced.title': 'You must activate these {count}. Which goes first (CL{link})?',
+  'auto.forced.title': 'You must activate these {count}. Which goes first?',
   'auto.forced.hint': 'No “Don’t respond”: they’re mandatory.',
   'auto.lane.autoZone': 'The zone was picked for you',
   // What went wrong, in the mat's words (the technical detail goes to the console).
@@ -171,17 +170,6 @@ export const auto: Translated<typeof es> = {
 
   // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
   'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',
-  // Chains in the steps list: the link of your activation, how it resolved and the closing line (every link, the rival's too).
-  'auto.steps.link': 'Chain {chain} · CL{link}',
-  'auto.steps.cost': 'Chain {chain} · CL{link} · cost',
-  'auto.steps.noEffect': 'Resolves: no effect',
-  'auto.steps.noEffectBy': 'Resolves: no effect · by CL{by}',
-  'auto.steps.solvedStep': 'Resolves: step {step}',
-  'auto.steps.solvedSteps': 'Resolves: steps {from}–{to}',
-  'auto.steps.chainEnd': 'Chain {chain} resolved',
-  'auto.steps.endLink': 'CL{link} {card}: {state}',
-  'auto.steps.endLinkBy': 'CL{link} {card}: {state} by CL{by}',
-  'auto.steps.theirs': '{card} ({rival})',
   'auto.review.combo': 'Reviewing “{name}”: the duel waits where you left it.',
   'auto.review.plays': 'Reviewing your plays: the duel waits where you left it.',
   'auto.review.back': 'Back to the duel',
