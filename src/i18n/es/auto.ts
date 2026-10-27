@@ -260,6 +260,11 @@ export const auto = {
   'auto.online.manualControl': 'No se pudo pasar a manual: hay una carta bajo el control del otro jugador.',
   'auto.online.manualDone': 'Siguen en modo manual: cada uno mueve sus cartas.',
   'auto.online.manualDoneDropped': 'Siguen en modo manual. Lo que estaba a medio jugar se descartó: la mesa quedó como estaba.',
+  'auto.online.undoAsked': '{name} quiere volver atrás su última jugada',
+  'auto.online.undoAsking': 'Le pedís a {name} volver atrás tu última jugada…',
+  'auto.online.undoNone': 'No hay una jugada tuya para volver atrás.',
+  'auto.online.undoneMine': 'Volviste atrás tu última jugada.',
+  'auto.online.undoneTheirs': '{name} volvió atrás su última jugada.',
 
   // Una carta tuya sin jugadas: por qué (sólo lo que se sabe), el atajo a la mesa manual y las restricciones del núcleo (el texto de la carta, tal cual).
   'auto.why.title': 'Ahora no tiene jugadas',

@@ -51,7 +51,7 @@ export interface SessionFault {
 export interface SessionAnswer {
   seat: Seat
   answer: CoreAnswer
-  /** Una activación que elegiste fuera de tus jugadas (responder en una cadena, «¿Activás el efecto?»; no una obligatoria): `undo` también vuelve a antes de ésta. No se guarda. */
+  /** Una activación que elegiste fuera de tus jugadas (responder en una cadena, «¿Activás el efecto?»; no una obligatoria): `undo` también vuelve a antes de ésta. */
   activation?: true
 }
 
@@ -164,9 +164,10 @@ export interface AutoSession {
   answer(answer: CoreAnswer): boolean
   /**
    * Vuelve a antes de tu última jugada (la última respuesta tuya a un `select_idlecmd` o `select_battlecmd`) o de tu última activación elegida (`activation`: responder en una cadena,
-   * también en el turno del rival), también con el núcleo caído o trabado (`crash`, `retry`); `false` si no hay.
+   * también en el turno del rival), también con el núcleo caído o trabado (`crash`, `retry`); `false` si no hay. Con `seat`, la de ese asiento (el anfitrión del duelo por enlace:
+   * la del invitado, con su acuerdo).
    */
-  undo(): boolean
+  undo(seat?: Seat): boolean
   /** Corta lo que el núcleo está pensando: deja la respuesta en vuelo y vuelve a la pregunta de antes. */
   cancel(): void
   /** Empieza de nuevo: con la misma semilla, el mismo duelo. Si los datos no llegaron, los vuelve a pedir. */
@@ -560,9 +561,9 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
       return true
     },
-    undo() {
+    undo(seat) {
       const all = inFlight ? [...answers, inFlight] : answers
-      const to = all.findLastIndex((item) => controlled(item.seat) && undoPoint(item))
+      const to = all.findLastIndex((item) => (seat === undefined ? controlled(item.seat) : item.seat === seat) && undoPoint(item))
 
       const stuck = snapshot.status === 'error'
 
@@ -583,7 +584,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       streams.push(to)
       replayed(to)
       transport.send({ t: 'rewind', to })
-      set({ ask: null, replaying: true, status: snapshot.status === 'ended' ? 'thinking' : snapshot.status, answers })
+      // La pregunta del asiento remoto también se va: una respuesta suya que llegue tarde no cuenta.
+      set({ ask: null, remoteAsk: null, replaying: true, status: snapshot.status === 'ended' ? 'thinking' : snapshot.status, answers })
       startTimer()
 
       return true
@@ -616,7 +618,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
       if (!pending || snapshot.status !== 'waiting' || askId !== pending.askId || answer.type !== pending.ask.type) return false
       set({ remoteAsk: null })
-      send(pending.seat, askId, answer)
+      // Como `answer`: una activación elegida del invitado es adonde vuelve deshacer su jugada.
+      send(pending.seat, askId, answer, !PLAY_ASKS.has(answer.type) && activatedCode(pending.ask, answer) !== null)
 
       return true
     },

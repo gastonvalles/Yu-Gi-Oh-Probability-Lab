@@ -252,6 +252,11 @@ export const auto: Translated<typeof es> = {
   'auto.online.manualControl': "Couldn't switch to manual: a card is under the other player's control.",
   'auto.online.manualDone': 'You go on in manual mode: each of you moves your own cards.',
   'auto.online.manualDoneDropped': 'You go on in manual mode. What was half played was dropped: the table stayed as it was.',
+  'auto.online.undoAsked': '{name} wants to take back their last play',
+  'auto.online.undoAsking': 'You asked {name} to take back your last play…',
+  'auto.online.undoNone': "There's no play of yours to take back.",
+  'auto.online.undoneMine': 'You took back your last play.',
+  'auto.online.undoneTheirs': '{name} took back their last play.',
 
   // A card of yours with no plays: why (only what is known), the shortcut to the manual table and the core's restrictions (the card's own text, as is).
   'auto.why.title': 'No plays right now',

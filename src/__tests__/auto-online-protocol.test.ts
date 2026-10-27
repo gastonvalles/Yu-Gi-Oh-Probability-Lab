@@ -37,6 +37,13 @@ const GOOD: AutoMessage[] = [
   { t: 'autoManual', step: 'yes', dropped: true },
   { t: 'autoManual', step: 'no', why: 'control' },
   { t: 'autoManual', step: 'cancel' },
+  // Deshacer, sólo entre dos que lo saben hacer (`undo` en el deck y en la revisión).
+  { t: 'autoDeck', v, main: [[1, 1]], extra: [], undo: true },
+  { t: 'autoCheck', v, ok: true, bad: [], theirsBad: 0, undo: true },
+  { t: 'autoUndo', step: 'ask' },
+  { t: 'autoUndo', step: 'yes', guest: true, s: 4 },
+  { t: 'autoUndo', step: 'no', why: 'none' },
+  { t: 'autoUndo', step: 'cancel' },
 ]
 
 describe('el protocolo del duelo automático por enlace', () => {
@@ -55,10 +62,12 @@ describe('el protocolo del duelo automático por enlace', () => {
     expect(parseAutoMessage(JSON.stringify({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true, hack: 1 } }))).toEqual({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true } })
     expect(parseAutoMessage('{"t":"autoResync","s":3}')).toEqual({ t: 'autoResync' })
     expect(parseAutoMessage(JSON.stringify({ ...GOOD[3], seed: 7 }))).toEqual(GOOD[3])
+    // `undo` sólo vale `true`: otra cosa se lee como de alguien que no sabe deshacer.
+    expect(parseAutoMessage(JSON.stringify({ t: 'autoDeck', v, main: [], extra: [], undo: 1 }))).toEqual({ t: 'autoDeck', v, main: [], extra: [] })
   })
 
-  it('cada lado acepta sólo lo que manda el otro (pasar a manual lo piden los dos), y entre los dos cubren todos los mensajes', () => {
-    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual(['autoManual'])
+  it('cada lado acepta sólo lo que manda el otro (pasar a manual y deshacer lo piden los dos), y entre los dos cubren todos los mensajes', () => {
+    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual(['autoManual', 'autoUndo'])
     expect([...new Set([...HOST_ACCEPTS, ...GUEST_ACCEPTS])].sort()).toEqual([...new Set(GOOD.map((message) => message.t))].sort())
   })
 
@@ -109,6 +118,10 @@ describe('el protocolo del duelo automático por enlace', () => {
       { t: 'autoManual', step: 'maybe' },
       { t: 'autoManual', step: 'yes', dropped: false },
       { t: 'autoManual', step: 'no', why: 'otra' },
+      { t: 'autoUndo' },
+      { t: 'autoUndo', step: 'maybe' },
+      { t: 'autoUndo', step: 'no', why: 'control' },
+      { t: 'autoUndo', step: 'yes', guest: false },
     ]
 
     for (const message of bad) expect(parseAutoMessage(JSON.stringify(message)), JSON.stringify(message).slice(0, 80)).toBeNull()

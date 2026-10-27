@@ -52,7 +52,8 @@ export function parseAutoSave(raw: string | null, now: number): AutoSave | null 
 
     if (!save || save.v !== 2 || !isDuelKey(save.key) || (save.seat !== 0 && save.seat !== 1) || !isInt(save.hand, 0, 60) || !isInt(save.savedAt, 0, Number.MAX_SAFE_INTEGER) || now - save.savedAt > SAVE_TTL_MS) return null
     if (!save.decks || !isDeck(save.decks.mine) || !isDeck(save.decks.theirs) || !Array.isArray(save.answers) || save.answers.length > MAX_ANSWERS) return null
-    const answers = save.answers.map((item: Partial<SessionAnswer>) => (item && (item.seat === 0 || item.seat === 1) ? { seat: item.seat, answer: parseAnswer(item.answer) } : null))
+    // `activation`, para que deshacer vuelva al mismo lugar después de recargar (los guardados de antes no lo traen: vuelve a la jugada de antes).
+    const answers = save.answers.map((item: Partial<SessionAnswer>) => (item && (item.seat === 0 || item.seat === 1) ? { seat: item.seat, answer: parseAnswer(item.answer), ...(item.activation === true ? { activation: true as const } : {}) } : null))
 
     if (!answers.every((item) => item?.answer)) return null
 

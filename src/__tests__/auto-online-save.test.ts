@@ -69,6 +69,11 @@ describe('el guardado del duelo automático por enlace', () => {
     // La versión de los datos también; una que no es texto se lee sin ella.
     expect(parseAutoSave(JSON.stringify({ ...SAVE, data: 'abc' }), 2000)).toEqual({ ...SAVE, data: 'abc' })
     expect(parseAutoSave(JSON.stringify({ ...SAVE, data: 7 }), 2000)).toEqual(SAVE)
+    // Una activación elegida queda marcada (deshacer vuelve ahí también después de recargar); otra marca no pasa.
+    const marked = { ...SAVE, answers: SAVE.answers.map((item, i) => (i === 0 ? { ...item, activation: true } : item)) }
+
+    expect(parseAutoSave(JSON.stringify(marked), 2000)).toEqual(marked)
+    expect(parseAutoSave(JSON.stringify({ ...SAVE, answers: SAVE.answers.map((item) => ({ ...item, activation: 1 })) }), 2000)).toEqual(SAVE)
     store.clear()
     expect(store.read()).toBeNull()
     // Sin almacenamiento, no se recuerda nada (y no se rompe).

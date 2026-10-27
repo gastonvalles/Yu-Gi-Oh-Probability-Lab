@@ -3,7 +3,7 @@ import type { DuelSnapshot } from '../duel-session'
 import { allMatIds, isForeignId, type MatState } from '../practice-mat'
 import { cardData, type DataLoader, type DataSource, type DuelData } from './auto-data'
 import type { AutoSave, AutoSaveStore } from './auto-save'
-import { createAutoSession, type AutoSession, type AutoSnapshot, type HostTransport, type SessionAnswer, type TransportFactory } from './auto-session'
+import { createAutoSession, undoPoint, type AutoSession, type AutoSnapshot, type HostTransport, type SessionAnswer, type TransportFactory } from './auto-session'
 import { bagOrder, type DeckList, type MappedDeck } from './deck-map'
 import { newDuelKey } from './duel-key'
 import {
@@ -67,6 +67,22 @@ export interface OnlineSnapshot {
   manual?: ManualState
   /** Con `agreed`: al cortar quedó algo a medio jugar (una cadena, una elección), que se descartó. */
   manualDropped?: boolean
+  /** El pedido de deshacer (ver `UndoView`); sin esto, no se puede. */
+  undo?: UndoView
+}
+
+/**
+ * El pedido de deshacer la última jugada propia, visto desde un lado: `asking` lo pedí y espero; `asked` me lo pidieron; `agreed` se acordó y falta que lo haga el anfitrión (con el
+ * núcleo quieto). `declined`, `expired` y `none` (no había jugada mía a la que volver) dicen cómo terminó mi último pedido.
+ */
+export type UndoState = 'idle' | 'asking' | 'asked' | 'agreed' | 'declined' | 'expired' | 'none'
+export interface UndoView {
+  state: UndoState
+  /** Cuántas veces se deshizo y si la última fue una jugada mía: el aviso del registro. */
+  done: number
+  mine: boolean
+  /** El otro también sabe deshacer (`undo` en su `autoDeck` o `autoCheck`): con uno de antes no se ofrece. */
+  peer: boolean
 }
 
 /**
@@ -89,6 +105,8 @@ export interface OnlineLink {
   resync(): void
   /** Seguir en modo manual: `true` lo pide (o acepta el pedido del otro); `false` lo rechaza o retira el mío. Sólo con el duelo en juego y el otro en la sala. */
   manual?(yes: boolean): void
+  /** Deshacer mi última jugada, con el acuerdo del otro: `true` lo pide (o acepta el pedido del otro); `false` lo rechaza o retira el mío. Como `manual`. */
+  undo?(yes: boolean): void
   destroy(): void
 }
 
@@ -330,9 +348,109 @@ function manualRequest(host: boolean, say: (message: ManualMessage) => void, cha
   }
 }
 
+type UndoMessage = Extract<HostMessage, { t: 'autoUndo' }>
+
+/**
+ * El pedido de deshacer de un lado (ver `UndoState`), como `manualRequest`: uno a la vez y, si los dos piden a la vez, vale el del anfitrión. Lo acordado lo hace el anfitrión
+ * (`onAgree`), que termina en `done` (su `yes`, que el invitado lee como hecho) o `refused`. `guestPlay`: en el anfitrión, si lo acordado es la jugada del invitado.
+ */
+function undoRequest(host: boolean, say: (message: UndoMessage) => void, changed: () => void, onAgree: () => void = () => {}) {
+  let view: UndoView = { state: 'idle', done: 0, mine: false, peer: false }
+  let guestPlay = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const go = (patch: Partial<UndoView>, onWait?: () => void) => {
+    clearTimeout(timer)
+    timer = onWait ? setTimeout(onWait, MANUAL_WAIT_MS) : undefined
+    view = { ...view, ...patch }
+    changed()
+  }
+  const agree = (guest: boolean) => {
+    guestPlay = guest
+    go({ state: 'agreed' })
+    onAgree()
+  }
+
+  return {
+    get view() {
+      return view
+    },
+    get guestPlay() {
+      return guestPlay
+    },
+    peer(yes: boolean) {
+      if (view.peer !== yes) go({ peer: yes })
+    },
+    want(wanted: boolean) {
+      if (view.state === 'asked') {
+        if (!wanted) {
+          say({ t: 'autoUndo', step: 'no' })
+          return go({ state: 'idle' })
+        }
+        // El sí del anfitrión es el hecho: aceptando, no dice nada todavía.
+        if (host) return agree(true)
+        say({ t: 'autoUndo', step: 'yes' })
+        // Si el hecho no llega (el anfitrión recargó antes), no queda esperando.
+        return go({ state: 'agreed' }, () => go({ state: 'idle' }))
+      }
+      if (view.state === 'asking') {
+        if (!wanted) {
+          say({ t: 'autoUndo', step: 'cancel' })
+          go({ state: 'idle' })
+        }
+        return
+      }
+      if (wanted && view.peer && view.state !== 'agreed') {
+        say({ t: 'autoUndo', step: 'ask' })
+        go({ state: 'asking' }, () => {
+          say({ t: 'autoUndo', step: 'cancel' })
+          go({ state: 'expired' })
+        })
+      }
+    },
+    receive(message: UndoMessage) {
+      switch (message.step) {
+        case 'ask':
+          // Los dos a la vez: el anfitrión no ve el del invitado y el invitado deja el suyo por el del anfitrión.
+          if (view.state !== 'agreed' && !(host && view.state === 'asking')) go({ state: 'asked' })
+          return
+        case 'yes':
+          if (!host) return go({ state: 'idle', done: view.done + 1, mine: message.guest === true })
+          if (view.state === 'asking') agree(false)
+          // Un sí a un pedido que ya no está (lo retiré o venció): que el invitado no se quede esperando.
+          else if (view.state !== 'agreed') say({ t: 'autoUndo', step: 'cancel' })
+          return
+        case 'no':
+          if (view.state === 'asking') go({ state: message.why ? 'none' : 'declined' })
+          else if (!host && view.state === 'agreed') go({ state: 'idle' })
+          return
+        case 'cancel':
+          if (view.state === 'asked' || (!host && view.state === 'agreed')) go({ state: 'idle' })
+      }
+    },
+    /** El otro se fue, el duelo terminó o es otro: lo pendiente se cae (también lo acordado que el anfitrión no hizo todavía). */
+    drop() {
+      if (view.state === 'asking' || view.state === 'asked' || view.state === 'agreed') go({ state: 'idle' })
+    },
+    /** El anfitrión lo hizo: su `yes` va detrás del aviso de la re-emisión. */
+    done(guest: boolean) {
+      say({ t: 'autoUndo', step: 'yes', ...(guest ? { guest: true as const } : {}) })
+      go({ state: 'idle', done: view.done + 1, mine: !guest })
+    },
+    /** El anfitrión no pudo: no había jugada de quien lo pidió. */
+    refused() {
+      say({ t: 'autoUndo', step: 'no', why: 'none' })
+      go({ state: guestPlay ? 'idle' : 'none' })
+    },
+    destroy: () => clearTimeout(timer),
+  }
+}
+
+/** Si el asiento tiene una jugada propia a la que volver (`undoPoint`). */
+const hasPlay = (session: AutoSession, seat: Seat) => session.getSnapshot().answers.some((item) => item.seat === seat && undoPoint(item))
+
 /** El snapshot del enlace: el mismo objeto mientras nada cambie (la pantalla lo lee con `useSyncExternalStore`). */
 function snapshotStore() {
-  let snapshot: OnlineSnapshot = { phase: 'idle', problems: NO_PROBLEMS, session: null, cards: new Map(), seat: null, manual: 'idle', manualDropped: false }
+  let snapshot: OnlineSnapshot = { phase: 'idle', problems: NO_PROBLEMS, session: null, cards: new Map(), seat: null, manual: 'idle', manualDropped: false, undo: { state: 'idle', done: 0, mine: false, peer: false } }
   const listeners = new Set<() => void>()
 
   return {
@@ -346,7 +464,7 @@ function snapshotStore() {
       const old = snapshot.problems
       const problems = next.problems.mine === old.mine && next.problems.theirs === old.theirs && next.problems.reason === old.reason ? old : next.problems
 
-      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped) return
+      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped && next.undo === snapshot.undo) return
       snapshot = { ...next, problems }
       listeners.forEach((listener) => listener())
     },
@@ -365,6 +483,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   const deckLimit = new RateLimiter(now(), 0.5, 2)
   const resyncLimit = new RateLimiter(now(), 0.2, 2)
   const manualLimit = new RateLimiter(now(), 1, 4)
+  const undoLimit = new RateLimiter(now(), 1, 4)
   let room: DuelSnapshot | null = null
   let here = false
   let destroyed = false
@@ -429,8 +548,10 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       seat: seats?.host ?? null,
       manual: request.state,
       manualDropped: request.dropped,
+      undo: undo.view,
     })
   const request = manualRequest(true, post, refresh, cut)
+  const undo = undoRequest(true, post, refresh, runUndo)
 
   /**
    * Todo lo que va al invitado pasa por acá, en orden (detrás del lote pendiente) y numerado (`s`, antes de trocear: las partes no lo llevan); lo grande se trocea. Antes se lee
@@ -471,7 +592,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
   function sendCheck() {
     if (lost) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: false, bad: [], theirsBad: 0, reason: 'lost' })
-    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}) })
+    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true })
   }
 
   function stopWait() {
@@ -544,8 +665,11 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     void runCheck(guestDeck)
   }
 
-  /** Lo que se guarda para rearmar el duelo: con cada respuesta aceptada (no mientras se re-simula) y con el corte del pase a manual; terminado el duelo, se borra. */
-  function persist() {
+  /**
+   * Lo que se guarda para rearmar el duelo: con cada respuesta aceptada (no mientras se re-simula), con el corte del pase a manual y al deshacer (`force`: las respuestas ya
+   * recortadas, aunque se esté re-simulando); terminado el duelo, se borra.
+   */
+  function persist(force = false) {
     if (!options.save || !saving || !session || !seats) return
     const snap = session.getSnapshot()
 
@@ -553,7 +677,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       saving = false
       return options.save.clear()
     }
-    if (snap.replaying || snap.answers === savedAnswers) return
+    if ((snap.replaying && !force) || snap.answers === savedAnswers) return
     savedAnswers = snap.answers
     options.save.write({ v: 2, key: duelKey, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}), ...(dataVersion ? { data: dataVersion } : {}) })
   }
@@ -572,6 +696,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     const deck = { main: message.main, extra: message.extra }
 
+    undo.peer(message.undo === true)
     // En pleno duelo (o rearmándolo) no se baja nada: el mismo deck sólo repite la revisión y uno distinto se revisa en la revancha. El duelo sigue con el que se revisó (y
     // con sus cartas, que el invitado necesita en su mesa).
     if (session || restoring) {
@@ -707,6 +832,24 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     persist()
   }
 
+  /**
+   * Deshacer acordado: con el núcleo quieto (como el corte), la sesión vuelve a antes de la última jugada de quien lo pidió. Su re-emisión le llega al invitado como cualquier
+   * otra (`autoReplay` y el lote) y el `yes` va detrás del aviso; lo guardado ya tiene las respuestas recortadas, por si el anfitrión recarga a mitad. Pensando, espera (`onSession`).
+   */
+  function runUndo() {
+    const snap = session?.getSnapshot()
+
+    if (undo.view.state !== 'agreed' || !session || !seats || !snap) return
+    if (phase() !== 'playing' || request.frozen) return undo.drop()
+    if (snap.replaying || (!snap.ask && !snap.remoteAsk)) return
+    const guest = undo.guestPlay
+
+    if (!session.undo(guest ? seats.guest : seats.host)) return undo.refused()
+    undo.done(guest)
+    savedAnswers = null
+    persist(true)
+  }
+
   function drop() {
     unwatch()
     unwatch = () => {}
@@ -744,7 +887,11 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       resend()
     }
     cut()
-    if (phase() === 'ended' || phase() === 'lost') request.drop()
+    runUndo()
+    if (phase() === 'ended' || phase() === 'lost') {
+      request.drop()
+      undo.drop()
+    }
     persist()
     refresh()
   }
@@ -762,6 +909,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     drop()
     lost = false
     request.reset()
+    undo.drop()
     if (saved?.cut) request.restore(saved.cut.dropped)
     const host: Seat = saved?.seat ?? (room.starter === 0 ? 0 : 1)
 
@@ -806,6 +954,14 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     } else if (message.t === 'autoResync') {
       if (resyncLimit.allow(now())) resend()
     } else if (message.t === 'autoManual' && manualLimit.allow(now()) && (message.step !== 'ask' || phase() === 'playing')) request.receive(message)
+    else if (message.t === 'autoUndo' && undoLimit.allow(now())) {
+      if (message.step !== 'ask') undo.receive(message)
+      // Sólo la jugada propia: sin una del invitado, se le dice enseguida (no se le pregunta nada a Ana). Con el pedido de Ana en pie, el suyo no se ve (vale el de Ana).
+      else if (phase() === 'playing' && !request.frozen && session && seats && undo.view.state !== 'asking') {
+        if (hasPlay(session, seats.guest)) undo.receive(message)
+        else post({ t: 'autoUndo', step: 'no', why: 'none' })
+      }
+    }
   }
 
   const off = transport.onMessage(receive)
@@ -819,7 +975,10 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
       room = next
       if (destroyed) return
-      if (!next.peerPresent && before?.peerPresent) request.drop()
+      if (!next.peerPresent && before?.peerPresent) {
+        request.drop()
+        undo.drop()
+      }
       if (arrived && !here && !guestDeck && !check) waitDeck()
       // El invitado se fue antes de empezar: su deck se revisa de nuevo cuando vuelva (puede ser otro).
       if (!next.peerPresent && here && !session) {
@@ -842,13 +1001,17 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
         pending = false
         lost = false
         request.reset()
+        undo.drop()
         // Un deck que el invitado cambió en pleno duelo se revisa ahora; si no, vale la revisión de antes.
         if (guestDeck && guestDeck !== checked) void runCheck(guestDeck)
         else sendCheck()
       }
-      // Rendirse termina el duelo para la sala: lo guardado ya no sirve (y un pedido de pasar a manual tampoco: no se corta un duelo terminado).
+      // Rendirse termina el duelo para la sala: lo guardado ya no sirve (y un pedido de pasar a manual o de deshacer tampoco: no se corta un duelo terminado).
       cut()
-      if (phase() === 'ended' || phase() === 'lost') request.drop()
+      if (phase() === 'ended' || phase() === 'lost') {
+        request.drop()
+        undo.drop()
+      }
       persist()
       refresh()
     },
@@ -858,11 +1021,18 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     manual(yes) {
       if (!destroyed && (!yes || (phase() === 'playing' && room?.peerPresent))) request.want(yes)
     },
+    undo(yes) {
+      // Pedirlo, sólo con una jugada mía a la que volver; aceptar el del invitado, con el duelo en juego.
+      const mine = undo.view.state === 'asked' || (session !== null && seats !== null && hasPlay(session, seats.host))
+
+      if (!destroyed && (!yes || (phase() === 'playing' && room?.peerPresent && !request.frozen && mine))) undo.want(yes)
+    },
     destroy() {
       destroyed = true
       checks += 1
       stopWait()
       request.destroy()
+      undo.destroy()
       drop()
       pacer.destroy()
       off()
@@ -959,6 +1129,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   let ping: ReturnType<typeof setTimeout> | undefined
   // Un anfitrión modificado tampoco puede preguntar sin parar.
   const manualLimit = new RateLimiter(now(), 1, 4)
+  const undoLimit = new RateLimiter(now(), 1, 4)
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -977,9 +1148,11 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       seat,
       manual: request.state,
       manualDropped: request.dropped,
+      undo: undo.view,
     })
   const send = (message: AutoMessage) => transport.send(encodeAutoMessage(message))
   const request = manualRequest(false, send, refresh)
+  const undo = undoRequest(false, send, refresh)
 
   /** Al entrar o volver: mi deck (lo revisa el anfitrión) y el duelo, si hay uno. */
   function hello() {
@@ -988,7 +1161,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     asked = true
     const rows = (list: DeckList['main'] = []) => list.map(([code, copies]): [number, number] => [code, copies])
 
-    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(options.deck.main), extra: rows(options.deck.extra) })
+    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(options.deck.main), extra: rows(options.deck.extra), undo: true })
     send({ t: 'autoResync' })
   }
 
@@ -1060,9 +1233,12 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     refresh()
   }
 
-  /** Terminado el duelo, un pedido de pasar a manual ya no va. */
+  /** Terminado el duelo, un pedido de pasar a manual o de deshacer ya no va. */
   function onSession() {
-    if (phase() === 'ended' || phase() === 'lost') request.drop()
+    if (phase() === 'ended' || phase() === 'lost') {
+      request.drop()
+      undo.drop()
+    }
     refresh()
   }
 
@@ -1095,6 +1271,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
         // El anfitrión perdió el duelo: la revisión de los decks sigue valiendo para el próximo.
         if (message.reason === 'lost') lost = true
         else check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null }
+        undo.peer(message.undo === true)
         return refresh()
 
       case 'autoInit':
@@ -1116,6 +1293,10 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
 
       case 'autoManual':
         if (manualLimit.allow(now()) && (message.step !== 'ask' || phase() === 'playing')) request.receive(message)
+        return
+
+      case 'autoUndo':
+        if (undoLimit.allow(now()) && (message.step !== 'ask' || phase() === 'playing')) undo.receive(message)
     }
   }
 
@@ -1155,9 +1336,14 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     manual(yes) {
       if (!destroyed && (!yes || (phase() === 'playing' && room?.peerPresent))) request.want(yes)
     },
+    // Si hay una jugada mía a la que volver lo sabe el anfitrión (las del invitado, sin el núcleo, no se recortan al deshacer ni sobreviven a una recarga).
+    undo(yes) {
+      if (!destroyed && (!yes || (phase() === 'playing' && room?.peerPresent && !request.frozen))) undo.want(yes)
+    },
     destroy() {
       destroyed = true
       request.destroy()
+      undo.destroy()
       caughtUp()
       drop()
       off()

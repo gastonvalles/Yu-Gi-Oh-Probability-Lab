@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 
 import { createDataLoader, httpSource } from '../../app/auto/auto-data'
 import { autoSaveStore, type AutoSaveStore } from '../../app/auto/auto-save'
-import { workerTransport, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
+import { undoPoint, workerTransport, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { createGuestLink, createHostLink, underControl, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type RoomAutoState } from '../../app/auto/online'
@@ -40,7 +40,7 @@ import { sentinel, useAutoAsks } from './use-auto-asks'
  * la mesa de «Jugar solo automático» (`PracticeMat` con la composición del duelo y las preguntas del núcleo contestadas en la mesa: `useAutoAsks`), unidas por el enlace del núcleo
  * (`OnlineLink`): el anfitrión corre el núcleo con los dos asientos y el invitado proyecta lo que le llega. Mientras no hay sesión, la sala la dibuja `DuelRoom` (`room`) con lo que el
  * enlace sabe (`RoomAutoState`: si se puede estar listo y qué decir). La mesa no cambia en nada: recibe lo mismo que en solo, con la barra del duelo (`DuelBar`), el chat, las
- * señales, la pausa y el resultado. Sin Deshacer ni reloj de turnos (v1). Las vidas del núcleo se vuelcan en las de la sala (cada uno declara las suyas) y al final el que pierde
+ * señales, la pausa y el resultado. Deshacer, con el acuerdo del rival (`useLinkUndo`); sin reloj de turnos. Las vidas del núcleo se vuelcan en las de la sala (cada uno declara las suyas) y al final el que pierde
  * pone las suyas en 0: así el resultado, la revancha y el cierre de la sala andan como siempre.
  */
 
@@ -171,6 +171,7 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
       onAbandon={abandon}
       onRematch={onRematch}
       {...(toManual && link?.manual ? { request: (yes: boolean) => link.manual?.(yes), onManual: toManual } : {})}
+      {...(link?.undo ? { askUndo: (yes: boolean) => link.undo?.(yes) } : {})}
     />
   )
 }
@@ -285,6 +286,53 @@ function usePassToManual({ snapshot, snap, online, rivalName, onManual }: { snap
   }, [onManual, ready, snap, online.manualDropped])
 }
 
+/** Las preguntas cuya respuesta es una jugada (como `PLAY_ASKS` de la sesión). */
+const PLAY_ASK = new Set(['select_idlecmd', 'select_battlecmd'])
+
+/**
+ * Deshacer en el enlace, con el acuerdo del otro: si tengo una jugada mía a la que volver (el anfitrión lo sabe por las respuestas; el invitado, sin el núcleo, más o menos: lo
+ * revisa el anfitrión y, si no hay, se le dice), el aviso de la línea (el pedido del otro, que se contesta ahí, y el mío, que se retira), cómo terminó mi pedido (un aviso) y,
+ * en el registro, cada vez que se volvió atrás una jugada.
+ */
+function useLinkUndo({ snap, online, seat, host, open, rivalName, lastChat, askUndo }: { snap: AutoSnapshot; online: OnlineSnapshot; seat: Seat; host: boolean; open: boolean; rivalName: string; /** El id del último mensaje del chat: el aviso va después. */ lastChat: number; askUndo: ((yes: boolean) => void) | undefined }) {
+  const undo = online.undo
+  const state = undo?.state ?? 'idle'
+  const usable = askUndo !== undefined && undo?.peer === true && open
+  const ownPlay = host ? snap.answers.some((item) => item.seat === seat && undoPoint(item)) : snap.answers.some(undoPoint) || snap.playStarts.length > (snap.ask && PLAY_ASK.has(snap.ask.ask.type) ? 1 : 0)
+  const shown = useRef(state)
+  const seen = useRef(undo?.done ?? 0)
+  const [notes, setNotes] = useState<{ done: number; mine: boolean; after: number }[]>([])
+
+  useEffect(() => {
+    if (shown.current === state) return
+    shown.current = state
+    if (state === 'declined') showToastMessage(t('duel.undo.denied', { name: rivalName }), 'info')
+    else if (state === 'expired') showToastMessage(t('duel.undo.expired', { name: rivalName }), 'info')
+    else if (state === 'none') showToastMessage(t('auto.online.undoNone'), 'info')
+  }, [state, rivalName])
+
+  useEffect(() => {
+    if (!undo || undo.done <= seen.current) return
+    seen.current = undo.done
+    setNotes((list) => [...list, { done: undo.done, mine: undo.mine, after: lastChat }])
+  }, [undo, lastChat])
+
+  const lane: LaneNotice | null = !usable
+    ? null
+    : state === 'asked'
+      ? { kind: 'ask', text: t('auto.online.undoAsked', { name: rivalName }), actions: [{ label: t('duel.undo.deny'), onSelect: () => askUndo(false) }, { label: t('duel.undo.allow'), onSelect: () => askUndo(true), primary: true }] }
+      : state === 'asking'
+        ? { kind: 'thinking', text: t('auto.online.undoAsking', { name: rivalName }), onCancel: () => askUndo(false), cancelLabel: t('auto.online.manualCancel') }
+        : null
+
+  return {
+    available: usable && ownPlay && state !== 'asked' && !snap.replaying,
+    pending: state === 'asking' || state === 'agreed',
+    lane,
+    notes,
+  }
+}
+
 interface AutoDuelTableProps {
   session: AutoSession
   online: OnlineSnapshot
@@ -300,10 +348,12 @@ interface AutoDuelTableProps {
   /** Pedir, aceptar (`true`), rechazar o retirar (`false`) seguir en modo manual (`OnlineLink.manual`). */
   request?: (yes: boolean) => void
   onManual?: (table: MatState) => void
+  /** Pedir, aceptar (`true`), rechazar o retirar (`false`) deshacer la última jugada propia (`OnlineLink.undo`). */
+  askUndo?: (yes: boolean) => void
 }
 
 /** La mesa de un duelo (una sesión): la de «Jugar solo automático» con la barra, el chat, las señales, la pausa y el resultado del duelo por enlace. */
-function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, deck, onLeave, onAbandon, onRematch, request, onManual }: AutoDuelTableProps) {
+function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, deck, onLeave, onAbandon, onRematch, request, onManual, askUndo }: AutoDuelTableProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -341,8 +391,21 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     if (snap.overlay.turn <= 1 && snap.answers.length === 0) setBanner(true)
   }, [snap.status, snap.overlay.turn, snap.answers.length])
 
-  // v1: el registro es el chat (las jugadas del núcleo en el registro, después).
-  const feed = useMemo(() => snapshot.chat.map((line): FeedEntry => ({ id: `c${line.id}`, kind: 'chat', line })), [snapshot.chat])
+  const undo = useLinkUndo({ snap, online, seat, host: snapshot.role === 'host', open: online.phase === 'playing' && result === null && snapshot.peerPresent && !switching && snap.status !== 'loading', rivalName, lastChat: snapshot.chat.at(-1)?.id ?? 0, askUndo })
+
+  // El registro es el chat y, en su lugar, cada vez que se volvió atrás una jugada (las jugadas del núcleo en el registro, después).
+  const feed = useMemo(() => {
+    const out: FeedEntry[] = []
+    const note = ({ done, mine }: { done: number; mine: boolean }): FeedEntry => ({ id: `u${done}`, kind: 'event', side: mine ? 'mine' : 'theirs', text: mine ? t('auto.online.undoneMine') : t('auto.online.undoneTheirs', { name: rivalName }) })
+    let next = 0
+
+    for (const line of snapshot.chat) {
+      while (next < undo.notes.length && undo.notes[next]!.after < line.id) out.push(note(undo.notes[next++]!))
+      out.push({ id: `c${line.id}`, kind: 'chat', line })
+    }
+    while (next < undo.notes.length) out.push(note(undo.notes[next++]!))
+    return out
+  }, [snapshot.chat, undo.notes, rivalName])
   const end = snap.overlay.end
   const reason = snapshot.conceded === null && end ? coreReason(end, snap.overlay.lp, seat, rivalName) : undefined
   // Lo que corta el duelo: el enlace se perdió (el anfitrión recargó), el núcleo se cayó o rechazó jugadas inválidas.
@@ -395,7 +458,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     : manual === 'asking' && canSwitch
       ? { kind: 'thinking', text: t('auto.online.manualAsking', { name: rivalName }), onCancel: () => want(false), cancelLabel: t('auto.online.manualCancel') }
       : null
-  const lane = asks.lane?.kind === 'ask' && asks.lane.actions.length > 0 ? asks.lane : (manualLane ?? asks.lane)
+  // El pedido del rival de deshacer va primero (se contesta ahí y no tapa la pregunta del núcleo, que vuelve después); el mío, como la espera del pase a manual.
+  const lane = undo.lane?.kind === 'ask' ? undo.lane : asks.lane?.kind === 'ask' && asks.lane.actions.length > 0 ? asks.lane : (manualLane ?? undo.lane ?? asks.lane)
 
   const link: DuelMatLink = {
     ...asks.mat,
@@ -436,15 +500,16 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} readyAt={snapshot.emoteReadyAt} />,
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
-    // Sin Deshacer en v1 (dos personas: haría falta pedir permiso y re-simular).
-    undoAvailable: false,
+    // Deshacer le pide permiso al rival (`useLinkUndo`); el chip de la solitaria no va: acá el pedido es explícito.
+    undoAvailable: undo.available,
+    undoPending: undo.pending,
     ...(cover === undefined ? {} : { cover }),
   }
 
   return (
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
-      <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
+      <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={askUndo ? () => askUndo(true) : NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
       {asks.pieces}
       {banner ? <TurnOrderBanner first={seat === 0} rival={rivalName} onDone={hideBanner} /> : null}
       {docked ? <RivalEmoji burst={signals.burst} name={rivalName} onDismiss={signals.dismissBurst} /> : null}

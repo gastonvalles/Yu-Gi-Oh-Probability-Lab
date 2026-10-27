@@ -1026,3 +1026,214 @@ describe('pasar a manual', () => {
     game.hostLink.destroy()
   })
 })
+
+describe('deshacer con el acuerdo del otro', () => {
+  afterEach(() => vi.useRealTimers())
+
+  const undoOf = (link: OnlineLink) => link.getSnapshot().undo!
+  const states = (game: Game) => [undoOf(game.hostLink).state, undoOf(game.guestLink).state]
+  /** Las vidas del asiento 0 dicen cuántas respuestas lleva el núcleo de mentira (8000 - k antes de la pregunta k). */
+  const lp = (session: AutoSession) => session.getSnapshot().overlay.lp[0]
+  const undos = (room: MemoryRoom) => room.sent.filter((text) => text.startsWith('{"t":"autoUndo"')).map((text) => parseAutoMessage(text))
+
+  /** `first` empieza (0 Ana, 1 Beto) y contesta dos veces; queda la pregunta del otro (la cadena). */
+  async function playing(first: Duelist, options: Parameters<typeof setup>[0] = {}) {
+    const game = setup({ firstCode: first === 1 ? 2 : 1, ...options })
+
+    await settle(game.room)
+    await order(game, first)
+    const link = first === 0 ? game.hostLink : game.guestLink
+
+    for (let i = 0; i < 2; i += 1) {
+      sessionOf(link).answer(END)
+      await settle(game.room)
+    }
+    return game
+  }
+
+  it('Beto pide volver atrás su jugada y Ana acepta: el núcleo vuelve a antes de esa jugada, las dos mesas quedan iguales y los dos se enteran', async () => {
+    const game = await playing(1)
+
+    expect(sessionOf(game.hostLink).getSnapshot()).toMatchObject({ status: 'ready', ask: { seat: 1 } })
+    expect(lp(sessionOf(game.guestLink))).toBe(7998)
+    expect([undoOf(game.hostLink).peer, undoOf(game.guestLink).peer]).toEqual([true, true])
+    game.guestLink.undo!(true)
+    await settle(game.room)
+    expect(states(game)).toEqual(['asked', 'asking'])
+
+    game.hostLink.undo!(true)
+    await settle(game.room)
+    const hosted = sessionOf(game.hostLink)
+    const guested = sessionOf(game.guestLink)
+
+    // Volvió a la pregunta de Beto de antes de su última jugada (una respuesta: la primera).
+    expect(hosted.getSnapshot()).toMatchObject({ status: 'waiting', replaying: false, remoteAsk: { seat: 0 } })
+    expect(hosted.getSnapshot().answers).toHaveLength(1)
+    expect(guested.getSnapshot()).toMatchObject({ status: 'ready', replaying: false, ask: { seat: 0 } })
+    expect([lp(hosted), lp(guested)]).toEqual([7999, 7999])
+    sameView(hosted, guested, 0)
+    expect(game.hostLink.getSnapshot().undo).toMatchObject({ state: 'idle', done: 1, mine: false })
+    expect(game.guestLink.getSnapshot().undo).toMatchObject({ state: 'idle', done: 1, mine: true })
+    expect(undos(game.room).at(-1)).toMatchObject({ step: 'yes', guest: true })
+
+    // Sigue jugando desde ahí: su próxima respuesta llega al núcleo.
+    const sent = answers(game.core).length
+
+    guested.answer(END)
+    await settle(game.room)
+    expect(answers(game.core)).toHaveLength(sent + 1)
+    sameView(hosted, guested, 0)
+  })
+
+  it('Ana pide y Beto rechaza: nada cambia; si acepta, vuelve la jugada de Ana; Beto sin jugada propia no le pregunta nada a Ana', async () => {
+    const game = await playing(0)
+    const before = sessionOf(game.guestLink).getSnapshot().mine
+
+    game.hostLink.undo!(true)
+    await settle(game.room)
+    expect(states(game)).toEqual(['asking', 'asked'])
+    game.guestLink.undo!(false)
+    await settle(game.room)
+    expect(states(game)).toEqual(['declined', 'idle'])
+    expect(sessionOf(game.hostLink).getSnapshot().answers).toHaveLength(2)
+    expect(sessionOf(game.guestLink).getSnapshot().mine).toBe(before)
+
+    game.hostLink.undo!(true)
+    await settle(game.room)
+    game.guestLink.undo!(true)
+    expect(undoOf(game.guestLink).state).toBe('agreed')
+    await settle(game.room)
+    expect(states(game)).toEqual(['idle', 'idle'])
+    expect(sessionOf(game.hostLink).getSnapshot()).toMatchObject({ status: 'ready', ask: { seat: 0 } })
+    expect([lp(sessionOf(game.hostLink)), lp(sessionOf(game.guestLink))]).toEqual([7999, 7999])
+    sameView(sessionOf(game.hostLink), sessionOf(game.guestLink), 1)
+    expect([undoOf(game.hostLink).mine, undoOf(game.guestLink).mine]).toEqual([true, false])
+
+    // Beto todavía no jugó nada: Ana ni se entera y a él se le dice que no hay jugada suya.
+    game.guestLink.undo!(true)
+    await settle(game.room)
+    expect(states(game)).toEqual(['idle', 'none'])
+    // Y Ana, sin jugada propia (volvió a la primera pregunta), no puede pedirlo.
+    sessionOf(game.hostLink).undo()
+    await settle(game.room)
+    game.hostLink.undo!(true)
+    expect(undoOf(game.hostLink).state).toBe('idle')
+  })
+
+  it('un pedido a la vez: si los dos piden juntos vale el de Ana; quien pide lo retira y, sin respuesta, a los 30 s vence; si el otro se va, se cae', async () => {
+    const game = await playing(0)
+
+    game.hostLink.undo!(true)
+    game.guestLink.undo!(true)
+    await settle(game.room)
+    expect(states(game)).toEqual(['asking', 'asked'])
+    game.hostLink.undo!(false)
+    await settle(game.room)
+    expect(states(game)).toEqual(['idle', 'idle'])
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    game.hostLink.undo!(true)
+    game.room.flush()
+    expect(undoOf(game.guestLink).state).toBe('asked')
+    vi.advanceTimersByTime(MANUAL_WAIT_MS - 1)
+    expect(undoOf(game.hostLink).state).toBe('asking')
+    // Y lo que dice el anfitrión sale por su marcapasos.
+    vi.advanceTimersByTime(1000)
+    game.room.flush()
+    expect(states(game)).toEqual(['expired', 'idle'])
+    vi.useRealTimers()
+
+    game.hostLink.undo!(true)
+    await settle(game.room)
+    game.guestEnd.disconnect()
+    await settle(game.room)
+    expect(undoOf(game.hostLink).state).toBe('idle')
+    expect(sessionOf(game.hostLink).getSnapshot().answers).toHaveLength(2)
+  })
+
+  it('con el núcleo pensando, lo acordado espera a la próxima pregunta; terminado el duelo, el pedido se cae', async () => {
+    const game = await playing(1)
+
+    game.guestLink.undo!(true)
+    await settle(game.room)
+    game.core.state.hold = true
+    sessionOf(game.hostLink).answer(PASS)
+    game.hostLink.undo!(true)
+    await settle(game.room)
+    expect(undoOf(game.hostLink).state).toBe('agreed')
+    expect(game.core.commands.some((command) => command.t === 'rewind')).toBe(false)
+    game.core.state.hold = false
+    sessionOf(game.hostLink).cancel()
+    await settle(game.room)
+    expect(states(game)).toEqual(['idle', 'idle'])
+    expect(sessionOf(game.hostLink).getSnapshot().answers).toHaveLength(1)
+    sameView(sessionOf(game.hostLink), sessionOf(game.guestLink), 0)
+
+    game.guestLink.undo!(true)
+    await settle(game.room)
+    game.guest.concede()
+    await settle(game.room)
+    expect(states(game)).toEqual(['idle', 'idle'])
+  })
+
+  it('después de deshacer, el anfitrión que recarga rearma el duelo deshecho y el invitado que vuelve recibe la misma mesa', async () => {
+    const items = new Map<string, string>()
+    const save = () => autoSaveStore('ROOMUNDO', { getItem: (key) => items.get(key) ?? null, setItem: (key, value) => void items.set(key, value), removeItem: (key) => void items.delete(key) })
+    const game = await playing(1, { save: save() })
+
+    game.guestLink.undo!(true)
+    await settle(game.room)
+    game.hostLink.undo!(true)
+    await settle(game.room)
+    const undone = sessionOf(game.hostLink).getSnapshot()
+
+    expect(undone.answers).toHaveLength(1)
+    // Beto vuelve (otra página): el duelo de después de deshacer.
+    game.guestLink.destroy()
+    const guestLink = createGuestLink({ transport: game.guestEnd, source, deck: GUEST_DECK })
+
+    guestLink.observe(game.guest.getSnapshot())
+    await settle(game.room)
+    sameView(sessionOf(game.hostLink), sessionOf(guestLink), 0)
+    expect(lp(sessionOf(guestLink))).toBe(7999)
+
+    // Ana recarga: lo guardado ya tiene la respuesta recortada.
+    game.hostLink.destroy()
+    game.hostEnd.close()
+    const hostEnd = game.room.join()
+    const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-2', settings: { ...DEFAULT_SETTINGS, auto: true } })
+    const core = fakeHost(undefined, undefined, 2)
+    const hostLink = createHostLink({ transport: hostEnd, loader: listLoader(), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => true, save: save() })
+
+    host.subscribe(() => hostLink.observe(host.getSnapshot()))
+    hostLink.observe(host.getSnapshot())
+    await settle(game.room)
+    expect(sessionOf(hostLink).getSnapshot()).toMatchObject({ status: 'waiting', replaying: false, answers: undone.answers })
+    expect(sessionOf(hostLink).getSnapshot().mine).toEqual(undone.mine)
+    sameView(sessionOf(hostLink), sessionOf(guestLink), 0)
+    hostLink.destroy()
+    guestLink.destroy()
+  })
+
+  it('con alguien de antes (sin `undo` en su deck o en la revisión) no se ofrece ni viaja nada', async () => {
+    const game = await playing(0)
+
+    // Un invitado viejo vuelve a mandar su deck sin `undo`.
+    game.room.inject(game.hostEnd, encodeAutoMessage({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: GUEST_DECK.main.map(([code, copies]) => [code, copies]), extra: [] }))
+    await settle(game.room)
+    expect(undoOf(game.hostLink).peer).toBe(false)
+    const said = undos(game.room).length
+
+    game.hostLink.undo!(true)
+    await settle(game.room)
+    expect(undoOf(game.hostLink).state).toBe('idle')
+    expect(undos(game.room)).toHaveLength(said)
+
+    // Un anfitrión viejo revisa sin `undo`: el invitado tampoco lo ofrece.
+    game.room.inject(game.guestEnd, encodeAutoMessage({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: true, bad: [], theirsBad: 0, s: lastSeq(game.room) + 1 }))
+    await settle(game.room)
+    expect(undoOf(game.guestLink).peer).toBe(false)
+    game.guestLink.undo!(true)
+    expect(undoOf(game.guestLink).state).toBe('idle')
+  })
+})
