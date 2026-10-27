@@ -15,7 +15,7 @@ import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 import { asSocket, createDuelHarness, fakeRooms, handOf, hasSave, render, rulesDialog, typeInto } from './support/duel-screen-harness'
 
 // La sala con reglas automáticas (beta), de punta a punta en la sala de siempre: la mesa del núcleo va de mentira (la prueban `auto-screen-*` y el enlace, `auto-online-*`);
-// acá importa la sala: quién puede estar listo, que nunca se reparte la mesa manual, quién mira y que «Jugar ahora» sigue siendo manual.
+// acá importa la sala: quién puede estar listo, que nunca se reparte la mesa manual, quién mira, la sala pública y «Jugar ahora».
 vi.setConfig({ testTimeout: 20_000 })
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []), fetchCardArts: vi.fn(async () => []) }))
@@ -23,7 +23,7 @@ vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []), fetchC
 let memory: MemoryRoom
 let connect: DuelConnect
 
-const { click, flush, openRules, openTable, screenProps, startDuel } = createDuelHarness(() => ({ memory, connect }))
+const { click, flush, joinByLink, openRules, openTable, screenProps, startDuel } = createDuelHarness(() => ({ memory, connect }))
 
 const AUTO = 'Reglas automáticas (beta)'
 const CHECKING = 'Revisando los decks de los dos…'
@@ -71,7 +71,7 @@ afterEach(() => {
 })
 
 describe('una sala con reglas automáticas', () => {
-  it('prendido el modo automático, la hoja deja fijos el tipo, el reloj de turnos y quién entra (lo elegido vuelve al apagarlo), y «Abrir duelo» abre una sala privada que lo dice', () => {
+  it('prendido el modo automático, la hoja deja fijos el tipo y el reloj de turnos (lo elegido vuelve al apagarlo) y «Abrir duelo» abre la sala privada que se eligió, que lo dice', () => {
     withWorker()
     const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms, autoDuel: FakeAutoDuel })} />)
@@ -88,22 +88,23 @@ describe('una sala con reglas automáticas', () => {
     // Es el mismo interruptor que el del lobby: prende el modo automático entero.
     expect(toggle).toBeChecked()
     expect(autoPrefs().duel).toBe(true)
-    expect(sheet.getByText('Con reglas automáticas: un solo duelo, privado, sin reloj de turnos.')).toBeInTheDocument()
+    expect(sheet.getByText('Con reglas automáticas: un solo duelo, sin reloj de turnos ni espectadores todavía.')).toBeInTheDocument()
     expect(sheet.getByRole('radio', { name: 'Single' })).toBeChecked()
     // Sin Match (la sala es de un solo duelo); Solo se sigue pudiendo elegir (ahí rige el simulador de handtraps).
     expect(sheet.queryByRole('radio', { name: 'Match · mejor de 3' })).not.toBeInTheDocument()
     expect(sheet.getByRole('radio', { name: 'Solo' })).toBeEnabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeDisabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).not.toBeChecked()
-    expect(sheet.getByRole('radio', { name: 'Privada' })).toBeChecked()
-    expect(sheet.getByRole('radio', { name: 'Pública' })).toBeDisabled()
+    // Quién entra se elige como siempre.
+    expect(sheet.getByRole('radio', { name: 'Pública' })).toBeChecked()
+    expect(sheet.getByRole('radio', { name: 'Privada' })).toBeEnabled()
 
     fireEvent.click(toggle)
     expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeChecked()
-    expect(sheet.getByRole('radio', { name: 'Pública' })).toBeChecked()
 
     fireEvent.click(toggle)
+    fireEvent.click(sheet.getByRole('radio', { name: 'Privada' }))
     fireEvent.click(sheet.getByRole('button', { name: 'Abrir duelo' }))
     const room = extractRoomCode(window.location.hash)!
 
@@ -198,7 +199,36 @@ describe('una sala con reglas automáticas', () => {
     expect(window.location.hash).toBe('#duel')
   })
 
-  it('«Jugar ahora» abre siempre una sala manual, pública o con enlace, aunque el modo automático esté prendido', async () => {
+  it('una sala pública con reglas automáticas se anota mientras espera, sale de la lista al entrar el rival (nunca como duelo en vivo: no se puede mirar) y el rival la ve automática', async () => {
+    withWorker()
+    setAutoPref('duel', true)
+    const rooms = fakeRooms()
+    const host = render(<DuelScreen {...screenProps({ rooms, autoDuel: FakeAutoDuel })} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    openRules(host)
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
+    const room = extractRoomCode(window.location.hash)!
+
+    expect(optionsOf(room)).toMatchObject({ auto: true, isPublic: true })
+    expect(rooms.register).toHaveBeenCalledWith(room, { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 50 }, expect.any(String))
+    expect(rule(host, 'Quién puede entrar')).toHaveTextContent('Pública')
+    const token = rooms.register.mock.calls[0]![2]
+
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps({ autoDuel: FakeAutoDuel })} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    joinByLink(guest, room)
+    flush()
+    await act(async () => {})
+
+    expect(rooms.unlist).toHaveBeenCalledWith(room, token)
+    expect(rooms.live).not.toHaveBeenCalled()
+    expect(rooms.register).toHaveBeenCalledTimes(1)
+    expect(rule(guest, 'Reglas')).toHaveTextContent('Automáticas (beta)')
+    expect(lastProps('guest').snapshot.settings.auto).toBe(true)
+  })
+
+  it('«Jugar ahora» sigue al modo automático: prendido, la sala pública que abre es automática', async () => {
     withWorker()
     setAutoPref('duel', true)
     const rooms = fakeRooms()
@@ -207,22 +237,25 @@ describe('una sala con reglas automáticas', () => {
     click(open, 'Jugar ahora')
     await act(async () => {})
 
-    expect(optionsOf(extractRoomCode(window.location.hash)!)).not.toHaveProperty('auto')
+    expect(optionsOf(extractRoomCode(window.location.hash)!)).toMatchObject({ auto: true, isPublic: true })
     expect(rooms.register).toHaveBeenCalledTimes(1)
-    expect(within(open.container).getByRole('button', { name: 'Copiar enlace para mirar' })).toBeInTheDocument()
-    open.unmount()
+    expect(within(open.container).queryByRole('button', { name: 'Copiar enlace para mirar' })).toBeNull()
+  })
 
-    // Sin la lista de salas, «Jugar ahora» abre una con enlace (privada): tampoco es automática.
-    window.history.replaceState(null, '', '#duel')
-    const linked = render(<DuelScreen {...screenProps({ autoDuel: FakeAutoDuel })} />)
+  it('con las reglas automáticas prendidas, «Guardar reglas» guarda el tiempo y el formato, y siguen prendidas', () => {
+    withWorker()
+    setAutoPref('duel', true)
+    const view = render(<DuelScreen {...screenProps({ autoDuel: FakeAutoDuel })} />)
 
-    click(linked, 'Jugar ahora')
-    await act(async () => {})
+    openRules(view)
+    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' }))
+    fireEvent.change(within(rulesDialog()).getByLabelText('Formato'), { target: { value: 'ocg' } })
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
+    openRules(view)
 
-    expect(optionsOf(extractRoomCode(window.location.hash)!)).toMatchObject({ isPublic: false })
-    expect(optionsOf(extractRoomCode(window.location.hash)!)).not.toHaveProperty('auto')
-    expect(seen).toHaveLength(0)
-    expect(within(linked.container).queryByTestId('room-summary')).not.toHaveTextContent('Automáticas')
+    expect(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' })).toBeChecked()
+    expect(within(rulesDialog()).getByLabelText('Formato')).toHaveValue('ocg')
+    expect(within(rulesDialog()).getByRole('switch', { name: AUTO })).toBeChecked()
   })
 
   it('sin poder correr el núcleo, o apagado en el despliegue, la fila va apagada y sin tocar, con el porqué, y la sala que se abre es manual', async () => {

@@ -1,5 +1,6 @@
 import { byteLength, MAX_MESSAGE_BYTES, RateLimiter } from '../duel-relay-rules'
 import { MAX_LP } from '../life-calculator'
+import { PHASES, type MatPhase } from '../practice-mat'
 import { parseAnswer, parseAutoEvent, parsePlacedCards, parseSetup, type AutoEvent, type CoreAnswer, type PlacedCard, type Seat, type Setup } from './protocol'
 
 /**
@@ -43,7 +44,7 @@ export interface AutoCardInfo {
  */
 type Numbered =
   /** Anfitrión → invitado: si se puede jugar con esos dos decks. `bad`: los códigos del invitado sin reglas; `theirsBad`: cuántas del anfitrión. `reason` cuando no es por reglas. */
-  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true }
+  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true }
   /**
    * Anfitrión → invitado: el duelo que empieza. `seat` es el asiento del invitado; `mine` su deck en códigos del núcleo como lo puso el anfitrión, el Main por código (el orden
    * no viaja: con él, o con la semilla, el invitado sabría sus próximos robos); `theirs`, sólo cuántas cartas tiene el anfitrión. `setup`: el duelo no empieza de cero sino desde
@@ -75,7 +76,13 @@ type Numbered =
 export type AutoMessage =
   | (Numbered & { s?: number })
   /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver). */
-  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true }
+  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true }
+  /**
+   * Los dos, sin número (no es del flujo del núcleo): la fase que se ve en mi mesa en el turno `turn` del núcleo (la mesa de quien tiene el turno frena en su DP y su SP aunque el
+   * núcleo ya esté en la M1: `phase-stops.ts`) y si estoy contestando una pregunta del núcleo que no es mi turno libre (`busy`). Sólo viaja entre dos que lo anuncian (`phase` en
+   * `autoDeck` y `autoCheck`): a uno de antes no le llega.
+   */
+  | { t: 'autoPhase'; turn: number; phase: MatPhase; busy?: true }
   /** Un trozo de un mensaje grande (`id` lo agrupa, `i` de `n`): se reensambla y se vuelve a parsear. */
   | { t: 'autoPart'; id: number; i: number; n: number; text: string }
   /** Invitado → anfitrión: la respuesta a la pregunta pendiente (`askId` es el de esa pregunta; otro, se descarta). */
@@ -98,8 +105,8 @@ export type ResumeStep = ManualStep | 'hello'
 export type ResumeWhy = 'turn' | 'phase' | 'tokens' | 'control' | 'table'
 export type AutoMessageKind = AutoMessage['t']
 /** Lo que cada lado acepta recibir (se descarta lo demás, sin avisar). `autoResume` lo lee el enlace del modo manual, no el del núcleo (que lo deja pasar). */
-export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync', 'autoManual', 'autoUndo', 'autoResume']
-export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart', 'autoManual', 'autoUndo', 'autoResume']
+export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync', 'autoManual', 'autoUndo', 'autoResume', 'autoPhase']
+export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart', 'autoManual', 'autoUndo', 'autoResume', 'autoPhase']
 
 export function encodeAutoMessage(message: AutoMessage): string {
   return JSON.stringify(message)
@@ -116,6 +123,7 @@ const MAX_U32 = 2 ** 32 - 1
 const MAX_ASK_ID = 1_000_000
 /** A 25 mensajes por segundo, días de duelo sin reponer. */
 const MAX_SEQ = 10_000_000
+const MAX_TURN = 100_000
 const REASONS = ['version', 'off', 'data', 'lost'] as const
 const MANUAL_STEPS: readonly unknown[] = ['ask', 'yes', 'no', 'cancel'] satisfies ManualStep[]
 const RESUME_STEPS: readonly unknown[] = ['ask', 'yes', 'no', 'cancel', 'hello'] satisfies ResumeStep[]
@@ -191,7 +199,7 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       const main = deckRows(raw.main, 200, 200)
       const extra = deckRows(raw.extra, 100, 100)
 
-      return isInt(raw.v, 0, 1000) && main && extra ? { t: 'autoDeck', v: raw.v, main, extra, ...(raw.undo === true ? { undo: true as const } : {}) } : null
+      return isInt(raw.v, 0, 1000) && main && extra ? { t: 'autoDeck', v: raw.v, main, extra, ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}) } : null
     }
 
     case 'autoCheck': {
@@ -200,7 +208,13 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
 
       if (!isInt(raw.v, 0, 1000) || typeof raw.ok !== 'boolean' || !bad || !isInt(raw.theirsBad, 0, 300) || (raw.reason !== undefined && !reason)) return null
 
-      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(reason ? { reason } : {}), ...(raw.undo === true ? { undo: true as const } : {}) }
+      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(reason ? { reason } : {}), ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}) }
+    }
+
+    case 'autoPhase': {
+      const phase = PHASES.find((item) => item.id === raw.phase)?.id
+
+      return isInt(raw.turn, 0, MAX_TURN) && phase ? { t: 'autoPhase', turn: raw.turn, phase, ...(raw.busy === true ? { busy: true as const } : {}) } : null
     }
 
     case 'autoInit': {

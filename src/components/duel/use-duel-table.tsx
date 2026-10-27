@@ -3,9 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { rpsOutcome } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import { isEmojiSignal, isSignal } from '../../app/duel-signals'
+import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { SIGNAL_MS } from './DuelBar'
+import type { DuelMatLink } from '../probability/PracticeMat'
 import { gameText, outcomeText, rpsName } from './game-text'
 
 /**
@@ -145,4 +147,44 @@ export function RivalEmoji({ burst, name, onDismiss }: { burst: { emoji: string;
       </button>
     </div>
   )
+}
+
+/** Cuánto se queda el cartel de la fase o del turno del rival. */
+const NOTICE_MS = 1400
+
+/**
+ * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando llega a su End Phase y empieza el tuyo, el cartel
+ * "Tu turno". Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace sin cambiar de fase. `phase`: la de su mesa (undefined: no se avisa nada).
+ */
+export function useRivalNotice(phase: MatPhase | undefined, turn: 'mine' | 'theirs', rival: string): DuelMatLink['notice'] {
+  const seen = useRef({ phase, turn })
+  const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
+
+  useEffect(() => {
+    const before = seen.current
+
+    seen.current = { phase, turn }
+
+    if (phase === undefined || before.phase === undefined || before.phase === phase) {
+      return
+    }
+
+    const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
+
+    // Llegó a su End Phase y ahora te toca a vos; si no, una fase más de su turno.
+    if (before.turn === 'theirs' && turn === 'mine') {
+      setShown({ key: Date.now(), phase, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
+    } else {
+      setShown({ key: Date.now(), phase, who: rival })
+    }
+  }, [phase, turn, rival])
+
+  useEffect(() => {
+    if (!shown) return
+
+    const id = setTimeout(() => setShown(undefined), NOTICE_MS)
+    return () => clearTimeout(id)
+  }, [shown])
+
+  return shown
 }

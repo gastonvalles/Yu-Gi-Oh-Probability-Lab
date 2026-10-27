@@ -23,7 +23,7 @@ import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
 import type { ManualGame } from '../../app/auto/manual-handover'
-import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
+import { cardKindOf, createMatState, isForeignId, isToken, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
 import { cardEffects, effectDetail } from '../../app/mat-assistant'
 import type { CardTextHighlight } from '../../app/card-text'
@@ -58,7 +58,7 @@ import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneN
 import { ResumeAutoSetting, useResumeLane, type ResumeAuto } from './ResumeAuto'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
 import { useDockPeek } from './use-dock-peek'
-import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from './use-duel-table'
+import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNotice, useSignals } from './use-duel-table'
 import { DuelGames } from './DuelGames'
 import { isEmojiSignal } from '../../app/duel-signals'
 import { useDuelFeed } from './use-duel-feed'
@@ -165,8 +165,8 @@ function optionsFor(room: string | undefined): RoomOptions {
     match: stored.match === true,
     siding: stored.match === true && stored.siding === true,
     genesysCap: validGenesysCap(stored.genesysCap),
-    // Con reglas automáticas la sala es privada: el relay no publica ese dato y nadie tiene que caer en una sin saberlo.
-    isPublic: stored.isPublic === true && stored.auto !== true,
+    // También con reglas automáticas: la lista no lo dice (el relay no publica ese dato), pero la ficha de la sala sí, antes de estar listo.
+    isPublic: stored.isPublic === true,
     auto: stored.auto === true,
   }
 }
@@ -296,9 +296,11 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   // Una sala pública está en la lista de salas abiertas mientras espera rival (se anota al crearla). Cuando llega el rival pasa a la de los duelos en vivo y su anfitrión lo avisa cada minuto,
   // con cuántos lo miran; si el relay no lo entiende (uno de antes), se baja como siempre al llegar el rival. Se baja al salir o al cerrar la pestaña, y una sala privada nunca se anota.
   // Terminado el duelo y con el rival ya afuera, la sala no espera a nadie: no vuelve a la lista de las que esperan rival (ahí un tercero entraría a ver la mesa de quien se quedó) y se cierra sola.
+  // Una sala con reglas automáticas no se puede mirar: no pasa a los duelos en vivo (ahí se ofrece mirar). Sale de la lista al entrar el rival y, empezado el duelo, no vuelve.
   const rivalLeft = snapshot ? !snapshot.peerPresent && duelFinished(duelResult(snapshot.life.lp, snapshot.conceded), snapshot.series.match, snapshot.series.winner) : false
-  const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic && !rivalLeft ? intent.room : null
   const awaitingRival = !snapshot?.peerPresent
+  const unwatchable = options.auto && (!awaitingRival || snapshot?.opening.ordered === true)
+  const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic && !rivalLeft && !unwatchable ? intent.room : null
   const watchers = snapshot?.watchers ?? 0
   const guestName = snapshot?.peerName ?? undefined
   const listing = useRef({ name: myName, settings })
@@ -1673,48 +1675,6 @@ function useMarkNotice(snapshot: DuelSnapshot) {
   }, [mine, rival])
 }
 
-/** Cuánto se queda el cartel de la fase o del turno del rival. */
-const NOTICE_MS = 1400
-
-/**
- * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando llega a su End Phase y empieza el tuyo, el cartel
- * "Tu turno". Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace sin cambiar de fase.
- */
-function useRivalNotice(snapshot: DuelSnapshot, turn: 'mine' | 'theirs'): DuelMatLink['notice'] {
-  const phase = snapshot.theirs?.state.phase
-  const seen = useRef({ phase, turn })
-  const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
-  const rival = snapshot.peerName ?? t('duel.bar.rival')
-
-  useEffect(() => {
-    const before = seen.current
-
-    seen.current = { phase, turn }
-
-    if (phase === undefined || before.phase === undefined || before.phase === phase) {
-      return
-    }
-
-    const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
-
-    // Llegó a su End Phase y ahora te toca a vos; si no, una fase más de su turno.
-    if (before.turn === 'theirs' && turn === 'mine') {
-      setShown({ key: Date.now(), phase, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
-    } else {
-      setShown({ key: Date.now(), phase, who: rival })
-    }
-  }, [phase, turn, rival])
-
-  useEffect(() => {
-    if (!shown) return
-
-    const id = setTimeout(() => setShown(undefined), NOTICE_MS)
-    return () => clearTimeout(id)
-  }, [shown])
-
-  return shown
-}
-
 /** La mesa de práctica con el campo del rival arriba: tus jugadas van al relay y las suyas llegan solas. */
 function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onRematch, onLeave, onAbandon, resume }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void; onAbandon: () => void; /** Una sala con reglas automáticas que pasó a manual: pedir seguir en automático (`ResumeAuto`). */ resume?: ResumeAuto }) {
   const { mine, initial, actions, theirs } = snapshot
@@ -1808,7 +1768,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   // La señal del rival junto a sus vidas; sus emojis, en escritorio, grandes en el medio (`RivalEmoji`).
   const rivalSignal = signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs
   useMarkNotice(snapshot)
-  const notice = useRivalNotice(snapshot, turn)
+  const notice = useRivalNotice(snapshot.theirs?.state.phase, turn, snapshot.peerName ?? t('duel.bar.rival'))
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const undoResult = useUndoResult(snapshot)
   const passHeld = usePassHeld(snapshot)

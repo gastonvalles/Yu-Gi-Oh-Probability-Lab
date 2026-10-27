@@ -1263,3 +1263,69 @@ describe('deshacer con el acuerdo del otro', () => {
     expect(undoOf(game.guestLink).state).toBe('idle')
   })
 })
+
+describe('la fase que se ve en cada mesa', () => {
+  const phases = (room: MemoryRoom) => room.sent.filter((text) => text.startsWith('{"t":"autoPhase"')).map((text) => parseAutoMessage(text))
+
+  it('va de un lado al otro entre dos que la anuncian; el invitado que vuelve recibe la del anfitrión; en otro duelo vuelve a cero', async () => {
+    const game = setup({ firstCode: 1 })
+
+    await settle(game.room)
+    await order(game, 0)
+    // Los dos la saben leer y nadie dijo nada todavía: turno 0.
+    expect(game.hostLink.getSnapshot().rivalPhase).toEqual({ turn: 0, phase: 'draw', busy: false })
+    expect(game.guestLink.getSnapshot().rivalPhase).toEqual({ turn: 0, phase: 'draw', busy: false })
+    game.hostLink.phase!({ turn: 1, phase: 'standby', busy: false })
+    game.guestLink.phase!({ turn: 1, phase: 'draw', busy: true })
+    await settle(game.room)
+    expect(game.guestLink.getSnapshot().rivalPhase).toEqual({ turn: 1, phase: 'standby', busy: false })
+    expect(game.hostLink.getSnapshot().rivalPhase).toEqual({ turn: 1, phase: 'draw', busy: true })
+    // Sin número: no abre ni corta el flujo del núcleo.
+    expect(phases(game.room)).toEqual([{ t: 'autoPhase', turn: 1, phase: 'standby' }, { t: 'autoPhase', turn: 1, phase: 'draw', busy: true }])
+
+    // Beto recarga: el anfitrión le repone el duelo y, detrás, la fase de su mesa.
+    game.guestLink.destroy()
+    const again = createGuestLink({ transport: game.guestEnd, source, deck: GUEST_DECK })
+
+    again.observe(game.guest.getSnapshot())
+    await settle(game.room)
+    expect(again.getSnapshot().rivalPhase).toEqual({ turn: 1, phase: 'standby', busy: false })
+
+    // Un aluvión no pasa del tope (4 por segundo, 8 de golpe): con el reloj quieto, quedan las primeras 8.
+    const flood = setup({ firstCode: 1, hostNow: () => 0 })
+
+    await settle(flood.room)
+    await order(flood, 0)
+    for (let turn = 1; turn <= 20; turn += 1) flood.room.inject(flood.hostEnd, encodeAutoMessage({ t: 'autoPhase', turn, phase: 'main1' }))
+    await settle(flood.room)
+    expect(flood.hostLink.getSnapshot().rivalPhase?.turn).toBe(8)
+
+    // La revancha es otro duelo: los turnos vuelven a 1 y lo dicho antes no vale.
+    game.host.concede()
+    await settle(game.room)
+    game.host.rematch()
+    game.guest.rematch()
+    await settle(game.room)
+    expect(game.hostLink.getSnapshot().rivalPhase).toEqual({ turn: 0, phase: 'draw', busy: false })
+  })
+
+  it('con alguien de antes (sin `phase` en su deck o en la revisión) no viaja nada y no se la espera', async () => {
+    const game = setup({ firstCode: 1 })
+
+    await settle(game.room)
+    await order(game, 0)
+    game.room.inject(game.hostEnd, encodeAutoMessage({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: GUEST_DECK.main.map(([code, copies]) => [code, copies]), extra: [] }))
+    await settle(game.room)
+    expect(game.hostLink.getSnapshot().rivalPhase).toBeNull()
+    game.hostLink.phase!({ turn: 1, phase: 'main1', busy: false })
+    await settle(game.room)
+    expect(phases(game.room)).toEqual([])
+
+    game.room.inject(game.guestEnd, encodeAutoMessage({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: true, bad: [], theirsBad: 0, s: lastSeq(game.room) + 1 }))
+    await settle(game.room)
+    expect(game.guestLink.getSnapshot().rivalPhase).toBeNull()
+    game.guestLink.phase!({ turn: 1, phase: 'draw', busy: false })
+    await settle(game.room)
+    expect(phases(game.room)).toEqual([])
+  })
+})

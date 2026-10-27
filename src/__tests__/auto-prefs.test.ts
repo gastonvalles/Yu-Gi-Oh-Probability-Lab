@@ -7,9 +7,9 @@ const memory = () => {
 }
 
 describe('las preferencias del duelo automático', () => {
-  it('sin nada guardado: el interruptor apagado (la mesa manual de siempre), se pregunta la cadena y la casilla, la mano del rival a la vista', () => {
+  it('sin nada guardado: el interruptor prendido (se juega en automático donde se puede), se pregunta la cadena y la casilla, la mano del rival a la vista', () => {
     expect(readAutoPrefs(memory)).toEqual(DEFAULT_AUTO_PREFS)
-    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: false, chain: 'ask', place: 'ask', blind: false })
+    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: true, chain: 'ask', place: 'ask', blind: false })
   })
 
   it('ya no hay bandera: la clave vieja no prende nada', () => {
@@ -49,12 +49,13 @@ describe('las preferencias del duelo automático', () => {
 
     setAutoPref('chain', 'never', () => storage)
     setAutoPref('duel', true, () => storage)
-    expect(autoPrefs()).toMatchObject({ chain: 'never', duel: true })
-    expect([storage.getItem(AUTO_KEYS.chain), storage.getItem(AUTO_KEYS.duel)]).toEqual(['never', 'on'])
-    expect(readAutoPrefs(() => storage)).toMatchObject({ chain: 'never', duel: true })
     setAutoPref('duel', false, () => storage)
-    expect(storage.getItem(AUTO_KEYS.duel)).toBe('off')
-    expect(readAutoPrefs(() => storage).duel).toBe(false)
+    expect(autoPrefs()).toMatchObject({ chain: 'never', duel: false })
+    expect([storage.getItem(AUTO_KEYS.chain), storage.getItem(AUTO_KEYS.duel)]).toEqual(['never', 'off'])
+    expect(readAutoPrefs(() => storage)).toMatchObject({ chain: 'never', duel: false })
+    setAutoPref('duel', true, () => storage)
+    expect(storage.getItem(AUTO_KEYS.duel)).toBe('on')
+    expect(readAutoPrefs(() => storage).duel).toBe(true)
   })
 
   it('el núcleo necesita WebAssembly y un Worker: sin alguno, el navegador no lo puede correr', () => {

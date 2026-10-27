@@ -10,10 +10,11 @@ import { DuelRailsContext } from '../app/duel-rails'
 import { AskOptions } from '../components/auto/AskOptions'
 import { AskPrompt } from '../components/auto/AskPrompt'
 import { AutoBar } from '../components/auto/AutoBar'
-import { CardPicker, PickBand, type PickCard } from '../components/auto/CardPicker'
+import { CardPicker, PickBand, pickPlace, type PickCard } from '../components/auto/CardPicker'
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
+import { applyLocale } from '../i18n'
 import { menuRow, tapMenu } from './support/mat-menu'
 
 // Las piezas del duelo automático (fuera del campo): cada una con sus estados, su teclado y sus topes. Son presentacionales: lo que contestan sale por props.
@@ -343,6 +344,53 @@ describe('CardPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     escape()
     expect(onCancel).toHaveBeenCalledTimes(2)
+  })
+
+  it('de varios lugares: un grupo por lugar con su encabezado (la mano primero, después en el orden que llegan), un chip por carta y el lugar en el nombre accesible; también en inglés', () => {
+    const onPick = vi.fn()
+    const cards: PickCard[] = [
+      { key: 'kirin', name: 'Kirin', art: null, ...pickPlace('deck', false) },
+      { key: 'ponix-deck', name: 'Ponix', art: null, ...pickPlace('deck', false) },
+      { key: 'veiler', name: 'Effect Veiler', art: null, ...pickPlace('hand', true) },
+      { key: 'ponix-hand', name: 'Ponix', art: null, ...pickPlace('hand', false) },
+    ]
+    render(<CardPicker title="Elegí 1 carta para destruir" cards={cards} min={1} max={1} onPick={onPick} />)
+    const groups = within(screen.getByRole('listbox', { name: 'Cartas para elegir' })).getAllByRole('group')
+
+    expect(groups.map((group) => group.getAttribute('aria-labelledby') && document.getElementById(group.getAttribute('aria-labelledby')!)!.textContent)).toEqual(['Tu mano · 1', 'Tu Deck · 2', 'La mano del rival · 1'])
+    expect(names(screen.getAllByRole('option'))).toEqual(['Ponix, en tu mano', 'Kirin, en tu Deck', 'Ponix, en tu Deck', 'Effect Veiler, en la mano del rival'])
+    // El encabezado queda arriba scrolleando la hoja.
+    expect(document.getElementById(groups[0]!.getAttribute('aria-labelledby')!)).toHaveClass('sticky', '-top-5')
+    // Las dos Ponix nunca se ven iguales: la de la mano, el chip violeta lleno; la del Deck, el neutro.
+    const chip = (name: string) => screen.getByRole('option', { name }).querySelector('[data-pick-place]')!
+    expect(chip('Ponix, en tu mano')).toHaveTextContent('Mano')
+    expect(chip('Ponix, en tu mano')).toHaveClass('bg-primary', 'text-white')
+    expect(chip('Ponix, en tu Deck')).toHaveTextContent('Deck')
+    expect(chip('Ponix, en tu Deck')).not.toHaveClass('bg-primary')
+    expect(chip('Effect Veiler, en la mano del rival')).toHaveTextContent('Mano rival')
+    // El teclado recorre lo que se ve (la mano primero) y la respuesta es la carta, no su lugar en la lista.
+    fireEvent.keyDown(screen.getAllByRole('option')[0]!, { key: 'ArrowRight' })
+    fireEvent.keyDown(screen.getAllByRole('option')[1]!, { key: 'Enter' })
+    expect(onPick).toHaveBeenCalledWith(['kirin'])
+
+    cleanup()
+    applyLocale('en')
+    try {
+      render(<CardPicker title="Choose" cards={cards.map((card) => ({ ...card, ...pickPlace(card.from!, card.theirs ?? false) }))} min={1} max={1} onPick={() => {}} />)
+      expect(names(screen.getAllByRole('option'))).toEqual(['Ponix, in your hand', 'Kirin, in your Deck', 'Ponix, in your Deck', "Effect Veiler, in the opponent's hand"])
+      expect(screen.getByText("The opponent's hand · 1")).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: "Effect Veiler, in the opponent's hand" })).toHaveTextContent('Opp. Hand')
+    } finally {
+      applyLocale('es')
+    }
+  })
+
+  it('todas del mismo lugar, sin encabezados: el chip en cada una', () => {
+    render(<CardPicker title="Elegí" cards={[{ key: 'a', name: 'Kirin', art: null, ...pickPlace('gy', false) }, { key: 'b', name: 'Ponix', art: null, ...pickPlace('gy', false) }]} min={1} max={1} onPick={() => {}} />)
+
+    expect(screen.queryAllByRole('group')).toHaveLength(0)
+    expect(names(screen.getAllByRole('option'))).toEqual(['Kirin, en tu Cementerio', 'Ponix, en tu Cementerio'])
+    expect(screen.getAllByRole('option').map((option) => option.querySelector('[data-pick-place]')?.textContent)).toEqual(['Cem.', 'Cem.'])
   })
 
   it('Mayús+clic elige el tramo desde la última, hasta el tope', () => {

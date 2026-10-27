@@ -99,8 +99,8 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
   const [invalid, setInvalid] = useState(false)
   const codeRef = useRef<HTMLInputElement | null>(null)
   const alive = useRef(true)
-  // El modo automático (el interruptor del lobby, el mismo que el de las reglas): la sala que abrís (con «Retar a un amigo» o «Abrir duelo», no con «Jugar ahora») tiene reglas
-  // automáticas si está prendido y se puede. Se decide al abrirla y queda así mientras dure.
+  // El modo automático (el interruptor del lobby, el mismo que el de las reglas; prendido de entrada): la sala que abrís, pública o privada, tiene reglas automáticas si está
+  // prendido y se puede. Se decide al abrirla y queda así mientras dure.
   const autoDuel = useAutoPrefs().duel
   const autoRooms = useAutoRooms(rulesOpen || autoDuel)
   const autoRoom = autoDuel && autoRooms === 'on'
@@ -164,8 +164,8 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
 
     setSearch({ kind: 'opening' })
     writePrefs(prefs)
-    // Siempre manual, aunque el modo automático esté prendido: es una sala pública y el relay no publica salas automáticas (nadie tiene que caer en una sin saberlo).
-    onOpenDuel({ ...prefs, isPublic: Boolean(rooms) })
+    // Con el modo automático, también automática: la lista no lo dice (el relay no publica ese dato), la ficha de la sala sí.
+    onOpenDuel({ ...prefs, isPublic: Boolean(rooms), ...(autoRoom ? { auto: true } : {}) })
   }
 
   const challenge = () => {
@@ -325,7 +325,7 @@ interface RulesSheetProps {
   canTrain: boolean
   /** Si se pueden abrir salas con reglas automáticas (y si no, por qué): la fila de su interruptor. */
   autoRooms: AutoRooms
-  /** El modo automático está prendido y se puede: la sala que se abre es de un solo duelo, privada y sin reloj de turnos. */
+  /** El modo automático está prendido y se puede: la sala que se abre es de un solo duelo y sin reloj de turnos. */
   auto: boolean
   onClose: () => void
   onSave: (prefs: DuelPrefs) => void
@@ -367,12 +367,11 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
   }, [isOpen, prefs])
 
   const genesys = draft.format === 'genesys'
-  // Con reglas automáticas la sala es de un solo duelo (el tipo no ofrece Match), sin reloj de turnos y privada: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se
-  // muestran así: lo elegido antes vuelve al apagarlo.
+  // Con reglas automáticas la sala es de un solo duelo (el tipo no ofrece Match) y sin reloj de turnos: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se
+  // muestran así: lo elegido antes vuelve al apagarlo. Quién entra, el tiempo y el formato se eligen igual que siempre.
   const locked = auto && !solo
   const match = draft.match && !locked
   const turnOn = draft.turnLimit && !locked
-  const shownPublic = isPublic && !locked
   const mode: RoomMode = solo ? 'solo' : match ? 'match' : 'single'
 
   return (
@@ -392,7 +391,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
               <Button variant="secondary" onClick={() => onSave(draft)}>
                 {t('duel.play.rulesSave')}
               </Button>
-              <Button variant="primary" disabled={!canOpen} onClick={() => onOpen(draft, canPublish && shownPublic)}>
+              <Button variant="primary" disabled={!canOpen} onClick={() => onOpen(draft, canPublish && isPublic)}>
                 {t('duel.play.rulesOpen')}
               </Button>
             </>
@@ -487,19 +486,17 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
             </RuleField>
 
             {canPublish ? (
-              <RuleField label={t('duel.create.visibility')} hint={shownPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
-                <fieldset disabled={locked} className="min-w-0 disabled:opacity-40">
-                  <Segmented<'public' | 'private'>
-                    label={t('duel.create.visibility')}
-                    fullWidth
-                    value={shownPublic ? 'public' : 'private'}
-                    onChange={(value) => setIsPublic(value === 'public')}
-                    options={[
-                      { value: 'public', label: t('duel.create.public') },
-                      { value: 'private', label: t('duel.create.private') },
-                    ]}
-                  />
-                </fieldset>
+              <RuleField label={t('duel.create.visibility')} hint={isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
+                <Segmented<'public' | 'private'>
+                  label={t('duel.create.visibility')}
+                  fullWidth
+                  value={isPublic ? 'public' : 'private'}
+                  onChange={(value) => setIsPublic(value === 'public')}
+                  options={[
+                    { value: 'public', label: t('duel.create.public') },
+                    { value: 'private', label: t('duel.create.private') },
+                  ]}
+                />
               </RuleField>
             ) : null}
 

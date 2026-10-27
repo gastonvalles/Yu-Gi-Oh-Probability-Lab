@@ -337,7 +337,7 @@ export function ButtonsSection() {
             </span>
           </span>
         </div>
-        {/* `solid`: lleno con el texto blanco, sólo verde y rojo (la etiqueta Salida / Problema de una regla, del color de su opción en «Qué es»). */}
+        {/* `solid`: lleno con el texto blanco, sólo verde, rojo y violeta (la etiqueta Salida / Problema de una regla, del color de su opción en «Qué es»; la «Mano» de una carta para elegir). */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="w-10"><Tag>solid</Tag></span>
           <Badge tone="success" shape="tag" size="sm" solid>
@@ -351,6 +351,9 @@ export function ButtonsSection() {
           </Badge>
           <Badge tone="danger" solid>
             danger
+          </Badge>
+          <Badge tone="brand" shape="tag" size="sm" icon="hand" solid>
+            Mano
           </Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">

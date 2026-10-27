@@ -5,6 +5,7 @@ import { askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pic
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
 import { actingOf, linksOf } from '../../app/card-glow'
+import type { PhaseView } from '../../app/auto/online'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
@@ -38,7 +39,7 @@ import { IMPACT_MS } from '../probability/AttackFx'
 import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
-import { BAND_MAX, CardPicker, PickBand, type PickCard } from './CardPicker'
+import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard } from './CardPicker'
 import { ChainNotice } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
@@ -189,6 +190,11 @@ export interface AutoAsksInput {
   rivalHand?: readonly number[]
   /** «Jugar solo»: seguir en la mesa manual (`ManualDialog`), el atajo del menú de una carta sin jugadas. */
   onManual?: () => void
+  /**
+   * Online, con un rival que avisa su mesa (`autoPhase`): la fase que él ve en este turno (su mesa frena en su DP y su SP aunque el núcleo ya pasó) y si está contestando algo del
+   * núcleo: en su turno el botón de fase dice la suya, y «X está eligiendo…» va sólo con `busy`. Sin esto, la fase del espejo y la línea con cualquier espera.
+   */
+  rival?: { phase: MatPhase; busy: boolean }
 }
 
 export interface AutoAsks {
@@ -218,9 +224,11 @@ export interface AutoAsks {
   rivalViewer: ReactNode
   /** Las vidas que se ven esperan al golpe de un ataque, tuyo (`useStrikeHold`) o del rival (`useRivalStrike`): va en `LifeHold` alrededor de la mesa. */
   lifeHeld: boolean
+  /** Online: lo que el rival tiene que saber de tu mesa (`autoPhase`): tu fase como se ve, en el turno del núcleo, y si estás contestando algo que no es tu turno libre. Null rearmando. */
+  told: PhaseView | null
 }
 
-export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual }: AutoAsksInput): AutoAsks {
+export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual, rival }: AutoAsksInput): AutoAsks {
   const prefs = useAutoPrefs()
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -430,11 +438,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     () => snap.overlay.limits[seat].map((description) => effectLabel(0, description) ?? t('auto.why.limitOf', { card: nameOf(null, splitDesc(description).code) })),
     [snap.overlay.limits, seat, effectLabel, nameOf],
   )
+  // De dónde es (el chip y el grupo de `CardPicker`): lo que sólo se nombra por código, de ningún lado.
   const pickCardOf = (card: AskCard, key: string): PickCard => {
-    const where = card.place === 'hand' ? PILE_TITLES.hand : card.place === 'pile' && card.pile ? PILE_TITLES[card.pile] : undefined
-    const place = where && card.ref?.side === 'theirs' ? t('duel.zone.theirs', { zone: where }) : where
+    const from = card.place === 'pile' ? card.pile : card.place === 'none' ? undefined : card.place
 
-    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(place ? { place } : {}) }
+    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
   }
 
   // ── La pregunta pendiente: se abre con la mesa del núcleo (`session.adapter`) en el mismo render en que llega (un rearme con pregunta es un solo commit); lo que se contesta solo, se
@@ -784,7 +792,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ? null
     : stuck
       ? { kind: 'ask', text: t('auto.lane.stuck'), actions: canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : [] }
-      : snap.status === 'waiting' && waitingText !== null
+      : snap.status === 'waiting' && waitingText !== null && (rival?.busy ?? true)
         ? { kind: 'thinking', text: waitingText }
         : snap.status === 'thinking'
           ? { kind: 'thinking', ...(canCancel ? { onCancel: () => session.cancel() } : {}) }
@@ -898,8 +906,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const sourceOf = (card: AskCard) => (card.place === 'hand' ? 'hand' : card.place === 'pile' ? card.pile : undefined)
   const lead = list?.cards[0]
   const from = band && list && lead?.ref && sourceOf(lead) && list.cards.every((card) => card.ref?.side === lead.ref!.side && sourceOf(card) === sourceOf(lead)) ? sourceOf(lead)! : null
-  const bandPlace = from ? (lead!.ref!.side === 'theirs' ? t('duel.zone.theirs', { zone: t(`practice.place.${from}`) }) : t(`practice.place.${from}`)) : null
-  const bandCards = bandPlace ? listCards.map(({ place: _place, ...card }) => card) : listCards
+  const bandPlace = from ? pickPlace(from, lead!.ref!.side === 'theirs').place : null
+  const bandCards = bandPlace ? listCards.map(({ place: _place, from: _from, theirs: _theirs, ...card }) => card) : listCards
   const listProps = list
     ? {
         chosen: list.chosen.map((i) => listKeys[i]!),
@@ -940,8 +948,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     ),
     attackTargets,
     foreignKnown,
-    // La fase de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
-    phase: turnMine ? state.phase : theirs.phase,
+    // La fase de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, la que él ve (`rival`) o, si no la avisa, la del espejo de la suya.
+    phase: turnMine ? state.phase : (rival?.phase ?? theirs.phase),
     // Cambiás de fase en tus jugadas del turno, en una parada de tu DP o tu SP y en la ventana de una fase tuya.
     myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
     respond,
@@ -1144,6 +1152,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // Lo que se repasa es tuyo.
     turnMine: reviewing || turnMine,
     review: { active: reviewing, load, seek, back },
+    // Tu turno libre (tus jugadas, una parada o la ventana de una fase tuya) no es «estar eligiendo».
+    told:
+      snap.status === 'loading' || snap.replaying
+        ? null
+        : { turn: snap.overlay.turn, phase: state.phase, busy: shown !== null && shown.type !== 'select_idlecmd' && shown.type !== 'select_battlecmd' && !shown.phaseWindow },
   }
 }
 

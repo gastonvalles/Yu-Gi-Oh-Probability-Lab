@@ -42,6 +42,24 @@ export const auto = {
   // Con muchas cartas (las que se pueden declarar), un buscador por nombre arriba de la grilla.
   'auto.picker.search': 'Buscar por nombre',
   'auto.picker.noMatches': 'No hay cartas con «{query}».',
+  // De dónde es cada carta: el encabezado de su grupo (y, con minúscula, «…, en tu mano» para el lector de pantalla) y el chip corto sobre la carta.
+  'auto.picker.place.mine.hand': 'Tu mano',
+  'auto.picker.place.mine.deck': 'Tu Deck',
+  'auto.picker.place.mine.extra': 'Tu Extra Deck',
+  'auto.picker.place.mine.gy': 'Tu Cementerio',
+  'auto.picker.place.mine.banished': 'Tu Destierro',
+  'auto.picker.place.mine.field': 'Tu campo',
+  'auto.picker.place.mine.material': 'Tus materiales Xyz',
+  'auto.picker.place.theirs.hand': 'La mano del rival',
+  'auto.picker.place.theirs.deck': 'El Deck del rival',
+  'auto.picker.place.theirs.extra': 'El Extra Deck del rival',
+  'auto.picker.place.theirs.gy': 'El Cementerio del rival',
+  'auto.picker.place.theirs.banished': 'El Destierro del rival',
+  'auto.picker.place.theirs.field': 'El campo del rival',
+  'auto.picker.place.theirs.material': 'Los materiales Xyz del rival',
+  'auto.picker.at': '{name}, en {place}',
+  'auto.picker.chip.material': 'Material',
+  'auto.picker.chip.theirs': '{zone} rival',
 
   // Ordenar cartas (el tope del deck).
   'auto.sort.title': 'Ordená las cartas',

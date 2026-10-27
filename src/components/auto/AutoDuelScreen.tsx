@@ -6,7 +6,7 @@ import { undoPoint, workerTransport, type AutoSession, type AutoSnapshot } from 
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
-import { createGuestLink, createHostLink, underControl, type HostLinkOptions, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type RoomAutoState } from '../../app/auto/online'
+import { createGuestLink, createHostLink, underControl, type HostLinkOptions, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type PhaseView, type RoomAutoState } from '../../app/auto/online'
 import type { Seat } from '../../app/auto/protocol'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -25,7 +25,7 @@ import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
 import { ResultCard } from '../duel/DuelResult'
 import type { FeedEntry } from '../duel/use-duel-feed'
-import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from '../duel/use-duel-table'
+import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNotice, useSignals } from '../duel/use-duel-table'
 import { cardIdOfDrawId } from '../probability/practice'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { Button } from '../ui/Button'
@@ -163,6 +163,7 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
 
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const codeName = useCodeName(deck.cardsById, online?.cards)
+  const tellPhase = useCallback((view: PhaseView) => link?.phase?.(view), [link])
 
   // La sala hasta que hay duelo: también entre un duelo y su revancha (la mesa vuelve a cero y elige el que perdió).
   if (!online?.session || online.seat === null || !snapshot.opening.ordered) return <>{room(roomAutoState(online, rivalName, codeName))}</>
@@ -183,6 +184,7 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
       onRematch={onRematch}
       {...(toManual && link?.manual ? { request: (yes: boolean) => link.manual?.(yes), onManual: toManual } : {})}
       {...(link?.undo ? { askUndo: (yes: boolean) => link.undo?.(yes) } : {})}
+      tellPhase={tellPhase}
     />
   )
 }
@@ -362,10 +364,15 @@ interface AutoDuelTableProps {
   onManual?: (game: ManualGame) => void
   /** Pedir, aceptar (`true`), rechazar o retirar (`false`) deshacer la última jugada propia (`OnlineLink.undo`). */
   askUndo?: (yes: boolean) => void
+  /** Lo que se ve de mi mesa, al rival (`OnlineLink.phase`): cuando cambia. */
+  tellPhase: (view: PhaseView) => void
 }
 
+/** Cada turno del rival arranca en su Draw Phase, donde su mesa frena: hasta que él diga otra cosa en este turno, eso se ve. */
+const TURN_START = { phase: 'draw', busy: false } as const
+
 /** La mesa de un duelo (una sesión): la de «Jugar solo automático» con la barra, el chat, las señales, la pausa y el resultado del duelo por enlace. */
-function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, deck, onLeave, onAbandon, onRematch, request, onManual, askUndo }: AutoDuelTableProps) {
+function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, deck, onLeave, onAbandon, onRematch, request, onManual, askUndo, tellPhase }: AutoDuelTableProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -375,7 +382,21 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   // Acordado el pase a manual, la mesa queda quieta (nada más se contesta) hasta que llega la mesa manual.
   const switching = manual === 'switching' || manual === 'agreed'
   // El anfitrión corre el núcleo: puede cortar lo que piensa. El invitado, no (el núcleo está en otro navegador).
-  const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null || switching, rivalName })
+  // La fase que el rival ve en su mesa (`autoPhase`), si la avisa: lo de un turno anterior no vale, y lo de uno que todavía no llegó (el aviso del anfitrión puede adelantarse a los
+  // eventos del núcleo del cambio de turno) tampoco: mientras tanto, la del espejo.
+  const told = online.rivalPhase
+  const rival = !told ? undefined : told.turn === snap.overlay.turn ? told : told.turn < snap.overlay.turn ? TURN_START : { phase: snap.theirs.phase, busy: false }
+  const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null || switching, rivalName, ...(rival ? { rival } : {}) })
+  // Y lo que se ve de la mía, cuando cambia.
+  const mineTold = asks.told
+  const toldKey = mineTold ? `${mineTold.turn}:${mineTold.phase}:${mineTold.busy}` : ''
+
+  useEffect(() => {
+    if (mineTold) tellPhase(mineTold)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- por contenido (`toldKey`): `told` es otro objeto en cada render
+  }, [toldKey, tellPhase])
+  // Cada fase que pasa el rival en su turno, con el cartel del duelo manual.
+  const notice = useRivalNotice(asks.turnMine ? undefined : asks.mat.phase, asks.turnMine ? 'mine' : 'theirs', rivalName)
   const paused = !snapshot.peerPresent && result === null
   usePassToManual({ snapshot, snap, online, rivalName, onManual })
   // Al terminar, la tarjeta del resultado tapa la mesa hasta que se la cierra para mirarla.
@@ -523,6 +544,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     // Deshacer (le pide permiso al rival: `useLinkUndo`) va en la barra de arriba (`MatUndoContext`).
     undoInHeader: true,
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
+    ...(notice ? { notice } : {}),
     // Deshacer le pide permiso al rival (`useLinkUndo`); el chip de la solitaria no va: acá el pedido es explícito.
     undoAvailable: undo.available,
     undoPending: undo.pending,

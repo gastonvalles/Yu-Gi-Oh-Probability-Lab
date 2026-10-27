@@ -8,7 +8,7 @@ import { t } from '../../../i18n'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
-import { CardPicker, PickBand, type PickCard } from '../../auto/CardPicker'
+import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
@@ -34,14 +34,18 @@ const PROMPT_BOX = 'pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-
 const ASH = { name: 'Ash Blossom & Joyous Spring', art: art(14558127) }
 const PONIX = { name: 'Legendary Fire King Ponix', art: art(90681088) }
 
-/** Cartas de muestra de lugares distintos (lo que no entra en una sola pila); la de Aluber, todavía sin arte (el esqueleto quieto). */
-const MIXED: PickCard[] = [
-  { key: 'a', name: 'Fallen of Albaz', art: art(68468459), place: 'Mano' },
-  { key: 'b', name: 'Aluber the Jester of Despia', place: 'Cementerio' },
-  { key: 'c', name: 'Branded Fusion', art: art(44362883), place: 'Deck' },
-  { key: 'd', name: 'Mirrorjade the Iceblade Dragon', art: art(44146295), place: 'Extra Deck' },
-  { key: 'e', name: 'Effect Veiler', art: art(97268402), place: 'Mano del rival' },
-  { key: 'f', name: 'Infinite Impermanence', art: art(10045474), place: 'Destierro' },
+/**
+ * Cartas de muestra de lugares distintos (lo que no entra en una sola pila), con dos Ponix iguales, una en el Deck y otra en la mano (la hoja las agrupa: la mano primero); la de Aluber,
+ * todavía sin arte (el esqueleto quieto).
+ */
+const mixed = (): PickCard[] => [
+  { key: 'a', name: 'Fire King High Avatar Kirin', art: art(2526224), ...pickPlace('deck', false) },
+  { key: 'b', name: PONIX.name, art: PONIX.art, ...pickPlace('deck', false) },
+  { key: 'c', name: 'Aluber the Jester of Despia', ...pickPlace('gy', false) },
+  { key: 'd', name: PONIX.name, art: PONIX.art, ...pickPlace('hand', false) },
+  { key: 'e', name: 'Mirrorjade the Iceblade Dragon', art: art(44146295), ...pickPlace('extra', false) },
+  { key: 'f', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', true) },
+  { key: 'g', name: 'Infinite Impermanence', art: art(10045474), ...pickPlace('banished', false) },
 ]
 /** Cinco del mismo lugar (el Cementerio): la banda dice el lugar una vez, en la pestaña. */
 const GRAVE: PickCard[] = [
@@ -299,7 +303,9 @@ function EffectsSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
 }
 
 function PickerSample({ title, note, min, max, cancelable, many = false, onAnswer }: { title: string; note: string; min: number; max: number; cancelable: boolean; many?: boolean; onAnswer: (answer: string) => void }) {
-  const cards = many ? [...MIXED, ...GRAVE.map((card) => ({ ...card, key: `g${card.key}` })), ...MIXED.map((card) => ({ ...card, key: `m${card.key}` }))] : max === 1 ? MIXED.slice(0, 4) : MIXED
+  // Las que se declaran sólo se nombran (por código): sin lugar.
+  const named = mixed().map(({ key, name, art }) => ({ key, name, ...(art ? { art } : {}) }))
+  const cards = many ? [...named, ...GRAVE.map((card) => ({ ...card, key: `g${card.key}` })), ...named.map((card) => ({ ...card, key: `m${card.key}` }))] : max === 1 ? mixed().slice(0, 4) : mixed()
 
   const [open, setOpen] = useState(false)
   const close = (answer: string) => {
@@ -512,11 +518,12 @@ function LongTextSample() {
   )
 }
 
-/** Tres cartas para «agregar a tu mano», de dos lugares: la muestra de elegir de a una. */
-const TYPHOONS: PickCard[] = [
-  { key: 'mst-deck', name: 'Mystical Space Typhoon', art: art(5318639), place: t('practice.place.deck') },
-  { key: 'mst-gy', name: 'Mystical Space Typhoon', art: art(5318639), place: t('practice.place.gy') },
-  { key: 'called', name: 'Called by the Grave', art: art(24224830), place: t('practice.place.deck') },
+/** Cuatro cartas, tres de ellas iguales en la mano, el Deck y el Cementerio: la muestra de elegir de a una (cada una con el chip de su lugar; la de la mano, primero y en violeta). */
+const typhoons = (): PickCard[] => [
+  { key: 'mst-deck', name: 'Mystical Space Typhoon', art: art(5318639), ...pickPlace('deck', false) },
+  { key: 'mst-gy', name: 'Mystical Space Typhoon', art: art(5318639), ...pickPlace('gy', false) },
+  { key: 'mst-hand', name: 'Mystical Space Typhoon', art: art(5318639), ...pickPlace('hand', false) },
+  { key: 'called', name: 'Called by the Grave', art: art(24224830), ...pickPlace('deck', false) },
 ]
 
 /**
@@ -561,9 +568,9 @@ function UnselectSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
                 <PickBand
                   key="decision"
                   title={`${t('auto.pick.for', { what, why: t('auto.pick.why.addToHand') })} · ${t('auto.pick.count', { chosen: chosen.length, max: 2 })}`}
-                  cards={TYPHOONS}
+                  cards={typhoons()}
                   chosen={chosen}
-                  eligible={new Set(TYPHOONS.map((card) => card.key))}
+                  eligible={new Set(typhoons().map((card) => card.key))}
                   multi={false}
                   done={chosen.length > 0}
                   onToggle={toggle}
