@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle } from '../components/probability/compact-field'
+import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle, mediumDuelFieldStyle } from '../components/probability/compact-field'
 import { THEIR_HAND } from '../components/duel/their-hand'
 
 /** Lo que se ve de la mano tuya arriba de la barra de abajo (la barra, 64 px, y la carta entera, 126) y la pantalla de prueba: un celular de 844 px de alto. */
@@ -46,5 +46,38 @@ describe('el campo del duelo en un celular en vertical', () => {
     const cell = (SCREEN - chrome * 16) / 7
 
     expect(Math.round(handTop(cell, style.marginTop as number))).toBe(SCREEN - BELOW_HAND)
+  })
+})
+
+/** De 640 a 1100 px lo que no es campo suma 421 px (las barras, tu mano y sus márgenes; ver `mediumDuelFieldStyle`); el campo son cinco filas de casillas y cuatro huecos de 4 px. */
+const MEDIUM_CHROME = 421
+
+/** Lo que mide la columna con la casilla que da la fórmula para ese alto (y el lugar de la mano del rival que queda). */
+function mediumColumn(tilted: boolean, height: number) {
+  const style = mediumDuelFieldStyle(tilted) as Record<string, string | number>
+  const [, chrome, divisor] = (/100dvh - ([\d.]+)rem\) \/ (\d+)\)/.exec(style['--cell-m'] as string) ?? []).map(Number) as [number, number, number]
+  const cell = Math.max(56, (height - chrome * 16) / divisor)
+  const shift = /calc\(([\d.]+)rem - 2 \* var/.exec(String(style.marginTop))
+  const top = shift ? Number(shift[1]) * 16 - 2 * cell : (style.marginTop as number)
+
+  return { cell, total: MEDIUM_CHROME + top + 5 * cell + 16 }
+}
+
+describe('el campo del duelo de 640 a 1100 px (tablet, ventana angosta)', () => {
+  it('la casilla sale del ancho y del alto (nunca menos de 56 px) y el campo se centra', () => {
+    const tilted = mediumDuelFieldStyle(true) as Record<string, string | number>
+    const flat = mediumDuelFieldStyle(false) as Record<string, string | number>
+
+    expect(tilted['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - 37rem) / 3)))')
+    expect(tilted.width).toBe('calc(var(--cell-m) * 6.3714 + 1.5rem)')
+    expect(tilted.marginInline).toBe('auto')
+    expect(tilted.marginTop).toBe('calc(9.5rem - 2 * var(--cell-m))')
+    expect(flat['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - 34rem) / 5)))')
+    expect(flat.marginTop).toBe(THEIR_HAND.mobile.room)
+  })
+
+  it('el campo y tu mano entran en la pantalla: en 3D a 1100 × 760 (antes el campo terminaba en y = 1097) y de arriba a 900 de alto', () => {
+    expect(mediumColumn(true, 760)).toEqual({ cell: 56, total: 757 })
+    expect(mediumColumn(false, 900).total).toBeLessThanOrEqual(900)
   })
 })
