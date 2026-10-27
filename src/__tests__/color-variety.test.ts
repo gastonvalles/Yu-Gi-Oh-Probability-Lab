@@ -24,11 +24,12 @@ describe('los colores no se pierden en el violeta', () => {
   })
 
   // Gastón (2026-10-26): «siempre debe ser blanco». Violeta (`primary`), ámbar hondo (`warning-solid`), verde (`success-solid`) y rojo (`danger`), con el texto blanco; el ámbar y la
-  // lavanda claros no llevan texto (ni oscuro ni blanco: el blanco no se lee). Se revisa cada cadena de clases de la mesa, el duelo y los controles de `ui/`.
-  it('sobre un relleno de color, el texto es blanco (la mesa, el duelo y los controles)', () => {
+  // lavanda claros no llevan texto (ni oscuro ni blanco: el blanco no se lee). Se revisa cada cadena de clases de la mesa, el duelo, los controles de `ui/`, Replays, Comparar, la búsqueda y la cola de clasificación.
+  it('sobre un relleno de color, el texto es blanco (la mesa, el duelo, los controles, Replays, Comparar y la búsqueda)', () => {
     const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]))
-    const files = ['auto', 'duel', 'probability', 'ui'].flatMap((dir) => walk(path.join(process.cwd(), 'src', 'components', dir))).filter((file) => /\.tsx?$/.test(file) && !file.includes('PracticeMatPanel'))
-    const fill = /\bbg-(accent|info|warning|success|danger|primary)(-solid)?(?![\w/-])/
+    const components = path.join(process.cwd(), 'src', 'components')
+    const files = [...['auto', 'comparison', 'duel', 'probability', 'replays', 'search', 'ui'].flatMap((dir) => walk(path.join(components, dir))), path.join(components, 'classification-styles.ts')].filter((file) => /\.tsx?$/.test(file) && !file.includes('PracticeMatPanel'))
+    const fill = /\bbg-(accent|info|warning|success|danger|primary)(-solid|-soft)?(?![\w/-])/
     const brightFill = /\bbg-(accent|info|warning|success)(?![\w/-])/
     const darkText = /\btext-(accent-foreground|info-foreground|background|black)\b|\btext-\[#/
     const bad = files.flatMap((file) =>
