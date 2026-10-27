@@ -3,13 +3,14 @@ import { cardData, type CardRow, type DataLoader, type DataSource } from '../app
 import { autoSaveStore, type AutoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession } from '../app/auto/auto-session'
 import type { DeckList } from '../app/auto/deck-map'
+import { manualHandover } from '../app/auto/manual-handover'
 import { codesOf, createGuestLink, createHostLink, MANUAL_WAIT_MS, underControl, type OnlineLink } from '../app/auto/online'
 import { AUTO_PROTOCOL_VERSION, encodeAutoMessage, GUEST_ACCEPTS, HOST_ACCEPTS, isAutoText, parseAutoMessage, type AutoMessage, type AutoMessageKind, type HostMessage } from '../app/auto/online-protocol'
 import { LOCATION as L, POSITION as P, type AutoCommand, type AutoEvent, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel, type Duel } from '../app/duel-session'
 import type { Duelist } from '../app/life-calculator'
-import type { MatState } from '../app/practice-mat'
+import { replayMat, type MatState } from '../app/practice-mat'
 import { CHAIN, END, fakeHost, IDLE, PASS } from './support/auto-core-fake'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 
@@ -803,13 +804,19 @@ describe('pasar a manual', () => {
     expect(answers(game.core)).toHaveLength(sent)
     sameView(game.hosted, game.guested, 0)
 
-    // La sala sigue a mano: cada uno arma su mesa con la del corte, el otro la ve igual y una jugada de uno llega al otro.
+    // La sala sigue a mano: cada uno arma su mesa con la partida hasta el corte (el historial del automático, `manualHandover`), el otro la ve igual y una jugada de uno llega al otro.
     const guestTable = game.guested.getSnapshot().mine
     const hostTable = game.hosted.getSnapshot().mine
+    const guestGame = manualHandover(game.guested.getSnapshot(), () => undefined).session(0)
+    const hostGame = manualHandover(game.hosted.getSnapshot(), () => undefined).session(0)
 
-    game.guest.start(guestTable)
-    game.host.start(hostTable)
+    expect(replayMat(guestGame.initial, guestGame.actions)).toEqual(guestTable)
+    expect(replayMat(hostGame.initial, hostGame.actions)).toEqual(hostTable)
+    game.guest.start(guestGame.initial, guestGame.actions, guestGame.order)
+    game.host.start(hostGame.initial, hostGame.actions, hostGame.order)
     await settle(game.room)
+    expect(game.host.getSnapshot().mine).toEqual(hostTable)
+    expect(game.host.getSnapshot().moves).toBe(hostGame.actions.length)
     expect(shape(game.host.getSnapshot().theirs!.state)).toEqual(shape(guestTable))
     expect(shape(game.guest.getSnapshot().theirs!.state)).toEqual(shape(hostTable))
     expect(guestTable.hand).toHaveLength(3)
@@ -817,6 +824,25 @@ describe('pasar a manual', () => {
     await settle(game.room)
     expect(game.host.getSnapshot().theirs!.state.gy).toHaveLength(guestTable.gy.length + 1)
     expect(game.host.getSnapshot().theirs!.state.hand).toHaveLength(2)
+
+    // Deshacer vuelve a antes del corte: la jugada manual de Beto y después la última del automático (de quien haya sido: Ana la pide y, si es de Beto, él la deshace), y el otro lo ve.
+    game.guest.undo()
+    await settle(game.room)
+    game.host.answerUndo(true)
+    await settle(game.room)
+    expect(game.guest.getSnapshot().mine).toEqual(guestTable)
+    expect(shape(game.host.getSnapshot().theirs!.state)).toEqual(shape(guestTable))
+    const last = hostGame.order.at(-1)
+
+    game.host.undo()
+    await settle(game.room)
+    game.guest.answerUndo(true)
+    await settle(game.room)
+    const undone = last === 'mine' ? { who: game.host, game: hostGame, other: game.guest } : { who: game.guest, game: guestGame, other: game.host }
+
+    expect(undone.who.getSnapshot().moves).toBe(undone.game.actions.length - 1)
+    expect(undone.who.getSnapshot().mine).toEqual(replayMat(undone.game.initial, undone.game.actions.slice(0, -1)))
+    expect(shape(undone.other.getSnapshot().theirs!.state)).toEqual(shape(undone.who.getSnapshot().mine!))
   })
 
   it('el anfitrión pide y el invitado rechaza: nada cambia y el anfitrión lo ve; quien pide lo puede retirar y, sin respuesta, a los 30 s vence', async () => {

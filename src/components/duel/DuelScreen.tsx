@@ -21,7 +21,8 @@ import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
-import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile, type MatState } from '../../app/practice-mat'
+import type { ManualGame } from '../../app/auto/manual-handover'
+import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
 import { cardEffects, effectDetail } from '../../app/mat-assistant'
 import type { CardTextHighlight } from '../../app/card-text'
@@ -407,8 +408,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [duel, ordered, started, settingsKnown, deckReady, deck, dealHand, autoRoom])
 
   const toManual = useCallback(
-    (table: MatState) => {
-      duel?.start(table)
+    (game: ManualGame) => {
+      duel?.start(game.initial, game.actions, game.order)
       setManualSwitch(true)
     },
     [duel],

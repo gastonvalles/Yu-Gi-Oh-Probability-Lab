@@ -99,6 +99,8 @@ export interface AdapterOutput {
   unmapped: string[]
   /** Los mensajes de la cadena de esta tanda, en orden, con cuántas jugadas de `mine` había (el aviso de la cadena los cuenta de a uno: `chain-feed.ts`). */
   chain: ChainStep[]
+  /** De quién fue cada jugada de la tanda, intercaladas como pasaron (`mine` y `theirs` por separado pierden el orden): la mesa manual lo hereda al pasar a manual. */
+  order: ('mine' | 'theirs')[]
 }
 
 /** Un lugar del núcleo, con el número de material si está debajo de un Xyz. */
@@ -245,12 +247,14 @@ export function createAdapter(options: AdapterOptions): Adapter {
 
     if (player === seat) {
       out.mine.push(action)
+      out.order.push('mine')
       mine = matReducer(mine, action)
     } else {
       const wire: WireAct = { action, reveal: pending }
 
       pending = {}
       out.theirs.push(wire)
+      out.order.push('theirs')
       theirs = mirrorApply(theirs, wire)
     }
     // Lo que no mueve cartas (mostrar, marcar, activar, contadores) no corta la jugada que sacó del deck: el barajado se le suma igual.
@@ -863,7 +867,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       return overlay
     },
     apply(event) {
-      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [] }
+      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [] }
       fromDeck = [null, null]
       openedNow = new Set()
 

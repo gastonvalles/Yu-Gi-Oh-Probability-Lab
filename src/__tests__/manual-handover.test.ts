@@ -24,7 +24,9 @@ const ACTIONS = [OPENING, ...PLAYS.flat()]
 const pending = { askId: 9, seat: 0 as const, ask: IDLE }
 
 function snap(patch: Partial<AutoSnapshot> = {}) {
-  return { initial: { mine: initial, theirs: initial }, mineActions: ACTIONS, playStarts: [1, 3, 4, 5, 6], ask: pending, chainSteps: [], names: { 3: 'Droll' }, ...patch }
+  const mineActions = patch.mineActions ?? ACTIONS
+
+  return { initial: { mine: initial, theirs: initial }, mineActions, order: mineActions.map(() => 'mine' as const), playStarts: [1, 3, 4, 5, 6], ask: pending, chainSteps: [], names: { 3: 'Droll' }, ...patch }
 }
 
 describe('manualHandover', () => {
@@ -51,6 +53,17 @@ describe('manualHandover', () => {
     expect(handover.session(4).actions).toEqual([])
     // Los nombres del `.cdb`, por el id de la primera copia (como la mesa del automático).
     expect(now.names['card-3-1']).toBe('Droll')
+  })
+
+  it('de quién fue cada jugada pasa intercalado (sin la mano de apertura ni lo que se vuelve atrás): el duelo por enlace lo hereda para Deshacer', () => {
+    // El rival jugó dos antes de mi primera jugada y una entre la tercera y la cuarta.
+    const order: AutoSnapshot['order'] = ['theirs', 'mine', 'theirs', 'mine', 'mine', 'mine', 'mine', 'theirs', 'mine']
+    const handover = manualHandover(snap({ order }), nameOf)
+
+    expect(handover.session(0).order).toEqual(['theirs', 'theirs', 'mine', 'mine', 'mine', 'mine', 'theirs', 'mine'])
+    expect(handover.session(1).order).toEqual(['theirs', 'theirs', 'mine', 'mine', 'mine', 'mine', 'theirs'])
+    expect(handover.session(3).order).toEqual(['theirs', 'theirs', 'mine', 'mine'])
+    expect(handover.session(0).order.filter((who) => who === 'mine')).toHaveLength(handover.session(0).actions.length)
   })
 
   it('sin pregunta pendiente (pensando, error o fin) la última jugada cuenta si ya movió algo; una que no movió nada, no', () => {

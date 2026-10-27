@@ -114,8 +114,12 @@ export interface DuelSnapshot {
 export interface Duel {
   getSnapshot(): DuelSnapshot
   subscribe(listener: () => void): () => void
-  /** Mi mesa de arranque (deck mezclado y mano repartida); se la mando al rival ya enmascarada. */
-  start(initial: MatState): void
+  /**
+   * Mi mesa de arranque (deck mezclado y mano repartida); se la mando al rival ya enmascarada. Con `history` (el pase a manual de un duelo automático), la mesa sigue desde
+   * esas jugadas: el rival recibe la mesa de ahora con su `n` (un `sync`, como al reconectarse: sin mensajes nuevos) y Deshacer vuelve a antes de ellas; `order` dice de quién fue
+   * cada jugada hasta acá (las del rival intercaladas como pasaron), para que Deshacer vuelva atrás la última de cualquiera.
+   */
+  start(initial: MatState, history?: readonly MatAction[], order?: readonly ('mine' | 'theirs')[]): void
   play(action: MatAction): void
   /** Pasar de fase (con el turno mío): si el rival está, primero se le pregunta si no va a hacer nada más en la fase que dejo; pasa si dice que sí o si no contesta a tiempo (`PHASE_WAIT_MS`), y no si quiere jugar antes. */
   askPhase(action: Extract<MatAction, { type: 'phase' }>): void
@@ -1167,24 +1171,30 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     emit()
   })
 
+  /** Mi mesa desde `table` con `history` ya jugado (lo guardado al recargar, el historial del automático al pasar a manual): lo que el rival ya vio se rejuega para saberlo. */
+  const settle = (table: MatState, history: readonly MatAction[]) => {
+    const open = openPublic(table)
+    let state = table
+    let tracker = open.sender
+
+    for (const action of history) {
+      tracker = encodeAct(tracker, state, action).sender
+      state = matReducer(state, action)
+    }
+
+    initial = table
+    actions = [...history]
+    mine = state
+    sender = tracker
+    ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
+  }
+
   // Volví a abrir la página en pleno duelo: la mesa se arma de nuevo con las mismas jugadas (si lo guardado no sirve, se ignora y se reparte otra).
   if (options.restore) {
     try {
       const saved = options.restore
-      const open = openPublic(saved.initial)
-      let table = saved.initial
-      let tracker = open.sender
 
-      for (const action of saved.actions) {
-        tracker = encodeAct(tracker, table, action).sender
-        table = matReducer(table, action)
-      }
-
-      initial = saved.initial
-      actions = [...saved.actions]
-      mine = table
-      sender = tracker
-      ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
+      settle(saved.initial, saved.actions)
       const elapsed = Math.round(timerElapsed(saved.timer, saved.savedAt))
 
       life = { ...life, lp: me === 0 ? [saved.lp, life.lp[1]] : [life.lp[0], saved.lp], timer: saved.timer.running ? { running: true, startedAt: now(), elapsedMs: elapsed } : { running: false, startedAt: 0, elapsedMs: elapsed } }
@@ -1233,14 +1243,10 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       return () => listeners.delete(listener)
     },
 
-    start(table) {
-      const open = openPublic(table)
-
-      initial = table
-      actions = []
-      mine = table
-      sender = open.sender
-      ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
+    start(table, history = [], moves = []) {
+      settle(table, history)
+      // Las del rival que no me llegaron todavía (su mesa viene con su `sync`) se ajustan solas en `playOrder`.
+      order = moves.map((who) => (who === 'mine' ? 'me' : 'peer'))
       sendSync()
       emit()
     },

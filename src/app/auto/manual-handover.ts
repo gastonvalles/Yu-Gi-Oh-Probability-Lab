@@ -11,10 +11,14 @@ export interface ManualPlay {
   label: string
 }
 
-/** La partida que sigue en la mesa manual: la mano de apertura plegada (el paso 0, como en la práctica), todo el historial hasta ahí y los nombres. */
+/**
+ * La partida que sigue en la mesa manual: la mano de apertura plegada (el paso 0, como en la práctica), todo el historial hasta ahí, de quién fue cada jugada (las propias y
+ * las del rival intercaladas: en el duelo por enlace, `Duel.start` lo hereda para que Deshacer vuelva atrás la última de cualquiera) y los nombres.
+ */
 export interface ManualGame {
   initial: MatState
   actions: MatAction[]
+  order: ('mine' | 'theirs')[]
   names: Record<string, string>
 }
 
@@ -25,7 +29,7 @@ export interface ManualHandover {
   session(back: number): ManualGame
 }
 
-type HandoverSnapshot = Pick<AutoSnapshot, 'initial' | 'mineActions' | 'playStarts' | 'ask' | 'chainSteps' | 'names'>
+type HandoverSnapshot = Pick<AutoSnapshot, 'initial' | 'mineActions' | 'order' | 'playStarts' | 'ask' | 'chainSteps' | 'names'>
 
 const PLAY_ASKS = new Set<string>(['select_idlecmd', 'select_battlecmd'])
 const codeOfCardId = (id: string) => Number(id.replace(/^.*card-/, '').split('-')[0])
@@ -55,9 +59,26 @@ export function manualHandover(snap: HandoverSnapshot, nameOf: (id: string) => s
       const cut = starts[back - 1] ?? actions.length
       const initial = rival ? { ...opening.initial, rival: { hand: rival.hand.hand, used: usedUpTo(snap, rival.hand, cut + opening.skip) } } : opening.initial
 
-      return { initial, actions: actions.slice(0, cut), names }
+      return { initial, actions: actions.slice(0, cut), order: orderUpTo(snap.order, opening.skip, cut), names }
     },
   }
+}
+
+/** De quién fue cada jugada hasta la `cut` propia (contada después de las `skip` plegadas), con las del rival intercaladas como pasaron. */
+function orderUpTo(order: readonly ('mine' | 'theirs')[], skip: number, cut: number): ('mine' | 'theirs')[] {
+  const out: ('mine' | 'theirs')[] = []
+  let seen = 0
+
+  for (const who of order) {
+    if (who === 'mine') {
+      seen += 1
+      if (seen <= skip) continue
+      if (seen > skip + cut) break
+    }
+    out.push(who)
+  }
+
+  return out
 }
 
 /** Las handtraps de su mano que el rival ya activó antes de la jugada `at` (contada en `mineActions`), en orden. */
