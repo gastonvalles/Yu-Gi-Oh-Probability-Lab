@@ -41,7 +41,7 @@ export function useAutoRooms(active: boolean): AutoRooms {
 
 /**
  * «Reglas automáticas (beta)» en la hoja de las reglas del duelo (en Single y Match; en Solo no va): el mismo interruptor del modo automático que el del lobby (`auto-prefs.ts`), así
- * que los dos se ven igual. Prendido, la sala que se abre es de un solo duelo, privada y sin reloj de turnos (lo dice su línea; la hoja deja esos controles fijos). Si el navegador no
+ * que los dos se ven igual. Prendido, la sala que se abre es de un solo duelo, sin reloj de turnos ni espectadores (lo dice su línea; la hoja deja esos controles fijos). Si el navegador no
  * puede correr el núcleo, o el despliegue lo apagó, va apagado y sin poder tocarlo, con el porqué.
  */
 export function AutoRoomRow({ rooms }: { rooms: AutoRooms }) {

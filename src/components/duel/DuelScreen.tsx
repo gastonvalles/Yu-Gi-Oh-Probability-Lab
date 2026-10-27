@@ -165,8 +165,8 @@ function optionsFor(room: string | undefined): RoomOptions {
     match: stored.match === true,
     siding: stored.match === true && stored.siding === true,
     genesysCap: validGenesysCap(stored.genesysCap),
-    // Con reglas automáticas la sala es privada: el relay no publica ese dato y nadie tiene que caer en una sin saberlo.
-    isPublic: stored.isPublic === true && stored.auto !== true,
+    // También con reglas automáticas: la lista no lo dice (el relay no publica ese dato), pero la ficha de la sala sí, antes de estar listo.
+    isPublic: stored.isPublic === true,
     auto: stored.auto === true,
   }
 }
@@ -296,9 +296,11 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   // Una sala pública está en la lista de salas abiertas mientras espera rival (se anota al crearla). Cuando llega el rival pasa a la de los duelos en vivo y su anfitrión lo avisa cada minuto,
   // con cuántos lo miran; si el relay no lo entiende (uno de antes), se baja como siempre al llegar el rival. Se baja al salir o al cerrar la pestaña, y una sala privada nunca se anota.
   // Terminado el duelo y con el rival ya afuera, la sala no espera a nadie: no vuelve a la lista de las que esperan rival (ahí un tercero entraría a ver la mesa de quien se quedó) y se cierra sola.
+  // Una sala con reglas automáticas no se puede mirar: no pasa a los duelos en vivo (ahí se ofrece mirar). Sale de la lista al entrar el rival y, empezado el duelo, no vuelve.
   const rivalLeft = snapshot ? !snapshot.peerPresent && duelFinished(duelResult(snapshot.life.lp, snapshot.conceded), snapshot.series.match, snapshot.series.winner) : false
-  const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic && !rivalLeft ? intent.room : null
   const awaitingRival = !snapshot?.peerPresent
+  const unwatchable = options.auto && (!awaitingRival || snapshot?.opening.ordered === true)
+  const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic && !rivalLeft && !unwatchable ? intent.room : null
   const watchers = snapshot?.watchers ?? 0
   const guestName = snapshot?.peerName ?? undefined
   const listing = useRef({ name: myName, settings })
