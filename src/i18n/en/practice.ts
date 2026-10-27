@@ -216,6 +216,7 @@ export const practice: Translated<typeof es> = {
   'practice.replay.restart': 'Back to the start',
   'practice.replay.timeline': 'Replay timeline',
   'practice.replay.stepOf': 'Step {step} of {total}: {text}',
+  'practice.replay.stepShort': '{step} of {total} · {text}',
   'practice.replay.steps': 'Show the steps',
   'practice.replay.speed': 'Speed',
   'practice.mat.previous': 'Previous',

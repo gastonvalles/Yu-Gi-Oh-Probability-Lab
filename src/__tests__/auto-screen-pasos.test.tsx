@@ -253,11 +253,21 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(handCard('Droll')).toBeInTheDocument()
     expect(inHand('Called by the Grave')).toBeNull()
     expect(rivalMonster()).toBeNull()
-    expect(lane()).toHaveTextContent('Repasás “Línea Droll”: el duelo te espera donde lo dejaste.')
+    expect(lane()).toHaveTextContent('Repasás “Línea Droll”Mano inicial')
     // Nada que jugar: ni el botón de fases ni el menú de una carta, ni tocar la mesa adelanta el duelo.
     expect(phaseButton()).toBeDisabled()
     act(() => vi.advanceTimersByTime(1400 + 5))
     expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Droll' })).toBeInTheDocument()
+    // En el celular el replay va partido (opción B): el aviso dice qué paso se mira, la línea de tiempo y la lista van debajo de él (en la barra) y abajo quedan sólo los botones.
+    // «Volver al duelo» es secundario (lavanda: no compite con el botón grande) y la carta grande va sin cartel (el paso ya se lee arriba).
+    expect(lane()).toHaveTextContent('Repasás “Línea Droll”1 de 2 · Invocación Normal de Droll')
+    expect(within(lane()!).getByRole('button', { name: 'Volver al duelo' })).toHaveClass('bg-lavender')
+    const timeline = document.querySelector<HTMLElement>('[data-replay-timeline]')!
+    expect(within(timeline).getByRole('slider', { name: 'Línea de tiempo del replay' })).toHaveAttribute('aria-valuenow', '1')
+    expect(within(timeline).getByRole('button', { name: 'Ver los pasos' })).toBeInTheDocument()
+    expect(within(replayControls()!).queryByRole('slider')).toBeNull()
+    expect(within(replayControls()!).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Volver al principio', 'Anterior', 'Pausar', 'Siguiente', 'Velocidad: 1×'])
+    expect(document.querySelector('[data-activation] span[data-stage-text]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     fireEvent.pointerDown(document.querySelector('[data-drop="hand"]')!, { button: 0, pointerId: 1 })
     fireEvent.click(within(panel()).getByRole('radio', { name: /Pasos/ }))

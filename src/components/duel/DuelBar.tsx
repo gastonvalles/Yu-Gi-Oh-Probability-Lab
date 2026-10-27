@@ -122,7 +122,7 @@ export type LaneNotice =
   /** El rival activó una carta o un efecto y estas cartas mías podrían responder (`app/mat-responders.ts`: avisa, no decide). */
   | { kind: 'chain'; card: string; /** El lugar del efecto que activó, si eligió uno entre varios. */ effect?: number; names: readonly string[] }
   /** Un aviso ya armado (el duelo automático: la cadena, «No responder»): con botones se contesta y va enmarcado en ámbar; sin botones sólo informa. La principal va al final. */
-  | { kind: 'ask'; text: string; actions: ReadonlyArray<{ label: string; onSelect: () => void; primary?: boolean }> }
+  | { kind: 'ask'; text: string; actions: ReadonlyArray<{ label: string; onSelect: () => void; primary?: boolean; /** Una salida que se ve pero no compite con la principal de otra barra («Volver al duelo» del repaso, con el ⏯ abajo): lavanda. */ secondary?: boolean }> }
   /** El otro lado está trabajando (el núcleo resuelve, el rival elige): el punto que late y, pasados `THINKING_CANCEL_MS`, «Cancelar» si se puede. */
   | { kind: 'thinking'; /** Lo que dice, si no es «El núcleo está resolviendo…». */ text?: string; onCancel?: () => void; /** Lo que dice el botón, si no es «Cancelar» («Cancelar pedido»). */ cancelLabel?: string }
 
@@ -200,7 +200,7 @@ function ThinkingCancel({ onCancel, label }: { onCancel: () => void; label?: str
 }
 
 /** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo), tu pregunta de pasar de fase y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
-export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean }) {
+export function LaneBanner({ lane, rivalName, rail = false, detail }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean; /** Un segundo renglón, apagado (el paso que se repasa): el texto va en negrita en el primero y cada uno se corta con «…». */ detail?: string | undefined }) {
   const place = rail ? 'flex-wrap py-2' : 'absolute inset-0 max-sm:pointer-events-auto'
   // En la fila de la línea del registro, dos renglones a lo sumo; en un lateral (angosto), los que necesite, y una palabra larga se parte en vez de salirse.
   const text = cx('min-w-0 flex-1', rail ? '[overflow-wrap:anywhere]' : 'line-clamp-2')
@@ -220,9 +220,16 @@ export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice
   return (
     <div role="status" data-lane={lane.kind} className={cx(place, 'flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
       {lane.kind === 'thinking' ? <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-info motion-safe:animate-pulse" /> : null}
-      <span className={text} title={laneText(lane, rivalName)}>
-        {laneText(lane, rivalName)}
-      </span>
+      {detail ? (
+        <span className="grid min-w-0 flex-1 gap-0.5">
+          <span className="truncate font-bold">{laneText(lane, rivalName)}</span>
+          <span className="truncate text-muted">{detail}</span>
+        </span>
+      ) : (
+        <span className={text} title={laneText(lane, rivalName)}>
+          {laneText(lane, rivalName)}
+        </span>
+      )}
       {/* Los botones, al lado del texto; en un lateral, en su renglón, debajo y a la derecha (al lado, el texto quedaba de una palabra por renglón y el botón encima). Sin botones (o con «Cancelar» todavía esperando) no ocupa lugar. */}
       <span className={cx('flex shrink-0 items-center gap-2 empty:hidden', rail && 'basis-full flex-wrap justify-end')}>
         {lane.kind === 'undoAsked' ? (
@@ -237,7 +244,7 @@ export function LaneBanner({ lane, rivalName, rail = false }: { lane: LaneNotice
         ) : null}
         {lane.kind === 'ask'
           ? lane.actions.map((action) => (
-              <Button key={action.label} variant={action.primary ? 'primary' : 'tertiary'} size="sm" onClick={action.onSelect}>
+              <Button key={action.label} variant={action.primary ? 'primary' : action.secondary ? 'secondary' : 'tertiary'} size="sm" onClick={action.onSelect}>
                 {action.label}
               </Button>
             ))

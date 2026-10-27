@@ -6,6 +6,7 @@ import { createMatState, replayMat, type MatAction } from '../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT } from '../app/use-card-flights'
 import { CARDS, Harness, INITIAL, WITH_ART, endTurn, goToPhase, hand, pointer, render, status, tap, zone } from './support/practice-mat-harness'
 import { tapMenu } from './support/mat-menu'
+import { ReplayTimeline, ReplayTransport } from '../components/probability/ReplayBar'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 
@@ -571,6 +572,31 @@ describe('la mesa de práctica', () => {
       // Al principio no hay a dónde volver.
       expect(within(bar).getByRole('button', { name: 'Volver al principio' })).toBeDisabled()
       expect(within(bar).getByRole('button', { name: 'Anterior' })).toBeDisabled()
+    })
+
+    it('partidos (el celular de «Jugar solo automático»): abajo los botones en un renglón, con la velocidad de 44 px; arriba la línea de tiempo de 44 px y la lista de pasos', () => {
+      const onSeek = vi.fn()
+      const onOpenSteps = vi.fn()
+      const marks = ACTIONS.map(() => ({ phase: false, turnStart: false }))
+      render(
+        <>
+          <ReplayTimeline marks={marks} cursor={4} describe={(step) => `Paso ${step}`} onSeek={onSeek} onOpenSteps={onOpenSteps} />
+          <ReplayTransport total={marks.length} cursor={4} playing={false} playLabel="Ver de nuevo" speed={1} onTogglePlay={() => {}} onRestart={() => {}} onPrevious={() => {}} onNext={() => {}} onSpeed={() => {}} />
+        </>,
+      )
+      const bar = screen.getByRole('group', { name: 'Controles del replay' })
+
+      expect(within(bar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Volver al principio', 'Anterior', 'Ver de nuevo', 'Siguiente', 'Velocidad: 1×'])
+      expect(within(bar).queryByRole('slider')).toBeNull()
+      // Al final no hay siguiente; la velocidad mide 44 px con el dedo, como los demás.
+      expect(within(bar).getByRole('button', { name: 'Siguiente' })).toBeDisabled()
+      expect(within(bar).getByRole('button', { name: 'Velocidad: 1×' })).toHaveClass('pointer-coarse:h-11')
+      expect(slider()).toHaveClass('h-11')
+      expect(slider()).toHaveAttribute('aria-valuenow', '4')
+      fireEvent.click(screen.getByRole('button', { name: 'Ver los pasos' }))
+      expect(onOpenSteps).toHaveBeenCalledTimes(1)
+      fireEvent.keyDown(slider(), { key: 'Home' })
+      expect(onSeek).toHaveBeenCalledWith(0)
     })
 
     it('la línea de tiempo tiene una pastilla por paso (y la mano inicial), marca los cambios de fase y separa los turnos', () => {

@@ -227,6 +227,7 @@ export const practice = {
   'practice.replay.restart': 'Volver al principio',
   'practice.replay.timeline': 'Línea de tiempo del replay',
   'practice.replay.stepOf': 'Paso {step} de {total}: {text}',
+  'practice.replay.stepShort': '{step} de {total} · {text}',
   'practice.replay.steps': 'Ver los pasos',
   'practice.replay.speed': 'Velocidad',
   'practice.mat.previous': 'Anterior',

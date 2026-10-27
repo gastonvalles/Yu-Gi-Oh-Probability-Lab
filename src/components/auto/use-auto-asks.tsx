@@ -786,8 +786,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const [forcedPick, setForcedPick] = useState<string | null>(null)
   const forcedFirst = forced ? (forced.find((card) => card.key === forcedPick) ?? forced[0]!) : null
   const lane: LaneNotice | null = review
-    ? // Repasando: qué se mira y la salida, en el lugar de los avisos (no corre nada).
-      { kind: 'ask', text: review.name === undefined ? t('auto.review.plays') : t('auto.review.combo', { name: review.name }), actions: [{ label: t('auto.review.back'), onSelect: back, primary: true }] }
+    ? // Repasando: qué se mira y la salida, en el lugar de los avisos (no corre nada). Un combo dice sólo su nombre: el paso va en el segundo renglón (la mesa) y los botones del replay, abajo;
+      // «Volver al duelo» es secundario (lavanda) para no competir con el botón grande del replay.
+      { kind: 'ask', text: review.name === undefined ? t('auto.review.plays') : t('auto.review.comboShort', { name: review.name }), actions: [{ label: t('auto.review.back'), onSelect: back, secondary: true }] }
     : frozen
     ? null
     : stuck
