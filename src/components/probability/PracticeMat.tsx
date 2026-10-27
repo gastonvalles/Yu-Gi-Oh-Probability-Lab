@@ -2517,7 +2517,7 @@ export function PracticeMat({
                 className={cx(
                   'grid size-11 place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
                   // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
-                  myTurn ? 'cursor-pointer border-info bg-magenta text-white hover:border-info-soft' : 'border-accent bg-primary text-white',
+                  myTurn ? 'cursor-pointer border-info bg-primary text-white hover:border-info-soft' : 'border-accent bg-primary text-white',
                 )}
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
@@ -3055,7 +3055,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, st
         <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[135ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)}>
           <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
         </span>
-        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-magenta px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white motion-reduce:animate-none">{placed.counters}</span> : null}
+        {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white motion-reduce:animate-none">{placed.counters}</span> : null}
         <MaterialCount count={materials} sideways={sideways} />
         {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-primary py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-white">{chosen}</span> : null}
         {framed ? <FxFrame tone="cyan" /> : null}

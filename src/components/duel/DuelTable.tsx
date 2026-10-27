@@ -412,7 +412,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: named })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
-        {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-magenta px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
+        {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
       </div>
       {link ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
       {stat ? <StatTag stat={stat} sideways={sideways} /> : null}

@@ -63,7 +63,7 @@ export function FilterChips({ label, all, allActive, onAll, chips, variant = 'wr
       {chips.map((chip) => (
         <button key={chip.key} type="button" aria-pressed={chip.active} aria-label={`${chip.name} ${chip.count}`} disabled={chip.disabled} className={chipClass} onClick={chip.onToggle}>
           {chip.name}
-          {/* La cuenta, un poco más tenue que el nombre: con la opacidad se lee sobre la lavanda (8,2:1) y sobre el magenta del elegido. */}
+          {/* La cuenta, un poco más tenue que el nombre: con la opacidad se lee sobre la lavanda (8,2:1) y sobre el violeta del elegido. */}
           <span className="tabular-nums opacity-70">{formatInteger(chip.count)}</span>
         </button>
       ))}

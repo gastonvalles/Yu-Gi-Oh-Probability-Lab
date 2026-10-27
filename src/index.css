@@ -1655,7 +1655,6 @@
   --color-success-soft: var(--success-soft);
   --color-success-solid: var(--success-solid);
   --color-warning-soft: var(--warning-soft);
-  --color-magenta: var(--magenta);
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
   /* El texto (y el pulgar del interruptor) sobre un relleno ámbar: el índigo del fondo (12,3:1; el blanco sobre ámbar no se lee, 1,5:1). */
@@ -1724,8 +1723,6 @@
     /* Ojo / a medio hacer: ámbar de la paleta (el violeta es de lo tuyo: acción principal y selección). */
     --warning: #ffc100;
     --warning-rgb: 255 193 0;
-    /* El magenta de un relleno con texto blanco (lo elegido, lo del rival, los contadores, el play, el B de Comparar): blanco 8,4:1; el ámbar no lleva texto blanco (1,6:1). */
-    --magenta: #9a0056;
     /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, con el peso de los otros brillos; el ámbar queda para lo que se activa o se resuelve. */
     --playable-rgb: 168 236 255;
     --danger: #da0000;

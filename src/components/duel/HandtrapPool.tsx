@@ -149,7 +149,7 @@ export function HandtrapPoolCard({ card, copies, onChange, note }: HandtrapPoolC
       <span aria-hidden="true" className="relative aspect-[421/614] w-10 shrink-0 overflow-hidden rounded-none bg-input">
         <CardArt remoteUrl={cardSmallImageUrl(card.id)} name={card.name} className={cx('block h-full w-full object-cover transition-opacity duration-150 motion-reduce:transition-none', !chosen && 'opacity-55')} />
         {chosen ? (
-          <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-magenta text-white">
+          <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-primary text-white">
             <Icon name="check" size={11} strokeWidth={3} />
           </span>
         ) : null}
