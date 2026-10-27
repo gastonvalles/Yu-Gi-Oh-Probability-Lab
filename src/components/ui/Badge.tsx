@@ -22,8 +22,8 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   /** Sobre una foto (la portada de un deck): fondo oscuro casi opaco y texto blanco, porque el tinte de un tono no se lee sobre la imagen. Reemplaza a `tone`. */
   onImage?: boolean
   /**
-   * Lleno en vez de teñido, con el texto blanco (dentro de un relleno verde o rojo el texto es blanco): sólo con `success` (el verde `success-solid`) y `danger`; con otro
-   * tono no hace nada. Es la etiqueta «Salida» / «Problema» de una regla, del mismo color que su opción elegida en «Qué es».
+   * Lleno en vez de teñido, con el texto blanco (dentro de un relleno de color el texto es blanco): sólo con `success` (el verde `success-solid`), `danger` y `brand` (el violeta
+   * de marca); con otro tono no hace nada. Es la etiqueta «Salida» / «Problema» de una regla, del mismo color que su opción elegida en «Qué es», y la «Mano» de una carta para elegir.
    */
   solid?: boolean
 }
@@ -48,6 +48,7 @@ const ON_IMAGE = 'border-transparent bg-background/85 text-foreground'
 const SOLID: Partial<Record<Tone, string>> = {
   success: 'border-transparent bg-success-solid text-white',
   danger: 'border-transparent bg-danger text-white',
+  brand: 'border-transparent bg-primary text-white',
 }
 
 /** Etiqueta compacta de estado, conteo o tipo. Un solo estilo para toda la app. */

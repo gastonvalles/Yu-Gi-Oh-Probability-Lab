@@ -173,7 +173,7 @@ describe('auto-screen · las hojas', () => {
     const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
     expect(band).toHaveAttribute('data-prompt-row')
-    expect(options).toEqual(['Nibiru, GY', 'Zeus, Extra'])
+    expect(options).toEqual(['Nibiru, en tu Cementerio', 'Zeus, en tu Extra Deck'])
     expect(within(band).getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'Cancelar', 'Listo'])
     fireEvent.click(within(band).getAllByRole('option')[1]!)
     expect(band).toHaveAccessibleName('Elegí de 1 a 2 cartas para desterrar · 1/2')
@@ -191,7 +191,7 @@ describe('auto-screen · las hojas', () => {
     const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
     // El núcleo las manda Imperm, Droll, Nibiru: Droll (la segunda) sale primero y su respuesta sigue siendo el índice 1.
-    expect(options).toEqual(['Droll, Main', 'Imperm, Main', 'Nibiru, GY'])
+    expect(options).toEqual(['Droll, en tu Deck', 'Imperm, en tu Deck', 'Nibiru, en tu Cementerio'])
     fireEvent.click(within(band).getAllByRole('option')[0]!)
     fireEvent.click(within(band).getByRole('button', { name: 'Elegir 1 carta' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
@@ -206,7 +206,7 @@ describe('auto-screen · las hojas', () => {
     core(() => fake.ask({ type: 'select_card', player: 0, can_cancel: false, min: 1, max: 1, selects: [pos(700, L.GRAVE, 0, 5, 1), pos(701, L.GRAVE, 1, 5, 1)] }, '504'))
     const band = screen.getByRole('group', { name: 'Elegí 1 carta para enviar al Cementerio' })
 
-    expect(band).toHaveTextContent('Rival, Cementerio · 2')
+    expect(band).toHaveTextContent('El Cementerio del rival · 2')
     expect(within(band).getAllByRole('option').every((option) => !option.getAttribute('aria-label')!.includes(','))).toBe(true)
     // Una sola, sin poder cancelar: sin pie (sólo la flecha de minimizar); el toque contesta.
     expect(within(band).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])

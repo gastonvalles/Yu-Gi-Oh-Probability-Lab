@@ -38,7 +38,7 @@ import { IMPACT_MS } from '../probability/AttackFx'
 import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
-import { BAND_MAX, CardPicker, PickBand, type PickCard } from './CardPicker'
+import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard } from './CardPicker'
 import { ChainNotice } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
@@ -430,11 +430,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     () => snap.overlay.limits[seat].map((description) => effectLabel(0, description) ?? t('auto.why.limitOf', { card: nameOf(null, splitDesc(description).code) })),
     [snap.overlay.limits, seat, effectLabel, nameOf],
   )
+  // De dónde es (el chip y el grupo de `CardPicker`): lo que sólo se nombra por código, de ningún lado.
   const pickCardOf = (card: AskCard, key: string): PickCard => {
-    const where = card.place === 'hand' ? PILE_TITLES.hand : card.place === 'pile' && card.pile ? PILE_TITLES[card.pile] : undefined
-    const place = where && card.ref?.side === 'theirs' ? t('duel.zone.theirs', { zone: where }) : where
+    const from = card.place === 'pile' ? card.pile : card.place === 'none' ? undefined : card.place
 
-    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(place ? { place } : {}) }
+    return { key, name: nameOf(card.ref, card.code), art: artOf(card.ref, card.code), ...(from && card.ref ? pickPlace(from, card.ref.side === 'theirs') : {}) }
   }
 
   // ── La pregunta pendiente: se abre con la mesa del núcleo (`session.adapter`) en el mismo render en que llega (un rearme con pregunta es un solo commit); lo que se contesta solo, se
@@ -898,8 +898,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const sourceOf = (card: AskCard) => (card.place === 'hand' ? 'hand' : card.place === 'pile' ? card.pile : undefined)
   const lead = list?.cards[0]
   const from = band && list && lead?.ref && sourceOf(lead) && list.cards.every((card) => card.ref?.side === lead.ref!.side && sourceOf(card) === sourceOf(lead)) ? sourceOf(lead)! : null
-  const bandPlace = from ? (lead!.ref!.side === 'theirs' ? t('duel.zone.theirs', { zone: t(`practice.place.${from}`) }) : t(`practice.place.${from}`)) : null
-  const bandCards = bandPlace ? listCards.map(({ place: _place, ...card }) => card) : listCards
+  const bandPlace = from ? pickPlace(from, lead!.ref!.side === 'theirs').place : null
+  const bandCards = bandPlace ? listCards.map(({ place: _place, from: _from, theirs: _theirs, ...card }) => card) : listCards
   const listProps = list
     ? {
         chosen: list.chosen.map((i) => listKeys[i]!),
