@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import type { DuelSettings } from './duel-protocol'
 import { createParticipantId } from './duel-relay-rules'
-import { readDuelSave, writeDuelSave } from './duel-save'
+import { readAutoEndSave, readDuelSave, writeDuelSave } from './duel-save'
 import { createDuel, type Duel, type DuelRole, type DuelSnapshot } from './duel-session'
 import { createSpectator, type Spectator, type SpectatorSnapshot } from './duel-spectator'
 import { createSocketTransport, type SocketStatus, type SocketTransport, type SpectatorSocket } from './duel-socket'
@@ -57,7 +57,8 @@ export function useDuel({ room, role, name, settings, connect }: UseDuelInput): 
     }
 
     const transport = connect(room, createParticipantId())
-    const duel = createDuel(transport, { role, ...latest.current, restore: readDuelSave(room, role) ?? undefined })
+    const ended = readAutoEndSave(room, role)
+    const duel = createDuel(transport, { role, ...latest.current, restore: readDuelSave(room, role) ?? undefined, ...(ended ? { ended } : {}) })
     let saved = duel.getSnapshot()
     const stopSaving = duel.subscribe(() => {
       // Sólo cuando algo de lo guardado cambió (las jugadas, las vidas o el reloj, la mesa de arranque): el chat y los avisos no pasan por acá.

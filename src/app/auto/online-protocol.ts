@@ -44,7 +44,7 @@ export interface AutoCardInfo {
  */
 type Numbered =
   /** Anfitrión → invitado: si se puede jugar con esos dos decks. `bad`: los códigos del invitado sin reglas; `theirsBad`: cuántas del anfitrión. `reason` cuando no es por reglas. */
-  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true }
+  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true; /** Y lleva el reloj de turnos con quien decide (`setAutoClock`). */ turnClock?: true }
   /**
    * Anfitrión → invitado: el duelo que empieza. `seat` es el asiento del invitado; `mine` su deck en códigos del núcleo como lo puso el anfitrión, el Main por código (el orden
    * no viaja: con él, o con la semilla, el invitado sabría sus próximos robos); `theirs`, sólo cuántas cartas tiene el anfitrión. `setup`: el duelo no empieza de cero sino desde
@@ -76,7 +76,7 @@ type Numbered =
 export type AutoMessage =
   | (Numbered & { s?: number })
   /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver). */
-  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true }
+  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true; /** Y lleva el reloj de turnos. */ turnClock?: true }
   /**
    * Los dos, sin número (no es del flujo del núcleo): la fase que se ve en mi mesa en el turno `turn` del núcleo (la mesa de quien tiene el turno frena en su DP y su SP aunque el
    * núcleo ya esté en la M1: `phase-stops.ts`) y si estoy contestando una pregunta del núcleo que no es mi turno libre (`busy`). Sólo viaja entre dos que lo anuncian (`phase` en
@@ -199,7 +199,7 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       const main = deckRows(raw.main, 200, 200)
       const extra = deckRows(raw.extra, 100, 100)
 
-      return isInt(raw.v, 0, 1000) && main && extra ? { t: 'autoDeck', v: raw.v, main, extra, ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}) } : null
+      return isInt(raw.v, 0, 1000) && main && extra ? { t: 'autoDeck', v: raw.v, main, extra, ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}), ...(raw.turnClock === true ? { turnClock: true as const } : {}) } : null
     }
 
     case 'autoCheck': {
@@ -208,7 +208,7 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
 
       if (!isInt(raw.v, 0, 1000) || typeof raw.ok !== 'boolean' || !bad || !isInt(raw.theirsBad, 0, 300) || (raw.reason !== undefined && !reason)) return null
 
-      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(reason ? { reason } : {}), ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}) }
+      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(reason ? { reason } : {}), ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}), ...(raw.turnClock === true ? { turnClock: true as const } : {}) }
     }
 
     case 'autoPhase': {

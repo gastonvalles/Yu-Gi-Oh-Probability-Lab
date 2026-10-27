@@ -193,6 +193,8 @@ interface SidingState {
   open: boolean
   /** Lo que se está armando en la pantalla (y cuándo se acaba el tiempo). */
   draft: SidingDraft | null
+  /** Es de una sala con reglas automáticas: no hay mesa guardada que diga si el duelo sigue ahí (lo rearma el núcleo). */
+  auto?: boolean
 }
 
 const sidingKeyOf = (intent: Intent | null) => (intent && !intent.watch ? `${intent.room}:${intent.role}` : '')
@@ -202,9 +204,9 @@ function storedSiding(intent: Intent | null): SidingState {
   const key = sidingKeyOf(intent)
   const stored = intent && key !== '' ? readSidingSave(intent.room, intent.role) : null
 
-  const open = Boolean(stored?.open && intent && readDuelSave(intent.room, intent.role))
+  const open = Boolean(stored?.open && intent && (stored.auto || readDuelSave(intent.room, intent.role)))
 
-  return { key, deck: stored?.deck ?? null, open, draft: open ? (stored?.draft ?? null) : null }
+  return { key, deck: stored?.deck ?? null, open, draft: open ? (stored?.draft ?? null) : null, ...(stored?.auto ? { auto: true } : {}) }
 }
 
 /** Pone la sala en la dirección (sin sumar una entrada al historial): así se puede copiar o recargar. */
@@ -247,7 +249,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [sidingState.key, sidingKey, intent])
 
   const updateSiding = useCallback(
-    (patch: Partial<Pick<SidingState, 'deck' | 'open' | 'draft'>>) => {
+    (patch: Partial<Pick<SidingState, 'deck' | 'open' | 'draft' | 'auto'>>) => {
       const next = { ...sidingRef.current, ...patch }
 
       sidingRef.current = next
@@ -260,7 +262,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const sided = siding.deck
   const sidingOpen = siding.open
   const setSided = (next: SideDeck | null) => updateSiding({ deck: next })
-  const setSidingOpen = (open: boolean) => updateSiding(open ? { open } : { open, draft: null })
   const deck = useMemo<DuelDeck>(() => {
     const base = { name: deckName, mainIds, extraIds, sideIds, cardsById }
 
@@ -273,9 +274,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [sided, deckName, mainIds, extraIds, sideIds, cardsById])
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
-  // Con reglas automáticas: un solo duelo y sin reloj de turnos (el núcleo lleva la mesa: de este lado no hay turnos que contar ni cartas que cambiar entre duelos).
   const settings = useMemo(
-    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true, turnMin: 0, turnBonusMin: 0, match: false, siding: false } : {}) }),
+    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true } : {}) }),
     [handSize, options],
   )
   const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
@@ -366,8 +366,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   // Sólo la mesa es a pantalla completa; antes de ella y entre un duelo y el siguiente (lobby, sala, siding, pausa) la app lleva su barra de abajo en el celular.
   // En una sala con reglas automáticas la mesa (la del núcleo) va desde que se eligió quién empieza hasta la revancha, como la manual.
-  const inSiding = sidingOpen && Boolean(snapshot?.mine && snapshot.series.winner === null)
-  const onTable = intent !== null && (intent.watch === true || Boolean(duel && snapshot?.mine && snapshot.theirs && !inSiding) || Boolean(duel && autoRoom && ordered))
+  const inSiding = sidingOpen && Boolean((snapshot?.mine || autoRoom) && snapshot?.series.winner === null)
+  const onTable = intent !== null && (intent.watch === true || Boolean(duel && snapshot?.mine && snapshot.theirs && !inSiding) || Boolean(duel && autoRoom && ordered && !inSiding))
 
   useEffect(() => {
     onImmersiveChange?.(onTable)
@@ -395,17 +395,19 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   // La mesa del núcleo pone sus propios sonidos (sonarían dos veces).
   useDuelSounds(onTable && !intent?.watch && !autoRoom ? snapshot : null)
 
-  // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue (no antes: al recargar, la mesa tarda en volver y no por eso se sale).
+  // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue (no antes: al recargar, la mesa tarda en volver y no por eso se sale). En una sala
+  // automática no hay mesa propia: vale que ya se había elegido quién empezaba (la revancha lo vuelve a definir).
   const hadTable = useRef(false)
+  const dealt = Boolean(snapshot?.mine) || Boolean(snapshot?.settings.auto && snapshot.opening.ordered)
 
   useEffect(() => {
-    if (snapshot?.mine) {
+    if (dealt) {
       hadTable.current = true
     } else if (hadTable.current) {
       hadTable.current = false
       if (sidingRef.current.open) updateSiding({ open: false, draft: null })
     }
-  }, [snapshot?.mine, updateSiding])
+  }, [dealt, updateSiding])
 
   useEffect(() => {
     if (duel && ordered && !started && settingsKnown && deckReady && !autoRoom) {
@@ -657,14 +659,45 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     />
   )
 
+  // Terminado un duelo de un Match con siding, «Siguiente duelo» lleva a cambiar cartas antes de pedir la revancha; el Match ganado vuelve al deck de origen.
+  const withSiding = snapshot.settings.siding && snapshot.series.match && snapshot.series.winner === null
+  const rematch = () => {
+    if (snapshot.series.winner !== null) setSided(null)
+
+    if (withSiding && !snapshot.rematch.mine) {
+      updateSiding({ open: true, ...(autoRoom ? { auto: true } : {}) })
+    } else {
+      duel.rematch()
+    }
+  }
+  const sidingScreen = (
+    <Screen wide>
+      <DuelSiding
+        deck={{ main: deck.mainIds, extra: deck.extraIds, side: deck.sideIds ?? [] }}
+        cardsById={deck.cardsById}
+        format={snapshot.settings.format}
+        genesysCap={snapshot.settings.genesysCap}
+        rival={snapshot.peerName ?? t('duel.bar.rival')}
+        locked={snapshot.rematch.mine}
+        rivalReady={snapshot.rematch.theirs}
+        saved={siding.draft}
+        onProgress={(draft) => updateSiding({ draft })}
+        onReady={(next) => {
+          updateSiding({ deck: next })
+          duel.rematch()
+        }}
+      />
+    </Screen>
+  )
+
   // Una sala con reglas automáticas: la sala de siempre y la mesa del núcleo, las dos en la pantalla del duelo automático (que se carga a pedido; mientras tanto, la sala sin poder estar listo).
-  // Nunca la mesa manual, su pausa ni el siding: en una sala así no hay revancha con siding ni Match, así que la revancha es la de siempre.
+  // Nunca la mesa manual ni su pausa. El siding de un Match va en esa pantalla, en vez de la mesa: el enlace del núcleo sigue vivo y recibe el deck nuevo.
   if (autoRoom) {
     return (
       <>
         {AutoDuel ? (
           <Suspense fallback={renderRoom(AUTO_PENDING)}>
-            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} code={intent.room} onManual={toManual} {...(intent.role === 'host' && resumeStart.current ? { resume: resumeStart.current } : {})} />
+            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={rematch} code={intent.room} {...(inSiding ? { siding: sidingScreen } : {})} onManual={toManual} {...(intent.role === 'host' && resumeStart.current ? { resume: resumeStart.current } : {})} />
           </Suspense>
         ) : (
           renderRoom(AUTO_PENDING)
@@ -675,27 +708,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }
 
   // El siding de un Match: no hay otra pantalla hasta tocar «Listo», tampoco al recargar o volver al duelo (ni la pausa, ni la sala, ni la mesa).
-  if (sidingOpen && snapshot.mine && snapshot.series.winner === null) {
-    return (
-      <Screen wide>
-        <DuelSiding
-          deck={{ main: deck.mainIds, extra: deck.extraIds, side: deck.sideIds ?? [] }}
-          cardsById={deck.cardsById}
-          format={snapshot.settings.format}
-          genesysCap={snapshot.settings.genesysCap}
-          rival={snapshot.peerName ?? t('duel.bar.rival')}
-          locked={snapshot.rematch.mine}
-          rivalReady={snapshot.rematch.theirs}
-          saved={siding.draft}
-          onProgress={(draft) => updateSiding({ draft })}
-          onReady={(next) => {
-            updateSiding({ deck: next })
-            duel.rematch()
-          }}
-        />
-      </Screen>
-    )
-  }
+  if (inSiding) return sidingScreen
 
   // Volvió a su mesa (la guardada) y el rival todavía no: el duelo está en pausa, no hay nada que preparar.
   if (snapshot.mine && !snapshot.theirs && !snapshot.peerPresent) {
@@ -708,18 +721,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   if (!snapshot.mine || !snapshot.theirs) {
     return renderRoom()
-  }
-
-  // Terminado un duelo de un Match con siding, «Siguiente duelo» lleva a cambiar cartas antes de pedir la revancha; el Match ganado vuelve al deck de origen.
-  const withSiding = snapshot.settings.siding && snapshot.series.match && snapshot.series.winner === null
-  const rematch = () => {
-    if (snapshot.series.winner !== null) setSided(null)
-
-    if (withSiding && !snapshot.rematch.mine) {
-      setSidingOpen(true)
-    } else {
-      duel.rematch()
-    }
   }
 
   return (

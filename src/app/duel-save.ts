@@ -135,8 +135,39 @@ export function writeDuelSave(room: string, snapshot: DuelSnapshot, now = Date.n
     } else {
       localStorage.removeItem(saveKey(room, snapshot.role))
     }
+
+    // Una sala con reglas automáticas no tiene mesa que guardar (la cuenta el núcleo): sólo quién se rindió, mientras ese duelo espera la revancha.
+    if (snapshot.settings.auto && !snapshot.initial && snapshot.conceded !== null) {
+      localStorage.setItem(autoEndKey(room, snapshot.role), JSON.stringify({ v: 1, conceded: snapshot.conceded, timeUp: snapshot.timeUp, savedAt: now } satisfies AutoEndSave))
+    } else {
+      localStorage.removeItem(autoEndKey(room, snapshot.role))
+    }
   } catch {
     // Sin almacenamiento no se recuerda.
+  }
+}
+
+/**
+ * Quién se rindió en el duelo de una sala con reglas automáticas que terminó así: recargar antes de la revancha (el siding de un Match) no lo borra, y el Match suma el duelo
+ * de los dos lados. Lo que terminó el núcleo no hace falta: su re-simulación vuelve a poner las vidas.
+ */
+export interface AutoEndSave {
+  v: 1
+  conceded: Duelist
+  timeUp: boolean
+  savedAt: number
+}
+
+const AUTO_END_PREFIX = 'ygo-lab:duel-auto-end:'
+const autoEndKey = (room: string, role: 'host' | 'guest') => `${AUTO_END_PREFIX}${room}:${role}`
+
+export function readAutoEndSave(room: string, role: 'host' | 'guest', now = Date.now()): AutoEndSave | null {
+  try {
+    const save = JSON.parse(localStorage.getItem(autoEndKey(room, role)) ?? 'null') as Partial<AutoEndSave> | null
+
+    return save?.v === 1 && (save.conceded === 0 || save.conceded === 1) && typeof save.timeUp === 'boolean' && isNumber(save.savedAt) && now - save.savedAt <= SAVE_TTL_MS ? (save as AutoEndSave) : null
+  } catch {
+    return null
   }
 }
 
@@ -146,6 +177,8 @@ export function clearDuelSave(room: string): void {
     localStorage.removeItem(saveKey(room, 'guest'))
     localStorage.removeItem(sidingKey(room, 'host'))
     localStorage.removeItem(sidingKey(room, 'guest'))
+    localStorage.removeItem(autoEndKey(room, 'host'))
+    localStorage.removeItem(autoEndKey(room, 'guest'))
   } catch {
     // Sin almacenamiento no hay nada que borrar.
   }
@@ -200,6 +233,8 @@ export interface SidingSave {
   open: boolean
   /** Lo que se está armando en la pantalla del siding (las cartas en cada zona) y cuándo se acaba el tiempo: recargar no reinicia ni el deck ni la cuenta. */
   draft?: SidingDraft | null
+  /** De una sala con reglas automáticas (sin mesa guardada: la pantalla vale abierta igual). Los guardados de antes no lo traen. */
+  auto?: true
   savedAt: number
 }
 
@@ -241,10 +276,10 @@ export function readSidingSave(room: string, role: 'host' | 'guest', now = Date.
 }
 
 /** Guarda el siding de esta sala (o lo borra, si no hay nada que recordar: ni deck ni pantalla abierta). */
-export function writeSidingSave(room: string, role: 'host' | 'guest', save: { deck: SideDeck | null; open: boolean; draft?: SidingDraft | null } | null, now = Date.now()): void {
+export function writeSidingSave(room: string, role: 'host' | 'guest', save: { deck: SideDeck | null; open: boolean; draft?: SidingDraft | null; auto?: boolean } | null, now = Date.now()): void {
   try {
     if (save && (save.deck !== null || save.open)) {
-      localStorage.setItem(sidingKey(room, role), JSON.stringify({ v: 1, role, deck: save.deck, open: save.open, draft: save.open ? (save.draft ?? null) : null, savedAt: now } satisfies SidingSave))
+      localStorage.setItem(sidingKey(room, role), JSON.stringify({ v: 1, role, deck: save.deck, open: save.open, draft: save.open ? (save.draft ?? null) : null, ...(save.auto ? { auto: true as const } : {}), savedAt: now } satisfies SidingSave))
     } else {
       localStorage.removeItem(sidingKey(room, role))
     }

@@ -465,8 +465,8 @@ export const duel = {
 
   // Una sala con reglas automáticas (beta): el núcleo aplica las reglas por los dos.
   'duel.auto.rules': 'Reglas automáticas (beta)',
-  'duel.auto.rulesHint': 'El núcleo aplica las reglas por los dos. Un solo duelo, sin reloj de turnos ni espectadores.',
-  'duel.auto.locked': 'Con reglas automáticas: un solo duelo, sin reloj de turnos ni espectadores todavía.',
+  'duel.auto.rulesHint': 'El núcleo aplica las reglas por los dos. Sin espectadores.',
+  'duel.auto.locked': 'Con reglas automáticas: sin espectadores todavía.',
   'duel.auto.unsupported': 'Tu navegador no puede correr las reglas automáticas.',
   'duel.auto.off': 'Las reglas automáticas están apagadas por ahora.',
   'duel.auto.rulesRow': 'Automáticas (beta)',

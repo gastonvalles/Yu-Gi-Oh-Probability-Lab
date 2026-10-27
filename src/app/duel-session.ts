@@ -157,6 +157,11 @@ export interface Duel {
   look(at: Activity | null): void
   /** Pedir la revancha (o aceptarla si el rival la pidió). */
   rematch(): void
+  /**
+   * El reloj de turnos de una sala con reglas automáticas (sin mesa manual): el turno del núcleo, de quién es y quién decide ahora (a quién le pregunta el núcleo; si no pregunta
+   * nada, el del turno). Corre la reserva de quien decide. `null`: sin reloj (no lo saben los dos, o la mesa del núcleo todavía no está).
+   */
+  setAutoClock(view: AutoClock | null): void
   /** Marcar (o desmarcar) como objetivo algo del lado del rival: una carta suya (por el id que él le dio) o una de sus pilas, la mano incluida. Él lo ve en lo suyo. */
   toggleMark(target: MarkTarget): void
   /** Marcar varias cartas de su lado de una vez: un solo aviso y un solo plazo para las que se marcan (vencen juntas). Si ya estaban todas, las quita. Lo que no entra en el tope (`MAX_MARKS`) no se marca. */
@@ -183,6 +188,15 @@ interface DuelOptions {
   random?: () => number
   /** Mi mesa guardada de antes de recargar la página: se sigue desde ahí en vez de repartir de nuevo. */
   restore?: DuelSave
+  /** Una sala con reglas automáticas cuyo duelo terminó rindiéndose (`AutoEndSave`): sigue terminado al recargar, antes de la revancha. */
+  ended?: { conceded: Duelist; timeUp: boolean }
+}
+
+/** Lo que la mesa del núcleo le dice al reloj de turnos (ver `setAutoClock`). */
+export interface AutoClock {
+  turn: number
+  turnPlayer: Duelist
+  deciding: Duelist
 }
 
 /** Cuánto espera mi pedido de volver atrás una respuesta del rival antes de cancelarse. */
@@ -300,6 +314,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let clockTurnNo: number | null = null
   let clockOwner: Duelist = 0
   let pendingBanks: readonly [number, number] | null = null
+  let autoClock: AutoClock | null = null
+  let bankSent = -1
   // Lo que hace cada uno y se ve (mirar una pila, elegir cómo jugar): lo suyo llega con su mensaje y lo mío se le repone cuando vuelve.
   let peerLook: Activity | null = null
   let myLook: Activity | null = null
@@ -324,8 +340,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     const bankMs = (settings.turnMin ?? 0) * 60_000
     const bonusMs = (settings.turnBonusMin ?? 0) * 60_000
 
+    // En una sala automática sin mesa manual, el turno y quién decide los dice la mesa del núcleo (`setAutoClock`).
+    const auto = settings.auto && !mine
+    const view = auto ? autoClock : null
+
     // Sin límite por turno (o sin dos mesas) no hay reloj: nada corre ni se avisa.
-    if (bankMs === 0 || !mine || !theirs) {
+    if (bankMs === 0 || (auto ? !view : !mine || !theirs)) {
       if (expiryTimer !== null) {
         clearTimeout(expiryTimer)
         expiryTimer = null
@@ -341,14 +361,15 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
 
     const at = now()
-    const no = duelTurnNumber(mine, theirs.state)
-    const owner: Duelist = whoseTurn(me, mine, theirs.state, starter) === 'mine' ? me : peer
+    const no = view ? view.turn : duelTurnNumber(mine!, theirs!.state)
+    const owner: Duelist = view ? view.turnPlayer : whoseTurn(me, mine!, theirs!.state, starter) === 'mine' ? me : peer
+    const wasMine = turnClock.running === me
 
     if (clockTurnNo === null) {
       turnClock = startTurn({ ...turnClock, banks: pendingBanks ?? turnClock.banks, running: null, at }, owner, at, 0)
     } else if (no > clockTurnNo) {
       // Pasó el turno: quien lo pasó dice lo que le queda (corrige la cuenta del otro lado) y a quien le toca se le suman los 2 minutos.
-      if (clockOwner === me) {
+      if (clockOwner === me && !view) {
         send({ t: 'turnClock', bank: Math.round(turnTimeLeft(turnClock, me, at)) })
       }
 
@@ -363,10 +384,18 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     pendingBanks = null
 
     const playing = peerPresent && !stranger && duelResult(life.lp, conceded) === null
-    const running = playing ? owner : null
+    const running = playing ? (view ? view.deciding : owner) : null
 
     if (turnClock.running !== running) {
       turnClock = runTurnClock(turnClock, running, at)
+    }
+
+    // En la automática corre la reserva de quien decide, que cambia a mitad del turno: cuando dejo de decidir, lo que me queda corrige la cuenta del otro lado (si cambió).
+    const bank = Math.round(turnTimeLeft(turnClock, me, at))
+
+    if (view && wasMine && turnClock.running !== me && Math.abs(bank - bankSent) >= 1000) {
+      bankSent = bank
+      send({ t: 'turnClock', bank })
     }
 
     // Quien se queda sin tiempo pierde: el dispositivo de ese jugador se rinde por él (el del rival sólo espera su aviso: cada uno es dueño de su reloj).
@@ -1219,6 +1248,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
   }
 
+  if (options.ended && !options.restore) {
+    conceded = options.ended.conceded
+    concededOnTime = options.ended.timeUp
+  }
+
   snapshot = build()
 
   /** Cierra todo: deja de escuchar y suelta la conexión; con `endRoom`, avisándole al relay que la sala se da por terminada (se cierra para todos). */
@@ -1444,6 +1478,13 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     rematch() {
       playGame({ kind: 'rematch' })
+    },
+
+    setAutoClock(view) {
+      if (view === autoClock || (view && autoClock && view.turn === autoClock.turn && view.turnPlayer === autoClock.turnPlayer && view.deciding === autoClock.deciding)) return
+      autoClock = view
+      if (!view) bankSent = -1
+      emit()
     },
 
     chooseFirst(first) {

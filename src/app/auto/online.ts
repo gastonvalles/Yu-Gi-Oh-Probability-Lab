@@ -72,6 +72,8 @@ export interface OnlineSnapshot {
   undo?: UndoView
   /** Lo último que el rival dijo de su mesa (`autoPhase`; turno 0: nada todavía en este duelo); null si no lo avisa (uno de antes). */
   rivalPhase?: PhaseView | null
+  /** El otro lleva el reloj de turnos con quien decide (`turnClock` en su `autoDeck` o `autoCheck`): con uno de antes, la sala va sin reloj por turno. */
+  clock?: boolean
 }
 
 /** Lo que se ve de una mesa (`autoPhase`): la fase que muestra en el turno `turn` del núcleo y si está contestando una pregunta del núcleo que no es su turno libre. */
@@ -123,6 +125,8 @@ export interface OnlineLink {
   undo?(yes: boolean): void
   /** Lo que se ve de mi mesa (la pantalla lo dice cuando cambia): va al otro si lo sabe leer, y el anfitrión se lo repite al que vuelve. */
   phase?(view: PhaseView): void
+  /** Mi deck cambió (el siding de un Match): vale desde el duelo que sigue; el del duelo que corre no cambia. El invitado se lo manda al anfitrión. */
+  deck?(list: DeckList): void
   destroy(): void
 }
 
@@ -136,7 +140,7 @@ export interface HostLinkOptions {
   makeTransport: TransportFactory
   /** `AUTO_ONLINE` del manifiesto (`features.online`): apagado, se contesta `autoCheck{ok:false, reason:'off'}`. */
   enabled: () => Promise<boolean>
-  /** El guardado del duelo de esta sala (`autoSaveStore(sala)`): el enlace lo escribe con cada respuesta, lo borra al terminar y lo usa si la página se recargó a mitad de duelo. Abandonar lo borra la pantalla. */
+  /** El guardado del duelo de esta sala (`autoSaveStore(sala)`): el enlace lo escribe con cada respuesta, lo borra con la revancha y lo usa si la página se recargó a mitad de duelo (o terminado, antes de la revancha). Abandonar lo borra la pantalla. */
   save?: AutoSaveStore
   now?: () => number
   /** La clave de cada duelo nuevo (y de cada revancha): `newDuelKey` (256 bits de `crypto.getRandomValues`); las pruebas la fijan. */
@@ -227,6 +231,21 @@ function cardsOf(data: DuelData): Map<number, AutoCardInfo> {
 
 /** Las filas de un deck, para ver si el invitado mandó el mismo. */
 const rowsOf = (deck: DeckList) => JSON.stringify([deck.main, deck.extra ?? []])
+/** Si `next` sale de `from` con un siding: a lo sumo 15 copias (el tope del Side, `SIDE_LIMITS`) que no estaban en su Main y su Extra. */
+export function sidedFrom(from: DeckList, next: DeckList): boolean {
+  const left = new Map<number, number>()
+  let added = 0
+
+  for (const [code, copies] of [...from.main, ...(from.extra ?? [])]) left.set(code, (left.get(code) ?? 0) + copies)
+  for (const [code, copies] of [...next.main, ...(next.extra ?? [])]) {
+    const had = left.get(code) ?? 0
+
+    added += Math.max(0, copies - had)
+    left.set(code, Math.max(0, had - copies))
+  }
+
+  return added <= 15
+}
 const badOf = (deck: MappedDeck | undefined) => [...new Set([...(deck?.missing ?? []), ...(deck?.noRules ?? [])])]
 
 function sessionPhase(session: AutoSession, room: DuelSnapshot | null): OnlinePhase {
@@ -486,7 +505,7 @@ function snapshotStore() {
       const old = snapshot.problems
       const problems = next.problems.mine === old.mine && next.problems.theirs === old.theirs && next.problems.reason === old.reason ? old : next.problems
 
-      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped && next.undo === snapshot.undo && next.rivalPhase === snapshot.rivalPhase) return
+      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped && next.undo === snapshot.undo && next.rivalPhase === snapshot.rivalPhase && next.clock === snapshot.clock) return
       snapshot = { ...next, problems }
       listeners.forEach((listener) => listener())
     },
@@ -514,6 +533,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let phasePeer = false
   let rivalPhase: PhaseView | null = null
   let myPhase: PhaseView | null = null
+  let clockPeer = false
   // El deck del invitado y si se puede jugar con los dos (`bad`: los del invitado sin reglas).
   let guestDeck: DeckList | null = null
   let check: (Check & { bad: number[] }) | null = null
@@ -547,6 +567,10 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let batchBytes = 0
   // El duelo guardado: el deck y la mano con que se juega (los de lo guardado, si se rearma), lo que se va a rearmar y lo último escrito (`saving`: mientras el duelo sigue).
   let hostDeck = options.deck
+  // Mi deck para el duelo que sigue (el siding) y con qué decks se revisó por última vez; el deck del invitado con que empezó el Match (su siding se mide contra él).
+  let nextDeck = options.deck
+  let checkedMine: DeckList | null = null
+  let matchDeck: DeckList | null = null
   let hand = options.handSize
   let restoring: AutoSave | null = null
   let remoteDeck: DeckList | null = null
@@ -580,6 +604,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       manualDropped: request.dropped,
       undo: undo.view,
       rivalPhase: phasePeer ? (rivalPhase ?? NO_PHASE) : null,
+      clock: clockPeer,
     })
   const request = manualRequest(true, post, refresh, cut)
   const undo = undoRequest(true, post, refresh, runUndo)
@@ -627,7 +652,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
   function sendCheck() {
     if (lost) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: false, bad: [], theirsBad: 0, reason: 'lost' })
-    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true, phase: true })
+    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true, phase: true, turnClock: true })
   }
 
   function stopWait() {
@@ -651,6 +676,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     const token = ++checks
 
     checked = deck
+    checkedMine = hostDeck
     check = null
     refresh()
     let next: Check & { bad: number[] }
@@ -703,11 +729,12 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     restoring = saved
     hostDeck = saved.decks.mine
     hand = saved.hand
-    guestDeck = saved.decks.theirs
+    // Uno que el invitado ya mandó (el de su siding, si recargué entre dos duelos de un Match) queda para la revancha.
+    guestDeck ??= saved.decks.theirs
     pending = true
     stopWait()
     outdated = false
-    void runCheck(guestDeck)
+    void runCheck(saved.decks.theirs)
   }
 
   /**
@@ -718,7 +745,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     if (!options.save || !saving || !session || !seats) return
     const snap = session.getSnapshot()
 
-    if (snap.status === 'ended' || snap.status === 'error' || (room?.conceded ?? null) !== null) {
+    // Terminado, queda lo último que se escribió (recargar antes de la revancha, en el siding de un Match, rearma el duelo terminado); lo borra la revancha.
+    if (snap.status === 'ended' || (room?.conceded ?? null) !== null) saving = false
+    if (snap.status === 'error') {
       saving = false
       return options.save.clear()
     }
@@ -742,6 +771,10 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     const deck = { main: message.main, extra: message.extra }
 
     undo.peer(message.undo === true)
+    if (clockPeer !== (message.turnClock === true)) {
+      clockPeer = message.turnClock === true
+      refresh()
+    }
     // Recién sé que la sabe leer (recargué y le avisé antes de que llegara su deck): se la digo ahora.
     const knew = phasePeer
 
@@ -978,6 +1011,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     resumeSetup = from?.setup ?? null
     seats = { host, guest: (1 - host) as Seat }
     remoteDeck = saved?.decks.theirs ?? guestDeck
+    if (!matchDeck || !room.settings.match || room.series.game === 1) matchDeck = remoteDeck
     restartLog()
     sent = new Set()
     heldRetry = null
@@ -1070,8 +1104,12 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
         lost = false
         request.reset()
         undo.drop()
-        // Un deck que el invitado cambió en pleno duelo se revisa ahora; si no, vale la revisión de antes.
-        if (guestDeck && guestDeck !== checked) void runCheck(guestDeck)
+        options.save?.clear()
+        hostDeck = nextDeck
+        // En un Match, el invitado sólo cambia cartas con su Side (`sidedFrom`); si no, sigue con el deck de antes.
+        if (guestDeck && checked && next.settings.match && next.series.game > 1 && matchDeck && !sidedFrom(matchDeck, guestDeck)) guestDeck = checked
+        // Un deck que cambió en pleno duelo (el siding) se revisa ahora; si no, vale la revisión de antes.
+        if (guestDeck && (guestDeck !== checked || hostDeck !== checkedMine)) void runCheck(guestDeck)
         else sendCheck()
       }
       // Rendirse termina el duelo para la sala: lo guardado ya no sirve (y un pedido de pasar a manual o de deshacer tampoco: no se corta un duelo terminado).
@@ -1099,6 +1137,14 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       if (destroyed) return
       myPhase = view
       tellPhase()
+    },
+    deck(list) {
+      if (destroyed || rowsOf(list) === rowsOf(nextDeck)) return
+      nextDeck = list
+      // Entre la sala y el primer duelo vale ya; con un duelo (aunque haya terminado), desde la revancha.
+      if (session || restoring) return
+      hostDeck = list
+      if (guestDeck) void runCheck(guestDeck)
     },
     destroy() {
       destroyed = true
@@ -1208,6 +1254,8 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   let phasePeer = false
   let rivalPhase: PhaseView | null = null
   let myPhase: PhaseView | null = null
+  let myDeck = options.deck
+  let clockPeer = false
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -1228,6 +1276,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       manualDropped: request.dropped,
       undo: undo.view,
       rivalPhase: phasePeer ? (rivalPhase ?? NO_PHASE) : null,
+      clock: clockPeer,
     })
   const send = (message: AutoMessage) => transport.send(encodeAutoMessage(message))
   const request = manualRequest(false, send, refresh)
@@ -1236,14 +1285,18 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     if (phasePeer && myPhase) send(phaseMessage(myPhase))
   }
 
+  const sendDeck = () => {
+    const rows = (list: DeckList['main'] = []) => list.map(([code, copies]): [number, number] => [code, copies])
+
+    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(myDeck.main), extra: rows(myDeck.extra), undo: true, phase: true, turnClock: true })
+  }
+
   /** Al entrar o volver: mi deck (lo revisa el anfitrión) y el duelo, si hay uno. */
   function hello() {
     if (now() - lastHello < HELLO_GAP_MS) return
     lastHello = now()
     asked = true
-    const rows = (list: DeckList['main'] = []) => list.map(([code, copies]): [number, number] => [code, copies])
-
-    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(options.deck.main), extra: rows(options.deck.extra), undo: true, phase: true })
+    sendDeck()
     send({ t: 'autoResync' })
   }
 
@@ -1308,7 +1361,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     // Sin la clave: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado). Con la mesa rearmada (pasar de manual a automático), desde ella.
     session = createAutoSession({
       loader: guestLoader(init, source),
-      deck: options.deck,
+      deck: myDeck,
       seat: init.seat,
       handSize: init.players[init.seat].hand,
       typeOf: (code) => cards.get(code)?.type ?? 0,
@@ -1366,6 +1419,9 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
         if (message.reason === 'lost') lost = true
         else check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null }
         undo.peer(message.undo === true)
+        clockPeer = message.turnClock === true
+        // Un flujo nuevo que no pedí (el anfitrión recargó: mi deck pudo llegarle antes que su enlace): se lo repito, con lo que sé hacer.
+        if (message.s === 1 && now() - lastHello >= HELLO_GAP_MS) sendDeck()
         {
           const knew = phasePeer
 
@@ -1420,11 +1476,12 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       // La revancha: el anfitrión arma otra sesión al próximo `ordered` y la cuenta con otro `autoInit`.
       if (!next.opening.ordered && before?.opening.ordered) {
         drop()
-        // El anfitrión que perdió el duelo pudo haber recargado sin revisar mi deck: se lo mando de nuevo (aunque recién lo haya hecho al volver).
+        // El anfitrión que perdió el duelo pudo haber recargado sin revisar mi deck: se lo mando de nuevo (aunque recién lo haya hecho al volver). Con el siding de un Match,
+        // mi deck otra vez: un anfitrión que recargó entre los dos duelos no lo tiene.
         if (lost) {
           lastHello = -Infinity
           hello()
-        }
+        } else if (myDeck !== options.deck) sendDeck()
         lost = false
         request.reset()
       }
@@ -1444,6 +1501,12 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       if (destroyed) return
       myPhase = view
       tellPhase()
+    },
+    // El anfitrión lo revisa en la revancha (o ya, sin duelo).
+    deck(list) {
+      if (destroyed || rowsOf(list) === rowsOf(myDeck)) return
+      myDeck = list
+      if (here) sendDeck()
     },
     destroy() {
       destroyed = true

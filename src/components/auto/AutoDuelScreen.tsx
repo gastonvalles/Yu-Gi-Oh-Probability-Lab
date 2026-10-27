@@ -12,7 +12,7 @@ import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { duelResult, type DuelResult } from '../../app/duel-games'
 import { duelTurnNumber } from '../../app/duel-turn'
-import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
+import type { AutoClock, Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import { isEmojiSignal } from '../../app/duel-signals'
 import type { SocketStatus } from '../../app/duel-socket'
 import { LifeHold } from '../../app/life-effects'
@@ -20,6 +20,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
+import { TurnDial } from '../duel/TurnDial'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from '../duel/DuelBar'
 import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
@@ -41,7 +42,7 @@ import { sentinel, useAutoAsks } from './use-auto-asks'
  * la mesa de «Jugar solo automático» (`PracticeMat` con la composición del duelo y las preguntas del núcleo contestadas en la mesa: `useAutoAsks`), unidas por el enlace del núcleo
  * (`OnlineLink`): el anfitrión corre el núcleo con los dos asientos y el invitado proyecta lo que le llega. Mientras no hay sesión, la sala la dibuja `DuelRoom` (`room`) con lo que el
  * enlace sabe (`RoomAutoState`: si se puede estar listo y qué decir). La mesa no cambia en nada: recibe lo mismo que en solo, con la barra del duelo (`DuelBar`), el chat, las
- * señales, la pausa y el resultado. Deshacer, con el acuerdo del rival (`useLinkUndo`); sin reloj de turnos. Las vidas del núcleo se vuelcan en las de la sala (cada uno declara las suyas) y al final el que pierde
+ * señales, la pausa y el resultado. Deshacer, con el acuerdo del rival (`useLinkUndo`); el reloj de turnos corre con quien decide (`useAutoTurnClock`). Las vidas del núcleo se vuelcan en las de la sala (cada uno declara las suyas) y al final el que pierde
  * pone las suyas en 0: así el resultado, la revancha y el cierre de la sala andan como siempre.
  */
 
@@ -75,6 +76,8 @@ export interface AutoDuelScreenProps {
    * la mesa rearmada (se lee al montar: el enlace la consume una vez y la revancha empieza de cero); el invitado no necesita nada (arma las suyas del `autoInit`).
    */
   resume?: HostLinkOptions['resume']
+  /** El siding de un Match (`DuelSiding`), en vez de la mesa: el enlace sigue vivo debajo. */
+  siding?: ReactNode
   /** Pruebas: el enlace de mentira (tiene que ser estable: cambiarlo arma otro enlace). */
   connect?: (transport: OnlineTransport, role: DuelRole) => OnlineLink
 }
@@ -97,14 +100,16 @@ const sessionIds = new WeakMap<AutoSession, number>()
 let lastSessionId = 0
 const sessionKey = (session: AutoSession) => sessionIds.get(session) ?? (sessionIds.set(session, (lastSessionId += 1)), lastSessionId)
 
-export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, resume, connect }: AutoDuelScreenProps) {
+export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, resume, siding, connect }: AutoDuelScreenProps) {
   const { role, peerPresent } = snapshot
   const list = useMemo<DeckList>(() => ({ main: deckListOf(deck.mainIds), extra: deckListOf(deck.extraIds) }), [deck.mainIds, deck.extraIds])
   const [link, setLink] = useState<OnlineLink | null>(null)
-  // La mesa rearmada se lee cuando se arma el enlace (cambiarla después no arma otro).
+  // La mesa rearmada y el deck se leen cuando se arma el enlace (cambiarlos después no arma otro: el deck nuevo del siding se le pasa con `deck`).
   const resumeRef = useRef(resume)
+  const listRef = useRef(list)
 
   resumeRef.current = resume
+  listRef.current = list
   // El duelo guardado del anfitrión se borra al salir, abandonar o pasar a manual (el enlace no lo borra al destruirse: con `StrictMode` borraría lo guardado al volver a montar).
   const save = useMemo(() => (code ? autoSaveStore(code) : null), [code])
   const leave = useCallback(() => {
@@ -127,12 +132,15 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite, y un enlace escucha el relay y manda; el de la primera pasada se destruye.
   useEffect(() => {
-    const next = connect ? connect(transport, role) : liveLink(transport, role, list, handSize, save, resumeRef.current)
+    const next = connect ? connect(transport, role) : liveLink(transport, role, listRef.current, handSize, save, resumeRef.current)
 
     setLink(next)
 
     return () => next.destroy()
-  }, [connect, transport, role, list, handSize, save])
+  }, [connect, transport, role, handSize, save])
+  useEffect(() => {
+    link?.deck?.(list)
+  }, [link, list])
 
   const online = useSyncExternalStore(link ? link.subscribe : noSubscribe, link ? link.getSnapshot : noSnapshot)
 
@@ -165,6 +173,7 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
   const codeName = useCodeName(deck.cardsById, online?.cards)
   const tellPhase = useCallback((view: PhaseView) => link?.phase?.(view), [link])
 
+  if (siding) return <>{siding}</>
   // La sala hasta que hay duelo: también entre un duelo y su revancha (la mesa vuelve a cero y elige el que perdió).
   if (!online?.session || online.seat === null || !snapshot.opening.ordered) return <>{room(roomAutoState(online, rivalName, codeName))}</>
 
@@ -347,6 +356,28 @@ function useLinkUndo({ snap, online, seat, host, open, rivalName, lastChat, askU
   }
 }
 
+/**
+ * El reloj de turnos de la sala, con la mesa del núcleo (`setAutoClock`): corre la reserva de quien decide. En tu turno, la tuya; en el del rival, sólo mientras el núcleo te
+ * pregunta a vos. Quién decide lo sabe cada uno: el anfitrión por sus dos preguntas; el invitado por la suya y por el `busy` de la fase del anfitrión (`autoPhase`). Sólo
+ * con reloj en la sala y un rival que lo lleva (`clock`); se apaga al desmontar (la revancha, pasar a manual).
+ */
+function useAutoTurnClock({ duel, snapshot, snap, seat, online }: { duel: Duel; snapshot: DuelSnapshot; snap: AutoSnapshot; seat: Seat; online: OnlineSnapshot }): AutoClock | null {
+  const peer = snapshot.me === 0 ? 1 : 0
+  const turnPlayer = snap.overlay.turnPlayer === null ? null : snap.overlay.turnPlayer === seat ? snapshot.me : peer
+  const rivalAsked = snapshot.role === 'host' ? snap.remoteAsk !== null : online.rivalPhase?.busy === true
+  const on = online.clock === true && (snapshot.settings.turnMin ?? 0) > 0 && snap.status !== 'loading' && !snap.replaying && snap.overlay.turn > 0 && turnPlayer !== null
+  const view = on ? { turn: snap.overlay.turn, turnPlayer, deciding: snap.ask ? snapshot.me : rivalAsked ? peer : turnPlayer } : null
+  const key = view ? `${view.turn}:${view.turnPlayer}:${view.deciding}` : ''
+
+  useEffect(() => {
+    duel.setAutoClock(view)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- por contenido (`key`): `view` es otro objeto en cada render
+  }, [duel, key])
+  useEffect(() => () => duel.setAutoClock(null), [duel])
+
+  return view
+}
+
 interface AutoDuelTableProps {
   session: AutoSession
   online: OnlineSnapshot
@@ -395,6 +426,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     if (mineTold) tellPhase(mineTold)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- por contenido (`toldKey`): `told` es otro objeto en cada render
   }, [toldKey, tellPhase])
+  const clock = useAutoTurnClock({ duel, snapshot, snap, seat, online })
   // Cada fase que pasa el rival en su turno, con el cartel del duelo manual.
   const notice = useRivalNotice(asks.turnMine ? undefined : asks.mat.phase, asks.turnMine ? 'mine' : 'theirs', rivalName)
   const paused = !snapshot.peerPresent && result === null
@@ -545,6 +577,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
     undoInHeader: true,
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(notice ? { notice } : {}),
+    ...(clock ? { clock: <TurnDial clock={snapshot.turnClock} owner={snapshot.turnClock.running ?? clock.turnPlayer} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} /> } : {}),
     // Deshacer le pide permiso al rival (`useLinkUndo`); el chip de la solitaria no va: acá el pedido es explícito.
     undoAvailable: undo.available,
     undoPending: undo.pending,
