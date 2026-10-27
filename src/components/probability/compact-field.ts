@@ -33,3 +33,23 @@ export function compactDuelFieldStyle(tilted: boolean): CSSProperties {
     marginTop: tilted ? 'max(0px, calc(10.4rem - 1.8 * var(--cell-m)))' : THEIR_HAND.mobile.room + 20,
   } as CSSProperties
 }
+
+/**
+ * El campo del duelo de 640 a 1100 px (tablet, laptop chica, ventana angosta): siete columnas, como en escritorio, pero sin `--cell`, así que la casilla salía del ancho (169 px a 1100 × 760) y el campo
+ * terminaba en y = 1097, con tu mano fuera de la pantalla. Ahora la casilla es la más grande que cabe a lo ancho **y** deja el campo y tu mano enteros en el alto (nunca menos de 56 px: ahí la columna scrollea).
+ * Lo que no es campo, medido a 640, 900 y 1100 px: la barra de arriba (144 px) y el aire hasta el grupo (8), tu mano (153 y 8 de aire), el margen del grupo (48), la barra de abajo (44) y sus 16 px: 421 px.
+ * - Vista 3D (26°, perspectiva de 900 px): la inclinación deja arriba del campo una franja vacía de unos `2 × casilla - 50 px` (exacto de 60 a 120 px de casilla, 20 px de menos a 160); se le quita al
+ *   lugar de la mano del rival (`marginTop`, puede ser negativo: esa franja no se ve ni se toca), así el campo se ve a 102 px del grupo como en la vista de arriba. Total: 589 px + 3 casillas (37 rem, con aire).
+ * - Vista de arriba: el lugar de la mano del rival queda como estaba; total 539 px + 5 casillas (34 rem).
+ * El `%` del ancho y del `marginTop` es el ancho de la columna (sin la barra de scroll).
+ */
+export function mediumDuelFieldStyle(tilted: boolean): CSSProperties {
+  const cell = `min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - ${tilted ? '37rem' : '34rem'}) / ${tilted ? 3 : 5})))`
+
+  return {
+    '--cell-m': cell,
+    width: 'calc(var(--cell-m) * 6.3714 + 1.5rem)',
+    marginInline: 'auto',
+    marginTop: tilted ? 'calc(9.5rem - 2 * var(--cell-m))' : THEIR_HAND.mobile.room,
+  } as CSSProperties
+}
