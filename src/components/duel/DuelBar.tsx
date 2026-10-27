@@ -604,7 +604,7 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey }:
  * para las vidas (`role="meter"`). En escritorio, además, el **corazón** que cambia de color con la salud (verde con más de la mitad, ámbar hasta un cuarto, rojo debajo) y late al cambiar. Flota sobre la mesa
  * (`life-plate`: relieve tonal, la mesa es la excepción a «sin brillos»). Al bajar se sacude como en el impacto. Tocarla abre la calculadora (`onClick`).
  * - Tamaños: en escritorio, el número a 33 px, con el corazón y 72 px de alto (`compact`: 56, sin corazón y del ancho justo, para no tapar la mano del rival en una mesa angosta); en el
- *   celular, 56 px, el número a 24 y sin corazón. Miden lo que medían las de antes: nada se corre.
+ *   celular, 56 px, el número a 24 y sin corazón (`compact` debajo de 380 px: a 19 y 64 de mínimo, para que la del rival no roce su último dorso a 360). Miden lo que medían las de antes: nada se corre.
  * - Usos: las esquinas del campo y los laterales de «Jugar solo automático», la barra y la botonera del duelo por enlace (`DuelBar`, `DuelLife`), la pantalla de quien mira.
  */
 export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, compact = false, hand, handOnDesktop = false }: {
@@ -655,7 +655,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
         </span>
         <span className="flex min-w-0 items-baseline justify-between gap-1.5">
           {/* A 33 px el renglón recorta 2 px arriba y abajo (los números no tienen ni rasgos que suban ni que bajen): entra en 56 px con la chapa y la barra. */}
-          <span className={cx('min-w-0 truncate text-title font-extrabold leading-none tabular-nums transition-colors duration-200 min-[1101px]:-my-0.5 min-[1101px]:text-stat', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>{shown}</span>
+          <span className={cx('min-w-0 truncate text-title font-extrabold leading-none tabular-nums transition-colors duration-200 min-[1101px]:-my-0.5 min-[1101px]:text-stat', compact && 'max-[379px]:text-lead', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>{shown}</span>
           {change ? (
             <span key={change.key} aria-hidden="true" style={{ animationDuration: `${DELTA_MS}ms` }} className={cx('shrink-0 animate-linger text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
               {change.delta < 0 ? '−' : '+'}
@@ -677,7 +677,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   )
   const handNote = hand === undefined ? '' : `. ${t('duel.bar.handCount', { count: hand })}`
   // Las dos vidas miden lo mismo de alto (la del rival arriba, la tuya abajo).
-  const style = cx('life-plate relative flex h-14 min-w-21 shrink-0 items-center gap-2.5 rounded-card border px-2.5 text-left max-[379px]:min-w-18 max-[379px]:px-1.5 max-[339px]:min-w-16 min-[1101px]:px-3', tall && 'min-[1101px]:h-18 min-[1101px]:min-w-52', tone.border)
+  const style = cx('life-plate relative flex h-14 min-w-21 shrink-0 items-center gap-2.5 rounded-card border px-2.5 text-left max-[379px]:px-1.5 min-[1101px]:px-3', compact ? 'max-[379px]:min-w-16' : 'max-[379px]:min-w-18 max-[339px]:min-w-16', tall && 'min-[1101px]:h-18 min-[1101px]:min-w-52', tone.border)
 
   return onClick ? (
     <button ref={setTile} type="button" data-lp={side} aria-label={`${lifeOf}: ${life}${handNote}. ${t('duel.bar.openCalculator')}`} className={cx(style, 'cursor-pointer transition-colors hover:border-info/60 focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>

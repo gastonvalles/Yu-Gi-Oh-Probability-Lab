@@ -68,6 +68,20 @@ describe('la placa de vidas', () => {
     expect(screen.getByRole('group').querySelector('svg')!.parentElement).toHaveClass('hidden')
   })
 
+  // A 360 px la placa mínima (77 px) igual rozaba 5,7 px el último dorso del rival: en `compact` debajo de 380 px el número baja a `text-lead` y el mínimo a 64 px; la de la barra del duelo por enlace no cambia.
+  it('en `compact` debajo de 380 px el número es más chico y la placa más angosta, con una sola utilidad de ancho mínimo por medida', () => {
+    const { rerender } = render(<LifeTile name="Rival" life={8000} compact />)
+    const tile = () => screen.getByRole('group')
+
+    expect(tile()).toHaveClass('max-[379px]:min-w-16')
+    expect(tile()).not.toHaveClass('max-[379px]:min-w-18')
+    expect(tile()).not.toHaveClass('max-[339px]:min-w-16')
+    expect(within(tile()).getByText('8000')).toHaveClass('text-title', 'max-[379px]:text-lead')
+    rerender(<LifeTile name="Rival" life={8000} />)
+    expect(tile()).toHaveClass('max-[379px]:min-w-18', 'max-[339px]:min-w-16')
+    expect(within(tile()).getByText('8000')).not.toHaveClass('max-[379px]:text-lead')
+  })
+
   // «El OPPONENT que tapa un dorso en el celular»: la chapa ensanchaba la placa del rival (de 85 a 113 px a 390) y tapaba el último dorso de su mano.
   it('la chapa no ensancha la placa: en inglés el rival por defecto dice «Opp.» (el lector oye «Opponent») y en `compact` un nombre largo se corta', async () => {
     await loadLocale('en')
