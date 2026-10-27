@@ -222,6 +222,11 @@ export const auto: Translated<typeof es> = {
   'auto.manual.rivalNone': "The opponent doesn't carry over: the manual table is just yours.",
   'auto.manual.busy': 'Rebuilding the table…',
   'auto.manual.confirm': 'Continue in manual',
+  'auto.resume.ask': 'Continue in automatic',
+  'auto.resume.text': "The engine continues from this table as a new turn: the Normal Summon, attacks and once-per-turn effects reset; equips and counters don't carry over.",
+  'auto.resume.phase': 'Only in your Main Phase 1 or 2',
+  'auto.resume.tokens': 'Remove the tokens first',
+  'auto.resume.control': "There's a card from the other player",
 
   // The automatic link duel: what the room tells whoever is waiting (below the deck), the line while the other one chooses and what cuts the duel short.
   'auto.online.waitingDeck': "Waiting for {name}'s deck…",

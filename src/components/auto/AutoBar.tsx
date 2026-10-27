@@ -180,7 +180,7 @@ function DockButton({ icon, label, on = false, className, ...props }: ButtonHTML
 
 /**
  * La botonera redonda de «Jugar solo automático» en escritorio (abajo a la derecha de la mesa, lámina 07), con lo que se toca del duelo y no es una jugada; cada botón con su nombre debajo:
- * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; el camino de vuelta no existe), «Cadena» (las respuestas: Siempre · Cuando importa · Nunca), «Pasos» (muestra u
+ * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; la vuelta es «Seguir en automático», del ⋯ de la práctica), «Cadena» (las respuestas: Siempre · Cuando importa · Nunca), «Pasos» (muestra u
  * oculta el panel de la derecha) y «Opciones» (el resto de «Más opciones», que sale de la barra de arriba). Lo que ya está en la barra (deshacer, la vista, los sonidos) no se repite.
  * Mide 56 px de alto y sube 12 sobre el borde de la mano (`-mt-3`, como las vidas): la fila de abajo no crece y el campo no se mueve.
  */

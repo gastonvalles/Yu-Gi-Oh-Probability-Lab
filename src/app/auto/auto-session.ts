@@ -159,9 +159,10 @@ export interface SessionOptions {
   /**
    * Pasar de manual a automático (`resume.ts`): el duelo no empieza de cero sino desde estas dos mesas (`mine` con los ids de la mesa manual; `theirs` la del rival con los suyos, o nada en «Jugar solo»: el rival arranca con todo en su deck y, con handtraps, su mano),
    * con `codeOf` para saber el código de cada id (0 = oculta para este asiento) y las vidas de cada lado. Nadie baraja ni roba: el núcleo arranca en el turno 1, Draw Phase de
-   * `seat` (el que tiene el turno), y pasa a su Main Phase 1; lo del turno en curso se reinicia (`docs/duelos-automaticos.md`).
+   * `seat` (el que tiene el turno), y pasa a su Main Phase 1; lo del turno en curso se reinicia (`docs/duelos-automaticos.md`). `rivalHand`: en jugar solo con handtraps, la mano
+   * que el rival tenía en la mesa manual (sus códigos), en vez de la que reparte la semilla.
    */
-  resume?: { mine: MatState; theirs?: MatState; codeOf: (side: 'mine' | 'theirs', id: string) => number; lp: readonly [number, number] }
+  resume?: { mine: MatState; theirs?: MatState; codeOf: (side: 'mine' | 'theirs', id: string) => number; lp: readonly [number, number]; rivalHand?: number[] }
 }
 
 export interface AutoSession {
@@ -536,7 +537,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     typeOf = (code) => types.get(code) ?? options.typeOf?.(code) ?? 0
     build = (seed) => {
       // Con handtraps, el rival roba al empezar justo su mano (la del simulador con esa semilla), que va arriba de su deck.
-      const hand = rival?.hand(seed) ?? []
+      const hand = resume?.rivalHand ?? rival?.hand(seed) ?? []
       const other = { main: theirs.main, extra: theirs.extra, hand }
       // En el duelo por enlace los dos roban la mano de la sala.
       const player = options.remote ? mine_ : hand.length > 0 ? { ...PLAYER, hand: hand.length } : PLAYER

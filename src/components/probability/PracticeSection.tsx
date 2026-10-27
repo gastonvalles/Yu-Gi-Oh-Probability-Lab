@@ -31,6 +31,8 @@ interface PracticeSectionProps {
   onSeek: (step: number) => void
   onLoadCombo: (combo: SavedCombo) => void
   onNewHand: () => void
+  /** «Seguir en automático» (`PracticeMat`): sólo con la beta del duelo automático encendida. */
+  onAuto?: (state: MatState) => void
 }
 
 /**
@@ -59,6 +61,7 @@ export function PracticeSection(props: PracticeSectionProps) {
       onSeek={props.onSeek}
       onLoadCombo={props.onLoadCombo}
       onNewHand={props.onNewHand}
+      {...(props.onAuto ? { onAuto: props.onAuto } : {})}
       // Se entra a la práctica desde «Entrenar solo» (el inicio de Jugar): la flecha de la barra vuelve ahí.
       onExit={() => {
         window.location.hash = '#duel'

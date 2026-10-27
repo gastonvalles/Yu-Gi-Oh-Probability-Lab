@@ -230,6 +230,12 @@ export const auto = {
   'auto.manual.rivalNone': 'El rival no pasa: la mesa manual es sólo tuya.',
   'auto.manual.busy': 'Rearmando la mesa…',
   'auto.manual.confirm': 'Seguir en manual',
+  // El camino inverso, desde el ⋯ de la práctica manual: sólo en un punto limpio (`whyNotResume`); el porqué, debajo del nombre apagado.
+  'auto.resume.ask': 'Seguir en automático',
+  'auto.resume.text': 'El núcleo sigue desde esta mesa como un turno nuevo: la Invocación Normal, los ataques y los efectos de una vez por turno se reinician; equipos y contadores no pasan.',
+  'auto.resume.phase': 'Sólo en tu Main Phase 1 o 2',
+  'auto.resume.tokens': 'Sacá las fichas primero',
+  'auto.resume.control': 'Hay una carta del otro jugador',
 
   // El duelo automático por enlace: lo que la sala le dice a quien espera (debajo del deck), la línea mientras elige el otro y lo que corta el duelo.
   'auto.online.waitingDeck': 'Esperando el deck de {name}…',

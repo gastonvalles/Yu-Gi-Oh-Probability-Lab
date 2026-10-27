@@ -50,6 +50,7 @@ import { supportsAdditiveAnimation } from '../../app/motion'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptAbove, promptFit, promptTop, railsFit, type Box } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
+import { whyNotResume } from '../../app/auto/resume'
 import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
@@ -271,6 +272,11 @@ interface PracticeMatProps {
   onNewHand: () => void
   /** Volver a la pantalla de antes (Jugar): sin esto la práctica no tiene salida más que el menú. Sólo en la práctica (el duelo trae la suya en su barra). */
   onExit?: () => void
+  /**
+   * «Seguir en automático» (el ⋯ de la práctica, con la beta encendida): la mesa de ahora sigue contra el núcleo. Se ofrece apagado, con el porqué, fuera de un punto limpio
+   * (`whyNotResume`); tocarlo pide confirmar (lo del turno en curso se reinicia). Sin esto, no se ofrece.
+   */
+  onAuto?: (state: MatState) => void
   /** Las salidas y problemas de la mano inicial (aparece cuando terminó de repartirse): en escritorio, abajo del panel lateral; en el celular, lo que abre la píldora de la barra (`RulesPill`). */
   footer?: ReactNode
   /** El resumen del `footer` que dice esa píldora; sin él, en el celular no hay píldora. */
@@ -508,6 +514,7 @@ export function PracticeMat({
   onLoadCombo,
   onNewHand,
   onExit,
+  onAuto,
   footer,
   footerSummary = null,
   highlighted = EMPTY_IDS,
@@ -661,6 +668,9 @@ export function PracticeMat({
     }
   }, [covered])
   const [saving, setSaving] = useState(false)
+  // «Seguir en automático»: el diálogo abierto y, apagado, por qué no se puede ahora (la clave de `auto.resume.*`).
+  const [toAuto, setToAuto] = useState(false)
+  const autoBlocked = onAuto ? whyNotResume(state, null) : null
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
   const [picking, setPicking] = useState<Picking | null>(null)
@@ -2445,6 +2455,7 @@ export function PracticeMat({
             onHandtraps={onNewHand}
             onSave={() => setSaving(true)}
             canSave={session.cursor > 0}
+            more={onAuto ? [{ label: t('auto.resume.ask'), icon: 'play', disabled: autoBlocked !== null, ...(autoBlocked ? { hint: t(`auto.resume.${autoBlocked}`) } : {}), onSelect: () => setToAuto(true) }] : []}
           />
           {stepsButton}
           {/* Lo que acabás de activar se deshace desde acá también: abajo de la barra, a la derecha, en el aire que queda arriba del campo (no tapa cartas). */}
@@ -2819,6 +2830,20 @@ export function PracticeMat({
             passTurn()
           }}
         />
+
+      {onAuto ? (
+        <ConfirmDialog veil={false}
+          isOpen={toAuto && autoBlocked === null}
+          title={t('auto.resume.ask')}
+          description={t('auto.resume.text')}
+          confirmLabel={t('auto.resume.ask')}
+          onCancel={() => setToAuto(false)}
+          onConfirm={() => {
+            setToAuto(false)
+            onAuto(state)
+          }}
+        />
+      ) : null}
 
       {/* Las fases en una línea, con las mismas opciones que armaba el menú (`menuItems`): qué fase se puede elegir lo deciden la mesa manual o el núcleo, no la línea. */}
       <PhaseRow anchor={phasesOpen ? menu.rect : null} items={phasesOpen ? menuItems : []} onClose={() => setMenu(null)} />
