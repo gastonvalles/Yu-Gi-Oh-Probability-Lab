@@ -222,7 +222,8 @@ describe('el guardado del duelo automático por enlace', () => {
     const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings })
     const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
     const hostLink = createHostLink({ transport: hostEnd, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0003', storage) })
-    const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK })
+    let time = 0
+    const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK, now: () => time })
     const sorted = (command: AutoCommand | undefined) => (command as Extract<AutoCommand, { t: 'create' }>).decks.map((deck) => [...deck.main].sort())
 
     host.subscribe(() => hostLink.observe(host.getSnapshot()))
@@ -252,6 +253,10 @@ describe('el guardado del duelo automático por enlace', () => {
     const hostEnd2 = room.join()
     const host2 = createDuel(hostEnd2, { role: 'host', name: 'Ana', sid: 'host-2', settings, ended: { conceded: 1, timeUp: false } })
     const core2 = fakeHost(undefined, undefined, 2)
+
+    // Beto la ve volver antes de que su enlace del núcleo escuche (la pantalla se carga después): lo que le manda al volver se pierde.
+    await settle(room)
+    time += 10_000
     const hostLink2 = createHostLink({ transport: hostEnd2, loader, deck: SIDED, handSize: 5, makeTransport: core2.factory, enabled: async () => true, save: autoSaveStore('ROOM0003', storage) })
 
     onTestFinished(() => {
@@ -263,6 +268,9 @@ describe('el guardado del duelo automático por enlace', () => {
     await settle(room)
     expect(hostLink2.getSnapshot().phase).toBe('ended')
     expect(storage.items.size).toBe(1)
+    // El flujo nuevo del anfitrión hace que Beto le repita su deck, con lo que sabe hacer (el reloj de turnos, deshacer).
+    expect(hostLink2.getSnapshot().clock).toBe(true)
+    expect(hostLink2.getSnapshot().undo?.peer).toBe(true)
     host2.rematch()
     guest.rematch()
     await settle(room)

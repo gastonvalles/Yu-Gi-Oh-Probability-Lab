@@ -1420,6 +1420,8 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
         else check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null }
         undo.peer(message.undo === true)
         clockPeer = message.turnClock === true
+        // Un flujo nuevo que no pedí (el anfitrión recargó: mi deck pudo llegarle antes que su enlace): se lo repito, con lo que sé hacer.
+        if (message.s === 1 && now() - lastHello >= HELLO_GAP_MS) sendDeck()
         {
           const knew = phasePeer
 
