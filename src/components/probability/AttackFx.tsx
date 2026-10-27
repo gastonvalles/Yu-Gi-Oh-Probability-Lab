@@ -88,7 +88,7 @@ export function measureStrike({ from, to, direct = 'theirs', bounds }: StrikeSpe
 }
 
 /** Lo que tarda la espada en llegar (el impacto empieza ahí), lo que dura la sacudida y cuándo se va todo (la onda del impacto es lo último en apagarse). */
-const IMPACT_MS = 300
+export const IMPACT_MS = 300
 const SHAKE_MS = 360
 const STRIKE_MS = 1050
 

@@ -10,6 +10,7 @@ import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { autoRival, dealRival, poolCount, readHandtrapConfig, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
+import { LifeHold } from '../../app/life-effects'
 import { randomSeed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
@@ -257,20 +258,22 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
     // Tocar la mesa mientras cuenta una tanda la salta al final.
     <div className="contents" onPointerDownCapture={asks.settled ? undefined : asks.skipAhead}>
       {/* Los pasos del panel y los combos guardados se repasan en esta misma mesa (`asks.review`); nada se despacha. */}
-      <PracticeMat
-        session={asks.matSession}
-        state={asks.state}
-        cardsById={cardsById}
-        deckName={deckName}
-        onDispatch={sentinel}
-        onUndo={() => session.undo()}
-        onSeek={asks.review.seek}
-        onLoadCombo={asks.review.load}
-        onNewHand={NOTHING}
-        duel={link}
-        rivalViewer={asks.rivalViewer}
-        {...(chips.needCards ? {} : { footer: chips.footer, footerSummary: chips.summary, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
-      />
+      <LifeHold value={asks.lifeHeld}>
+        <PracticeMat
+          session={asks.matSession}
+          state={asks.state}
+          cardsById={cardsById}
+          deckName={deckName}
+          onDispatch={sentinel}
+          onUndo={() => session.undo()}
+          onSeek={asks.review.seek}
+          onLoadCombo={asks.review.load}
+          onNewHand={NOTHING}
+          duel={link}
+          rivalViewer={asks.rivalViewer}
+          {...(chips.needCards ? {} : { footer: chips.footer, footerSummary: chips.summary, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
+        />
+      </LifeHold>
       {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
       <HandtrapPicker
         isOpen={choosing}
