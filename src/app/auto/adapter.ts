@@ -109,6 +109,35 @@ export interface AdapterOutput {
   order: ('mine' | 'theirs')[]
 }
 
+/** Un ataque del rival en el espejo: su lugar en `theirs` (`index`), cuántas jugadas de tu mesa había antes (`at`, donde la mesa lo cuenta) y quién ataca a qué (sin `target`, directo). */
+export interface RivalAttack {
+  index: number
+  at: number
+  attackerId: string
+  /** El id de tu mesa de la carta atacada (la tuya, o la del rival que controlás: `f.c<n>`). */
+  targetId?: string
+}
+
+/** Los ataques del rival de un duelo, con su lugar en la cinta de tus jugadas (`order` intercala `mine` y `theirs` como pasaron). */
+export function rivalAttacks(order: readonly Side[], theirs: readonly WireAct[]): RivalAttack[] {
+  const found: RivalAttack[] = []
+  let at = 0
+  let index = 0
+
+  for (const side of order) {
+    if (side === 'mine') {
+      at += 1
+      continue
+    }
+    const action = theirs[index]?.action
+
+    if (action?.type === 'attack') found.push({ index, at, attackerId: action.id, ...(action.target === undefined ? {} : { targetId: action.target }) })
+    index += 1
+  }
+
+  return found
+}
+
 /** Un lugar del núcleo, con el número de material si está debajo de un Xyz. */
 export type CorePlace = { controller: Seat; location: number; sequence: number; overlay_sequence?: number }
 

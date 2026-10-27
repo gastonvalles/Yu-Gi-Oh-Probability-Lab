@@ -71,6 +71,21 @@ describe('las políticas de respuesta', () => {
     expect(passive({ ...ASKS[1], to_ep: false, to_bp: false } as CoreAsk)).toEqual({ type: 'select_idlecmd', action: 0, index: 0 })
   })
 
+  it('el rival pasivo saca piedra, papel o tijera al azar, la misma con la misma semilla', () => {
+    const rps: CoreAsk = { type: 'rock_paper_scissors', player: 1 }
+    const hands = (seed: number) => {
+      const passive = passivePolicy(undefined, seed)
+
+      return Array.from({ length: 30 }, () => (passive(rps) as Extract<CoreAnswer, { type: 'rock_paper_scissors' }>).value)
+    }
+
+    expect(hands(7)).toEqual(hands(7))
+    expect(hands(7)).not.toEqual(hands(8))
+    expect(new Set(hands(7))).toEqual(new Set([1, 2, 3]))
+    // Un empate no se repite para siempre: la semilla avanza con cada pregunta.
+    expect(hands(7).some((value, i, all) => i > 0 && value !== all[i - 1])).toBe(true)
+  })
+
   it('el bot al azar respeta los límites y es el mismo con la misma semilla', () => {
     const play = (seed: number) => {
       const policy = randomLegalPolicy(seed)

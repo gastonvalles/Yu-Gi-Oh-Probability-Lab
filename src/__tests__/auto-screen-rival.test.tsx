@@ -249,3 +249,27 @@ describe('auto-screen · el rival se toca', () => {
     expect(dispatches).toBe(0)
   })
 })
+
+describe('auto-screen · el ataque del rival', () => {
+  const attack = (target?: string) => ({ action: { type: 'attack' as const, id: 'c1', ...(target ? { target } : {}) }, reveal: {} })
+
+  it('cuando llega, la mesa lo avisa (y dibuja la espada) una sola vez; lo que ya estaba al abrir no se repite', () => {
+    const fake = renderAuto()
+
+    core(() => fake.set({ theirsActs: [attack('card-200-1')], order: ['theirs'] }))
+    expect(screen.getByText('Rival ataca a Maxx C')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(4000))
+    expect(screen.queryByText('Rival ataca a Maxx C')).toBeNull()
+    core(() => fake.set({ theirsActs: [attack('card-200-1'), attack()], order: ['theirs', 'theirs'] }))
+    expect(screen.getByText('Rival te ataca directo')).toBeInTheDocument()
+    expect(dispatches).toBe(0)
+  })
+
+  it('al volver a la pantalla (recargar, reponer) no se anima lo que ya pasó', () => {
+    const fake = fakeSession()
+
+    fake.set({ theirsActs: [attack()], order: ['theirs'] })
+    renderAuto(fake)
+    expect(screen.queryByText('Rival te ataca directo')).toBeNull()
+  })
+})

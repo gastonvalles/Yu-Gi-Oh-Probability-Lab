@@ -10,7 +10,7 @@ import { hasCoreData, loadCards, scriptStore, wasmBinary } from './support/core-
 
 /**
  * Piedra, papel o tijera con una carta real (lento: `npm run test:auto`): Transmission Gear (`Duel.RockPaperScissors`) en la Batalla. El núcleo pregunta a los dos asientos;
- * el tuyo contesta con la pantalla de `ask-ui` («Piedra») y el rival pasivo saca 1 («Tijera»): ganás vos y se destierra boca abajo el monstruo del rival.
+ * el tuyo contesta con la pantalla de `ask-ui` (la mano que le gana a la del rival pasivo, que sale al azar de su semilla: `peek` es la misma tirada) y se destierra boca abajo el monstruo del rival.
  */
 const GEAR = 58297729
 const WARWOLF = 69247929
@@ -33,7 +33,8 @@ describe.skipIf(!hasCoreData)('piedra, papel o tijera con el núcleo real (npm r
       decks: [{ main: [...hand, ...Array(35).fill(BEWD)], extra: [], hand }, { main: Array(40).fill(WARWOLF), extra: [], hand: [] }],
     }
     const mine = createAdapter({ seat: 0, mine: { deck: teamOrder(create, 0), extra: [] }, theirs: { deck: 40, extra: 0 }, lp: [8000, 8000], typeOf: (code) => cards.get(code)?.type ?? 0 })
-    const passive = passivePolicy()
+    const passive = passivePolicy(undefined, create.seed)
+    const peek = passivePolicy(undefined, create.seed)
     const banished: number[] = []
     let rps = 0
     let attacked = false
@@ -52,14 +53,18 @@ describe.skipIf(!hasCoreData)('piedra, papel o tijera con el núcleo real (npm r
 
       if (!asked) break
       const { ask, seat } = asked
-      let answer: CoreAnswer = passive(ask)
+      let answer: CoreAnswer = seat === 0 && ask.type === 'rock_paper_scissors' ? peek(ask) : passive(ask)
 
       if (seat === 0 && ask.type === 'rock_paper_scissors') {
         const state = openAsk(asked, { queries: mine, prefs: { chainMode: 'ask', placeMode: 'ask' } })
-        const rock = askView(state).options!.options.find((option) => option.label === t('duel.games.rps.rock'))!
+        // 1 tijera, 2 piedra, 3 papel: la que le gana a la del rival (`peek`, la tirada que va a sacar).
+        const theirs = (answer as Extract<CoreAnswer, { type: 'rock_paper_scissors' }>).value
+        const beats = { 1: 2, 2: 3, 3: 1 }[theirs]!
+        const label = { 1: t('duel.games.rps.scissors'), 2: t('duel.games.rps.rock'), 3: t('duel.games.rps.paper') }[beats]!
+        const win = askView(state).options!.options.find((option) => option.label === label)!
 
         rps += 1
-        answer = step(state, { kind: 'option', value: rock.value }).answer!
+        answer = step(state, { kind: 'option', value: win.value }).answer!
       } else if (seat === 0 && ask.type === 'select_idlecmd') {
         answer = at(ask.summons, WARWOLF) >= 0 ? { type: ask.type, action: 0, index: at(ask.summons, WARWOLF) } : at(ask.spell_sets, GEAR) >= 0 ? { type: ask.type, action: 4, index: at(ask.spell_sets, GEAR) } : { type: ask.type, action: 7, index: null }
       } else if (seat === 0 && ask.type === 'select_chain' && at(ask.selects, GEAR) >= 0) {

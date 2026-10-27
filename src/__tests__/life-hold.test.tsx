@@ -3,9 +3,10 @@ import { act, cleanup, render, renderHook, screen } from '@testing-library/react
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { rivalAttacks, type RivalAttack } from '../app/auto/adapter'
 import { LifeHold, useHeldValue } from '../app/life-effects'
 import type { MatAction } from '../app/practice-mat'
-import { useStrikeHold } from '../components/auto/use-auto-asks'
+import { useRivalStrike, useStrikeHold } from '../components/auto/use-auto-asks'
 import { LifeTile } from '../components/duel/DuelBar'
 import { IMPACT_MS } from '../components/probability/AttackFx'
 
@@ -68,6 +69,75 @@ describe('useStrikeHold', () => {
 
     expect(hook([reveal, attack], 1).result.current).toBe(false)
     vi.unstubAllGlobals()
+  })
+})
+
+describe('rivalAttacks', () => {
+  it('cada ataque del rival con su lugar en la cinta de tus jugadas', () => {
+    const theirs = [{ action: { type: 'reveal', id: 'c1' }, reveal: {} }, { action: { type: 'attack', id: 'c2', target: 'card-1-1' }, reveal: {} }, { action: { type: 'attack', id: 'c3' }, reveal: {} }] as const
+
+    expect(rivalAttacks(['mine', 'theirs', 'mine', 'theirs', 'mine', 'theirs'], theirs)).toEqual([
+      { index: 1, at: 2, attackerId: 'c2', targetId: 'card-1-1' },
+      { index: 2, at: 3, attackerId: 'c3' },
+    ])
+  })
+})
+
+describe('useRivalStrike', () => {
+  const start = {}
+  const direct: RivalAttack = { index: 0, at: 1, attackerId: 'c2' }
+  type Props = { attacks: RivalAttack[]; total: number; start: object; cursor: number; limit: number; live: boolean }
+  const hook = (props: Props) => renderHook((p: Props) => useRivalStrike(p.attacks, p.total, p.start, p.cursor, p.limit, p.live), { initialProps: props })
+  const base: Props = { attacks: [], total: 0, start, cursor: 1, limit: 1, live: true }
+
+  it('dibuja el ataque que llega donde está la mesa y retiene las vidas hasta el golpe; el cartel se va solo', () => {
+    const { result, rerender } = hook(base)
+
+    rerender({ ...base, attacks: [direct], total: 1, limit: 2 })
+    expect(result.current.shown).toMatchObject({ attackerId: 'c2' })
+    expect(result.current.held).toBe(true)
+    const shown = result.current.shown
+    rerender({ ...base, attacks: [direct], total: 1, limit: 2 })
+    expect(result.current.shown).toBe(shown)
+    act(() => vi.advanceTimersByTime(IMPACT_MS))
+    expect(result.current.held).toBe(false)
+    act(() => vi.advanceTimersByTime(4000))
+    expect(result.current.shown).toBeNull()
+  })
+
+  it('espera a que la mesa llegue a su lugar y entonces lo dibuja', () => {
+    const later: RivalAttack = { ...direct, at: 2, targetId: 'card-1-1' }
+    const { result, rerender } = hook(base)
+
+    rerender({ ...base, attacks: [later], total: 1, limit: 3 })
+    expect(result.current.shown).toBeNull()
+    expect(result.current.held).toBe(true)
+    rerender({ ...base, attacks: [later], total: 1, cursor: 2, limit: 3 })
+    expect(result.current.shown).toMatchObject({ attackerId: 'c2', targetId: 'card-1-1' })
+  })
+
+  it('no dibuja lo que ya estaba, lo que se salta, lo que se rearma ni lo que llega repasando', () => {
+    // Al abrir (recargar, volver): ya pasó.
+    expect(hook({ ...base, attacks: [direct], total: 1 }).result.current.shown).toBeNull()
+    // Tocar la mesa: el cursor salta por encima.
+    const far: RivalAttack = { ...direct, at: 2 }
+    const skipped = hook({ ...base, cursor: 0, limit: 3 })
+
+    skipped.rerender({ ...base, attacks: [far], total: 1, cursor: 0, limit: 3 })
+    skipped.rerender({ ...base, attacks: [far], total: 1, cursor: 3, limit: 3 })
+    expect(skipped.result.current.shown).toBeNull()
+    expect(skipped.result.current.held).toBe(false)
+    // Rearmarse (deshacer, reponer): otra mesa del arranque con el ataque adentro.
+    const rearmed = hook(base)
+
+    rearmed.rerender({ ...base, start: {}, attacks: [direct], total: 1 })
+    expect(rearmed.result.current.shown).toBeNull()
+    // Repasando.
+    const review = hook({ ...base, live: false })
+
+    review.rerender({ ...base, live: false, attacks: [direct], total: 1 })
+    review.rerender({ ...base, attacks: [direct], total: 1 })
+    expect(review.result.current.shown).toBeNull()
   })
 })
 

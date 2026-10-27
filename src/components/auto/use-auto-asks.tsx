@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import type { CardRef, Side } from '../../app/auto/adapter'
+import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
@@ -88,6 +88,69 @@ export function useStrikeHold(actions: readonly MatAction[], cursor: number, lim
   return until !== null || actions.slice(cursor, limit).some((action) => action.type === 'attack')
 }
 
+/** Cuánto se queda el cartel del ataque del rival (el mismo que en el duelo manual). */
+const RIVAL_ATTACK_MS = 4000
+
+export interface RivalStrike {
+  /** El ataque que la mesa dibuja ahora (`PracticeMat`: la espada de su monstruo a tu carta o a tus vidas); otro objeto, otra espada. */
+  shown: { key: number; attackerId: string; targetId?: string } | null
+  /** Las vidas esperan: falta mostrar un ataque del rival que la mesa va a contar sola, o todavía no golpeó el que se muestra. */
+  held: boolean
+  /** Cuándo golpea el último que se mostró (ms de `Date.now()`): tu jugada que sigue (tu monstruo que cae) espera hasta ahí. */
+  impactAt: number
+}
+
+/**
+ * El ataque del rival (`rivalAttacks`): el núcleo lo cuenta junto con su resultado y el espejo del rival no va al ritmo de tu mesa, así que se dibuja cuando tu mesa llega a su
+ * lugar (`at`). Como `useStrikeHold`: lo que ya estaba al abrir, lo que se rearma (`start` cambia: deshacer, reponer, recargar), lo que se salta (el cursor avanza más de una) y
+ * lo que llega con `live` en false (repasar, rearmarse) se da por visto sin dibujarse; el movimiento reducido no espera.
+ */
+export function useRivalStrike(attacks: readonly RivalAttack[], total: number, start: unknown, cursor: number, limit: number, live: boolean): RivalStrike {
+  const [done, setDone] = useState(total)
+  const [at, setAt] = useState({ start, cursor })
+  const [shown, setShown] = useState<RivalStrike['shown']>(null)
+  const [impactAt, setImpactAt] = useState(0)
+  const [striking, setStriking] = useState(false)
+  const moved = at.start === start && at.cursor !== cursor
+  const jumped = moved && cursor !== at.cursor + 1
+
+  if (at.start !== start || moved) setAt({ start, cursor })
+  if (at.start !== start || !live) {
+    if (done !== total) setDone(total)
+  } else {
+    const due = attacks.filter((attack) => attack.index >= done && attack.at <= cursor).at(-1)
+
+    if (due) {
+      setDone(due.index + 1)
+      if (!jumped && due.at === cursor) {
+        const now = Date.now()
+
+        setShown({ key: now, attackerId: due.attackerId, ...(due.targetId === undefined ? {} : { targetId: due.targetId }) })
+        if (!prefersReducedMotion()) {
+          setImpactAt(now + IMPACT_MS)
+          setStriking(true)
+        }
+      }
+    }
+  }
+  useEffect(() => {
+    if (!striking) return
+    const timer = window.setTimeout(() => setStriking(false), Math.max(0, impactAt - Date.now()))
+
+    return () => window.clearTimeout(timer)
+  }, [striking, impactAt])
+  useEffect(() => {
+    if (!shown) return
+    const timer = window.setTimeout(() => setShown(null), RIVAL_ATTACK_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [shown])
+
+  const pending = attacks.some((attack) => attack.index >= done && attack.at >= cursor && attack.at <= limit)
+
+  return { shown, impactAt, held: live && !prefersReducedMotion() && (striking || pending) }
+}
+
 /** La mesa como la ve la pantalla: la mesa del arranque, las jugadas que ya llegaron y hasta cuál se muestra. */
 interface Paced {
   initial: MatState
@@ -153,7 +216,7 @@ export interface AutoAsks {
   review: { active: boolean; load: (combo: SavedCombo) => void; seek: (step: number) => void; back: () => void }
   /** El visor del Cementerio, el Destierro o el Extra boca arriba del rival (`PracticeMat.rivalViewer`): va en el mismo lugar que el tuyo. */
   rivalViewer: ReactNode
-  /** Las vidas que se ven esperan al golpe de tu ataque (`useStrikeHold`): va en `LifeHold` alrededor de la mesa. */
+  /** Las vidas que se ven esperan al golpe de un ataque, tuyo (`useStrikeHold`) o del rival (`useRivalStrike`): va en `LifeHold` alrededor de la mesa. */
   lifeHeld: boolean
 }
 
@@ -211,13 +274,17 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   // La mesa no pasa del próximo mensaje de la cadena que falta mostrar.
   const chainNext = steps[chainSeen]?.at ?? Infinity
+  // El ataque del rival, cuando la mesa llega a él; lo tuyo que sigue (tu monstruo que cae) espera a su golpe.
+  const attacks = useMemo(() => rivalAttacks(snap.order, snap.theirsActs), [snap.order, snap.theirsActs])
+  const rivalStrike = useRivalStrike(attacks, snap.theirsActs.length, snap.initial, paced.cursor, limit, !reviewing && !snap.replaying)
+  const { impactAt } = rivalStrike
 
   useEffect(() => {
     if (reviewing || paced.cursor >= Math.min(limit, chainNext)) return
-    const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), STEP_MS)
+    const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), Math.max(STEP_MS, impactAt - Date.now()))
 
     return () => window.clearTimeout(timer)
-  }, [paced, limit, reviewing, chainNext])
+  }, [paced, limit, reviewing, chainNext, impactAt])
   // El próximo mensaje de la cadena, cuando la mesa llegó hasta él y el anterior se vio su rato (contado desde que se mostró: una tanda nueva no lo reinicia).
   useEffect(() => {
     if (reviewing || snap.replaying || chainNext > paced.cursor) return
@@ -246,7 +313,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     setChainSeen((count) => Math.max(count, stepsUpTo(steps, stopAt(paced.initial, paced.actions, paced.cursor, allowed))))
   }, [allowed, reviewing, steps, paced])
   const settled = paced.cursor === paced.actions.length && chainSeen >= steps.length && !snap.replaying
-  const lifeHeld = useStrikeHold(paced.actions, paced.cursor, limit, !reviewing && !snap.replaying)
+  const lifeHeld = useStrikeHold(paced.actions, paced.cursor, limit, !reviewing && !snap.replaying) || rivalStrike.held
   // Lo que se ve, como en la práctica: la mano de apertura plegada en la mesa del arranque (`foldOpeningHand`), así el paso 0 es «Mano inicial». Se pliega por contenido:
   // deshacer re-simula y la jugada vuelve como otro objeto con las mismas cartas (la mano no se reparte de nuevo).
   const first = paced.actions[0]
@@ -847,8 +914,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const timedPlay = useUndoPlay(lastPlay)
   const undoPlay = timedPlay && timedPlay.initial === snap.initial && snap.status === 'ready' && !snap.replaying && !reviewing && !frozen ? { key: timedPlay.key, art: timedPlay.art } : null
 
+  // El cartel del ataque del rival, como en el duelo manual; se arma una vez por ataque (la mesa dibuja la espada cuando cambia el objeto).
+  const strikeShown = rivalStrike.shown
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- un objeto por ataque: un nombre que llega después no vuelve a dibujar la espada
+  const announcement = useMemo(() => strikeShown && { ...strikeShown, caption: strikeShown.targetId === undefined ? t('duel.announce.attackDirect', { name: rivalName }) : t('duel.announce.attack', { name: rivalName, target: nameOf({ side: 'mine', id: strikeShown.targetId }) }) }, [strikeShown])
+
   const mat: AutoAsks['mat'] = {
     undoPlay,
+    ...(announcement ? { announcement } : {}),
     areas: DUEL_AREAS,
     areasCompact: DUEL_AREAS_COMPACT,
     opponent: <SideCells side={opponent} owner="theirs" />,
