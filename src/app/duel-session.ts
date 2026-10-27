@@ -1255,6 +1255,23 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       emit()
     },
 
+    stop() {
+      if (!mine) {
+        return
+      }
+
+      dropUndoAsk(false)
+      dropPhaseAsk(false)
+      initial = null
+      actions = []
+      mine = null
+      sender = null
+      ownIds = {}
+      theirs = null
+      order = []
+      emit()
+    },
+
     play(action) {
       if (!mine || !sender) {
         return

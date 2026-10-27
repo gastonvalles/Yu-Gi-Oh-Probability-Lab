@@ -263,7 +263,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const rival = options.remote ? null : (options.rival ?? null)
   const resume = options.resume ?? null
   /** Con la mesa rearmada, el núcleo todavía va por una fase anterior a la de la mesa (las pasa al empezar; las fases del núcleo crecen con la del turno). */
-  const catchingUp = () => adapters[me] !== undefined && adapters[me]!.overlay.phase < (CORE_PHASE[adapters[me]!.mine.phase] ?? 0)
+  // (El asiento 0 es el que tiene el turno: su mesa dice hasta qué fase; los dos adaptadores ven las mismas fases del núcleo.)
+  const catchingUp = () => adapters[0] !== undefined && adapters[0]!.overlay.phase < (CORE_PHASE[adapters[0]!.mine.phase] ?? 0)
   const policy: RivalPolicy = rival ? handtrapPolicy(rival.main.map(([code]) => code)) : passivePolicy()
   const listeners = new Set<() => void>()
   const blank = emptyAdapter()
@@ -480,12 +481,12 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         }
         commit()
         stopTimer()
+        // La mesa rearmada: las ventanas de cadena de las fases que el núcleo pasa hasta alcanzar la de la mesa (Draw, Standby) no se le preguntan a nadie, tampoco al otro navegador (una forzada, sí).
+        if (resume && event.ask.type === 'select_chain' && !event.ask.forced && catchingUp()) return send(event.seat, event.askId, { type: 'select_chain', index: null })
         // El duelo por enlace: la contesta una persona en otro navegador (`answerRemote`).
         if (!controlled(event.seat) && options.remote) return set({ status: 'waiting', remoteAsk: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, ask: null, replaying: false, answers })
         // El rival contesta solo, con lo que ve su adaptador (o, si el núcleo le rechazó la de recién, con la de reserva); la pantalla se entera recién con la pregunta tuya.
         if (!controlled(event.seat)) return send(event.seat, event.askId, retries > 0 ? fallback(event.ask) : policy(event.ask, adapters[event.seat]!))
-        // La mesa rearmada: las ventanas de cadena de las fases que el núcleo pasa hasta alcanzar la de la mesa (Draw, Standby) no se preguntan (una forzada, sí).
-        if (resume && event.ask.type === 'select_chain' && !event.ask.forced && catchingUp()) return send(event.seat, event.askId, { type: 'select_chain', index: null })
 
         return set({ status: 'ready', ask: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, replaying: false, answers })
       }
