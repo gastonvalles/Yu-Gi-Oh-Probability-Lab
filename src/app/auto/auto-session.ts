@@ -162,7 +162,16 @@ export interface SessionOptions {
    * `seat` (el que tiene el turno), y pasa a su Main Phase 1; lo del turno en curso se reinicia (`docs/duelos-automaticos.md`). `rivalHand`: en jugar solo con handtraps, la mano
    * que el rival tenía en la mesa manual (sus códigos), en vez de la que reparte la semilla.
    */
-  resume?: { mine: MatState; theirs?: MatState; codeOf: (side: 'mine' | 'theirs', id: string) => number; lp: readonly [number, number]; rivalHand?: number[] }
+  resume?: {
+    mine: MatState
+    theirs?: MatState
+    codeOf: (side: 'mine' | 'theirs', id: string) => number
+    lp: readonly [number, number]
+    /** Jugar solo: la mano de handtraps que el rival tenía en la mesa manual (códigos; las usadas ya no están). */
+    rivalHand?: number[]
+    /** El duelo por enlace: el otro asiento como se ve a sí mismo (lo que el invitado arma de su `autoInit`), para que `viewOf` sea su mesa; sin esto, las mismas dos mesas dadas vuelta. */
+    rival?: { mine: MatState; theirs: MatState; codeOf: (side: 'mine' | 'theirs', id: string) => number }
+  }
 }
 
 export interface AutoSession {
@@ -357,7 +366,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         mine: { deck: seat === bagged ? bagOrder(command.decks[seat]!.main) : teamOrder(command, seat), extra: command.decks[seat]!.extra },
         theirs: { deck: command.decks[1 - seat]!.main.length, extra: command.decks[1 - seat]!.extra.length },
         lp: resume ? (seat === me ? [...resume.lp] : [resume.lp[1], resume.lp[0]]) : [PLAYER.lp, PLAYER.lp],
-        ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : theirsCode(id)) } : { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : resume.codeOf('mine', id)) } } : {}),
+        ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : theirsCode(id)) } : (resume.rival ?? { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : resume.codeOf('mine', id)) }) } : {}),
         typeOf,
         bag: seat === bagged,
       }),

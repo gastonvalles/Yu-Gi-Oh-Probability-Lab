@@ -2,7 +2,7 @@ import { SAVE_TTL_MS } from '../duel-save'
 import type { SessionAnswer } from './auto-session'
 import type { DeckList } from './deck-map'
 import { isDuelKey } from './duel-key'
-import { parseAnswer, type Seat } from './protocol'
+import { parseAnswer, parseSetup, type Seat, type Setup } from './protocol'
 
 /**
  * El duelo automático por enlace guardado por el anfitrión (diseño: `docs/duelo-automatico-enlace.md`): con la clave del duelo, su asiento, la mano de la sala, los dos
@@ -28,6 +28,8 @@ export interface AutoSave {
    * cambiado puede aceptar las mismas respuestas y armar otro duelo). Los guardados de antes no la traen y se re-simulan. Un cambio del paquete del núcleo no lo cubre.
    */
   data?: string
+  /** El duelo no empezó de cero sino desde una mesa rearmada (pasar de manual a automático, `resume.ts`): sin ella la re-simulación daría otro duelo. Los guardados de antes no la traen. */
+  setup?: Setup
 }
 
 export interface AutoSaveStore {
@@ -55,9 +57,12 @@ export function parseAutoSave(raw: string | null, now: number): AutoSave | null 
     // `activation`, para que deshacer vuelva al mismo lugar después de recargar (los guardados de antes no lo traen: vuelve a la jugada de antes).
     const answers = save.answers.map((item: Partial<SessionAnswer>) => (item && (item.seat === 0 || item.seat === 1) ? { seat: item.seat, answer: parseAnswer(item.answer), ...(item.activation === true ? { activation: true as const } : {}) } : null))
 
-    if (!answers.every((item) => item?.answer)) return null
+    const setup = save.setup === undefined ? undefined : parseSetup(save.setup)
 
-    return { v: 2, key: save.key, seat: save.seat, hand: save.hand, decks: { mine: save.decks.mine, theirs: save.decks.theirs }, answers: answers as SessionAnswer[], savedAt: save.savedAt, ...(typeof save.cut?.dropped === 'boolean' ? { cut: { dropped: save.cut.dropped } } : {}), ...(typeof save.data === 'string' ? { data: save.data } : {}) }
+    // Un guardado con una mesa rearmada que no se lee no se re-simula: sin ella sería otro duelo.
+    if (!answers.every((item) => item?.answer) || setup === null) return null
+
+    return { v: 2, key: save.key, seat: save.seat, hand: save.hand, decks: { mine: save.decks.mine, theirs: save.decks.theirs }, answers: answers as SessionAnswer[], savedAt: save.savedAt, ...(typeof save.cut?.dropped === 'boolean' ? { cut: { dropped: save.cut.dropped } } : {}), ...(typeof save.data === 'string' ? { data: save.data } : {}), ...(setup ? { setup } : {}) }
   } catch {
     return null
   }

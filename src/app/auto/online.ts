@@ -23,7 +23,8 @@ import {
   type AutoMessage,
   type HostMessage,
 } from './online-protocol'
-import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat } from './protocol'
+import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat, type Setup } from './protocol'
+import { filterSetup, statesOf } from './resume'
 
 /**
  * El enlace del duelo automático por enlace (diseño: `docs/duelo-automatico-enlace.md`): lo que une la sala de siempre (`createDuel`: saludo, listos, tirada, chat,
@@ -125,6 +126,12 @@ export interface HostLinkOptions {
   now?: () => number
   /** La clave de cada duelo nuevo (y de cada revancha): `newDuelKey` (256 bits de `crypto.getRandomValues`); las pruebas la fijan. */
   newKey?: () => string
+  /**
+   * Los dos acordaron seguir en automático un duelo que iba a mano (`online-resume.ts`): el primer duelo de este enlace no empieza de cero sino desde esta mesa rearmada
+   * (`setup`, las dos mesas por asiento; `seat`, el del anfitrión), con los decks de siempre revisados primero (el invitado manda el suyo al entrar). El enlace anuncia el
+   * acuerdo (`autoResume` `yes`) al arrancar, ya escuchando: así el deck del invitado no llega antes que él. La revancha vuelve a empezar de cero.
+   */
+  resume?: { setup: Setup; seat: Seat }
 }
 
 export interface GuestLinkOptions {
@@ -527,6 +534,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let savedAnswers: readonly SessionAnswer[] | null = null
   // La clave del duelo que corre (la de lo guardado, si se rearma): sólo va a la sesión y a lo guardado, nunca al invitado ni a `refresh`.
   let duelKey = ''
+  // El pase acordado de manual a automático, hasta que arranca ese duelo; y la mesa rearmada del duelo que corre (va al invitado en `autoInit` y a lo guardado).
+  let resuming = options.resume ?? null
+  let resumeSetup: Setup | null = null
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -650,8 +660,18 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     refresh()
   }
 
-  /** La página se recargó con el duelo empezado (la sala ya eligió quién empieza): con lo guardado se rearma (primero se revisan los decks, que bajan los datos); sin eso, se perdió. */
+  /**
+   * La página se recargó con el duelo empezado (la sala ya eligió quién empieza): con lo guardado se rearma (primero se revisan los decks, que bajan los datos); sin eso, se perdió.
+   * Con el pase de manual a automático acordado (`resume`), el duelo empieza desde la mesa rearmada en cuanto llega el deck del invitado: se le anuncia el acuerdo, ya escuchando.
+   */
   function recover() {
+    if (resuming) {
+      pending = true
+      stopWait()
+      outdated = false
+      transport.send(encodeAutoMessage({ t: 'autoResume', step: 'yes' }))
+      return
+    }
     const saved = options.save?.read() ?? null
 
     if (!saved) return lose()
@@ -679,7 +699,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     if ((snap.replaying && !force) || snap.answers === savedAnswers) return
     savedAnswers = snap.answers
-    options.save.write({ v: 2, key: duelKey, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}), ...(dataVersion ? { data: dataVersion } : {}) })
+    options.save.write({ v: 2, key: duelKey, seat: seats.host, hand, decks: { mine: hostDeck, theirs: remoteDeck! }, answers: [...snap.answers], savedAt: now(), ...(request.state === 'agreed' ? { cut: { dropped: request.dropped } } : {}), ...(dataVersion ? { data: dataVersion } : {}), ...(resumeSetup ? { setup: resumeSetup } : {}) })
   }
 
   function takeDeck(message: Extract<AutoMessage, { t: 'autoDeck' }>) {
@@ -713,14 +733,14 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     lastStats = null
   }
 
-  /** Cómo empieza el duelo abre un flujo nuevo (`s` 1). Sin la clave y con el Main del invitado por código: su orden es del anfitrión. */
+  /** Cómo empieza el duelo abre un flujo nuevo (`s` 1). Sin la clave y con el Main del invitado por código: su orden es del anfitrión. Con la mesa rearmada, filtrada para él. */
   function sendInit() {
     if (!init || !seats) return
     const { host, guest } = seats
     const mine = init.decks[guest]!
 
     seq = 0
-    post({ t: 'autoInit', v: AUTO_PROTOCOL_VERSION, seat: guest, players: [init.players[0]!, init.players[1]!], mine: { main: bagOrder(mine.main), extra: mine.extra }, theirs: { main: init.decks[host]!.main.length, extra: init.decks[host]!.extra.length } })
+    post({ t: 'autoInit', v: AUTO_PROTOCOL_VERSION, seat: guest, players: [init.players[0]!, init.players[1]!], mine: { main: bagOrder(mine.main), extra: mine.extra }, theirs: { main: init.decks[host]!.main.length, extra: init.decks[host]!.extra.length }, ...(resumeSetup ? { setup: filterSetup(resumeSetup, guest) } : {}) })
   }
 
   /** Las cartas de un evento que el invitado todavía no sabe cómo son (las anota como mandadas). */
@@ -857,6 +877,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     session = null
     seats = null
     init = null
+    resumeSetup = null
     batch = []
     batchCards = []
     batchBytes = 0
@@ -911,8 +932,12 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     request.reset()
     undo.drop()
     if (saved?.cut) request.restore(saved.cut.dropped)
-    const host: Seat = saved?.seat ?? (room.starter === 0 ? 0 : 1)
+    // El duelo que sigue a uno manual arranca desde la mesa rearmada (el pase acordado, o la de lo guardado si se recarga); el asiento 0 es de quien tenía el turno.
+    const from = saved ? (saved.setup ? { setup: saved.setup, seat: saved.seat } : null) : resuming
+    const host: Seat = saved?.seat ?? from?.seat ?? (room.starter === 0 ? 0 : 1)
 
+    resuming = null
+    resumeSetup = from?.setup ?? null
     seats = { host, guest: (1 - host) as Seat }
     remoteDeck = saved?.decks.theirs ?? guestDeck
     restartLog()
@@ -938,6 +963,8 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       transport: (data) => watch(options.makeTransport(data)),
       onEvent: forward,
       ...(saved ? { restore: { answers: saved.answers } } : {}),
+      // Mi vista desde la mesa entera y, para el asiento del invitado, la que él arma de su `autoInit` (el `setup` filtrado): así `viewOf` es su mesa, ids incluidos.
+      ...(from ? { resume: { ...statesOf(from.setup, host), rival: statesOf(filterSetup(from.setup, (1 - host) as Seat), (1 - host) as Seat) } } : {}),
     })
     unwatch = session.subscribe(onSession)
   }
@@ -1220,7 +1247,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     })
 
     relay = port
-    // Sin la clave: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado).
+    // Sin la clave: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado). Con la mesa rearmada (pasar de manual a automático), desde ella.
     session = createAutoSession({
       loader: guestLoader(init, source),
       deck: options.deck,
@@ -1228,6 +1255,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       handSize: init.players[init.seat].hand,
       typeOf: (code) => cards.get(code)?.type ?? 0,
       transport: port.factory,
+      ...(init.setup ? { resume: statesOf(init.setup, init.seat) } : {}),
     })
     unwatch = session.subscribe(onSession)
     refresh()

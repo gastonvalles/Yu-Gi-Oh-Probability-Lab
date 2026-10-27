@@ -44,6 +44,14 @@ const GOOD: AutoMessage[] = [
   { t: 'autoUndo', step: 'yes', guest: true, s: 4 },
   { t: 'autoUndo', step: 'no', why: 'none' },
   { t: 'autoUndo', step: 'cancel' },
+  // Seguir en automático un duelo que iba a mano: el saludo, el pedido del invitado con su mesa, el acuerdo y el no con su porqué; sin número (no hay flujo del núcleo).
+  { t: 'autoResume', step: 'hello' },
+  { t: 'autoResume', step: 'ask', table: [{ code: 55, controller: 0, location: 2, sequence: 0, position: 10 }, { code: 56, controller: 0, location: 4, sequence: 2, position: 1, materials: [57, 58] }] },
+  { t: 'autoResume', step: 'yes' },
+  { t: 'autoResume', step: 'no', why: 'table' },
+  { t: 'autoResume', step: 'cancel' },
+  // El duelo que sigue desde una mesa rearmada: el `autoInit` lleva el `setup` filtrado (lo oculto del anfitrión con código 0).
+  { t: 'autoInit', v, s: 1, seat: 1, players: [{ lp: 6400, hand: 0, draw: 1 }, { lp: 7200, hand: 0, draw: 1 }], mine: { main: [5, 6, 7], extra: [8] }, theirs: { main: 40, extra: 15 }, setup: { cards: [{ code: 0, controller: 0, location: 1, sequence: 0, position: 8 }, { code: 5, controller: 1, location: 2, sequence: 0, position: 10 }], lp: [6400, 7200], phase: 'main2', turns: [3, 2] } },
 ]
 
 describe('el protocolo del duelo automático por enlace', () => {
@@ -66,8 +74,8 @@ describe('el protocolo del duelo automático por enlace', () => {
     expect(parseAutoMessage(JSON.stringify({ t: 'autoDeck', v, main: [], extra: [], undo: 1 }))).toEqual({ t: 'autoDeck', v, main: [], extra: [] })
   })
 
-  it('cada lado acepta sólo lo que manda el otro (pasar a manual y deshacer lo piden los dos), y entre los dos cubren todos los mensajes', () => {
-    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual(['autoManual', 'autoUndo'])
+  it('cada lado acepta sólo lo que manda el otro (pasar a manual, deshacer y seguir en automático lo piden los dos), y entre los dos cubren todos los mensajes', () => {
+    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual(['autoManual', 'autoUndo', 'autoResume'])
     expect([...new Set([...HOST_ACCEPTS, ...GUEST_ACCEPTS])].sort()).toEqual([...new Set(GOOD.map((message) => message.t))].sort())
   })
 
@@ -122,6 +130,15 @@ describe('el protocolo del duelo automático por enlace', () => {
       { t: 'autoUndo', step: 'maybe' },
       { t: 'autoUndo', step: 'no', why: 'control' },
       { t: 'autoUndo', step: 'yes', guest: false },
+      { t: 'autoResume' },
+      { t: 'autoResume', step: 'maybe' },
+      { t: 'autoResume', step: 'no', why: 'none' },
+      { t: 'autoResume', step: 'ask', table: [{ code: 1, controller: 0, location: 3, sequence: 0, position: 1 }] },
+      { t: 'autoResume', step: 'ask', table: [{ code: -1, controller: 0, location: 1, sequence: 0, position: 8 }] },
+      { t: 'autoResume', step: 'ask', table: [{ code: 1, controller: 0, location: 4, sequence: 0, position: 1, materials: [0] }] },
+      { ...init, setup: { cards: [], lp: [0, 1] } },
+      { ...init, setup: { cards: [], lp: [1, 1], phase: 'battle' } },
+      { ...init, setup: { cards: [], lp: [1, 1], turns: [1] } },
     ]
 
     for (const message of bad) expect(parseAutoMessage(JSON.stringify(message)), JSON.stringify(message).slice(0, 80)).toBeNull()

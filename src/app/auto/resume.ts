@@ -1,4 +1,4 @@
-import { isForeignId, isToken, type MatPhase, type MatState, type Placed } from '../practice-mat'
+import { createMatState, isForeignId, isToken, type MatPhase, type MatState, type Placed } from '../practice-mat'
 import { LOCATION as L, POSITION as P, type PlacedCard, type Seat, type Setup } from './protocol'
 
 /**
@@ -56,7 +56,116 @@ export function placedCards(state: MatState, controller: Seat, codeOf: (id: stri
   return out
 }
 
-/** El `setup` del `create`: las dos mesas por asiento (`seats[0]` es el asiento 0) y las vidas. */
+/** El `setup` del `create`: las dos mesas por asiento (`seats[0]` es el asiento 0, el que tiene el turno: su Main Phase va en `phase`), las vidas y la cuenta de turnos de cada mesa. */
 export function setupOf(seats: readonly [{ state: MatState; codeOf: (id: string) => number }, { state: MatState; codeOf: (id: string) => number }], lp: readonly [number, number]): Setup {
-  return { cards: [...placedCards(seats[0].state, 0, seats[0].codeOf), ...placedCards(seats[1].state, 1, seats[1].codeOf)], lp: [...lp] }
+  const phase = seats[0].state.phase
+
+  return { cards: [...placedCards(seats[0].state, 0, seats[0].codeOf), ...placedCards(seats[1].state, 1, seats[1].codeOf)], lp: [...lp], ...(phase === 'main1' || phase === 'main2' ? { phase } : {}), turns: [seats[0].state.turn, seats[1].state.turn] }
+}
+
+/** Lo que la sesión necesita para arrancar desde una mesa rearmada (`SessionOptions.resume`), visto desde el asiento `me`. */
+export interface ResumeStates {
+  mine: MatState
+  theirs: MatState
+  codeOf: (side: 'mine' | 'theirs', id: string) => number
+  lp: readonly [number, number]
+}
+
+/**
+ * Las dos mesas desde un `setup` (el camino inverso de `placedCards`; el duelo por enlace las arma así en los dos lados y en el núcleo, de la misma lista): las mías con los ids
+ * de la mesa (`card-<código>-<copia>`, como `copyIds`: las mías llegan siempre con código) y las del rival con `c1`… (las ocultas vienen con código 0). El asiento 0 está en la
+ * Main Phase del `setup` (si no la trae, la 1) y el otro espera en la Draw Phase; cada mesa sigue con su cuenta de turnos.
+ */
+export function statesOf(setup: Setup, me: Seat): ResumeStates {
+  const codes = { mine: new Map<string, number>(), theirs: new Map<string, number>() }
+  const build = (controller: Seat, side: 'mine' | 'theirs'): MatState => {
+    const mine = side === 'mine'
+    const copies = new Map<number, number>()
+    let count = 0
+    const idOf = (code: number) => {
+      let id: string
+
+      if (mine) {
+        const copy = (copies.get(code) ?? 0) + 1
+
+        copies.set(code, copy)
+        id = `card-${code}-${copy}`
+      } else id = `c${(count += 1)}`
+      codes[side].set(id, code)
+      return id
+    }
+    const cards = setup.cards.filter((card) => card.controller === controller)
+    const at = (location: number) => cards.filter((card) => card.location === location).sort((a, b) => a.sequence - b.sequence)
+    const state: MatState = { ...createMatState([], [], 0), phase: controller === 0 ? (setup.phase === 'main2' ? 'main2' : 'main1') : 'draw', turn: setup.turns?.[controller] ?? 1 }
+    const placed = (card: PlacedCard, zone: 'mz' | 'st'): Placed => {
+      const facedown = (card.position & P.FACEDOWN) !== 0
+
+      return { id: idOf(card.code), pos: facedown ? 'set' : zone === 'mz' && (card.position & P.FACEUP_DEFENSE) !== 0 ? 'def' : 'atk', counters: 0, materials: (card.materials ?? []).map(idOf) }
+    }
+
+    // Las pilas en el orden de `placedCards`: el deck de abajo hacia arriba (la mesa lo lleva tope primero), lo demás tal cual.
+    state.deck = at(L.DECK).map((card) => idOf(card.code)).reverse()
+    state.hand = at(L.HAND).map((card) => idOf(card.code))
+    state.gy = at(L.GRAVE).map((card) => idOf(card.code))
+    for (const card of at(L.REMOVED)) {
+      const id = idOf(card.code)
+
+      state.banished.push(id)
+      if ((card.position & P.FACEDOWN) !== 0) state.facedown.push(id)
+    }
+    for (const card of at(L.EXTRA)) {
+      const id = idOf(card.code)
+
+      state.extra.push(id)
+      if ((card.position & P.FACEDOWN) === 0) state.extraUp.push(id)
+    }
+    for (const card of at(L.MZONE)) {
+      if (card.sequence < 5) state.mz[card.sequence] = placed(card, 'mz')
+      else if (card.sequence < 7) state.emz[card.sequence - 5] = placed(card, 'mz')
+    }
+    for (const card of at(L.SZONE)) {
+      if (card.sequence < 5) state.st[card.sequence] = placed(card, 'st')
+      else if (card.sequence === 5) state.field = placed(card, 'st')
+    }
+
+    return state
+  }
+  const mine = build(me, 'mine')
+  const theirs = build((1 - me) as Seat, 'theirs')
+
+  return { mine, theirs, codeOf: (side, id) => codes[side].get(id) ?? 0, lp: [setup.lp[me] ?? 0, setup.lp[1 - me] ?? 0] }
+}
+
+/** El `setup` como lo recibe el asiento `viewer`: las cartas del otro que están boca abajo (su mano, su deck, lo colocado, lo desterrado o en el Extra boca abajo) van con código 0. */
+export function filterSetup(setup: Setup, viewer: Seat): Setup {
+  return { ...setup, cards: setup.cards.map((card) => (card.controller !== viewer && (card.position & P.FACEDOWN) !== 0 ? { ...card, code: 0 } : card)) }
+}
+
+/**
+ * Si la mesa que manda el invitado (sus cartas, con códigos) es la que el anfitrión ve de él en el espejo del duelo manual (`theirs.state`, con ids opacos; `known`: los que ya
+ * mostró): mismos lugares, secuencias, posiciones y materiales, todo con código, y el código de cada carta que el anfitrión ya conoce. Si no, el pase no es seguro.
+ */
+export function tableMatches(mirror: MatState, known: Readonly<Record<string, string>>, table: readonly PlacedCard[], controller: Seat): boolean {
+  const ids: string[] = []
+  const expected = placedCards(mirror, controller, (id) => {
+    ids.push(id)
+    return 0
+  })
+
+  if (expected.length !== table.length) return false
+  let next = 0
+
+  return expected.every((card, i) => {
+    const sent = table[i]!
+    const same = (id: string, code: number) => {
+      const real = known[id]
+      const seen = real ? Number(real.split('-')[1] ?? 0) : 0
+
+      return code > 0 && (seen === 0 || seen === code)
+    }
+
+    if (sent.controller !== controller || sent.location !== card.location || sent.sequence !== card.sequence || sent.position !== card.position || (sent.materials?.length ?? 0) !== (card.materials?.length ?? 0)) return false
+    if (!same(ids[next++]!, sent.code)) return false
+    return (sent.materials ?? []).every((code) => same(ids[next++]!, code))
+  })
 }

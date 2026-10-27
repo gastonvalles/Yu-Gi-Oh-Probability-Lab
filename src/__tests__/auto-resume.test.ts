@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { copyIds } from '../app/auto/adapter'
 import { createAutoSession, MR5 } from '../app/auto/auto-session'
 import { resumeScript } from '../app/auto/core-host'
-import { LOCATION as L, parseAutoCommand, POSITION as P, type AutoCommand } from '../app/auto/protocol'
-import { placedCards, RESUME_FLAGS, setupOf, whyNotResume } from '../app/auto/resume'
+import { LOCATION as L, parseAutoCommand, parsePlacedCards, parseSetup, POSITION as P, type AutoCommand, type PlacedCard } from '../app/auto/protocol'
+import { filterSetup, placedCards, RESUME_FLAGS, setupOf, statesOf, tableMatches, whyNotResume } from '../app/auto/resume'
+import { mapMatIds } from '../app/mat-public'
 import { createMatState, matReducer, replayMat, type MatState } from '../app/practice-mat'
 import { fakeHost, loader } from './support/auto-core-fake'
 
@@ -104,6 +105,68 @@ describe('resume: la mesa como cartas del núcleo', () => {
     expect(parseAutoCommand({ ...create, setup: { cards: [{ code: 1 }], lp: [1, 2] } })).toBeNull()
     expect(parseAutoCommand({ ...create, setup: { cards: [], lp: ['x'] } })).toBeNull()
     expect(RESUME_FLAGS).toBe((BigInt(MR5) | 16n | 2n).toString())
+  })
+
+  it('las dos mesas vuelven del setup iguales (ida y vuelta, con la fase y la cuenta de turnos), el rival con ids opacos y, filtrado para él, lo mío boca abajo con código 0', () => {
+    const mine = { ...matReducer(table(), { type: 'place', id: 'card-6-1', zone: 'field', index: 0, pos: 'atk' }), extraUp: ['card-91-1'] }
+    const theirs = { ...matReducer(createMatState(copyIds([11, 12, 13, 14, 15]), copyIds([95]), 2), { type: 'place', id: 'card-13-1', zone: 'st', index: 4, pos: 'set' }), turn: 2 }
+    const setup = setupOf([{ state: mine, codeOf }, { state: theirs, codeOf }], [6400, 7200])
+
+    expect(setup).toMatchObject({ phase: 'main1', turns: [3, 2] })
+    expect(parseSetup(setup)).toEqual(setup)
+    // Desde el asiento 0: mi mesa tal cual (mismos ids: salen del código y la copia) y la del rival con `c1`…, esperando en la Draw Phase.
+    const seat0 = statesOf(setup, 0)
+
+    expect(seat0.mine).toEqual(mine)
+    expect(seat0.theirs).toEqual({ ...theirs, deck: ['c2', 'c1'], hand: ['c3', 'c4'], extra: ['c5'], st: [null, null, null, null, { id: 'c6', pos: 'set', counters: 0, materials: [] }] })
+    expect(seat0.lp).toEqual([6400, 7200])
+    expect(seat0.codeOf('mine', 'card-90-1')).toBe(90)
+    expect(seat0.codeOf('theirs', 'c6')).toBe(13)
+    // La vuelta al setup es la misma lista: el núcleo y las dos mesas se arman de lo mismo.
+    expect(setupOf([{ state: seat0.mine, codeOf: (id) => seat0.codeOf('mine', id) }, { state: seat0.theirs, codeOf: (id) => seat0.codeOf('theirs', id) }], seat0.lp)).toEqual(setup)
+    // Desde el asiento 1: lo mismo dado vuelta, con las vidas del otro lado.
+    const seat1 = statesOf(setup, 1)
+
+    expect(seat1.mine).toEqual(theirs)
+    expect(seat1.lp).toEqual([7200, 6400])
+    const xyz = seat1.theirs.mz[4]!
+
+    expect(xyz).toMatchObject({ pos: 'def', counters: 0 })
+    expect([xyz.id, ...xyz.materials].map((id) => seat1.codeOf('theirs', id))).toEqual([90, 1, 2])
+    // Filtrado para el asiento 1: lo mío boca abajo (deck, mano, lo colocado, lo desterrado boca abajo) va con código 0; lo visible y lo suyo, no.
+    const seen = filterSetup(setup, 1)
+    const hidden = (card: PlacedCard) => card.controller === 0 && (card.position & P.FACEDOWN) !== 0
+
+    expect(seen.cards.filter(hidden).every((card) => card.code === 0)).toBe(true)
+    expect(seen.cards.filter((card) => !hidden(card)).every((card) => card.code > 0)).toBe(true)
+    expect(seen.cards.filter((card) => card.controller === 0 && card.code > 0).map((card) => card.code).sort((a, b) => a - b)).toEqual([1, 4, 6, 90, 91])
+    expect(seen.cards.find((card) => card.code === 90)?.materials).toEqual([1, 2])
+    expect(statesOf(seen, 1).theirs).toEqual(seat1.theirs)
+    expect(statesOf(seen, 1).codeOf('theirs', 'c1')).toBe(0)
+  })
+
+  it('la mesa que manda el invitado tiene que ser la que el anfitrión ve de él: mismos lugares, posiciones y materiales, todo con código, y el código de lo que ya mostró', () => {
+    const state = table()
+    const table1 = placedCards(state, 1, codeOf)
+    const mirror = mapMatIds(state, (id) => `o${id}`)
+    const known = { 'ocard-1-1': 'card-1-1', 'ocard-4-1': 'card-4-1' }
+
+    expect(tableMatches(mirror, known, table1, 1)).toBe(true)
+    expect(tableMatches(mirror, known, table1, 0)).toBe(false)
+    expect(tableMatches(mirror, known, table1.slice(1), 1)).toBe(false)
+    expect(tableMatches(mirror, known, table1.map((card) => (card.code === 3 ? { ...card, position: P.FACEUP } : card)), 1)).toBe(false)
+    expect(tableMatches(mirror, known, table1.map((card) => (card.code === 90 ? { ...card, materials: [1] } : card)), 1)).toBe(false)
+    expect(tableMatches(mirror, known, table1.map((card) => (card.code === 8 ? { ...card, code: 0 } : card)), 1)).toBe(false)
+    // Una carta que el anfitrión ya vio no puede llegar con otro código; una que no vio, sí puede ser cualquiera.
+    expect(tableMatches(mirror, known, table1.map((card) => (card.code === 4 ? { ...card, code: 44 } : card)), 1)).toBe(false)
+    expect(tableMatches(mirror, known, table1.map((card) => (card.code === 8 ? { ...card, code: 88 } : card)), 1)).toBe(true)
+    // El protocolo revisa cada carta y el setup entero.
+    expect(parsePlacedCards(table1)).toEqual(table1)
+    expect(parsePlacedCards([{ ...table1[0], location: 3 }])).toBeNull()
+    expect(parsePlacedCards([{ ...table1[0], position: 0 }])).toBeNull()
+    expect(parseSetup({ cards: table1, lp: [1, 2], phase: 'battle' })).toBeNull()
+    expect(parseSetup({ cards: table1, lp: [1, 2], turns: [0, 1] })).toBeNull()
+    expect(parseSetup({ cards: table1, lp: [1] })).toBeNull()
   })
 
   it('la sesión arranca desde la mesa: el create lleva el setup y las vidas, nadie roba, y la proyección es la mesa dada sin jugadas', async () => {
