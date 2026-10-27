@@ -98,7 +98,7 @@ function Spot({ area, spot, placed, changed, artOf }: { area: string; spot: MatS
             <Art url={artOf(placed.id)} />
           </span>
           {placed.materials.length > 0 ? <span className={cx('absolute bottom-0 right-0', COUNT)}>+{placed.materials.length}</span> : null}
-          {placed.counters > 0 ? <span className="absolute left-0 top-0 rounded-full bg-magenta px-1 text-[0.6rem] font-extrabold leading-tight tabular-nums text-white">{placed.counters}</span> : null}
+          {placed.counters > 0 ? <span className="absolute left-0 top-0 rounded-full bg-primary px-1 text-[0.6rem] font-extrabold leading-tight tabular-nums text-white">{placed.counters}</span> : null}
         </span>
       ) : null}
     </span>

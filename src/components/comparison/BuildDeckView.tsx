@@ -69,7 +69,7 @@ export function BuildDeckView({ side, zone, cards, marks, onCardClick }: BuildDe
                 aria-hidden="true"
                 className={cx(
                   'pointer-events-none absolute left-0.5 top-0.5 z-20 rounded-full px-1.5 text-micro font-bold leading-4 tabular-nums',
-                  side === 'A' ? 'bg-primary text-white' : 'bg-magenta text-white',
+                  side === 'A' ? 'bg-primary text-white' : 'border-2 border-info bg-card-background text-white',
                 )}
               >
                 {side === 'A' ? '−' : '+'}
@@ -77,7 +77,7 @@ export function BuildDeckView({ side, zone, cards, marks, onCardClick }: BuildDe
               </span>
             ) : null}
             {pending ? (
-              <span aria-hidden="true" className="pointer-events-none absolute right-0.5 top-0.5 z-20 grid size-4 place-items-center rounded-full bg-magenta text-micro font-bold text-white">
+              <span aria-hidden="true" className="pointer-events-none absolute right-0.5 top-0.5 z-20 grid size-4 place-items-center rounded-full bg-primary text-micro font-bold text-white">
                 ?
               </span>
             ) : null}

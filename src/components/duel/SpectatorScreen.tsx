@@ -365,7 +365,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
                     <Icon name="chat" />
                   </IconButton>
                   {unread > 0 ? (
-                    <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-magenta px-1 text-[0.625rem] font-extrabold leading-4 text-white">
+                    <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.625rem] font-extrabold leading-4 text-white">
                       {unread}
                     </span>
                   ) : null}

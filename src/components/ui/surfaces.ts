@@ -32,15 +32,15 @@ export const chip = {
 } as const
 
 /**
- * Pastilla de selección (tipo de carta, atributo, nivel): lavanda en reposo y, elegida (aria-pressed), magenta con el texto blanco: lo elegido es magenta en toda la app
+ * Pastilla de selección (tipo de carta, atributo, nivel): lavanda en reposo y, elegida (aria-pressed), violeta con el texto blanco: lo elegido es violeta en toda la app
  * (el violeta es de los fondos y de la acción principal). Elegida, al pasar el mouse se aclara: tocarla la apaga.
  */
 export const choiceChip =
-  'inline-flex items-center justify-center rounded-control bg-lavender font-semibold text-foreground transition-[background-color,color] duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-magenta aria-pressed:text-white aria-pressed:hover:bg-magenta'
+  'inline-flex items-center justify-center rounded-control bg-lavender font-semibold text-foreground transition-[background-color,color] duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-primary aria-pressed:text-white aria-pressed:hover:bg-primary'
 
-/** Chip de un filtro puesto (una carta, un arquetipo, un filtro del buscador): está encendido, así que va en magenta como lo elegido; se toca para quitarlo. */
+/** Chip de un filtro puesto (una carta, un arquetipo, un filtro del buscador): está encendido, así que va en violeta como lo elegido; se toca para quitarlo. */
 export const filterChip =
-  'inline-flex max-w-full items-center gap-1.5 rounded-control bg-magenta px-3 py-1.5 pointer-coarse:min-h-11 text-micro font-semibold leading-none text-white transition-colors duration-150 hover:bg-magenta/85 focus-visible:outline-none focus-visible:shadow-focus'
+  'inline-flex max-w-full items-center gap-1.5 rounded-control bg-primary px-3 py-1.5 pointer-coarse:min-h-11 text-micro font-semibold leading-none text-white transition-colors duration-150 hover:bg-primary/85 focus-visible:outline-none focus-visible:shadow-focus'
 
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =

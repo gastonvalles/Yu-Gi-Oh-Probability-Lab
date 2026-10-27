@@ -101,7 +101,7 @@ describe('la mesa del duelo', () => {
     expect(art('Rival, Zona de monstruo 1')).toHaveClass('rotate-180')
     expect(art('Zona de monstruo 1')).not.toHaveClass('rotate-180')
     // El contador no gira con la carta.
-    expect(art('Rival, Zona de monstruo 1').parentElement!.querySelector('span.bg-magenta')).not.toHaveClass('rotate-180')
+    expect(art('Rival, Zona de monstruo 1').parentElement!.querySelector('span.bg-primary')).not.toHaveClass('rotate-180')
     // La carta de arriba de su cementerio, también.
     expect(document.querySelector('[data-rival-drop="gy"] .rotate-180')).not.toBeNull()
   })

@@ -106,7 +106,7 @@ function LiveCard({ stream, onOpen }: { stream: LiveStream; onOpen: () => void }
       <button type="button" className="relative block aspect-video w-full overflow-hidden bg-input focus-visible:outline-none focus-visible:shadow-focus" aria-label={t('meta.live.watchLabel', { title: stream.title })} onClick={onOpen}>
         <LiveThumbnail id={stream.id} className="size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/15 transition-colors duration-150 group-hover:bg-black/35">
-          <span className="grid size-11 place-items-center rounded-full bg-magenta text-white">
+          <span className="grid size-11 place-items-center rounded-full bg-primary text-white">
             <Icon name="play" size={20} variant="bold" />
           </span>
         </span>
@@ -141,7 +141,7 @@ function PastCard({ stream, onOpen }: { stream: PastStream; onOpen: () => void }
       <button type="button" className="relative block aspect-video w-full overflow-hidden bg-input focus-visible:outline-none focus-visible:shadow-focus" aria-label={t('meta.live.past.watchLabel', { title: stream.title })} onClick={onOpen}>
         <img src={thumbnailUrl(stream.id)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/15 transition-colors duration-150 group-hover:bg-black/35">
-          <span className="grid size-11 place-items-center rounded-full bg-magenta text-white">
+          <span className="grid size-11 place-items-center rounded-full bg-primary text-white">
             <Icon name="play" size={20} variant="bold" />
           </span>
         </span>

@@ -173,7 +173,7 @@ export function ButtonsSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Segmented" note={<>Elegir una opción entre pocas. Lo elegido va en <b>magenta</b> con el texto blanco (la tarjeta elegida, <Tag>cards</Tag>, con el borde y el texto ámbar). La excepción es una opción con <Tag>tone</Tag> en la pista: verde o rojo lleno con el texto blanco («Qué es» de una regla, en «Reglas del Lab»). Archivo: <Tag>ui/Segmented.tsx</Tag></>} layout="column">
+        <Specimen title="Segmented" note={<>Elegir una opción entre pocas. Lo elegido va en <b>violeta</b> con el texto blanco (la tarjeta elegida, <Tag>cards</Tag>, con el borde y el texto ámbar). La excepción es una opción con <Tag>tone</Tag> en la pista: verde o rojo lleno con el texto blanco («Qué es» de una regla, en «Reglas del Lab»). Archivo: <Tag>ui/Segmented.tsx</Tag></>} layout="column">
           <Segmented label="Pista" variant="track" value={track} onChange={setTrack} options={options} />
           <Segmented label="Pastillas" variant="chips" value={chips} onChange={setChips} options={options} />
           {/* Los detalles del turno del Lab (los de antes, «5 cartas · 57%», no entraban en tres tarjetas de esta columna y pisaban el borde de la elegida). */}
@@ -214,7 +214,7 @@ export function ButtonsSection() {
           <Stepper label="En línea" variant="inline" value={copies} min={0} max={3} onChange={setCopies} />
         </Specimen>
 
-        <Specimen title="Pastillas de selección" note={<>Clases de <Tag>ui/surfaces.ts</Tag>: <Tag>choiceChip</Tag> (lavanda; elegida con <Tag>aria-pressed</Tag>, magenta) y <Tag>filterChip</Tag> (un filtro puesto: magenta, se toca para quitarlo).</>}>
+        <Specimen title="Pastillas de selección" note={<>Clases de <Tag>ui/surfaces.ts</Tag>: <Tag>choiceChip</Tag> (lavanda; elegida con <Tag>aria-pressed</Tag>, violeta) y <Tag>filterChip</Tag> (un filtro puesto: violeta, se toca para quitarlo).</>}>
           {['a', 'b', 'c'].map((value) => (
             <button
               key={value}
@@ -269,7 +269,7 @@ export function ButtonsSection() {
         layout="column"
         note={
           <>
-            La fila de chips para filtrar: el que apaga los filtros («Todos») y uno por valor con su cuenta. Lo elegido va en <b>magenta</b> con el texto blanco, igual que un filtro
+            La fila de chips para filtrar: el que apaga los filtros («Todos») y uno por valor con su cuenta. Lo elegido va en <b>violeta</b> con el texto blanco, igual que un filtro
             puesto (<Tag>filterChip</Tag>, el primero de la fila de arriba); uno sin elementos queda apagado en su lugar. El mouse y el teclado muestran el hover y el foco.
             Archivo: <Tag>ui/FilterChips.tsx</Tag>
           </>
