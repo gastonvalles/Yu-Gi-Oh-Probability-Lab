@@ -111,7 +111,7 @@ describe('la pantalla del duelo', () => {
 
     // Quién empieza ya no se cambia desde acá: se definió al entrar.
     expect(panel().queryByText('Quién empieza')).not.toBeInTheDocument()
-    expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
+    expect(within(host.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
   })
 
   it('un duelo se juega con 40 cartas en el Main como mínimo: con menos se dice y no se puede estar listo', () => {
@@ -201,7 +201,7 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Ir segundo')
     flush()
     flush()
-    expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
+    expect(within(host.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
     expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
     expect(within(guest.container).queryByText('Te rendiste.')).not.toBeInTheDocument()
     expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
@@ -514,7 +514,7 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').lastChild?.textContent
+    const phase = (view: RenderResult) => phaseChip(view).getAttribute('aria-label')?.replace('Fases: ', '')
     const banner = (view: RenderResult) => view.container.querySelector('[data-fx="banner"]')?.textContent ?? ''
 
     expect(phase(host)).toBe('Draw Phase')
@@ -539,7 +539,7 @@ describe('la pantalla del duelo', () => {
     click(host, 'End Phase')
     flush()
     expect(phase(guest)).toBe('End Phase')
-    expect(within(guest.container).queryByText('Tu turno')).not.toBeInTheDocument()
+    expect(within(guest.container).queryByText(/^Tu turno( · \d+)?$/)).not.toBeInTheDocument()
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest)
     expect(phaseChip(guest)).toBeDisabled()
     expect(phaseChip(guest)).toHaveAccessibleName('Fases: End Phase')
@@ -550,7 +550,7 @@ describe('la pantalla del duelo', () => {
     // Ana lo termina: ahí sí pasa el turno, Beto ve el cartel y roba, y ahora las fases son de él.
     confirmEndTurn()
     expect(within(host.container).getAllByText('Turno de Beto').length).toBeGreaterThan(0)
-    expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
+    expect(within(guest.container).getAllByText(/^Tu turno( · \d+)?$/).length).toBeGreaterThan(0)
     expect(phase(guest)).toBe('Draw Phase')
     expect(phase(host)).toBe('Draw Phase')
     expect(banner(guest)).toContain('Tu turno')
@@ -788,7 +788,7 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').lastChild?.textContent
+    const phase = (view: RenderResult) => phaseChip(view).getAttribute('aria-label')?.replace('Fases: ', '')
     const ask = () => screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })
 
     expect(within(host.container).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
@@ -805,13 +805,13 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(ask()).getByRole('button', { name: 'Seguir jugando' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(phase(guest)).toBe('End Phase')
-    expect(within(guest.container).queryByText('Tu turno')).not.toBeInTheDocument()
+    expect(within(guest.container).queryByText(/^Tu turno( · \d+)?$/)).not.toBeInTheDocument()
 
     // Para darle el turno a Beto hay que volver a tocar el botón de la End Phase (ya no abre las fases: pregunta).
     fireEvent.click(phaseChip(host))
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
     confirmEndTurn()
-    expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
+    expect(within(guest.container).getAllByText(/^Tu turno( · \d+)?$/).length).toBeGreaterThan(0)
     expect(phase(guest)).toBe('Draw Phase')
     expect(phaseChip(guest)).toHaveClass('bg-primary')
     expect(phaseChip(host)).toHaveClass('bg-primary')
@@ -838,12 +838,12 @@ describe('la pantalla del duelo', () => {
     expect(pass(host)).toBeInTheDocument()
     expect(pass(host)!.parentElement).toBe(phaseChip(host).parentElement)
     expect(pass(host)).toHaveClass('absolute')
-    // Ya no está abajo a la derecha: ahí quedan deshacer y tus vidas.
-    expect(within(within(host.container).getByRole('toolbar')).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
+    // Ya no está abajo: ahí quedan tus vidas, solas (deshacer va en la barra de arriba).
+    expect(myLife(host).closest('[data-corner="mine"]')!.parentElement).not.toContainElement(pass(host))
 
     fireEvent.click(pass(host)!)
     letPass()
-    expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
+    expect(within(guest.container).getAllByText(/^Tu turno( · \d+)?$/).length).toBeGreaterThan(0)
     expect(pass(host)).not.toBeInTheDocument()
   })
 

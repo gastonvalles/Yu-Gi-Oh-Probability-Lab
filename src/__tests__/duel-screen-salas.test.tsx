@@ -971,8 +971,8 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     flush()
     expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
-    expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Turno de Ana')).toBeInTheDocument()
+    expect(within(host.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
+    expect(within(guest.container).getByText(/^Turno de Ana · \d+$/)).toBeInTheDocument()
 
     // El anfitrión pierde 1000: el invitado lo ve en la tarjeta del rival.
     // Con menos de tres cifras se entiende en centenas: "10" es 1000.

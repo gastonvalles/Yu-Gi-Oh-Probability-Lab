@@ -147,8 +147,8 @@ describe('la pantalla del duelo', () => {
     expect(view.getAllByText('Beto').length).toBeGreaterThan(0)
     expect(view.getAllByRole('group', { name: /Puntos de vida de/ })).toHaveLength(2)
     expect(view.getByText('Mirando')).toBeInTheDocument()
-    expect(view.getByText(/Turno de Ana/)).toBeInTheDocument()
-    expect(view.getByTestId('duel-phase')).toHaveTextContent('Draw Phase')
+    expect(view.getByTestId('duel-turn')).toHaveTextContent(/^Turno de Ana · 1$/)
+    expect(view.getByLabelText('Fase actual: Draw Phase')).toBeInTheDocument()
     // La mano de los dos se cuenta sin verse.
     expect(view.getAllByRole('img', { name: 'Mano del rival: 5' })).toHaveLength(2)
 
@@ -159,7 +159,7 @@ describe('la pantalla del duelo', () => {
     // Sigue el duelo en vivo.
     click(host, 'Main Phase 1')
     flush()
-    expect(view.getByTestId('duel-phase')).toHaveTextContent('Main Phase 1')
+    expect(view.getByLabelText('Fase actual: Main Phase 1')).toBeInTheDocument()
 
     // Nada que tocar: ni jugadas, ni deshacer, ni listo, ni dados, ni un campo para escribir.
     expect(view.queryByRole('textbox')).not.toBeInTheDocument()
@@ -631,7 +631,7 @@ describe('la pantalla del duelo', () => {
 
     const hand = cardsOf(guest)
     expect(hand).toHaveLength(4)
-    expect(within(guest.container).getByText('Tu turno')).toBeInTheDocument()
+    expect(within(guest.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
 
     // La pestaña se recarga: se cierra la pantalla y se vuelve a abrir en la misma sala (el rol queda en la pestaña).
     guest.unmount()
@@ -643,7 +643,7 @@ describe('la pantalla del duelo', () => {
     expect(cardsOf(reloaded)).toEqual(hand)
     expect(zoneOf(reloaded, 'Zona de monstruo 1').getByLabelText(summoned)).toBeInTheDocument()
     expect(within(reloaded.container).getByRole('button', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
-    expect(within(reloaded.container).getByText('Tu turno')).toBeInTheDocument()
+    expect(within(reloaded.container).getByText(/^Tu turno · \d+$/)).toBeInTheDocument()
     // El anfitrión sigue con su mano y ve la de quien recargó, con la carta invocada y las vidas de antes.
     expect(handOf(host).getAllByRole('listitem')).toHaveLength(5)
     expect(within(host.container).getAllByRole('img', { name: 'Mano del rival: 4' })).toHaveLength(1)
@@ -792,26 +792,30 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
   })
 
-  it('la barra de arriba no parte sus filas en celular: vida, reloj y los botones van juntos, y el turno con el chat; si no entra, se achica en vez de caerse a otra fila', () => {
+  it('la barra de arriba no parte sus filas en celular: el reloj, el chat, deshacer, el ⋯ y salir van juntos; debajo, el marcador con tus vidas, el turno una vez y las del rival', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
     const bar = within(host.container)
-    const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).parentElement!.closest('div')!
+    const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).closest('div')!
 
-    // Vida, reloj, el ⋯ (la vista, los sonidos, reconectar, rendirse) y salir: la misma fila, que no se parte.
+    // Reloj, chat, deshacer, el ⋯ (la vista, los sonidos, reconectar, rendirse) y salir: la misma fila, de 44 px, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
-    expect(bar.getAllByRole('button', { name: /^Puntos de vida de / }).some((tile) => top.contains(tile))).toBe(true)
-    expect(top).toBe(bar.getByRole('button', { name: 'Más opciones' }).closest('div')!.parentElement!.closest('div'))
-    expect(top).toBe(rowOf('Salir del duelo'))
+    for (const name of ['Chat', 'Deshacer', 'Más opciones', 'Salir del duelo']) expect(top).toContainElement(bar.getByRole('button', { name }))
+    expect(top).toHaveClass('h-11')
     expect(top).not.toHaveClass('flex-wrap')
 
-    // El turno: otra fila, que tampoco se parte (el chat bajó a la botonera de abajo).
-    const turn = bar.getByText(/^Turno 1$/).closest('div')!
-    expect(turn).toHaveTextContent(/Turno 1/)
-    expect(within(turn).queryByRole('button', { name: 'Chat' })).not.toBeInTheDocument()
-    expect(turn).not.toHaveClass('flex-wrap')
-    expect(turn).not.toBe(top)
+    // El marcador: otra fila, con las dos vidas (botones de 44 px que abren la calculadora) y el turno una sola vez, con su número; sin la píldora de la fase.
+    const score = bar.getByTestId('duel-score')
+    expect(score).not.toBe(top)
+    expect(within(score).getAllByRole('button', { name: /^Puntos de vida de .*Abrir la calculadora de vidas$/ })).toHaveLength(2)
+    expect(within(score).getAllByRole('button', { name: /^Puntos de vida de / })[0]).toHaveClass('min-h-11', 'min-w-11')
+    expect(within(score).getByTestId('duel-turn')).toHaveTextContent(/^Tu turno · 1$/)
+    expect(score).not.toHaveTextContent(/Draw/)
+    expect(top).not.toHaveTextContent(/Draw/)
+    // Sin barra de abajo: ni sus vidas ni sus reacciones.
+    expect(bar.queryByRole('toolbar')).not.toBeInTheDocument()
+    expect(bar.queryByRole('group', { name: 'Mensajes rápidos' })).not.toBeInTheDocument()
   })
 
   it('en pausa también se puede salir desde el cartel; y quien vuelve con el enlace en otra pestaña sigue siendo quien era (anfitrión) con su mesa', () => {
@@ -923,7 +927,7 @@ describe('la pantalla del duelo', () => {
     window.matchMedia = matchMedia
   })
 
-  it('la pantalla de quien mira no parte sus filas en celular: vida, reloj y salir juntos; "Mirando" con el turno; los avisos aparte', () => {
+  it('la pantalla de quien mira no parte sus filas en celular: reloj, "Mirando", dar vuelta, el chat y salir juntos; el marcador con las dos vidas y el turno; los avisos aparte', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
     const room = Object.keys(localStorage).find((key) => key.endsWith(':host'))!.split(':')[2]
@@ -935,16 +939,17 @@ describe('la pantalla del duelo', () => {
     const view = within(watcher.container)
     const rowOf = (element: HTMLElement) => element.closest('div')!
 
-    // Vida, reloj y salir: la misma fila, que no se parte.
-    const top = rowOf(view.getByRole('button', { name: 'Salir' }))
-    expect(top).toBe(rowOf(view.getByLabelText(/^Reloj de la ronda/)))
-    expect(top.querySelector('[data-lp]')).not.toBeNull()
+    // Reloj, "Mirando", dar vuelta la mesa, el chat y salir: la misma fila, que no se parte.
+    const top = view.getByLabelText(/^Reloj de la ronda/).parentElement!
+    for (const name of ['Salir', /Ver desde el otro lado/, /Chat de los jugadores/]) expect(top).toContainElement(view.getByRole('button', { name }))
+    expect(top).toContainElement(view.getByText('Mirando'))
     expect(top).not.toHaveClass('flex-wrap')
 
-    // "Mirando" y el turno: otra fila, que tampoco se parte.
-    const watching = rowOf(view.getByText('Mirando'))
+    // El marcador: las dos vidas y el turno con su número (la fase la dice la fila de fases del campo); sin fila de abajo.
+    const watching = view.getByTestId('watch-score')
     expect(watching).not.toBe(top)
-    expect(watching).toHaveTextContent(/Turno de/)
+    expect(watching.querySelectorAll('[data-lp]')).toHaveLength(2)
+    expect(within(watching).getByTestId('duel-turn')).toHaveTextContent(/^Turno de Ana · 1$/)
     expect(watching).not.toHaveClass('flex-wrap')
 
     // "En pausa" y los avisos no se pegan a ninguna de las dos: tienen su propia fila.
@@ -1019,13 +1024,14 @@ describe('la pantalla del duelo', () => {
 
     // El campo: la casilla sale del alto de la pantalla (3D, lo de siempre) y la mano del rival se acomoda con ella.
     const field = within(host.container).getByLabelText('Campo')
-    expect(field.style.getPropertyValue('--cell-m')).toContain('calc((100dvh - 30.9rem) / 5.2)')
+    // Sin la fila de abajo y con el marcador de 44 px: 29,45 rem de lo que no es campo.
+    expect(field.style.getPropertyValue('--cell-m')).toContain('calc((100dvh - 29.45rem) / 5.2)')
 
     // La línea de jugadas: sin lugar en el celular (flota), arriba del campo.
     const floating = () => Array.from(host.container.querySelectorAll<HTMLElement>('[class~="max-sm:-mb-11"]'))
     expect(floating()).toHaveLength(1)
-    expect(floating()[0]).toHaveClass('order-3', 'max-sm:z-20', 'max-sm:pointer-events-none')
-    expect(floating()[0]).not.toHaveClass('max-[1101px]:hidden')
+    expect(floating()[0]).toHaveClass('max-sm:z-20', 'max-sm:pointer-events-none')
+    expect(floating()[0]).not.toHaveClass('hidden')
 
     // Termina el duelo y se cierra la tarjeta: la tira del resultado ocupa ese mismo lugar (la línea se esconde) y flota igual.
     click(guest, 'Rendirme')
@@ -1035,12 +1041,12 @@ describe('la pantalla del duelo', () => {
 
     const rows = floating()
     expect(rows).toHaveLength(2)
-    expect(rows.filter((row) => row.classList.contains('max-[1101px]:hidden'))).toHaveLength(1)
+    expect(rows.filter((row) => row.classList.contains('hidden'))).toHaveLength(1)
     const strip = rows.find((row) => within(row).queryByRole('button', { name: 'Revancha' }))
-    expect(strip).toHaveClass('order-3', 'max-sm:relative', 'max-sm:z-20')
+    expect(strip).toHaveClass('max-sm:relative', 'max-sm:z-20')
   })
 
-  it('la señal de abajo (👍 continuá) está a mano del pulgar; las tuyas salen como un globo junto a tus vidas y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {
+  it('las reacciones (🤔 👍) van en la hoja del chat; las tuyas salen como un globo debajo de tus vidas, en el marcador, y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel()
     openTable(host, guest)
@@ -1049,30 +1055,28 @@ describe('la pantalla del duelo', () => {
     const rivalEmoji = (view: RenderResult) => within(view.container).queryByTestId('rival-emoji')
 
     expect(rivalEmoji(host)).toBeNull()
-    // Abajo, con el pulgar: deshacer y el chat (a la derecha del todo); las dos reacciones van centradas debajo de la mano, en su propia fila. El + (la ficha, los contadores y los juegos) ya no está en la botonera: va en el campo, a la altura del reloj de turnos, entre el Banish del rival y la Zona Extra de monstruos; del otro lado del reloj, el botón de la fase.
-    const toolbar = within(guest.container).getByRole('toolbar')
-    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Chat', 'Pensando…', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
-    // Las dos reacciones van en la misma fila que tus vidas y los botones, en el medio (la columna del centro).
-    const reactions = within(guest.container).getByRole('group', { name: 'Mensajes rápidos' })
-    expect(within(reactions).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Pensando…', 'Continuá'])
-    expect(toolbar).toContainElement(reactions)
-    expect(reactions.parentElement).toHaveClass('col-start-2', 'row-start-1')
+    // Sin botonera abajo: las reacciones no están a la vista, van en la hoja del chat (dos toques). El + va al medio del campo (entre las dos Zonas Extra) y, al lado, el botón de la fase.
+    expect(within(guest.container).queryByRole('toolbar')).not.toBeInTheDocument()
+    expect(within(guest.container).queryByRole('group', { name: 'Mensajes rápidos' })).not.toBeInTheDocument()
     expect(within(guest.container).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
-    const plus = within(guest.container).getByRole('button', { name: 'Ficha' })
-    expect(toolbar).not.toContainElement(plus)
-    // El + va al medio del campo (entre las dos Zonas Extra) y el reloj de turnos donde estaba el +.
-    expect(plus.parentElement).toHaveStyle({ gridArea: 'p2' })
+    expect(within(guest.container).getByRole('button', { name: 'Ficha' }).parentElement).toHaveStyle({ gridArea: 'p2' })
     expect(phaseChip(guest).parentElement).toHaveStyle({ gridArea: 'p3' })
-    expect(within(toolbar).queryByRole('button', { name: 'Moneda, dado y más' })).not.toBeInTheDocument()
+    const sendFromChat = (view: RenderResult, name: string) => {
+      fireEvent.click(within(view.container).getByRole('button', { name: /^Chat/ }))
+      const quick = within(within(screen.getByRole('dialog')).getByRole('group', { name: 'Mensajes rápidos' }))
+      expect(quick.getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Pensando…', 'Continuá'])
+      fireEvent.click(quick.getByRole('button', { name }))
+      fireEvent.keyDown(document, { key: 'Escape' })
+    }
 
     // Beto avisa que continúa: lo suyo se ve como un globo junto a sus vidas; en el celular el de su rival (Ana) sale como un mensaje entrante (el aviso de abajo a la derecha, con su nombre), no en toda la pantalla.
     const custom = vi.spyOn(toast, 'custom').mockReturnValue('t')
     const incoming = () => custom.mock.calls.map(([render]) => (render as (instance: { id: string; visible: boolean }) => ReactElement)({ id: 't', visible: true }).props as { message: string; rival?: string })
 
-    fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))
+    sendFromChat(guest, 'Continuá')
     flush()
     expect(bubble(guest, 'mine')).toHaveTextContent('👍')
-    expect(bubble(guest, 'mine')).toHaveClass('text-display')
+    expect(bubble(guest, 'mine')).toHaveClass('text-display', 'top-full')
     expect(bubble(host, 'theirs')).toBeNull()
     expect(rivalEmoji(host)).toBeNull()
     expect(incoming()).toEqual([expect.objectContaining({ message: '👍', rival: 'Beto' })])
@@ -1088,7 +1092,7 @@ describe('la pantalla del duelo', () => {
       vi.advanceTimersByTime(4000)
     })
     expect(bubble(guest, 'mine')).toBeNull()
-    fireEvent.click(within(host.container).getByRole('button', { name: 'Continuá' }))
+    sendFromChat(host, 'Continuá')
     flush()
     expect(incoming().at(-1)).toMatchObject({ message: '👍', rival: 'Ana' })
     expect(within(guest.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
@@ -1200,16 +1204,14 @@ describe('la pantalla del duelo', () => {
     for (const view of [guest, host]) {
       const { mineLife, theirLife, mineLine, theirLine } = colors(view)
 
-      // El tuyo, violeta: la placa de tus vidas (borde y chapa; el número va blanco) y tu globo, con tu nombre.
-      expect(mineLife).toHaveClass('border-accent/60')
-      expect(mineLife.querySelector('span.uppercase')).toHaveClass('bg-primary', 'text-white')
-      expect(mineLife.querySelector('span.font-extrabold.tabular-nums')).toHaveClass('text-foreground')
+      // El tuyo, violeta: el nombre de tus vidas (el número va blanco) y tu globo, con tu nombre.
+      expect(mineLife.querySelector('span.uppercase')).toHaveClass('text-accent')
+      expect(mineLife.querySelector('span.tabular-nums')).toHaveClass('text-foreground')
       expect(mineLine).toHaveClass('bg-accent/20')
       expect(mineLine.querySelector('span')).toHaveClass('text-accent')
 
       // El del rival, ámbar, también en sus dos lugares.
-      expect(theirLife).toHaveClass('border-info/55')
-      expect(theirLife.querySelector('span.uppercase')).toHaveClass('bg-primary', 'text-white')
+      expect(theirLife.querySelector('span.uppercase')).toHaveClass('text-info-soft')
       expect(theirLine).toHaveClass('bg-info/20')
       expect(theirLine.querySelector('span')).toHaveClass('text-info-soft')
     }
@@ -1235,12 +1237,13 @@ describe('la pantalla del duelo', () => {
 
     const life = (name: string) => within(watcher.container).getByRole('group', { name: new RegExp(`Puntos de vida de ${name}`) })
 
-    expect(life('Ana')).toHaveClass('border-accent/60')
-    expect(life('Beto')).toHaveClass('border-info/55')
+    const nameColor = (name: string) => life(name).querySelector('span.uppercase')
+    expect(nameColor('Ana')).toHaveClass('text-accent')
+    expect(nameColor('Beto')).toHaveClass('text-info-soft')
 
     click(watcher, /Ver desde el otro lado/)
-    expect(life('Ana')).toHaveClass('border-accent/60')
-    expect(life('Beto')).toHaveClass('border-info/55')
+    expect(nameColor('Ana')).toHaveClass('text-accent')
+    expect(nameColor('Beto')).toHaveClass('text-info-soft')
 
     click(watcher, /Chat de los jugadores/)
     const log = within(screen.getByRole('dialog')).getByRole('log')
@@ -1265,13 +1268,20 @@ describe('la pantalla del duelo', () => {
     expect(hasSave('guest')).toBe(false)
   })
 
-  it('sin laterales la barra es la de siempre: el turno y la fase en una línea arriba', () => {
+  it('sin laterales: el turno una vez debajo de los íconos (sin la píldora de la fase) y cada vida en su esquina, plana y tocable (D2)', () => {
     asDesktop()
     const { host, guest } = startDuel()
     openTable(host, guest)
 
     expect(within(host.container).queryByTestId('duel-rail-notices')).not.toBeInTheDocument()
-    expect(within(host.container).getByTestId('duel-phase')).toHaveTextContent('DPDraw Phase')
+    expect(within(host.container).getByTestId('duel-turn')).toHaveTextContent(/^Tu turno · 1$/)
+    expect(within(host.container).queryByText(/Draw Phase/)).not.toBeInTheDocument()
+    expect(within(host.container).queryByTestId('duel-score')).not.toBeInTheDocument()
+    // La del rival, arriba a la derecha del campo; la tuya, abajo a la izquierda (sin Deshacer al lado: está arriba).
+    expect(host.container.querySelector('[data-lp="theirs"]')?.closest('[data-corner="theirs"]')).not.toBeNull()
+    expect(host.container.querySelector('[data-lp="mine"]')?.closest('[data-corner="mine"]')).not.toBeNull()
+    expect(host.container.querySelectorAll('[data-life-score]')).toHaveLength(2)
+    expect(within(host.container).getAllByRole('button', { name: 'Deshacer' })).toHaveLength(1)
   })
 
   it('con laterales (escritorio ancho) la barra se reparte a los costados del campo: vidas y reloj a la izquierda; íconos, turno, tus vidas y deshacer a la derecha', () => {
@@ -1288,7 +1298,8 @@ describe('la pantalla del duelo', () => {
     expect(notices).toHaveClass('col-start-1', 'z-20', 'pointer-events-none', '*:pointer-events-auto')
     expect(view.container.querySelector('[data-lp="theirs"]')?.parentElement).toHaveClass('col-start-1', 'row-start-1')
     expect(within(view.container).getByRole('button', { name: 'Más opciones' }).closest('.col-start-3')).not.toBeNull()
-    expect(within(view.container).getByTestId('duel-phase')).toHaveTextContent(/^DPDraw Phase$/)
+    expect(within(view.container).getByTestId('duel-turn')).toHaveTextContent(/^Tu turno · 1$/)
+    expect(within(view.container).getByTestId('duel-turn').closest('.col-start-3')).not.toBeNull()
     expect(within(view.container).getByRole('button', { name: 'Deshacer' }).closest('.col-start-3')).not.toBeNull()
     expect(view.container.querySelector('[data-lp="mine"]')?.closest('.col-start-3')).not.toBeNull()
   })

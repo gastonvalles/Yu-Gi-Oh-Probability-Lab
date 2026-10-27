@@ -24,10 +24,11 @@ const CELL_FLOOR = '3rem'
  *
  * Los números salen de medir el duelo a 390 × 844 con cuatro tamaños de casilla y de la fórmula de la perspectiva (`--field-perspective`: 900 px, 14°). El campo se centra: con la casilla más chica queda más angosto que la pantalla.
  */
-export function compactDuelFieldStyle(tilted: boolean, { bottomRow = true, short = false }: CompactFieldOptions = {}): CSSProperties {
+export function compactDuelFieldStyle(tilted: boolean, { bottomRow = true, short = false, tallScore = false }: CompactFieldOptions = {}): CSSProperties {
   // Sin la fila de abajo lo que no es campo baja de 30,9 a 29,2 rem (3D) y de 28,1 a 27 (de arriba); en una pantalla baja, además, la mano del rival al 72 % (24 px menos) y la casilla desde 36 px:
   // 28 y 25,8 rem (medido a 360 × 640 y 390 × 664; la perspectiva no es lineal y deja 4 px menos que la cuenta).
-  const rest = bottomRow ? (tilted ? 30.9 : 28.1) : short ? (tilted ? 28 : 25.8) : tilted ? 29.2 : 27
+  // Con el marcador de 44 px (`tallScore`, el duelo por enlace) son 4 px más: 29,45 rem en 3D.
+  const rest = (bottomRow ? (tilted ? 30.9 : 28.1) : short ? (tilted ? 28 : 25.8) : tilted ? 29.2 : 27) + (!bottomRow && tallScore ? 0.25 : 0)
   // La vista de arriba tiene siete filas (no cinco y media): sin la fila de abajo su casilla baja hasta 44 px (32 en una pantalla baja), o a 360 px de ancho la columna scrollearía.
   const floor = bottomRow ? CELL_FLOOR : short ? (tilted ? SHORT_CELL_FLOOR : '2rem') : tilted ? CELL_FLOOR : '2.75rem'
   const cell = `min(${CELL_BY_WIDTH}, max(${floor}, calc((100dvh - ${rest}rem) / ${tilted ? '5.2' : '7'})))`
@@ -53,6 +54,8 @@ export interface CompactFieldOptions {
   bottomRow?: boolean
   /** Pantalla baja (`SHORT_SCREEN_MEDIA_QUERY`): sólo sin la fila de abajo. */
   short?: boolean
+  /** Sin la fila de abajo, el marcador mide 44 px y no 40 (las vidas tocables del duelo por enlace). */
+  tallScore?: boolean
 }
 
 /**
@@ -63,11 +66,11 @@ export interface CompactFieldOptions {
  *   lugar de la mano del rival (`marginTop`, puede ser negativo: esa franja no se ve ni se toca), así el campo se ve a 102 px del grupo como en la vista de arriba. Total: 589 px + 3 casillas (37 rem, con aire).
  * - Vista de arriba: el lugar de la mano del rival queda como estaba; total 539 px + 5 casillas (34 rem).
  * Sin la fila de abajo (`bottomRow: false`, «Jugar solo automático» con el marcador arriba, 2026-10-27) se van el margen del grupo, la barra y sus 16 px (108 px) y el marcador suma 2: 30,5 y 27,5 rem
- * (medido a 768 × 1024, 900 × 700, 1024 × 768, 1100 × 760 y 1100 × 900, sin scroll).
+ * (medido a 768 × 1024, 900 × 700, 1024 × 768, 1100 × 760 y 1100 × 900, sin scroll); con el marcador de 44 px (`tallScore`, el duelo por enlace), 4 px más.
  * El `%` del ancho y del `marginTop` es el ancho de la columna (sin la barra de scroll).
  */
-export function mediumDuelFieldStyle(tilted: boolean, bottomRow = true): CSSProperties {
-  const rest = bottomRow ? (tilted ? 37 : 34) : tilted ? 30.5 : 27.5
+export function mediumDuelFieldStyle(tilted: boolean, bottomRow = true, tallScore = false): CSSProperties {
+  const rest = (bottomRow ? (tilted ? 37 : 34) : tilted ? 30.5 : 27.5) + (!bottomRow && tallScore ? 0.25 : 0)
   // De arriba son cinco filas: sin la fila de abajo la casilla baja hasta 52 px, o a 900 × 700 la columna scrollearía 11 px.
   const floor = !bottomRow && !tilted ? '3.25rem' : '3.5rem'
   const cell = `min(calc((100% - 1.5rem) / 6.3714), max(${floor}, calc((100dvh - ${rest}rem) / ${tilted ? 3 : 5})))`

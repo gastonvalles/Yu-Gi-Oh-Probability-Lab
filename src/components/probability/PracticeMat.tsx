@@ -91,7 +91,7 @@ import { stepTone } from './step-tone'
 import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { PhaseRow, phaseWord } from './PhaseRow'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatSaveContext, MatStepsContext } from './MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel } from './MatFx'
@@ -155,9 +155,7 @@ export interface DuelMatLink {
   attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
   /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
   foreignKnown: Readonly<Record<string, string>>
-  /** Celular: las reacciones rápidas (🤔 y 👍), centradas debajo de la mano. */
-  reactions?: ReactNode
-  /** Los botones propios del duelo (el chat y las señales) y tus puntos de vida: van abajo, en la barra del pulgar, junto a deshacer, el + y las fases. */
+  /** Lo propio del duelo que va abajo, en la fila de tus vidas (los diálogos de la moneda, el dado y los juegos). */
   tools: ReactNode
   /** Lo que el + ofrece además de la ficha y los contadores en un duelo (la moneda, el dado y los juegos): cada uno abre lo suyo. */
   plusItems?: ReadonlyArray<{ label: string; onSelect: () => void }>
@@ -219,6 +217,8 @@ export interface DuelMatLink {
    * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra, lo que falta elegir y el replay sobre el borde de abajo de tu mano, y la fase dice su nombre en su botón.
    */
   scoreInHeader?: boolean
+  /** Con `scoreInHeader`, las vidas del marcador son botones de 44 px (el duelo por enlace: abren la calculadora) y no de 40: lo que no es campo suma 4 px hasta 1100 px. */
+  scoreTall?: boolean
   /** La barra no dice la fase (sin píldora): el botón de la fase del campo lleva su nombre («DP / Draw Phase»; en el celular, «DP / Draw»). Con `scoreInHeader`, siempre. */
   phaseNamed?: boolean
   /** «Jugar solo automático»: tu última activación, mientras se puede deshacer y dura su aviso (`UndoChip`, en la fila de abajo; tocarlo es `onUndo`). */
@@ -2314,7 +2314,7 @@ export function PracticeMat({
     onUndo()
   }
   const undoButton = (
-    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={undoLast}>
+    <IconButton tone={duel?.undoInHeader ? 'flat' : dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={(duel?.undoAvailable === undefined ? session.cursor === 0 : !duel.undoAvailable) || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={undoLast}>
       <Icon name="undo" />
     </IconButton>
   )
@@ -2475,7 +2475,9 @@ export function PracticeMat({
           <MatSaveContext.Provider value={saveLink}>
             {/* Sin la fila de abajo (`bare`): «Pasos y combos» va primero en el ⋯ y el aviso de lo que acabás de activar, en la barra antes de Deshacer (las salidas ya se fueron con la primera jugada). */}
             <MatStepsContext.Provider value={bare ? openSteps : null}>
-              <MatRulesContext.Provider value={rulesPill ?? (bare && undoPlay && !choosing ? <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} className="ml-auto" /> : null)}>{duel?.header}</MatRulesContext.Provider>
+              <MatRulesContext.Provider value={rulesPill ?? (bare && undoPlay && !choosing ? <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} className="ml-auto" /> : null)}>
+                <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>{duel?.header}</MatUndoContext.Provider>
+              </MatRulesContext.Provider>
             </MatStepsContext.Provider>
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
@@ -2515,7 +2517,7 @@ export function PracticeMat({
           )}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortPhone } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare)) } as CSSProperties) : undefined}
+          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortPhone, tallScore: Boolean(duel.scoreTall) } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
         >
           {/* La placa de la arena, debajo de todo el campo (decoración). */}
           <MatPlate />
@@ -2710,6 +2712,8 @@ export function PracticeMat({
           <div className="pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55 h-11" data-mat-float="">
             {replayBar ? <div className="pointer-events-auto absolute inset-x-0 bottom-0 bg-background">{replayBar}</div> : null}
             {status}
+            {/* Lo propio del duelo que iba en la fila de abajo (los diálogos de los juegos, que abre el +): sin la fila, igual se monta. */}
+            {duel?.tools}
           </div>
         ) : (
         <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails && !(duel && replayBar) ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
@@ -2724,20 +2728,21 @@ export function PracticeMat({
                 role={duel.undoInHeader ? undefined : 'toolbar'}
                 aria-label={duel.undoInHeader ? undefined : t('practice.mat.name')}
                 inert={choosing}
-                // Con Deshacer arriba (`undoInHeader`), la fila guarda el alto del botón aunque no lleve nada: lo que se elige se apoya en el mismo lugar y el campo no se corre.
-                className={cx('flex items-center justify-between max-[1101px]:grid max-[1101px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]', duel.undoInHeader && 'min-h-11', rails && 'flex-col! items-end! gap-2', choosing && 'max-[1101px]:opacity-35 min-[1101px]:invisible')}
+                // Con Deshacer arriba (`undoInHeader`), la fila guarda el alto del botón aunque no lleve nada: lo que se elige se apoya en el mismo lugar y el campo no se corre. Con tus vidas (el duelo por
+                // enlace en escritorio), mide lo que ellas (37 px: suben 12 sobre tu mano): a 1101 × 760 la columna no scrollea.
+                className={cx('flex items-center justify-between max-[1101px]:grid max-[1101px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]', duel.undoInHeader && !duel.life && 'min-h-11', rails && 'flex-col! items-end! gap-2', choosing && 'max-[1101px]:opacity-35 min-[1101px]:invisible')}
               >
                 <span className="pointer-events-auto flex items-center max-[1101px]:col-start-3 max-[1101px]:row-start-1 max-[1101px]:justify-self-end">
                   {isDesktop || duel.undoInHeader ? null : undoButton}
                   {duel.tools}
                   {duel.steps ? stepsButton : null}
-                  {isDesktop && duel.dock ? duel.life : null}
+                  {/* Con la botonera, o con Deshacer arriba (el duelo por enlace), tus vidas van a la izquierda: en la esquina opuesta a las del rival. */}
+                  {isDesktop && (duel.dock || duel.undoInHeader) ? duel.life : null}
                 </span>
-                {isDesktop ? null : <span className="pointer-events-auto col-start-2 row-start-1">{duel.reactions}</span>}
                 <span className={cx('pointer-events-auto flex items-center gap-2 max-[1101px]:col-start-1 max-[1101px]:row-start-1', rails && 'flex-col-reverse items-end')}>
                   {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
                   {isDesktop && !duel.undoInHeader ? undoButton : null}
-                  {isDesktop && duel.dock ? duel.dock : duel.life}
+                  {isDesktop && duel.dock ? duel.dock : isDesktop && duel.undoInHeader ? null : duel.life}
                 </span>
               </div>
               )}

@@ -863,7 +863,7 @@ describe('la pantalla del duelo', () => {
     // Sin diálogo: nada tapa la mesa. El aviso se apoya sobre la línea del registro (la misma fila: no suma alto).
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(lane(guest, 'undoAsked')).toHaveTextContent('Ana quiere volver atrás la última jugada')
-    expect(lane(guest, 'undoAsked')!.parentElement).toHaveClass('relative', 'basis-full')
+    expect(lane(guest, 'undoAsked')!.parentElement).toHaveClass('relative', 'max-sm:-mb-11')
     // Quien pidió ve que espera, en el mismo lugar.
     expect(lane(host, 'undoAsking')).toHaveTextContent('Le pedís a Beto volver atrás la última jugada…')
     const ask = within(lane(guest, 'undoAsked')!)

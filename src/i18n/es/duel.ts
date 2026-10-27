@@ -284,6 +284,8 @@ export const duel = {
   'duel.bar.rivalTag': 'Rival',
   'duel.bar.yourTurn': 'Tu turno',
   'duel.bar.theirTurn': 'Turno de {name}',
+  'duel.bar.yourTurnN': 'Tu turno · {turn}',
+  'duel.bar.theirTurnN': 'Turno de {name} · {turn}',
   'duel.bar.lifeOf': 'Puntos de vida de {name}',
   'duel.bar.openCalculator': 'Abrir la calculadora de vidas',
   'duel.bar.handTag': 'Mano {count}',

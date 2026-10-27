@@ -72,7 +72,16 @@ describe('el campo de «Jugar solo automático» en el celular, sin la fila de a
     expect(flat.marginTop).toBe(THEIR_HAND.mobile.room + 20 - 24)
   })
 
-  it('con la fila de abajo (el duelo por enlace) nada cambia, tampoco en una pantalla baja', () => {
+  it('con el marcador de 44 px (las vidas tocables del duelo por enlace) lo que no es campo suma 4 px: 29,45 rem en 3D; con la fila de abajo no cambia nada', () => {
+    const tall = (tilted: boolean, short = false) => (compactDuelFieldStyle(tilted, { bottomRow: false, short, tallScore: true }) as Record<string, string>)['--cell-m']
+
+    expect(tall(true)).toContain('calc((100dvh - 29.45rem) / 5.2)')
+    expect(tall(false)).toContain('calc((100dvh - 27.25rem) / 7)')
+    expect(tall(true, true)).toContain('calc((100dvh - 28.25rem) / 5.2)')
+    expect(compactDuelFieldStyle(true, { tallScore: true })).toEqual(compactDuelFieldStyle(true))
+  })
+
+  it('con la fila de abajo nada cambia, tampoco en una pantalla baja', () => {
     expect(compactDuelFieldStyle(true, { short: true })).toEqual(compactDuelFieldStyle(true))
     expect(compactDuelFieldStyle(false, { bottomRow: true, short: true })).toEqual(compactDuelFieldStyle(false))
   })
@@ -118,5 +127,11 @@ describe('el campo del duelo de 640 a 1100 px (tablet, ventana angosta)', () => 
     // De arriba la casilla baja hasta 52 px: a 900 × 700 la columna no scrollea.
     expect(flat['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.25rem, calc((100dvh - 27.5rem) / 5)))')
     expect(tilted).toMatchObject({ width: 'calc(var(--cell-m) * 6.3714 + 1.5rem)', marginTop: 'calc(9.5rem - 2 * var(--cell-m))' })
+  })
+
+  it('con el marcador de 44 px (el duelo por enlace) suma 4 px: 30,75 rem en 3D (a 1100 × 760 la columna scrolleaba 1 px); con la fila de abajo, nada', () => {
+    expect((mediumDuelFieldStyle(true, false, true) as Record<string, string>)['--cell-m']).toContain('calc((100dvh - 30.75rem) / 3)')
+    expect((mediumDuelFieldStyle(false, false, true) as Record<string, string>)['--cell-m']).toContain('calc((100dvh - 27.75rem) / 5)')
+    expect(mediumDuelFieldStyle(true, true, true)).toEqual(mediumDuelFieldStyle(true))
   })
 })
