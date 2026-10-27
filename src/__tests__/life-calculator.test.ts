@@ -7,6 +7,7 @@ import {
   ROUND_LIMIT_MS,
   createLifeState,
   formatClock,
+  impliedZeros,
   interpretAmount,
   lifeReducer,
   readLifeState,
@@ -59,13 +60,21 @@ describe('calculadora de LP', () => {
     expect(run(odd, { type: 'halve', player: 0, now: 0 }).lp[0]).toBe(2002)
   })
 
-  it('con menos de tres dígitos lo tecleado son centenas', () => {
+  it('con uno o dos dígitos lo tecleado son centenas, con tres se completa el cuarto con un 0 y con cuatro es literal', () => {
     expect(interpretAmount('')).toBe(0)
     expect(interpretAmount('8')).toBe(800)
     expect(interpretAmount('25')).toBe(2500)
-    expect(interpretAmount('050')).toBe(50)
-    expect(interpretAmount('150')).toBe(150)
-    expect(interpretAmount('1500')).toBe(1500)
+    expect(interpretAmount('185')).toBe(1850)
+    expect(interpretAmount('150')).toBe(1500)
+    expect(interpretAmount('050')).toBe(500)
+    expect(interpretAmount('015')).toBe(150)
+    expect(interpretAmount('1850')).toBe(1850)
+    expect(interpretAmount('0150')).toBe(150)
+    expect(interpretAmount('0050')).toBe(50)
+  })
+
+  it('los ceros que se sobreentienden: dos con uno o dos dígitos, uno con tres y ninguno desde cuatro', () => {
+    expect(['', '8', '25', '185', '1850'].map(impliedZeros)).toEqual(['00', '00', '00', '0', ''])
   })
 
   it('la ronda cuenta 50 minutos para atrás y acumula entre pausas', () => {

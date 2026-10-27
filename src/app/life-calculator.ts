@@ -80,13 +80,18 @@ export function formatClock(ms: number): string {
   return hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`
 }
 
-/** Lo que vale lo tecleado: con menos de tres dígitos se entiende en centenas ("8" es 800, "25" es 2500); con tres o más, literal. */
+/** Lo que vale lo tecleado: con uno o dos dígitos se entiende en centenas ("8" es 800, "25" es 2500), con tres se completa el cuarto con un 0 ("185" es 1850, "015" es 150) y con cuatro o más, literal ("0150" es 150). */
 export function interpretAmount(digits: string): number {
   if (digits === '') {
     return 0
   }
 
-  return Number(digits.length < 3 ? `${digits}00` : digits)
+  return Number(digits.length < 3 ? `${digits}00` : digits.length === 3 ? `${digits}0` : digits)
+}
+
+/** Los ceros que se sobreentienden detrás de lo tecleado (los que `interpretAmount` completa): "00" con uno o dos dígitos, "0" con tres. */
+export function impliedZeros(digits: string): string {
+  return digits.length < 3 ? '00' : digits.length === 3 ? '0' : ''
 }
 
 function setLp(state: LifeState, player: Duelist, to: number, now: number): LifeState {
