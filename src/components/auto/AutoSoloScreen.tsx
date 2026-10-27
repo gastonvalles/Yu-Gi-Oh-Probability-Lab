@@ -174,7 +174,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
     : undefined
   const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
   const { nameOf, artOf } = asks
-  // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo).
+  // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo). Con la mesa de la práctica rearmada (`resumed`) la mano ya no es de apertura: sin chips.
   const chips = usePracticeChips(lab, asks.matSession)
   // La hoja para cambiar las handtraps del rival.
   const [choosing, setChoosing] = useState(false)
@@ -301,7 +301,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
           onNewHand={NOTHING}
           duel={link}
           rivalViewer={asks.rivalViewer}
-          {...(chips.needCards ? {} : { footer: chips.footer, footerSummary: chips.summary, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
+          {...(chips.needCards || resumed ? {} : { footer: chips.footer, footerSummary: chips.summary, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
         />
       </LifeHold>
       {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}

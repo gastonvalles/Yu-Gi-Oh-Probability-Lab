@@ -94,18 +94,20 @@ describe('auto-screen · los pasos de la práctica', () => {
     expect(dispatches).toBe(0)
   })
 
+  const entry = (code: number, roles: CardRole[]): CardEntry => ({ id: `card-${code}`, name: CARDS.get(`card-${code}-1`)!.name, copies: 1, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false })
+  const lab = {
+    handSize: 2,
+    derivedMainCards: [entry(100, ['starter']), entry(900, ['enabler']), entry(101, ['brick']), entry(102, ['brick'])],
+    patterns: [createMatcherPattern('Salida básica', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])],
+    hasCompletedClassification: true,
+    reviewPendingPatternCount: 0,
+  }
+  const mainIds = [...CARDS.keys()].filter((id) => id !== 'card-500-1')
+
   it('las salidas de tu mano de apertura (los chips del Lab) están como en la práctica: tocar una ilumina sus cartas y con la primera jugada se van', () => {
-    const entry = (code: number, roles: CardRole[]): CardEntry => ({ id: `card-${code}`, name: CARDS.get(`card-${code}-1`)!.name, copies: 1, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false })
-    const lab = {
-      handSize: 2,
-      derivedMainCards: [entry(100, ['starter']), entry(900, ['enabler']), entry(101, ['brick']), entry(102, ['brick'])],
-      patterns: [createMatcherPattern('Salida básica', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])],
-      hasCompletedClassification: true,
-      reviewPendingPatternCount: 0,
-    }
     const fake = openingSession()
 
-    render(<AutoSoloScreen mainIds={[...CARDS.keys()].filter((id) => id !== 'card-500-1')} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={() => {}} lab={lab} connect={() => fake} />)
+    render(<AutoSoloScreen mainIds={mainIds} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={() => {}} lab={lab} connect={() => fake} />)
     rearm(fake, START, IDLE)
     // En el celular van plegadas en la píldora de la barra de arriba: se abre para verlas.
     fireEvent.click(screen.getByRole('button', { name: 'Salidas y problemas de tu mano: 1 salida' }))
@@ -118,6 +120,16 @@ describe('auto-screen · los pasos de la práctica', () => {
     expect(screen.queryByRole('button', { name: /^Salidas y problemas de tu mano:/ })).toBeNull()
     expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow', 'true')
     expect(dispatches).toBe(0)
+  })
+
+  it('si el automático sigue de la mesa de la práctica (`resume`) la mano ya no es de apertura: ni la píldora ni los chips de salidas', () => {
+    const fake = openingSession()
+
+    render(<AutoSoloScreen mainIds={mainIds} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={() => {}} lab={lab} resume={{ state: createMatState([], [], 0), lp: [8000, 8000] }} connect={() => fake} />)
+    rearm(fake, START, IDLE)
+    expect(handCard('Ash Blossom')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Salidas y problemas de tu mano:/ })).toBeNull()
+    expect(screen.queryByRole('list', { name: 'Salidas' })).toBeNull()
   })
 })
 
