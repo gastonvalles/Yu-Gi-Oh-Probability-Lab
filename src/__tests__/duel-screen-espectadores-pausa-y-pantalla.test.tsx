@@ -1209,7 +1209,7 @@ describe('la pantalla del duelo', () => {
 
       // El del rival, ámbar, también en sus dos lugares.
       expect(theirLife).toHaveClass('border-info/55')
-      expect(theirLife.querySelector('span.uppercase')).toHaveClass('bg-warning-solid', 'text-white')
+      expect(theirLife.querySelector('span.uppercase')).toHaveClass('bg-magenta', 'text-white')
       expect(theirLine).toHaveClass('bg-info/20')
       expect(theirLine.querySelector('span')).toHaveClass('text-info-soft')
     }

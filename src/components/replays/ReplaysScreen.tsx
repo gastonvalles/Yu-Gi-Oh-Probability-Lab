@@ -280,7 +280,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
         {/* La miniatura de YouTube es 4:3 con barras negras arriba y abajo: `object-cover` en 16:9 las recorta. */}
         <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="parallax-media size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
-          <span className="grid size-12 scale-90 place-items-center rounded-full bg-warning-solid text-white opacity-0 transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none">
+          <span className="grid size-12 scale-90 place-items-center rounded-full bg-magenta text-white opacity-0 transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none">
             <Icon name="play" size={22} variant="bold" />
           </span>
         </span>

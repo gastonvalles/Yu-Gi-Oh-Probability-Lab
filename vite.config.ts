@@ -222,7 +222,8 @@ export default defineConfig({
     projects: [
       // Casi todo corre en `vmForks`: cada archivo tiene su propio contexto de V8 y se salta crear un proceso nuevo (y cargar jsdom) por archivo; medido, la suite entera baja de ~107 s a ~80 s
       // y el trabajo de CPU, un tercio (con varios agentes corriendo suites a la vez, es lo que se nota).
-      { extends: true, test: { name: 'vm', pool: 'vmForks', exclude: [...configDefaults.exclude, ...REDEFINE_LOCATION, SLOW] } },
+      // `**/.claude/**`: los worktrees de los agentes viven ahí adentro y, desde el checkout principal, sus pruebas (con su código viejo, y la lenta del fuzz) se colaban en la corrida.
+      { extends: true, test: { name: 'vm', pool: 'vmForks', exclude: [...configDefaults.exclude, '**/.claude/**', ...REDEFINE_LOCATION, SLOW] } },
       // En un contexto de `vm` `window.location` no se puede redefinir (`Cannot redefine property: location`): las pruebas que lo hacen para ver si la pantalla recarga siguen en procesos propios (`forks`).
       // Si una prueba nueva falla con ese error, se suma acá.
       { extends: true, test: { name: 'forks', pool: 'forks', include: REDEFINE_LOCATION } },

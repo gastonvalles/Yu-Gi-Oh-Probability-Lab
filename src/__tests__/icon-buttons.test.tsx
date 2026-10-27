@@ -51,7 +51,7 @@ describe('los íconos blancos se ponen ámbar al pasar el mouse y al seleccionar
     )
 
     const button = screen.getByRole('button', { name: 'reproducir' })
-    expect(button).toHaveClass('rounded-full', 'bg-warning-solid', 'text-white')
+    expect(button).toHaveClass('rounded-full', 'bg-magenta', 'text-white')
     expect(button).not.toHaveClass('bg-primary')
   })
 

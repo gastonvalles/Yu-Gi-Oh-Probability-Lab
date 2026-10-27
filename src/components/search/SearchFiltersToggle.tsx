@@ -33,7 +33,7 @@ export function SearchFiltersToggle({ open, activeCount, onToggle, className }: 
       <Icon name="sliders" />
       <span className="sr-only">{t('search.filters.title')}</span>
       {activeCount > 0 ? (
-        <span className="absolute -right-1.5 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-warning-solid px-1 text-micro font-bold text-white">{formatInteger(activeCount)}</span>
+        <span className="absolute -right-1.5 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-magenta px-1 text-micro font-bold text-white">{formatInteger(activeCount)}</span>
       ) : null}
     </button>
   )

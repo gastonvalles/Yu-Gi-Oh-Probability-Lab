@@ -1655,7 +1655,7 @@
   --color-success-soft: var(--success-soft);
   --color-success-solid: var(--success-solid);
   --color-warning-soft: var(--warning-soft);
-  --color-warning-solid: var(--warning-solid);
+  --color-magenta: var(--magenta);
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
   /* El texto (y el pulgar del interruptor) sobre un relleno ámbar: el índigo del fondo (12,3:1; el blanco sobre ámbar no se lee, 1,5:1). */
@@ -1701,8 +1701,8 @@
     --lavender: #2b1745;
     /* Lavanda al pasar el mouse: más clara que la base (el hover siempre aclara). */
     --lavender-hover: #352052;
-    --info: #f7cb15;
-    --info-rgb: 247 203 21;
+    --info: #ffc100;
+    --info-rgb: 255 193 0;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
     --success-soft: #6bf55c;
     --warning-soft: #ffd84d;
@@ -1722,10 +1722,10 @@
     /* El verde de un botón lleno con texto blanco: el verde de la paleta con 45 % de negro (el blanco sobre el verde claro no se lee). */
     --success-solid: color-mix(in srgb, #1aef06 55%, black);
     /* Ojo / a medio hacer: ámbar de la paleta (el violeta es de lo tuyo: acción principal y selección). */
-    --warning: #f7cb15;
-    --warning-rgb: 247 203 21;
-    /* El ámbar de un relleno con texto blanco (lo elegido, lo del rival, los contadores): el ámbar con 45 % de negro, como `--success-solid` (blanco 4,8:1; sobre el claro, 1,6:1). */
-    --warning-solid: color-mix(in srgb, #f7cb15 55%, black);
+    --warning: #ffc100;
+    --warning-rgb: 255 193 0;
+    /* El magenta de un relleno con texto blanco (lo elegido, lo del rival, los contadores, el play, el B de Comparar): blanco 8,4:1; el ámbar no lleva texto blanco (1,6:1). */
+    --magenta: #9a0056;
     /* Lo que podés hacer ahora con una carta de la mesa (`can` de `app/card-glow.ts`): un celeste casi blanco, con el peso de los otros brillos; el ámbar queda para lo que se activa o se resuelve. */
     --playable-rgb: 168 236 255;
     --danger: #da0000;
@@ -1734,7 +1734,7 @@
     /* Navegación: índigo con el destino activo en ámbar (el ámbar es de la navegación, del rival, de la build B, de los hipervínculos y del «ojo»: `warning`). */
     --nav: #400065;
     --nav-raised: #5a2a80;
-    --nav-active: #f7cb15;
+    --nav-active: #ffc100;
 
     --text-main: var(--foreground);
     --text-muted: #b4a2d4;

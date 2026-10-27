@@ -491,7 +491,7 @@ function LongTextSample() {
     <Specimen
       title="Textos largos · es y en"
       layout="column"
-      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, ámbar hondo con texto blanco (<Tag>warning-solid</Tag>, 4,8:1).</>}
+      note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, magenta con texto blanco (<Tag>magenta</Tag>, 8,4:1).</>}
     >
       <div className="grid w-[min(22rem,100%)] gap-3">
         <RespondBand title="Respond to the chain" link={2} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} mode={{ value: mode, onChange: setMode }} />
@@ -639,7 +639,7 @@ function LifePlateSample() {
   const [mine, setMine] = useState(8000)
 
   return (
-    <Specimen title="LifeTile · la placa con barra" layout="column" className="col-span-full" note={<>Cada jugador de su lado: la chapa del dueño rellena con el texto blanco (violeta, <Tag>primary</Tag>; ámbar hondo, <Tag>warning-solid</Tag>), las cartas de la mano, el número blanco (33 px en escritorio, 24 en el celular) y la barra de 8000 en su color: la excepción escrita a «los porcentajes son anillos», sólo para las vidas (<Tag>role="meter"</Tag>). Con la mitad o menos el corazón pasa a ámbar; con un cuarto, corazón y barra en rojo; en 0, el número también. Relieve tonal (<Tag>life-plate</Tag>). Archivo: <Tag>duel/DuelBar.tsx</Tag></>}>
+    <Specimen title="LifeTile · la placa con barra" layout="column" className="col-span-full" note={<>Cada jugador de su lado: la chapa del dueño rellena con el texto blanco (violeta, <Tag>primary</Tag>; magenta, <Tag>magenta</Tag>), las cartas de la mano, el número blanco (33 px en escritorio, 24 en el celular) y la barra de 8000 en su color: la excepción escrita a «los porcentajes son anillos», sólo para las vidas (<Tag>role="meter"</Tag>). Con la mitad o menos el corazón pasa a ámbar; con un cuarto, corazón y barra en rojo; en 0, el número también. Relieve tonal (<Tag>life-plate</Tag>). Archivo: <Tag>duel/DuelBar.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => setMine((life) => Math.max(0, life - 1000))}>
           Recibir 1000
