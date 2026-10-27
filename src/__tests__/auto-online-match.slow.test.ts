@@ -86,6 +86,8 @@ describe.skipIf(!hasCoreData)('un Match con siding por enlace, con el núcleo re
     hostLink.observe(host.getSnapshot())
     guestLink.observe(guest.getSnapshot())
     expect(await pump(room, () => hostLink.getSnapshot().phase === 'ready' && guestLink.getSnapshot().phase === 'ready')).toBe(true)
+    // Los dos llevan el reloj de turnos con quien decide (`turnClock` en el deck y en la revisión).
+    expect([hostLink.getSnapshot().clock, guestLink.getSnapshot().clock]).toEqual([true, true])
     host.setReady(true)
     guest.setReady(true)
     room.flush()

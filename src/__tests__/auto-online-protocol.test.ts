@@ -45,8 +45,8 @@ const GOOD: AutoMessage[] = [
   { t: 'autoUndo', step: 'no', why: 'none' },
   { t: 'autoUndo', step: 'cancel' },
   // La fase que se ve en cada mesa, sin número y sólo entre dos que la anuncian (`phase` en el deck y en la revisión).
-  { t: 'autoDeck', v, main: [[1, 1]], extra: [], undo: true, phase: true },
-  { t: 'autoCheck', v, ok: true, bad: [], theirsBad: 0, undo: true, phase: true },
+  { t: 'autoDeck', v, main: [[1, 1]], extra: [], undo: true, phase: true, turnClock: true },
+  { t: 'autoCheck', v, ok: true, bad: [], theirsBad: 0, undo: true, phase: true, turnClock: true },
   { t: 'autoPhase', turn: 3, phase: 'draw' },
   { t: 'autoPhase', turn: 4, phase: 'main1', busy: true },
   // Seguir en automático un duelo que iba a mano: el saludo, el pedido del invitado con su mesa, el acuerdo y el no con su porqué; sin número (no hay flujo del núcleo).

@@ -274,9 +274,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [sided, deckName, mainIds, extraIds, sideIds, cardsById])
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
-  // Con reglas automáticas, sin reloj de turnos (el Match y su siding son los de la sala; el deck nuevo le llega al enlace del núcleo).
   const settings = useMemo(
-    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true, turnMin: 0, turnBonusMin: 0 } : {}) }),
+    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true } : {}) }),
     [handSize, options],
   )
   const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })

@@ -73,7 +73,7 @@ afterEach(() => {
 })
 
 describe('una sala con reglas automáticas', () => {
-  it('prendido el modo automático, la hoja deja elegir Match y siding pero deja fijo el reloj de turnos (lo elegido vuelve al apagarlo) y «Abrir duelo» abre la sala privada que se eligió, que lo dice', () => {
+  it('prendido el modo automático, la hoja deja elegir todo (Match, siding y reloj de turnos) y «Abrir duelo» abre la sala privada que se eligió, que lo dice', () => {
     withWorker()
     const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms, autoDuel: FakeAutoDuel })} />)
@@ -90,32 +90,26 @@ describe('una sala con reglas automáticas', () => {
     // Es el mismo interruptor que el del lobby: prende el modo automático entero.
     expect(toggle).toBeChecked()
     expect(autoPrefs().duel).toBe(true)
-    expect(sheet.getByText('Con reglas automáticas: sin reloj de turnos ni espectadores todavía.')).toBeInTheDocument()
-    // Match (y su siding) se sigue eligiendo; Solo también (ahí rige el simulador de handtraps).
+    expect(sheet.getByText('Con reglas automáticas: sin espectadores todavía.')).toBeInTheDocument()
+    // Match, su siding y el reloj de turnos se siguen eligiendo; Solo también (ahí rige el simulador de handtraps).
     expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
     expect(sheet.getByRole('switch', { name: 'Sidedeck' })).toBeEnabled()
     expect(sheet.getByRole('radio', { name: 'Solo' })).toBeEnabled()
-    expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeDisabled()
-    expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).not.toBeChecked()
+    expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeEnabled()
+    expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeChecked()
     // Quién entra se elige como siempre.
     expect(sheet.getByRole('radio', { name: 'Pública' })).toBeChecked()
     expect(sheet.getByRole('radio', { name: 'Privada' })).toBeEnabled()
 
-    fireEvent.click(toggle)
-    expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
-    expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeChecked()
-
-    fireEvent.click(toggle)
     fireEvent.click(sheet.getByRole('radio', { name: 'Privada' }))
     fireEvent.click(sheet.getByRole('button', { name: 'Abrir duelo' }))
     const room = extractRoomCode(window.location.hash)!
 
     expect(optionsOf(room)).toMatchObject({ auto: true, isPublic: false })
     expect(rooms.register).not.toHaveBeenCalled()
-    expect(lastProps('host').snapshot.settings).toMatchObject({ auto: true, match: true, siding: false, turnMin: 0, turnBonusMin: 0 })
+    expect(lastProps('host').snapshot.settings).toMatchObject({ auto: true, match: true, siding: false, turnMin: 7, turnBonusMin: 3 })
     expect(rule(host, 'Reglas')).toHaveTextContent('Automáticas (beta)')
     expect(rule(host, 'Tipo')).toHaveTextContent('Match')
-    expect(rule(host, 'Tiempo por turno')).toHaveTextContent('Sin límite')
     expect(rule(host, 'Quién puede entrar')).toHaveTextContent('Privada')
     expect(rule(host, 'Quién mira')).toHaveTextContent('No disponible')
     expect(within(host.container).queryByRole('button', { name: 'Copiar enlace para mirar' })).toBeNull()

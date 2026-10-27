@@ -72,6 +72,8 @@ export interface OnlineSnapshot {
   undo?: UndoView
   /** Lo último que el rival dijo de su mesa (`autoPhase`; turno 0: nada todavía en este duelo); null si no lo avisa (uno de antes). */
   rivalPhase?: PhaseView | null
+  /** El otro lleva el reloj de turnos con quien decide (`turnClock` en su `autoDeck` o `autoCheck`): con uno de antes, la sala va sin reloj por turno. */
+  clock?: boolean
 }
 
 /** Lo que se ve de una mesa (`autoPhase`): la fase que muestra en el turno `turn` del núcleo y si está contestando una pregunta del núcleo que no es su turno libre. */
@@ -503,7 +505,7 @@ function snapshotStore() {
       const old = snapshot.problems
       const problems = next.problems.mine === old.mine && next.problems.theirs === old.theirs && next.problems.reason === old.reason ? old : next.problems
 
-      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped && next.undo === snapshot.undo && next.rivalPhase === snapshot.rivalPhase) return
+      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped && next.undo === snapshot.undo && next.rivalPhase === snapshot.rivalPhase && next.clock === snapshot.clock) return
       snapshot = { ...next, problems }
       listeners.forEach((listener) => listener())
     },
@@ -531,6 +533,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let phasePeer = false
   let rivalPhase: PhaseView | null = null
   let myPhase: PhaseView | null = null
+  let clockPeer = false
   // El deck del invitado y si se puede jugar con los dos (`bad`: los del invitado sin reglas).
   let guestDeck: DeckList | null = null
   let check: (Check & { bad: number[] }) | null = null
@@ -601,6 +604,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       manualDropped: request.dropped,
       undo: undo.view,
       rivalPhase: phasePeer ? (rivalPhase ?? NO_PHASE) : null,
+      clock: clockPeer,
     })
   const request = manualRequest(true, post, refresh, cut)
   const undo = undoRequest(true, post, refresh, runUndo)
@@ -648,7 +652,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
   function sendCheck() {
     if (lost) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: false, bad: [], theirsBad: 0, reason: 'lost' })
-    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true, phase: true })
+    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true, phase: true, turnClock: true })
   }
 
   function stopWait() {
@@ -767,6 +771,10 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     const deck = { main: message.main, extra: message.extra }
 
     undo.peer(message.undo === true)
+    if (clockPeer !== (message.turnClock === true)) {
+      clockPeer = message.turnClock === true
+      refresh()
+    }
     // Recién sé que la sabe leer (recargué y le avisé antes de que llegara su deck): se la digo ahora.
     const knew = phasePeer
 
@@ -1247,6 +1255,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   let rivalPhase: PhaseView | null = null
   let myPhase: PhaseView | null = null
   let myDeck = options.deck
+  let clockPeer = false
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -1267,6 +1276,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       manualDropped: request.dropped,
       undo: undo.view,
       rivalPhase: phasePeer ? (rivalPhase ?? NO_PHASE) : null,
+      clock: clockPeer,
     })
   const send = (message: AutoMessage) => transport.send(encodeAutoMessage(message))
   const request = manualRequest(false, send, refresh)
@@ -1278,7 +1288,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   const sendDeck = () => {
     const rows = (list: DeckList['main'] = []) => list.map(([code, copies]): [number, number] => [code, copies])
 
-    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(myDeck.main), extra: rows(myDeck.extra), undo: true, phase: true })
+    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(myDeck.main), extra: rows(myDeck.extra), undo: true, phase: true, turnClock: true })
   }
 
   /** Al entrar o volver: mi deck (lo revisa el anfitrión) y el duelo, si hay uno. */
@@ -1409,6 +1419,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
         if (message.reason === 'lost') lost = true
         else check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null }
         undo.peer(message.undo === true)
+        clockPeer = message.turnClock === true
         {
           const knew = phasePeer
 

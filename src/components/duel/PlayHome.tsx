@@ -291,7 +291,6 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
         canOpen={deckReady}
         canTrain={trainReady}
         autoRooms={autoRooms}
-        auto={autoRoom}
         onClose={() => setRulesOpen(false)}
         onTrain={() => {
           setRulesOpen(false)
@@ -325,8 +324,6 @@ interface RulesSheetProps {
   canTrain: boolean
   /** Si se pueden abrir salas con reglas automáticas (y si no, por qué): la fila de su interruptor. */
   autoRooms: AutoRooms
-  /** El modo automático está prendido y se puede: la sala que se abre es de un solo duelo y sin reloj de turnos. */
-  auto: boolean
   onClose: () => void
   onSave: (prefs: DuelPrefs) => void
   onOpen: (prefs: DuelPrefs, isPublic: boolean) => void
@@ -352,7 +349,7 @@ function RuleField({ label, hint, className, children }: { label: string; hint?:
  * (tipo y tiempo, formato y quién entra) donde hay lugar y en una columna en el celular; cada uno con una sola línea de ayuda, y sólo cuando aclara algo. El tiempo es de 50 minutos o ninguno;
  * en Genesys aparece el tope de puntos del deck.
  */
-function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, auto, onClose, onSave, onOpen, onTrain }: RulesSheetProps) {
+function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, onClose, onSave, onOpen, onTrain }: RulesSheetProps) {
   const [draft, setDraft] = useState<DuelPrefs>(prefs)
   const [isPublic, setIsPublic] = useState(true)
   const [solo, setSolo] = useState(false)
@@ -367,11 +364,8 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
   }, [isOpen, prefs])
 
   const genesys = draft.format === 'genesys'
-  // Con reglas automáticas la sala no tiene reloj de turnos: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se muestran así: lo elegido antes
-  // vuelve al apagarlo. El tipo, quién entra, el tiempo y el formato se eligen igual que siempre.
-  const locked = auto && !solo
   const match = draft.match && !solo
-  const turnOn = draft.turnLimit && !locked
+  const turnOn = draft.turnLimit
   const mode: RoomMode = solo ? 'solo' : match ? 'match' : 'single'
 
   return (
@@ -443,7 +437,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
                 <span className="text-body font-semibold text-foreground">{t('duel.create.turn')}</span>
                 <span className="text-micro text-soft">{t('duel.create.turnHint')}</span>
               </span>
-              <Switch checked={turnOn} disabled={locked} onChange={(turnLimit) => set({ turnLimit })} label={t('duel.create.turn')} />
+              <Switch checked={turnOn} onChange={(turnLimit) => set({ turnLimit })} label={t('duel.create.turn')} />
             </div>
             {turnOn ? (
               <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">

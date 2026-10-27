@@ -1275,6 +1275,9 @@ describe('la fase que se ve en cada mesa', () => {
     // Los dos la saben leer y nadie dijo nada todavía: turno 0.
     expect(game.hostLink.getSnapshot().rivalPhase).toEqual({ turn: 0, phase: 'draw', busy: false })
     expect(game.guestLink.getSnapshot().rivalPhase).toEqual({ turn: 0, phase: 'draw', busy: false })
+    // Y los dos llevan el reloj de turnos con quien decide.
+    expect(game.hostLink.getSnapshot().clock).toBe(true)
+    expect(game.guestLink.getSnapshot().clock).toBe(true)
     game.hostLink.phase!({ turn: 1, phase: 'standby', busy: false })
     game.guestLink.phase!({ turn: 1, phase: 'draw', busy: true })
     await settle(game.room)
@@ -1317,6 +1320,8 @@ describe('la fase que se ve en cada mesa', () => {
     game.room.inject(game.hostEnd, encodeAutoMessage({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: GUEST_DECK.main.map(([code, copies]) => [code, copies]), extra: [] }))
     await settle(game.room)
     expect(game.hostLink.getSnapshot().rivalPhase).toBeNull()
+    // Tampoco el reloj de turnos: la sala va sin reloj por turno.
+    expect(game.hostLink.getSnapshot().clock).toBe(false)
     game.hostLink.phase!({ turn: 1, phase: 'main1', busy: false })
     await settle(game.room)
     expect(phases(game.room)).toEqual([])
@@ -1324,6 +1329,7 @@ describe('la fase que se ve en cada mesa', () => {
     game.room.inject(game.guestEnd, encodeAutoMessage({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: true, bad: [], theirsBad: 0, s: lastSeq(game.room) + 1 }))
     await settle(game.room)
     expect(game.guestLink.getSnapshot().rivalPhase).toBeNull()
+    expect(game.guestLink.getSnapshot().clock).toBe(false)
     game.guestLink.phase!({ turn: 1, phase: 'draw', busy: false })
     await settle(game.room)
     expect(phases(game.room)).toEqual([])

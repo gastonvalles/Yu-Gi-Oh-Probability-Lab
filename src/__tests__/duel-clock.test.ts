@@ -189,6 +189,63 @@ describe('quien se queda sin tiempo pierde el duelo', () => {
   })
 })
 
+describe('el reloj de turnos en una sala con reglas automáticas (la mesa la cuenta el núcleo)', () => {
+  /** Ana (anfitriona) y Beto en una sala automática con reloj por turno: sin mesa manual, el reloj sólo anda con lo que dice la mesa del núcleo (`setAutoClock`). */
+  function autoRoom() {
+    const room = createMemoryRoom()
+    const time = { t: 1_000_000 }
+    const now = () => time.t
+    const host = createDuel(room.join(), { role: 'host', name: 'Ana', sid: 'h', settings: { ...DEFAULT_SETTINGS, auto: true }, now })
+    const guest = createDuel(room.join(), { role: 'guest', name: 'Beto', sid: 'g', now })
+    const pass = (ms: number) => {
+      time.t += ms
+      vi.advanceTimersByTime(ms)
+      room.flush()
+    }
+
+    room.flush()
+    return { room, host, guest, pass }
+  }
+
+  it('corre la reserva de quien decide: en tu turno la tuya, en el del rival sólo mientras el núcleo te pregunta; al pasar el turno se suman los minutos y quien se queda sin tiempo pierde', () => {
+    vi.useFakeTimers()
+    const { host, guest, pass } = autoRoom()
+
+    // Sin lo que dice la mesa del núcleo (un rival de antes, o la mesa cargando) no hay reloj.
+    pass(60_000)
+    expect(host.getSnapshot().turnClock.running).toBeNull()
+
+    // Turno 1 de Ana: corre el suyo, en los dos lados.
+    host.setAutoClock({ turn: 1, turnPlayer: 0, deciding: 0 })
+    guest.setAutoClock({ turn: 1, turnPlayer: 0, deciding: 0 })
+    pass(30_000)
+    expect(host.getSnapshot().turnClock.running).toBe(0)
+    expect(guest.getSnapshot().turnClock.running).toBe(0)
+    // El núcleo le pregunta a Beto (una cadena) en el turno de Ana: corre el de Beto, y Ana dice lo que le queda.
+    host.setAutoClock({ turn: 1, turnPlayer: 0, deciding: 1 })
+    guest.setAutoClock({ turn: 1, turnPlayer: 0, deciding: 1 })
+    pass(10_000)
+    const left = (duel: Duel, who: 0 | 1) => turnTimeLeft(duel.getSnapshot().turnClock, who, 1_000_000 + 100_000)
+
+    expect(left(guest, 0)).toBe(TURN_BANK_MS - 30_000)
+    expect(left(host, 1)).toBe(TURN_BANK_MS - 10_000)
+    // Turno 2, de Beto: se le suman los 3 minutos y corre el suyo.
+    host.setAutoClock({ turn: 2, turnPlayer: 1, deciding: 1 })
+    guest.setAutoClock({ turn: 2, turnPlayer: 1, deciding: 1 })
+    pass(0)
+    expect(turnTimeLeft(guest.getSnapshot().turnClock, 1, 1_000_000 + 100_000)).toBe(TURN_BANK_MS - 10_000 + TURN_BONUS_MS)
+    expect(guest.getSnapshot().turnClock.running).toBe(1)
+    // Beto se queda sin tiempo: su dispositivo se rinde por él, por tiempo.
+    pass(TURN_BANK_MS + TURN_BONUS_MS)
+    expect(host.getSnapshot()).toMatchObject({ conceded: 1, timeUp: true })
+    expect(host.getSnapshot().turnClock.running).toBeNull()
+    // La revancha (la mesa se desmonta): sin reloj hasta la mesa nueva, que empieza de cero.
+    host.setAutoClock(null)
+    expect(host.getSnapshot().turnClock).toMatchObject({ running: null, banks: [TURN_BANK_MS, TURN_BANK_MS] })
+    vi.useRealTimers()
+  })
+})
+
 describe('el límite de tiempo por turno se activa, se apaga y se personaliza al crear la sala', () => {
   it('apagado (0 minutos) no hay reloj: no corre, no se avisa y nadie pierde por tiempo', () => {
     vi.useFakeTimers()

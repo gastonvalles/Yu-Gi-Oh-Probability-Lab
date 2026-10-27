@@ -429,6 +429,26 @@ describe('auto-screen-online · la mesa', () => {
     expect(dispatches).toBe(0)
   })
 
+  it('el reloj de turnos: con un rival que lo lleva, corre el de quien decide (el turno o la pregunta del núcleo) y la mesa lo muestra; con uno de antes, no hay', () => {
+    const { start, duels, link, flush } = setup()
+    const session = start()
+    const dial = () => screen.queryByTestId('turn-dial')
+
+    // Un rival de antes (sin `turnClock`): nada.
+    expect(dial()).toBeNull()
+    expect(duels.host.getSnapshot().turnClock.running).toBeNull()
+    core(() => link.set({ clock: true }))
+    flush()
+    // Turno 1 de Ana, sin preguntas: el suyo.
+    expect(dial()).toHaveAttribute('data-owner', '0')
+    expect(duels.host.getSnapshot().turnClock.running).toBe(0)
+    // El núcleo le pregunta a Beto: el de Beto.
+    core(() => session.set({ status: 'waiting', ask: null, remoteAsk: { askId: 9, seat: 1, ask: { ...IDLE, player: 1 } } }))
+    flush()
+    expect(dial()).toHaveAttribute('data-owner', '1')
+    expect(duels.host.getSnapshot().turnClock.running).toBe(1)
+  })
+
   it('un Match: cada duelo que termina el núcleo suma al marcador de la sala, «Siguiente duelo» lleva al que sigue (elige quien perdió) y el segundo que gana uno cierra el Match', () => {
     const { start, duels, flush, link } = setup('host', { match: true })
     const first = start()
