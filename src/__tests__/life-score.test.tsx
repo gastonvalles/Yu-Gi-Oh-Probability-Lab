@@ -3,6 +3,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { LifeHold } from '../app/life-effects'
 import { LifeScore } from '../components/duel/LifeScore'
 
 // Las vidas del marcador de «Jugar solo automático» en el celular (Gastón, 2026-10-27, opción A): planas, sin caja, chapa, barra ni cartas de la mano; el nombre chico en el color del dueño y el número grande.
@@ -10,6 +11,15 @@ describe('las vidas del marcador', () => {
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
+  })
+
+  it('esperan al golpe como la placa: mientras `LifeHold` retiene muestran las de antes y en cuanto se suelta, las de verdad', () => {
+    const view = render(<LifeHold value={false}><LifeScore name="Rival" label="Rival" life={8000} /></LifeHold>)
+
+    view.rerender(<LifeHold value><LifeScore name="Rival" label="Rival" life={7000} /></LifeHold>)
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toBeInTheDocument()
+    view.rerender(<LifeHold value={false}><LifeScore name="Rival" label="Rival" life={7000} /></LifeHold>)
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000' })).toBeInTheDocument()
   })
 
   it('dicen de quién son y cuántas vidas tiene, y el lector de pantalla oye lo mismo en una frase', () => {

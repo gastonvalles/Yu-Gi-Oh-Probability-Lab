@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 
-import { DELTA_MS, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
+import { DELTA_MS, LifeHold, useHeldValue, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { sacudir } from '../probability/AttackFx'
 import { cx } from '../ui/cx'
@@ -14,8 +14,10 @@ import { PLAYER_COLOR, type PlayerSide } from './player-color'
  * - Accesibilidad: `role="group"` con «Puntos de vida de …: N»; no se toca (en el automático las vidas las lleva el núcleo).
  * - Usos: el marcador de `AutoBar` en el celular. Las placas (`LifeTile`) siguen en escritorio y en los duelos por enlace.
  */
-export function LifeScore({ name, label, life, mine = false, color, align = mine ? 'start' : 'end' }: { name: string; /** Lo que dice arriba, si no es el nombre (tus vidas: «Vos»). */ label?: string; life: number; mine?: boolean; color?: PlayerSide; align?: 'start' | 'end' }) {
+export function LifeScore({ name, label, life: real, mine = false, color, align = mine ? 'start' : 'end' }: { name: string; /** Lo que dice arriba, si no es el nombre (tus vidas: «Vos»). */ label?: string; life: number; mine?: boolean; color?: PlayerSide; align?: 'start' | 'end' }) {
   const side = mine ? 'mine' : 'theirs'
+  // Las que se ven: las de verdad, salvo mientras un ataque todavía no golpeó (`LifeHold`: igual que la placa).
+  const life = useHeldValue(real, useContext(LifeHold))
   const shown = useLifeNumber(life)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
