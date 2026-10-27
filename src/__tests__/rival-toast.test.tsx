@@ -27,10 +27,12 @@ describe('el mensaje del rival como aviso', () => {
     expect(screen.getByRole('status')).toHaveClass('text-body')
   })
 
-  it('una reacción (sólo emojis) se ve todavía más grande', () => {
+  it('una reacción (sólo emojis) es el emoji y el nombre en una sola fila baja, para no tapar el campo', () => {
     render(<AppToast id="a" visible message="👍" tone="info" rival="Beto" />)
 
-    expect(screen.getByText('👍')).toHaveClass('text-display')
+    expect(screen.getByText('👍')).toHaveClass('text-stat')
+    expect(screen.getByRole('status')).toHaveClass('py-1.5')
+    expect(screen.getByText('Beto')).toHaveClass('text-info-soft')
   })
 
   it('sale en la esquina de abajo a la derecha', () => {

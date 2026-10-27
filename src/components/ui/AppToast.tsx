@@ -31,10 +31,13 @@ const TOAST_BASE =
   'flex max-w-[min(26rem,calc(100vw-2rem))] cursor-grab touch-pan-y select-none items-center gap-3 rounded-card border border-tint/10 bg-surface-raised py-2.5 pl-3 pr-4 text-body font-medium text-foreground shadow-overlay transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
 
 /** Un mensaje del rival: más grande y con su color (el celeste del rival), el mismo de sus vidas y de su globo en el chat. */
-const TOAST_RIVAL =
-  'flex max-w-[min(19rem,calc(100vw-1.5rem))] cursor-grab touch-pan-y select-none items-center gap-3.5 rounded-card border-2 border-info/70 bg-surface-raised py-3 pl-4 pr-5 text-lead font-semibold text-foreground shadow-[0_0_30px_rgb(var(--info-rgb)/0.45),0_14px_30px_rgba(0,0,0,0.5)] transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
+const RIVAL_FRAME =
+  'flex max-w-[min(19rem,calc(100vw-1.5rem))] cursor-grab touch-pan-y select-none items-center rounded-card border-2 border-info/70 bg-surface-raised text-lead font-semibold text-foreground shadow-[0_0_30px_rgb(var(--info-rgb)/0.45),0_14px_30px_rgba(0,0,0,0.5)] transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
+const TOAST_RIVAL = cx(RIVAL_FRAME, 'gap-3.5 py-3 pl-4 pr-5')
+/** Una reacción (sólo emojis): el emoji y el nombre en una sola fila baja (~54 px): en el celular el aviso cae sobre la fila de arriba del campo del rival y uno de dos renglones (~101 px) le tapaba la esquina. */
+const TOAST_REACTION = cx(RIVAL_FRAME, 'gap-2.5 py-1.5 pl-3 pr-4')
 
-/** Un mensaje que es sólo emojis (una reacción) se ve todavía más grande. */
+/** Un mensaje que es sólo emojis (una reacción). */
 const onlyEmoji = (text: string) => /^[\p{Extended_Pictographic}\s]+$/u.test(text)
 
 interface AppToastProps {
@@ -93,7 +96,7 @@ export function AppToast({ id, visible, message, tone, rival, action }: AppToast
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={cx(rival === undefined ? TOAST_BASE : TOAST_RIVAL, inRail && 'max-w-full!')}
+      className={cx(rival === undefined ? TOAST_BASE : onlyEmoji(message) ? TOAST_REACTION : TOAST_RIVAL, inRail && 'max-w-full!')}
       data-visible={visible && !dismissed ? 'true' : 'false'}
       data-dragging={startRef.current !== null ? 'true' : 'false'}
       style={{ transform: `translateX(${gone}px)`, opacity: dismissed ? 0 : Math.max(0.25, 1 - Math.abs(offset) / 220) }}
@@ -122,12 +125,17 @@ export function AppToast({ id, visible, message, tone, rival, action }: AppToast
             </Button>
           ) : null}
         </>
+      ) : onlyEmoji(message) ? (
+        <>
+          <span className="text-stat leading-none">{message}</span>
+          <span className={cx('truncate text-micro font-extrabold uppercase tracking-[0.08em]', PLAYER_COLOR.theirs.text)}>{rival}</span>
+        </>
       ) : (
         <>
           <Icon name="chat" size={26} strokeWidth={2} className={cx('shrink-0', PLAYER_COLOR.theirs.text)} />
           <span className="grid min-w-0 gap-0.5">
             <span className={cx('truncate text-micro font-extrabold uppercase tracking-[0.08em]', PLAYER_COLOR.theirs.text)}>{rival}</span>
-            <span className={cx('break-words', onlyEmoji(message) ? 'text-display leading-tight' : 'leading-snug')}>{message}</span>
+            <span className={cx('break-words', 'leading-snug')}>{message}</span>
           </span>
         </>
       )}
