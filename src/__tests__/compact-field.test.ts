@@ -109,4 +109,14 @@ describe('el campo del duelo de 640 a 1100 px (tablet, ventana angosta)', () => 
     expect(mediumColumn(true, 760)).toEqual({ cell: 56, total: 757 })
     expect(mediumColumn(false, 900).total).toBeLessThanOrEqual(900)
   })
+
+  it('sin la fila de abajo («Jugar solo automático» con el marcador arriba) lo que no es campo baja de 37 a 30,5 rem en 3D y de 34 a 27,5 de arriba: la casilla crece con el alto que se libera', () => {
+    const tilted = mediumDuelFieldStyle(true, false) as Record<string, string | number>
+    const flat = mediumDuelFieldStyle(false, false) as Record<string, string | number>
+
+    expect(tilted['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - 30.5rem) / 3)))')
+    // De arriba la casilla baja hasta 52 px: a 900 × 700 la columna no scrollea.
+    expect(flat['--cell-m']).toBe('min(calc((100% - 1.5rem) / 6.3714), max(3.25rem, calc((100dvh - 27.5rem) / 5)))')
+    expect(tilted).toMatchObject({ width: 'calc(var(--cell-m) * 6.3714 + 1.5rem)', marginTop: 'calc(9.5rem - 2 * var(--cell-m))' })
+  })
 })

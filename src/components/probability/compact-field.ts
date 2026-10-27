@@ -62,10 +62,15 @@ export interface CompactFieldOptions {
  * - Vista 3D (26°, perspectiva de 900 px): la inclinación deja arriba del campo una franja vacía de unos `2 × casilla - 50 px` (exacto de 60 a 120 px de casilla, 20 px de menos a 160); se le quita al
  *   lugar de la mano del rival (`marginTop`, puede ser negativo: esa franja no se ve ni se toca), así el campo se ve a 102 px del grupo como en la vista de arriba. Total: 589 px + 3 casillas (37 rem, con aire).
  * - Vista de arriba: el lugar de la mano del rival queda como estaba; total 539 px + 5 casillas (34 rem).
+ * Sin la fila de abajo (`bottomRow: false`, «Jugar solo automático» con el marcador arriba, 2026-10-27) se van el margen del grupo, la barra y sus 16 px (108 px) y el marcador suma 2: 30,5 y 27,5 rem
+ * (medido a 768 × 1024, 900 × 700, 1024 × 768, 1100 × 760 y 1100 × 900, sin scroll).
  * El `%` del ancho y del `marginTop` es el ancho de la columna (sin la barra de scroll).
  */
-export function mediumDuelFieldStyle(tilted: boolean): CSSProperties {
-  const cell = `min(calc((100% - 1.5rem) / 6.3714), max(3.5rem, calc((100dvh - ${tilted ? '37rem' : '34rem'}) / ${tilted ? 3 : 5})))`
+export function mediumDuelFieldStyle(tilted: boolean, bottomRow = true): CSSProperties {
+  const rest = bottomRow ? (tilted ? 37 : 34) : tilted ? 30.5 : 27.5
+  // De arriba son cinco filas: sin la fila de abajo la casilla baja hasta 52 px, o a 900 × 700 la columna scrollearía 11 px.
+  const floor = !bottomRow && !tilted ? '3.25rem' : '3.5rem'
+  const cell = `min(calc((100% - 1.5rem) / 6.3714), max(${floor}, calc((100dvh - ${rest}rem) / ${tilted ? 3 : 5})))`
 
   return {
     '--cell-m': cell,

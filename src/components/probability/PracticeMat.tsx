@@ -215,10 +215,12 @@ export interface DuelMatLink {
   /** Deshacer va arriba, en la barra de la pantalla (`header`, con los íconos de la práctica: `MatBarActions`), y no en la botonera de abajo, que igual guarda su alto (el campo no se mueve). */
   undoInHeader?: boolean
   /**
-   * «Jugar solo automático» en el celular en vertical (< 640 px): las vidas y el turno van en el marcador de la barra (`header`) y no hay fila de abajo (ni `life` ni `corner`). «Pasos y combos» va
-   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra, lo que falta elegir y el replay sobre el borde de abajo de tu mano, y la fase dice su nombre debajo de su botón.
+   * «Jugar solo automático» hasta 1100 px (sin efecto en escritorio): las vidas y el turno van en el marcador de la barra (`header`) y no hay fila de abajo (ni `life` ni `corner`). «Pasos y combos» va
+   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra, lo que falta elegir y el replay sobre el borde de abajo de tu mano, y la fase dice su nombre en su botón.
    */
   scoreInHeader?: boolean
+  /** La barra no dice la fase (sin píldora): el botón de la fase del campo lleva su nombre («DP / Draw Phase»; en el celular, «DP / Draw»). Con `scoreInHeader`, siempre. */
+  phaseNamed?: boolean
   /** «Jugar solo automático»: tu última activación, mientras se puede deshacer y dura su aviso (`UndoChip`, en la fila de abajo; tocarlo es `onUndo`). */
   undoPlay?: UndoPlay | null
   /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
@@ -532,10 +534,12 @@ export function PracticeMat({
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Celular en vertical: el campo del duelo se ajusta al alto de la pantalla para que se vea tu mano (ver `compact-field.ts`).
   const compact = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
-  // «Jugar solo automático» en el celular en vertical: tus vidas y el turno van en el marcador de la barra (`scoreInHeader`) y la mesa no lleva fila de abajo; en una pantalla baja (< 700 px de alto) el campo
+  // «Jugar solo automático» hasta 1100 px: tus vidas y el turno van en el marcador de la barra (`scoreInHeader`) y la mesa no lleva fila de abajo; en un celular bajo (< 700 px de alto) el campo
   // se achica más y la mano del rival va más chica (`compact-field.ts`).
-  const bare = compact && Boolean(duel?.scoreInHeader)
-  const shortScreen = useMediaQuery(SHORT_SCREEN_MEDIA_QUERY)
+  const bare = !isDesktop && Boolean(duel?.scoreInHeader)
+  const shortPhone = useMediaQuery(SHORT_SCREEN_MEDIA_QUERY) && compact && bare
+  // La fase, sólo en su botón del campo (sin píldora en la barra): el botón dice su nombre.
+  const phaseNamed = bare || Boolean(duel?.phaseNamed)
   // Laterales: en un duelo de escritorio, si la columna de la mesa tiene ancho de sobra, lo que rodea al campo va a sus costados (ver `duel-rails.ts`). Se mira sólo si entran: arrastrar el borde de un
   // panel le cambia el ancho a la columna en cada cuadro y la mesa no se vuelve a dibujar por eso.
   const columnRef = useRef<HTMLDivElement | null>(null)
@@ -2511,7 +2515,7 @@ export function PracticeMat({
           )}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortScreen } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d')) } as CSSProperties) : undefined}
+          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortPhone } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare)) } as CSSProperties) : undefined}
         >
           {/* La placa de la arena, debajo de todo el campo (decoración). */}
           <MatPlate />
@@ -2520,7 +2524,7 @@ export function PracticeMat({
           {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. */}
           {duel?.rivalHand ? (
             // En una pantalla baja sin la fila de abajo, la mano del rival va al 72 % (desde su borde de abajo): el campo sube lo que ella deja (`compactDuelFieldStyle`, `short`).
-            <div className={cx('absolute bottom-full left-1/2 z-10 -translate-x-1/2', bare && shortScreen && 'origin-bottom scale-72')} style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
+            <div className={cx('absolute bottom-full left-1/2 z-10 -translate-x-1/2', shortPhone && 'origin-bottom scale-72')} style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
               {duel.rivalHand}
             </div>
           ) : null}
@@ -2539,9 +2543,10 @@ export function PracticeMat({
                 disabled={!myTurn}
                 className={cx(
                   'grid place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
-                  // Sin la píldora de la fase en la barra (`bare`), el botón dice también qué fase es, debajo de la sigla y con la palabra de la línea de fases («Draw», «Main 1»): la fase se dice una sola vez.
-                  // Va adentro del botón (no debajo): con la casilla de 40 a 56 px, debajo pisaba tu zona de monstruos de la derecha.
-                  bare ? 'h-11 min-w-11 content-center gap-0.5 px-1' : 'size-11',
+                  // Sin la píldora de la fase en la barra (`phaseNamed`), el botón dice también qué fase es, debajo de la sigla: la fase se dice una sola vez. Va adentro del botón (no debajo): con la casilla
+                  // de 40 a 56 px del celular, debajo pisaba tu zona de monstruos de la derecha. En el celular, la palabra de la línea de fases («Draw», «Main 1»); desde 640 px, el nombre completo
+                  // («Draw Phase»), que se parte en dos renglones si la casilla no le da el ancho («Standby / Phase» con casillas de 70 px): no se corta ni pisa a las vecinas.
+                  phaseNamed ? (compact ? 'h-11 min-w-11 content-center gap-0.5 px-1' : 'min-h-11 min-w-11 max-w-full content-center gap-0.5 px-1.5 py-1') : 'size-11',
                   // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
                   myTurn ? 'cursor-pointer border-info bg-primary text-white hover:border-info-soft' : 'border-accent bg-primary text-white',
                 )}
@@ -2552,9 +2557,9 @@ export function PracticeMat({
                 }}
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
-                {bare ? (
-                  <span aria-hidden="true" data-phase-word="" className="whitespace-nowrap font-semibold">
-                    {phaseWord(PHASES.find((phase) => phase.id === phaseNow)?.name ?? '')}
+                {phaseNamed ? (
+                  <span aria-hidden="true" data-phase-word="" className={cx('font-semibold', compact ? 'whitespace-nowrap' : 'text-balance')}>
+                    {compact ? phaseWord(PHASES.find((phase) => phase.id === phaseNow)?.name ?? '') : PHASES.find((phase) => phase.id === phaseNow)?.name}
                   </span>
                 ) : null}
               </button>
@@ -2699,7 +2704,7 @@ export function PracticeMat({
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
         {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven.
             Repasando un combo en un duelo, los controles del replay toman también ese margen (abajo, al lado de la mano, está libre): en el lateral solo no entraban y se cortaban. */}
-        {/* Sin fila de abajo («Jugar solo automático» en el celular en vertical: tus vidas van en el marcador de la barra): lo que falta elegir y los controles del replay se apoyan sobre los 44 px de abajo de tu
+        {/* Sin fila de abajo («Jugar solo automático» hasta 1100 px: tus vidas van en el marcador de la barra): lo que falta elegir y los controles del replay se apoyan sobre los 44 px de abajo de tu
             mano sólo mientras están (no ocupan alto ni atajan toques si no); el aviso de lo que acabás de activar va en la barra. */}
         {bare ? (
           <div className="pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55 h-11" data-mat-float="">

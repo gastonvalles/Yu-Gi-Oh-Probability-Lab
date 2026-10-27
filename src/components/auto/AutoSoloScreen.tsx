@@ -13,9 +13,8 @@ import { autoRival, dealRival, poolCount, readHandtrapConfig, writeHandtrapConfi
 import { LifeHold } from '../../app/life-effects'
 import { randomSeed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { t } from '../../i18n'
-import { LifeTile } from '../duel/DuelBar'
+import { LifeScore } from '../duel/LifeScore'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
@@ -89,6 +88,14 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   }, [connect, mainIds, extraIds, handSize, handtraps])
   // La ventana grande es de la mesa: al salir de ella se apaga (como en el duelo).
   useEffect(() => () => setDuelFullscreen(false), [])
+  // Hasta 1100 px los avisos van arriba, debajo del marcador: sin la barra de abajo, abajo caían sobre tu mano (ver index.css).
+  useEffect(() => {
+    document.body.dataset.duel = 'solo'
+
+    return () => {
+      delete document.body.dataset.duel
+    }
+  }, [])
 
   const changeHandtraps = useCallback((next: HandtrapConfig) => {
     writeHandtrapConfig(next)
@@ -120,9 +127,8 @@ const NO_LAB: PracticeLab = { handSize: 5, derivedMainCards: [], patterns: [], h
 function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, onHandtraps, lab }: AutoDuelProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
+  // Hasta 1100 px las vidas van en el marcador de la barra (`AutoBar`) y la mesa no lleva fila de abajo (`scoreInHeader`); en escritorio, planas en las esquinas del campo.
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  // El celular en vertical: las vidas van en el marcador de la barra (`AutoBar`) y la mesa no lleva fila de abajo (`scoreInHeader`).
-  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   // Con laterales (lo sabe la barra) las vidas van en el izquierdo; sin ellos, en escritorio, en las esquinas del campo.
   const [rails, setRails] = useState(false)
   // «Pasos» de la botonera (escritorio): muestra u oculta el panel de la derecha.
@@ -193,8 +199,6 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   ) : undefined
 
   const life = { mine: snap.overlay.lp[0], theirs: snap.overlay.lp[1] }
-  // Las cartas de cada mano, junto a las vidas en escritorio (las tuyas, las de la mesa que se ve: repasando, las del paso).
-  const hands = { mine: asks.state.hand.length, theirs: snap.theirs.hand.length }
   // Repasando un combo (o tus jugadas) la mesa es la del repaso: el turno de la barra es el del paso que se mira, y la portada (el fin, un error), la mano del rival y lo que activa
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
@@ -220,11 +224,9 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
       <AutoBar
         rivalName={rivalName}
         life={life}
-        hands={hands}
         onRails={setRails}
         turn={reviewing ? asks.state.turn : snap.overlay.turn}
         myTurn={asks.turnMine}
-        phase={snap.overlay.turn > 0 ? asks.mat.phase : null}
         onExit={onExit}
         onUndo={() => session.undo()}
         canUndo={asks.undoable && snap.status !== 'thinking' && !snap.replaying}
@@ -238,15 +240,16 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
       />
     ),
     tools: null,
-    // Las vidas, cada una de su lado y con las cartas de su mano (Gastón, 2026-10-26: «la vida de ambos jugadores junta»): la del rival junto a su mano (arriba a la derecha del campo, `corner`) y la
-    // tuya abajo a la izquierda, junto a la tuya; con laterales, las dos en el izquierdo (`AutoBar`: el rival arriba, vos abajo). Miden 56 px (`compact`) y la tuya sube 12 sobre el borde
-    // de la mano (`-mt-3`) sin tapar sus cartas: la botonera mide lo que medía con Deshacer (44 px) y el campo no se corre, tampoco en una pantalla alta (ahí no hay scroll y su alto cuenta).
-    life: rails || phone ? null : (
+    // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
+    // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 12 px sobre el borde de la mano (`-mt-3`, como la placa: la fila no crece y el campo no se corre). Con
+    // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase la dice sólo el botón del campo (`phaseNamed`).
+    life: rails || !docked ? null : (
       <span className="-mt-3 flex" data-corner="mine">
-        <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact hand={hands.mine} />
+        <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine size="lg" />
       </span>
     ),
-    ...(phone ? { scoreInHeader: true } : { corner: <LifeTile name={rivalName} life={life.theirs} compact hand={hands.theirs} handOnDesktop /> }),
+    ...(docked ? { corner: <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} size="lg" /> } : { scoreInHeader: true }),
+    phaseNamed: true,
     ...(docked ? { dock: <AutoDock {...options} steps={{ open: stepsOpen, onToggle: () => setStepsOpen((open) => !open) }} /> } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),

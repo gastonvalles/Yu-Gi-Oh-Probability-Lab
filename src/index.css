@@ -1974,6 +1974,18 @@
     body[data-duel] .app-toaster {
       bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
     }
+
+    /* «Jugar solo automático» no tiene botonera abajo (tus vidas van en el marcador de arriba) y ahí el aviso caía sobre tu mano: va arriba, a 9,5 rem del borde, debajo del marcador y del lugar de los
+       avisos de la línea (sólo pisa unos segundos el borde de arriba de la mano del rival). */
+    body[data-duel='solo'] .app-toaster {
+      top: calc(env(safe-area-inset-top, 0px) + 9.5rem) !important;
+      bottom: auto !important;
+    }
+
+    body[data-duel='solo'] .app-toaster > div {
+      top: 0 !important;
+      bottom: auto !important;
+    }
   }
 }
 
