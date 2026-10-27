@@ -1,13 +1,14 @@
 import { getLocale } from '../../i18n'
 import type { WireAct } from '../mat-public'
-import type { MatAction, MatState } from '../practice-mat'
-import { createAdapter, type Adapter, type AutoOverlay } from './adapter'
+import { createMatState, type MatAction, type MatState } from '../practice-mat'
+import { copyIds, createAdapter, type Adapter, type AutoOverlay } from './adapter'
 import { DataUnavailableError, type DataLoader, type DuelData } from './auto-data'
 import type { ChainStep } from './chain-feed'
 import type { WorkerData } from './core-host.worker'
 import { bagOrder, teamOrder, type DeckList } from './deck-map'
 import { handtrapPolicy, passivePolicy, randomLegalPolicy, type RivalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
+import { RESUME_FLAGS, setupOf } from './resume'
 
 /**
  * «Jugar solo automático»: la sesión de un duelo contra el rival, sin React (F2b la lee con `useSyncExternalStore`). Junta el
@@ -155,6 +156,12 @@ export interface SessionOptions {
   typeOf?: (code: number) => number
   /** Rearmar un duelo guardado: las respuestas ya dadas (de los dos asientos, en orden) se re-simulan antes de la primera pregunta viva. */
   restore?: { answers: readonly SessionAnswer[] }
+  /**
+   * Pasar de manual a automático (`resume.ts`): el duelo no empieza de cero sino desde estas dos mesas (`mine` con los ids de la mesa manual; `theirs` la del rival con los suyos, o nada en «Jugar solo»: el rival arranca con todo en su deck y, con handtraps, su mano),
+   * con `codeOf` para saber el código de cada id (0 = oculta para este asiento) y las vidas de cada lado. Nadie baraja ni roba: el núcleo arranca en el turno 1, Draw Phase de
+   * `seat` (el que tiene el turno), y pasa a su Main Phase 1; lo del turno en curso se reinicia (`docs/duelos-automaticos.md`).
+   */
+  resume?: { mine: MatState; theirs?: MatState; codeOf: (side: 'mine' | 'theirs', id: string) => number; lp: readonly [number, number] }
 }
 
 export interface AutoSession {
@@ -187,6 +194,8 @@ export interface AutoSession {
 /** `OcgDuelMode.MODE_MR5` del paquete (copia: la sesión corre en el hilo principal y no lo importa; un test los compara). */
 export const MR5 = '190464'
 const PLAYER = { lp: 8000, hand: 5, draw: 1 }
+/** `PHASE_*` del núcleo por fase de la mesa (el primer paso de la Battle Phase). */
+const CORE_PHASE: Record<MatState['phase'], number> = { draw: 1, standby: 2, main1: 4, battle: 8, main2: 0x100, end: 0x200 }
 const FATAL = new Set<FaultKind>(['rules', 'setup', 'crash'])
 const MAX_RETRIES = 3
 /** Las preguntas cuya respuesta es una jugada (`playStarts`). */
@@ -242,9 +251,15 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const thinkingMs = options.thinkingMs ?? 400
   // En el duelo por enlace el otro asiento es una persona: ni handtraps ni relleno.
   const rival = options.remote ? null : (options.rival ?? null)
+  const resume = options.resume ?? null
+  /** Con la mesa rearmada, el núcleo todavía va por una fase anterior a la de la mesa (las pasa al empezar; las fases del núcleo crecen con la del turno). */
+  const catchingUp = () => adapters[me] !== undefined && adapters[me]!.overlay.phase < (CORE_PHASE[adapters[me]!.mine.phase] ?? 0)
   const policy: RivalPolicy = rival ? handtrapPolicy(rival.main.map(([code]) => code)) : passivePolicy()
   const listeners = new Set<() => void>()
   const blank = emptyAdapter()
+  // La mesa del rival rearmada y el código de cada id suyo (`resume.theirs`, o la que arma `build` en jugar solo).
+  let theirsState: MatState = resume?.theirs ?? blank.initial.theirs
+  let theirsCode = (id: string) => resume?.codeOf('theirs', id) ?? 0
   let snapshot: AutoSnapshot = {
     status: 'loading',
     seed: options.key !== undefined ? 0 : (options.seed ?? Math.floor(Math.random() * 2 ** 32)) >>> 0,
@@ -340,7 +355,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         seat,
         mine: { deck: seat === bagged ? bagOrder(command.decks[seat]!.main) : teamOrder(command, seat), extra: command.decks[seat]!.extra },
         theirs: { deck: command.decks[1 - seat]!.main.length, extra: command.decks[1 - seat]!.extra.length },
-        lp: [PLAYER.lp, PLAYER.lp],
+        lp: resume ? (seat === me ? [...resume.lp] : [resume.lp[1], resume.lp[0]]) : [PLAYER.lp, PLAYER.lp],
+        ...(resume ? { setup: seat === me ? { mine: resume.mine, theirs: theirsState, codeOf: (side, id) => (side === 'mine' ? resume.codeOf('mine', id) : theirsCode(id)) } : { mine: theirsState, theirs: resume.mine, codeOf: (side, id) => (side === 'mine' ? theirsCode(id) : resume.codeOf('mine', id)) } } : {}),
         typeOf,
         bag: seat === bagged,
       }),
@@ -458,6 +474,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         if (!controlled(event.seat) && options.remote) return set({ status: 'waiting', remoteAsk: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, ask: null, replaying: false, answers })
         // El rival contesta solo, con lo que ve su adaptador (o, si el núcleo le rechazó la de recién, con la de reserva); la pantalla se entera recién con la pregunta tuya.
         if (!controlled(event.seat)) return send(event.seat, event.askId, retries > 0 ? fallback(event.ask) : policy(event.ask, adapters[event.seat]!))
+        // La mesa rearmada: las ventanas de cadena de las fases que el núcleo pasa hasta alcanzar la de la mesa (Draw, Standby) no se preguntan (una forzada, sí).
+        if (resume && event.ask.type === 'select_chain' && !event.ask.forced && catchingUp()) return send(event.seat, event.askId, { type: 'select_chain', index: null })
 
         return set({ status: 'ready', ask: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, replaying: false, answers })
       }
@@ -524,6 +542,27 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       const player = options.remote ? mine_ : hand.length > 0 ? { ...PLAYER, hand: hand.length } : PLAYER
 
       // El asiento 0 del núcleo siempre empieza: tu deck va ahí, salvo que vayas segundo.
+      if (resume) {
+        // Sin la mesa del rival (jugar solo), su deck entero (con las handtraps de su mano, si las hay, en la mano).
+        if (!resume.theirs) {
+          const ids = copyIds([...other.main, ...other.extra])
+          const inHand = new Set<string>()
+
+          for (const code of hand) {
+            const id = ids.find((item, i) => i < other.main.length && !inHand.has(item) && item.startsWith(`card-${code}-`))
+
+            if (id) inHand.add(id)
+          }
+          theirsState = { ...createMatState(ids.slice(0, other.main.length).filter((id) => !inHand.has(id)), ids.slice(other.main.length), 0), hand: [...inHand] }
+          theirsCode = (id) => Number(id.split('-')[1] ?? 0)
+        }
+        // La mesa rearmada: nadie roba al empezar; las vidas van en el `setup` (y en `players`, por si acaso) y el asiento de cada mesa es el de cada uno.
+        const sides = { mine: { state: resume.mine, codeOf: (id: string) => resume.codeOf('mine', id) }, theirs: { state: theirsState, codeOf: (id: string) => theirsCode(id) } }
+        const lp: [number, number] = me === 0 ? [resume.lp[0], resume.lp[1]] : [resume.lp[1], resume.lp[0]]
+        const still = (lifePoints: number) => ({ lp: lifePoints, hand: 0, draw: 1 })
+
+        return { t: 'create', seed, ...(options.key === undefined ? {} : { key: options.key }), flags: RESUME_FLAGS, players: [still(lp[0]), still(lp[1])], decks: me === 0 ? [own, other] : [other, own], setup: setupOf(me === 0 ? [sides.mine, sides.theirs] : [sides.theirs, sides.mine], lp) }
+      }
       return { t: 'create', seed, ...(options.key === undefined ? {} : { key: options.key }), flags: MR5, players: me === 0 ? [mine_, player] : [player, mine_], decks: me === 0 ? [own, other] : [other, own] }
     }
     create = build(snapshot.seed)

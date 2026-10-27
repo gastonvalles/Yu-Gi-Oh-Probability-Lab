@@ -38,6 +38,8 @@ import {
   type CoreAsk,
   type EventType,
   type FaultKind,
+  type PlacedCard,
+  type Setup,
   type Seat,
   type WireEvent,
 } from './protocol'
@@ -88,6 +90,33 @@ const ASKS = new Set(Object.keys(ASK_SHAPES))
 const EVENTS = new Set(Object.keys(EVENT_SHAPES))
 const IGNORED = new Set<string>(IGNORED_MESSAGES)
 const STAT_FLAGS = (OcgQueryFlags.CODE | OcgQueryFlags.POSITION | OcgQueryFlags.ATTACK | OcgQueryFlags.DEFENSE | OcgQueryFlags.LEVEL) as QueryFlags
+
+const TYPE_MONSTER = 0x1
+const LUA_LOCATION: Record<number, string> = { [OcgLocation.DECK]: 'LOCATION_DECK', [OcgLocation.HAND]: 'LOCATION_HAND', [OcgLocation.MZONE]: 'LOCATION_MZONE', [OcgLocation.SZONE]: 'LOCATION_SZONE', [OcgLocation.GRAVE]: 'LOCATION_GRAVE', [OcgLocation.REMOVED]: 'LOCATION_REMOVED', [OcgLocation.EXTRA]: 'LOCATION_EXTRA' }
+
+/**
+ * El script que arma una mesa rearmada (`setup`) antes de `startDuel`, con `Debug.AddCard` (`libdebug.cpp`, el modo puzzle de EDOPro; probado en `auto-resume.slow.test.ts`):
+ * las pilas en su orden (el deck, de abajo hacia arriba, cada una arriba: `sequence` 0), las casillas con su posición, un monstruo en las Mágicas y Trampas 0 o 4 es una escala
+ * (`LOCATION_PZONE`), la de Campo es `LOCATION_FZONE`, los monstruos del campo cuentan como invocados bien (`true`) y cada material se agrega sobre la casilla ya ocupada.
+ */
+export function resumeScript(setup: Setup, typeOf: (code: number) => number): string {
+  const lines = setup.lp.map((lp, player) => `Debug.SetPlayerInfo(${player}, ${Math.max(0, Math.trunc(lp))}, 0, 1)`)
+  const byLocation = (location: number) => setup.cards.filter((card) => card.location === location).sort((a, b) => a.sequence - b.sequence)
+  const add = (card: PlacedCard, location: string, sequence: number, proc = false) => lines.push(`Debug.AddCard(${card.code}, ${card.controller}, ${card.controller}, ${location}, ${sequence}, ${card.position}${proc ? ', true' : ''})`)
+
+  for (const location of [OcgLocation.DECK, OcgLocation.HAND, OcgLocation.GRAVE, OcgLocation.REMOVED, OcgLocation.EXTRA]) for (const card of byLocation(location)) add(card, LUA_LOCATION[location]!, 0)
+  for (const card of byLocation(OcgLocation.MZONE)) {
+    add(card, 'LOCATION_MZONE', card.sequence, true)
+    for (const code of card.materials ?? []) lines.push(`Debug.AddCard(${code}, ${card.controller}, ${card.controller}, LOCATION_MZONE, ${card.sequence}, ${OcgPosition.FACEUP})`)
+  }
+  for (const card of byLocation(OcgLocation.SZONE)) {
+    if (card.sequence === 5) add(card, 'LOCATION_FZONE', 0)
+    else if ((card.sequence === 0 || card.sequence === 4) && (typeOf(card.code) & TYPE_MONSTER) !== 0) add(card, 'LOCATION_PZONE', card.sequence === 0 ? 0 : 1)
+    else add(card, 'LOCATION_SZONE', card.sequence)
+  }
+
+  return lines.join('\n')
+}
 
 /** `bigint` → texto decimal, en profundidad: lo que el paquete decodifica, listo para JSON. */
 const jsonify = (value: unknown): unknown =>
@@ -412,7 +441,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
 
   async function start(command: CreateCommand, replay: readonly CoreAnswer[]) {
     free()
-    const codes = [...new Set(command.decks.flatMap((deck) => [...deck.main, ...deck.extra]))]
+    const codes = [...new Set([...command.decks.flatMap((deck) => [...deck.main, ...deck.extra]), ...(command.setup?.cards.flatMap((card) => [card.code, ...(card.materials ?? [])]).filter((code) => code > 0) ?? [])])]
     const missing = codes.filter((code) => !options.cardReader(code))
     const noRules = codes.filter((code) => {
       const card = options.cardReader(code)
@@ -471,11 +500,22 @@ export function createAutoHost(options: HostOptions): AutoHost {
         return
       }
     }
-    // Cada carta del Main va arriba (sequence 0): se agregan al revés, así `orders[team][0]` queda arriba de todo.
-    orders.forEach((order, team) => {
-      for (const code of [...order].reverse()) lib.duelNewCard(handle, { team: team as Seat, duelist: 0, code, controller: team as Seat, location: OcgLocation.DECK, sequence: 0, position: OcgPosition.FACEDOWN_DEFENSE })
-      for (const code of command.decks[team]!.extra) lib.duelNewCard(handle, { team: team as Seat, duelist: 0, code, controller: team as Seat, location: OcgLocation.EXTRA, sequence: 0, position: OcgPosition.FACEDOWN_DEFENSE })
-    })
+    if (command.setup) {
+      // La mesa rearmada (pasar de manual a automático): cada carta donde estaba, con la biblioteca `Debug` del modo puzzle (materiales, zonas de Péndulo y la invocación hecha bien).
+      const lua = resumeScript(command.setup, (code) => options.cardReader(code)?.type ?? 0)
+
+      if (!lib.loadScript(handle, 'resume.lua', lua)) {
+        fault('setup', 'could not rebuild the table in the core')
+        free()
+        return
+      }
+    } else {
+      // Cada carta del Main va arriba (sequence 0): se agregan al revés, así `orders[team][0]` queda arriba de todo.
+      orders.forEach((order, team) => {
+        for (const code of [...order].reverse()) lib.duelNewCard(handle, { team: team as Seat, duelist: 0, code, controller: team as Seat, location: OcgLocation.DECK, sequence: 0, position: OcgPosition.FACEDOWN_DEFENSE })
+        for (const code of command.decks[team]!.extra) lib.duelNewCard(handle, { team: team as Seat, duelist: 0, code, controller: team as Seat, location: OcgLocation.EXTRA, sequence: 0, position: OcgPosition.FACEDOWN_DEFENSE })
+      })
+    }
     lib.startDuel(handle)
     started = true
     emit({ t: 'loading', done: codes.length, total: codes.length })
