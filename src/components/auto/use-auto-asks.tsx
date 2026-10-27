@@ -11,6 +11,8 @@ import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
+import { useHeldValue } from '../../app/life-effects'
+import { prefersReducedMotion } from '../../app/motion'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
 import { allMatIds, cardKindOf, createMatState, locateCard, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
@@ -32,6 +34,7 @@ import { useDockPeek } from '../duel/use-dock-peek'
 import { PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { cardIdOfDrawId } from '../probability/practice'
 import type { DuelMatLink, MatCard } from '../probability/PracticeMat'
+import { IMPACT_MS } from '../probability/AttackFx'
 import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
@@ -59,6 +62,31 @@ const ATTRIBUTES = ['EARTH', 'WATER', 'FIRE', 'WIND', 'LIGHT', 'DARK', 'DIVINE']
 const SPELL = 0x2
 const TRAP = 0x4
 const MONSTER = 0x1
+
+/**
+ * Si las vidas que se ven esperan a tu ataque (`LifeHold`): el núcleo baja las vidas apenas declarás, pero la mesa muestra el ataque a su ritmo (`STEP_MS`, la cadena) y la espada
+ * golpea `IMPACT_MS` después. Esperan mientras falte mostrar un ataque que la mesa va a contar sola (hasta `limit`) y hasta el golpe del que acaba de mostrarse. Saltar (más de una
+ * jugada de una vez), volver atrás, `live` en false (repasar, rearmarse) o el movimiento reducido (no hay espada) no esperan nada.
+ */
+export function useStrikeHold(actions: readonly MatAction[], cursor: number, limit: number, live: boolean): boolean {
+  const [counted, setCounted] = useState(cursor)
+  const [until, setUntil] = useState<number | null>(null)
+
+  if (counted !== cursor) {
+    setCounted(cursor)
+    if (cursor !== counted + 1) setUntil(null)
+    else if (actions[cursor - 1]?.type === 'attack') setUntil(Date.now() + IMPACT_MS)
+  }
+  useEffect(() => {
+    if (until === null) return
+    const timer = window.setTimeout(() => setUntil(null), Math.max(0, until - Date.now()))
+
+    return () => window.clearTimeout(timer)
+  }, [until])
+
+  if (!live || prefersReducedMotion()) return false
+  return until !== null || actions.slice(cursor, limit).some((action) => action.type === 'attack')
+}
 
 /** La mesa como la ve la pantalla: la mesa del arranque, las jugadas que ya llegaron y hasta cuál se muestra. */
 interface Paced {
@@ -125,6 +153,8 @@ export interface AutoAsks {
   review: { active: boolean; load: (combo: SavedCombo) => void; seek: (step: number) => void; back: () => void }
   /** El visor del Cementerio, el Destierro o el Extra boca arriba del rival (`PracticeMat.rivalViewer`): va en el mismo lugar que el tuyo. */
   rivalViewer: ReactNode
+  /** Las vidas que se ven esperan al golpe de tu ataque (`useStrikeHold`): va en `LifeHold` alrededor de la mesa. */
+  lifeHeld: boolean
 }
 
 export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual }: AutoAsksInput): AutoAsks {
@@ -216,6 +246,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     setChainSeen((count) => Math.max(count, stepsUpTo(steps, stopAt(paced.initial, paced.actions, paced.cursor, allowed))))
   }, [allowed, reviewing, steps, paced])
   const settled = paced.cursor === paced.actions.length && chainSeen >= steps.length && !snap.replaying
+  const lifeHeld = useStrikeHold(paced.actions, paced.cursor, limit, !reviewing && !snap.replaying)
   // Lo que se ve, como en la práctica: la mano de apertura plegada en la mesa del arranque (`foldOpeningHand`), así el paso 0 es «Mano inicial». Se pliega por contenido:
   // deshacer re-simula y la jugada vuelve como otro objeto con las mismas cartas (la mano no se reparte de nuevo).
   const first = paced.actions[0]
@@ -258,7 +289,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   usePracticeSounds(review?.session ?? matSession)
   // Las vidas que bajan o suben y el fin (las jugadas ya suenan con la mesa); rearmando no suena nada.
-  useChange(snap.replaying ? undefined : ([...snap.overlay.lp] as const), (before, now) => {
+  // Suenan cuando se ven: al golpe de tu ataque (`lifeHeld`).
+  const heardLp = useHeldValue(snap.overlay.lp, lifeHeld)
+
+  useChange(snap.replaying ? undefined : ([...heardLp] as const), (before, now) => {
     if (before.some((points) => points <= 0)) return
     if (now.some((points, at) => points < before[at]!)) playSfx('lpDown')
     else if (now.some((points, at) => points > before[at]!)) playSfx('lpUp')
@@ -1023,6 +1057,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   return {
     rivalViewer,
+    lifeHeld,
     state: reviewState ?? state,
     matSession: review?.session ?? matSession,
     settled,

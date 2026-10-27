@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { STARTING_LP } from './life-calculator'
 import { prefersReducedMotion } from './motion'
@@ -57,6 +57,21 @@ export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = 
   }, [target, ms, delay, ease, round])
 
   return shown
+}
+
+/**
+ * Mientras vale true, las vidas que se ven (`LifeTile`: el número, el destello, el «−1000» y la sacudida) se quedan como estaban: en el duelo automático esperan al golpe de tu
+ * ataque (`use-auto-asks`), que la mesa muestra a su ritmo después de que el núcleo ya bajó las vidas. Sin quien lo diga, false: cambian ya. El resultado usa siempre las de verdad.
+ */
+export const LifeHold = createContext(false)
+
+/** Lo que se ve de `value`: el último que se vio mientras `held`, y el de ahora en cuanto se suelta (nunca se queda uno viejo sin `held`). */
+export function useHeldValue<T>(value: T, held: boolean): T {
+  const [kept, setKept] = useState(value)
+
+  if (!held && !Object.is(kept, value)) setKept(value)
+
+  return held ? kept : value
 }
 
 /** Lo que cuenta el número de unas vidas que no cambió: el mínimo; y el de un cambio de la vida entera (`STARTING_LP`), el máximo. */

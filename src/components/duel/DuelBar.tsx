@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
 import { useDuelRails } from '../../app/duel-rails'
@@ -13,7 +13,7 @@ import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { useSwipeAway } from '../../app/use-swipe-away'
 import { sacudir } from '../probability/AttackFx'
 import { MatMoreMenu } from '../probability/MatBarActions'
-import { DELTA_MS, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
+import { DELTA_MS, LifeHold, useHeldValue, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
 import { t } from '../../i18n'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -607,7 +607,7 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey }:
  *   celular, 56 px, el número a 24 y sin corazón (`compact` debajo de 380 px: a 19 y 64 de mínimo, para que la del rival no roce su último dorso a 360). Miden lo que medían las de antes: nada se corre.
  * - Usos: las esquinas del campo y los laterales de «Jugar solo automático», la barra y la botonera del duelo por enlace (`DuelBar`, `DuelLife`), la pantalla de quien mira.
  */
-export function LifeTile({ name, label, life, mine = false, color, bubble = null, bubbleKey, onClick, compact = false, hand, handOnDesktop = false }: {
+export function LifeTile({ name, label, life: real, mine = false, color, bubble = null, bubbleKey, onClick, compact = false, hand, handOnDesktop = false }: {
   /** Cuántas cartas tiene en la mano: junto a la chapa («▯ 5») y en lo que oye el lector de pantalla («5 cartas en la mano»). */
   hand?: number
   /** Las cartas de la mano a la vista sólo en escritorio (lo oye igual el lector de pantalla): la del rival en el celular va pegada a sus dorsos, que ya se cuentan, y así no los tapa. */
@@ -618,6 +618,8 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
   const tone = PLAYER_COLOR[color ?? side]
+  // Las que se ven: las de verdad, salvo mientras un ataque todavía no golpeó (`LifeHold`).
+  const life = useHeldValue(real, useContext(LifeHold))
   const shown = useLifeNumber(life)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
