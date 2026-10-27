@@ -1,7 +1,7 @@
 [
 ["SBLS-EN001","Common","1st Edition",0.24,186717,78193831,"Buster Blader"],
 ["SBLS-EN002","Common","1st Edition",0.14,186718,91996584,"Whiptail Crow"],
-["SBLS-EN003","Common","1st Edition",0.6,186719,52860176,"Possessed Dark Soul"],
+["SBLS-EN003","Common","1st Edition",0.58,186719,52860176,"Possessed Dark Soul"],
 ["SBLS-EN004","Common","1st Edition",0.09,186721,25652259,"Queen's Knight"],
 ["SBLS-EN005","Super Rare","1st Edition",1.53,186722,64788463,"King's Knight"],
 ["SBLS-EN006","Common","1st Edition",0.14,186723,90876561,"Jack's Knight"],
@@ -32,7 +32,7 @@
 ["SBLS-EN031","Super Rare","1st Edition",6.08,186775,36021814,"King of the Skull Servants"],
 ["SBLS-EN032","Common","1st Edition",0.11,186776,10209545,"Decayed Commander"],
 ["SBLS-EN033","Common","1st Edition",0.12,186777,47693640,"Zombie Tiger"],
-["SBLS-EN034","Common","1st Edition",0.15,186778,54622031,"Great Mammoth of Goldfine"],
+["SBLS-EN034","Common","1st Edition",0.16,186778,54622031,"Great Mammoth of Goldfine"],
 ["SBLS-EN035","Common","1st Edition",0.12,186779,15052462,"Violet Crystal"],
 ["SBLS-EN036","Common","1st Edition",0.21,186780,23424603,"Wasteland"],
 ["SBLS-EN037","Common","1st Edition",0.56,186785,19159413,"De-Spell"],
@@ -44,9 +44,9 @@
 ["SBLS-EN043","Common","1st Edition",0.18,186791,73048641,"Half Shut"],
 ["SBLS-EN044","Ultra Rare","1st Edition",3.2,186792,37580756,"Michizure"],
 ["SBLS-EN045","Common","1st Edition",0.1,186793,82324105,"Limit Impulse"],
-["SBLS-ENS01","Super Rare","1st Edition",0.63,186712,300101001,"Ectoplasmic Fortification!"],
-["SBLS-ENS02","Super Rare","1st Edition",0.52,186713,300101002,"Straight to the Grave"],
-["SBLS-ENS03","Ultra Rare","1st Edition",1.77,186714,300101003,"Call of the Haunted (Skill Card)","Skill Card"],
-["SBLS-ENS04","Super Rare","1st Edition",0.66,186715,300101004,"Royal Flush"],
-["SBLS-ENS05","Ultra Rare","1st Edition",0.65,186716,300101005,"Tomb of the Pharaoh"]
+["SBLS-ENS01","Super Rare","1st Edition",0.58,186712,300101001,"Ectoplasmic Fortification!"],
+["SBLS-ENS02","Super Rare","1st Edition",0.5,186713,300101002,"Straight to the Grave"],
+["SBLS-ENS03","Ultra Rare","1st Edition",1.82,186714,300101003,"Call of the Haunted (Skill Card)","Skill Card"],
+["SBLS-ENS04","Super Rare","1st Edition",0.63,186715,300101004,"Royal Flush"],
+["SBLS-ENS05","Ultra Rare","1st Edition",0.66,186716,300101005,"Tomb of the Pharaoh"]
 ]

@@ -7,13 +7,13 @@
 ["SDMP-EN006","Common","1st Edition",0.28,108805,40318957,"Performapal Skullcrobat Joker"],
 ["SDMP-EN007","Common","1st Edition",0.24,108806,94415058,"Stargazer Magician"],
 ["SDMP-EN008","Common","1st Edition",0.25,108807,20409757,"Timegazer Magician"],
-["SDMP-EN009","Common","1st Edition",0.39,108808,16178681,"Odd-Eyes Pendulum Dragon"],
+["SDMP-EN009","Common","1st Edition",0.4,108808,16178681,"Odd-Eyes Pendulum Dragon"],
 ["SDMP-EN010","Common","1st Edition",0.17,108809,26270847,"Performapal Silver Claw"],
 ["SDMP-EN011","Common","1st Edition",0.13,108810,44364077,"Performapal Salutiger"],
 ["SDMP-EN012","Common","1st Edition",0.16,108811,91584698,"Performapal Trump Witch"],
 ["SDMP-EN013","Common","1st Edition",0.19,108812,89189982,"Metaphys Armed Dragon"],
 ["SDMP-EN014","Common","1st Edition",0.22,108814,97940434,"Chaos Hunter"],
-["SDMP-EN015","Common","1st Edition",5.01,108813,51632798,"Fusilier Dragon, the Dual-Mode Beast"],
+["SDMP-EN015","Common","1st Edition",5,108813,51632798,"Fusilier Dragon, the Dual-Mode Beast"],
 ["SDMP-EN016","Common","1st Edition",0.38,108815,22624373,"Lyla, Lightsworn Sorceress"],
 ["SDMP-EN017","Common","1st Edition",0.12,108816,97396380,"Fencing Fire Ferret"],
 ["SDMP-EN018","Common","1st Edition",0.2,108817,62953041,"Inari Fire"],
@@ -40,6 +40,6 @@
 ["SDMP-EN039","Common","1st Edition",0.33,108838,53582587,"Torrential Tribute"],
 ["SDMP-EN040","Common","1st Edition",0.34,108839,54974237,"Eradicator Epidemic Virus"],
 ["SDMP-EN041","Ultra Rare","1st Edition",0.59,108840,80696379,"Odd-Eyes Meteorburst Dragon"],
-["SDMP-EN042","Ultra Rare","1st Edition",0.55,108841,16691074,"Odd-Eyes Absolute Dragon"],
+["SDMP-EN042","Ultra Rare","1st Edition",0.54,108841,16691074,"Odd-Eyes Absolute Dragon"],
 ["SDMP-EN043","Common","1st Edition",0.4,108842,1516510,"Rune-Eyes Pendulum Dragon"]
 ]

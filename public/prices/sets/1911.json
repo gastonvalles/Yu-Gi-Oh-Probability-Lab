@@ -1,8 +1,8 @@
 [
-["SR04-EN000","Ultra Rare","1st Edition",0.88,130110,82946847,"Petiteranodon"],
+["SR04-EN000","Ultra Rare","1st Edition",0.96,130110,82946847,"Petiteranodon"],
 ["SR04-EN000","Ultra Rare","Unlimited",0.68,130110,82946847,"Petiteranodon"],
 ["SR04-EN001","Ultra Rare","1st Edition",0.64,130111,18940556,"Ultimate Conductor Tyranno"],
-["SR04-EN001","Ultra Rare","Unlimited",0.36,130111,18940556,"Ultimate Conductor Tyranno"],
+["SR04-EN001","Ultra Rare","Unlimited",0.34,130111,18940556,"Ultimate Conductor Tyranno"],
 ["SR04-EN002","Super Rare","1st Edition",0.84,130112,44335251,"Souleating Oviraptor"],
 ["SR04-EN002","Super Rare","Unlimited",0.42,130112,44335251,"Souleating Oviraptor"],
 ["SR04-EN003","Common","1st Edition",0.85,130113,81823360,"Megalosmasher X"],
@@ -34,7 +34,7 @@
 ["SR04-EN016","Common","1st Edition",0.23,130126,99733359,"Stegocyber"],
 ["SR04-EN016","Common","Unlimited",0.14,130126,99733359,"Stegocyber"],
 ["SR04-EN017","Common","1st Edition",0.13,130127,12275533,"Trifortressops"],
-["SR04-EN017","Common","Unlimited",0.14,130127,12275533,"Trifortressops"],
+["SR04-EN017","Common","Unlimited",0.11,130127,12275533,"Trifortressops"],
 ["SR04-EN018","Common","1st Edition",0.29,130128,89362180,"Skelesaurus"],
 ["SR04-EN018","Common","Unlimited",0.09,130128,89362180,"Skelesaurus"],
 ["SR04-EN019","Common","1st Edition",0.29,130129,7392745,"Chewbone"],
@@ -50,12 +50,12 @@
 ["SR04-EN024","Common","1st Edition",0.32,130134,43898403,"Twin Twisters"],
 ["SR04-EN024","Common","Unlimited",0.28,130134,43898403,"Twin Twisters"],
 ["SR04-EN025","Common","1st Edition",0.45,130135,48976825,"Burial from a Different Dimension"],
-["SR04-EN025","Common","Unlimited",0.27,130135,48976825,"Burial from a Different Dimension"],
+["SR04-EN025","Common","Unlimited",0.28,130135,48976825,"Burial from a Different Dimension"],
 ["SR04-EN026","Common","1st Edition",0.29,130136,12923641,"Swords of Concealing Light"],
 ["SR04-EN026","Common","Unlimited",0.28,130136,12923641,"Swords of Concealing Light"],
 ["SR04-EN027","Common","1st Edition",0.41,130137,1033312,"Painful Decision"],
 ["SR04-EN027","Common","Unlimited",0.34,130137,1033312,"Painful Decision"],
-["SR04-EN028","Common","1st Edition",0.69,130138,911883,"Unexpected Dai"],
+["SR04-EN028","Common","1st Edition",0.75,130138,911883,"Unexpected Dai"],
 ["SR04-EN028","Common","Unlimited",0.27,130138,911883,"Unexpected Dai"],
 ["SR04-EN029","Common","1st Edition",0.25,130139,73628505,"Terraforming"],
 ["SR04-EN029","Common","Unlimited",0.25,130139,73628505,"Terraforming"],
@@ -76,5 +76,5 @@
 ["SR04-EN037","Common","1st Edition",0.3,130147,1637760,"Grand Horn of Heaven"],
 ["SR04-EN037","Common","Unlimited",0.19,130147,1637760,"Grand Horn of Heaven"],
 ["SR04-EN038","Common","1st Edition",0.24,130148,18252559,"Secret Blast"],
-["SR04-EN038","Common","Unlimited",0.26,130148,18252559,"Secret Blast"]
+["SR04-EN038","Common","Unlimited",0.25,130148,18252559,"Secret Blast"]
 ]

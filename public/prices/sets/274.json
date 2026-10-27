@@ -10,7 +10,7 @@
 ["RDS-EN005","Ultimate Rare","1st Edition",88.64,58787,61505339,"The Creator"],
 ["RDS-EN005","Ultra Rare","1st Edition",5.14,23424,61505339,"The Creator"],
 ["RDS-EN005","Ultra Rare","Unlimited",4.74,23424,61505339,"The Creator"],
-["RDS-EN006","Common","1st Edition",0.22,23425,97093037,"The Creator Incarnate"],
+["RDS-EN006","Common","1st Edition",0.23,23425,97093037,"The Creator Incarnate"],
 ["RDS-EN006","Common","Unlimited",0.09,23425,97093037,"The Creator Incarnate"],
 ["RDS-EN007","Rare","1st Edition",0.5,23426,34088136,"Ultimate Insect LV3"],
 ["RDS-EN007","Rare","Unlimited",0.55,23426,34088136,"Ultimate Insect LV3"],
@@ -91,7 +91,7 @@
 ["RDS-EN035","Ultimate Rare","1st Edition",47.53,58799,86805855,"Dark Blade the Dragon Knight"],
 ["RDS-EN035","Ultimate Rare","Unlimited",38.1,58799,86805855,"Dark Blade the Dragon Knight"],
 ["RDS-EN036","Common","1st Edition",0.23,23418,13803864,"Mokey Mokey King"],
-["RDS-EN036","Common","Unlimited",0.26,23418,13803864,"Mokey Mokey King"],
+["RDS-EN036","Common","Unlimited",0.3,23418,13803864,"Mokey Mokey King"],
 ["RDS-EN037","Rare","1st Edition",1.37,23413,49398568,"Serial Spell"],
 ["RDS-EN037","Rare","Unlimited",1.86,23413,49398568,"Serial Spell"],
 ["RDS-EN037","Ultimate Rare","1st Edition",20.79,58800,49398568,"Serial Spell"],
@@ -159,6 +159,6 @@
 ["RDS-EN059","Common","Unlimited",0.16,23470,37053871,"Astral Barrier"],
 ["RDS-EN060","Rare","1st Edition",0.21,23471,74458486,"Covering Fire"],
 ["RDS-EN060","Rare","Unlimited",0.25,23471,74458486,"Covering Fire"],
-["RDS-EN060","Ultimate Rare","1st Edition",4.78,58811,74458486,"Covering Fire"],
+["RDS-EN060","Ultimate Rare","1st Edition",4.68,58811,74458486,"Covering Fire"],
 ["RDS-EN060","Ultimate Rare","Unlimited",3.12,58811,74458486,"Covering Fire"]
 ]

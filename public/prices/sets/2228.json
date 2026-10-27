@@ -4,7 +4,7 @@
 ["OP07-EN003","Ultimate Rare","Unlimited",24.52,164862,8267140,"Cosmic Cyclone"],
 ["OP07-EN004","Super Rare","Unlimited",3.33,164863,70791313,"Royal Magical Library"],
 ["OP07-EN005","Super Rare","Unlimited",1.6,164864,20584712,"SPYRAL Tough"],
-["OP07-EN006","Super Rare","Unlimited",1.09,164865,57288708,"World Legacy - \"World Chalice\""],
+["OP07-EN006","Super Rare","Unlimited",1,164865,57288708,"World Legacy - \"World Chalice\""],
 ["OP07-EN007","Super Rare","Unlimited",3.68,164866,5560911,"Destrudo the Lost Dragon's Frisson"],
 ["OP07-EN008","Super Rare","Unlimited",0.56,164868,39910367,"Magical Citadel of Endymion"],
 ["OP07-EN009","Super Rare","Unlimited",0.55,164869,47325505,"Fossil Dig"],
@@ -14,7 +14,7 @@
 ["OP07-EN013","Super Rare","Unlimited",1.7,164873,1154611,"Paleozoic Leanchoilia"],
 ["OP07-EN014","Common","Unlimited",0.13,164874,91559748,"Prickle Fairy"],
 ["OP07-EN015","Common","Unlimited",0.28,164875,37957847,"Insect Princess"],
-["OP07-EN016","Common","Unlimited",0.36,164876,12171659,"Zeradias, Herald of Heaven"],
+["OP07-EN016","Common","Unlimited",0.35,164876,12171659,"Zeradias, Herald of Heaven"],
 ["OP07-EN017","Common","Unlimited",0.72,164867,2204140,"Book of Life"],
 ["OP07-EN018","Common","Unlimited",0.1,164877,60876124,"Rare Value"],
 ["OP07-EN019","Common","Unlimited",0.83,164878,4064256,"Zombie World"],
@@ -22,7 +22,7 @@
 ["OP07-EN021","Common","Unlimited",0.11,164881,31222701,"Wavering Eyes"],
 ["OP07-EN022","Common","Unlimited",0.16,164885,34029630,"Pitch-Black Power Stone"],
 ["OP07-EN023","Common","Unlimited",0.25,164886,83675475,"Token Feastevil"],
-["OP07-EN024","Common","Unlimited",0.22,164888,96012004,"Lucky Chance"],
+["OP07-EN024","Common","Unlimited",0.25,164888,96012004,"Lucky Chance"],
 ["OP07-EN025","Common","Unlimited",0.76,164889,25551951,"Blowback Dragon"],
 ["OP07-EN026","Common","Unlimited",31.07,164891,87751584,"Gatling Dragon"]
 ]
