@@ -139,10 +139,10 @@ export interface AskPromptView {
 }
 
 export interface AskOptionsView {
-  of: 'option' | 'position' | 'number' | 'race' | 'attribute'
+  of: 'option' | 'position' | 'number' | 'race' | 'attribute' | 'rps'
   /** Cuántas se eligen: una, o `count` Tipos o Atributos. Con todas elegidas, contesta. */
   count: number
-  /** `value`: el índice (opción, número), la posición (1, 2, 4, 8) o el bit (Tipo, Atributo). Sin `label`, la pantalla lo nombra. */
+  /** `value`: el índice (opción, número), la posición (1, 2, 4, 8), el bit (Tipo, Atributo) o la mano (piedra, papel o tijera, `RPS`). Sin `label`, la pantalla lo nombra. */
   options: { value: number; label?: string; description?: string }[]
   chosen: number[]
 }
@@ -170,8 +170,7 @@ export interface AskView {
   type: AskType
   title?: string
   /**
-   * Se contesta sola, sin mostrar nada: `none`, una pregunta sin pantalla todavía (con su respuesta legal por defecto; null si no hay
-   * ninguna segura: `announce_card` sin cartas que ofrecer); `forced`, una sola respuesta posible; `setting`, la decide un ajuste; `drop`, la casilla donde se soltó la carta (`prefer`).
+   * Se contesta sola, sin mostrar nada: `none`, sin ninguna respuesta segura (null: `announce_card` sin cartas que ofrecer); `forced`, una sola respuesta posible; `setting`, la decide un ajuste; `drop`, la casilla donde se soltó la carta (`prefer`).
    */
   auto: { answer: CoreAnswer | null; why: 'none' | 'forced' | 'setting' | 'drop' } | null
   /** Los ítems de cada carta de mi mesa, por id (las jugadas, el ataque, la cadena). */
@@ -282,8 +281,12 @@ const SYSTEM_OPTIONS = { '573': 'practice.menu.toHand', '574': 'practice.menu.to
 const PILE_OF: Partial<Record<number, MatPile>> = { [L.DECK]: 'deck', [L.HAND]: 'hand', [L.GRAVE]: 'gy', [L.REMOVED]: 'banished', [L.EXTRA]: 'extra' }
 /** El `desc` con que el núcleo pregunta por un efecto que se disparó (texto 221 del sistema). Medido con el núcleo real: no dice si quedan otros por preguntar. */
 const TRIGGER_DESC = '221'
-/** Sin pantalla todavía (§3 del diseño): piedra, papel o tijera (en el fuzz no apareció). */
-const NO_UI = new Set<AskType>(['rock_paper_scissors'])
+/** Piedra, papel o tijera (`Duel.RockPaperScissors`, p. ej. Transmission Gear): el núcleo pregunta a los dos y gana el que sigue al otro (3 a 2, 2 a 1, 1 a 3); los nombres, los de EDOPro. */
+const RPS = [
+  [2, 'duel.games.rps.rock'],
+  [3, 'duel.games.rps.paper'],
+  [1, 'duel.games.rps.scissors'],
+] as const
 const POSITIONS = [
   [P.FACEUP_ATTACK, 'practice.menu.attack'],
   [P.FACEDOWN_ATTACK, 'practice.attack.faceDown'],
@@ -673,9 +676,6 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
   const cardsOf = <C extends Loc>(list: readonly C[], value?: (card: C) => number) => list.map((card) => askCard(card, resolve(card), value?.(card)))
   const auto = (answer: CoreAnswer | null, why: NonNullable<AskView['auto']>['why']) => void (base.auto = { answer: answer && parseAnswer(answer), why })
 
-  // Sin pantalla todavía: lo que contestaría el rival pasivo (siempre legal).
-  if (NO_UI.has(ask.type)) auto(passivePolicy()(ask), 'none')
-
   switch (ask.type) {
     case 'select_idlecmd':
     case 'select_battlecmd': {
@@ -700,7 +700,10 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       const own = !ask.forced && ask.selects.length > 0 ? (PHASE_WINDOWS.find(([bit]) => (ask.hint_timing & bit) !== 0)?.[1] ?? null) : null
       const quiet = ctx.prefs.chainMode === 'never' || (ctx.prefs.chainMode === 'ask' && ask.spe_count === 0 && !ask.forced && !own)
 
-      if (quiet || ask.selects.length === 0) auto({ type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }, ask.selects.length === 0 ? 'forced' : 'setting')
+      // Forzada sin ninguna carta que la mesa ubique (el espejo del rival no la tiene donde dice la pregunta): la primera, que siempre vale, antes que una pregunta sin nada que tocar.
+      const unseen = ask.forced && base.items.size === 0 && base.theirs.size === 0
+
+      if (quiet || ask.selects.length === 0 || unseen) auto({ type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }, ask.selects.length === 0 || unseen ? 'forced' : 'setting')
       else if (own) {
         const pass: CoreAnswer = { type: ask.type, index: null }
 
@@ -730,6 +733,9 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
       break
     case 'announce_number':
       base.options = ask.options.map((number, value) => ({ value, label: String(Number(number)) }))
+      break
+    case 'rock_paper_scissors':
+      base.options = RPS.map(([value, key]) => ({ value, label: t(key) }))
       break
     case 'select_position':
       base.options = POSITIONS.filter(([position]) => (ask.positions & position) !== 0).map(([value, key]) => ({ value, label: t(key) }))
@@ -838,8 +844,9 @@ export function askView(state: AskState): AskView {
     case 'announce_number':
     case 'announce_race':
     case 'announce_attrib':
+    case 'rock_paper_scissors':
       view.options = {
-        of: ({ select_option: 'option', select_position: 'position', announce_number: 'number', announce_race: 'race', announce_attrib: 'attribute' } as const)[ask.type],
+        of: ({ select_option: 'option', select_position: 'position', announce_number: 'number', announce_race: 'race', announce_attrib: 'attribute', rock_paper_scissors: 'rps' } as const)[ask.type],
         count: ask.type === 'announce_race' || ask.type === 'announce_attrib' ? ask.count : 1,
         options: base.options,
         chosen: [...chosen],
@@ -1073,6 +1080,8 @@ export function step(state: AskState, gesture: AskGesture): { state: AskState; a
           return answer({ type: ask.type, index: chosen[0]! })
         case 'select_position':
           return answer({ type: ask.type, position: chosen[0]! })
+        case 'rock_paper_scissors':
+          return answer({ type: ask.type, value: chosen[0]! })
         case 'announce_race':
           return answer({ type: ask.type, races: String(chosen.reduce((mask, bit) => mask | (1n << BigInt(bit)), 0n)) })
         case 'announce_attrib':

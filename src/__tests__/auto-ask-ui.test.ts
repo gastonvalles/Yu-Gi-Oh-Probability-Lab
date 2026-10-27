@@ -134,7 +134,6 @@ const ASKS: CoreAsk[] = [
   { type: 'rock_paper_scissors', player: 0 },
 ]
 
-const NO_UI = ['rock_paper_scissors']
 
 describe('namesList: los nombres de una línea del registro', () => {
   it('junta las copias de la misma carta con cuántas son y respeta el orden en que aparecen', () => {
@@ -188,7 +187,7 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
         expect({ type: ask.type, stuck: played.stuck, dead: played.dead }).toEqual({ type: ask.type, stuck: false, dead: 0 })
         expect(parseAnswer(played.answer)).toEqual(played.answer)
         expect(legal(ask, played.answer!)).toBe(true)
-        expect(played.auto?.why === 'none').toBe(NO_UI.includes(ask.type))
+        expect(played.auto?.why).not.toBe('none')
       }
     }
   })
@@ -582,12 +581,30 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(step(state, { kind: 'cancel' }).answer).toEqual({ type: 'sort_card', order: null })
   })
 
-  it('sin pantalla todavía: piedra, papel o tijera se contesta solo con una respuesta legal', () => {
-    const autos = Object.fromEntries(ASKS.filter((ask) => NO_UI.includes(ask.type)).map((ask) => [ask.type, askView(open(ask, ctx(MESA))).auto]))
+  it('piedra, papel o tijera (Transmission Gear, medido con el núcleo): tres botones en ese orden, con los números del núcleo (gana el que sigue al otro: 3 a 2, 2 a 1, 1 a 3)', () => {
+    const state = open({ type: 'rock_paper_scissors', player: 0 }, ctx(MESA))
+    const view = askView(state)
 
-    expect(autos).toEqual({
-      rock_paper_scissors: { answer: { type: 'rock_paper_scissors', value: 1 }, why: 'none' },
+    expect(view.auto).toBeNull()
+    expect(view.options).toEqual({
+      of: 'rps',
+      count: 1,
+      options: [
+        { value: 2, label: t('duel.games.rps.rock') },
+        { value: 3, label: t('duel.games.rps.paper') },
+        { value: 1, label: t('duel.games.rps.scissors') },
+      ],
+      chosen: [],
     })
+    expect(step(state, { kind: 'option', value: 3 }).answer).toEqual({ type: 'rock_paper_scissors', value: 3 })
+  })
+
+  it('una cadena obligatoria cuyas cartas la mesa no ubica (el espejo del rival no la tiene donde dice la pregunta) no queda sin nada que tocar: se contesta sola con la primera', () => {
+    const forced: CoreAsk = { type: 'select_chain', player: 1, spe_count: 0, forced: true, hint_timing: 32, hint_timing_other: 0, selects: [{ ...pos(63013339, L.MZONE, 3, 1, 0), description: '0', client_mode: 1 }] }
+
+    expect(askView(open(forced, ctx(mesa([], { seat: 1 })))).auto).toEqual({ answer: { type: 'select_chain', index: 0 }, why: 'forced' })
+    // Con la carta en su campo, se ofrece (se toca ahí).
+    expect(askView(open(forced, ctx(mesa([{ side: 'theirs', id: 'c9', code: 63013339, location: L.MZONE, sequence: 3 }], { seat: 1 })))).auto).toBeNull()
   })
 })
 

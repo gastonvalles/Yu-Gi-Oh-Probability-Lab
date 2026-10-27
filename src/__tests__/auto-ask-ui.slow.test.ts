@@ -29,7 +29,6 @@ const PLAYERS = [
   { lp: 8000, hand: 5, draw: 1 },
   { lp: 8000, hand: 5, draw: 1 },
 ]
-const NO_UI = ['rock_paper_scissors']
 /** Las casillas propias donde se puede soltar una carta de la mano. */
 const DROPS: ZoneTarget[] = [...(['mz', 'st'] as const).flatMap((zone) => [0, 1, 2, 3, 4].map((index) => ({ side: 'mine' as const, zone, index }))), { side: 'mine', zone: 'field', index: 0 }]
 const IDLE_LISTS = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
@@ -220,8 +219,8 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
     writeFileSync(path.join(CORE_DATA_DIR, `oracle-${DUELS}-s${SEED}.json`), JSON.stringify(report, null, 1))
     console.log(JSON.stringify(report.tally))
 
-    // Lo que se contesta solo «sin pantalla» es sólo lo declarado (`NO_UI`).
-    const undeclared = Object.keys(tally.auto).filter((key) => key.split(':')[1] === 'none' && !NO_UI.includes(key.split(':')[0]!))
+    // Nada se contesta solo «sin pantalla».
+    const undeclared = Object.keys(tally.auto).filter((key) => key.split(':')[1] === 'none')
 
     expect({ retries: tally.retries, stuck: tally.stuck, dead: tally.dead, unparsed: tally.unparsed, undeclared, nullAnswers: Object.keys(tally.auto).filter((key) => key.endsWith(':null')) }).toEqual({ retries: {}, stuck: {}, dead: 0, unparsed: 0, undeclared: [], nullAnswers: [] })
     // Lo legal que la pantalla no ofrece en las preguntas de menú: sólo barajar la mano (la mesa no lo tiene).
