@@ -91,7 +91,8 @@ import { stepTone } from './step-tone'
 import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatSaveContext } from './MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatSaveContext } from './MatBarActions'
+import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
@@ -265,8 +266,10 @@ interface PracticeMatProps {
   onNewHand: () => void
   /** Volver a la pantalla de antes (Jugar): sin esto la práctica no tiene salida más que el menú. Sólo en la práctica (el duelo trae la suya en su barra). */
   onExit?: () => void
-  /** Debajo de la mano: las salidas y problemas de la mano inicial (aparece cuando terminó de repartirse). */
+  /** Las salidas y problemas de la mano inicial (aparece cuando terminó de repartirse): en escritorio, abajo del panel lateral; en el celular, lo que abre la píldora de la barra (`RulesPill`). */
   footer?: ReactNode
+  /** El resumen del `footer` que dice esa píldora; sin él, en el celular no hay píldora. */
+  footerSummary?: RulesSummary | null
   /** Cartas (por id) que brillan: las que cumplen la salida o el problema tocado. */
   highlighted?: ReadonlySet<string>
   highlightKind?: PatternKind | null
@@ -501,6 +504,7 @@ export function PracticeMat({
   onNewHand,
   onExit,
   footer,
+  footerSummary = null,
   highlighted = EMPTY_IDS,
   highlightKind = null,
   muted = false,
@@ -928,6 +932,9 @@ export function PracticeMat({
   const orderedHand = useMemo(() => mergeHandOrder(handOrder, state.hand), [handOrder, state.hand])
   const handCards = useMemo<HandCardData[]>(() => orderedHand.slice(0, dealt).filter((id) => id !== pendingId).map((id) => ({ id, ...cardOf(id) })), [orderedHand, dealt, cardOf, pendingId])
   const isDealt = dealt >= handTotal
+  // Celular: las salidas y problemas van plegados en una píldora de la barra de arriba (en el lugar libre antes de Deshacer) que los abre debajo de ella; antes flotaban sobre la mano y, en
+  // «Jugar solo automático» (la mano sube sobre el campo) o en una pantalla baja, tapaban tus magias, trampas y pilas. En escritorio van abajo del panel lateral.
+  const rulesPill = footer && footerSummary && isDealt && !isDesktop ? <RulesPill summary={footerSummary}>{footer}</RulesPill> : null
 
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo): `artById`, de arriba.
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
@@ -2419,6 +2426,7 @@ export function PracticeMat({
           <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
+          {rulesPill}
           {/* Las handtraps del rival: «Entrenar solo» entra directo a la mesa, así que se encienden y se elige el pool acá; aplicar reparte una mano nueva. */}
           <MatBarActions
             className="ml-auto"
@@ -2451,7 +2459,9 @@ export function PracticeMat({
         )}
       >
         <DuelRailsContext.Provider value={rails}>
-          <MatSaveContext.Provider value={saveLink}>{duel?.header}</MatSaveContext.Provider>
+          <MatSaveContext.Provider value={saveLink}>
+            <MatRulesContext.Provider value={rulesPill}>{duel?.header}</MatRulesContext.Provider>
+          </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
         <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : 'relative my-auto flex flex-col gap-2 max-[1101px]:pb-12') : 'contents')}>
@@ -2610,11 +2620,9 @@ export function PracticeMat({
         </div>
         </div>
 
-        {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
+        {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van en la píldora de la barra en el celu (`rulesPill`) y en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
         <div className={cx('relative', duel && 'pointer-events-none z-10')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
-          {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
-          {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"

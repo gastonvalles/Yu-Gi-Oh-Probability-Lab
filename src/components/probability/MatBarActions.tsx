@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 
 import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscreen'
 import { setMatView, useMatView } from '../../app/mat-view'
@@ -28,6 +28,9 @@ export function MatExitButton({ onExit }: { onExit: () => void }) {
  * que lo pone alrededor de esa barra; sin `onSave`, `MatBarActions` toma éste.
  */
 export const MatSaveContext = createContext<{ onSave: () => void; canSave: boolean } | null>(null)
+
+/** Las salidas y problemas de la mano en el celular (`RulesPill`), que la mesa pone en la barra antes de Deshacer: la de la práctica y la de «Jugar solo automático». Sin ella, nada. */
+export const MatRulesContext = createContext<ReactNode>(null)
 
 /**
  * «La mesa», el primer grupo del menú ⋯ de toda mesa (la práctica, «Jugar solo automático» y el duelo por enlace): la vista 3D, los sonidos y la ventana grande (sólo en escritorio: en el celular la mesa
@@ -88,12 +91,15 @@ interface MatBarActionsProps {
  */
 export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, auto = false, onSave, canSave = false, more = [], className, menuOpen = false }: MatBarActionsProps) {
   const fromMat = useContext(MatSaveContext)
+  const rules = useContext(MatRulesContext)
   const save = onSave ? { onSave, canSave } : fromMat
   const handtraps = useHandtrapsSheet({ onApply: onHandtraps, auto })
 
   return (
     <>
-      <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={!canUndo} className={cx('disabled:opacity-35', className)} onClick={onUndo}>
+      {/* La píldora toma el lugar libre (`flex-1`): ya empuja los íconos a la derecha. */}
+      {rules}
+      <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={!canUndo} className={cx('disabled:opacity-35', !rules && className)} onClick={onUndo}>
         <Icon name="undo" />
       </IconButton>
       <MatMoreMenu
