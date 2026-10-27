@@ -7,8 +7,8 @@ import { parseAnswer, parseSetup, type Seat, type Setup } from './protocol'
 /**
  * El duelo automático por enlace guardado por el anfitrión (diseño: `docs/duelo-automatico-enlace.md`): con la clave del duelo, su asiento, la mano de la sala, los dos
  * decks y las respuestas aceptadas de los dos (y si ya se cortó para pasar a manual), el núcleo vuelve a contar el duelo entero (`restore` de la sesión) si el anfitrión recarga la página, y el invitado lo recibe de
- * nuevo. Nada más: ni nombres ni mensajes. Se escribe con cada respuesta aceptada, se reescribe en cada revancha, se borra cuando el duelo termina (o lo borra la pantalla al
- * abandonar) y vence como el guardado del duelo manual (`SAVE_TTL_MS`). La versión 1 (con la semilla, de antes de la clave) no se lee: el duelo se da por perdido y la sala sigue.
+ * nuevo. Nada más: ni nombres ni mensajes. Se escribe con cada respuesta aceptada, queda tal cual cuando el duelo termina (recargar en el siding de un Match lo rearma terminado), se borra con
+ * la revancha (o lo borra la pantalla al abandonar) y vence como el guardado del duelo manual (`SAVE_TTL_MS`). La versión 1 (con la semilla, de antes de la clave) no se lee: el duelo se da por perdido y la sala sigue.
  */
 export interface AutoSave {
   v: 2

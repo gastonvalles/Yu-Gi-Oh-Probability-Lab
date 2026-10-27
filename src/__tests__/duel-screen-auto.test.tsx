@@ -12,7 +12,7 @@ import type { DuelConnect } from '../app/use-duel'
 import type { AutoDuelScreenProps } from '../components/auto/AutoDuelScreen'
 import { DuelScreen } from '../components/duel/DuelScreen'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
-import { asSocket, createDuelHarness, fakeRooms, handOf, hasSave, render, rulesDialog, typeInto } from './support/duel-screen-harness'
+import { asSocket, createDuelHarness, effectMonster, fakeRooms, handOf, hasSave, monsters, render, rulesDialog, typeInto } from './support/duel-screen-harness'
 
 // La sala con reglas automáticas (beta), de punta a punta en la sala de siempre: la mesa del núcleo va de mentira (la prueban `auto-screen-*` y el enlace, `auto-online-*`);
 // acá importa la sala: quién puede estar listo, que nunca se reparte la mesa manual, quién mira, la sala pública y «Jugar ahora».
@@ -39,6 +39,8 @@ function FakeAutoDuel(props: AutoDuelScreenProps) {
 
   roomState[props.snapshot.role] = setState
   seen.push(props)
+
+  if (props.siding) return <>{props.siding}</>
 
   return props.snapshot.opening.ordered ? <div data-testid="auto-duel" /> : <>{props.room(state)}</>
 }
@@ -71,7 +73,7 @@ afterEach(() => {
 })
 
 describe('una sala con reglas automáticas', () => {
-  it('prendido el modo automático, la hoja deja elegir Match pero deja fijos el siding y el reloj de turnos (lo elegido vuelve al apagarlo) y «Abrir duelo» abre la sala privada que se eligió, que lo dice', () => {
+  it('prendido el modo automático, la hoja deja elegir Match y siding pero deja fijo el reloj de turnos (lo elegido vuelve al apagarlo) y «Abrir duelo» abre la sala privada que se eligió, que lo dice', () => {
     withWorker()
     const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms, autoDuel: FakeAutoDuel })} />)
@@ -88,10 +90,10 @@ describe('una sala con reglas automáticas', () => {
     // Es el mismo interruptor que el del lobby: prende el modo automático entero.
     expect(toggle).toBeChecked()
     expect(autoPrefs().duel).toBe(true)
-    expect(sheet.getByText('Con reglas automáticas: sin siding, reloj de turnos ni espectadores todavía.')).toBeInTheDocument()
-    // Match se sigue eligiendo (la serie es de la sala), sin siding; Solo también (ahí rige el simulador de handtraps).
+    expect(sheet.getByText('Con reglas automáticas: sin reloj de turnos ni espectadores todavía.')).toBeInTheDocument()
+    // Match (y su siding) se sigue eligiendo; Solo también (ahí rige el simulador de handtraps).
     expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
-    expect(sheet.getByRole('switch', { name: 'Sidedeck' })).toBeDisabled()
+    expect(sheet.getByRole('switch', { name: 'Sidedeck' })).toBeEnabled()
     expect(sheet.getByRole('radio', { name: 'Solo' })).toBeEnabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeDisabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).not.toBeChecked()
@@ -300,5 +302,66 @@ describe('una sala con reglas automáticas', () => {
     expect(handOf(host).getAllByRole('listitem')).toHaveLength(5)
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(5)
     expect(hasSave('host')).toBe(true)
+  })
+
+  it('un Match con siding: «Siguiente duelo» lleva al siding (en vez de la mesa del núcleo, que sigue montada), el deck que queda le llega a la mesa, recargar vuelve al siding y con los dos listos sigue la sala', () => {
+    withWorker()
+    setAutoPref('duel', true)
+    const withSide = new Map([...monsters, ['card-777-1', { name: 'Carta del Side', apiCard: effectMonster }]])
+    const props = { sideIds: ['card-777-1'], cardsById: withSide, autoDuel: FakeAutoDuel }
+    const immersive = vi.fn()
+    const host = render(<DuelScreen {...screenProps({ ...props, onImmersiveChange: immersive })} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    openRules(host)
+    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
+    const room = extractRoomCode(window.location.hash)!
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps(props)} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    joinByLink(guest, room)
+    flush()
+    act(() => {
+      roomState.host({ canReady: true, notice: null })
+      roomState.guest({ canReady: true, notice: null })
+    })
+    openTable(host, guest)
+    expect(lastProps('host').snapshot.settings).toMatchObject({ auto: true, match: true, siding: true })
+
+    // Beto se rinde: Ana va 1–0 y «Siguiente duelo» (el de la tarjeta del resultado) lleva al siding, sin pedir todavía la revancha.
+    act(() => lastProps('guest').duel.concede())
+    flush()
+    act(() => lastProps('host').onRematch())
+    expect(within(host.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
+    expect(lastProps('host').snapshot.rematch.mine).toBe(false)
+    expect(immersive).toHaveBeenLastCalledWith(false)
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Mover Carta del Side al Main Deck' }))
+    click(host, 'Listo')
+    flush()
+    // El deck del siding es el que recibe la mesa (para el duelo que sigue), y la sala ya sabe que Ana está lista.
+    expect(lastProps('host').deck.mainIds).toHaveLength(41)
+    expect(lastProps('host').snapshot.rematch.mine).toBe(true)
+
+    // Ana recarga: vuelve al siding (la sala sigue terminada: lo guardado dice quién se rindió), con su deck nuevo.
+    host.unmount()
+    sessionStorage.setItem(`ygo-lab:duel-role:${room}`, 'host')
+    window.history.replaceState(null, '', `#duel?room=${room}`)
+    const again = render(<DuelScreen {...screenProps(props)} />)
+    flush()
+    flush()
+    expect(within(again.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
+    expect(lastProps('host').snapshot.conceded).toBe(1)
+    expect(lastProps('host').deck.mainIds).toHaveLength(41)
+    click(again, 'Listo')
+    act(() => lastProps('guest').onRematch())
+    click(guest, 'Listo')
+    flush()
+    // Con los dos listos, la sala otra vez (elige Beto, que perdió) y el Match va 1–0 en las dos.
+    expect(within(again.container).queryByRole('heading', { name: 'Sidedeck' })).toBeNull()
+    expect(within(guest.container).queryByRole('heading', { name: 'Sidedeck' })).toBeNull()
+    expect(lastProps('guest').snapshot.series).toMatchObject({ game: 2, wins: [1, 0] })
+    expect(lastProps('host').snapshot.series).toMatchObject({ game: 2, wins: [1, 0] })
+    expect(lastProps('guest').snapshot.opening).toMatchObject({ ordered: false, chooser: 1 })
   })
 })

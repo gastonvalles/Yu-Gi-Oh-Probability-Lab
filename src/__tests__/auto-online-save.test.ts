@@ -200,13 +200,91 @@ describe('el guardado del duelo automático por enlace', () => {
     expect(hosted.getSnapshot()).toMatchObject({ status: 'waiting', remoteAsk: { seat: 0 } })
     expect(hosted.getSnapshot().answers.map((answer) => answer.seat)).toEqual([0, 0, 1, 0])
 
-    // Termina por rendición: lo guardado se borra.
+    // Termina por rendición: lo guardado queda hasta la revancha (recargar antes rearma el duelo terminado), que lo borra.
     guest.concede()
     await settle(room)
     expect(hostLink2.getSnapshot().phase).toBe('ended')
+    expect(storage.items.size).toBe(1)
+    host2.rematch()
+    guest.rematch()
+    await settle(room)
     expect(storage.items.size).toBe(0)
     hostLink2.destroy()
     guestLink.destroy()
+  })
+
+  it('un Match con siding: el deck nuevo de cada uno vale desde el duelo que sigue, recargar entre los dos rearma el terminado y uno que no sale del Side no entra', async () => {
+    const storage = memoryStorage()
+    const room = createMemoryRoom()
+    const hostEnd = room.join()
+    const guestEnd = room.join()
+    const settings = { ...DEFAULT_SETTINGS, auto: true, match: true, siding: true }
+    const host = createDuel(hostEnd, { role: 'host', name: 'Ana', sid: 'host-1', settings })
+    const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', sid: 'guest-1' })
+    const hostLink = createHostLink({ transport: hostEnd, loader, deck: HOST_DECK, handSize: 5, makeTransport: fakeHost(undefined, undefined, 2).factory, enabled: async () => true, save: autoSaveStore('ROOM0003', storage) })
+    const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK })
+    const sorted = (command: AutoCommand | undefined) => (command as Extract<AutoCommand, { t: 'create' }>).decks.map((deck) => [...deck.main].sort())
+
+    host.subscribe(() => hostLink.observe(host.getSnapshot()))
+    guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
+    await settle(room)
+    host.setReady(true)
+    guest.setReady(true)
+    await settle(room)
+    host.chooseMethod('rps')
+    await settle(room)
+    host.pickRps('rock')
+    guest.pickRps('scissors')
+    await settle(room)
+    host.chooseFirst(1)
+    await settle(room)
+    // Beto se rinde en el primero; en el siding cambia dos cartas y Ana una (el deck de la pantalla, que el enlace guarda para el que sigue).
+    guest.concede()
+    await settle(room)
+    guestLink.deck!({ main: [[2, 3], [3, 2]] })
+    const SIDED: DeckList = { main: [[1, 4], [4, 1]] }
+
+    hostLink.deck!(SIDED)
+    await settle(room)
+    // Ana recarga en el siding: la sala sigue terminada (lo guardado de la sala) y el enlace rearma el duelo terminado, con su deck nuevo ya en la pantalla.
+    hostLink.destroy()
+    hostEnd.close()
+    const hostEnd2 = room.join()
+    const host2 = createDuel(hostEnd2, { role: 'host', name: 'Ana', sid: 'host-2', settings, ended: { conceded: 1, timeUp: false } })
+    const core2 = fakeHost(undefined, undefined, 2)
+    const hostLink2 = createHostLink({ transport: hostEnd2, loader, deck: SIDED, handSize: 5, makeTransport: core2.factory, enabled: async () => true, save: autoSaveStore('ROOM0003', storage) })
+
+    onTestFinished(() => {
+      hostLink2.destroy()
+      guestLink.destroy()
+    })
+    host2.subscribe(() => hostLink2.observe(host2.getSnapshot()))
+    hostLink2.observe(host2.getSnapshot())
+    await settle(room)
+    expect(hostLink2.getSnapshot().phase).toBe('ended')
+    expect(storage.items.size).toBe(1)
+    host2.rematch()
+    guest.rematch()
+    await settle(room)
+    expect(host2.getSnapshot().series).toMatchObject({ game: 2, wins: [1, 0] })
+    expect(guest.getSnapshot().series).toMatchObject({ game: 2, wins: [1, 0] })
+    expect(storage.items.size).toBe(0)
+    // Elige Beto (perdió): va primero (asiento 0). El segundo duelo es con los dos decks del siding.
+    guest.chooseFirst(1)
+    await settle(room)
+    expect(sorted(core2.commands.filter((command) => command.t === 'create').at(-1))).toEqual([[2, 2, 2, 3, 3], [1, 1, 1, 1, 4]])
+    // Ana se rinde; para el tercero Beto manda un deck que no sale de su Side (16 copias nuevas): sigue con el de antes.
+    host2.concede()
+    await settle(room)
+    guestLink.deck!({ main: [[9, 16]] })
+    await settle(room)
+    host2.rematch()
+    guest.rematch()
+    await settle(room)
+    host2.chooseFirst(0)
+    await settle(room)
+    expect(hostLink2.getSnapshot().phase).toBe('playing')
+    expect(sorted(core2.commands.filter((command) => command.t === 'create').at(-1))).toEqual([[1, 1, 1, 1, 4], [2, 2, 2, 3, 3]])
   })
 
   /** Beto (asiento 0) contesta su primera pregunta y Ana recarga la página con lo guardado cambiado por `edit` (lo que escribió otra página u otro despliegue). */

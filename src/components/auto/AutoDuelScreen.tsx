@@ -75,6 +75,8 @@ export interface AutoDuelScreenProps {
    * la mesa rearmada (se lee al montar: el enlace la consume una vez y la revancha empieza de cero); el invitado no necesita nada (arma las suyas del `autoInit`).
    */
   resume?: HostLinkOptions['resume']
+  /** El siding de un Match (`DuelSiding`), en vez de la mesa: el enlace sigue vivo debajo. */
+  siding?: ReactNode
   /** Pruebas: el enlace de mentira (tiene que ser estable: cambiarlo arma otro enlace). */
   connect?: (transport: OnlineTransport, role: DuelRole) => OnlineLink
 }
@@ -97,14 +99,16 @@ const sessionIds = new WeakMap<AutoSession, number>()
 let lastSessionId = 0
 const sessionKey = (session: AutoSession) => sessionIds.get(session) ?? (sessionIds.set(session, (lastSessionId += 1)), lastSessionId)
 
-export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, resume, connect }: AutoDuelScreenProps) {
+export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, resume, siding, connect }: AutoDuelScreenProps) {
   const { role, peerPresent } = snapshot
   const list = useMemo<DeckList>(() => ({ main: deckListOf(deck.mainIds), extra: deckListOf(deck.extraIds) }), [deck.mainIds, deck.extraIds])
   const [link, setLink] = useState<OnlineLink | null>(null)
-  // La mesa rearmada se lee cuando se arma el enlace (cambiarla después no arma otro).
+  // La mesa rearmada y el deck se leen cuando se arma el enlace (cambiarlos después no arma otro: el deck nuevo del siding se le pasa con `deck`).
   const resumeRef = useRef(resume)
+  const listRef = useRef(list)
 
   resumeRef.current = resume
+  listRef.current = list
   // El duelo guardado del anfitrión se borra al salir, abandonar o pasar a manual (el enlace no lo borra al destruirse: con `StrictMode` borraría lo guardado al volver a montar).
   const save = useMemo(() => (code ? autoSaveStore(code) : null), [code])
   const leave = useCallback(() => {
@@ -127,12 +131,15 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite, y un enlace escucha el relay y manda; el de la primera pasada se destruye.
   useEffect(() => {
-    const next = connect ? connect(transport, role) : liveLink(transport, role, list, handSize, save, resumeRef.current)
+    const next = connect ? connect(transport, role) : liveLink(transport, role, listRef.current, handSize, save, resumeRef.current)
 
     setLink(next)
 
     return () => next.destroy()
-  }, [connect, transport, role, list, handSize, save])
+  }, [connect, transport, role, handSize, save])
+  useEffect(() => {
+    link?.deck?.(list)
+  }, [link, list])
 
   const online = useSyncExternalStore(link ? link.subscribe : noSubscribe, link ? link.getSnapshot : noSnapshot)
 
@@ -165,6 +172,7 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
   const codeName = useCodeName(deck.cardsById, online?.cards)
   const tellPhase = useCallback((view: PhaseView) => link?.phase?.(view), [link])
 
+  if (siding) return <>{siding}</>
   // La sala hasta que hay duelo: también entre un duelo y su revancha (la mesa vuelve a cero y elige el que perdió).
   if (!online?.session || online.seat === null || !snapshot.opening.ordered) return <>{room(roomAutoState(online, rivalName, codeName))}</>
 

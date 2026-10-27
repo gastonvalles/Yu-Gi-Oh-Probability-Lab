@@ -367,7 +367,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
   }, [isOpen, prefs])
 
   const genesys = draft.format === 'genesys'
-  // Con reglas automáticas la sala no tiene siding ni reloj de turnos: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se muestran así: lo elegido antes
+  // Con reglas automáticas la sala no tiene reloj de turnos: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se muestran así: lo elegido antes
   // vuelve al apagarlo. El tipo, quién entra, el tiempo y el formato se eligen igual que siempre.
   const locked = auto && !solo
   const match = draft.match && !solo
@@ -466,7 +466,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
               <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
               <span className="text-micro text-soft">{t('duel.create.sidingHint')}</span>
             </span>
-            <Switch checked={draft.siding && !locked} disabled={locked} onChange={(siding) => set({ siding })} label={t('duel.create.siding')} />
+            <Switch checked={draft.siding} onChange={(siding) => set({ siding })} label={t('duel.create.siding')} />
           </div>
         ) : null}
 

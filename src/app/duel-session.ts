@@ -183,6 +183,8 @@ interface DuelOptions {
   random?: () => number
   /** Mi mesa guardada de antes de recargar la página: se sigue desde ahí en vez de repartir de nuevo. */
   restore?: DuelSave
+  /** Una sala con reglas automáticas cuyo duelo terminó rindiéndose (`AutoEndSave`): sigue terminado al recargar, antes de la revancha. */
+  ended?: { conceded: Duelist; timeUp: boolean }
 }
 
 /** Cuánto espera mi pedido de volver atrás una respuesta del rival antes de cancelarse. */
@@ -1217,6 +1219,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       sender = null
       ownIds = {}
     }
+  }
+
+  if (options.ended && !options.restore) {
+    conceded = options.ended.conceded
+    concededOnTime = options.ended.timeUp
   }
 
   snapshot = build()

@@ -7,7 +7,7 @@ Dos personas juegan la mesa de práctica una contra la otra, cada una en su disp
 - **El deck es siempre el del builder:** todo lo que nombra el mazo en Jugar lleva ahí (`openBuilderFromPlay`; el builder ofrece «Volver a Jugar»), así las cartas se tocan en un solo lugar. El builder importa `ydke://` y `.ydk`, para jugar desde un celular sin deck armado.
 - «Jugar ahora» hace lo que dice (`pickRoom` en `duel-prefs.ts`): no hay esperas de mentira.
 - «Estoy listo» revisa el deck con las reglas del builder (`deckFormatIssues`) y pide 40 cartas en el Main: es una revisión de cada lado, no una garantía (el rival nunca ve el deck).
-- **«Duelo automático (beta)»** (con deck armado) decide qué mesa abre «Entrenar solo» y el «Jugar solo» de las reglas, y si la sala que abrís tiene reglas automáticas (prendido de entrada; pública o privada, Single o Match, sin siding, reloj ni espectadores: `docs/duelo-automatico-enlace.md`). La hoja de reglas lo repite. Ya empezado, pasa a manual (y vuelve a automático) sólo si lo aceptan los dos.
+- **«Duelo automático (beta)»** (con deck armado) decide qué mesa abre «Entrenar solo» y el «Jugar solo» de las reglas, y si la sala que abrís tiene reglas automáticas (prendido de entrada; pública o privada, Single o Match con siding, sin reloj ni espectadores: `docs/duelo-automatico-enlace.md`). La hoja de reglas lo repite. Ya empezado, pasa a manual (y vuelve a automático) sólo si lo aceptan los dos.
 - Dónde vive: `PlayHome` (Jugar) y `DuelScreen.tsx`.
 
 ## La sala
@@ -56,7 +56,7 @@ El visor de pilas elige varias (`PileViewer` con `many`) y `listBatchActions` (`
 
 ## Siding
 
-Usa las zonas y el arrastre del builder, pero es una pantalla propia del duelo (`DuelSiding`), y no tiene salida: termina con «Listo» o cuando se acaba el tiempo (`SIDING_MS`). Recargar vuelve al siding como estaba (`duel-save.ts`).
+Usa las zonas y el arrastre del builder, pero es una pantalla propia del duelo (`DuelSiding`), y no tiene salida: termina con «Listo» o cuando se acaba el tiempo (`SIDING_MS`). Recargar vuelve al siding como estaba (`duel-save.ts`); en una sala automática, también.
 
 ## Mirar un duelo (espectadores)
 

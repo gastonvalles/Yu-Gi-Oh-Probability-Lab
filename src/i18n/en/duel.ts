@@ -450,8 +450,8 @@ export const duel: Translated<typeof es> = {
 
   // A room with automatic rules (beta): the rules engine applies the rules for both players.
   'duel.auto.rules': 'Automatic rules (beta)',
-  'duel.auto.rulesHint': 'The rules engine applies the rules for both of you. No siding, turn clock or spectators.',
-  'duel.auto.locked': 'With automatic rules: no siding, turn clock or spectators yet.',
+  'duel.auto.rulesHint': 'The rules engine applies the rules for both of you. No turn clock or spectators.',
+  'duel.auto.locked': 'With automatic rules: no turn clock or spectators yet.',
   'duel.auto.unsupported': "Your browser can't run the automatic rules.",
   'duel.auto.off': 'Automatic rules are turned off for now.',
   'duel.auto.rulesRow': 'Automatic (beta)',
