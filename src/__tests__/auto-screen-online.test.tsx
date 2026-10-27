@@ -48,11 +48,11 @@ function Room({ auto }: { auto: RoomAutoState }) {
 }
 
 /** Ana (anfitriona) y Beto en una sala automática en memoria; se ve la pantalla de `role`, con el enlace de mentira. */
-function setup(role: 'host' | 'guest' = 'host') {
+function setup(role: 'host' | 'guest' = 'host', extra: Partial<typeof DEFAULT_SETTINGS> = {}) {
   const room = createMemoryRoom()
   const ends = { host: room.join(), guest: room.join() }
   const duels = {
-    host: createDuel(ends.host, { role: 'host', name: 'Ana', settings: { ...DEFAULT_SETTINGS, auto: true }, sid: 'host-1', random: () => 0.1 }),
+    host: createDuel(ends.host, { role: 'host', name: 'Ana', settings: { ...DEFAULT_SETTINGS, ...extra, auto: true }, sid: 'host-1', random: () => 0.1 }),
     guest: createDuel(ends.guest, { role: 'guest', name: 'Beto', sid: 'guest-1', random: () => 0.9 }),
   }
 
@@ -427,6 +427,35 @@ describe('auto-screen-online · la mesa', () => {
     expect(handCard('Ash Blossom')).toBeInTheDocument()
     expect(duels.host.getSnapshot().life.lp).toEqual([8000, 8000])
     expect(dispatches).toBe(0)
+  })
+
+  it('un Match: cada duelo que termina el núcleo suma al marcador de la sala, «Siguiente duelo» lleva al que sigue (elige quien perdió) y el segundo que gana uno cierra el Match', () => {
+    const { start, duels, flush, link } = setup('host', { match: true })
+    const first = start()
+
+    // Ana pierde el primero por deck-out: Beto va 1–0 y el Match sigue.
+    core(() => first.end(1, 2))
+    flush()
+    const card = screen.getByRole('dialog', { name: 'Perdiste' })
+
+    expect(card).toHaveTextContent('Match 0–1.')
+    fireEvent.click(within(card).getByRole('button', { name: 'Siguiente duelo' }))
+    act(() => duels.guest.rematch())
+    flush()
+    expect(screen.getByRole('region', { name: 'Sala' })).toBeInTheDocument()
+    expect(duels.host.getSnapshot().series).toMatchObject({ game: 2, wins: [0, 1], winner: null })
+    expect(duels.host.getSnapshot().opening.chooser).toBe(0)
+    act(() => duels.host.chooseFirst(0))
+    flush()
+    const second = fakeSession()
+
+    core(() => link.set({ session: second, seat: 0 }))
+    // El segundo lo gana Ana (Beto, sin vidas): 1–1, y sigue.
+    core(() => second.end(0, 1))
+    act(() => duels.guest.changeLife(-8000))
+    flush()
+    expect(screen.getByRole('dialog', { name: '¡Ganaste!' })).toHaveTextContent('Match 1–1.')
+    expect(duels.guest.getSnapshot().series).toMatchObject({ wins: [1, 1], winner: null })
   })
 })
 

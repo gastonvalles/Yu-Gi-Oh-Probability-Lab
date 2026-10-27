@@ -83,8 +83,8 @@ function LobbyTile({ tone, icon, title, hint, label, disabled = false, expanded,
   )
 }
 
-/** Las reglas con que se abre tu sala, en una línea; con reglas automáticas, eso en vez del tipo (es siempre un solo duelo). */
-const rulesLine = (prefs: DuelPrefs, auto: boolean) => [formatName(prefs.format, prefs.genesysCap), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), auto ? t('duel.auto.rulesRow') : prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle')].join(' · ')
+/** Las reglas con que se abre tu sala, en una línea (con reglas automáticas, también eso). */
+const rulesLine = (prefs: DuelPrefs, auto: boolean) => [formatName(prefs.format, prefs.genesysCap), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle'), ...(auto ? [t('duel.auto.rulesRow')] : [])].join(' · ')
 
 /**
  * El inicio de Jugar: primero entrar (una acción principal, «Jugar ahora», con las reglas que se recuerdan), después lo que pasa en la arena (salas que esperan y duelos en vivo,
@@ -367,10 +367,10 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
   }, [isOpen, prefs])
 
   const genesys = draft.format === 'genesys'
-  // Con reglas automáticas la sala es de un solo duelo (el tipo no ofrece Match) y sin reloj de turnos: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se
-  // muestran así: lo elegido antes vuelve al apagarlo. Quién entra, el tiempo y el formato se eligen igual que siempre.
+  // Con reglas automáticas la sala no tiene siding ni reloj de turnos: lo dice la fila del interruptor y esos controles quedan fijos. Sólo se muestran así: lo elegido antes
+  // vuelve al apagarlo. El tipo, quién entra, el tiempo y el formato se eligen igual que siempre.
   const locked = auto && !solo
-  const match = draft.match && !locked
+  const match = draft.match && !solo
   const turnOn = draft.turnLimit && !locked
   const mode: RoomMode = solo ? 'solo' : match ? 'match' : 'single'
 
@@ -401,7 +401,6 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
     >
       <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
         <RuleField label={t('duel.create.type')} hint={solo ? (canTrain ? t('duel.create.soloHint') : t('duel.play.trainNeedDeck')) : match ? t('duel.create.matchHint') : null} className="sm:col-span-2">
-          {/* Con reglas automáticas la sala es de un solo duelo: sin Match (vuelve al apagarlas); Solo se sigue pudiendo elegir. */}
           <Segmented<RoomMode>
             label={t('duel.create.type')}
             fullWidth
@@ -415,7 +414,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
             }}
             options={[
               { value: 'single', label: t('duel.create.single') },
-              ...(auto ? [] : [{ value: 'match' as const, label: t('duel.create.match') }]),
+              { value: 'match', label: t('duel.create.match') },
               { value: 'solo', label: t('duel.create.solo') },
             ]}
           />
@@ -467,7 +466,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, a
               <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
               <span className="text-micro text-soft">{t('duel.create.sidingHint')}</span>
             </span>
-            <Switch checked={draft.siding} onChange={(siding) => set({ siding })} label={t('duel.create.siding')} />
+            <Switch checked={draft.siding && !locked} disabled={locked} onChange={(siding) => set({ siding })} label={t('duel.create.siding')} />
           </div>
         ) : null}
 

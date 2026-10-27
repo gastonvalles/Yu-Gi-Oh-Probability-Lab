@@ -273,9 +273,9 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [sided, deckName, mainIds, extraIds, sideIds, cardsById])
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
-  // Con reglas automáticas: un solo duelo y sin reloj de turnos (el núcleo lleva la mesa: de este lado no hay turnos que contar ni cartas que cambiar entre duelos).
+  // Con reglas automáticas, Single o Match (la serie es de la sala), pero sin siding ni reloj de turnos.
   const settings = useMemo(
-    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true, turnMin: 0, turnBonusMin: 0, match: false, siding: false } : {}) }),
+    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true, turnMin: 0, turnBonusMin: 0, siding: false } : {}) }),
     [handSize, options],
   )
   const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
@@ -658,7 +658,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   )
 
   // Una sala con reglas automáticas: la sala de siempre y la mesa del núcleo, las dos en la pantalla del duelo automático (que se carga a pedido; mientras tanto, la sala sin poder estar listo).
-  // Nunca la mesa manual, su pausa ni el siding: en una sala así no hay revancha con siding ni Match, así que la revancha es la de siempre.
+  // Nunca la mesa manual ni su pausa; un Match sigue con la revancha de la sala (el marcador es de `duel-session`).
   if (autoRoom) {
     return (
       <>
