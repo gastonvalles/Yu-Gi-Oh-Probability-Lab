@@ -6,11 +6,12 @@ import { undoPoint, workerTransport, type AutoSession, type AutoSnapshot } from 
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
-import { createGuestLink, createHostLink, underControl, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type RoomAutoState } from '../../app/auto/online'
+import { createGuestLink, createHostLink, underControl, type HostLinkOptions, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type RoomAutoState } from '../../app/auto/online'
 import type { Seat } from '../../app/auto/protocol'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { duelResult, type DuelResult } from '../../app/duel-games'
+import { duelTurnNumber } from '../../app/duel-turn'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import { isEmojiSignal } from '../../app/duel-signals'
 import type { SocketStatus } from '../../app/duel-socket'
@@ -69,6 +70,11 @@ export interface AutoDuelScreenProps {
    * anfitrión; el anfitrión, con el pase acordado, cuando le llega la mesa manual del invitado.
    */
   onManual?: (game: ManualGame) => void
+  /**
+   * Y de vuelta: los dos acordaron seguir en automático un duelo que iba a mano (`online-resume.ts`, lo pide `DuelScreen` desde la mesa manual). El anfitrión arranca su enlace con
+   * la mesa rearmada (se lee al montar: el enlace la consume una vez y la revancha empieza de cero); el invitado no necesita nada (arma las suyas del `autoInit`).
+   */
+  resume?: HostLinkOptions['resume']
   /** Pruebas: el enlace de mentira (tiene que ser estable: cambiarlo arma otro enlace). */
   connect?: (transport: OnlineTransport, role: DuelRole) => OnlineLink
 }
@@ -78,12 +84,12 @@ const noSubscribe = () => () => {}
 const noSnapshot = () => null
 
 /** El enlace de verdad: el anfitrión baja los datos y corre el núcleo en un Worker; el invitado sólo baja lo de sus cartas. `features.online` del manifiesto lo apaga sin tocar código. */
-function liveLink(transport: OnlineTransport, role: DuelRole, deck: DeckList, handSize: number, save: AutoSaveStore | null): OnlineLink {
+function liveLink(transport: OnlineTransport, role: DuelRole, deck: DeckList, handSize: number, save: AutoSaveStore | null, resume: HostLinkOptions['resume']): OnlineLink {
   if (role === 'guest') return createGuestLink({ transport, source: httpSource(), deck })
   const loader = createDataLoader(httpSource())
 
   // Sin manifiesto no se sabe: se sigue y, si los datos no llegan, el enlace lo dice (`reason: 'data'`).
-  return createHostLink({ transport, loader, deck, handSize, makeTransport: workerTransport(), enabled: () => loader.manifest().then((manifest) => manifest.features?.online !== false, () => true), ...(save ? { save } : {}) })
+  return createHostLink({ transport, loader, deck, handSize, makeTransport: workerTransport(), enabled: () => loader.manifest().then((manifest) => manifest.features?.online !== false, () => true), ...(save ? { save } : {}), ...(resume ? { resume } : {}) })
 }
 
 /** Una clave por sesión (la mesa arranca de cero con cada una: revancha, o el invitado que vuelve a recibir el duelo). */
@@ -91,10 +97,14 @@ const sessionIds = new WeakMap<AutoSession, number>()
 let lastSessionId = 0
 const sessionKey = (session: AutoSession) => sessionIds.get(session) ?? (sessionIds.set(session, (lastSessionId += 1)), lastSessionId)
 
-export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, connect }: AutoDuelScreenProps) {
+export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, resume, connect }: AutoDuelScreenProps) {
   const { role, peerPresent } = snapshot
   const list = useMemo<DeckList>(() => ({ main: deckListOf(deck.mainIds), extra: deckListOf(deck.extraIds) }), [deck.mainIds, deck.extraIds])
   const [link, setLink] = useState<OnlineLink | null>(null)
+  // La mesa rearmada se lee cuando se arma el enlace (cambiarla después no arma otro).
+  const resumeRef = useRef(resume)
+
+  resumeRef.current = resume
   // El duelo guardado del anfitrión se borra al salir, abandonar o pasar a manual (el enlace no lo borra al destruirse: con `StrictMode` borraría lo guardado al volver a montar).
   const save = useMemo(() => (code ? autoSaveStore(code) : null), [code])
   const leave = useCallback(() => {
@@ -117,7 +127,7 @@ export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite, y un enlace escucha el relay y manda; el de la primera pasada se destruye.
   useEffect(() => {
-    const next = connect ? connect(transport, role) : liveLink(transport, role, list, handSize, save)
+    const next = connect ? connect(transport, role) : liveLink(transport, role, list, handSize, save, resumeRef.current)
 
     setLink(next)
 
@@ -494,7 +504,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         rivalSignal={rivalSignal}
         rivalSignalKey={signals.theirsKey}
         lane={lane}
-        turnNumber={Math.max(1, snap.overlay.turn)}
+        // Un duelo que sigue a uno manual arranca en el turno 1 del núcleo: se le suma lo que llevaban las mesas de arranque (en uno de cero, nada).
+        turnNumber={Math.max(1, snap.overlay.turn) + duelTurnNumber(snap.initial.mine, snap.initial.theirs) - 1}
         extraSettings={settings}
         {...(reason ? { resultReason: reason } : {})}
       />

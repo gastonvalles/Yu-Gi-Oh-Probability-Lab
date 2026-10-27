@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { openAsk, type AskContext } from '../app/auto/ask-ui'
 import { createDataLoader } from '../app/auto/auto-data'
 import { autoSaveStore } from '../app/auto/auto-save'
-import type { AutoSession, PendingAsk } from '../app/auto/auto-session'
+import { undoPoint, type AutoSession, type PendingAsk } from '../app/auto/auto-session'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { manualHandover } from '../app/auto/manual-handover'
@@ -293,7 +293,12 @@ describe.skipIf(!hasCoreData)('pasar de manual a automático en el duelo por enl
 
     expect(first.seat).toBe(0)
     expect(first.ask.type).toBe('select_idlecmd')
-    if (manualPhase === 'main2' && (first.ask as Extract<CoreAsk, { type: 'select_idlecmd' }>).to_bp) tally.m2WithBp += 1
+    // En la Main Phase 2 el núcleo ya pasó solo su Main Phase 1 y su Battle Phase: no ofrece la Battle Phase, y esas respuestas no son jugadas a las que volver.
+    if (manualPhase === 'main2') {
+      expect((first.ask as Extract<CoreAsk, { type: 'select_idlecmd' }>).to_bp).toBe(false)
+      tally.m2WithBp += 1
+    }
+    expect(a.answers.filter(undoPoint)).toEqual([])
     tally.resumed[player === host ? 'host' : 'guest'] += 1
     tally.phases[manualPhase] = (tally.phases[manualPhase] ?? 0) + 1
 

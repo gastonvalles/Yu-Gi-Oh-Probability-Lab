@@ -122,6 +122,8 @@ export interface Duel {
    * cada jugada hasta acá (las del rival intercaladas como pasaron), para que Deshacer vuelva atrás la última de cualquiera.
    */
   start(initial: MatState, history?: readonly MatAction[], order?: readonly ('mine' | 'theirs')[]): void
+  /** Dejar la mesa manual (los dos acordaron seguir en automático, `online-resume.ts`): sin mesa, la sala con reglas automáticas vuelve a la pantalla del núcleo y lo guardado se borra. Nada viaja: el otro hace lo mismo. */
+  stop(): void
   play(action: MatAction): void
   /** Pasar de fase (con el turno mío): si el rival está, primero se le pregunta si no va a hacer nada más en la fase que dejo; pasa si dice que sí o si no contesta a tiempo (`PHASE_WAIT_MS`), y no si quiere jugar antes. */
   askPhase(action: Extract<MatAction, { type: 'phase' }>): void

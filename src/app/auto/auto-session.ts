@@ -54,6 +54,8 @@ export interface SessionAnswer {
   answer: CoreAnswer
   /** Una activación que elegiste fuera de tus jugadas (responder en una cadena, «¿Activás el efecto?»; no una obligatoria): `undo` también vuelve a antes de ésta. */
   activation?: true
+  /** La contestó sola la sesión al rearmar una mesa (pasar de manual a automático: las fases que el núcleo pasa hasta la de la mesa): no es una jugada a la que volver. */
+  auto?: true
 }
 
 /**
@@ -70,7 +72,7 @@ export function activatedCode(ask: CoreAsk, answer: CoreAnswer): number | null {
 }
 
 /** Una respuesta a la que `undo` vuelve: una jugada (`select_idlecmd` / `select_battlecmd`) o una activación elegida (`activation`). */
-export const undoPoint = (item: SessionAnswer) => item.activation === true || item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd'
+export const undoPoint = (item: SessionAnswer) => item.auto !== true && (item.activation === true || item.answer.type === 'select_idlecmd' || item.answer.type === 'select_battlecmd')
 
 export interface AutoSnapshot {
   /** `loading` hasta la primera pregunta; `ready` con una pregunta en `ask`; `thinking` si el núcleo tarda más de ~400 ms; `error` con `fault`. */
@@ -386,8 +388,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     transport.send(to > 0 ? { ...create!, answers: answers.slice(0, to).map((item) => item.answer) } : create!)
   }
 
-  function send(seat: Seat, askId: number, answer: CoreAnswer, activation = false) {
-    inFlight = { seat, askId, answer, ...(activation ? { activation } : {}) }
+  function send(seat: Seat, askId: number, answer: CoreAnswer, activation = false, auto = false) {
+    inFlight = { seat, askId, answer, ...(activation ? { activation } : {}), ...(auto ? { auto } : {}) }
     transport!.send({ t: 'answer', askId, answer })
     startTimer()
   }
@@ -407,7 +409,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
   function commit() {
     if (!inFlight) return
-    answers = [...answers, { seat: inFlight.seat, answer: inFlight.answer, ...(inFlight.activation ? { activation: true as const } : {}) }]
+    answers = [...answers, { seat: inFlight.seat, answer: inFlight.answer, ...(inFlight.activation ? { activation: true as const } : {}), ...(inFlight.auto ? { auto: true as const } : {}) }]
     inFlight = null
     retries = 0
   }
@@ -481,8 +483,13 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         }
         commit()
         stopTimer()
-        // La mesa rearmada: las ventanas de cadena de las fases que el núcleo pasa hasta alcanzar la de la mesa (Draw, Standby) no se le preguntan a nadie, tampoco al otro navegador (una forzada, sí).
-        if (resume && event.ask.type === 'select_chain' && !event.ask.forced && catchingUp()) return send(event.seat, event.askId, { type: 'select_chain', index: null })
+        // La mesa rearmada: las fases que el núcleo pasa hasta alcanzar la de la mesa no se le preguntan a nadie, tampoco al otro navegador: ni sus ventanas de cadena (Draw, Standby;
+        // una forzada, sí) ni, con la mesa en la Main Phase 2, su Main Phase 1 y su Battle Phase (se pasan solas; esas respuestas no son jugadas a las que volver).
+        if (resume && catchingUp()) {
+          if (event.ask.type === 'select_chain' && !event.ask.forced) return send(event.seat, event.askId, { type: 'select_chain', index: null })
+          if (event.ask.type === 'select_idlecmd' && event.ask.to_bp) return send(event.seat, event.askId, { type: 'select_idlecmd', action: 6, index: null }, false, true)
+          if (event.ask.type === 'select_battlecmd' && event.ask.to_m2) return send(event.seat, event.askId, { type: 'select_battlecmd', action: 2, index: null }, false, true)
+        }
         // El duelo por enlace: la contesta una persona en otro navegador (`answerRemote`).
         if (!controlled(event.seat) && options.remote) return set({ status: 'waiting', remoteAsk: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, ask: null, replaying: false, answers })
         // El rival contesta solo, con lo que ve su adaptador (o, si el núcleo le rechazó la de recién, con la de reserva); la pantalla se entera recién con la pregunta tuya.
