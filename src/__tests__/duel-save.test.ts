@@ -89,6 +89,10 @@ describe('lo guardado para recargar o para volver', () => {
     expect(parseSave(mangled((data) => void (data.starter = 2)), 'host', NOW)).toBeNull()
     expect(parseSave(mangled((data) => void (data.savedAt = 'ayer')), 'host', NOW)).toBeNull()
     expect(parseSave(mangled((data) => void (data.rival = 7)), 'host', NOW)).toBeNull()
+    // El orden de las jugadas: opcional (los guardados de antes no lo traen), sólo `me` / `peer` y con tope.
+    expect(parseSave(mangled((data) => void delete data.order), 'host', NOW)).not.toBeNull()
+    expect(parseSave(mangled((data) => void (data.order = ['me', 'yo'])), 'host', NOW)).toBeNull()
+    expect(parseSave(mangled((data) => void (data.order = Array.from({ length: 10_001 }, () => 'peer'))), 'host', NOW)).toBeNull()
 
     // Vence a las dos horas: pasado ese tiempo nadie espera ya a quien salió.
     expect(SAVE_TTL_MS).toBe(2 * 60 * 60 * 1000)

@@ -109,6 +109,8 @@ export interface DuelSnapshot {
    * los que él les dio si es suyo). `n` cuenta los avisos (cambia con cada uno, aunque señale lo mismo). No es estado de la mesa: no se guarda ni se repone.
    */
   ping: { n: number; side: 'mine' | 'theirs'; card?: string; pile?: MatPile } | null
+  /** De quién fue cada jugada de la mesa, en el orden en que pasaron (ver `playOrder`): va al guardado, así Deshacer tras recargar sigue el orden real. */
+  order: readonly Mover[]
 }
 
 export interface Duel {
@@ -186,7 +188,7 @@ const UNDO_WAIT_MS = 30_000
 /** Cuánto espero la respuesta del rival a si no va a hacer nada más antes de pasar de fase: sin respuesta, la fase pasa (callar es no tener nada que jugar). */
 export const PHASE_WAIT_MS = 6000
 /** De quién es una jugada de la mesa, vista desde acá. */
-type Mover = 'me' | 'peer'
+export type Mover = 'me' | 'peer'
 /** Quién deshace: `push`, quien pide (la última jugada es suya); `pull`, quien contesta. */
 type UndoKind = 'push' | 'pull'
 /** Cada cuánto puedo mandar una señal rápida (un emote: 🤔, 👍): las que lleguen antes no salen. */
@@ -310,7 +312,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing, order: playOrder() })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -1204,6 +1206,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       ready = { mine: true, theirs: true }
       conceded = saved.conceded ?? null
       rematch = { mine: saved.rematch === true, theirs: false }
+      // Lo guardado antes de que el orden se guardara no lo trae: como siempre, las del rival se suponen anteriores a las mías.
+      order = [...(saved.order ?? [])]
     } catch {
       initial = null
       actions = []

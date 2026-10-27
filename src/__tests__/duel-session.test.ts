@@ -226,6 +226,22 @@ describe('las mesas', () => {
       game.room.flush()
       expect(again.getSnapshot()).toMatchObject({ moves: 3, mine: game.host.getSnapshot().mine })
       expect(again.getSnapshot().actions).toEqual(hostPlays)
+      // El orden de las jugadas también se guarda: tras recargar, Deshacer sigue alternando como pasaron (la de Ana, después la de Beto), no primero todas las propias.
+      expect(saved.order).toEqual(['peer', 'me', 'me', 'peer', 'me'])
+      expect(again.getSnapshot().order).toEqual(['peer', 'me', 'me', 'peer', 'me'])
+      const reloaded = { ...game, host: again }
+
+      undoAllowed(reloaded, again, game.guest)
+      expect(again.getSnapshot().moves).toBe(2)
+      undoAllowed(reloaded, again, game.guest)
+      expect(game.guest.getSnapshot().moves).toBe(1)
+      expect(again.getSnapshot().moves).toBe(2)
+      expect(game.guest.getSnapshot().theirs?.state).toEqual(masked(hostTable, again.getSnapshot().mine!))
+      expect(again.getSnapshot().theirs?.state).toEqual(masked(guestTable, game.guest.getSnapshot().mine!))
+      // Un guardado de antes (sin el orden) carga como hasta hoy: sólo las mías (las del rival, cuando llegue su mesa, se suponen anteriores).
+      const { order: _dropped, ...old } = saved
+
+      expect(createDuel(createMemoryRoom().join(), { role: 'host', name: 'Ana', restore: old }).getSnapshot().order).toEqual(['me', 'me', 'me'])
     })
   })
 

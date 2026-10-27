@@ -97,7 +97,7 @@ Por la red las cartas viajan con ids opacos, y el rival sólo sabe qué carta es
 
 ### Reconexión
 
-Safari en iOS suspende los WebSockets al bloquear la pantalla: el cliente reintenta solo y, al volver, pide un `sync`. Lo propio se guarda en el navegador por sala y rol (`duel-save.ts`): la mesa de arranque y las jugadas, porque el reductor es determinista y de ahí se arma todo; lo del rival lo repite él al volver a saludar. El marcador del Match se recupera del `sync` del rival (uno viejo no pisa a uno nuevo).
+Safari en iOS suspende los WebSockets al bloquear la pantalla: el cliente reintenta solo y, al volver, pide un `sync`. Lo propio se guarda en el navegador por sala y rol (`duel-save.ts`): la mesa de arranque, las jugadas y de quién fue cada una de la mesa (`order`: así Deshacer tras recargar sigue el orden real de los dos), porque el reductor es determinista y de ahí se arma todo; lo del rival lo repite él al volver a saludar. El marcador del Match se recupera del `sync` del rival (uno viejo no pisa a uno nuevo).
 
 ## Probarlo
 
