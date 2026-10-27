@@ -32,6 +32,9 @@ export const MatSaveContext = createContext<{ onSave: () => void; canSave: boole
 /** Las salidas y problemas de la mano en el celular (`RulesPill`), que la mesa pone en la barra antes de Deshacer: la de la práctica y la de «Jugar solo automático». Sin ella, nada. */
 export const MatRulesContext = createContext<ReactNode>(null)
 
+/** «Pasos y combos» como primer ítem del ⋯: la mesa lo da cuando no tiene la fila de abajo donde iba su botón («Jugar solo automático» en el celular en vertical). Sin él, no va. */
+export const MatStepsContext = createContext<(() => void) | null>(null)
+
 /**
  * «La mesa», el primer grupo del menú ⋯ de toda mesa (la práctica, «Jugar solo automático» y el duelo por enlace): la vista 3D, los sonidos y la ventana grande (sólo en escritorio: en el celular la mesa
  * ya ocupa todo), cada uno con su interruptor. Vienen prendidos de fábrica (la vista 3D y los sonidos) y por eso no van a la vista ni en color: su estado se lee en el interruptor.
@@ -51,8 +54,8 @@ export function useMatTableItems(): OverflowItem[] {
 }
 
 /** El ⋯ de la barra de la mesa (blanco de 44 px; ámbar al apuntarlo, al enfocarlo o abierto): «La mesa» y lo de cada una, en grupos. */
-export function MatMoreMenu({ items, defaultOpen = false }: { items: OverflowItem[]; /** Abierto de entrada (la muestra del catálogo). */ defaultOpen?: boolean }) {
-  return <OverflowMenu trigger="bar" label={t('practice.mat.more')} items={[...useMatTableItems(), ...items]} defaultOpen={defaultOpen} />
+export function MatMoreMenu({ items, lead = [], defaultOpen = false }: { items: OverflowItem[]; /** Lo que va antes de «La mesa» («Pasos y combos»). */ lead?: OverflowItem[]; /** Abierto de entrada (la muestra del catálogo). */ defaultOpen?: boolean }) {
+  return <OverflowMenu trigger="bar" label={t('practice.mat.more')} items={[...lead, ...useMatTableItems(), ...items]} defaultOpen={defaultOpen} />
 }
 
 interface MatBarActionsProps {
@@ -92,6 +95,7 @@ interface MatBarActionsProps {
 export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, auto = false, onSave, canSave = false, more = [], className, menuOpen = false }: MatBarActionsProps) {
   const fromMat = useContext(MatSaveContext)
   const rules = useContext(MatRulesContext)
+  const openSteps = useContext(MatStepsContext)
   const save = onSave ? { onSave, canSave } : fromMat
   const handtraps = useHandtrapsSheet({ onApply: onHandtraps, auto })
 
@@ -104,6 +108,7 @@ export function MatBarActions({ onUndo, canUndo, onNewHand, onHandtraps, auto = 
       </IconButton>
       <MatMoreMenu
         defaultOpen={menuOpen}
+        lead={openSteps ? [{ label: t('practice.mat.stepsAndCombos'), icon: 'list', opens: true, onSelect: openSteps }] : []}
         items={[
           { group: t('practice.mat.groupDuel'), label: t('handtraps.title'), icon: 'hand', meta: t(handtraps.config.enabled ? 'handtraps.mat.on' : 'handtraps.mat.off'), opens: true, onSelect: handtraps.open },
           { label: t('practice.mat.newHand'), icon: 'refresh', onSelect: onNewHand },

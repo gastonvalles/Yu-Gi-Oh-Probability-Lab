@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { COMPACT_FIELD_MEDIA_QUERY, compactDuelFieldStyle, mediumDuelFieldStyle } from '../components/probability/compact-field'
+import { COMPACT_FIELD_MEDIA_QUERY, SHORT_SCREEN_MEDIA_QUERY, compactDuelFieldStyle, mediumDuelFieldStyle } from '../components/probability/compact-field'
 import { THEIR_HAND } from '../components/duel/their-hand'
 
 /** Lo que se ve de la mano tuya arriba de la barra de abajo (la barra, 64 px, y la carta entera, 126) y la pantalla de prueba: un celular de 844 px de alto. */
@@ -46,6 +46,35 @@ describe('el campo del duelo en un celular en vertical', () => {
     const cell = (SCREEN - chrome * 16) / 7
 
     expect(Math.round(handTop(cell, style.marginTop as number))).toBe(SCREEN - BELOW_HAND)
+  })
+})
+
+describe('el campo de «Jugar solo automático» en el celular, sin la fila de abajo (las vidas en el marcador de la barra)', () => {
+  it('lo que no es campo baja a 29,2 rem (3D) y 27 (de arriba): la mano llega al borde de abajo de la columna, sin scroll (medido de 360 × 740 a 430 × 932)', () => {
+    const tilted = compactDuelFieldStyle(true, { bottomRow: false }) as Record<string, string | number>
+    const flat = compactDuelFieldStyle(false, { bottomRow: false }) as Record<string, string | number>
+
+    expect(tilted['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(3rem, calc((100dvh - 29.2rem) / 5.2)))')
+    expect(tilted.marginTop).toBe('max(0px, calc(10.4rem - 1.8 * var(--cell-m)))')
+    // La vista de arriba tiene siete filas: su casilla baja hasta 44 px.
+    expect(flat['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(2.75rem, calc((100dvh - 27rem) / 7)))')
+    expect(flat.marginTop).toBe(THEIR_HAND.mobile.room + 20)
+  })
+
+  it('en una pantalla baja (menos de 700 px de alto) la casilla baja hasta 36 px (32 de arriba) y la mano del rival, al 72 %, deja 24 px que el campo sube', () => {
+    const tilted = compactDuelFieldStyle(true, { bottomRow: false, short: true }) as Record<string, string | number>
+    const flat = compactDuelFieldStyle(false, { bottomRow: false, short: true }) as Record<string, string | number>
+
+    expect(SHORT_SCREEN_MEDIA_QUERY).toBe('(max-height: 699.98px)')
+    expect(tilted['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(2.25rem, calc((100dvh - 28rem) / 5.2)))')
+    expect(tilted.marginTop).toBe('calc(max(0px, calc(10.4rem - 1.8 * var(--cell-m))) - 1.5rem)')
+    expect(flat['--cell-m']).toBe('min(calc((100vw - 1.75rem) / 5), max(2rem, calc((100dvh - 25.8rem) / 7)))')
+    expect(flat.marginTop).toBe(THEIR_HAND.mobile.room + 20 - 24)
+  })
+
+  it('con la fila de abajo (el duelo por enlace) nada cambia, tampoco en una pantalla baja', () => {
+    expect(compactDuelFieldStyle(true, { short: true })).toEqual(compactDuelFieldStyle(true))
+    expect(compactDuelFieldStyle(false, { bottomRow: true, short: true })).toEqual(compactDuelFieldStyle(false))
   })
 })
 

@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, renderHook, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { useEffect } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 
 import { setDuelFullscreen, useDuelFullscreen } from '../app/duel-fullscreen'
 import { useMatSession } from '../app/use-mat-session'
@@ -208,6 +208,29 @@ describe('la barra de la mesa es una sola', () => {
       expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
       cleanup()
     }
+  })
+
+  it('en el celular en vertical (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯ y el botón de la fase dice su nombre', () => {
+    const original = window.matchMedia
+
+    onTestFinished(() => {
+      window.matchMedia = original
+    })
+    window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    renderAuto()
+    const score = screen.getByTestId('auto-score')
+
+    expect(within(score).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
+    expect(within(score).getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toBeInTheDocument()
+    expect(document.querySelector('[data-corner]')).toBeNull()
+    expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
+    expect(screen.queryByTestId('auto-phase')).toBeNull()
+    expect(screen.getByRole('button', { name: /^Fases: / }).querySelector('[data-phase-word]')).not.toBeNull()
+    // Sin fila de abajo: el único «Pasos y combos» es el del ⋯, primero.
+    expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
+    expect(menuRows()[0]!.text).toBe('Pasos y combos')
+    fireEvent.click(menuRow(/^Pasos y combos$/))
+    expect(screen.getByRole('dialog', { name: 'Pasos y combos' })).toBeInTheDocument()
   })
 
   it('la botonera de escritorio: «Automático» (prendido) abre «Seguir en modo manual», «Cadena» cambia las respuestas, «Pasos» oculta y muestra el panel, «Opciones» trae el resto de «Más opciones»', () => {

@@ -467,6 +467,22 @@ describe('AutoBar', () => {
     expect(screen.queryByRole('button', { name: 'Salir del duelo' })).toBeNull()
   })
 
+  it('en el celular en vertical, debajo de los íconos va el marcador plano: tus vidas, el turno una sola vez y las del rival; la fase no va en la barra (la dice el botón del campo)', () => {
+    window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const { rerender } = render(<AutoBar {...props} />)
+    const score = screen.getByTestId('auto-score')
+
+    expect(score).toHaveTextContent('Vos8000Tu turno · 3Rival7000')
+    expect(within(score).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
+    expect(within(score).getByRole('group', { name: 'Puntos de vida de Rival: 7000' })).toBeInTheDocument()
+    expect(screen.getByTestId('auto-turn')).toHaveClass('text-accent')
+    expect(screen.queryByTestId('auto-phase')).toBeNull()
+    expect(screen.queryByText('Turno 3')).toBeNull()
+    rerender(<AutoBar {...props} myTurn={false} turn={4} />)
+    expect(screen.getByTestId('auto-turn')).toHaveTextContent('Turno del rival · 4')
+    expect(screen.getByTestId('auto-turn')).toHaveClass('text-info-soft')
+  })
+
   it('las vidas no van en la barra sin laterales (en escritorio van en las esquinas del campo; en el celular, abajo: las pone la pantalla); con la botonera (`dock`), el engranaje sale de la barra sólo en escritorio', () => {
     const { unmount } = render(<AutoBar {...props} dock />)
 

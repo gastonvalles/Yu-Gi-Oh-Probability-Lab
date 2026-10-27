@@ -6,6 +6,8 @@ import type { MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t, type MessageKey } from '../../i18n'
 import { LaneBanner, LifeTile, PhasePill, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
+import { LifeScore } from '../duel/LifeScore'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../probability/MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -218,6 +220,8 @@ export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: b
 export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, myTurn, phase, onExit, onUndo, canUndo, onNewHand, onHandtraps, lane = null, log, ...options }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // El celular en vertical (< 640 px): debajo de los íconos va el marcador (tus vidas, el turno y las del rival) y la fase queda sólo en el botón del campo.
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const rails = useDuelRails()
 
   useLayoutEffect(() => onRails?.(rails), [rails, onRails])
@@ -297,8 +301,7 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
   }
 
   return (
-    // Celular: arriba la fila de la práctica (la hamburguesa, la flecha y los íconos, en el mismo lugar), debajo el turno y la línea del registro (flota: no ocupa lugar). Las tres filas miden lo mismo que
-    // cuando arriba iban las vidas (la de los íconos, 44 px; la del turno, 38): el campo no se corrió al traer los íconos.
+    // Celular: arriba la fila de la práctica (la hamburguesa, la flecha y los íconos, en el mismo lugar), debajo el marcador (en vertical) o el turno con la fase, y la línea del registro (flota: no ocupa lugar).
     <div className="relative flex flex-col gap-1.5 px-0.5 pt-1.5">
       <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1 h-11', MAT_BAR_ROW)}>
         <ShellMenuButton className="-ml-2" />
@@ -306,10 +309,21 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
         {/* Los íconos, a la derecha, como en la práctica (el engranaje, al final, donde ella tiene «Guardar combo» y los pasos). */}
         {actions('ml-auto')}
       </div>
-      <div className="flex min-h-9.5 min-w-0 items-center gap-1.5">
-        {turnChip}
-        {turnLine}
-      </div>
+      {phone ? (
+        // El marcador, plano (Gastón, 2026-10-27, opción A): «VOS 8000 · Tu turno · 1 · RIVAL 8000». El turno se dice una sola vez, en el color de quién es; la fase, en el botón del campo.
+        <div data-testid="auto-score" className="flex min-h-10 min-w-0 items-center gap-2 px-1">
+          <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
+          <span data-testid="auto-turn" className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold', myTurn ? 'text-accent' : 'text-info-soft')}>
+            {turn > 0 ? t(myTurn ? 'auto.bar.turnMine' : 'auto.bar.turnRival', { turn }) : null}
+          </span>
+          <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} />
+        </div>
+      ) : (
+        <div className="flex min-h-9.5 min-w-0 items-center gap-1.5">
+          {turnChip}
+          {turnLine}
+        </div>
+      )}
       {/* La línea del registro, con el aviso encima (la misma fila); sin registro, su lugar igual queda (el primer aviso no corre nada). */}
       <div className="relative max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11">
         <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>
