@@ -644,7 +644,8 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
       </span>
       <span className={cx('grid min-w-0 flex-1 content-center gap-0.5', tall && 'min-[1101px]:gap-1')}>
         <span className="flex min-w-0 items-center justify-between gap-1.5">
-          <span className={cx('min-w-0 truncate rounded-full px-2 text-micro font-bold uppercase leading-4 tracking-wider shadow-card max-[379px]:px-1.5', tall && 'min-[1101px]:leading-5', tone.fill)}>{label ?? name}</span>
+          {/* La chapa no ensancha la placa: el rival por defecto lleva su forma corta («Opp.») y en `compact` del celular un nombre largo se corta con «…» (la placa del rival no tapa su mano). */}
+          <span className={cx('min-w-0 truncate rounded-full px-2 text-micro font-bold uppercase leading-4 tracking-wider shadow-card max-[379px]:px-1.5', tall && 'min-[1101px]:leading-5', compact && 'max-[1101px]:max-w-15', tone.fill)}>{label ?? (name === t('duel.bar.rival') ? t('duel.bar.rivalTag') : name)}</span>
           {hand === undefined ? null : (
             <span aria-hidden="true" className={cx('inline-flex shrink-0 items-center gap-0.5 text-micro font-semibold leading-none tabular-nums text-muted', handOnDesktop && 'max-[1101px]:hidden')}>
               <Icon name="card" size={14} strokeWidth={1.8} />

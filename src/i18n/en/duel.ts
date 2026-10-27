@@ -273,6 +273,7 @@ export const duel: Translated<typeof es> = {
 
   'duel.bar.you': 'You',
   'duel.bar.rival': 'Opponent',
+  'duel.bar.rivalTag': 'Opp.',
   'duel.bar.yourTurn': 'Your turn',
   'duel.bar.theirTurn': "{name}'s turn",
   'duel.bar.lifeOf': "{name}'s life points",

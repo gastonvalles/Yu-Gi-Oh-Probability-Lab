@@ -280,6 +280,8 @@ export const duel = {
   // La barra de arriba de la mesa.
   'duel.bar.you': 'Vos',
   'duel.bar.rival': 'Rival',
+  // La chapa de las vidas del rival (corta: en inglés «Opponent» ensanchaba la placa y tapaba su mano en el celular).
+  'duel.bar.rivalTag': 'Rival',
   'duel.bar.yourTurn': 'Tu turno',
   'duel.bar.theirTurn': 'Turno de {name}',
   'duel.bar.lifeOf': 'Puntos de vida de {name}',

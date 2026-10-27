@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { LifeTile } from '../components/duel/DuelBar'
+import { applyLocale, loadLocale, t } from '../i18n'
 
 // La placa de vidas (Gastón, 2026-10-26: «la vida de ambos jugadores junta y con estética plana»): la chapa del dueño rellena con el texto blanco, las cartas de la mano, el número blanco y la barra
 // de 8000 en el color del dueño, que es un medidor (la excepción escrita a «los porcentajes son anillos», sólo para las vidas).
@@ -65,5 +66,26 @@ describe('la placa de vidas', () => {
     expect(screen.getByRole('group')).toHaveClass('h-14')
     expect(screen.getByRole('group')).not.toHaveClass('min-[1101px]:h-18')
     expect(screen.getByRole('group').querySelector('svg')!.parentElement).toHaveClass('hidden')
+  })
+
+  // «El OPPONENT que tapa un dorso en el celular»: la chapa ensanchaba la placa del rival (de 85 a 113 px a 390) y tapaba el último dorso de su mano.
+  it('la chapa no ensancha la placa: en inglés el rival por defecto dice «Opp.» (el lector oye «Opponent») y en `compact` un nombre largo se corta', async () => {
+    await loadLocale('en')
+    applyLocale('en')
+    try {
+      render(<LifeTile name={t('duel.bar.rival')} life={8000} compact />)
+      const rival = screen.getByRole('group', { name: "Opponent's life points: 8000" })
+
+      expect(chip(rival)).toHaveTextContent(/^Opp\.$/)
+      expect(within(rival).getByRole('meter', { name: "Opponent's life points" })).toBeInTheDocument()
+    } finally {
+      applyLocale('es')
+    }
+    cleanup()
+    render(<LifeTile name="Maximiliano el Destructor de Mundos" life={8000} compact />)
+    const long = screen.getByRole('group', { name: /^Puntos de vida de Maximiliano el Destructor de Mundos/ })
+
+    expect(chip(long)).toHaveTextContent('Maximiliano el Destructor de Mundos')
+    expect(chip(long)).toHaveClass('truncate', 'max-[1101px]:max-w-15')
   })
 })
