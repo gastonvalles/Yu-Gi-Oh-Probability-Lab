@@ -125,9 +125,10 @@ export function createResumeLink({ host, transport, now = Date.now }: ResumeLink
   function receive(message: ResumeMessage) {
     switch (message.step) {
       case 'hello':
+        // Se contesta siempre (el otro pudo recargar y volver sin que la sala lo notara), salvo a una contestación.
+        if (!message.back) say({ t: 'autoResume', step: 'hello', back: true })
         if (!peer) {
           peer = true
-          say({ t: 'autoResume', step: 'hello' })
           refresh()
         }
         return

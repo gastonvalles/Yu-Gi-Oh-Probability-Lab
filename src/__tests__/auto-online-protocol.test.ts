@@ -46,6 +46,7 @@ const GOOD: AutoMessage[] = [
   { t: 'autoUndo', step: 'cancel' },
   // Seguir en automático un duelo que iba a mano: el saludo, el pedido del invitado con su mesa, el acuerdo y el no con su porqué; sin número (no hay flujo del núcleo).
   { t: 'autoResume', step: 'hello' },
+  { t: 'autoResume', step: 'hello', back: true },
   { t: 'autoResume', step: 'ask', table: [{ code: 55, controller: 0, location: 2, sequence: 0, position: 10 }, { code: 56, controller: 0, location: 4, sequence: 2, position: 1, materials: [57, 58] }] },
   { t: 'autoResume', step: 'yes' },
   { t: 'autoResume', step: 'no', why: 'table' },
@@ -133,6 +134,7 @@ describe('el protocolo del duelo automático por enlace', () => {
       { t: 'autoResume' },
       { t: 'autoResume', step: 'maybe' },
       { t: 'autoResume', step: 'no', why: 'none' },
+      { t: 'autoResume', step: 'hello', back: false },
       { t: 'autoResume', step: 'ask', table: [{ code: 1, controller: 0, location: 3, sequence: 0, position: 1 }] },
       { t: 'autoResume', step: 'ask', table: [{ code: -1, controller: 0, location: 1, sequence: 0, position: 8 }] },
       { t: 'autoResume', step: 'ask', table: [{ code: 1, controller: 0, location: 4, sequence: 0, position: 1, materials: [0] }] },

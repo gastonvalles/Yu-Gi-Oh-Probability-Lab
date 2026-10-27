@@ -88,7 +88,7 @@ export type AutoMessage =
    * acepta el pedido del anfitrión y `yes` del anfitrión es el acuerdo (lo manda su enlace del núcleo, ya escuchando: detrás viene el `autoInit` con el `setup`). Lo del invitado
    * (`ask`, `yes`) lleva su mesa entera (`table`: sus cartas con código, `placedCards`), que el anfitrión compara con lo que ve de él antes de aceptarla.
    */
-  | { t: 'autoResume'; step: ResumeStep; table?: PlacedCard[]; why?: ResumeWhy }
+  | { t: 'autoResume'; step: ResumeStep; table?: PlacedCard[]; why?: ResumeWhy; /** Un `hello` que contesta a otro (no se contesta de nuevo). */ back?: true }
 
 /** Lo que el anfitrión le manda al invitado: lo que va numerado. */
 export type HostMessage = Extract<AutoMessage, Numbered>
@@ -258,9 +258,9 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       const table = raw.table === undefined ? undefined : parsePlacedCards(raw.table)
       const why = raw.why === undefined ? undefined : RESUME_WHYS.find((item) => item === raw.why)
 
-      if (!RESUME_STEPS.includes(raw.step) || table === null || (raw.why !== undefined && !why)) return null
+      if (!RESUME_STEPS.includes(raw.step) || table === null || (raw.why !== undefined && !why) || (raw.back !== undefined && raw.back !== true)) return null
 
-      return { t: 'autoResume', step: raw.step as ResumeStep, ...(table ? { table } : {}), ...(why ? { why } : {}) }
+      return { t: 'autoResume', step: raw.step as ResumeStep, ...(table ? { table } : {}), ...(why ? { why } : {}), ...(raw.back === true ? { back: true as const } : {}) }
     }
 
     default:

@@ -145,8 +145,8 @@ describe('pasar de manual a automático: el pedido mientras la sala va a mano', 
   it('se saludan las versiones que lo saben hacer; puede pedir quien tiene el turno en su Main Phase, y el otro ve por qué no', async () => {
     const game = await manualRoom()
 
-    // Los dos se saludaron (dos `hello` por lado: el propio y la respuesta al del otro) y nada más.
-    expect(game.box.host.map((message) => message.t === 'autoResume' && message.step)).toEqual(['hello', 'hello'])
+    // Los dos se saludaron (dos `hello` por lado: el del otro y su contestación al propio, que no se contesta de nuevo) y nada más.
+    expect(game.box.host.map((message) => message.t === 'autoResume' && [message.step, message.back ?? false])).toEqual([['hello', false], ['hello', true]])
     expect(game.box.guest.map((message) => message.t === 'autoResume' && message.step)).toEqual(['hello', 'hello'])
     // Es el turno de Ana (su Main Phase 1): ella puede pedir; Beto, no.
     expect(game.hostResume.getSnapshot()).toMatchObject({ state: 'idle', blocked: null, start: null })
