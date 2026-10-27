@@ -382,9 +382,10 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   // Acordado el pase a manual, la mesa queda quieta (nada más se contesta) hasta que llega la mesa manual.
   const switching = manual === 'switching' || manual === 'agreed'
   // El anfitrión corre el núcleo: puede cortar lo que piensa. El invitado, no (el núcleo está en otro navegador).
-  // La fase que el rival ve en su mesa (`autoPhase`), si la avisa: lo de otro turno no vale.
+  // La fase que el rival ve en su mesa (`autoPhase`), si la avisa: lo de un turno anterior no vale, y lo de uno que todavía no llegó (el aviso del anfitrión puede adelantarse a los
+  // eventos del núcleo del cambio de turno) tampoco: mientras tanto, la del espejo.
   const told = online.rivalPhase
-  const rival = told ? (told.turn === snap.overlay.turn ? told : TURN_START) : undefined
+  const rival = !told ? undefined : told.turn === snap.overlay.turn ? told : told.turn < snap.overlay.turn ? TURN_START : { phase: snap.theirs.phase, busy: false }
   const asks = useAutoAsks({ session, snap, cardsById: deck.cardsById, cards: online.cards, seat, canCancel: snapshot.role === 'host', canUndo: false, waitingText: t('auto.online.rivalChoosing', { name: rivalName }), frozen: result !== null || switching, rivalName, ...(rival ? { rival } : {}) })
   // Y lo que se ve de la mía, cuando cambia.
   const mineTold = asks.told

@@ -632,6 +632,10 @@ describe('auto-screen-online · la fase del rival', () => {
     core(() => link.set({ rivalPhase: { turn: 2, phase: 'main1', busy: true } }))
     phaseIs('Main Phase 1')
     expect(lane()).toHaveTextContent('Beto está eligiendo…')
+    // Lo que dice del turno siguiente antes de que llegue el cambio de turno del núcleo no se adelanta: la del espejo, sin «está eligiendo».
+    core(() => link.set({ rivalPhase: { turn: 3, phase: 'battle', busy: true } }))
+    phaseIs(PHASES.find((phase) => phase.id === session.getSnapshot().theirs.phase)!.name)
+    expect(lane()).toBeNull()
 
     // Un rival de antes no avisa: la fase del espejo y la línea con cualquier espera, como siempre.
     core(() => link.set({ rivalPhase: null, session }))
