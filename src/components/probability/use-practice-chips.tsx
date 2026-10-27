@@ -10,6 +10,7 @@ import type { CardEntry, HandPattern } from '../../types'
 import { Callout } from '../ui/Callout'
 import { buildPracticeDeck, cardIdOfDrawId, evaluatePracticeHand, getMatchCardIds, getPracticeTurn, getPracticeVerdict, type PracticeHandCard } from './practice'
 import { PracticeBoard, UNPLAYABLE_ID } from './PracticeBoard'
+import type { RulesSummary } from './RulesPill'
 
 /** Lo del Lab que necesitan las salidas y problemas de la mano de apertura. */
 export interface PracticeLab {
@@ -183,6 +184,8 @@ export function usePracticeChips(lab: PracticeLab, session: MatSession) {
   return {
     needCards: deck.length < handSize,
     footer: started ? null : footer,
+    // Lo que resume la píldora del celular (`RulesPill`), que abre el `footer`.
+    summary: started ? null : ({ openings: openings.length, problems: problems.length, unplayable: isUnplayable, blocked: Boolean(blockedMessage) } satisfies RulesSummary),
     highlighted: started ? EMPTY_IDS : highlighted,
     highlightKind: started ? null : (activeMatch?.kind ?? null),
     muted: isUnplayable && !started,

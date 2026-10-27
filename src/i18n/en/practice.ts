@@ -339,6 +339,9 @@ export const practice: Translated<typeof es> = {
   'practice.board.handCards': 'Cards in your hand',
   'practice.board.openings': 'Openings',
   'practice.board.problems': 'Problems',
+  'practice.board.menu': 'Openings and problems in your hand',
+  'practice.board.pillOpenings': { one: '{count} opening', other: '{count} openings' },
+  'practice.board.pillProblems': { one: '{count} problem', other: '{count} problems' },
 
   'practice.section.classify': 'Classify your cards to see openings and problems.',
   'practice.section.legacyRules': 'There are rules from an earlier version to review.',

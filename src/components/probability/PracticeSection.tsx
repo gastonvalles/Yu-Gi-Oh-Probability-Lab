@@ -64,6 +64,7 @@ export function PracticeSection(props: PracticeSectionProps) {
         window.location.hash = '#duel'
       }}
       footer={chips.footer}
+      footerSummary={chips.summary}
       highlighted={chips.highlighted}
       highlightKind={chips.highlightKind}
       muted={chips.muted}

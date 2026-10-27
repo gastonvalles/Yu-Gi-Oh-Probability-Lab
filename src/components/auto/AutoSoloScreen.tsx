@@ -269,7 +269,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
         onNewHand={NOTHING}
         duel={link}
         rivalViewer={asks.rivalViewer}
-        {...(chips.needCards ? {} : { footer: chips.footer, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
+        {...(chips.needCards ? {} : { footer: chips.footer, footerSummary: chips.summary, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
       />
       {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
       <HandtrapPicker

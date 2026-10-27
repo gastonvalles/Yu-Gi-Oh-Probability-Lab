@@ -15,8 +15,11 @@ import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
 import { MatScene } from '../../probability/MatArena'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../../probability/MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
 import { CardMenu } from '../../probability/MatDialogs'
+import type { PracticeHandMatch } from '../../probability/practice'
+import { PracticeBoard } from '../../probability/PracticeBoard'
+import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
 import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
@@ -141,6 +144,7 @@ export function AutoSection() {
 
       <ChainSample />
       <BarActionsSample />
+      <RulesPillSample />
       <LifePlateSample />
       <DockSample />
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje (en la mesa de escritorio va en la botonera), el turno y, con laterales, las vidas (sin ellos, van en las esquinas del campo en escritorio y abajo en el celular). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
@@ -692,6 +696,48 @@ function BarActionsSample() {
           <MatExitButton onExit={tap} />
           <MatBarActions className="ml-auto" auto menuOpen onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} more={[{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: tap }]} />
         </div>
+      </div>
+    </Specimen>
+  )
+}
+
+/** Una salida o un problema de muestra para los chips (sin casos: la muestra no los explica). */
+const sampleMatch = (name: string, kind: 'opening' | 'problem'): PracticeHandMatch => ({ patternId: name, name, kind, requirementLabel: '', assignments: [], cases: [{ cards: [] }] })
+const RULE_SAMPLES: Array<{ caption: string; summary: RulesSummary; openings: string[]; problems: string[]; open?: boolean }> = [
+  { caption: 'Tres salidas, a 390 px', summary: { openings: 3, problems: 0, unplayable: false, blocked: false }, openings: ['Salida básica', 'Salida con seguimiento', 'Salida con interacción'], problems: [] },
+  { caption: 'Salidas y un problema, a 360 px: no entra el texto y queda ícono + número', summary: { openings: 2, problems: 1, unplayable: false, blocked: false }, openings: ['Salida básica', 'Salida con seguimiento'], problems: ['2 bricks'] },
+  { caption: 'Mano no jugable, abierta (no se abre sola: acá, para verla)', summary: { openings: 0, problems: 0, unplayable: true, blocked: false }, openings: [], problems: [], open: true },
+]
+
+/** La píldora de las salidas y problemas de la mano en la barra del celular (`RulesPill`), como la pone la mesa (`MatRulesContext`), cerrada y abierta. */
+function RulesPillSample() {
+  const [taps, setTaps] = useState(0)
+  const tap = () => setTaps((count) => count + 1)
+
+  return (
+    <Specimen title="RulesPill · las salidas en la barra del celular" layout="column" className="col-span-full" note={<>Hasta 1100 px, las salidas y problemas de tu mano de apertura van plegados en una píldora de la barra de arriba, en el lugar libre entre la flecha y Deshacer: dice el resumen («3 salidas», «2 salidas · 1 problema», «Mano no jugable») y, si no entra, el ícono y el número (el nombre completo va en su <Tag>aria-label</Tag>). Tocarla abre debajo de la barra los chips y la explicación; se cierra tocando afuera o con Escape. Nunca se abre sola, ni con una mano no jugable: antes los chips flotaban sobre tus magias, trampas y pilas. En escritorio siguen en el panel lateral. Cambiá el idioma para verla en inglés. Archivo: <Tag>probability/RulesPill.tsx</Tag></>}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag>{`Toques: ${taps}`}</Tag>
+        <LanguageSwitcher />
+      </div>
+      <div className="grid gap-2">
+        {RULE_SAMPLES.map(({ caption, summary, openings, problems, open = false }, index) => (
+          <div key={caption} className={cx('grid gap-1', open && 'mb-40')}>
+            <span className="text-micro text-soft">{caption}</span>
+            <div role="toolbar" aria-label={caption} className={cx(MAT_BAR_ROW, index === 1 ? 'w-90' : 'w-97.5', 'max-w-full')}>
+              <MatExitButton onExit={tap} />
+              <MatRulesContext.Provider
+                value={
+                  <RulesPill summary={summary} defaultOpen={open}>
+                    <PracticeBoard openings={openings.map((name) => sampleMatch(name, 'opening'))} problems={problems.map((name) => sampleMatch(name, 'problem'))} activeId={null} caseIndex={0} unplayable={summary.unplayable} unplayableOdds={null} onToggle={tap} />
+                  </RulesPill>
+                }
+              >
+                <MatBarActions onUndo={tap} canUndo={false} onNewHand={tap} onHandtraps={tap} onSave={tap} canSave={false} />
+              </MatRulesContext.Provider>
+            </div>
+          </div>
+        ))}
       </div>
     </Specimen>
   )

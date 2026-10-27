@@ -358,6 +358,9 @@ export const practice = {
   'practice.board.handCards': 'Cartas de tu mano',
   'practice.board.openings': 'Salidas',
   'practice.board.problems': 'Problemas',
+  'practice.board.menu': 'Salidas y problemas de tu mano',
+  'practice.board.pillOpenings': { one: '{count} salida', other: '{count} salidas' },
+  'practice.board.pillProblems': { one: '{count} problema', other: '{count} problemas' },
 
   'practice.section.classify': 'Clasificá tus cartas para ver salidas y problemas.',
   'practice.section.legacyRules': 'Hay reglas heredadas por revisar.',

@@ -107,12 +107,15 @@ describe('auto-screen · los pasos de la práctica', () => {
 
     render(<AutoSoloScreen mainIds={[...CARDS.keys()].filter((id) => id !== 'card-500-1')} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={() => {}} lab={lab} connect={() => fake} />)
     rearm(fake, START, IDLE)
+    // En el celular van plegadas en la píldora de la barra de arriba: se abre para verlas.
+    fireEvent.click(screen.getByRole('button', { name: 'Salidas y problemas de tu mano: 1 salida' }))
     const chip = within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })
 
     fireEvent.click(chip)
     expect(handCard('Ash Blossom')).toHaveAttribute('data-glow', 'true')
     goTo('Standby Phase')
     expect(screen.queryByRole('list', { name: 'Salidas' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Salidas y problemas de tu mano:/ })).toBeNull()
     expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow', 'true')
     expect(dispatches).toBe(0)
   })

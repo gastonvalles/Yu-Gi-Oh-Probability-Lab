@@ -82,6 +82,9 @@ const store = configureStore({ reducer: { settings: (state = { handSize: 5, deck
 const render = (ui: ReactElement): RenderResult => renderBare(<Provider store={store}>{ui}</Provider>)
 const hand = () => screen.getByRole('list', { name: 'Mano' })
 const pointer = { button: 0, pointerId: 1 }
+/** En el celular las salidas y problemas van plegados en la píldora de la barra (`RulesPill`): se abre para verlos. */
+const rulesPill = () => screen.getByRole('button', { name: /^Salidas y problemas de tu mano:/ })
+const openRules = () => fireEvent.click(rulesPill())
 const tap = (element: HTMLElement) => {
   fireEvent.pointerDown(element, { ...pointer, clientX: 10, clientY: 10 })
   fireEvent.pointerUp(element, { ...pointer, clientX: 10, clientY: 10 })
@@ -99,6 +102,7 @@ describe('la práctica integrada en la mesa', () => {
 
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
 
+    openRules()
     const openings = screen.getByRole('list', { name: 'Salidas' })
     const chip = within(openings).getByRole('button', { name: 'Salida básica' })
     expect(screen.queryByRole('list', { name: 'Problemas' })).not.toBeInTheDocument()
@@ -109,11 +113,12 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(hand()).getByRole('listitem', { name: 'Brick' })).toHaveAttribute('data-dim', 'true')
     expect(screen.getByRole('region', { name: 'Salida básica' })).toBeInTheDocument()
 
-    // Tocar dentro de la explicación no la cierra; tocar en cualquier otro lado sí.
+    // Tocar dentro de la explicación no la cierra; tocar en cualquier otro lado sí (y con ella el panel de la píldora).
     fireEvent.pointerDown(screen.getByRole('region', { name: 'Salida básica' }))
     expect(chip).toHaveAttribute('aria-pressed', 'true')
     fireEvent.pointerDown(screen.getByRole('group', { name: 'Zona de monstruo 1' }))
-    expect(chip).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('dialog', { name: 'Salidas y problemas de tu mano' })).not.toBeInTheDocument()
+    expect(rulesPill()).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('region', { name: 'Salida básica' })).not.toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Brick' })).toHaveAttribute('data-dim', 'false')
   })
@@ -124,6 +129,11 @@ describe('la práctica integrada en la mesa', () => {
 
     expect(within(hand()).getAllByRole('listitem', { name: 'Relleno' })[0]).toHaveAttribute('data-muted', 'true')
 
+    // La píldora lo dice, pero no se abre sola: sólo al tocarla (y ahí la explicación ya está a la vista).
+    expect(rulesPill()).toHaveAccessibleName('Salidas y problemas de tu mano: Mano no jugable')
+    expect(rulesPill()).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('region', { name: 'Mano no jugable' })).not.toBeInTheDocument()
+    openRules()
     const chip = within(screen.getByRole('list', { name: 'Problemas' })).getByRole('button', { name: 'Mano no jugable' })
     expect(chip).toHaveAttribute('aria-pressed', 'true')
 
@@ -140,6 +150,7 @@ describe('la práctica integrada en la mesa', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
 
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(6)
+    openRules()
     expect(within(screen.getByRole('list', { name: 'Problemas' })).getByRole('button', { name: '2 bricks' })).toBeInTheDocument()
 
     // Jugar una carta después ya no es evaluar la mano inicial: los chips se van, y vuelven al deshacer.
@@ -148,14 +159,17 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
     expect(screen.queryByRole('list', { name: 'Salidas' })).not.toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Problemas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Salidas y problemas de tu mano:/ })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    openRules()
     expect(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })).toBeInTheDocument()
   })
 
   it('con la primera jugada los chips de salidas y problemas desaparecen (y con ellos lo que marcan en la mano); al deshacerla vuelven', () => {
     render(<Harness />)
 
+    openRules()
     const chip = within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })
 
     fireEvent.click(chip)
@@ -168,6 +182,7 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(hand()).getByRole('listitem', { name: 'Starter' })).toHaveAttribute('data-glow', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    openRules()
     expect(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })).toBeInTheDocument()
   })
 
@@ -181,26 +196,37 @@ describe('la práctica integrada en la mesa', () => {
     expect(screen.queryByRole('button', { name: 'Mano no jugable' })).not.toBeInTheDocument()
   })
 
-  it('en el celular la explicación de un chip flota sobre los chips: no ocupa lugar, así que no corre el campo', () => {
+  it('en el celular las salidas van plegadas en una píldora de la barra de arriba (no flotan sobre el campo ni la mano): se abre debajo de la barra y se cierra con Escape', () => {
     render(<Harness />)
 
-    fireEvent.click(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' }))
+    // Cerrada: nada de las salidas en la mesa, sólo el resumen en la barra, antes de Deshacer.
+    const pill = rulesPill()
+    expect(screen.getByRole('toolbar', { name: 'Mesa' })).toContainElement(pill)
+    expect(pill).toHaveAccessibleName('Salidas y problemas de tu mano: 1 salida')
+    expect(pill).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(screen.queryByRole('list', { name: 'Salidas' })).not.toBeInTheDocument()
 
-    const explanation = screen.getByRole('region', { name: 'Salida básica' })
+    openRules()
+    const panel = screen.getByRole('dialog', { name: 'Salidas y problemas de tu mano' })
+    expect(pill).toHaveAttribute('aria-expanded', 'true')
+    expect(panel).not.toContainElement(hand())
+    expect(panel).toHaveClass('fixed')
 
-    // Sale del flujo (sólo hasta 1100 px: en el panel de escritorio crece hacia arriba sobre la lista de pasos).
-    expect(explanation.parentElement).toHaveClass('max-[1101px]:absolute', 'max-[1101px]:bottom-full')
-    expect(explanation.parentElement?.parentElement).toHaveClass('max-[1101px]:relative')
+    // En el panel, la explicación va debajo de los chips: el chip tocado no se corre.
+    fireEvent.click(within(panel).getByRole('button', { name: 'Salida básica' }))
+    expect(screen.getByRole('region', { name: 'Salida básica' }).parentElement).toHaveClass('max-[1101px]:order-last')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Salidas y problemas de tu mano' })).not.toBeInTheDocument()
+    expect(pill).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('en el celular las salidas y problemas flotan arriba de la mano y no ocupan lugar: aparecer o irse no corre el campo', () => {
+  it('en escritorio no hay píldora: las salidas siguen abajo del panel lateral', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
     render(<Harness />)
 
-    const overlay = screen.getByRole('list', { name: 'Salidas' }).closest('.absolute')
-
-    expect(overlay).toHaveClass('bottom-full', 'pointer-events-none')
-    // La mano es su ancla: cuelgan de arriba de ella.
-    expect(overlay?.parentElement).toContainElement(hand())
+    expect(screen.queryByRole('button', { name: /^Salidas y problemas de tu mano:/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Pasos y combos' })).toContainElement(screen.getByRole('list', { name: 'Salidas' }))
   })
 
   it('en una pantalla angosta no hay panel de detalle: la carta se ve desde su menú', () => {
