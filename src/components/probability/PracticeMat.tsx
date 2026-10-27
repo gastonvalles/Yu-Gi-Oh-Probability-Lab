@@ -92,7 +92,7 @@ import { stepTone } from './step-tone'
 import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
 import { PhaseRow } from './PhaseRow'
-import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
+import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel } from './MatFx'
@@ -100,7 +100,7 @@ import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
 import { createPanelSteps } from './panel-steps'
-import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
+import { ReplayBar, ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
 import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
@@ -127,6 +127,11 @@ const HAND_TOP_ROOM = 8
 const DESKTOP_HAND_GAP = 8
 /** Celular: cuánto se separan las manos del campo (la del rival sube, la tuya baja) sin moverlo: se corren con `transform` y `margin` de un elemento absoluto, que no cambian el alto de lo que se centra. */
 const MOBILE_HAND_GAP = 14
+/**
+ * Repasando un combo con el replay partido (celular sin fila de abajo): tu mano al 72 %, desde su borde de arriba y 10 px más cerca del campo, entera arriba de los botones (48 px). Es una
+ * transformación: no cambia el alto del grupo que se centra, así que el campo no se mueve al entrar ni al salir del repaso. Medido a 360 × 640–430 × 932: las cartas terminan 4–6 px arriba de los botones.
+ */
+const REVIEW_HAND: CSSProperties = { transform: 'translateY(4px) scale(0.72)', transformOrigin: '50% 0' }
 
 /** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
 const CHAIN_BELOW_BAR_PX = 52
@@ -215,7 +220,7 @@ export interface DuelMatLink {
   undoInHeader?: boolean
   /**
    * «Jugar solo automático» hasta 1100 px (sin efecto en escritorio): las vidas y el turno van en el marcador de la barra (`header`) y no hay fila de abajo (ni `life` ni `corner`). «Pasos y combos» va
-   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra y lo que falta elegir y el replay sobre el borde de abajo de tu mano.
+   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra y lo que falta elegir sobre el borde de abajo de tu mano; el replay se parte (la línea de tiempo arriba, `MatReplayContext`; los botones abajo).
    */
   scoreInHeader?: boolean
   /** Con `scoreInHeader`, las vidas del marcador son botones de 44 px (el duelo por enlace: abren la calculadora) y no de 40: lo que no es campo suma 4 px hasta 1100 px. */
@@ -2363,6 +2368,39 @@ export function PracticeMat({
         onSpeed={setSpeed}
       />
     ) : null
+  // «Jugar solo automático» en el celular, sin la fila de abajo (Gastón, 2026-10-27, opción B): el replay se parte. Arriba, en el aviso del repaso, qué paso se mira y, debajo, la línea de tiempo con
+  // la lista (`MatReplayContext`, en la franja de la mano del rival, vacía al repasar); abajo, los botones en un renglón. Tu mano se achica (`REVIEW_HAND`) para quedar entera arriba de ellos.
+  const splitReplay = bare && replayBar !== null
+  const replayLink = splitReplay
+    ? {
+        step: session.cursor === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepShort', { step: session.cursor, total: session.actions.length, text: steps[session.cursor - 1] ?? '' }),
+        timeline: <ReplayTimeline marks={replayMarks} cursor={session.cursor} describe={describeStep} onSeek={onSeek} onOpenSteps={openSteps} />,
+      }
+    : null
+  // La carta grande del repaso partido va entre la línea de tiempo (en la barra) y la fila del medio del campo: la mitad del rival, vacía mientras se repasa. Se mide al entrar y al cambiar el tamaño.
+  useLayoutEffect(() => {
+    const section = sectionRef.current
+
+    if (!splitReplay || !section) return
+
+    const place = () => {
+      const top = section.getBoundingClientRect().top
+      const from = section.querySelector('[data-replay-timeline]')?.getBoundingClientRect().bottom
+      const mid = Math.min(...[...section.querySelectorAll('[data-drop^="emz:"]')].map((zone) => zone.getBoundingClientRect().top))
+
+      if (from === undefined || !Number.isFinite(mid)) return
+      section.style.setProperty('--review-stage-top', `${from + 4 - top}px`)
+      section.style.setProperty('--review-stage-height', `${Math.max(0, mid - from - 8)}px`)
+    }
+
+    place()
+    window.addEventListener('resize', place)
+    return () => {
+      window.removeEventListener('resize', place)
+      section.style.removeProperty('--review-stage-top')
+      section.style.removeProperty('--review-stage-height')
+    }
+  }, [splitReplay])
 
   // Una carta tuya sin jugadas en automático: por qué (lo que se sabe) y el atajo a la mesa manual, en lugar de «No hay nada para hacer desde acá».
   const whyNot = duel?.auto?.whyNot && menu?.kind === 'card' && !menu.drop ? duel.auto.whyNot(menu.id) : null
@@ -2483,7 +2521,9 @@ export function PracticeMat({
             {/* Sin la fila de abajo (`bare`): «Pasos y combos» va primero en el ⋯ y el aviso de lo que acabás de activar, en la barra antes de Deshacer (las salidas ya se fueron con la primera jugada). */}
             <MatStepsContext.Provider value={bare ? openSteps : null}>
               <MatRulesContext.Provider value={rulesPill ?? (bare && undoPlay && !choosing ? <UndoChip key={undoPlay.key} art={undoPlay.art} onUndo={undoLast} className="ml-auto" /> : null)}>
-                <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>{duel?.header}</MatUndoContext.Provider>
+                <MatUndoContext.Provider value={duel?.undoInHeader ? undoButton : null}>
+                  <MatReplayContext.Provider value={replayLink}>{duel?.header}</MatReplayContext.Provider>
+                </MatUndoContext.Provider>
               </MatRulesContext.Provider>
             </MatStepsContext.Provider>
           </MatSaveContext.Provider>
@@ -2651,7 +2691,7 @@ export function PracticeMat({
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van en la píldora de la barra en el celu (`rulesPill`) y en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
-        <div className={cx('relative', duel && 'pointer-events-none z-10')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
+        <div className={cx('relative', duel && 'pointer-events-none z-10')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"
@@ -2707,11 +2747,15 @@ export function PracticeMat({
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
         {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven.
             Repasando un combo en un duelo, los controles del replay toman también ese margen (abajo, al lado de la mano, está libre): en el lateral solo no entraban y se cortaban. */}
-        {/* Sin fila de abajo («Jugar solo automático» hasta 1100 px: tus vidas van en el marcador de la barra): lo que falta elegir y los controles del replay se apoyan sobre los 44 px de abajo de tu
-            mano sólo mientras están (no ocupan alto ni atajan toques si no); el aviso de lo que acabás de activar va en la barra. */}
+        {/* Sin fila de abajo («Jugar solo automático» hasta 1100 px: tus vidas van en el marcador de la barra): lo que falta elegir se apoya sobre los 44 px de abajo de tu
+            mano sólo mientras está (no ocupa alto ni ataja toques si no); los botones del replay van ahí, debajo de tu mano achicada (`REVIEW_HAND`); el aviso de lo que acabás de activar va en la barra. */}
         {bare ? (
           <div className="pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55 h-11" data-mat-float="">
-            {replayBar ? <div className="pointer-events-auto absolute inset-x-0 bottom-0 bg-background">{replayBar}</div> : null}
+            {splitReplay ? (
+              <div className="pointer-events-auto absolute inset-x-0 bottom-0">
+                <ReplayTransport total={replayMarks.length} cursor={session.cursor} playing={autoplay} playLabel={replayLabel} speed={speed} onTogglePlay={togglePlay} onRestart={restart} onPrevious={previousStep} onNext={nextStep} onSpeed={setSpeed} />
+              </div>
+            ) : null}
             {status}
             {/* Lo propio del duelo que iba en la fila de abajo (los diálogos de los juegos, que abre el +): sin la fila, igual se monta. */}
             {duel?.tools}
@@ -2928,10 +2972,12 @@ export function PracticeMat({
           key={stage.key}
           kind={stage.kind}
           cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-          caption={steps[stage.step - 1] ?? null}
+          // Repasando con el replay partido el paso ya se lee en el aviso de arriba: la carta va sin cartel, en la mitad del rival (vacía), del alto que queda (`fit`).
+          caption={splitReplay ? null : (steps[stage.step - 1] ?? null)}
+          fit={splitReplay}
           flip={stage.flip}
           origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
-          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
+          className={cx(splitReplay ? 'absolute inset-x-0 top-[var(--review-stage-top,0px)] z-[120] h-[var(--review-stage-height,100%)]' : 'absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
         />
       ) : null}
 

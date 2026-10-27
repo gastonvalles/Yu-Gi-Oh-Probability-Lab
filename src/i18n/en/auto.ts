@@ -190,7 +190,7 @@ export const auto: Translated<typeof es> = {
 
   // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
   'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',
-  'auto.review.combo': 'Reviewing “{name}”: the duel waits where you left it.',
+  'auto.review.comboShort': 'Reviewing “{name}”',
   'auto.review.plays': 'Reviewing your plays: the duel waits where you left it.',
   'auto.review.back': 'Back to the duel',
 

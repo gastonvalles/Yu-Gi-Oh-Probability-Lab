@@ -35,6 +35,12 @@ export const MatRulesContext = createContext<ReactNode>(null)
 /** «Pasos y combos» como primer ítem del ⋯: la mesa lo da cuando no tiene la fila de abajo donde iba su botón («Jugar solo automático» en el celular en vertical). Sin él, no va. */
 export const MatStepsContext = createContext<(() => void) | null>(null)
 
+/**
+ * El replay partido de «Jugar solo automático» en el celular (sin la fila de abajo): qué paso se mira (`step`, el segundo renglón del aviso del repaso) y la línea de tiempo con la lista (`timeline`,
+ * debajo del aviso). La mesa lo da sólo mientras se repasa un combo; abajo quedan los botones (`ReplayTransport`). Sin él, el aviso va como siempre.
+ */
+export const MatReplayContext = createContext<{ step: string; timeline: ReactNode } | null>(null)
+
 /** Deshacer de un duelo por enlace, para su barra de arriba (`DuelBar`, con `undoInHeader`): lo arma la mesa con su estado (sin jugadas, esperando el permiso del rival). Sin él, nada. */
 export const MatUndoContext = createContext<ReactNode>(null)
 

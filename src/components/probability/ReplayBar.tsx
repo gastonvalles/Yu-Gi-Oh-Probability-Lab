@@ -97,7 +97,7 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
       aria-valuemax={total}
       aria-valuenow={cursor}
       aria-valuetext={describe(cursor)}
-      className={cx('relative flex h-9 min-w-0 flex-1 cursor-pointer touch-none select-none items-center gap-[3px] rounded-control px-1 outline-none focus-visible:shadow-focus', className)}
+      className={cx('relative flex min-w-0 flex-1 cursor-pointer touch-none select-none items-center gap-[3px] rounded-control px-1 outline-none focus-visible:shadow-focus', className)}
       onKeyDown={handleKeyDown}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         if (event.button !== 0) return
@@ -143,8 +143,8 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
   )
 }
 
-/** La velocidad con su menú que se abre hacia arriba (la barra va abajo de la mesa): 0,5× · 1× · 1,5× · 2×. */
-function SpeedMenu({ speed, onSpeed }: { speed: ReplaySpeed; onSpeed: (speed: ReplaySpeed) => void }) {
+/** La velocidad con su menú que se abre hacia arriba (la barra va abajo de la mesa): 0,5× · 1× · 1,5× · 2×. `tall`: 44 px con el dedo, como los otros botones del reproductor partido. */
+function SpeedMenu({ speed, onSpeed, tall = false }: { speed: ReplaySpeed; onSpeed: (speed: ReplaySpeed) => void; tall?: boolean }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -202,7 +202,10 @@ function SpeedMenu({ speed, onSpeed }: { speed: ReplaySpeed; onSpeed: (speed: Re
         aria-controls={open ? menuId : undefined}
         aria-label={`${t('practice.replay.speed')}: ${formatSpeed(speed)}`}
         title={t('practice.replay.speed')}
-        className="inline-flex h-9 items-center gap-1.5 rounded-control bg-lavender px-3 text-body font-semibold tabular-nums text-foreground transition-colors duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none pointer-coarse:h-10"
+        className={cx(
+          'inline-flex h-9 items-center gap-1.5 rounded-control bg-lavender px-3 text-body font-semibold tabular-nums text-foreground transition-colors duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none',
+          tall ? 'pointer-coarse:h-11' : 'pointer-coarse:h-10',
+        )}
         onClick={() => setOpen((current) => !current)}
       >
         {formatSpeed(speed)}
@@ -213,30 +216,74 @@ function SpeedMenu({ speed, onSpeed }: { speed: ReplaySpeed; onSpeed: (speed: Re
   )
 }
 
-interface ReplayBarProps {
-  marks: ReplayMark[]
+/** Lo que mueve el replay: volver al principio, anterior, reproducir y pausar, siguiente y la velocidad. */
+interface TransportProps {
+  /** Cuántas jugadas tiene el combo (la mano inicial no cuenta). */
+  total: number
   /** Hasta qué jugada se ve (0 = mano inicial). */
   cursor: number
   playing: boolean
   /** Qué hace el botón grande ahora ("Pausar", "Reproducir", "Ver de nuevo"). */
   playLabel: string
   speed: ReplaySpeed
-  /** Lo que anuncia un paso a un lector de pantalla. */
-  describe: (cursor: number) => string
-  onSeek: (cursor: number) => void
   onTogglePlay: () => void
   onRestart: () => void
   onPrevious: () => void
   onNext: () => void
-  onOpenSteps: () => void
   onSpeed: (speed: ReplaySpeed) => void
   className?: string
+}
+
+/** Dónde va el replay y la lista: la línea de tiempo y la lista de pasos (que se abre aparte). */
+interface TimelineRowProps {
+  marks: ReplayMark[]
+  cursor: number
+  /** Lo que anuncia un paso a un lector de pantalla. */
+  describe: (cursor: number) => string
+  onSeek: (cursor: number) => void
+  onOpenSteps: () => void
+  className?: string
+}
+
+type ReplayBarProps = Omit<TransportProps, 'total'> & Omit<TimelineRowProps, 'className'> & { className?: string }
+
+function RestartButton({ cursor, onRestart }: Pick<TransportProps, 'cursor' | 'onRestart'>) {
+  return (
+    <IconButton tone="outline" size="sm" aria-label={t('practice.replay.restart')} title={t('practice.replay.restart')} disabled={cursor === 0} onClick={onRestart}>
+      <Icon name="skip-back" variant="bold" />
+    </IconButton>
+  )
+}
+
+/** Anterior, el botón grande (la acción principal) y siguiente. */
+function StepButtons({ total, cursor, playing, playLabel, onTogglePlay, onPrevious, onNext }: Pick<TransportProps, 'total' | 'cursor' | 'playing' | 'playLabel' | 'onTogglePlay' | 'onPrevious' | 'onNext'>) {
+  return (
+    <>
+      <IconButton tone="raised" size="sm" aria-label={t('practice.mat.previous')} title={t('practice.mat.previous')} className="disabled:opacity-40" disabled={cursor === 0} onClick={onPrevious}>
+        <Icon name="chevron-left" strokeWidth={2.2} />
+      </IconButton>
+      <IconButton tone="play" size="md" aria-label={playLabel} title={playLabel} onClick={onTogglePlay}>
+        <Icon name={playing ? 'pause' : 'play'} variant="bold" />
+      </IconButton>
+      <IconButton tone="raised" size="sm" aria-label={t('practice.mat.next')} title={t('practice.mat.next')} className="disabled:opacity-40" disabled={cursor >= total} onClick={onNext}>
+        <Icon name="chevron-right" strokeWidth={2.2} />
+      </IconButton>
+    </>
+  )
+}
+
+function StepsButton({ onOpenSteps }: Pick<TimelineRowProps, 'onOpenSteps'>) {
+  return (
+    <IconButton tone="raised" size="sm" aria-label={t('practice.replay.steps')} title={t('practice.replay.steps')} onClick={onOpenSteps}>
+      <Icon name="list" />
+    </IconButton>
+  )
 }
 
 /**
  * Los controles de un replay, como los de YGOPocket: volver al principio, paso anterior, el botón grande de reproducir y pausar, paso
  * siguiente, la línea de tiempo de pasos, la lista de pasos (que se abre aparte) y la velocidad. En el celular la línea de tiempo baja
- * a su propio renglón.
+ * a su propio renglón. Es `ReplayTransport` y `ReplayTimeline` juntos (la práctica, el escritorio); «Jugar solo automático» en el celular los parte.
  */
 export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playLabel, speed, describe, onSeek, onTogglePlay, onRestart, onPrevious, onNext, onOpenSteps, onSpeed, className }: ReplayBarProps) {
   return (
@@ -244,28 +291,42 @@ export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playL
     <div role="group" aria-label={t('practice.replay.controls')} className={cx('@container', className)}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
         <div className="flex items-center gap-2">
-          <IconButton tone="outline" size="sm" aria-label={t('practice.replay.restart')} title={t('practice.replay.restart')} disabled={cursor === 0} onClick={onRestart}>
-            <Icon name="skip-back" variant="bold" />
-          </IconButton>
-          <IconButton tone="raised" size="sm" aria-label={t('practice.mat.previous')} title={t('practice.mat.previous')} className="disabled:opacity-40" disabled={cursor === 0} onClick={onPrevious}>
-            <Icon name="chevron-left" strokeWidth={2.2} />
-          </IconButton>
-          <IconButton tone="play" size="md" aria-label={playLabel} title={playLabel} onClick={onTogglePlay}>
-            <Icon name={playing ? 'pause' : 'play'} variant="bold" />
-          </IconButton>
-          <IconButton tone="raised" size="sm" aria-label={t('practice.mat.next')} title={t('practice.mat.next')} className="disabled:opacity-40" disabled={cursor >= marks.length} onClick={onNext}>
-            <Icon name="chevron-right" strokeWidth={2.2} />
-          </IconButton>
+          <RestartButton cursor={cursor} onRestart={onRestart} />
+          <StepButtons total={marks.length} cursor={cursor} playing={playing} playLabel={playLabel} onTogglePlay={onTogglePlay} onPrevious={onPrevious} onNext={onNext} />
         </div>
         {/* Angosta, la línea de tiempo baja a su propio renglón; ancha, va en el medio. */}
-        <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="order-last basis-full @min-[34rem]:order-none @min-[34rem]:basis-0" />
+        <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="order-last h-9 basis-full @min-[34rem]:order-none @min-[34rem]:basis-0" />
         <div className="ml-auto flex items-center gap-2 @min-[34rem]:ml-0">
-          <IconButton tone="raised" size="sm" aria-label={t('practice.replay.steps')} title={t('practice.replay.steps')} onClick={onOpenSteps}>
-            <Icon name="list" />
-          </IconButton>
+          <StepsButton onOpenSteps={onOpenSteps} />
           <SpeedMenu speed={speed} onSpeed={onSpeed} />
         </div>
       </div>
+    </div>
+  )
+})
+
+/**
+ * El replay partido, abajo (Gastón, 2026-10-27, opción B: «dónde estás arriba, los botones abajo»): lo que se toca seguido en un renglón de 48 px, al alcance del pulgar: volver al principio a la
+ * izquierda, anterior, el botón grande y siguiente al medio, y la velocidad a la derecha. Todos de 44 px con el dedo (el grande, 48). La línea de tiempo va arriba (`ReplayTimeline`).
+ */
+export const ReplayTransport = memo(function ReplayTransport({ total, cursor, playing, playLabel, speed, onTogglePlay, onRestart, onPrevious, onNext, onSpeed, className }: TransportProps) {
+  return (
+    <div role="group" aria-label={t('practice.replay.controls')} className={cx('flex items-center gap-2', className)}>
+      <RestartButton cursor={cursor} onRestart={onRestart} />
+      <span className="mx-auto flex items-center gap-2">
+        <StepButtons total={total} cursor={cursor} playing={playing} playLabel={playLabel} onTogglePlay={onTogglePlay} onPrevious={onPrevious} onNext={onNext} />
+      </span>
+      <SpeedMenu speed={speed} onSpeed={onSpeed} tall />
+    </div>
+  )
+})
+
+/** El replay partido, arriba: la línea de tiempo (44 px de alto para tocarla) y, a su derecha, la lista de pasos. Va debajo del aviso que dice qué se repasa y qué paso es. */
+export const ReplayTimeline = memo(function ReplayTimeline({ marks, cursor, describe, onSeek, onOpenSteps, className }: TimelineRowProps) {
+  return (
+    <div className={cx('flex items-center gap-1.5', className)}>
+      <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="h-11" />
+      <StepsButton onOpenSteps={onOpenSteps} />
     </div>
   )
 })

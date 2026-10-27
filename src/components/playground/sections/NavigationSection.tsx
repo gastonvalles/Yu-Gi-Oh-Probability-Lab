@@ -7,7 +7,7 @@ import { MatSnapshot } from '../../probability/MatSnapshot'
 import { panelStepsOf } from '../../probability/panel-steps'
 import type { FxTone } from '../../probability/practice-styles'
 import { PracticeMatPanel } from '../../probability/PracticeMatPanel'
-import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
+import { ReplayBar, ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
 import { AppNavbar } from '../../shell/AppNavbar'
 import { AppShell } from '../../shell/AppShell'
 import { AppSidebar } from '../../shell/AppSidebar'
@@ -34,7 +34,7 @@ const DEMO_MARKS: ReplayMark[] = Array.from({ length: 36 }, (_, index) => ({ pha
 const DEMO_AUTOPLAY_MS = 1400
 
 /** Los controles del replay con un replay de mentira que avanza solo (a la velocidad elegida), para tocarlos como en la mesa. */
-function ReplayDemo({ className }: { className?: string }) {
+function ReplayDemo({ className, split = false }: { className?: string; /** Partido, como en «Jugar solo automático» en el celular: la línea de tiempo arriba y los botones abajo. */ split?: boolean }) {
   const [cursor, setCursor] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
@@ -50,36 +50,45 @@ function ReplayDemo({ className }: { className?: string }) {
     return () => window.clearTimeout(timer)
   }, [playing, cursor, speed])
 
-  return (
-    <ReplayBar
-      className={className}
-      marks={DEMO_MARKS}
-      cursor={cursor}
-      playing={playing}
-      playLabel={playing ? 'Pausar' : cursor >= DEMO_MARKS.length ? 'Ver de nuevo' : 'Reproducir'}
-      speed={speed}
-      describe={(step) => (step === 0 ? 'Mano inicial' : `Paso ${step} de ${DEMO_MARKS.length}`)}
-      onSeek={setCursor}
-      onTogglePlay={() => {
-        if (playing) {
-          setPlaying(false)
-        } else {
-          if (cursor >= DEMO_MARKS.length) setCursor(0)
-          setPlaying(true)
-        }
-      }}
-      onRestart={() => setCursor(0)}
-      onPrevious={() => {
+  const timeline = {
+    marks: DEMO_MARKS,
+    cursor,
+    describe: (step: number) => (step === 0 ? 'Mano inicial' : `Paso ${step} de ${DEMO_MARKS.length}`),
+    onSeek: setCursor,
+    onOpenSteps: () => {},
+  }
+  const transport = {
+    cursor,
+    playing,
+    playLabel: playing ? 'Pausar' : cursor >= DEMO_MARKS.length ? 'Ver de nuevo' : 'Reproducir',
+    speed,
+    onTogglePlay: () => {
+      if (playing) {
         setPlaying(false)
-        setCursor((current) => Math.max(0, current - 1))
-      }}
-      onNext={() => {
-        setPlaying(false)
-        setCursor((current) => Math.min(DEMO_MARKS.length, current + 1))
-      }}
-      onOpenSteps={() => {}}
-      onSpeed={setSpeed}
-    />
+      } else {
+        if (cursor >= DEMO_MARKS.length) setCursor(0)
+        setPlaying(true)
+      }
+    },
+    onRestart: () => setCursor(0),
+    onPrevious: () => {
+      setPlaying(false)
+      setCursor((current) => Math.max(0, current - 1))
+    },
+    onNext: () => {
+      setPlaying(false)
+      setCursor((current) => Math.min(DEMO_MARKS.length, current + 1))
+    },
+    onSpeed: setSpeed,
+  }
+
+  return split ? (
+    <div className={cx('grid gap-3', className)}>
+      <ReplayTimeline {...timeline} />
+      <ReplayTransport total={DEMO_MARKS.length} {...transport} />
+    </div>
+  ) : (
+    <ReplayBar className={className} {...timeline} {...transport} />
   )
 }
 
@@ -334,6 +343,12 @@ export function NavigationSection() {
           <div className="w-full max-w-[23.4rem] rounded-card border border-border-subtle p-3">
             <ReplayDemo />
           </div>
+        </div>
+      </Specimen>
+
+      <Specimen title="Controles del replay · partidos" layout="free" note={<>«Jugar solo automático» en el celular, repasando un combo: la línea de tiempo y la lista de pasos van arriba, debajo del aviso «Repasás “…”» (que dice qué paso se mira), y los botones abajo, en un renglón de 48 px al alcance del pulgar: volver al principio a la izquierda, anterior, reproducir y siguiente al medio y la velocidad a la derecha (todos de 44 px con el dedo). Tu mano se achica para quedar entera arriba de ellos y el campo no se mueve. En la mesa los separa la mesa; acá van juntos. Archivo: <Tag>probability/ReplayBar.tsx</Tag> (<Tag>ReplayTimeline</Tag> y <Tag>ReplayTransport</Tag>)</>}>
+        <div className="w-full max-w-[23.4rem] rounded-card border border-border-subtle p-3">
+          <ReplayDemo split />
         </div>
       </Specimen>
 

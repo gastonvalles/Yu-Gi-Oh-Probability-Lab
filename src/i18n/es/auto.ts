@@ -197,7 +197,7 @@ export const auto = {
 
   // Los pasos y los combos (el panel de la práctica): la lista vacía (acá no se arrastra ni se mantiene) y el repaso de un combo o de tus jugadas en la misma mesa, con la salida.
   'auto.steps.empty': 'Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.',
-  'auto.review.combo': 'Repasás “{name}”: el duelo te espera donde lo dejaste.',
+  'auto.review.comboShort': 'Repasás “{name}”',
   'auto.review.plays': 'Repasás tus jugadas: el duelo te espera donde lo dejaste.',
   'auto.review.back': 'Volver al duelo',
 
