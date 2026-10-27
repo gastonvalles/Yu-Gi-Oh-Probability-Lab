@@ -1966,13 +1966,20 @@
 }
 
 /*
- * En un duelo, en celular y tablet, los avisos suben sobre la botonera de abajo: ahí están tus vidas y deshacer, y un aviso encima las taparía.
+ * En un duelo («Jugar solo automático» y los duelos por enlace), en celular y tablet, no hay botonera abajo (tus vidas van en el marcador de arriba) y abajo el aviso caía sobre tu mano: va arriba, a
+ * 9,5 rem del borde, debajo del marcador y del lugar de los avisos de la línea (sólo pisa unos segundos el borde de arriba de la mano del rival).
  * Va en la capa de las utilidades porque la posición del contenedor (AppToaster) también es una utilidad con `!`: fuera de la capa perdería contra ella.
  */
 @layer utilities {
   @media (width < 1101px) {
     body[data-duel] .app-toaster {
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
+      top: calc(env(safe-area-inset-top, 0px) + 9.5rem) !important;
+      bottom: auto !important;
+    }
+
+    body[data-duel] .app-toaster > div {
+      top: 0 !important;
+      bottom: auto !important;
     }
   }
 }

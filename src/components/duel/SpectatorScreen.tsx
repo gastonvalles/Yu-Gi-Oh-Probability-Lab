@@ -4,7 +4,8 @@ import { duelResult } from '../../app/duel-games'
 import { DEFAULT_LIMIT_MIN } from '../../app/duel-protocol'
 import type { SpectatorSide, SpectatorSnapshot } from '../../app/duel-spectator'
 import { duelClockMs, formatClock, type Duelist } from '../../app/life-calculator'
-import { isToken, PHASES } from '../../app/practice-mat'
+import { duelTurnNumber } from '../../app/duel-turn'
+import { isToken } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSpectator, type SpectatorConnect } from '../../app/use-duel'
@@ -18,7 +19,8 @@ import { Icon } from '../ui/Icon'
 import { CloseButton, IconButton } from '../ui/IconButton'
 import { SideDrawer } from '../ui/SideDrawer'
 import { WatchResultBanner } from './DuelBanner'
-import { LifeTile, roundClockClass } from './DuelBar'
+import { roundClockClass } from './DuelBar'
+import { LifeScore } from './LifeScore'
 import { PLAYER_COLOR } from './player-color'
 import { artOfDrawId } from './duel-art'
 import { TURN_WARNING_MS, formatTurnTime, turnTimeLeft } from '../../app/duel-clock'
@@ -251,7 +253,8 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
   const topView = useMemo(() => sideView(topSide), [topSide])
   const nameOf = (player: Duelist) => snapshot.sides[player].name ?? (player === 0 ? t('duel.watch.host') : t('duel.watch.guest'))
   const unread = chatOpen ? 0 : Math.max(0, snapshot.feed.length - read)
-  const phase = PHASES.find((entry) => entry.id === snapshot.phase)?.name
+  // El turno del duelo, contado con las dos mesas (la fase la dice la fila de fases del campo).
+  const turnNumber = duelTurnNumber(bottomSide.mirror?.state ?? null, topSide.mirror?.state ?? null)
   const roundLimit = snapshot.settings?.limitMin ?? DEFAULT_LIMIT_MIN
   const roundLeft = duelClockMs(snapshot.clock, now, roundLimit)
   const clock = formatClock(roundLeft)
@@ -284,32 +287,48 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
       <div className={cx(docked && "min-w-0 flex-1 overflow-y-auto")}>
         {/* `isolate`: las cartas que vuelan quedan dentro de la mesa, debajo del cartel del final. */}
         <div ref={tableRef} className="isolate mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
-          {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. Tres filas que no se parten (vida + reloj + salir; lo que se mira + el turno; avisos): si algo no entra se achica en su fila en vez de caerse a otra. */}
-          <div className="flex items-center gap-1.5 [&>[data-lp]]:shrink">
+          {/* Arriba la fila de los íconos (el reloj, que se mira, «Mirando», dar vuelta la mesa, el chat hasta 1100 px y salir) y el marcador plano, como en los duelos (Gastón, 2026-10-27): las vidas
+              del de abajo a la izquierda y las del de arriba a la derecha, con su nombre en su color, y el turno una vez en el medio. Nada de esto se toca para cambiar el duelo. */}
+          <div className="flex h-11 min-w-0 items-center gap-1.5">
             <ShellMenuButton className="-ml-2" />
-            <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
             <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold" aria-label={t('duel.bar.clock', { time: clock })}>
               <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={16} />
               <span data-testid="round-clock" className={roundClockClass(roundLeft, roundLimit > 0, snapshot.clock.running)}>
                 {clock}
               </span>
             </span>
-            <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} className="-mr-2 ml-auto shrink-0" onClick={onLeave}>
-              <Icon name="x" />
-            </IconButton>
+            <span className="inline-flex min-w-0 shrink items-center gap-1 rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold text-muted" title={t('duel.watch.readOnly')}>
+              <Icon name="eye" size={14} className="shrink-0" />
+              <span className="truncate max-[419px]:sr-only">{t('duel.watch.badge')}</span>
+            </span>
+            <span className="-mr-2 ml-auto flex shrink-0 items-center">
+              <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={() => setFlipped((current) => !current)}>
+                <Icon name="swap" />
+              </IconButton>
+              {docked ? null : (
+                <span className="relative">
+                  <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.watch.chat')} (${t('duel.chat.unread', { count: unread })})` : t('duel.watch.chat')} title={t('duel.watch.chat')} onClick={() => setChatOpen(true)}>
+                    <Icon name="chat" />
+                  </IconButton>
+                  {unread > 0 ? (
+                    <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.625rem] font-extrabold leading-4 text-white">
+                      {unread}
+                    </span>
+                  ) : null}
+                </span>
+              )}
+              <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave}>
+                <Icon name="x" />
+              </IconButton>
+            </span>
           </div>
 
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold text-muted" title={t('duel.watch.readOnly')}>
-              <Icon name="eye" size={14} />
-              {t('duel.watch.badge')}
+          <div data-testid="watch-score" className="flex min-h-11 min-w-0 items-center gap-2 px-1">
+            <LifeScore name={nameOf(bottom)} life={bottomSide.lp ?? snapshot.settings?.lp ?? 0} mine color={bottom === 0 ? 'mine' : 'theirs'} />
+            <span data-testid="duel-turn" className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold', snapshot.turn === null ? 'text-muted' : PLAYER_COLOR[snapshot.turn === 0 ? 'mine' : 'theirs'].text)}>
+              {snapshot.turn !== null ? t('duel.bar.theirTurnN', { name: nameOf(snapshot.turn), turn: turnNumber }) : null}
             </span>
-            {snapshot.turn !== null ? (
-              <span className="min-w-0 truncate rounded-full bg-accent/20 px-2.5 py-1 text-micro font-semibold text-accent">
-                {t('duel.watch.turnOf', { name: nameOf(snapshot.turn) })}
-                {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
-              </span>
-            ) : null}
+            <LifeScore name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
           </div>
 
           <div className="flex min-w-0 items-center gap-1.5 empty:hidden">
@@ -349,31 +368,11 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
             </Callout>
           ) : null}
 
-          {/* En escritorio las cartas se achican hasta que entran las cinco filas, las dos manos y las barras en la pantalla. En un celular en vertical (menos de 640 px) son siete filas de cinco columnas: la casilla es la que deja ver las dos manos y tus vidas sin scrollear
-              (el alto de la pantalla menos 28,9 rem —lo de arriba, las dos manos y la fila de abajo—, en siete; nunca menos de 3 rem) y, si el ancho no alcanza, la del ancho. */}
-          <DuelTable mine={bottomView} theirs={topView} turn={snapshot.turn === bottom ? 'mine' : 'theirs'} className="[--cell:max(3rem,min(7rem,calc((100dvh-17rem)/5.2)))] max-sm:mx-auto max-sm:w-[min(100%,calc(5*max(3rem,(100dvh_-_28.9rem)/7)_+_1rem))]" />
+          {/* En escritorio (y de 640 a 1100 px, angostando la mesa) las cartas se achican hasta que entran las cinco filas, las dos manos y las barras en la pantalla. En un celular en vertical (menos de 640 px) son siete filas de cinco columnas: la casilla es la que deja ver las dos manos y tus vidas sin scrollear
+              (el alto de la pantalla menos 26,9 rem —la barra, el marcador y las dos manos—, en siete; nunca menos de 3 rem) y, si el ancho no alcanza, la del ancho. */}
+          <DuelTable mine={bottomView} theirs={topView} turn={snapshot.turn === bottom ? 'mine' : 'theirs'} className="[--cell:max(3rem,min(7rem,calc((100dvh-25.75rem)/5.2)))] max-sm:mx-auto max-sm:w-[min(100%,calc(5*max(3rem,(100dvh_-_26.9rem)/7)_+_1rem))] sm:max-[1101px]:mx-auto sm:max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_25.75rem)/5.2)_+_1.5rem))]" />
           <TheirHand count={bottomView.handCount ?? 0} />
 
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center">
-              <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={() => setFlipped((current) => !current)}>
-                <Icon name="swap" />
-              </IconButton>
-              {docked ? null : (
-                <span className="relative">
-                  <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.watch.chat')} (${t('duel.chat.unread', { count: unread })})` : t('duel.watch.chat')} title={t('duel.watch.chat')} onClick={() => setChatOpen(true)}>
-                    <Icon name="chat" />
-                  </IconButton>
-                  {unread > 0 ? (
-                    <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.625rem] font-extrabold leading-4 text-white">
-                      {unread}
-                    </span>
-                  ) : null}
-                </span>
-              )}
-            </span>
-            <LifeTile name={nameOf(bottom)} life={bottomSide.lp ?? snapshot.settings?.lp ?? 0} mine color={bottom === 0 ? 'mine' : 'theirs'} />
-          </div>
         </div>
       </div>
       {/* Después de la mesa: al montarse ya la encuentra (`tableRef`). */}

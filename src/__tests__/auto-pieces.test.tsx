@@ -419,7 +419,6 @@ describe('AutoBar', () => {
     life: { mine: 8000, theirs: 7000 },
     turn: 3,
     myTurn: true,
-    phase: 'main1' as const,
     chain: 'ask' as const,
     place: 'ask' as const,
     onExit: () => {},
@@ -443,7 +442,7 @@ describe('AutoBar', () => {
     window.matchMedia = matchMedia
   })
 
-  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar», deshacer (apagado sin nada que deshacer) y el ⋯, que lleva al final «Opciones del duelo»; debajo, el turno con la fase en su píldora', () => {
+  it('arriba, la fila de la práctica: la flecha de «Volver a Jugar», deshacer (apagado sin nada que deshacer) y el ⋯, que lleva al final «Opciones del duelo»; debajo (de 640 a 1100 px también), el marcador plano', () => {
     const onExit = vi.fn()
     const onUndo = vi.fn()
     const onNewHand = vi.fn()
@@ -451,10 +450,9 @@ describe('AutoBar', () => {
     const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
     expect(names(within(toolbar).getAllByRole('button'))).toEqual(['Volver a Jugar', 'Deshacer', 'Más opciones'])
-    expect(screen.getByText('Turno 3')).toBeInTheDocument()
-    expect(screen.getByText('Tu turno')).toBeInTheDocument()
-    expect(screen.getByTestId('auto-phase')).toHaveTextContent('M1Main Phase 1')
-    expect(screen.getByTestId('auto-phase')).toHaveClass('bg-primary', 'border-info', 'text-white')
+    // Sin el chip «Turno 3» ni la píldora de la fase: el turno una vez, entre las dos vidas (jsdom no es un celular: es el ancho de una tablet).
+    expect(screen.getByTestId('auto-score')).toHaveTextContent('Vos8000Tu turno · 3Rival7000')
+    expect(screen.queryByText('Turno 3')).toBeNull()
     expect(within(toolbar).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
     expect(menuRow('Opciones del duelo')).toBeInTheDocument()
 
@@ -483,10 +481,10 @@ describe('AutoBar', () => {
     expect(screen.getByTestId('auto-turn')).toHaveClass('text-info-soft')
   })
 
-  it('las vidas no van en la barra sin laterales (en escritorio van en las esquinas del campo; en el celular, abajo: las pone la pantalla); con la botonera (`dock`), el engranaje sale de la barra sólo en escritorio', () => {
+  it('en escritorio sin laterales las vidas no van en la barra (van planas en las esquinas del campo: las pone la pantalla) y el turno va una vez debajo de los íconos, sin chip ni fase; con la botonera (`dock`), el engranaje sale de la barra sólo en escritorio', () => {
     const { unmount } = render(<AutoBar {...props} dock />)
 
-    expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
     expect(menuRow('Opciones del duelo')).toBeInTheDocument()
     unmount()
 
@@ -494,6 +492,9 @@ describe('AutoBar', () => {
     const { rerender } = render(<AutoBar {...props} />)
 
     expect(screen.queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    expect(screen.getByTestId('auto-turn')).toHaveTextContent(/^Tu turno · 3$/)
+    expect(screen.queryByTestId('auto-phase')).toBeNull()
+    expect(screen.queryByText('Turno 3')).toBeNull()
     expect(names(within(screen.getByRole('toolbar', { name: 'Mesa' })).getAllByRole('button'))).toEqual(['Deshacer', 'Más opciones'])
     expect(screen.getByRole('button', { name: 'Volver a Jugar' })).toBeInTheDocument()
     expect(menuRow('Opciones del duelo')).toBeInTheDocument()
@@ -501,16 +502,19 @@ describe('AutoBar', () => {
     expect(() => menuRow('Opciones del duelo')).toThrow()
   })
 
-  it('con laterales, las vidas van cada una de su lado del lateral izquierdo: el rival arriba (junto a la flecha) y vos abajo, con las cartas de cada mano', () => {
+  it('con laterales, las vidas van planas y grandes cada una de su lado del lateral izquierdo: el rival arriba (junto a la flecha) y vos abajo; sin placa ni cartas en la mano', () => {
     desktop()
-    render(
+    const { container } = render(
       <DuelRailsContext.Provider value>
-        <AutoBar {...props} hands={{ mine: 1, theirs: 3 }} />
+        <AutoBar {...props} />
       </DuelRailsContext.Provider>,
     )
+    const rival = screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000' })
 
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Rival: 7000. 3 cartas en la mano' }).parentElement).toHaveClass('col-start-1', 'row-start-1')
-    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000. Una carta en la mano' }).parentElement).toHaveClass('col-start-1', 'row-start-3')
+    expect(rival.parentElement).toHaveClass('col-start-1', 'row-start-1')
+    expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' }).parentElement).toHaveClass('col-start-1', 'row-start-3')
+    expect(rival.lastElementChild).toHaveClass('text-stat')
+    expect(container.querySelector('.life-plate, [role="meter"]')).toBeNull()
   })
 
   it('«Opciones del duelo»: las respuestas y la casilla entran y salen por props, y dice que el rival no juega; los sonidos no van acá (son de «La mesa», en el ⋯, como en la práctica)', () => {
@@ -590,7 +594,9 @@ describe('AutoBar', () => {
     expect(lane).not.toHaveClass('absolute')
     // La caja ocupa todo el lateral, encima del campo agrandado: sin esto tapaba el Extra Deck, el Field y el Banish del rival, aun vacía. Sólo lo que lleva adentro recibe toques.
     expect(lane?.parentElement).toHaveClass('pointer-events-none', '*:pointer-events-auto')
-    expect(screen.getByTestId('auto-phase')).toHaveTextContent('Main Phase 1')
+    // El turno, una vez, debajo de los íconos; la fase no (la dice el botón del campo).
+    expect(screen.getByTestId('auto-turn')).toHaveTextContent(/^Tu turno · 3$/)
+    expect(screen.queryByTestId('auto-phase')).toBeNull()
   })
 
   it('con laterales, el texto del aviso ocupa su renglón y el botón va debajo, a la derecha, y se puede tocar', () => {

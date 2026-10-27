@@ -78,15 +78,15 @@ describe('auto-screen · los pasos de la práctica', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('en el celular la lista se abre con su botón abajo a la derecha (arriba van los íconos de la práctica y el engranaje), en una hoja con «Pasos» y «Combos»', () => {
+  it('hasta 1100 px (sin fila de abajo) la lista se abre desde lo primero del ⋯ de la barra, en una hoja con «Pasos» y «Combos»', () => {
     const fake = renderAuto(openingSession())
 
     rearm(fake, START, IDLE)
     goTo('Main Phase 1')
     step()
-    // No va en la barra de arriba (la de los íconos de la mesa).
-    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Pasos y combos' }))
+    // No es un botón suelto (ni arriba ni abajo): va en el ⋯.
+    expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
+    fireEvent.click(menuRow(/^Pasos y combos$/))
     const sheet = screen.getByRole('dialog', { name: 'Pasos y combos' })
 
     expect(within(sheet).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Pasos2', 'Combos0'])

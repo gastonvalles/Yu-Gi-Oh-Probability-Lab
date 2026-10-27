@@ -8,7 +8,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 - **Sin grises:** las superficies son índigo, y los velos de una superficie, violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto sí se admite el negro).
 - **Dos niveles de caja, no tres:** lienzo → tarjeta (`Card`) y nada más; adentro, espacio y líneas finas (`border-t border-border-subtle`). Un aviso dentro de una tarjeta es un fondo teñido sin borde.
 - **Cada dato se dice una sola vez,** también entre pestaña, encabezado y contenido: el resumen de una sección sólo se ve plegada.
-- **Los porcentajes son anillos:** un valor → `ProgressRing`, un reparto → `SegmentedRing`; no hay barras de progreso (salvo la de 8000 de las vidas: `LifeTile`).
+- **Los porcentajes son anillos:** un valor → `ProgressRing`, un reparto → `SegmentedRing`; no hay barras de progreso. Las vidas son el número plano de `LifeScore` (con `onClick`, un botón de 44 px que abre la calculadora; `LifeTile`, con su barra, sólo queda en el catálogo).
 - **Cifras con `tabular-nums`.**
 
 ## 2. Tonos (color con significado)

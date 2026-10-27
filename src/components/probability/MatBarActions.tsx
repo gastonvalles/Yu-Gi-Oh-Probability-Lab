@@ -35,6 +35,9 @@ export const MatRulesContext = createContext<ReactNode>(null)
 /** «Pasos y combos» como primer ítem del ⋯: la mesa lo da cuando no tiene la fila de abajo donde iba su botón («Jugar solo automático» en el celular en vertical). Sin él, no va. */
 export const MatStepsContext = createContext<(() => void) | null>(null)
 
+/** Deshacer de un duelo por enlace, para su barra de arriba (`DuelBar`, con `undoInHeader`): lo arma la mesa con su estado (sin jugadas, esperando el permiso del rival). Sin él, nada. */
+export const MatUndoContext = createContext<ReactNode>(null)
+
 /**
  * «La mesa», el primer grupo del menú ⋯ de toda mesa (la práctica, «Jugar solo automático» y el duelo por enlace): la vista 3D, los sonidos y la ventana grande (sólo en escritorio: en el celular la mesa
  * ya ocupa todo), cada uno con su interruptor. Vienen prendidos de fábrica (la vista 3D y los sonidos) y por eso no van a la vista ni en color: su estado se lee en el interruptor.

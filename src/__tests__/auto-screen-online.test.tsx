@@ -268,7 +268,7 @@ describe('auto-screen-online · la mesa', () => {
     expect(lane()).toHaveTextContent('El núcleo está resolviendo…')
     expect(within(lane()!).queryByRole('button', { name: 'Cancelar' })).toBeNull()
     // El núcleo dice que el turno es del asiento 0 (Ana).
-    expect(screen.getByText('Turno de Ana')).toBeInTheDocument()
+    expect(screen.getByText(/^Turno de Ana · \d+$/)).toBeInTheDocument()
   })
 
   it('el anfitrión: pasado el plazo, «Cancelar» corta lo que el núcleo piensa', () => {

@@ -19,11 +19,10 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, type LaneNotice } from '../duel/DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from '../duel/DuelBar'
 import { DuelChatPanel } from '../duel/DuelChat'
 import { DuelPause } from '../duel/DuelPause'
 import { ResultCard } from '../duel/DuelResult'
-import { ReactionButtons } from '../duel/ReactionButtons'
 import type { FeedEntry } from '../duel/use-duel-feed'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from '../duel/use-duel-table'
 import { cardIdOfDrawId } from '../probability/practice'
@@ -380,6 +379,8 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   useClockPause(duel, snapshot, paused)
   useCoreLife(duel, snapshot, snap, seat, result)
   const signals = useSignals(snapshot)
+  // La señal del rival junto a sus vidas; sus emojis, en escritorio, grandes en el medio (`RivalEmoji`).
+  const rivalSignal = signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs
 
   // El cartel del comienzo (vas primero o segundo), una vez, cuando el duelo nuevo termina de cargar.
   const [banner, setBanner] = useState(false)
@@ -476,6 +477,10 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         snapshot={snapshot}
         status={status}
         turn={asks.turnMine ? 'mine' : 'theirs'}
+        myName={myName}
+        mySignal={signals.mine}
+        mySignalKey={signals.mineKey}
+        chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />}
         onToggleClock={duel.toggleClock}
         onRematch={onRematch}
         onLeave={onLeave}
@@ -484,22 +489,26 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         onReconnect={duel.reconnect}
         log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />}
         resultOpen={resultOpen}
-        rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs}
+        rivalSignal={rivalSignal}
         rivalSignalKey={signals.theirsKey}
         lane={lane}
-        // La fase es la de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, en el espejo de la suya.
-        phase={snap.overlay.turn > 0 ? (asks.turnMine ? asks.state.phase : snap.theirs.phase) : null}
         turnNumber={Math.max(1, snap.overlay.turn)}
         extraSettings={settings}
         {...(reason ? { resultReason: reason } : {})}
       />
     ),
-    // Tus vidas, abajo como en el duelo (sin calculadora: las lleva el núcleo).
-    life: <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} />,
-    tools: docked ? null : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />,
-    // Celular: las dos reacciones debajo de la mano; en escritorio están en el chat, fijo a la derecha.
-    reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} readyAt={snapshot.emoteReadyAt} />,
+    // Como en el duelo manual (sin calculadora: las vidas las lleva el núcleo): hasta 1100 px en el marcador de la barra, sin fila de abajo; en escritorio, planas y cada una en su esquina (D2).
+    life: docked ? (
+      <span className="-mt-3 flex" data-corner="mine">
+        <DuelLife snapshot={snapshot} myName={myName} signal={signals.mine} signalKey={signals.mineKey} size="lg" />
+      </span>
+    ) : null,
+    ...(docked ? { corner: <RivalLife snapshot={snapshot} signal={rivalSignal} signalKey={signals.theirsKey} size="lg" /> } : { scoreInHeader: true, scoreTall: true }),
+    tools: null,
+    // El chat: en escritorio, fijo a la derecha (con las reacciones); hasta 1100 px, en su panel (lo abre su botón de la barra), con las reacciones.
     aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
+    // Deshacer (le pide permiso al rival: `useLinkUndo`) va en la barra de arriba (`MatUndoContext`).
+    undoInHeader: true,
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     // Deshacer le pide permiso al rival (`useLinkUndo`); el chip de la solitaria no va: acá el pedido es explícito.
     undoAvailable: undo.available,

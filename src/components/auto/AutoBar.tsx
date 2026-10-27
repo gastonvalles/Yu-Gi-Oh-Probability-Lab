@@ -2,12 +2,10 @@ import { useLayoutEffect, useState, type ButtonHTMLAttributes, type ReactNode } 
 
 import type { AutoPrefs } from '../../app/auto-prefs'
 import { useDuelRails } from '../../app/duel-rails'
-import type { MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t, type MessageKey } from '../../i18n'
-import { LaneBanner, LifeTile, PhasePill, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
+import { LaneBanner, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
 import { LifeScore } from '../duel/LifeScore'
-import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../probability/MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Button } from '../ui/Button'
@@ -53,10 +51,8 @@ export interface AutoOptions {
 
 interface AutoBarProps extends AutoOptions {
   rivalName: string
-  /** Los puntos de vida de los dos (los cuentan y destellan como en el duelo: `LifeTile`): acá sólo con laterales (en el izquierdo). Sin ellos van en las esquinas del campo (escritorio) o abajo (celular): los pone la pantalla. */
+  /** Los puntos de vida de los dos, planos (`LifeScore`): en el marcador debajo de los íconos hasta 1100 px y en el lateral izquierdo con laterales. En escritorio sin laterales van en las esquinas del campo: las pone la pantalla. */
   life: { mine: number; theirs: number }
-  /** Las cartas de la mano de cada uno, junto a su nombre en las vidas (sin esto, no se dicen). */
-  hands?: { mine: number; theirs: number }
   /** Si la mesa va con laterales (las vidas, en el izquierdo): sin ellos, la pantalla pone las vidas en la mesa. */
   onRails?: (rails: boolean) => void
   /** En escritorio el engranaje va en la botonera de la mesa (`AutoDock`), no en la barra. */
@@ -64,8 +60,6 @@ interface AutoBarProps extends AutoOptions {
   /** El turno del duelo (desde 1) y si es tuyo. */
   turn: number
   myTurn: boolean
-  /** La fase de quien tiene el turno; `null` antes de empezar. */
-  phase: MatPhase | null
   /** La flecha de «Volver a Jugar», como en la práctica. */
   onExit: () => void
   /** Los íconos de la práctica (`MatBarActions`): deshacer tu última orden, «Nueva mano» (otro duelo, con otra semilla) y aplicar las handtraps del rival (el duelo empieza de nuevo). */
@@ -214,26 +208,23 @@ export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: b
 /**
  * La barra de arriba de «Jugar solo automático» (la ranura `duel.header` de `PracticeMat`), hermana chica de `DuelBar`, que está atada al duelo por enlace. Es la barra de la práctica: la flecha de
  * «Volver a Jugar» a la izquierda y, a la derecha, deshacer y el ⋯ (`MatBarActions`), y lo propio del automático: «Opciones del duelo» al final del ⋯ (en escritorio, con `dock`, va en la botonera
- * de la mesa: `AutoDock`), el turno con la fase y, con laterales, las vidas (sin ellos van en las esquinas del campo y, en el celular, junto a cada mano: las pone la pantalla). En el celular la línea del registro va debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados
- * debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se mueve. Todo el estado entra por props.
+ * de la mesa: `AutoDock`), el turno, dicho una sola vez («Tu turno · 3», en el color de quién es; la fase la dice sólo el botón del campo) y las vidas, planas (`LifeScore`): hasta 1100 px en el marcador debajo
+ * de los íconos («VOS 8000 · Tu turno · 1 · RIVAL 8000»), con laterales en el izquierdo y, en escritorio sin ellos, en las esquinas del campo (las pone la pantalla). Hasta 1100 px la línea del registro va
+ * debajo y los avisos (`LaneBanner`) se apoyan encima de ella; en escritorio, centrados debajo de la barra; con laterales, en el izquierdo. Nada de esto suma alto cuando aparece o se va: el campo no se
+ * mueve. Todo el estado entra por props.
  */
-export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, myTurn, phase, onExit, onUndo, canUndo, onNewHand, onHandtraps, lane = null, log, ...options }: AutoBarProps) {
+export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, onExit, onUndo, canUndo, onNewHand, onHandtraps, lane = null, log, ...options }: AutoBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  // El celular en vertical (< 640 px): debajo de los íconos va el marcador (tus vidas, el turno y las del rival) y la fase queda sólo en el botón del campo.
-  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   const rails = useDuelRails()
 
   useLayoutEffect(() => onRails?.(rails), [rails, onRails])
   const laneOpen = lane !== null
-  const whose = myTurn ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })
-  const turnChip = turn > 0 ? <span data-testid="auto-turn" className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn })}</span> : null
-  const pill = phase ? <PhasePill phase={phase} testId="auto-phase" /> : null
-  const turnLine = (
-    <>
-      <span className={cx('min-w-0 truncate text-lead font-bold', myTurn ? 'text-accent' : 'text-info-soft')}>{whose}</span>
-      {pill}
-    </>
+  // El turno, una sola vez (Gastón, 2026-10-27): sin el chip «Turno N» ni la píldora de la fase.
+  const turnLine = (className: string) => (
+    <span data-testid="auto-turn" className={cx('min-w-0 truncate text-lead font-bold', myTurn ? 'text-accent' : 'text-info-soft', className)}>
+      {turn > 0 ? t(myTurn ? 'auto.bar.turnMine' : 'auto.bar.turnRival', { turn }) : null}
+    </span>
   )
 
   // Los íconos de la práctica (deshacer y el ⋯) y, al final del ⋯, «Opciones del duelo» (lo propio del automático). En escritorio con la botonera, las opciones van en ella.
@@ -244,27 +235,23 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
   const dialogs = gear ? <MoreOptions isOpen={moreOpen} onClose={() => setMoreOpen(false)} {...options} /> : null
 
   // Con laterales (escritorio ancho), las piezas van a la grilla de la mesa como las de `DuelBar`: arriba a la izquierda la flecha y las vidas, y los avisos debajo; arriba a la derecha los íconos
-  // (de 40 px, como los de `DuelBar`: el lateral más angosto tiene lugar para cinco por fila), el turno y la fase.
+  // (de 40 px, como los de `DuelBar`: el lateral más angosto tiene lugar para cinco por fila) y, debajo, el turno.
   if (rails) {
     return (
       <>
-        {/* Las vidas, cada una de su lado del lateral izquierdo: el rival arriba, junto a la flecha, y vos abajo (Gastón, 2026-10-26: «la vida de ambos jugadores junta»). */}
+        {/* Las vidas, planas, cada una de su lado del lateral izquierdo: el rival arriba, junto a la flecha, y vos abajo (Gastón, 2026-10-26: «la vida de ambos jugadores junta»). */}
         <div className="col-start-1 row-start-1 flex min-w-0 items-start gap-2">
           <MatExitButton onExit={onExit} />
-          <LifeTile name={rivalName} life={life.theirs} compact {...(hands ? { hand: hands.theirs } : {})} />
+          <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} align="start" size="lg" />
         </div>
         <div className="col-start-1 row-start-3 flex min-w-0 items-end">
-          <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact {...(hands ? { hand: hands.mine } : {})} />
+          <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine size="lg" />
         </div>
         <div className="col-start-3 row-start-1 flex min-w-0 flex-col items-end gap-3">
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-2', MAT_BAR_ROW)}>
             {actions()}
           </div>
-          {turnChip}
-          <span className="grid justify-items-end gap-1.5 text-right">
-            <span className={cx('text-lead font-bold leading-tight', myTurn ? 'text-accent' : 'text-info-soft')}>{whose}</span>
-            {pill}
-          </span>
+          {turnLine('text-right')}
         </div>
         {/* El aviso, en lo que el campo agrandado deja libre del lateral (`--field-overhang`, de la mesa) y por encima del tablero (`z-20`): nunca cortado ni debajo. Con menos de 11 rem libres se apoya sobre el borde del campo.
             La caja no ataja toques, sólo el aviso: ocupa todo el lateral y, encima del campo, tapaba el Extra Deck (`RAIL_LANE_STYLE`). */}
@@ -276,7 +263,7 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
 
   if (docked) {
     return (
-      // Escritorio: una sola fila. A la izquierda la flecha; a la derecha los íconos y, debajo, el turno. Las vidas van en las esquinas del campo (las pone la pantalla); la fila guarda el alto
+      // Escritorio: una sola fila. A la izquierda la flecha; a la derecha los íconos y, debajo, el turno (una vez). Las vidas van en las esquinas del campo (las pone la pantalla); la fila guarda el alto
       // de cuando las llevaba (`min-h-18`): el campo queda donde estaba.
       <div className="relative flex items-center gap-1.5 px-0.5 pt-1.5">
         <MatExitButton onExit={onExit} />
@@ -284,10 +271,7 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
           <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1', MAT_BAR_ROW)}>
             {actions()}
           </div>
-          <div className="flex min-w-0 max-w-full items-center gap-1.5">
-            {turnChip}
-            {turnLine}
-          </div>
+          {turnLine('max-w-full')}
         </div>
         {/* El aviso, centrado debajo de la barra. */}
         {lane ? (
@@ -301,7 +285,7 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
   }
 
   return (
-    // Celular: arriba la fila de la práctica (la hamburguesa, la flecha y los íconos, en el mismo lugar), debajo el marcador (en vertical) o el turno con la fase, y la línea del registro (flota: no ocupa lugar).
+    // Hasta 1100 px: arriba la fila de la práctica (la hamburguesa, la flecha y los íconos, en el mismo lugar), debajo el marcador y la línea del registro (en el celular flota: no ocupa lugar).
     <div className="relative flex flex-col gap-1.5 px-0.5 pt-1.5">
       <div role="toolbar" aria-label={t('practice.mat.name')} className={cx('-mr-1 h-11', MAT_BAR_ROW)}>
         <ShellMenuButton className="-ml-2" />
@@ -309,21 +293,12 @@ export function AutoBar({ rivalName, life, hands, onRails, dock = false, turn, m
         {/* Los íconos, a la derecha, como en la práctica (el engranaje, al final, donde ella tiene «Guardar combo» y los pasos). */}
         {actions('ml-auto')}
       </div>
-      {phone ? (
-        // El marcador, plano (Gastón, 2026-10-27, opción A): «VOS 8000 · Tu turno · 1 · RIVAL 8000». El turno se dice una sola vez, en el color de quién es; la fase, en el botón del campo.
-        <div data-testid="auto-score" className="flex min-h-10 min-w-0 items-center gap-2 px-1">
-          <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
-          <span data-testid="auto-turn" className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold', myTurn ? 'text-accent' : 'text-info-soft')}>
-            {turn > 0 ? t(myTurn ? 'auto.bar.turnMine' : 'auto.bar.turnRival', { turn }) : null}
-          </span>
-          <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} />
-        </div>
-      ) : (
-        <div className="flex min-h-9.5 min-w-0 items-center gap-1.5">
-          {turnChip}
-          {turnLine}
-        </div>
-      )}
+      {/* El marcador, plano (Gastón, 2026-10-27, opción A; de 640 a 1100 px también): «VOS 8000 · Tu turno · 1 · RIVAL 8000». La fase, en el botón del campo. */}
+      <div data-testid="auto-score" className="flex min-h-10 min-w-0 items-center gap-2 px-1">
+        <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine />
+        {turnLine('flex-1 text-center')}
+        <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} />
+      </div>
       {/* La línea del registro, con el aviso encima (la misma fila); sin registro, su lugar igual queda (el primer aviso no corre nada). */}
       <div className="relative max-sm:pointer-events-none max-sm:z-20 max-sm:-mb-11">
         <div inert={laneOpen} className={cx(laneOpen && 'invisible')}>

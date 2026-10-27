@@ -67,4 +67,27 @@ describe('las vidas del marcador', () => {
     expect(score.querySelector('.text-title')).toHaveTextContent('0')
     expect(score.querySelector('.text-title')).toHaveClass('text-danger-soft')
   })
+
+  // El duelo por enlace manual: las vidas del marcador (y de las esquinas) siguen abriendo la calculadora (Gastón, 2026-10-27).
+  it('con `onClick` es un botón de 44 × 44 como mínimo, con el aro de foco de siempre, que dice qué abre', () => {
+    const open = vi.fn()
+
+    render(<LifeScore name="Ana" life={8000} onClick={open} />)
+    const button = screen.getByRole('button', { name: 'Puntos de vida de Ana: 8000. Abrir la calculadora de vidas' })
+
+    expect(button).toHaveClass('min-h-11', 'min-w-11', 'focus-visible:shadow-focus')
+    expect(button).toHaveAttribute('data-lp', 'theirs')
+    button.click()
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('group')).toBeNull()
+  })
+
+  it('la señal de su dueño sale como un globo de su color: debajo del número; tus vidas grandes (abajo de la pantalla), arriba', () => {
+    const view = render(<LifeScore name="Ana" life={8000} bubble="🤔" bubbleKey={1} />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('🤔')
+    expect(screen.getByRole('status')).toHaveClass('top-full', 'right-0', 'border-info/55', 'text-display')
+    view.rerender(<LifeScore name="Vos" life={8000} mine size="lg" bubble="Pensando…" bubbleKey={2} />)
+    expect(screen.getByRole('status')).toHaveClass('bottom-full', 'left-0', 'border-accent/60', 'text-body')
+  })
 })

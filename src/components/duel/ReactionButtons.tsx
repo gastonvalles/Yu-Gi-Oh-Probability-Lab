@@ -14,11 +14,8 @@ const REACTIONS = {
   good: { emoji: '👍', label: () => t('duel.signal.good'), text: () => GOOD_MESSAGE },
 } as const
 
-/** La botonera de abajo del celular (debajo de la mano), el chat, la sala y la mesa: las dos. Sin ✋ Esperá (Gastón, 2026-10-18 y 2026-10-19: «elimina totalmente esto»). */
-const SETS = {
-  dock: ['thinking', 'good'],
-  chat: ['thinking', 'good'],
-} as const satisfies Record<string, readonly (keyof typeof REACTIONS)[]>
+/** Las dos, en el chat (el panel de escritorio y la hoja del celular: Gastón, 2026-10-27, la botonera de abajo se fue) y en la sala. Sin ✋ Esperá (Gastón, 2026-10-18 y 2026-10-19: «elimina totalmente esto»). */
+const KEYS = ['thinking', 'good'] as const satisfies readonly (keyof typeof REACTIONS)[]
 
 interface ReactionButtonsProps {
   onSend: (text: string) => void
@@ -27,10 +24,9 @@ interface ReactionButtonsProps {
   /** Cuándo se puede mandar la próxima (`DuelSnapshot.emoteReadyAt`): hasta entonces las dos quedan apagadas (una señal cada 3 segundos, así no se spamean). */
   readyAt?: number
   className?: string
-  set?: keyof typeof SETS
 }
 
-export function ReactionButtons({ onSend, disabled = false, readyAt = 0, className, set = 'chat' }: ReactionButtonsProps) {
+export function ReactionButtons({ onSend, disabled = false, readyAt = 0, className }: ReactionButtonsProps) {
   // Cuántas veces se apretó cada una: cambiar la clave de los dos spans vuelve a correr su animación.
   const [bursts, setBursts] = useState<Record<string, number>>({})
   const [, repaint] = useState(0)
@@ -47,7 +43,7 @@ export function ReactionButtons({ onSend, disabled = false, readyAt = 0, classNa
 
   return (
     <span role="group" aria-label={t('duel.chat.quickTitle')} className={cx('flex items-center gap-1', className)}>
-      {SETS[set].map((key) => {
+      {KEYS.map((key) => {
         const { emoji, label, text } = REACTIONS[key]
 
         return (
@@ -57,12 +53,8 @@ export function ReactionButtons({ onSend, disabled = false, readyAt = 0, classNa
             aria-label={label()}
             title={label()}
             disabled={disabled || waiting}
-            className={cx(
-              'relative grid cursor-pointer place-items-center border px-0 leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40',
-              // La botonera de abajo: cajas oscuras de 44 px con el emoji a 24 px (como el resto de la botonera); el chat, grandes (56 px, emoji de 33).
-              set === 'dock' ? 'size-11 rounded-card bg-card-background text-title hover:border-info/60' : 'h-14 w-14 rounded-control bg-input text-stat hover:bg-surface-hover',
-              set === 'dock' ? 'border-border-subtle' : 'border-border',
-            )}
+            // Grandes: 56 px, con el emoji de 33.
+            className="relative grid h-14 w-14 cursor-pointer place-items-center rounded-control border border-border bg-input px-0 text-stat leading-none transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40"
             onClick={() => {
               setBursts((current) => ({ ...current, [emoji]: (current[emoji] ?? 0) + 1 }))
               onSend(text())

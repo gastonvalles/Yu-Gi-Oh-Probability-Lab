@@ -123,7 +123,10 @@ describe('la barra de la mesa es una sola', () => {
         { text: 'Nueva mano', checked: null, disabled: false },
         { text: 'Guardar combosin jugadas', checked: null, disabled: true },
       ])
-      expect(autoRows).toEqual([...practiceRows, ...(layout === 'escritorio' ? [] : [{ text: 'Opciones del duelo', checked: null, disabled: false }])])
+      // Hasta 1100 px el automático no tiene fila de abajo: «Pasos y combos» va primero.
+      const steps = layout === 'escritorio' ? [] : [{ text: 'Pasos y combos', checked: null, disabled: false }]
+
+      expect(autoRows).toEqual([...steps, ...practiceRows, ...(layout === 'escritorio' ? [] : [{ text: 'Opciones del duelo', checked: null, disabled: false }])])
       expect(within(screen.getByRole('menu')).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['La mesa', 'El duelo'])
       cleanup()
     }
@@ -185,47 +188,54 @@ describe('la barra de la mesa es una sola', () => {
     expect(undo()).toBeDisabled()
   })
 
-  it('las vidas, cada una de su lado (Gastón: «la vida de ambos jugadores junta»), en el celular y en escritorio: el rival arriba a la derecha del campo, junto a su mano, y vos abajo a la izquierda, junto a la tuya, cada uno con las cartas de su mano y su barra de 8000', () => {
+  it('en escritorio (opción D2, «esquinas sin caja»): cada vida en su esquina, plana (Gastón: «la vida de ambos jugadores junta»): el rival arriba a la derecha del campo, junto a su mano, y vos abajo a la izquierda, junto a la tuya; la fase, sólo en su botón', () => {
     const field = () => screen.getByLabelText('Campo')
     const after = (element: HTMLElement) => Boolean(field().compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)
 
-    for (const layout of ['celular', 'escritorio'] as const) {
-      if (layout === 'escritorio') desktop()
-      const fake = renderAuto()
-      const rival = screen.getByRole('group', { name: /^Puntos de vida de Rival: 8000\. .+ en la mano$/ })
-      const mine = screen.getByRole('group', { name: /^Puntos de vida de Vos: 8000\. .+ en la mano$/ })
-      const mineHand = within(screen.getByRole('list', { name: 'Mano' })).getAllByRole('listitem').length
-      const rivalHand = fake.getSnapshot().theirs.hand.length
+    desktop()
+    renderAuto()
+    const rival = screen.getByRole('group', { name: 'Puntos de vida de Rival: 8000' })
+    const mine = screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' })
 
-      expect(rival.closest('[data-corner="theirs"]')).not.toBeNull()
-      expect(mine.closest('[data-corner="mine"]')).not.toBeNull()
-      // La chapa, las cartas de la mano y el número; la barra es un medidor de 8000.
-      expect(rival).toHaveTextContent(`Rival${rivalHand}8000`)
-      expect(mine).toHaveTextContent(`Vos${mineHand}8000`)
-      expect(within(rival).getByRole('meter', { name: 'Puntos de vida de Rival' })).toHaveAttribute('aria-valuenow', '8000')
-      expect(after(rival)).toBe(false)
-      expect(after(mine)).toBe(true)
-      expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-      cleanup()
-    }
+    expect(rival.closest('[data-corner="theirs"]')).not.toBeNull()
+    expect(mine.closest('[data-corner="mine"]')).not.toBeNull()
+    // Plana: el nombre y el número grande (33 px), sin placa, barra de 8000 ni cartas en la mano.
+    expect(rival).toHaveTextContent(/^Rival8000$/)
+    expect(mine).toHaveTextContent(/^Vos8000$/)
+    expect(mine.lastElementChild).toHaveClass('text-stat')
+    expect(document.querySelector('.life-plate, [role="meter"]')).toBeNull()
+    expect(after(rival)).toBe(false)
+    expect(after(mine)).toBe(true)
+    expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
+    // La fase, una sola vez: sin píldora en la barra; el botón del campo, sólo con su sigla (el nombre, en su `aria-label`).
+    expect(screen.queryByTestId('auto-phase')).toBeNull()
+    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ })).toHaveTextContent(/^(DP|SP|M1|BP|M2|EP)$/)
   })
 
-  it('en el celular en vertical (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯ y el botón de la fase dice su nombre', () => {
+  it.each([
+    ['en el celular en vertical', true],
+    ['de 640 a 1100 px', false],
+  ])('%s (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯, el botón de la fase sólo con su sigla y los avisos van arriba', (_, phone) => {
     const original = window.matchMedia
 
     onTestFinished(() => {
       window.matchMedia = original
     })
-    window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: phone && query === '(max-width: 639.98px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
     renderAuto()
     const score = screen.getByTestId('auto-score')
+
+    // El `body` lo dice (hasta 1100 px los avisos van arriba: index.css).
+    expect(document.body.dataset.duel).toBe('solo')
+    // El botón de la fase, sólo con su sigla de dos letras en todos los anchos (Gastón, 2026-10-27); el nombre completo lo oye el lector de pantalla.
+    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ })).toHaveTextContent(/^(DP|SP|M1|BP|M2|EP)$/)
+    expect(screen.getByRole('button', { name: /^Fases: / })).toHaveClass('size-11')
 
     expect(within(score).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
     expect(within(score).getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toBeInTheDocument()
     expect(document.querySelector('[data-corner]')).toBeNull()
     expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Fases: / }).querySelector('[data-phase-word]')).not.toBeNull()
     // Sin fila de abajo: el único «Pasos y combos» es el del ⋯, primero.
     expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
     expect(menuRows()[0]!.text).toBe('Pasos y combos')

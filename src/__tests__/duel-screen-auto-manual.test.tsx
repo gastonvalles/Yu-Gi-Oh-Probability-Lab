@@ -62,11 +62,11 @@ function FakeAutoDuel(props: AutoDuelScreenProps) {
 const autoOf = (view: RenderResult) => within(view.container).queryByTestId('auto-duel')
 const pile = (view: RenderResult, owner: 'mine' | 'theirs', name: string) => view.container.querySelector(owner === 'mine' ? `[data-drop="${name}"]` : `[data-rival-drop="${name}"]`)?.getAttribute('aria-label')
 const rivalCards = (view: RenderResult) => view.container.querySelectorAll('[data-rival-card-id]').length
-// De quién es el turno y la fase (la píldora: su sigla y su nombre).
+// De quién es el turno (en la barra, con su número) y la fase (la dice el botón de las fases del campo).
 const turnLine = (view: RenderResult) => {
-  const pill = within(view.container).getByTestId('duel-phase')
+  const phase = within(view.container).getByRole('button', { name: /^Fases: / }).getAttribute('aria-label')!.replace('Fases: ', '')
 
-  return `${pill.previousElementSibling!.textContent} · ${pill.lastChild!.textContent}`
+  return `${within(view.container).getByTestId('duel-turn').textContent} · ${phase}`
 }
 
 beforeEach(() => {
@@ -121,8 +121,8 @@ describe('una sala automática que pasa a manual', () => {
     expect(pile(guest, 'theirs', 'banished')).toBe('Banish: 1')
     expect(rivalCards(guest)).toBe(1)
     // El turno 3 es de Ana (empezó), en su Main Phase 1, para los dos; sin el cartel de quién va primero.
-    expect(turnLine(host)).toBe('Tu turno · Main Phase 1')
-    expect(turnLine(guest)).toBe('Turno de Ana · Main Phase 1')
+    expect(turnLine(host)).toBe('Tu turno · 3 · Main Phase 1')
+    expect(turnLine(guest)).toBe('Turno de Ana · 3 · Main Phase 1')
     expect(screen.queryByText(/Vas (primero|segundo)/)).toBeNull()
 
     // Ana invoca: Beto lo ve.
@@ -154,7 +154,7 @@ describe('una sala automática que pasa a manual', () => {
     expect(seen).toHaveLength(0)
     expect(handOf(again).getAllByRole('listitem')).toHaveLength(4)
     expect(rivalCards(again)).toBe(1)
-    expect(turnLine(again)).toBe('Turno de Ana · Main Phase 1')
+    expect(turnLine(again)).toBe('Turno de Ana · 3 · Main Phase 1')
     expect(rivalCards(host)).toBe(1)
 
     // Ana se rinde y los dos piden la revancha: la sala vuelve a ser automática.

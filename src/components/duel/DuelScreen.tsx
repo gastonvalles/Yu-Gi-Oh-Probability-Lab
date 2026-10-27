@@ -52,11 +52,11 @@ import { MatScene } from '../probability/MatArena'
 import { CardMenu, PILE_TITLES, PileViewer, type PileMany } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from './DuelBar'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
 import { useDockPeek } from './use-dock-peek'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from './use-duel-table'
-import { ReactionButtons } from './ReactionButtons'
+import { DuelGames } from './DuelGames'
 import { isEmojiSignal } from '../../app/duel-signals'
 import { useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
@@ -214,7 +214,7 @@ function showRoomInUrl(room: string | null, watch = false) {
 export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange, onLobbyChange, autoDuel: AutoDuel }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
   useEffect(() => {
-    // `data-duel` hace que, en celular, los avisos se dibujen arriba de la botonera (ver index.css).
+    // `data-duel` hace que, hasta 1100 px, los avisos salgan arriba, debajo del marcador (ver index.css).
     document.body.dataset.duel = ''
     const endDuel = beginDuel()
 
@@ -1766,6 +1766,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const rivalCaptions = useMemo(() => [rivalEffect, announcement], [rivalEffect, announcement])
   const feed = useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber: duelTurnNumber(mine, theirs!.state), rivalName: snapshot.peerName ?? t('duel.bar.rival'), myName })
   const signals = useSignals(snapshot)
+  // La señal del rival junto a sus vidas; sus emojis, en escritorio, grandes en el medio (`RivalEmoji`).
+  const rivalSignal = signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs
   useMarkNotice(snapshot)
   const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
@@ -1861,31 +1863,30 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       clock: (snapshot.settings.turnMin ?? 0) > 0 ? <TurnDial clock={snapshot.turnClock} owner={turn === 'mine' ? snapshot.me : snapshot.me === 0 ? 1 : 0} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} /> : undefined,
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
       myTurn: turn === 'mine',
-      tools: (
-        <DuelTools
-          snapshot={snapshot}
-          myName={myName}
-          games={duel}
-          chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />}
-          gamesOpen={gamesOpen}
-          onGamesClose={() => setGamesOpen(false)}
-        />
-      ),
+      // La moneda, el dado y los juegos (su hoja; la abre el + de la mesa).
+      tools: <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={duel} />,
       plusItems: [{ label: t('duel.games.open'), onSelect: () => setGamesOpen(true) }],
-      // Celular: las dos reacciones, centradas debajo de la mano (en escritorio están en el chat).
-      reactions: docked ? undefined : <ReactionButtons set="dock" onSend={duel.sendChat} disabled={!snapshot.peerPresent} readyAt={snapshot.emoteReadyAt} />,
-      // En escritorio el chat está siempre abierto a la derecha (en el celular, un panel que se abre desde el botón de abajo).
+      // En escritorio el chat está siempre abierto a la derecha (con las reacciones); hasta 1100 px, un panel que se abre desde su botón de la barra, y las reacciones van en él.
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
-      life: <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} />,
+      // Sin barra de abajo (Gastón, 2026-10-27): hasta 1100 px las vidas van en el marcador de la barra (`scoreInHeader`, con las vidas de 44 px); en escritorio, planas y cada una en su esquina
+      // (opción D2): la del rival arriba a la derecha del campo, junto a su mano, y la tuya abajo a la izquierda, subida 12 px sobre el borde de tu mano (`-mt-3`: la fila no crece). Las dos abren la calculadora.
+      life: docked ? (
+        <span className="-mt-3 flex" data-corner="mine">
+          <DuelLife snapshot={snapshot} myName={myName} onOpen={() => setLifeOpen(true)} signal={signals.mine} signalKey={signals.mineKey} size="lg" />
+        </span>
+      ) : null,
+      ...(docked ? { corner: <RivalLife snapshot={snapshot} onOpen={() => setLifeOpen(true)} signal={rivalSignal} signalKey={signals.theirsKey} size="lg" /> } : { scoreInHeader: true, scoreTall: true }),
+      // Deshacer va en la barra de arriba (`MatUndoContext`).
+      undoInHeader: true,
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} rivalSignalKey={signals.theirsKey} lane={lane} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer],
   )
 
   const markTarget = markMenu?.target

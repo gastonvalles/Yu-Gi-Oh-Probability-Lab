@@ -201,8 +201,8 @@ describe('auto-screen · las fases son manuales', () => {
     core(() => fake.set({ overlay: { ...overlay, turn: 2, turnPlayer: 1 }, theirs: { ...theirs, phase: 'battle' } }))
     phaseIs('Battle Phase')
     expect(phaseButton()).toBeDisabled()
-    // La barra (sea cual sea su forma) dice la fase del rival, no la tuya (la sesión de mentira te deja en la Main Phase 1).
-    expect(screen.getAllByText(/Battle Phase/).length).toBeGreaterThan(0)
-    expect(screen.queryAllByText(/Main Phase 1/)).toHaveLength(0)
+    // El botón dice la fase del rival con su sigla (no la tuya: la sesión de mentira te deja en la Main Phase 1); el nombre, en su aria-label. Nada más la repite.
+    expect(phaseButton()).toHaveTextContent(/^BP$/)
+    expect(screen.queryAllByText(/Battle Phase|Main Phase 1/)).toHaveLength(0)
   })
 })

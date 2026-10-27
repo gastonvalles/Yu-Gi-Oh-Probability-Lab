@@ -276,6 +276,8 @@ export const duel: Translated<typeof es> = {
   'duel.bar.rivalTag': 'Opp.',
   'duel.bar.yourTurn': 'Your turn',
   'duel.bar.theirTurn': "{name}'s turn",
+  'duel.bar.yourTurnN': 'Your turn · {turn}',
+  'duel.bar.theirTurnN': "{name}'s turn · {turn}",
   'duel.bar.lifeOf': "{name}'s life points",
   'duel.bar.openCalculator': 'Open the life calculator',
   'duel.bar.handTag': 'Hand {count}',
