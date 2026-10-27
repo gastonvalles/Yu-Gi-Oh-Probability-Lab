@@ -1,5 +1,5 @@
 import { ROOM_CODE_PATTERN } from './duel-relay-rules'
-import type { DuelSnapshot } from './duel-session'
+import type { DuelSnapshot, Mover } from './duel-session'
 import type { SideDeck } from './duel-siding'
 import type { Duelist, LifeTimer } from './life-calculator'
 import type { MatAction, MatState } from './practice-mat'
@@ -28,6 +28,8 @@ export interface DuelSave {
   conceded?: Duelist | null
   /** Ya pedí la revancha (o toqué «Listo» en el siding): al volver se le repite al rival, que no se entera de otra forma. */
   rematch?: boolean
+  /** De quién fue cada jugada de la mesa, intercaladas como pasaron: así Deshacer tras recargar sigue el orden real (sin esto, las del rival se suponen anteriores a las mías). Los guardados de antes no lo traen. */
+  order?: Mover[]
 }
 
 const PREFIX = 'ygo-lab:duel-save:'
@@ -54,6 +56,7 @@ export function saveOf(snapshot: DuelSnapshot, now: number): DuelSave | null {
     rival: snapshot.peerName,
     conceded: snapshot.conceded,
     rematch: snapshot.rematch.mine,
+    order: [...snapshot.order],
   }
 }
 
@@ -62,6 +65,8 @@ const MAX_SAVED_ACTIONS = 5000
 
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 const isList = (value: unknown): value is string[] => Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+/** El orden de las jugadas: `me` o `peer` por cada una de los dos (como mucho, las mías más las del rival). */
+const isOrder = (value: unknown): value is Mover[] => Array.isArray(value) && value.length <= 2 * MAX_SAVED_ACTIONS && value.every((entry) => entry === 'me' || entry === 'peer')
 
 /** Lo guardado, si es de este rol, no venció y tiene la forma de una mesa; si no, null (y se arma una mesa nueva). */
 export function parseSave(raw: string | null, role: 'host' | 'guest', now: number): DuelSave | null {
@@ -99,7 +104,8 @@ export function parseSave(raw: string | null, role: 'host' | 'guest', now: numbe
       now - save.savedAt > SAVE_TTL_MS ||
       (save.rival !== null && typeof save.rival !== 'string') ||
       (save.conceded !== undefined && save.conceded !== null && save.conceded !== 0 && save.conceded !== 1) ||
-      (save.rematch !== undefined && typeof save.rematch !== 'boolean')
+      (save.rematch !== undefined && typeof save.rematch !== 'boolean') ||
+      (save.order !== undefined && !isOrder(save.order))
     ) {
       return null
     }

@@ -251,7 +251,7 @@ describe('la barra de la mesa es una sola', () => {
     const button = (name: RegExp) => within(dock).getByRole('button', { name })
 
     expect(within(dock).getAllByRole('button').map((element) => element.textContent)).toEqual(['Automático', 'Cadena', 'Pasos', 'Opciones'])
-    // El modo de ahora: prendido. El camino de vuelta (de manual a automático) no existe: tocarlo es «Seguir en modo manual» (sin una jugada tuya todavía, una mano nueva en la mesa manual, sin diálogo).
+    // El modo de ahora: prendido (la vuelta, «Seguir en automático», está en el ⋯ de la práctica): tocarlo es «Seguir en modo manual» (sin una jugada tuya todavía, una mano nueva en la mesa manual, sin diálogo).
     expect(button(/^Automático/)).toHaveAccessibleName('Automático: seguir en modo manual')
     expect(button(/^Automático/)).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(button(/^Automático/))

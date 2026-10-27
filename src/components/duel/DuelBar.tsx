@@ -129,6 +129,19 @@ export type LaneNotice =
 /** Cuánto espera «Cancelar» para aparecer mientras el núcleo resuelve: lo rápido no parpadea. */
 export const THINKING_CANCEL_MS = 1500
 
+/** Un ajuste de «Más opciones» (`extraSettings`) con su nombre, su línea chica y el control debajo: los del duelo automático (`AutoBar`) y el pase entre manual y automático del enlace. */
+export function Setting({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-2">
+      <span className="grid gap-0.5">
+        <span className="text-body font-semibold text-foreground">{title}</span>
+        <span className="text-micro text-soft">{hint}</span>
+      </span>
+      {children}
+    </div>
+  )
+}
+
 /**
  * Lo que va en el lateral izquierdo debajo de las vidas (los avisos): se corre de lo que el campo agrandado se mete en el lateral (`--field-overhang`, lo mide la mesa), hasta dejarle 11 rem;
  * con menos, se apoya sobre el borde del campo, por encima (`z-20` en el contenedor). Antes el aviso ocupaba todo el lateral y la mesa en perspectiva lo tapaba (Gastón, 2026-10-24).

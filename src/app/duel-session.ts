@@ -109,13 +109,21 @@ export interface DuelSnapshot {
    * los que él les dio si es suyo). `n` cuenta los avisos (cambia con cada uno, aunque señale lo mismo). No es estado de la mesa: no se guarda ni se repone.
    */
   ping: { n: number; side: 'mine' | 'theirs'; card?: string; pile?: MatPile } | null
+  /** De quién fue cada jugada de la mesa, en el orden en que pasaron (ver `playOrder`): va al guardado, así Deshacer tras recargar sigue el orden real. */
+  order: readonly Mover[]
 }
 
 export interface Duel {
   getSnapshot(): DuelSnapshot
   subscribe(listener: () => void): () => void
-  /** Mi mesa de arranque (deck mezclado y mano repartida); se la mando al rival ya enmascarada. */
-  start(initial: MatState): void
+  /**
+   * Mi mesa de arranque (deck mezclado y mano repartida); se la mando al rival ya enmascarada. Con `history` (el pase a manual de un duelo automático), la mesa sigue desde
+   * esas jugadas: el rival recibe la mesa de ahora con su `n` (un `sync`, como al reconectarse: sin mensajes nuevos) y Deshacer vuelve a antes de ellas; `order` dice de quién fue
+   * cada jugada hasta acá (las del rival intercaladas como pasaron), para que Deshacer vuelva atrás la última de cualquiera.
+   */
+  start(initial: MatState, history?: readonly MatAction[], order?: readonly ('mine' | 'theirs')[]): void
+  /** Dejar la mesa manual (los dos acordaron seguir en automático, `online-resume.ts`): sin mesa, la sala con reglas automáticas vuelve a la pantalla del núcleo y lo guardado se borra. Nada viaja: el otro hace lo mismo. */
+  stop(): void
   play(action: MatAction): void
   /** Pasar de fase (con el turno mío): si el rival está, primero se le pregunta si no va a hacer nada más en la fase que dejo; pasa si dice que sí o si no contesta a tiempo (`PHASE_WAIT_MS`), y no si quiere jugar antes. */
   askPhase(action: Extract<MatAction, { type: 'phase' }>): void
@@ -182,7 +190,7 @@ const UNDO_WAIT_MS = 30_000
 /** Cuánto espero la respuesta del rival a si no va a hacer nada más antes de pasar de fase: sin respuesta, la fase pasa (callar es no tener nada que jugar). */
 export const PHASE_WAIT_MS = 6000
 /** De quién es una jugada de la mesa, vista desde acá. */
-type Mover = 'me' | 'peer'
+export type Mover = 'me' | 'peer'
 /** Quién deshace: `push`, quien pide (la última jugada es suya); `pull`, quien contesta. */
 type UndoKind = 'push' | 'pull'
 /** Cada cuánto puedo mandar una señal rápida (un emote: 🤔, 👍): las que lleguen antes no salen. */
@@ -306,7 +314,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing, order: playOrder() })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -1167,24 +1175,30 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     emit()
   })
 
+  /** Mi mesa desde `table` con `history` ya jugado (lo guardado al recargar, el historial del automático al pasar a manual): lo que el rival ya vio se rejuega para saberlo. */
+  const settle = (table: MatState, history: readonly MatAction[]) => {
+    const open = openPublic(table)
+    let state = table
+    let tracker = open.sender
+
+    for (const action of history) {
+      tracker = encodeAct(tracker, state, action).sender
+      state = matReducer(state, action)
+    }
+
+    initial = table
+    actions = [...history]
+    mine = state
+    sender = tracker
+    ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
+  }
+
   // Volví a abrir la página en pleno duelo: la mesa se arma de nuevo con las mismas jugadas (si lo guardado no sirve, se ignora y se reparte otra).
   if (options.restore) {
     try {
       const saved = options.restore
-      const open = openPublic(saved.initial)
-      let table = saved.initial
-      let tracker = open.sender
 
-      for (const action of saved.actions) {
-        tracker = encodeAct(tracker, table, action).sender
-        table = matReducer(table, action)
-      }
-
-      initial = saved.initial
-      actions = [...saved.actions]
-      mine = table
-      sender = tracker
-      ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
+      settle(saved.initial, saved.actions)
       const elapsed = Math.round(timerElapsed(saved.timer, saved.savedAt))
 
       life = { ...life, lp: me === 0 ? [saved.lp, life.lp[1]] : [life.lp[0], saved.lp], timer: saved.timer.running ? { running: true, startedAt: now(), elapsedMs: elapsed } : { running: false, startedAt: 0, elapsedMs: elapsed } }
@@ -1194,6 +1208,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       ready = { mine: true, theirs: true }
       conceded = saved.conceded ?? null
       rematch = { mine: saved.rematch === true, theirs: false }
+      // Lo guardado antes de que el orden se guardara no lo trae: como siempre, las del rival se suponen anteriores a las mías.
+      order = [...(saved.order ?? [])]
     } catch {
       initial = null
       actions = []
@@ -1233,15 +1249,28 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       return () => listeners.delete(listener)
     },
 
-    start(table) {
-      const open = openPublic(table)
-
-      initial = table
-      actions = []
-      mine = table
-      sender = open.sender
-      ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
+    start(table, history = [], moves = []) {
+      settle(table, history)
+      // Las del rival que no me llegaron todavía (su mesa viene con su `sync`) se ajustan solas en `playOrder`.
+      order = moves.map((who) => (who === 'mine' ? 'me' : 'peer'))
       sendSync()
+      emit()
+    },
+
+    stop() {
+      if (!mine) {
+        return
+      }
+
+      dropUndoAsk(false)
+      dropPhaseAsk(false)
+      initial = null
+      actions = []
+      mine = null
+      sender = null
+      ownIds = {}
+      theirs = null
+      order = []
       emit()
     },
 

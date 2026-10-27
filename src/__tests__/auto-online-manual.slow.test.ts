@@ -6,6 +6,7 @@ import { createDataLoader } from '../app/auto/auto-data'
 import type { AutoSession, PendingAsk } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
+import { manualHandover } from '../app/auto/manual-handover'
 import { createGuestLink, createHostLink } from '../app/auto/online'
 import { randomLegalPolicy, type Policy } from '../app/auto/policies'
 import { parseAnswer, type AskOf, type CoreAnswer, type Seat } from '../app/auto/protocol'
@@ -13,7 +14,7 @@ import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../app/duel-turn'
 import type { Duelist } from '../app/life-calculator'
-import type { MatPhase, MatState } from '../app/practice-mat'
+import { replayMat, type MatPhase, type MatState } from '../app/practice-mat'
 import { playAsk, seeded, seededKey } from './support/ask-ui-player'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
@@ -58,7 +59,7 @@ function settled(host: AutoSession, guest: AutoSession): boolean {
 /** Lo que el otro ve de una mesa: cuántas cartas en cada lugar. */
 const shape = (state: MatState) => ({ deck: state.deck.length, hand: state.hand.length, gy: state.gy.length, banished: state.banished.length, extra: state.extra.length, extraUp: state.extraUp.length, mz: state.mz.filter(Boolean).length, emz: state.emz.filter(Boolean).length, st: state.st.filter(Boolean).length, field: state.field ? 1 : 0 })
 
-const tally = { pairs: 0, ended: 0, blocked: 0, cuts: { mine: 0, theirs: 0 }, phases: {} as Record<string, number>, turnDrift: 0 }
+const tally = { pairs: 0, ended: 0, blocked: 0, cuts: { mine: 0, theirs: 0 }, phases: {} as Record<string, number>, turnDrift: 0, actions: 0, undone: { mine: 0, theirs: 0 } }
 
 describe.skipIf(!hasCoreData)('pasar a manual con el núcleo real (npm run test:auto)', () => {
   const rows = hasCoreData ? cardRows() : []
@@ -161,13 +162,26 @@ describe.skipIf(!hasCoreData)('pasar a manual con el núcleo real (npm run test:
 
     expect({ mine: b.mine, theirs: b.theirs, overlay: b.overlay }).toEqual(hosted().viewOf!(guestSeat))
 
-    // La sala sigue a mano: cada uno arma su mesa con la del corte (el invitado primero, como en la pantalla).
-    guest.start(b.mine)
+    // La sala sigue a mano: cada uno arma su mesa con la partida hasta el corte (la mesa del arranque y todo lo jugado en automático: `manualHandover`, como en la pantalla; el
+    // invitado primero). Rejugar ese historial da la mesa del corte, para los dos.
+    const guestGame = manualHandover(b, () => undefined).session(0)
+    const hostGame = manualHandover(a, () => undefined).session(0)
+
+    expect(replayMat(guestGame.initial, guestGame.actions)).toEqual(b.mine)
+    expect(replayMat(hostGame.initial, hostGame.actions)).toEqual(a.mine)
+    expect(guestGame.order.filter((who) => who === 'mine')).toHaveLength(guestGame.actions.length)
+    expect(hostGame.order.filter((who) => who === 'mine')).toHaveLength(hostGame.actions.length)
+    tally.actions = Math.max(tally.actions, hostGame.actions.length, guestGame.actions.length)
+    guest.start(guestGame.initial, guestGame.actions, guestGame.order)
     expect(await pump(room, () => host.getSnapshot().theirs !== null)).toBe(true)
-    host.start(a.mine)
+    host.start(hostGame.initial, hostGame.actions, hostGame.order)
     expect(await pump(room, () => guest.getSnapshot().theirs !== null)).toBe(true)
     const hs = host.getSnapshot()
     const gs = guest.getSnapshot()
+
+    expect(hs.mine).toEqual(a.mine)
+    expect(gs.mine).toEqual(b.mine)
+    expect(hs.moves).toBe(hostGame.actions.length)
     const corePlayer = a.overlay.turnPlayer
     const corePhase = PHASE[a.overlay.phase]!
     const hostTurn = whoseTurn(hs.me, hs.mine, hs.theirs!.state, hs.starter)
@@ -190,6 +204,26 @@ describe.skipIf(!hasCoreData)('pasar a manual con el núcleo real (npm run test:
     if (card) {
       guest.play({ type: 'move', id: card, to: 'gy' })
       expect(await pump(room, () => host.getSnapshot().theirs!.state.gy.length === gs.mine!.gy.length + 1)).toBe(true)
+      // Y se deshace, con el permiso de Ana: la mesa vuelve a la del corte.
+      guest.undo()
+      expect(await pump(room, () => host.getSnapshot().undo.asked)).toBe(true)
+      host.answerUndo(true)
+      expect(await pump(room, () => guest.getSnapshot().mine!.gy.length === gs.mine!.gy.length)).toBe(true)
+      expect(guest.getSnapshot().mine).toEqual(b.mine)
+    }
+    // Deshacer vuelve a antes del corte: la última jugada del automático, de quien haya sido (el otro la permite), y el otro ve la mesa de antes de ella.
+    const last = hostGame.order.at(-1)
+
+    if (last !== undefined && host.getSnapshot().undo.available) {
+      const who = last === 'mine' ? { duel: host, game: hostGame, other: guest, tag: 'mine' as const } : { duel: guest, game: guestGame, other: host, tag: 'theirs' as const }
+
+      host.undo()
+      expect(await pump(room, () => guest.getSnapshot().undo.asked)).toBe(true)
+      guest.answerUndo(true)
+      expect(await pump(room, () => who.duel.getSnapshot().moves === who.game.actions.length - 1)).toBe(true)
+      expect(who.duel.getSnapshot().mine).toEqual(replayMat(who.game.initial, who.game.actions.slice(0, -1)))
+      expect(await pump(room, () => JSON.stringify(shape(who.other.getSnapshot().theirs!.state)) === JSON.stringify(shape(who.duel.getSnapshot().mine!)))).toBe(true)
+      tally.undone[who.tag] += 1
     }
     guestLink.destroy()
     hostLink.destroy()
@@ -203,6 +237,7 @@ describe.skipIf(!hasCoreData)('pasar a manual con el núcleo real (npm run test:
       expect(tally.cuts.mine).toBeGreaterThan(0)
       expect(tally.cuts.theirs).toBeGreaterThan(0)
       expect(Object.keys(tally.phases).length).toBeGreaterThan(2)
+      expect(tally.undone.mine + tally.undone.theirs).toBeGreaterThan(0)
     }
   })
 })

@@ -1,6 +1,7 @@
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
 
 import type { RoomAutoState } from '../../app/auto/online'
+import { createResumeLink, type ResumeLink, type ResumeSnapshot } from '../../app/auto/online-resume'
 import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
 import { deckFormatIssues } from '../../app/duel-format'
 import { MAIN_MINIMUM, renumberDeck, type SideDeck } from '../../app/duel-siding'
@@ -21,7 +22,8 @@ import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
-import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile, type MatState } from '../../app/practice-mat'
+import type { ManualGame } from '../../app/auto/manual-handover'
+import { cardKindOf, createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
 import { cardEffects, effectDetail } from '../../app/mat-assistant'
 import type { CardTextHighlight } from '../../app/card-text'
@@ -53,6 +55,7 @@ import { CardMenu, PILE_TITLES, PileViewer, type PileMany } from '../probability
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelCalculator } from './DuelCalculator'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from './DuelBar'
+import { ResumeAutoSetting, useResumeLane, type ResumeAuto } from './ResumeAuto'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
 import { useDockPeek } from './use-dock-peek'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useSignals } from './use-duel-table'
@@ -88,6 +91,8 @@ const roleKey = (room: string) => `ygo-lab:duel-role:${room}`
 const optionsKey = (room: string) => `ygo-lab:duel-options:${room}`
 /** La sala con reglas automáticas mientras no está su pantalla (se carga a pedido) o sin ella: nadie puede estar listo. */
 const AUTO_PENDING: RoomAutoState = { canReady: false, notice: null }
+const noSubscribe = () => () => {}
+const noResume = (): ResumeSnapshot | null => null
 
 interface DuelScreenProps {
   handSize: number
@@ -407,12 +412,46 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [duel, ordered, started, settingsKnown, deckReady, deck, dealHand, autoRoom])
 
   const toManual = useCallback(
-    (table: MatState) => {
-      duel?.start(table)
+    (game: ManualGame) => {
+      duel?.start(game.initial, game.actions, game.order)
       setManualSwitch(true)
     },
     [duel],
   )
+
+  // Y de vuelta a automático (`online-resume.ts`): el pedido vive mientras la sala sigue a mano (sin el enlace del núcleo); acordado, cada uno deja su mesa manual (`duel.stop`:
+  // sin mesa, la sala vuelve a la pantalla del núcleo y el guardado manual se borra) y el anfitrión arranca su enlace con la mesa rearmada (`resumeStart`, consumida al montar;
+  // se olvida al cambiar de sala o de duelo).
+  const role = intent?.role ?? 'guest'
+  const resumable = snapshot?.settings.auto === true && started && !intent?.watch && transport !== null
+  const [resumeLink, setResumeLink] = useState<ResumeLink | null>(null)
+  const resumeStart = useRef<ResumeSnapshot['start']>(null)
+
+  useEffect(() => {
+    if (!resumable || !transport) return
+    const link = createResumeLink({ host: role === 'host', transport })
+
+    setResumeLink(link)
+
+    return () => {
+      link.destroy()
+      setResumeLink(null)
+    }
+  }, [resumable, transport, role])
+  const resume = useSyncExternalStore(resumeLink ? resumeLink.subscribe : noSubscribe, resumeLink ? resumeLink.getSnapshot : noResume)
+
+  useEffect(() => {
+    if (resumeLink && snapshot) resumeLink.observe(snapshot)
+  }, [resumeLink, snapshot])
+  useEffect(() => {
+    if (!resumeLink || !duel || resume?.state !== 'agreed') return
+    resumeStart.current = resume.start
+    showToastMessage(t('auto.resumeLink.done'), 'info')
+    duel.stop()
+  }, [resumeLink, duel, resume])
+  useEffect(() => {
+    if (!ordered) resumeStart.current = null
+  }, [ordered, roomCode])
 
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
@@ -623,7 +662,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
       <>
         {AutoDuel ? (
           <Suspense fallback={renderRoom(AUTO_PENDING)}>
-            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} code={intent.room} onManual={toManual} />
+            <AutoDuel duel={duel} snapshot={snapshot} status={status} transport={transport} myName={myName} deck={deck} handSize={dealHand} room={renderRoom} onLeave={leave} onAbandon={abandon} onRematch={duel.rematch} code={intent.room} onManual={toManual} {...(intent.role === 'host' && resumeStart.current ? { resume: resumeStart.current } : {})} />
           </Suspense>
         ) : (
           renderRoom(AUTO_PENDING)
@@ -683,7 +722,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   return (
     <>
-      <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onRematch={rematch} onLeave={leave} onAbandon={abandon} />
+      <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onRematch={rematch} onLeave={leave} onAbandon={abandon} {...(resumeLink && resume ? { resume: { snapshot: resume, want: (yes: boolean) => resumeLink.want(yes) } } : {})} />
       {closingIn === null ? null : <RoomClosing name={snapshot.peerName ?? t('duel.bar.rival')} seconds={closingIn} />}
     </>
   )
@@ -1677,7 +1716,7 @@ function useRivalNotice(snapshot: DuelSnapshot, turn: 'mine' | 'theirs'): DuelMa
 }
 
 /** La mesa de práctica con el campo del rival arriba: tus jugadas van al relay y las suyas llegan solas. */
-function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onRematch, onLeave, onAbandon }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void; onAbandon: () => void }) {
+function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onRematch, onLeave, onAbandon, resume }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void; onAbandon: () => void; /** Una sala con reglas automáticas que pasó a manual: pedir seguir en automático (`ResumeAuto`). */ resume?: ResumeAuto }) {
   const { mine, initial, actions, theirs } = snapshot
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
@@ -1783,9 +1822,13 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   // Pasar de fase le pregunta al rival si no va a hacer nada más: lo que se juega en el medio de la mesa va por `askPhase`; el resto, directo.
   const dispatch = useCallback((action: Parameters<Duel['play']>[0]) => (action.type === 'phase' ? duel.askPhase(action) : duel.play(action)), [duel])
   // El aviso de atención que se apoya sobre la línea del registro, uno a la vez y el más urgente primero: el pedido del rival de volver atrás (sin diálogo: no tapa la mesa), el tuyo, cómo terminó y, lo último, lo que está haciendo el rival (mira una pila, elige cómo jugar).
+  // El pedido del rival de seguir en automático va primero (se contesta ahí) y la espera del mío, al final (`useResumeLane`).
+  const resumeLane = useResumeLane(resume, rivalName)
   const lane = useMemo<LaneNotice | null>(
     () =>
-      snapshot.undo.asked
+      resumeLane?.kind === 'ask'
+        ? resumeLane
+        : snapshot.undo.asked
         ? { kind: 'undoAsked', onAllow: () => duel.answerUndo(true), onDeny: () => duel.answerUndo(false) }
         : snapshot.undo.asking
           ? { kind: 'undoAsking' }
@@ -1799,8 +1842,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
                   ? { kind: 'chain', card: chain.card, ...(chain.effect === undefined ? {} : { effect: chain.effect }), names: chainNames }
                   : snapshot.peerLook !== null
                     ? { kind: 'looking', what: snapshot.peerLook }
-                    : null,
-    [snapshot.undo.asked, snapshot.undo.asking, snapshot.pass.asking, undoResult, passHeld, chain, chainNames, snapshot.peerLook, duel],
+                    : resumeLane,
+    [snapshot.undo.asked, snapshot.undo.asking, snapshot.pass.asking, undoResult, passHeld, chain, chainNames, snapshot.peerLook, duel, resumeLane],
   )
   // La pregunta del rival de pasar de fase va en el medio de la pantalla (`PassPrompt`, que la pone la mesa encima del campo): es lo único que hay que contestar, así que no va arriba con los demás avisos.
   const passAsked = snapshot.pass.asked
@@ -1883,10 +1926,10 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : undefined} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume],
   )
 
   const markTarget = markMenu?.target

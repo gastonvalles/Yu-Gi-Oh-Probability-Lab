@@ -14,10 +14,15 @@ import { deckState, fortyCardMain, storeWith } from './support/deck-fixtures'
 // `practice-*` y `auto-screen-*`): acá importa cuál se abre.
 vi.mock('../components/deck-mode/lazy-steps', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../components/deck-mode/lazy-steps')>()),
-  LazyPracticeSection: ({ session }: { session: { actions: unknown[]; cursor: number; replay: boolean } }) => (
+  LazyPracticeSection: ({ session, state, onAuto }: { session: { actions: unknown[]; cursor: number; replay: boolean }; state: { phase: string }; onAuto?: (state: unknown) => void }) => (
     <>
       <p>mesa manual</p>
-      <p data-testid="manual-session">{`${session.actions.length}·${session.cursor}·${session.replay}`}</p>
+      <p data-testid="manual-session">{`${session.actions.length}·${session.cursor}·${session.replay}·${state.phase}`}</p>
+      {onAuto ? (
+        <button type="button" onClick={() => onAuto(state)}>
+          a automático
+        </button>
+      ) : null}
     </>
   ),
   preloadHeavySteps: () => {},
@@ -28,11 +33,15 @@ vi.mock('../components/auto/AutoSoloScreen', async () => {
   const game = { initial: createMatState(['card-1-1'], [], 0), actions: [{ type: 'phase', phase: 'standby' }, { type: 'phase', phase: 'main1' }], names: {} }
 
   return {
-    AutoSoloScreen: ({ onManual }: { onManual?: (value: typeof game | null) => void }) => (
+    AutoSoloScreen: ({ onManual, resume }: { onManual?: (value: typeof game | null) => void; resume?: { state: { phase: string }; lp: readonly number[] } }) => (
       <>
         <p>mesa automática</p>
+        <p data-testid="auto-resume">{resume ? `${resume.state.phase}·${resume.lp.join('/')}` : 'nuevo'}</p>
         <button type="button" onClick={() => onManual?.(game)}>
           seguir
+        </button>
+        <button type="button" onClick={() => onManual?.(null)}>
+          volver sin jugar
         </button>
       </>
     ),
@@ -141,7 +150,7 @@ describe('«Entrenar solo» abre la mesa que dice el interruptor', () => {
 
     expect(await screen.findByText('mesa manual')).toBeInTheDocument()
     // Las dos jugadas, con el cursor al final y sin los controles de un combo: Deshacer y los Pasos siguen.
-    expect(screen.getByTestId('manual-session')).toHaveTextContent('2·2·false')
+    expect(screen.getByTestId('manual-session')).toHaveTextContent('2·2·false·main1')
     expect(autoPrefs().duel).toBe(true)
     const go = (hash: string) =>
       act(() => {
@@ -152,6 +161,42 @@ describe('«Entrenar solo» abre la mesa que dice el interruptor', () => {
     go('#duel')
     go('#practice')
     expect(await screen.findByText('mesa automática')).toBeInTheDocument()
+  })
+
+  it('el ciclo manual → automático → manual: «Seguir en automático» abre la automática desde la mesa manual y, sin jugar, volver deja la manual como estaba; el lobby lo olvida', async () => {
+    withWorker()
+    HTMLElement.prototype.scrollTo = () => {}
+    setAutoPref('duel', true)
+    practice()
+    expect(await screen.findByTestId('auto-resume')).toHaveTextContent('nuevo')
+    fireEvent.click(screen.getByRole('button', { name: 'seguir' }))
+    expect(await screen.findByTestId('manual-session')).toHaveTextContent('2·2·false·main1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'a automático' }))
+    expect(await screen.findByTestId('auto-resume')).toHaveTextContent('main1·8000/8000')
+    fireEvent.click(screen.getByRole('button', { name: 'volver sin jugar' }))
+    expect(await screen.findByTestId('manual-session')).toHaveTextContent('2·2·false·main1')
+    // Con jugadas, la partida del automático (la de mentira) reemplaza la manual.
+    fireEvent.click(screen.getByRole('button', { name: 'a automático' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'seguir' }))
+    expect(await screen.findByTestId('manual-session')).toHaveTextContent('2·2·false·main1')
+
+    act(() => {
+      window.history.replaceState(null, '', '#duel')
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    act(() => {
+      window.history.replaceState(null, '', '#practice')
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    expect(await screen.findByTestId('auto-resume')).toHaveTextContent('nuevo')
+  })
+
+  it('con la beta apagada la práctica no ofrece «Seguir en automático»', async () => {
+    withWorker()
+    practice()
+    expect(await screen.findByText('mesa manual')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'a automático' })).toBeNull()
   })
 
   it('en un navegador que no puede correr el núcleo, la preferencia no se usa: siempre la manual', async () => {

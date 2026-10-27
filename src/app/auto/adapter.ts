@@ -1,5 +1,5 @@
 import { mirrorApply, openMirror, type Mirror, type WireAct } from '../mat-public'
-import { createMatState, matReducer, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type MatSummon, type MatTakeZone } from '../practice-mat'
+import { createMatState, matReducer, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type MatSummon, type MatTakeZone, type Placed } from '../practice-mat'
 import { LOCATION as L, POSITION as P, type AutoEvent, type EventOf, type LocPos, type Seat, type WireEvent } from './protocol'
 import type { ChainStep } from './chain-feed'
 import { isPublic } from './referee'
@@ -90,6 +90,12 @@ export interface AdapterOptions {
   lp?: [number, number]
   /** La máscara de tipo de una carta (`type` del `.cdb`); 0 si no se sabe. Distingue Fusión / Sincronía / Xyz / Enlace / Péndulo. */
   typeOf: (code: number) => number
+  /**
+   * La mesa rearmada (pasar de manual a automático, `resume.ts`): la mía con sus ids y la del rival con los suyos (ya opacos), y el código de cada id (0 = no lo sé). Las dos
+   * arrancan así en vez de con todo en el deck y el Extra; el núcleo las recibe en el mismo orden (`setup` del `create`), así cada secuencia suya es el lugar de la mesa. Las
+   * fases que el núcleo pasa al empezar (Draw, Standby) hasta alcanzar la de la mesa no se cuentan como jugadas.
+   */
+  setup?: { mine: MatState; theirs: MatState; codeOf: (side: Side, id: string) => number }
 }
 
 export interface AdapterOutput {
@@ -99,6 +105,8 @@ export interface AdapterOutput {
   unmapped: string[]
   /** Los mensajes de la cadena de esta tanda, en orden, con cuántas jugadas de `mine` había (el aviso de la cadena los cuenta de a uno: `chain-feed.ts`). */
   chain: ChainStep[]
+  /** De quién fue cada jugada de la tanda, intercaladas como pasaron (`mine` y `theirs` por separado pierden el orden): la mesa manual lo hereda al pasar a manual. */
+  order: ('mine' | 'theirs')[]
 }
 
 /** Un lugar del núcleo, con el número de material si está debajo de un Xyz. */
@@ -157,6 +165,7 @@ const QUIET = new Set<WireEvent['type']>(['hint', 'card_hint', 'show_hint', 'sps
 /** Jugadas que no mueven cartas. */
 const STILL = new Set<MatAction['type']>(['reveal', 'target', 'activate', 'counter', 'attack', 'declare'])
 
+const PHASE_ORDER: MatState['phase'][] = ['draw', 'standby', 'main1', 'battle', 'main2', 'end']
 const emptyPlaces = (): Places => ({ deck: [], hand: [], grave: [], removed: [], extra: [], mzone: Array(7).fill(null), szone: Array(8).fill(null) })
 const isMaterial = (place: { location: number; overlay_sequence?: number }) => place.overlay_sequence !== undefined || (place.location & L.OVERLAY) !== 0
 const baseLocation = (location: number) => location & ~L.OVERLAY
@@ -173,7 +182,7 @@ export function spotOf(location: number, sequence: number): { zone: MatSpot; ind
 const posOf = (location: number, position: number): MatPos => ((position & P.FACEDOWN) !== 0 ? 'set' : location === L.MZONE && (position & P.FACEUP_DEFENSE) !== 0 ? 'def' : 'atk')
 
 /** Ids de copia como los de la mesa (`duelCardIds`): cada código con su cuenta. */
-function copyIds(codes: readonly number[]): string[] {
+export function copyIds(codes: readonly number[]): string[] {
   const seen = new Map<number, number>()
 
   return codes.map((code) => {
@@ -206,15 +215,35 @@ export function createAdapter(options: AdapterOptions): Adapter {
   const theirDeck = Array.from({ length: options.theirs.deck }, (_, i) => `c${i + 1}`)
   const theirExtra = Array.from({ length: options.theirs.extra }, (_, i) => `c${options.theirs.deck + i + 1}`)
 
-  places[seat].deck = myDeck.map((id, i) => ({ id, owner: seat, code: options.mine.deck[i]! })).reverse()
-  places[seat].extra = myExtra.map((id, i) => ({ id, owner: seat, code: options.mine.extra[i]! }))
-  places[rival].deck = theirDeck.map((id) => ({ id, owner: rival, code: 0 })).reverse()
-  places[rival].extra = theirExtra.map((id) => ({ id, owner: rival, code: 0 }))
+  const { setup } = options
+
+  if (setup) {
+    // La mesa rearmada: cada lugar de las dos mesas, como lo recibe el núcleo (`placedCards`: el deck de abajo hacia arriba).
+    for (const [player, side, state] of [[seat, 'mine', setup.mine], [rival, 'theirs', setup.theirs]] as const) {
+      const card = (id: string): Card => ({ id, owner: player, code: setup.codeOf(side, id) })
+      const slot = (placed: Placed | null) => {
+        if (!placed) return null
+        const xyz = card(placed.id)
+
+        if (placed.materials.length > 0) materials.set(xyz, placed.materials.map(card))
+        return xyz
+      }
+
+      places[player] = { deck: [...state.deck].reverse().map(card), hand: state.hand.map(card), grave: state.gy.map(card), removed: state.banished.map(card), extra: state.extra.map(card), mzone: [...state.mz, ...state.emz].map(slot), szone: [...state.st, state.field, null, null].map(slot) }
+    }
+  } else {
+    places[seat].deck = myDeck.map((id, i) => ({ id, owner: seat, code: options.mine.deck[i]! })).reverse()
+    places[seat].extra = myExtra.map((id, i) => ({ id, owner: seat, code: options.mine.extra[i]! }))
+    places[rival].deck = theirDeck.map((id) => ({ id, owner: rival, code: 0 })).reverse()
+    places[rival].extra = theirExtra.map((id) => ({ id, owner: rival, code: 0 }))
+  }
   // El deck del rival es bolsa desde el principio: su orden nunca es seguro para quien mira (un `sort_card` del rival lo cambia sin decir nada).
   bags[rival].add(L.DECK)
   if (options.bag) bags[seat].add(L.DECK)
 
-  const initial = { mine: createMatState(myDeck, myExtra, 0), theirs: createMatState(theirDeck, theirExtra, 0) }
+  const initial = setup ? { mine: setup.mine, theirs: setup.theirs } : { mine: createMatState(myDeck, myExtra, 0), theirs: createMatState(theirDeck, theirExtra, 0) }
+  /** Con la mesa rearmada, las fases que el núcleo pasa al empezar hasta llegar a la de la mesa (Draw, Standby) no son jugadas. */
+  let catchingUp = setup !== undefined
   let mine = initial.mine
   let theirs = openMirror(initial.theirs)
   let overlay = freshOverlay(options.lp ?? [8000, 8000])
@@ -245,12 +274,14 @@ export function createAdapter(options: AdapterOptions): Adapter {
 
     if (player === seat) {
       out.mine.push(action)
+      out.order.push('mine')
       mine = matReducer(mine, action)
     } else {
       const wire: WireAct = { action, reveal: pending }
 
       pending = {}
       out.theirs.push(wire)
+      out.order.push('theirs')
       theirs = mirrorApply(theirs, wire)
     }
     // Lo que no mueve cartas (mostrar, marcar, activar, contadores) no corta la jugada que sacó del deck: el barajado se le suma igual.
@@ -683,6 +714,10 @@ export function createAdapter(options: AdapterOptions): Adapter {
 
         overlay = { ...overlay, phase: event.phase, cause: phase ? { kind: 'phase', phase } : null }
         if (!phase) return note(`new_phase: unknown phase ${event.phase}`)
+        if (catchingUp && player !== null) {
+          if (PHASE_ORDER.indexOf(phase) < PHASE_ORDER.indexOf(stateOf(player).phase)) return
+          catchingUp = false
+        }
         if (player !== null && stateOf(player).phase !== phase) emit(player, { type: 'phase', phase })
         return
       }
@@ -863,7 +898,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       return overlay
     },
     apply(event) {
-      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [] }
+      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [] }
       fromDeck = [null, null]
       openedNow = new Set()
 

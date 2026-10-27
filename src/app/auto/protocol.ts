@@ -295,13 +295,51 @@ const PLAYER = { lp: 'int', hand: 'int', draw: 'int' } as const
 /** Un deck ya en códigos del núcleo (`deck-map.ts`). `hand`: la mano fija, que va arriba en ese orden; vacía = todo barajado. */
 const DECK = { main: ['int'], extra: ['int'], hand: ['int'] } as const
 
+/**
+ * Una carta de una mesa rearmada (pasar de manual a automático, `resume.ts`): dónde la pone el núcleo antes de empezar y cómo. `sequence` es la del núcleo (en el deck, 0 es
+ * la de abajo). `materials`: los códigos debajo de un Xyz, en orden. Las cartas ocultas del otro asiento llegan con código 0 al invitado.
+ */
+const PLACED = { code: 'int', controller: 'seat', location: 'int', sequence: 'int', position: 'int', materials: ['opt', ['int']] } as const
+/**
+ * La mesa rearmada: las cartas de los dos asientos y las vidas de cada uno. El anfitrión arranca el duelo con ellas en vez de con los decks (que siguen diciendo qué cartas conoce
+ * cada uno). `phase`: la Main Phase (`main1` o `main2`) en que estaba quien tiene el turno (el asiento 0); `turns`: la cuenta de turnos de la mesa de cada asiento (sólo para
+ * seguir numerando el turno: el núcleo arranca en el 1). El núcleo no los lee; las mesas de los dos lados se rearman con ellos (`resume.ts`, `statesOf`).
+ */
+const SETUP = { cards: [PLACED], lp: ['int'], phase: 'str?', turns: ['opt', ['int']] } as const
+export type PlacedCard = Infer<typeof PLACED>
+export type Setup = Infer<typeof SETUP>
+
+const SETUP_LOCATIONS = new Set<number>([LOCATION.DECK, LOCATION.HAND, LOCATION.MZONE, LOCATION.SZONE, LOCATION.GRAVE, LOCATION.REMOVED, LOCATION.EXTRA])
+const MAX_MATERIALS = 20
+const MAX_TURNS = 10_000
+const MAX_CODE = 999_999_999_999
+
+/** Las cartas de una mesa rearmada (las de un asiento o las de los dos) si tienen forma y están en rango (código 0 = oculta; lugar, secuencia y posición del núcleo); si no, null. */
+export function parsePlacedCards(value: unknown): PlacedCard[] | null {
+  const cards = readShape([PLACED] as const, value)
+
+  return cards?.every((card) => inRange(card.code, 0, MAX_CODE) && SETUP_LOCATIONS.has(card.location) && inRange(card.sequence, 0, 199) && inRange(card.position, 1, 0xf) && (card.materials === undefined || (card.materials.length <= MAX_MATERIALS && card.materials.every((code) => inRange(code, 1, MAX_CODE))))) ? cards : null
+}
+
+/** Una mesa rearmada con forma (`parsePlacedCards`, las vidas de los dos, la Main Phase de quien tiene el turno y las cuentas de turnos), o null. */
+export function parseSetup(value: unknown): Setup | null {
+  const setup = readShape(SETUP, value)
+  const cards = setup ? parsePlacedCards(setup.cards) : null
+
+  if (!setup || !cards || setup.lp.length !== 2 || !setup.lp.every((lp) => inRange(lp, 1, MAX_LP))) return null
+  if (setup.phase !== undefined && setup.phase !== 'main1' && setup.phase !== 'main2') return null
+  if (setup.turns !== undefined && (setup.turns.length !== 2 || !setup.turns.every((turn) => inRange(turn, 1, MAX_TURNS)))) return null
+
+  return { cards, lp: [...setup.lp], ...(setup.phase === undefined ? {} : { phase: setup.phase }), ...(setup.turns === undefined ? {} : { turns: [...setup.turns] }) }
+}
+
 const COMMAND_SHAPES = {
   /**
    * `seed`: la semilla de todo el duelo (u32, como las de la mesa). `key`: la del anfitrión del duelo por enlace, 256 bits en hex
    * (`duel-key.ts`): con ella el orden de los decks y el núcleo salen de la clave y `seed` no se usa (va igual: 32 bits se prueban todos
-   * desde la mano inicial). `flags`: las reglas (u64 en texto; `MODE_MR5` por defecto). `decks[0]` empieza.
+   * desde la mano inicial). `flags`: las reglas (u64 en texto; `MODE_MR5` por defecto). `decks[0]` empieza. `setup`: la mesa rearmada (sin barajar ni repartir).
    */
-  create: { seed: 'int', key: ['opt', 'str'], flags: 'u64', players: [PLAYER], decks: [DECK] },
+  create: { seed: 'int', key: ['opt', 'str'], flags: 'u64', players: [PLAYER], decks: [DECK], setup: ['opt', SETUP] },
   answer: { askId: 'int', answer: {} },
   /** Deshacer: re-simula desde la semilla con las primeras `to` respuestas (y vuelve a mandar todos los eventos, desde cero). */
   rewind: { to: 'int' },

@@ -5,7 +5,7 @@ import { saveOf } from '../app/duel-save'
 import { EMOTE_GAP_MS, PHASE_WAIT_MS, createDuel, type Duel } from '../app/duel-session'
 import { timerElapsed } from '../app/life-calculator'
 import { mapMatIds, openPublic } from '../app/mat-public'
-import { createMatState, type MatState } from '../app/practice-mat'
+import { createMatState, type MatAction, type MatState } from '../app/practice-mat'
 import { createMemoryRoom, type MemoryEnd } from './support/memory-room'
 import { random, randomAction } from './support/random-mat'
 
@@ -150,6 +150,99 @@ describe('las mesas', () => {
     undoAllowed(game, game.host, game.guest)
     expect(game.host.getSnapshot().moves).toBe(0)
     expectSameTables(game)
+  })
+
+  describe('empezar con historial (el pase a manual de un duelo automático)', () => {
+    // Ana ya jugó tres y Beto dos, intercaladas: B, A, A, B, A.
+    const hostPlays: MatAction[] = [
+      { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' },
+      { type: 'move', id: 'card-1001-1', to: 'gy' },
+      { type: 'move', id: 'card-1002-1', to: 'banished' },
+    ]
+    const guestPlays: MatAction[] = [
+      { type: 'place', id: 'card-5000-1', zone: 'st', index: 0, pos: 'set' },
+      { type: 'move', id: 'card-5001-1', to: 'gy' },
+    ]
+    const startWithHistory = (game: Game) => {
+      game.host.start(hostTable, hostPlays, ['theirs', 'mine', 'mine', 'theirs', 'mine'])
+      game.guest.start(guestTable, guestPlays, ['mine', 'theirs', 'theirs', 'mine', 'theirs'])
+      game.room.flush()
+    }
+
+    it('cada uno arranca con la mesa de después de esas jugadas y el otro la ve igual con un solo sync (ninguna jugada viaja de nuevo), y lo que ya se mostró lo sabe', () => {
+      const game = setup()
+      const before = game.room.sent.length
+
+      startWithHistory(game)
+      expect(game.host.getSnapshot()).toMatchObject({ moves: 3, initial: hostTable })
+      expect(game.host.getSnapshot().actions).toEqual(hostPlays)
+      expect(game.host.getSnapshot().mine?.gy).toEqual(['card-1001-1'])
+      expect(game.guest.getSnapshot().moves).toBe(2)
+      expectSameTables(game)
+      expect(game.room.sent.slice(before).map((text) => (JSON.parse(text) as { t: string }).t).filter((kind) => kind === 'act')).toEqual([])
+      // Lo público de esas jugadas (el monstruo de Ana, su cementerio) ya está revelado para Beto; lo del deck y la mano, no.
+      const known = Object.values(game.guest.getSnapshot().theirs!.known)
+
+      expect(known).toEqual(expect.arrayContaining(['card-1000-1', 'card-1001-1']))
+      expect(known).not.toContain('card-1003-1')
+      expect(saveOf(game.host.getSnapshot(), 0)).toMatchObject({ initial: hostTable, actions: hostPlays })
+    })
+
+    it('Deshacer vuelve a antes de esas jugadas en los dos lados: la última de la mesa es la de Ana, después la de Beto', () => {
+      const game = setup()
+
+      startWithHistory(game)
+      expect(game.host.getSnapshot().undo).toMatchObject({ available: true, blocked: false })
+      undoAllowed(game, game.host, game.guest)
+      expect(game.host.getSnapshot().moves).toBe(2)
+      expect(game.host.getSnapshot().mine?.banished).toEqual([])
+      // Beto nunca recibió esa jugada (llegó con la mesa): vuelve a pedirle la mesa a Ana y queda igual.
+      expectSameTables(game)
+      // Ahora la última de la mesa es la de Beto: Ana se la pide y él la deshace.
+      undoAllowed(game, game.host, game.guest)
+      expect(game.guest.getSnapshot().moves).toBe(1)
+      expect(game.guest.getSnapshot().mine?.gy).toEqual([])
+      expect(game.host.getSnapshot().moves).toBe(2)
+      expectSameTables(game)
+      // Y así hasta antes de todo.
+      undoAllowed(game, game.guest, game.host)
+      undoAllowed(game, game.guest, game.host)
+      undoAllowed(game, game.guest, game.host)
+      expect(game.host.getSnapshot().moves).toBe(0)
+      expect(game.guest.getSnapshot().moves).toBe(0)
+      expect(game.host.getSnapshot().undo.available).toBe(false)
+      expectSameTables(game)
+    })
+
+    it('quien recarga con ese historial guardado sigue con la misma mesa y el mismo Deshacer', () => {
+      const game = setup()
+
+      startWithHistory(game)
+      const saved = saveOf(game.host.getSnapshot(), game.clock.t)!
+
+      game.hostEnd.close()
+      const again = createDuel(game.room.join(), { role: 'host', name: 'Ana', now: () => game.clock.t, sid: 'host-2', restore: saved })
+
+      game.room.flush()
+      expect(again.getSnapshot()).toMatchObject({ moves: 3, mine: game.host.getSnapshot().mine })
+      expect(again.getSnapshot().actions).toEqual(hostPlays)
+      // El orden de las jugadas también se guarda: tras recargar, Deshacer sigue alternando como pasaron (la de Ana, después la de Beto), no primero todas las propias.
+      expect(saved.order).toEqual(['peer', 'me', 'me', 'peer', 'me'])
+      expect(again.getSnapshot().order).toEqual(['peer', 'me', 'me', 'peer', 'me'])
+      const reloaded = { ...game, host: again }
+
+      undoAllowed(reloaded, again, game.guest)
+      expect(again.getSnapshot().moves).toBe(2)
+      undoAllowed(reloaded, again, game.guest)
+      expect(game.guest.getSnapshot().moves).toBe(1)
+      expect(again.getSnapshot().moves).toBe(2)
+      expect(game.guest.getSnapshot().theirs?.state).toEqual(masked(hostTable, again.getSnapshot().mine!))
+      expect(again.getSnapshot().theirs?.state).toEqual(masked(guestTable, game.guest.getSnapshot().mine!))
+      // Un guardado de antes (sin el orden) carga como hasta hoy: sólo las mías (las del rival, cuando llegue su mesa, se suponen anteriores).
+      const { order: _dropped, ...old } = saved
+
+      expect(createDuel(createMemoryRoom().join(), { role: 'host', name: 'Ana', restore: old }).getSnapshot().order).toEqual(['me', 'me', 'me'])
+    })
   })
 
   it('un lote (varias cartas en una jugada) viaja en un solo mensaje y se deshace entero con un solo pedido al rival', () => {

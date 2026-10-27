@@ -3,20 +3,22 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { ChainLink } from '../../app/auto/adapter'
 import { namesList } from '../../app/auto/ask-ui'
 import { createDataLoader, httpSource } from '../../app/auto/auto-data'
-import { createAutoSession, workerTransport, type AutoSession } from '../../app/auto/auto-session'
+import { createAutoSession, workerTransport, type AutoSession, type SessionOptions } from '../../app/auto/auto-session'
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
-import { autoRival, dealRival, poolCount, readHandtrapConfig, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
+import { autoRival, dealRival, poolCount, readHandtrapConfig, rivalCardOf, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
+import { parseDerivedCardId } from '../../app/calculator-state'
 import { LifeHold } from '../../app/life-effects'
-import { randomSeed } from '../../app/practice-mat'
+import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { LifeScore } from '../duel/LifeScore'
 import { HandtrapPicker } from '../duel/HandtrapPool'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
+import { cardIdOfDrawId } from '../probability/practice'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
@@ -55,10 +57,26 @@ export interface AutoSoloScreenProps {
   /** Las reglas del Lab: con esto, las salidas y problemas de tu mano de apertura (los chips de la práctica) debajo de los pasos o sobre tu mano. */
   lab?: PracticeLab
   /**
-   * Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. `rival`: el de handtraps del simulador (`null`, el
-   * pasivo); `seed`: la del duelo de antes (cambiar las handtraps reinicia el mismo duelo, como «Reiniciar el mismo duelo»).
+   * «Seguir en automático» de la práctica: el núcleo sigue desde esta mesa manual (y estas vidas) en vez de repartir; con handtraps, el rival con la mano que tenía. Reiniciar vuelve
+   * a esta mesa; «Nueva mano» la suelta (un duelo nuevo). No se guarda.
    */
-  connect?: (deck: DeckList, options: { handSize?: number; rival?: AutoRival | null; seed?: number }) => AutoSession
+  resume?: { state: MatState; lp: readonly [number, number] }
+  /**
+   * Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. `rival`: el de handtraps del simulador (`null`, el
+   * pasivo); `seed`: la del duelo de antes (cambiar las handtraps reinicia el mismo duelo, como «Reiniciar el mismo duelo»); `resume`: la mesa manual de la que sigue.
+   */
+  connect?: (deck: DeckList, options: { handSize?: number; rival?: AutoRival | null; seed?: number; resume?: SessionOptions['resume'] }) => AutoSession
+}
+
+/** La mano de handtraps del rival en la mesa manual (sin las que ya usó) y sus nombres: la que sigue en el automático y la que vuelve a la manual. */
+type ResumedRival = { hand: string[]; names: Record<string, string> } | null
+const rivalCode = (id: string) => Number(rivalCardOf(id).split('-')[1] ?? 0)
+
+function resumedRival(rival: RivalHand | undefined, config: HandtrapConfig): ResumedRival {
+  if (!rival) return null
+  const hand = rival.hand.filter((id) => !rival.used.includes(id))
+
+  return { hand, names: Object.fromEntries(hand.map((id) => [id, config.picks.find((pick) => pick.id === rivalCode(id))?.name ?? ''])) }
 }
 
 /** Lo que se deja leer lo que hizo el rival (la carta que activó, grande, y lo que se negó): lo mismo que en el duelo por enlace. */
@@ -67,15 +85,18 @@ const NOTHING = () => {}
 
 const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options) => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...options })
 
-export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, connect = connectLive }: AutoSoloScreenProps) {
+export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, resume, connect = connectLive }: AutoSoloScreenProps) {
   // Las handtraps del rival: las del simulador de «Jugar solo» (`app/handtraps.ts`); cambiarlas arma otra sesión con la misma semilla.
   const [handtraps, setHandtraps] = useState<HandtrapConfig>(readHandtrapConfig)
   const [live, setLive] = useState<{ session: AutoSession; n: number } | null>(null)
   const seed = useRef<number | undefined>(undefined)
+  // La mesa manual de la que sigue (`resume`): cambiar las handtraps le suelta la mano del rival (reparte la semilla) y «Nueva mano», la mesa entera.
+  const [from, setFrom] = useState(() => resume && { ...resume, rival: resumedRival(resume.state.rival, handtraps) })
 
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite y la sesión de la primera pasada se destruye.
   useEffect(() => {
-    const session = connect({ main: deckListOf(mainIds), extra: deckListOf(extraIds) }, { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), ...(seed.current === undefined ? {} : { seed: seed.current }) })
+    const resumeOf = (at: NonNullable<typeof from>): SessionOptions['resume'] => ({ mine: at.state, codeOf: (_, id) => parseDerivedCardId(cardIdOfDrawId(id)) ?? 0, lp: at.lp, ...(at.rival ? { rivalHand: at.rival.hand.map(rivalCode) } : {}) })
+    const session = connect({ main: deckListOf(mainIds), extra: deckListOf(extraIds) }, { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), ...(seed.current === undefined ? {} : { seed: seed.current }), ...(from ? { resume: resumeOf(from) } : {}) })
 
     // Otra sesión, otra mesa: la pantalla arranca de cero (`key`).
     setLive((current) => ({ session, n: (current?.n ?? 0) + 1 }))
@@ -85,7 +106,7 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
       seed.current = session.getSnapshot().seed
       session.destroy()
     }
-  }, [connect, mainIds, extraIds, handSize, handtraps])
+  }, [connect, mainIds, extraIds, handSize, handtraps, from])
   // La ventana grande es de la mesa: al salir de ella se apaga (como en el duelo).
   useEffect(() => () => setDuelFullscreen(false), [])
   // Hasta 1100 px los avisos van arriba, debajo del marcador: sin la barra de abajo, abajo caían sobre tu mano (ver index.css).
@@ -100,10 +121,11 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   const changeHandtraps = useCallback((next: HandtrapConfig) => {
     writeHandtrapConfig(next)
     setHandtraps(next)
+    setFrom((at) => at && { ...at, rival: null })
   }, [])
 
   return live ? (
-    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} {...(onManual ? { onManual } : {})} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} />
+    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} {...(onManual ? { onManual } : {})} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} {...(from ? { resumed: { rival: from.rival, onNewHand: () => setFrom(undefined) } } : {})} />
   ) : (
     <LoadingCover progress={{ done: 0, total: 0 }} rival={autoRival(handtraps) !== null} />
   )
@@ -119,12 +141,14 @@ interface AutoDuelProps {
   handtraps: HandtrapConfig
   onHandtraps: (next: HandtrapConfig) => void
   lab: PracticeLab
+  /** Sigue de la mesa manual: la mano del rival que tenía (la que vuelve a la manual) y «Nueva mano», que suelta esa mesa. */
+  resumed?: { rival: ResumedRival; onNewHand: () => void }
 }
 
 /** Sin las reglas del Lab (las pruebas), no hay chips: un deck vacío no alcanza para una mano. */
 const NO_LAB: PracticeLab = { handSize: 5, derivedMainCards: [], patterns: [], hasCompletedClassification: true, reviewPendingPatternCount: 0 }
 
-function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, onHandtraps, lab }: AutoDuelProps) {
+function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, onHandtraps, lab, resumed }: AutoDuelProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   // Hasta 1100 px las vidas van en el marcador de la barra (`AutoBar`) y la mesa no lleva fila de abajo (`scoreInHeader`); en escritorio, planas en las esquinas del campo.
@@ -154,7 +178,8 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   const chips = usePracticeChips(lab, asks.matSession)
   // La hoja para cambiar las handtraps del rival.
   const [choosing, setChoosing] = useState(false)
-  const rivalDeal = useMemo(() => dealRival(handtraps, snap.seed), [handtraps, snap.seed])
+  const kept = resumed?.rival
+  const rivalDeal = useMemo(() => (kept ? { rival: { hand: kept.hand, used: [] }, names: kept.names } : dealRival(handtraps, snap.seed)), [kept, handtraps, snap.seed])
   const handover = useMemo(
     () => (switching ? manualHandover(snap, (id) => cardsById.get(id)?.name, rivalDeal ? { hand: rivalDeal.rival, names: rivalDeal.names } : undefined) : null),
     [switching, snap, cardsById, rivalDeal],
@@ -231,7 +256,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
         onUndo={() => session.undo()}
         canUndo={asks.undoable && snap.status !== 'thinking' && !snap.replaying}
         // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
-        onNewHand={() => session.restart(randomSeed())}
+        onNewHand={resumed?.onNewHand ?? (() => session.restart(randomSeed()))}
         // La hoja ya guardó las handtraps nuevas: el duelo se arma de nuevo con ellas (la misma semilla, como «Cambiar handtraps» de «Más opciones»).
         onHandtraps={() => onHandtraps(readHandtrapConfig())}
         lane={asks.lane}

@@ -9,7 +9,7 @@ import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { dealRival, readHandtrapConfig } from '../../app/handtraps'
-import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
+import { createMatState, randomSeed, shuffleWithSeed, type MatState } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
 import { Presence } from '../../app/use-presence'
 import { createRoomsApi } from '../../app/duel-rooms'
@@ -159,9 +159,13 @@ export function DeckModeScreen() {
   const autoPrefs = useAutoPrefs()
   // «Seguir en manual» del automático es de esta partida, no del interruptor (que queda como estaba): al volver al lobby de Jugar, se olvida.
   const [manualHere, setManualHere] = useState(false)
+  // Y al revés, «Seguir en automático» de la práctica: la mesa manual desde la que sigue el núcleo (no se guarda: recargar vuelve a empezar).
+  const [resumeFrom, setResumeFrom] = useState<MatState | null>(null)
 
   if (manualHere && activeStep === 'duel') setManualHere(false)
-  const autoSolo = autoPrefs.duel && canRunAuto() && !manualHere
+  if (resumeFrom && activeStep === 'duel') setResumeFrom(null)
+  const canAuto = autoPrefs.duel && canRunAuto()
+  const autoSolo = canAuto && !manualHere
   // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -354,9 +358,9 @@ export function DeckModeScreen() {
           </Heading>
           {autoSolo && matDeck.mainIds.length > 0 ? (
             // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá.
-            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} />
+            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
           ) : practice ? (
-            <LazyPracticeSection {...practice} />
+            <LazyPracticeSection {...practice} {...(canAuto ? { onAuto: (state: MatState) => { setResumeFrom(state); setManualHere(false) } } : {})} />
           ) : (
             <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>
           )}

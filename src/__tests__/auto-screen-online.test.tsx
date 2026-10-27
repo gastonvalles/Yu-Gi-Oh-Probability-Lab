@@ -9,7 +9,8 @@ import { LOCATION as L, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import type { SocketStatus } from '../app/duel-socket'
-import { createMatState, type MatState } from '../app/practice-mat'
+import type { ManualGame } from '../app/auto/manual-handover'
+import { createMatState, replayMat } from '../app/practice-mat'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { showToastMessage } from '../app/use-toast-message'
 import { AutoDuelScreen } from '../components/auto/AutoDuelScreen'
@@ -57,7 +58,7 @@ function setup(role: 'host' | 'guest' = 'host') {
 
   room.flush()
   const link = fakeOnlineLink()
-  const calls = { leave: 0, abandon: 0, rematch: 0, manual: [] as MatState[] }
+  const calls = { leave: 0, abandon: 0, rematch: 0, manual: [] as ManualGame[] }
   const me = duels[role]
   const connect = () => link
   // La conexión propia con el relay (el `status` de la pantalla): la prueba la corta y la vuelve a abrir.
@@ -93,7 +94,7 @@ function setup(role: 'host' | 'guest' = 'host') {
           calls.rematch += 1
           me.rematch()
         }}
-        onManual={(table) => calls.manual.push(table)}
+        onManual={(game) => calls.manual.push(game)}
         connect={connect}
       />
     )
@@ -509,7 +510,8 @@ describe('auto-screen-online · pasar a manual', () => {
     expect(calls.manual).toEqual([])
     vi.mocked(showToastMessage).mockClear()
     core(() => link.set({ manual: 'agreed', manualDropped: true }))
-    expect(calls.manual).toEqual([session.getSnapshot().mine])
+    // La partida entera: la mesa del arranque con todo lo jugado da la del corte (la manual arranca con ese historial).
+    expect(calls.manual.map((game) => replayMat(game.initial, game.actions))).toEqual([session.getSnapshot().mine])
     expect(showToastMessage).toHaveBeenLastCalledWith('Siguen en modo manual. Lo que estaba a medio jugar se descartó: la mesa quedó como estaba.', 'info')
     expect(session.answers).toEqual([])
     expect(dispatches).toBe(0)
@@ -534,7 +536,7 @@ describe('auto-screen-online · pasar a manual', () => {
     expect(calls.manual).toEqual([])
     act(() => duels.guest.start(createMatState(['card-1-1', 'card-2-1'], [], 1)))
     flush()
-    expect(calls.manual).toEqual([session.getSnapshot().mine])
+    expect(calls.manual.map((game) => replayMat(game.initial, game.actions))).toEqual([session.getSnapshot().mine])
   })
 })
 

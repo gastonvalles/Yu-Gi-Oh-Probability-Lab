@@ -11,6 +11,8 @@ const files = (dir: string): string[] =>
   readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? files(join(dir, entry.name)) : /\.(tsx?|mjs|js)$/.test(entry.name) ? [join(dir, entry.name).split('\\').join('/')] : []))
 const source = [...files('src'), ...files('api'), ...files('duel-relay/src')]
 /** Una importación relativa con valores: `import … from`, `export … from` (lo reexportado también viaja) o `import(`. Un `import type` o `export type` se borra al compilar. */
+// Las dos piezas puras del pedido de «pasar a automático» (qué hace falta y el enlace de la sala a mano: sin núcleo ni wasm) que la mesa manual sí importa; el último test mira que sigan sin llegar al núcleo.
+const PURE_RESUME = ['src/app/auto/resume', 'src/app/auto/online-resume']
 const VALUE_IMPORT = /(?:(?:import|export)\s+(?!type\s)[^'"]*?from\s+|import\(\s*)['"](\.{1,2}\/[^'"]*)['"]/g
 
 describe('el núcleo de reglas queda aislado', () => {
@@ -30,11 +32,21 @@ describe('el núcleo de reglas queda aislado', () => {
       [...readFileSync(join(ROOT, file), 'utf8').matchAll(VALUE_IMPORT)].some((match) => {
         const target = posix.join(posix.dirname(file), match[1]!)
 
-        return (target === 'src/app/auto' || target.startsWith('src/app/auto/')) && !(match[0].startsWith('import(') && target === 'src/app/auto/auto-data')
+        return (target === 'src/app/auto' || target.startsWith('src/app/auto/')) && !(match[0].startsWith('import(') && target === 'src/app/auto/auto-data') && !PURE_RESUME.includes(target)
       })
 
     expect(production.filter(reachesCore)).toEqual([])
     expect(readFileSync(join(ROOT, 'src/app/auto/auto-data.ts'), 'utf8')).not.toMatch(/(?:import|export)\s+(?!type\s)[^'"]*?from\s+['"](?:ocgcore-wasm|\.\/core-host)/)
+  })
+
+  it('las piezas puras de pasar a automático nunca llegan al núcleo: sólo toman valores de protocol, online-protocol, resume o de fuera de src/app/auto', () => {
+    for (const pure of PURE_RESUME) {
+      const file = `${pure}.ts`
+      const targets = [...readFileSync(join(ROOT, file), 'utf8').matchAll(VALUE_IMPORT)].map((match) => posix.join(posix.dirname(file), match[1]!))
+
+      expect(targets.filter((target) => target.startsWith('src/app/auto/') && !['src/app/auto/protocol', 'src/app/auto/online-protocol', 'src/app/auto/resume'].includes(target))).toEqual([])
+      expect(readFileSync(join(ROOT, file), 'utf8')).not.toMatch(/(?:from\s+|import\(\s*)['"][^'"]*(?:ocgcore-wasm|core-host)/)
+    }
   })
 
   it('ve las importaciones con valores, también las reexportaciones, y deja pasar los tipos', () => {

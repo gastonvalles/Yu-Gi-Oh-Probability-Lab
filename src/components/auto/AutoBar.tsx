@@ -4,7 +4,7 @@ import type { AutoPrefs } from '../../app/auto-prefs'
 import { useDuelRails } from '../../app/duel-rails'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t, type MessageKey } from '../../i18n'
-import { LaneBanner, RAIL_LANE_STYLE, type LaneNotice } from '../duel/DuelBar'
+import { LaneBanner, RAIL_LANE_STYLE, Setting, type LaneNotice } from '../duel/DuelBar'
 import { LifeScore } from '../duel/LifeScore'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton } from '../probability/MatBarActions'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -73,18 +73,7 @@ interface AutoBarProps extends AutoOptions {
   log?: ReactNode
 }
 
-/** Un ajuste de «Más opciones» con su nombre, su línea chica y el control debajo (también los del duelo automático por enlace, en «Más opciones» de `DuelBar`). */
-export function Setting({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-2">
-      <span className="grid gap-0.5">
-        <span className="text-body font-semibold text-foreground">{title}</span>
-        <span className="text-micro text-soft">{hint}</span>
-      </span>
-      {children}
-    </div>
-  )
-}
+export { Setting }
 
 /**
  * «Más opciones» del duelo: las respuestas a la cadena, la casilla, las handtraps del rival y «A ciegas», reiniciar el mismo duelo y seguir en modo manual. Desde la botonera (`inDock`) no repite lo
@@ -180,7 +169,7 @@ function DockButton({ icon, label, on = false, className, ...props }: ButtonHTML
 
 /**
  * La botonera redonda de «Jugar solo automático» en escritorio (abajo a la derecha de la mesa, lámina 07), con lo que se toca del duelo y no es una jugada; cada botón con su nombre debajo:
- * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; el camino de vuelta no existe), «Cadena» (las respuestas: Siempre · Cuando importa · Nunca), «Pasos» (muestra u
+ * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; la vuelta es «Seguir en automático», del ⋯ de la práctica), «Cadena» (las respuestas: Siempre · Cuando importa · Nunca), «Pasos» (muestra u
  * oculta el panel de la derecha) y «Opciones» (el resto de «Más opciones», que sale de la barra de arriba). Lo que ya está en la barra (deshacer, la vista, los sonidos) no se repite.
  * Mide 56 px de alto y sube 12 sobre el borde de la mano (`-mt-3`, como las vidas): la fila de abajo no crece y el campo no se mueve.
  */

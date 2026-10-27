@@ -1,6 +1,6 @@
 import { byteLength, MAX_MESSAGE_BYTES, RateLimiter } from '../duel-relay-rules'
 import { MAX_LP } from '../life-calculator'
-import { parseAnswer, parseAutoEvent, type AutoEvent, type CoreAnswer, type Seat } from './protocol'
+import { parseAnswer, parseAutoEvent, parsePlacedCards, parseSetup, type AutoEvent, type CoreAnswer, type PlacedCard, type Seat, type Setup } from './protocol'
 
 /**
  * El duelo automático por enlace (diseño: `docs/duelo-automatico-enlace.md`): los mensajes de texto que el anfitrión (que corre el núcleo con los dos asientos) y el
@@ -46,9 +46,10 @@ type Numbered =
   | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true }
   /**
    * Anfitrión → invitado: el duelo que empieza. `seat` es el asiento del invitado; `mine` su deck en códigos del núcleo como lo puso el anfitrión, el Main por código (el orden
-   * no viaja: con él, o con la semilla, el invitado sabría sus próximos robos); `theirs`, sólo cuántas cartas tiene el anfitrión.
+   * no viaja: con él, o con la semilla, el invitado sabría sus próximos robos); `theirs`, sólo cuántas cartas tiene el anfitrión. `setup`: el duelo no empieza de cero sino desde
+   * una mesa rearmada (pasar de manual a automático, `resume.ts`), ya filtrada para el invitado (las cartas boca abajo del anfitrión, con código 0).
    */
-  | { t: 'autoInit'; v: number; seat: Seat; players: [AutoPlayerWire, AutoPlayerWire]; mine: { main: number[]; extra: number[] }; theirs: { main: number; extra: number } }
+  | { t: 'autoInit'; v: number; seat: Seat; players: [AutoPlayerWire, AutoPlayerWire]; mine: { main: number[]; extra: number[] }; theirs: { main: number; extra: number }; setup?: Setup }
   /** Anfitrión → invitado: lo que sigue es una re-emisión desde cero; las primeras `skip` preguntas tuyas ya están contestadas (no animes, no preguntes). */
   | { t: 'autoReplay'; skip: number }
   /** Anfitrión → invitado: un evento del anfitrión del núcleo ya filtrado para tu asiento, con los datos de las cartas que ves por primera vez. */
@@ -81,14 +82,24 @@ export type AutoMessage =
   | { t: 'autoAnswer'; askId: number; answer: CoreAnswer }
   /** Invitado → anfitrión: me perdí algo (o acabo de entrar): mandame el duelo de nuevo. */
   | { t: 'autoResync' }
+  /**
+   * Los dos, con la sala en modo manual (`online-resume.ts`; sin número: no hay flujo del núcleo): seguir este duelo en automático. `hello` dice que esta versión sabe hacerlo (se
+   * contesta con otro `hello`; sin él, no se ofrece). `ask` lo pide, `no` lo rechaza (`why`: por qué no, visto desde quien contesta), `cancel` lo retira; `yes` del invitado
+   * acepta el pedido del anfitrión y `yes` del anfitrión es el acuerdo (lo manda su enlace del núcleo, ya escuchando: detrás viene el `autoInit` con el `setup`). Lo del invitado
+   * (`ask`, `yes`) lleva su mesa entera (`table`: sus cartas con código, `placedCards`), que el anfitrión compara con lo que ve de él antes de aceptarla.
+   */
+  | { t: 'autoResume'; step: ResumeStep; table?: PlacedCard[]; why?: ResumeWhy; /** Un `hello` que contesta a otro (no se contesta de nuevo). */ back?: true }
 
 /** Lo que el anfitrión le manda al invitado: lo que va numerado. */
 export type HostMessage = Extract<AutoMessage, Numbered>
 export type ManualStep = 'ask' | 'yes' | 'no' | 'cancel'
+export type ResumeStep = ManualStep | 'hello'
+/** Por qué no se puede seguir en automático ahora: no es tu turno o no es tu Main Phase 1 o 2, hay fichas, una carta bajo el control del otro, o la mesa que mandaste no es la que se ve de vos. */
+export type ResumeWhy = 'turn' | 'phase' | 'tokens' | 'control' | 'table'
 export type AutoMessageKind = AutoMessage['t']
-/** Lo que cada lado acepta recibir (se descarta lo demás, sin avisar). */
-export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync', 'autoManual', 'autoUndo']
-export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart', 'autoManual', 'autoUndo']
+/** Lo que cada lado acepta recibir (se descarta lo demás, sin avisar). `autoResume` lo lee el enlace del modo manual, no el del núcleo (que lo deja pasar). */
+export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync', 'autoManual', 'autoUndo', 'autoResume']
+export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart', 'autoManual', 'autoUndo', 'autoResume']
 
 export function encodeAutoMessage(message: AutoMessage): string {
   return JSON.stringify(message)
@@ -107,6 +118,8 @@ const MAX_ASK_ID = 1_000_000
 const MAX_SEQ = 10_000_000
 const REASONS = ['version', 'off', 'data', 'lost'] as const
 const MANUAL_STEPS: readonly unknown[] = ['ask', 'yes', 'no', 'cancel'] satisfies ManualStep[]
+const RESUME_STEPS: readonly unknown[] = ['ask', 'yes', 'no', 'cancel', 'hello'] satisfies ResumeStep[]
+const RESUME_WHYS = ['turn', 'phase', 'tokens', 'control', 'table'] as const satisfies ResumeWhy[]
 const NUMBERED = new Set<AutoMessageKind>(['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoManual', 'autoUndo'] satisfies HostMessage['t'][])
 /** Si es de lo que manda el anfitrión (lo numerado). */
 export const isHostMessage = (message: AutoMessage): message is HostMessage => NUMBERED.has(message.t)
@@ -195,9 +208,11 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       const mine = isPlain(raw.mine) ? { main: ints(raw.mine.main, 200), extra: ints(raw.mine.extra, 100) } : null
       const theirs = isPlain(raw.theirs) && isInt(raw.theirs.main, 0, 200) && isInt(raw.theirs.extra, 0, 100) ? { main: raw.theirs.main, extra: raw.theirs.extra } : null
 
-      if (!isInt(raw.v, 0, 1000) || (raw.seat !== 0 && raw.seat !== 1) || !players?.every((item) => item !== null) || !theirs || !mine?.main || !mine.extra) return null
+      const setup = raw.setup === undefined ? undefined : parseSetup(raw.setup)
 
-      return { t: 'autoInit', v: raw.v, seat: raw.seat, players: players as [AutoPlayerWire, AutoPlayerWire], mine: { main: mine.main, extra: mine.extra }, theirs }
+      if (!isInt(raw.v, 0, 1000) || (raw.seat !== 0 && raw.seat !== 1) || !players?.every((item) => item !== null) || !theirs || !mine?.main || !mine.extra || setup === null) return null
+
+      return { t: 'autoInit', v: raw.v, seat: raw.seat, players: players as [AutoPlayerWire, AutoPlayerWire], mine: { main: mine.main, extra: mine.extra }, theirs, ...(setup ? { setup } : {}) }
     }
 
     case 'autoReplay':
@@ -238,6 +253,15 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       if (!MANUAL_STEPS.includes(raw.step) || (raw.why !== undefined && raw.why !== 'none') || (raw.guest !== undefined && raw.guest !== true)) return null
 
       return { t: 'autoUndo', step: raw.step as ManualStep, ...(raw.why ? { why: 'none' as const } : {}), ...(raw.guest ? { guest: true as const } : {}) }
+
+    case 'autoResume': {
+      const table = raw.table === undefined ? undefined : parsePlacedCards(raw.table)
+      const why = raw.why === undefined ? undefined : RESUME_WHYS.find((item) => item === raw.why)
+
+      if (!RESUME_STEPS.includes(raw.step) || table === null || (raw.why !== undefined && !why) || (raw.back !== undefined && raw.back !== true)) return null
+
+      return { t: 'autoResume', step: raw.step as ResumeStep, ...(table ? { table } : {}), ...(why ? { why } : {}), ...(raw.back === true ? { back: true as const } : {}) }
+    }
 
     default:
       return null
