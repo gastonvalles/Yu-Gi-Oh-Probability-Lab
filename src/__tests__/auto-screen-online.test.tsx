@@ -537,3 +537,68 @@ describe('auto-screen-online · pasar a manual', () => {
     expect(calls.manual).toEqual([session.getSnapshot().mine])
   })
 })
+
+describe('auto-screen-online · deshacer', () => {
+  const undoButton = () => screen.getByRole('button', { name: 'Deshacer' })
+  const END = { type: 'select_idlecmd', action: 7, index: null } as const
+  const UNDO = { state: 'idle', done: 0, mine: false, peer: true } as const
+
+  it('con una jugada tuya, el ícono de Deshacer le pide permiso al rival; esperando, la línea lo dice con «Cancelar pedido» y el ícono queda apagado', () => {
+    vi.useFakeTimers()
+    const { start, link } = setup()
+    const session = start()
+
+    core(() => link.set({ undo: UNDO }))
+    core(() => session.ask(IDLE))
+    // Todavía no jugaste nada: no hay a qué volver.
+    expect(undoButton()).toBeDisabled()
+    core(() => session.set({ answers: [{ seat: 0, answer: END }] }))
+    fireEvent.click(undoButton())
+    expect(link.undos).toEqual([true])
+    expect(session.undos).toBe(0)
+    core(() => link.set({ undo: { ...UNDO, state: 'asking' } }))
+    expect(undoButton()).toBeDisabled()
+    expect(lane()).toHaveTextContent('Le pedís a Beto volver atrás tu última jugada…')
+    act(() => vi.advanceTimersByTime(THINKING_CANCEL_MS + 10))
+    fireEvent.click(within(lane()!).getByRole('button', { name: 'Cancelar pedido' }))
+    expect(link.undos).toEqual([true, false])
+    vi.useRealTimers()
+  })
+
+  it('el pedido del rival va en la línea, antes que la pregunta del núcleo: «No permitir» y «Permitir»', () => {
+    const { start, link } = setup()
+    const session = start()
+
+    core(() => session.ask(IDLE))
+    core(() => link.set({ undo: { ...UNDO, state: 'asked' } }))
+    expect(lane()).toHaveAttribute('data-lane', 'ask')
+    expect(lane()).toHaveTextContent('Beto quiere volver atrás su última jugada')
+    fireEvent.click(within(lane()!).getByRole('button', { name: 'No permitir' }))
+    fireEvent.click(within(lane()!).getByRole('button', { name: 'Permitir' }))
+    expect(link.undos).toEqual([false, true])
+  })
+
+  it('cómo terminó mi pedido es un aviso; lo que se volvió atrás queda en el registro, de quien sea; con un rival de antes, no se ofrece', () => {
+    const { start, link } = setup()
+    const session = start()
+
+    core(() => session.set({ answers: [{ seat: 0, answer: END }] }))
+    vi.mocked(showToastMessage).mockClear()
+    for (const [state, text] of [
+      ['declined', 'Beto no permitió volver atrás la jugada.'],
+      ['expired', 'Beto no contestó: la jugada sigue.'],
+      ['none', 'No hay una jugada tuya para volver atrás.'],
+    ] as const) {
+      core(() => link.set({ undo: { ...UNDO, state: 'asking' } }))
+      core(() => link.set({ undo: { ...UNDO, state } }))
+      expect(showToastMessage).toHaveBeenLastCalledWith(text, 'info')
+    }
+    core(() => link.set({ undo: { ...UNDO, done: 1, mine: false } }))
+    core(() => link.set({ undo: { ...UNDO, done: 2, mine: true } }))
+    expect(screen.getByText('Beto volvió atrás su última jugada.')).toBeInTheDocument()
+    expect(screen.getByText('Volviste atrás tu última jugada.')).toBeInTheDocument()
+
+    core(() => link.set({ undo: { ...UNDO, peer: false } }))
+    expect(undoButton()).toBeDisabled()
+  })
+})

@@ -449,6 +449,33 @@ describe('la sesión del duelo por enlace', () => {
     session.destroy()
   })
 
+  it('con un asiento remoto, deshacer ese asiento vuelve a antes de su activación elegida (marcada como la propia); sin una suya, no hace nada', async () => {
+    const respond: CoreAsk = { ...(CHAIN as AskOf<'select_chain'>), selects: [{ code: 3, controller: 1, location: L.HAND, sequence: 0, position: 10, description: '48', client_mode: 0 }] }
+    const host = fakeHost(undefined, undefined, 1, (_k, seat) => (seat === 0 ? IDLE : respond))
+    const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 7, remote: { deck: { main: [[3, 5]] } } })
+
+    await until(session, (s) => s.status === 'ready')
+    // Todavía no eligió nada: no hay a dónde volver.
+    expect(session.undo(1)).toBe(false)
+    session.answer(END)
+    await until(session, (s) => s.answers.length === 1 && s.ask !== null)
+    session.answer(END)
+    const { askId } = (await until(session, (s) => s.status === 'waiting' && s.remoteAsk !== null)).remoteAsk!
+
+    session.answerRemote(askId, { type: 'select_chain', index: 0 })
+    const after = await until(session, (s) => s.answers.length === 3 && s.status === 'ready')
+
+    expect(after.answers[2]).toEqual({ seat: 1, answer: { type: 'select_chain', index: 0 }, activation: true })
+    expect(session.undo(1)).toBe(true)
+    // La pregunta del remoto queda limpia mientras se re-simula: una respuesta suya tarde no cuenta.
+    expect(session.getSnapshot()).toMatchObject({ replaying: true, remoteAsk: null })
+    const back = await until(session, (s) => !s.replaying && s.remoteAsk !== null)
+
+    expect(back.answers).toHaveLength(2)
+    expect(host.commands.at(-1)).toEqual({ t: 'rewind', to: 2 })
+    session.destroy()
+  })
+
   it('el deck del asiento del invitado es bolsa desde el arranque (la semilla no viaja): el anfitrión lo proyecta por código, y el invitado igual, venga en el orden que venga', async () => {
     const withDecks = (a: number[], b: number[]): DataLoader => ({ ...loader(), load: async () => ({ ...(await loader().load([])), decks: [mapped(a), mapped(b)] }) })
     const sorted = ['card-1-1', 'card-1-2', 'card-2-1', 'card-2-2', 'card-3-1', 'card-4-1']

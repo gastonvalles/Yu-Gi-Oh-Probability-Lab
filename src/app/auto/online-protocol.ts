@@ -39,11 +39,11 @@ export interface AutoCardInfo {
 /**
  * Lo que el anfitrión le manda al invitado va numerado (`s`, desde 1, puesto al mandar: los `autoPart` no lo llevan, el mensaje entero sí). `1` abre un flujo (el anfitrión
  * recargó, rearmó o le repone el duelo); el que sigue al último se aplica; cualquier otro es un hueco (su conexión caída descartó algo) y el invitado no aplica nada más hasta
- * el próximo `1`, pidiendo el duelo de nuevo. Lo manda el invitado (`autoManual`) sin `s`.
+ * el próximo `1`, pidiendo el duelo de nuevo. Lo manda el invitado (`autoManual`, `autoUndo`) sin `s`.
  */
 type Numbered =
   /** Anfitrión → invitado: si se puede jugar con esos dos decks. `bad`: los códigos del invitado sin reglas; `theirsBad`: cuántas del anfitrión. `reason` cuando no es por reglas. */
-  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost' }
+  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true }
   /**
    * Anfitrión → invitado: el duelo que empieza. `seat` es el asiento del invitado; `mine` su deck en códigos del núcleo como lo puso el anfitrión, el Main por código (el orden
    * no viaja: con él, o con la semilla, el invitado sabría sus próximos robos); `theirs`, sólo cuántas cartas tiene el anfitrión.
@@ -64,11 +64,17 @@ type Numbered =
    * una carta está bajo el control del otro jugador y la mesa manual no puede seguirla.
    */
   | { t: 'autoManual'; step: ManualStep; dropped?: true; why?: 'control' }
+  /**
+   * Los dos: volver atrás la última jugada de quien lo pide (nunca la del otro). `ask` lo pide, `no` lo rechaza (`why: 'none'`: no hay jugada tuya a la que volver), `cancel` lo
+   * retira; el `yes` del invitado acepta el pedido del anfitrión y el del anfitrión es el hecho (detrás viene la re-emisión), con `guest` si era la jugada del invitado. Sólo viaja
+   * entre dos que lo saben hacer (`undo` en `autoDeck` y `autoCheck`): sin subir la versión, a uno de antes no le llega nada.
+   */
+  | { t: 'autoUndo'; step: ManualStep; why?: 'none'; guest?: true }
 
 export type AutoMessage =
   | (Numbered & { s?: number })
   /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver). */
-  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][] }
+  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true }
   /** Un trozo de un mensaje grande (`id` lo agrupa, `i` de `n`): se reensambla y se vuelve a parsear. */
   | { t: 'autoPart'; id: number; i: number; n: number; text: string }
   /** Invitado → anfitrión: la respuesta a la pregunta pendiente (`askId` es el de esa pregunta; otro, se descarta). */
@@ -81,8 +87,8 @@ export type HostMessage = Extract<AutoMessage, Numbered>
 export type ManualStep = 'ask' | 'yes' | 'no' | 'cancel'
 export type AutoMessageKind = AutoMessage['t']
 /** Lo que cada lado acepta recibir (se descarta lo demás, sin avisar). */
-export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync', 'autoManual']
-export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart', 'autoManual']
+export const HOST_ACCEPTS: readonly AutoMessageKind[] = ['autoDeck', 'autoAnswer', 'autoResync', 'autoManual', 'autoUndo']
+export const GUEST_ACCEPTS: readonly AutoMessageKind[] = ['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoPart', 'autoManual', 'autoUndo']
 
 export function encodeAutoMessage(message: AutoMessage): string {
   return JSON.stringify(message)
@@ -101,7 +107,7 @@ const MAX_ASK_ID = 1_000_000
 const MAX_SEQ = 10_000_000
 const REASONS = ['version', 'off', 'data', 'lost'] as const
 const MANUAL_STEPS: readonly unknown[] = ['ask', 'yes', 'no', 'cancel'] satisfies ManualStep[]
-const NUMBERED = new Set<AutoMessageKind>(['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoManual'] satisfies HostMessage['t'][])
+const NUMBERED = new Set<AutoMessageKind>(['autoCheck', 'autoInit', 'autoReplay', 'autoEvent', 'autoBatch', 'autoManual', 'autoUndo'] satisfies HostMessage['t'][])
 /** Si es de lo que manda el anfitrión (lo numerado). */
 export const isHostMessage = (message: AutoMessage): message is HostMessage => NUMBERED.has(message.t)
 
@@ -172,7 +178,7 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       const main = deckRows(raw.main, 200, 200)
       const extra = deckRows(raw.extra, 100, 100)
 
-      return isInt(raw.v, 0, 1000) && main && extra ? { t: 'autoDeck', v: raw.v, main, extra } : null
+      return isInt(raw.v, 0, 1000) && main && extra ? { t: 'autoDeck', v: raw.v, main, extra, ...(raw.undo === true ? { undo: true as const } : {}) } : null
     }
 
     case 'autoCheck': {
@@ -181,7 +187,7 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
 
       if (!isInt(raw.v, 0, 1000) || typeof raw.ok !== 'boolean' || !bad || !isInt(raw.theirsBad, 0, 300) || (raw.reason !== undefined && !reason)) return null
 
-      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(reason ? { reason } : {}) }
+      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(reason ? { reason } : {}), ...(raw.undo === true ? { undo: true as const } : {}) }
     }
 
     case 'autoInit': {
@@ -227,6 +233,11 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       if (!MANUAL_STEPS.includes(raw.step) || (raw.dropped !== undefined && raw.dropped !== true) || (raw.why !== undefined && raw.why !== 'control')) return null
 
       return { t: 'autoManual', step: raw.step as ManualStep, ...(raw.dropped ? { dropped: true as const } : {}), ...(raw.why ? { why: 'control' as const } : {}) }
+
+    case 'autoUndo':
+      if (!MANUAL_STEPS.includes(raw.step) || (raw.why !== undefined && raw.why !== 'none') || (raw.guest !== undefined && raw.guest !== true)) return null
+
+      return { t: 'autoUndo', step: raw.step as ManualStep, ...(raw.why ? { why: 'none' as const } : {}), ...(raw.guest ? { guest: true as const } : {}) }
 
     default:
       return null

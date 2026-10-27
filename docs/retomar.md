@@ -86,7 +86,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
   arriba con el rango resaltado y, después, validar; un deck guardado sin `scale` queda «sin rango», nunca con un número inventado.
 - **Lab y Comparar:** unificar «Aplicaste el cambio» (`LabAppliedNotice`) con el `AppToast` con acción; ▲/▼ en las filas de
   reglas con un borrador (`LabRuleList` no usa `LabDelta`); la sugerencia del Lab en los vacíos de Comparar (`CompareEmpty`).
-- **Precios y Genesys** no tienen workflow: cambian sólo corriendo `sync:prices` y `sync:genesys` a mano y subiéndolos.
+- **Precios** los actualiza `sync-meta-decks.yml` a diario (`sync:prices`, si falla no frena el resto); **Genesys** no tiene workflow: `sync:genesys` a mano y subirlo.
 - **El violeta en Duelo y Jugar:** falta la pasada de la auditoría del violeta por esas pantallas. La regla: en la mesa el
   violeta (`accent`) es lo tuyo y el ámbar (`info`), lo del rival (`PLAYER_COLOR`); un estado o un resultado, verde o rojo.
 - **Campo del celular en vertical:** el techo es el alto de la pantalla (la casilla es la más grande que deja ver tu mano:
