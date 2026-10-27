@@ -90,7 +90,7 @@ import { COMPACT_FIELD_MEDIA_QUERY, SHORT_SCREEN_MEDIA_QUERY, compactDuelFieldSt
 import { stepTone } from './step-tone'
 import { CardBack, CardMenu, NoPlays, PILE_SHORT, PILE_TITLES, PileStripContext, PileViewer, PlayTag, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FieldArt, fieldArtSrc, MatPlate, MatScene, PickMarks } from './MatArena'
-import { PhaseRow, phaseWord } from './PhaseRow'
+import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -214,13 +214,11 @@ export interface DuelMatLink {
   undoInHeader?: boolean
   /**
    * «Jugar solo automático» hasta 1100 px (sin efecto en escritorio): las vidas y el turno van en el marcador de la barra (`header`) y no hay fila de abajo (ni `life` ni `corner`). «Pasos y combos» va
-   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra, lo que falta elegir y el replay sobre el borde de abajo de tu mano, y la fase dice su nombre en su botón.
+   * primero en el ⋯ (`MatStepsContext`), el aviso de lo que acabás de activar en la barra y lo que falta elegir y el replay sobre el borde de abajo de tu mano.
    */
   scoreInHeader?: boolean
   /** Con `scoreInHeader`, las vidas del marcador son botones de 44 px (el duelo por enlace: abren la calculadora) y no de 40: lo que no es campo suma 4 px hasta 1100 px. */
   scoreTall?: boolean
-  /** La barra no dice la fase (sin píldora): el botón de la fase del campo lleva su nombre («DP / Draw Phase»; en el celular, «DP / Draw»). Con `scoreInHeader`, siempre. */
-  phaseNamed?: boolean
   /** «Jugar solo automático»: tu última activación, mientras se puede deshacer y dura su aviso (`UndoChip`, en la fila de abajo; tocarlo es `onUndo`). */
   undoPlay?: UndoPlay | null
   /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
@@ -538,8 +536,6 @@ export function PracticeMat({
   // se achica más y la mano del rival va más chica (`compact-field.ts`).
   const bare = !isDesktop && Boolean(duel?.scoreInHeader)
   const shortPhone = useMediaQuery(SHORT_SCREEN_MEDIA_QUERY) && compact && bare
-  // La fase, sólo en su botón del campo (sin píldora en la barra): el botón dice su nombre.
-  const phaseNamed = bare || Boolean(duel?.phaseNamed)
   // Laterales: en un duelo de escritorio, si la columna de la mesa tiene ancho de sobra, lo que rodea al campo va a sus costados (ver `duel-rails.ts`). Se mira sólo si entran: arrastrar el borde de un
   // panel le cambia el ancho a la columna en cada cuadro y la mesa no se vuelve a dibujar por eso.
   const columnRef = useRef<HTMLDivElement | null>(null)
@@ -2545,10 +2541,9 @@ export function PracticeMat({
                 disabled={!myTurn}
                 className={cx(
                   'grid place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
-                  // Sin la píldora de la fase en la barra (`phaseNamed`), el botón dice también qué fase es, debajo de la sigla: la fase se dice una sola vez. Va adentro del botón (no debajo): con la casilla
-                  // de 40 a 56 px del celular, debajo pisaba tu zona de monstruos de la derecha. En el celular, la palabra de la línea de fases («Draw», «Main 1»); desde 640 px, el nombre completo
-                  // («Draw Phase»), que se parte en dos renglones si la casilla no le da el ancho («Standby / Phase» con casillas de 70 px): no se corta ni pisa a las vecinas.
-                  phaseNamed ? (compact ? 'h-11 min-w-11 content-center gap-0.5 px-1' : 'min-h-11 min-w-11 max-w-full content-center gap-0.5 px-1.5 py-1') : 'size-11',
+                  // Sólo la sigla de dos letras, en todos los anchos y en todos los duelos (Gastón, 2026-10-27: «está bien que sólo muestre 2 letras y se abra el menú al tocarlo»): el nombre completo lo
+                  // dicen la línea de fases que abre y su `aria-label`. Con el nombre adentro, a 1101 px se partía en tres renglones («DP / Draw / Phase»).
+                  'size-11',
                   // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
                   myTurn ? 'cursor-pointer border-info bg-primary text-white hover:border-info-soft' : 'border-accent bg-primary text-white',
                 )}
@@ -2559,11 +2554,6 @@ export function PracticeMat({
                 }}
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
-                {phaseNamed ? (
-                  <span aria-hidden="true" data-phase-word="" className={cx('font-semibold', compact ? 'whitespace-nowrap' : 'text-balance')}>
-                    {compact ? phaseWord(PHASES.find((phase) => phase.id === phaseNow)?.name ?? '') : PHASES.find((phase) => phase.id === phaseNow)?.name}
-                  </span>
-                ) : null}
               </button>
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
               {isDesktop && myTurn && phaseNow === 'end' ? (

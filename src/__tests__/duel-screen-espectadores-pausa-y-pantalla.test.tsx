@@ -813,6 +813,11 @@ describe('la pantalla del duelo', () => {
     expect(within(score).getByTestId('duel-turn')).toHaveTextContent(/^Tu turno · 1$/)
     expect(score).not.toHaveTextContent(/Draw/)
     expect(top).not.toHaveTextContent(/Draw/)
+    // La fase, sólo en el botón del campo y con su sigla de dos letras (el nombre lo oye el lector de pantalla); al tocarlo, la línea de fases con los nombres.
+    expect(phaseChip(host)).toHaveAccessibleName('Fases: Draw Phase')
+    expect(phaseChip(host)).toHaveTextContent(/^DP$/)
+    fireEvent.click(phaseChip(host))
+    expect(screen.getByRole('menuitem', { name: 'Ir a Main Phase 1' })).toBeInTheDocument()
     // Sin barra de abajo: ni sus vidas ni sus reacciones.
     expect(bar.queryByRole('toolbar')).not.toBeInTheDocument()
     expect(bar.queryByRole('group', { name: 'Mensajes rápidos' })).not.toBeInTheDocument()

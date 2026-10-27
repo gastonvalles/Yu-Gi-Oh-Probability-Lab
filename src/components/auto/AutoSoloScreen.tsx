@@ -242,14 +242,13 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
     tools: null,
     // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
     // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 12 px sobre el borde de la mano (`-mt-3`, como la placa: la fila no crece y el campo no se corre). Con
-    // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase la dice sólo el botón del campo (`phaseNamed`).
+    // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
     life: rails || !docked ? null : (
       <span className="-mt-3 flex" data-corner="mine">
         <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine size="lg" />
       </span>
     ),
     ...(docked ? { corner: <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} size="lg" /> } : { scoreInHeader: true }),
-    phaseNamed: true,
     ...(docked ? { dock: <AutoDock {...options} steps={{ open: stepsOpen, onToggle: () => setStepsOpen((open) => !open) }} /> } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),

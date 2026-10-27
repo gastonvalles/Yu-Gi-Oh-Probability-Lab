@@ -207,15 +207,15 @@ describe('la barra de la mesa es una sola', () => {
     expect(after(rival)).toBe(false)
     expect(after(mine)).toBe(true)
     expect(within(screen.getByRole('toolbar', { name: 'Mesa' })).queryByRole('group', { name: /^Puntos de vida/ })).toBeNull()
-    // La fase, una sola vez: sin píldora en la barra, el botón del campo dice su nombre completo.
+    // La fase, una sola vez: sin píldora en la barra; el botón del campo, sólo con su sigla (el nombre, en su `aria-label`).
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Fases: / }).querySelector('[data-phase-word]')).toHaveTextContent(/ Phase/)
+    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ })).toHaveTextContent(/^(DP|SP|M1|BP|M2|EP)$/)
   })
 
   it.each([
     ['en el celular en vertical', true],
     ['de 640 a 1100 px', false],
-  ])('%s (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯, el botón de la fase dice su nombre y los avisos van arriba', (_, phone) => {
+  ])('%s (opción A, «Marcador arriba»): las vidas van en el marcador de la barra, no hay fila de abajo, «Pasos y combos» es lo primero del ⋯, el botón de la fase sólo con su sigla y los avisos van arriba', (_, phone) => {
     const original = window.matchMedia
 
     onTestFinished(() => {
@@ -227,15 +227,15 @@ describe('la barra de la mesa es una sola', () => {
 
     // El `body` lo dice (hasta 1100 px los avisos van arriba: index.css).
     expect(document.body.dataset.duel).toBe('solo')
-    // En el celular, la palabra de la línea de fases («Draw»); desde 640 px, el nombre completo («Draw Phase»).
-    expect(screen.getByRole('button', { name: /^Fases: / }).querySelector('[data-phase-word]')!.textContent!.includes('Phase')).toBe(!phone)
+    // El botón de la fase, sólo con su sigla de dos letras en todos los anchos (Gastón, 2026-10-27); el nombre completo lo oye el lector de pantalla.
+    expect(screen.getByRole('button', { name: /^Fases: [A-Z][a-z]+ Phase( 1| 2)?$/ })).toHaveTextContent(/^(DP|SP|M1|BP|M2|EP)$/)
+    expect(screen.getByRole('button', { name: /^Fases: / })).toHaveClass('size-11')
 
     expect(within(score).getByRole('group', { name: 'Puntos de vida de Vos: 8000' })).toBeInTheDocument()
     expect(within(score).getByRole('group', { name: 'Puntos de vida de Rival: 8000' })).toBeInTheDocument()
     expect(document.querySelector('[data-corner]')).toBeNull()
     expect(screen.getAllByRole('group', { name: /^Puntos de vida/ })).toHaveLength(2)
     expect(screen.queryByTestId('auto-phase')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Fases: / }).querySelector('[data-phase-word]')).not.toBeNull()
     // Sin fila de abajo: el único «Pasos y combos» es el del ⋯, primero.
     expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
     expect(menuRows()[0]!.text).toBe('Pasos y combos')
