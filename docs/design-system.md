@@ -8,7 +8,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 - **Sin grises:** las superficies son índigo, y los velos de una superficie, violetas (`bg-tint/N`), nunca `bg-white/N` ni `bg-black/N` (sobre una foto sí se admite el negro).
 - **Dos niveles de caja, no tres:** lienzo → tarjeta (`Card`) y nada más; adentro, espacio y líneas finas (`border-t border-border-subtle`). Un aviso dentro de una tarjeta es un fondo teñido sin borde.
 - **Cada dato se dice una sola vez,** también entre pestaña, encabezado y contenido: el resumen de una sección sólo se ve plegada.
-- **Los porcentajes son anillos:** un valor → `ProgressRing`, un reparto → `SegmentedRing`; no hay barras de progreso. Las vidas son el número plano de `LifeScore` (con `onClick`, un botón de 44 px que abre la calculadora; `LifeTile`, con su barra, sólo queda en el catálogo).
+- **Los porcentajes son anillos:** un valor → `ProgressRing`, un reparto → `SegmentedRing`; no hay barras de progreso. Las vidas son el número plano de `LifeScore` (con `onClick`, abre la calculadora); `LifeTile` sólo queda en el catálogo.
 - **Cifras con `tabular-nums`.**
 
 ## 2. Tonos (color con significado)
@@ -22,16 +22,15 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 | `info` (ámbar) | lo elegido y el énfasis, la navegación, el rival, la build B y los hipervínculos (`textLink`) |
 | `neutral` | sin énfasis: un número o una etiqueta de adorno |
 
-**Quién lleva qué color.** El violeta es el primario y el ámbar, el secundario (lo elegido, el hover y el foco de lo que se toca); el verde y el rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en ámbar y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste claro (`--playable-rgb`); lo que se activa o resuelve, ámbar (`card-glow.ts`). **Dentro de un relleno verde o rojo el texto es siempre blanco:** por eso el verde lleno es `success-solid`, y el verde claro queda para texto, anillos y puntos.
+**Quién lleva qué color.** El violeta es el primario y el ámbar, el secundario (lo elegido, el hover y el foco de lo que se toca); el verde y el rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en ámbar y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste claro (`--playable-rgb`); lo que se activa o resuelve, ámbar (`card-glow.ts`).
 
-**Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): lo elegido y lo del rival, violeta (`primary`; sobre el ámbar el blanco no se lee). Excepción: «Qué es» de una regla va lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en ámbar: el estado de una tarjeta lo dice su borde (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
+**Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid`, y el verde claro queda para texto, anillos y puntos. Lo elegido y lo del rival van en violeta (`primary`; sobre el ámbar el blanco no se lee). Excepción: «Qué es» de una regla va lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en ámbar: el estado de una tarjeta lo dice su borde (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
 
-**El violeta es de lo tuyo, no de todo:** roles y grupos (`deck-groups.ts`), zonas del deck, tipos de carta y tiers (`meta-format.ts`) llevan cada uno su color (`color-variety.test.ts` vigila roles y tiers). Antes de pintar algo de violeta, preguntate si es una categoría que merece su color.
-
+**El violeta es de lo tuyo, no de todo:** roles y grupos (`deck-groups.ts`), zonas del deck, tipos de carta y tiers (`meta-format.ts`) llevan cada uno su color (`color-variety.test.ts` vigila roles y tiers).
 ## 3. Tokens
 
 - **Tipografía:** seis pasos (`text-micro` … `text-display`); `text-micro` mide 12 px, no 11.
-- **Movimiento:** nada va en `linear` (se siente robótico), salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas con nombre, no más: `--ease-out` para lo que entra o se queda (la de toda transición por defecto), `--ease-in-out` para lo que viaja de un lugar a otro (vuelos, barajado, el ataque) y `--ease-snap` para lo que arranca ya en movimiento (pops, lo que suelta un gesto, estallidos, la moneda, las medallas). Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles, que usan `ease-in-out` de CSS. En el JS van `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts` (la Web Animations API no lee `var()`); en un `@keyframes`, el valor literal. Lo vigila `motion-curves.test.ts`. Todo con `motion-reduce`.
+- **Movimiento:** nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin y el parallax. Tres curvas con nombre, no más: `--ease-out` para lo que entra o se queda, `--ease-in-out` para lo que viaja de un lugar a otro (vuelos, barajado, el ataque) y `--ease-snap` para lo que arranca ya en movimiento (pops, lo que suelta un gesto, estallidos, la moneda, las medallas). Excepciones: la gravedad de la moneda y el dado (`--ease-gravedad-*`) y los bucles, que usan `ease-in-out` de CSS. En el JS van `EASE_OUT`, `EASE_IN_OUT` y `EASE_SNAP` de `app/motion.ts` (la Web Animations API no lee `var()`); en un `@keyframes`, el valor literal. Lo vigila `motion-curves.test.ts`. Todo con `motion-reduce`.
   - Lo que entra en tanda va con `stagger`. Un `fixed` adentro de algo que entra así se corre (el `transform` lo vuelve su bloque contenedor): va por portal.
   - **Lo que se cierra también sale** (`app/use-presence.ts`). Trampas: `<Presence>` sola no anima (el hijo llama a `usePresence`, o pasa por `Modal` / `SideDrawer` con `isOpen={!useLeaving()}`, y ata Escape, el scroll y el foco a `!leaving`); una `key` que cambia al cerrar, un `return null` antes del `Modal` o una entrada sin su fotograma en `EXITS` matan la salida (para esconder sin cerrar, `hidden`). Límite conocido: `CardZoom` declara `aria-modal` pero no atrapa el foco, y reabrir un `Modal` en el primer cuadro de su salida parpadea.
   - **Lo que se mueve sin parar va con `transform` o `rotate` en su propio elemento** (lo resuelve el compositor), nunca animando una propiedad registrada (`@property`) o una variable: eso recalcula estilos y repinta en cada cuadro (lo hacía la luz de `FxFrame`).
@@ -41,7 +40,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 
 ## 4. Componentes
 
-Cada uno se explica en su archivo; acá, dónde está y la regla que no se ve.
+Dónde está cada uno y la regla que no se ve.
 
 | Componente | Para qué |
 |---|---|
@@ -54,15 +53,15 @@ Cada uno se explica en su archivo; acá, dónde está y la regla que no se ve.
 | `SheetHandle` | El asa de una hoja que sale de abajo en el celular (`ui/SheetHandle.tsx` + `app/use-sheet-drag.ts`): la baja a una tira de 28 px, sin cerrarla, para ver la mano. |
 | `SideDrawer` | Panel por la derecha (`ui/SideDrawer.tsx`): dos anchos y nada más, para que dos cajones encimados se cubran justo. |
 | `Icon` | El único set (`ui/Icon.tsx`): nada de SVG suelto. El $ de los precios va sin círculo, a propósito (el del círculo no está en el registro). |
-| `TiltCard` · `CardArt tilt` | Toda carta que se ve entera, una al lado de otra, se inclina en 3D hacia el mouse (en una grilla, `TiltCard`); sin hovers propios. |
+| `TiltCard` · `CardArt tilt` | Las cartas que se ven enteras, de a varias, se inclinan en 3D hacia el mouse (`TiltCard` en una grilla); sin hovers propios. |
 | `CardOverlay` · `CardZoom` · `CardFlip` | El detalle y la carta grande (`card-detail/`). Nada que se toque va adentro del elemento con `TILT_ART`: se inclinaría con la carta. |
 | `CardEffectText` · `CardEffectTraits` | Todo texto de efecto de carta va por `CardEffectText`, nunca en un `<p>` suelto. Ver `docs/motor-de-cartas.md`. |
-| `RarityFoil` | La excepción a «sin brillos de adorno», porque dice la rareza: sólo en la carta grande. Su trampa (la raíz sin capa propia), en `src/foil.css`. |
+| `RarityFoil` | La excepción a «sin brillos de adorno»: dice la rareza, sólo en la carta grande. Su trampa (la raíz sin capa propia), en `src/foil.css`. |
 | `PracticeMat` · `MatBarActions` | La mesa (`probability/`), también la del duelo: no se mueve mientras se juega (regla 7) y sus cartas y zonas van rectas (regla 8). Ver `docs/duelo.md`. `MatBarActions`: su barra, igual en todas las mesas: salir, deshacer y el ⋯ (`MatMoreMenu`: lo prendido, en su interruptor). |
-| `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): sólo decoración y la excepción del lienzo plano (regla 9). |
+| `MatArena` | La arena de la mesa (`probability/MatArena.tsx`): la excepción del lienzo plano (regla 9). |
 | `CardMenu` · `CardSheet` · `PlayTag` · `PhaseRow` | El menú de una carta, la etiqueta de una jugada y las fases en una línea (`probability/`): reglas en «Menús» de `docs/duelo.md`. |
 | `AskPrompt` · `AskOptions` · `CardPicker` · `SortSheet` · `CounterSheet` · `AutoBar` · `AutoDock` · `ChainNotice` · `RespondBand` · `MatPrompt` | Las piezas de «Jugar solo automático» (`auto/`); carteles minimizables (`docs/duelos-automaticos.md`). |
-| `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal ni lleva velo y no tapa tu mano ni el detalle; en escritorio es una ventana sobre la mesa. Su lugar y elegir varias, en `docs/duelo.md`. |
+| `PileViewer` | El visor de una pila (`probability/MatDialogs.tsx`): no es un modal ni lleva velo y no tapa tu mano ni el detalle; Su lugar y elegir varias, en `docs/duelo.md`. |
 | `DuelTable` · `PracticeMatPanel` · `MatSnapshot` · `MaterialStack` · `RivalHandStrip` · `HandtrapPool` · `DuelMedal` | La mesa y el duelo (`probability/`, `duel/`). |
 | `TierStrip` · `TierMakerBoard` | Las tier lists (`meta/`). |
 | `DeckZoneHeader` · `StepErrorBoundary` · `ResizeHandle` · `Mascot` | `components/DeckZoneHeader.tsx`, `ui/` y `mascot/`. |
@@ -84,18 +83,18 @@ Las reglas 1 a 4 las revisa `button-rules.test.ts` en el código de los componen
 
 ### El Lab
 
-Un veredicto, lo que lo frena y qué cambiar; el detalle, a un toque. «Lo que más te frena» propone el cambio de una sola carta y, si ninguno suma, lo dice en vez de inventar uno. El Lab puede cambiar tu deck («Aplicar al deck», con Deshacer). Piezas en `probability/`; muestras en el catálogo, «El Lab» y «Reglas del Lab» (la tarjeta de reglas y su editor, `LabRules`).
+Un veredicto, lo que lo frena y qué cambiar; el detalle, a un toque. «Lo que más te frena» propone el cambio de una sola carta y, si ninguno suma, lo dice en vez de inventar uno. El Lab puede cambiar tu deck («Aplicar al deck», con Deshacer). Piezas en `probability/`; muestras en el catálogo («El Lab», «Reglas del Lab»: `LabRules`).
 
 ### Comparar
 
 - La acción de la tarjeta pesa según el veredicto: principal sólo si B abre mejor, secundaria si no y ninguna si B ya es tu deck.
 - Mientras mide, el veredicto y las filas espejo son esqueletos de alto fijo (`aria-busy`); el «—» es sólo para un dato que falta.
 - Hasta 1100 px se apila y no pasa de `max-w-2xl`: con A y B muy separados, las filas no se leen.
-- Piezas en `comparison/`; muestras en «Comparar» del catálogo.
+- Piezas en `comparison/`; muestras en el catálogo.
 
 ### La mesa: gestos
 
-Mantener apretada una carta del campo cambia su posición sin menú, donde se deshace (la práctica y «Jugar solo automático»): en un duelo, un toque largo sin querer le mandaría una jugada al rival. Resto en `app/use-mat-drag.ts` y `app/practice-mat.ts`.
+Mantener apretada una carta del campo cambia su posición sin menú (práctica y «Jugar solo automático», donde se deshace): en un duelo, un toque largo sin querer le mandaría una jugada al rival. Resto en `app/use-mat-drag.ts` y `app/practice-mat.ts`.
 
 ### La mesa: paneles de los costados
 
@@ -118,13 +117,12 @@ El armazón vive en `components/shell/`; los grupos del menú los arma `buildApp
 4. Tailwind sólo ve clases literales: nada de `${}`; las variantes, con `variants()` / `cx()`.
 5. Nunca dos utilidades de la misma propiedad en un elemento (`rounded-control` y `rounded-none`).
 6. Probá a 390, 1100 y 1440 px, y a 1101. El complemento de `min-[1101px]` es `max-[1101px]`: en Tailwind v4 `max-[N]` es `width < N`, así que `max-[1100px]` deja un hueco a 1100 px y con zoom. Una pista de grilla `auto` crece con lo más ancho que tenga y se sale: una columna única va con `grid-cols-[minmax(0,1fr)]`.
-7. **Nada se corre de lugar al cambiar de pestaña ni al abrir o contraer el menú.** El alto de una pantalla sale del recuadro del armazón (`h-full` y `min-h-0`), nunca de un `100dvh - Xrem` a mano, y cambiar de pestaña no desliza ni anima el scroll. El menú es la misma pieza con otro ancho (`shell/rail.ts`). Lo vigila `layout-stability.test.tsx`: la barra de scroll reservada (`scrollbar-gutter: stable`), los rótulos del menú con el ancho de la negrita y el título de `StepHero` en un renglón fijo con **`subtitle` en todos los pasos** (sólo se ve en escritorio). Se prueba recorriendo las pestañas con el menú abierto y contraído.
-   - **La mesa no se mueve mientras se juega:** elegir, abrir un menú, un aviso o cambiar de fase no desplaza ni redimensiona el campo ni la mano. Lo que se elige se apoya encima de la fila que no se usa (`absolute inset-0`; esa fila, `invisible` e `inert`), sin alturas calculadas por estado.
+7. **Nada se corre de lugar al cambiar de pestaña ni al abrir o contraer el menú.** El alto de una pantalla sale del recuadro del armazón (`h-full` y `min-h-0`), nunca de un `100dvh - Xrem` a mano, y cambiar de pestaña no desliza ni anima el scroll. El menú es la misma pieza con otro ancho (`shell/rail.ts`). Lo vigila `layout-stability.test.tsx`: la barra de scroll reservada (`scrollbar-gutter: stable`), los rótulos del menú con el ancho de la negrita y el título de `StepHero` en un renglón fijo con **`subtitle` en todos los pasos** (sólo se ve en escritorio).   - **La mesa no se mueve mientras se juega:** elegir, abrir un menú, un aviso o cambiar de fase no desplaza ni redimensiona el campo ni la mano. Lo que se elige se apoya encima de la fila que no se usa (`absolute inset-0`; esa fila, `invisible` e `inert`), sin alturas calculadas por estado.
    - **Áreas táctiles sin agrandar lo que se ve:** `before:-inset-1`; si hay que recortar, el `overflow-hidden` va en un `span` interno, no en el botón (recortaría la extensión).
 8. **Las cartas van rectas, también donde las recorta un marco:** una zona con `overflow: hidden` no lleva esquinas redondeadas (se las daría a las cartas de las puntas), y toda ficha de carta que es un `<button>` declara `rounded-none` (el reset global le da radio a todo `<button>`).
-9. **Nada que delate un diseño hecho en piloto automático** (lo busca la skill local `impeccable`, con `detect src public`): sin degradados en fondos, tarjetas ni texto, sin manchas de color de fondo, sin sombras que caen ni brillos bajo los botones, sin vidrio esmerilado (las barras pegadas son opacas), sin franjas de color a un costado, sin el ícono de «chispas» para lo automático, sin zoom al pasar el mouse (el hover cambia color o borde), sin curvas con rebote, sin íconos de otra fuente (el set es `Icon`) y sin guiones largos de adorno. Se queda lo que dice algo: el violeta y el verde de la marca, los emojis de las señales del duelo, los brillos de la mesa (`MatFx`: son la jugada; también `CARD_HOVER`), el degradado tenue de `Card tone` y de las zonas del deck, el blur de las pastillas sobre arte, el degradado que tapa una foto para que se lea, las placas de vidas (`life-plate`) y **la arena de la mesa** (`MatArena`), la única escena: luz, viñeta, una placa con sombra y una sola imagen, y el arte de la magia de campo activada, sin tapar lo que se lee.
+9. **Nada que delate un diseño hecho en piloto automático** (lo busca la skill local `impeccable`, con `detect src public`): sin degradados en fondos, tarjetas ni texto, sin manchas de color de fondo, sin sombras que caen ni brillos bajo los botones, sin vidrio esmerilado (las barras pegadas son opacas), sin franjas de color a un costado, sin el ícono de «chispas» para lo automático, sin zoom al pasar el mouse (cambia color o borde), sin curvas con rebote, sin íconos de otra fuente y sin guiones largos de adorno. Se queda lo que dice algo: el violeta y el verde de la marca, los emojis de las señales del duelo, los brillos de la mesa (`MatFx`: son la jugada; también `CARD_HOVER`), el degradado tenue de `Card tone` y de las zonas del deck, el blur de las pastillas sobre arte, el degradado que tapa una foto para que se lea, las placas de vidas (`life-plate`) y **la arena de la mesa** (`MatArena`), la única escena: luz, viñeta, una placa con sombra y una sola imagen, y el arte de la magia de campo activada, sin tapar lo que se lee.
 10. **Contenedores hermanos miden lo mismo.** Lo que va lado a lado empieza y termina en el mismo borde (`items-stretch`, o subgrid si las filas de adentro también tienen que coincidir); `items-start`, sólo con un motivo dicho en un comentario (algo `sticky`, una lista sin tope). Los anchos salen de una escala corta: pantallas `max-w-xl` (una columna), `max-w-5xl` (ancha o con una columna al costado), `max-w-content` (todas, menos el builder) y `wide` de `StepPage`; cajones `column` y `half`; diálogos `sm`, `md`, `sheet`, `keypad`, `screen` y `full`. Si algo no entra, se acomoda adentro: no se agranda el contenedor. Lo revisa `scripts/barrido-alineacion.js` (en la consola) en cada estado, a 390, 1100 y 1440 px.
-11. **Una barra pegada (`sticky`) adentro de un recuadro que se desplaza y tiene relleno propio lleva ese relleno en negativo** (`-top-2` con `py-2`, `-bottom-4` con `pb-4`): el navegador la pega al borde del contenido y no al del relleno, y con `0` queda un hueco por donde se ve pasar lo de atrás. Si el relleno está en una caja de adentro, `0` es lo justo. `sticky-bars.test.tsx` lo vigila en el buscador; las demás se miden: a mitad de scroll, borde contra borde da 0.
+11. **Una barra pegada (`sticky`) adentro de un recuadro que se desplaza y tiene relleno propio lleva ese relleno en negativo** (`-top-2` con `py-2`, `-bottom-4` con `pb-4`): el navegador la pega al borde del contenido, no al del relleno: con `0` queda un hueco por donde pasa lo de atrás. Si el relleno está en una caja de adentro, `0` es lo justo. `sticky-bars.test.tsx` lo vigila en el buscador; las demás se miden: a mitad de scroll, borde contra borde da 0.
 
 ## 7. El catálogo `/playground`
 
