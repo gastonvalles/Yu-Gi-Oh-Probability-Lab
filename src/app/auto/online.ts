@@ -1,6 +1,6 @@
 import { RateLimiter } from '../duel-relay-rules'
 import type { DuelSnapshot } from '../duel-session'
-import { allMatIds, isForeignId, type MatState } from '../practice-mat'
+import { allMatIds, isForeignId, type MatPhase, type MatState } from '../practice-mat'
 import { cardData, type DataLoader, type DataSource, type DuelData } from './auto-data'
 import type { AutoSave, AutoSaveStore } from './auto-save'
 import { createAutoSession, undoPoint, type AutoSession, type AutoSnapshot, type HostTransport, type SessionAnswer, type TransportFactory } from './auto-session'
@@ -70,7 +70,20 @@ export interface OnlineSnapshot {
   manualDropped?: boolean
   /** El pedido de deshacer (ver `UndoView`); sin esto, no se puede. */
   undo?: UndoView
+  /** Lo último que el rival dijo de su mesa (`autoPhase`; turno 0: nada todavía en este duelo); null si no lo avisa (uno de antes). */
+  rivalPhase?: PhaseView | null
 }
+
+/** Lo que se ve de una mesa (`autoPhase`): la fase que muestra en el turno `turn` del núcleo y si está contestando una pregunta del núcleo que no es su turno libre. */
+export interface PhaseView {
+  turn: number
+  phase: MatPhase
+  busy: boolean
+}
+
+const NO_PHASE: PhaseView = { turn: 0, phase: 'draw', busy: false }
+const phaseMessage = ({ turn, phase, busy }: PhaseView): AutoMessage => ({ t: 'autoPhase', turn, phase, ...(busy ? { busy: true as const } : {}) })
+const phaseOf = (message: Extract<AutoMessage, { t: 'autoPhase' }>): PhaseView => ({ turn: message.turn, phase: message.phase, busy: message.busy === true })
 
 /**
  * El pedido de deshacer la última jugada propia, visto desde un lado: `asking` lo pedí y espero; `asked` me lo pidieron; `agreed` se acordó y falta que lo haga el anfitrión (con el
@@ -108,6 +121,8 @@ export interface OnlineLink {
   manual?(yes: boolean): void
   /** Deshacer mi última jugada, con el acuerdo del otro: `true` lo pide (o acepta el pedido del otro); `false` lo rechaza o retira el mío. Como `manual`. */
   undo?(yes: boolean): void
+  /** Lo que se ve de mi mesa (la pantalla lo dice cuando cambia): va al otro si lo sabe leer, y el anfitrión se lo repite al que vuelve. */
+  phase?(view: PhaseView): void
   destroy(): void
 }
 
@@ -471,7 +486,7 @@ function snapshotStore() {
       const old = snapshot.problems
       const problems = next.problems.mine === old.mine && next.problems.theirs === old.theirs && next.problems.reason === old.reason ? old : next.problems
 
-      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped && next.undo === snapshot.undo) return
+      if (problems === old && next.phase === snapshot.phase && next.session === snapshot.session && next.cards === snapshot.cards && next.seat === snapshot.seat && next.manual === snapshot.manual && next.manualDropped === snapshot.manualDropped && next.undo === snapshot.undo && next.rivalPhase === snapshot.rivalPhase) return
       snapshot = { ...next, problems }
       listeners.forEach((listener) => listener())
     },
@@ -491,9 +506,14 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   const resyncLimit = new RateLimiter(now(), 0.2, 2)
   const manualLimit = new RateLimiter(now(), 1, 4)
   const undoLimit = new RateLimiter(now(), 1, 4)
+  const phaseLimit = new RateLimiter(now(), 4, 8)
   let room: DuelSnapshot | null = null
   let here = false
   let destroyed = false
+  // La fase que se ve en cada mesa (`autoPhase`): si el invitado la avisa, lo último que dijo y lo último que dijo la mía (se le repite al que vuelve).
+  let phasePeer = false
+  let rivalPhase: PhaseView | null = null
+  let myPhase: PhaseView | null = null
   // El deck del invitado y si se puede jugar con los dos (`bad`: los del invitado sin reglas).
   let guestDeck: DeckList | null = null
   let check: (Check & { bad: number[] }) | null = null
@@ -559,9 +579,14 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       manual: request.state,
       manualDropped: request.dropped,
       undo: undo.view,
+      rivalPhase: phasePeer ? (rivalPhase ?? NO_PHASE) : null,
     })
   const request = manualRequest(true, post, refresh, cut)
   const undo = undoRequest(true, post, refresh, runUndo)
+  /** Mi fase, al invitado que la sabe leer: sin número y por el marcapasos (detrás de lo que ya va). */
+  const tellPhase = () => {
+    if (phasePeer && myPhase && !lost) pacer.push(encodeAutoMessage(phaseMessage(myPhase)))
+  }
 
   /**
    * Todo lo que va al invitado pasa por acá, en orden (detrás del lote pendiente) y numerado (`s`, antes de trocear: las partes no lo llevan); lo grande se trocea. Antes se lee
@@ -602,7 +627,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
   function sendCheck() {
     if (lost) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: false, bad: [], theirsBad: 0, reason: 'lost' })
-    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true })
+    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true, phase: true })
   }
 
   function stopWait() {
@@ -717,6 +742,14 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     const deck = { main: message.main, extra: message.extra }
 
     undo.peer(message.undo === true)
+    // Recién sé que la sabe leer (recargué y le avisé antes de que llegara su deck): se la digo ahora.
+    const knew = phasePeer
+
+    phasePeer = message.phase === true
+    if (phasePeer !== knew) {
+      if (phasePeer) tellPhase()
+      refresh()
+    }
     // En pleno duelo (o rearmándolo) no se baja nada: el mismo deck sólo repite la revisión y uno distinto se revisa en la revancha. El duelo sigue con el que se revisó (y
     // con sus cartas, que el invitado necesita en su mesa).
     if (session || restoring) {
@@ -833,6 +866,8 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     post({ t: 'autoReplay', skip: Math.max(0, asks - (session.getSnapshot().remoteAsk ? 1 : 0)) })
     sendLog()
     request.repeat()
+    // Y la fase que se ve en mi mesa (al reponerle el duelo, la suya vuelve a cero).
+    tellPhase()
   }
 
   /**
@@ -878,6 +913,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     seats = null
     init = null
     resumeSetup = null
+    // Otro duelo vuelve a contar los turnos desde 1: lo dicho del anterior no vale.
+    rivalPhase = null
+    myPhase = null
     batch = []
     batchCards = []
     batchBytes = 0
@@ -988,6 +1026,9 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
         if (hasPlay(session, seats.guest)) undo.receive(message)
         else post({ t: 'autoUndo', step: 'no', why: 'none' })
       }
+    } else if (message.t === 'autoPhase' && phaseLimit.allow(now())) {
+      rivalPhase = phaseOf(message)
+      refresh()
     }
   }
 
@@ -1053,6 +1094,11 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
       const mine = undo.view.state === 'asked' || (session !== null && seats !== null && hasPlay(session, seats.host))
 
       if (!destroyed && (!yes || (phase() === 'playing' && room?.peerPresent && !request.frozen && mine))) undo.want(yes)
+    },
+    phase(view) {
+      if (destroyed) return
+      myPhase = view
+      tellPhase()
     },
     destroy() {
       destroyed = true
@@ -1157,6 +1203,11 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   // Un anfitrión modificado tampoco puede preguntar sin parar.
   const manualLimit = new RateLimiter(now(), 1, 4)
   const undoLimit = new RateLimiter(now(), 1, 4)
+  const phaseLimit = new RateLimiter(now(), 4, 8)
+  // La fase que se ve en cada mesa (`autoPhase`), como en el anfitrión.
+  let phasePeer = false
+  let rivalPhase: PhaseView | null = null
+  let myPhase: PhaseView | null = null
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -1176,10 +1227,14 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       manual: request.state,
       manualDropped: request.dropped,
       undo: undo.view,
+      rivalPhase: phasePeer ? (rivalPhase ?? NO_PHASE) : null,
     })
   const send = (message: AutoMessage) => transport.send(encodeAutoMessage(message))
   const request = manualRequest(false, send, refresh)
   const undo = undoRequest(false, send, refresh)
+  const tellPhase = () => {
+    if (phasePeer && myPhase) send(phaseMessage(myPhase))
+  }
 
   /** Al entrar o volver: mi deck (lo revisa el anfitrión) y el duelo, si hay uno. */
   function hello() {
@@ -1188,7 +1243,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     asked = true
     const rows = (list: DeckList['main'] = []) => list.map(([code, copies]): [number, number] => [code, copies])
 
-    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(options.deck.main), extra: rows(options.deck.extra), undo: true })
+    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(options.deck.main), extra: rows(options.deck.extra), undo: true, phase: true })
     send({ t: 'autoResync' })
   }
 
@@ -1235,6 +1290,9 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     session = null
     relay = null
     seat = null
+    // Un duelo nuevo (o el mismo repuesto, que la pantalla vuelve a contar): lo dicho antes no vale.
+    rivalPhase = null
+    myPhase = null
   }
 
   function begin(init: InitMessage) {
@@ -1287,6 +1345,14 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       if (inner && inner.t !== 'autoPart') handle(inner)
       return
     }
+    // La fase del anfitrión no va numerada (no es del flujo del núcleo).
+    if (message.t === 'autoPhase') {
+      if (phaseLimit.allow(now())) {
+        rivalPhase = phaseOf(message)
+        refresh()
+      }
+      return
+    }
     if (!isHostMessage(message)) return
     // Un anfitrión de otra versión no numera (o numera distinto): lo único que se le lee es que no es la misma versión.
     if (message.t === 'autoCheck' && message.v !== AUTO_PROTOCOL_VERSION) {
@@ -1300,6 +1366,12 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
         if (message.reason === 'lost') lost = true
         else check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null }
         undo.peer(message.undo === true)
+        {
+          const knew = phasePeer
+
+          phasePeer = message.phase === true
+          if (phasePeer && !knew) tellPhase()
+        }
         return refresh()
 
       case 'autoInit':
@@ -1367,6 +1439,11 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     // Si hay una jugada mía a la que volver lo sabe el anfitrión (las del invitado, sin el núcleo, no se recortan al deshacer ni sobreviven a una recarga).
     undo(yes) {
       if (!destroyed && (!yes || (phase() === 'playing' && room?.peerPresent && !request.frozen))) undo.want(yes)
+    },
+    phase(view) {
+      if (destroyed) return
+      myPhase = view
+      tellPhase()
     },
     destroy() {
       destroyed = true

@@ -44,6 +44,11 @@ const GOOD: AutoMessage[] = [
   { t: 'autoUndo', step: 'yes', guest: true, s: 4 },
   { t: 'autoUndo', step: 'no', why: 'none' },
   { t: 'autoUndo', step: 'cancel' },
+  // La fase que se ve en cada mesa, sin número y sólo entre dos que la anuncian (`phase` en el deck y en la revisión).
+  { t: 'autoDeck', v, main: [[1, 1]], extra: [], undo: true, phase: true },
+  { t: 'autoCheck', v, ok: true, bad: [], theirsBad: 0, undo: true, phase: true },
+  { t: 'autoPhase', turn: 3, phase: 'draw' },
+  { t: 'autoPhase', turn: 4, phase: 'main1', busy: true },
   // Seguir en automático un duelo que iba a mano: el saludo, el pedido del invitado con su mesa, el acuerdo y el no con su porqué; sin número (no hay flujo del núcleo).
   { t: 'autoResume', step: 'hello' },
   { t: 'autoResume', step: 'hello', back: true },
@@ -73,10 +78,15 @@ describe('el protocolo del duelo automático por enlace', () => {
     expect(parseAutoMessage(JSON.stringify({ ...GOOD[3], seed: 7 }))).toEqual(GOOD[3])
     // `undo` sólo vale `true`: otra cosa se lee como de alguien que no sabe deshacer.
     expect(parseAutoMessage(JSON.stringify({ t: 'autoDeck', v, main: [], extra: [], undo: 1 }))).toEqual({ t: 'autoDeck', v, main: [], extra: [] })
+    // Una fase que no es de las seis o un turno fuera de rango no pasan; `busy` y `phase` sólo valen `true`, y el número de orden no se queda (no es del anfitrión).
+    expect(parseAutoMessage('{"t":"autoPhase","turn":2,"phase":"m1"}')).toBeNull()
+    expect(parseAutoMessage('{"t":"autoPhase","turn":-1,"phase":"draw"}')).toBeNull()
+    expect(parseAutoMessage('{"t":"autoPhase","turn":2,"phase":"battle","busy":1,"s":4}')).toEqual({ t: 'autoPhase', turn: 2, phase: 'battle' })
+    expect(parseAutoMessage(JSON.stringify({ t: 'autoCheck', v, ok: true, bad: [], theirsBad: 0, phase: 'yes' }))).toEqual({ t: 'autoCheck', v, ok: true, bad: [], theirsBad: 0 })
   })
 
-  it('cada lado acepta sólo lo que manda el otro (pasar a manual, deshacer y seguir en automático lo piden los dos), y entre los dos cubren todos los mensajes', () => {
-    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual(['autoManual', 'autoUndo', 'autoResume'])
+  it('cada lado acepta sólo lo que manda el otro (pasar a manual, deshacer y seguir en automático lo piden los dos, y la fase la dicen los dos), y entre los dos cubren todos los mensajes', () => {
+    expect(HOST_ACCEPTS.filter((kind) => GUEST_ACCEPTS.includes(kind))).toEqual(['autoManual', 'autoUndo', 'autoResume', 'autoPhase'])
     expect([...new Set([...HOST_ACCEPTS, ...GUEST_ACCEPTS])].sort()).toEqual([...new Set(GOOD.map((message) => message.t))].sort())
   })
 

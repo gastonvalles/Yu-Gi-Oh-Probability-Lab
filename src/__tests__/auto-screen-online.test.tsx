@@ -10,13 +10,13 @@ import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import type { SocketStatus } from '../app/duel-socket'
 import type { ManualGame } from '../app/auto/manual-handover'
-import { createMatState, replayMat } from '../app/practice-mat'
+import { createMatState, PHASES, replayMat } from '../app/practice-mat'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { showToastMessage } from '../app/use-toast-message'
 import { AutoDuelScreen } from '../components/auto/AutoDuelScreen'
 import { THINKING_CANCEL_MS } from '../components/duel/DuelBar'
 import { fakeOnlineLink } from './support/auto-online-fake'
-import { core, dispatches, handCard, lane } from './support/auto-screen-harness'
+import { core, dispatches, handCard, lane, phaseButton } from './support/auto-screen-harness'
 import { CARDS, fakeSession, loc } from './support/auto-session-fake'
 import { createMemoryRoom } from './support/memory-room'
 import { render, tap } from './support/practice-mat-harness'
@@ -602,5 +602,40 @@ describe('auto-screen-online · deshacer', () => {
 
     core(() => link.set({ undo: { ...UNDO, peer: false } }))
     expect(undoButton()).toBeDisabled()
+  })
+})
+
+describe('auto-screen-online · la fase del rival', () => {
+  it('en su turno el botón dice la fase que él ve (con el cartel de cada una) y «Beto está eligiendo…» va sólo si contesta algo; vos le decís la tuya', () => {
+    vi.useFakeTimers()
+    const { start, link } = setup()
+    const session = start()
+    const phaseIs = (name: string) => expect(phaseButton()).toHaveAccessibleName(`Fases: ${name}`)
+
+    // Mi turno, mis jugadas: le digo mi fase, sin estar eligiendo; una pregunta del núcleo sí es estar eligiendo.
+    core(() => session.ask(IDLE))
+    expect(link.phases.at(-1)).toEqual({ turn: 1, phase: session.getSnapshot().mine.phase, busy: false })
+    core(() => session.ask({ type: 'select_yesno', player: 0, description: '31' }))
+    expect(link.phases.at(-1)).toMatchObject({ turn: 1, busy: true })
+
+    // El turno 2 es de Beto y el núcleo ya espera su respuesta, pero él no dijo nada de este turno: su mesa está en su Draw Phase y no está eligiendo.
+    core(() => link.set({ rivalPhase: { turn: 1, phase: 'main1', busy: false } }))
+    core(() => session.set({ status: 'waiting', ask: null, overlay: { ...session.getSnapshot().overlay, turn: 2, turnPlayer: 1 } }))
+    phaseIs('Draw Phase')
+    expect(lane()).toBeNull()
+    // Pasa a su Standby Phase: se ve en el botón y en el cartel, todavía sin «está eligiendo».
+    core(() => link.set({ rivalPhase: { turn: 2, phase: 'standby', busy: false } }))
+    phaseIs('Standby Phase')
+    expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent(/Beto.*Standby Phase/)
+    expect(lane()).toBeNull()
+    // Contesta algo del núcleo: ahora sí.
+    core(() => link.set({ rivalPhase: { turn: 2, phase: 'main1', busy: true } }))
+    phaseIs('Main Phase 1')
+    expect(lane()).toHaveTextContent('Beto está eligiendo…')
+
+    // Un rival de antes no avisa: la fase del espejo y la línea con cualquier espera, como siempre.
+    core(() => link.set({ rivalPhase: null, session }))
+    phaseIs(PHASES.find((phase) => phase.id === session.getSnapshot().theirs.phase)!.name)
+    expect(lane()).toHaveTextContent('Beto está eligiendo…')
   })
 })

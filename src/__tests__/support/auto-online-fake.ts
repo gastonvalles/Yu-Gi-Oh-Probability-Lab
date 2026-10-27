@@ -1,7 +1,7 @@
 // El enlace de mentira del duelo automático por enlace para las pruebas de pantalla: cumple `OnlineLink` y la prueba lo maneja a mano (la fase, los problemas, la sesión —una
 // `fakeSession`—, el asiento, las cartas del rival que el núcleo dejó ver y el pedido de pasar a manual); anota lo que la pantalla le pide: cada snapshot de la sala (`observe`),
-// `resync`, `manual`, `undo` y `destroy`.
-import type { OnlineLink, OnlineSnapshot } from '../../app/auto/online'
+// `resync`, `manual`, `undo`, `phase` y `destroy`.
+import type { OnlineLink, OnlineSnapshot, PhaseView } from '../../app/auto/online'
 import type { DuelSnapshot } from '../../app/duel-session'
 
 export interface FakeLink extends OnlineLink {
@@ -12,6 +12,8 @@ export interface FakeLink extends OnlineLink {
   manuals: boolean[]
   /** Lo mismo con deshacer. */
   undos: boolean[]
+  /** Lo que la pantalla dijo de su mesa (`phase`), en orden. */
+  phases: PhaseView[]
   destroyed: boolean
   /** Cambia lo que sabe el enlace y avisa. Una sesión nueva destruye la anterior, como hace el de verdad en la revancha. */
   set(patch: Partial<OnlineSnapshot>): void
@@ -25,6 +27,7 @@ export function fakeOnlineLink(initial: Partial<OnlineSnapshot> = {}): FakeLink 
     resyncs: 0,
     manuals: [],
     undos: [],
+    phases: [],
     destroyed: false,
     getSnapshot: () => snapshot,
     subscribe(listener) {
@@ -43,6 +46,9 @@ export function fakeOnlineLink(initial: Partial<OnlineSnapshot> = {}): FakeLink 
     },
     undo(yes) {
       link.undos.push(yes)
+    },
+    phase(view) {
+      link.phases.push(view)
     },
     destroy() {
       link.destroyed = true
