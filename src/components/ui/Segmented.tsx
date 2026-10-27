@@ -24,9 +24,9 @@ export interface SegmentedOption<T extends string> {
 const DETAIL_TONE = { success: 'font-semibold text-success-soft', danger: 'font-semibold text-danger-soft' } as const
 
 /**
- * track: pista lavanda con la opción elegida en ámbar · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
- * cards: tarjetas (como las fechas del diseño) · lens: la pista lavanda con una tarjeta por opción y su anillo arriba (la lente del Lab: Promedio / Yendo 1º / Yendo 2º). Lo elegido es ámbar, como en toda la app (el violeta es de los fondos y de la acción principal): en la pista y las pastillas,
- * relleno ámbar hondo con el texto blanco; en `cards`, el borde y el texto ámbar · list: las tarjetas una debajo de otra, alineadas a la izquierda y con el detalle que se parte (opciones con
+ * track: pista lavanda con la opción elegida en magenta · chips: pastillas sueltas · scroll: las mismas pastillas en una sola fila que no se parte (va en un `ScrollRow`) ·
+ * cards: tarjetas (como las fechas del diseño) · lens: la pista lavanda con una tarjeta por opción y su anillo arriba (la lente del Lab: Promedio / Yendo 1º / Yendo 2º). Lo elegido es magenta con el texto blanco, como en toda la app (el violeta es de los fondos y de la acción principal): en la pista y las pastillas,
+ * relleno magenta con el texto blanco; en `cards`, el borde y el texto ámbar · list: las tarjetas una debajo de otra, alineadas a la izquierda y con el detalle que se parte (opciones con
  * una frase, como «Volver atrás» de «Seguir en manual»).
  */
 type SegmentedVariant = 'track' | 'chips' | 'scroll' | 'cards' | 'lens' | 'list'
@@ -62,8 +62,8 @@ const TONE_ON = {
   danger: 'bg-danger text-white',
 } as const
 
-/** Lo elegido: el ámbar hondo con el texto blanco (4,8:1; sin hover: una opción elegida no se apaga al tocarla). */
-const ON = 'bg-warning-solid text-white'
+/** Lo elegido: el magenta con el texto blanco (8,4:1; sin hover: una opción elegida no se apaga al tocarla). */
+const ON = 'bg-magenta text-white'
 
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {

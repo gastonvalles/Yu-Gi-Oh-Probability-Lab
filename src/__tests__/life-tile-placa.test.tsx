@@ -25,7 +25,7 @@ describe('la placa de vidas', () => {
     expect(within(tile).getByRole('meter')).toHaveAttribute('aria-valuenow', '8000')
   })
 
-  it('la chapa es del dueño, rellena y con el texto blanco (violeta la tuya, ámbar hondo la del rival); el número, blanco; la barra, en el color del dueño y del largo de las vidas', () => {
+  it('la chapa es del dueño, rellena y con el texto blanco (violeta la tuya, magenta la del rival); el número, blanco; la barra, en el color del dueño y del largo de las vidas', () => {
     render(
       <>
         <LifeTile name="Ana" label="Vos" life={6000} mine hand={4} />
@@ -36,7 +36,7 @@ describe('la placa de vidas', () => {
     const rival = screen.getByRole('group', { name: /^Puntos de vida de Rival/ })
 
     expect(chip(mine)).toHaveClass('bg-primary', 'text-white')
-    expect(chip(rival)).toHaveClass('bg-warning-solid', 'text-white')
+    expect(chip(rival)).toHaveClass('bg-magenta', 'text-white')
     expect(within(mine).getByText('6000')).toHaveClass('text-foreground')
     expect(bar(mine)).toHaveClass('bg-accent')
     expect(bar(rival)).toHaveClass('bg-info')

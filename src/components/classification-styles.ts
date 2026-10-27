@@ -63,7 +63,7 @@ export function viewChip(state: { active: boolean; onBrand?: boolean }): string 
     'inline-flex items-center gap-2 rounded-control px-3.5 py-2 text-micro font-semibold leading-none transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
     state.onBrand
       ? state.active
-        ? 'bg-warning-solid text-white'
+        ? 'bg-magenta text-white'
         : 'bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25'
       : state.active
         ? 'bg-[rgb(var(--role-rgb)/0.3)] text-foreground'

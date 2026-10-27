@@ -520,7 +520,7 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
           <Icon name="chat" />
         </IconButton>
         {unread > 0 ? (
-          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-warning-solid px-1 text-[0.625rem] font-extrabold leading-4 text-white">
+          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-magenta px-1 text-[0.625rem] font-extrabold leading-4 text-white">
             {unread}
           </span>
         ) : null}
@@ -599,7 +599,7 @@ export function DuelLife({ snapshot, myName, onOpen, signal = null, signalKey }:
 
 /**
  * Las vidas de un jugador, una placa (Gastón, 2026-10-26: «la vida de ambos jugadores junta y con estética plana»; el anillo se probó en 2026-10-19 y no le gustó): la chapa del dueño rellena y honda con el
- * texto blanco (violeta la tuya, ámbar hondo la del rival), las cartas de la mano a su lado (`hand`, «▯ 5»), el número blanco y grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al
+ * texto blanco (violeta la tuya, magenta la del rival), las cartas de la mano a su lado (`hand`, «▯ 5»), el número blanco y grande que cuenta hasta el valor nuevo (se tiñe de verde o de rojo un instante al
  * subir o bajar; en 0, rojo) con la diferencia («−1000») al lado, y debajo la **barra de 8000** en el color del dueño (en rojo con un cuarto o menos): la excepción escrita a «los porcentajes son anillos», sólo
  * para las vidas (`role="meter"`). En escritorio, además, el **corazón** que cambia de color con la salud (verde con más de la mitad, ámbar hasta un cuarto, rojo debajo) y late al cambiar. Flota sobre la mesa
  * (`life-plate`: relieve tonal, la mesa es la excepción a «sin brillos»). Al bajar se sacude como en el impacto. Tocarla abre la calculadora (`onClick`).

@@ -30,7 +30,7 @@ export function SwitchMark({ checked, size = 'md' }: { checked: boolean; size?: 
   )
 }
 
-/** Interruptor accesible (role="switch"); `label` es el nombre para lectores de pantalla. Encendido va en ámbar con el pulgar oscuro, como todo lo elegido. */
+/** Interruptor accesible (role="switch"); `label` es el nombre para lectores de pantalla. Encendido va en ámbar con el pulgar oscuro. */
 export function Switch({ checked, onChange, label, size = 'md', disabled = false }: SwitchProps) {
   return (
     <button
