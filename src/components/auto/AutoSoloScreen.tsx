@@ -13,6 +13,7 @@ import { autoRival, dealRival, poolCount, readHandtrapConfig, writeHandtrapConfi
 import { LifeHold } from '../../app/life-effects'
 import { randomSeed } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { COMPACT_FIELD_MEDIA_QUERY } from '../probability/compact-field'
 import { t } from '../../i18n'
 import { LifeTile } from '../duel/DuelBar'
 import { HandtrapPicker } from '../duel/HandtrapPool'
@@ -120,6 +121,8 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // El celular en vertical: las vidas van en el marcador de la barra (`AutoBar`) y la mesa no lleva fila de abajo (`scoreInHeader`).
+  const phone = useMediaQuery(COMPACT_FIELD_MEDIA_QUERY)
   // Con laterales (lo sabe la barra) las vidas van en el izquierdo; sin ellos, en escritorio, en las esquinas del campo.
   const [rails, setRails] = useState(false)
   // «Pasos» de la botonera (escritorio): muestra u oculta el panel de la derecha.
@@ -238,12 +241,12 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
     // Las vidas, cada una de su lado y con las cartas de su mano (Gastón, 2026-10-26: «la vida de ambos jugadores junta»): la del rival junto a su mano (arriba a la derecha del campo, `corner`) y la
     // tuya abajo a la izquierda, junto a la tuya; con laterales, las dos en el izquierdo (`AutoBar`: el rival arriba, vos abajo). Miden 56 px (`compact`) y la tuya sube 12 sobre el borde
     // de la mano (`-mt-3`) sin tapar sus cartas: la botonera mide lo que medía con Deshacer (44 px) y el campo no se corre, tampoco en una pantalla alta (ahí no hay scroll y su alto cuenta).
-    life: rails ? null : (
+    life: rails || phone ? null : (
       <span className="-mt-3 flex" data-corner="mine">
         <LifeTile name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine compact hand={hands.mine} />
       </span>
     ),
-    corner: <LifeTile name={rivalName} life={life.theirs} compact hand={hands.theirs} handOnDesktop />,
+    ...(phone ? { scoreInHeader: true } : { corner: <LifeTile name={rivalName} life={life.theirs} compact hand={hands.theirs} handOnDesktop /> }),
     ...(docked ? { dock: <AutoDock {...options} steps={{ open: stepsOpen, onToggle: () => setStepsOpen((open) => !open) }} /> } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),

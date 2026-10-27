@@ -14,6 +14,9 @@ import { GHOST_CLICK_MS, type MenuItem } from './MatDialogs'
 /** Lo que se elige con las flechas: las apagadas se enfocan con Tab (dicen «Todavía no»), pero las flechas las saltean. */
 const CHOOSABLE = '[role="menuitem"]:not([aria-disabled="true"])'
 
+/** La palabra que distingue una fase, sin «Phase» («Draw», «Main 1», «Battle»): debajo de su círculo en la línea de fases y debajo del botón de la fase del campo sin píldora en la barra. */
+export const phaseWord = (name: string) => name.replace(' Phase', '')
+
 /**
  * Cómo se ve y cómo se nombra cada fase de la línea: en el círculo la sigla del botón de la fase (DP, M1…), debajo la palabra que la distingue («Main 1») y, para el lector
  * de pantalla, qué hace tocarla: «Ir a Battle Phase», «Fase actual: Main Phase 1» o, apagada, la fase y por qué («Battle Phase · Todavía no»). Las opciones son las del
@@ -26,7 +29,7 @@ export function phaseRowEntries(items: readonly MenuItem[]) {
     return {
       item,
       short: phase?.short ?? item.label,
-      word: item.label.replace(' Phase', ''),
+      word: phaseWord(item.label),
       name: item.current ? t('duel.phase.current', { phase: item.label }) : item.disabled ? (item.hint ? `${item.label} · ${item.hint}` : item.label) : t('practice.phaseRow.goTo', { phase: item.label }),
     }
   })

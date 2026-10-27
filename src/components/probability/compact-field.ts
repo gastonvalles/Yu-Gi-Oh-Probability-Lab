@@ -19,19 +19,40 @@ const CELL_FLOOR = '3rem'
  *   Ese hueco se le quita al lugar que se le reserva (`marginTop`: lo que la perspectiva la corre, `166 px - 1,8 × casilla`, medido), así queda pegada a la barra de arriba (la línea de jugadas le tapa unos 22 px del borde) y no hay una franja vacía. Tu mano queda a `304 px + 5,2 × casilla` del borde de arriba.
  * - Vista de arriba: sin inclinación no hay hueco que quitar; la mano del rival conserva su lugar (20 px más abajo que sin la línea de jugadas, que le tapa el borde de arriba) y la tuya queda a `260 px + 7 × casilla`.
  * Para que tu mano se vea entera hay que dejar 190 px del alto (la barra de abajo, 64 px, y la carta, 126): 30,9 rem = 190 + 304 px y 28,1 rem = 190 + 260 px.
+ * Sin la fila de abajo (`bottomRow: false`, «Jugar solo automático» con el marcador arriba, 2026-10-27) la mano llega hasta el borde de abajo de la columna, sin scroll: 29,2 y 27 rem (medido a 360 × 740, 390 × 844,
+ * 412 × 915 y 430 × 932); con menos de 700 px de alto (`short`), la casilla desde 36 px y la mano del rival al 72 %, que deja 24 px.
  *
  * Los números salen de medir el duelo a 390 × 844 con cuatro tamaños de casilla y de la fórmula de la perspectiva (`--field-perspective`: 900 px, 14°). El campo se centra: con la casilla más chica queda más angosto que la pantalla.
  */
-export function compactDuelFieldStyle(tilted: boolean): CSSProperties {
-  const cell = `min(${CELL_BY_WIDTH}, max(${CELL_FLOOR}, calc((100dvh - ${tilted ? '30.9rem' : '28.1rem'}) / ${tilted ? '5.2' : '7'})))`
+export function compactDuelFieldStyle(tilted: boolean, { bottomRow = true, short = false }: CompactFieldOptions = {}): CSSProperties {
+  // Sin la fila de abajo lo que no es campo baja de 30,9 a 29,2 rem (3D) y de 28,1 a 27 (de arriba); en una pantalla baja, además, la mano del rival al 72 % (24 px menos) y la casilla desde 36 px:
+  // 28 y 25,8 rem (medido a 360 × 640 y 390 × 664; la perspectiva no es lineal y deja 4 px menos que la cuenta).
+  const rest = bottomRow ? (tilted ? 30.9 : 28.1) : short ? (tilted ? 28 : 25.8) : tilted ? 29.2 : 27
+  // La vista de arriba tiene siete filas (no cinco y media): sin la fila de abajo su casilla baja hasta 44 px (32 en una pantalla baja), o a 360 px de ancho la columna scrollearía.
+  const floor = bottomRow ? CELL_FLOOR : short ? (tilted ? SHORT_CELL_FLOOR : '2rem') : tilted ? CELL_FLOOR : '2.75rem'
+  const cell = `min(${CELL_BY_WIDTH}, max(${floor}, calc((100dvh - ${rest}rem) / ${tilted ? '5.2' : '7'})))`
+  const lift = !bottomRow && short ? SHORT_RIVAL_SAVE_REM : 0
 
   return {
     '--cell-m': cell,
     width: 'calc(var(--cell-m) * 5 + 1rem)',
     maxWidth: '100%',
     marginInline: 'auto',
-    marginTop: tilted ? 'max(0px, calc(10.4rem - 1.8 * var(--cell-m)))' : THEIR_HAND.mobile.room + 20,
+    marginTop: tilted ? (lift ? `calc(max(0px, calc(10.4rem - 1.8 * var(--cell-m))) - ${lift}rem)` : 'max(0px, calc(10.4rem - 1.8 * var(--cell-m)))') : THEIR_HAND.mobile.room + 20 - lift * 16,
   } as CSSProperties
+}
+
+/** Una pantalla baja (menos de 700 px de alto: un celular chico con la barra del navegador). */
+export const SHORT_SCREEN_MEDIA_QUERY = '(max-height: 699.98px)'
+/** En una pantalla baja sin fila de abajo: la casilla más chica (36 px) y lo que deja la mano del rival al 72 % (24 px). */
+const SHORT_CELL_FLOOR = '2.25rem'
+const SHORT_RIVAL_SAVE_REM = 1.5
+
+export interface CompactFieldOptions {
+  /** La fila de abajo con tus vidas (sin ella: «Jugar solo automático», con las vidas en el marcador de la barra). */
+  bottomRow?: boolean
+  /** Pantalla baja (`SHORT_SCREEN_MEDIA_QUERY`): sólo sin la fila de abajo. */
+  short?: boolean
 }
 
 /**
