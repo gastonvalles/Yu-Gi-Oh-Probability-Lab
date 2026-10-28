@@ -1,4 +1,4 @@
-import { EASE_IN_OUT, flying, ownTransform, prefersReducedMotion, supportsAdditiveAnimation } from './motion'
+import { EASE_IN_OUT, cancelWhenDone, flying, ownTransform, prefersReducedMotion, supportsAdditiveAnimation, transformTransition } from './motion'
 
 /** Cuánto dura el barajado de una mano o de un deck (el del mazo propio, `riffle-*` de `index.css`, dura lo mismo). */
 export const RIFFLE_MS = 640
@@ -37,7 +37,10 @@ export function riffle(cards: Iterable<Element>): void {
     const own = bases[index]
     const timing = { id: RIFFLE_ID, duration: RIFFLE_MS, delay: index * 24 }
 
-    if (own !== null) card.animate(steps.map(({ at, ...step }) => ({ ...step, transform: `${own}${at}` })), timing)
-    else if (supportsAdditiveAnimation()) card.animate(steps.map(({ at, ...step }) => ({ ...step, transform: at })), { ...timing, composite: 'add' })
+    if (own !== null) {
+      // Sale del fin de su transición (al robar, la mano que se abre): la tapa, así que se corta, y la del barajado queda sola y va en la GPU (con las dos, Chromium sacaba a la transición).
+      transformTransition(card)?.cancel()
+      cancelWhenDone(card.animate(steps.map(({ at, ...step }) => ({ ...step, transform: `${own}${at}` })), timing))
+    } else if (supportsAdditiveAnimation()) cancelWhenDone(card.animate(steps.map(({ at, ...step }) => ({ ...step, transform: at })), { ...timing, composite: 'add' }))
   })
 }

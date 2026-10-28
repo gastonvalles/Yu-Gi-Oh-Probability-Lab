@@ -47,6 +47,37 @@ describe('las animaciones de la mano, el ataque, el barajado y el dar vuelta se 
     expect(calls[1]!.frames[1]!.transform).toBe('translate(18px, -10px) rotate(8deg)')
   })
 
+  // Lo que el dedo toca al arrastrar y lo que cambia con cada pregunta: un borde o una sombra que transiciona corre en el hilo principal en cada cuadro.
+  // La carta que se enciende destella con `filter` (`animate-card-glow`): si el atenuado también transiciona `filter`, son dos animaciones de la misma propiedad y ninguna va en la GPU.
+  it('las cartas de la mano sólo transicionan lo que se mueve y las casillas del campo no transicionan `box-shadow` ni el color del borde', () => {
+    const hand = read('components', 'probability', 'PracticeHand.tsx')
+    const transitions = [...hand.matchAll(/\[transition:([^\]]*)\]/g)].map((match) => match[1]!)
+    expect(transitions).toHaveLength(1)
+    expect(transitions[0]!.split(',').map((entry) => entry.split('_')[0])).toEqual(['transform', 'translate', 'scale'])
+    expect(hand).toMatch(/'data-\[state=dragging\]:transition-none'/)
+    expect(read('components', 'probability', 'PracticeMat.tsx')).toMatch(/'relative min-w-0 transition-\[color,background-color\] duration-150'/)
+  })
+
+  // Una Web Animation terminada que sigue en el elemento le saca a la GPU toda transición de `transform` que venga después («incompatible»): el abanico se abría en el hilo principal.
+  it('el reparto y el barajado se cancelan al terminar', () => {
+    let finish = () => {}
+    const animation = { cancelled: false, cancel: () => void (animation.cancelled = true), addEventListener: (_: string, done: () => void) => void (finish = done) }
+    const card = { animate: () => animation, getAnimations: () => [] } as unknown as Element
+    const style = globalThis.getComputedStyle
+    globalThis.getComputedStyle = (() => ({ transform: 'none' })) as unknown as typeof getComputedStyle
+
+    try {
+      riffle([card])
+    } finally {
+      globalThis.getComputedStyle = style
+    }
+
+    expect(animation.cancelled).toBe(false)
+    finish()
+    expect(animation.cancelled).toBe(true)
+    expect(read('components', 'probability', 'PracticeHand.tsx')).toMatch(/const flight = cancelWhenDone\(element\.animate\(/)
+  })
+
   it('la mano del rival no anima el ancho de su caja', () => {
     expect(read('components', 'duel', 'DuelTable.tsx')).not.toMatch(/transition:width|transition-\[width/)
   })

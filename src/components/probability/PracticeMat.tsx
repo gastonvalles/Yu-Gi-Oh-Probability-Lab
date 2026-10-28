@@ -335,10 +335,11 @@ const CELL_LOOK_SPELL = 'border border-solid border-transparent'
 
 /**
  * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_LOOK`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
- * La forma va aparte: ver `CELL`, `CELL_MONSTER` y `CELL_SPELL`.
+ * La forma va aparte: ver `CELL`, `CELL_MONSTER` y `CELL_SPELL`. El borde y el resplandor se encienden de una (sin transición: el color de un borde y una sombra corren en el hilo
+ * principal en cada cuadro, justo mientras se arrastra); el relleno sí se funde.
  */
 const cellLook = (look: string = CELL_LOOK) => [
-  'relative min-w-0 transition-[color,background-color,border-color,box-shadow] duration-150',
+  'relative min-w-0 transition-[color,background-color] duration-150',
   look,
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor **ámbar** (el color de lo que se toca: sobre el fondo violeta de la mesa, el violeta no se distinguía; Gastón, 2026-10-20).
   'data-[over=true]:border-solid data-[over=true]:border-info data-[over=true]:bg-none data-[over=true]:bg-info/22 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--info-rgb)/0.6),0_0_24px_rgb(var(--info-rgb)/0.5),inset_0_0_18px_rgb(var(--info-rgb)/0.3)]',

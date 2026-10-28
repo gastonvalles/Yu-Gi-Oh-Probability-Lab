@@ -28,13 +28,13 @@ interface Call {
 }
 
 describe('repartir una carta desde el mazo', () => {
-  it('el camino y el giro van en una sola animación (sin `composite: add`), la sombra aparte y el dorso con el mismo reloj', () => {
+  it('el camino y el giro van en una sola animación (sin `composite: add`), la sombra en capas que se funden con `opacity` y el dorso con el mismo reloj', () => {
     const calls: Call[] = []
 
     Element.prototype.animate = function (this: Element, keyframes, options) {
       calls.push({ element: this, keyframes: keyframes as Keyframe[], options: options as KeyframeAnimationOptions })
 
-      return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
+      return { cancel() {}, finish() {}, addEventListener() {}, onfinish: null, oncancel: null } as unknown as Animation
     }
 
     const hand = (cards: HandCardData[]) => (
@@ -70,7 +70,9 @@ describe('repartir una carta desde el mazo', () => {
     // El camino y el giro 3D son la misma animación (`transform`, muestreada) y ninguna va en `add`: dos animaciones de `transform` sumadas no se componen en la GPU.
     expect(onCard.some((call) => call.options.composite === 'add')).toBe(false)
     const path = onCard.find((call) => call.keyframes.some((frame) => frame.transform !== undefined))!
-    const shadow = onCard.find((call) => call.keyframes.every((frame) => frame.transform === undefined && frame.boxShadow !== undefined))!
+    // Nada anima `box-shadow` (corre en el hilo principal): la sombra son capas fijas, hijas de la carta, que sólo animan su opacidad con el reloj del vuelo.
+    expect(calls.some((call) => call.keyframes.some((frame) => frame.boxShadow !== undefined))).toBe(false)
+    const shadows = calls.filter((call) => call.element.parentElement === element && call.element.hasAttribute('data-deal-shadow'))
     const back = calls.find((call) => call.element !== element && call.element.hasAttribute('data-back'))!
 
     expect(path.keyframes.every((frame) => String(frame.transform).includes('rotateY'))).toBe(true)
@@ -78,7 +80,11 @@ describe('repartir una carta desde el mazo', () => {
     const edge = path.keyframes.filter((frame) => frame.offset !== undefined && Math.abs(Number(frame.offset) - DEAL_EDGE_AT) < 0.001)
 
     expect(edge.map((frame) => /rotateY\((-?\d+(?:\.\d+)?)deg\)/.exec(String(frame.transform))![1])).toEqual(['90', '-90'])
-    expect(path.options.duration).toBe(shadow.options.duration)
+    expect(shadows).toHaveLength(3)
+    for (const shadow of shadows) {
+      expect(shadow.keyframes.every((frame) => Object.keys(frame).every((key) => ['offset', 'easing', 'opacity'].includes(key)))).toBe(true)
+      expect(shadow.options.duration).toBe(path.options.duration)
+    }
 
     // El dorso se cambia por la cara a mitad de la curva (al quedar de canto), con el mismo reloj que el vuelo.
     expect(back.options).toMatchObject({ duration: path.options.duration, easing: EASE_IN_OUT })
