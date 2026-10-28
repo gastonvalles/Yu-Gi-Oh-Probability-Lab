@@ -72,11 +72,12 @@ export const CardArt = memo(function CardArt({
   if (src && !hasImageError) {
     return (
       <div className={frame} {...frameProps}>
+        {/* `absolute!`: el `relative` del esqueleto gana a un `absolute` suelto; si no, empuja la imagen una carta más abajo y, en una carta que no recorta (la que se reparte), la barra de la mesa aparece. */}
         {!isImageLoaded ? (
           <Skeleton
             radius="none"
             still
-            className={['absolute inset-0', className].join(' ').trim()}
+            className={['absolute! inset-0', className].join(' ').trim()}
           />
         ) : null}
         <img
