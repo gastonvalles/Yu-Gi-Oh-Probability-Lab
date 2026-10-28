@@ -165,13 +165,25 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   // reglas, el núcleo que no arrancó), una mano nueva: no hay nada que elegir.
   const [switching, setSwitching] = useState(false)
   const [opened, setOpened] = useState(0)
-  const openManual = onManual
-    ? () => {
-        if (snap.mineActions.length === 0) return onManual(null)
-        setOpened((count) => count + 1)
-        setSwitching(true)
-      }
-    : undefined
+  // Una sola función por sesión (lee la mesa y el `onManual` de ahora al tocarse, no al dibujarse: la pantalla de arriba lo arma de nuevo en cada dibujo suyo): lo que la recibe (la mesa, la
+  // barra) no se vuelve a dibujar por ella.
+  const manualRef = useRef(onManual)
+
+  useEffect(() => {
+    manualRef.current = onManual
+  }, [onManual])
+  const hasManual = onManual !== undefined
+  const openManual = useMemo(
+    () =>
+      hasManual
+        ? () => {
+            if (session.getSnapshot().mineActions.length === 0) return manualRef.current?.(null)
+            setOpened((count) => count + 1)
+            setSwitching(true)
+          }
+        : undefined,
+    [hasManual, session],
+  )
   const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
   const { nameOf, artOf } = asks
   // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo). Con la mesa de la práctica rearmada (`resumed`) la mano ya no es de apertura: sin chips.
@@ -215,66 +227,79 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
 
   // El núcleo se cayó o se trabó a mitad del duelo: además de reiniciar, volver a antes de tu última jugada (la sesión arma otro núcleo).
   const recoverable = (snap.fault?.kind === 'crash' || snap.fault?.kind === 'retry') && asks.undoable
-  const cover = snap.fault ? (
-    <FaultCover fault={snap.fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={() => session.restart()} {...(recoverable ? { onUndo: () => session.undo() } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
-  ) : snap.status === 'ended' && snap.overlay.end ? (
-    <EndCover end={snap.overlay.end} lp={snap.overlay.lp} rival={rivalName} onAgain={() => session.restart()} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
-  ) : snap.status === 'loading' ? (
-    <LoadingCover progress={snap.progress} rival={rivalOn} />
-  ) : undefined
+  const { fault, status, progress } = snap
+  const { end, lp } = snap.overlay
+  const undo = useCallback(() => session.undo(), [session])
+  const restart = useCallback(() => session.restart(), [session])
+  // Cada pieza que la mesa recibe se arma de nuevo sólo cuando cambia lo que muestra: los avisos del núcleo que no la tocan no vuelven a dibujar la mesa (`PracticeMat` compara sus props).
+  const cover = useMemo(
+    () =>
+      fault ? (
+        <FaultCover fault={fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+      ) : status === 'ended' && end ? (
+        <EndCover end={end} lp={lp} rival={rivalName} onAgain={restart} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+      ) : status === 'loading' ? (
+        <LoadingCover progress={progress} rival={rivalOn} />
+      ) : undefined,
+    [fault, nameOf, artOf, restart, recoverable, undo, openManual, onExit, status, end, lp, rivalName, progress, rivalOn],
+  )
 
-  const life = { mine: snap.overlay.lp[0], theirs: snap.overlay.lp[1] }
+  const life = useMemo(() => ({ mine: lp[0], theirs: lp[1] }), [lp])
   // Repasando un combo (o tus jugadas) la mesa es la del repaso: el turno de la barra es el del paso que se mira, y la portada (el fin, un error), la mano del rival y lo que activa
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
   // Lo que se ajusta: en «Más opciones» de la barra (celular) y en la botonera (escritorio).
-  const options: AutoOptions = {
-    chain: prefs.chain,
-    onChain: (mode) => setAutoPref('chain', mode),
-    place: prefs.place,
-    onPlace: (mode) => setAutoPref('place', mode),
-    onRestart: () => session.restart(),
-    ...(openManual ? { onManual: openManual } : {}),
-    handtraps: {
-      on: rivalOn,
-      summary: rivalOn ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) }) : t('auto.bar.handtrapsOff'),
-      onChange: () => setChoosing(true),
-    },
-    blind: prefs.blind,
-    onBlind: (on) => setAutoPref('blind', on),
-  }
+  const options = useMemo<AutoOptions>(
+    () => ({
+      chain: prefs.chain,
+      onChain: (mode) => setAutoPref('chain', mode),
+      place: prefs.place,
+      onPlace: (mode) => setAutoPref('place', mode),
+      onRestart: restart,
+      ...(openManual ? { onManual: openManual } : {}),
+      handtraps: {
+        on: rivalOn,
+        summary: rivalOn ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) }) : t('auto.bar.handtrapsOff'),
+        onChange: () => setChoosing(true),
+      },
+      blind: prefs.blind,
+      onBlind: (on) => setAutoPref('blind', on),
+    }),
+    [prefs.chain, prefs.place, prefs.blind, restart, openManual, rivalOn, handtraps],
+  )
+  const turn = reviewing ? asks.state.turn : snap.overlay.turn
+  const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
+  const { turnMine, lane } = asks
+  // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
+  const newHand = useCallback(() => (resumed ? resumed.onNewHand() : session.restart(randomSeed())), [resumed, session])
+  // La hoja ya guardó las handtraps nuevas: el duelo se arma de nuevo con ellas (la misma semilla, como «Cambiar handtraps» de «Más opciones»).
+  const applyHandtraps = useCallback(() => onHandtraps(readHandtrapConfig()), [onHandtraps])
+  const header = useMemo(
+    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} onHandtraps={applyHandtraps} lane={lane} dock {...options} />,
+    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, applyHandtraps, lane, options],
+  )
+  // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
+  // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 12 px sobre el borde de la mano (`-mt-3`, como la placa: la fila no crece y el campo no se corre). Con
+  // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
+  const myLife = useMemo(
+    () =>
+      rails || !docked ? null : (
+        <span className="-mt-3 flex" data-corner="mine">
+          <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine size="lg" />
+        </span>
+      ),
+    [rails, docked, life.mine],
+  )
+  const corner = useMemo(() => (docked ? <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} size="lg" /> : undefined), [docked, rivalName, life.theirs])
+  const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
+  const dock = useMemo(() => (docked ? <AutoDock {...options} steps={{ open: stepsOpen, onToggle: toggleSteps }} /> : undefined), [docked, options, stepsOpen, toggleSteps])
   const link: DuelMatLink = {
     ...asks.mat,
-    header: (
-      <AutoBar
-        rivalName={rivalName}
-        life={life}
-        onRails={setRails}
-        turn={reviewing ? asks.state.turn : snap.overlay.turn}
-        myTurn={asks.turnMine}
-        onExit={onExit}
-        onUndo={() => session.undo()}
-        canUndo={asks.undoable && snap.status !== 'thinking' && !snap.replaying}
-        // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
-        onNewHand={resumed?.onNewHand ?? (() => session.restart(randomSeed()))}
-        // La hoja ya guardó las handtraps nuevas: el duelo se arma de nuevo con ellas (la misma semilla, como «Cambiar handtraps» de «Más opciones»).
-        onHandtraps={() => onHandtraps(readHandtrapConfig())}
-        lane={asks.lane}
-        dock
-        {...options}
-      />
-    ),
+    header,
     tools: null,
-    // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
-    // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 12 px sobre el borde de la mano (`-mt-3`, como la placa: la fila no crece y el campo no se corre). Con
-    // laterales van en el izquierdo (`AutoBar`); hasta 1100 px, en el marcador de la barra y la mesa no lleva fila de abajo (`scoreInHeader`). La fase, sólo en el botón del campo (su sigla).
-    life: rails || !docked ? null : (
-      <span className="-mt-3 flex" data-corner="mine">
-        <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={life.mine} mine size="lg" />
-      </span>
-    ),
-    ...(docked ? { corner: <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} size="lg" /> } : { scoreInHeader: true }),
-    ...(docked ? { dock: <AutoDock {...options} steps={{ open: stepsOpen, onToggle: () => setStepsOpen((open) => !open) }} /> } : {}),
+    life: myLife,
+    ...(docked ? { corner } : { scoreInHeader: true }),
+    ...(docked ? { dock } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),
     // Deshacer va arriba, con los íconos de la práctica.
@@ -295,7 +320,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
           cardsById={cardsById}
           deckName={deckName}
           onDispatch={sentinel}
-          onUndo={() => session.undo()}
+          onUndo={undo}
           onSeek={asks.review.seek}
           onLoadCombo={asks.review.load}
           onNewHand={NOTHING}
