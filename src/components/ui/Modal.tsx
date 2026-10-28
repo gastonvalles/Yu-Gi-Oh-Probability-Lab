@@ -1,16 +1,14 @@
-import { useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
-import { useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
-import { useSheetDrag } from '../../app/use-sheet-drag'
 import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
-import { CloseButton } from './IconButton'
-import { SheetHandle } from './SheetHandle'
+import { CloseButton, IconButton } from './IconButton'
+import { PromptHandle } from './SheetHandle'
 import { surface } from './surfaces'
 import { TONE, type Tone } from './tone'
 import { overline } from './typography'
@@ -23,8 +21,6 @@ import { Heading } from './Heading'
 type ModalSize = 'sm' | 'md' | 'full' | 'sheet' | 'screen' | 'keypad'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
-/** Donde `sheet` y `keypad` salen de abajo (`max-sm` de Tailwind v4): ahí una `lowerable` lleva el asa. */
-const SHEET_MEDIA_QUERY = '(width < 40rem)'
 
 const SIZE_CLASS: Record<ModalSize, string> = {
   sm: 'w-[min(32rem,100%)]',
@@ -38,6 +34,20 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   screen:
     'max-[1101px]:h-dvh max-[1101px]:max-h-dvh! max-[1101px]:w-full max-[1101px]:rounded-none! max-[1101px]:border-0! min-[1101px]:h-[min(52rem,calc(100dvh-2rem))] min-[1101px]:w-[26rem]',
 }
+
+/**
+ * Desde la mesa (`anchor="mat"`): el ancho de siempre sin pasarse de la columna de la mesa (`--mat-w`) y, la hoja, su alto de siempre sin pasarse de lo que entra centrado en la fila Extra
+ * (`--mat-room`); en todos los anchos es un diálogo (ya no sale de abajo en el celular). Las variables las escribe la mesa (`matSpot`); sin mesa, la pantalla.
+ */
+const MAT_SIZE_CLASS: Partial<Record<ModalSize, string>> = {
+  sm: 'w-[min(32rem,var(--mat-w,calc(100vw-1rem)))]',
+  md: 'w-[min(44rem,var(--mat-w,calc(100vw-1rem)))] h-[min(40rem,var(--mat-room,calc(100dvh-1rem)))]',
+  sheet: 'w-[min(70rem,var(--mat-w,calc(100vw-1rem)))] h-[min(46rem,var(--mat-room,calc(100dvh-1rem)))] min-[1101px]:h-[min(33rem,var(--mat-room,calc(100dvh-1rem)))]',
+  keypad: 'w-[min(26rem,var(--mat-w,calc(100vw-1rem)))]',
+}
+
+/** Con el teclado del celular abierto la pantalla visible se achica (`visualViewport`) sin que se achique la de la página: más que esto, es el teclado (px). */
+const KEYBOARD_PX = 120
 
 interface ModalProps {
   isOpen: boolean
@@ -68,10 +78,16 @@ interface ModalProps {
   /** Posición de la X flotante; reemplaza a la estándar. */
   closeClassName?: string
   /**
-   * `sheet` o `keypad` con encabezado: en el celular, donde sale de abajo, lleva un asa que la baja sin cerrarla (`SheetHandle`), para ver la mesa (las hojas del duelo automático). Bajada, el
-   * velo se va y los toques llegan a lo de atrás; lo de adentro queda como estaba (inerte) y el foco, en el asa. Cerrar sigue siendo la X, Escape o el botón de siempre.
+   * Con encabezado: se minimiza (la flecha de arriba, como la pregunta del medio) a un asa de una línea (`PromptHandle`) en el lugar fijo de la pregunta, apoyada sobre la fila de las Zonas Extra
+   * (`--mat-extra`), para ver el campo antes de elegir (las hojas del duelo automático). Minimizada, los toques llegan a lo de atrás; lo de adentro queda como estaba (escondido e inerte) y el
+   * foco, en el asa. Cerrar sigue siendo la X, Escape o el botón de siempre; cada vez que se abre, abre entera.
    */
   lowerable?: boolean
+  /**
+   * `mat`: un cartel de la mesa del duelo (sus hojas, sus menús y sus confirmaciones). Va al centro de la fila de las Zonas Extra (`--mat-x`, `--mat-y`) y no al de la pantalla, con lo más alto
+   * que entra ahí (`MAT_SIZE_CLASS`), y en el celular ya no sale de abajo; con el teclado del celular abierto, al centro de lo que queda a la vista (`visualViewport`). Sin mesa, al centro de la pantalla.
+   */
+  anchor?: 'mat'
   /**
    * false = sin velo: el fondo no se oscurece (los menús de la mesa: con uno abierto el campo se sigue viendo, como con el visor de una pila). Lo demás queda igual (el foco, Escape,
    * tocar afuera); el panel despega del fondo con un borde más marcado (`surface.floating`).
@@ -105,6 +121,7 @@ export function Modal({
   closeSize = 'md',
   closeClassName,
   lowerable = false,
+  anchor,
   veil = true,
   children,
 }: ModalProps) {
@@ -117,28 +134,59 @@ export function Modal({
   const pressedBackdropRef = useRef(false)
   const hasHeader = !bare && (kicker || title || subtitle)
   const sheet = size === 'sheet' || size === 'keypad'
-  // Sólo las que llevan el asa miran el ancho.
-  const narrow = useMediaQuery(lowerable && sheet ? SHEET_MEDIA_QUERY : null)
-  const drag = useSheetDrag(panelRef)
+  const mat = anchor === 'mat' && size in MAT_SIZE_CLASS
+  const minimizable = lowerable && Boolean(hasHeader)
+  const [minimized, setMinimized] = useState(false)
   const [wasOpen, setWasOpen] = useState(isOpen)
+  const lowered = minimizable && minimized
 
   useBodyScrollLock(isOpen)
   useEscapeKey(onClose, isOpen && dismissible)
   useFocusTrap(panelRef, isOpen)
 
-  // Con el asa (sólo donde sale de abajo) y, si la bajaron, bajada.
-  const docked = narrow && Boolean(hasHeader)
-  const lowered = docked && drag.lowered
-
-  // Cada vez que se abre, arriba.
+  // Cada vez que se abre, entera.
   if (wasOpen !== isOpen) {
     setWasOpen(isOpen)
-    if (isOpen) drag.setLowered(false)
+    if (isOpen) setMinimized(false)
   }
 
+  // Minimizada, el foco va a la flecha del asa; reabierta, a la de minimizar (donde estaba). Con el teclado del celular abierto, minimizarla lo cierra.
+  const folded = useRef(false)
+
+  useLayoutEffect(() => {
+    if (lowered === folded.current) return
+    folded.current = lowered
+    panelRef.current?.querySelector<HTMLElement>(lowered ? '[data-prompt-show]' : '[data-sheet-minimize]')?.focus({ preventScroll: true })
+  }, [lowered])
+
+  // Con el teclado del celular abierto, al centro de lo que queda a la vista: la página no se achica (el teclado la tapa), lo visible sí (`visualViewport`).
+  useEffect(() => {
+    const root = rootRef.current
+    const view = window.visualViewport
+
+    if (!mat || !isOpen || !root || !view) return
+    const follow = () => {
+      if (window.innerHeight - view.height > KEYBOARD_PX) {
+        root.style.setProperty('--mat-y', `${Math.round(view.offsetTop + view.height / 2)}px`)
+        root.style.setProperty('--mat-room', `${Math.floor(view.height - 16)}px`)
+      } else {
+        root.style.removeProperty('--mat-y')
+        root.style.removeProperty('--mat-room')
+      }
+    }
+
+    follow()
+    view.addEventListener('resize', follow)
+    view.addEventListener('scroll', follow)
+    return () => {
+      view.removeEventListener('resize', follow)
+      view.removeEventListener('scroll', follow)
+    }
+  }, [mat, isOpen])
+
   const header = hasHeader ? (
-    // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios). Debajo del asa, el aire de arriba ya lo deja el asa.
-    <header className={cx('flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 min-[1101px]:px-6 min-[1101px]:py-5', docked ? 'pb-4' : 'py-4')}>
+    // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios).
+    <header className="flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5">
       <div className="flex min-w-0 items-start gap-3">
         {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', tone ? TONE[tone].text : 'text-foreground')} /> : null}
         <div className="grid min-w-0 gap-0.5">
@@ -151,7 +199,16 @@ export function Modal({
           {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
         </div>
       </div>
-      {dismissible ? <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} /> : null}
+      {minimizable || dismissible ? (
+        <div className="flex shrink-0 items-center gap-1">
+          {minimizable ? (
+            <IconButton tone="close" size="sm" data-sheet-minimize="" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setMinimized(true)}>
+              <Icon name="chevron-down" />
+            </IconButton>
+          ) : null}
+          {dismissible ? <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} /> : null}
+        </div>
+      ) : null}
     </header>
   ) : null
 
@@ -159,7 +216,16 @@ export function Modal({
   return usePresence(isOpen, isOpen && typeof document !== 'undefined' ? createPortal(
     <div
       ref={rootRef}
-      className={cx('fixed inset-0 grid place-items-center overscroll-contain p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1101px]:p-0!', lowered && 'pointer-events-none')}
+      data-anchor={mat ? 'mat' : undefined}
+      className={cx(
+        'fixed inset-0 overscroll-contain',
+        // Desde la mesa, el panel se ubica solo (centrado en la fila Extra); si no, al centro de la pantalla y, `sheet` y `keypad`, desde abajo en el celular.
+        !mat && 'grid place-items-center p-2 sm:p-4',
+        !mat && sheet && 'max-sm:place-items-end max-sm:p-0',
+        above ? 'z-260' : 'z-180',
+        size === 'screen' && 'max-[1101px]:p-0!',
+        lowered && 'pointer-events-none',
+      )}
       onPointerDown={(event) => {
         pressedBackdropRef.current = event.target === event.currentTarget
       }}
@@ -171,7 +237,7 @@ export function Modal({
           : undefined
       }
     >
-      {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. Con la hoja bajada se aclara: se ve la mesa. */}
+      {/* El velo, aparte del panel para que se funda solo (entra y sale): no atrapa toques, así el fondo sigue siendo el que cierra. Minimizada se aclara: se ve la mesa. */}
       {veil ? <div aria-hidden="true" className={cx('pointer-events-none absolute inset-0 animate-nav-scrim transition-[background-color] duration-200 motion-reduce:animate-none motion-reduce:transition-none', lowered ? 'bg-transparent' : 'bg-background/80')} /> : null}
       <div
         ref={panelRef}
@@ -180,24 +246,23 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
-        style={docked ? drag.style : undefined}
+        data-minimized={lowered ? '' : undefined}
         className={cx(
-          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 outline-none motion-reduce:animate-none',
-          // Bajada, el fondo deja pasar los toques; la tira del asa, no.
-          lowered && 'pointer-events-auto',
-          sheet ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
-          'sm:max-h-[calc(100dvh-2rem)]',
-          veil ? surface.panel : surface.floating,
-          SIZE_CLASS[size],
+          'flex min-h-0 flex-col p-0 outline-none motion-reduce:animate-none',
+          mat
+            ? // En el centro de la fila Extra (con el teclado, en el de lo visible) o, minimizada, el asa apoyada sobre esa fila.
+              cx('absolute left-[var(--mat-x,50%)] -translate-x-1/2', lowered ? 'top-[var(--mat-extra,calc(100%-1rem))] -translate-y-full' : 'top-[var(--mat-y,50%)] -translate-y-1/2 max-h-[var(--mat-room,calc(100dvh-1rem))]')
+            : cx('relative max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)]', sheet ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter'),
+          // Minimizada, el fondo deja pasar los toques; el asa, no.
+          lowered ? 'pointer-events-auto max-w-[calc(100vw-2rem)]' : cx('overflow-hidden', mat && 'animate-dialog-enter', veil ? surface.panel : surface.floating, mat ? MAT_SIZE_CLASS[size] : SIZE_CLASS[size]),
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        {docked ? (
-          <SheetHandle drag={drag} label={typeof title === 'string' ? title : (ariaLabel ?? '')} className="bg-surface-raised">
+        {lowered ? <PromptHandle label={typeof title === 'string' ? title : (ariaLabel ?? '')} onShow={() => setMinimized(false)} /> : null}
+        {hasHeader ? (
+          <div inert={lowered} hidden={lowered} className="contents">
             {header}
-          </SheetHandle>
-        ) : hasHeader ? (
-          header
+          </div>
         ) : dismissible && !hideCloseButton ? (
           <CloseButton
             size={closeSize}
@@ -211,13 +276,13 @@ export function Modal({
           />
         ) : null}
 
-        <div inert={lowered} className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-5 min-[1101px]:px-6 min-[1101px]:py-5')}>
+        <div inert={lowered} hidden={lowered} className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-5 min-[1101px]:px-6 min-[1101px]:py-5')}>
           {children}
         </div>
 
         {footer ? (
           // Un diálogo `bare` arma su propio encabezado (con su padding): su pie queda como estaba, alineado con ese.
-          <footer inert={lowered} className={cx('flex flex-wrap items-center justify-end border-t border-border-subtle min-[1101px]:px-6', bare ? 'gap-2 px-4 py-3' : 'gap-3 px-5 py-4')}>
+          <footer inert={lowered} hidden={lowered} className={cx('flex flex-wrap items-center justify-end border-t border-border-subtle min-[1101px]:px-6', bare ? 'gap-2 px-4 py-3' : 'gap-3 px-5 py-4')}>
             {footer}
           </footer>
         ) : null}

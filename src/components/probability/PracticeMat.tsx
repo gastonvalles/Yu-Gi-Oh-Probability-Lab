@@ -1,4 +1,4 @@
-import { isValidElement, memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -47,14 +47,14 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
-import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptAbove, promptFit, promptTop, railsFit, type Box } from '../../app/duel-rails'
+import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
 import { whyNotResume } from '../../app/auto/resume'
 import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { riffle } from '../../app/shuffle-fx'
-import { FLIGHT_MS, cardPose, useCardFlights } from '../../app/use-card-flights'
+import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
 import { useElementFits } from '../../app/use-element-width'
@@ -137,12 +137,6 @@ const REVIEW_HAND: CSSProperties = { transform: 'translateY(4px) scale(0.72)', t
 const CHAIN_BELOW_BAR_PX = 52
 /** Lo que mide un eslabón de la lista de la cadena (con el aire de la lista): con menos lugar que eso, la pila queda en su resumen mientras se pregunta. */
 const CHAIN_ROW_PX = 56
-/** Lo que la pregunta del medio no tapa mientras haya lugar: las cartas de las Zonas Extra (las tuyas y las del rival, que van en las mismas casillas) y las de tu mano. */
-const KEEP_CARDS = '[data-drop^="emz:"] [data-card-id], [data-drop^="emz:"] [data-rival-card-id], [data-drop="hand"] [data-card-id]'
-/** Lo que tampoco tapa si puede: las Zonas Extra vacías, tus monstruos y las cartas del rival. */
-const MONSTER_CARDS = '[data-drop^="emz:"], [data-drop^="mz:"] [data-card-id], [data-rival-card-id]'
-/** Lo que el asa de una pregunta minimizada no tapa: toda carta (del campo, de las manos) y las pilas. */
-const MAT_CARDS = '[data-card-id], [data-rival-card-id], [data-rival-drop], [data-drop="deck"], [data-drop="extra"], [data-drop="gy"], [data-drop="banished"]'
 
 export interface DuelMatLink {
   /** Las áreas de la grilla con los dos campos. */
@@ -2299,20 +2293,25 @@ function PracticeMatBody({
     return () => window.removeEventListener('resize', place)
   }, [hasChain, rails, view])
 
-  // La pregunta del medio (`duel.prompt`) no tapa lo que hay que tocar: las cartas y las pilas que brillan para responder, las cartas de las Zonas Extra y de la mano, la pila de la
-  // cadena ni la tira de un visor abierto; si puede, tampoco los demás monstruos. Si cae encima, se corre lo justo (`promptTop`): la caja, con `translate`, sin dibujar la mesa de nuevo.
-  // Si no entra en ningún lado, abre entera igual donde menos tapa (sin tapar lo que brilla, si puede): la minimiza la persona. Minimizada (`data-minimized`), el asa va donde no tapa
-  // ninguna carta ni la píldora de la cadena y, si no hay hueco, arriba, debajo de la barra. Se mide al aparecer, cuando cambia lo que brilla, la tira o su alto, y con la ventana.
+  // El lugar fijo de los carteles de la mesa (Gastón, 2026-10-28: «todos los modales del duelo deben salir fijos en el mismo lugar»; `matSpot`): la pregunta del medio (`duel.prompt`) y el asa de
+  // lo minimizado apoyan su borde de abajo sobre la fila de las Zonas Extra y crecen hacia el campo del rival (tu campo y la fila Extra se ven siempre); las hojas del duelo (`Modal anchor="mat"`) van
+  // al centro de esa fila. No esquivan nada ni se corren: se mide la fila (una sola fase de lectura y una de escritura) con la ventana, el scroll de la columna y el tamaño de la mesa, y se escribe
+  // en la capa de la pregunta (`top`/`bottom`) y en variables de la página (`--mat-x`, `--mat-y`, `--mat-extra`, `--mat-room`, `--mat-w`), porque las hojas van en un portal.
+  // La pila de la cadena (arriba) comparte con la pregunta la franja del campo del rival: si no entran las dos, en el celular la pila sube al lugar del aviso de la línea (vacío mientras se pregunta),
+  // su lista se acorta a lo que queda (se desplaza) y, sin lugar ni para un eslabón, queda en su resumen (`data-squeezed`, con su flecha); la pregunta nunca se achica por ella.
+  const promptLayerRef = useRef<HTMLDivElement | null>(null)
   const promptRef = useRef<HTMLDivElement | null>(null)
   const hasPrompt = Boolean(duel?.prompt)
-  const promptKey = isValidElement(duel?.prompt) ? duel.prompt.key : null
 
   useLayoutEffect(() => {
-    const box = promptRef.current
     const section = sectionRef.current
+    const column = columnRef.current
+    const field = fieldNode
 
-    if (!hasPrompt || !box || !section) return
+    if (!section || !column || !field) return
 
+    const page = document.documentElement.style
+    const vars = ['--mat-x', '--mat-y', '--mat-extra', '--mat-room', '--mat-w']
     let frame = 0
     const unband = () => {
       const chain = chainRef.current
@@ -2322,95 +2321,76 @@ function PracticeMatBody({
       chain.style.translate = ''
       chain.querySelector<HTMLElement>('[data-chain-list]')?.style.removeProperty('max-height')
     }
-    // Una sola fase de lectura (Gastón, 2026-10-27: tirones en el celular): primero se borra todo lo que dejó la vez anterior (la caja sin correr, la pila sin subir ni acortar),
-    // después se mide todo junto y al final se escribe; lo de la pila se calcula ya subido (`lift`), sin volver a medirla. Un solo recálculo de la mesa en vez de tres.
+    const set = (style: CSSStyleDeclaration, name: string, value: string) => {
+      if (style.getPropertyValue(name) !== value) style.setProperty(name, value)
+    }
     const place = () => {
-      box.style.translate = ''
-      unband()
-      const layer = box.parentElement!.getBoundingClientRect()
-      const at = box.getBoundingClientRect()
-      const rects = (selector: string) => [...section.querySelectorAll(selector)].map((element) => element.getBoundingClientRect())
-      const strip = stripOpen && slotRef.current ? [slotRef.current.getBoundingClientRect()] : []
-      const glows = rects('[data-glow-kind="can"]')
-      // Nunca sobre la barra de arriba (sin laterales es lo primero de la columna, como para la tira) ni fuera de la pantalla.
-      const min = Math.max(layer.top, (rails ? null : columnRef.current?.firstElementChild?.getBoundingClientRect().bottom) ?? layer.top)
-      const max = Math.min(layer.bottom, window.innerHeight)
-      const move = (top: number) => {
-        if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
-      }
+      const chain = chainRef.current
+      const notice = chain?.querySelector('[data-testid="chain-notice"]') ?? null
+      const box = promptRef.current
+      const open = Boolean(box && !box.querySelector('[data-minimized]'))
 
-      if (box.querySelector('[data-minimized]')) {
-        const pill = chainRef.current?.querySelector('[data-testid="chain-notice"]')
-
-        move(promptTop(at, [...glows, ...strip, ...rects(MAT_CARDS), ...(pill ? [pill.getBoundingClientRect()] : [])], min, max) ?? min)
-        return
-      }
-      // En el celular termina arriba de tus monstruos (`promptAbove`) y crece sobre el campo del rival: la mano y tu campo quedan a la vista. Sin lugar, va por la ranura de siempre.
-      const floor = isDesktop ? undefined : section.querySelector('[data-drop="mz:0"]')?.getBoundingClientRect().top
-      // La pila de la cadena arriba y la pregunta debajo, sin taparla: en el celular la pila sube al lugar del aviso de la línea (vacío mientras se pregunta) y la pregunta va debajo
-      // de su píldora (`ceiling`). La lista se acorta a lo que queda (se desplaza) y, sin lugar ni para un eslabón, la pila queda en su resumen mientras se pregunta (`data-squeezed`,
-      // con su flecha). Si ni la píldora entra, la pregunta la tapa y la persona minimiza lo que le estorbe.
-      const notice = chainRef.current?.querySelector('[data-testid="chain-notice"]') ?? null
-      const pile = notice ? [notice.getBoundingClientRect()] : []
-      const chain = notice && floor !== undefined ? chainRef.current! : null
-      let ceiling = min
-      let lift = 0
-
-      if (chain && notice) {
-        // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
-        lift = rails || section.querySelector('[data-lane]') ? 0 : Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - min)))
-        ceiling = Math.max(min, (notice.firstElementChild ?? notice).getBoundingClientRect().bottom - lift + 8)
-      }
-      const among = (top: number) => (obstacles: readonly Box[]) => {
-        const above = floor === undefined ? null : promptAbove(at, obstacles, top, Math.min(floor, max))
-        const y = above ?? promptTop(at, [...obstacles, ...strip], top, max)
-
-        return y === null ? null : { top: y, above }
-      }
-      // Sin tapar los monstruos si puede y nunca lo que brilla, las Zonas Extra, la mano ni la pila de la cadena (`promptFit`; en el celular, la píldora la cuida `ceiling`). Si
-      // no entra, abre entera igual donde menos tapa: sin tapar la pila (dice a qué se responde; lo que brilla está también en el cartel) o lo que brilla y, si no, la tira abierta gana.
-      const spot =
-        promptFit(among(ceiling), [...glows, ...rects(KEEP_CARDS), ...(chain ? [] : pile)], rects(MONSTER_CARDS)) ??
-        ((above) => ({ top: above ?? promptTop(at, [...pile, ...strip], min, max) ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top, above }))(floor === undefined ? null : promptAbove(at, glows, min, Math.min(floor, max)))
-      const list = chain?.querySelector<HTMLElement>('[data-chain-list]')
+      // Lo que dejó la vez anterior en la pila, borrado antes de medir (sólo con una cadena).
+      if (notice) unband()
+      // Las lecturas, todas juntas.
+      const area = section.getBoundingClientRect()
+      const col = column.getBoundingClientRect()
+      const extra = [...field.querySelectorAll('[data-drop^="emz:"]')].map((cell) => cell.getBoundingClientRect())
+      // Nunca sobre la barra de arriba (sin laterales, en un duelo, es lo primero de la columna).
+      const bar = Math.max(col.top, (isDuel && !rails ? column.firstElementChild?.getBoundingClientRect().bottom : null) ?? col.top)
+      const spot = matSpot(extra, { top: col.top, bottom: Math.min(col.bottom, window.innerHeight), left: col.left, right: col.right }, bar)
+      const list = notice ? chain!.querySelector<HTMLElement>('[data-chain-list]') : null
       const listBox = list?.getBoundingClientRect()
+      // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
+      const lift = notice && !isDesktop && !rails && !section.querySelector('[data-lane]') ? Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - bar))) : 0
+      const promptTop = spot && open && box ? Math.max(bar, spot.top - box.getBoundingClientRect().height) : null
 
       // Las escrituras, todas al final.
-      if (chain) chain.style.translate = lift > 0 ? `0 ${-lift}px` : ''
-      if (chain && list && listBox) {
-        const room = spot.top - 8 - (listBox.top - lift)
+      if (!spot) {
+        for (const name of vars) page.removeProperty(name)
+        return
+      }
+      set(page, '--mat-x', `${Math.round(spot.x)}px`)
+      set(page, '--mat-y', `${Math.round(spot.y)}px`)
+      set(page, '--mat-extra', `${Math.round(spot.top)}px`)
+      set(page, '--mat-room', `${spot.room}px`)
+      set(page, '--mat-w', `${spot.width}px`)
+      const layer = promptLayerRef.current
+
+      if (layer) {
+        set(layer.style, 'top', `${Math.round(bar - area.top)}px`)
+        set(layer.style, 'bottom', `${Math.round(area.bottom - spot.top)}px`)
+      }
+      if (!chain || !notice) return
+      if (lift > 0 && promptTop !== null) chain.style.translate = `0 ${-lift}px`
+      if (list && listBox && promptTop !== null) {
+        const room = promptTop - 8 - (listBox.top - lift)
 
         if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
         else if (room < listBox.height) list.style.maxHeight = `${Math.floor(room)}px`
       }
-      move(spot.top)
     }
     const later = () => {
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(place)
     }
-
-    // Anclada abajo, si la pregunta cambia de alto (otra pregunta en la misma ranura, una línea más) se vuelve a ubicar.
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later)
 
     place()
-    later()
-    // Una carta que llega a la mesa con la pregunta (la que se acaba de invocar y pregunta por su efecto) todavía vuela: se vuelve a ubicar cuando aterriza.
-    const landed = window.setTimeout(later, FLIGHT_MS + 50)
-
-    observer?.observe(box)
-    // La cadena que aparece o cambia de alto con la pregunta abierta (sus pasos van con su ritmo) también la vuelve a ubicar.
-    if (chainRef.current) observer?.observe(chainRef.current)
+    // La cadena que aparece o cambia de alto, la pregunta que cambia de alto (otra pregunta, una línea más) y la mesa que cambia de tamaño (la vista 3D se agranda después de medirse) la vuelven a ubicar.
+    for (const element of [section, column, field, promptRef.current, chainRef.current]) if (element) observer?.observe(element)
     window.addEventListener('resize', later)
+    column.addEventListener('scroll', later, { passive: true })
 
     return () => {
       observer?.disconnect()
       window.removeEventListener('resize', later)
-      window.clearTimeout(landed)
+      column.removeEventListener('scroll', later)
       cancelAnimationFrame(frame)
       unband()
+      for (const name of vars) page.removeProperty(name)
     }
-  }, [hasPrompt, promptKey, hasChain, glowSets, stripOpen, state, view, rails, isDesktop])
+  }, [fieldNode, hasPrompt, hasChain, view, rails, isDesktop, isDuel])
 
   // El visor: el de una búsqueda del núcleo (sólo las candidatas) o el de la pila que se abrió. En automático el deck va por nombre: su orden en la mesa es inventado (después de barajar no lo sabe
   // nadie: `docs/duelos-automaticos.md`) y «tope primero» regalaría las próximas cartas, o el orden de las candidatas de una búsqueda; las que ya se eligieron van primero.
@@ -2669,7 +2649,7 @@ function PracticeMatBody({
           )}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortPhone, tallScore: Boolean(duel.scoreTall) } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
+          style={duel ? ({ '--areas': duel.areas, '--areas-compact': duel.areasCompact, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.8rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null), ...(compact ? compactDuelFieldStyle(view === '3d', bare ? { bottomRow: false, short: shortPhone, tallScore: Boolean(duel.scoreTall) } : undefined) : isDesktop ? null : mediumDuelFieldStyle(view === '3d', !bare, Boolean(duel.scoreTall))) } as CSSProperties) : undefined}
         >
           {/* La placa de la arena, debajo de todo el campo (decoración). */}
           <MatPlate />
@@ -2971,7 +2951,7 @@ function PracticeMatBody({
       ) : null}</Presence>
 
       {/* Celular: sin «Pasar turno», la End Phase pregunta si se termina el turno. «Seguir jugando» deja todo como está; para pasar el turno hay que volver a tocar el botón de la End Phase. */}
-      <ConfirmDialog veil={false}
+      <ConfirmDialog veil={false} anchor="mat"
           isOpen={endingTurn && !isDesktop && !covered && myTurn && phaseNow === 'end'}
           title={t('practice.mat.endTurnTitle')}
           description={duel ? t('practice.mat.endTurnText', { name: duel.control?.rival ?? t('duel.bar.rival') }) : t('practice.mat.endTurnSolo')}
@@ -2985,7 +2965,7 @@ function PracticeMatBody({
         />
 
       {onAuto ? (
-        <ConfirmDialog veil={false}
+        <ConfirmDialog veil={false} anchor="mat"
           isOpen={toAuto && autoBlocked === null}
           title={t('auto.resume.ask')}
           description={t('auto.resume.text')}
@@ -3119,20 +3099,21 @@ function PracticeMatBody({
         </div>
       ) : null}
 
-      {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
-      {/* La pregunta del rival (pasar de fase): en el medio de la pantalla, centrada en la columna de la mesa (sin el chat ni el detalle). La capa deja pasar los toques; sólo la pregunta los recibe. */}
-      {/* Contestada, la pregunta sigue mientras sale (`Presence`; `PassPrompt` hace la salida) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
+      {/* La pregunta del medio (`duel.prompt`: del núcleo, la del rival de pasar de fase): en su lugar fijo, apoyada sobre la fila de las Zonas Extra y centrada en la columna de la mesa (sin el chat ni el detalle);
+          la capa va de la barra de arriba a esa fila (la ubica el efecto de `matSpot`) y la pregunta crece hacia arriba: si no entra, su cuerpo se desplaza. La capa deja pasar los toques; sólo la pregunta los recibe.
+          Contestada, sigue mientras sale (`Presence`) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
       <Presence>
         {duel?.prompt ? (
-          <div data-testid="duel-prompt-layer" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] grid place-items-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
+          <div ref={promptLayerRef} data-testid="duel-prompt-layer" data-spot="extra" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] flex flex-col items-center justify-end px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
-            <div ref={promptRef} className="pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
+            <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
               {duel.prompt}
             </div>
           </div>
         ) : null}
       </Presence>
 
+      {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
       {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}
 
       {drag

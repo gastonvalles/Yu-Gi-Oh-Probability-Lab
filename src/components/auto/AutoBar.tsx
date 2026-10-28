@@ -81,7 +81,7 @@ export { Setting }
  */
 function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, onPlace, onRestart, onManual, handtraps, blind, onBlind }: AutoOptions & { isOpen: boolean; onClose: () => void; inDock?: boolean }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="keypad" veil={false} title={t('duel.bar.more')}>
+    <Modal isOpen={isOpen} onClose={onClose} size="keypad" anchor="mat" veil={false} title={t('duel.bar.more')}>
       <div className="grid gap-5">
         {inDock ? null : (
           <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
@@ -184,7 +184,7 @@ export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: b
       <DockButton icon="link" label={t('auto.dock.chain')} aria-haspopup="dialog" aria-label={t('auto.dock.chainName', { mode: t(CHAIN_MODES[chain][0]) })} onClick={() => setOpen('chain')} />
       <DockButton icon="list" label={t('auto.dock.steps')} aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} onClick={steps.onToggle} />
       <DockButton icon="gear" label={t('auto.dock.options')} aria-haspopup="dialog" aria-label={t('duel.bar.more')} onClick={() => setOpen('more')} />
-      <Modal isOpen={open === 'chain'} onClose={close} size="keypad" veil={false} title={t('auto.dock.chainTitle')}>
+      <Modal isOpen={open === 'chain'} onClose={close} size="keypad" anchor="mat" veil={false} title={t('auto.dock.chainTitle')}>
         <Setting title={t('auto.bar.chain')} hint={chainModeHint(chain)}>
           <Segmented label={t('auto.bar.chain')} value={chain} onChange={onChain} fullWidth options={chainModeOptions()} />
         </Setting>

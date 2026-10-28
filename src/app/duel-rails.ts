@@ -65,43 +65,18 @@ export interface Box {
 }
 
 /**
- * Dónde va (su `top`) la pregunta del medio de la mesa (`duel.prompt`) para no tapar lo que hay que tocar (`obstacles`: lo que brilla para responder, la tira de un visor), entre `min` y `max`.
- * Si no tapa nada, se queda; si tapa, sube lo justo (hacia el campo del rival, donde no hay nada tuyo que tocar) y, si arriba no entra, baja. Sin lugar en ninguno de los dos, null.
+ * El lugar fijo de los carteles de la mesa (Gastón, 2026-10-28: «todos los modales del duelo deben salir fijos en el mismo lugar»), a partir de las casillas de la fila de las Zonas Extra
+ * (`extra`), la columna de la mesa (`column`, recortada a la pantalla) y el borde de abajo de la barra de arriba (`bar`). El cartel chico (y el asa de lo minimizado) apoya su borde de abajo
+ * en el de arriba de la fila (`top`) y crece hacia el campo del rival; una hoja va al centro de la fila (`x`, `y`), con `room` de alto a lo sumo (lo más alto que entra centrado sin tapar la
+ * barra ni salirse de la columna, y no más del 70 % de la mesa: en el celular la mano queda a la vista) y `width` de ancho. Sin la fila, null (los carteles van al centro de la pantalla).
  */
-export function promptTop(prompt: Box, obstacles: readonly Box[], min: number, max: number, gap = 8): number | null {
-  const height = prompt.bottom - prompt.top
-  const hits = (top: number) => obstacles.filter((box) => box.left < prompt.right && box.right > prompt.left && box.top < top + height && box.bottom > top)
-  const slide = (up: boolean): number | null => {
-    let top = prompt.top
+export function matSpot(extra: readonly Box[], column: Box, bar: number, gap = 8) {
+  if (extra.length === 0) return null
 
-    for (let step = 0; step <= obstacles.length; step += 1) {
-      const hit = hits(top)
+  const top = Math.min(...extra.map((box) => box.top))
+  const x = (Math.min(...extra.map((box) => box.left)) + Math.max(...extra.map((box) => box.right))) / 2
+  const y = (top + Math.max(...extra.map((box) => box.bottom))) / 2
+  const room = Math.min(2 * Math.min(y - bar, column.bottom - y) - 2 * gap, 0.7 * (column.bottom - column.top))
 
-      if (hit.length === 0) return top >= min && top + height <= max ? top : null
-      top = up ? Math.min(...hit.map((box) => box.top)) - gap - height : Math.max(...hit.map((box) => box.bottom)) + gap
-    }
-
-    return null
-  }
-
-  return slide(true) ?? slide(false)
-}
-
-/**
- * En el celular la pregunta termina arriba de tus monstruos (`floor`: el borde de arriba de su fila, con `gap`) y crece hacia el campo del rival: tu campo y la mano quedan a la vista. Si tapa algo que
- * brilla, sólo sube (`promptTop` con `floor` de tope); sin lugar entre `min` y tus monstruos, null (va por la ranura de siempre).
- */
-export function promptAbove(prompt: Box, obstacles: readonly Box[], min: number, floor: number, gap = 8): number | null {
-  const bottom = floor - gap
-
-  // Sin `...prompt`: un `DOMRect` tiene sus medidas en el prototipo y el spread las perdía (los costados quedaban sin definir y nada chocaba).
-  return promptTop({ top: bottom - (prompt.bottom - prompt.top), bottom, left: prompt.left, right: prompt.right }, obstacles, min, bottom, gap)
-}
-
-/**
- * La pregunta abierta entre las cartas (`place` la ubica sin tapar unos obstáculos: `promptAbove` o `promptTop`): primero sin tapar ninguna de `keep` (lo que brilla, las cartas de las
- * Zonas Extra y de la mano) ni de `soft` (los demás monstruos); si no entra, sin tapar las de `keep`. Si tampoco, null: quien la usa la abre entera igual donde menos tapa.
- */
-export function promptFit<T>(place: (obstacles: readonly Box[]) => T | null, keep: readonly Box[], soft: readonly Box[]): T | null {
-  return place([...keep, ...soft]) ?? place(keep)
+  return { x, y, top, room: Math.max(0, Math.floor(room)), width: Math.max(0, Math.floor(2 * Math.min(x - column.left, column.right - x) - 2 * gap)) }
 }

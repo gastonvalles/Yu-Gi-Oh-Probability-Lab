@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { FIELD_ZOOM_MAX, classicCell, fieldZoom, promptAbove, promptFit, promptTop, railsFit } from '../app/duel-rails'
+import { FIELD_ZOOM_MAX, classicCell, fieldZoom, matSpot, railsFit } from '../app/duel-rails'
 import { useHostToasts } from '../app/toast-box'
 import { AppToaster } from '../components/ui/AppToaster'
 
@@ -13,62 +13,40 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('la pregunta del medio no tapa lo que hay que tocar', () => {
-  const box = (top: number, bottom: number, left = 0, right = 100) => ({ top, bottom, left, right })
-  const prompt = box(400, 500)
+describe('el lugar fijo de los carteles de la mesa (`matSpot`)', () => {
+  const box = (top: number, bottom: number, left: number, right: number) => ({ top, bottom, left, right })
+  // Un celular de 390 × 844: la barra hasta 60, la columna de 0 a 844 y las dos Zonas Extra (la 2.ª y la 4.ª de cinco columnas) de 380 a 452.
+  const extra = [box(380, 452, 80, 152), box(380, 452, 238, 310)]
+  const column = box(0, 844, 0, 390)
 
-  it('sin nada abajo se queda; tapando una carta sube lo justo, también por encima de otra que queda en el camino; sin lugar arriba baja y, sin lugar en ninguno, no hay dónde', () => {
-    expect(promptTop(prompt, [box(600, 700), box(400, 500, 200, 300)], 0, 900)).toBe(400)
-    expect(promptTop(prompt, [box(450, 550)], 0, 900)).toBe(342)
-    expect(promptTop(prompt, [box(450, 550), box(300, 420)], 0, 900)).toBe(192)
-    expect(promptTop(prompt, [box(450, 550), box(0, 420)], 0, 900)).toBe(558)
-    expect(promptTop(prompt, [box(450, 550), box(0, 420), box(500, 900)], 0, 900)).toBeNull()
+  it('el cartel chico apoya en el borde de arriba de la fila Extra y la hoja va a su centro, a lo ancho del campo', () => {
+    const spot = matSpot(extra, column, 60)!
+
+    expect(spot.top).toBe(380)
+    expect(spot.x).toBe(195)
+    expect(spot.y).toBe(416)
+    // Ancho: la columna entera menos 8 de cada lado.
+    expect(spot.width).toBe(374)
   })
 
-  it('en el celular termina arriba de tus monstruos, sea cual sea la ranura; si tapa algo que brilla sólo sube y, sin lugar entre la barra y tus monstruos, va por la ranura de siempre', () => {
-    // Tus monstruos desde 600: la banda de 100 termina en 592, venga de arriba o de abajo.
-    expect(promptAbove(prompt, [], 0, 600)).toBe(492)
-    expect(promptAbove(box(650, 750), [], 0, 600)).toBe(492)
-    // La mano y tu campo (abajo de 600) no la mueven; una carta del rival que brilla, sí: sube por encima.
-    expect(promptAbove(prompt, [box(620, 700), box(700, 844)], 0, 600)).toBe(492)
-    expect(promptAbove(prompt, [box(540, 580)], 0, 600)).toBe(432)
-    // Con la barra hasta 120: una banda de 310 no entra arriba de tus monstruos en 400, ni una de 100 si lo que brilla llega hasta 150.
-    expect(promptAbove(box(0, 310), [], 120, 400)).toBeNull()
-    expect(promptAbove(prompt, [box(150, 580)], 120, 600)).toBeNull()
+  it('la hoja, lo más alta que entra centrada sin tapar la barra ni salirse de la columna, y no más del 70 % de la mesa', () => {
+    // Centrada en 416: hasta la barra hay 356 (menos 8), y el 70 % de 844 es 590: gana el 70 %.
+    expect(matSpot(extra, column, 60)!.room).toBe(590)
+    // Con la barra hasta 200: 2 × (216 − 8) = 416.
+    expect(matSpot(extra, column, 200)!.room).toBe(416)
+    // Con la columna cortada en 500 (la ventana): 2 × (84 − 8) = 152.
+    expect(matSpot(extra, box(0, 500, 0, 390), 60)!.room).toBe(152)
   })
 
-  it('con la cadena a la vista, el techo es la pila (la píldora y un eslabón, más 8): entra la banda que cabe debajo; la más alta no (`PracticeMat` la abre igual y acorta la lista: ninguna se esconde)', () => {
-    // Medido con el núcleo a 740 de alto: tus monstruos en 402; «¿Activás el efecto?» mide 236 a 414 px (queda en 158) y 258 a 390 px (no entra debajo de 156).
-    expect(promptAbove(box(0, 236), [], 156, 402)).toBe(158)
-    expect(promptAbove(box(0, 258), [], 156, 402)).toBeNull()
+  it('con laterales o paneles la fila no está al centro de la columna: el ancho es el doble de lo que hay hasta el costado más cercano', () => {
+    const spot = matSpot([box(300, 400, 600, 700), box(300, 400, 800, 900)], box(0, 900, 300, 1400), 0)!
+
+    expect(spot.x).toBe(750)
+    expect(spot.width).toBe(2 * (750 - 300) - 16)
   })
 
-  it('no tapa una carta de las Zonas Extra (ni la mano ni lo que brilla) ni, si puede, los demás monstruos; sin lugar, null (la mesa la abre entera igual donde menos tapa)', () => {
-    // El celular: tus monstruos en 600, la Zona Extra (un Link tuyo, que no brilla) de 500 a 590, los monstruos del rival de 380 a 470; la barra hasta 120.
-    const emz = box(500, 590)
-    const rival = box(380, 470)
-    const above = (min: number) => (obstacles: readonly ReturnType<typeof box>[]) => promptAbove(prompt, obstacles, min, 600)
-
-    // Sin cuidar nada, la banda de 100 tapaba la Zona Extra (de 492 a 592).
-    expect(above(120)([])).toBe(492)
-    // Hay lugar arriba de los monstruos del rival: no tapa ni la Zona Extra ni a ellos.
-    expect(promptFit(above(120), [emz], [rival])).toBe(272)
-    // Arriba no entra (la barra baja hasta 300): tapa a los monstruos del rival, nunca la Zona Extra.
-    expect(promptFit(above(300), [emz], [rival])).toBe(392)
-    // Tampoco entra sobre la Zona Extra: no hay dónde.
-    expect(promptFit(above(450), [emz], [rival])).toBeNull()
-  })
-
-  it('con la caja medida de verdad (un `DOMRect`, con sus medidas en el prototipo) también choca', () => {
-    class Rect {
-      constructor(private readonly box: { top: number; bottom: number; left: number; right: number }) {}
-      get top() { return this.box.top }
-      get bottom() { return this.box.bottom }
-      get left() { return this.box.left }
-      get right() { return this.box.right }
-    }
-
-    expect(promptAbove(new Rect(prompt), [box(540, 580)], 0, 600)).toBe(432)
+  it('sin la fila (todavía no hay campo) no hay lugar: los carteles van al centro de la pantalla', () => {
+    expect(matSpot([], column, 60)).toBeNull()
   })
 })
 

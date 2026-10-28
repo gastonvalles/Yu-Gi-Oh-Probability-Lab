@@ -22,8 +22,8 @@ interface SortSheetProps {
 
 /**
  * Ordenar cartas (`sort_card`: el tope del deck; `sort_chain`: los costos de un ataque, que no son eslabones: varios disparos a la vez se piden de a uno con `select_chain`) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el marco celeste y el número de `PickGrid`) y tocar una numerada la suelta
- * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera (en el celular, su asa
- * la baja sin contestar).
+ * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera (se minimiza
+ * sin contestar).
  * Va dentro de un `Presence` (así sale al contestarse).
  */
 export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hint'), kicker, done = t('auto.sort.done'), cards, onSort }: SortSheetProps) {
@@ -39,6 +39,7 @@ export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hi
       dismissible={false}
       size="keypad"
       lowerable
+      anchor="mat"
       veil={false}
       kicker={kicker}
       title={title}

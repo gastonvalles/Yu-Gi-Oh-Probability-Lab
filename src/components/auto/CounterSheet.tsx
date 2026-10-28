@@ -23,7 +23,7 @@ interface CounterSheetProps {
 /**
  * Sacar contadores (`select_counter`: «sacá 3 contadores de tu campo») en una hoja chica (`Modal keypad`): una fila por carta, con su arte, cuántos tiene y un `Stepper` de 0 a lo que se le puede
  * sacar (lo que tiene, y nunca más del total). La fila con alguno lleva el aro de lo elegido. «Sacar contadores» se enciende con el total justo. Hay que contestar: no se cierra con Escape ni tocando
- * afuera (en el celular, su asa la baja sin contestar). Va dentro de un `Presence` (así sale al contestarse).
+ * afuera (se minimiza sin contestar). Va dentro de un `Presence` (así sale al contestarse).
  */
 export function CounterSheet({ cards, need, onPick }: CounterSheetProps) {
   const leaving = useLeaving()
@@ -40,6 +40,7 @@ export function CounterSheet({ cards, need, onPick }: CounterSheetProps) {
       dismissible={false}
       size="keypad"
       lowerable
+      anchor="mat"
       veil={false}
       title={title}
       subtitle={t('auto.counter.hint')}

@@ -15,6 +15,8 @@ interface ConfirmDialogProps {
   title: string
   /** false = sin velo, como los demás menús de la mesa (`Modal`). */
   veil?: boolean
+  /** `mat`: una confirmación de la mesa del duelo, al centro de la fila Extra (`Modal`). */
+  anchor?: 'mat'
 }
 
 export function ConfirmDialog({
@@ -28,6 +30,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   veil = true,
+  anchor,
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -36,6 +39,7 @@ export function ConfirmDialog({
       size="keypad"
       role="alertdialog"
       veil={veil}
+      anchor={anchor}
       title={title}
       footer={
         <>
