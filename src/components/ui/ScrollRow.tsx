@@ -54,15 +54,16 @@ export function ScrollRow({ children, className }: ScrollRowProps) {
       <div ref={track} className="-m-1 flex gap-2 overflow-x-auto overscroll-x-contain p-1 [&>*]:shrink-0 after:w-1 after:shrink-0 after:content-[''] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {children}
       </div>
+      {/* Los degradés cubren también los 4 px del aro de foco (`-m-1 p-1`): si no, en el borde asomaba una tira del chip que se corta. */}
       {edges.start ? (
-        <span className="absolute inset-y-0 left-0 flex items-center bg-linear-to-r from-background from-60% to-transparent pr-6">
+        <span className="absolute inset-y-0 -left-1 flex items-center bg-linear-to-r from-background from-60% to-transparent pr-6">
           <IconButton tone="ghost" size="sm" aria-label={t('common.scrollBack')} onClick={() => scrollBy(-1)}>
             <Icon name="chevron-left" size={20} />
           </IconButton>
         </span>
       ) : null}
       {edges.end ? (
-        <span className="absolute inset-y-0 right-0 flex items-center bg-linear-to-l from-background from-60% to-transparent pl-6">
+        <span className="absolute inset-y-0 -right-1 flex items-center bg-linear-to-l from-background from-60% to-transparent pl-6">
           <IconButton tone="ghost" size="sm" aria-label={t('common.scrollForward')} onClick={() => scrollBy(1)}>
             <Icon name="chevron-right" size={20} />
           </IconButton>

@@ -28,10 +28,11 @@ import { EmptyState } from '../ui/EmptyState'
 import { Icon, type IconName } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { ScrollRow } from '../ui/ScrollRow'
 import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
-import { overline } from '../ui/typography'
+import { overline, supportText } from '../ui/typography'
 import { MetaCardModal } from './MetaCardModal'
 import { MetaHeroSide } from './MetaHeroSide'
 import { CardTile, TierBoard, groupByTier, type BoardView } from './TierBoard'
@@ -107,9 +108,7 @@ export function TierListsScreen() {
   const weeksControl = () => (
     <Segmented value={weeks} onChange={setWeeks} options={windowOptions} label={t('meta.screen.weeksLabel')} size="sm" fullWidth={!isDesktop} className="min-[560px]:w-fit" />
   )
-  const viewControl = () => (
-    <Segmented value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} size="sm" fullWidth={!isDesktop} className="min-[560px]:w-fit" />
-  )
+  const viewControl = () => <Segmented value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} size="sm" />
 
   return (
     <StepPage as="article">
@@ -119,22 +118,29 @@ export function TierListsScreen() {
         subtitle={t('meta.screen.subtitle')}
         help={<TierListHelp list={list} floors={floors} totalWeeks={totalWeeks} />}
         side={
-          <div className="flex flex-wrap items-center gap-2 max-[1101px]:w-full">
+          isDesktop ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <MetaHeroSide region={region} onRegionChange={setMetaRegion} />
+              <Button variant="secondary" size="sm" icon="sort" onClick={() => goTo('#tier-maker')}>
+                {t('meta.maker.makeYours')}
+              </Button>
+            </div>
+          ) : (
             <MetaHeroSide region={region} onRegionChange={setMetaRegion} />
-            <Button variant="secondary" size="sm" icon="sort" className="max-[1101px]:w-full" onClick={() => goTo('#tier-maker')}>
-              {t('meta.maker.makeYours')}
-            </Button>
-          </div>
+          )
         }
       />
 
-      <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} fullWidth={!isDesktop} className="min-[560px]:w-fit min-[1101px]:min-w-[26rem]" />
+      {isDesktop ? <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} className="min-w-[26rem]" /> : null}
 
       <section className="min-w-0">
+        {/* En celular «Crear la tuya» es la acción del encabezado (no un botón ancho más antes de la primera carta; en escritorio va arriba, al lado de la región)
+            y la descripción baja a todo el ancho: al lado del enlace quedaba en una columna de cuatro renglones. */}
         <SectionHeader
-          icon={LIST_ICON[list]}
+          icon={isDesktop ? LIST_ICON[list] : undefined}
           title={t(LIST_TITLE_KEY[list])}
-          description={description}
+          description={isDesktop ? description : undefined}
+          link={isDesktop ? undefined : { label: t('meta.maker.makeYours'), href: '#tier-maker' }}
           actions={
             isDesktop ? (
               // Cada control lleva su rótulo: "2 sem." (cuántos decks se cuentan) y la proyección no se confunden.
@@ -143,17 +149,24 @@ export function TierListsScreen() {
                 <ControlField label={t('meta.screen.fieldWeeks')}>{weeksControl()}</ControlField>
                 <ControlField label={t('meta.screen.fieldView')}>{viewControl()}</ControlField>
               </div>
-            ) : (
-              // En celular se ve lo que más se usa (hoy o proyección) y el resto, que casi no se toca, va en un modal.
-              <div className="flex w-full items-center gap-2">
-                <div className="min-w-0 flex-1">{viewControl()}</div>
-                <IconButton tone="raised" size="md" aria-label={t('meta.screen.adjust')} title={t('meta.screen.adjust')} onClick={() => setAdjustOpen(true)}>
-                  <Icon name="sliders" size={20} />
-                </IconButton>
-              </div>
-            )
+            ) : undefined
           }
         />
+        {isDesktop ? null : (
+          <>
+            <p className={cx(supportText, 'mt-1')}>{description}</p>
+            {/* Una sola fila de pastillas que se desliza: qué lista y, separado, hoy o proyección (lo que más se toca); lo que casi no se toca (zona y semanas) va en «Ajustar». */}
+            <div className="mt-3 flex items-center gap-2">
+              <ScrollRow>
+                <Segmented variant="scroll" value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} />
+                <Segmented variant="scroll" value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} className="ml-2" />
+              </ScrollRow>
+              <IconButton tone="raised" size="md" aria-label={t('meta.screen.adjust')} title={t('meta.screen.adjust')} onClick={() => setAdjustOpen(true)}>
+                <Icon name="sliders" size={20} />
+              </IconButton>
+            </div>
+          </>
+        )}
         {deckCount > 0 && deckCount < MIN_RELIABLE_DECKS ? (
           // Con pocos decks cada uno pesa varios puntos y casi todo cae en S: se dice, en lugar de dejar que parezca un error.
           <Callout tone="warning" className="mt-3">

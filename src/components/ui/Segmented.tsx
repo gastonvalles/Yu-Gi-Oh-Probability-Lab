@@ -77,7 +77,8 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
     off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
   scroll: {
-    base: 'shrink-0 rounded-control px-4',
+    // Píldoras, como los `FilterChips` de la misma fila deslizable: un filtro y una opción se ven iguales.
+    base: 'shrink-0 rounded-full px-4',
     on: ON,
     off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
