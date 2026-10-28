@@ -20,7 +20,8 @@ import {
   type HandLayout,
 } from '../../app/practice-hand-layout'
 import type { SpotlightKind } from '../../app/mat-effects'
-import { EASE_IN_OUT, EASE_OUT, supportsAdditiveAnimation } from '../../app/motion'
+import { dealFrames } from '../../app/deal-flight'
+import { EASE_IN_OUT, EASE_OUT } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import { t } from '../../i18n'
 import type { ApiCardReference, GlowKind } from '../../types'
@@ -471,35 +472,39 @@ const HandCard = memo(function HandCard({
     const fromX = deck ? deck.left + deck.width / 2 - area.left - layout.cardWidth / 2 : layout.startX
     const fromY = deck ? deck.top + deck.height / 2 - area.top - layout.cardHeight / 2 : TOP_ROOM + 40
     const startScale = deck ? Math.max(0.3, deck.width / layout.cardWidth) : 0.6
-    const target = /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/.exec(finalTransform)
-    const toX = target ? Number(target[1]) : fromX
-    const toY = target ? Number(target[2]) : fromY
-    // El camino va con `perspective` y sin el giro: el giro es otra animación (abajo), con su propio reloj. Sólo el primer tramo (del mazo al centro)
-    // lleva la curva de los vuelos; el resto conserva el arco y el rebote de cómo cae.
-    const perspective = (position: string) => `perspective(700px) ${position}`
-    // Arriba, a mitad de camino: más alta y un poco más grande (se acerca a la cámara al darse vuelta).
-    const midPosition = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 34}px, 0) rotate(-4deg) scale(1.12)`
-    // Aterriza con un rebote: pasa un poco de su lugar (más abajo-arriba y con un grado más de giro) y se asienta. Sin el giro del abanico (no parsea), llega directo.
-    const fan = /rotate\((-?[\d.]+)deg\)/.exec(finalTransform)
-    const bounce = fan ? `translate3d(${toX}px, ${toY - 7}px, 0) rotate(${Number(fan[1]) + 1.5}deg) scale(1.03)` : `${finalTransform} scale(1)`
+    // Su lugar en el abanico (`restTransform`: `translate3d(x, y, 0) rotate(…)`); sin él, llega sin volar.
+    const target = /translate3d\((-?[\d.]+(?:e[-+]?\d+)?)px, (-?[\d.]+(?:e[-+]?\d+)?)px/.exec(finalTransform)
+    const fan = /rotate\((-?[\d.]+(?:e[-+]?\d+)?)deg\)/.exec(finalTransform)
 
+    if (!target || !fan) {
+      back.style.setProperty('display', 'none')
+      return
+    }
+
+    const toX = Number(target[1])
+    const toY = Number(target[2])
+    const angle = Number(fan[1])
+    // Sale del mazo; arriba, a mitad de camino, más alta y un poco más grande (se acerca a la cámara al darse vuelta); aterriza con un rebote (pasa un poco de su
+    // lugar, con un grado más de giro) y se asienta en el abanico. El camino y el giro 3D van en una sola animación (`dealFrames`), con las curvas de siempre.
     const flight = element.animate(
+      dealFrames([
+        { x: fromX, y: fromY, rotate: -16, scale: startScale, opacity: 0.9 },
+        { x: (fromX + toX) / 2, y: Math.min(fromY, toY) - 34, rotate: -4, scale: 1.12, opacity: 1 },
+        { x: toX, y: toY - 7, rotate: angle + 1.5, scale: 1.03, opacity: 1 },
+        { x: toX, y: toY, rotate: angle, scale: 1, opacity: 1 },
+      ]),
+      { duration: DEAL_MS, fill: 'backwards' },
+    )
+    // La sombra crece al subir y baja al aterrizar: va aparte (no se compone en la GPU y en la misma animación arrastraría al camino al hilo principal). No puede ir en un hijo: la carta
+    // recorta lo que sobresale (`overflow-hidden`). Al final queda la suya (`--card-shadow`).
+    const shadow = element.animate(
       [
-        { transform: perspective(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-16deg) scale(${startScale})`), opacity: 0.9, boxShadow: '0 0 0 rgb(0 0 0 / 0)', easing: EASE_IN_OUT },
-        { transform: perspective(midPosition), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)', easing: EASE_OUT },
-        { transform: perspective(bounce), opacity: 1, offset: 0.82, boxShadow: '0 12px 20px rgb(0 0 0 / 0.4)', easing: EASE_OUT },
-        { transform: perspective(`${finalTransform} scale(1)`), opacity: 1 },
+        { boxShadow: '0 0 0 rgb(0 0 0 / 0)', easing: EASE_IN_OUT },
+        { boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)', offset: 0.42, easing: EASE_OUT },
+        { boxShadow: '0 12px 20px rgb(0 0 0 / 0.4)', offset: 0.82, easing: EASE_OUT },
       ],
       { duration: DEAL_MS, fill: 'backwards' },
     )
-    // La carta se da vuelta en el aire, en 3D: sale mostrando el dorso, a mitad de camino queda de canto y termina de abrirse del otro lado. Va aparte
-    // y con la curva de los vuelos de punta a punta (como `fly`): se suma al camino. Sin esa suma (un navegador viejo) llega sin girar.
-    const turn = supportsAdditiveAnimation()
-      ? element.animate(
-          [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)', offset: 0.5 }, { transform: 'rotateY(-90deg)', offset: 0.5 }, { transform: 'rotateY(0deg)' }],
-          { duration: DEAL_MS, easing: EASE_IN_OUT, composite: 'add' },
-        )
-      : null
     // El dorso se cambia por la cara justo al quedar de canto: a mitad de la curva, con el mismo reloj que el giro.
     const flip = back.animate(
       [{ opacity: 1 }, { opacity: 1, offset: 0.5 }, { opacity: 0, offset: 0.5 }, { opacity: 0 }],
@@ -508,7 +513,7 @@ const HandCard = memo(function HandCard({
 
     return () => {
       flight.cancel()
-      turn?.cancel()
+      shadow.cancel()
       flip.cancel()
     }
     // Sólo al montarse: reordenar o redimensionar no debe volver a repartir.

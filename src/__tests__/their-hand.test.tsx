@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { TheirHand } from '../components/duel/DuelTable'
 import { THEIR_HAND } from '../components/duel/their-hand'
+import { computeHandLayout } from '../app/practice-hand-layout'
 import { RivalHandStrip } from '../components/probability/RivalHandStrip'
 import { readFileSync } from 'node:fs'
 import { configureStore } from '@reduxjs/toolkit'
@@ -93,16 +94,47 @@ describe('la mano del rival', () => {
     expect(hand).not.toMatch(/height: layout\.cardHeight,/)
   })
 
-  it('al entrar o salir una carta, la caja y cada dorso se reacomodan con la transición de la mesa (y con movimiento reducido, de un golpe)', () => {
+  it('al entrar o salir una carta, cada dorso se reacomoda con la transición de la mesa (y con movimiento reducido, de un golpe)', () => {
     viewport(true)
     render(<TheirHand count={5} />)
 
-    const box = screen.getByRole('img').parentElement!
-    expect(box.className).toContain('[transition:width_var(--motion-duration)_var(--ease-in-out)]')
-    expect(box.className).toContain('motion-reduce:transition-none')
     for (const card of cardsOf()) {
       expect(card.className).toContain('[transition:transform_var(--motion-duration)_var(--ease-in-out)]')
       expect(card.className).toContain('motion-reduce:transition-none')
     }
+  })
+
+  // Animar el ancho de la caja rehacía el layout y la volvía a enderezar en la vista 3D (4 medidas) en cada cuadro: centrada (encima del campo), la caja mide siempre lo mismo y el
+  // abanico se corre adentro, con la `transform` de cada dorso. En pantalla quedan donde quedaban: el abanico, centrado.
+  it('centrada, la caja no cambia de ancho al robar o jugar: el abanico se corre adentro y queda en el mismo lugar que antes', () => {
+    viewport(false)
+    const { cardWidth, maxWidth } = THEIR_HAND.mobile
+    const x = (card: HTMLElement) => Number.parseFloat(/translate\((-?[\d.]+)px/.exec(card.style.transform)?.[1] ?? 'NaN')
+    const { container, rerender } = render(<TheirHand count={3} pointed />)
+    const box = container.firstElementChild as HTMLElement
+
+    for (const count of [3, 6, 1]) {
+      rerender(<TheirHand count={count} pointed />)
+      const layout = computeHandLayout(maxWidth, count, cardWidth, 5)
+      const span = layout.cardWidth + layout.step * (count - 1)
+
+      expect(box.style.width).toBe(`${maxWidth}px`)
+      expect(box.className).not.toContain('transition:width')
+      cardsOf().forEach((card, index) => expect(x(card)).toBeCloseTo(layout.startX + index * layout.step))
+      // El aro de lo que se señala, la mira y el botón de marcarla van del ancho del abanico, como la caja de antes.
+      const ring = box.querySelector<HTMLElement>('[data-pointed="true"]')!
+      expect(Number.parseFloat(ring.style.left)).toBeCloseTo(layout.startX)
+      expect(Number.parseFloat(ring.style.width)).toBeCloseTo(span)
+    }
+  })
+
+  it('arrimada a la izquierda (en una grilla) mide su abanico y las cartas salen de su borde', () => {
+    viewport(false)
+    const { cardWidth, maxWidth } = THEIR_HAND.mobile
+    const { container } = render(<TheirHand count={4} align="start" />)
+    const layout = computeHandLayout(maxWidth, 4, cardWidth, 5)
+
+    expect(Number.parseFloat((container.firstElementChild as HTMLElement).style.width)).toBeCloseTo(layout.cardWidth + layout.step * 3)
+    expect(cardsOf()[0]!.style.transform).toMatch(/^translate\(0px,/)
   })
 })

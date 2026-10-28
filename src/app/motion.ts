@@ -20,7 +20,7 @@ export const EASE_SNAP = 'cubic-bezier(0.25, 1, 0.5, 1)'
  * La curva de un `cubic-bezier(x1, y1, x2, y2)` como función: dado el tiempo recorrido (0 a 1), devuelve cuánto del camino va hecho, como en una transición.
  * Busca el punto de la curva cuyo `x` es ese tiempo (bisección: el `x` crece con el tiempo) y devuelve su `y`.
  */
-function bezierEase(curve: string): (time: number) => number {
+export function bezierEase(curve: string): (time: number) => number {
   const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = curve.match(/-?[\d.]+/g)?.map(Number) ?? []
   const at = (p1: number, p2: number, t: number) => 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3
 
@@ -58,6 +58,29 @@ export const easeInOut = bezierEase(EASE_IN_OUT)
 /** ¿Puede una animación sumarse a otra (`composite: 'add'`)? Los giros en 3D de las cartas se suman a su `transform`; sin esto pisarían el vuelo, así que no se hacen. */
 export function supportsAdditiveAnimation(): boolean {
   return typeof KeyframeEffect !== 'undefined' && 'composite' in KeyframeEffect.prototype
+}
+
+const movesTransform = (animation: Animation) => (animation.effect as KeyframeEffect | null)?.getKeyframes?.().some((frame) => 'transform' in frame) ?? false
+const isTransition = (animation: Animation) => typeof CSSTransition === 'function' && animation instanceof CSSTransition
+
+/**
+ * ¿Vuela? Otra animación (no su transición) ya mueve la `transform` del elemento (un vuelo entre zonas): ahí una animación nueva se suma (`composite: 'add'`), como siempre;
+ * llevarle delante la base de este momento la dejaría clavada donde estaba.
+ */
+export function flying(element: Element): boolean {
+  return (element.getAnimations?.() ?? []).some((animation) => movesTransform(animation) && !isTransition(animation))
+}
+
+/**
+ * La `transform` de un elemento lista para ir delante de otras funciones en los cuadros de una animación en `replace`, que la GPU compone sola (`''` si no tiene). Si su
+ * transición corre (la carta que se acuesta, la mano que se abre al robar), la de adonde va: una animación de `transform` tapa la transición (medido en Edge: también
+ * sumándose con `add`), así que la carta ya se veía en su lugar.
+ */
+export function ownTransform(element: Element): string {
+  const transition = (element.getAnimations?.() ?? []).find((animation) => isTransition(animation) && movesTransform(animation))
+  const base = transition ? String((transition.effect as KeyframeEffect).getKeyframes().at(-1)?.transform ?? 'none') : getComputedStyle(element).transform
+
+  return !base || base === 'none' ? '' : `${base} `
 }
 
 /** ¿Pidió la persona reducir el movimiento? Se consulta en el momento (no se guarda). */

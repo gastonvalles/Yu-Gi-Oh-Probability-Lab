@@ -123,7 +123,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
 
   return (
     <div className={cx('grid gap-1.5', className)}>
-      {showTheirs && hand !== undefined ? <TheirHand count={hand} /> : null}
+      {showTheirs && hand !== undefined ? <TheirHand count={hand} align="start" /> : null}
       <div role="group" aria-label={t('duel.table.label')} className={GRID} style={{ '--areas': rows.join(' '), '--areas-compact': compactRows.join(' ') } as CSSProperties}>
         {showTheirs ? <SideCells side={theirs} owner="theirs" /> : null}
         {[0, 1].map((index) => (
@@ -143,23 +143,22 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
 }
 
 /** Un botón transparente sobre una carta o una pila del rival: se toca para marcarla como objetivo (el menú sale pegado). */
-function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) => void }) {
+function MarkButton({ label, onMark, className }: { label: string; onMark: (rect: DOMRect) => void; className?: string }) {
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
-      className="absolute inset-0 z-10 cursor-pointer rounded-none border-0 bg-transparent p-0 opacity-0 before:absolute before:-inset-1 focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus"
+      className={cx('absolute inset-0 z-10 cursor-pointer rounded-none border-0 bg-transparent p-0 opacity-0 before:absolute before:-inset-1 focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus', className)}
       onClick={(event) => onMark((event.currentTarget.closest<HTMLElement>('[role="group"]') ?? event.currentTarget).getBoundingClientRect())}
     />
   )
 }
 
 /**
- * Cómo se reacomoda la mano del rival cuando entra o sale una carta: la caja (si cambia de ancho) y cada dorso viajan a su nuevo lugar
- * con el tiempo de la mesa y la curva de lo que viaja de un lugar a otro (`--ease-in-out`: arranca suave y llega suave). Con movimiento reducido, de un golpe.
+ * Cómo se reacomoda la mano del rival cuando entra o sale una carta: cada dorso viaja a su nuevo lugar con el tiempo de la mesa y la curva de lo que viaja de un lugar
+ * a otro (`--ease-in-out`: arranca suave y llega suave); con movimiento reducido, de un golpe. La caja no cambia de ancho (ver `TheirHand`): sólo se mueve `transform`, en la GPU.
  */
-const THEIR_HAND_BOX_MOTION = '[transition:width_var(--motion-duration)_var(--ease-in-out)] motion-reduce:transition-none'
 const THEIR_HAND_BACK_MOTION = '[transition:transform_var(--motion-duration)_var(--ease-in-out)] motion-reduce:transition-none'
 
 /**
@@ -174,8 +173,11 @@ export function TheirHand({
   onMark,
   onCard,
   onCardHover,
+  align = 'center',
 }: {
   count: number
+  /** Cómo la pone su lugar: centrada (encima del campo de la mesa) o arrimada a la izquierda (en una grilla: `DuelTable`, la vista del espectador). */
+  align?: 'center' | 'start'
   /** Boca arriba, en su orden (sin esto, de dorso). */
   cards?: ReadonlyArray<{ name: string; art: string | null }>
   /** El otro jugador la marcó como objetivo. */
@@ -197,6 +199,12 @@ export function TheirHand({
   // El tamaño sale de una mano de 5 y no cambia al jugar; la separación sí (con más cartas se juntan más).
   const layout = computeHandLayout(maxWidth, Math.max(1, shown), cardWidth, 5)
   const span = layout.cardWidth + layout.step * Math.max(0, shown - 1)
+  // Centrada, la caja mide siempre lo de la mano más ancha y el abanico se corre adentro (`offset`, en la `transform` de cada dorso, que ya viaja): si la caja cambiara de
+  // ancho, el layout se rehacía y la caja se volvía a enderezar (4 medidas) en cada cuadro de la transición. Arrimada a la izquierda su borde no se mueve: mide el abanico.
+  const width = align === 'center' ? maxWidth : span
+  const offset = (width - span) / 2
+  // El lugar del abanico, dentro de la caja: ahí late el aro de lo que se señala y van la mira y el botón de marcarla.
+  const fanBox: CSSProperties = { left: offset, width: span }
 
   // Cuelga del borde de arriba del campo, que en la vista 3D se inclina: la perspectiva la aplastaba (medido: de 0,686 a 1,1 de ancho sobre alto). Se la endereza
   // (`flatTransform`): apoyada en el mismo punto, del ancho de su borde de abajo y con su proporción. Se rehace si cambia de tamaño ella, la mesa o la pantalla, o la vista.
@@ -236,8 +244,11 @@ export function TheirHand({
   }, [view])
 
   return (
-    <div ref={boxRef} data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className={cx('relative shrink-0', THEIR_HAND_BOX_MOTION)} style={{ width: Math.max(span, layout.cardWidth), height: room }}>
-      <div role={open ? 'group' : 'img'} aria-label={cards ? t('duel.hand.theirsShown', { cards: cards.map((card) => card.name).join(', ') }) : t('duel.hand.theirs', { count })} className="absolute inset-0">
+    // Sólo el abanico recibe el toque (como cuando la caja medía eso): el resto de la caja deja pasar.
+    <div ref={boxRef} data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} className="pointer-events-none relative isolate shrink-0" style={{ width, height: room }}>
+      {/* Debajo de las cartas, como la caja de antes: el aro de lo que se señala (que la sube a z 6: las cartas van en z 7). */}
+      <div data-pointed={pointed ? 'true' : undefined} className="pointer-events-auto absolute inset-y-0" style={fanBox} />
+      <div role={open ? 'group' : 'img'} aria-label={cards ? t('duel.hand.theirsShown', { cards: cards.map((card) => card.name).join(', ') }) : t('duel.hand.theirs', { count })} className="absolute inset-0 z-7">
         {Array.from({ length: shown }, (_, index) => {
           // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
           const raise = (((shown - 1) / 2) ** 2 - Math.abs(index - (shown - 1) / 2) ** 2) * THEIR_FAN_RISE
@@ -248,8 +259,8 @@ export function TheirHand({
               key={index}
               title={card?.name}
               // El ancho manda y el alto sale de la proporción de la carta (nunca los dos fijos).
-              className={cx('absolute bottom-0 left-0 block aspect-[421/614] overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
-              style={{ width: layout.cardWidth, transform: `translate(${index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
+              className={cx('pointer-events-auto absolute bottom-0 left-0 block aspect-[421/614] overflow-hidden', CARD_SHADOW, THEIR_HAND_BACK_MOTION)}
+              style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
               {card && open ? (
@@ -265,8 +276,12 @@ export function TheirHand({
           )
         })}
       </div>
-      {marked ? <TargetMark /> : null}
-      {onMark ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES.hand })} onMark={onMark} /> : null}
+      {marked || onMark ? (
+        <div className="absolute inset-y-0 z-8" style={fanBox}>
+          {marked ? <TargetMark /> : null}
+          {onMark ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES.hand })} onMark={onMark} className="pointer-events-auto" /> : null}
+        </div>
+      ) : null}
     </div>
   )
 }
