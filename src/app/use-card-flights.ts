@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 
 
 import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
 import { cardImageSrc } from './card-image-source'
-import { EASE_IN_OUT, EASE_OUT, UI_ANIMATION_MS, prefersReducedMotion, supportsAdditiveAnimation } from './motion'
+import { EASE_IN_OUT, EASE_OUT, UI_ANIMATION_MS, easeInOut, prefersReducedMotion } from './motion'
 import { allMatIds, locateCard, type MatState } from './practice-mat'
 
 /** Cuánto dura el vuelo más largo de una carta (de una punta de la mesa a la otra); uno corto dura menos (`flightMs`). */
@@ -34,14 +34,20 @@ const STAGGER_LIMIT = 8
 const PILE_FLIGHT_LIMIT = 15
 /** Cuánto después de una jugada (o de reacomodarse la mano) todo quedó quieto y se puede medir de nuevo: lo que más dura es un vuelo, y un poco más. */
 const SETTLE_MS = FLIGHT_MS + 100
-/** Marca de los vuelos: una jugada que llega con un vuelo a medias lo corta antes de medir, así la carta se mide quieta. */
+/**
+ * Marca de los vuelos de las cartas a la vista. Una jugada que llega con uno a medias lo aparta un instante para medir la carta quieta y, si la carta sigue
+ * yendo al mismo lugar, lo retoma donde iba: ningún vuelo se corta.
+ */
 const FLIGHT_ID = 'mat-flight'
 /** Las pilas: lo que muestran (su carta de arriba, su contador) espera a que llegue la carta que viene volando. */
 const PILES = new Set(['deck', 'extra', 'gy', 'banished'])
-/** Los fantasmas vuelan dentro de la mesa, debajo de las cartas grandes del centro (`Spotlight`, z 120), la pregunta y la pausa del duelo, y encima del campo y la mano. */
-const GHOST_CLASS = 'pointer-events-none fixed left-0 top-0 z-110 overflow-hidden bg-input shadow-overlay'
-/** La capa de los fantasmas sin la caja de un fantasma: ahí vuela la copia de una carta que sale de la mano (`flyAbove`), que ya trae la suya. */
+/**
+ * La capa de los fantasmas: vuelan dentro de la mesa, debajo de las cartas grandes del centro (`Spotlight`, z 120), la pregunta y la pausa del duelo, y encima
+ * del campo y la mano. Es también lo que vuela de un fantasma (su caja, `GHOST_CARD`, va adentro y es la que gira) y de la copia de `flyAbove`.
+ */
 const GHOST_LAYER = 'pointer-events-none fixed left-0 top-0 z-110'
+/** La carta de un fantasma, dentro de lo que vuela: si se da vuelta en el camino gira ella sola, así el vuelo y el giro van cada uno en el compositor. */
+const GHOST_CARD = 'absolute inset-0 overflow-hidden bg-input shadow-overlay'
 
 /** Un rectángulo en la pantalla: el de un elemento o uno armado a mano (el lugar de una carta en la mano). */
 type Box = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>
@@ -51,7 +57,7 @@ type Size = { width: number; height: number }
 interface Measure {
   state: MatState
   cards: Map<string, Snapshot>
-  faces: Map<string, HTMLElement>
+  faces: Map<string, Face>
 }
 
 interface Snapshot {
@@ -146,50 +152,124 @@ function offset(from: Box, to: Box): string {
   return `translate(${centerX(from) - centerX(to)}px, ${centerY(from) - centerY(to)}px) scale(${sizeRatio(from, to)})`
 }
 
-/**
- * Lo mismo en el campo inclinado (la vista 3D): la perspectiva achica lo lejano y agranda lo cercano, así que un desplazamiento medido en la pantalla no es el mismo
- * sobre la mesa, y menos lejos de la carta (la mano está fuera del campo: salía de una esquina, gigante). Se busca probando, con unas pocas medidas antes de pintar,
- * el desplazamiento sobre la mesa que deja el centro de la carta donde estaba, y el tamaño que la deja del tamaño que tenía ahí. `own`: su transformación propia.
- */
-function tiltedOffset(element: HTMLElement, from: Box, to: Box, own: string): string {
-  const inline = { transform: element.style.transform, transition: element.style.transition }
-  // Sin su transición (las cartas del campo la tienen en `transform`): si no, cada prueba arrancaría una y la medida sería la de antes.
-  element.style.transition = 'none'
-  const goal = { x: centerX(from), y: centerY(from) }
-  const clamp = (value: number) => Math.min(3, Math.max(0.2, value))
-  // Cuánto se mueve en la pantalla por cada px sobre la mesa: primero, lo que se ve achicada en su lugar; después, lo que se midió en cada eje.
-  const step = { x: clamp(Math.max(to.width, to.height) / Math.max(1, element.offsetWidth, element.offsetHeight)), y: 0 }
-  step.y = step.x
-  let at = { dx: 0, dy: 0, x: centerX(to), y: centerY(to) }
-  let seen: Box = to
-
-  for (let tries = 0; tries < 5 && Math.hypot(goal.x - at.x, goal.y - at.y) > 1; tries += 1) {
-    const dx = at.dx + (goal.x - at.x) / step.x
-    const dy = at.dy + (goal.y - at.y) / step.y
-
-    element.style.transform = `translate(${dx}px, ${dy}px)${own}`
-    seen = element.getBoundingClientRect()
-    const next = { dx, dy, x: centerX(seen), y: centerY(seen) }
-
-    if (Math.abs(dx - at.dx) > 1) step.x = clamp((next.x - at.x) / (dx - at.dx))
-    if (Math.abs(dy - at.dy) > 1) step.y = clamp((next.y - at.y) / (dy - at.dy))
-    at = next
-  }
-
-  // Se devuelve su transformación todavía sin transición (y se aplica, midiendo) y recién después la transición: así volver no arranca ninguna.
-  element.style.transform = inline.transform
-  element.getBoundingClientRect()
-  element.style.transition = inline.transition
-
-  return `translate(${at.dx}px, ${at.dy}px) scale(${sizeRatio(from, seen)})`
+interface Point {
+  x: number
+  y: number
 }
 
 /**
- * La pila (o el Xyz) que recibe una carta se infla un instante cuando la carta la toca (`at`: cuánto falta para eso). Se suma a la transformación que ya
- * tiene: un Xyz en defensa sigue acostado y uno que todavía llega volando no salta a su lugar.
+ * El campo inclinado (la vista 3D) como cuenta: su transformación (`perspective()` + `rotateX` + escalas: lleva un punto de su plano, en px desde su
+ * `transform-origin`, a la pantalla) y dónde cae ese origen en la pantalla (no se mueve con la transformación). Sólo hace falta `transformPoint`.
+ */
+export interface Plane {
+  matrix: Pick<DOMMatrixReadOnly, 'transformPoint'>
+  origin: Point
+}
+
+/** Un punto del plano del campo (px desde su `transform-origin`) en la pantalla, con la división de la perspectiva. */
+function project({ matrix, origin }: Plane, x: number, y: number): Point {
+  const point = matrix.transformPoint({ x, y })
+
+  return { x: origin.x + point.x / point.w, y: origin.y + point.y / point.w }
+}
+
+/** Dónde caen en el plano dos valores en px de un `transform-origin` (`"195px 400px"`). */
+const originPx = (value: string): [number, number] => {
+  const [x = 0, y = 0] = value.split(' ').map(parseFloat)
+
+  return [x, y]
+}
+
+/**
+ * El plano de un campo inclinado, con una sola lectura (sin escribir nada): su matriz y su `transform-origin`, y su rectángulo en la pantalla, que es el que
+ * encierra sus cuatro esquinas ya inclinadas: de ahí sale dónde quedó el origen. Sin transformación (o sin `DOMMatrix`), null: se vuela como en el plano.
+ */
+function planeOf(field: HTMLElement): Plane | null {
+  const style = getComputedStyle(field)
+
+  if (typeof DOMMatrixReadOnly !== 'function' || !style.transform || style.transform === 'none') return null
+
+  const plane = { matrix: new DOMMatrixReadOnly(style.transform), origin: { x: 0, y: 0 } }
+  const [ox, oy] = originPx(style.transformOrigin)
+  const [width, height] = [field.offsetWidth, field.offsetHeight]
+  const corners = [project(plane, -ox, -oy), project(plane, width - ox, -oy), project(plane, width - ox, height - oy), project(plane, -ox, height - oy)]
+  const box = field.getBoundingClientRect()
+
+  return { ...plane, origin: { x: box.left - Math.min(...corners.map(({ x }) => x)), y: box.top - Math.min(...corners.map(({ y }) => y)) } }
+}
+
+/** Las esquinas de una carta (px desde su `transform-origin`) con su transformación propia (`base`: la de costado, la de una carta que gira). */
+function cornersOf(element: HTMLElement, style: CSSStyleDeclaration, base: string): Point[] {
+  const own = new DOMMatrixReadOnly(base === 'none' ? undefined : base)
+  const [ox, oy] = originPx(style.transformOrigin)
+  const width = parseFloat(style.width) || element.offsetWidth
+  const height = parseFloat(style.height) || element.offsetHeight
+
+  return [
+    [0, 0],
+    [width, 0],
+    [width, height],
+    [0, height],
+  ].map(([x, y]) => {
+    const point = own.transformPoint({ x: x! - ox, y: y! - oy })
+
+    return { x: point.x / point.w, y: point.y / point.w }
+  })
+}
+
+/** El rectángulo de la pantalla que encierra una carta del campo (sus esquinas, `cornersOf`) puesta con su origen en `at` del plano: lo que mediría `getBoundingClientRect`. */
+function seenAt(plane: Plane, corners: Point[], at: Point): Box {
+  const points = corners.map((corner) => project(plane, at.x + corner.x, at.y + corner.y))
+  const [xs, ys] = [points.map(({ x }) => x), points.map(({ y }) => y)]
+  const [left, top] = [Math.min(...xs), Math.min(...ys)]
+
+  return { left, top, width: Math.max(...xs) - left, height: Math.max(...ys) - top }
+}
+
+/** Dónde poner la carta en el plano (`at`) para que se vea centrada en `goal`: Newton, con la pendiente de cada eje tomada a 1 px. */
+function solve(plane: Plane, corners: Point[], goal: Point, start: Point): Point {
+  const centerAt = (at: Point) => {
+    const box = seenAt(plane, corners, at)
+
+    return { x: centerX(box), y: centerY(box) }
+  }
+  let at = start
+
+  for (let tries = 0; tries < 8; tries += 1) {
+    const seen = centerAt(at)
+    const miss = { x: goal.x - seen.x, y: goal.y - seen.y }
+
+    if (Math.hypot(miss.x, miss.y) < 0.1) break
+
+    const [right, down] = [centerAt({ x: at.x + 1, y: at.y }), centerAt({ x: at.x, y: at.y + 1 })]
+    const [a, b, c, d] = [right.x - seen.x, down.x - seen.x, right.y - seen.y, down.y - seen.y]
+    const det = a * d - b * c
+
+    if (Math.abs(det) < 1e-6) break
+    at = { x: at.x + (d * miss.x - b * miss.y) / det, y: at.y + (a * miss.y - c * miss.x) / det }
+  }
+
+  return at
+}
+
+/**
+ * Lo mismo en el campo inclinado (la vista 3D): la perspectiva achica lo lejano y agranda lo cercano, así que un desplazamiento medido en la pantalla no es el mismo
+ * sobre la mesa, y menos lejos de la carta (la mano está fuera del campo: salía de una esquina, gigante). Se cuenta con la matriz del campo, sin tocar el DOM: dónde
+ * está la carta en el plano (la que se ve en `to`), dónde tendría que estar para verse centrada en `from`, y el tamaño que la deja del tamaño que tenía ahí.
+ */
+export function tiltedOffset(plane: Plane, corners: Point[], from: Box, to: Box): string {
+  const here = solve(plane, corners, { x: centerX(to), y: centerY(to) }, { x: centerX(to) - plane.origin.x, y: centerY(to) - plane.origin.y })
+  const there = solve(plane, corners, { x: centerX(from), y: centerY(from) }, here)
+
+  return `translate(${there.x - here.x}px, ${there.y - here.y}px) scale(${sizeRatio(from, seenAt(plane, corners, there))})`
+}
+
+/**
+ * La pila (o el Xyz) que recibe una carta se infla un instante cuando la carta la toca (`at`: cuánto falta para eso). Va en `scale`, aparte de su `transform`:
+ * un Xyz en defensa sigue acostado y uno que todavía llega volando no salta a su lugar, sin sumar animaciones (`add` no va en el compositor).
  */
 function bump(element: HTMLElement, at: number) {
-  element.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)', offset: 0.45 }, { transform: 'scale(1)' }], { duration: 260, delay: at, easing: EASE_OUT, composite: supportsAdditiveAnimation() ? 'add' : 'replace' })
+  element.animate([{ scale: '1' }, { scale: '1.08', offset: 0.45 }, { scale: '1' }], { duration: 260, delay: at, easing: EASE_OUT })
 }
 
 /** El color con que cada lugar recibe una carta: el cementerio, violeta; el destierro, ámbar; el deck y el Extra, celeste; debajo de un Xyz, azul. */
@@ -203,16 +283,42 @@ function impactRgb(state: MatState, id: string): string {
   return FX_RGB.cyan
 }
 
-/** Al aterrizar, el lugar da el golpe: un marco de su color que se enciende y se expande al apagarse, y un destello (pasa junto con `bump`, que lo infla). */
-function impact(element: HTMLElement, rgb: string, at: number) {
-  element.animate(
-    [
-      { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 18px 3px rgb(${rgb} / 0.9)`, filter: 'brightness(1.9)' },
-      { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 22px 6px rgb(${rgb} / 0.7)`, filter: 'brightness(1.25)', offset: 0.4 },
-      { boxShadow: `0 0 0 16px rgb(${rgb} / 0), 0 0 34px 10px rgb(${rgb} / 0)`, filter: 'brightness(1)' },
-    ],
-    { duration: 700, delay: at, easing: EASE_OUT },
-  )
+/**
+ * Al aterrizar, el lugar da el golpe: un marco de su color que se enciende y se expande al apagarse, y un destello (pasa junto con `bump`, que lo infla). En una
+ * pila el marco es una capa (`data-flight-hold`: no se copia ni se esconde con lo de la pila) con la sombra ya dibujada, y se anima sólo su `opacity` y su escala;
+ * el destello es un `filter` solo: todo va en el compositor.
+ * ponytail: un Xyz que recibe materiales recorta lo que tiene adentro (`overflow-hidden`), así que ahí el marco sigue en su `box-shadow` (hilo principal, pero
+ * pasa sólo al darle materiales). Para sacarlo, el marco tendría que ir en la zona, con la caja y el giro de la carta.
+ */
+function impact(element: HTMLElement, rgb: string, at: number, pile: boolean) {
+  const timing = { duration: 700, delay: at, easing: EASE_OUT }
+
+  if (!pile) {
+    element.animate(
+      [
+        { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 18px 3px rgb(${rgb} / 0.9)`, filter: 'brightness(1.9)' },
+        { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 22px 6px rgb(${rgb} / 0.7)`, filter: 'brightness(1.25)', offset: 0.4 },
+        { boxShadow: `0 0 0 16px rgb(${rgb} / 0), 0 0 34px 10px rgb(${rgb} / 0)`, filter: 'brightness(1)' },
+      ],
+      timing,
+    )
+    return
+  }
+
+  element.animate([{ filter: 'brightness(1.9)' }, { filter: 'brightness(1.25)', offset: 0.4 }, { filter: 'brightness(1)' }], timing)
+
+  const ring = document.createElement('span')
+  ring.className = 'pointer-events-none absolute inset-0'
+  ring.dataset.flightHold = ''
+  ring.setAttribute('aria-hidden', 'true')
+  // Apagado hasta que la carta toca la pila (la espera, `delay`, no lleva cuadros).
+  Object.assign(ring.style, { borderRadius: 'inherit', opacity: '0', boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 22px 6px rgb(${rgb} / 0.8)` })
+  element.append(ring)
+
+  const glow = ring.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0.85, transform: 'scale(1.04)', offset: 0.4 }, { opacity: 0, transform: 'scale(1.25)' }], timing)
+  const remove = () => ring.remove()
+  glow.onfinish = remove
+  glow.oncancel = remove
 }
 
 /**
@@ -237,14 +343,36 @@ function faceOf(pile: HTMLElement): HTMLElement {
   return face
 }
 
-/** Lo que muestra cada pila de un lado ahora (por su nombre): la mano no, que es una fila de cartas con elemento propio. */
-function facesOf(root: HTMLElement, side: Side): Map<string, HTMLElement> {
-  const faces = new Map<string, HTMLElement>()
+/** La copia de una pila (`faceOf`), con lo que definía cómo se veía (`pileKey`) y si se hizo en esta jugada (`fresh`: su carta de arriba puede no haber cargado todavía). */
+interface Face {
+  key: string
+  face: HTMLElement
+  fresh: boolean
+}
+
+/** Lo que define cómo se ve una pila: sus cartas, en orden, y cuáles están boca abajo o boca arriba. Mientras no cambie, su copia sirve. */
+function pileKey(state: MatState, name: string): string {
+  const ids: string[] = PILES.has(name) ? state[name as 'deck' | 'extra' | 'gy' | 'banished'] : []
+
+  return `${ids.join(',')}|${ids.filter((id) => state.facedown.includes(id) || state.extraUp.includes(id)).join(',')}`
+}
+
+/**
+ * Lo que muestra cada pila de un lado ahora (por su nombre): la mano no, que es una fila de cartas con elemento propio. Sólo se copian las pilas que cambiaron
+ * desde la última copia (`before`), y al quedar quieta la mesa (`settle`) se vuelven a copiar las recién copiadas, ya con su imagen.
+ */
+function facesOf(root: HTMLElement, side: Side, state: MatState, before: ReadonlyMap<string, Face> | undefined, settle = false): Map<string, Face> {
+  const faces = new Map<string, Face>()
 
   for (const pile of root.querySelectorAll<HTMLElement>(`[${SIDES[side].drop}]`)) {
     const name = pile.dataset[SIDES[side].dropKey]
 
-    if (name && PILES.has(name)) faces.set(name, faceOf(pile))
+    if (!name || !PILES.has(name)) continue
+
+    const key = pileKey(state, name)
+    const kept = before?.get(name)
+
+    faces.set(name, kept?.key === key && !(settle && kept.fresh) ? kept : { key, face: faceOf(pile), fresh: !settle })
   }
 
   return faces
@@ -255,7 +383,8 @@ function facesOf(root: HTMLElement, side: Side): Map<string, HTMLElement> {
  * junto con el contador, cuando la carta que vuela la tapa. Devuelve cómo soltarla antes (otra jugada a mitad de camino).
  */
 function hold(pile: HTMLElement, face: HTMLElement, until: number): () => void {
-  const hidden = [...pile.children].map((child) => child.animate([{ opacity: 0 }, { opacity: 0 }], { duration: until }))
+  // Lo de la pila, no lo que le pone el vuelo (otra copia que espera, el marco del golpe).
+  const hidden = [...pile.children].filter((child) => !(child instanceof HTMLElement && 'flightHold' in child.dataset)).map((child) => child.animate([{ opacity: 0 }, { opacity: 0 }], { duration: until }))
   pile.append(face)
 
   const release = () => {
@@ -282,16 +411,16 @@ function originOf(root: HTMLElement): { x: number; y: number } {
 
 /**
  * Las cartas que estaban a la vista (en la mano, en el campo) y ya no tienen elemento: viajan hasta su pila, hasta el Xyz que las tiene de material o hasta
- * la mano (que todavía no la dibuja); una que ya no está en la mesa (una ficha) se apaga donde estaba.
+ * la mano (que todavía no la dibuja); una que ya no está en la mesa (una ficha) se apaga donde estaba. La que se fue en pleno vuelo sale de donde se veía (`seen`).
  */
-function leavingGhosts(root: HTMLElement, side: Side, state: MatState, left: ReadonlyMap<string, Snapshot>, current: ReadonlyMap<string, unknown>): Ghost[] {
+function leavingGhosts(root: HTMLElement, side: Side, state: MatState, left: ReadonlyMap<string, Snapshot>, current: ReadonlyMap<string, unknown>, seen: ReadonlyMap<string, Box>): Ghost[] {
   return [...left].flatMap(([id, snapshot]) => {
     if (current.has(id)) return []
 
     const home = homeOf(root, state, id, side)
     const size = { width: snapshot.width, height: snapshot.height }
 
-    return [{ id, from: snapshot.rect, size, art: snapshot.art, to: home ? boxOf(home, side, size) : null, home, startsHidden: false, endsHidden: hiddenAt(state, id) }]
+    return [{ id, from: seen.get(id) ?? snapshot.rect, size, art: snapshot.art, to: home ? boxOf(home, side, size) : null, home, startsHidden: false, endsHidden: hiddenAt(state, id) }]
   })
 }
 
@@ -349,7 +478,7 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
   const left = centerX(from) - width / 2 - origin.x
   const top = centerY(from) - height / 2 - origin.y
   const element = document.createElement('div')
-  element.className = GHOST_CLASS
+  element.className = GHOST_LAYER
   // Con su id: la carta grande del centro sale de ella si la carta se muestra mientras vuela a su pila (`cardPose`).
   element.dataset.flightGhost = ghost.id
   element.setAttribute('aria-hidden', 'true')
@@ -358,6 +487,9 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
   // Las cartas del rival miran hacia él: el fantasma viaja de cabeza, como se ve en su campo y en sus pilas.
   const turn = side === 'theirs' ? ' rotate(180deg)' : ''
   element.style.transform = `translate(${left}px, ${top}px)${turn}`
+  const card = document.createElement('div')
+  card.className = GHOST_CARD
+  element.append(card)
 
   // La cara por el proxy de imágenes y con la misma dirección que ya dibujó la mesa (sale de la caché); de una carta que no se ve, sólo el dorso.
   if (art) {
@@ -365,7 +497,7 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
     image.src = cardImageSrc(art)
     image.alt = ''
     image.className = 'block h-full w-full object-cover'
-    element.append(image)
+    card.append(image)
   }
 
   // Todo va con la misma curva y el mismo reloj: el camino, el giro y el cambio de cara. Esperando su turno (escalonada) se queda quieta donde estaba, y al
@@ -376,7 +508,7 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
   if (!art || ghost.startsHidden || ghost.endsHidden) {
     const back = document.createElement('span')
     back.className = CARD_BACK
-    element.append(back)
+    card.append(back)
 
     // De canto (a mitad de camino) se cambia una cara por la otra: el dorso aparece (llega boca abajo) o se va (sale de dorso y llega a la vista).
     if (flips) {
@@ -403,16 +535,16 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
     flight.onfinish = remove
   }
 
-  // El giro en 3D se suma al vuelo (va después en la pila de animaciones, con `composite: 'add'`): de canto a mitad de camino y abierto del otro lado al llegar.
-  if (flips && supportsAdditiveAnimation()) {
-    element.animate(
+  // El giro en 3D, en la carta de adentro (el vuelo va en la de afuera): de canto a mitad de camino y abierto del otro lado al llegar.
+  if (flips) {
+    card.animate(
       [
         { transform: 'perspective(700px) rotateY(0deg)' },
         { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
         { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5 },
         { transform: 'perspective(700px) rotateY(0deg)' },
       ],
-      { ...timing, composite: 'add' },
+      timing,
     )
   }
 }
@@ -423,10 +555,10 @@ function fly(ghost: Ghost, side: Side, layer: HTMLElement, origin: { x: number; 
  * entero: volando, pasaba por debajo de ellas. Subir el campo de `z-index` mientras vuela no alcanza: en un duelo la mano sube contra el campo, y la placa
  * (que sobresale abajo, con su sombra) taparía la franja de arriba de toda la mano. Vuela entonces una copia de la carta en la capa de los fantasmas, con el
  * mismo vuelo (`keyframes`, `options`) y en el mismo plano (en la vista 3D, con la inclinación del campo), mientras la carta, transparente, hace el suyo; cuando
- * toca su zona (`LANDING_AT`) la copia se va y la carta se ve en el mismo lugar, a tiempo para el destello de la invocación, que va encima de ella. Otra jugada
- * a mitad de camino corta su transparencia (es un vuelo, `FLIGHT_ID`) y con ella la copia.
+ * toca su zona (`LANDING_AT`) la copia se va y la carta se ve en el mismo lugar, a tiempo para el destello de la invocación, que va encima de ella. Devuelve esa
+ * transparencia: si otra jugada a mitad de camino se la lleva de la zona o la vuelve a mover, se corta y con ella la copia.
  */
-function flyAbove(element: HTMLElement, id: string, layer: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions): void {
+function flyAbove(element: HTMLElement, id: string, layer: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions): Animation {
   const field = element.closest<HTMLElement>('[data-tilted]')
   const tilt = field ? { transform: getComputedStyle(field).transform, origin: getComputedStyle(field).transformOrigin } : null
   // Dónde está la carta en su plano: en la vista 3D, dentro del campo sin inclinar (se le saca un instante para medir; no tiene transición); si no, en la pantalla.
@@ -470,11 +602,19 @@ function flyAbove(element: HTMLElement, id: string, layer: HTMLElement, keyframe
   layer.append(holder)
 
   copy.animate(keyframes, options)
-  // Transparente y sin atajar el puntero: la que aterriza bajo el mouse (se tocó la zona) no se eleva mientras la copia vuela, que si no al aparecer saltaba.
-  const hidden = element.animate([{ opacity: 0, pointerEvents: 'none' }, { opacity: 0, pointerEvents: 'none' }], { id: FLIGHT_ID, duration: Math.round(FLIGHT_MS * LANDING_AT) })
-  const remove = () => holder.remove()
+  // Transparente y sin atajar el puntero: la que aterriza bajo el mouse (se tocó la zona) no se eleva mientras la copia vuela, que si no al aparecer saltaba. El
+  // puntero va por su estilo y no en los cuadros: una animación con algo más que `opacity` no va en el compositor.
+  const pointer = element.style.pointerEvents
+  element.style.pointerEvents = 'none'
+  const hidden = element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: Math.round(FLIGHT_MS * LANDING_AT) })
+  const remove = () => {
+    holder.remove()
+    element.style.pointerEvents = pointer
+  }
   hidden.onfinish = remove
   hidden.oncancel = remove
+
+  return hidden
 }
 
 /** Una carta como se ve en la pantalla: su centro, su ancho y su alto sin el giro, y cuánto está girada (en grados). */
@@ -542,6 +682,25 @@ export function cardPose(root: HTMLElement | null, state: MatState | null, id: s
   return poseIn(rect, angleOf(seen) + turn)
 }
 
+/** Un vuelo de una carta a la vista: sus cuadros y su reloj (para retomarlo), de dónde salió y a dónde va en la pantalla, y su transparencia si vuela su copia (`flyAbove`). */
+interface Flight {
+  element: HTMLElement
+  animation: Animation
+  keyframes: Keyframe[]
+  timing: KeyframeAnimationOptions
+  from: Box
+  to: Box
+  hidden: Animation | null
+}
+
+/** Dónde se ve ahora una carta en pleno vuelo, sin medirla (puede ya no estar en la mesa): entre de dónde salió y a dónde va, con la curva del vuelo. */
+function poseOf({ animation, from, to }: Flight): Box {
+  const done = easeInOut(Number(animation.currentTime ?? 0) / FLIGHT_MS)
+  const mix = (a: number, b: number) => a + (b - a) * done
+
+  return { left: mix(from.left, to.left), top: mix(from.top, to.top), width: mix(from.width, to.width), height: mix(from.height, to.height) }
+}
+
 /**
  * Las cartas vuelan de un lugar a otro cuando cambia el estado de la mesa (jugadas, deshacer, reproducir un combo): cada carta a la vista (`data-card-id`) se
  * anima desde donde estaba (FLIP) o desde la pila de la que salió; una que se va a una pila (o abajo de un Xyz) viaja hasta ahí como un fantasma, y también la
@@ -556,30 +715,59 @@ export function cardPose(root: HTMLElement | null, state: MatState | null, id: s
 export function useCardFlights(containerRef: RefObject<HTMLElement | null>, state: MatState | null, artOf: (id: string) => string | null, layoutKey: string, side: Side = 'mine'): { dealsFromDeck: (id: string) => boolean } {
   const marks = SIDES[side]
   const previousRef = useRef<Measure | null>(null)
-  /** Las pilas que esperan a la carta que viene volando: una jugada nueva antes de que llegue las suelta. */
-  const holdsRef = useRef<Array<() => void>>([])
+  /** Las pilas que esperan a la carta que viene volando (por su nombre): una jugada nueva antes de que llegue suelta las que cambian con ella. */
+  const holdsRef = useRef(new Map<string, () => void>())
+  /** Los vuelos de las cartas a la vista que arrancó el hook (por carta): la jugada siguiente los retoma o sale de donde iban. */
+  const flightsRef = useRef(new Map<string, Flight>())
 
   useLayoutEffect(() => {
     const root = containerRef.current
 
     if (!root || !state || typeof root.animate !== 'function') return
 
+    // Los vuelos que siguen en el aire se apartan para medir cada carta en su lugar y no donde va pasando: antes, dónde va cada una y su reloj.
+    const inAir = [...flightsRef.current].filter(([, flight]) => flight.animation.playState === 'running').map(([id, flight]) => ({ id, flight, startTime: flight.animation.startTime, seen: poseOf(flight) }))
+    flightsRef.current = new Map()
+    for (const { flight } of inAir) flight.animation.cancel()
+
     const current = new Map<string, { element: HTMLElement; rect: DOMRect }>()
 
     for (const element of root.querySelectorAll<HTMLElement>(`[${marks.card}]`)) {
       const id = element.dataset[marks.cardKey]
 
-      for (const animation of element.getAnimations()) if (animation.id === FLIGHT_ID) animation.cancel()
       if (id) current.set(id, { element, rect: element.getBoundingClientRect() })
     }
 
     const previous = previousRef.current
-    previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id), pending: element.dataset.pending === 'true' }])), faces: facesOf(root, side) }
+    previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id), pending: element.dataset.pending === 'true' }])), faces: facesOf(root, side, state, previous?.faces) }
 
-    // Otra jugada con un vuelo a medias: las pilas que esperaban muestran ya lo suyo (volver a medir, sin jugada, no las suelta).
-    if (previous?.state !== state) {
-      for (const release of holdsRef.current) release()
-      holdsRef.current = []
+    // Otra jugada con un vuelo a medias: las pilas que cambian con ella muestran ya lo suyo; las demás siguen esperando su carta (volver a medir, sin jugada, no suelta ninguna).
+    if (previous && previous.state !== state) {
+      for (const [name, release] of holdsRef.current) {
+        if (pileKey(previous.state, name) === pileKey(state, name)) continue
+
+        release()
+        holdsRef.current.delete(name)
+      }
+    }
+
+    // La carta que sigue yendo al mismo lugar retoma su vuelo donde iba (el mismo, con el mismo reloj); la que se fue o cambió de destino sale de donde se veía
+    // (`seen`), y su copia de arriba (`flyAbove`) se va.
+    const seen = new Map<string, Box>()
+
+    for (const { id, flight, startTime, seen: pose } of inAir) {
+      const now = current.get(id)
+      const was = previous?.cards.get(id)?.rect
+
+      if (now?.element === flight.element && was && near(was, now.rect)) {
+        const animation = flight.element.animate(flight.keyframes, flight.timing)
+
+        if (startTime !== null) animation.startTime = startTime
+        flightsRef.current.set(id, { ...flight, animation })
+      } else {
+        flight.hidden?.cancel()
+        seen.set(id, pose)
+      }
     }
 
     if (!previous || prefersReducedMotion()) return
@@ -591,14 +779,18 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
     if (sameState && ![...current.keys()].some(returning)) return
 
     // Los fantasmas se miden antes de que arranquen los vuelos de las cartas a la vista: el Xyz que recibe a sus materiales se mediría saliendo del Extra Deck.
-    const ghosts = sameState ? [] : [...leavingGhosts(root, side, state, previous.cards, current), ...pileGhosts(root, side, previous.state, state, previous.cards, current, artOf)]
+    const ghosts = sameState ? [] : [...leavingGhosts(root, side, state, previous.cards, current, seen), ...pileGhosts(root, side, previous.state, state, previous.cards, current, artOf)]
+    // El plano de cada campo inclinado, contado una vez por jugada.
+    const planes = new Map<HTMLElement, Plane | null>()
+    const planeFor = (field: HTMLElement) => (planes.has(field) ? planes.get(field)! : planes.set(field, planeOf(field)).get(field)!)
 
     for (const [id, { element, rect }] of current) {
+      if (flightsRef.current.has(id)) continue
       if (sameState && !returning(id)) continue
       if (!returning(id) && state.hand.includes(id) && (previous.state.hand.includes(id) || previous.state.deck.includes(id))) continue
 
       const home = previous.cards.has(id) ? null : homeOf(root, previous.state, id, side)
-      const before = previous.cards.get(id)?.rect ?? (home ? boxOf(home, side, rect) : undefined)
+      const before = seen.get(id) ?? previous.cards.get(id)?.rect ?? (home ? boxOf(home, side, rect) : undefined)
 
       if (!before || near(before, rect)) continue
 
@@ -606,18 +798,21 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       if (typeof CSSTransition === 'function' && element.getAnimations().some((animation) => animation instanceof CSSTransition && animation.transitionProperty === 'transform')) continue
 
       // El vuelo va por delante de la transformación propia de la carta (el abanico de la mano, una carta de costado).
-      const base = getComputedStyle(element).transform
+      const style = getComputedStyle(element)
+      const base = style.transform
       const own = base === 'none' ? '' : ` ${base}`
 
       // ponytail: dura siempre `FLIGHT_MS` (sea corto o largo) porque el destello de una invocación (`LandingBurst`) y la pila de materiales de un Xyz (`MaterialStack`)
       // esperan eso para aparecer; para que un salto corto de una carta con elemento dure menos, esos dos tendrían que recibir cuándo aterriza.
-      const start = element.closest('[data-tilted]') ? tiltedOffset(element, before, rect, own) : offset(before, rect)
-      const flight = [{ transform: `${start}${own}` }, { transform: base }]
+      const field = element.closest<HTMLElement>('[data-tilted]')
+      const plane = field ? planeFor(field) : null
+      const start = plane ? tiltedOffset(plane, cornersOf(element, style, base), before, rect) : offset(before, rect)
+      const keyframes = [{ transform: `${start}${own}` }, { transform: base }]
       const timing = { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASE_IN_OUT }
 
       // De tu mano (la carta tenía elemento ahí) al campo: lo que se ve volar es una copia, por encima de las vecinas.
-      if (previous.state.hand.includes(id) && previous.cards.get(id)?.pending === false) flyAbove(element, id, root, flight, timing)
-      element.animate(flight, timing)
+      const hidden = previous.state.hand.includes(id) && previous.cards.get(id)?.pending === false ? flyAbove(element, id, root, keyframes, timing) : null
+      flightsRef.current.set(id, { element, animation: element.animate(keyframes, timing), keyframes, timing, from: before, to: rect, hidden })
     }
 
     // Las que salen del mismo lugar (varias del deck, un Xyz con sus materiales) se taparían: salen una tras otra, en el orden en que quedan en su pila (la
@@ -656,11 +851,16 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       // La mano no es una pila: no se infla ni se enciende entera cuando le vuelve una carta (la carta se acomoda sola).
       if (isHand(home, side)) continue
 
-      bump(home, first)
-      impact(home, impactRgb(state, id), first)
+      const name = home.dataset[marks.dropKey] ?? ''
 
-      const face = previous.faces.get(home.dataset[marks.dropKey] ?? '')
-      if (face) holdsRef.current.push(hold(home, face, last))
+      bump(home, first)
+      impact(home, impactRgb(state, id), first, PILES.has(name))
+
+      const face = previous.faces.get(name)?.face
+
+      if (!face) continue
+      holdsRef.current.get(name)?.()
+      holdsRef.current.set(name, hold(home, face, last))
     }
     // Se mide con cada jugada y cada vez que la mano se reacomoda; `artOf` sólo pinta el fantasma.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -692,7 +892,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
         cards.set(id, element.dataset.state === 'dragging' && before ? before : { rect: element.getBoundingClientRect(), width: element.offsetWidth, height: element.offsetHeight, art: artOf(id), pending: element.dataset.pending === 'true' })
       }
 
-      previousRef.current = { state: snapshot.state, cards, faces: facesOf(root, side) }
+      previousRef.current = { state: snapshot.state, cards, faces: facesOf(root, side, snapshot.state, snapshot.faces, true) }
     }, SETTLE_MS)
 
     return () => window.clearTimeout(timer)

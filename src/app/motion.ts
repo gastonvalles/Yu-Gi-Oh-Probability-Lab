@@ -52,6 +52,8 @@ function bezierEase(curve: string): (time: number) => number {
 
 /** `EASE_SNAP` en JS: el número que cuenta un anillo va con la misma curva que su arco (la transición CSS). */
 export const easeSnap = bezierEase(EASE_SNAP)
+/** `EASE_IN_OUT` en JS: dónde va una carta en pleno vuelo, sin medirla (la que se fue de la mesa a mitad de camino sale de ahí). */
+export const easeInOut = bezierEase(EASE_IN_OUT)
 
 /** ¿Puede una animación sumarse a otra (`composite: 'add'`)? Los giros en 3D de las cartas se suman a su `transform`; sin esto pisarían el vuelo, así que no se hacen. */
 export function supportsAdditiveAnimation(): boolean {

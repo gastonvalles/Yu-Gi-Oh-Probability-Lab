@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMatState, matReducer, type MatAction, type MatState } from '../app/practice-mat'
 import { DuelTable } from '../components/duel/DuelTable'
-import { EASE_IN_OUT } from '../app/motion'
-import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, cardPose, flightMs, poseIn, useCardFlights } from '../app/use-card-flights'
+import { EASE_IN_OUT, easeInOut } from '../app/motion'
+import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, cardPose, flightMs, poseIn, tiltedOffset, useCardFlights, type Plane } from '../app/use-card-flights'
 
 interface Box {
   left: number
@@ -25,6 +25,8 @@ let flights: Array<{ card: string | undefined; from: string }> = []
 let ghostLandings: string[] = []
 /** Todo lo que se animó: el elemento, sus cuadros, sus opciones y la animación que devolvió (para avisar que terminó o se cortó). */
 let calls: Array<{ element: Element; keyframes: Keyframe[]; options: KeyframeAnimationOptions; animation: Animation }> = []
+/** Si las animaciones quedan en el aire (corriendo) en vez de no hacer nada: para ver qué pasa con un vuelo a medias cuando llega otra jugada. */
+let inAir = false
 
 /**
  * Con qué nombre se mide cada elemento: la carta propia o del rival por su id, las pilas propias como `mine-<pila>`, las del rival como `rival-<pila>` y
@@ -59,6 +61,7 @@ beforeEach(() => {
   flights = []
   ghostLandings = []
   calls = []
+  inAir = false
   HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
     const box = boxes.get(keyOf(this)) ?? { left: 0, top: 0, width: 0, height: 0 }
 
@@ -68,7 +71,22 @@ beforeEach(() => {
   Element.prototype.animate = function (this: Element, keyframes: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
     if (this instanceof HTMLElement && (this.dataset.cardId ?? this.dataset.rivalCardId) && Array.isArray(keyframes)) flights.push({ card: this.dataset.cardId ?? this.dataset.rivalCardId, from: String(keyframes[0]?.transform ?? '') })
     if (this instanceof HTMLElement && 'flightGhost' in this.dataset && Array.isArray(keyframes) && keyframes[0]?.transform !== undefined && (typeof options !== 'object' || options.composite !== 'add')) ghostLandings.push(String(keyframes.at(-1)?.transform ?? ''))
-    const animation = {} as Animation
+    // Con `inAir`, cada animación queda corriendo a la mitad (de un vuelo) hasta que se corta.
+    const animation = (
+      inAir
+        ? {
+            playState: 'running' as AnimationPlayState,
+            startTime: (1000 + calls.length) as number | null,
+            currentTime: (FLIGHT_MS / 2) as number | null,
+            cancel(this: { playState: AnimationPlayState; currentTime: number | null; startTime: number | null }) {
+              this.playState = 'idle'
+              this.currentTime = null
+              this.startTime = null
+              ;(this as unknown as Animation).oncancel?.({} as AnimationPlaybackEvent)
+            },
+          }
+        : {}
+    ) as Animation
     if (Array.isArray(keyframes)) calls.push({ element: this, keyframes, options: typeof options === 'object' ? options : {}, animation })
 
     return animation
@@ -168,6 +186,43 @@ describe('de dónde sale la carta grande del centro (`cardPose`)', () => {
     expect(fan.height).toBeCloseTo(116, 6)
     // A 45° no se puede despejar: queda el rectángulo.
     expect(poseIn({ left: 0, top: 0, width: 140, height: 140 }, 45)).toMatchObject({ width: 140, height: 140 })
+  })
+})
+
+describe('de dónde sale una carta en el campo inclinado (`tiltedOffset`, con la matriz del campo y sin medir)', () => {
+  /** El campo en 3D como lo arma el CSS: `perspective()` + `rotateX` (con su zoom), con el origen en el borde de abajo, en (500, 800) de la pantalla. */
+  const field = (tilt: number, perspective: number, zoom: number): Plane => {
+    const rad = (tilt * Math.PI) / 180
+
+    return { matrix: { transformPoint: ({ x = 0, y = 0 }: DOMPointInit = {}) => ({ x: zoom * x, y: zoom * y * Math.cos(rad), z: 0, w: 1 - (y * Math.sin(rad)) / perspective }) as DOMPoint }, origin: { x: 500, y: 800 } }
+  }
+  /** Lo que mediría `getBoundingClientRect` de la carta (sus esquinas desde su centro) con su centro en `at` del plano: el rectángulo que encierra sus esquinas inclinadas. */
+  const measured = (plane: Plane, corners: Array<{ x: number; y: number }>, at: { x: number; y: number }): Box => {
+    const points = corners.map(({ x, y }) => plane.matrix.transformPoint({ x: at.x + x, y: at.y + y })).map(({ x, y, w }) => ({ x: plane.origin.x + x / w, y: plane.origin.y + y / w }))
+    const left = Math.min(...points.map(({ x }) => x))
+    const top = Math.min(...points.map(({ y }) => y))
+
+    return { left, top, width: Math.max(...points.map(({ x }) => x)) - left, height: Math.max(...points.map(({ y }) => y)) - top }
+  }
+  const upright = [{ x: -40, y: -58 }, { x: 40, y: -58 }, { x: 40, y: 58 }, { x: -40, y: 58 }]
+  // De costado (en defensa): el mismo rectángulo girado 90°.
+  const sideways = upright.map(({ x, y }) => ({ x: -y, y: x }))
+
+  it.each([
+    { tilt: 26, perspective: 900, zoom: 1, corners: upright, at: { x: -120, y: -300 } },
+    { tilt: 30, perspective: 1100, zoom: 1.2, corners: upright, at: { x: 90, y: -520 } },
+    { tilt: 14, perspective: 900, zoom: 1, corners: sideways, at: { x: 0, y: -180 } },
+  ])('a $tilt° el primer cuadro deja la carta centrada donde estaba (en la mano, sin inclinar) y de su tamaño', ({ tilt, perspective, zoom, corners, at: where }) => {
+    const plane = field(tilt, perspective, zoom)
+    const to = measured(plane, corners, where)
+    const from = at(300, 760)
+    const [dx, dy, scale] = /translate\((-?[\d.e-]+)px, (-?[\d.e-]+)px\) scale\(([\d.e-]+)\)/.exec(tiltedOffset(plane, corners, from, to))!.slice(1).map(Number)
+    const seen = measured(plane, corners, { x: where.x + dx!, y: where.y + dy! })
+
+    // Donde la mediría el navegador con ese desplazamiento: centrada en la carta de la mano (lo que buscaba la prueba con medidas, a menos de 1 px).
+    expect(centerOf(seen).x).toBeCloseTo(centerOf(from).x, 1)
+    expect(centerOf(seen).y).toBeCloseTo(centerOf(from).y, 1)
+    expect(scale).toBeCloseTo(Math.min(3, Math.max(0.3, Math.max(from.width, from.height) / Math.max(seen.width, seen.height))), 4)
   })
 })
 
@@ -314,9 +369,12 @@ describe('la carta que sale de tu mano al campo vuela por encima de sus vecinas 
     expect(flightOf(copy)!.keyframes).toBe(flightOf(card)!.keyframes)
     expect(flightOf(copy)!.options).toMatchObject({ duration: FLIGHT_MS, easing: EASE_IN_OUT })
     expect(flightOrigin('c')).toEqual(centerOf(at(220, 600)))
-    // La carta, transparente y sin atajar el puntero (no se eleva bajo el mouse) hasta que toca su zona; otra jugada la corta (es un vuelo).
-    expect(hiddenOf(card)!.keyframes).toEqual([{ opacity: 0, pointerEvents: 'none' }, { opacity: 0, pointerEvents: 'none' }])
-    expect(hiddenOf(card)!.options).toEqual({ id: 'mat-flight', duration: Math.round(FLIGHT_MS * LANDING_AT) })
+    // La carta, transparente (sólo `opacity`: así va en el compositor) y sin atajar el puntero (por su estilo: no se eleva bajo el mouse) hasta que toca su zona.
+    expect(hiddenOf(card)!.keyframes).toEqual([{ opacity: 0 }, { opacity: 0 }])
+    expect(hiddenOf(card)!.options).toEqual({ duration: Math.round(FLIGHT_MS * LANDING_AT) })
+    expect(card.style.pointerEvents).toBe('none')
+    ;(hiddenOf(card)!.animation.onfinish as () => void)()
+    expect(card.style.pointerEvents).toBe('')
   })
 
   it('cuando la carta toca su zona la copia se va; si otra jugada corta el vuelo, también', () => {
@@ -332,6 +390,53 @@ describe('la carta que sale de tu mano al campo vuela por encima de sus vecinas 
     expect(document.querySelector('[data-flight-ghost="c"]')).not.toBeNull()
     ;(hiddenOf(card())!.animation.oncancel as () => void)()
     expect(document.querySelector('[data-flight-ghost]')).toBeNull()
+  })
+
+  it('otra jugada con el vuelo a medias no lo corta: la carta que sigue yendo al mismo lugar sigue donde iba (el mismo vuelo, el mismo reloj) y su copia sigue volando', () => {
+    inAir = true
+    const start = createMatState(['a', 'b', 'c', 'd'], [], 4)
+    ;['a', 'b', 'c', 'd'].forEach((id, index) => boxes.set(id, at(100 + index * 60, 600)))
+    const view = render(<Mat state={start} />)
+    const placed = matReducer(start, { type: 'place', id: 'c', zone: 'st', index: 2, pos: 'set' })
+    boxes.set('c', at(500, 350))
+    view.rerender(<Mat state={placed} />)
+    const card = document.querySelector<HTMLElement>('[data-card-id="c"]')!
+    const first = flightOf(card)!
+    const { startTime } = first.animation
+
+    // Otra jugada 220 ms después (el paso del duelo automático): se coloca otra carta, c no se mueve.
+    boxes.set('a', at(400, 350))
+    view.rerender(<Mat state={matReducer(placed, { type: 'place', id: 'a', zone: 'st', index: 0, pos: 'set' })} />)
+
+    const again = calls.filter((call) => call.element === card && call.keyframes[0]?.transform !== undefined)
+    expect(again).toHaveLength(2)
+    expect(again[1]!.keyframes).toBe(first.keyframes)
+    expect(again[1]!.options).toBe(first.options)
+    expect(again[1]!.animation.startTime).toBe(startTime)
+    expect(first.animation.playState).toBe('idle')
+    // Su transparencia y su copia, intactas.
+    expect(hiddenOf(card)!.animation.playState).toBe('running')
+    expect(document.querySelector('[data-flight-ghost="c"]')).not.toBeNull()
+  })
+
+  it('la carta que se va de la mesa en pleno vuelo sale de donde se veía (no de su zona) y su copia se va', () => {
+    inAir = true
+    const start = createMatState(['a', 'b', 'c', 'd'], [], 4)
+    ;['a', 'b', 'c', 'd'].forEach((id, index) => boxes.set(id, at(100 + index * 60, 600)))
+    const view = render(<Mat state={start} />)
+    const placed = matReducer(start, { type: 'place', id: 'c', zone: 'st', index: 2, pos: 'set' })
+    boxes.set('c', at(500, 350))
+    view.rerender(<Mat state={placed} />)
+
+    view.rerender(<Mat state={matReducer(placed, { type: 'move', id: 'c', to: 'gy' })} />)
+
+    // A la mitad del reloj (el vuelo dura FLIGHT_MS), con la curva del vuelo: entre la mano (220, 600) y la zona (500, 350).
+    const done = easeInOut(0.5)
+    const [x, y] = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(ghosts()[0]!.from)!.slice(1).map(Number)
+    expect(x).toBeCloseTo(220 + 280 * done, 6)
+    expect(y).toBeCloseTo(600 - 250 * done, 6)
+    // La copia que volaba a la zona se fue: queda sólo el fantasma que sale de ahí.
+    expect([...document.querySelectorAll('[data-flight-ghost="c"]')]).toEqual([ghosts()[0]!.element])
   })
 
   it('lo que no sale de tu mano vuela como siempre, sin copia (de una zona a otra), y con el movimiento reducido no vuela nada', () => {
@@ -411,14 +516,16 @@ const ghosts = () =>
   calls
     .filter(({ element, keyframes, options }) => element instanceof HTMLElement && 'flightGhost' in element.dataset && keyframes[0]?.transform !== undefined && options.composite !== 'add')
     .map(({ element, keyframes, options }) => ({ element: element as HTMLElement, from: String(keyframes[0]?.transform), to: String(keyframes.at(-1)?.transform), delay: options.delay ?? 0, duration: Number(options.duration), easing: options.easing }))
-/** Cómo cambia el dorso de un fantasma en el camino (de qué opacidad a cuál); null si no cambia. */
+/** Cómo cambia el dorso de un fantasma en el camino (de qué opacidad a cuál); null si no cambia. El dorso va en la carta de adentro del fantasma. */
 const backFade = (ghost: HTMLElement) => {
-  const fade = calls.find(({ element }) => element.parentElement === ghost && element.tagName === 'SPAN')
+  const fade = calls.find(({ element }) => element.parentElement?.parentElement === ghost && element.tagName === 'SPAN')
 
   return fade ? [fade.keyframes[0]?.opacity, fade.keyframes.at(-1)?.opacity] : null
 }
 /** Los golpes de color (`impact`) que dio cada lugar: su elemento y cuándo. */
-const impacts = (element: Element) => calls.filter((call) => call.element === element && 'boxShadow' in (call.keyframes[0] ?? {}))
+const impacts = (element: Element) => calls.filter((call) => call.element.parentElement === element && 'flightHold' in (call.element as HTMLElement).dataset && call.keyframes[0]?.transform !== undefined)
+/** El color del marco de un golpe: la sombra ya dibujada en su capa. */
+const ringColor = (call: { element: Element }) => (call.element as HTMLElement).style.boxShadow
 
 // Mano: 101 y 102. Deck: 103 a 112 (el tope, 103). Extra: 901 (un Xyz).
 const DECK = ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112']
@@ -462,7 +569,12 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect(ghost!.element.querySelector('img')?.getAttribute('src')).toBe('/api/card-image/cards/103.jpg')
     expect(backFade(ghost!.element)).toEqual([1, 0])
     expect(impacts(gy())).toHaveLength(1)
-    expect(String(impacts(gy())[0]!.keyframes[0]!.boxShadow)).toContain('192 132 252')
+    expect(ringColor(impacts(gy())[0]!)).toContain('192 132 252')
+    // Todo en el compositor: el marco (ya dibujado) sólo cambia su opacidad y su escala, y la pila sólo su brillo y su `scale`, sin sumarse a nada.
+    expect(impacts(gy())[0]!.keyframes.every((frame) => Object.keys(frame).every((key) => ['opacity', 'transform', 'offset'].includes(key)))).toBe(true)
+    const own = calls.filter(({ element }) => element === gy())
+    expect(own.flatMap(({ keyframes }) => keyframes.flatMap((frame) => Object.keys(frame))).filter((key) => key !== 'offset').sort()).toEqual(['filter', 'filter', 'filter', 'scale', 'scale', 'scale'])
+    expect(own.every(({ options }) => options.composite === undefined)).toBe(true)
   })
 
   it('del cementerio al destierro: viaja de cara (no hay dorso que dar vuelta) y el destierro da su golpe ámbar', () => {
@@ -476,7 +588,7 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect(ghost!.from).toBe('translate(700px, 350px)')
     expect(ghost!.to).toBe('translate(700px, 200px) scale(1)')
     expect(ghost!.element.querySelector('span')).toBeNull()
-    expect(String(impacts(document.querySelector('[data-drop="banished"]')!)[0]!.keyframes[0]!.boxShadow)).toContain('251 191 36')
+    expect(ringColor(impacts(document.querySelector('[data-drop="banished"]')!)[0]!)).toContain('251 191 36')
   })
 
   it('del Extra al cementerio: sale del Extra de dorso y llega de cara', () => {
@@ -591,16 +703,19 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
   })
 
   it('el giro y el cambio de cara van con el vuelo (la misma duración, la misma espera y la misma curva): de canto justo a mitad de camino', () => {
-    // El giro en 3D se suma al vuelo: hace falta que el navegador sepa sumar animaciones.
-    vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
     const start = fresh()
     const { rerender } = render(<PileMat state={start} />)
 
     rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
 
     const [ghost] = ghosts()
-    const turn = calls.find(({ element, options }) => element === ghost!.element && options.composite === 'add')
-    const face = calls.find(({ element }) => element.parentElement === ghost!.element && element.tagName === 'SPAN')
+    const inner = ghost!.element.firstElementChild!
+    // El giro en 3D va en la carta de adentro, que lleva la caja (fondo, sombra, recorte) y gira sola; afuera, el vuelo. Ninguna se suma a otra (`add`): las dos van en el compositor.
+    const turn = calls.find(({ element, keyframes }) => element === inner && String(keyframes[0]?.transform).includes('rotateY'))
+    const face = calls.find(({ element }) => element.parentElement === inner && element.tagName === 'SPAN')
+    expect(inner.className).toContain('bg-input')
+    expect(ghost!.element.className).not.toContain('bg-input')
+    expect(turn!.options.composite).toBeUndefined()
     expect(ghost!.easing).toBe(EASE_IN_OUT)
 
     for (const call of [turn, face]) {
@@ -617,7 +732,7 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     rerender(<PileMat state={play(milled, { type: 'mill', count: 1 })} />)
 
     const touch = Math.round(flightMs(150) * LANDING_AT)
-    const hold = gy().querySelector<HTMLElement>('[data-flight-hold]')
+    const hold = gy().querySelector<HTMLElement>('[data-flight-hold][inert]')
     // La copia de lo que mostraba (el 103 arriba, 1 carta), encima y sin tocarse ni leerse; lo nuevo (el 104, 2 cartas) queda escondido hasta que la carta llega.
     expect(hold?.textContent).toBe('1031')
     expect(hold?.getAttribute('aria-hidden')).toBe('true')
@@ -650,16 +765,22 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect(impacts(gy())[0]!.options.delay).toBe(first)
   })
 
-  it('otra jugada con la carta todavía en el aire suelta la pila: muestra ya lo suyo', () => {
+  it('otra jugada con la carta todavía en el aire: la pila que no toca la sigue esperando; la que cambia con ella muestra ya lo suyo', () => {
     const start = fresh()
     const { rerender } = render(<PileMat state={start} />)
     const milled = play(start, { type: 'mill', count: 1 })
 
     rerender(<PileMat state={milled} />)
-    expect(gy().querySelector('[data-flight-hold]')).not.toBeNull()
+    expect(gy().querySelector('[data-flight-hold][inert]')).not.toBeNull()
 
-    rerender(<PileMat state={play(milled, { type: 'draw', count: 1 })} />)
-    expect(gy().querySelector('[data-flight-hold]')).toBeNull()
+    // Robar no toca el cementerio: sigue mostrando lo de antes hasta que llegue su carta.
+    const drawn = play(milled, { type: 'draw', count: 1 })
+    rerender(<PileMat state={drawn} />)
+    expect(gy().querySelectorAll('[data-flight-hold][inert]')).toHaveLength(1)
+
+    // Otra al cementerio: la espera de antes se suelta y la nueva muestra lo que había antes de esta jugada (el 103, 1 carta).
+    rerender(<PileMat state={play(drawn, { type: 'mill', count: 1 })} />)
+    expect([...gy().querySelectorAll('[data-flight-hold][inert]')].map((hold) => hold.textContent)).toEqual(['1031'])
   })
 
   it('el fantasma vuela dentro de la mesa, debajo de las cartas grandes del centro (z 110 < 120), y no ataja el puntero ni se lee', () => {
