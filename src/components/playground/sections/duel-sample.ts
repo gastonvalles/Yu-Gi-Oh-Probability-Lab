@@ -1,6 +1,7 @@
 import { parseDerivedCardId } from '../../../app/calculator-state'
 import { encodeAct, mirrorApply, openMirror, openPublic } from '../../../app/mat-public'
-import { createMatState, matReducer, replayMat, type MatAction } from '../../../app/practice-mat'
+import { fieldStatsOf, type PickStat } from '../../../app/field-stats'
+import { createMatState, matReducer, replayMat, type MatAction, type MatState } from '../../../app/practice-mat'
 import { cardIdOfDrawId } from '../../probability/practice'
 import type { DuelSideView } from '../../duel/DuelTable'
 
@@ -23,6 +24,23 @@ const artOfCard = (drawId: string | undefined) => {
   const passcode = drawId === undefined ? null : parseDerivedCardId(cardIdOfDrawId(drawId))
   return passcode === null ? null : `https://images.ygoprodeck.com/images/cards_small/${passcode}.jpg`
 }
+
+/** El ATK/DEF impreso de los monstruos del duelo de muestra, para su etiqueta (`fieldStatsOf`, como en la mesa manual): Accesscode Talker y Apollousa son Links (sin DEF) y el de Apollousa es «?». */
+const PRINTED: Record<number, PickStat> = {
+  14558127: { attack: 0, defense: 1800 },
+  59438930: { attack: 0, defense: 1800 },
+  27204311: { attack: 3000, defense: 600 },
+  86066372: { attack: 2300, defense: null },
+  4280258: { attack: '?', defense: null },
+  [XYZ]: { attack: 2500, defense: 2000 },
+}
+const statsOf = (state: MatState, drawIdOf: (id: string) => string | undefined) =>
+  fieldStatsOf(state, (id) => {
+    const drawId = drawIdOf(id)
+    const passcode = drawId === undefined ? null : parseDerivedCardId(cardIdOfDrawId(drawId))
+
+    return passcode === null ? null : (PRINTED[passcode] ?? null)
+  })
 
 /** Las magias de campo del duelo de muestra, boca arriba: la tuya de arte claro (Fire King Island) y la del rival de arte oscuro (Pandemonium), para ver su fondo en cada mitad. */
 const MY_FIELD = 'card-57554544-1'
@@ -184,7 +202,7 @@ export function sampleDuel(): { mine: DuelSideView; theirs: DuelSideView } {
   }
 
   return {
-    mine: { state: mine, artOf: (id) => artOfCard(id) },
-    theirs: { state: mirror.state, artOf: (id) => artOfCard(mirror.known[id]), handCount: mirror.state.hand.length },
+    mine: { state: mine, artOf: (id) => artOfCard(id), stats: statsOf(mine, (id) => id) },
+    theirs: { state: mirror.state, artOf: (id) => artOfCard(mirror.known[id]), handCount: mirror.state.hand.length, stats: statsOf(mirror.state, (id) => mirror.known[id]) },
   }
 }

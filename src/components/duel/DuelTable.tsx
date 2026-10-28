@@ -13,7 +13,7 @@ import { THEIR_FAN_RISE, THEIR_HAND } from './their-hand'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel } from '../probability/MatFx'
+import { CARD_HOVER, CARD_TRANSITION, ChainBadge, FX_CARD, FxFrame, SPOTLIGHT_TONE, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from '../probability/MatFx'
 import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
@@ -48,8 +48,10 @@ export interface DuelSideView {
   onMark?: (target: MarkTarget, rect: DOMRect, place: string) => void
   /** Las cartas de este lado que se pueden elegir ahora (el duelo automático: a qué atacar, el objetivo de un efecto): laten como los monstruos que se pueden atacar en la mesa manual (`data-attack-target`). */
   pickable?: ReadonlySet<string>
-  /** El ATK/DEF de ahora de los monstruos que se eligen (`pickStatsOf`): una etiqueta debajo de cada uno (`StatTag`) y en su nombre. */
+  /** El ATK/DEF de los monstruos boca arriba (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en el manual): una etiqueta debajo de cada uno (`StatTag`) y en su nombre, siempre. */
   stats?: ReadonlyMap<string, PickStat>
+  /** El ATK/DEF de ahora de los que se eligen (`pickStatsOf`): en su nombre dice «elegible». */
+  pickStats?: ReadonlyMap<string, PickStat>
   /** Las casillas de este lado que se pueden elegir ahora (el duelo automático: la casilla del rival donde va un Kaiju, las que se inutilizan): llevan las marcas de elegir de la mesa y se tocan. */
   zones?: { targets: readonly { zone: MatSpot; index: number }[]; onPick: (zone: MatSpot, index: number) => void }
   /** Las cartas de este lado cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar, y la pila que tenga una adentro, también. */
@@ -397,8 +399,9 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   const materials = placed.materials.length
   const acting = side.act?.has(placed.id) ?? false
   const link = side.links?.get(placed.id)
-  const stat = side.stats?.get(placed.id)
-  const named = stat ? pickStatLabel(label, stat) : label
+  const picked = side.pickStats?.get(placed.id)
+  const stat = picked ?? side.stats?.get(placed.id) ?? null
+  const named = picked ? pickStatLabel(label, picked) : stat ? statLabel(label, stat) : label
 
   return (
     <>
@@ -430,7 +433,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-white">{placed.counters}</span> : null}
       </div>
       {link ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
-      {stat ? <StatTag stat={stat} sideways={sideways} /> : null}
+      {spot === 'mz' || spot === 'emz' ? <StatTag stat={stat} sideways={sideways} /> : null}
     </>
   )
 }

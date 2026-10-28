@@ -8,7 +8,8 @@ import { MAIN_MINIMUM, renumberDeck, type SideDeck } from '../../app/duel-siding
 import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, sameName, uniqueName, type MarkTarget } from '../../app/duel-protocol'
 import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import type { DeckFormat } from '../../types'
-import { fetchCardsByIds } from '../../ygoprodeck'
+import { fetchCardsByIds, type ApiCardSearchResult } from '../../ygoprodeck'
+import { fieldStatsOf, printedStat, type PickStat } from '../../app/field-stats'
 import { clearDuelSave, findPausedDuel, readDuelSave, readSidingSave, savedRole, writeSidingSave, type PausedDuel, type SidingDraft } from '../../app/duel-save'
 import { createParticipantId, createRoomCode, LIVE_HEARTBEAT_MS } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
@@ -23,7 +24,7 @@ import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
 import type { ManualGame } from '../../app/auto/manual-handover'
-import { cardKindOf, createMatState, isForeignId, isToken, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
+import { cardKindOf, createMatState, isForeignId, isToken, randomSeed, replayMat, shuffleWithSeed, type MatPile, type MatState } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
 import { cardEffects, effectDetail } from '../../app/mat-assistant'
 import type { CardTextHighlight } from '../../app/card-text'
@@ -1454,6 +1455,37 @@ const RIVAL_DETAIL_MS = 7000
 const READABLE_KINDS: ReadonlySet<string> = new Set(['activate', 'reveal', 'declare'])
 
 /**
+ * El ATK/DEF impreso de los monstruos boca arriba del rival (`fieldStatsOf`): sus cartas no están en tu catálogo, se piden por su número (las que faltan, en una consulta) y, hasta que
+ * llegan o si no se encuentran, van sin etiqueta. `drawIdOf`: el id real de una carta de su campo, si la mostró.
+ */
+function useRivalFieldStats(state: MatState, drawIdOf: (id: string) => string | undefined): ReadonlyMap<string, PickStat> {
+  const [cards, setCards] = useState<ReadonlyMap<number, ApiCardSearchResult | null>>(() => new Map())
+  const passcodeOf = useCallback((id: string) => {
+    const drawId = drawIdOf(id)
+
+    return drawId === undefined ? null : passcodeOfDrawId(drawId)
+  }, [drawIdOf])
+
+  useEffect(() => {
+    const missing = [...new Set([...state.mz, ...state.emz].flatMap((placed) => (placed && placed.pos !== 'set' ? [passcodeOf(placed.id)] : [])))].filter((code): code is number => code !== null && !cards.has(code))
+
+    if (missing.length === 0) return
+    let alive = true
+
+    fetchCardsByIds(missing)
+      .then((found) => {
+        if (alive) setCards((known) => new Map([...known, ...missing.map((code) => [code, found.find((card) => card.ygoprodeckId === code) ?? null] as const)]))
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [state, passcodeOf, cards])
+
+  return useMemo(() => fieldStatsOf(state, (id) => printedStat(cards.get(passcodeOf(id) ?? -1))), [state, cards, passcodeOf])
+}
+
+/**
  * Lo que el rival hace y se anima, para verlo igual que en un combo guardado: sus cartas grandes en el centro (con lo que él mostró de ellas, o de dorso) y un cartel
  * que dice qué pasó ("Ana manda una carta al cementerio", "Ana activa una carta"), y el aro en su campo de lo que destaca (activar, mostrar, declarar, marcar). Ataques y
  * cambios de fase tienen lo suyo (la espada, el cartel de la fase) y las cartas que sólo llegan a la mano no se muestran. Cuenta sólo una jugada nueva a la vez: lo que
@@ -1713,10 +1745,12 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   }, [addedToHand, addedKey, dockLock])
   // Lo que se está señalando de cada lado (un aro que late un rato): se arma antes del lado del rival, que lo lleva.
   const pointed = usePointed(snapshot)
+  // Una carta mía que el rival controla (`f.c12`) se ve con mi arte: el id que llega es el mío.
+  const rivalDrawId = useCallback((id: string) => (isToken(id) ? id : isForeignId(id) ? snapshot.ownIds[opaqueOfForeign(id)] : theirs!.known[id]), [snapshot.ownIds, theirs])
+  const rivalStats = useRivalFieldStats(theirs!.state, rivalDrawId)
   const opponent = useMemo<DuelSideView>(
-    // Una carta mía que el rival controla (`f.c12`) se ve con mi arte: el id que llega es el mío.
-    () => ({ state: theirs!.state, artOf: (id) => artOfDrawId(isToken(id) ? id : isForeignId(id) ? snapshot.ownIds[opaqueOfForeign(id)] : theirs!.known[id]), handCount: theirs!.state.hand.length, flash: rivalFlash, marks: snapshot.marks.theirs, point: pointed.theirs, onMark: openMark }),
-    [theirs, rivalFlash, snapshot.marks.theirs, snapshot.ownIds, pointed.theirs, openMark],
+    () => ({ state: theirs!.state, artOf: (id) => artOfDrawId(rivalDrawId(id)), handCount: theirs!.state.hand.length, flash: rivalFlash, marks: snapshot.marks.theirs, point: pointed.theirs, onMark: openMark, stats: rivalStats }),
+    [theirs, rivalDrawId, rivalFlash, snapshot.marks.theirs, pointed.theirs, openMark, rivalStats],
   )
   const turn = whoseTurn(snapshot.me, mine, theirs!.state, snapshot.starter)
   useGameToasts(snapshot, myName)

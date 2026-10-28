@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
+import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
 import { askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo } from '../../app/auto/chain-feed'
@@ -608,6 +609,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const list = pick && decision.listed ? pick : null
   const band = list !== null && decision.listed!.band
   const myStats = snap.overlay.stats.mine
+  // La etiqueta de ATK/DEF de siempre de cada lado (`fieldStatsOf`), estable por valor: un mapa nuevo con los mismos números sería un dibujo de la mesa de más. Los de ahora llegan con
+  // la tanda, antes de que la mesa la cuente: mientras la cuenta, tu monstruo que ya estaba sigue con los suyos (no cambia antes del paso que lo cambia) y se ponen al día al terminar.
+  // Repasando, nada: la mesa es otra.
+  const [shownStats, setShownStats] = useState(() => ({ mine: NO_FIELD_STATS, theirs: NO_FIELD_STATS }))
+  const fieldStats = {
+    mine: reviewing ? NO_FIELD_STATS : fieldStatsOf(state, (id) => (!settled && shownStats.mine.get(id)) || nowStat(myStats[id]), shownStats.mine),
+    theirs: reviewing ? NO_FIELD_STATS : fieldStatsOf(snap.theirs, (id) => nowStat(snap.overlay.stats.theirs[id]), shownStats.theirs),
+  }
+  if (fieldStats.mine !== shownStats.mine || fieldStats.theirs !== shownStats.theirs) setShownStats(fieldStats)
   const myInitial = snap.initial
   const myNormal = snap.overlay.normal[seat]
   const ended = snap.status === 'ended'
@@ -663,6 +673,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           }
         : null,
       cardPick,
+      stats: fieldStats.mine,
       viewer:
         pick && !list && pick.surface === 'pile' && pick.pile
           ? {
@@ -687,7 +698,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       whyNot: reviewing || frozen || ended ? null : (id) => [...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: myNormal }), ...limitTexts],
       manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick])
+  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
   // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).
@@ -748,7 +759,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       state: theirs,
       artOf: (id) => artOf({ side: 'theirs', id }),
       handCount: theirs.hand.length,
-      ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] }, ...(rivalPicks.stats ? { stats: rivalPicks.stats } : {}) } : {}),
+      ...(rivalPicks ? { pickable: rivalPicks.eligible, marks: { cards: rivalPicks.chosen, piles: [] }, ...(rivalPicks.stats ? { pickStats: rivalPicks.stats } : {}) } : {}),
+      stats: fieldStats.theirs,
       ...(rivalZones ? { zones: rivalZones } : {}),
       act: acting.theirs,
       links: links.theirs,
@@ -769,7 +781,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         else showRival(rivalPeekOf(target.card), rect)
       },
     }),
-    [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links],
+    [theirs, artOf, gesture, rivalPicks, rivalZones, rivalPlays, showRival, rivalPeekOf, acting, links, fieldStats.theirs],
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])

@@ -137,30 +137,30 @@ function ChainBadgeSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSi
 }
 
 /**
- * El ATK/DEF de ahora al elegir en el campo (`StatTag`): debajo de cada monstruo que la pregunta deja elegir, sobre el pie de la carta, sin cambiar ninguna caja. Las cifras son de muestra;
- * en el duelo salen de `pickStatsOf` (lo que consulta el núcleo). El primero de cada lado es un Link (sin DEF).
+ * El ATK/DEF de cada monstruo boca arriba del campo (`StatTag`), siempre: sobre el pie de la carta, sin cambiar ninguna caja. Las cifras son las impresas (`fieldStatsOf`, como en la mesa
+ * manual; en el duelo automático, las de ahora). Eligiendo, la de cada elegible (`pickStatsOf`) es la misma etiqueta, no otra: su nombre suma «elegible».
  */
 function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideView } }) {
-  const [on, setOn] = useState<'on' | 'off'>('on')
+  const [on, setOn] = useState<'on' | 'pick' | 'off'>('on')
   const sides = useMemo(() => {
-    const stats = (side: DuelSideView) =>
-      new Map<string, PickStat>([...side.state.mz, ...side.state.emz].flatMap((placed, i) => (placed && placed.pos !== 'set' ? [[placed.id, { attack: 1800 + 300 * i, defense: i === 0 ? null : 200 * i }] as const] : [])))
+    const picking = (side: DuelSideView) => ({ ...side, pickable: new Set(side.stats?.keys()), pickStats: new Map<string, PickStat>(side.stats) })
+    const bare = (side: DuelSideView) => ({ ...side, stats: undefined })
 
-    return on === 'on' ? { mine: { ...duel.mine, stats: stats(duel.mine) }, theirs: { ...duel.theirs, stats: stats(duel.theirs) } } : duel
+    return on === 'pick' ? { mine: picking(duel.mine), theirs: picking(duel.theirs) } : on === 'off' ? { mine: bare(duel.mine), theirs: bare(duel.theirs) } : duel
   }, [duel, on])
 
   return (
     <Specimen
-      title="ATK/DEF al elegir en el campo"
+      title="ATK/DEF de los monstruos del campo"
       layout="column"
       className="col-span-full"
       note={
         <>
-          Mientras el núcleo te pide elegir cartas del campo, cada monstruo elegible lleva su ATK/DEF de ahora (con lo que le cambiaron los efectos, no el impreso) abajo de su casilla: el ATK en blanco y la DEF apagada; un Link, sólo el ATK. Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000, elegible»), se va con la pregunta y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>)
+          Cada monstruo boca arriba lleva su ATK/DEF abajo de su casilla, siempre y de los dos lados: en el duelo automático el de ahora (con lo que le cambiaron los efectos), en la mesa manual el impreso. El ATK en blanco y la DEF apagada; un Link, sólo el ATK; un valor «?» se ve «?»; boca abajo, nada. En una casilla angosta va sólo el de su posición (ATK parada, DEF acostada). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
         </>
       }
     >
-      <Segmented label="Pregunta" variant="track" value={on} onChange={setOn} options={[{ value: 'on', label: 'Eligiendo' }, { value: 'off', label: 'Sin pregunta' }]} />
+      <Segmented label="Etiqueta" variant="track" value={on} onChange={setOn} options={[{ value: 'on', label: 'Siempre' }, { value: 'pick', label: 'Eligiendo' }, { value: 'off', label: 'Sin etiqueta' }]} />
       <DuelTable mine={sides.mine} theirs={sides.theirs} turn="mine" />
     </Specimen>
   )

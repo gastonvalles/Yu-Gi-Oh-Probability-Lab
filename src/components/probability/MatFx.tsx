@@ -178,26 +178,36 @@ export function ChainBadge({ link, className }: { link: ChainBadgeData; classNam
 export const pickStatLabel = (name: string, stat: PickStat) =>
   stat.defense === null ? t('auto.pick.statLink', { name, atk: stat.attack }) : t('auto.pick.stat', { name, atk: stat.attack, def: stat.defense })
 
+/** El nombre de un monstruo del campo con su ATK/DEF de siempre («Ponix, ATK 1900, DEF 1000»); eligiéndolo, `pickStatLabel`. */
+export const statLabel = (name: string, stat: PickStat) =>
+  stat.defense === null ? t('practice.mat.cardStatLink', { name, atk: stat.attack }) : t('practice.mat.cardStat', { name, atk: stat.attack, def: stat.defense })
+
+/** Lo que tarda la etiqueta en aparecer con su carta: lo que tarda la carta que viene volando en tocar su casilla (`LANDING_AT`). */
+const STAT_ARRIVAL: CSSProperties = { animationDelay: `${Math.round(FLIGHT_MS * LANDING_AT)}ms` }
+
 /**
- * El ATK/DEF de ahora de un monstruo que se elige en el campo (`pickStatsOf`), abajo y al centro de su casilla, sobre el pie de la carta (donde la impresa lleva los suyos): no cambia
- * la caja de la carta ni la de la casilla, y no se sale de ella. El ATK en blanco y la DEF apagada, como en la carta; sin DEF, un Link. Sólo se mira (`aria-hidden`): lo que se lee
- * va en el nombre de la carta (`pickStatLabel`). Se va con la pregunta. Si la casilla no llega a los dos números de cuatro cifras (`@container`: el celular, de 56 a 65 px, y la mesa de escritorio
- * angosta, de 63 a 73), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`), como se lee la carta; el nombre lleva los dos.
+ * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), abajo y al centro de su
+ * casilla, sobre el pie de la carta (donde la impresa lleva los suyos): no cambia la caja de la carta ni la de la casilla, y no se sale de ella. El ATK en blanco y la DEF apagada, como en la
+ * carta; sin DEF, un Link. Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla no llega a los dos números de cuatro cifras
+ * (`@container`: el celular, de 56 a 65 px, y la mesa de escritorio angosta, de 63 a 73), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`), como se lee la carta; el
+ * nombre lleva los dos. Se monta con la carta (también sin `stat`) y aparece cuando la carta llega volando a su casilla: lo que llega después (los números del núcleo), al toque si ya llegó.
  */
-export function StatTag({ stat, sideways = false, className }: { stat: PickStat; sideways?: boolean; className?: string }) {
-  const def = stat.defense !== null && sideways
+export function StatTag({ stat, sideways = false, className }: { stat: PickStat | null; sideways?: boolean; className?: string }) {
+  const def = stat !== null && stat.defense !== null && sideways
 
   return (
-    <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container', className)}>
-      <span data-pick-stat="" className="mx-auto block w-fit max-w-full whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle">
-        <span className={cx(def && '@max-[5rem]:hidden')}>{stat.attack}</span>
-        {stat.defense === null ? null : (
-          <span className={cx('font-semibold text-muted', def ? '@max-[5rem]:font-extrabold @max-[5rem]:text-foreground' : '@max-[5rem]:hidden')}>
-            <span className={cx(def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
-            {stat.defense}
-          </span>
-        )}
-      </span>
+    <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container animate-fx-frame-in motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
+      {stat ? (
+        <span data-pick-stat="" className="mx-auto block w-fit max-w-full whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle">
+          <span className={cx(def && '@max-[5rem]:hidden')}>{stat.attack}</span>
+          {stat.defense === null ? null : (
+            <span className={cx('font-semibold text-muted', def ? '@max-[5rem]:font-extrabold @max-[5rem]:text-foreground' : '@max-[5rem]:hidden')}>
+              <span className={cx(def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
+              {stat.defense}
+            </span>
+          )}
+        </span>
+      ) : null}
     </span>
   )
 }
