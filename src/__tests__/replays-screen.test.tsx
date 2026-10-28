@@ -267,9 +267,13 @@ describe('las transmisiones en vivo', () => {
     stubLive(LIVE)
     renderScreen()
 
-    const live = within(await screen.findByRole('region', { name: 'En vivo ahora' }))
+    const region = await screen.findByRole('region', { name: 'En vivo ahora' })
+    const live = within(region)
 
-    expect(live.getByText('2 transmisiones de los canales oficiales de YouTube.')).toBeInTheDocument()
+    // El encabezado va afuera y las tarjetas, en un carrusel sobre el lienzo: ninguna tarjeta dentro de otra.
+    expect(screen.getByText('2 transmisiones de los canales oficiales de YouTube.')).toBeInTheDocument()
+    expect(region).toHaveAttribute('aria-roledescription', 'carrusel')
+    expect(region.closest('.rounded-card')).toBeNull()
     // Lo más visto primero (la lista ya viene ordenada y se respeta).
     expect(live.getAllByRole('button', { name: /^Mirar en vivo: / }).map((button) => button.getAttribute('aria-label'))).toEqual(LIVE.streams.map((stream) => `Mirar en vivo: ${stream.title}`))
     expect(live.getByText(/6,7\s*mil viendo/)).toBeInTheDocument()

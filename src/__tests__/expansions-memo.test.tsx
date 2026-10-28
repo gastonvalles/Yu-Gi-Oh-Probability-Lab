@@ -112,7 +112,7 @@ describe('las cartas de una expansión', () => {
     renders.prints = 0
     fireEvent.click(screen.getByRole('button', { name: 'Ver 10 más' }))
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(70)
+    expect(screen.getAllByRole('listitem').filter((item) => !item.closest('nav'))).toHaveLength(70)
     expect(renders.prints).toBe(10)
   })
 
