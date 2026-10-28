@@ -39,7 +39,7 @@ interface AskOptionsProps {
 const LONG_LABEL = 22
 
 /**
- * Las opciones de una pregunta del núcleo que el campo no puede expresar, en una hoja chica (`Modal keypad`: en el celular sale de abajo, al pulgar, y su asa la baja sin contestar; en escritorio, un diálogo de 26 rem). Con `'one'`, los
+ * Las opciones de una pregunta del núcleo que el campo no puede expresar, en una hoja chica (`Modal keypad`, de 26 rem, al centro de la fila Extra: `anchor="mat"`; se minimiza sin contestar). Con `'one'`, los
  * botones de la hoja de una carta (`CardSheet`: de a dos por fila, `menuitem`) y un toque contesta. Con `{ count }`, pastillas que se prenden en ámbar (`aria-pressed`) y bajan de renglón, así se ven los 25
  * Tipos a la vez (`FilterChips` exige una cuenta por chip y en el celular es una sola fila que se desliza): con `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan.
  * Va dentro de un `Presence` (así sale al contestarse).
@@ -62,6 +62,7 @@ export function AskOptions({ title, kicker, options, mode, onPick, onCancel, sta
       dismissible={Boolean(onCancel)}
       size="keypad"
       lowerable
+      anchor="mat"
       veil={false}
       kicker={kicker}
       title={title}

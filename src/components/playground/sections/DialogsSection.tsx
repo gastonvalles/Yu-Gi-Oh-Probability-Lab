@@ -216,6 +216,7 @@ export function DialogsSection() {
   const [size, setSize] = useState<(typeof SIZES)[number] | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [veilless, setVeilless] = useState(false)
+  const [matSheet, setMatSheet] = useState(false)
   const [zoomOpen, setZoomOpen] = useState(false)
   const [zoomArt, setZoomArt] = useState('print-1')
   const [confirm, setConfirm] = useState<ConfirmSample | null>(null)
@@ -290,7 +291,7 @@ export function DialogsSection() {
         layout="column"
         note={
           <>
-            Toda confirmación es un <Tag>probability/ConfirmDialog.tsx</Tag> (un <Tag>Modal size="keypad"</Tag>: en el celular sale de abajo). El título pregunta con el verbo; el cuerpo dice qué pasa y si se puede deshacer; «Cancelar» va sin caja (o dice lo que sigue, como «Seguir editando», si sería ambiguo) y la principal, al final, repite el verbo del título. Rojo sólo si no hay vuelta. Las de la app salen en el idioma elegido.
+            Toda confirmación es un <Tag>probability/ConfirmDialog.tsx</Tag> (un <Tag>Modal size="keypad"</Tag>: en el celular sale de abajo; las de la mesa del duelo, <Tag>anchor="mat"</Tag>, como la hoja de la mesa). El título pregunta con el verbo; el cuerpo dice qué pasa y si se puede deshacer; «Cancelar» va sin caja (o dice lo que sigue, como «Seguir editando», si sería ambiguo) y la principal, al final, repite el verbo del título. Rojo sólo si no hay vuelta. Las de la app salen en el idioma elegido.
           </>
         }
       >
@@ -379,10 +380,26 @@ export function DialogsSection() {
       </Specimen>
 
       <Specimen
+        title="Hoja de la mesa"
+        note={
+          <>
+            Todo cartel del duelo sale en el mismo lugar (<Tag>anchor="mat"</Tag>, <Tag>matSpot</Tag>). La pregunta del medio (<Tag>MatPrompt</Tag>) apoya su borde de abajo sobre la fila de las Zonas Extra y crece hacia el campo del rival: tu campo y la fila Extra se ven siempre; si no entra, su cuerpo se desplaza y la pila de la cadena se acorta. Las hojas (elegir cartas, opciones, ordenar, contadores, pasar a manual, «Más», las partidas y las confirmaciones) van al centro de esa fila en todos los anchos (en el celular ya no salen de abajo), del alto que entra sin tapar la barra y hasta el 70 % de la mesa. Con el teclado del celular abierto van al centro de lo que queda a la vista. Las que piden ver el campo (<Tag>lowerable</Tag>) se minimizan con la flecha a la misma asa de la pregunta (<Tag>PromptHandle</Tag>): los toques pasan a la mesa y la pregunta sigue pendiente. Acá no hay mesa: va al centro de la pantalla y el asa, abajo.
+          </>
+        }
+      >
+        <Button size="sm" onClick={() => setMatSheet(true)}>
+          Abrir la hoja de la mesa
+        </Button>
+        <Modal isOpen={matSheet} onClose={() => setMatSheet(false)} size="keypad" anchor="mat" lowerable veil={false} kicker={t('practice.mat.name')} title="Elegí la posición" footer={<Button onClick={() => setMatSheet(false)}>Elegir</Button>}>
+          <p className="m-0 text-body text-muted">Minimizala con la flecha de arriba: queda el asa y la pregunta sigue pendiente.</p>
+        </Modal>
+      </Specimen>
+
+      <Specimen
         title="Hoja que se baja"
         note={
           <>
-            En el celular, el visor de una pila y las hojas del duelo automático (elegir cartas, ordenar, opciones: <Tag>Modal lowerable</Tag>) llevan un asa arriba (<Tag>ui/SheetHandle.tsx</Tag>, <Tag>app/use-sheet-drag.ts</Tag>). Toda la franja de arriba es el asa: arrastrala para abajo (o tocala) y la hoja queda como una tira con su título, sin cerrarse, para ver la mano; arrastrala para arriba (o tocá la tira) y vuelve como estaba. Bajada, los toques pasan a la mesa y lo de adentro queda inerte.
+            En el celular, el visor de una pila lleva un asa arriba (<Tag>ui/SheetHandle.tsx</Tag>, <Tag>app/use-sheet-drag.ts</Tag>). Toda la franja de arriba es el asa: arrastrala para abajo (o tocala) y la hoja queda como una tira con su título, sin cerrarse, para ver la mano; arrastrala para arriba (o tocá la tira) y vuelve como estaba. Bajada, los toques pasan a la mesa y lo de adentro queda inerte.
           </>
         }
       >

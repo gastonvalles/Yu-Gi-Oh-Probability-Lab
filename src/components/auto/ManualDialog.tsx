@@ -21,7 +21,7 @@ interface ManualDialogProps {
 
 /**
  * «Seguir en modo manual» del duelo automático: la partida sigue en la mesa manual (con todas sus opciones) y, si el automático se equivocó o no ofreció la jugada que querías,
- * se vuelve atrás unas jugadas para rehacerlas a mano. Sin velo y, en el celular, con el asa para bajarla y mirar la mesa, como las otras hojas del automático; «Nada» por defecto (cada
+ * se vuelve atrás unas jugadas para rehacerlas a mano. Sin velo y minimizable para mirar la mesa, como las otras hojas del automático; «Nada» por defecto (cada
  * vez que se abre: `key`).
  */
 export function ManualDialog({ isOpen, plays, busy, rivalHand, onClose, onConfirm }: ManualDialogProps) {
@@ -42,6 +42,7 @@ export function ManualDialog({ isOpen, plays, busy, rivalHand, onClose, onConfir
       size="keypad"
       veil={false}
       lowerable
+      anchor="mat"
       title={t('auto.bar.manual')}
       footer={
         <>

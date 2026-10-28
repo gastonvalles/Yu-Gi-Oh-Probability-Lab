@@ -324,13 +324,14 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
     <>
       {/* «Opciones del duelo» del ⋯ (el duelo automático: las respuestas a la cadena y la casilla). */}
       {extraSettings ? (
-        <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" veil={false} title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
+        <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" anchor="mat" veil={false} title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
           <div className="grid gap-4">{extraSettings}</div>
         </Modal>
       ) : null}
 
       <ConfirmDialog
         veil={false}
+        anchor="mat"
         isOpen={conceding}
         title={t('duel.bar.concedeTitle')}
         description={t('duel.bar.concedeText', { name: rivalName })}
@@ -346,6 +347,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
 
       <ConfirmDialog
         veil={false}
+        anchor="mat"
         isOpen={leaving}
         title={abandoning ? t('duel.bar.abandonTitle') : t('duel.bar.leaveTitle')}
         description={abandoning ? t('duel.bar.abandonText', { name: rivalName }) : result !== null ? t('duel.bar.leaveDoneText') : t('duel.bar.leaveText')}

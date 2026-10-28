@@ -424,7 +424,8 @@ describe('CardPicker', () => {
     render(<CardPicker title="Elegí" cards={CARDS} min={1} max={1} onPick={onPick} />)
 
     expect(screen.getByRole('listbox')).not.toHaveAttribute('aria-multiselectable')
-    expect(screen.queryByRole('button')).toBeNull()
+    // Sin pie: el único botón es el de minimizar la hoja.
+    expect(screen.getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])
     escape()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 

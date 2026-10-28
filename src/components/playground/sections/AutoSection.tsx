@@ -349,7 +349,7 @@ function BandSample({ max, onAnswer }: { max: 1 | 2; onAnswer: (answer: string) 
         max === 1 ? (
           <>Con una sola, el toque contesta: sin pie si no se puede cancelar ni terminar sin elegir.</>
         ) : (
-          <>Hasta 6 cartas, una banda en una fila en la ranura de la pregunta (<Tag>duel.prompt</Tag>, ancha por <Tag>data-prompt-row</Tag>), sin velo; con más, la hoja de abajo. La pestaña dice de dónde salen (si todas salen del mismo lugar) y el título, para qué (<Tag>pickTitle</Tag> de <Tag>ask-ui.ts</Tag>: el código de pista del núcleo, sólo los comprobados) y cuántas van. «Cancelar» sin caja y la principal al final, que se enciende al completar. Archivo: <Tag>auto/CardPicker.tsx</Tag></>
+          <>Hasta 6 cartas, una banda en una fila en la ranura de la pregunta (<Tag>duel.prompt</Tag>, ancha por <Tag>data-prompt-row</Tag>), sin velo; con más, la hoja de la mesa (al centro de la fila Extra). La pestaña dice de dónde salen (si todas salen del mismo lugar) y el título, para qué (<Tag>pickTitle</Tag> de <Tag>ask-ui.ts</Tag>: el código de pista del núcleo, sólo los comprobados) y cuántas van. «Cancelar» sin caja y la principal al final, que se enciende al completar. Archivo: <Tag>auto/CardPicker.tsx</Tag></>
         )
       }
     >

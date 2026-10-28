@@ -51,6 +51,7 @@ export function ResumeAutoSetting({ resume, rivalName }: { resume: ResumeAuto; r
       </Setting>
       <ConfirmDialog
         veil={false}
+        anchor="mat"
         isOpen={confirming}
         title={t('auto.resumeLink.ask')}
         description={t('auto.resumeLink.confirmText', { name: rivalName })}

@@ -601,8 +601,8 @@ describe('la pantalla del duelo', () => {
     expect(chip(host)).toHaveAccessibleName(/Main Phase 1|Draw Phase|Standby Phase/)
     expect(lane(host, 'passAsking')).toHaveTextContent('Le preguntás a Beto si no hace nada más…')
     expect(prompt(guest)).toHaveTextContent('Ana quiere pasar a la Battle Phase. ¿Hacés algo antes?')
-    // En el medio de la pantalla (la capa de la mesa que centra), no sobre la línea del registro de arriba; ni Ana la ve.
-    expect(prompt(guest)!.closest('[data-testid="duel-prompt-layer"]')).toHaveClass('place-items-center')
+    // En el lugar fijo de la mesa (apoyada sobre la fila de las Zonas Extra), no sobre la línea del registro de arriba; ni Ana la ve.
+    expect(prompt(guest)!.closest('[data-testid="duel-prompt-layer"]')).toHaveAttribute('data-spot', 'extra')
     expect(lane(guest, 'passAsked')).toBeNull()
     expect(prompt(host)).toBeNull()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
