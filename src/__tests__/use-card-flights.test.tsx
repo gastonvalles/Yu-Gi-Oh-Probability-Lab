@@ -783,6 +783,32 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     expect([...gy().querySelectorAll('[data-flight-hold][inert]')].map((hold) => hold.textContent)).toEqual(['1031'])
   })
 
+  it('barajar el deck (cerrar su visor) no mide ninguna carta ni hace volar nada; cambiar otra zona después, sí', () => {
+    // Con una carta en el campo, que una jugada mediría.
+    const start = play(fresh(), { type: 'place', id: '101', zone: 'mz', index: 0, pos: 'atk' })
+    boxes.set('101', at(200, 300))
+    const { rerender } = render(<PileMat state={start} />)
+    const measure = HTMLElement.prototype.getBoundingClientRect
+    let measured = 0
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      measured += 1
+
+      return measure.call(this)
+    }
+
+    // Un estado nuevo entero, como lo rearma la mesa en cada jugada (`replayMat`): nada conserva su referencia.
+    const shuffled = structuredClone(play(start, { type: 'shuffle', seed: 7 }))
+    expect(shuffled.deck).not.toEqual(start.deck)
+    rerender(<PileMat state={shuffled} />)
+    expect(measured).toBe(0)
+    expect(calls).toHaveLength(0)
+
+    // La jugada siguiente parte del deck barajado: la carta que sale es la de arriba de ahora.
+    rerender(<PileMat state={play(shuffled, { type: 'mill', count: 1 })} />)
+    expect(measured).toBeGreaterThan(0)
+    expect(ghosts().map((ghost) => ghost.element.querySelector('img')?.getAttribute('src'))).toEqual([`/api/card-image/cards/${shuffled.deck[0]}.jpg`])
+  })
+
   it('el fantasma vuela dentro de la mesa, debajo de las cartas grandes del centro (z 110 < 120), y no ataja el puntero ni se lee', () => {
     const start = fresh()
     const { container, rerender } = render(<PileMat state={start} />)

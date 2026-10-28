@@ -693,6 +693,20 @@ interface Flight {
   hidden: Animation | null
 }
 
+/**
+ * ¿Lo único que cambió es el orden del deck (las mismas cartas, todo lo demás igual)? Se compara por valor: la mesa rearma el estado entero en cada jugada
+ * (`replayMat`), así que nada conserva su referencia. Es un estado chico (ids y zonas): pasarlo a texto cuesta mucho menos que medir la mesa.
+ */
+function onlyShuffled(before: MatState, after: MatState): boolean {
+  if (before === after || before.deck.length !== after.deck.length) return false
+
+  const { deck: was, ...restBefore } = before
+  const { deck: now, ...restAfter } = after
+  const deck = new Set(was)
+
+  return now.every((id) => deck.has(id)) && JSON.stringify(restBefore) === JSON.stringify(restAfter)
+}
+
 /** Dónde se ve ahora una carta en pleno vuelo, sin medirla (puede ya no estar en la mesa): entre de dónde salió y a dónde va, con la curva del vuelo. */
 function poseOf({ animation, from, to }: Flight): Box {
   const done = easeInOut(Number(animation.currentTime ?? 0) / FLIGHT_MS)
@@ -719,11 +733,24 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
   const holdsRef = useRef(new Map<string, () => void>())
   /** Los vuelos de las cartas a la vista que arrancó el hook (por carta): la jugada siguiente los retoma o sale de donde iban. */
   const flightsRef = useRef(new Map<string, Flight>())
+  /** El `layoutKey` de la última medida: si cambió, hay que medir aunque la jugada sólo haya barajado el deck. */
+  const layoutRef = useRef(layoutKey)
 
   useLayoutEffect(() => {
     const root = containerRef.current
 
     if (!root || !state || typeof root.animate !== 'function') return
+
+    const previous = previousRef.current
+    const sameLayout = layoutRef.current === layoutKey
+    layoutRef.current = layoutKey
+
+    // Sólo se barajó el deck (cerrar su visor lo baraja): nada a la vista se movió, así que no se mide ni se toca nada (medir todas las cartas trababa el
+    // cierre). Lo que vuela sigue volando y una pila que espera su carta la sigue esperando.
+    if (previous && sameLayout && onlyShuffled(previous.state, state)) {
+      previousRef.current = { ...previous, state }
+      return
+    }
 
     // Los vuelos que siguen en el aire se apartan para medir cada carta en su lugar y no donde va pasando: antes, dónde va cada una y su reloj.
     const inAir = [...flightsRef.current].filter(([, flight]) => flight.animation.playState === 'running').map(([id, flight]) => ({ id, flight, startTime: flight.animation.startTime, seen: poseOf(flight) }))
@@ -738,7 +765,6 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       if (id) current.set(id, { element, rect: element.getBoundingClientRect() })
     }
 
-    const previous = previousRef.current
     previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id), pending: element.dataset.pending === 'true' }])), faces: facesOf(root, side, state, previous?.faces) }
 
     // Otra jugada con un vuelo a medias: las pilas que cambian con ella muestran ya lo suyo; las demás siguen esperando su carta (volver a medir, sin jugada, no suelta ninguna).
