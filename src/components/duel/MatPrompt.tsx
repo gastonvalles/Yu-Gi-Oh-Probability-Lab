@@ -59,8 +59,9 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
             <Icon name="chevron-down" />
           </IconButton>
         </div>
-        {/* Más alto que lo que hay arriba de la fila Extra, el cuerpo se desplaza (la fila de arriba, con minimizar, queda a la vista); el aire de 4 px no corta el aro del foco. */}
-        <div className="-m-1 grid min-h-0 gap-[inherit] overflow-y-auto overscroll-contain p-1">{children}</div>
+        {/* Más alto que lo que hay arriba de la fila Extra, el cuerpo se desplaza (la fila de arriba, con minimizar, queda a la vista). Llega hasta el borde del cartel (`-mx-4`, y 4 px arriba y abajo): lo que
+            se desplaza no corta el aro del foco ni una fila de botones que no entra en 360 px. La fila de acciones (lo último, si hay algo antes) queda siempre a la vista, abajo. */}
+        <div className="-mx-4 -my-1 grid min-h-0 gap-[inherit] overflow-y-auto overscroll-contain px-4 py-1 [&>:last-child:not(:first-child)]:sticky [&>:last-child:not(:first-child)]:bottom-0 [&>:last-child:not(:first-child)]:bg-card-background">{children}</div>
       </div>
     ),
     () => [ref.current],
