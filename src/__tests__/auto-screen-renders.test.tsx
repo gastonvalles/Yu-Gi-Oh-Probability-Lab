@@ -80,6 +80,21 @@ describe('auto-screen · los dibujos de la mesa', () => {
     expect(phaseButton()).toBeEnabled()
   })
 
+  it('la etiqueta de ATK/DEF de siempre: los mismos números (otro aviso, una carta que no está en el campo) no dibujan la mesa; uno que cambia, un dibujo', () => {
+    vi.useFakeTimers()
+    const fake = renderAuto()
+    const overlay = () => fake.getSnapshot().overlay
+    const stats = (attack: number, extra = {}) => ({ mine: { 'card-200-1': { attack, defense: 1000, level: 4 }, ...extra }, theirs: {} })
+
+    core(() => fake.ask(IDLE))
+    expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(1900) } })))).toBe(1)
+    expect(document.querySelector('[data-pick-stat]')).toHaveTextContent('1900 / 1000')
+    expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(1900) } })))).toBe(0)
+    expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(1900, { 'card-101-1': { attack: 500, defense: 500, level: 1 } }) } })))).toBe(0)
+    expect(draws(() => core(() => fake.set({ overlay: { ...overlay(), stats: stats(2400) } })))).toBe(1)
+    expect(document.querySelector('[data-pick-stat]')).toHaveTextContent('2400 / 1000')
+  })
+
   it('nada queda congelado: lo que la mesa ofrece es siempre lo de la última pregunta, aunque la de antes haya dejado sus funciones armadas', () => {
     vi.useFakeTimers()
     const fake = renderAuto()

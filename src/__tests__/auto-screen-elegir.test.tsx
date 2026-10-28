@@ -56,13 +56,13 @@ describe('auto-screen · elegir', () => {
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [2] }])
   })
 
-  it('select_card en el campo: cada monstruo que se elige lleva su ATK/DEF de ahora debajo y en su nombre; fuera de la pregunta, ninguno', () => {
+  it('select_card en el campo: el ATK/DEF de ahora de cada monstruo boca arriba va siempre debajo y en su nombre; eligiéndolo, la misma etiqueta (no otra) y su nombre suma «elegible»', () => {
     const fake = renderAuto()
     const tags = () => [...document.querySelectorAll('[data-pick-stat]')].map((tag) => tag.textContent).sort()
 
     core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, stats: { mine: { 'card-200-1': { attack: 1900, defense: 1000, level: 4 } }, theirs: { c1: { attack: 3500, defense: 2500, level: 8 } } } } }))
-    expect(tags()).toEqual([])
-    expect(screen.getByRole('button', { name: 'Maxx C' })).toBeInTheDocument()
+    expect(tags()).toEqual(['1900 / 1000', '3500 / 2500'])
+    expect(screen.getByRole('button', { name: 'Maxx C, ATK 1900, DEF 1000' })).toBeInTheDocument()
     core(() => fake.ask(CARD))
     // La mano (Ash Blossom) también se elige, pero no está en el campo: sin etiqueta.
     expect(tags()).toEqual(['1900 / 1000', '3500 / 2500'])
@@ -72,7 +72,8 @@ describe('auto-screen · elegir', () => {
     expect(screen.getByRole('button', { name: 'Maxx C, ATK 1900, DEF 1000, elegible (Elegida)' })).toBeInTheDocument()
     fireEvent.click(within(status()).getByRole('button', { name: 'Listo' }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
-    expect(tags()).toEqual([])
+    expect(tags()).toEqual(['1900 / 1000', '3500 / 2500'])
+    expect(screen.getByRole('button', { name: 'Maxx C, ATK 1900, DEF 1000' })).toBeInTheDocument()
   })
 
   it('unselect: la ya elegida lleva «Elegida», tocar una la suma o la suelta de a una, y «Listo» termina', () => {
