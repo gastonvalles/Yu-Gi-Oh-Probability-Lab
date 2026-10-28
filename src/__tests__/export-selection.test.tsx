@@ -12,6 +12,8 @@ const EMPTY_DECK = { deckName: 'Vacío', main: [], extra: [], side: [], isEditin
 
 beforeEach(() => {
   localStorage.clear()
+  // En escritorio: el botón de arriba (que abre el diálogo también con el deck vacío) sólo existe ahí.
+  window.matchMedia = ((query: string) => ({ matches: query.includes('1101'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 
 const openDownload = () => {

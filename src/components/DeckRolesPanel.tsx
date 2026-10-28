@@ -545,6 +545,20 @@ export function DeckRolesPanel({
     </div>
   ) : null
 
+  // Vuelve a sugerir todo con las reglas de hoy; pisa lo confirmado, por eso pregunta.
+  const resuggest = (
+    <IconButton
+      tone="ghost"
+      size="md"
+      aria-label={t('roles.panel.reclassifyAll')}
+      title={t('roles.panel.reclassifyAll')}
+      className="col-start-2 text-primary-foreground"
+      onClick={() => setConfirmResuggest(true)}
+    >
+      <Icon name="refresh" size={20} />
+    </IconButton>
+  )
+
   return (
     <section className="stagger mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-gutter pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">
       <StepHero
@@ -584,45 +598,46 @@ export function DeckRolesPanel({
                 label={t('roles.panel.ringLabel')}
               />
             </div>
-            <p className="m-0 min-w-0 text-lead leading-snug min-[1101px]:text-title min-[1101px]:leading-tight">
+            {/* A 360 px el mensaje en grande se iba a cuatro renglones al lado del aro: en lo más angosto, en el tamaño del cuerpo. */}
+            <p className="m-0 min-w-0 text-lead leading-snug max-[389px]:text-body max-[389px]:font-semibold min-[1101px]:text-title min-[1101px]:leading-tight">
                 {unclassifiedCards.length > 0
                   ? t('roles.panel.remaining', { count: unclassifiedCards.length })
                   : pendingReviewCards.length > 0
                     ? t('roles.panel.confirmSuggestions', { count: pendingReviewCards.length })
                     : t('roles.panel.allDone')}
             </p>
-            {/* Con dos acciones (confirmar todas y revisar) la columna mide lo que miden los botones, que no parten su texto; en el celular, si no entran en una fila, la principal pasa a la de abajo. */}
-            <div className={cx('col-span-2 flex flex-wrap items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-3', suggestionsOnly ? 'min-[1101px]:w-auto min-[1101px]:flex-nowrap' : 'min-[1101px]:w-72')}>
+            {/* En el celular, una grilla: la acción principal a lo ancho, abajo, y arriba de ella lo secundario (revisar una por una, a la izquierda; volver a sugerir, el ícono, a la
+                derecha), así ningún botón queda suelto en su propia fila. Sin «revisar», la principal y el ícono comparten la fila. En escritorio, una fila a la derecha del mensaje,
+                con la principal al final. */}
+            <div className={cx('col-span-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-3 min-[1101px]:flex min-[1101px]:flex-wrap', suggestionsOnly ? 'min-[1101px]:w-auto min-[1101px]:flex-nowrap' : 'min-[1101px]:w-72')}>
               {unclassifiedCards.length > 0 ? (
-                <Button variant="onBrand" size={buttonSize} icon="tag" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
-                  {t('roles.panel.classifyAll')}
-                </Button>
+                <>
+                  <Button variant="onBrand" size={buttonSize} icon="tag" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
+                    {t('roles.panel.classifyAll')}
+                  </Button>
+                  {resuggest}
+                </>
               ) : pendingReviewCards.length > 0 ? (
                 <>
                   {/* Revisar una por una abre la primera sugerencia (desde ahí «Siguiente» recorre el resto); confirmar todas las da por buenas de un toque. La principal va al final. */}
-                  <Button variant="tertiary" size={buttonSize} className="flex-1 basis-40 whitespace-nowrap text-primary-foreground" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
+                  <Button variant="tertiary" size={buttonSize} className="justify-self-start whitespace-nowrap text-primary-foreground min-[1101px]:flex-1 min-[1101px]:basis-40" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
                     {t('roles.panel.reviewSuggestions')}
                   </Button>
-                  <Button variant="onBrand" size={buttonSize} icon="check" className="flex-1 basis-48 whitespace-nowrap" onClick={() => dispatch(confirmAllDeckCardClassifications())}>
+                  {resuggest}
+                  <Button variant="onBrand" size={buttonSize} icon="check" className="col-span-2 whitespace-nowrap min-[1101px]:flex-1 min-[1101px]:basis-48" onClick={() => dispatch(confirmAllDeckCardClassifications())}>
                     {t('roles.panel.confirmAll', { count: pendingReviewCards.length })}
                   </Button>
                 </>
-              ) : onOpenLab ? (
-                <Button variant="onBrand" size={buttonSize} iconEnd="arrow-right" className="flex-1" onClick={onOpenLab}>
-                  {t('roles.panel.goToLab')}
-                </Button>
-              ) : null}
-              {/* Vuelve a sugerir todo con las reglas de hoy; pisa lo confirmado, por eso pregunta. */}
-              <IconButton
-                tone="ghost"
-                size="md"
-                aria-label={t('roles.panel.reclassifyAll')}
-                title={t('roles.panel.reclassifyAll')}
-                className="text-primary-foreground"
-                onClick={() => setConfirmResuggest(true)}
-              >
-                <Icon name="refresh" size={20} />
-              </IconButton>
+              ) : (
+                <>
+                  {onOpenLab ? (
+                    <Button variant="onBrand" size={buttonSize} iconEnd="arrow-right" className="flex-1" onClick={onOpenLab}>
+                      {t('roles.panel.goToLab')}
+                    </Button>
+                  ) : null}
+                  {resuggest}
+                </>
+              )}
             </div>
             {filtersInCard ? filterChips : null}
           </Card>

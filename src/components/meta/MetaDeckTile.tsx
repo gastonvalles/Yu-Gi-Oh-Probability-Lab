@@ -9,12 +9,13 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { ListRow } from '../ui/ListRow'
 import { Skeleton } from '../ui/Skeleton'
 import { deckKindCounts, formatMetaDate, placementLook } from './meta-format'
 
 interface MetaDeckTileProps {
   deck: MetaDeck
-  /** row: una fila del celular (la portada chica, el nombre y el puesto) · card: la tarjeta de escritorio (desde 1101 px). */
+  /** row: una fila del celular (la portada chica, el nombre y el puesto; va dentro de un `ListGroup`) · card: la tarjeta de escritorio (desde 560 px). */
   layout: 'row' | 'card'
   onOpen: () => void
 }
@@ -56,7 +57,7 @@ function ReplaysBadge({ deckId, onImage = false }: { deckId: number; onImage?: b
 }
 
 /**
- * Un deck de torneo. Una sola caja por deck, sobre el lienzo. En el celular es una fila: la portada chica, el nombre, «puesto · torneo · fecha» y el chevron.
+ * Un deck de torneo. En el celular es una fila (`ListRow`) de la única tarjeta de la lista: la portada chica, el nombre, «puesto · torneo · fecha» y la flecha.
  * Desde 1101 px es una tarjeta con el orden del lenguaje de tarjetas (`docs/ux-ui-guidelines.md`, G): nombre y quién lo jugó, la portada, lo que da contexto
  * (torneo y fecha, cuántos hand traps y boardbreakers lleva) y, abajo, el puesto —lo que decide— con el botón que abre el deck.
  */
@@ -89,14 +90,14 @@ export function MetaDeckSkeleton({ layout, className }: { layout: 'row' | 'card'
       </div>
     </div>
   ) : (
-    <div aria-hidden="true" className={cx('grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 rounded-card border border-border-subtle bg-card-background p-3', className)}>
-      <Skeleton radius="control" className="h-[3.8rem] w-11" />
-      <div className="grid gap-1.5">
+    // Una fila de la lista (`ListRow`), con el mismo alto: la portada recta, el nombre y el puesto.
+    <li aria-hidden="true" className={cx('flex min-h-16 min-w-0 items-center gap-3 py-3', className)}>
+      <Skeleton radius="none" className="h-12 w-9 shrink-0" />
+      <span className="grid flex-1 gap-1.5">
         <Skeleton className="h-4 w-3/5" />
         <Skeleton className="h-3 w-4/5" />
-      </div>
-      <Skeleton className="size-5" />
-    </div>
+      </span>
+    </li>
   )
 }
 
@@ -104,28 +105,25 @@ function MetaDeckRow({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
   const context = [deck.tournament, formatMetaDate(deck.date)].filter(Boolean).join(' · ')
 
   return (
-    <button
-      type="button"
-      className="group grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 rounded-card border border-border-subtle bg-card-background p-3 text-left transition-colors duration-150 hover:border-info/60 focus-visible:border-info/60 focus-visible:outline-none focus-visible:shadow-focus"
-      onClick={onOpen}
-    >
-      <span className="block h-[3.8rem] w-11 overflow-hidden rounded-tag bg-input">
-        <DeckCover cover={deck.cover} className="size-full" width={320} />
-      </span>
-      <span className="grid min-w-0 gap-0.5">
-        <strong className="truncate text-body font-semibold text-foreground">{deck.name}</strong>
-        {/* El puesto primero y en claro: es lo que se busca en la fila; el torneo y la fecha lo completan. */}
-        <span className="truncate text-micro text-muted">
+    <ListRow
+      title={deck.name}
+      // La portada es una carta: recta (regla 8).
+      media={
+        <span className="block h-12 w-9 overflow-hidden bg-input">
+          <DeckCover cover={deck.cover} className="size-full" width={320} />
+        </span>
+      }
+      // El puesto primero y en claro: es lo que se busca en la fila; el torneo y la fecha lo completan (en dos renglones, sin cortar el torneo).
+      subtitle={
+        <>
           {deck.placement ? <strong className="font-semibold text-foreground">{deck.placement}</strong> : null}
           {deck.placement && context ? ' · ' : null}
           {context}
-        </span>
-      </span>
-      <span className="flex items-center gap-2">
-        <ReplaysBadge deckId={deck.id} />
-        <Icon name="chevron-right" size={18} className="text-muted" />
-      </span>
-    </button>
+        </>
+      }
+      value={<ReplaysBadge deckId={deck.id} />}
+      onClick={onOpen}
+    />
   )
 }
 

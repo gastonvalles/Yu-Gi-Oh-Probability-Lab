@@ -21,17 +21,21 @@ import { EmptyState } from '../ui/EmptyState'
 import { FilterChips, type FilterChip } from '../ui/FilterChips'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { ListGroup, ListRow } from '../ui/ListRow'
 import { SearchField } from '../ui/SearchField'
+import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { Skeleton } from '../ui/Skeleton'
 import { StepPage } from '../ui/StepPage'
-import { listItem, surface } from '../ui/surfaces'
-import { overline, textLink } from '../ui/typography'
+import { surface } from '../ui/surfaces'
+import { textLink } from '../ui/typography'
 import { ExpansionCardModal } from './ExpansionCardModal'
 import { PackArt } from './PackArt'
 
 /** Cuántas cartas se dibujan de entrada (hay expansiones con más de 800 impresiones): el resto, con "Mostrar más". */
 const PAGE_SIZE = 60
+/** Cuántas expansiones se ven de cada año antes de «Ver las N» (Miller: un bloque corto por año; buscando se ven todas). */
+const PER_YEAR = 5
 
 type Sort = 'code' | 'price'
 
@@ -109,11 +113,7 @@ export function ExpansionsScreen() {
       {list.status === 'error' ? (
         <Callout tone="warning">{t('catalog.sets.loadError')}</Callout>
       ) : list.status === 'loading' ? (
-        <div className="grid gap-2" aria-busy="true">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
+        <ListGroup loading />
       ) : (
         <div className="grid items-start gap-4 min-[1101px]:min-h-0 min-[1101px]:grid-cols-[minmax(19rem,24rem)_minmax(0,1fr)] min-[1101px]:items-stretch min-[1101px]:gap-5">
           {showList ? <ExpansionList expansions={expansions} activeId={activeId} onPick={pick} /> : null}
@@ -130,58 +130,54 @@ export function ExpansionsScreen() {
   )
 }
 
-/** Una expansión de la lista. Con `memo`, tocar otra o escribir en el buscador sólo vuelve a dibujar las filas que cambian (son casi 600). */
-const ExpansionRow = memo(function ExpansionRow({ expansion, active, buttonRef, onPick }: { expansion: Expansion; active: boolean; buttonRef?: Ref<HTMLButtonElement>; onPick: (id: number) => void }) {
+/** Una expansión de la lista: una fila de la tarjeta de su año. Con `memo`, tocar otra o escribir en el buscador sólo vuelve a dibujar las filas que cambian (son casi 600). */
+const ExpansionRow = memo(function ExpansionRow({ expansion, active, onPick }: { expansion: Expansion; active: boolean; onPick: (id: number) => void }) {
   return (
-    <button
-      type="button"
-      ref={buttonRef}
-      aria-current={active ? 'true' : undefined}
-      className={cx(
-        listItem,
-        'group grid min-h-18 w-full grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 px-2.5 py-2 text-left aria-[current=true]:bg-primary/15 min-[1101px]:min-h-16 min-[1101px]:grid-cols-[2.25rem_minmax(0,1fr)]',
-      )}
+    <ListRow
+      title={expansion.name}
+      subtitle={[expansion.code, monthText(expansion.date)].filter(Boolean).join(' · ') || t('catalog.sets.noDate')}
+      media={<PackArt code={expansion.code} className="h-14 w-10 rounded-tag min-[1101px]:h-12.5 min-[1101px]:w-9" />}
+      selected={active}
       onClick={() => onPick(expansion.id)}
-    >
-      <PackArt code={expansion.code} className="h-14 w-10 rounded-tag min-[1101px]:h-12.5 min-[1101px]:w-9" />
-      <span className="grid min-w-0 gap-0.5">
-        <span className="truncate text-body font-semibold text-foreground group-aria-[current=true]:text-nav-active">{expansion.name}</span>
-        <span className="truncate text-micro text-muted">{[expansion.code, monthText(expansion.date)].filter(Boolean).join(' · ') || t('catalog.sets.noDate')}</span>
-      </span>
-      <Icon name="chevron-right" size={18} className="text-muted min-[1101px]:hidden" />
-    </button>
+    />
   )
 })
 
-/** Una carta que salió de buscar: su arte, su nombre y, si se buscó por código, el de la impresión. Tocarla abre las impresiones y precios de la carta. */
+/** Una carta que salió de buscar: su arte (recto), su nombre y, si se buscó por código, el de la impresión. Tocarla abre las impresiones y precios de la carta. */
 function CardHitRow({ hit, onPick }: { hit: CardHit; onPick: (hit: CardHit) => void }) {
   return (
-    <button type="button" className={cx(listItem, 'grid min-h-18 w-full grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 px-2.5 py-2 text-left min-[1101px]:min-h-16 min-[1101px]:grid-cols-[2.25rem_minmax(0,1fr)_auto]')} onClick={() => onPick(hit)}>
-      <span className="block aspect-[421/614] overflow-hidden rounded-tag bg-input">
-        <CardArt remoteUrl={cardSmallImageUrl(hit.cardId)} name={hit.name} className="object-cover" />
-      </span>
-      <span className="grid min-w-0 gap-0.5">
-        <span className="truncate text-body font-semibold text-foreground">{hit.name}</span>
-        <span className="truncate text-micro text-muted">{hit.code || t('catalog.sets.cardHitHint')}</span>
-      </span>
-      <Icon name="dollar-sign" size={18} className="text-muted" />
-    </button>
+    <ListRow
+      title={hit.name}
+      subtitle={hit.code || t('catalog.sets.cardHitHint')}
+      media={
+        <span className="block aspect-[421/614] w-10 overflow-hidden bg-input min-[1101px]:w-9">
+          <CardArt remoteUrl={cardSmallImageUrl(hit.cardId)} name={hit.name} className="object-cover" />
+        </span>
+      }
+      onClick={() => onPick(hit)}
+    />
   )
 }
 
 /**
  * Las expansiones agrupadas por año de salida (las más nuevas primero), con un buscador por nombre o código de la expansión y también de una carta: arriba
  * de la lista salen las cartas que coinciden, y tocar una abre la hoja de precios con todas sus impresiones (la misma del detalle de carta).
+ * Cada año es un bloque: su encabezado y una tarjeta con filas, las primeras `PER_YEAR` y «Ver las N» (buscando se ven todas). En el celular scrollea la página
+ * (nada de una caja que scrollea dentro de otra); en escritorio, la columna, por adentro.
  */
 function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion[]; activeId: number | null; onPick: (id: number) => void }) {
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [query, setQuery] = useState('')
   const [priced, setPriced] = useState<CardHit | null>(null)
+  // Los años abiertos (true) o cerrados (false) a mano; si no, se abre solo el que tiene la elegida más abajo de las primeras.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const cardHits = useCardHits(query, expansions)
-  const activeRef = useRef<HTMLButtonElement>(null)
+  const navRef = useRef<HTMLElement>(null)
+  const searching = query.trim() !== ''
 
   // Si se llega a una expansión desde afuera (los precios de una carta), la lista se mueve hasta ella.
   useEffect(() => {
-    activeRef.current?.scrollIntoView?.({ block: 'nearest' })
+    navRef.current?.querySelector('[aria-current]')?.scrollIntoView?.({ block: 'nearest' })
   }, [activeId])
 
   const groups = useMemo(() => {
@@ -199,32 +195,45 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
   }, [expansions, query])
 
   return (
-    <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)]')}>
-      <SearchField label={t('catalog.sets.searchLabel')} placeholder={t('catalog.sets.searchPlaceholder')} value={query} onChange={setQuery} />
-      <nav aria-label={t('catalog.sets.listLabel')} aria-busy={cardHits.status === 'loading'} className="grid max-h-[70dvh] content-start gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-none min-[1101px]:min-h-0">
+    <section className="grid min-w-0 content-start gap-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)]">
+      <SearchField label={t('catalog.sets.searchLabel')} placeholder={t('catalog.sets.searchPlaceholder')} value={query} onChange={setQuery} shape={isDesktop ? 'field' : 'pill'} />
+      {/* En escritorio el relleno de 4 px deja entrar el aro del foco y el de la elegida, que el scroll recortaría. */}
+      <nav
+        ref={navRef}
+        aria-label={t('catalog.sets.listLabel')}
+        aria-busy={cardHits.status === 'loading'}
+        className="grid content-start gap-6 min-[1101px]:-m-1 min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:overscroll-contain min-[1101px]:p-1 min-[1101px]:[scrollbar-width:thin]"
+      >
         {cardHits.hits.length > 0 ? (
-          <section aria-label={t('catalog.sets.cardHits')} className="grid gap-0.5">
-            <h2 className={cx(overline, 'px-1')}>{t('catalog.sets.cardHits')}</h2>
-            {cardHits.hits.map((hit) => (
-              <CardHitRow key={hit.cardId} hit={hit} onPick={setPriced} />
-            ))}
+          <section aria-label={t('catalog.sets.cardHits')} className="grid gap-3">
+            <SectionHeader title={t('catalog.sets.cardHits')} />
+            <ListGroup>
+              {cardHits.hits.map((hit) => (
+                <CardHitRow key={hit.cardId} hit={hit} onPick={setPriced} />
+              ))}
+            </ListGroup>
           </section>
         ) : null}
-        {groups.map(([year, items]) => (
-          <section key={year} className="grid gap-0.5">
-            <h2 className={cx(overline, 'px-1')}>{year || t('catalog.sets.noDate')}</h2>
-            {items.map((expansion) => (
-              <ExpansionRow
-                key={expansion.id}
-                expansion={expansion}
-                active={expansion.id === activeId}
-                buttonRef={expansion.id === activeId ? activeRef : undefined}
-                onPick={onPick}
+        {groups.map(([year, items]) => {
+          const hasMore = !searching && items.length > PER_YEAR
+          const open = expanded[year] ?? items.findIndex((expansion) => expansion.id === activeId) >= PER_YEAR
+          const shown = hasMore && !open ? items.slice(0, PER_YEAR) : items
+
+          return (
+            <section key={year} className="grid gap-3">
+              <SectionHeader
+                title={year || t('catalog.sets.noDate')}
+                link={hasMore ? { label: open ? t('catalog.sets.yearLess') : t('catalog.sets.yearAll', { count: items.length }), onClick: () => setExpanded((current) => ({ ...current, [year]: !open })), chevron: false } : undefined}
               />
-            ))}
-          </section>
-        ))}
-        {groups.length === 0 && cardHits.hits.length === 0 && cardHits.status !== 'loading' ? <p className="m-0 px-1 py-3 text-body text-muted">{t('catalog.sets.noExpansion', { query: query.trim() })}</p> : null}
+              <ListGroup>
+                {shown.map((expansion) => (
+                  <ExpansionRow key={expansion.id} expansion={expansion} active={expansion.id === activeId} onPick={onPick} />
+                ))}
+              </ListGroup>
+            </section>
+          )
+        })}
+        {groups.length === 0 && cardHits.hits.length === 0 && cardHits.status !== 'loading' ? <ListGroup empty={<p className="m-0 text-body text-muted">{t('catalog.sets.noExpansion', { query: query.trim() })}</p>} /> : null}
       </nav>
       <Presence>
         {priced ? (
@@ -371,7 +380,7 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
         </div>
       </header>
 
-      <div className="grid gap-3 px-4 pb-4">
+      <div className="@container grid gap-3 px-4 pb-4">
         {state.status === 'error' ? (
           <Callout tone="warning">{t('catalog.sets.cardsError')}</Callout>
         ) : state.status !== 'ready' ? (
@@ -382,7 +391,8 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
           </div>
         ) : (
           <>
-            <div className="grid gap-2 min-[700px]:grid-cols-[minmax(0,1fr)_auto] min-[700px]:items-center">
+            {/* El buscador y el orden comparten fila según el ancho del detalle, no el de la pantalla (con el menú abierto, el detalle es angosto y el buscador no entraría al lado). */}
+            <div className="grid gap-2 @lg:grid-cols-[minmax(0,1fr)_auto] @lg:items-center">
               <SearchField
                 label={t('catalog.sets.cardSearch')}
                 placeholder={t('catalog.sets.cardSearch')}

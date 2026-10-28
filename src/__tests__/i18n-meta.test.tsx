@@ -169,6 +169,11 @@ function wideScreen() {
   window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 }
 
+/** En el celular (nada de escritorio ni de tableta): los controles de las tier lists se juntan en una fila y los decks van en una lista. */
+function phoneScreen() {
+  window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+}
+
 function renderInStore(screenNode: ReactElement) {
   const store = configureStore({
     reducer: {
@@ -254,6 +259,40 @@ describe('Meta en inglés', () => {
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search decks' }), { target: { value: 'elfnote' } })
     expect(screen.getByText('1 TCG deck from the last 8 weeks, from newest to oldest. Tap it to see it in full.')).toBeInTheDocument()
+  })
+
+  it('en el celular, las tier lists juntan qué lista y hoy o proyección en una fila de pastillas, y «Make your own» es el enlace del encabezado', () => {
+    applyLocale('en')
+    window.history.replaceState(null, '', '#meta')
+    phoneScreen()
+    renderInStore(<TierListsScreen />)
+
+    const lists = screen.getByRole('radiogroup', { name: 'Which tier list to show' })
+    const view = screen.getByRole('radiogroup', { name: /^Tier list for today/ })
+
+    // Las dos en la misma fila deslizable, al lado del botón que abre el resto (zona y semanas).
+    expect(lists.parentElement).toBe(view.parentElement)
+    expect(screen.getByRole('button', { name: 'Adjust the tier list' })).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Where to count the card' })).not.toBeInTheDocument()
+    // «Crear la tuya» ya no es un botón ancho antes de la primera carta: es la acción del encabezado de la lista.
+    expect(screen.getByRole('link', { name: 'Make your own' })).toHaveAttribute('href', '#tier-maker')
+    expect(screen.queryByRole('button', { name: 'Make your own' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(lists).getByRole('radio', { name: 'Boardbreakers' }))
+    expect(screen.getByRole('heading', { name: 'Boardbreaker tier list' })).toBeInTheDocument()
+  })
+
+  it('en el celular, los decks de torneo son filas de una sola lista', () => {
+    applyLocale('en')
+    window.history.replaceState(null, '', '#tournaments')
+    phoneScreen()
+    renderInStore(<TournamentDecksScreen />)
+
+    const list = screen.getByRole('list', { name: 'Latest decks' })
+
+    expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0)
+    expect(within(list).getByRole('button', { name: /Elfnote/ })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: /Elfnote/ })).not.toBeInTheDocument()
   })
 
   const stat = (patch: Partial<MetaCardStat>): MetaCardStat =>

@@ -89,7 +89,8 @@ afterEach(() => {
 })
 
 const usd = (value: number) => new Intl.NumberFormat(currencyLocale(), { style: 'currency', currency: 'USD' }).format(value)
-const rowsText = () => screen.getAllByRole('listitem').map((item) => item.textContent ?? '')
+/** Las impresiones de la expansión abierta (las filas de la lista de expansiones también son `li`, pero de la navegación). */
+const rowsText = () => screen.getAllByRole('listitem').filter((item) => !item.closest('nav')).map((item) => item.textContent ?? '')
 
 describe('la pantalla de expansiones', () => {
   it('lista las expansiones por año, las más nuevas primero y las sin fecha al final, sin las que no tienen cartas', async () => {
@@ -135,6 +136,28 @@ describe('la pantalla de expansiones', () => {
     expect(within(nav).getByText('Legend of Blue-Eyes White Dragon')).toBeInTheDocument()
   })
 
+  it('cada año es un bloque con las primeras 5 y «Ver las N», buscando se ven todas, y en el celular scrollea la página (no una caja dentro de otra)', async () => {
+    mediaQuery(false)
+    const many = { ...INDEX, groups: Array.from({ length: 7 }, (_, n) => [10 + n, `Set ${n + 1}`, `2025-0${n + 1}-01`, 1, `S${n}`]) }
+
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.endsWith('/prices/index.json') ? { ok: true, status: 200, json: async () => many } : { ok: false, status: 404, json: async () => ({}) })))
+    render(<ExpansionsScreen />)
+
+    const nav = await screen.findByRole('navigation', { name: 'Expansiones' })
+    const rows = () => within(nav).getAllByRole('button').filter((button) => button.querySelector('.truncate'))
+
+    expect(nav).not.toHaveClass('overflow-y-auto')
+    expect(rows()).toHaveLength(5)
+    fireEvent.click(within(nav).getByRole('button', { name: 'Ver las 7' }))
+    expect(rows()).toHaveLength(7)
+    fireEvent.click(within(nav).getByRole('button', { name: 'Ver menos' }))
+    expect(rows()).toHaveLength(5)
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión o carta' }), { target: { value: 'set' } })
+    expect(rows()).toHaveLength(7)
+    expect(within(nav).queryByRole('button', { name: /^Ver (las|menos)/ })).not.toBeInTheDocument()
+  })
+
   it('en escritorio se abre sola la más nueva, con sus cartas por código, rareza, edición y precio', async () => {
     render(<ExpansionsScreen />)
 
@@ -150,7 +173,7 @@ describe('la pantalla de expansiones', () => {
     expect(screen.getByText(/3 cartas distintas/)).toBeInTheDocument()
     // Las cartas van enteras una al lado de la otra, en una grilla (no en una lista de una columna).
     expect(screen.getAllByRole('list').find((list) => list.className.includes('auto-fill'))).toBeDefined()
-    expect(document.querySelectorAll('li img')).toHaveLength(4)
+    expect([...document.querySelectorAll('li img')].filter((image) => !image.closest('nav'))).toHaveLength(4)
   })
 
   it('las cartas se filtran por nombre o código y por rareza, y se ordenan por precio con las que no tienen al final', async () => {
@@ -264,7 +287,8 @@ describe('el sobre de cada expansión', () => {
 })
 
 describe('las impresiones de arte distinto (overframe, extended art...)', () => {
-  const tileImages = () => [...document.querySelectorAll('li img')].map((image) => image.getAttribute('src'))
+  const tiles = () => [...document.querySelectorAll('li img')].filter((image) => !image.closest('nav'))
+  const tileImages = () => tiles().map((image) => image.getAttribute('src'))
 
   beforeEach(() => {
     HTMLElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, right: 200, bottom: 300, width: 200, height: 300, x: 0, y: 0, toJSON: () => ({}) })
@@ -323,7 +347,7 @@ describe('las impresiones de arte distinto (overframe, extended art...)', () => 
     render(<ExpansionsScreen />)
     await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' })
 
-    fireEvent.error(document.querySelector('li img')!)
+    fireEvent.error(tiles()[0]!)
 
     expect(tileImages()[0]).toBe('/api/card-image/cards_small/100.jpg')
   })

@@ -15,6 +15,7 @@ import { MobileTopBar } from '../components/shell/MobileTopBar'
 import { NavDrawer } from '../components/shell/NavDrawer'
 import { ShellMenuButton } from '../components/shell/ShellMenu'
 import { SidebarNav } from '../components/shell/SidebarNav'
+import { StepHero } from '../components/StepHero'
 import { Heading } from '../components/ui/Heading'
 
 const STEPS = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 })
@@ -808,5 +809,32 @@ describe('el armazón', () => {
     // Sin armazón montado no queda nada reservado.
     render(<Probe />)
     expect(screen.getByTestId('insets')).toHaveTextContent('{"left":0,"bottom":0}')
+  })
+})
+
+describe('el título de la pantalla se dice una sola vez', () => {
+  const hero = <StepHero title="Exportá tu deck" icon="download" help="Qué se baja" />
+
+  it('en el celular lo dice la barra de arriba: el encabezado guarda su h1 para el lector de pantalla y le pasa la ayuda a la barra', () => {
+    render(<AppShell groups={GROUPS} activeKey="export" onSelect={() => {}}>{hero}</AppShell>)
+
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 1, name: 'Exportá tu deck' })).toHaveClass('sr-only')
+    const bar = screen.getByRole('button', { name: 'Abrir el menú' }).closest('header')!
+    expect(within(bar).getByRole('button', { name: 'Qué hace “Exportá tu deck”' })).toBeInTheDocument()
+  })
+
+  it('en escritorio, o sin una barra con título (fuera del armazón), el encabezado lo muestra con su ayuda al lado', () => {
+    const { unmount } = render(hero)
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Exportá tu deck' })).not.toHaveClass('sr-only')
+    unmount()
+
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    render(<AppShell groups={GROUPS} activeKey="export" onSelect={() => {}}>{hero}</AppShell>)
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Exportá tu deck' })
+    expect(heading).not.toHaveClass('sr-only')
+    expect(within(heading.parentElement!).getByRole('button', { name: 'Qué hace “Exportá tu deck”' })).toBeInTheDocument()
   })
 })

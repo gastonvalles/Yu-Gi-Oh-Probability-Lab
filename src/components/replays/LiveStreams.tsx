@@ -7,12 +7,13 @@ import { Presence, useLeaving } from '../../app/use-presence'
 import { getLocale, t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { Button } from '../ui/Button'
-import { Card } from '../ui/Card'
+import { Carousel } from '../ui/Carousel'
 import { cx } from '../ui/cx'
 import { textLink } from '../ui/typography'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { SectionHeader } from '../ui/SectionHeader'
+import { surface } from '../ui/surfaces'
 import { VideoPlayer, YOUTUBE_LINK_BUTTON } from './VideoPlayer'
 
 const CHANNEL_BADGE = { eu: 'EU', tcg: 'TCG' } as const
@@ -50,7 +51,8 @@ const channelLink = (key: 'eu' | 'tcg') => (text: string) => (
 )
 
 /**
- * Las transmisiones en vivo de los canales oficiales, arriba de los replays mientras hay alguna al aire, y debajo las últimas que ya terminaron (torneos enteros, día por día: se pueden ver después de que se van del aire). Cada una se mira acá mismo (el reproductor sin cookies se
+ * Las transmisiones en vivo de los canales oficiales, arriba de los replays mientras hay alguna al aire, y debajo las últimas que ya terminaron (torneos enteros, día por día: se pueden ver después de que se van del aire).
+ * Cada grupo es un bloque en el lienzo: su encabezado y un carrusel de tarjetas con la siguiente asomando (nada de tarjetas dentro de una tarjeta). Cada una se mira acá mismo (el reproductor sin cookies se
  * carga al tocar «reproducir») o en YouTube. Si no se pudo mirar qué hay en vivo, lo dice y deja los links a los canales: una lista vacía por no haber podido
  * mirar no se hace pasar por «no hay nada».
  */
@@ -63,16 +65,14 @@ export function LiveStreamsSection({ state }: { state: LiveState }) {
   return (
     <>
       {streams.length > 0 ? (
-        <Card id="replays-live" aria-label={t('meta.live.title')}>
-          <SectionHeader icon="play" title={t('meta.live.title')} description={t('meta.live.description', { count: streams.length })} />
-          <ul className="m-0 mt-3 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+        <div id="replays-live" className="grid gap-3">
+          <SectionHeader title={t('meta.live.title')} description={t('meta.live.description', { count: streams.length })} />
+          <Carousel label={t('meta.live.title')} bleed>
             {streams.map((stream) => (
-              <li key={stream.id} className="min-w-0">
-                <LiveCard stream={stream} onOpen={() => setOpened({ live: true, stream })} />
-              </li>
+              <LiveCard key={stream.id} stream={stream} onOpen={() => setOpened({ live: true, stream })} />
             ))}
-          </ul>
-        </Card>
+          </Carousel>
+        </div>
       ) : state.status === 'ready' && !state.ok ? (
         <p className="m-0 text-micro text-soft" role="status">
           {tRich('meta.live.unavailable', { eu: channelLink('eu'), tcg: channelLink('tcg') }, { eu: REPLAYS.channels.eu.name, tcg: REPLAYS.channels.tcg.name })}
@@ -80,16 +80,14 @@ export function LiveStreamsSection({ state }: { state: LiveState }) {
       ) : null}
 
       {past.length > 0 ? (
-        <Card id="replays-recent" aria-label={t('meta.live.past.title')}>
-          <SectionHeader icon="play" title={t('meta.live.past.title')} description={t('meta.live.past.description')} />
-          <ul className="m-0 mt-3 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+        <div id="replays-recent" className="grid gap-3">
+          <SectionHeader title={t('meta.live.past.title')} description={t('meta.live.past.description')} />
+          <Carousel label={t('meta.live.past.title')} bleed>
             {past.map((stream) => (
-              <li key={stream.id} className="min-w-0">
-                <PastCard stream={stream} onOpen={() => setOpened({ live: false, stream })} />
-              </li>
+              <PastCard key={stream.id} stream={stream} onOpen={() => setOpened({ live: false, stream })} />
             ))}
-          </ul>
-        </Card>
+          </Carousel>
+        </div>
       ) : null}
 
       {/* La `key` reinicia el reproductor al pasar de una transmisión a otra. Al cerrarse sigue montado mientras sale (`Presence`). */}
@@ -102,7 +100,7 @@ function LiveCard({ stream, onOpen }: { stream: LiveStream; onOpen: () => void }
   const viewers = viewersText(stream.viewers)
 
   return (
-    <article className="group grid h-full min-w-0 content-start overflow-hidden rounded-card border border-border-subtle bg-card-background transition-colors duration-150 hover:border-info/60 has-focus-visible:border-info/60">
+    <article className={cx(surface.card, 'group flex min-w-0 flex-col overflow-hidden transition-colors duration-150 hover:border-info/60 has-focus-visible:border-info/60')}>
       <button type="button" className="relative block aspect-video w-full overflow-hidden bg-input focus-visible:outline-none focus-visible:shadow-focus" aria-label={t('meta.live.watchLabel', { title: stream.title })} onClick={onOpen}>
         <LiveThumbnail id={stream.id} className="size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/15 transition-colors duration-150 group-hover:bg-black/35">
@@ -116,10 +114,8 @@ function LiveCard({ stream, onOpen }: { stream: LiveStream; onOpen: () => void }
         </span>
       </button>
 
-      <div className="grid content-start gap-3 p-3">
-        <button type="button" className="rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
-          <strong className="text-body font-semibold text-foreground">{stream.title}</strong>
-        </button>
+      <div className="grid flex-1 grid-rows-[1fr_auto] gap-3 p-3">
+        <strong className="text-body font-semibold text-foreground">{stream.title}</strong>
         {/* El número y la acción en la misma fila, abajo: cuánta gente la mira y el botón para mirarla. */}
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-micro tabular-nums text-muted">{viewers ?? REPLAYS.channels[stream.channel].name}</span>
@@ -137,7 +133,7 @@ function PastCard({ stream, onOpen }: { stream: PastStream; onOpen: () => void }
   const when = agoText(stream.published)
 
   return (
-    <article className="group grid h-full min-w-0 content-start overflow-hidden rounded-card border border-border-subtle bg-card-background transition-colors duration-150 hover:border-info/60 has-focus-visible:border-info/60">
+    <article className={cx(surface.card, 'group flex min-w-0 flex-col overflow-hidden transition-colors duration-150 hover:border-info/60 has-focus-visible:border-info/60')}>
       <button type="button" className="relative block aspect-video w-full overflow-hidden bg-input focus-visible:outline-none focus-visible:shadow-focus" aria-label={t('meta.live.past.watchLabel', { title: stream.title })} onClick={onOpen}>
         <img src={thumbnailUrl(stream.id)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/15 transition-colors duration-150 group-hover:bg-black/35">
@@ -151,10 +147,8 @@ function PastCard({ stream, onOpen }: { stream: PastStream; onOpen: () => void }
         {stream.duration ? <span className="absolute bottom-1.5 right-1.5 rounded-tag bg-black/80 px-1.5 py-0.5 text-micro font-semibold tabular-nums text-white">{stream.duration}</span> : null}
       </button>
 
-      <div className="grid content-start gap-3 p-3">
-        <button type="button" className="rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
-          <strong className="text-body font-semibold text-foreground">{stream.title}</strong>
-        </button>
+      <div className="grid flex-1 grid-rows-[1fr_auto] gap-3 p-3">
+        <strong className="text-body font-semibold text-foreground">{stream.title}</strong>
         {/* Cuándo fue y la acción en la misma fila, abajo. */}
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-micro text-muted">{when ?? REPLAYS.channels[stream.channel].name}</span>
