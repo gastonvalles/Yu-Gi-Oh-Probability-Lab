@@ -4,7 +4,7 @@
 ["BPW2-EN003","Common","1st Edition",0.22,78859,16768387,"Big Eye"],
 ["BPW2-EN004","Super Rare","1st Edition",0.92,78860,62340868,"Kazejin"],
 ["BPW2-EN005","Common","1st Edition",0.13,78861,39751094,"Otohime"],
-["BPW2-EN006","Super Rare","1st Edition",1.39,78862,51534754,"Yomi Ship"],
+["BPW2-EN006","Super Rare","1st Edition",1.38,78862,51534754,"Yomi Ship"],
 ["BPW2-EN007","Common","1st Edition",0.31,78863,87523462,"Winged Sage Falcos"],
 ["BPW2-EN008","Common","1st Edition",0.69,78864,39978267,"Cyber Raider"],
 ["BPW2-EN009","Common","1st Edition",1.62,78865,39168895,"Berserk Gorilla"],
@@ -14,7 +14,7 @@
 ["BPW2-EN013","Super Rare","1st Edition",0.56,78869,59380081,"Big-Tusked Mammoth"],
 ["BPW2-EN014","Super Rare","1st Edition",5.25,78870,52323207,"Golem Sentry"],
 ["BPW2-EN015","Super Rare","1st Edition",0.36,78871,53828396,"Adhesive Explosive"],
-["BPW2-EN016","Super Rare","1st Edition",0.62,78872,76763417,"Cyber Gymnast"],
+["BPW2-EN016","Super Rare","1st Edition",0.64,78872,76763417,"Cyber Gymnast"],
 ["BPW2-EN017","Super Rare","1st Edition",0.38,78873,2158562,"Cyber Prima"],
 ["BPW2-EN018","Common","1st Edition",0.2,78874,95701283,"Majestic Mech - Goryu"],
 ["BPW2-EN019","Common","1st Edition",0.63,78875,54749427,"Destiny HERO - Defender"],
@@ -72,7 +72,7 @@
 ["BPW2-EN070","Super Rare","1st Edition",5.52,78926,70231910,"Dark Core"],
 ["BPW2-EN071","Super Rare","1st Edition",0.73,78927,56460688,"Different Dimension Gate"],
 ["BPW2-EN072","Super Rare","1st Edition",3.43,78928,47453433,"Back to Square One"],
-["BPW2-EN073","Super Rare","1st Edition",12.93,78929,25774450,"Mystic Box"],
+["BPW2-EN073","Super Rare","1st Edition",12.88,78929,25774450,"Mystic Box"],
 ["BPW2-EN074","Common","1st Edition",0.11,78930,34664411,"Lucky Iron Axe"],
 ["BPW2-EN075","Common","1st Edition",0.65,78931,43422537,"Double Summon"],
 ["BPW2-EN076","Common","1st Edition",0.11,78932,37534148,"Ribbon of Rebirth"],
@@ -102,5 +102,5 @@
 ["BPW2-EN100","Ultra Rare","1st Edition",0.85,78956,86585274,"High Priestess of Prophecy"],
 ["BPW2-EN101","Ultra Rare","1st Edition",0.84,78957,21249921,"Dragunity Knight - Vajrayana"],
 ["BPW2-EN102","Ultra Rare","1st Edition",1.45,78958,80117527,"Number 11: Big Eye"],
-["BPW2-EN103","Ultra Rare","1st Edition",2.5,78959,38296564,"Safe Zone"]
+["BPW2-EN103","Ultra Rare","1st Edition",2.48,78959,38296564,"Safe Zone"]
 ]

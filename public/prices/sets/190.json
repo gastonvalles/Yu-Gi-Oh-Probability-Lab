@@ -3,7 +3,7 @@
 ["DP05-EN001","Common","Unlimited",0.15,25622,41613948,"Destiny HERO - Doom Lord"],
 ["DP05-EN002","Common","1st Edition",0.3,25623,77608643,"Destiny HERO - Captain Tenacious"],
 ["DP05-EN002","Common","Unlimited",0.21,25623,77608643,"Destiny HERO - Captain Tenacious"],
-["DP05-EN003","Common","1st Edition",0.13,25624,13093792,"Destiny HERO - Diamond Dude"],
+["DP05-EN003","Common","1st Edition",0.14,25624,13093792,"Destiny HERO - Diamond Dude"],
 ["DP05-EN003","Common","Unlimited",0.11,25624,13093792,"Destiny HERO - Diamond Dude"],
 ["DP05-EN004","Rare","1st Edition",1.27,25625,40591390,"Destiny HERO - Dreadmaster"],
 ["DP05-EN004","Rare","Unlimited",0.82,25625,40591390,"Destiny HERO - Dreadmaster"],
@@ -49,7 +49,7 @@
 ["DP05-EN024","Common","Unlimited",0.13,25645,35464895,"Destiny Signal"],
 ["DP05-EN025","Common","1st Edition",0.16,25646,99075257,"D - Time"],
 ["DP05-EN025","Common","Unlimited",0.35,25646,99075257,"D - Time"],
-["DP05-EN026","Common","1st Edition",0.19,25647,62868900,"D - Shield"],
+["DP05-EN026","Common","1st Edition",0.16,25647,62868900,"D - Shield"],
 ["DP05-EN026","Common","Unlimited",0.22,25647,62868900,"D - Shield"],
 ["DP05-EN027","Common","1st Edition",0.12,25648,15294090,"Destiny Mirage"],
 ["DP05-EN027","Common","Unlimited",0.22,25648,15294090,"Destiny Mirage"],
@@ -57,6 +57,6 @@
 ["DP05-EN028","Common","Unlimited",0.11,25649,43405287,"D - Chain"],
 ["DP05-EN029","Super Rare","1st Edition",0.61,25650,8698851,"D - Counter"],
 ["DP05-EN029","Super Rare","Unlimited",0.32,25650,8698851,"D - Counter"],
-["DP05-EN030","Super Rare","1st Edition",0.82,25651,35787450,"Eternal Dread"],
+["DP05-EN030","Super Rare","1st Edition",0.85,25651,35787450,"Eternal Dread"],
 ["DP05-EN030","Super Rare","Unlimited",0.87,25651,35787450,"Eternal Dread"]
 ]
