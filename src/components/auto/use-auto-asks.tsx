@@ -16,6 +16,7 @@ import { useHeldValue } from '../../app/life-effects'
 import { prefersReducedMotion } from '../../app/motion'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
+import type { Activity } from '../../app/duel-protocol'
 import { allMatIds, cardKindOf, createMatState, locateCard, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
@@ -601,81 +602,92 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   // ── Lo que la mesa recibe de la pregunta (`duel.auto`). ──
   const pick = shown?.cardPick ?? null
-  const mineIds = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'mine' ? [pick!.cards[i]!.ref!.id] : []))
   // Cuántas, para qué (el código de pista del núcleo, si está comprobado) y cuántas van: el mismo título en la mesa, en la banda y en la hoja.
   const pickLabel = pick ? pickTitle(pick, shown?.title) : ''
   // Una lista aparte (de varios lugares, por código, lo del rival): hasta `BAND_MAX` cartas, una banda en el medio de la mesa (`PickBand`); con más, la hoja (`CardPicker`).
   const list = pick && decision.listed ? pick : null
   const band = list !== null && decision.listed!.band
-  const cardPick: AutoLink['cardPick'] =
-    pick && !list
-      ? {
-          label: pickLabel,
-          eligible: new Set(mineIds(pick.eligible)),
-          chosen: mineIds(pick.chosen),
-          onToggle: (id) => gesture({ kind: 'card', ref: { side: 'mine', id } }),
-          done: pick.done ? { label: t('auto.pick.done'), onSelect: () => gesture({ kind: 'done' }) } : null,
-          cancel: shown?.cancelable ? () => gesture({ kind: 'cancel' }) : null,
-          stats: pickStatsOf(state, mineIds([...pick.eligible, ...pick.chosen]), snap.overlay.stats.mine),
-        }
-      : null
-  const viewerIds = pick && !list && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
-  const zoneTargets = shown?.zonePick?.targets ?? []
-  const ownZones = zoneTargets.flatMap(({ side, zone, index }) => (side === 'mine' ? [{ zone, index }] : []))
-  const rivalEmz = zoneTargets.filter((target) => target.side === 'theirs' && target.zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === 1 - target.index))
-  const auto: AutoLink = {
-    itemsFor: (id, drop) => {
-      const items = shown?.items.get(id)
+  const myStats = snap.overlay.stats.mine
+  const myInitial = snap.initial
+  const myNormal = snap.overlay.normal[seat]
+  const ended = snap.status === 'ended'
+  // Lo que la mesa recibe se arma de nuevo sólo cuando cambia lo que lo decide (`useMemo`): cada aviso del núcleo que no cambia nada de esto deja a la mesa con el mismo `duel.auto`
+  // y no la vuelve a dibujar (`PracticeMat` compara sus props campo por campo). Lo que cada función lee está en las dependencias: nunca ve una pregunta vieja.
+  const cardPick = useMemo<AutoLink['cardPick']>(() => {
+    if (!pick || list) return null
+    const ids = (indices: readonly number[]) => indices.flatMap((i) => (pick.cards[i]!.ref?.side === 'mine' ? [pick.cards[i]!.ref!.id] : []))
 
-      if (!shown || !items || !drop) return items?.map(menuItem) ?? null
-      // Soltada en una casilla: lo que la saca ahí; elegirlo la deja en esa casilla (también en el segundo paso, «¿cuál efecto?»).
-      const from = shown.askId
-      const keep = (item: AutoMenuItem): AutoMenuItem => ({
-        ...item,
-        onSelect: () => {
-          setDropped({ id, zone: drop.zone, index: drop.index, initial: snap.initial, from })
-          item.onSelect()
-        },
-        ...(item.children ? { children: item.children.map(keep) } : {}),
-      })
+    return {
+      label: pickLabel,
+      eligible: new Set(ids(pick.eligible)),
+      chosen: ids(pick.chosen),
+      onToggle: (id) => gesture({ kind: 'card', ref: { side: 'mine', id } }),
+      done: pick.done ? { label: t('auto.pick.done'), onSelect: () => gesture({ kind: 'done' }) } : null,
+      cancel: shown?.cancelable ? () => gesture({ kind: 'cancel' }) : null,
+      stats: pickStatsOf(state, ids([...pick.eligible, ...pick.chosen]), myStats),
+    }
+  }, [pick, list, pickLabel, shown, gesture, state, myStats])
+  const auto = useMemo<AutoLink>(() => {
+    const mineIds = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'mine' ? [pick!.cards[i]!.ref!.id] : []))
+    const viewerIds = pick && !list && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
+    const zoneTargets = shown?.zonePick?.targets ?? []
+    const ownZones = zoneTargets.flatMap(({ side, zone, index }) => (side === 'mine' ? [{ zone, index }] : []))
+    const rivalEmz = zoneTargets.filter((target) => target.side === 'theirs' && target.zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === 1 - target.index))
 
-      return itemsInto(items, drop.zone === 'mz' || drop.zone === 'emz' ? 'monster' : 'spell').map((item) => keep(menuItem(item)))
-    },
-    phaseItems: (stopped ? stopPhaseItems(state.phase) : (shown?.phaseItems ?? [])).map(menuItem),
-    endTurn: shown?.endTurn ? () => gesture({ kind: 'item', answer: shown.endTurn! }) : null,
-    // Las casillas tuyas, en tu mesa (las del rival, en su campo: `rivalZones`). Una Zona Extra del rival es, vista desde acá, la tuya de enfrente (`1 - index`): se toca ahí.
-    zonePick: shown?.zonePick
-      ? {
-          label: t(shown.type === 'select_disfield' ? 'auto.pick.disfield' : 'auto.pick.zone', { count: shown.zonePick.count }),
-          targets: [...ownZones, ...rivalEmz.map(({ index }) => ({ zone: 'emz' as const, index: 1 - index }))],
-          onPick: (zone, index) => gesture(zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === index) ? { kind: 'zone', side: 'theirs', zone, index: 1 - index } : { kind: 'zone', side: 'mine', zone, index }),
-        }
-      : null,
-    cardPick,
-    viewer:
-      pick && !list && pick.surface === 'pile' && pick.pile
+    return {
+      itemsFor: (id, drop) => {
+        const items = shown?.items.get(id)
+
+        if (!shown || !items || !drop) return items?.map(menuItem) ?? null
+        // Soltada en una casilla: lo que la saca ahí; elegirlo la deja en esa casilla (también en el segundo paso, «¿cuál efecto?»).
+        const from = shown.askId
+        const keep = (item: AutoMenuItem): AutoMenuItem => ({
+          ...item,
+          onSelect: () => {
+            setDropped({ id, zone: drop.zone, index: drop.index, initial: myInitial, from })
+            item.onSelect()
+          },
+          ...(item.children ? { children: item.children.map(keep) } : {}),
+        })
+
+        return itemsInto(items, drop.zone === 'mz' || drop.zone === 'emz' ? 'monster' : 'spell').map((item) => keep(menuItem(item)))
+      },
+      phaseItems: (stopped ? stopPhaseItems(state.phase) : (shown?.phaseItems ?? [])).map(menuItem),
+      endTurn: shown?.endTurn ? () => gesture({ kind: 'item', answer: shown.endTurn! }) : null,
+      // Las casillas tuyas, en tu mesa (las del rival, en su campo: `rivalZones`). Una Zona Extra del rival es, vista desde acá, la tuya de enfrente (`1 - index`): se toca ahí.
+      zonePick: shown?.zonePick
         ? {
-            pile: pick.pile,
-            ids: viewerIds,
-            // Elegir varias de una vez, salvo cuando el núcleo las pide de a una (`select_unselect_card`: cada toque contesta y vuelve a preguntar).
-            ...(pick.max > 1 && pick.type !== 'select_unselect_card' ? { many: { label: (ids) => t('auto.picker.choose', { count: ids.length }), onPick: (ids) => gesture(...ids.map((id) => ({ kind: 'card' as const, ref: { side: 'mine' as const, id } })), { kind: 'done' }) } } : {}),
+            label: t(shown.type === 'select_disfield' ? 'auto.pick.disfield' : 'auto.pick.zone', { count: shown.zonePick.count }),
+            targets: [...ownZones, ...rivalEmz.map(({ index }) => ({ zone: 'emz' as const, index: 1 - index }))],
+            onPick: (zone, index) => gesture(zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === index) ? { kind: 'zone', side: 'theirs', zone, index: 1 - index } : { kind: 'zone', side: 'mine', zone, index }),
           }
         : null,
-    asking: shown !== null,
-    // Como «No responder» de la línea: en la ventana de una fase tuya (`phaseWindow`) pasar es cambiar de fase, y eso va por el botón de fases.
-    cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick || band) ? () => gesture({ kind: 'cancel' }) : null,
-    // La carta soltada es del duelo vivo: repasando, no se dibuja sobre la mesa del repaso.
-    dropped: reviewing ? null : held,
-    holdFor: (id) => {
-      // Como en la mesa manual, sólo donde se deshace: en el duelo por enlace un toque largo sin querer sería una jugada.
-      const item = canUndo && shown?.type === 'select_idlecmd' ? shown.items.get(id)?.find((entry) => entry.answer?.type === 'select_idlecmd' && entry.answer.action === 2) : undefined
+      cardPick,
+      viewer:
+        pick && !list && pick.surface === 'pile' && pick.pile
+          ? {
+              pile: pick.pile,
+              ids: viewerIds,
+              // Elegir varias de una vez, salvo cuando el núcleo las pide de a una (`select_unselect_card`: cada toque contesta y vuelve a preguntar).
+              ...(pick.max > 1 && pick.type !== 'select_unselect_card' ? { many: { label: (ids) => t('auto.picker.choose', { count: ids.length }), onPick: (ids) => gesture(...ids.map((id) => ({ kind: 'card' as const, ref: { side: 'mine' as const, id } })), { kind: 'done' }) } } : {}),
+            }
+          : null,
+      asking: shown !== null,
+      // Como «No responder» de la línea: en la ventana de una fase tuya (`phaseWindow`) pasar es cambiar de fase, y eso va por el botón de fases.
+      cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick || band) ? () => gesture({ kind: 'cancel' }) : null,
+      // La carta soltada es del duelo vivo: repasando, no se dibuja sobre la mesa del repaso.
+      dropped: reviewing ? null : held,
+      holdFor: (id) => {
+        // Como en la mesa manual, sólo donde se deshace: en el duelo por enlace un toque largo sin querer sería una jugada.
+        const item = canUndo && shown?.type === 'select_idlecmd' ? shown.items.get(id)?.find((entry) => entry.answer?.type === 'select_idlecmd' && entry.answer.action === 2) : undefined
 
-      return item?.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : null
-    },
-    // Repasando o con el duelo terminado, el menú vacío dice lo de siempre.
-    whyNot: reviewing || frozen || snap.status === 'ended' ? null : (id) => [...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: snap.overlay.normal[seat] }), ...limitTexts],
-    manual: onManual ?? null,
-  }
+        return item?.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : null
+      },
+      // Repasando o con el duelo terminado, el menú vacío dice lo de siempre.
+      whyNot: reviewing || frozen || ended ? null : (id) => [...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: myNormal }), ...limitTexts],
+      manual: onManual ?? null,
+    }
+  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
   // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).
@@ -761,6 +773,33 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
   const foreignKnown = useMemo(() => Object.fromEntries(allMatIds(theirs).flatMap((id) => (codeOf({ side: 'theirs', id }) ? [[id, drawIdOf(codeOf({ side: 'theirs', id }))]] : []))), [theirs, codeOf])
   const attackTargets = useMemo(() => (['mz', 'emz'] as const).flatMap((zone) => theirs[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))), [theirs])
+  // Lo del rival que la mesa recibe, armado una vez por mesa del rival (y no por aviso del núcleo): su campo, su mano, sus vuelos y sus Zonas Extra.
+  const opponentCells = useMemo(() => <SideCells side={opponent} owner="theirs" />, [opponent])
+  const sharedZone = useCallback((index: number) => sharedZoneCard(opponent, index), [opponent])
+  const rivalFlights = useMemo(() => ({ state: theirs, artOf: opponent.artOf }), [theirs, opponent.artOf])
+  const rivalEmzTaken = useMemo(() => theirs.emz.map(Boolean), [theirs.emz])
+  const hoverDock = dock.hover
+  const rivalHandCount = theirs.hand.length
+  const rivalHandNode = useMemo(
+    () => (
+      <TheirHand
+        count={rivalHandCount}
+        {...(rivalHand
+          ? {
+              cards: rivalHand.map((code) => ({ name: nameOf(null, code), art: artOf(null, code) })),
+              onCard: (index: number, rect: DOMRect) => showRival({ drawId: drawIdOf(rivalHand[index]!) }, rect),
+              onCardHover: (index: number) => hoverDock({ drawId: drawIdOf(rivalHand[index]!) }),
+            }
+          : {})}
+      />
+    ),
+    [rivalHandCount, rivalHand, nameOf, artOf, showRival, hoverDock],
+  )
+  const onRivalHover = useCallback((id: string) => hoverDock(rivalPeekOf(id)), [hoverDock, rivalPeekOf])
+  // Abrir una pila tuya cierra la del rival: van en el mismo lugar.
+  const onActivity = useCallback((activity: Activity | null) => {
+    if (activity !== null && activity !== 'choosing') setRivalPile(null)
+  }, [])
 
   // ── La línea del registro: lo que no frena (trabada, el rival eligiendo, pensando, la cadena con «No responder», un error de script, la cadena que se resuelve), lo más urgente primero. ──
   const chain = snap.overlay.chain
@@ -785,36 +824,47 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const forced = forcedItems.length > 0 && forcedItems.every(({ items }) => items.length === 1 && items[0]!.answer) ? forcedItems.map(({ ref, items }) => ({ ref, key: `${ref.side}:${ref.id}`, item: items[0]! })) : null
   const [forcedPick, setForcedPick] = useState<string | null>(null)
   const forcedFirst = forced ? (forced.find((card) => card.key === forcedPick) ?? forced[0]!) : null
-  const lane: LaneNotice | null = review
-    ? // Repasando: qué se mira y la salida, en el lugar de los avisos (no corre nada). Un combo dice sólo su nombre: el paso va en el segundo renglón (la mesa) y los botones del replay, abajo;
-      // «Volver al duelo» es secundario (lavanda) para no competir con el botón grande del replay.
-      { kind: 'ask', text: review.name === undefined ? t('auto.review.plays') : t('auto.review.comboShort', { name: review.name }), actions: [{ label: t('auto.review.back'), onSelect: back, secondary: true }] }
-    : frozen
-    ? null
-    : stuck
-      ? { kind: 'ask', text: t('auto.lane.stuck'), actions: canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : [] }
-      : snap.status === 'waiting' && waitingText !== null && (rival?.busy ?? true)
-        ? { kind: 'thinking', text: waitingText }
-        : snap.status === 'thinking'
-          ? { kind: 'thinking', ...(canCancel ? { onCancel: () => session.cancel() } : {}) }
-          : shown?.type === 'select_chain' && !shown.phaseWindow
-            ? // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla. La que se puede pasar
-              // va al medio (la banda de responder, `offer`) y la línea queda libre; varias obligatorias, también (`forced`).
-              shown.cancelable || forced
-              ? null
-              : { kind: 'ask', text: mustActivate(activatable.length), actions: [] }
-            : snap.faults.length > faultsBase.current && newFault
-              ? {
-                  kind: 'ask',
-                  text:
-                    newFault.kind === 'script'
-                      ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') })
-                      : t(newFault.kind === 'retry' || newFault.kind === 'answer' ? 'auto.lane.rejected' : 'auto.lane.error'),
-                  actions: [],
-                }
-              : snap.unmapped.length > unmappedBase.current
-                ? { kind: 'ask', text: t('auto.lane.unmapped'), actions: [] }
-                : null
+  const forcedOn = forced !== null
+  const activatableCount = activatable.length
+  const rivalBusy = rival?.busy ?? true
+  const status = snap.status
+  const faults = snap.faults
+  const unmappedCount = snap.unmapped.length
+  // Un objeto por lo que dice (la barra lo recibe): lo que llega del núcleo sin cambiar nada de esto no la vuelve a dibujar.
+  const lane = useMemo<LaneNotice | null>(
+    () =>
+      review
+        ? // Repasando: qué se mira y la salida, en el lugar de los avisos (no corre nada). Un combo dice sólo su nombre: el paso va en el segundo renglón (la mesa) y los botones del replay, abajo;
+          // «Volver al duelo» es secundario (lavanda) para no competir con el botón grande del replay.
+          { kind: 'ask', text: review.name === undefined ? t('auto.review.plays') : t('auto.review.comboShort', { name: review.name }), actions: [{ label: t('auto.review.back'), onSelect: back, secondary: true }] }
+        : frozen
+          ? null
+          : stuck
+            ? { kind: 'ask', text: t('auto.lane.stuck'), actions: canUndo ? [{ label: t('practice.mat.undo'), onSelect: () => session.undo(), primary: true }] : [] }
+            : status === 'waiting' && waitingText !== null && rivalBusy
+              ? { kind: 'thinking', text: waitingText }
+              : status === 'thinking'
+                ? { kind: 'thinking', ...(canCancel ? { onCancel: () => session.cancel() } : {}) }
+                : shown?.type === 'select_chain' && !shown.phaseWindow
+                  ? // Una cadena obligatoria (una sola carta, a veces en una pila: brilla la pila) no tiene «No responder»: la línea dice que hay que activarla. La que se puede pasar
+                    // va al medio (la banda de responder, `offer`) y la línea queda libre; varias obligatorias, también (`forced`).
+                    shown.cancelable || forcedOn
+                    ? null
+                    : { kind: 'ask', text: mustActivate(activatableCount), actions: [] }
+                  : faults.length > faultsBase.current && newFault
+                    ? {
+                        kind: 'ask',
+                        text:
+                          newFault.kind === 'script'
+                            ? t('auto.lane.script', { card: newFault.cards.map((code) => nameOf(null, code)).join(', ') })
+                            : t(newFault.kind === 'retry' || newFault.kind === 'answer' ? 'auto.lane.rejected' : 'auto.lane.error'),
+                        actions: [],
+                      }
+                    : unmappedCount > unmappedBase.current
+                      ? { kind: 'ask', text: t('auto.lane.unmapped'), actions: [] }
+                      : null,
+    [review, back, frozen, stuck, canUndo, session, status, waitingText, rivalBusy, canCancel, shown, forcedOn, activatableCount, faults, newFault, unmappedCount, nameOf],
+  )
   // La cadena que se puede pasar, al medio de la mesa (como «¿Activás el efecto?»): se responde tocando la carta que brilla; sin nada más urgente en la línea (trabada, esperando, pensando).
   // El aviso de la cadena: la última que empezó, como se ve con lo que ya se mostró (`feed`, más arriba). Abre desplegada y sólo la pliega la persona; terminada, se va a los
   // `CHAIN_LINGER_MS` salvo que la estés mirando (la desplegaste o tocaste un eslabón: queda hasta plegarla).
@@ -832,32 +882,42 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // como una carta del rival. Con la frase de su efecto resaltada en el detalle cuando no hay duda de cuál es (`linkPhrase`); se resalta mientras la pila está a la vista.
   const [linkRead, setLinkRead] = useState<{ code: number; description?: string; card: ApiCardReference | null } | null>(null)
   const linkRivalCard = useRivalCard(linkRead && !linkRead.card && linkRead.code ? drawIdOf(linkRead.code) : undefined)
-  const readLink = (index: number, rect: DOMRect) => {
-    const row = feed?.rows[index]
+  const readLink = useCallback(
+    (index: number, rect: DOMRect) => {
+      const row = feed?.rows[index]
 
-    if (!row) return
-    const card = row.mine ? ((row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null) : null
+      if (!row) return
+      const card = row.mine ? ((row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null) : null
 
-    setLinkRead({ code: row.code, card, ...(row.description ? { description: row.description } : {}) })
-    setChainTouch({ key: feed.key, open: true })
-    if (wide && card) lockDock({ name: nameOf(row.card, row.code), card })
-    else showRival(row.code ? { drawId: drawIdOf(row.code) } : { faceDown: true }, rect)
-  }
-  const chainNotice =
-    feed && !reviewing && !(feed.done && chainGone === feed.key) ? (
-      <ChainNotice
-        rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}) }))}
-        focus={feed.focus}
-        resolving={feed.resolving}
-        open={chainOpen}
-        compact={!desktop}
-        onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
-        onPick={readLink}
-      />
-    ) : null
+      setLinkRead({ code: row.code, card, ...(row.description ? { description: row.description } : {}) })
+      setChainTouch({ key: feed.key, open: true })
+      if (wide && card) lockDock({ name: nameOf(row.card, row.code), card })
+      else showRival(row.code ? { drawId: drawIdOf(row.code) } : { faceDown: true }, rect)
+    },
+    [feed, cardsById, byCode, wide, lockDock, nameOf, showRival],
+  )
+  const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
+  const chainNotice = useMemo(
+    () =>
+      chainShown && feed ? (
+        <ChainNotice
+          rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}) }))}
+          focus={feed.focus}
+          resolving={feed.resolving}
+          open={chainOpen}
+          compact={!desktop}
+          onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
+          onPick={readLink}
+        />
+      ) : null,
+    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, desktop, readLink],
+  )
   const linkText = linkRead?.card ?? linkRivalCard
-  const linkRange = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
-  const linkHighlight: CardTextHighlight | null = linkRange && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...linkRange } : null
+  const linkHighlight = useMemo<CardTextHighlight | null>(() => {
+    const range = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
+
+    return range && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...range } : null
+  }, [chainNotice, linkRead, linkText])
   // La cadena que se puede pasar, en la banda de responder: a qué eslabón y con qué cartas (con su lugar). Con una sola de un solo efecto, ya viene elegida; una con varios efectos
   // abre su lista (como su menú en la mesa).
   const offer = shown && lane === null ? respondOffer(shown, chain) : null
@@ -921,32 +981,25 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
   // El aviso de «Deshacer» de tu última activación: mientras dura, con la mesa de entonces y el duelo esperándote (pensando, rearmando o repasando, no).
   const timedPlay = useUndoPlay(lastPlay)
-  const undoPlay = timedPlay && timedPlay.initial === snap.initial && snap.status === 'ready' && !snap.replaying && !reviewing && !frozen ? { key: timedPlay.key, art: timedPlay.art } : null
+  const undoShown = timedPlay !== null && timedPlay.initial === snap.initial && snap.status === 'ready' && !snap.replaying && !reviewing && !frozen
+  const undoPlay = useMemo(() => (undoShown && timedPlay ? { key: timedPlay.key, art: timedPlay.art } : null), [undoShown, timedPlay])
 
   // El cartel del ataque del rival, como en el duelo manual; se arma una vez por ataque (la mesa dibuja la espada cuando cambia el objeto).
   const strikeShown = rivalStrike.shown
   // eslint-disable-next-line react-hooks/exhaustive-deps -- un objeto por ataque: un nombre que llega después no vuelve a dibujar la espada
   const announcement = useMemo(() => strikeShown && { ...strikeShown, caption: strikeShown.targetId === undefined ? t('duel.announce.attackDirect', { name: rivalName }) : t('duel.announce.attack', { name: rivalName, target: nameOf({ side: 'mine', id: strikeShown.targetId }) }) }, [strikeShown])
 
+  const dockHighlight = highlight ?? linkHighlight
+  const detail = useMemo(() => (wide ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} /> : undefined), [wide, peeked, dockHighlight, reviewing, dockStats])
+  const limits = useMemo(() => (reviewing ? null : <LimitsChip texts={limitTexts} />), [reviewing, limitTexts])
   const mat: AutoAsks['mat'] = {
     undoPlay,
     ...(announcement ? { announcement } : {}),
     areas: DUEL_AREAS,
     areasCompact: DUEL_AREAS_COMPACT,
-    opponent: <SideCells side={opponent} owner="theirs" />,
-    sharedZone: (index) => sharedZoneCard(opponent, index),
-    rivalHand: (
-      <TheirHand
-        count={theirs.hand.length}
-        {...(rivalHand
-          ? {
-              cards: rivalHand.map((code) => ({ name: nameOf(null, code), art: artOf(null, code) })),
-              onCard: (index: number, rect: DOMRect) => showRival({ drawId: drawIdOf(rivalHand[index]!) }, rect),
-              onCardHover: (index: number) => dock.hover({ drawId: drawIdOf(rivalHand[index]!) }),
-            }
-          : {})}
-      />
-    ),
+    opponent: opponentCells,
+    sharedZone,
+    rivalHand: rivalHandNode,
     attackTargets,
     foreignKnown,
     // La fase de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, la que él ve (`rival`) o, si no la avisa, la del espejo de la suya.
@@ -1021,23 +1074,20 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {...listProps}
       />
     ) : undefined,
-    rivalFlights: { state: theirs, artOf: opponent.artOf },
+    rivalFlights,
     ...(chainNotice ? { chain: chainNotice } : {}),
     turnNumber: snap.overlay.turn,
-    rivalEmz: theirs.emz.map(Boolean),
+    rivalEmz: rivalEmzTaken,
     // El ATK/DEF de ahora es del duelo vivo: repasando, el detalle muestra la carta impresa.
-    ...(wide ? { detail: <DuelCardDock peek={dock.shown} highlight={highlight ?? linkHighlight} stats={reviewing ? null : dockStats} /> } : {}),
+    ...(wide ? { detail } : {}),
     onPeek: dock.lock,
     onHover: dock.hover,
-    onRivalHover: (id) => dock.hover(rivalPeekOf(id)),
+    onRivalHover,
     rivalViewing: rivalPile !== null,
-    // Abrir una pila tuya cierra la del rival: van en el mismo lugar.
-    onActivity: (activity) => {
-      if (activity !== null && activity !== 'choosing') setRivalPile(null)
-    },
+    onActivity,
     onHighlight: setHighlight,
     auto,
-    limits: reviewing ? null : <LimitsChip texts={limitTexts} />,
+    limits,
   }
 
   const pieces = (
@@ -1114,29 +1164,33 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
 
   const rivalTargeted = useMemo(() => new Set(theirs.targeted), [theirs.targeted])
-  const rivalViewer = (
-    <PileViewer
-      pile={rivalPile}
-      // Eligiendo en la mesa (o con la mesa tapada por el final) se esconde sin cerrarse, como el tuyo.
-      hidden={choosing || frozen || snap.status === 'ended' || Boolean(snap.fault)}
-      ids={rivalPile ? (rivalPile === 'extra' ? theirs.extraUp : theirs[rivalPile]) : []}
-      info={(id) => {
-        const peek = rivalPeekOf(id)
-        const open = 'drawId' in peek
+  const rivalViewerHidden = choosing || frozen || ended || Boolean(snap.fault)
+  const rivalActing = acting.theirs
+  const rivalViewer = useMemo(
+    () => (
+      <PileViewer
+        pile={rivalPile}
+        // Eligiendo en la mesa (o con la mesa tapada por el final) se esconde sin cerrarse, como el tuyo.
+        hidden={rivalViewerHidden}
+        ids={rivalPile ? (rivalPile === 'extra' ? theirs.extraUp : theirs[rivalPile]) : []}
+        info={(id) => {
+          const peek = rivalPeekOf(id)
+          const open = 'drawId' in peek
 
-        return { name: open ? nameOf({ side: 'theirs', id }) : t('duel.mark.rivalCard'), art: open ? artOf({ side: 'theirs', id }) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
-      }}
-      targeted={rivalTargeted}
-      glow={(id) => (acting.theirs.has(id) ? 'act' : null)}
-      onPick={(id, rect) => {
-        if (!wide) showRival(rivalPeekOf(id), rect)
-      }}
-      onPeek={(id) => lockDock(rivalPeekOf(id))}
-      onHover={(id) => dock.hover(rivalPeekOf(id))}
-      onClose={() => setRivalPile(null)}
-    />
+          return { name: open ? nameOf({ side: 'theirs', id }) : t('duel.mark.rivalCard'), art: open ? artOf({ side: 'theirs', id }) : null, faceDown: !open, faceUp: rivalPile === 'extra' }
+        }}
+        targeted={rivalTargeted}
+        glow={(id) => (rivalActing.has(id) ? 'act' : null)}
+        onPick={(id, rect) => {
+          if (!wide) showRival(rivalPeekOf(id), rect)
+        }}
+        onPeek={(id) => lockDock(rivalPeekOf(id))}
+        onHover={(id) => hoverDock(rivalPeekOf(id))}
+        onClose={() => setRivalPile(null)}
+      />
+    ),
+    [rivalPile, rivalViewerHidden, theirs, rivalPeekOf, nameOf, artOf, rivalTargeted, rivalActing, wide, showRival, lockDock, hoverDock],
   )
-
   return {
     rivalViewer,
     lifeHeld,
@@ -1161,12 +1215,16 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }
 }
 
-/** Un lado del rival vacío: repasando, la mesa es sólo la tuya (como en la práctica), sin moverse de lugar. */
+/** Un lado del rival vacío: repasando, la mesa es sólo la tuya (como en la práctica), sin moverse de lugar. Siempre los mismos objetos: la mesa no se vuelve a dibujar por ellos. */
 const NO_RIVAL: DuelSideView = { state: createMatState([], [], 0), artOf: () => null, handCount: 0 }
+const NO_RIVAL_CELLS = <SideCells side={NO_RIVAL} owner="theirs" />
+const NO_RIVAL_HAND = <TheirHand count={0} />
+const NO_SHARED_ZONE = () => null
+const NO_TARGETS: DuelMatLink['attackTargets'] = []
 
 /** La mesa del repaso: el lado del rival vacío y sin sus vuelos (al volver al duelo, sus cartas siguen donde estaban) y la fase del paso que se mira. */
 function reviewMat(mat: AutoAsks['mat'], phase: MatPhase): AutoAsks['mat'] {
   const { rivalFlights: _flights, ...rest } = mat
 
-  return { ...rest, opponent: <SideCells side={NO_RIVAL} owner="theirs" />, sharedZone: () => null, rivalHand: <TheirHand count={0} />, attackTargets: [], phase }
+  return { ...rest, opponent: NO_RIVAL_CELLS, sharedZone: NO_SHARED_ZONE, rivalHand: NO_RIVAL_HAND, attackTargets: NO_TARGETS, phase }
 }

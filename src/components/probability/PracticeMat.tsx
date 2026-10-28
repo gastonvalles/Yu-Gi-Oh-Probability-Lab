@@ -539,6 +539,8 @@ interface FxStep {
   replay: MatSession['replay']
   fx: MatFx
   step: { action: MatAction; shuffle: boolean } | { cut: true } | null
+  /** Cuántos pasos barajaron el deck: su animación se repite con cada uno, en el mismo dibujo del paso (un estado aparte era otro dibujo entero de la mesa, 60 ms después). */
+  shuffles: number
 }
 
 /**
@@ -548,11 +550,11 @@ interface FxStep {
 function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | null): FxStep {
   const at = { cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay }
 
-  if (session.cursor !== previous.cursor + 1) return { ...at, fx: NO_FX, step: { cut: true } }
+  if (session.cursor !== previous.cursor + 1) return { ...at, fx: NO_FX, step: { cut: true }, shuffles: previous.shuffles }
 
   const action = session.actions[session.cursor - 1]
 
-  if (!action) return { ...at, fx: previous.fx, step: null }
+  if (!action) return { ...at, fx: previous.fx, step: null, shuffles: previous.shuffles }
 
   const effects = matEffects(replayMat(session.initial, session.actions, session.cursor - 1), action)
   const key = Date.now()
@@ -561,6 +563,7 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
   return {
     ...at,
     step: { action, shuffle: Boolean(effects.shuffle) },
+    shuffles: effects.shuffle ? previous.shuffles + 1 : previous.shuffles,
     fx: {
       flash: effects.spotlight ? { ...effects.spotlight, key } : fx.flash,
       // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo o atacar, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
@@ -586,7 +589,36 @@ function Deferred<T>({ value, children }: { value: T; children: (value: T) => Re
   return children(useDeferredValue(value))
 }
 
-export function PracticeMat({
+/** Dos objetos con las mismas claves y los mismos valores (`Object.is`), a un nivel. */
+function shallowSame(a: object | undefined, b: object | undefined): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  const keys = Object.keys(a)
+
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.is((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]))
+}
+
+/**
+ * Si la mesa puede saltearse un dibujo: las mismas props, con `duel` (y su `auto`) comparados campo por campo, porque las pantallas del duelo los arman de nuevo en cada
+ * dibujo suyo (y el automático se dibuja con cada aviso del núcleo: una jugada eran 10 a 15 dibujos enteros de la mesa, con 2 o 3 que cambiaban algo). Lo que la mesa lee
+ * llega siempre por sus props o por hooks propios: con alguna distinta se dibuja; con todas iguales no hay nada nuevo que mostrar.
+ */
+function sameMatProps(prev: PracticeMatProps, next: PracticeMatProps): boolean {
+  const { duel: a, ...restA } = prev
+  const { duel: b, ...restB } = next
+
+  if (!shallowSame(restA, restB)) return false
+  if (a === b) return true
+  if (!a || !b) return false
+  const { auto: autoA, ...linkA } = a
+  const { auto: autoB, ...linkB } = b
+
+  return shallowSame(linkA, linkB) && shallowSame(autoA, autoB)
+}
+
+export const PracticeMat = memo(PracticeMatBody, sameMatProps)
+
+function PracticeMatBody({
   session,
   state,
   cardsById,
@@ -769,7 +801,7 @@ export function PracticeMat({
   const [endingTurn, setEndingTurn] = useState(false)
   const [counterMode, setCounterMode] = useState<1 | -1 | null>(null)
   // Lo que se ve con cada paso (el destello, las cartas grandes del centro, la zona donde cae un monstruo, el cartel de la fase y el marco de la mano): un solo estado (`MatFx`), ver abajo.
-  const [fxStep, setFxStep] = useState<FxStep>(() => ({ cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay, fx: NO_FX, step: null }))
+  const [fxStep, setFxStep] = useState<FxStep>(() => ({ cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay, fx: NO_FX, step: null, shuffles: 0 }))
   const { fx } = fxStep
   const { flash, landing, banner, stage, handFlash } = fx
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
@@ -822,10 +854,8 @@ export function PracticeMat({
     if (action.type === 'attack') {
       setStrike(strikeOf({ from: `[data-card-id="${action.id}"]`, to: action.target === undefined ? undefined : `[data-rival-card-id="${action.target}"]`, direct: 'theirs', bounds: sectionRef.current }))
     }
-    if (step.shuffle) {
-      setShuffleKey((current) => current + 1)
-      riffle(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])
-    }
+    // El deck ya se barajó con el dibujo del paso (`shuffles`); la mano, carta por carta, acá.
+    if (step.shuffle) riffle(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])
   }, [step])
 
   // Cada efecto se va solo, `FX_MS` después de dibujarse (`shownRef`: cuándo se dibujó cada uno, por su `key`). Un solo temporizador, al más próximo (y de ahí al siguiente): los que vencen
@@ -885,6 +915,8 @@ export function PracticeMat({
   const [handOrder, setHandOrder] = useState<string[]>([])
   const [dealt, setDealt] = useState(0)
   const [shuffleKey, setShuffleKey] = useState(0)
+  // El deck se baraja a la vista con una mano nueva o un barajado a mano (`shuffleKey`) y con cada paso que baraja (`fxStep.shuffles`, en el mismo dibujo del paso).
+  const deckKey = shuffleKey + fxStep.shuffles
   const deckRef = useRef<HTMLDivElement | null>(null)
   const fieldRef = useRef<HTMLDivElement | null>(null)
   // El campo se dibuja cuando ya hay mano repartida: el efecto de abajo lo espera (por eso es estado y no sólo una referencia).
@@ -2721,9 +2753,9 @@ export function PracticeMat({
             {/* El grosor del deck, debajo: se afina al robar. */}
             <PileStack count={state.deck.length} />
             {state.deck.length > 0 ? (
-              <span key={shuffleKey} className={cx('absolute inset-0', shuffleKey > 0 && 'animate-riffle-lift motion-reduce:animate-none', deckLink?.voided && VOIDED_ART)}>
-                <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', shuffleKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />
-                <span className={cx(CARD_BACK, '[transform:translate(-1.5px,1.5px)]', shuffleKey > 0 && 'animate-riffle-right motion-reduce:animate-none')} />
+              <span key={deckKey} className={cx('absolute inset-0', deckKey > 0 && 'animate-riffle-lift motion-reduce:animate-none', deckLink?.voided && VOIDED_ART)}>
+                <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', deckKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />
+                <span className={cx(CARD_BACK, '[transform:translate(-1.5px,1.5px)]', deckKey > 0 && 'animate-riffle-right motion-reduce:animate-none')} />
                 {/* Cada carta repartida le da un tirón a la de arriba. */}
                 <span key={dealt} className={cx(CARD_BACK, 'animate-pile-draw motion-reduce:animate-none')} />
               </span>
