@@ -5,6 +5,7 @@ import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { DEAL_EDGE_AT } from '../app/deal-flight'
 import { EASE_IN_OUT } from '../app/motion'
 import { PracticeHand, type HandCardData } from '../components/probability/PracticeHand'
 
@@ -27,9 +28,7 @@ interface Call {
 }
 
 describe('repartir una carta desde el mazo', () => {
-  it('el giro va aparte del camino, con la curva de los vuelos de punta a punta, y el dorso con el mismo reloj', () => {
-    // Con composición (`composite`), como en un navegador de verdad: sin ella no hay giro aparte.
-    vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
+  it('el camino y el giro van en una sola animación (sin `composite: add`), la sombra aparte y el dorso con el mismo reloj', () => {
     const calls: Call[] = []
 
     Element.prototype.animate = function (this: Element, keyframes, options) {
@@ -68,19 +67,21 @@ describe('repartir una carta desde el mazo', () => {
 
     const element = document.querySelector('[data-card-id="c0"]')!
     const onCard = calls.filter((call) => call.element === element)
-    const path = onCard.find((call) => call.options.composite === undefined)!
-    const turn = onCard.find((call) => call.options.composite === 'add')!
+    // El camino y el giro 3D son la misma animación (`transform`, muestreada) y ninguna va en `add`: dos animaciones de `transform` sumadas no se componen en la GPU.
+    expect(onCard.some((call) => call.options.composite === 'add')).toBe(false)
+    const path = onCard.find((call) => call.keyframes.some((frame) => frame.transform !== undefined))!
+    const shadow = onCard.find((call) => call.keyframes.every((frame) => frame.transform === undefined && frame.boxShadow !== undefined))!
     const back = calls.find((call) => call.element !== element && call.element.hasAttribute('data-back'))!
 
-    // El camino no gira: el giro es la animación aditiva, de punta a punta con una sola curva.
-    expect(path.keyframes.some((frame) => String(frame.transform).includes('rotateY'))).toBe(false)
-    expect(path.keyframes[0]!.easing).toBe(EASE_IN_OUT)
-    expect(turn.options.easing).toBe(EASE_IN_OUT)
-    expect(turn.keyframes.every((frame) => String(frame.transform).includes('rotateY'))).toBe(true)
-    expect(turn.keyframes.find((frame) => frame.offset === 0.5)).toBeDefined()
+    expect(path.keyframes.every((frame) => String(frame.transform).includes('rotateY'))).toBe(true)
+    // De canto, el giro salta de 90 a −90 en el mismo instante: dos cuadros con el mismo offset.
+    const edge = path.keyframes.filter((frame) => frame.offset !== undefined && Math.abs(Number(frame.offset) - DEAL_EDGE_AT) < 0.001)
 
-    // El dorso se cambia por la cara a mitad de la curva (al quedar de canto), con el mismo reloj que el giro.
-    expect(back.options).toMatchObject({ duration: turn.options.duration, easing: EASE_IN_OUT })
+    expect(edge.map((frame) => /rotateY\((-?\d+(?:\.\d+)?)deg\)/.exec(String(frame.transform))![1])).toEqual(['90', '-90'])
+    expect(path.options.duration).toBe(shadow.options.duration)
+
+    // El dorso se cambia por la cara a mitad de la curva (al quedar de canto), con el mismo reloj que el vuelo.
+    expect(back.options).toMatchObject({ duration: path.options.duration, easing: EASE_IN_OUT })
     expect(back.keyframes.find((frame) => frame.offset === 0.5 && frame.opacity === 0)).toBeDefined()
   })
 })

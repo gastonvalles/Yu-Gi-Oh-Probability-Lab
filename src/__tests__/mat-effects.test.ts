@@ -211,11 +211,16 @@ describe('los efectos de una jugada', () => {
 })
 
 describe('las animaciones que no paran de la mesa', () => {
-  it('se aplican sólo con `motion-safe:`: con `motion-reduce:animate-none` perdían contra los selectores `data-[…]` (más específicos) y seguían corriendo', () => {
-    const sources = ['PracticeMat.tsx', 'PracticeHand.tsx', 'MatFx.tsx'].map((file) => readFileSync(`src/components/probability/${file}`, 'utf8'))
-    const classes = sources.flatMap((source) => source.match(/[^\s'"`]*animate-fx-(?:pick|ripple|target-glow|halo)\b/g) ?? [])
+  it('los aros que laten sólo corren con `prefers-reduced-motion: no-preference` (con movimiento reducido queda el aro quieto)', () => {
+    const css = readFileSync('src/index.css', 'utf8')
+    const starts = [...css.matchAll(/animation:[^;]*(?:fx-ring-breathe|fx-halo-glow|fx-halo-wave|fx-point-pulse)/g)]
 
-    expect(classes.length).toBeGreaterThan(0)
-    expect(classes.filter((name) => !name.startsWith('motion-safe:'))).toEqual([])
+    expect(starts.length).toBeGreaterThan(0)
+    for (const start of starts) {
+      const before = css.slice(0, start.index)
+      const media = [...before.matchAll(/@media \(prefers-reduced-motion: (no-preference|reduce)\)/g)].pop()
+
+      expect(media?.[1]).toBe('no-preference')
+    }
   })
 })
