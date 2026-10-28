@@ -81,7 +81,7 @@ describe('el menú de la app', () => {
     expect(onSelect).toHaveBeenCalledWith('mascots')
   })
 
-  it('el buscador de cartas es una fila del menú lateral (sin barra de arriba de escritorio) sólo donde la pantalla lo ofrece; la lupa de la barra del celular busca en toda la app y siempre está', () => {
+  it('el buscador de cartas es una fila del menú lateral (sin barra de arriba de escritorio) sólo donde la pantalla lo ofrece; «Buscar» de la barra de abajo del celular busca en toda la app y siempre está', () => {
     const onSelect = vi.fn()
 
     expect(searchNavItem()).toMatchObject({ key: 'search', label: 'Buscar cartas', icon: 'search' })
@@ -89,7 +89,7 @@ describe('el menú de la app', () => {
     const { rerender } = render(<AppShell groups={GROUPS} activeKey="export" onSelect={onSelect}><p>pantalla</p></AppShell>)
 
     expect(screen.queryByRole('button', { name: /^Buscar cartas/ })).toBeNull()
-    // La lupa de la barra de arriba del celular no depende de la pantalla: abre el buscador de la app.
+    // «Buscar», en la barra de abajo del celular, no depende de la pantalla: abre el buscador de la app.
     expect(screen.getByRole('button', { name: 'Buscar en la app' })).toBeInTheDocument()
 
     rerender(<AppShell groups={GROUPS} activeKey="export" onSelect={onSelect} searchAvailable><p>pantalla</p></AppShell>)
@@ -293,23 +293,73 @@ describe('el cajón del menú del celular', () => {
 })
 
 describe('la barra de abajo del celular y su hoja', () => {
-  it('lleva un botón por grupo, marca en ámbar el del destino abierto y avisa cuál se abrió', () => {
+  it('cinco lugares: Tu deck · Descubrir · Jugar en el centro · Cartas · Buscar; marca en ámbar (con la rayita) el del destino abierto y avisa cuál se abrió', () => {
     const onOpen = vi.fn()
-    render(<MobileTabBar groups={GROUPS} activeKey="categorization" openKey={null} onOpen={onOpen} />)
+    const onSearch = vi.fn()
+    render(<MobileTabBar groups={GROUPS} activeKey="categorization" openKey={null} onOpen={onOpen} onSearch={onSearch} />)
 
     const bar = screen.getByRole('navigation', { name: 'Navegación principal' })
-    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Jugar', 'Descubrir', 'Cartas'])
+    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Descubrir', 'Jugar', 'Cartas', 'Buscar'])
     expect(within(bar).getByRole('button', { name: 'Tu deck' })).toHaveClass('text-nav-active')
+    // No sólo el color: el abierto lleva la rayita de arriba y el ícono lleno.
+    expect(within(bar).getByRole('button', { name: 'Tu deck' }).querySelector('.bg-nav-active')).not.toBeNull()
     expect(within(bar).getByRole('button', { name: 'Descubrir' })).toHaveClass('text-foreground')
+    expect(within(bar).getByRole('button', { name: 'Descubrir' }).querySelector('.bg-nav-active')).toBeNull()
 
     fireEvent.click(within(bar).getByRole('button', { name: 'Descubrir' }))
     expect(onOpen).toHaveBeenCalledWith('discover')
     expect(bar).toHaveClass('z-40', 'border-nav-raised')
 
+    // El círculo del centro se llama «Jugar» y abre la hoja de su grupo (tiene varios destinos), como los demás.
+    const play = within(bar).getByRole('button', { name: 'Jugar' })
+    expect(play).toHaveAttribute('data-center', 'true')
+    expect(play).toHaveAttribute('aria-haspopup', 'dialog')
+    fireEvent.click(play)
+    expect(onOpen).toHaveBeenLastCalledWith('duel')
+
+    // «Buscar» abre el buscador de la app: su nombre lo dice entero.
+    fireEvent.click(within(bar).getByRole('button', { name: 'Buscar en la app' }))
+    expect(onSearch).toHaveBeenCalledTimes(1)
+
     // Con una hoja abierta la barra pasa por encima de ella y su línea se apaga.
     cleanup()
     render(<MobileTabBar groups={GROUPS} activeKey="categorization" openKey="discover" onOpen={onOpen} />)
     expect(screen.getByRole('navigation', { name: 'Navegación principal' })).toHaveClass('z-160', 'border-transparent')
+  })
+
+  it('el círculo de Jugar: violeta con el ícono blanco, separado por un aro del lienzo (sin sombra que cae), y con un aro ámbar sólo cuando Jugar está abierto', () => {
+    const { rerender } = render(<MobileTabBar groups={GROUPS} activeKey="categorization" openKey={null} onOpen={() => {}} />)
+    const circle = () => screen.getByRole('button', { name: 'Jugar' }).firstElementChild as HTMLElement
+
+    expect(circle()).toHaveClass('bg-primary', 'text-white', 'rounded-full', 'ring-background', '-top-3')
+    expect(circle().className).not.toMatch(/shadow-(card|overlay)/)
+    expect(circle()).not.toHaveClass('outline-nav-active')
+
+    rerender(<MobileTabBar groups={GROUPS} activeKey="life" openKey={null} onOpen={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Jugar' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('button', { name: 'Jugar' })).toHaveClass('text-nav-active')
+    expect(circle()).toHaveClass('outline-nav-active')
+
+    // Con la hoja de otro grupo abierta, el ámbar es de esa hoja.
+    rerender(<MobileTabBar groups={GROUPS} activeKey="life" openKey="cards" onOpen={() => {}} />)
+    expect(circle()).not.toHaveClass('outline-nav-active')
+  })
+
+  it('el armazón deja libre lo que ocupa la barra con el círculo (4,75 rem más el borde seguro), y «Buscar» abre el buscador de la app; arriba ya no hay lupa', () => {
+    const { container } = render(
+      <AppShell groups={GROUPS} activeKey="categorization" onSelect={() => {}}>
+        <p>Contenido</p>
+      </AppShell>,
+    )
+
+    expect(TAB_BAR_PX).toBe(4.75 * 16)
+    expect(container.firstElementChild).toHaveClass('max-[1101px]:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]')
+    expect(within(screen.getByRole('banner')).queryByRole('button', { name: 'Buscar en la app' })).toBeNull()
+
+    const bar = screen.getAllByRole('navigation', { name: 'Navegación principal' })[1]!
+    fireEvent.click(within(bar).getByRole('button', { name: 'Buscar en la app' }))
+    expect(screen.getByRole('dialog', { name: 'Buscar en YGOUltraLab' })).toBeInTheDocument()
+    expect(within(bar).getByRole('button', { name: 'Buscar en la app' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('la hoja cerrada no existe; abierta es un diálogo con las opciones del grupo, elegir una avisa cuál y se cierra con Escape y con el velo', () => {
@@ -669,9 +719,9 @@ describe('el armazón', () => {
   it('lo flotante (botones, mascotas, avisos) deja libre la barra de abajo en el celular, y nada en la mesa a pantalla completa', () => {
     expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: TAB_BAR_PX })
 
-    // Con la letra del navegador agrandada, la barra (4 rem) crece y lo reservado con ella.
+    // Con la letra del navegador agrandada, la barra (4 rem, más lo que asoma el círculo: 4,75 rem) crece y lo reservado con ella.
     document.documentElement.style.fontSize = '20px'
-    expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: 80 })
+    expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: 95 })
     document.documentElement.style.fontSize = ''
     expect(shellInsetsFor(false, false, false)).toEqual({ left: 0, bottom: 0 })
     // En escritorio manda el menú lateral (no hay pie), con barra o sin ella.

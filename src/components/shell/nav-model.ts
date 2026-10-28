@@ -39,6 +39,9 @@ export interface NavGroup {
   sheetNotice?: { title: string; text: string; actionLabel: string; actionKey: string }
 }
 
+/** El grupo que la barra de abajo del celular pone en el centro, en el círculo violeta: jugar es lo que más se viene a hacer desde el teléfono. */
+export const PLAY_GROUP_KEY = 'duel'
+
 /**
  * Las mascotas no son un destino sino una preferencia (como el idioma): no van en un grupo del menú sino abajo, y abren su panel (`onSelect('mascots')`). Lo usan el menú lateral y el cajón del celular.
  */

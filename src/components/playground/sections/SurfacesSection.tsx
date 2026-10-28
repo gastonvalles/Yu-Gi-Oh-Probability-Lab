@@ -18,6 +18,7 @@ const TONES = Object.keys(TONE) as Tone[]
 /** Tarjetas, avisos, estados vacíos, esqueletos y campos: las superficies de la app. */
 export function SurfacesSection() {
   const [picked, setPicked] = useState<string[]>([])
+  const [query, setQuery] = useState('')
 
   return (
     <div className="grid gap-4">
@@ -108,6 +109,12 @@ export function SurfacesSection() {
             selected={picked}
             onChange={setPicked}
           />
+        </Specimen>
+
+        <Specimen title="SearchField · píldora" layout="column" note={<>Con <Tag>shape="pill"</Tag>: 48 px de alto, la lupa a la izquierda y la X de borrar (44 px con el dedo) mientras haya texto. Placeholder corto: lo que no entra se corta con «…». Con el dedo nunca se enfoca solo al abrir algo. Estados: vacío, con texto, foco (tocalo) y deshabilitado. Archivo: <Tag>ui/SearchField.tsx</Tag></>}>
+          <SearchField shape="pill" label="Buscar decks" value={query} onChange={setQuery} placeholder="Deck, torneo o jugador" />
+          <SearchField shape="pill" label="Buscar decks (con texto)" value="Fire King" onChange={() => {}} />
+          <SearchField shape="pill" label="Buscar decks (deshabilitado)" value="" onChange={() => {}} placeholder="Sin decks para buscar" disabled />
         </Specimen>
       </SpecimenGrid>
 

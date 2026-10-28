@@ -7,11 +7,14 @@ export const SIDEBAR_PX = { expanded: 240, collapsed: 76 } as const
 const DESKTOP_MIN_PX = 1101
 /** Sin haber elegido todavía, en una ventana más angosta que esto el menú arranca contraído: las pantallas no quedan apretadas. */
 const COMPACT_BELOW_PX = 1400
-/** La barra de abajo del celular (`MobileTabBar`: 4 rem, sin contar el borde seguro del teléfono): 64 px con la letra de siempre. */
-export const TAB_BAR_PX = 64
-const TAB_BAR_REM = 4
+/**
+ * Lo que ocupa la barra de abajo del celular (`MobileTabBar`, sin contar el borde seguro del teléfono): 4 rem de barra y 0,75 rem más, lo que asoma el círculo de Jugar por arriba.
+ * 76 px con la letra de siempre. `AppShell` deja ese alto libre abajo (`pb-[calc(4.75rem+…)]`) y los botones flotantes no bajan de ahí.
+ */
+export const TAB_BAR_PX = 76
+const TAB_BAR_REM = 4.75
 
-/** Lo que mide la barra de abajo ahora: 4 rem, así que crece con la letra del navegador agrandada (sin ventana, o sin un tamaño legible, vale `TAB_BAR_PX`). */
+/** Lo que ocupa la barra de abajo ahora: 4,75 rem, así que crece con la letra del navegador agrandada (sin ventana, o sin un tamaño legible, vale `TAB_BAR_PX`). */
 export function tabBarPx(): number {
   if (typeof window === 'undefined') return TAB_BAR_PX
 
