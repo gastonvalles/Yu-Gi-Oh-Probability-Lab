@@ -135,8 +135,6 @@
   --animate-fx-frame-in: fx-frame-in 200ms var(--ease-out) both;
   --animate-fx-orbit: fx-orbit 1.2s linear infinite;
   --animate-fx-shine: fx-shine 850ms var(--ease-out) 100ms both;
-  --animate-fx-halo: fx-halo 950ms var(--ease-out) both;
-  --animate-fx-target-glow: fx-target-glow 1.5s ease-in-out infinite;
   --animate-fx-lock: fx-lock 480ms var(--ease-snap) both;
   --animate-fx-ping: fx-ping 750ms var(--ease-out) both;
   --animate-fx-spin: fx-spin 6s linear infinite;
@@ -616,33 +614,6 @@
     }
   }
 
-  /* El aro de una carta que se activa: se enciende, se expande y se apaga. Lleva la sombra de la carta (`--card-shadow`) para no parpadear. */
-  @keyframes fx-halo {
-    0% {
-      box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb)), 0 0 0 0 rgb(var(--fx-rgb) / 0.85), 0 0 22px 4px rgb(var(--fx-rgb) / 0.85);
-    }
-
-    55% {
-      box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb)), 0 0 0 14px rgb(var(--fx-rgb) / 0), 0 0 34px 8px rgb(var(--fx-rgb) / 0.7);
-    }
-
-    100% {
-      box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb) / 0.9), 0 0 0 14px rgb(var(--fx-rgb) / 0), 0 0 22px 3px rgb(var(--fx-rgb) / 0.6);
-    }
-  }
-
-  /* Una carta marcada como objetivo respira: el aro rojo late mientras siga marcada. */
-  @keyframes fx-target-glow {
-    0%,
-    100% {
-      box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb) / 0.95), 0 0 14px 1px rgb(var(--fx-rgb) / 0.5);
-    }
-
-    50% {
-      box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb)), 0 0 28px 7px rgb(var(--fx-rgb) / 0.85);
-    }
-  }
-
   /* La mira cae sobre la carta: llega grande y girada y se cierra sobre ella (rebota un poco al fijarse). */
   @keyframes fx-lock {
     0% {
@@ -850,18 +821,6 @@
     100% {
       opacity: 0;
       transform: scale(2);
-    }
-  }
-
-  /* Un monstruo del rival que se puede atacar o elegir: el aro respira en el celeste de lo que podés hacer (`--playable-rgb`; `[data-attack-target]`, más abajo). Una casilla que se puede elegir lleva en cambio las marcas de `PickMarks`. */
-  @keyframes fx-pick {
-    0%,
-    100% {
-      box-shadow: 0 0 0 1px rgb(var(--playable-rgb) / 0.6), 0 0 10px rgb(var(--playable-rgb) / 0.3);
-    }
-
-    50% {
-      box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.95), 0 0 18px 3px rgb(var(--playable-rgb) / 0.55);
     }
   }
 
@@ -1327,45 +1286,136 @@
   }
 }
 
-/* Lo que se señala (no es un objetivo: ése lleva la mira roja y se queda): un aro claro que late un rato y se va solo; con movimiento reducido, un aro quieto mientras dura. */
-[data-pointed='true'] {
-  z-index: 6;
-  animation: point-pulse 2500ms var(--ease-out) both;
+/*
+ * Los aros que laten o se encienden en la mesa, en capas (criterio de movimiento: en la mesa sólo se anima `transform` y `opacity`): la sombra va **fija** en un
+ * pseudoelemento de la carta o la casilla y se anima sólo su opacidad (o su escala), así lo mueve el compositor y no se repinta el campo en cada cuadro (animar
+ * `box-shadow` corría en el hilo principal). La carta recorta lo de adentro (`overflow-hidden`): mientras lleva un aro deja ver lo que sale (sus hijos que se salen
+ * se recortan solos: `fx-frame`, la mira). `:is(.fx-ring, *)` sólo sube la especificidad: si coinciden, gana el último de la lista, como antes ganaba su animación.
+ * Las cartas llevan `fx-ring` (en `FX_CARD`); con movimiento reducido no hay capas: el aro queda quieto (`FX_CARD`, `[data-attack-target]` y `[data-pointed]`).
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .fx-ring[data-targeted='true'],
+  .fx-ring[data-flash='true']:is([data-flash-kind='activate'], [data-flash-kind='reveal'], [data-flash-kind='declare']),
+  [data-attack-target='true'],
+  [data-pointed='true'] {
+    overflow: visible;
+  }
+
+  :is(.fx-ring[data-targeted='true'], .fx-ring[data-flash='true']:is([data-flash-kind='activate'], [data-flash-kind='reveal'], [data-flash-kind='declare']), :is(.fx-ring, *)[data-pointed='true'], :is(.fx-ring, *)[data-attack-target='true'])::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  /* Una carta marcada como objetivo respira: el aro rojo de base y, encima, el pico (aro y resplandor grande) que aparece y se va cada 1,5 s. */
+  .fx-ring[data-targeted='true'] {
+    box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb) / 0.95), 0 0 14px 1px rgb(var(--fx-rgb) / 0.5);
+
+    &::after {
+      box-shadow: 0 0 0 2px rgb(var(--fx-rgb)), 0 0 28px 7px rgb(var(--fx-rgb) / 0.7);
+      animation: fx-ring-breathe 1.5s ease-in-out infinite;
+    }
+  }
+
+  /* El aro de una carta que se activa, se muestra o se declara: el aro y el resplandor de base, un resplandor más grande que crece y se apaga y, detrás de la carta, una onda que se expande y se desvanece (950 ms). */
+  .fx-ring[data-flash='true']:is([data-flash-kind='activate'], [data-flash-kind='reveal'], [data-flash-kind='declare']) {
+    box-shadow: var(--card-shadow), 0 0 0 2px rgb(var(--fx-rgb) / 0.95), 0 0 22px 3px rgb(var(--fx-rgb) / 0.6);
+
+    &::after {
+      box-shadow: 0 0 34px 8px rgb(var(--fx-rgb) / 0.45);
+      animation: fx-halo-glow 950ms var(--ease-out) both;
+    }
+
+    /* Detrás de la carta (que es opaca y, destellando, es su propio contexto: `z-10`): sólo se ve la franja que sale; se estira menos a lo alto, así la franja es pareja. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background: rgb(var(--fx-rgb) / 0.85);
+      animation: fx-halo-wave 950ms var(--ease-out) both;
+    }
+  }
+
+  /* Lo que se señala (no es un objetivo: ése lleva la mira roja y se queda): un aro claro que aparece, se queda un rato y se va solo. */
+  :is(.fx-ring, *)[data-pointed='true']::after {
+    box-shadow: 0 0 0 3px rgb(var(--foreground-rgb) / 0.95), 0 0 22px 6px rgb(var(--accent-rgb) / 0.75);
+    animation: fx-point-pulse 2500ms var(--ease-out) both;
+  }
+
+  /* Un monstruo del rival que se puede atacar o elegir: el aro respira en el celeste de lo que podés hacer (ver `[data-attack-target]`, abajo). */
+  [data-attack-target='true'] {
+    box-shadow: 0 0 0 1px rgb(var(--playable-rgb) / 0.6), 0 0 10px rgb(var(--playable-rgb) / 0.3);
+  }
+
+  :is(.fx-ring, *)[data-attack-target='true']::after {
+    box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.9), 0 0 18px 3px rgb(var(--playable-rgb) / 0.38);
+    animation: fx-ring-breathe 1.5s ease-in-out infinite;
+  }
 }
 
-@keyframes point-pulse {
-  0% {
-    box-shadow:
-      0 0 0 0 rgb(var(--foreground-rgb) / 0),
-      0 0 0 0 rgb(var(--accent-rgb) / 0);
-  }
-
-  10%,
-  75% {
-    box-shadow:
-      0 0 0 3px rgb(var(--foreground-rgb) / 0.95),
-      0 0 22px 6px rgb(var(--accent-rgb) / 0.75);
-  }
-
-  40% {
-    box-shadow:
-      0 0 0 5px rgb(var(--foreground-rgb) / 0.7),
-      0 0 30px 10px rgb(var(--accent-rgb) / 0.55);
-  }
-
-  100% {
-    box-shadow:
-      0 0 0 0 rgb(var(--foreground-rgb) / 0),
-      0 0 0 0 rgb(var(--accent-rgb) / 0);
-  }
+[data-pointed='true'] {
+  z-index: 6;
 }
 
 @media (prefers-reduced-motion: reduce) {
   [data-pointed='true'] {
-    animation: none;
     box-shadow:
       0 0 0 3px rgb(var(--foreground-rgb) / 0.95),
       0 0 18px 4px rgb(var(--accent-rgb) / 0.7);
+  }
+}
+
+@keyframes fx-ring-breathe {
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes fx-halo-glow {
+  0% {
+    opacity: 0.8;
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fx-halo-wave {
+  0% {
+    opacity: 1;
+    scale: 1;
+  }
+
+  55%,
+  100% {
+    opacity: 0;
+    scale: 1.5 1.34;
+  }
+}
+
+@keyframes fx-point-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  10%,
+  75% {
+    opacity: 1;
   }
 }
 
@@ -1986,15 +2036,14 @@
 
 /*
  * Eligiendo a quién atacar (o una carta del rival que pide el núcleo), los monstruos que se pueden elegir laten en el celeste de lo que podés hacer (`PracticeMat` les pone `data-attack-target` mientras el menú de «Atacar» está abierto).
- * Con movimiento reducido queda el aro quieto, del mismo celeste.
+ * El latido va en capas (`fx-ring-breathe`, con los otros aros de la mesa); con movimiento reducido queda el aro quieto, del mismo celeste.
  */
 [data-attack-target='true'] {
   cursor: pointer;
-  box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.9), 0 0 14px 2px rgb(var(--playable-rgb) / 0.5);
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: reduce) {
   [data-attack-target='true'] {
-    animation: fx-pick 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 2px rgb(var(--playable-rgb) / 0.9), 0 0 14px 2px rgb(var(--playable-rgb) / 0.5);
   }
 }

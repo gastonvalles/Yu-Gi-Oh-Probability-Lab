@@ -214,7 +214,7 @@ describe('AttackFx', () => {
       expect(target.animate).toHaveBeenCalledTimes(1)
       const [frames, options] = vi.mocked(target.animate).mock.calls[0]!
       expect(frames).toHaveLength(5)
-      expect(options).toEqual({ id: 'strike', duration: 360, delay: 300, easing: EASE_OUT, composite: 'add' })
+      expect(options).toEqual({ id: 'strike', duration: 360, delay: 300, easing: EASE_OUT })
 
       view.unmount()
       expect(cancel).toHaveBeenCalledTimes(1)
@@ -227,13 +227,25 @@ describe('AttackFx', () => {
       expect(target.animate).not.toHaveBeenCalled()
     })
 
-    it('sin soporte para sumar animaciones (se pisaría el giro de la carta) no se sacude nada', () => {
-      const { target, attacker } = withAnimations()
+    it('sin la Web Animations API (jsdom) no se sacude ni se adelanta nada, y no se rompe', () => {
+      const target = document.body.appendChild(document.createElement('div'))
+      const attacker = document.body.appendChild(document.createElement('div'))
 
-      vi.unstubAllGlobals()
-      render(<AttackFx strike={strike({ target, attacker })} onDone={() => {}} />)
-      expect(target.animate).not.toHaveBeenCalled()
-      expect(attacker.animate).not.toHaveBeenCalled()
+      expect(() => render(<AttackFx strike={strike({ target, attacker })} onDone={() => {}} />)).not.toThrow()
+      expect(sacudir(target, 'life')).toBeNull()
+    })
+
+    it('va en `translate` y sin sumarse (la GPU la compone): parte de lo que ya tiene la casilla y, de costado, se sacude a lo largo de su lado', () => {
+      const { target } = withAnimations()
+
+      expect(sacudir(target, 'life')).not.toBeNull()
+      expect(vi.mocked(target.animate).mock.calls[0]![0]).toEqual([{ translate: '0px 0px' }, { translate: '-5px 2px' }, { translate: '5px -2px' }, { translate: '-3px 0px' }, { translate: '0px 0px' }])
+
+      // Una carta de costado (`rotate(90deg)`) que además se levanta 2 px (pasar el mouse): el empujón gira con ella y se suma a lo suyo, como cuando se sumaba a su `transform`.
+      vi.stubGlobal('getComputedStyle', () => ({ transform: 'matrix(0, 1, -1, 0, 0, 0)', translate: '0px -2px' }))
+      vi.stubGlobal('DOMMatrixReadOnly', class { a = 0; b = 1; c = -1; d = 0 })
+      sacudir(target, 'life')
+      expect(vi.mocked(target.animate).mock.calls[1]![0]).toEqual([{ translate: '0px -2px' }, { translate: '-2px -7px' }, { translate: '2px 3px' }, { translate: '0px -5px' }, { translate: '0px -2px' }])
     })
 
     it('pidiendo menos movimiento no se sacude nada', () => {
@@ -252,7 +264,7 @@ describe('AttackFx', () => {
 
       expect(attacker.animate).toHaveBeenCalledTimes(1)
       const [frames, options] = vi.mocked(attacker.animate).mock.calls[0]!
-      expect(options).toEqual({ duration: 600, composite: 'add' })
+      expect(options).toEqual({ duration: 600 })
       // 12 % de 200 px son 24: el tope de 18 px manda. Llega a la espada a mitad (offset 0,5, al impacto de 300 ms) y vuelve a 0.
       expect(frames).toEqual([
         { translate: '0px 0px', easing: EASE_IN_OUT },
@@ -298,14 +310,14 @@ describe('AttackFx', () => {
 
       expect(sacudir(target, 'strike', 300)).not.toBeNull()
       expect(cancelVidas).toHaveBeenCalledTimes(1)
-      expect(vi.mocked(target.animate).mock.calls[0]![1]).toEqual({ id: 'strike', duration: 360, delay: 300, easing: EASE_OUT, composite: 'add' })
+      expect(vi.mocked(target.animate).mock.calls[0]![1]).toEqual({ id: 'strike', duration: 360, delay: 300, easing: EASE_OUT })
     })
 
     it('una pérdida de vidas sobre una casilla quieta se sacude sola, sin espera y con su propio id', () => {
       const { target } = withAnimations()
 
       expect(sacudir(target, 'life')).not.toBeNull()
-      expect(vi.mocked(target.animate).mock.calls[0]![1]).toEqual({ id: 'life', duration: 360, delay: 0, easing: EASE_OUT, composite: 'add' })
+      expect(vi.mocked(target.animate).mock.calls[0]![1]).toEqual({ id: 'life', duration: 360, delay: 0, easing: EASE_OUT })
     })
 
     it('con movimiento reducido no se sacude nada, ni la de un ataque ni la de unas vidas', () => {

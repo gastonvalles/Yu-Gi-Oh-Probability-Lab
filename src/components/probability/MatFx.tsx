@@ -41,14 +41,13 @@ export const DUEL_GLOW = [
 ].join(' ')
 
 /**
- * Estados de una carta destacada (la de la mano y la del campo los comparten): el aro de afuera es el `box-shadow` de la carta, que se anima
- * según lo que le pasa (activada, revelada o declarada: se enciende y se expande; marcada como objetivo: late). Piden `--card-shadow` y `--fx-rgb`.
+ * Estados de una carta destacada (la de la mano y la del campo los comparten): el aro de afuera es el `box-shadow` de la carta y, lo que late o se
+ * expande (activada, revelada o declarada: se enciende y se expande; marcada como objetivo: late), una capa con la sombra fija a la que se le anima
+ * la opacidad (`fx-ring`, en index.css: así lo mueve el compositor). Piden `--card-shadow` y `--fx-rgb`.
  */
 export const FX_CARD = [
-  'data-[flash=true]:z-10',
-  // Dos atributos en cada selector (más específico que el brillo de una regla o la marca de objetivo): si coinciden, el destello de activar gana.
-  'motion-safe:data-[flash=true]:data-[flash-kind=activate]:animate-fx-halo motion-safe:data-[flash=true]:data-[flash-kind=reveal]:animate-fx-halo motion-safe:data-[flash=true]:data-[flash-kind=declare]:animate-fx-halo',
-  'motion-safe:data-[targeted=true]:animate-fx-target-glow',
+  // `z-10` también hace de la carta que destella su propio contexto: la onda de `fx-ring` va detrás de ella.
+  'fx-ring data-[flash=true]:z-10',
   DUEL_GLOW,
   // La carta de la que se está viendo el menú: aro y resplandor celestes fijos (el marco de adentro lleva la luz que gira).
   'data-[selected=true]:z-10 data-[selected=true]:[box-shadow:var(--card-shadow),0_0_0_2px_rgb(56_189_248/0.9),0_0_22px_4px_rgb(56_189_248/0.55)]',
@@ -80,11 +79,12 @@ export const HAND_CARD_HOVER = [HOVER_RING, 'hover:z-40! hover:-translate-y-3.5'
 export const HOLD_PRESS = 'motion-safe:data-[holding=true]:animate-hold-press!'
 
 /**
- * Las transiciones de una carta de la mesa: el giro al cambiar de posición, el brillo, la sombra y, para elevarse, `translate` y `scale` (propiedades individuales: no pisan el `transform` de la rotación de una carta
- * en defensa ni los vuelos). Quien sabe qué más anima (la mano tiene su propio ritmo) escribe la suya entera.
+ * Las transiciones de una carta de la mesa: el giro al cambiar de posición, el brillo y, para elevarse, `translate` y `scale` (propiedades individuales: no pisan el `transform` de la rotación de una carta
+ * en defensa ni los vuelos). Sin `box-shadow`: el aro de un brillo cambia de una (con cada pregunta del núcleo cambian muchas cartas a la vez, y una transición de sombra corre en el hilo principal);
+ * `filter` sí transiciona, que lo compone el compositor. Quien sabe qué más anima (la mano tiene su propio ritmo) escribe la suya entera.
  */
 export const CARD_TRANSITION =
-  '[transition:transform_var(--motion-duration)_var(--ease-snap),translate_var(--motion-duration)_var(--ease-snap),scale_var(--motion-duration)_var(--ease-snap),filter_var(--motion-duration)_var(--ease-out),box-shadow_var(--motion-duration)_var(--ease-out)]'
+  '[transition:transform_var(--motion-duration)_var(--ease-snap),translate_var(--motion-duration)_var(--ease-snap),scale_var(--motion-duration)_var(--ease-snap),filter_var(--motion-duration)_var(--ease-out)]'
 
 interface FxFrameProps {
   tone: FxTone
@@ -121,15 +121,18 @@ const BRACKETS = [
  */
 export function TargetMark() {
   return (
-    <span role="img" aria-label={t('practice.card.targetMark')} data-fx="target" className="pointer-events-none absolute inset-0 z-3 animate-fx-lock motion-reduce:animate-none" style={fxVars('red')}>
-      <span className="absolute inset-0 bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.34),transparent_72%)]" />
-      {BRACKETS.map((corner) => (
-        <span key={corner} className={cx('absolute aspect-square w-[22%] border-[color:rgb(var(--fx-rgb))] drop-shadow-[0_0_3px_rgb(var(--fx-rgb))]', corner)} />
-      ))}
-      <span className="fx-crosshair absolute left-1/2 top-1/2 aspect-square w-[64%] -translate-x-1/2 -translate-y-1/2" />
-      <span className="absolute left-1/2 top-1/2 aspect-square w-[46%] -translate-x-1/2 -translate-y-1/2 animate-fx-spin rounded-full border-2 border-dashed border-[color:rgb(var(--fx-rgb))] motion-reduce:animate-none" />
-      <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:rgb(var(--fx-rgb))] shadow-[0_0_8px_3px_rgb(var(--fx-rgb)/0.9)]" />
-      <span className="absolute left-1/2 top-1/2 aspect-square w-[56%] -translate-x-1/2 -translate-y-1/2 animate-fx-ping rounded-full border-2 border-[color:rgb(var(--fx-rgb))] motion-reduce:hidden" />
+    // Se recorta sola (la carta marcada deja ver su aro, que sale de ella: `fx-ring`), con la caja de la carta: lo que cae girando y la onda no se salen.
+    <span role="img" aria-label={t('practice.card.targetMark')} data-fx="target" className="pointer-events-none absolute inset-0 z-3 overflow-hidden" style={fxVars('red')}>
+      <span className="absolute inset-0 animate-fx-lock motion-reduce:animate-none">
+        <span className="absolute inset-0 bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.34),transparent_72%)]" />
+        {BRACKETS.map((corner) => (
+          <span key={corner} className={cx('absolute aspect-square w-[22%] border-[color:rgb(var(--fx-rgb))] drop-shadow-[0_0_3px_rgb(var(--fx-rgb))]', corner)} />
+        ))}
+        <span className="fx-crosshair absolute left-1/2 top-1/2 aspect-square w-[64%] -translate-x-1/2 -translate-y-1/2" />
+        <span className="absolute left-1/2 top-1/2 aspect-square w-[46%] -translate-x-1/2 -translate-y-1/2 animate-fx-spin rounded-full border-2 border-dashed border-[color:rgb(var(--fx-rgb))] motion-reduce:animate-none" />
+        <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:rgb(var(--fx-rgb))] shadow-[0_0_8px_3px_rgb(var(--fx-rgb)/0.9)]" />
+        <span className="absolute left-1/2 top-1/2 aspect-square w-[56%] -translate-x-1/2 -translate-y-1/2 animate-fx-ping rounded-full border-2 border-[color:rgb(var(--fx-rgb))] motion-reduce:hidden" />
+      </span>
     </span>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
-import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion, supportsAdditiveAnimation } from '../../app/motion'
+import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
 import { fxVars } from './MatFx'
 
 /**
@@ -92,13 +92,29 @@ export const IMPACT_MS = 300
 const SHAKE_MS = 360
 const STRIKE_MS = 1050
 
-const SHAKE_FRAMES = [
-  { transform: 'translate(0, 0)' },
-  { transform: 'translate(-5px, 2px)' },
-  { transform: 'translate(5px, -2px)' },
-  { transform: 'translate(-3px, 0)' },
-  { transform: 'translate(0, 0)' },
+/** La sacudida, en px y en el plano de la casilla (una carta de costado se sacude a lo largo de su lado). */
+const SHAKE: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [-5, 2],
+  [5, -2],
+  [-3, 0],
+  [0, 0],
 ]
+
+/** Un número de píxeles para una curva CSS, sin notación científica (un coseno de 1e-16 sale 0). */
+const px = (value: number) => `${Math.round(value * 100) / 100}px`
+
+/**
+ * Un empujón como valores de `translate` en `replace` (la GPU lo compone sola; `composite: 'add'` corría en el hilo principal), sin pisar lo que el elemento ya tiene: suma
+ * su `translate` (la de pasar el mouse) y, con `local`, gira el empujón con su `transform` (una carta de costado), como cuando se sumaba a esa `transform`.
+ */
+function nudger(target: Element, local: boolean): (x: number, y: number) => string {
+  const style = getComputedStyle(target)
+  const [bx = 0, by = 0] = !style.translate || style.translate === 'none' ? [] : style.translate.split(' ').map(parseFloat)
+  const m = local && style.transform && style.transform !== 'none' && typeof DOMMatrixReadOnly === 'function' ? new DOMMatrixReadOnly(style.transform) : null
+
+  return (x, y) => `${px(bx + (m ? m.a * x + m.c * y : x))} ${px(by + (m ? m.b * x + m.d * y : y))}`
+}
 
 /** El atacante pone el cuerpo: se adelanta hasta `LUNGE_PX`, o el `LUNGE_SHARE` del camino si es más corto, y vuelve. Llega a la espada al impacto. */
 const LUNGE_PX = 18
@@ -108,11 +124,11 @@ const LUNGE_SHARE = 0.12
 export type Sacudida = 'strike' | 'life'
 
 /**
- * Sacude una carta o una casilla de vidas (`SHAKE_FRAMES`, sumada a lo que ya tenga; `delay`, lo que espera). Nunca corren dos a la vez en la misma casilla:
+ * Sacude una carta o una casilla de vidas (`SHAKE`, desde donde ya está; `delay`, lo que espera). Nunca corren dos a la vez en la misma casilla:
  * un ataque corta la de las vidas que estuviera, y una pérdida de vidas no hace nada si ya la sacude un ataque. Null si no se anima (sin soporte o con movimiento reducido).
  */
 export function sacudir(target: Element, quien: Sacudida, delay = 0): Animation | null {
-  if (!supportsAdditiveAnimation() || prefersReducedMotion()) {
+  if (typeof target.animate !== 'function' || prefersReducedMotion()) {
     return null
   }
 
@@ -126,11 +142,10 @@ export function sacudir(target: Element, quien: Sacudida, delay = 0): Animation 
     enCurso.filter((animation) => animation.id === 'life').forEach((animation) => animation.cancel())
   }
 
-  return target.animate(SHAKE_FRAMES, { id: quien, duration: SHAKE_MS, delay, easing: EASE_OUT, composite: 'add' })
-}
+  const at = nudger(target, true)
 
-/** Un número de píxeles para una curva CSS, sin notación científica (un coseno de 1e-16 sale 0). */
-const px = (value: number) => `${Math.round(value * 100) / 100}px`
+  return target.animate(SHAKE.map(([x, y]) => ({ translate: at(x, y) })), { id: quien, duration: SHAKE_MS, delay, easing: EASE_OUT })
+}
 
 /** Adónde salen las chispas del impacto (en rem, desde el centro del objetivo). */
 const SPARKS = [
@@ -178,22 +193,23 @@ export function AttackFx({ strike, onDone }: AttackFxProps) {
   }, [strike.key])
 
   // El atacante pone el cuerpo: se adelanta hacia el objetivo y vuelve, llegando a la espada al impacto (a mitad de la animación). Va con `translate`, la propiedad
-  // individual: se compone por fuera del giro de la carta, así se mueve en el plano del campo también si va de cabeza o de costado. Se suma (`composite: 'add'`) a lo que ya tenga.
+  // individual: se compone por fuera del giro de la carta, así se mueve en el plano del campo también si va de cabeza o de costado. Parte de la `translate` que ya tenga (`nudger`).
   const { attacker, len, ang } = strike
 
   useEffect(() => {
-    if (!supportsAdditiveAnimation() || prefersReducedMotion()) {
+    if (typeof attacker.animate !== 'function' || prefersReducedMotion()) {
       return
     }
 
     const reach = Math.min(LUNGE_PX, len * LUNGE_SHARE)
+    const at = nudger(attacker, false)
     const lunge = attacker.animate(
       [
-        { translate: '0px 0px', easing: EASE_IN_OUT },
-        { translate: `${px(Math.cos(ang) * reach)} ${px(Math.sin(ang) * reach)}`, offset: 0.5, easing: EASE_IN_OUT },
-        { translate: '0px 0px' },
+        { translate: at(0, 0), easing: EASE_IN_OUT },
+        { translate: at(Math.cos(ang) * reach, Math.sin(ang) * reach), offset: 0.5, easing: EASE_IN_OUT },
+        { translate: at(0, 0) },
       ],
-      { duration: 2 * IMPACT_MS, composite: 'add' },
+      { duration: 2 * IMPACT_MS },
     )
 
     return () => lunge.cancel()

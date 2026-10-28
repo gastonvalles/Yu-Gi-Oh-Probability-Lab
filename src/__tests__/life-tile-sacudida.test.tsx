@@ -42,7 +42,7 @@ describe('la casilla de vidas se sacude al bajar, como en el impacto', () => {
     view.rerender(tile(7000))
     expect(pedidas).toHaveLength(1)
     expect(pedidas[0]!.casilla).toBe(view.container.querySelector('[data-lp="mine"]'))
-    expect(pedidas[0]!.options).toEqual({ id: 'life', duration: 360, delay: 0, easing: EASE_OUT, composite: 'add' })
+    expect(pedidas[0]!.options).toEqual({ id: 'life', duration: 360, delay: 0, easing: EASE_OUT })
   })
 
   it('al subir la vida no se sacude', () => {

@@ -57,8 +57,8 @@ describe('las curvas de movimiento', () => {
   it('dar vuelta una carta en la mesa va con una sola curva de punta a punta: no se frena de canto', () => {
     const mat = readFileSync(path.join(SRC, 'components', 'probability', 'PracticeMat.tsx'), 'utf8')
 
-    expect(mat).toContain("cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, easing: EASE_IN_OUT, composite: 'add' })")
-    expect(mat.match(/const FLIP_FRAMES = \[[\s\S]*?\n\]/)?.[0]).not.toContain('easing')
+    expect(mat).toContain('const timing = { duration: FLIP_MS, easing: EASE_IN_OUT }')
+    expect(mat.match(/const flipFrames = [^\n]*/)?.[0]).not.toContain('easing')
   })
 
   it('ningún movimiento usa la palabra ease-out de la Web Animations API', () => {

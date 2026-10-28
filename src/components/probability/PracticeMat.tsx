@@ -45,8 +45,8 @@ import {
   type Placed,
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
+import { flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
-import { supportsAdditiveAnimation } from '../../app/motion'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, promptAbove, promptFit, promptTop, railsFit, type Box } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
@@ -431,14 +431,11 @@ const HAND_FLASH_MS = 900
 /**
  * Dar vuelta una carta (boca abajo ↔ boca arriba), en 3D: gira hasta quedar de canto y se abre del otro lado. Todo el giro va con una sola curva
  * (`EASE_IN_OUT`, en la llamada, de punta a punta): así pasa por el canto a velocidad y no se queda ahí (con una curva por mitad frenaba en el canto,
- * unos 115 ms de «rayita»). Se suma (`composite: 'add'`) a la `transform` que ya tiene la carta (su rotación de costado, el vuelo entre zonas) sin pisarla.
+ * unos 115 ms de «rayita»). Sin pisar la `transform` de la carta: sus cuadros la llevan delante (su rotación de costado; si se acuesta o se para, la de cómo queda:
+ * `ownTransform`), en `replace`, que la GPU compone sola; si vuela entre zonas, se suma al vuelo (`composite: 'add'`), como siempre.
  */
-const FLIP_FRAMES = [
-  { transform: 'perspective(700px) rotateY(0deg)' },
-  { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
-  { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5 },
-  { transform: 'perspective(700px) rotateY(0deg)' },
-]
+const FLIP_TURNS = ['0deg', '90deg', '-90deg', '0deg']
+const flipFrames = (turn: (angle: string) => Keyframe) => FLIP_TURNS.map((angle, index) => ({ ...turn(angle), ...(index === 1 || index === 2 ? { offset: 0.5 } : null) }))
 const FLIP_MS = 380
 
 const ZONE_LABELS: Record<MatSpot, string> = {
@@ -3206,9 +3203,14 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, st
     const wasFaceDown = previousPos.current === 'set'
     previousPos.current = placed.pos
 
-    if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion() || !supportsAdditiveAnimation()) return
+    const card = cardRef.current
+    if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion() || typeof card?.animate !== 'function') return
 
-    cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, easing: EASE_IN_OUT, composite: 'add' })
+    const timing = { duration: FLIP_MS, easing: EASE_IN_OUT }
+    if (!flying(card)) {
+      const own = ownTransform(card)
+      card.animate(flipFrames((angle) => ({ transform: `${own}perspective(700px) rotateY(${angle})` })), timing)
+    } else if (supportsAdditiveAnimation()) card.animate(flipFrames((angle) => ({ transform: `perspective(700px) rotateY(${angle})` })), { ...timing, composite: 'add' })
   }, [placed.pos])
 
   return (
