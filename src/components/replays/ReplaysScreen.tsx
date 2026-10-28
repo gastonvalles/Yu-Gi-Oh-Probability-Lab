@@ -16,6 +16,7 @@ import {
 } from '../../app/replays'
 import { useBriefLoading } from '../../app/use-brief-loading'
 import { useInfiniteList } from '../../app/use-infinite-list'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger, normalizeSearchText } from '../../app/utils'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
@@ -56,6 +57,7 @@ const channelLink = (key: ReplayChannel) => (text: string) => (
 )
 
 export function ReplaysScreen() {
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const entries = useMemo(getReplayEntries, [])
   // Lo que está al aire ahora en los canales oficiales: va arriba de los replays mientras haya algo.
   const live = useLiveStreams()
@@ -138,10 +140,10 @@ export function ReplaysScreen() {
       <LiveStreamsSection state={live} />
 
       <section id="replays-list" aria-labelledby="replays-list-title" className="grid gap-4">
-        <Heading level="section" id="replays-list-title" className="sr-only">
+        <Heading level="section" id="replays-list-title">
           {t('meta.replays.listTitle')}
         </Heading>
-        {/* Arriba, como la fila de categorías de YouTube: los chips (una fila que scrollea de costado) y el buscador. En el celular el buscador va primero. */}
+        {/* Arriba, como la fila de categorías de YouTube: los chips (una fila que scrollea de costado) y el buscador. En el celular el buscador va primero, en píldora. */}
         <div className="grid gap-3 min-[1101px]:grid-cols-[minmax(0,1fr)_auto] min-[1101px]:items-center min-[1101px]:gap-4">
           {filterDeck ? (
             <div className="flex">
@@ -169,6 +171,7 @@ export function ReplaysScreen() {
             label={t('meta.replays.searchLabel')}
             value={query}
             placeholder={t('meta.replays.searchPlaceholder')}
+            shape={isDesktop ? 'field' : 'pill'}
             className="min-w-[14rem] max-[1101px]:order-first min-[1101px]:w-72"
             onChange={setQuery}
           />
@@ -291,7 +294,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
         <span aria-hidden="true" title={REPLAYS.channels[video.channel].name} className={cx('grid size-9 place-items-center rounded-full text-micro font-extrabold', CHANNEL_AVATAR[video.channel])}>
           {CHANNEL_BADGE[video.channel]}
         </span>
-        <button type="button" className="grid min-w-0 content-start gap-0.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
+        <button type="button" className="grid min-h-11 min-w-0 content-start gap-0.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
           <strong className="line-clamp-2 text-body font-semibold leading-snug text-foreground">{title || label}</strong>
           <span className="truncate text-micro text-muted tabular-nums">{facts}</span>
         </button>
