@@ -64,6 +64,12 @@ const movesTransform = (animation: Animation) => (animation.effect as KeyframeEf
 const isTransition = (animation: Animation) => typeof CSSTransition === 'function' && animation instanceof CSSTransition
 
 /**
+ * La transición de `transform` que corre en el elemento, si hay. Una animación que la tapa (sale de su fin: `ownTransform`) la puede cancelar: dos animaciones de `transform` en un
+ * elemento no van juntas en la GPU (Chromium saca a la otra: «incompatible»).
+ */
+export const transformTransition = (element: Element) => (element.getAnimations?.() ?? []).find((animation) => isTransition(animation) && movesTransform(animation))
+
+/**
  * ¿Vuela? Otra animación (no su transición) ya mueve la `transform` del elemento (un vuelo entre zonas): ahí una animación nueva se suma (`composite: 'add'`), como siempre;
  * llevarle delante la base de este momento la dejaría clavada donde estaba.
  */
@@ -77,10 +83,20 @@ export function flying(element: Element): boolean {
  * sumándose con `add`), así que la carta ya se veía en su lugar.
  */
 export function ownTransform(element: Element): string {
-  const transition = (element.getAnimations?.() ?? []).find((animation) => isTransition(animation) && movesTransform(animation))
+  const transition = transformTransition(element)
   const base = transition ? String((transition.effect as KeyframeEffect).getKeyframes().at(-1)?.transform ?? 'none') : getComputedStyle(element).transform
 
   return !base || base === 'none' ? '' : `${base} `
+}
+
+/**
+ * Una animación sin relleno hacia adelante que terminó se cancela (no cambia lo que se ve): Chromium la sigue contando en el elemento y, terminada y de una
+ * Web Animation (que va arriba de las transiciones), le saca a la GPU cualquier transición de `transform` que llegue después («animación incompatible»). Pasaba
+ * con el reparto y el barajado: después, abrir o cerrar el abanico de la mano corría en el hilo principal.
+ */
+export function cancelWhenDone(animation: Animation): Animation {
+  animation.addEventListener?.('finish', () => animation.cancel())
+  return animation
 }
 
 /** ¿Pidió la persona reducir el movimiento? Se consulta en el momento (no se guarda). */
