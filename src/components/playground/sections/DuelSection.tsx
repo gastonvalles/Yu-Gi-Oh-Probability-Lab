@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
-import { HOLD_PRESS, Spotlight } from '../../probability/MatFx'
+import { FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from '../../probability/MatFx'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
@@ -81,6 +81,7 @@ export function DuelSection() {
       <StatTagSample duel={duel} />
       <MaterialSamples />
       <HoldSample />
+      <RingsSample />
       <ResizeHandleSample />
 
       <ArenaSamples />
@@ -303,6 +304,49 @@ function HoldSample() {
         <div role="group" aria-label={PILE_TITLES.deck} data-holding={held} className={cx(CELL, HOLD_PRESS)}>
           <CardBack className="h-full" />
         </div>
+      </div>
+    </Specimen>
+  )
+}
+
+/** Los aros de una carta de la mesa, como en el duelo: marcada como objetivo, activándose, que se puede atacar y señalada. */
+const RINGS: Array<{ key: string; label: string; attrs: Record<string, string> }> = [
+  { key: 'target', label: 'Objetivo', attrs: { 'data-targeted': 'true' } },
+  { key: 'flash', label: 'Se activa', attrs: { 'data-flash': 'true', 'data-flash-kind': 'activate' } },
+  { key: 'pick', label: 'Se puede atacar', attrs: { 'data-attack-target': 'true' } },
+  { key: 'point', label: 'Señalada', attrs: {} },
+]
+
+function RingsSample() {
+  const [run, setRun] = useState(0)
+
+  return (
+    <Specimen
+      title="Aros de una carta · objetivo, activar, atacable y señalar"
+      layout="column"
+      note={
+        <>
+          El aro rojo de un objetivo late (con la mira encima), el de una carta que se activa se enciende y se expande una vez (950 ms), el celeste de lo que se puede atacar respira y lo que se señala se enciende un rato y se va. Lo que late va en una capa con la sombra fija y se le anima sólo la opacidad (<Tag>fx-ring</Tag>, en <Tag>FX_CARD</Tag>; <Tag>data-attack-target</Tag> y <Tag>data-pointed</Tag> en cualquier casilla): lo mueve el compositor y el campo no se repinta en cada cuadro. Con el movimiento reducido, el aro queda quieto. Archivos: <Tag>index.css</Tag> (<Tag>fx-ring-breathe</Tag>, <Tag>fx-halo-glow</Tag>, <Tag>fx-halo-wave</Tag>, <Tag>fx-point-pulse</Tag>) y <Tag>probability/MatFx.tsx</Tag>.
+        </>
+      }
+    >
+      <Button variant="secondary" icon="refresh" onClick={() => setRun((count) => count + 1)}>
+        Repetir las animaciones
+      </Button>
+      <div className="grid grid-cols-4 gap-4">
+        {RINGS.map(({ key, label, attrs }) => (
+          <div key={`${key}:${run}`} className="grid justify-items-center gap-2">
+            <div role="group" aria-label={label} data-pointed={key === 'point' ? 'true' : undefined} className={cx(CELL_MONSTER, 'w-full')}>
+              <ZoneLines kind="monster" />
+              <div {...attrs} style={fxVars(key === 'flash' ? SPOTLIGHT_TONE.activate : 'red')} className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] w-[68.57%] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', FX_CARD)}>
+                <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />
+                {key === 'flash' ? <FxFrame tone={SPOTLIGHT_TONE.activate} shine /> : null}
+                {key === 'target' ? <TargetMark /> : null}
+              </div>
+            </div>
+            <span className="text-micro text-muted">{label}</span>
+          </div>
+        ))}
       </div>
     </Specimen>
   )
