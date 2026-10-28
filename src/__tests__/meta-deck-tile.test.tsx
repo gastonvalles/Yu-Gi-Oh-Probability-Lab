@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MetaDeck } from '../app/meta'
 import { MetaDeckTile } from '../components/meta/MetaDeckTile'
+import { ListGroup } from '../components/ui/ListRow'
 import { deckKindCounts, placementLook } from '../components/meta/meta-format'
 
 // Sin datos de las cartas: una carta que los datos no conocen cuenta como hand trap (3 copias = 3 hand traps).
@@ -103,12 +104,19 @@ describe('la tarjeta de un deck de torneo (escritorio)', () => {
 })
 
 describe('la fila de un deck de torneo (celular)', () => {
-  it('es un solo botón con el puesto primero y en claro, y el torneo y la fecha después', () => {
+  it('es una fila de la única tarjeta de la lista (sin caja propia): un solo botón con el puesto primero y en claro, y el torneo y la fecha después', () => {
     const onOpen = vi.fn()
 
-    render(<MetaDeckTile deck={DECK} layout="row" onOpen={onOpen} />)
+    render(
+      <ListGroup label="Decks">
+        <MetaDeckTile deck={DECK} layout="row" onOpen={onOpen} />
+      </ListGroup>,
+    )
 
     const row = screen.getByRole('button')
+
+    expect(within(screen.getByRole('list', { name: 'Decks' })).getAllByRole('listitem')).toHaveLength(1)
+    expect(row).not.toHaveClass('border')
 
     expect(row).toHaveTextContent(/^Ars Magna ElfnoteTop 8 · Belen WCQ Regional · /)
     expect(within(row).getByText('Top 8')).toHaveClass('text-foreground')
@@ -122,7 +130,11 @@ describe('la fila de un deck de torneo (celular)', () => {
   })
 
   it('la portada chica de la fila se pide a 320 px y la de la tarjeta de escritorio a 512: la fila no baja ni decodifica de más al desplazar la lista', () => {
-    const { container, rerender } = render(<MetaDeckTile deck={{ ...DECK, cover: 14558127 }} layout="row" onOpen={() => {}} />)
+    const { container, rerender } = render(
+      <ul>
+        <MetaDeckTile deck={{ ...DECK, cover: 14558127 }} layout="row" onOpen={() => {}} />
+      </ul>,
+    )
 
     expect(container.querySelector('img')).toHaveAttribute('src', '/api/card-image/cards_cropped/14558127.jpg?w=320')
 

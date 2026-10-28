@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { META_DECKS, buildTournamentsHash, countPlacements, filterMetaDecks, metaMonth, metaPlacements, readTournamentsHash, type MetaDeck, type MetaDeckFilter } from '../../app/meta'
 import { deckIdsWithReplay } from '../../app/replays'
@@ -17,6 +17,7 @@ import { EmptyState } from '../ui/EmptyState'
 import { FilterChips } from '../ui/FilterChips'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { ListGroup } from '../ui/ListRow'
 import { ScrollRow } from '../ui/ScrollRow'
 import { SearchField } from '../ui/SearchField'
 import { StepPage } from '../ui/StepPage'
@@ -27,11 +28,11 @@ import { MetaHeroSide } from './MetaHeroSide'
 
 /** Cuántos decks se suman cada vez que el final se acerca a la pantalla (cuatro filas de las seis columnas más anchas). */
 const DECKS_PER_PAGE = 24
-/** Desde acá (la mitad de una pantalla de escritorio) el deck es una tarjeta; más angosto, una fila: como en los replays, la grilla se llena a lo ancho sin dejar costados vacíos. */
+/** Desde acá (la mitad de una pantalla de escritorio) el deck es una tarjeta; más angosto, una fila de una sola tarjeta-lista (`ListGroup`), sin una caja por deck. */
 const CARD_LAYOUT_QUERY = '(min-width: 560px)'
-/** La grilla de tarjetas (y la de lugares vacíos de abajo): tantas columnas de 16,5 rem como entren, todas del mismo ancho; en el celular, filas de a una.
+/** La grilla de tarjetas (y la de lugares vacíos de abajo): tantas columnas de 16,5 rem como entren, todas del mismo ancho.
     Las tarjetas comparten filas (`grid-rows-subgrid`), así el nombre de dos líneas de una no corre la portada de las demás. */
-const GRID = 'stagger m-0 grid list-none gap-2 p-0 min-[560px]:grid-cols-[repeat(auto-fill,minmax(16.5rem,1fr))] min-[560px]:gap-3'
+const GRID = 'stagger m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(16.5rem,1fr))] gap-3 p-0'
 
 /** Lo que pide el link: el deck abierto (`#tournaments?deck=123`, si está entre los de la ventana) y el filtro por una carta o un nombre de deck. */
 function readLink(): { requestedDeck: number | null; deck: MetaDeck | null; filter: MetaDeckFilter | null } {
@@ -128,6 +129,9 @@ export function TournamentDecksScreen() {
   // Al cambiar de filtro (no al escribir: cada letra no es un cambio de lista) se ven los lugares vacíos un segundo, como en los replays.
   const refreshing = useBriefLoading(`${region}|${placements.join(',')}|${thisMonth}|${withReplay}|${filter?.cardId ?? ''}|${filter?.archetype ?? ''}`)
   const filteredCardName = filter?.cardId === undefined ? undefined : META_DECKS.cards[String(filter.cardId)]?.name
+  // Las filas del celular van todas en una tarjeta; las tarjetas de escritorio, en la grilla.
+  const deckList = (children: ReactNode) =>
+    layout === 'row' ? <ListGroup label={t('meta.tournaments.listTitle')}>{children}</ListGroup> : <div className={GRID}>{children}</div>
   const filterLabel =
     filter?.archetype ??
     (filter?.cardId === undefined ? null : filteredCardName === undefined ? t('meta.tournaments.filterThatCard') : t('meta.tournaments.filterCard', { name: filteredCardName }))
@@ -195,6 +199,7 @@ export function TournamentDecksScreen() {
             label={t('meta.tournaments.searchLabel')}
             value={query}
             placeholder={t('meta.tournaments.searchPlaceholder')}
+            shape="pill"
             className="min-w-[14rem] max-[1101px]:order-first min-[1101px]:w-72"
             onChange={setQuery}
           />
@@ -208,17 +213,21 @@ export function TournamentDecksScreen() {
           })}
         </p>
         {refreshing ? (
-          <div role="status" aria-label={t('meta.tournaments.loading')} aria-busy="true" className={GRID}>
-            {Array.from({ length: Math.min(DECKS_PER_PAGE, Math.max(decks.length, 3), 12) }, (_, slot) => (
-              <MetaDeckSkeleton key={slot} layout={layout} />
-            ))}
+          <div role="status" aria-label={t('meta.tournaments.loading')} aria-busy="true">
+            {deckList(
+              Array.from({ length: Math.min(DECKS_PER_PAGE, Math.max(decks.length, 3), 12) }, (_, slot) => <MetaDeckSkeleton key={slot} layout={layout} />),
+            )}
           </div>
         ) : decks.length > 0 ? (
-          <div className={GRID}>
-            {decks.slice(0, limit).map((deck) => (
-              <MetaDeckTile key={deck.id} deck={deck} layout={layout} onOpen={() => openDeck(deck)} />
-            ))}
-          </div>
+          deckList(
+            <>
+              {decks.slice(0, limit).map((deck) => (
+                <MetaDeckTile key={deck.id} deck={deck} layout={layout} onOpen={() => openDeck(deck)} />
+              ))}
+              {/* En el celular, lo que falta traer es una fila vacía más de la misma tarjeta. */}
+              {hasMore && layout === 'row' ? <MetaDeckSkeleton layout="row" /> : null}
+            </>,
+          )
         ) : (
           <EmptyState icon="search" title={t('meta.tournaments.noDecksTitle')}>
             {t('meta.tournaments.noDecksHint')}
@@ -227,10 +236,8 @@ export function TournamentDecksScreen() {
         {/* El final de lo mostrado: cuando se acerca a la pantalla se cargan más (mientras tanto, una fila de lugares vacíos). Sin scrollear (lector de pantalla, teclado) está el botón. */}
         {hasMore && !refreshing ? (
           <>
-            <div ref={sentinel} aria-hidden="true" className={GRID}>
-              {[0, 1, 2].map((slot) => (
-                <MetaDeckSkeleton key={slot} layout={layout} className={cx(slot === 1 && 'max-[560px]:hidden', slot === 2 && 'max-[560px]:hidden')} />
-              ))}
+            <div ref={sentinel} aria-hidden="true" className={layout === 'card' ? GRID : 'h-px'}>
+              {layout === 'card' ? [0, 1, 2].map((slot) => <MetaDeckSkeleton key={slot} layout="card" />) : null}
             </div>
             <Button variant="secondary" size="sm" className="sr-only focus-visible:not-sr-only focus-visible:justify-self-center" onClick={loadMore}>
               {t('meta.showMore', { count: formatInteger(Math.min(DECKS_PER_PAGE, decks.length - limit)) })}
