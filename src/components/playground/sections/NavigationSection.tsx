@@ -277,7 +277,7 @@ export function NavigationSection() {
       <Specimen
         title="Barra de arriba y buscador de la app (escritorio)"
         layout="free"
-        note={<>Como la de YouTube: a la izquierda la hamburguesa (contrae el menú lateral; se ilumina en ámbar) con la marca; en el centro el buscador de la app (<Tag>FeatureSearch</Tag>: escribís «vidas», «pdf», «banlist»… y lleva a la pantalla o abre la herramienta; entre los resultados están las cartas) y a la derecha las mascotas y el idioma, que ya no están en el menú lateral. También se abre con <Tag>/</Tag> y <Tag>Ctrl+K</Tag>; en el celular, con la lupa de la barra de arriba. No está en la práctica ni en la mesa de un duelo. Archivos: <Tag>shell/AppNavbar.tsx</Tag> <Tag>shell/FeatureSearch.tsx</Tag> <Tag>shell/feature-search.ts</Tag></>}
+        note={<>Como la de YouTube: a la izquierda la hamburguesa (contrae el menú lateral; se ilumina en ámbar) con la marca; en el centro el buscador de la app (<Tag>FeatureSearch</Tag>: escribís «vidas», «pdf», «banlist»… y lleva a la pantalla o abre la herramienta; entre los resultados están las cartas) y a la derecha las mascotas y el idioma, que ya no están en el menú lateral. También se abre con <Tag>/</Tag> y <Tag>Ctrl+K</Tag>; en el celular, con «Buscar» de la barra de abajo. No está en la práctica ni en la mesa de un duelo. Archivos: <Tag>shell/AppNavbar.tsx</Tag> <Tag>shell/FeatureSearch.tsx</Tag> <Tag>shell/feature-search.ts</Tag></>}
       >
         <div className="grid gap-3">
           <div className="overflow-hidden rounded-card border border-border-subtle">
@@ -302,10 +302,17 @@ export function NavigationSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Un botón por grupo; tocarlo abre una hoja que prolonga la barra (el mismo índigo, sin velo ni sombra; mide lo que mide su contenido): «Tu deck» con el estado de cada paso a la derecha, «Duelo» con el aviso de la sala en pausa y las demás con una línea que explica cada destino. Con una hoja abierta sólo su grupo va en ámbar; tocar el mismo grupo la cierra. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
+        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Cinco lugares: Tu deck · Descubrir · <b>Jugar</b> (el círculo violeta del centro, que asoma 12 px por arriba, separado por un aro del color del lienzo, sin sombra) · Cartas · Buscar (el buscador de la app, que bajó de la barra de arriba). Cada grupo abre una hoja que prolonga la barra (el mismo índigo, sin velo ni sombra): «Tu deck» con el estado de cada paso, «Jugar» con el aviso de la sala en pausa y las demás con una línea que explica cada destino. Lo abierto va en ámbar con una rayita arriba (el círculo, con un aro ámbar); con una hoja abierta, sólo su grupo. Arriba, la de verdad; abajo, Jugar abierto y la hoja de Cartas abierta. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
           <div className="grid gap-4">
-            <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle">
-              <MobileTabBar groups={groups} activeKey={active} openKey={sheetKey} onOpen={setSheetKey} placement="inline" />
+            {/* El `pt-4` deja ver lo que asoma el círculo, como el contenido de la pantalla que la barra deja libre. */}
+            <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle bg-background pt-4">
+              <MobileTabBar groups={groups} activeKey={active} openKey={sheetKey} onOpen={(key) => setSheetKey((current) => (current === key ? null : key))} onSearch={() => setFinding(true)} searchOpen={finding} placement="inline" />
+            </div>
+            <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle bg-background pt-4">
+              <MobileTabBar groups={groups} activeKey="life" openKey={null} onOpen={() => {}} onSearch={() => {}} placement="inline" />
+            </div>
+            <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle bg-background pt-4">
+              <MobileTabBar groups={groups} activeKey={active} openKey="cards" onOpen={() => {}} onSearch={() => {}} placement="inline" />
             </div>
             <GroupSheet
               group={groups.find((group) => group.key === sheetKey) ?? null}

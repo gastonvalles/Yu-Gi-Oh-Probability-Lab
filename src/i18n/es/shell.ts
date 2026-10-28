@@ -3,7 +3,7 @@ export const shell = {
   'shell.find.open': 'Buscar en la app',
   'shell.find.title': 'Buscar en YGOUltraLab',
   'shell.find.placeholder': 'Buscar cartas, expansiones, decks, jugadores…',
-  'shell.find.placeholderShort': 'Una carta, un código, un deck, un jugador…',
+  'shell.find.placeholderShort': 'Carta, código, deck o jugador',
   'shell.find.results': { one: '{count} resultado', other: '{count} resultados' },
   'shell.find.empty': 'No encontré nada con «{query}».',
   'shell.find.inCards': 'Buscar «{query}» entre las cartas',

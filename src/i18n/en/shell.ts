@@ -5,7 +5,7 @@ export const shell: Translated<typeof es> = {
   'shell.find.open': 'Search the app',
   'shell.find.title': 'Search YGOUltraLab',
   'shell.find.placeholder': 'Search cards, sets, decks, players…',
-  'shell.find.placeholderShort': 'A card, a code, a deck, a player…',
+  'shell.find.placeholderShort': 'Card, code, deck or player',
   'shell.find.results': { one: '{count} result', other: '{count} results' },
   'shell.find.empty': "I couldn't find anything for “{query}”.",
   'shell.find.inCards': 'Search “{query}” in cards',

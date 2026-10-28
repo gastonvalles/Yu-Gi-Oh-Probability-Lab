@@ -43,7 +43,7 @@ interface AppShellProps {
 /**
  * El armazón de toda la app: en escritorio, el menú lateral a la izquierda (con la hamburguesa que lo abre y lo contrae, y al final las redes y la privacidad) y, a la derecha, la pantalla (en todas ocupa
  * el mismo alto y es ella la que scrollea); en el celular, la barra de arriba con la hamburguesa (que abre el cajón de ajustes: idioma, copia de seguridad y legales), la barra de abajo con los cuatro
- * grupos (cada uno abre una hoja con sus opciones) y la pantalla. No hay pie en ninguna vista. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
+ * grupos (cada uno abre una hoja con sus opciones; Jugar en el centro, en un círculo) y el buscador de la app, y la pantalla. No hay pie en ninguna vista. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
 export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, contentScrollRef, contentScrollable = false, immersive = false, fitScreen = false, navbar = !immersive, onSheetOpen, searchAvailable = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
@@ -123,7 +123,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   }, [collapsed, isDesktop, bigWindow, immersive])
 
   return (
-    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', showNavbar && 'min-[1101px]:grid-rows-[auto_minmax(0,1fr)]', immersive ? 'max-[1101px]:h-dvh max-[1101px]:overflow-hidden' : 'max-[1101px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
+    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', showNavbar && 'min-[1101px]:grid-rows-[auto_minmax(0,1fr)]', immersive ? 'max-[1101px]:h-dvh max-[1101px]:overflow-hidden' : 'max-[1101px]:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]')}>
       {/* Es un botón y no un enlace: las rutas viajan en el hash, y un `href="#contenido"` cambiaría de pantalla. */}
       <button
         type="button"
@@ -134,8 +134,8 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
       </button>
       {showNavbar ? <AppNavbar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onSearch={openFind} onMascots={() => onSelect('mascots')} className="min-[1101px]:col-span-2" /> : null}
       {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
-      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && 'max-[1101px]:h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))]', ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
-        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onSearch={openFind} className="min-[1101px]:hidden" />}
+      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && 'max-[1101px]:h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))]', ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
+        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} className="min-[1101px]:hidden" />}
         <div
           ref={contentScrollRef}
           className={cx(
@@ -155,7 +155,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
         </div>
       </div>
       {/* La mesa a pantalla completa (práctica y duelo) trae sus propios controles abajo: sin barra. */}
-      {immersive ? null : <MobileTabBar groups={groups} activeKey={activeKey} openKey={openGroupKey} onOpen={(key) => {
+      {immersive ? null : <MobileTabBar groups={groups} activeKey={activeKey} openKey={openGroupKey} onSearch={openFind} searchOpen={findOpen} onOpen={(key) => {
           if (openGroupKey !== key) onSheetOpen?.(key)
           setOpenGroupKey((current) => (current === key ? null : key))
         }} className="min-[1101px]:hidden" />}

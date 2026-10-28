@@ -22,9 +22,12 @@ export const surface = {
   cardDanger: cx('rounded-card border shadow-card', TONE.danger.wash),
 } as const
 
+/** El campo sin su radio: la píldora (`SearchField shape="pill"`) le pone el suyo. */
+export const fieldSurface =
+  'border border-tint/12 bg-input text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-tint/20 hover:bg-input-hover focus:border-info/70 focus:shadow-[0_0_0_3px_rgb(var(--info-rgb)/0.18)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
+
 /** Campo de texto, select y textarea: lavanda como los demás controles, con borde fino que se enciende al enfocar. */
-export const field =
-  'rounded-control border border-tint/12 bg-input text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-tint/20 hover:bg-input-hover focus:border-info/70 focus:shadow-[0_0_0_3px_rgb(var(--info-rgb)/0.18)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
+export const field = cx('rounded-control', fieldSurface)
 
 /** Chips informativos (no interactivos). */
 export const chip = {
@@ -35,12 +38,14 @@ export const chip = {
  * Pastilla de selección (tipo de carta, atributo, nivel): lavanda en reposo y, elegida (aria-pressed), violeta con el texto blanco: lo elegido es violeta en toda la app
  * (el violeta es de los fondos y de la acción principal). Elegida, al pasar el mouse se aclara: tocarla la apaga.
  */
-export const choiceChip =
-  'inline-flex items-center justify-center rounded-control bg-lavender font-semibold text-foreground transition-[background-color,color] duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-primary aria-pressed:text-white aria-pressed:hover:bg-primary'
+export const choiceChipSurface =
+  'inline-flex items-center justify-center bg-lavender font-semibold text-foreground transition-[background-color,color] duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-primary aria-pressed:text-white aria-pressed:hover:bg-primary'
+/** La pastilla con el radio de los controles (los `FilterChips`, en cambio, son píldoras: `choiceChipSurface` + `rounded-full`). */
+export const choiceChip = cx('rounded-control', choiceChipSurface)
 
-/** Chip de un filtro puesto (una carta, un arquetipo, un filtro del buscador): está encendido, así que va en violeta como lo elegido; se toca para quitarlo. */
+/** Chip de un filtro puesto (una carta, un arquetipo, un filtro del buscador): está encendido, así que va en violeta como lo elegido; se toca para quitarlo. Es una píldora, como los `FilterChips` con los que comparte fila. */
 export const filterChip =
-  'inline-flex max-w-full items-center gap-1.5 rounded-control bg-primary px-3 py-1.5 pointer-coarse:min-h-11 text-micro font-semibold leading-none text-white transition-colors duration-150 hover:bg-primary/85 focus-visible:outline-none focus-visible:shadow-focus'
+  'inline-flex max-w-full items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 pointer-coarse:min-h-11 text-micro font-semibold leading-none text-white transition-colors duration-150 hover:bg-primary/85 focus-visible:outline-none focus-visible:shadow-focus'
 
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =
