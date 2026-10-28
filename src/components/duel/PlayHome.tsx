@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
-import { useAutoPrefs } from '../../app/auto-prefs'
+import { canRunAuto, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
@@ -13,16 +13,18 @@ import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
-import { Icon, type IconName } from '../ui/Icon'
+import { Icon } from '../ui/Icon'
+import { InfoTip } from '../ui/InfoTip'
+import { ListGroup, ListRow } from '../ui/ListRow'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
-import { TONE, type Tone } from '../ui/tone'
+import { ShortcutGrid, ShortcutTile } from '../ui/ShortcutGrid'
 import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
-import { LobbyBanner } from './LobbyBanner'
+import { textLink } from '../ui/typography'
 import { ArenaPanel } from './ArenaPanel'
 import { AutoRoomRow, useAutoRooms, type AutoRooms } from './AutoRoomRow'
-import { AutoDuelRow, HandtrapsRow } from './HandtrapPool'
+import { HandtrapsRow } from './HandtrapPool'
 import { formatName } from './room-chips'
 
 /** Lo que dice la búsqueda de «Jugar ahora» mientras pasa de verdad: se busca, se entra o se abre la tuya. */
@@ -55,31 +57,24 @@ interface PlayHomeProps {
 }
 
 /**
- * Una baldosa del lobby (como las de un menú de juego): un ícono en una chapa del color de su tono, el nombre y una línea que dice qué hace, sobre una tarjeta teñida. El color dice qué clase de entrada es
- * (violeta: lo tuyo, un amigo; ámbar: entrar con un dato; verde: entrenar sin riesgo; gris: las reglas). El nombre accesible es el título (o `label`): la línea de abajo es de apoyo.
+ * «Duelo automático (beta)», una fila de la tarjeta de ajustes de Jugar (con deck armado): prendido, «Entrenar solo» abre la mesa jugada contra el núcleo de reglas; apagado, la práctica
+ * manual de siempre. Lo largo va en la ⓘ (su globo, debajo de toda la tarjeta: `ListGroup` es `relative`). Se recuerda en el navegador (`app/auto-prefs.ts`). Un navegador que no puede correr el núcleo lo ve apagado y sin poder tocarlo, con el porqué.
  */
-function LobbyTile({ tone, icon, title, hint, label, disabled = false, expanded, popup = false, onClick }: { tone: Tone; icon: IconName; title: string; hint: string; label?: string; disabled?: boolean; expanded?: boolean; popup?: boolean; onClick: () => void }) {
+function AutoDuelRow() {
+  const prefs = useAutoPrefs()
+  const supported = canRunAuto()
+
   return (
-    <button
-      type="button"
-      aria-label={label ?? title}
-      aria-expanded={expanded}
-      aria-haspopup={popup ? 'dialog' : undefined}
-      disabled={disabled}
-      className={cx(
-        'group grid min-h-28 min-w-0 cursor-pointer content-between justify-items-start gap-3 rounded-card border p-3 text-left transition-[border-color,transform,opacity] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:border-tint/40 enabled:active:scale-[0.98] disabled:cursor-default disabled:opacity-45 motion-reduce:transition-none motion-reduce:enabled:active:scale-100',
-        TONE[tone].wash,
-      )}
-      onClick={onClick}
-    >
-      <span className={cx('grid size-10 place-items-center rounded-control border', TONE[tone].tint, TONE[tone].text)}>
-        <Icon name={icon} size={22} />
-      </span>
-      <span className="grid min-w-0 max-w-full gap-0.5">
-        <strong className="truncate text-body font-bold text-foreground">{title}</strong>
-        <span className="line-clamp-2 text-micro text-muted">{hint}</span>
-      </span>
-    </button>
+    <ListRow
+      title={t('auto.entry.switch')}
+      subtitle={supported ? t('auto.entry.short') : t('auto.entry.unsupported')}
+      end={
+        <span className="flex items-center gap-3">
+          {supported ? <InfoTip label={t('auto.entry.info')} anchor="parent">{t('auto.entry.hint')}</InfoTip> : null}
+          <Switch size="lg" checked={supported && prefs.duel} disabled={!supported} onChange={(on) => setAutoPref('duel', on)} label={t('auto.entry.switch')} />
+        </span>
+      }
+    />
   )
 }
 
@@ -95,6 +90,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
   const [search, setSearch] = useState<Search>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [codeOpen, setCodeOpen] = useState(false)
+  const [nameOpen, setNameOpen] = useState(false)
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
   const codeRef = useRef<HTMLInputElement | null>(null)
@@ -134,6 +130,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
 
   const busy = search !== null
   const format = getDeckFormatLabel(prefs.format)
+  const rules = rulesLine(prefs, autoRoom)
 
   // «Jugar ahora»: busca una sala pública compatible y entra; si no hay, abre una pública con las reglas que se recuerdan. Todo es lo que pasa de verdad, sin esperas de mentira.
   const playNow = async () => {
@@ -216,34 +213,43 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
 
           {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}</Callout>}
 
-          {/* Vos: el nombre (como te ve tu rival) y el deck, en una línea. El deck lleva al builder (tocarlo, o la acción principal sin deck): ahí se tocan las cartas antes de jugar. */}
-          <div className="flex items-center gap-2">
-            <FieldBox className="min-w-0 flex-1">
-              <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={MAX_NAME_LENGTH} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
-            </FieldBox>
-            <Button variant="secondary" size="sm" icon="cards" className="max-w-[58%] shrink-0" onClick={onOpenBuilder}>
-              <span className="truncate">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>
-            </Button>
-          </div>
+          {/* La portada (movimiento 4 de G): arriba el deck con que entrás (lleva al builder: ahí se tocan las cartas), el titular y lo que va a pasar; en la última fila, las reglas con que
+              entrás a la izquierda y la acción principal a la derecha, al pulgar (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
+          <section aria-label={t('duel.play.subtitle')} className="grid gap-3 rounded-panel border border-nav-raised bg-nav p-4 min-[1101px]:p-5">
+            <div className="flex items-center gap-3">
+              <span className="grid min-w-0 flex-1">
+                <span className="text-micro text-muted">{t('duel.room.deckTitle')}</span>
+                <span className="truncate text-body font-semibold text-foreground">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>
+              </span>
+              <button type="button" aria-label={t('duel.room.deckChange')} className={cx('inline-flex min-h-11 shrink-0 items-center rounded-control px-1 text-body', textLink)} onClick={onOpenBuilder}>
+                {t('duel.play.deckChange')}
+              </button>
+            </div>
+            <div className="grid gap-1">
+              <h2 className="m-0 text-title font-extrabold leading-tight text-foreground">{t('duel.play.subtitle')}</h2>
+              <p className="m-0 min-h-5 text-body text-muted" role="status" aria-live="polite">
+                {deckReady ? statusText : ''}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 border-t border-tint/18 pt-3">
+              {/* Sin «Automáticas (beta)»: eso lo dice el interruptor, dos tarjetas más abajo (cada dato una vez); el atajo de las reglas lo lleva entero. */}
+              <span className="grid min-w-0 flex-1 basis-28">
+                <span className="text-micro text-muted">{t('duel.play.rulesYours')}</span>
+                <span className="text-body font-semibold text-foreground">{rulesLine(prefs, false)}</span>
+              </span>
+              <Button variant={paused ? 'secondary' : 'primary'} icon="play" className="ml-auto" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
+                {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
+              </Button>
+            </div>
+          </section>
 
-          {/* La portada, como el banner de un lobby de juego: el titular, lo que va a pasar y la acción principal (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
-          <LobbyBanner title={t('duel.play.subtitle')}>
-            <p className="m-0 min-h-5 max-w-[18rem] text-body text-muted" role="status" aria-live="polite">
-              {deckReady ? statusText : ''}
-            </p>
-            <Button variant={paused ? 'secondary' : 'primary'} size="lg" icon="play" className="w-fit max-[420px]:w-full" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
-              {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
-            </Button>
-          </LobbyBanner>
-
-          {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). Debajo, con deck, el interruptor que decide qué mesa abre «Entrenar solo». */}
-          <div className="stagger grid grid-cols-2 gap-3">
-            <LobbyTile tone="brand" icon="link" title={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={challenge} />
-            <LobbyTile tone="info" icon="tag" title={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
-            <LobbyTile tone="success" icon="hand" title={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={onTrain} />
-            <LobbyTile tone="neutral" icon="gear" title={t('duel.play.rules')} hint={rulesLine(prefs, autoRoom)} label={`${t('duel.play.rules')} · ${rulesLine(prefs, autoRoom)}`} popup onClick={() => setRulesOpen(true)} />
-            {trainReady ? <AutoDuelRow /> : null}
-          </div>
+          {/* Las otras formas de entrar, cuatro atajos de un solo tinte: un amigo, un código, entrenar y las reglas. Lo que hace cada uno (o lo que le falta) lo dice el lector; apagado, el toque no hace nada. */}
+          <ShortcutGrid>
+            <ShortcutTile icon="link" label={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={() => !busy && deckReady && challenge()} />
+            <ShortcutTile icon="tag" label={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
+            <ShortcutTile icon="hand" label={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={() => trainReady && onTrain()} />
+            <ShortcutTile icon="gear" label={t('duel.play.rules')} hint={rules} popup onClick={() => setRulesOpen(true)} />
+          </ShortcutGrid>
           {codeOpen ? (
             <form
               className="grid gap-1.5"
@@ -278,6 +284,12 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
               </p>
             </form>
           ) : null}
+
+          {/* Lo que se ajusta, en una tarjeta con filas: el nombre (como te ve tu rival; se escribe en una hoja chica) y, con deck, el interruptor que decide qué mesa abre «Entrenar solo». */}
+          <ListGroup className="relative">
+            <ListRow title={t('duel.lobby.name')} subtitle={t('duel.lobby.namePlaceholder')} value={<span className="max-w-32 truncate">{name.trim() || t('duel.lobby.defaultName')}</span>} onClick={() => setNameOpen(true)} />
+            {trainReady ? <AutoDuelRow /> : null}
+          </ListGroup>
         </div>
 
         {/* La arena, al costado en escritorio (debajo en el celular): una tarjeta por sala que espera y por duelo en vivo. Sólo lo que dice el relay; sin relay no hay arena. */}
@@ -309,6 +321,19 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
         }}
       />
 
+      {/* El nombre, en una hoja chica que sale de abajo: se guarda mientras se escribe y Enter la cierra. Con el dedo no se abre el teclado solo (`opensKeyboard`). */}
+      <Modal isOpen={nameOpen} onClose={() => setNameOpen(false)} size="keypad" title={t('duel.lobby.name')}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            setNameOpen(false)
+          }}
+        >
+          <FieldBox>
+            <input data-initial-focus aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={MAX_NAME_LENGTH} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
+          </FieldBox>
+        </form>
+      </Modal>
     </>
   )
 }
@@ -414,7 +439,7 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, o
           />
         </RuleField>
 
-        {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, debajo de las baldosas.
+        {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, en la tarjeta de filas.
             Con rival: las reglas automáticas, el mismo interruptor que el del lobby. */}
         {solo ? <HandtrapsRow /> : <AutoRoomRow rooms={autoRooms} />}
 

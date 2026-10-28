@@ -14,7 +14,6 @@ import {
   type HandtrapConfig,
   type HandtrapPick,
 } from '../../app/handtraps'
-import { canRunAuto, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { useCardHits } from '../../app/use-card-hits'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -67,25 +66,6 @@ export function HandtrapsRow() {
           setChoosing(false)
         }}
       />
-    </div>
-  )
-}
-
-/**
- * «Duelo automático (beta)», en el lobby de Jugar, debajo de las baldosas (con deck armado): prendido, «Entrenar solo» abre la mesa jugada contra el núcleo de reglas; apagado, la
- * práctica manual de siempre. Se recuerda en el navegador (`app/auto-prefs.ts`). Un navegador que no puede correr el núcleo lo ve apagado y sin poder tocarlo, con el porqué.
- */
-export function AutoDuelRow() {
-  const prefs = useAutoPrefs()
-  const supported = canRunAuto()
-
-  return (
-    <div className="col-span-2 flex items-center justify-between gap-3">
-      <span className="grid min-w-0 gap-0.5">
-        <span className="text-body font-semibold text-foreground">{t('auto.entry.switch')}</span>
-        <span className="text-micro text-soft">{supported ? t('auto.entry.hint') : t('auto.entry.unsupported')}</span>
-      </span>
-      <Switch checked={supported && prefs.duel} disabled={!supported} onChange={(on) => setAutoPref('duel', on)} label={t('auto.entry.switch')} />
     </div>
   )
 }

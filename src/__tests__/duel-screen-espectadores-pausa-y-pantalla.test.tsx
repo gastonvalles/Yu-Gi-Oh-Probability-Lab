@@ -528,10 +528,13 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByText('Beto')).toBeInTheDocument()
   })
 
-  it('un nombre tiene hasta 20 caracteres', () => {
+  it('un nombre tiene hasta 20 caracteres: se escribe en la hoja que abre su fila, que muestra «Duelista» mientras no hay otro', () => {
     const view = render(<DuelScreen {...screenProps()} />)
+    const row = within(view.container).getByRole('button', { name: /^Tu nombre/ })
 
-    expect(within(view.container).getByLabelText('Tu nombre')).toHaveAttribute('maxlength', '20')
+    expect(row).toHaveTextContent('Duelista')
+    fireEvent.click(row)
+    expect(within(screen.getByRole('dialog', { name: 'Tu nombre' })).getByLabelText('Tu nombre')).toHaveAttribute('maxlength', '20')
   })
 
   it('quien llega con el mismo nombre que el anfitrión pasa a llamarse con un número (sin tocar el nombre guardado)', () => {

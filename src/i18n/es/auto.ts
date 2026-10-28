@@ -1,9 +1,11 @@
 /** El duelo automático (beta): las preguntas del núcleo de reglas, la barra, la línea del registro, la carga, los errores, el fin y la entrada. */
 export const auto = {
-  // La entrada: el interruptor del lobby de Jugar, debajo de las baldosas.
+  // La entrada: el interruptor del lobby de Jugar, en la tarjeta de filas debajo de los atajos.
   'auto.entry.switch': 'Duelo automático (beta)',
   // Vale con el simulador de handtraps encendido o apagado.
   'auto.entry.hint': 'El núcleo aplica las reglas, solo o con un amigo (en sala privada). Solo, el rival no juega su turno: sólo usa las handtraps que le des.',
+  'auto.entry.short': 'El núcleo aplica las reglas.',
+  'auto.entry.info': 'Qué hace el duelo automático',
   // El rival pasivo, dicho en la portada de carga y en «Más opciones».
   'auto.rival.passive': 'El rival no juega: sólo recibe. Sirve para probar tus jugadas con las reglas de verdad.',
   // El rival con las handtraps del simulador, en la portada de carga.

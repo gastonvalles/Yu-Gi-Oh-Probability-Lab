@@ -59,8 +59,8 @@ describe('la pantalla del duelo', () => {
     const view = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 3) })} />)
 
     expect(within(view.container).getByText(/hacen falta 5 cartas en el Main/)).toBeInTheDocument()
-    expect(within(view.container).getByRole('button', { name: 'Retar a un amigo' })).toBeDisabled()
-    expect(within(view.container).getByRole('button', { name: 'Entrenar solo' })).toBeDisabled()
+    expect(within(view.container).getByRole('button', { name: 'Retar a un amigo' })).toHaveAttribute('aria-disabled', 'true')
+    expect(within(view.container).getByRole('button', { name: 'Entrenar solo' })).toHaveAttribute('aria-disabled', 'true')
 
     click(view, 'Tengo un código')
     typeInto(view, 'Enlace o código', 'K7QF2M9X')
@@ -167,20 +167,20 @@ describe('la pantalla del duelo', () => {
   it('las reglas se recuerdan: «Guardar reglas» las deja para la próxima vez y se ven en el renglón del inicio', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 
-    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · TCG · 50 min · Single/ })).toBeInTheDocument()
+    expect(within(view.container).getByRole('button', { name: 'Reglas del duelo' })).toHaveAccessibleDescription(expect.stringMatching(/^TCG · 50 min · Single/))
     openRules(view)
     fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
     fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
 
-    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · TCG · Sin tiempo · Match/ })).toBeInTheDocument()
+    expect(within(view.container).getByRole('button', { name: 'Reglas del duelo' })).toHaveAccessibleDescription(expect.stringMatching(/^TCG · Sin tiempo · Match/))
     expect(JSON.parse(localStorage.getItem('ygo-lab:duel-prefs') ?? '{}')).toMatchObject({ limitMin: 0, match: true, format: 'tcg' })
 
     // Otra visita al inicio las encuentra, y el duelo que se abre con «Jugar ahora» las usa.
     view.unmount()
     const again = render(<DuelScreen {...screenProps()} />)
 
-    expect(within(again.container).getByRole('button', { name: /^Reglas del duelo · TCG · Sin tiempo · Match/ })).toBeInTheDocument()
+    expect(within(again.container).getByRole('button', { name: 'Reglas del duelo' })).toHaveAccessibleDescription(expect.stringMatching(/^TCG · Sin tiempo · Match/))
     click(again, 'Jugar ahora')
     const summary = within(within(again.container).getByTestId('room-summary'))
     expect(summary.getByText('Match')).toBeInTheDocument()
@@ -203,7 +203,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.change(within(cap).getByRole('textbox', { name: 'Puntos máximos' }), { target: { value: '130' } })
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
 
-    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · Genesys 130 pts · 50 min · Single/ })).toBeInTheDocument()
+    expect(within(view.container).getByRole('button', { name: 'Reglas del duelo' })).toHaveAccessibleDescription(expect.stringMatching(/^Genesys 130 pts · 50 min · Single/))
     expect(JSON.parse(localStorage.getItem('ygo-lab:duel-prefs') ?? '{}')).toMatchObject({ format: 'genesys', genesysCap: 130 })
   })
 
