@@ -21,6 +21,18 @@ describe('esqueleto de carga', () => {
     expect(skeleton?.className).not.toContain('animate-shimmer')
   })
 
+  // El `relative` del esqueleto va después de `absolute` en el CSS y le ganaba: el esqueleto quedaba en el flujo y empujaba la imagen (transparente) una carta más abajo.
+  // La carta lo recorta, pero la que se reparte no recorta mientras vuela y la mesa sacaba una barra de scroll (y se corría) en la primera mano.
+  it('el de una carta que no cargó va encima de la imagen, fuera del flujo', () => {
+    const { container } = render(
+      <Provider store={store}>
+        <CardArt remoteUrl="https://images.ygoprodeck.com/images/cards_small/46986414.jpg" name="Dark Magician" />
+      </Provider>,
+    )
+
+    expect(container.querySelector('[aria-hidden="true"]')?.className.split(' ')).toContain('absolute!')
+  })
+
   it('el de siempre sí lo lleva', () => {
     const { container } = render(<Skeleton />)
 
