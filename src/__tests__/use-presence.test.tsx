@@ -41,7 +41,7 @@ function fakeAnimate() {
   return { calls, finish: async () => act(async () => finish()) }
 }
 
-/** Un panel con su velo, cada uno con la entrada que lo deja salir (jsdom no carga el CSS de la app: el nombre de la entrada va en línea). */
+/** Un panel con su velo, cada uno con la entrada que lo deja salir (jsdom no carga el CSS de la app ni avisa `animationstart`: el nombre de la entrada va en línea, junto a su clase). */
 function Panel({ open, title }: { open: boolean; title: string }) {
   const root = useRef<HTMLDivElement>(null)
 
@@ -49,8 +49,8 @@ function Panel({ open, title }: { open: boolean; title: string }) {
     open,
     open ? (
       <div ref={root} data-testid="root">
-        <div data-testid="veil" style={{ animationName: 'nav-scrim' }} />
-        <div data-testid="panel" style={{ animationName: 'dialog-enter' }}>
+        <div data-testid="veil" className="animate-nav-scrim" style={{ animationName: 'nav-scrim' }} />
+        <div data-testid="panel" className="animate-dialog-enter" style={{ animationName: 'dialog-enter' }}>
           {title}
         </div>
       </div>
@@ -105,6 +105,46 @@ describe('usePresence: lo que se cierra también sale', () => {
 
     await finish()
     expect(screen.queryByTestId('root')).not.toBeInTheDocument()
+  })
+
+  it('cerrar no lee el estilo computado: cada salida es la inversa de la entrada que avisó su `animationstart`', () => {
+    const { calls } = fakeAnimate()
+    const exits: Record<string, Keyframe> = {
+      'dialog-enter': { opacity: 0, transform: 'scale(0.96)' },
+      pop: { opacity: 0, transform: 'scale(0.7)' },
+      'sheet-in': { opacity: 0, transform: 'translateY(10px)' },
+      'sheet-up': { transform: 'translateY(100%)' },
+      'side-drawer': { transform: 'translateX(100%)' },
+      'drawer-enter': { opacity: 0, transform: 'translateX(1.35rem)' },
+      'nav-drawer': { transform: 'translateX(-100%)' },
+      'nav-scrim': { opacity: 0 },
+    }
+    function Many({ open }: { open: boolean }) {
+      const root = useRef<HTMLDivElement>(null)
+
+      return usePresence(
+        open,
+        open ? (
+          <div ref={root} data-testid="root">
+            {Object.keys(exits).map((name) => (
+              <div key={name} data-testid={name} />
+            ))}
+            <div data-testid="still" />
+          </div>
+        ) : null,
+        () => [root.current],
+      )
+    }
+    const view = render(<Many open />)
+
+    // Lo que avisa el navegador al arrancar cada entrada (jsdom no anima: el evento va a mano y sube hasta la raíz).
+    for (const name of Object.keys(exits)) screen.getByTestId(name).dispatchEvent(Object.assign(new Event('animationstart', { bubbles: true }), { animationName: name }))
+    const computed = vi.spyOn(window, 'getComputedStyle')
+
+    view.rerender(<Many open={false} />)
+    expect(computed).not.toHaveBeenCalled()
+    expect(Object.fromEntries(calls.map(({ element, keyframes }) => [(element as HTMLElement).dataset.testid, keyframes[0]]))).toEqual(exits)
+    computed.mockRestore()
   })
 
   it('si la salida no avisa que terminó, la red lo desmonta a su duración más un margen', () => {

@@ -49,11 +49,16 @@ function useKept<T>(open: boolean, view: T) {
   return { shown: open ? view : leaving ? kept.current : null, leaving, stop }
 }
 
-/** Arranca la salida de cada raíz y de sus hijos directos (ahí van el velo y el panel) y devuelve cómo volver atrás si se abre de nuevo mientras sale. */
-function startExit(roots: ReadonlyArray<HTMLElement | null | undefined>, done: () => void): () => void {
+/**
+ * Arranca la salida de cada raíz y de sus hijos directos (ahí van el velo y el panel) y devuelve cómo volver atrás si se abre de nuevo mientras sale. La entrada de cada uno
+ * es la que avisó su `animationstart` (`entered`): leer el estilo computado al cerrar obligaba a recalcular el de toda la página en la tarea del toque o de Escape (100–160 ms en
+ * un celular). Sólo lo que lleva una animación (`animate-…`) y no la avisó (se cerró antes de que arrancara, o en jsdom) lee el estilo.
+ */
+function startExit(roots: ReadonlyArray<HTMLElement | null | undefined>, entered: WeakMap<Element, string>, done: () => void): () => void {
   const elements = roots.filter((root): root is HTMLElement => root instanceof HTMLElement)
   const running = elements.flatMap((root) => [root, ...Array.from(root.children)]).flatMap((element) => {
-    const frame = EXITS[getComputedStyle(element).animationName]
+    const name = entered.get(element) ?? (element.getAttribute('class')?.includes('animate-') ? getComputedStyle(element).animationName : undefined)
+    const frame = name === undefined ? undefined : EXITS[name]
     const animation = frame ? element.animate([frame], { duration: EXIT_MS, easing: EASE_OUT, fill: 'forwards' }) : null
 
     // Un `animate` de mentira (el de algunas pruebas) no trae `finished`: no cuenta como salida.
@@ -100,8 +105,20 @@ function startExit(roots: ReadonlyArray<HTMLElement | null | undefined>, done: (
  */
 export function usePresence<T>(open: boolean, view: T, roots: () => ReadonlyArray<HTMLElement | null | undefined>): T | null {
   const { shown, leaving, stop } = useKept(open, view)
-  const leave = useEffectEvent(() => startExit(roots(), stop))
+  const entered = useRef(new WeakMap<Element, string>())
+  const leave = useEffectEvent(() => startExit(roots(), entered.current, stop))
+  const listen = useEffectEvent(() => {
+    const elements = roots().filter((root): root is HTMLElement => root instanceof HTMLElement)
+    // El nombre de la entrada de cada raíz y de lo de adentro (el evento sube), sin leer estilos: es el que la salida da vuelta.
+    const record = (event: AnimationEvent) => {
+      if (event.target instanceof Element) entered.current.set(event.target, event.animationName)
+    }
 
+    elements.forEach((element) => element.addEventListener('animationstart', record))
+    return () => elements.forEach((element) => element.removeEventListener('animationstart', record))
+  })
+
+  useLayoutEffect(() => (open ? listen() : undefined), [open])
   useLayoutEffect(() => (leaving ? leave() : undefined), [leaving])
 
   return shown
