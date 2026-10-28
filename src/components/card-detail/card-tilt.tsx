@@ -25,7 +25,7 @@ export const TILT_IN_PLACE = 'group/art transition-[transform] duration-(--motio
 type Apply = (art: HTMLElement, axisX: number, axisY: number, degrees: number) => void
 
 /** Dónde está el puntero respecto del centro de la carta (−1 a 1 en cada eje) y cuánto se aleja: 0 en el centro, 1 en el borde. */
-function pointerOffset(art: HTMLElement, event: ReactPointerEvent<HTMLElement>) {
+function pointerOffset(art: HTMLElement, event: Pointer) {
   const rect = art.getBoundingClientRect()
   const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2
   const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2
@@ -33,8 +33,14 @@ function pointerOffset(art: HTMLElement, event: ReactPointerEvent<HTMLElement>) 
   return { x, y, strength: Math.min(1, Math.hypot(x, y)) }
 }
 
+/** Dónde está el puntero (lo único que se lee del evento). */
+interface Pointer {
+  clientX: number
+  clientY: number
+}
+
 /** Inclina la carta hacia el puntero. Sin tocar el estado de React: cada movimiento sólo escribe estilos. */
-function tiltTowards(art: HTMLElement, event: ReactPointerEvent<HTMLElement>, apply: Apply) {
+function tiltTowards(art: HTMLElement, event: Pointer, apply: Apply) {
   const { x, y, strength } = pointerOffset(art, event)
 
   // Se hunde del lado del puntero: el eje es perpendicular a su desplazamiento desde el centro.
@@ -82,8 +88,38 @@ export function foilReleased(element: HTMLElement) {
   element.style.removeProperty('--foil-d')
 }
 
+/**
+ * El último lugar del puntero de cada carta que espera su cuadro: el puntero (60–120 eventos por segundo con el dedo) se junta en una sola medida y una sola escritura por cuadro
+ * (Gastón, 2026-10-27: tirones en el celular), como el arrastre de la mesa (`use-mat-drag`).
+ */
+const pending = new WeakMap<HTMLElement, { pointer: Pointer; frame: number }>()
+
+function tiltNextFrame(art: HTMLElement, event: ReactPointerEvent<HTMLElement>, apply: Apply) {
+  const waiting = pending.get(art)
+  const pointer = { clientX: event.clientX, clientY: event.clientY }
+
+  if (waiting) {
+    waiting.pointer = pointer
+    return
+  }
+
+  const frame = requestAnimationFrame(() => {
+    const last = pending.get(art)
+
+    pending.delete(art)
+    if (last) tiltTowards(art, last.pointer, apply)
+  })
+
+  pending.set(art, { pointer, frame })
+}
+
 /** Vuelve la carta a su lugar (al irse el puntero o al soltarla). */
 export function levelOut(art: HTMLElement) {
+  const waiting = pending.get(art)
+
+  // Lo que esperaba su cuadro ya no inclina: la carta queda plana.
+  if (waiting) cancelAnimationFrame(waiting.frame)
+  pending.delete(art)
   art.style.rotate = ''
   art.style.transform = ''
   // El foil vuelve a moverse solo.
@@ -120,7 +156,7 @@ function handlersFor(apply: Apply) {
       // El mouse inclina al pasar por encima; el dedo, sólo mientras toca.
       if (event.pointerType !== 'mouse' && event.buttons === 0) return
 
-      tiltTowards(event.currentTarget, event, apply)
+      tiltNextFrame(event.currentTarget, event, apply)
     },
     onPointerLeave: (event: ReactPointerEvent<HTMLElement>) => {
       // Un dedo que se sale de la carta sigue tocando: la suelta `pointerup`.

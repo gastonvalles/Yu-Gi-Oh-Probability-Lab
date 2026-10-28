@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CardArt } from '../components/CardArt'
 import { CardFlip, FlipHint, useCardFlip } from '../components/card-detail/CardFlip'
@@ -10,9 +10,33 @@ import { foilFollowsTurn, foilReleased, tiltHandlers, tiltInPlaceHandlers } from
 // El aviso de la banlist lee el store: acá sólo importa cómo se mueve la carta.
 vi.mock('../components/CardLimitBadge', () => ({ CardLimitBadge: () => null }))
 
+// La inclinación espera su cuadro (`requestAnimationFrame`): un reloj a mano manda los cuadros pendientes.
+let cuadros = new Map<number, FrameRequestCallback>()
+let siguienteCuadro = 1
+const cuadro = () => {
+  const pendientes = [...cuadros.values()]
+
+  cuadros = new Map()
+  pendientes.forEach((callback) => callback(0))
+}
+
+beforeEach(() => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    const id = siguienteCuadro
+
+    siguienteCuadro += 1
+    cuadros.set(id, callback)
+    return id
+  })
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+    cuadros.delete(id)
+  })
+})
+
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   // @ts-expect-error: se vuelve a como lo deja jsdom (sin `matchMedia`).
   delete window.matchMedia
 })
@@ -26,6 +50,7 @@ describe('la carta se inclina en 3D', () => {
     const carta = screen.getByTestId('carta')
 
     fireEvent.pointerMove(carta, { pointerType: 'mouse', clientX: 40, clientY: 10 })
+    cuadro()
     expect(carta.style.transform).toContain('perspective(900px) rotate3d(')
     expect(tilting(carta)).toBe('true')
 
@@ -90,6 +115,7 @@ describe('la carta se inclina en 3D', () => {
     const frame = container.firstElementChild as HTMLElement
 
     fireEvent.pointerMove(frame, { pointerType: 'mouse', clientX: 30, clientY: 20 })
+    cuadro()
     expect(frame.style.transform).toContain('perspective(900px)')
     expect(frame.querySelector('[class*="glare"]')).not.toBeNull()
 
@@ -320,6 +346,7 @@ describe('girar la carta, con un gesto, en todas las direcciones', () => {
 
     // Pasando por encima, sin arrastrar, se inclina hacia el mouse.
     fireEvent.pointerMove(carta, { ...mouse, buttons: 0, clientX: 90, clientY: 100 })
+    cuadro()
     expect(carta.dataset.tilting).toBe('true')
 
     fireEvent.pointerDown(carta, { ...mouse, button: 0, clientX: 70, clientY: 100 })
@@ -328,10 +355,13 @@ describe('girar la carta, con un gesto, en todas las direcciones', () => {
     // Cada movimiento del mouse la volvería a encender: tiene que seguir apagada.
     fireEvent.pointerMove(carta, { ...mouse, clientX: 110, clientY: 104 })
     fireEvent.pointerMove(carta, { ...mouse, clientX: 120, clientY: 106 })
+    // Tampoco en el cuadro siguiente: lo que esperaba su cuadro se descarta al apagarla.
+    cuadro()
     expect(carta.dataset.tilting).toBe('false')
 
     fireEvent.pointerUp(carta, { ...mouse, buttons: 0, clientX: 120, clientY: 106 })
     fireEvent.pointerMove(carta, { ...mouse, buttons: 0, clientX: 90, clientY: 100 })
+    cuadro()
     expect(carta.dataset.tilting).toBe('true')
   })
 

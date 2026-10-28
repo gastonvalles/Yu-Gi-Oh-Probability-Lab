@@ -25,6 +25,9 @@ const SAMPLE_MS = 100
 /** Lo que tarda en terminar de bajar o subir al soltarla (ms): recorre media pantalla. */
 const SHEET_DRAG_MS = 200
 
+/** Dónde va la hoja mientras se arrastra `offset` px: sigue al dedo, entre arriba del todo y bajada. */
+const dragged = (lowered: boolean, offset: number) => `0 clamp(0px, calc(${lowered ? LOWERED : '0px'} + ${offset}px), ${LOWERED})`
+
 /** Si la hoja termina bajada después de un arrastre de `dy` px (positivo, hacia abajo) que se soltó a `velocity` px/ms; `travel` es su recorrido (0 si no se sabe). */
 export function settleLowered(wasLowered: boolean, dy: number, velocity: number, travel: number): boolean {
   if (Math.abs(velocity) >= FLICK_SPEED) return velocity > 0
@@ -51,6 +54,8 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
   // Lo arrastrado (px) mientras dura el arrastre; `null`, quieta.
   const [offset, setOffset] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
+  // El cuadro que espera para correr la hoja hasta el último lugar del dedo.
+  const frame = useRef(0)
   const moved = useRef(false)
   const gripRef = useRef<HTMLButtonElement | null>(null)
 
@@ -92,10 +97,20 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
         current.active = true
         moved.current = true
         event.currentTarget.setPointerCapture?.(event.pointerId)
+        sample(current, event)
+        // Un solo render al empezar (sin transición, siguiendo al dedo); después la hoja se corre por ref, una vez por cuadro: el diálogo y lo de adentro no se redibujan con cada
+        // movimiento del dedo (Gastón, 2026-10-27: tirones en el celular). React no pisa lo escrito: su `translate` no cambia hasta soltar.
+        setOffset(dy)
+        return
       }
 
       sample(current, event)
-      setOffset(dy)
+      cancelAnimationFrame(frame.current)
+      frame.current = requestAnimationFrame(() => {
+        const panel = panelRef.current
+
+        if (panel) panel.style.translate = dragged(lowered, dy)
+      })
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
       const current = drag.current
@@ -103,6 +118,7 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
       if (!current || current.id !== event.pointerId) return
 
       drag.current = null
+      cancelAnimationFrame(frame.current)
 
       if (!current.active) return
 
@@ -116,6 +132,7 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
     },
     onPointerCancel: () => {
       drag.current = null
+      cancelAnimationFrame(frame.current)
       setOffset(null)
     },
     // Lo que deja un arrastre no es un toque: el clic que viene detrás se descarta.
@@ -130,7 +147,7 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
 
   const style: CSSProperties = {
     // Mientras se arrastra sigue al dedo, entre arriba del todo y bajada; quieta, en su lugar.
-    translate: offset !== null ? `0 clamp(0px, calc(${lowered ? LOWERED : '0px'} + ${offset}px), ${LOWERED})` : lowered ? `0 ${LOWERED}` : undefined,
+    translate: offset !== null ? dragged(lowered, offset) : lowered ? `0 ${LOWERED}` : undefined,
     transition: offset !== null || prefersReducedMotion() ? 'none' : `translate ${SHEET_DRAG_MS}ms ${EASE_SNAP}`,
   }
 

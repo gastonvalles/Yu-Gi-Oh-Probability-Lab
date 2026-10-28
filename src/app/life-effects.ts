@@ -1,4 +1,4 @@
-import { createContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 import { STARTING_LP } from './life-calculator'
 import { prefersReducedMotion } from './motion'
@@ -12,12 +12,17 @@ interface AnimatedNumberOptions {
   ease?: (progress: number) => number
   /** Redondea a entero (las vidas). Sin esto el valor pasa por los decimales (el porcentaje de un anillo) y llega exacto al final. */
   round?: boolean
+  /**
+   * Dónde se ve el número (el elemento que lo lleva como único texto). Con esto, cada cuadro escribe el texto ahí y React se entera sólo al final: contar no redibuja el componente
+   * en cada cuadro (Gastón, 2026-10-27: tirones en el celular durante un ataque). Lo que devuelve el hook es el valor del principio hasta que termina.
+   */
+  into?: RefObject<HTMLElement | null>
 }
 
 const easeOutCubic = (progress: number) => 1 - (1 - progress) ** 3
 
 /** El número de LP se mueve hasta el valor nuevo en vez de saltar (salvo con movimiento reducido). */
-export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = easeOutCubic, round = true }: AnimatedNumberOptions = {}): number {
+export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = easeOutCubic, round = true, into }: AnimatedNumberOptions = {}): number {
   const [shown, setShown] = useState(target)
   const shownRef = useRef(target)
 
@@ -25,8 +30,14 @@ export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = 
   useLayoutEffect(() => {
     const from = shownRef.current
 
+    // El texto que se escribió a mano (un conteo cortado) también queda en el valor nuevo: si el estado no cambia, React no lo toca.
+    const show = (value: number) => {
+      if (into?.current) into.current.textContent = String(value)
+    }
+
     if (from === target || ms <= 0 || prefersReducedMotion()) {
       shownRef.current = target
+      if (from !== target) show(target)
       setShown(target)
       return
     }
@@ -44,7 +55,8 @@ export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = 
       const value = round ? Math.round(next) : next
 
       shownRef.current = value
-      setShown(value)
+      show(value)
+      if (progress >= 1 || !into?.current) setShown(value)
 
       if (progress < 1) {
         frame = requestAnimationFrame(step)
@@ -54,7 +66,7 @@ export function useAnimatedNumber(target: number, { ms = 320, delay = 0, ease = 
     frame = requestAnimationFrame(step)
 
     return () => cancelAnimationFrame(frame)
-  }, [target, ms, delay, ease, round])
+  }, [target, ms, delay, ease, round, into])
 
   return shown
 }
@@ -90,7 +102,7 @@ export function lifeCountMs(delta: number): number {
  * El número de unas vidas que cuenta hasta el valor nuevo, con la duración de su cambio (`lifeCountMs`). La duración se fija en el render que cambia el valor
  * (con `useState`, al cambiar el objetivo): un re-render a mitad del conteo no la vuelve a calcular ni reinicia el conteo.
  */
-export function useLifeNumber(target: number): number {
+export function useLifeNumber(target: number, into?: RefObject<HTMLElement | null>): number {
   const [count, setCount] = useState(() => ({ target, ms: LIFE_COUNT_MIN_MS }))
   let current = count
 
@@ -99,7 +111,7 @@ export function useLifeNumber(target: number): number {
     setCount(current)
   }
 
-  return useAnimatedNumber(target, { ms: current.ms })
+  return useAnimatedNumber(target, into ? { ms: current.ms, into } : { ms: current.ms })
 }
 
 /** Al cambiar, el LP se pinta un momento de verde (subió) o rojo (bajó). */

@@ -2221,8 +2221,11 @@ export function PracticeMat({
       chain.style.translate = ''
       chain.querySelector<HTMLElement>('[data-chain-list]')?.style.removeProperty('max-height')
     }
+    // Una sola fase de lectura (Gastón, 2026-10-27: tirones en el celular): primero se borra todo lo que dejó la vez anterior (la caja sin correr, la pila sin subir ni acortar),
+    // después se mide todo junto y al final se escribe; lo de la pila se calcula ya subido (`lift`), sin volver a medirla. Un solo recálculo de la mesa en vez de tres.
     const place = () => {
       box.style.translate = ''
+      unband()
       const layer = box.parentElement!.getBoundingClientRect()
       const at = box.getBoundingClientRect()
       const rects = (selector: string) => [...section.querySelectorAll(selector)].map((element) => element.getBoundingClientRect())
@@ -2235,7 +2238,6 @@ export function PracticeMat({
         if (top !== at.top) box.style.translate = `0 ${Math.round(top - at.top)}px`
       }
 
-      unband()
       if (box.querySelector('[data-minimized]')) {
         const pill = chainRef.current?.querySelector('[data-testid="chain-notice"]')
 
@@ -2251,13 +2253,12 @@ export function PracticeMat({
       const pile = notice ? [notice.getBoundingClientRect()] : []
       const chain = notice && floor !== undefined ? chainRef.current! : null
       let ceiling = min
+      let lift = 0
 
       if (chain && notice) {
         // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
-        const lift = rails || section.querySelector('[data-lane]') ? 0 : Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - min)))
-
-        chain.style.translate = lift > 0 ? `0 ${-lift}px` : ''
-        ceiling = Math.max(min, (notice.firstElementChild ?? notice).getBoundingClientRect().bottom + 8)
+        lift = rails || section.querySelector('[data-lane]') ? 0 : Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - min)))
+        ceiling = Math.max(min, (notice.firstElementChild ?? notice).getBoundingClientRect().bottom - lift + 8)
       }
       const among = (top: number) => (obstacles: readonly Box[]) => {
         const above = floor === undefined ? null : promptAbove(at, obstacles, top, Math.min(floor, max))
@@ -2271,12 +2272,15 @@ export function PracticeMat({
         promptFit(among(ceiling), [...glows, ...rects(KEEP_CARDS), ...(chain ? [] : pile)], rects(MONSTER_CARDS)) ??
         ((above) => ({ top: above ?? promptTop(at, [...pile, ...strip], min, max) ?? promptTop(at, [...glows, ...strip], min, max) ?? (strip.length > 0 ? promptTop(at, strip, min, max) : null) ?? at.top, above }))(floor === undefined ? null : promptAbove(at, glows, min, Math.min(floor, max)))
       const list = chain?.querySelector<HTMLElement>('[data-chain-list]')
+      const listBox = list?.getBoundingClientRect()
 
-      if (chain && list) {
-        const room = spot.top - 8 - list.getBoundingClientRect().top
+      // Las escrituras, todas al final.
+      if (chain) chain.style.translate = lift > 0 ? `0 ${-lift}px` : ''
+      if (chain && list && listBox) {
+        const room = spot.top - 8 - (listBox.top - lift)
 
         if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
-        else if (room < list.getBoundingClientRect().height) list.style.maxHeight = `${Math.floor(room)}px`
+        else if (room < listBox.height) list.style.maxHeight = `${Math.floor(room)}px`
       }
       move(spot.top)
     }

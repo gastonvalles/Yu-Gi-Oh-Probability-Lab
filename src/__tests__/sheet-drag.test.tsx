@@ -117,6 +117,39 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('mientras se arrastra sigue al dedo una vez por cuadro (lo escribe en la hoja, sin redibujar el diálogo) y al soltarla vuelve a mandar React', () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    let next = 1
+
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(next, callback)
+      next += 1
+      return next - 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id))
+    render(viewer('gy'))
+    const grip = within(screen.getByRole('dialog')).getByRole('button', { name: 'Bajar la hoja' })
+    const base = { pointerId: 5, pointerType: 'touch', isPrimary: true, buttons: 1, clientX: 120 }
+    const moved = () => document.querySelector<HTMLElement>('[style*="translate"]')?.style.translate ?? ''
+
+    fireEvent.pointerDown(grip, { ...base, button: 0, clientY: 100 })
+    fireEvent.pointerMove(grip, { ...base, clientY: 120 })
+    expect(moved()).toContain('+ 20px')
+    fireEvent.pointerMove(grip, { ...base, clientY: 150 })
+    const waiting = frames.size
+
+    fireEvent.pointerMove(grip, { ...base, clientY: 170 })
+    // Dos movimientos en el mismo cuadro: un solo cuadro pedido, el del último.
+    expect(frames.size).toBe(waiting)
+    expect(moved()).toContain('+ 20px')
+    frames.forEach((callback) => callback(0))
+    expect(moved()).toContain('+ 70px')
+    fireEvent.pointerUp(grip, { ...base, buttons: 0, clientY: 170 })
+    expect(grip).toHaveAttribute('aria-expanded', 'false')
+    expect(moved()).not.toContain('clamp(')
+    vi.unstubAllGlobals()
+  })
+
   it('un arrastre corto no la baja ni la sube, el de la grilla (que scrollea) no la mueve, y bajada la sube arrastrarla para arriba', () => {
     render(viewer('gy'))
     const dialog = within(screen.getByRole('dialog'))
