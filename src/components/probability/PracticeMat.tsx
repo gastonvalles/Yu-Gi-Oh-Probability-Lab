@@ -508,6 +508,78 @@ function prefersReducedMotion(): boolean {
 /** Lo que hay que dibujar de un ataque: sus puntos en pantalla; nada si se pidió reducir el movimiento o no hay de dónde salir. */
 const strikeOf = (spec: StrikeSpec): Strike | null => (prefersReducedMotion() ? null : measureStrike(spec))
 
+/**
+ * Lo que se ve con un paso además del movimiento de las cartas: la carta que destella (activada, mostrada, declarada o marcada como objetivo; la `key` repite el destello si pasa dos veces
+ * seguidas), las cartas grandes del centro (activar, mostrar, declarar y, al reproducir un combo, lo que mueve cada paso), la zona donde cae un monstruo, el cartel de la fase nueva y el marco
+ * de la mano cuando recibe una carta. Cada uno se va solo a su tiempo (`FX_MS`, contado desde que se dibuja).
+ */
+interface MatFx {
+  flash: { id: string; key: number; kind: SpotlightKind } | null
+  stage: { ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null
+  landing: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean; key: number } | null
+  banner: { phase: MatPhase; turn: number | null; key: number } | null
+  handFlash: number | null
+}
+
+const NO_FX: MatFx = { flash: null, stage: null, landing: null, banner: null, handFlash: null }
+const FX_MS: Record<keyof MatFx, number> = { flash: ACTIVATE_MS, stage: ACTIVATE_MS, landing: LANDING_MS, banner: BANNER_MS, handFlash: HAND_FLASH_MS }
+const FX_NAMES = Object.keys(FX_MS) as (keyof MatFx)[]
+const fxKeyOf = (fx: MatFx, name: keyof MatFx): number | null => {
+  const item = fx[name]
+
+  return item === null ? null : typeof item === 'number' ? item : item.key
+}
+
+/**
+ * Los efectos de la mesa y el paso del que salieron. `step` es nuevo con cada paso que avanza (la jugada, para lo que se mide en la página: la espada de un ataque, el barajado) o `cut` al
+ * deshacer o saltar; `null` si el paso no trae nada.
+ */
+interface FxStep {
+  cursor: number
+  actions: MatSession['actions']
+  initial: MatSession['initial']
+  replay: MatSession['replay']
+  fx: MatFx
+  step: { action: MatAction; shuffle: boolean } | { cut: true } | null
+}
+
+/**
+ * Los efectos del paso nuevo (puro: lo calcula la mesa en el mismo dibujo del paso). Avanzar un paso los trae; deshacer, saltar a otro paso, una mano nueva o cargar otro combo corta lo que
+ * estaba en curso (no era de este paso). `pendingId`: la carta que estaba soltada en una zona (esperando) hasta la jugada anterior; ya está ahí, así que su destello no espera ningún vuelo.
+ */
+function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | null): FxStep {
+  const at = { cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay }
+
+  if (session.cursor !== previous.cursor + 1) return { ...at, fx: NO_FX, step: { cut: true } }
+
+  const action = session.actions[session.cursor - 1]
+
+  if (!action) return { ...at, fx: previous.fx, step: null }
+
+  const effects = matEffects(replayMat(session.initial, session.actions, session.cursor - 1), action)
+  const key = Date.now()
+  const { fx } = previous
+
+  return {
+    ...at,
+    step: { action, shuffle: Boolean(effects.shuffle) },
+    fx: {
+      flash: effects.spotlight ? { ...effects.spotlight, key } : fx.flash,
+      // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo o atacar, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
+      // Un paso que no muestra nada saca las cartas del paso anterior (que seguirían con la línea de éste).
+      stage:
+        effects.spotlight && effects.spotlight.kind !== 'target' && effects.spotlight.kind !== 'attack'
+          ? { ids: effects.spotlight.ids ?? [effects.spotlight.id], kind: effects.spotlight.kind, step: session.cursor, key }
+          : effects.showcase && session.replay
+            ? { ...effects.showcase, step: session.cursor, key }
+            : null,
+      landing: effects.landing ? { ...effects.landing, flies: effects.landing.flies && !('id' in action && action.id === pendingId), key } : fx.landing,
+      banner: effects.banner ? { ...effects.banner, key } : fx.banner,
+      handFlash: effects.hand ? key : fx.handFlash,
+    },
+  }
+}
+
 export function PracticeMat({
   session,
   state,
@@ -690,14 +762,10 @@ export function PracticeMat({
   // Celular: la pregunta de terminar el turno (se abre al tocar el botón de la End Phase).
   const [endingTurn, setEndingTurn] = useState(false)
   const [counterMode, setCounterMode] = useState<1 | -1 | null>(null)
-  // La carta que acaba de destacarse (activada, mostrada, declarada o marcada como objetivo) destella un instante; la `key` repite el destello si pasa dos veces seguidas.
-  const [flash, setFlash] = useState<{ id: string; key: number; kind: SpotlightKind } | null>(null)
-  // La zona donde acaba de caer un monstruo y el cartel de la fase nueva: cada uno se va solo.
-  const [landing, setLanding] = useState<{ spot: MatSpot; index: number; tone: LandingTone; flies: boolean; key: number } | null>(null)
-  const [banner, setBanner] = useState<{ phase: MatPhase; turn: number | null; key: number } | null>(null)
-  // Las cartas grandes del centro (activar, mostrar, declarar y, al reproducir un combo, lo que mueve cada paso) y el marco de la mano cuando recibe una carta.
-  const [stage, setStage] = useState<{ ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null>(null)
-  const [handFlash, setHandFlash] = useState<number | null>(null)
+  // Lo que se ve con cada paso (el destello, las cartas grandes del centro, la zona donde cae un monstruo, el cartel de la fase y el marco de la mano): un solo estado (`MatFx`), ver abajo.
+  const [fxStep, setFxStep] = useState<FxStep>(() => ({ cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay, fx: NO_FX, step: null }))
+  const { fx } = fxStep
+  const { flash, landing, banner, stage, handFlash } = fx
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
@@ -723,86 +791,80 @@ export function PracticeMat({
   // En automático, Escape cancela lo que se elige en la mesa (cartas, Sacrificios) o es «No responder» en una cadena, como su botón.
   useEscapeKey(() => duel?.auto?.cancel?.(), Boolean(duel?.auto?.cancel))
 
-  useEffect(() => {
-    if (!flash) return
-    const timer = window.setTimeout(() => setFlash(null), ACTIVATE_MS)
-    return () => window.clearTimeout(timer)
-  }, [flash])
-
-  useEffect(() => {
-    if (!stage) return
-    const timer = window.setTimeout(() => setStage(null), ACTIVATE_MS)
-    return () => window.clearTimeout(timer)
-  }, [stage])
-
-  useEffect(() => {
-    if (handFlash === null) return
-    const timer = window.setTimeout(() => setHandFlash(null), HAND_FLASH_MS)
-    return () => window.clearTimeout(timer)
-  }, [handFlash])
-
-  useEffect(() => {
-    if (!landing) return
-    const timer = window.setTimeout(() => setLanding(null), LANDING_MS)
-    return () => window.clearTimeout(timer)
-  }, [landing])
-
-  useEffect(() => {
-    if (!banner) return
-    const timer = window.setTimeout(() => setBanner(null), BANNER_MS)
-    return () => window.clearTimeout(timer)
-  }, [banner])
-
   // Los efectos salen con cada paso que avanza (jugadas propias y replay por igual): ver `matEffects`. Deshacer o saltar de paso no los repite.
-  const lastCursorRef = useRef(session.cursor)
-  // La carta que estaba soltada en una zona (esperando) hasta la jugada anterior: ya está ahí, así que su destello no espera ningún vuelo.
+  // Se fijan en el mismo dibujo del paso (un `setState` durante el render: React rehace la mesa al instante, antes de dibujar los hijos), no en un efecto que la volvía a dibujar entera
+  // justo cuando despegan los vuelos. `pendingRef` es la carta que esperaba en una zona hasta la jugada anterior (la escribe un efecto de más abajo, después de cada dibujo).
   const pendingRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    const previous = lastCursorRef.current
-    lastCursorRef.current = session.cursor
+  if (fxStep.cursor !== session.cursor || fxStep.actions !== session.actions || fxStep.initial !== session.initial || fxStep.replay !== session.replay) {
+    setFxStep(nextFxStep(fxStep, session, pendingRef.current))
+  }
 
-    if (session.cursor !== previous + 1) {
-      // Deshacer, saltar a otro paso, una mano nueva o cargar otro combo: lo que estaba en curso se corta (no era de este paso).
-      setFlash(null)
-      setStage(null)
-      setLanding(null)
-      setBanner(null)
-      setHandFlash(null)
+  // Lo que se mide en la página va después del dibujo: la espada de un ataque (del atacante a su objetivo, a una carta del rival o directo a su barra de vida; sin rival, al borde de la mesa)
+  // y el barajado (tocar el deck o sumar una carta a la mano: el deck con su animación, la mano carta por carta). Deshacer o saltar de paso corta la espada.
+  const { step } = fxStep
+
+  useEffect(() => {
+    if (!step) return
+    if ('cut' in step) {
       setStrike(null)
       return
     }
 
-    const action = session.actions[session.cursor - 1]
+    const { action } = step
 
-    if (!action) return
-
-    const effects = matEffects(replayMat(session.initial, session.actions, session.cursor - 1), action)
-    const key = Date.now()
-
-    if (effects.spotlight) setFlash({ ...effects.spotlight, key })
-    // Atacar no agranda la carta: la espada va del atacante a su objetivo (a una carta del rival, o directo a su barra de vida; sin rival, al borde de la mesa).
     if (action.type === 'attack') {
       setStrike(strikeOf({ from: `[data-card-id="${action.id}"]`, to: action.target === undefined ? undefined : `[data-rival-card-id="${action.target}"]`, direct: 'theirs', bounds: sectionRef.current }))
     }
-    // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo o atacar, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
-    // Un paso que no muestra nada saca las cartas del paso anterior (que seguirían con la línea de éste).
-    setStage(
-      effects.spotlight && effects.spotlight.kind !== 'target' && effects.spotlight.kind !== 'attack'
-        ? { ids: effects.spotlight.ids ?? [effects.spotlight.id], kind: effects.spotlight.kind, step: session.cursor, key }
-        : effects.showcase && session.replay
-          ? { ...effects.showcase, step: session.cursor, key }
-          : null,
-    )
-    if (effects.landing) setLanding({ ...effects.landing, flies: effects.landing.flies && !('id' in action && action.id === pendingRef.current), key })
-    if (effects.banner) setBanner({ ...effects.banner, key })
-    if (effects.hand) setHandFlash(key)
-    // Tocar el deck o sumar una carta a la mano: los dos se barajan (el deck con su animación, la mano carta por carta).
-    if (effects.shuffle) {
+    if (step.shuffle) {
       setShuffleKey((current) => current + 1)
       riffle(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])
     }
-  }, [session.cursor, session.actions, session.initial, session.replay])
+  }, [step])
+
+  // Cada efecto se va solo, `FX_MS` después de dibujarse (`shownRef`: cuándo se dibujó cada uno, por su `key`). Un solo temporizador, al más próximo (y de ahí al siguiente): los que vencen
+  // juntos (el destello y las cartas grandes de una activación) se van en un solo dibujo.
+  const shownRef = useRef(new Map<number, number>())
+
+  useEffect(() => {
+    const now = Date.now()
+    const shown = new Map<number, number>()
+    let ends = FX_NAMES.flatMap((name) => {
+      const key = fxKeyOf(fx, name)
+
+      if (key === null) return []
+      shown.set(key, shownRef.current.get(key) ?? now)
+
+      return [{ name, key, end: shown.get(key)! + FX_MS[name] }]
+    })
+    let timer = 0
+    const arm = () => {
+      if (ends.length === 0) return
+      timer = window.setTimeout(
+        () => {
+          const at = Date.now()
+          const gone = ends.filter(({ end }) => end <= at + 2)
+
+          ends = ends.filter(({ end }) => end > at + 2)
+          // Sólo si sigue siendo el mismo (otro paso pudo haber traído uno nuevo en su lugar).
+          setFxStep((current) => {
+            const left = { ...current.fx }
+
+            for (const { name, key } of gone) if (fxKeyOf(left, name) === key) left[name] = null
+
+            return FX_NAMES.some((name) => left[name] !== current.fx[name]) ? { ...current, fx: left } : current
+          })
+          arm()
+        },
+        Math.min(...ends.map(({ end }) => end)) - Date.now(),
+      )
+    }
+
+    shownRef.current = shown
+    arm()
+
+    return () => window.clearTimeout(timer)
+  }, [fx])
 
   // El ataque del rival: la espada sale de su monstruo hacia la carta tuya atacada, o hacia tu barra de vida si es directo. `announcement` es el mismo objeto hasta que llega otro ataque.
   const announcement = duel?.announcement
@@ -939,16 +1001,17 @@ export function PracticeMat({
   // Si la mesa cambia por debajo de lo que esperaba una elección (deshacer, un paso del panel, un arrastre, otro combo), el menú y los Sacrificios o
   // materiales que se estaban eligiendo ya no valen: se cancelan. Jugar desde el menú ya los cierra por su cuenta.
   // Una marca de objetivo que se quita sola (ver `TARGET_MS`) es una jugada más, pero no mueve nada: no cancela lo que se estaba eligiendo (tampoco las de un lote, que vencen juntas).
+  // Como los efectos del paso, en el mismo dibujo (`fxStep` todavía es el paso anterior): un efecto era otro dibujo de la mesa con los vuelos en el aire.
   const lastAction = session.actions[session.cursor - 1]
   const lastType = lastAction ? playType(lastAction) : undefined
-  useEffect(() => {
-    if (lastType === 'target') return
+  const shownLast = fxStep.actions[fxStep.cursor - 1]
 
-    setMenu(null)
-    setPicking(null)
-  }, [session.cursor, session.initial, lastType])
+  if ((fxStep.cursor !== session.cursor || fxStep.initial !== session.initial || (shownLast ? playType(shownLast) : undefined) !== lastType) && lastType !== 'target') {
+    if (menu !== null) setMenu(null)
+    if (picking !== null) setPicking(null)
+  }
 
-  // Va después del efecto del paso (que lee la anterior): al jugarse, la carta ya no está esperando.
+  // Después de cada dibujo: el paso nuevo lee la anterior al dibujarse (`nextFxStep`); al jugarse, la carta ya no está esperando.
   useEffect(() => {
     pendingRef.current = pendingId
   }, [pendingId])
