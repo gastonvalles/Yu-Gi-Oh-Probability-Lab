@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { MatAction } from '../app/practice-mat'
@@ -37,6 +37,9 @@ afterEach(() => {
   ;(Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = originalScrollIntoView
 })
 
+/** El desplazamiento va en el cuadro siguiente (en el efecto forzaba el layout de toda la página): se espera ese cuadro. */
+const nextFrame = () => act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+
 /** La última llamada: las opciones con las que se desplazó y el elemento que se desplazó (la fila del paso actual). */
 const lastScroll = () => {
   const [options] = scrollIntoView.mock.calls.at(-1) ?? []
@@ -44,24 +47,28 @@ const lastScroll = () => {
   return { options, element: scrollIntoView.mock.contexts.at(-1) as HTMLElement }
 }
 
-it('al abrirse la lista va de un salto al paso actual; al avanzar a otro paso, se desplaza suave hasta su fila', () => {
+it('al abrirse la lista va de un salto al paso actual; al avanzar a otro paso, se desplaza suave hasta su fila', async () => {
   render(<Harness actions={ACTIONS} />)
+  expect(scrollIntoView).not.toHaveBeenCalled()
+  await nextFrame()
 
   // Al montarse, el paso actual (la mano inicial) ya está activo: no se barre la lista entera.
   expect(lastScroll().options).toEqual({ block: 'nearest', behavior: 'auto' })
 
   fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+  await nextFrame()
 
   const { options, element } = lastScroll()
   expect(options).toEqual({ block: 'nearest', behavior: 'smooth' })
   expect(element.querySelector('[aria-current="step"]')).not.toBeNull()
 })
 
-it('con movimiento reducido, la lista salta de una vez (behavior auto)', () => {
+it('con movimiento reducido, la lista salta de una vez (behavior auto)', async () => {
   reduced = true
   render(<Harness actions={ACTIONS} />)
 
   fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+  await nextFrame()
 
   expect(lastScroll().options).toEqual({ block: 'nearest', behavior: 'auto' })
 })
