@@ -1,9 +1,10 @@
-import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
 import { useDuelRails } from '../../app/duel-rails'
 import type { Activity } from '../../app/duel-protocol'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
+import type { LifeTimer } from '../../app/life-calculator'
 import type { SocketStatus } from '../../app/duel-socket'
 import { useHostToasts } from '../../app/toast-box'
 import { duelTurnNumber } from '../../app/duel-turn'
@@ -58,6 +59,33 @@ export function roundClockClass(remainingMs: number, limited: boolean, running: 
 
   return cx('tabular-nums', low ? 'text-danger-soft' : 'text-foreground', urgent && 'motion-safe:animate-turn-blink')
 }
+
+/**
+ * El reloj de la ronda (tocarlo lo pausa), con su propio segundo: lo que cambia cada segundo es sólo este botón, no la barra entera (Gastón, 2026-10-27: tirones en el celular; antes
+ * el segundo redibujaba la barra con las vidas, el turno y los íconos). `memo`: la barra lo redibuja sólo si cambia el reloj, el límite o quién lo toca.
+ */
+const RoundClock = memo(function RoundClock({ timer, limitMin, onToggle }: { timer: LifeTimer; limitMin: number; onToggle: () => void }) {
+  const now = useTick(1000)
+  const running = timer.running
+  const roundLeft = duelClockMs(timer, now, limitMin)
+  const clock = formatClock(roundLeft)
+
+  return (
+    <button
+      type="button"
+      aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
+      title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
+      className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
+      onClick={onToggle}
+    >
+      {/* El cronómetro; en pausa, la pausa (el estado se ve sin tocar). */}
+      <Icon name={running ? 'timer' : 'pause'} size={18} />
+      <span data-testid="round-clock" className={roundClockClass(roundLeft, limitMin > 0, running)}>
+        {clock}
+      </span>
+    </button>
+  )
+})
 
 const STATUS_TEXT: Record<Exclude<SocketStatus, 'open'>, () => string> = {
   connecting: () => t('duel.status.connecting'),
@@ -265,7 +293,6 @@ const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
  * cada vida va en su esquina (las pone la pantalla: `RivalLife` en `corner` y `DuelLife` en `life`) y el turno debajo de los íconos; con laterales, las del rival en el izquierdo.
  */
 export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, rivalSignalKey, mySignal = null, mySignalKey, chat, lane = null, onOpenLife, turnNumber = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null), extraSettings, resultReason }: DuelBarProps) {
-  const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
   // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
@@ -280,9 +307,6 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   const laneOpen = lane !== null
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
-  const running = life.timer.running
-  const roundLeft = duelClockMs(life.timer, now, snapshot.settings.limitMin)
-  const clock = formatClock(roundLeft)
   const result = duelResult(life.lp, snapshot.conceded)
   // Con el rival presente y el duelo sin terminar, salir es abandonar: se pierde. Con el rival ausente (se cayó) o el duelo terminado, sólo se sale.
   const abandoning = result === null && peerPresent && onAbandon !== undefined
@@ -353,22 +377,8 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
       </IconButton>
     </>
   )
-  // El reloj de la ronda: tocarlo lo pausa.
-  const clockButton = (
-    <button
-      type="button"
-      aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
-      title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-      className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
-      onClick={onToggleClock}
-    >
-      {/* El cronómetro; en pausa, la pausa (el estado se ve sin tocar). */}
-      <Icon name={running ? 'timer' : 'pause'} size={18} />
-      <span data-testid="round-clock" className={roundClockClass(roundLeft, snapshot.settings.limitMin > 0, running)}>
-        {clock}
-      </span>
-    </button>
-  )
+  // El reloj de la ronda: tocarlo lo pausa. Lleva su propio segundo (`RoundClock`).
+  const clockButton = <RoundClock timer={life.timer} limitMin={snapshot.settings.limitMin} onToggle={onToggleClock} />
   // Cuántos miran y cómo va el Match (en el marcador, debajo del turno y más bajos: el marcador no crece).
   const hasChips = snapshot.watchers > 0 || snapshot.series.match
   const chips = (pad = 'py-1') => (
@@ -622,7 +632,9 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
   const tone = PLAYER_COLOR[color ?? side]
   // Las que se ven: las de verdad, salvo mientras un ataque todavía no golpeó (`LifeHold`).
   const life = useHeldValue(real, useContext(LifeHold))
-  const shown = useLifeNumber(life)
+  // El número cuenta escribiendo su texto en cada cuadro, sin redibujar la placa (`useLifeNumber` con `into`).
+  const number = useRef<HTMLSpanElement | null>(null)
+  const shown = useLifeNumber(life, number)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
   // Al bajar, la casilla se sacude como en el impacto (`sacudir`: no se suma a la de un ataque que ya la sacude).
@@ -659,7 +671,7 @@ export function LifeTile({ name, label, life: real, mine = false, color, bubble 
         </span>
         <span className="flex min-w-0 items-baseline justify-between gap-1.5">
           {/* A 33 px el renglón recorta 2 px arriba y abajo (los números no tienen ni rasgos que suban ni que bajen): entra en 56 px con la chapa y la barra. */}
-          <span className={cx('min-w-0 truncate text-title font-extrabold leading-none tabular-nums transition-colors duration-200 min-[1101px]:-my-0.5 min-[1101px]:text-stat', compact && 'max-[379px]:text-lead', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>{shown}</span>
+          <span ref={number} className={cx('min-w-0 truncate text-title font-extrabold leading-none tabular-nums transition-colors duration-200 min-[1101px]:-my-0.5 min-[1101px]:text-stat', compact && 'max-[379px]:text-lead', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>{shown}</span>
           {change ? (
             <span key={change.key} aria-hidden="true" style={{ animationDuration: `${DELTA_MS}ms` }} className={cx('shrink-0 animate-linger text-micro font-extrabold leading-none tabular-nums motion-reduce:animate-none', change.delta < 0 ? 'text-danger-soft' : 'text-success-soft')}>
               {change.delta < 0 ? '−' : '+'}

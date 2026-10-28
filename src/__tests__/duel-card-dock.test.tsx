@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -74,11 +74,12 @@ describe('el detalle fijo de la izquierda: la carta se ve como en cualquier deta
     expect(stats()).toEqual([])
   })
 
-  it('se inclina en 3D hacia el mouse y vuelve al irse', () => {
+  it('se inclina en 3D hacia el mouse y vuelve al irse', async () => {
     render(<DuelCardDock peek={peek(blue)} />)
 
     fireEvent.pointerMove(art(), { pointerType: 'mouse', clientX: 40, clientY: 10 })
-    expect(art().style.rotate).toContain('deg')
+    // La inclinación espera su cuadro (`requestAnimationFrame`).
+    await waitFor(() => expect(art().style.rotate).toContain('deg'))
 
     fireEvent.pointerLeave(art(), { pointerType: 'mouse' })
     expect(art().style.rotate).toBe('')

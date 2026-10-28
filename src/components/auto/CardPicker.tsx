@@ -1,4 +1,4 @@
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useDeferredValue, useId, useState, type KeyboardEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
@@ -92,6 +92,8 @@ interface PickGridProps {
 export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligible, className, tabs = false, grouped = false }: PickGridProps) {
   const [active, setActive] = useState(0)
   const groupId = useId()
+  // Las artes, en el render siguiente al de la entrada (de menor prioridad, de a pedazos): la hoja sale enseguida con los esqueletos, como si el arte no hubiera llegado.
+  const arts = useDeferredValue(true, false)
   const groups = groupsOf(given)
   const cards = groups.flat()
   const at = Math.min(active, cards.length - 1)
@@ -149,7 +151,7 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
         ) : null}
         {/* La elegida lleva el marco celeste con la luz que gira de la carta elegida en la mano y en la mesa (`FxFrame`); al pasar el mouse, el aro fino de las cartas de la mesa. */}
         <span className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}>
-          {card.art === undefined ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
+          {card.art === undefined || !arts ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
           {order >= 0 ? <FxFrame tone="cyan" /> : null}
           {order >= 0 && multi ? <span aria-hidden="true" className={PICK_ORDER}>{order + 1}</span> : null}
         </span>

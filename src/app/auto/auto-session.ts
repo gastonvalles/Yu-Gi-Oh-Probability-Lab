@@ -522,6 +522,21 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   }
 
   async function start() {
+    // El avance se avisa a lo sumo una vez por cuadro: cada aviso es un render de la pantalla entera (la mesa está detrás de la portada) y llegan ~60 seguidos, uno por
+    // script (en un celular eran casi un segundo de tareas largas del arranque). La pantalla no puede mostrar más que uno por cuadro: se ve igual.
+    let pending: AutoSnapshot['progress'] | null = null
+    const progress = (done: number, total: number) => {
+      if (pending === null) {
+        const flush = () => {
+          if (snapshot.status === 'loading' && pending) set({ progress: pending })
+          pending = null
+        }
+
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush)
+        else setTimeout(flush, 16)
+      }
+      pending = { done, total }
+    }
     const loading = (async () => {
       const { filler } = await loader.manifest()
       // Las handtraps del rival y el relleno hasta el tamaño del deck pasivo (así roba sin quedarse sin cartas).
@@ -530,7 +545,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       const theirs: DeckList = { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)] }
 
       // En el duelo por enlace, el deck del otro (entero, sin relleno).
-      return loader.load([options.deck, options.remote?.deck ?? theirs], (done, total) => set({ progress: { done, total } }))
+      return loader.load([options.deck, options.remote?.deck ?? theirs], progress)
     })()
 
     // El anfitrión arranca ya: el Worker baja y compila el wasm mientras llegan los datos.

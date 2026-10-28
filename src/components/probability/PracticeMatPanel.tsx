@@ -351,7 +351,11 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
   useEffect(() => {
     const abriendo = primeraVez.current
     primeraVez.current = false
-    if (active) ref.current?.scrollIntoView?.({ block: 'nearest', behavior: (abriendo || prefersReducedMotion()) ? 'auto' : 'smooth' })
+    if (!active) return
+    // En el cuadro siguiente, con su layout: en el efecto forzaba estilo y layout de toda la página en la tarea que agregó el paso (cerrar el visor del deck lo baraja).
+    const frame = requestAnimationFrame(() => ref.current?.scrollIntoView?.({ block: 'nearest', behavior: (abriendo || prefersReducedMotion()) ? 'auto' : 'smooth' }))
+
+    return () => cancelAnimationFrame(frame)
   }, [active])
 
   // En la lista compacta la columna mide siempre lo mismo (el texto queda alineado); en la ficha, lo que ocupan sus cartas (una carta de 3 rem de alto mide 2,06 de ancho y cada una más asoma media).

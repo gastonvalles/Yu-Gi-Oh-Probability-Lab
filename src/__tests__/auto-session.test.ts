@@ -679,6 +679,30 @@ describe('la sesión avisa sólo lo que cambia (cada aviso es un render)', () =>
     return { remote, session, calls: () => calls }
   }
 
+  it('el avance de la carga (uno por script) avisa a lo sumo una vez por cuadro, con el último número', async () => {
+    let finish = () => {}
+    const slow: DataLoader = {
+      ...loader(),
+      load: (_lists, onProgress) =>
+        new Promise((resolve) => {
+          for (let done = 0; done <= 60; done += 1) onProgress?.(done, 60)
+          finish = () => void loader().load([]).then(resolve)
+        }),
+    }
+    const session = createAutoSession({ loader: slow, deck: { main: [[1, 5]] }, transport: fakeHost().factory })
+    let calls = 0
+
+    session.subscribe(() => (calls += 1))
+    await tick(1)
+    expect(calls).toBe(0)
+    await tick(40)
+    expect(calls).toBe(1)
+    expect(session.getSnapshot().progress).toEqual({ done: 60, total: 60 })
+    finish()
+    await until(session, (s) => s.status === 'ready')
+    session.destroy()
+  })
+
   it('lo del rival que no cambia nada (sus `events` y sus `stats`) no avisa y el snapshot es el mismo objeto; con handtraps, que robe sí', async () => {
     const passive = await live()
     const before = passive.session.getSnapshot()

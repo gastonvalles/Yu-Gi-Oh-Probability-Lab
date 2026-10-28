@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from 'react'
+import { memo, useContext, useEffect, useRef } from 'react'
 
 import { isEmojiSignal } from '../../app/duel-signals'
 import { DELTA_MS, LifeHold, useHeldValue, useLifeNumber, useLpDelta, useLpFlash } from '../../app/life-effects'
@@ -21,8 +21,9 @@ export const SIGNAL_MS = 3500
  * - `bubble`: la señal de su dueño (🤔, «Pensando…»), un instante, con el borde de su color: debajo del número; tus vidas grandes (abajo de la pantalla, en tu esquina o tu lateral), arriba.
  * - Accesibilidad: «Puntos de vida de …: N» (con el botón, «… Abrir la calculadora de vidas»); el globo es `role="status"`.
  * - Usos: «Jugar solo automático» y los duelos por enlace en todos los anchos (el marcador de la barra hasta 1100 px; las esquinas del campo o los laterales en escritorio) y quien mira.
+ * - `memo`: la barra que la lleva se redibuja por otras cosas (el turno, los avisos) y las vidas, si no cambiaron, no.
  */
-export function LifeScore({
+export const LifeScore = memo(function LifeScore({
   name,
   label,
   life: real,
@@ -54,7 +55,9 @@ export function LifeScore({
   const tone = PLAYER_COLOR[color ?? side]
   // Las que se ven: las de verdad, salvo mientras un ataque todavía no golpeó (`LifeHold`: igual que la placa).
   const life = useHeldValue(real, useContext(LifeHold))
-  const shown = useLifeNumber(life)
+  // El número cuenta escribiendo su texto en cada cuadro, sin redibujar el marcador (`useLifeNumber` con `into`).
+  const number = useRef<HTMLSpanElement | null>(null)
+  const shown = useLifeNumber(life, number)
   const flash = useLpFlash(life)
   const change = useLpDelta(life)
   const box = useRef<HTMLElement | null>(null)
@@ -73,7 +76,7 @@ export function LifeScore({
     <>
       {/* Un nombre largo se corta con «…»: no le quita lugar al turno del marcador. */}
       <span aria-hidden="true" className={cx('max-w-28 truncate text-micro font-bold uppercase leading-none tracking-wider', tone.text)}>{label ?? name}</span>
-      <span aria-hidden="true" className={cx(size === 'lg' ? 'text-stat' : 'text-title', 'font-bold leading-none tabular-nums transition-colors duration-200', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>
+      <span ref={number} aria-hidden="true" className={cx(size === 'lg' ? 'text-stat' : 'text-title', 'font-bold leading-none tabular-nums transition-colors duration-200', flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : life === 0 ? 'text-danger-soft' : 'text-foreground')}>
         {shown}
       </span>
       {/* La diferencia flota debajo del número (no ensancha el marcador ni corre el turno). */}
@@ -113,4 +116,4 @@ export function LifeScore({
       {body}
     </div>
   )
-}
+})

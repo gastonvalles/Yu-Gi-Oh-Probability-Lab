@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { lifeCountMs, useLifeNumber } from '../app/life-effects'
@@ -31,6 +32,21 @@ function cuadro(tiempo: number) {
 
 function Numero({ life }: { life: number }) {
   return <output>{useLifeNumber(life)}</output>
+}
+
+let dibujos = 0
+
+/** El número con `into`: cuenta escribiendo el texto y React se entera sólo al final. */
+function NumeroPorRef({ life }: { life: number }) {
+  const ref = useRef<HTMLOutputElement | null>(null)
+  const shown = useLifeNumber(life, ref)
+
+  dibujos += 1
+  return (
+    <output ref={ref} data-estado={shown}>
+      {shown}
+    </output>
+  )
 }
 
 describe('useLifeNumber: el número cuenta con la duración de su cambio', () => {
@@ -85,5 +101,64 @@ describe('useLifeNumber: el número cuenta con la duración de su cambio', () =>
     cuadro(1300)
     cuadro(1693)
     expect(view.container.textContent).toBe('3000')
+  })
+})
+
+describe('useLifeNumber con `into`: cuenta sin redibujar el componente en cada cuadro', () => {
+  beforeEach(() => {
+    pendientes = new Map()
+    siguiente = 1
+    dibujos = 0
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      const id = siguiente
+      siguiente += 1
+      pendientes.set(id, callback)
+      return id
+    })
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      pendientes.delete(id)
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('a mitad del conteo el texto ya cambió y el componente no se volvió a dibujar; al final, el texto y el estado son el valor nuevo', () => {
+    const view = render(<NumeroPorRef life={8000} />)
+    const numero = view.container.querySelector('output')!
+
+    view.rerender(<NumeroPorRef life={7000} />)
+    const antes = dibujos
+
+    cuadro(1000)
+    cuadro(1100)
+    cuadro(1200)
+    // 393 ms en total: a los 200 ms va por el medio, sólo en el texto.
+    expect(Number(numero.textContent)).toBeGreaterThan(7000)
+    expect(Number(numero.textContent)).toBeLessThan(8000)
+    expect(numero.dataset.estado).toBe('8000')
+    expect(dibujos).toBe(antes)
+
+    cuadro(1393)
+    expect(numero.textContent).toBe('7000')
+    expect(numero.dataset.estado).toBe('7000')
+    expect(dibujos).toBe(antes + 1)
+  })
+
+  it('un conteo cortado que vuelve al valor de antes deja el texto bien aunque el estado no cambie', () => {
+    const view = render(<NumeroPorRef life={8000} />)
+    const numero = view.container.querySelector('output')!
+
+    view.rerender(<NumeroPorRef life={4000} />)
+    cuadro(1000)
+    cuadro(1300)
+    expect(numero.textContent).not.toBe('8000')
+    view.rerender(<NumeroPorRef life={8000} />)
+    cuadro(1300)
+    cuadro(2000)
+    expect(numero.textContent).toBe('8000')
+    expect(numero.dataset.estado).toBe('8000')
   })
 })
