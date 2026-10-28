@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-27T12:43:15.537Z",
+  "fetchedAt": "2026-10-28T13:34:48.442Z",
   "windowDays": 75,
   "channels": {"eu":{"name":"Yu-Gi-Oh! TCG Europe","url":"https://www.youtube.com/@YuGiOhCardEU"},"tcg":{"name":"Yu-Gi-Oh! TCG","url":"https://www.youtube.com/@OfficialYuGiOhTCG"}},
   "videos": [
@@ -27,16 +27,6 @@
     {"id":"AkMqV-s1nRw","channel":"eu","title":"Genesys Championship Day 1 - Round 4 - Paul F. vs. Zio M. | YCS Paris 2026","duration":"37:10","date":"2026-09-21"},
     {"id":"vZbcVvNx_yo","channel":"eu","title":"Genesys Championship Day 1 - Round 3 - Emre K. vs. Daniel M. | YCS Paris 2026","duration":"49:19","date":"2026-09-21"},
     {"id":"1CnFHzfE6t0","channel":"eu","title":"Genesys Championship Day 1 - Round 2 - Simonutti E. vs. Aryan T. | YCS Paris 2026","duration":"53:19","date":"2026-09-21"},
-    {"id":"0nfw5ipU0o0","channel":"eu","title":"Genesys Championship Day 1 - Round 1 - Richard S. vs. Rocco R. | YCS Paris 2026","duration":"43:01","date":"2026-09-21"},
-    {"id":"RdTpe4WPokg","channel":"eu","title":"Genesys Championship Day 2 | Final - Sigge V. vs. Richard S. | WCQ Brussels 2026","duration":"34:47","date":"2026-08-13"},
-    {"id":"fmTPUGM9ScY","channel":"eu","title":"Genesys Championship Day 2 | Top 4 - Jonas M. vs. Richard S. | WCQ Brussels 2026","duration":"55:29","date":"2026-08-13"},
-    {"id":"fgPUemuzEkI","channel":"eu","title":"Genesys Championship Day 2 | Top 8 - Rio P. vs. Charalampos C. | WCQ Brussels 2026","duration":"48:36","date":"2026-08-13"},
-    {"id":"vmLgt66uv48","channel":"eu","title":"Genesys Championship Day 2 | Round 12 - Richard S. vs. Lorenz S. | WCQ Brussels 2026","duration":"43:29","date":"2026-08-13"},
-    {"id":"hGhF4Lalonw","channel":"eu","title":"Genesys Championship Day 2 | Round 11 - Lutz H. vs. Henry H. | WCQ Brussels 2026","duration":"28:43","date":"2026-08-13"},
-    {"id":"jyYFtw1vV0I","channel":"eu","title":"Genesys Championship Day 2 | Round 10 - Erik L. vs. Simon F. | WCQ Brussels 2026","duration":"45:55","date":"2026-08-13"},
-    {"id":"utt-5urbxW0","channel":"eu","title":"Genesys Championship Day 2 | Round 9 - Zen I. vs. Ryan N. | WCQ Brussels 2026","duration":"39:50","date":"2026-08-13"},
-    {"id":"qejFxKfDxgE","channel":"eu","title":"Genesys Championship Day 1 | Round 8 - Rio P. vs. Richard S. | WCQ Brussels 2026","duration":"28:05","date":"2026-08-13"},
-    {"id":"B6g4R4DErEs","channel":"eu","title":"Genesys Championship Day 1 | Round 7 - Martin R. vs. Duc T. | WCQ Brussels 2026","duration":"25:14","date":"2026-08-13"},
-    {"id":"KHcIPPJrjN4","channel":"tcg","title":"2026 North American WCQ Minneapolis, MN // Dragon Duel Championship Finals - Emmett P. vs. Simon B.","duration":"44:47","date":"2026-08-13"}
+    {"id":"0nfw5ipU0o0","channel":"eu","title":"Genesys Championship Day 1 - Round 1 - Richard S. vs. Rocco R. | YCS Paris 2026","duration":"43:01","date":"2026-09-21"}
   ]
 }
