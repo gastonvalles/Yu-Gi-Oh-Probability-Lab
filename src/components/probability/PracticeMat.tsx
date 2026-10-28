@@ -1,4 +1,4 @@
-import { isValidElement, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { isValidElement, memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -578,6 +578,14 @@ function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | n
       handFlash: effects.hand ? key : fx.handFlash,
     },
   }
+}
+
+/**
+ * Lo que se monta en la tarea siguiente al dibujo de la jugada (las cartas grandes del centro y el cartel de la fase): `useDeferredValue` dibuja sólo este hijo, aparte, y la tarea del
+ * toque queda para la mesa y los vuelos. Se ve un cuadro después del despegue; lo que se va solo, igual.
+ */
+function Deferred<T>({ value, children }: { value: T; children: (value: T) => ReactNode }) {
+  return children(useDeferredValue(value))
 }
 
 export function PracticeMat({
@@ -2731,16 +2739,20 @@ export function PracticeMat({
           {pileCell('banished', 'ban')}
 
           {/* Cambio de fase: el cartel se asoma en el medio del campo y se va agrandándose. */}
-          {banner ? (
-            <PhaseBanner
-              key={banner.key}
-              phase={banner.phase}
-              turn={duel ? null : banner.turn}
-              // En un duelo, pasar de la End Phase a la Draw Phase es pasar el turno: el cartel dice que ahora juega el rival.
-              label={duel && banner.turn !== null ? duel.rivalTurnLabel : undefined}
-              className="absolute inset-0 z-30"
-            />
-          ) : null}
+          <Deferred value={banner}>
+            {(shown) =>
+              shown ? (
+                <PhaseBanner
+                  key={shown.key}
+                  phase={shown.phase}
+                  turn={duel ? null : shown.turn}
+                  // En un duelo, pasar de la End Phase a la Draw Phase es pasar el turno: el cartel dice que ahora juega el rival.
+                  label={duel && shown.turn !== null ? duel.rivalTurnLabel : undefined}
+                  className="absolute inset-0 z-30"
+                />
+              ) : null
+            }
+          </Deferred>
           {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
           {announcement ? (
             <span
@@ -3034,19 +3046,23 @@ export function PracticeMat({
       <Presence>{inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}</Presence>
 
       {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin los paneles de los costados (`--mat-left` / `--mat-right`, como en la grilla de arriba). Cada una sale de su carta en la mesa (o de su pila). */}
-      {stage ? (
-        <Spotlight
-          key={stage.key}
-          kind={stage.kind}
-          cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-          // Repasando con el replay partido el paso ya se lee en el aviso de arriba: la carta va sin cartel, en la mitad del rival (vacía), del alto que queda (`fit`).
-          caption={splitReplay ? null : (steps[stage.step - 1] ?? null)}
-          fit={splitReplay}
-          flip={stage.flip}
-          origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
-          className={cx(splitReplay ? 'absolute inset-x-0 top-[var(--review-stage-top,0px)] z-[120] h-[var(--review-stage-height,100%)]' : 'absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
-        />
-      ) : null}
+      <Deferred value={stage}>
+        {(shown) =>
+          shown ? (
+            <Spotlight
+              key={shown.key}
+              kind={shown.kind}
+              cards={shown.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
+              // Repasando con el replay partido el paso ya se lee en el aviso de arriba: la carta va sin cartel, en la mitad del rival (vacía), del alto que queda (`fit`).
+              caption={splitReplay ? null : (steps[shown.step - 1] ?? null)}
+              fit={splitReplay}
+              flip={shown.flip}
+              origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
+              className={cx(splitReplay ? 'absolute inset-x-0 top-[var(--review-stage-top,0px)] z-[120] h-[var(--review-stage-height,100%)]' : 'absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
+            />
+          ) : null
+        }
+      </Deferred>
 
       {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. Salen de su carta (de cabeza, como se ven) o del medio de su mano y se enderezan en el camino. */}
       {duel?.rivalEffect && !duel.rivalEffect.quiet ? (
