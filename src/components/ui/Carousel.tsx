@@ -18,7 +18,7 @@ import { IconButton } from './IconButton'
  *   («Ver la 2 de 4») y `aria-current`: no son el único medio (Tab entra a cada tarjeta y el navegador la trae).
  * - **Hacer:** hasta 5 o 6 tarjetas (Miller); con más, un «Ver las N» en el `SectionHeader`. **No hacer:** pasar solo (autoplay), escribir «deslizá», un carrusel dentro de una tarjeta.
  * - **Por qué no `ScrollRow`:** aquella es una fila de chips que se corta con un degradé y flechas encima; acá cada hijo es una tarjeta que se encaja, con puntos y su «N de M».
- * - **Usos:** los decks ganadores de Torneos, las salas que esperan en Jugar (`LobbyBanner`), los duelos en vivo para mirar.
+ * - **Usos:** los decks ganadores de Torneos, las salas que esperan en Jugar, los duelos en vivo para mirar.
  */
 
 interface CarouselProps {
