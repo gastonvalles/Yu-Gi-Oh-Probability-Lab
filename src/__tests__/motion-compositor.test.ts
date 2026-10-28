@@ -78,6 +78,41 @@ describe('las animaciones de la mano, el ataque, el barajado y el dar vuelta se 
     expect(read('components', 'probability', 'PracticeHand.tsx')).toMatch(/const flight = cancelWhenDone\(element\.animate\(/)
   })
 
+  // Una sola fase de lectura y después las escrituras (Gastón, 2026-10-27: tirones en el celular): leer una carta después de escribir en otra recalcula los estilos carta por carta.
+  it('barajar lee las animaciones de todas las cartas antes de cortar o animar ninguna', () => {
+    const log: string[] = []
+    const card = (name: string) =>
+      ({
+        animate: () => { log.push(`animate:${name}`); return {} },
+        getAnimations: () => { log.push(`read:${name}`); return [{ id: 'riffle', cancel: () => log.push(`cancel:${name}`), effect: { getKeyframes: () => [{ transform: 'none' }] } }] },
+      }) as unknown as Element
+    const style = globalThis.getComputedStyle
+    globalThis.getComputedStyle = (() => ({ transform: 'none' })) as unknown as typeof getComputedStyle
+
+    try {
+      riffle([card('a'), card('b'), card('c')])
+    } finally {
+      globalThis.getComputedStyle = style
+    }
+
+    expect(log.slice(0, 3)).toEqual(['read:a', 'read:b', 'read:c'])
+    expect(log.slice(3)).toEqual(['cancel:a', 'cancel:b', 'cancel:c', 'animate:a', 'animate:b', 'animate:c'])
+  })
+
+  // Lo mismo para una Web Animation terminada de un vuelo entre zonas, del golpe de una pila o del giro de una carta del campo: terminadas, se cancelan.
+  it('los vuelos entre zonas, el golpe de la pila y el giro de una carta del campo se cancelan al terminar', () => {
+    const flights = read('app', 'use-card-flights.ts')
+    expect(flights).toContain('animation: cancelWhenDone(element.animate(keyframes, timing))')
+    expect(flights).toContain('const animation = cancelWhenDone(flight.element.animate(')
+    expect(flights).toContain("cancelWhenDone(element.animate([{ scale: '1' }")
+    expect(read('components', 'probability', 'PracticeMat.tsx')).toContain('cancelWhenDone(card.animate(flipFrames')
+  })
+
+  // La copia que vuela por encima de la mano se ubica con el plano del campo (`planeOf`): escribirle al campo `transform: none` para medir y devolvérselo recalculaba estilos dos veces en el toque.
+  it('la copia que vuela por encima no le escribe al campo inclinado para medir', () => {
+    expect(read('app', 'use-card-flights.ts')).not.toContain('field.style.transform =')
+  })
+
   it('la mano del rival no anima el ancho de su caja', () => {
     expect(read('components', 'duel', 'DuelTable.tsx')).not.toMatch(/transition:width|transition-\[width/)
   })

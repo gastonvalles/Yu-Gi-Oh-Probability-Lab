@@ -1,4 +1,4 @@
-import { EASE_IN_OUT, cancelWhenDone, flying, ownTransform, prefersReducedMotion, supportsAdditiveAnimation, transformTransition } from './motion'
+import { EASE_IN_OUT, animationsOf, cancelWhenDone, flying, ownTransform, prefersReducedMotion, supportsAdditiveAnimation, transformTransition } from './motion'
 
 /** Cuánto dura el barajado de una mano o de un deck (el del mazo propio, `riffle-*` de `index.css`, dura lo mismo). */
 export const RIFFLE_MS = 640
@@ -28,9 +28,13 @@ export function riffle(cards: Iterable<Element>): void {
 
   const list = [...cards].filter((card) => typeof card.animate === 'function')
 
-  // Primero se cortan los barajados en curso y después se lee cómo está cada una (una sola medida): así la base es la quieta, no la de un barajado a medias.
-  for (const card of list) card.getAnimations?.().forEach((animation) => animation.id === RIFFLE_ID && animation.cancel())
-  const bases = list.map((card) => (flying(card) ? null : ownTransform(card)))
+  // Una sola fase de lectura y después las escrituras: se leen las animaciones de todas las cartas, se cortan los barajados en curso, se lee la base quieta de todas (una sola medida,
+  // no la de un barajado a medias) y recién entonces se escribe en cada una. Leer una carta después de escribir en la anterior recalculaba los estilos carta por carta.
+  const animations = list.map((card) => animationsOf(card))
+  for (const own of animations) for (const animation of own) if (animation.id === RIFFLE_ID) animation.cancel()
+  const rest = animations.map((own) => own.filter((animation) => animation.id !== RIFFLE_ID))
+  const bases = list.map((card, index) => (flying(card, rest[index]) ? null : ownTransform(card, rest[index])))
+  const transitions = list.map((card, index) => transformTransition(card, rest[index]))
 
   list.forEach((card, index) => {
     const steps = riffleSteps(index % 2 === 0 ? -1 : 1)
@@ -39,7 +43,7 @@ export function riffle(cards: Iterable<Element>): void {
 
     if (own !== null) {
       // Sale del fin de su transición (al robar, la mano que se abre): la tapa, así que se corta, y la del barajado queda sola y va en la GPU (con las dos, Chromium sacaba a la transición).
-      transformTransition(card)?.cancel()
+      transitions[index]?.cancel()
       cancelWhenDone(card.animate(steps.map(({ at, ...step }) => ({ ...step, transform: `${own}${at}` })), timing))
     } else if (supportsAdditiveAnimation()) cancelWhenDone(card.animate(steps.map(({ at, ...step }) => ({ ...step, transform: at })), { ...timing, composite: 'add' }))
   })

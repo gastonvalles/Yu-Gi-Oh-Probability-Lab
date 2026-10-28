@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { configureStore } from '@reduxjs/toolkit'
 import { act, render } from '@testing-library/react'
-import { useRef } from 'react'
+import { useRef, type CSSProperties } from 'react'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -106,10 +106,16 @@ afterEach(() => {
 })
 
 /** La mesa mínima: las cartas de la mano y las de la zona de Mágicas y Trampas, cada una con su `data-card-id`. */
-function Mat({ state }: { state: MatState }) {
+function Mat({ state, tilt }: { state: MatState; tilt?: CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null)
 
   useCardFlights(ref, state, () => null, 'fijo')
+
+  const zones = state.st.map((placed, index) => (
+    <div key={index} data-drop={`st:${index}`}>
+      {placed ? <div data-card-id={placed.id} style={tilt ? { width: '80px', height: '116px', transformOrigin: '40px 58px' } : undefined} /> : null}
+    </div>
+  ))
 
   return (
     <div ref={ref}>
@@ -118,11 +124,13 @@ function Mat({ state }: { state: MatState }) {
           <div key={id} data-card-id={id} />
         ))}
       </div>
-      {state.st.map((placed, index) => (
-        <div key={index} data-drop={`st:${index}`}>
-          {placed ? <div data-card-id={placed.id} /> : null}
+      {tilt ? (
+        <div data-tilted="" data-box="campo" style={tilt}>
+          {zones}
         </div>
-      ))}
+      ) : (
+        zones
+      )}
     </div>
   )
 }
@@ -456,6 +464,40 @@ describe('la carta que sale de tu mano al campo vuela por encima de sus vecinas 
     playFromHand()
     expect(document.querySelector('[data-flight-ghost]')).toBeNull()
     expect(calls).toHaveLength(0)
+  })
+
+  // Una sola fase de lectura (Gastón, 2026-10-27: el toque lento en el celular): escribirle al campo `transform: none` para medir y devolvérselo recalculaba estilos dos veces.
+  it('en la vista 3D la copia sale del plano del campo sin escribirle nada y el origen de la capa se mide una sola vez', () => {
+    // El campo a la mitad de tamaño desde su origen (300, 400): en la pantalla, (400, 700). La carta, de 80 × 116 y con el centro en (−100, −200) del plano: se ve de 40 × 58 en (350, 600).
+    vi.stubGlobal('DOMMatrixReadOnly', class {
+      transformPoint({ x = 0, y = 0 }: DOMPointInit = {}) {
+        return { x: x / 2, y: y / 2, z: 0, w: 1 }
+      }
+    })
+    const probes: string[] = []
+    const measure = HTMLElement.prototype.getBoundingClientRect
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      if (this.className.includes('fixed left-0 top-0')) probes.push('origen')
+      return measure.call(this)
+    }
+    const tilt = { transform: 'scale(0.5)', transformOrigin: '300px 400px' }
+    const start = createMatState(['a', 'b', 'c', 'd'], [], 4)
+    ;['a', 'b', 'c', 'd'].forEach((id, index) => boxes.set(id, at(100 + index * 60, 800)))
+    boxes.set('campo', { left: 250, top: 500, width: 300, height: 200 })
+    const view = render(<Mat state={start} tilt={tilt} />)
+
+    boxes.set('c', { left: 330, top: 571, width: 40, height: 58 })
+    probes.length = 0
+    view.rerender(<Mat state={matReducer(start, { type: 'place', id: 'c', zone: 'st', index: 2, pos: 'set' })} tilt={tilt} />)
+
+    const field = view.container.querySelector<HTMLElement>('[data-tilted]')!
+    const holder = document.querySelector<HTMLElement>('[data-flight-ghost="c"]')!
+    const copy = holder.firstElementChild as HTMLElement
+    expect([field.style.transform, field.style.transformOrigin]).toEqual(['scale(0.5)', '300px 400px'])
+    // La capa de la copia es el campo sin inclinar (su caja, en (100, 300)) con la inclinación del campo, y la copia está donde la carta en él.
+    expect([holder.style.transform, holder.style.transformOrigin]).toEqual(['translate(100px, 300px) scale(0.5)', '300px 400px'])
+    expect([copy.style.left, copy.style.top, copy.style.width, copy.style.height]).toEqual(['160px', '142px', '80px', '116px'])
+    expect(probes).toEqual(['origen'])
   })
 })
 
