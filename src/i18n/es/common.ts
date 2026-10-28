@@ -2,6 +2,10 @@
 export const common = {
   'common.scrollBack': 'Ver lo anterior',
   'common.scrollForward': 'Ver lo que sigue',
+  // El carrusel (`ui/Carousel`): lo que dice un lector de pantalla del carril, de cada tarjeta y de cada punto.
+  'common.carousel': 'carrusel',
+  'common.carousel.slide': '{index} de {count}',
+  'common.carousel.goTo': 'Ver la {index} de {count}',
   'common.cancel': 'Cancelar',
   'common.close': 'Cerrar',
   // El asa de una hoja de abajo del celular (`SheetHandle`): la baja sin cerrarla y la vuelve a subir.

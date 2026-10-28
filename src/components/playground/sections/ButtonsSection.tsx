@@ -269,7 +269,7 @@ export function ButtonsSection() {
         layout="column"
         note={
           <>
-            La fila de chips para filtrar: el que apaga los filtros («Todos») y uno por valor con su cuenta. Lo elegido va en <b>violeta</b> con el texto blanco, igual que un filtro
+            La fila de chips para filtrar, en píldoras: el que apaga los filtros («Todos») y uno por valor con su cuenta; con el dedo miden 44 px y la fila de arriba (<Tag>scroll</Tag>, en un <Tag>ScrollRow</Tag>) deja asomar el siguiente. Lo elegido va en <b>violeta</b> con el texto blanco, igual que un filtro
             puesto (<Tag>filterChip</Tag>, el primero de la fila de arriba); uno sin elementos queda apagado en su lugar. El mouse y el teclado muestran el hover y el foco.
             Archivo: <Tag>ui/FilterChips.tsx</Tag>
           </>

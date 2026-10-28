@@ -5,6 +5,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { FilterChips } from '../components/ui/FilterChips'
 import { SearchField } from '../components/ui/SearchField'
 
 afterEach(cleanup)
@@ -45,6 +46,29 @@ describe('los campos de búsqueda llevan la lupa', () => {
 
     expect(onChange).toHaveBeenCalledWith('')
     expect(screen.getByRole('searchbox', { name: 'Buscar decks' })).toHaveFocus()
+  })
+
+  it('la píldora (shape="pill"): 48 px de alto, redonda, con la lupa y la X de 44 px con el dedo; deshabilitada no se borra', () => {
+    const { rerender } = render(<SearchField shape="pill" label="Buscar decks" value="elf" onChange={() => {}} />)
+    const field = screen.getByRole('searchbox', { name: 'Buscar decks' })
+
+    expect(field).toHaveClass('h-12', 'rounded-full', 'pl-11', 'pr-12', 'text-ellipsis')
+    expect(field).not.toHaveClass('rounded-control')
+    expect(screen.getByRole('button', { name: 'Borrar texto' })).toHaveClass('pointer-coarse:size-11')
+
+    rerender(<SearchField shape="pill" label="Buscar decks" value="elf" onChange={() => {}} disabled />)
+    expect(screen.getByRole('searchbox', { name: 'Buscar decks' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Borrar texto' })).not.toBeInTheDocument()
+  })
+
+  it('los chips de filtro son píldoras de 44 px con el dedo: interruptores con su cuenta, el elegido en violeta con texto blanco', () => {
+    render(<FilterChips label="Puesto" all="Todos" allActive={false} onAll={() => {}} chips={[{ key: 'w', name: 'Winner', count: 7, active: true, onToggle: () => {} }]} variant="scroll" />)
+    const chip = screen.getByRole('button', { name: 'Winner 7' })
+
+    expect(screen.getByRole('group', { name: 'Puesto' })).toContainElement(chip)
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    expect(chip).toHaveClass('rounded-full', 'pointer-coarse:min-h-11', 'aria-pressed:bg-primary', 'aria-pressed:text-white')
+    expect(chip).not.toHaveClass('rounded-control')
   })
 
   it('todo archivo que arma un <input type="search"> dibuja también una lupa (o pasa por SearchField)', () => {

@@ -4,6 +4,9 @@ import type { Translated } from '../types'
 export const common: Translated<typeof es> = {
   'common.scrollBack': 'Show previous',
   'common.scrollForward': 'Show next',
+  'common.carousel': 'carousel',
+  'common.carousel.slide': '{index} of {count}',
+  'common.carousel.goTo': 'Show {index} of {count}',
   'common.cancel': 'Cancel',
   'common.close': 'Close',
   'common.sheet.lower': 'Lower the sheet',

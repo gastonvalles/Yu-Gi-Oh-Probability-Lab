@@ -1,6 +1,6 @@
 import { formatInteger } from '../../app/utils'
 import { cx } from './cx'
-import { choiceChip } from './surfaces'
+import { choiceChipSurface } from './surfaces'
 
 /** Un chip de filtro: su nombre y cuántos elementos tiene. */
 export interface FilterChip {
@@ -26,13 +26,19 @@ interface FilterChipsProps {
 }
 
 /**
- * La fila de chips para filtrar: uno que apaga los filtros y después un chip por cada valor, cada uno con su cuenta. Elegir uno lo enciende (`aria-pressed`: ámbar, como
- * todo lo elegido) y tocarlo de nuevo lo apaga; si se pueden elegir varios lo decide quien la usa. Lo usan Expansiones (rarezas y artes) y los decks de torneo (puestos).
+ * La fila de chips para filtrar: uno que apaga los filtros y después un chip por cada valor, cada uno con su cuenta. Son píldoras: lavanda en reposo y, elegido, violeta con el
+ * texto blanco (`aria-pressed`, como todo lo elegido; se distingue también por la luz, no sólo por el tono). Tocarlo de nuevo lo apaga; si se pueden elegir varios lo decide quien la usa.
  * En escritorio los chips se acomodan en los renglones que hagan falta; hasta 1100 px van en una sola fila que se desliza (con 44 px de alto, en tres renglones ocuparían media pantalla).
+ *
+ * - **Props:** `label` (nombre del grupo), `all`/`allActive`/`onAll` (el chip «Todos»), `chips` (`name`, `count`, `active`, `onToggle`, `disabled`), `variant`.
+ * - **Estados:** reposo · hover · foco (`shadow-focus`, con lugar en la fila que se desliza) · elegido · deshabilitado (sin ninguno con lo demás filtrado: tenue y en su lugar).
+ * - **Accesibilidad:** `role="group"` con nombre y cada chip un interruptor (`aria-pressed`) que dice su cuenta; 44 px de alto con el dedo. Uno-de-varios que no se apaga es un `Segmented` (radio), no esto.
+ * - **Hacer:** `scroll` dentro de un `ScrollRow` (el siguiente asoma con el degradé y la flecha). **No hacer:** teñir un chip con un color que no significa nada.
+ * - **Usos:** Decks de torneo (puestos y extras), Expansiones (rarezas y artes), el catálogo de botones.
  */
 export function FilterChips({ label, all, allActive, onAll, chips, variant = 'wrap' }: FilterChipsProps) {
   const scroll = variant === 'scroll'
-  const chipClass = cx(choiceChip, 'shrink-0 gap-1.5 disabled:pointer-events-none disabled:opacity-40', scroll ? 'min-h-10 px-4 text-body pointer-coarse:min-h-11' : 'h-7 px-2.5 text-micro pointer-coarse:h-11')
+  const chipClass = cx(choiceChipSurface, 'shrink-0 gap-1.5 rounded-full disabled:pointer-events-none disabled:opacity-40', scroll ? 'min-h-10 px-4 text-body pointer-coarse:min-h-11' : 'h-7 px-2.5 text-micro pointer-coarse:h-11 pointer-coarse:px-4')
 
   if (scroll) {
     return (
