@@ -1,4 +1,4 @@
-import { Fragment, createContext, type ReactNode, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { Fragment, createContext, type ReactNode, useContext, useDeferredValue, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
 import { opensKeyboard, useFocusTrap } from '../../app/use-focus-trap'
@@ -18,6 +18,7 @@ import { Heading } from '../ui/Heading'
 import { Icon, type IconName } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { Skeleton } from '../ui/Skeleton'
 import { SheetHandle } from '../ui/SheetHandle'
 import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
@@ -592,6 +593,9 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   const statusId = useId()
   const titleId = useId()
   const open = pile !== null && !hidden
+  // Al abrirse, la hoja sale con cada carta en su esqueleto (como la muestra `CardArt` antes de tener la imagen) y las artes llegan en el render siguiente, de menor prioridad
+  // (React lo hace de a pedazos): la entrada arranca sin esperar a las ~40 artes. Abierto, no se difiere nada más (pasar a otra pila o buscar dibuja todo de una).
+  const arts = useDeferredValue(open)
   const canMany = many !== undefined && pile !== null && ids.length >= 2
   const cards = ids.map((id) => ({ id, ...info(id) }))
   // El Extra se muestra en su orden, pero las cartas boca arriba (las que se ven y se invocan por Péndulo) van primero.
@@ -805,7 +809,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
                     className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD, choosing && order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}
                     style={fxVars('red')}
                   >
-                    {card.faceDown ? <span className={CARD_BACK} /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
+                    {card.faceDown ? <span className={CARD_BACK} /> : arts ? <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <Skeleton radius="none" still className="absolute inset-0" />}
                     {targeted.has(card.id) ? <TargetMark /> : null}
                     {card.faceUp ? <span className="absolute inset-x-0 bottom-0 z-2 bg-background/85 px-1 py-px text-center text-micro font-bold leading-tight text-white">{t('practice.dialog.faceUpTag')}</span> : null}
                     {order >= 0 ? <FxFrame tone="cyan" /> : null}
