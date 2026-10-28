@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../app/use-media-query'
 import { t } from '../i18n'
 
+import { TopBarToolsContext } from './shell/MobileTopBar'
 import { Heading } from './ui/Heading'
 import { cx, variants } from './ui/cx'
 import { Icon, type IconName } from './ui/Icon'
@@ -37,8 +40,41 @@ const sideStyle = variants({
   defaults: { variant: 'actions' },
 })
 
-/** Encabezado de cada vista: ícono + título + una línea de contexto + ayuda a pedido + acciones. */
+/**
+ * Encabezado de cada vista: ícono + título + una línea de contexto + ayuda a pedido + acciones. El título se dice una sola vez: en el celular, con la barra de arriba y su
+ * título (`TopBarToolsContext`), el h1 queda sólo para el lector de pantalla y la ayuda, el botón de al lado y el `inline` pasan a esa barra; acá quedan las acciones o el formulario.
+ */
 export function StepHero({ title, icon, subtitle, help, titleAction, side, sideVariant = 'actions' }: StepHeroProps) {
+  const topBarTools = useContext(TopBarToolsContext)
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const inTopBar = topBarTools !== null && !isDesktop
+  // La ayuda se ancla al encabezado (o a la barra de arriba), no al ícono: nunca se sale de pantalla.
+  const helpTip = help ? (
+    <InfoTip label={t('shell.stepHero.help', { title })} anchor="parent">
+      {help}
+    </InfoTip>
+  ) : null
+  // El botón de al lado mide 44 px en táctil: sobresale, centrado, en vez de agrandar el renglón y bajar el título.
+  const action = titleAction ? <span className="-my-1.5 inline-flex shrink-0">{titleAction}</span> : null
+  const sideBlock = side ? <div className={sideStyle({ variant: sideVariant })}>{side}</div> : null
+
+  if (inTopBar) {
+    const inlineSide = sideVariant === 'inline'
+
+    return (
+      <>
+        {createPortal(<>{helpTip}{action}{inlineSide ? side : null}</>, topBarTools)}
+        {/* Sin nada a la vista (sólo el h1), el encabezado sale del flujo: no deja el hueco de la grilla de la página. */}
+        <header className={cx('relative z-20 flex min-w-0', (inlineSide || !side) && 'sr-only')}>
+          <Heading level="page" className="sr-only">
+            {title}
+          </Heading>
+          {inlineSide ? null : sideBlock}
+        </header>
+      </>
+    )
+  }
+
   return (
     <header className="relative z-20 flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 items-center gap-3">
@@ -49,19 +85,13 @@ export function StepHero({ title, icon, subtitle, help, titleAction, side, sideV
             <Heading level="page" className="truncate">
               {title}
             </Heading>
-            {/* La ayuda se ancla al encabezado (no al ícono): nunca se sale de pantalla. */}
-            {help ? (
-              <InfoTip label={t('shell.stepHero.help', { title })} anchor="parent">
-                {help}
-              </InfoTip>
-            ) : null}
-            {/* El botón de al lado mide 44 px en táctil: sobresale, centrado, en vez de agrandar el renglón y bajar el título. */}
-            {titleAction ? <span className="-my-1.5 inline-flex shrink-0">{titleAction}</span> : null}
+            {helpTip}
+            {action}
           </div>
           {subtitle ? <p className={cx(supportText, 'max-[1101px]:hidden')}>{subtitle}</p> : null}
         </div>
       </div>
-      {side ? <div className={sideStyle({ variant: sideVariant })}>{side}</div> : null}
+      {sideBlock}
     </header>
   )
 }

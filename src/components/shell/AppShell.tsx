@@ -11,7 +11,7 @@ import { AppSidebar } from './AppSidebar'
 import { FeatureSearch } from './FeatureSearch'
 import { GroupSheet } from './GroupSheet'
 import { MobileTabBar } from './MobileTabBar'
-import { MobileTopBar } from './MobileTopBar'
+import { MobileTopBar, TopBarToolsContext } from './MobileTopBar'
 import type { NavGroup } from './nav-model'
 import { NavDrawer } from './NavDrawer'
 import { ShellMenuContext, type ShellMenu } from './ShellMenu'
@@ -71,6 +71,8 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   const menu = useMemo<ShellMenu>(() => ({ open: openDrawer, isOpen: drawerOpen, claim: claimMenu }), [openDrawer, drawerOpen, claimMenu])
   const closeGroup = useCallback(() => setOpenGroupKey(null), [])
   const [findOpen, setFindOpen] = useState(false)
+  // Donde el encabezado de la pantalla deja sus botones chicos en el celular (con la barra y su título): ver `TopBarToolsContext`.
+  const [topBarTools, setTopBarTools] = useState<HTMLElement | null>(null)
   const openFind = useCallback(() => setFindOpen(true), [])
   const closeFind = useCallback(() => setFindOpen(false), [])
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -135,7 +137,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
       {showNavbar ? <AppNavbar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onSearch={openFind} onMascots={() => onSelect('mascots')} className="min-[1101px]:col-span-2" /> : null}
       {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && 'max-[1101px]:h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))]', ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
-        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} className="min-[1101px]:hidden" />}
+        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} toolsRef={setTopBarTools} className="min-[1101px]:hidden" />}
         <div
           ref={contentScrollRef}
           className={cx(
@@ -150,7 +152,9 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
           {/* En escritorio este envoltorio mide siempre lo que el recuadro (`min-h-0`: no crece con el contenido), así una pantalla puede ocupar justo ese alto con `h-full`
               y repartirlo entre columnas que scrollean por dentro; una pantalla más larga lo desborda y es el recuadro el que scrollea. En el celular crece con el contenido. */}
           <div id="contenido" tabIndex={-1} className={cx('w-full min-w-0 flex-1 outline-none min-[1101px]:min-h-0 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>
-            <ShellMenuContext.Provider value={menu}>{children}</ShellMenuContext.Provider>
+            <ShellMenuContext.Provider value={menu}>
+              <TopBarToolsContext.Provider value={topBarTools}>{children}</TopBarToolsContext.Provider>
+            </ShellMenuContext.Provider>
           </div>
         </div>
       </div>

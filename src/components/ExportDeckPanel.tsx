@@ -5,6 +5,7 @@ import { canvasToJpegBlob } from '../app/deck-image-export-download'
 import { renderDeckAsCanvas } from '../app/deck-image-export-render'
 import { buildKdeDecklistSections } from '../app/kde-decklist'
 import type { DeckBuilderState } from '../app/model'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../app/use-media-query'
 import { useToastMessage } from '../app/use-toast-message'
 import { buildYdkeUrl } from '../app/ydke'
 import { t } from '../i18n'
@@ -45,7 +46,8 @@ const EXTENSION_LINKS = [
   { labelKey: 'deck.export.neuron.sourceCode', href: 'https://github.com/DawnbrandBots/deck-transfer-for-master-duel' },
 ] as const
 const KONAMI_DB_URL = 'https://www.db.yugioh-card.com/yugiohdb/?request_locale=en'
-const STEP = 'grid content-start gap-2 rounded-card bg-tint/5 p-3'
+// Los pasos, sin caja propia adentro de la tarjeta: los separa una línea fina (arriba en el celular, a la izquierda en tres columnas).
+const STEP = 'grid content-start gap-2 border-border-subtle max-[699px]:border-t max-[699px]:pt-3 max-[699px]:first:border-t-0 max-[699px]:first:pt-0 min-[700px]:border-l min-[700px]:pl-4 min-[700px]:first:border-l-0 min-[700px]:first:pl-0'
 const LINK = cx('inline-flex min-h-11 items-center', textLink)
 
 /** Lo que se tildó la última vez: una comodidad, si no se puede leer se vuelve a todo tildado. */
@@ -80,6 +82,8 @@ export function ExportDeckPanel({
 }: ExportDeckPanelProps) {
   const [busy, setBusy] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
+  // El botón de arriba es sólo de escritorio: en el celular descargar va en la barra de abajo, y el encabezado no deja un renglón vacío.
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [selection, setSelection] = useState<DeckExportSelection>(readSelection)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
@@ -171,12 +175,12 @@ export function ExportDeckPanel({
         title={t('deck.export.title')}
         icon="download"
         subtitle={t('deck.export.subtitle')}
-        side={(
+        side={isDesktop ? (
           // Las opciones van en un modal: la página no las muestra de entrada.
-          <Button variant="primary" size="md" icon="download" disabled={busy} className="max-[1101px]:hidden" onClick={() => setDownloadOpen(true)}>
+          <Button variant="primary" size="md" icon="download" disabled={busy} onClick={() => setDownloadOpen(true)}>
             {busy ? t('deck.export.generating') : t('deck.export.download')}
           </Button>
-        )}
+        ) : undefined}
       />
 
       <section className="grid min-w-0 gap-8 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:items-start min-[1180px]:gap-10">
@@ -360,8 +364,9 @@ export function ExportDeckPanel({
         </div>
       </Modal>
 
-      {/* En el celular, abajo y al alcance del pulgar: volver al deck y descargar (la principal, a la derecha). */}
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background px-gutter py-3 min-[1101px]:hidden">
+      {/* En el celular, abajo y al alcance del pulgar: volver al deck y descargar (la principal, a la derecha). Pegada a la barra de abajo; el círculo de Jugar asoma 12 px
+          (`TAB_BAR_PX`) y cae en el margen de abajo, más alto que el de arriba: no toca los botones. */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background px-gutter pb-5 pt-3 min-[1101px]:hidden">
         {onBack ? (
           <Button variant="secondary" size="md" className="min-w-0 flex-1" onClick={onBack}>
             {t('deck.export.back')}
