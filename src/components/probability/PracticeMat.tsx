@@ -45,7 +45,7 @@ import {
   type Placed,
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
-import { flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
+import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
@@ -3220,11 +3220,13 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, st
     const card = cardRef.current
     if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion() || typeof card?.animate !== 'function') return
 
+    // Sus animaciones se leen una vez (el giro y la base salen de ahí) y el giro terminado se cancela: una Web Animation terminada le sacaba a la GPU la transición de acostarse que viniera después.
     const timing = { duration: FLIP_MS, easing: EASE_IN_OUT }
-    if (!flying(card)) {
-      const own = ownTransform(card)
-      card.animate(flipFrames((angle) => ({ transform: `${own}perspective(700px) rotateY(${angle})` })), timing)
-    } else if (supportsAdditiveAnimation()) card.animate(flipFrames((angle) => ({ transform: `perspective(700px) rotateY(${angle})` })), { ...timing, composite: 'add' })
+    const animations = animationsOf(card)
+    if (!flying(card, animations)) {
+      const own = ownTransform(card, animations)
+      cancelWhenDone(card.animate(flipFrames((angle) => ({ transform: `${own}perspective(700px) rotateY(${angle})` })), timing))
+    } else if (supportsAdditiveAnimation()) cancelWhenDone(card.animate(flipFrames((angle) => ({ transform: `perspective(700px) rotateY(${angle})` })), { ...timing, composite: 'add' }))
   }, [placed.pos])
 
   return (

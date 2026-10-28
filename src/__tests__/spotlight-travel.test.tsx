@@ -84,6 +84,31 @@ describe('la carta grande sale de su carta', () => {
     expect(calls).toHaveLength(0)
   })
 
+  // Una sola fase de lectura (Gastón, 2026-10-27: tirones en el celular): la entrada ya sacada y todas las cartas medidas antes de esconder o animar ninguna; con dos, medir la segunda después de animar la primera recalculaba toda la capa.
+  it('mide todas las cartas con la entrada ya sacada y antes de escribir nada', () => {
+    const measure = HTMLElement.prototype.getBoundingClientRect
+    const log: string[] = []
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      if (this.hasAttribute('data-stage-card')) log.push(`measure:${this.dataset.stageCard}:${root().style.getPropertyValue('--stage-entered')}:${this.style.visibility}`)
+      return measure.call(this)
+    }
+    const animate = Element.prototype.animate
+    Element.prototype.animate = function (this: Element, keyframes, options) {
+      log.push('animate')
+      return animate.call(this, keyframes, options)
+    }
+
+    try {
+      render(<Spotlight kind="gy" cards={[CARD, { id: 'c2', name: 'Carta 2', art: null }]} caption={null} origin={() => ON_MAT} />)
+    } finally {
+      Element.prototype.animate = animate
+    }
+
+    expect(log.filter((entry) => entry.startsWith('measure'))).toEqual(['measure:c1:1:', 'measure:c2:1:'])
+    expect(log.indexOf('animate')).toBe(2)
+    expect(travels()).toHaveLength(2)
+  })
+
   it('con movimiento reducido no se anima nada: la carta está en el centro, como hoy', () => {
     window.matchMedia = reduced(true)
 

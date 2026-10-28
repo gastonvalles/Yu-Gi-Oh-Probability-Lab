@@ -361,27 +361,30 @@ function useStageTravel(origin: SpotlightProps['origin']) {
 
     if (!root || !origin || typeof root.animate !== 'function' || prefersReducedMotion()) return
 
+    // Primero se le saca la entrada a la carta (el CSS la tendría al 55 %): así lo que se mide es dónde termina cada una. Y se mide todo junto, antes de escribir nada más (una sola fase
+    // de lectura): medir cada carta después de esconderla y de animar la anterior recalculaba estilos y layout de toda la capa por cada una.
+    root.style.setProperty('--stage-entered', '1')
+
     const bounds = root.getBoundingClientRect()
     const inside = (pose: CardPose) => pose.width >= 1 && pose.height >= 1 && pose.x >= bounds.left && pose.x <= bounds.right && pose.y >= bounds.top && pose.y <= bounds.bottom
     const faces = [...root.querySelectorAll<HTMLElement>('[data-stage-card]')].map((face) => {
       const pose = origin(face.dataset.stageCard ?? '')
 
-      return { face, pose: pose && inside(pose) ? pose : null }
+      return { face, pose: pose && inside(pose) ? pose : null, end: face.getBoundingClientRect() }
     })
 
-    if (faces.every(({ pose }) => pose === null)) return
-
-    // Primero se le saca la entrada a la carta (el CSS la tendría al 55 %), después se mide dónde termina cada una.
-    root.style.setProperty('--stage-entered', '1')
+    if (faces.every(({ pose }) => pose === null)) {
+      root.style.removeProperty('--stage-entered')
+      return
+    }
 
     const appear = { duration: SPOTLIGHT_TRAVEL_MS / 2, delay: SPOTLIGHT_TRAVEL_MS / 2, easing: EASE_OUT, fill: 'backwards' as const }
     const glows = [...root.querySelectorAll<HTMLElement>('[data-stage-glow]')]
     const restores: Array<() => void> = []
-    const animations = faces.map(({ face, pose }) => {
+    const animations = faces.map(({ face, pose, end }) => {
       if (!pose) return face.animate([{ opacity: 0 }, { opacity: 1 }], appear)
 
       restores.push(showArtAtOnce(face))
-      const end = face.getBoundingClientRect()
       const start = `translate(${pose.x - (end.left + end.width / 2)}px, ${pose.y - (end.top + end.height / 2)}px) rotate(${shortTurn(pose.angle)}deg) scale(${pose.width / end.width}, ${pose.height / end.height})`
 
       return face.animate([{ transform: start }, { transform: 'translate(0px, 0px) rotate(0deg) scale(1, 1)' }], { duration: SPOTLIGHT_TRAVEL_MS, easing: EASE_IN_OUT })

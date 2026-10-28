@@ -63,18 +63,21 @@ export function supportsAdditiveAnimation(): boolean {
 const movesTransform = (animation: Animation) => (animation.effect as KeyframeEffect | null)?.getKeyframes?.().some((frame) => 'transform' in frame) ?? false
 const isTransition = (animation: Animation) => typeof CSSTransition === 'function' && animation instanceof CSSTransition
 
+/** Las animaciones de un elemento (ninguna donde no se puede preguntar). Quien anima varias cartas las lee todas primero y después escribe: `getAnimations` recalcula el estilo si algo cambió. */
+export const animationsOf = (element: Element): Animation[] => element.getAnimations?.() ?? []
+
 /**
  * La transición de `transform` que corre en el elemento, si hay. Una animación que la tapa (sale de su fin: `ownTransform`) la puede cancelar: dos animaciones de `transform` en un
- * elemento no van juntas en la GPU (Chromium saca a la otra: «incompatible»).
+ * elemento no van juntas en la GPU (Chromium saca a la otra: «incompatible»). `animations`: las suyas, si ya se leyeron (en una sola fase de lectura).
  */
-export const transformTransition = (element: Element) => (element.getAnimations?.() ?? []).find((animation) => isTransition(animation) && movesTransform(animation))
+export const transformTransition = (element: Element, animations: readonly Animation[] = animationsOf(element)) => animations.find((animation) => isTransition(animation) && movesTransform(animation))
 
 /**
  * ¿Vuela? Otra animación (no su transición) ya mueve la `transform` del elemento (un vuelo entre zonas): ahí una animación nueva se suma (`composite: 'add'`), como siempre;
  * llevarle delante la base de este momento la dejaría clavada donde estaba.
  */
-export function flying(element: Element): boolean {
-  return (element.getAnimations?.() ?? []).some((animation) => movesTransform(animation) && !isTransition(animation))
+export function flying(element: Element, animations: readonly Animation[] = animationsOf(element)): boolean {
+  return animations.some((animation) => movesTransform(animation) && !isTransition(animation))
 }
 
 /**
@@ -82,8 +85,8 @@ export function flying(element: Element): boolean {
  * transición corre (la carta que se acuesta, la mano que se abre al robar), la de adonde va: una animación de `transform` tapa la transición (medido en Edge: también
  * sumándose con `add`), así que la carta ya se veía en su lugar.
  */
-export function ownTransform(element: Element): string {
-  const transition = transformTransition(element)
+export function ownTransform(element: Element, animations: readonly Animation[] = animationsOf(element)): string {
+  const transition = transformTransition(element, animations)
   const base = transition ? String((transition.effect as KeyframeEffect).getKeyframes().at(-1)?.transform ?? 'none') : getComputedStyle(element).transform
 
   return !base || base === 'none' ? '' : `${base} `
