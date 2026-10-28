@@ -360,7 +360,8 @@ describe('las impresiones de arte distinto (overframe, extended art...)', () => 
     expect(art.parentElement!.className).toContain('perspective')
 
     fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 190, clientY: 20 })
-    expect(art.style.rotate).toMatch(/12deg$/)
+    // La inclinación espera su cuadro (`requestAnimationFrame`).
+    await waitFor(() => expect(art.style.rotate).toMatch(/12deg$/))
     expect(art.dataset.tilting).toBe('true')
 
     fireEvent.pointerLeave(art)

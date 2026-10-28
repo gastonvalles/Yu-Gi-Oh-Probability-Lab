@@ -240,7 +240,7 @@ describe('las cartas de la lista completa no se vuelven a dibujar de más', () =
 })
 
 describe('las cartas de las banlists', () => {
-  it('se inclinan en 3D hacia el mouse, igual que en el detalle de la carta', () => {
+  it('se inclinan en 3D hacia el mouse, igual que en el detalle de la carta', async () => {
     HTMLElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, right: 200, bottom: 300, width: 200, height: 300, x: 0, y: 0, toJSON: () => ({}) })
     render(<BanlistsScreen />)
 
@@ -249,7 +249,8 @@ describe('las cartas de las banlists', () => {
     expect(art.parentElement!.className).toContain('perspective')
 
     fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 190, clientY: 20 })
-    expect(art.style.rotate).toMatch(/12deg$/)
+    // La inclinación espera su cuadro (`requestAnimationFrame`).
+    await waitFor(() => expect(art.style.rotate).toMatch(/12deg$/))
     expect(art.dataset.tilting).toBe('true')
 
     fireEvent.pointerLeave(art)

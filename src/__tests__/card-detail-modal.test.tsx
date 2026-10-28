@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -48,7 +48,7 @@ describe('detalle compartido de cartas', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('la carta se inclina hacia el mouse mientras está encima y se acomoda al salir; con el dedo no se mueve', () => {
+  it('la carta se inclina hacia el mouse mientras está encima y se acomoda al salir; con el dedo no se mueve', async () => {
     render(modal())
     const art = screen.getByRole('button', { name: 'Ver la carta en grande' })
 
@@ -56,7 +56,8 @@ describe('detalle compartido de cartas', () => {
     expect(art.dataset.tilting).toBeUndefined()
 
     fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 10, clientY: 10 })
-    expect(art.dataset.tilting).toBe('true')
+    // La inclinación espera su cuadro (`requestAnimationFrame`).
+    await waitFor(() => expect(art.dataset.tilting).toBe('true'))
 
     fireEvent.pointerLeave(art, { pointerType: 'mouse' })
     expect(art.dataset.tilting).toBe('false')
