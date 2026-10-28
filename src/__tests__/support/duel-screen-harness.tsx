@@ -85,7 +85,20 @@ const PHASE_NAMES = ['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phas
 /** El botón de la fase de ahora (en el centro del campo): al tocarlo muestra las fases. */
 export const phaseChip = (view: RenderResult) => within(view.container).getByRole('button', { name: /^Fases:/ })
 
-export const typeInto = (view: RenderResult, label: string, value: string) => fireEvent.change(within(view.container).getByLabelText(label), { target: { value } })
+/** Escribir en un campo de la pantalla. El nombre del inicio de Jugar está detrás de su fila: se abre la hoja, se escribe y se cierra con Enter. */
+export const typeInto = (view: RenderResult, label: string, value: string) => {
+  const field = within(view.container).queryByLabelText(label)
+
+  if (field) {
+    fireEvent.change(field, { target: { value } })
+    return
+  }
+
+  fireEvent.click(within(view.container).getByRole('button', { name: new RegExp(`^${label}`) }))
+  const sheet = within(screen.getByRole('dialog', { name: label }))
+  fireEvent.change(sheet.getByLabelText(label), { target: { value } })
+  fireEvent.submit(sheet.getByLabelText(label))
+}
 
 export const rulesDialog = () => screen.getByRole('dialog', { name: 'Reglas del duelo' })
 
@@ -187,8 +200,8 @@ export function createDuelHarness(sala: () => { memory: MemoryRoom; connect: Due
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
   }
 
-  /** El deck con que se juega se elige en una hoja («Tu deck»), que se abre desde el renglón del nombre del deck. */
-  const openDeck = (view: RenderResult) => click(view, /^(Sin deck|.+ · \d+)$/)
+  /** El deck con que se juega: «Cambiar» de la portada de Jugar lleva al builder. */
+  const openDeck = (view: RenderResult) => click(view, 'Cambiar deck')
 
   /** Entrar con un enlace o un código: el campo está detrás de «Tengo un código». */
   const joinByLink = (view: RenderResult, link: string) => {

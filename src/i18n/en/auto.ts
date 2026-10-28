@@ -5,6 +5,8 @@ export const auto: Translated<typeof es> = {
   // The entry: the switch in the Play lobby, below the tiles.
   'auto.entry.switch': 'Automatic duel (beta)',
   'auto.entry.hint': "The rules engine applies the rules, solo or with a friend (in a private room). Solo, the opponent doesn't play its turn: it only uses the hand traps you give it.",
+  'auto.entry.short': 'The rules engine applies the rules.',
+  'auto.entry.info': 'What the automatic duel does',
   // The passive opponent, said on the loading cover and in «More options».
   'auto.rival.passive': "The opponent doesn't play: it only receives. Use it to test your plays with the real rules.",
   // The opponent with the simulator's hand traps, on the loading cover.

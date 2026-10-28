@@ -69,15 +69,19 @@ const lobby = (props: Partial<ComponentProps<typeof PlayHome>> = {}) =>
   render(<PlayHome view={null} name="" onName={() => {}} deckName="Mi deck" onOpenBuilder={() => {}} deckReady deckSize={40} minDeck={40} trainReady onTrain={() => {}} onOpenDuel={() => {}} onJoin={() => {}} paused={null} onResume={() => {}} onDropPaused={() => {}} {...props} />)
 
 describe('el interruptor del lobby de Jugar', () => {
-  it('con deck se ve debajo de las baldosas, apagado de entrada; tocarlo lo prende y lo apaga, y queda guardado', () => {
+  it('con deck es una fila de la tarjeta del nombre, apagado de entrada, con lo largo en la ⓘ; tocarlo lo prende y lo apaga, y queda guardado', () => {
     withWorker()
     lobby()
     const toggle = screen.getByRole('switch', SWITCH)
 
     expect(toggle).not.toBeChecked()
     expect(toggle).toBeEnabled()
-    // Va con las baldosas (en su misma grilla), después de «Entrenar solo».
-    expect(screen.getByRole('button', { name: 'Entrenar solo' }).parentElement).toContainElement(toggle)
+    // Va en la misma tarjeta de filas que «Tu nombre», debajo de los atajos.
+    const rows = screen.getByRole('button', { name: /^Tu nombre/ }).closest('ul')!
+    expect(rows).toContainElement(toggle)
+    expect(within(rows).getByText('El núcleo aplica las reglas.')).toBeInTheDocument()
+    fireEvent.click(within(rows).getByRole('button', { name: 'Qué hace el duelo automático' }))
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/solo o con un amigo/)
     fireEvent.click(toggle)
     expect(toggle).toBeChecked()
     expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([true, 'on'])
@@ -86,11 +90,12 @@ describe('el interruptor del lobby de Jugar', () => {
     expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([false, 'off'])
   })
 
-  it('sin deck no está: la baldosa «Entrenar solo» ya dice que falta', () => {
+  it('sin deck no está: el atajo «Entrenar solo» ya dice que falta', () => {
     withWorker()
     lobby({ deckReady: false, trainReady: false, deckSize: 3 })
 
-    expect(screen.getByRole('button', { name: 'Entrenar solo' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Entrenar solo' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Entrenar solo' })).toHaveAccessibleDescription('Para entrenar hace falta un deck armado en el builder.')
     expect(screen.queryByRole('switch', SWITCH)).toBeNull()
   })
 

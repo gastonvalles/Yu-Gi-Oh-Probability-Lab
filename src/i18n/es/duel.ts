@@ -100,6 +100,8 @@ export const duel = {
   'duel.play.trainHint': 'Tu mesa, sin rival.',
   'duel.play.trainNeedDeck': 'Para entrenar hace falta un deck armado en el builder.',
   'duel.play.deckNone': 'Sin deck',
+  'duel.play.deckChange': 'Cambiar',
+  'duel.play.rulesYours': 'Con tus reglas',
   'duel.play.rules': 'Reglas del duelo',
   'duel.play.rulesSave': 'Guardar reglas',
   'duel.play.rulesOpen': 'Abrir duelo',

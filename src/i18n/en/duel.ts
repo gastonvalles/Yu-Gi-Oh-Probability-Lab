@@ -97,6 +97,8 @@ export const duel: Translated<typeof es> = {
   'duel.play.trainHint': 'Your table, no opponent.',
   'duel.play.trainNeedDeck': 'To train you need a deck built in the builder.',
   'duel.play.deckNone': 'No deck',
+  'duel.play.deckChange': 'Change',
+  'duel.play.rulesYours': 'Your rules',
   'duel.play.rules': 'Duel rules',
   'duel.play.rulesSave': 'Save rules',
   'duel.play.rulesOpen': 'Open duel',

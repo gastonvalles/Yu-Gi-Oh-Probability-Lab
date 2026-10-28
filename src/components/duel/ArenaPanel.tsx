@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { MAX_SPECTATORS, type LiveDuel, type PublicRoom } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
 import { t } from '../../i18n'
-import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
-import { IconButton } from '../ui/IconButton'
-import { Skeleton } from '../ui/Skeleton'
-import { TONE, type Tone } from '../ui/tone'
+import { ListGroup, ListRow } from '../ui/ListRow'
+import { SectionHeader } from '../ui/SectionHeader'
 import { REFRESH_MS, roomChips } from './room-chips'
 
 /** Cuántas salas o duelos se ven antes de «Ver las N» (la pantalla se entiende en tres segundos: lo demás está a un toque). */
@@ -77,61 +75,33 @@ function useArena(rooms: RoomsApi) {
   return { arena, refreshing, refresh }
 }
 
-/** La inicial de un jugador en una chapa del color de su lado (violeta: quien abre la sala; ámbar: el rival), como la de un canal en los replays. */
-function Initial({ name, tone }: { name: string; tone: Tone }) {
-  return (
-    <span aria-hidden="true" className={cx('grid size-9 shrink-0 place-items-center rounded-full border text-body font-bold uppercase', TONE[tone].tint, TONE[tone].text)}>
-      {Array.from(name.trim())[0] ?? '?'}
-    </span>
-  )
-}
+/** El inicio de una fila: la inicial de quien abrió la sala (y la del rival, si lo hay). */
+const initial = (name: string) => (Array.from(name.trim())[0] ?? '?').toUpperCase()
 
-/** Una tarjeta de la arena (la tarjeta es el único borde): arriba quién es, en el medio cómo se juega y abajo el dato y la acción, pegados (zona del pulgar). */
-function ArenaCard({ children }: { children: ReactNode }) {
-  return <li className="grid gap-3 rounded-card border border-border-subtle bg-card-background p-3">{children}</li>
-}
+/** Lo de abajo del nombre, separado por puntos medios: cada dato en su propio texto. */
+const dotted = (parts: string[]) =>
+  parts.map((part, index) => (
+    <Fragment key={part + index}>
+      {index > 0 ? ' · ' : null}
+      <span>{part}</span>
+    </Fragment>
+  ))
 
-/**
- * Mientras llega la primera respuesta del relay (Gastón, 2026-10-20: «este componente no tiene un indicativo de que está cargando»): lo que se está haciendo, con el punto que late de la línea de estado, y dos
- * lugares vacíos con la forma de las tarjetas (la misma altura que tienen con datos: nada se corre cuando llegan).
- */
-function ArenaLoading() {
+/** La línea de estado de la arena, con el punto que late: qué se está haciendo o qué hay. */
+function ArenaStatus({ children }: { children: ReactNode }) {
   return (
-    <div aria-busy="true" className="grid gap-3">
-      <p className="m-0 flex items-center gap-2 px-1 text-micro text-muted" role="status">
-        <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success motion-safe:animate-pulse" />
-        {t('duel.arena.loading')}
-      </p>
-      <ul aria-hidden="true" className="m-0 grid list-none gap-3 p-0">
-        {[0, 1].map((slot) => (
-          <li key={slot} className="grid gap-3 rounded-card border border-border-subtle bg-card-background p-3">
-            <div className="flex items-center gap-3">
-              <Skeleton radius="chip" className="size-9 shrink-0" />
-              <div className="grid flex-1 gap-1.5">
-                <Skeleton className="h-4 w-28 max-w-full" />
-                <Skeleton className="h-3 w-16" />
-              </div>
-            </div>
-            <div className="flex gap-1">
-              {[0, 1, 2].map((chip) => (
-                <Skeleton key={chip} radius="chip" className="h-5 w-14" />
-              ))}
-            </div>
-            <div className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
-              <Skeleton className="h-3 w-14" />
-              <Skeleton className="h-8 w-20" />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <p className="m-0 flex items-center gap-2 text-micro text-muted" role="status">
+      <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success motion-safe:animate-pulse" />
+      {children}
+    </p>
   )
 }
 
 /**
- * La arena de Jugar, al costado del inicio en escritorio (y debajo en el celular): un contenedor con una tarjeta por sala que espera rival y por duelo en vivo. Una sala dice quién la abrió y hace cuánto,
- * sus reglas en chips y, abajo, cuántos jugadores hay y «Entrar»; un duelo en vivo, quiénes se enfrentan, y abajo cuántos lo miran y «Mirar». Se actualiza sola cada 15 segundos y a mano; mientras
- * lo pedido no llega se ve: lugares vacíos la primera vez y, al tocar «Actualizar», el ícono gira y la lista se atenúa.
+ * La arena de Jugar, al costado del inicio en escritorio (y debajo en el celular): el título afuera con «Actualizar» a la derecha y, abajo, una tarjeta con una fila por sala que espera rival
+ * (quién la abrió, sus reglas y hace cuánto; «Entrar») y otra por duelo en vivo (quiénes se enfrentan, cuántos lo miran y sus reglas; «Mirar»). Se actualiza sola cada 15 segundos y a mano;
+ * mientras lo pedido no llega se ve: filas vacías la primera vez (Gastón, 2026-10-20: «este componente no tiene un indicativo de que está cargando») y, al tocar «Actualizar», el ícono gira y la
+ * lista se atenúa.
  */
 export function ArenaPanel({ rooms, busy, deckReady, onJoin }: ArenaPanelProps) {
   const { arena, refreshing, refresh } = useArena(rooms)
@@ -142,96 +112,78 @@ export function ArenaPanel({ rooms, busy, deckReady, onJoin }: ArenaPanelProps) 
   const shownLive = expanded ? live : live.slice(0, SHOWN)
 
   return (
-    <section aria-label={t('duel.arena.title')} aria-busy={arena === null || refreshing} className="grid content-start gap-3 rounded-panel bg-primary/8 p-3 min-[1101px]:sticky min-[1101px]:top-0">
-      <div className="flex items-center justify-between gap-2 px-1">
-        <Heading level="card" as="h2">{t('duel.arena.title')}</Heading>
-        <IconButton tone="raised" size="sm" aria-label={t('duel.arena.refresh')} title={t('duel.arena.refresh')} aria-busy={refreshing} onClick={refresh}>
-          <Icon name="refresh" className={cx(refreshing && 'motion-safe:animate-spin')} />
-        </IconButton>
-      </div>
+    <section aria-label={t('duel.arena.title')} aria-busy={arena === null || refreshing} className="grid min-w-0 content-start gap-3 min-[1101px]:sticky min-[1101px]:top-0">
+      <SectionHeader
+        title={t('duel.arena.title')}
+        link={{
+          label: (
+            <>
+              <Icon name="refresh" size={16} className={cx('mr-1', refreshing && 'motion-safe:animate-spin')} />
+              {t('duel.arena.refresh')}
+            </>
+          ),
+          onClick: refresh,
+          chevron: false,
+        }}
+      />
 
       {arena === null ? (
-        <ArenaLoading />
+        <div className="grid gap-3">
+          <ArenaStatus>{t('duel.arena.loading')}</ArenaStatus>
+          <ListGroup loading />
+        </div>
       ) : (
         // Al actualizar a mano la lista se queda donde está y se atenúa hasta que llega lo nuevo (con movimiento reducido, es lo único que avisa).
         <div aria-busy={refreshing} className="grid gap-3 transition-opacity duration-150 aria-busy:opacity-60">
           {waiting.length === 0 && live.length === 0 ? (
-            <p className="m-0 px-1 text-micro text-soft">{t('duel.arena.empty')}</p>
+            <ListGroup empty={<p className="m-0 text-body text-muted">{t('duel.arena.empty')}</p>} />
           ) : (
             <>
-              <p className="m-0 flex items-center gap-2 px-1 text-micro text-muted" role="status">
-                <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success motion-safe:animate-pulse" />
+              <ArenaStatus>
                 {[waiting.length > 0 ? t('duel.arena.waiting', { count: waiting.length }) : null, live.length > 0 ? t('duel.arena.playing', { count: live.length }) : null].filter(Boolean).join(' · ')}
-              </p>
+              </ArenaStatus>
 
               {shownWaiting.length > 0 ? (
-                <ul className="stagger m-0 grid list-none gap-3 p-0">
+                <ListGroup>
                   {shownWaiting.map((room) => (
-                    <ArenaCard key={room.code}>
-                      <span className="flex items-center gap-3">
-                        <Initial name={room.host} tone="brand" />
-                        <span className="grid min-w-0 flex-1">
-                          <span className="truncate text-body font-semibold text-foreground">{room.host}</span>
-                          <span className="text-micro text-soft">{sinceLabel(room.createdAt)}</span>
-                        </span>
-                      </span>
-                      <span className="flex flex-wrap gap-1">
-                        {roomChips(room).map((chip) => (
-                          <Badge key={chip} size="sm">
-                            {chip}
-                          </Badge>
-                        ))}
-                      </span>
-                      <span className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
-                        <span className="inline-flex items-center gap-1.5 text-micro text-muted">
-                          <Icon name="user" size={14} />
-                          {t('duel.arena.seats', { count: 1 })}
-                        </span>
+                    <ListRow
+                      key={room.code}
+                      title={room.host}
+                      initials={initial(room.host)}
+                      tone="brand"
+                      subtitle={dotted([...roomChips(room), sinceLabel(room.createdAt)])}
+                      end={
                         <Button variant="secondary" size="sm" aria-label={t('duel.arena.enterLabel', { name: room.host })} disabled={busy || !deckReady} onClick={() => onJoin(room.code, false)}>
                           {t('duel.arena.enter')}
                         </Button>
-                      </span>
-                    </ArenaCard>
+                      }
+                    />
                   ))}
-                </ul>
+                </ListGroup>
               ) : null}
 
               {shownLive.length > 0 ? (
-                <div className="grid gap-3">
-                  <Heading level="card" as="h2" className="px-1">{t('duel.arena.live')}</Heading>
-                  <ul className="stagger m-0 grid list-none gap-3 p-0">
+                <div className="grid gap-2">
+                  <Heading level="card" as="h3">{t('duel.arena.live')}</Heading>
+                  <ListGroup>
                     {shownLive.map((duel) => {
                       const full = duel.watchers >= MAX_SPECTATORS
 
                       return (
-                        <ArenaCard key={duel.code}>
-                          <span className="flex items-center gap-3">
-                            <span className="flex shrink-0 -space-x-2">
-                              <Initial name={duel.host} tone="brand" />
-                              {duel.guest ? <Initial name={duel.guest} tone="info" /> : null}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-body font-semibold text-foreground">{duel.guest ? t('duel.arena.versus', { host: duel.host, guest: duel.guest }) : t('duel.arena.isPlaying', { name: duel.host })}</span>
-                          </span>
-                          <span className="flex flex-wrap gap-1">
-                            {roomChips(duel).map((chip) => (
-                              <Badge key={chip} size="sm">
-                                {chip}
-                              </Badge>
-                            ))}
-                          </span>
-                          <span className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
-                            <span className="inline-flex items-center gap-1.5 text-micro text-muted">
-                              <Icon name="eye" size={14} />
-                              {t('duel.arena.watchers', { count: duel.watchers, max: MAX_SPECTATORS })}
-                            </span>
+                        <ListRow
+                          key={duel.code}
+                          title={duel.guest ? t('duel.arena.versus', { host: duel.host, guest: duel.guest }) : t('duel.arena.isPlaying', { name: duel.host })}
+                          initials={initial(duel.host) + (duel.guest ? initial(duel.guest) : '')}
+                          subtitle={dotted([t('duel.arena.watchers', { count: duel.watchers, max: MAX_SPECTATORS }), ...roomChips(duel)])}
+                          end={
                             <Button variant="secondary" size="sm" icon="eye" aria-label={t('duel.arena.watchLabel', { name: duel.host })} disabled={full} onClick={() => onJoin(duel.code, true)}>
                               {full ? t('duel.arena.full') : t('duel.arena.watch')}
                             </Button>
-                          </span>
-                        </ArenaCard>
+                          }
+                        />
                       )
                     })}
-                  </ul>
+                  </ListGroup>
                 </div>
               ) : null}
 

@@ -527,7 +527,7 @@ function LobbyArenaSamples() {
       layout="column"
       note={
         <>
-          Mientras llega la primera respuesta del relay: la línea de estado con el punto que late (<Tag>Mirando quién está…</Tag>) y dos lugares vacíos con la forma y la altura de las tarjetas (<Tag>Skeleton</Tag>), así no se corre nada al llegar. Al tocar <Tag>Actualizar</Tag> el ícono gira al menos una vuelta y la lista se atenúa (<Tag>aria-busy</Tag>); el pedido automático de cada 15 s es silencioso. Archivo: <Tag>duel/ArenaPanel.tsx</Tag>
+          Mientras llega la primera respuesta del relay: la línea de estado con el punto que late (<Tag>Mirando quién está…</Tag>) y tres filas vacías de la misma lista (<Tag>ListGroup loading</Tag>), así no se corre nada al llegar. Al tocar <Tag>Actualizar</Tag> (el enlace del encabezado) su ícono gira al menos una vuelta y la lista se atenúa (<Tag>aria-busy</Tag>); el pedido automático de cada 15 s es silencioso. Archivo: <Tag>duel/ArenaPanel.tsx</Tag>
         </>
       }
     >
