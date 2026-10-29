@@ -353,12 +353,12 @@ describe('en la mesa del duelo de escritorio es una tira: renglones de cartas qu
       </Provider>,
     )
 
-  it('las cartas bajan de renglón y lo que sobra se desliza de arriba abajo, nunca a los costados (hasta tres renglones y un asomo); el buscador va en la fila del título y «Elegir varias», abajo', () => {
+  it('las cartas bajan de renglón (lo que sobra de ancho se reparte entre las columnas: sin franja vacía) y lo que sobra se desliza de arriba abajo, nunca a los costados (hasta tres renglones y un asomo); el buscador va en la fila del título y «Elegir varias», abajo', () => {
     strip(Object.keys(NAMES))
     const panel = screen.getByRole('dialog', { name: 'Main · 9' })
     const list = within(panel).getByRole('list', { name: 'Cartas' })
 
-    expect(list).toHaveClass('flex', 'flex-wrap')
+    expect(list).toHaveClass('grid', 'justify-between')
     expect(list).not.toHaveClass('overflow-x-auto')
     expect(list.parentElement).toHaveClass('overflow-y-auto', 'overflow-x-hidden')
     expect(list.parentElement!.className).toContain('max-h-[calc(3*')

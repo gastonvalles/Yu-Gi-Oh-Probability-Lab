@@ -1,4 +1,4 @@
-import { useDeferredValue, useId, useState, type KeyboardEvent } from 'react'
+import { useDeferredValue, useId, useState, type CSSProperties, type KeyboardEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
@@ -50,6 +50,15 @@ function PlaceChip({ from, theirs }: { from: PickFrom; theirs: boolean }) {
   )
 }
 
+/**
+ * La grilla de la hoja (`grouped`) desde 640 px: cartas de 7.5 rem y la grilla mide lo de sus cartas en fila (`--n`; así la hoja, `Modal fit`, mide lo justo con pocas); si no entran, bajan de renglón y lo
+ * que sobra de ancho se reparte entre las columnas (la primera y la última, al ras): ni columnas vacías ni una franja a la derecha. En el celular, tres por fila.
+ */
+const SHEET_COLUMNS = 'sm:grid-cols-[repeat(auto-fill,7.5rem)] sm:justify-between sm:w-[calc(var(--n)*8rem-0.5rem)] sm:max-w-full'
+/** En el celular, un lugar con una o dos cartas ocupa sólo sus columnas de las tres (el de al lado se pone al lado): el ancho de un grupo y sus columnas. */
+const PHONE_GROUP: Record<number, string> = { 1: 'max-sm:w-[calc((100%-1rem)/3)]', 2: 'max-sm:w-[calc((100%-1rem)*2/3+0.5rem)]', 3: 'max-sm:w-full' }
+const PHONE_COLUMNS: Record<number, string> = { 1: 'max-sm:grid-cols-1', 2: 'max-sm:grid-cols-2', 3: 'max-sm:grid-cols-3' }
+
 /** Lo mismo que se ve: las cartas por lugar (en el orden en que aparece cada uno; la mano propia, primero) y, dentro de cada uno, en el orden que llegan. */
 function groupsOf(cards: readonly PickCard[]) {
   const groups = new Map<string, PickCard[]>()
@@ -76,11 +85,11 @@ interface PickGridProps {
   multi: boolean
   /** Las que un toque acepta ahora (el núcleo: lo que todavía completa la pregunta); las demás, sin elegir, van apagadas. Sin esto, todas. */
   eligible?: ReadonlySet<string>
-  /** Las columnas de la grilla. */
+  /** Las columnas de la grilla (sin `grouped`: la de la hoja es `SHEET_COLUMNS`). */
   className?: string
   /** El lugar de cada carta en una pestaña sobre ella («Campo», «Mano»), como en «¿Activás el efecto?», y no debajo del nombre. */
   tabs?: boolean
-  /** De lugares distintos (`from`), un grupo por lugar con su encabezado pegajoso («Tu mano · 1»): la hoja. Sin esto (la banda), sólo el orden de los grupos. */
+  /** La hoja: de lugares distintos (`from`), un grupo por lugar con su encabezado pegajoso («Tu mano · 1»), uno al lado del otro si entran; sus columnas, `SHEET_COLUMNS`. Sin esto (la banda), sólo el orden de los grupos. */
   grouped?: boolean
 }
 
@@ -164,16 +173,27 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
   }
 
   return (
-    <div role="listbox" aria-label={label} aria-multiselectable={multi || undefined} className={cx('grid', headed ? 'gap-4' : ['gap-2', className])} onKeyDown={onKeyDown}>
+    <div
+      role="listbox"
+      aria-label={label}
+      aria-multiselectable={multi || undefined}
+      style={grouped && !headed ? ({ '--n': cards.length } as CSSProperties) : undefined}
+      className={headed ? 'flex flex-wrap gap-x-2 gap-y-4 sm:gap-x-6' : cx('grid gap-2', grouped ? ['max-sm:grid-cols-3', SHEET_COLUMNS] : className)}
+      onKeyDown={onKeyDown}
+    >
       {headed
         ? groups.map((group, n) => (
-            <div key={n} role="group" aria-labelledby={`${groupId}-${n}`} className="grid gap-2">
+            // Cada lugar mide lo de sus cartas y los chicos van uno al lado del otro: una sola carta de la mano no deja el resto del renglón vacío.
+            <div key={n} role="group" aria-labelledby={`${groupId}-${n}`} className={cx('grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-2', PHONE_GROUP[Math.min(3, group.length)])}>
               {/* Pegajoso, al ras de arriba de la hoja (`-top-5`: sobre su relleno, así no asoman cartas por encima): scrolleando, siempre se ve de qué lugar son las de abajo. */}
               <p id={`${groupId}-${n}`} className="sticky -top-5 z-10 m-0 flex items-center gap-1.5 bg-card-background py-1 text-body font-semibold text-foreground">
                 <Icon name={FROM_ICON[group[0]!.from!]} size={16} className="shrink-0 text-muted" />
-                {t('auto.band.from', { place: group[0]!.place ?? '', count: group.length })}
+                {/* En un renglón (en el celular, con una carta, se corta; el chip de cada carta dice el lugar): así las cartas de los grupos de al lado quedan a la misma altura. */}
+                <span className="min-w-0 truncate">{t('auto.band.from', { place: group[0]!.place ?? '', count: group.length })}</span>
               </p>
-              <div className={cx('grid gap-2', className)}>{group.map(option)}</div>
+              <div style={{ '--n': group.length } as CSSProperties} className={cx('grid gap-2', PHONE_COLUMNS[Math.min(3, group.length)], SHEET_COLUMNS)}>
+                {group.map(option)}
+              </div>
             </div>
           ))
         : cards.map(option)}
@@ -315,7 +335,7 @@ interface CardPickerProps {
 }
 
 /**
- * Elegir de `min` a `max` cartas de una lista que no está en el campo ni en una sola pila (de varios lugares, o por código), en una hoja (`Modal sheet`, al centro de la fila Extra: `anchor="mat"`; se minimiza sin
+ * Elegir de `min` a `max` cartas de una lista que no está en el campo ni en una sola pila (de varios lugares, o por código), en una hoja (`Modal fit`: mide lo de sus cartas; con buscador, `sheet`; al centro de la fila Extra: `anchor="mat"`; se minimiza sin
  * contestar, para ver el campo). Tocar elige o suelta
  * (el marco celeste y el número de orden), Mayús+clic elige el tramo; nunca más de `max`. Con `max` 1 un toque contesta (y «Listo» sólo si se puede terminar sin elegir: `done`); si no, la principal («Elegir 2 cartas»,
  * o «Listo» si se puede no elegir ninguna) se enciende con `min` (o con `done`) y el pie dice cuántas van. Con `SEARCH_FROM` cartas o más, un buscador por nombre arriba (filtra lo
@@ -333,6 +353,7 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
   // Con `max` 1, el pie sólo si hay «Listo» (terminar sin elegir) o «Cancelar».
   const finish = single && done === true
   const [query, setQuery] = useState('')
+  const searchable = cards.length >= SEARCH_FROM
   const needle = query.trim().toLocaleLowerCase()
   const shown = needle ? cards.filter((card) => card.name.toLocaleLowerCase().includes(needle)) : cards
 
@@ -344,7 +365,8 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
       isOpen={!leaving}
       onClose={onCancel ?? (() => {})}
       dismissible={Boolean(onCancel)}
-      size="sheet"
+      // Mide lo que llevan sus cartas (sin franjas vacías al costado ni abajo); con buscador, la hoja fija de siempre: no cambia de tamaño (ni se corre) mientras se escribe.
+      size={searchable ? 'sheet' : 'fit'}
       lowerable
       anchor="mat"
       veil={false}
@@ -373,9 +395,9 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
         )
       }
     >
-      {cards.length >= SEARCH_FROM ? <SearchField label={t('auto.picker.search')} placeholder={t('auto.picker.search')} value={query} onChange={setQuery} className="mb-3" /> : null}
+      {searchable ? <SearchField label={t('auto.picker.search')} placeholder={t('auto.picker.search')} value={query} onChange={setQuery} className="mb-3" /> : null}
       {shown.length > 0 ? (
-        <PickGrid grouped label={t('auto.picker.cards')} cards={shown} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} className="grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]" />
+        <PickGrid grouped label={t('auto.picker.cards')} cards={shown} chosen={chosen} eligible={eligible} onToggle={single && !onToggle ? (key) => onPick([key]) : toggle} multi={!single} />
       ) : (
         <p className="m-0 text-body text-muted">{t('auto.picker.noMatches', { query: query.trim() })}</p>
       )}

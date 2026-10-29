@@ -17,8 +17,10 @@ import { Heading } from './Heading'
 /**
  * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo scrollea por dentro).
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
+ * 'fit' es la excepción para una grilla de cartas que mide lo suyo (`--n`): de ancho, lo de su contenido hasta lo de `sheet` (en el celular, todo el ancho, como `sheet`); de alto, lo que lleva hasta el
+ * de `sheet`. Así pocas cartas no dejan una franja vacía al costado ni abajo.
  */
-type ModalSize = 'sm' | 'md' | 'full' | 'sheet' | 'screen' | 'keypad'
+type ModalSize = 'sm' | 'md' | 'full' | 'sheet' | 'fit' | 'screen' | 'keypad'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
 
@@ -28,6 +30,7 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   full: `w-full h-[calc(100dvh-2rem)] ${FULL_HEIGHT_MOBILE}`,
   md: `w-[min(44rem,100%)] h-[min(40rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   sheet: 'w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] max-sm:h-[min(94dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
+  fit: 'w-full sm:w-max sm:max-w-[min(70rem,100%)]',
   /** Una hoja chica que en el celular sale de abajo (al alcance del pulgar) y ocupa lo que lleva: un teclado, una elección. En escritorio, un diálogo común. */
   keypad: 'w-[min(26rem,100%)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
   /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un panel del tamaño de un celular. */
@@ -43,6 +46,7 @@ const MAT_SIZE_CLASS: Partial<Record<ModalSize, string>> = {
   sm: 'w-[min(32rem,var(--mat-w,calc(100vw-1rem)))]',
   md: 'w-[min(44rem,var(--mat-w,calc(100vw-1rem)))] h-[min(40rem,var(--mat-room,calc(100dvh-1rem)))]',
   sheet: 'w-[min(70rem,var(--mat-w,calc(100vw-1rem)))] h-[min(46rem,var(--mat-room,calc(100dvh-1rem)))] min-[1101px]:h-[min(33rem,var(--mat-room,calc(100dvh-1rem)))]',
+  fit: 'w-[min(70rem,var(--mat-w,calc(100vw-1rem)))] sm:w-max sm:max-w-[min(70rem,var(--mat-w,calc(100vw-1rem)))] max-h-[min(46rem,var(--mat-room,calc(100dvh-1rem)))] min-[1101px]:max-h-[min(33rem,var(--mat-room,calc(100dvh-1rem)))]',
   keypad: 'w-[min(26rem,var(--mat-w,calc(100vw-1rem)))]',
 }
 
@@ -251,7 +255,7 @@ export function Modal({
           'flex min-h-0 flex-col p-0 outline-none motion-reduce:animate-none',
           mat
             ? // En el centro de la fila Extra (con el teclado, en el de lo visible) o, minimizada, el asa apoyada sobre esa fila.
-              cx('absolute left-[var(--mat-x,50%)] -translate-x-1/2', lowered ? 'top-[var(--mat-extra,calc(100%-1rem))] -translate-y-full' : 'top-[var(--mat-y,50%)] -translate-y-1/2 max-h-[var(--mat-room,calc(100dvh-1rem))]')
+              cx('absolute left-[var(--mat-x,50%)] -translate-x-1/2', lowered ? 'top-[var(--mat-extra,calc(100%-1rem))] -translate-y-full' : cx('top-[var(--mat-y,50%)] -translate-y-1/2', size !== 'fit' && 'max-h-[var(--mat-room,calc(100dvh-1rem))]'))
             : cx('relative max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)]', sheet ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter'),
           // Minimizada, el fondo deja pasar los toques; el asa, no.
           lowered ? 'pointer-events-auto max-w-[calc(100vw-2rem)]' : cx('overflow-hidden', mat && 'animate-dialog-enter', veil ? surface.panel : surface.floating, mat ? MAT_SIZE_CLASS[size] : SIZE_CLASS[size]),
