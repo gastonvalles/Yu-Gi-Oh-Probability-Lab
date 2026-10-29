@@ -15,6 +15,7 @@ import { CloseButton, IconButton } from '../../ui/IconButton'
 import { OverflowMenu } from '../../ui/OverflowMenu'
 import { ScrollRow } from '../../ui/ScrollRow'
 import { Segmented } from '../../ui/Segmented'
+import { ShineFrame } from '../../ui/ShineFrame'
 import { choiceChip, filterChip, listItemSelected, rowAddButton } from '../../ui/surfaces'
 import { Stepper } from '../../ui/Stepper'
 import { Switch } from '../../ui/Switch'
@@ -132,6 +133,20 @@ export function ButtonsSection() {
             <Button variant="onBrand" icon="play" size="sm">
               Ver
             </Button>
+          </Card>
+          {/* La acción principal de una pantalla, sobre la portada violeta: el marco que se mueve (un hilo ámbar que da la vuelta y un brillo que cruza), sólo transform; quieto con movimiento reducido. Uno por pantalla. */}
+          <Card level="hero" padding="md" className="flex flex-wrap items-center gap-3">
+            <Tag>ShineFrame</Tag>
+            <ShineFrame>
+              <Button variant="onBrand" icon="play">
+                Jugar ahora
+              </Button>
+            </ShineFrame>
+            <ShineFrame active={false}>
+              <Button variant="onBrand" icon="play" disabled>
+                Quieto
+              </Button>
+            </ShineFrame>
           </Card>
           {/* Por qué existe `outline`: sobre una tarjeta la lavanda de `secondary` casi no se ve (1,08:1); el borde fino sí, y se enciende en ámbar al apuntarlo. */}
           <Card padding="md" className="flex flex-wrap items-center gap-3">

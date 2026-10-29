@@ -16,6 +16,7 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
+import { ShineFrame } from '../ui/ShineFrame'
 import { ShortcutGrid, ShortcutTile } from '../ui/ShortcutGrid'
 import { Stepper } from '../ui/Stepper'
 import { field, surface } from '../ui/surfaces'
@@ -214,10 +215,12 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
                 <span className="text-micro text-muted">{t('duel.play.rulesYours')}</span>
                 <span className="text-body font-semibold text-foreground">{rulesLine(prefs, false)}</span>
               </span>
-              {/* Lo que se distingue de la vista: lavanda clara sobre la portada violeta (`onBrand`; el violeta lleno no se despegaba de ella). Con un duelo en pausa, lo principal es volver a él. */}
-              <Button variant={paused ? 'secondary' : 'onBrand'} icon="play" className="ml-auto" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
-                {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
-              </Button>
+              {/* Lo que se distingue de la vista: lavanda clara sobre la portada violeta (`onBrand`; el violeta lleno no se despegaba de ella) y, con deck, el marco que se mueve (`ShineFrame`). Con un duelo en pausa, lo principal es volver a él. */}
+              <ShineFrame className="ml-auto" active={!paused && deckReady && !busy}>
+                <Button variant={paused ? 'secondary' : 'onBrand'} icon="play" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
+                  {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
+                </Button>
+              </ShineFrame>
             </div>
           </section>
 

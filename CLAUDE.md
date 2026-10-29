@@ -6,6 +6,10 @@
 
 Reglas visuales, componentes y tokens: `docs/design-system.md`. El catálogo vivo es `/playground`: todo cambio de diseño se prueba ahí primero y después se lleva a las pantallas.
 
+## Estilos: Tailwind, nunca CSS puro
+
+Gastón (2026-10-30): todo se estila con utilidades de Tailwind v4 en el TSX; los tokens, las utilidades propias (`@utility`) y las animaciones (`--animate-*` con su `@keyframes` adentro de `@theme`) viven en `src/index.css`. **No se suma CSS propio**: ni selectores, ni archivos `.css` (`tailwind-only.test.ts`; la excepción heredada es `src/foil.css`, los efectos de rareza). Después, libertad, **priorizando el rendimiento al máximo**: se anima sólo `transform`/`translate`/`opacity` (compositor, sin repintar; nada de `@property` animada), todo con `motion-reduce:`, y JavaScript para animar sólo si hace falta orquestar (la librería `motion` no está instalada).
+
 ## Repo público y AGPL
 
 El repo es público y la licencia es la AGPL-3.0-or-later (`LICENSE`, `NOTICE.md`; la app ofrece el código desde su menú y `licencia.test.tsx` lo vigila): nada de secretos, mails ni datos personales en commits, documentos, comentarios ni cuerpos de PR (también se ven), y lo que no es nuestro (imágenes de Konami, datos sin licencia) no se sube. Cambiar la licencia es decisión de Gastón.
