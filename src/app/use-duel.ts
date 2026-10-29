@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import type { DuelSettings } from './duel-protocol'
 import { createParticipantId } from './duel-relay-rules'
-import { readAutoEndSave, readDuelSave, writeDuelSave } from './duel-save'
+import { readAutoEndSave, readDuelSave, writeDuelRecord, writeDuelSave } from './duel-save'
 import { createDuel, type Duel, type DuelRole, type DuelSnapshot } from './duel-session'
 import { createSpectator, type Spectator, type SpectatorSnapshot } from './duel-spectator'
 import { createSocketTransport, type SocketStatus, type SocketTransport, type SpectatorSocket } from './duel-socket'
@@ -64,10 +64,14 @@ export function useDuel({ room, role, name, settings, connect }: UseDuelInput): 
       // Sólo cuando algo de lo guardado cambió (las jugadas, las vidas o el reloj, la mesa de arranque): el chat y los avisos no pasan por acá.
       const now = duel.getSnapshot()
 
+      // El registro del replay va aparte: cambia con cada jugada del rival, y lo mío no se reescribe por eso.
+      if (now.record !== saved.record) writeDuelRecord(room, now)
+
       if (now.actions !== saved.actions || now.life !== saved.life || now.initial !== saved.initial || now.conceded !== saved.conceded || now.rematch.mine !== saved.rematch.mine) {
-        saved = now
         writeDuelSave(room, now)
       }
+
+      saved = now
     })
 
     setLive({ duel, transport })

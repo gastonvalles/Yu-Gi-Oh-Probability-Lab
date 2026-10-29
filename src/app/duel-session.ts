@@ -7,7 +7,7 @@ import { duelTurnNumber, whoseTurn } from './duel-turn'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { isEmojiSignal } from './duel-signals'
 import { CONTROL_ACTIONS, controlReactions } from './mat-control'
-import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
+import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender, type WireAct } from './mat-public'
 import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatPile, type MatState } from './practice-mat'
 
 /**
@@ -111,6 +111,33 @@ export interface DuelSnapshot {
   ping: { n: number; side: 'mine' | 'theirs'; card?: string; pile?: MatPile } | null
   /** De quién fue cada jugada de la mesa, en el orden en que pasaron (ver `playOrder`): va al guardado, así Deshacer tras recargar sigue el orden real. */
   order: readonly Mover[]
+  /** Lo que hace falta para el replay de este duelo, además de mi mesa y mis jugadas (`DuelRecord`); null si este duelo no se puede grabar. */
+  record: DuelRecord | null
+}
+
+/**
+ * El registro del replay de un duelo manual (`manual-replay.ts`): la mesa de arranque del rival como me llegó (enmascarada, con lo que ya se veía) y sus jugadas con lo que mostró
+ * cada una (el espejo no sirve: no guarda el `reveal` y se corta a `MAX_MIRROR_ACTS`), de quién fue cada jugada en el orden en que pasaron y las vidas `[mías, del rival]` con `at`
+ * contado en `order`. `cut`: se perdió algo del rival (jugó mientras no lo oía, o su mesa no coincide con lo anotado): lo anotado se congela y el replay llega hasta ahí. Es del duelo
+ * en curso (la revancha empieza otro) y null si no se puede grabar: siguió de un duelo automático, o volví de un guardado de antes de que existiera.
+ */
+export interface DuelRecord {
+  theirs: { initial: MatState; reveal: Readonly<Record<string, string>>; acts: readonly WireAct[] } | null
+  order: readonly ('mine' | 'theirs')[]
+  life: readonly { at: number; lp: readonly [number, number] }[]
+  cut: boolean
+}
+
+const NO_RECORD: DuelRecord = { theirs: null, order: [], life: [], cut: false }
+
+/** Las dos mesas son iguales (las del `sync` vienen del parser, con otro orden de claves que las del reductor). */
+const sameValue = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) return false
+  const left = Object.entries(a).filter(([, value]) => value !== undefined)
+  const right = b as Record<string, unknown>
+
+  return left.length === Object.values(right).filter((value) => value !== undefined).length && left.every(([key, value]) => sameValue(value, right[key]))
 }
 
 export interface Duel {
@@ -320,6 +347,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let peerLook: Activity | null = null
   let myLook: Activity | null = null
   let expiryTimer: ReturnType<typeof setTimeout> | null = null
+  // El registro del replay (`DuelRecord`) y la mesa del rival según lo anotado, para compararla con la de su `sync`.
+  let record: DuelRecord | null = NO_RECORD
+  let recordState: MatState | null = null
 
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
@@ -330,7 +360,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing, order: playOrder() })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing, order: playOrder(), record })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -675,6 +705,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       concededOnTime = false
       rematch = { mine: false, theirs: false }
       rps = { mine: null, theirs: null }
+      record = NO_RECORD
+      recordState = null
     }
   }
 
@@ -710,6 +742,83 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     const at = current.lastIndexOf(who)
 
     order = at < 0 ? current : [...current.slice(0, at), ...current.slice(at + 1)]
+  }
+
+  // ── El registro del replay (`DuelRecord`): se anota mientras no haya un corte ──
+
+  const recording = (): DuelRecord | null => (record && !record.cut ? record : null)
+
+  const cutRecord = () => {
+    if (recording()) record = { ...record!, cut: true }
+  }
+
+  /** Las vidas de ahora, si cambiaron: la primera vale para el arranque (`at` 0). */
+  const noteLife = () => {
+    const rec = recording()
+    const lp = [life.lp[me], life.lp[peer]] as const
+    const last = rec?.life.at(-1)
+
+    if (!rec || (last && last.lp[0] === lp[0] && last.lp[1] === lp[1])) return
+
+    const at = last ? rec.order.length : 0
+    record = { ...rec, life: [...(last?.at === at ? rec.life.slice(0, -1) : rec.life), { at, lp }] }
+  }
+
+  /** Saca la última jugada de `who` (la deshizo): lo de después se corre un lugar, las vidas también. Aun con un corte: lo deshecho ya no pasó. */
+  const unrecord = (who: 'mine' | 'theirs') => {
+    const at = record?.order.lastIndexOf(who) ?? -1
+
+    if (!record || at < 0) return
+    record = { ...record, order: [...record.order.slice(0, at), ...record.order.slice(at + 1)], life: record.life.map((step) => (step.at > at ? { ...step, at: step.at - 1 } : step)) }
+  }
+
+  /** Lo anotado de mí no pasa de mis jugadas (deshice, o la mesa volvió a empezar). */
+  const trimMine = () => {
+    while (record && record.order.filter((who) => who === 'mine').length > actions.length) unrecord('mine')
+  }
+
+  /** Una jugada del rival: la que sigue se anota; si falta alguna en el medio, corte. Va aparte del espejo (que puede no estar, tras recargar). */
+  const recordAct = (n: number, wire: WireAct) => {
+    const rec = recording()
+
+    if (!rec?.theirs || !recordState) return
+
+    if (n === rec.theirs.acts.length + 1) {
+      recordState = matReducer(recordState, wire.action)
+      record = { ...rec, theirs: { ...rec.theirs, acts: [...rec.theirs.acts, wire] }, order: [...rec.order, 'theirs'] }
+    } else if (n > rec.theirs.acts.length + 1) {
+      cutRecord()
+    }
+  }
+
+  const recordUndo = (n: number) => {
+    const rec = recording()
+
+    if (!rec?.theirs) return
+
+    if (n === rec.theirs.acts.length - 1) {
+      const acts = rec.theirs.acts.slice(0, -1)
+
+      record = { ...rec, theirs: { ...rec.theirs, acts } }
+      unrecord('theirs')
+      recordState = replayMat(rec.theirs.initial, acts.map((act) => act.action))
+    } else if (n < rec.theirs.acts.length - 1) {
+      cutRecord()
+    }
+  }
+
+  /** Su mesa entera: con `n` 0 (y nada anotado de él) es la de arranque; si no, tiene que ser la que ya anoté, o se perdió algo. */
+  const recordSync = (n: number, state: MatState, known: Readonly<Record<string, string>>) => {
+    const rec = recording()
+
+    if (!rec) return
+
+    if (n === 0 && (rec.theirs === null || rec.theirs.acts.length === 0)) {
+      record = { ...rec, theirs: { initial: state, reveal: known, acts: [] } }
+      recordState = state
+    } else if (rec.theirs && (n !== rec.theirs.acts.length || !sameValue(recordState, state))) {
+      cutRecord()
+    }
   }
 
   /** La última jugada de `who` pasó un monstruo de una mesa a la otra: no se deshace (la otra mesa ya la completó por su cuenta). Del rival sólo se sabe si ya me llegó su jugada. */
@@ -754,6 +863,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     sender = sent.sender
     mine = matReducer(mine, action)
     actions = [...actions, action]
+    const rec = recording()
+    if (rec) record = { ...rec, order: [...rec.order, 'mine'] }
     send({ t: 'act', n: actions.length, wire: sent.wire })
   }
 
@@ -766,6 +877,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     noteUndo('me')
     actions = actions.slice(0, -1)
     mine = replayMat(initial, actions)
+    trimMine()
     send({ t: 'undo', n: actions.length })
 
     return true
@@ -843,6 +955,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
   const setPeerLp = (lp: number) => {
     life = lifeReducer(life, { type: 'change', player: peer, delta: lp - life.lp[peer], now: now() })
+    noteLife()
   }
 
   const setClock = (running: boolean, elapsedMs: number) => {
@@ -921,6 +1034,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       case 'sync':
         if (message.state) {
           theirs = openMirror(message.state, message.known)
+          recordSync(message.n, message.state, theirs.known)
           peerSeq = message.n
           pruneMarks()
         }
@@ -974,6 +1088,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
 
       case 'act':
+        recordAct(message.n, message.wire)
+
         if (!theirs) {
           requestSync()
         } else if (message.n === peerSeq + 1) {
@@ -999,6 +1115,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
 
       case 'undo':
+        recordUndo(message.n)
+
         if (message.n === peerSeq - 1) {
           noteUndo('peer')
         }
@@ -1239,12 +1357,18 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       rematch = { mine: saved.rematch === true, theirs: false }
       // Lo guardado antes de que el orden se guardara no lo trae: como siempre, las del rival se suponen anteriores a las mías.
       order = [...(saved.order ?? [])]
+      // El registro del replay sigue si se guardó con la mesa (`duel-save.ts`); de un guardado sin él, este duelo ya no se puede grabar.
+      record = saved.record ?? null
+      recordState = record?.theirs ? replayMat(record.theirs.initial, record.theirs.acts.map((act) => act.action)) : null
+      trimMine()
     } catch {
       initial = null
       actions = []
       mine = null
       sender = null
       ownIds = {}
+      record = NO_RECORD
+      recordState = null
     }
   }
 
@@ -1287,6 +1411,15 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       settle(table, history)
       // Las del rival que no me llegaron todavía (su mesa viene con su `sync`) se ajustan solas en `playOrder`.
       order = moves.map((who) => (who === 'mine' ? 'me' : 'peer'))
+
+      // Un duelo que siguió del automático no se graba acá (lo del rival hasta el pase no me llegó); uno nuevo, sí: lo del rival puede haber llegado antes que mi mesa.
+      if (history.length > 0) {
+        record = null
+        recordState = null
+      }
+
+      trimMine()
+      noteLife()
       sendSync()
       emit()
     },
@@ -1305,6 +1438,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       ownIds = {}
       theirs = null
       order = []
+      record = null
+      recordState = null
       emit()
     },
 
@@ -1416,6 +1551,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       if (next !== life) {
         life = next
         lifeN += 1
+        noteLife()
         send({ t: 'life', n: lifeN, lp: life.lp[me] })
         emit()
       }
@@ -1427,6 +1563,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       if (next !== life) {
         life = next
         lifeN += 1
+        noteLife()
         send({ t: 'life', n: lifeN, lp: life.lp[me] })
         emit()
       }

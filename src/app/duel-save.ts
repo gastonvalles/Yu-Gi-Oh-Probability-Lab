@@ -1,5 +1,6 @@
+import { invalid, readId, readInt, readMatAction, readMatState, readRecord } from './combo-share'
 import { ROOM_CODE_PATTERN } from './duel-relay-rules'
-import type { DuelSnapshot, Mover } from './duel-session'
+import type { DuelRecord, DuelSnapshot, Mover } from './duel-session'
 import type { SideDeck } from './duel-siding'
 import type { Duelist, LifeTimer } from './life-calculator'
 import type { MatAction, MatState } from './practice-mat'
@@ -8,7 +9,8 @@ import type { MatAction, MatState } from './practice-mat'
  * Lo propio de un duelo en curso, guardado en el navegador para no perderlo si la página se recarga, si el navegador descarta la pestaña mientras se atiende otra
  * aplicación o si el jugador sale del duelo y vuelve a entrar: la mesa de arranque y las jugadas (de ahí se vuelve a armar, el reductor es determinista), las vidas,
  * el reloj y quién empezó. Mientras falta uno de los dos el duelo está en pausa; al volver, el mismo jugador sigue con su mesa.
- * Lo del rival, el chat y el registro de juegos no se guardan: lo primero lo repite el rival al volver a saludar y lo otro es de cada sesión.
+ * Lo del rival, el chat y el registro de juegos no se guardan: lo primero lo repite el rival al volver a saludar y lo otro es de cada sesión (del rival sólo va lo que pide el
+ * replay, `record`).
  */
 export interface DuelSave {
   v: 1
@@ -30,10 +32,17 @@ export interface DuelSave {
   rematch?: boolean
   /** De quién fue cada jugada de la mesa, intercaladas como pasaron: así Deshacer tras recargar sigue el orden real (sin esto, las del rival se suponen anteriores a las mías). Los guardados de antes no lo traen. */
   order?: Mover[]
+  /**
+   * El registro del replay (`DuelRecord`), para que recargar no lo pierda. Va en otra clave (`writeDuelRecord`: cambia con cada jugada del rival, y así lo mío no se reescribe
+   * por eso) y `readDuelSave` lo suma; sin él (de antes, o roto), el duelo sigue pero ya no se puede grabar.
+   */
+  record?: DuelRecord
 }
 
 const PREFIX = 'ygo-lab:duel-save:'
 const saveKey = (room: string, role: 'host' | 'guest') => `${PREFIX}${room}:${role}`
+const RECORD_PREFIX = 'ygo-lab:duel-record:'
+const recordKey = (room: string, role: 'host' | 'guest') => `${RECORD_PREFIX}${room}:${role}`
 
 /** Cuánto se espera a quien salió: pasado ese tiempo el duelo en pausa se descarta. */
 export const SAVE_TTL_MS = 2 * 60 * 60 * 1000
@@ -117,9 +126,47 @@ export function parseSave(raw: string | null, role: 'host' | 'guest', now: numbe
   }
 }
 
+const REAL_ID = /^card-\d{1,12}-\d{1,4}$/
+const MAX_LP = 999_999
+
+/** El registro del replay guardado, copiando sólo lo conocido (como el lector del replay, `duel-replay-share.ts`); roto, undefined. */
+export function parseDuelRecord(raw: string | null): DuelRecord | undefined {
+  const list = <T>(items: unknown, max: number, read: (item: unknown) => T): T[] => (Array.isArray(items) && items.length <= max ? items.map(read) : invalid())
+  const reveal = (items: unknown) => Object.fromEntries(Object.entries(readRecord(items)).map(([key, real]) => [readId(key), typeof real === 'string' && REAL_ID.test(real) ? real : invalid()]))
+
+  try {
+    const v = readRecord(JSON.parse(raw ?? 'null'))
+    const theirs = v.theirs === null ? null : readRecord(v.theirs)
+    const order = list(v.order, 2 * MAX_SAVED_ACTIONS, (who) => (who === 'mine' || who === 'theirs' ? who : invalid()))
+
+    return {
+      theirs: theirs && {
+        initial: readMatState(theirs.initial),
+        reveal: reveal(theirs.reveal),
+        acts: list(theirs.acts, MAX_SAVED_ACTIONS, (item) => {
+          const act = readRecord(item)
+          return { action: readMatAction(act.action), reveal: reveal(act.reveal) }
+        }),
+      },
+      order,
+      life: list(v.life, order.length + 1, (item) => {
+        const step = readRecord(item)
+        const [mine, rival, ...more] = list(step.lp, 2, (lp) => readInt(lp, 0, MAX_LP))
+        return mine === undefined || rival === undefined || more.length > 0 ? invalid() : { at: readInt(step.at, 0, order.length), lp: [mine, rival] as const }
+      }),
+      cut: v.cut === true,
+    }
+  } catch {
+    return undefined
+  }
+}
+
 export function readDuelSave(room: string, role: 'host' | 'guest', now = Date.now()): DuelSave | null {
   try {
-    return parseSave(localStorage.getItem(saveKey(room, role)), role, now)
+    const save = parseSave(localStorage.getItem(saveKey(room, role)), role, now)
+    const record = save ? parseDuelRecord(localStorage.getItem(recordKey(room, role))) : undefined
+
+    return save && record ? { ...save, record } : save
   } catch {
     return null
   }
@@ -144,6 +191,19 @@ export function writeDuelSave(room: string, snapshot: DuelSnapshot, now = Date.n
     }
   } catch {
     // Sin almacenamiento no se recuerda.
+  }
+}
+
+/** Guarda (o borra, si este duelo no se graba) el registro del replay (`DuelSave.record`). */
+export function writeDuelRecord(room: string, snapshot: DuelSnapshot): void {
+  try {
+    if (snapshot.record && snapshot.initial) {
+      localStorage.setItem(recordKey(room, snapshot.role), JSON.stringify(snapshot.record))
+    } else {
+      localStorage.removeItem(recordKey(room, snapshot.role))
+    }
+  } catch {
+    // Sin almacenamiento (o lleno) no se recuerda: al recargar, este duelo ya no se puede grabar.
   }
 }
 
@@ -179,6 +239,8 @@ export function clearDuelSave(room: string): void {
     localStorage.removeItem(sidingKey(room, 'guest'))
     localStorage.removeItem(autoEndKey(room, 'host'))
     localStorage.removeItem(autoEndKey(room, 'guest'))
+    localStorage.removeItem(recordKey(room, 'host'))
+    localStorage.removeItem(recordKey(room, 'guest'))
   } catch {
     // Sin almacenamiento no hay nada que borrar.
   }
@@ -210,6 +272,7 @@ export function findPausedDuel(now = Date.now()): PausedDuel | null {
 
       if (!save || !room || !ROOM_CODE_PATTERN.test(room)) {
         localStorage.removeItem(key)
+        localStorage.removeItem(`${RECORD_PREFIX}${key.slice(PREFIX.length)}`)
       } else if (!latest || save.savedAt > latest.savedAt) {
         latest = { room, role: save.role, rival: save.rival, savedAt: save.savedAt }
       }

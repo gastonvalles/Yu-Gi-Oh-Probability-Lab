@@ -5,6 +5,7 @@ import { downloadReplayFile, MAX_SAVED_REPLAYS, saveReplay } from '../../app/due
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
+import { Callout } from '../ui/Callout'
 import { Modal } from '../ui/Modal'
 import { Switch } from '../ui/Switch'
 import { titleOf } from './duel-replay-text'
@@ -21,7 +22,7 @@ export async function keepReplay(replay: DuelReplay): Promise<boolean> {
  * «Guardar replay» de un duelo (al terminar y en «Más opciones»): qué se guarda (lo de un espectador; con la casilla, también tu mano y tus cartas boca abajo, apagada al abrir) y
  * guardarlo en «Tus duelos» o bajar el archivo ya. El replay se arma al tocar (`build`), con el duelo como está en ese momento. Sin velo: la mesa se sigue viendo.
  */
-export function SaveReplayDialog({ isOpen, onClose, build }: { isOpen: boolean; onClose: () => void; build: (view: ReplayView) => DuelReplay }) {
+export function SaveReplayDialog({ isOpen, onClose, build, note }: { isOpen: boolean; onClose: () => void; build: (view: ReplayView) => DuelReplay; /** Un límite de lo grabado (el manual con un corte: hasta dónde llega). */ note?: string }) {
   const [mine, setMine] = useState(false)
   const view: ReplayView = mine ? 'mine' : 'public'
   // La casilla vuelve a apagarse cada vez que se cierra.
@@ -58,6 +59,7 @@ export function SaveReplayDialog({ isOpen, onClose, build }: { isOpen: boolean; 
     >
       <div className="grid gap-4">
         <p className="m-0 text-body text-muted">{t('meta.duels.save.hint')}</p>
+        {note ? <Callout tone="warning">{note}</Callout> : null}
         <div className="flex items-center justify-between gap-3">
           <span className="grid min-w-0 gap-0.5">
             <span className="text-body font-semibold text-foreground">{t('meta.duels.save.mine')}</span>
