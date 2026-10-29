@@ -154,6 +154,21 @@ describe('la calculadora de LP', () => {
     expect(screen.getByRole('button', { name: 'Deshacer' })).toBeDisabled()
   })
 
+  it('con el teclado de la compu teclea el monto, pero escribiendo en un campo (el buscador de la app, abierto encima) las teclas son del campo: Borrar y los números no se cancelan', () => {
+    renderScreen()
+    fireEvent.keyDown(window, { key: '5' })
+    expect(screen.getByRole('button', { name: /^Aplicar: restar 500 a/ })).toBeEnabled()
+
+    const field = document.body.appendChild(document.createElement('input'))
+    // `fireEvent` da false si alguien cancela el evento (es lo que dejaba el Borrar del buscador sin borrar).
+    expect(['Backspace', '5', 'Enter'].map((key) => fireEvent.keyDown(field, { key }))).toEqual([true, true, true])
+    expect(screen.getByRole('button', { name: /^Aplicar: restar 500 a/ })).toBeEnabled()
+    field.remove()
+
+    fireEvent.keyDown(window, { key: 'Backspace' })
+    expect(screen.getByRole('button', { name: /^Aplicar: restar 0 a/ })).toBeDisabled()
+  })
+
   it('arriba: el reloj de la ronda, el registro del duelo y la moneda, el dado y los avisos (cada uno abre su hoja)', () => {
     const onClose = renderScreen()
 
