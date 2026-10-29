@@ -5,7 +5,7 @@ import type { CardNavigation } from '../../app/card-neighbors'
 import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
 import { foilOf } from '../../app/card-foil'
 import { useCardArtOptions, type ArtChoice } from '../../app/use-card-art-options'
-import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, PHONE_LANDSCAPE_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
@@ -111,7 +111,10 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   const panelRef = useRef<HTMLElement>(null)
   const closingRef = useRef(false)
   // En escritorio sobra ancho: la carta a la izquierda y el panel a la derecha, del mismo alto (en el celular, uno sobre el otro).
-  const wide = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // Con el celular acostado, uno sobre el otro no entraban: el panel se quedaba sin lugar para el texto. Ahí también van lado a lado, el panel del alto de la pantalla.
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const phoneLandscape = useMediaQuery(PHONE_LANDSCAPE_MEDIA_QUERY) && !desktop
+  const wide = desktop || phoneLandscape
   // Tocar la carta la agranda al máximo; tocarla de nuevo (o el fondo) vuelve al panel. Un toque afuera de la carta y del panel cierra de a un nivel (la carta en 3D se toca, gira y arrastra sin cerrar nada).
   const [zoomed, setZoomed] = useState(false)
   // Un pie con botones lleva el $ en su fila; sin pie, el $ va solo abajo a la derecha del texto.
@@ -268,9 +271,9 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       ref={rootRef}
       className={cx(
         // Una sola columna `minmax(0,1fr)`: con la pista `auto` de siempre, lo más ancho del panel (un pie de botones, un aviso con su acción) la estiraba más allá de la pantalla del celular y todo se corría a la derecha.
-        'fixed inset-0 z-240 grid grid-cols-[minmax(0,1fr)] place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3',
+        'fixed inset-0 z-240 grid grid-cols-[minmax(0,1fr)] place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] [@media(max-height:600px)]:py-3',
         // Al clasificar la carta se ve grande (32dvh): el panel de abajo cede espacio y su cuerpo scrollea si hace falta.
-        wide ? '[--detail-art-height:min(72dvh,34rem)]' : tall ? '[--detail-art-height:min(32dvh,20rem)] [--detail-panel-height:min(64dvh,36rem)]' : '[--detail-art-height:min(36dvh,20rem)] [--detail-panel-height:min(52dvh,28rem)]',
+        wide ? (phoneLandscape ? '[--detail-art-height:min(calc(100dvh-1.5rem),calc((100vw-31rem)*614/421))]' : '[--detail-art-height:min(72dvh,34rem)]') : cx(tall ? '[--detail-art-height:min(32dvh,20rem)] [--detail-panel-height:min(64dvh,36rem)]' : '[--detail-art-height:min(36dvh,20rem)] [--detail-panel-height:min(52dvh,28rem)]', '[@media(max-height:600px)]:[--detail-art-height:28dvh]'),
       )}
       role="dialog"
       aria-modal="true"
@@ -346,7 +349,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       }}
     >
       <div
-        className={cx('group pointer-events-none relative flex max-h-full [perspective:900px]', wide ? 'w-[min(100%,66rem)] flex-row items-center gap-14' : cx('flex-col items-center gap-3 [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]'), 'data-[zoomed=true]:w-full data-[zoomed=true]:justify-center')}
+        className={cx('group pointer-events-none relative flex max-h-full [perspective:900px]', wide ? cx('w-[min(100%,66rem)] flex-row items-center', phoneLandscape ? 'gap-4 pl-[6.5rem] pr-12 data-[zoomed=true]:px-0' : 'gap-14') : cx('flex-col items-center gap-3 [@media(max-height:600px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]'), 'data-[zoomed=true]:w-full data-[zoomed=true]:justify-center')}
         data-zoomed={zoomed ? 'true' : 'false'}
       >
         {/* El envoltorio no se inclina ni vuela: lo que va al costado de la carta (artes y precios) queda quieto mientras ella se mueve. */}
@@ -422,7 +425,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
         <section
           ref={panelRef}
           tabIndex={-1}
-          className={cx('pointer-events-auto flex min-h-0 w-full flex-col gap-[0.4rem] rounded-card border border-primary/40 bg-linear-to-b from-card-background/98 to-background/98 px-4 py-[0.9rem] text-white outline-none group-data-[zoomed=true]:hidden [@media(max-height:540px)]:px-[0.85rem] [@media(max-height:540px)]:py-[0.65rem]', wide ? 'h-(--detail-art-height) min-w-0 flex-1' : cx('[@media(max-height:540px)]:h-[calc(100dvh-var(--detail-art-height)-2rem)]', tall ? 'max-h-(--detail-panel-height)' : 'h-(--detail-panel-height)'))}
+          className={cx('pointer-events-auto flex min-h-0 w-full flex-col gap-[0.4rem] rounded-card border border-primary/40 bg-linear-to-b from-card-background/98 to-background/98 px-4 py-[0.9rem] text-white outline-none group-data-[zoomed=true]:hidden [@media(max-height:600px)]:px-[0.85rem] [@media(max-height:600px)]:py-[0.65rem]', wide ? cx('min-w-0 flex-1', phoneLandscape ? 'h-[calc(100dvh-1.5rem)]' : 'h-(--detail-art-height)') : cx('[@media(max-height:600px)]:h-[calc(100dvh-var(--detail-art-height)-2rem)]', tall ? 'max-h-(--detail-panel-height)' : 'h-(--detail-panel-height)'))}
           aria-label={panelLabel}
           onClick={(event) => event.stopPropagation()}
         >
