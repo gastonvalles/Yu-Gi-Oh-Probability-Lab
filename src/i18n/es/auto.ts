@@ -6,6 +6,11 @@ export const auto = {
   'auto.entry.hint': 'El núcleo aplica las reglas, solo o con un amigo (en sala privada). Solo, el rival no juega su turno: sólo usa las handtraps que le des.',
   'auto.entry.short': 'El núcleo aplica las reglas.',
   'auto.entry.info': 'Qué hace el duelo automático',
+  // Quién empieza en «Jugar solo» automático, en la hoja de reglas de Jugar (si empieza el rival, pasa su turno y vos robás en el 2).
+  'auto.first.label': 'Quién empieza',
+  'auto.first.me': 'Yo',
+  'auto.first.rival': 'El rival',
+  'auto.first.random': 'Al azar',
   // El rival pasivo, dicho en la portada de carga y en «Más opciones».
   'auto.rival.passive': 'El rival no juega: sólo recibe. Sirve para probar tus jugadas con las reglas de verdad.',
   // El rival con las handtraps del simulador, en la portada de carga.

@@ -9,7 +9,7 @@ const memory = () => {
 describe('las preferencias del duelo automático', () => {
   it('sin nada guardado: el interruptor prendido (se juega en automático donde se puede), se pregunta la cadena y la casilla, la mano del rival a la vista', () => {
     expect(readAutoPrefs(memory)).toEqual(DEFAULT_AUTO_PREFS)
-    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: true, chain: 'ask', place: 'ask', blind: false })
+    expect(DEFAULT_AUTO_PREFS).toEqual({ duel: true, chain: 'ask', place: 'ask', blind: false, first: 'me' })
   })
 
   it('ya no hay bandera: la clave vieja no prende nada', () => {
@@ -27,13 +27,16 @@ describe('las preferencias del duelo automático', () => {
     storage.setItem(AUTO_KEYS.chain, 'never')
     storage.setItem(AUTO_KEYS.place, 'auto')
     storage.setItem(AUTO_KEYS.blind, 'on')
-    expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto', blind: true })
+    storage.setItem(AUTO_KEYS.first, 'rival')
+    expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto', blind: true, first: 'rival' })
     storage.setItem(AUTO_KEYS.chain, 'always')
-    expect(readAutoPrefs(() => storage).chain).toBe('always')
+    storage.setItem(AUTO_KEYS.first, 'random')
+    expect(readAutoPrefs(() => storage)).toMatchObject({ chain: 'always', first: 'random' })
     storage.setItem(AUTO_KEYS.duel, 'si')
     storage.setItem(AUTO_KEYS.blind, 'si')
     storage.setItem(AUTO_KEYS.chain, 'siempre')
     storage.setItem(AUTO_KEYS.place, '1')
+    storage.setItem(AUTO_KEYS.first, 'segundo')
     expect(readAutoPrefs(() => storage)).toEqual(DEFAULT_AUTO_PREFS)
     const broken = () => {
       throw new Error('sin almacenamiento')

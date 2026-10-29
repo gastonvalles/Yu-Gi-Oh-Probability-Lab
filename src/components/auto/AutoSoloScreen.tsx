@@ -7,7 +7,8 @@ import { createAutoSession, workerTransport, type AutoSession, type SessionOptio
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
-import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
+import type { Seat } from '../../app/auto/protocol'
+import { seatOf, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { autoRival, dealRival, poolCount, readHandtrapConfig, rivalCardOf, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -65,7 +66,7 @@ export interface AutoSoloScreenProps {
    * Arma la sesión (una de mentira en las pruebas); sin esto, la de verdad: los datos por HTTP y el núcleo en un Worker. `rival`: el de handtraps del simulador (`null`, el
    * pasivo); `seed`: la del duelo de antes (cambiar las handtraps reinicia el mismo duelo, como «Reiniciar el mismo duelo»); `resume`: la mesa manual de la que sigue.
    */
-  connect?: (deck: DeckList, options: { handSize?: number; rival?: AutoRival | null; seed?: number; resume?: SessionOptions['resume'] }) => AutoSession
+  connect?: (deck: DeckList, options: { handSize?: number; rival?: AutoRival | null; seed?: number; seat?: Seat; resume?: SessionOptions['resume'] }) => AutoSession
 }
 
 /** La mano de handtraps del rival en la mesa manual (sin las que ya usó) y sus nombres: la que sigue en el automático y la que vuelve a la manual. */
@@ -88,8 +89,13 @@ const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options)
 export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, resume, connect = connectLive }: AutoSoloScreenProps) {
   // Las handtraps del rival: las del simulador de «Jugar solo» (`app/handtraps.ts`); cambiarlas arma otra sesión con la misma semilla.
   const [handtraps, setHandtraps] = useState<HandtrapConfig>(readHandtrapConfig)
-  const [live, setLive] = useState<{ session: AutoSession; n: number } | null>(null)
+  const [live, setLive] = useState<{ session: AutoSession; seat: Seat; n: number } | null>(null)
   const seed = useRef<number | undefined>(undefined)
+  // Quién empieza (la hoja de reglas de Jugar): el asiento sale de la semilla al armar la sesión. Con «Al azar», «Nueva mano» arma otra sesión con una semilla nueva
+  // (`fresh`: el asiento puede cambiar y el de una sesión es fijo); si no, la misma sesión reparte otra (`restart`).
+  const { first } = useAutoPrefs()
+  const fresh = useRef<number | undefined>(undefined)
+  const [deal, setDeal] = useState(0)
   // La mesa manual de la que sigue (`resume`): cambiar las handtraps le suelta la mano del rival (reparte la semilla) y «Nueva mano», la mesa entera.
   const [from, setFrom] = useState(() => resume && { ...resume, rival: resumedRival(resume.state.rival, handtraps) })
 
@@ -102,17 +108,22 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite y la sesión de la primera pasada se destruye.
   useEffect(() => {
     const resumeOf = (at: NonNullable<typeof from>): SessionOptions['resume'] => ({ mine: at.state, codeOf: (_, id) => parseDerivedCardId(cardIdOfDrawId(id)) ?? 0, lp: at.lp, ...(at.rival ? { rivalHand: at.rival.hand.map(rivalCode) } : {}) })
-    const session = connect(deckOf(mainIds, extraIds, cardsRef.current), { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), ...(seed.current === undefined ? {} : { seed: seed.current }), ...(from ? { resume: resumeOf(from) } : {}) })
+    const at = fresh.current ?? seed.current ?? randomSeed()
+
+    fresh.current = undefined
+    // Seguir de la mesa manual es seguir tu turno: vas en el asiento 0, el que tiene el turno.
+    const seat = from ? 0 : seatOf(first, at)
+    const session = connect(deckOf(mainIds, extraIds, cardsRef.current), { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), seed: at, seat, ...(from ? { resume: resumeOf(from) } : {}) })
 
     // Otra sesión, otra mesa: la pantalla arranca de cero (`key`).
-    setLive((current) => ({ session, n: (current?.n ?? 0) + 1 }))
+    setLive((current) => ({ session, seat, n: (current?.n ?? 0) + 1 }))
 
     // La semilla con la que termina (la de la última «Nueva mano»): la que sigue, al cambiar las handtraps, es el mismo duelo.
     return () => {
       seed.current = session.getSnapshot().seed
       session.destroy()
     }
-  }, [connect, mainIds, extraIds, handSize, handtraps, from])
+  }, [connect, mainIds, extraIds, handSize, handtraps, from, first, deal])
   // La ventana grande es de la mesa: al salir de ella se apaga (como en el duelo).
   useEffect(() => () => setDuelFullscreen(false), [])
   // Hasta 1100 px los avisos van arriba, debajo del marcador: sin la barra de abajo, abajo caían sobre tu mano (ver index.css).
@@ -129,9 +140,20 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
     setHandtraps(next)
     setFrom((at) => at && { ...at, rival: null })
   }, [])
+  // «Nueva mano» con «Al azar»: otra sesión con otra semilla, que vuelve a sortear quién empieza.
+  const redeal = useMemo(
+    () =>
+      first === 'random'
+        ? () => {
+            fresh.current = randomSeed()
+            setDeal((count) => count + 1)
+          }
+        : undefined,
+    [first],
+  )
 
   return live ? (
-    <AutoDuel key={live.n} session={live.session} cardsById={cardsById} deckName={deckName} onExit={onExit} {...(onManual ? { onManual } : {})} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} {...(from ? { resumed: { rival: from.rival, onNewHand: () => setFrom(undefined) } } : {})} />
+    <AutoDuel key={live.n} session={live.session} seat={live.seat} {...(redeal ? { redeal } : {})} cardsById={cardsById} deckName={deckName} onExit={onExit} {...(onManual ? { onManual } : {})} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} {...(from ? { resumed: { rival: from.rival, onNewHand: () => setFrom(undefined) } } : {})} />
   ) : (
     <LoadingCover progress={{ done: 0, total: 0 }} rival={autoRival(handtraps) !== null} />
   )
@@ -139,6 +161,10 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
 
 interface AutoDuelProps {
   session: AutoSession
+  /** Tu asiento del núcleo: el 0 empieza; con el 1 vas segundo (las vidas, el turno y el final se leen desde acá). */
+  seat: Seat
+  /** «Nueva mano» con «Al azar»: otra sesión (vuelve a sortear quién empieza). Sin esto, la misma sesión reparte otra. */
+  redeal?: () => void
   cardsById: ReadonlyMap<string, MatCard>
   deckName: string
   onExit: () => void
@@ -154,7 +180,7 @@ interface AutoDuelProps {
 /** Sin las reglas del Lab (las pruebas), no hay chips: un deck vacío no alcanza para una mano. */
 const NO_LAB: PracticeLab = { handSize: 5, derivedMainCards: [], patterns: [], hasCompletedClassification: true, reviewPendingPatternCount: 0 }
 
-function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, onHandtraps, lab, resumed }: AutoDuelProps) {
+function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual, handtraps, onHandtraps, lab, resumed }: AutoDuelProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const prefs = useAutoPrefs()
   // Hasta 1100 px las vidas van en el marcador de la barra (`AutoBar`) y la mesa no lleva fila de abajo (`scoreInHeader`); en escritorio, planas en las esquinas del campo.
@@ -190,7 +216,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
         : undefined,
     [hasManual, session],
   )
-  const asks = useAutoAsks({ session, snap, cardsById, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
+  const asks = useAutoAsks({ session, snap, cardsById, seat, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
   const { nameOf, artOf } = asks
   // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo). Con la mesa de la práctica rearmada (`resumed`) la mano ya no es de apertura: sin chips.
   const chips = usePracticeChips(lab, asks.matSession)
@@ -243,14 +269,15 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
       fault ? (
         <FaultCover fault={fault} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'ended' && end ? (
-        <EndCover end={end} lp={lp} rival={rivalName} onAgain={restart} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+        <EndCover end={end} lp={lp} seat={seat} rival={rivalName} onAgain={restart} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} rival={rivalOn} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, rivalName, progress, rivalOn],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, rivalOn],
   )
 
-  const life = useMemo(() => ({ mine: lp[0], theirs: lp[1] }), [lp])
+  // Las vidas del núcleo van por asiento: las tuyas son las de `seat`.
+  const life = useMemo(() => ({ mine: lp[seat], theirs: lp[1 - seat]! }), [lp, seat])
   // Repasando un combo (o tus jugadas) la mesa es la del repaso: el turno de la barra es el del paso que se mira, y la portada (el fin, un error), la mano del rival y lo que activa
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
@@ -277,7 +304,7 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
   const { turnMine, lane } = asks
   // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
-  const newHand = useCallback(() => (resumed ? resumed.onNewHand() : session.restart(randomSeed())), [resumed, session])
+  const newHand = useCallback(() => (resumed ? resumed.onNewHand() : redeal ? redeal() : session.restart(randomSeed())), [resumed, redeal, session])
   // La hoja ya guardó las handtraps nuevas: el duelo se arma de nuevo con ellas (la misma semilla, como «Cambiar handtraps» de «Más opciones»).
   const applyHandtraps = useCallback(() => onHandtraps(readHandtrapConfig()), [onHandtraps])
   const header = useMemo(
@@ -372,14 +399,15 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
 }
 
 /** El final: quién ganó y por qué, y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
-function EndCover({ end, lp, rival, onAgain, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; rival: string; onAgain: () => void; onManual?: () => void; onExit: () => void }) {
-  const won = end.winner === 0
+function EndCover({ end, lp, seat, rival, onAgain, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onManual?: () => void; onExit: () => void }) {
+  const won = end.winner === seat
+  const [mine, theirs] = [lp[seat], lp[1 - seat]!]
   const title = end.winner === 2 ? t('duel.result.title.draw') : won ? t('duel.result.title.win') : t('duel.result.title.lose')
   // Por qué: las vidas (el núcleo dice 0, o alguien quedó en 0), sin robar (con las vidas enteras y una razón del núcleo, no de un script: en un duelo solo sin reloj no hay otra) o el efecto de una carta.
   const reason =
     end.winner === 2
       ? t('duel.result.reason.draw')
-      : end.reason === REASON_LP || lp[won ? 1 : 0] <= 0
+      : end.reason === REASON_LP || (won ? theirs : mine) <= 0
         ? won
           ? t('duel.result.reason.winLife', { name: rival })
           : t('duel.result.reason.loseLife')
@@ -395,7 +423,7 @@ function EndCover({ end, lp, rival, onAgain, onManual, onExit }: { end: { winner
         <p className="m-0 text-body text-muted" role="status">
           {reason}
         </p>
-        <p className="m-0 text-micro tabular-nums text-soft">{`${t('duel.bar.you')} ${lp[0]} · ${rival} ${lp[1]}`}</p>
+        <p className="m-0 text-micro tabular-nums text-soft">{`${t('duel.bar.you')} ${mine} · ${rival} ${theirs}`}</p>
         <div className="flex flex-wrap justify-center gap-2">
           {onManual ? (
             <Button variant="secondary" icon="hand" onClick={onManual}>

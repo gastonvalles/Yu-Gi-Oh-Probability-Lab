@@ -62,7 +62,7 @@ describe('auto-screen · el rival de handtraps', () => {
   it('con el simulador apagado, el rival es el pasivo de siempre: su mano de dorso y «Más opciones» dice que no juega', () => {
     const { calls } = mount()
 
-    expect(calls).toEqual([{ rival: null }])
+    expect(calls).toEqual([{ rival: null, seed: expect.any(Number), seat: 0 }])
     expect(rivalHand()).toHaveAccessibleName('Mano del rival: 0')
     const dialog = more()
 
@@ -110,7 +110,7 @@ describe('auto-screen · el rival de handtraps', () => {
 
     fireEvent.click(within(more()).getByRole('button', { name: 'Cambiar handtraps' }))
     fireEvent.click(screen.getByRole('button', { name: 'Apagar el simulador' }))
-    expect(calls[2]).toEqual({ rival: null, seed: 99 })
+    expect(calls[2]).toEqual({ rival: null, seed: 99, seat: 0 })
     expect(readHandtrapConfig().enabled).toBe(false)
   })
 
