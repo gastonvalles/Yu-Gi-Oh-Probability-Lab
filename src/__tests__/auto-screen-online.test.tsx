@@ -148,6 +148,18 @@ describe('auto-screen-online · la sala', () => {
     expect(ready()).toBeEnabled()
     expect(note()).toHaveAttribute('data-tone', 'warning')
     expect(note()).toHaveTextContent('2 cartas tuyas no tienen reglas automáticas: se juegan sin efecto. 1 carta de Beto no tiene reglas automáticas: se juega sin efecto. · Ash Blossom · Nibiru')
+    // Una carta sin datos en ninguna base, de cualquiera de los dos, no deja jugar a ninguno: los dos ven cuál por su nombre (el del otro es texto suyo: va como texto).
+    core(() => link.set({ phase: 'blocked', problems: { mine: [], theirs: 0, reason: null, missing: { mine: [{ code: 100, name: 'Ash Blossom' }], theirs: [{ code: 7, name: 'Carta <b>rara</b>' }] } } }))
+    expect(ready()).toBeDisabled()
+    expect(note()).toHaveAttribute('data-tone', 'warning')
+    expect(note()).toHaveTextContent('No se puede jugar con reglas automáticas: «Ash Blossom» (tuya) y «Carta <b>rara</b>» de Beto no tienen datos para el núcleo.')
+    expect(note()!.querySelector('b')).toBeNull()
+    // Hasta 20 nombres; las demás, «y N más».
+    core(() => link.set({ problems: { mine: [], theirs: 0, reason: null, missing: { mine: [], theirs: Array.from({ length: 22 }, (_, i) => ({ code: i + 1, name: `N${i + 1}` })) } } }))
+    expect(note()).toHaveTextContent('«N20» de Beto y 2 más no tienen datos')
+    expect(note()).not.toHaveTextContent('N21')
+    core(() => link.set({ problems: { mine: [], theirs: 0, reason: null, missing: { mine: [{ code: 100, name: 'Ash Blossom' }], theirs: [] } } }))
+    expect(note()).toHaveTextContent('No se puede jugar con reglas automáticas: «Ash Blossom» (tuya) no tiene datos para el núcleo.')
     core(() => link.set({ phase: 'blocked', problems: { mine: [], theirs: 0, reason: 'off' } }))
     expect(note()).toHaveTextContent('El duelo automático por enlace está apagado por ahora.')
     expect(ready()).toBeDisabled()

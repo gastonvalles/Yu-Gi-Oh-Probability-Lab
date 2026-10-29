@@ -257,6 +257,10 @@ export const auto = {
   // El duelo automático por enlace: lo que la sala le dice a quien espera (debajo del deck), la línea mientras elige el otro y lo que corta el duelo.
   'auto.online.waitingDeck': 'Esperando el deck de {name}…',
   'auto.online.checking': 'Revisando que las cartas de los dos tengan reglas…',
+  'auto.online.noData': { one: 'No se puede jugar con reglas automáticas: {cards} no tiene datos para el núcleo.', other: 'No se puede jugar con reglas automáticas: {cards} no tienen datos para el núcleo.' },
+  'auto.online.noDataMine': '«{name}» (tuya)',
+  'auto.online.noDataTheirs': '«{name}» de {rival}',
+  'auto.online.noDataMore': { one: '{count} más', other: '{count} más' },
   'auto.online.vanillaMine': { one: '{count} carta tuya no tiene reglas automáticas: se juega sin efecto.', other: '{count} cartas tuyas no tienen reglas automáticas: se juegan sin efecto.' },
   'auto.online.vanillaTheirs': { one: '{count} carta de {name} no tiene reglas automáticas: se juega sin efecto.', other: '{count} cartas de {name} no tienen reglas automáticas: se juegan sin efecto.' },
   'auto.online.outdated': '{name} tiene que actualizar la app para jugar con reglas automáticas.',

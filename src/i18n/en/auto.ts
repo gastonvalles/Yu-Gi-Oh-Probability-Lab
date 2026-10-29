@@ -248,6 +248,10 @@ export const auto: Translated<typeof es> = {
   // The automatic link duel: what the room tells whoever is waiting (below the deck), the line while the other one chooses and what cuts the duel short.
   'auto.online.waitingDeck': "Waiting for {name}'s deck…",
   'auto.online.checking': "Checking that both players' cards have rules…",
+  'auto.online.noData': { one: "Automatic rules can't be used: {cards} has no data for the rules engine.", other: "Automatic rules can't be used: {cards} have no data for the rules engine." },
+  'auto.online.noDataMine': '“{name}” (yours)',
+  'auto.online.noDataTheirs': "{rival}'s “{name}”",
+  'auto.online.noDataMore': { one: '{count} more', other: '{count} more' },
   'auto.online.vanillaMine': { one: '{count} of your cards has no automatic rules: it plays without its effect.', other: '{count} of your cards have no automatic rules: they play without their effects.' },
   'auto.online.vanillaTheirs': { one: "{count} of {name}'s cards has no automatic rules: it plays without its effect.", other: "{count} of {name}'s cards have no automatic rules: they play without their effects." },
   'auto.online.outdated': '{name} has to update the app to play with automatic rules.',

@@ -18,7 +18,7 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { LifeHold } from '../../app/life-effects'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { showToastMessage } from '../../app/use-toast-message'
-import { t } from '../../i18n'
+import { getLocale, t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
 import { TurnDial } from '../duel/TurnDial'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from '../duel/DuelBar'
@@ -217,6 +217,21 @@ function useCodeName(cardsById: ReadonlyMap<string, MatCard>, cards: OnlineSnaps
   }, [cardsById, cards])
 }
 
+/** Cuántos nombres de cartas sin datos se dicen; las demás, «y N más». */
+const NO_DATA_NAMES = 20
+
+/**
+ * Por qué no se puede jugar con reglas automáticas: las cartas sin datos de los dos, por nombre (las mías, «(tuya)»; las del otro, «de Beto»). Los nombres del otro son texto suyo:
+ * van como texto (los valida `online-protocol.ts`).
+ */
+function noDataText(missing: NonNullable<OnlineSnapshot['problems']['missing']>, rival: string): string {
+  const names = [...missing.mine.map((card) => t('auto.online.noDataMine', { name: card.name })), ...missing.theirs.map((card) => t('auto.online.noDataTheirs', { name: card.name, rival }))]
+  const shown = names.slice(0, NO_DATA_NAMES)
+  const more = names.length - shown.length
+
+  return t('auto.online.noData', { count: names.length, cards: new Intl.ListFormat(getLocale(), { type: 'conjunction' }).format(more > 0 ? [...shown, t('auto.online.noDataMore', { count: more })] : shown) })
+}
+
 /** Lo que la sala muestra mientras no hay duelo: «Estoy listo» sólo con los dos decks revisados (`ready`); el aviso, `info` mientras espera, `warning` si algo impide empezar o hay cartas sin reglas, y `danger` si algo se perdió. */
 function roomAutoState(online: OnlineSnapshot | null, rival: string, nameOf: (code: number) => string): RoomAutoState {
   const say = (tone: 'info' | 'warning' | 'danger', text: string, cards?: { code: number; name: string }[]) => ({ tone, text, ...(cards && cards.length > 0 ? { cards } : {}) })
@@ -231,9 +246,10 @@ function roomAutoState(online: OnlineSnapshot | null, rival: string, nameOf: (co
     case 'outdated':
       return { canReady: false, notice: say('warning', t('auto.online.outdated', { name: rival })) }
     case 'blocked': {
-      const { reason } = online!.problems
+      const { reason, missing } = online!.problems
 
       if (reason === 'lost') return { canReady: false, notice: say('danger', t('auto.online.lost')) }
+      if (reason === null && missing) return { canReady: false, notice: say('warning', noDataText(missing, rival)) }
       return { canReady: false, notice: say('warning', reason === 'off' ? t('auto.online.off') : reason === 'version' ? t('auto.online.version', { name: rival }) : t('auto.online.data')) }
     }
     // Entre un duelo y su revancha (`ended`) los decks ya se revisaron. Las cartas sin reglas no frenan: juegan sin efectos, y se avisa cuáles (las propias, con nombre).
