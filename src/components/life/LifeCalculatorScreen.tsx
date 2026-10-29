@@ -203,7 +203,7 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
         className={cx(
           // Acostado es el cronómetro del marcador: más grande y con su alto táctil.
           'inline-flex touch-manipulation select-none items-center gap-1.5 font-semibold tabular-nums [-webkit-tap-highlight-color:transparent]',
-          landscape ? 'min-h-11 text-stat' : 'text-title',
+          landscape ? 'min-h-11 text-stat' : 'text-title pointer-coarse:min-h-11',
           limited && remaining === 0 ? 'text-danger-soft' : limited && remaining <= ROUND_WARNING_MS ? 'text-warning' : 'text-foreground',
         )}
         aria-label={finished ? t('shell.life.clock.reset') : state.timer.running ? t('shell.life.clock.pause') : t('shell.life.clock.start')}
@@ -287,7 +287,7 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
 
   // Acostado el teclado es la grilla de afuera (`grid-*-subgrid`): «volver» queda encima de la columna de Borrar y las operaciones, y el «=» al lado de las cuatro filas.
   const keypad = (
-    <div className={cx('grid [grid-area:pad]', landscape ? 'grid-cols-subgrid grid-rows-subgrid' : 'grid-cols-4 grid-rows-4 gap-2')} role="group" aria-label={t('shell.life.keypad')}>
+    <div className={cx('grid [grid-area:pad]', landscape ? 'grid-cols-subgrid grid-rows-subgrid' : 'grid-cols-4 grid-rows-[repeat(4,minmax(2.5rem,1fr))] gap-2')} role="group" aria-label={t('shell.life.keypad')}>
       {KEYS.map((key) => {
         const isOperator = key === '+' || key === '-'
         const active = isOperator && operator === key
@@ -330,8 +330,8 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
         landscape
           ? // El marcador: el reloj arriba, las vidas en todo lo que queda y la fila de botones abajo; sin barra de abajo de la app, deja él el margen seguro de abajo y de los costados (la muesca).
             "grid h-full min-h-0 gap-2 overflow-hidden bg-background pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))] [grid-template-areas:'head'_'lp'_'bar'] [grid-template-rows:auto_minmax(0,1fr)_auto]"
-          : // Entra entera en el alto que le da el armazón, sin scroll: el teclado y el «=» (una fila más de teclas) se reparten lo que dejan el reloj, las vidas y el número que se escribe.
-            "@container grid h-full min-h-0 gap-2 overflow-hidden bg-background px-3 [grid-template-areas:'head'_'lp'_'disp'_'pad'_'eq'] [grid-template-rows:auto_minmax(auto,1.2fr)_auto_minmax(0,4fr)_minmax(3rem,1fr)] @xl:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'._pad'_'._eq'] @xl:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] @xl:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] @xl:gap-x-4",
+          : // Entra entera en el alto que le da el armazón, sin scroll: el teclado y el «=» (una fila más de teclas) se reparten lo que dejan el reloj, las vidas y el número que se escribe. Si ni con teclas de 40 px entra (320 × 568), scrollea en vez de pisarse.
+            "@container grid h-full min-h-0 gap-2 overflow-y-auto overflow-x-hidden bg-background px-3 [grid-template-areas:'head'_'lp'_'disp'_'pad'_'eq'] [grid-template-rows:auto_minmax(auto,1.2fr)_auto_minmax(auto,4fr)_minmax(3rem,1fr)] @xl:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'._pad'_'._eq'] @xl:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] @xl:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] @xl:gap-x-4",
         // Como vista de la app, las barras del armazón ya dejan los márgenes seguros; a pantalla completa (la del duelo), los pone ella.
         landscape ? (onClose ? 'pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]' : 'pt-2') : onClose ? 'pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]' : 'py-2',
       )}
@@ -488,7 +488,8 @@ function DuelistPanel({ position, big = false, name, lp, selected, disabled = fa
       >
         {shown}
       </strong>
-      <span className={cx('max-w-full truncate text-lead font-semibold', selected || disabled ? 'text-foreground' : 'text-soft')}>
+      {/* En el panel más angosto (320 px) «Duelista 1 »» no entraba y se cortaba justo el número: ahí va un tamaño más chico. */}
+      <span className={cx('max-w-full truncate text-lead font-semibold @max-[7.5rem]:text-body', selected || disabled ? 'text-foreground' : 'text-soft')}>
         {position === 1 ? '« ' : null}
         {name}
         {position === 0 ? ' »' : null}
@@ -502,7 +503,7 @@ function MiddleAction({ icon, big = false, label, disabled, onClick }: { icon: I
   return (
     <button
       type="button"
-      className={cx(PRESSABLE, 'grid justify-items-center gap-0.5 rounded-none px-1 py-1 text-[0.625rem] font-semibold text-muted active:bg-tint/12', big && 'min-h-11 min-w-14')}
+      className={cx(PRESSABLE, 'grid justify-items-center gap-0.5 rounded-none px-1 py-1 text-[0.625rem] font-semibold text-muted active:bg-tint/12', big ? 'min-h-11 min-w-14' : 'pointer-coarse:min-w-11')}
       disabled={disabled}
       aria-label={label}
       onClick={onClick}
