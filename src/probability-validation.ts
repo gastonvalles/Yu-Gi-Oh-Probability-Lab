@@ -204,10 +204,16 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
                     filter: getMonsterRequirementSourceLabel(requirement.matcher) ?? t('rules.validation.noMonstersFilter'),
                   }),
                 }
-            : {
-                level: 'error',
-                message: t('rules.validation.requirementNoCards', { name: patternName }),
-              },
+            : // Un arquetipo o un tipo de carta se arma con lo que hay en el deck: si no hay ninguna, el patrón sigue (vale 0) y se avisa; no es un requisito sin elegir, y no bloquea el cálculo.
+              requirement.matcher?.type === 'archetype' || requirement.matcher?.type === 'card_type'
+              ? {
+                  level: 'warning',
+                  message: t('rules.validation.requirementNotInDeck', { name: patternName }),
+                }
+              : {
+                  level: 'error',
+                  message: t('rules.validation.requirementNoCards', { name: patternName }),
+                },
         )
         continue
       }

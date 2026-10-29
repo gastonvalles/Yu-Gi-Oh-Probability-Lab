@@ -31,6 +31,7 @@ export const rules: Translated<typeof es> = {
   'rules.validation.noMonsters': 'Rule "{name}" finds no monsters {filter} in the Main Deck.',
   'rules.validation.noMonstersFilter': 'with that filter',
   'rules.validation.requirementNoCards': 'Rule "{name}" has a requirement with no cards selected.',
+  'rules.validation.requirementNotInDeck': 'Rule "{name}" asks for cards that are not in your deck: it adds nothing to the calculation.',
   'rules.validation.quantityInvalid': 'Rule "{name}" has an invalid quantity in one of its requirements.',
   'rules.validation.cardGone': 'Rule "{name}" references a card that no longer exists.',
   'rules.validation.poolTooFewNames': {

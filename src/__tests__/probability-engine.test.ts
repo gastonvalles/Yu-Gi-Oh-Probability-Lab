@@ -10,6 +10,7 @@ import type {
   CardOrigin,
   CardRole,
   HandPattern,
+  Matcher,
   TurnContext,
 } from '../types'
 
@@ -643,6 +644,27 @@ describe('Probability Engine', () => {
         makeState({ deckSize: 40, handSize: 0, cards: [makeCard('card-1', 'Card', 40)] }),
       )
       expect(issues7.some((i) => i.level === 'error')).toBe(true)
+    })
+
+    it('5.1b un arquetipo o un tipo de carta que no está en el deck no bloquea el cálculo (avisa y el patrón vale 0); un requisito sin nada elegido sí es un error', () => {
+      const withRule = (matcher: Matcher, category: 'problem' | 'opening' = 'problem') =>
+        makeState({
+          cards: [makeCard('card-1', 'Test Card', 40)],
+          patterns: [
+            createMatcherPattern('Opening', 'opening', [{ matcher: { type: 'card', value: 'card-1' }, quantity: 1, kind: 'include' }]),
+            createMatcherPattern('2+ Mulcharmy', category, [{ matcher, quantity: 2, kind: 'include' }]),
+          ],
+        })
+
+      for (const matcher of [{ type: 'archetype', value: 'Mulcharmy' }, { type: 'card_type', value: 'spell' }] as const) {
+        const output = calculateProbabilities(withRule(matcher))
+
+        expect(output.blockingIssues, matcher.type).toEqual([])
+        expect(output.issues.map((issue) => issue.level), matcher.type).toContain('warning')
+        expect(output.summary?.badProbability, matcher.type).toBe(0)
+      }
+
+      expect(calculateProbabilities(withRule({ type: 'card_pool', value: [] })).blockingIssues).toHaveLength(1)
     })
   })
 

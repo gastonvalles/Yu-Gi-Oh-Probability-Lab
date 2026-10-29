@@ -30,6 +30,7 @@ export const rules = {
   'rules.validation.noMonsters': 'El patrón "{name}" no encuentra monstruos {filter} en el Main Deck.',
   'rules.validation.noMonstersFilter': 'con ese filtro',
   'rules.validation.requirementNoCards': 'El patrón "{name}" tiene un requisito sin cartas seleccionadas.',
+  'rules.validation.requirementNotInDeck': 'El patrón "{name}" pide cartas que no están en tu deck: no suma ni resta en el cálculo.',
   'rules.validation.quantityInvalid': 'El patrón "{name}" tiene una cantidad inválida en uno de sus requisitos.',
   'rules.validation.cardGone': 'El patrón "{name}" referencia una carta que ya no existe.',
   'rules.validation.poolTooFewNames': {
