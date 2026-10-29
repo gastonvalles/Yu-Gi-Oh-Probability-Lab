@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { describeMatSteps } from '../../../app/practice-mat'
-import type { SavedCombo } from '../../../app/saved-combos'
+import { createSavedCombo, type SavedCombo } from '../../../app/saved-combos'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
 import { MatSnapshot } from '../../probability/MatSnapshot'
 import { panelStepsOf } from '../../probability/panel-steps'
 import type { FxTone } from '../../probability/practice-styles'
-import { PracticeMatPanel } from '../../probability/PracticeMatPanel'
+import { PracticeMatPanel, SavedCombosList, SharedComboBar } from '../../probability/PracticeMatPanel'
 import { ReplayBar, ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
 import { AppNavbar } from '../../shell/AppNavbar'
 import { AppShell } from '../../shell/AppShell'
@@ -110,6 +110,10 @@ const noop = () => {}
  */
 function StepListSamples() {
   const combo = useMemo(sampleCombo, [])
+  const sharedSamples = useMemo(
+    () => [createSavedCombo({ name: 'Snake-Eye de una carta, con Fire King y un nombre bien largo', deckName: 'Snake-Eye Fire King', initial: combo.initial, actions: combo.actions, nameOf: combo.nameOf }, [], new Date('2026-10-29T12:00:00Z'))],
+    [combo],
+  )
   const steps = useMemo(() => panelStepsOf(combo.initial, combo.actions, describeMatSteps(combo.initial, combo.actions, combo.nameOf), combo.nameOf, combo.artOf), [combo])
   const [cursor, setCursor] = useState(9)
   const [width, setWidth] = useState<StepListWidth>('column')
@@ -141,6 +145,33 @@ function StepListSamples() {
         <Segmented label="Ancho de la muestra" variant="chips" size="sm" value={width} onChange={setWidth} options={(Object.keys(STEP_LIST_WIDTHS) as StepListWidth[]).map((key) => ({ value: key, label: STEP_LIST_WIDTHS[key].label }))} />
         <div className={cx('h-[44rem] max-w-full overflow-hidden rounded-card border border-border-subtle bg-background p-3', STEP_LIST_WIDTHS[width].className)}>
           <PracticeMatPanel steps={steps} initial={combo.initial} cursor={cursor} onSeek={setCursor} nameOf={combo.nameOf} artOf={combo.artOf} combos={NO_COMBOS} deckName="" onLoad={noop} onRename={noop} onDelete={noop} showCombos={false} className="h-full" />
+        </div>
+      </Specimen>
+
+      <Specimen
+        title="Combos guardados y compartidos"
+        layout="column"
+        note={
+          <>
+            Cada ficha: el nombre y sus datos con todo el ancho y, abajo, <Tag>Cargar</Tag> (la de siempre), renombrar, borrar y el ⋯ con <Tag>Compartir enlace</Tag> (la hoja del sistema en el celular; si no, copiado) y <Tag>Descargar archivo</Tag>: con el panel al mínimo (16 rem) y 44 px por botón, dos íconos más no entran. Arriba, <Tag>Pegar enlace</Tag> e <Tag>Importar combo</Tag> (sin campo de texto: no abre el teclado). Un enlace de combo abre la práctica con el aviso de abajo. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>app/combo-share.ts</Tag>
+          </>
+        }
+      >
+        <div className="flex flex-wrap items-start gap-4">
+          {[
+            { label: 'Panel al mínimo · 16 rem', className: 'w-[16rem]' },
+            { label: 'Panel al máximo · 36 rem', className: 'w-[36rem] max-w-full' },
+          ].map((sample) => (
+            <div key={sample.label} className={cx('grid gap-2', sample.className)}>
+              <Tag>{sample.label}</Tag>
+              <div className="grid gap-3 rounded-card border border-border-subtle bg-background p-3">
+                <SavedCombosList combos={sharedSamples} deckName="Snake-Eye" onLoad={noop} onRename={noop} onDelete={noop} onShare={noop} onDownload={noop} onImport={noop} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="max-w-full overflow-hidden rounded-card border border-border-subtle">
+          <SharedComboBar combo={sharedSamples[0]!} onSave={noop} onClose={noop} />
         </div>
       </Specimen>
 

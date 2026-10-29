@@ -3,6 +3,8 @@ import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { StepInfo, StepKind, StepMove, StepOrigin, StepPlace } from '../../app/mat-step-info'
 import { prefersReducedMotion } from '../../app/motion'
 import { PHASES, type MatPile, type MatState } from '../../app/practice-mat'
+import { showToastMessage } from '../../app/use-toast-message'
+import { COMBO_FILE_SUFFIX, MAX_FILE_BYTES, parseComboText, readComboLink, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import type { SavedCombo } from '../../app/saved-combos'
 import { formatDay, t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -12,6 +14,7 @@ import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
+import { OverflowMenu } from '../ui/OverflowMenu'
 import { Segmented } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -37,6 +40,10 @@ interface PracticeMatPanelProps {
   onLoad: (combo: SavedCombo) => void
   onRename: (combo: SavedCombo, name: string) => void
   onDelete: (combo: SavedCombo) => void
+  /** Compartir el enlace de un combo y bajarlo como archivo (el ⋯ de cada ficha), e importar uno (arriba de la lista). Sin ellos, la lista no los ofrece. */
+  onShare?: (combo: SavedCombo) => void
+  onDownload?: (combo: SavedCombo) => void
+  onImport?: (result: ShareResult) => void
   /** Sin la pestaña de combos guardados (en un duelo, donde no se guardan combos). */
   showCombos?: boolean
   /** Lo que dice la lista vacía, si no es el de la práctica (en «Jugar solo automático» no se arrastra ni se mantiene). */
@@ -66,7 +73,7 @@ function writeDetails(on: boolean) {
 const NO_CARDS: PanelStep['cards'] = []
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, showCombos = true, emptyHint, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, onShare, onDownload, onImport, showCombos = true, emptyHint, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
   // ponytail: cada panel (el lateral y el del celular) lee la preferencia al abrirse; si se cambia en uno, el otro —que está escondido— la toma recién al volver a montarse.
   const [details, setDetails] = useState(readDetails)
@@ -130,7 +137,7 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
           </>
         )
       ) : (
-        <SavedCombosList combos={combos} deckName={deckName} onLoad={onLoad} onRename={onRename} onDelete={onDelete} />
+        <SavedCombosList combos={combos} deckName={deckName} onLoad={onLoad} onRename={onRename} onDelete={onDelete} onShare={onShare} onDownload={onDownload} onImport={onImport} />
       )}
     </div>
   )
@@ -143,26 +150,80 @@ interface SavedCombosListProps {
   onLoad: (combo: SavedCombo) => void
   onRename: (combo: SavedCombo, name: string) => void
   onDelete: (combo: SavedCombo) => void
+  onShare?: ((combo: SavedCombo) => void) | undefined
+  onDownload?: ((combo: SavedCombo) => void) | undefined
+  onImport?: ((result: ShareResult) => void) | undefined
 }
 
-/** Los combos guardados en este dispositivo: cargar uno lo reproduce en la mesa, el lápiz le cambia el nombre y borrar pide confirmación. */
-function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: SavedCombosListProps) {
+/**
+ * Importar un combo: el archivo, con el selector del sistema, o el enlace que esté copiado (se lee del portapapeles: no hay campo de texto que abra el teclado). Abrir el enlace en el
+ * navegador también lo trae (`#combo=…`).
+ */
+function ComboImport({ onImport }: { onImport: (result: ShareResult) => void }) {
+  const fileRef = useRef<HTMLInputElement | null>(null)
+  const readFile = async (file: File | undefined) => {
+    if (!file) return
+    onImport(file.size > MAX_FILE_BYTES ? { ok: false, error: 'tooBig' } : parseComboText(await file.text().catch(() => '')))
+  }
+  const paste = async () => {
+    let text: string
+    try {
+      text = await navigator.clipboard.readText()
+    } catch {
+      showToastMessage(t('practice.share.pasteFailed'), 'warning')
+      return
+    }
+    onImport(await readComboLink(text))
+  }
+
+  return (
+    // Una fila que entra con el panel al mínimo (16 rem): pegar el enlace es el ícono; importar el archivo, el botón con su nombre.
+    <div className="flex items-center justify-end gap-1">
+      <IconButton tone="ghost" size="sm" aria-label={t('practice.share.paste')} title={t('practice.share.paste')} onClick={() => void paste()}>
+        <Icon name="link" />
+      </IconButton>
+      <Button variant="secondary" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>
+        {t('practice.share.import')}
+      </Button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept={`${COMBO_FILE_SUFFIX},.json,application/json`}
+        hidden
+        aria-label={t('practice.share.import')}
+        onChange={(event) => {
+          void readFile(event.target.files?.[0])
+          // Elegir el mismo archivo otra vez también lo importa.
+          event.target.value = ''
+        }}
+      />
+    </div>
+  )
+}
+
+/** Los combos guardados en este dispositivo: cargar uno lo reproduce en la mesa, el lápiz le cambia el nombre, borrar pide confirmación y el ⋯ lo comparte (enlace o archivo). */
+export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, onShare, onDownload, onImport }: SavedCombosListProps) {
   const [renaming, setRenaming] = useState<SavedCombo | null>(null)
   const [deleting, setDeleting] = useState<SavedCombo | null>(null)
   const ordered = [...combos].sort(
     (a, b) => Number(b.deckName === deckName) - Number(a.deckName === deckName) || a.deckName.localeCompare(b.deckName, 'es') || b.savedAt.localeCompare(a.savedAt),
   )
+  const importer = onImport ? <ComboImport onImport={onImport} /> : null
 
   if (ordered.length === 0) {
     return (
-      <EmptyState icon="save" title={t('practice.panel.noCombos')}>
-        {t('practice.panel.noCombosHint')}
-      </EmptyState>
+      <>
+        {importer}
+        <EmptyState icon="save" title={t('practice.panel.noCombos')}>
+          {t('practice.panel.noCombosHint')}
+        </EmptyState>
+      </>
     )
   }
 
   return (
     <>
+      {importer}
       <ul className="m-0 grid list-none content-start gap-2 overflow-y-auto p-0" aria-label={t('practice.panel.saved')}>
         {ordered.map((combo) => (
           <li key={combo.id} className="grid gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
@@ -186,6 +247,16 @@ function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: Saved
               <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.deleteNamed', { name: combo.name })} title={t('common.delete')} onClick={() => setDeleting(combo)}>
                 <Icon name="trash" />
               </IconButton>
+              {/* Compartir y bajar van al ⋯: con el panel al mínimo (16 rem) y los objetivos de 44 px del dedo, dos íconos más no entran en la fila. */}
+              {onShare && onDownload ? (
+                <OverflowMenu
+                  label={t('practice.share.more', { name: combo.name })}
+                  items={[
+                    { label: t('practice.share.link'), icon: 'link', onSelect: () => onShare(combo) },
+                    { label: t('practice.share.file'), icon: 'download', onSelect: () => onDownload(combo) },
+                  ]}
+                />
+              ) : null}
             </div>
           </li>
         ))}
@@ -224,6 +295,32 @@ function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: Saved
         }}
       />
     </>
+  )
+}
+
+/**
+ * El aviso de un combo que llegó por enlace, arriba de la mesa que lo repasa: qué combo es (nombre, deck, jugadas y fecha, como su ficha en la lista) y «Guardar en mis combos» (la
+ * principal, al final) o «Cerrar». Lo de adentro es texto: nada de lo que vino en el enlace se interpreta.
+ */
+export function SharedComboBar({ combo, onSave, onClose }: { combo: SharedCombo; onSave: () => void; onClose: () => void }) {
+  return (
+    <div role="region" aria-label={t('practice.share.banner')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle bg-card-background px-gutter py-2 min-[1101px]:px-4">
+      <div className="grid min-w-0 flex-1 basis-56 gap-0.5">
+        <span className="text-micro font-semibold uppercase tracking-wide text-info-soft">{t('practice.share.banner')}</span>
+        <strong className="line-clamp-2 wrap-break-word text-body font-semibold text-foreground">{combo.name}</strong>
+        <span className="wrap-break-word text-micro text-muted">
+          {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
+        </span>
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        <Button variant="tertiary" size="sm" onClick={onClose}>
+          {t('common.close')}
+        </Button>
+        <Button variant="primary" size="sm" icon="save" onClick={onSave}>
+          {t('practice.share.save')}
+        </Button>
+      </div>
+    </div>
   )
 }
 

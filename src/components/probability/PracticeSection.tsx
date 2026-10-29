@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { CardTextHighlight } from '../../app/card-text'
 import { DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import type { MatAction, MatState } from '../../app/practice-mat'
+import type { SharedCombo } from '../../app/combo-share'
 import type { SavedCombo } from '../../app/saved-combos'
 import type { MatSession } from '../../app/use-mat-session'
 import { t } from '../../i18n'
@@ -33,6 +34,8 @@ interface PracticeSectionProps {
   onNewHand: () => void
   /** «Seguir en automático» (`PracticeMat`): sólo con la beta del duelo automático encendida. */
   onAuto?: (state: MatState) => void
+  /** Un combo abierto desde un enlace (`PracticeMat`). */
+  shared?: { combo: SharedCombo; onSaved: () => void; onClose: () => void } | undefined
 }
 
 /**
@@ -46,7 +49,8 @@ export function PracticeSection(props: PracticeSectionProps) {
   // El pedazo del texto de esa carta que se resalta mientras se elige uno de sus efectos en el menú.
   const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
 
-  if (chips.needCards) {
+  // Repasar un combo (uno compartido, sin deck armado) no necesita cartas en el deck.
+  if (chips.needCards && !props.session.replay) {
     return <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>
   }
 
@@ -62,6 +66,7 @@ export function PracticeSection(props: PracticeSectionProps) {
       onLoadCombo={props.onLoadCombo}
       onNewHand={props.onNewHand}
       {...(props.onAuto ? { onAuto: props.onAuto } : {})}
+      shared={props.shared}
       // Se entra a la práctica desde «Entrenar solo» (el inicio de Jugar): la flecha de la barra vuelve ahí.
       onExit={() => {
         window.location.hash = '#duel'
