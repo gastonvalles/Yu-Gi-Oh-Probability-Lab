@@ -23,7 +23,8 @@ export const MAX_JSON_BYTES = 256 * 1024
 export const COMBO_FILE_SUFFIX = '.ygolab-combo.json'
 
 export type SharedCombo = Omit<SavedCombo, 'id'>
-export type ShareError = 'notCombo' | 'newer' | 'broken' | 'tooBig'
+/** `duel`: es el replay de un duelo (`duel-replay.ts`), que se abre en Replays. */
+export type ShareError = 'notCombo' | 'newer' | 'broken' | 'tooBig' | 'duel'
 export type ShareResult = { ok: true; combo: SharedCombo } | { ok: false; error: ShareError }
 
 /** El sobre, listo para JSON. */
@@ -75,12 +76,37 @@ async function readCapped(stream: ReadableStream<Uint8Array>, limit: number): Pr
 
 const streamOf = (bytes: Uint8Array) => new Blob([bytes as BlobPart]).stream()
 
-/** Los datos del enlace: `z` + deflate-raw en base64url; `j` + el JSON en base64url (un navegador sin `CompressionStream`). La versión va adentro, en el sobre. */
-export async function encodeComboPayload(combo: SavedCombo | SharedCombo): Promise<string> {
-  const json = new TextEncoder().encode(JSON.stringify(comboEnvelope(combo)))
+/** Los datos de un enlace: `z` + deflate-raw en base64url; `j` + el JSON en base64url (un navegador sin `CompressionStream`). La versión va adentro, en el sobre. */
+export async function packPayload(value: unknown): Promise<string> {
+  const json = new TextEncoder().encode(JSON.stringify(value))
   if (typeof CompressionStream === 'undefined') return `j${toBase64Url(json)}`
   const packed = await readCapped(streamOf(json).pipeThrough(new CompressionStream('deflate-raw')), Number.MAX_SAFE_INTEGER)
   return `z${toBase64Url(packed!)}`
+}
+
+export const encodeComboPayload = (combo: SavedCombo | SharedCombo): Promise<string> => packPayload(comboEnvelope(combo))
+
+/** El texto (el JSON) de los datos de un enlace, con el tope de lo descomprimido (`maxJson`). No lanza. */
+export async function unpackPayload(payload: string, maxJson = MAX_JSON_BYTES): Promise<{ ok: true; text: string } | { ok: false; error: 'broken' | 'tooBig' }> {
+  if (payload.length > MAX_PAYLOAD_CHARS) return { ok: false, error: 'tooBig' }
+  const bytes = fromBase64Url(payload.slice(1))
+  if (!bytes || bytes.length === 0) return { ok: false, error: 'broken' }
+
+  try {
+    let json: Uint8Array | null
+    if (payload[0] === 'z') {
+      if (typeof DecompressionStream === 'undefined') return { ok: false, error: 'broken' }
+      json = await readCapped(streamOf(bytes).pipeThrough(new DecompressionStream('deflate-raw')), maxJson)
+    } else if (payload[0] === 'j') {
+      json = bytes.length > maxJson ? null : bytes
+    } else {
+      return { ok: false, error: 'broken' }
+    }
+    if (!json) return { ok: false, error: 'tooBig' }
+    return { ok: true, text: new TextDecoder('utf-8', { fatal: true }).decode(json) }
+  } catch {
+    return { ok: false, error: 'broken' }
+  }
 }
 
 /** El enlace del combo: la app (mismo origen y ruta que el del duelo) con los datos en el hash. */
@@ -95,25 +121,8 @@ export function comboPayloadOf(text: string): string | null {
 
 /** Decodifica los datos de un enlace. No lanza. */
 export async function decodeComboPayload(payload: string): Promise<ShareResult> {
-  if (payload.length > MAX_PAYLOAD_CHARS) return { ok: false, error: 'tooBig' }
-  const bytes = fromBase64Url(payload.slice(1))
-  if (!bytes || bytes.length === 0) return { ok: false, error: 'broken' }
-
-  try {
-    let json: Uint8Array | null
-    if (payload[0] === 'z') {
-      if (typeof DecompressionStream === 'undefined') return { ok: false, error: 'broken' }
-      json = await readCapped(streamOf(bytes).pipeThrough(new DecompressionStream('deflate-raw')), MAX_JSON_BYTES)
-    } else if (payload[0] === 'j') {
-      json = bytes.length > MAX_JSON_BYTES ? null : bytes
-    } else {
-      return { ok: false, error: 'broken' }
-    }
-    if (!json) return { ok: false, error: 'tooBig' }
-    return parseComboText(new TextDecoder('utf-8', { fatal: true }).decode(json))
-  } catch {
-    return { ok: false, error: 'broken' }
-  }
+  const unpacked = await unpackPayload(payload)
+  return unpacked.ok ? parseComboText(unpacked.text) : unpacked
 }
 
 /** Un enlace pegado: si no es de un combo, lo dice. */
@@ -126,9 +135,12 @@ export async function readComboLink(text: string): Promise<ShareResult> {
 // ── Archivo ──
 
 /** El nombre del archivo: el del combo, sin lo que un sistema de archivos no acepta. */
-export function comboFileName(name: string): string {
+export const comboFileName = (name: string) => safeFileName(name, 'combo', COMBO_FILE_SUFFIX)
+
+/** Un nombre de archivo sin lo que un sistema de archivos no acepta (`fallback` si no queda nada). */
+export function safeFileName(name: string, fallback: string, suffix: string): string {
   const safe = name.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 _-]+/g, ' ').trim().replace(/\s+/g, '-').slice(0, 60)
-  return `${safe || 'combo'}${COMBO_FILE_SUFFIX}`
+  return `${safe || fallback}${suffix}`
 }
 
 export const comboFileText = (combo: SavedCombo | SharedCombo) => `${JSON.stringify(comboEnvelope(combo), null, 2)}\n`
@@ -142,6 +154,7 @@ export function parseComboText(text: string): ShareResult {
   } catch {
     return { ok: false, error: 'notCombo' }
   }
+  if (isRecord(value) && value.app === APP && value.kind === 'duel') return { ok: false, error: 'duel' }
   if (!isRecord(value) || value.app !== APP || value.kind !== 'combo' || typeof value.v !== 'number') return { ok: false, error: 'notCombo' }
   if (value.v > COMBO_SHARE_VERSION) return { ok: false, error: 'newer' }
   if (value.v !== COMBO_SHARE_VERSION) return { ok: false, error: 'broken' }
@@ -288,14 +301,20 @@ function readCombo(value: unknown): SharedCombo | null {
   }
 }
 
+/** Lo mismo para otro sobre (el replay de un duelo): una mesa y una jugada se validan igual. Cada lector lanza (`TypeError`) y quien llama lo ataja. */
+export { action as readMatAction, clean as withoutUndefined, fail as invalid, id as readId, int as readInt, oneOf as readOneOf, rec as readRecord, state as readMatState, str as readText }
+export const SHARE_APP = APP
+
 // ── En el navegador: compartir y bajar ──
 
 const touchDevice = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
 
 /** Baja el combo como archivo (un `Blob` y un `<a download>`). */
-export function downloadComboFile(combo: SavedCombo | SharedCombo): void {
-  const url = URL.createObjectURL(new Blob([comboFileText(combo)], { type: 'application/json' }))
-  const link = Object.assign(document.createElement('a'), { href: url, download: comboFileName(combo.name) })
+export const downloadComboFile = (combo: SavedCombo | SharedCombo): void => downloadTextFile(comboFileText(combo), comboFileName(combo.name))
+
+export function downloadTextFile(text: string, fileName: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+  const link = Object.assign(document.createElement('a'), { href: url, download: fileName })
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
@@ -307,7 +326,11 @@ export type ShareOutcome = 'shared' | 'copied' | 'cancelled' | 'tooLong' | 'fail
  * comparte el archivo, si el sistema puede; si no, `tooLong` (quien llama ofrece bajarlo).
  */
 export async function shareComboLink(combo: SavedCombo | SharedCombo): Promise<ShareOutcome> {
-  const link = buildComboLink(location.origin, location.pathname, await encodeComboPayload(combo))
+  return shareLink(buildComboLink(location.origin, location.pathname, await encodeComboPayload(combo)), combo.name, () => new File([comboFileText(combo)], comboFileName(combo.name), { type: 'application/json' }))
+}
+
+/** Lo mismo con cualquier enlace (el de un replay): `file` arma el archivo para cuando el enlace no entra. */
+export async function shareLink(link: string, title: string, file: () => File): Promise<ShareOutcome> {
   const share = async (data: ShareData): Promise<ShareOutcome | null> => {
     try {
       await navigator.share(data)
@@ -318,11 +341,11 @@ export async function shareComboLink(combo: SavedCombo | SharedCombo): Promise<S
   }
 
   if (link.length > MAX_LINK_LENGTH) {
-    const files = [new File([comboFileText(combo)], comboFileName(combo.name), { type: 'application/json' })]
-    return (touchDevice() && navigator.canShare?.({ files }) && (await share({ files, title: combo.name }))) || 'tooLong'
+    const files = [file()]
+    return (touchDevice() && navigator.canShare?.({ files }) && (await share({ files, title }))) || 'tooLong'
   }
 
-  const shared = touchDevice() && typeof navigator.share === 'function' ? await share({ title: combo.name, url: link }) : null
+  const shared = touchDevice() && typeof navigator.share === 'function' ? await share({ title, url: link }) : null
   if (shared) return shared
 
   try {

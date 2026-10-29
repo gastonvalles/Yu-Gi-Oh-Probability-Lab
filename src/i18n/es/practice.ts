@@ -294,6 +294,7 @@ export const practice = {
   'practice.share.error.newer': 'Este combo es de una versión más nueva de YGOUltraLab: recargá la página y probá de nuevo.',
   'practice.share.error.broken': 'El combo está roto o incompleto: pedí que te lo compartan de nuevo.',
   'practice.share.error.tooBig': 'El combo es demasiado grande para abrirlo.',
+  'practice.share.error.duel': 'Esto es el replay de un duelo: abrilo en Replays, en «Tus duelos».',
   'practice.share.banner': 'Combo compartido',
   'practice.share.save': 'Guardar en mis combos',
 
