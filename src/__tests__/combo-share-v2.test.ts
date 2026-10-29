@@ -10,6 +10,13 @@ import { deckCombo, referenceCombo, withoutId } from './support/combo-fixtures'
 /** Un enlace v1 de verdad: el combo de referencia (45 jugadas), escrito con el código de antes de v2. Tiene que abrir siempre igual, con sus nombres. */
 const V1_LINK = 'https://ygoultralab.app/#combo=zxZnNbuM2EIBfxZizvOWPJIq6FUV7adFLu5cGPjC2bAuRpUCSk00CP1HRJ-ht-2IFpdgiwyFjwwiyhwU8-EhzpC-j0fgF1P095PC0afZV36pK3UIEd2W9ghyWze62gQgeIKfR66f8BWq1KyCH3_77py5UPvv-9x-1uivmPz8V3_-d_TCjs2XT9gVEsCqWd7-P8AmZ_VK2xezXst5ABJ16KFY_9pADIyydUzJn8k_KckJyQr4QQv6CCMq67EtV6W_WG0J-A0vVruZJTJM4zdicQjRGUkYEl5IbESkl5ySeIkJIylKaTJEsyTiV-uuPEclFQhkXU4QSmgqSxJkZkkkms0QaISoSIqkgRihOkowyMWfHCGOxEDHPpggnXKYilkYk4zQlKZkiccp4wgWdIqf0mZM-c9JnTvrMSZ856TM3feamz9z0mZM-d9LnTvrcSZ876XMnfe6kz530uZM-d9LnTvrcTZ_DIoLiW9-qk4aSjP8MfQihjMfCirA4lbEV4YLE1IrEkmeZFUmp4IkVETExlZeEZGnMpBWRmRCmzoRSShm3IvqA1pkpTzJqnZnGGU2tM9OUJNQ6MxUsS_SZFxFsla4aN2_uPHXuPHXuPHXuPHXu_PAVmyfIbxYR3Kq67LbFavy0e4b8pt5XVYT8p2-YDSwi6PrwinVZVCvIhxD0zV1Rd5CTCO63qtPlbNWqR4ig37f1UBvXalmsmsd6PM8gyNf78UOv2k3RH4_alg9jKTterCHwxb1kRjyRMc8kJ-Ml2HfjXodDNFTiTu_2tiDm8JNqezVbFbO62d22xaxS7aaZaQSplj5cI0gp9eJSSqTO-nCNIEXYh2sEqdA-XCNY-fbxmsFqu5-X0_5G4ffy1DjP9FTw4nGSOH85flwjyPPEh2sEedh48Yy7f5B-XCPIY-oiKf04KmUAx6T046iUfhyV0o_jUgYsQKUM8ZiUAR6Tkl8mpR9HpfTjqJQBHJPSj6NS-nFUSj-OShnAMSn9OCqlH0el9OO4lAELDCmN7se7PSEEaY0CONY3BXBm4MemKoBzAz92XAE8RtqxAG5emWOvFsCFgR8buQCeIV1eAJcTfmoB_TjF-sMAblz3U_MYwI3rfuosA7hx3U9tZwA3rvupJw3gwql6gSc3VvX8OFr1_Dha9QI4VvX8-GvVw7tM3yINelvQ4KJDBGrZl41ul29eoH-6193y2DVP3fNOlTWFQzQBlVpqoBymDk4v_NzUw7LnYRqwKr6NvXjTQQ6qv4MIts0j5FA37U5V5sb6MA-qD-xdrNfFsoecGqt2zYO9whoI9A3kY_tuLOn2u11T24vMF8PxgFVZ69PuVF-0pao67G1pccq38CZsfPGt6pdbQC-7k4Y1IBjS2DxBKG_7vf-0YmGsGST52p3W4aYZC15fnZbNvn5z2bvtfr2u9E5dod9xdA1KUpFJ05TLVbLeOxGV6BUqWXufpZI9SbrApWmk8I5Lxpk-0iVztHSeS-bA6JNckuQ6l6yJBeISu8Ila-8zXTJHkBe4NA2j3nHJONMHumQNJc9yyZo0fpZL9EqXzFkX4hK_xiVz7_NcsmbXF7g0jTHfc2k60we6ZI2zz3LJHFF_lkrsOpWMRhBVKb5CJWvv81Qyf_O4wKRp_P2OSfZM-KNMsn4GOcck66eNzzKJHxaHw_8'
 
+/**
+ * Un enlace v2 de verdad: el mismo combo de referencia, escrito con el código del primer v2. Tiene que abrir siempre igual: `ENUMS` y `FIELDS` son el formato, y reordenarlos o
+ * cambiarlos (en vez de agregar al final) rompe esta prueba antes que los enlaces ya compartidos. **No se regenera para que pase**: si falla, el formato cambió y los enlaces v2
+ * viejos dejaron de abrir. Sólo con un formato nuevo (v3) se suma otra constante, generada con `encodeComboPayload(referenceCombo())`, y ésta se queda como está.
+ */
+const V2_LINK = 'https://ygoultralab.app/#combo=zhZI9bhsxEIWvIrB-Sjh_HI76pEm6lIstZFkIDCuSIdgGjCAnCnKCdM7Fgtm1DAkuzOq9Afm-4ZA_y_rurqzK0_fDw-7-uN6trwrK7c3-uqzK5vDj6lBQHsuKUTZlNZSv__7st-vV4vn3t_36drv89LR9_rv4uKDF5nC83xaU1_ri881xu_hys_9eQB7CblxzYRgGUzJtnSEjhsbVJUJmExEiVSfjHsSNbDLdulBwm0yIG7H4ZKhS82raX1xYj24BTkduNcjr7NSsE8_HmNVdZT4lVaK5xmy6UKutTkYbi4lTmqjzSkEs6ilYW2gK8aqUQkN6T9HIxVK41s4pelOOFNHdG6ISEbGkyLxMJrFOmUzaqWUytWqUyeTcrY8YyvHmcb37sFkfr5enSy2p4LxuodJD6pLKOGIYKgQNAWKQgTqYwAJu4IAwxCAdBIWDKkhADRRgBityaBUikAYJMAwdRCAFObjmpCqUoAwVqEIN2qAO7dCAVRjBGCYwzfkbuEMIohDPDs1gbcQwTv1mrGUs2CCoyJ6mJ83C_mG3A-Vj5W0ivw60gmsGj9DcnxDCMAgUVOe9kSrzyWAZX6cURs7fmveMOkN3COgc3S_Q_YSmGd3foP2EZn4HHfUCnZMBn6GFztFMJzRPaKE36HzFF7a-x6ZLtkKmmb-y9YItJ7bMbH3Llle2v8fmS7ZDprRXtl-w24mtM9vfstuJLfU9tozj-Os_'
+
 /** Lo que no es lo de siempre: zonas ocupadas (materiales Xyz, contadores, la de Campo), boca abajo, Extra boca arriba, fichas, el rival simulado, cartas del rival de un duelo (`f.`, `c12`), ids que no son `card-<passcode>-<n>` tal cual, todas las jugadas y `auto`. */
 function oddCombo(): SavedCombo {
   const initial: MatState = {
@@ -82,6 +89,13 @@ describe('el enlace v2 de un combo (compacto)', () => {
     const plain = `j${Buffer.from(JSON.stringify(compactEnvelope(odd))).toString('base64url')}`
     expect(await decodeComboPayload(plain)).toEqual({ ok: true, combo: { ...withoutId(odd), names: {} } })
     expect(parseComboText(JSON.stringify(compactEnvelope(odd)))).toEqual({ ok: true, combo: { ...withoutId(odd), names: {} } })
+  })
+
+  it('un enlace v2 que ya se compartió abre siempre igual (el orden de ENUMS y FIELDS no cambia)', async () => {
+    const reference = referenceCombo()
+    expect(await readComboLink(V2_LINK)).toEqual({ ok: true, combo: { ...withoutId(reference), names: {} } })
+    // Y lo que se escribe hoy es ese mismo enlace (JSON igual; los bytes de deflate pueden variar entre motores).
+    expect(await unpacked(V2_LINK.split('#combo=')[1]!)).toEqual(compactEnvelope(reference))
   })
 
   it('un enlace v1 que ya se compartió sigue abriendo igual, con sus nombres', async () => {
