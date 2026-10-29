@@ -325,7 +325,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
 
           <div data-testid="watch-score" className="flex min-h-11 min-w-0 items-center gap-2 px-1">
             <LifeScore name={nameOf(bottom)} life={bottomSide.lp ?? snapshot.settings?.lp ?? 0} mine color={bottom === 0 ? 'mine' : 'theirs'} />
-            <span data-testid="duel-turn" className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold', snapshot.turn === null ? 'text-muted' : PLAYER_COLOR[snapshot.turn === 0 ? 'mine' : 'theirs'].text)}>
+            <span data-testid="duel-turn" className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold max-[359px]:text-body', snapshot.turn === null ? 'text-muted' : PLAYER_COLOR[snapshot.turn === 0 ? 'mine' : 'theirs'].text)}>
               {snapshot.turn !== null ? t('duel.bar.theirTurnN', { name: nameOf(snapshot.turn), turn: turnNumber }) : null}
             </span>
             <LifeScore name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />

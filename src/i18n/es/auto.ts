@@ -231,7 +231,7 @@ export const auto = {
   'auto.end.effectWin': 'Ganaste por el efecto de una carta.',
   'auto.end.effectLose': 'Perdiste por el efecto de una carta.',
 
-  // El interruptor del lobby en un navegador que no puede correr el núcleo, y seguir la partida en la mesa manual desde «Más opciones» (o desde el error del núcleo).
+  // «Modo del duelo» en un navegador que no puede correr el núcleo, y seguir la partida en la mesa manual desde «Más opciones» (o desde el error del núcleo).
   'auto.entry.unsupported': 'Tu navegador no puede correr el motor de reglas.',
   'auto.bar.manual': 'Seguir en modo manual',
   'auto.bar.manualHint': 'La partida sigue en la mesa manual, con todas las opciones. Si el automático se equivocó, podés volver atrás unas jugadas.',
