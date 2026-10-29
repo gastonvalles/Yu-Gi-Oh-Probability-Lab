@@ -173,10 +173,13 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
     dispatchLife(remaining === 0 ? { type: 'timer-reset' } : { type: 'timer-toggle', now: Date.now() })
   }
 
-  // Con teclado (escritorio): los números teclean el monto, Borrar saca un dígito, + y − eligen la operación y Enter la aplica.
+  // Con teclado (escritorio): los números teclean el monto, Borrar saca un dígito, + y − eligen la operación y Enter la aplica. Escribiendo en un campo (el buscador de la app, abierto encima) las teclas son del campo: si no, Borrar no borraba.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey || event.altKey) return
+
+      const { target } = event
+      if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
 
       if (/^\d$/.test(event.key)) setDigits((current) => (current + event.key).slice(0, MAX_DIGITS))
       else if (event.key === 'Backspace') setDigits((current) => current.slice(0, -1))
