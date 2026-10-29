@@ -17,6 +17,13 @@ const V1_LINK = 'https://ygoultralab.app/#combo=zxZnNbuM2EIBfxZizvOWPJIq6FUV7adF
  */
 const V2_LINK = 'https://ygoultralab.app/#combo=zhZI9bhsxEIWvIrB-Sjh_HI76pEm6lIstZFkIDCuSIdgGjCAnCnKCdM7Fgtm1DAkuzOq9Afm-4ZA_y_rurqzK0_fDw-7-uN6trwrK7c3-uqzK5vDj6lBQHsuKUTZlNZSv__7st-vV4vn3t_36drv89LR9_rv4uKDF5nC83xaU1_ri881xu_hys_9eQB7CblxzYRgGUzJtnSEjhsbVJUJmExEiVSfjHsSNbDLdulBwm0yIG7H4ZKhS82raX1xYj24BTkduNcjr7NSsE8_HmNVdZT4lVaK5xmy6UKutTkYbi4lTmqjzSkEs6ilYW2gK8aqUQkN6T9HIxVK41s4pelOOFNHdG6ISEbGkyLxMJrFOmUzaqWUytWqUyeTcrY8YyvHmcb37sFkfr5enSy2p4LxuodJD6pLKOGIYKgQNAWKQgTqYwAJu4IAwxCAdBIWDKkhADRRgBityaBUikAYJMAwdRCAFObjmpCqUoAwVqEIN2qAO7dCAVRjBGCYwzfkbuEMIohDPDs1gbcQwTv1mrGUs2CCoyJ6mJ83C_mG3A-Vj5W0ivw60gmsGj9DcnxDCMAgUVOe9kSrzyWAZX6cURs7fmveMOkN3COgc3S_Q_YSmGd3foP2EZn4HHfUCnZMBn6GFztFMJzRPaKE36HzFF7a-x6ZLtkKmmb-y9YItJ7bMbH3Llle2v8fmS7ZDprRXtl-w24mtM9vfstuJLfU9tozj-Os_'
 
+/**
+ * Otro enlace v2 de verdad, el de `oddCombo` (los 22 tipos de jugada, fichas, materiales, el rival y el duelo), escrito con el código del primer v2: cubre las entradas de
+ * `ENUMS` y `FIELDS` que el de referencia no usa. Lo mismo: **no se regenera para que pase**; si falla, el formato cambió y los enlaces v2 viejos dejaron de abrir. Sólo con un
+ * formato nuevo (v3) se suma otra constante, generada con `encodeComboPayload(oddCombo())`, y ésta se queda como está.
+ */
+const V2_ODD_LINK = 'https://ygoultralab.app/#combo=zTVHbbRsxEGzF2O85h7t8HFcwXEE6IPhxkuXA8FkyFMlAEKSEAOkgBQSpIH9OQykhWPIk-4fYHQ53doZfaXp-phV9-bQ_zcfDNE9rAj0-7O5oRZv903pPoBdaCWhDq0Kvvz7-_b3bTq9_rm7Wt4fpMN18WN9e_fv54zuBCCRO0sBuECWUUrImz-wVvqLk4NiLHyEVhUOMmaU3OkrKwUlrxAcfos_WjD4FEU3gikKb6XA3OBY_MKF3ceDoCHTcP253Db6_3rBcEKsODy_TfN3oZ9XGfIefF-iDWahWlOIgYA8OFcXDzoiE0a44g9VsqDFb5Qz3sEclg2Ot2J3muR-FExgOZUEryoKPZ_wNYsg76tthKnajqu1WIBF-kbb1OC17W1zOZogB3HPFoM6NrCoxjMGpSvMVwYL7af68xfFw2jZ_AQmxWeHUbI_G5FjhEWByCQGsKGM1oAmOFpatkReO2uRBtccD31itkF4yzKsgum6tJX1OnEMX5wjOzRwCxC1VbdFJbjtbk-EutYITElzbQiwIb-rdX4tzYYqDosUnjFL6WvaHzJdhASzVvqcB3_4D'
+
 /** Lo que no es lo de siempre: zonas ocupadas (materiales Xyz, contadores, la de Campo), boca abajo, Extra boca arriba, fichas, el rival simulado, cartas del rival de un duelo (`f.`, `c12`), ids que no son `card-<passcode>-<n>` tal cual, todas las jugadas y `auto`. */
 function oddCombo(): SavedCombo {
   const initial: MatState = {
@@ -96,6 +103,13 @@ describe('el enlace v2 de un combo (compacto)', () => {
     expect(await readComboLink(V2_LINK)).toEqual({ ok: true, combo: { ...withoutId(reference), names: {} } })
     // Y lo que se escribe hoy es ese mismo enlace (JSON igual; los bytes de deflate pueden variar entre motores).
     expect(await unpacked(V2_LINK.split('#combo=')[1]!)).toEqual(compactEnvelope(reference))
+  })
+
+  it('el enlace v2 con todas las jugadas también abre siempre igual', async () => {
+    const odd = oddCombo()
+    expect(await readComboLink(V2_ODD_LINK)).toEqual({ ok: true, combo: { ...withoutId(odd), names: {} } })
+    expect(await unpacked(V2_ODD_LINK.split('#combo=')[1]!)).toEqual(compactEnvelope(odd))
+    expect(new Set(odd.actions.map((action) => action.type)).size).toBe(22)
   })
 
   it('un enlace v1 que ya se compartió sigue abriendo igual, con sus nombres', async () => {
