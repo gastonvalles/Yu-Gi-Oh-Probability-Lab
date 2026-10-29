@@ -139,7 +139,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             </span>
             {option.detail ? (
               // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (blanco sobre el ámbar, el verde o el rojo; ámbar en la tarjeta).
-              <span aria-hidden={option.detailLabel ? true : undefined} className={cx('text-micro tabular-nums', list ? 'min-w-0 break-words' : 'whitespace-nowrap', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
+              <span aria-hidden={option.detailLabel ? true : undefined} className={cx('text-micro tabular-nums', list ? 'min-w-0 break-words' : 'max-[400px]:whitespace-normal min-[400px]:whitespace-nowrap', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
                 {option.detail}
               </span>
             ) : null}

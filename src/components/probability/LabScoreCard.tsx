@@ -88,7 +88,12 @@ export function LabScoreCard({ results, view, onViewChange, isRecalculating, han
         <div className="grid min-w-0 content-center justify-items-start gap-1.5 pr-8">
           <div className="flex flex-wrap gap-1.5">
             {measuring ? <Skeleton radius="chip" className="h-6 w-16" /> : <Badge tone={KPI_TONE[kpi]}>{KPI_TONE_LABELS[kpi]}</Badge>}
-            {before ? <Badge tone="info">{t('lab.change.chip')}</Badge> : null}
+            {/* `wrap`: al lado del anillo, en 320 px o en la tableta, «Con el cambio» no entra en un renglón y se salía de la tarjeta. */}
+            {before ? (
+              <Badge tone="info" wrap>
+                {t('lab.change.chip')}
+              </Badge>
+            ) : null}
           </div>
           <p className="m-0 text-lead font-semibold text-foreground md:text-title">{t('lab.score.goodHands')}</p>
           {!previous ? (

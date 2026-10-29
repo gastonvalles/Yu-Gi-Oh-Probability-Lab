@@ -162,7 +162,7 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
       {/* En el celular la acción queda fija sobre la barra de abajo. Va al `body`: los bloques de la pantalla entran con un `transform` y un `fixed` adentro se correría. */}
       {isPhone && confirm
         ? createPortal(
-            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 border-t border-border-subtle bg-background px-gutter py-3">{confirm}</div>,
+            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 border-t border-border-subtle bg-background px-gutter pb-5 pt-3">{confirm}</div>,
             document.body,
           )
         : null}

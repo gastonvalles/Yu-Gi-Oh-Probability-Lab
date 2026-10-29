@@ -219,7 +219,7 @@ function SwapRow({ action, card }: { action: 'remove' | 'add'; card: CardEntry }
         <CardArt remoteUrl={card.apiCard?.imageUrlSmall ?? null} name={card.name} className="block aspect-[421/614] w-full object-cover" />
       </span>
       <span className="grid min-w-0">
-        <strong className="min-w-0 truncate text-body font-semibold text-foreground">
+        <strong className="min-w-0 line-clamp-3 text-body font-semibold text-foreground">
           <span className={cx('block text-micro md:inline md:text-body md:text-foreground', remove ? 'text-danger-soft' : 'text-success-soft')}>
             {t(remove ? 'lab.suggestion.removeVerb' : 'lab.suggestion.addVerb')}
           </span>{' '}
