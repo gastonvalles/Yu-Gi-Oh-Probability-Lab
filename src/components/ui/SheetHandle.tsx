@@ -37,10 +37,11 @@ export function SheetHandle({ drag, label, children, className }: SheetHandlePro
         type="button"
         aria-expanded={!drag.lowered}
         aria-label={drag.lowered ? t('common.sheet.raise', { title: label }) : t('common.sheet.lower')}
-        className="group flex h-7 w-full items-center justify-center px-4 outline-none"
+        // Bajada, la tira mide 44 px (Gastón, 2026-10-29: la de 28 era muy fina); subida, el asa sigue de 28 px y la hoja no crece.
+        className={cx('group flex w-full items-center justify-center px-4 outline-none', drag.lowered ? 'h-11' : 'h-7')}
       >
         {/* El aro del foco va en la pastilla de adentro: el de todo el botón lo cortaría el borde de la hoja. Como un botón de ícono, se enciende en ámbar al apuntarla. */}
-        <span className="flex h-5 min-w-0 items-center gap-1.5 rounded-full px-3 text-foreground group-hover:text-info group-focus-visible:shadow-focus">
+        <span className={cx('flex min-w-0 items-center gap-1.5 rounded-full px-3 text-foreground group-hover:text-info group-focus-visible:shadow-focus', drag.lowered ? 'h-8' : 'h-5')}>
           {drag.lowered ? (
             <>
               <Icon name="chevron-up" size={14} strokeWidth={2} className="shrink-0" />

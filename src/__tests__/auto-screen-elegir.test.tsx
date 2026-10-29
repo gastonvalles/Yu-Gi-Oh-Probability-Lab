@@ -244,6 +244,8 @@ describe('auto-screen · elegir', () => {
     expect(shown.filter((text) => /Droll|Imperm|Ash|Maxx|Nibiru/.test(text))).toEqual(['DDroll', 'IImperm'])
     // Y ninguna se ilumina hasta que se elige (el brillo de la mano y el campo es de lo que se puede usar; en el visor, de lo elegido).
     expect(viewer.querySelectorAll('[data-glow="true"]')).toHaveLength(0)
+    // En el celular la hoja (y, bajada, su tira de 44 px) tapa lo que falta elegir: queda escondido, no cortado asomando sobre la tira.
+    expect(document.querySelector('[role=status][aria-label="Paso actual"]')).toHaveClass('invisible')
     fireEvent.click(within(viewer).getByRole('button', { name: /Imperm/ }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
     expect(dispatches).toBe(0)

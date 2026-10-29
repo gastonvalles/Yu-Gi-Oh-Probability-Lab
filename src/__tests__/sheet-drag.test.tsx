@@ -90,6 +90,8 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
     const backdrop = document.querySelector<HTMLElement>('.fixed.inset-0')!
 
     expect(grip).toHaveAttribute('aria-expanded', 'true')
+    // Subida, el asa es de 28 px; bajada, la tira crece a 44 px (el objetivo táctil): la hoja subida no cambia de alto.
+    expect(grip).toHaveClass('h-7')
     fireEvent.change(search, { target: { value: 'lunalight' } })
     fireEvent.click(dialog.getByRole('button', { name: 'Elegir varias' }))
     fireEvent.click(dialog.getByRole('button', { name: 'Lunalight Wolf' }))
@@ -98,6 +100,8 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
     drag(screen.getByRole('heading', { name: 'Main · 9' }), 120)
     expect(grip).toHaveAttribute('aria-expanded', 'false')
     expect(grip).toHaveAccessibleName('Subir la hoja: Main · 9')
+    expect(grip).toHaveClass('h-11')
+    expect(grip).not.toHaveClass('h-7')
     expect(grip).toHaveFocus()
     expect(search.closest('[inert]')).not.toBeNull()
     expect(dialog.getByRole('button', { name: 'Cerrar' }).closest('[inert]')).not.toBeNull()
@@ -110,6 +114,7 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
     expect(grip).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(grip)
     expect(grip).toHaveAttribute('aria-expanded', 'true')
+    expect(grip).toHaveClass('h-7')
     expect(search).toHaveValue('lunalight')
     expect(search.closest('[inert]')).toBeNull()
     expect(backdrop).not.toHaveClass('pointer-events-none')

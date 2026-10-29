@@ -54,7 +54,7 @@ Dónde está cada uno y la regla que no se ve.
 | `ShortcutGrid` · `ShortcutTile` | Atajos de a 4 (2 si la grilla mide menos de 19 rem), cada uno con su borde y un solo tinte; sólo la insignia (aro ámbar) resalta. |
 | `Carousel` | Tarjetas que encajan con la siguiente asomando, puntos y ←/→; `bleed` sólo sobre el lienzo. |
 | `Modal` | Todo diálogo (`ui/Modal.tsx`); sus tamaños, en la regla 10. Una confirmación es `ConfirmDialog` y su texto sigue la muestra «Confirmación». En la mesa, `veil={false}`: sin velo (también `ConfirmDialog` y `SideDrawer`) y `anchor="mat"`: al centro de la fila Extra. |
-| `SheetHandle` | El asa de la hoja del visor de pila en el celular (`ui/SheetHandle.tsx`): la baja a una tira de 28 px para ver la mano. |
+| `SheetHandle` | El asa de la hoja del visor de pila en el celular (`ui/SheetHandle.tsx`): la baja a una tira de 44 px para ver la mano. |
 | `SideDrawer` | Panel por la derecha (`ui/SideDrawer.tsx`): dos anchos y nada más, para que dos cajones encimados se cubran justo. |
 | `Icon` | El único set (`ui/Icon.tsx`): nada de SVG suelto. El $ de los precios va sin círculo, a propósito (el del círculo no está en el registro). |
 | `TiltCard` · `CardArt tilt` | Las cartas que se ven enteras, de a varias, se inclinan en 3D hacia el mouse (`TiltCard` en una grilla); sin hovers propios. |

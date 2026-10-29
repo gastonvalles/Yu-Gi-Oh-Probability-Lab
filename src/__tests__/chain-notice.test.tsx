@@ -59,6 +59,19 @@ describe('ChainNotice desplegada (como abre cada cadena)', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'Ocultar la cadena' })).toHaveAttribute('aria-expanded', 'true')
   })
+
+  it('un solo cartel: el título y la pila van en la misma tarjeta (un borde, una sombra), separados por una línea fina', () => {
+    const status = pill([PONIX, ASH], { open: true })
+    const list = screen.getByRole('list', { name: /Eslabones de la cadena/ })
+    const boxes = [...screen.getByTestId('chain-notice').querySelectorAll('[class*="shadow-overlay"]')]
+
+    expect(boxes).toHaveLength(1)
+    expect(boxes[0]).toHaveClass('border', 'rounded-card')
+    expect(boxes[0]).toContainElement(status)
+    expect(boxes[0]).toContainElement(list)
+    expect(list).toHaveClass('border-t')
+    expect(list).not.toHaveClass('border')
+  })
 })
 
 describe('ChainNotice en escritorio', () => {
