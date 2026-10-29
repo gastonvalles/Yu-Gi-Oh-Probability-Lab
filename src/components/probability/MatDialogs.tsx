@@ -773,7 +773,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
         {strip ? null : search}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
-        {/* Renglones sin espacio muerto: la lista mide lo de sus cartas en fila (`--n`; así, con pocas, el panel mide lo justo) y, si no entran, bajan al renglón siguiente y lo que sobra de ancho se
+        {/* Renglones sin espacio muerto: la lista mide lo de sus cartas en fila (`--n`; así, con pocas, la tira mide lo justo y la hoja del celular las lleva al medio) y, si no entran, bajan al renglón siguiente y lo que sobra de ancho se
             reparte entre las columnas (la primera y la última, al ras): ni una columna vacía ni una franja a la derecha. En el celular, del tamaño de cinco por fila (como el campo); desde 640 px y en la
             tira, de 5.25 rem (las cartas no se agrandan: la tira sigue midiendo sus renglones de 5.25 rem). En el panel de escritorio sin tira, las de 4.5 rem. */}
         <ul
@@ -785,7 +785,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
               ? 'grid grid-cols-[repeat(auto-fill,5.25rem)] justify-between gap-2 w-[calc(var(--n)*5.75rem-0.5rem)] max-w-full'
               : desktop
                 ? 'grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2'
-                : 'grid grid-cols-[repeat(auto-fill,calc((100vw-3rem-4px)/5))] justify-between gap-1.5 w-[calc(var(--n)*((100vw-3rem-4px)/5+0.375rem)-0.375rem)] max-w-full sm:grid-cols-[repeat(auto-fill,5.25rem)] sm:gap-2 sm:w-[calc(var(--n)*5.75rem-0.5rem)]',
+                : 'grid grid-cols-[repeat(auto-fill,calc((100vw-3rem-4px)/5))] justify-between justify-self-center gap-1.5 w-[calc(var(--n)*((100vw-3rem-4px)/5+0.375rem)-0.375rem)] max-w-full sm:grid-cols-[repeat(auto-fill,5.25rem)] sm:gap-2 sm:w-[calc(var(--n)*5.75rem-0.5rem)]',
           )}
           aria-label={t('practice.dialog.cards')}
         >
@@ -849,7 +849,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
     ) : (
       // Celular: la hoja de abajo, por encima de la mesa y debajo del menú de una carta (`CardSheet`), con un fondo sin velo que la cierra al tocar afuera. Con su asa se baja sin cerrarse
       // (`useSheetDrag`): queda la tira del asa, el fondo deja de atajar toques (se toca la mano y el campo) y lo de adentro queda como estaba, inerte, hasta que se sube.
-      // Sin buscador mide lo de sus cartas y va al medio (como la tira): no queda una hoja ancha con dos cartas a la izquierda; con buscador, todo el ancho (no cambia mientras se escribe).
+      // Siempre de borde a borde, como toda hoja de abajo (Gastón, 2026-10-29); las cartas van al medio de la hoja: no quedan dos cartas a la izquierda y una franja vacía a la derecha.
       createPortal(
         <>
           <div
@@ -863,7 +863,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
               if (pressedBackdropRef.current && event.target === event.currentTarget) onClose()
             }}
           />
-          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} style={drag.style} className={cx('fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none', !search && 'mx-auto w-max max-w-full')}>
+          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} style={drag.style} className={cx('fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none')}>
             <SheetHandle drag={drag} label={title} className="bg-surface-raised">
               {header}
             </SheetHandle>

@@ -53,6 +53,12 @@ describe('Modal sin velo (los menús de la mesa)', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it.each(['sheet', 'keypad'] as const)('la hoja de abajo del celular (%s) ocupa todo el ancho: sin margen y de borde a borde', (size) => {
+    render(<Modal isOpen onClose={() => {}} size={size} title="Hoja">x</Modal>)
+    expect(backdrop()).toHaveClass('max-sm:place-items-end', 'max-sm:p-0')
+    expect(screen.getByRole('dialog')).toHaveClass('max-sm:w-full', 'max-sm:rounded-b-none')
+  })
+
   it('el cajón del chat sin velo: no oscurece y tocar afuera lo cierra', () => {
     const onClose = vi.fn()
     render(<SideDrawer isOpen onClose={onClose} veil={false} title="Chat">x</SideDrawer>)

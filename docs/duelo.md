@@ -35,7 +35,7 @@ La de la práctica, con el campo del rival espejado arriba y las Extra Monster Z
 
 ### El visor de una pila no tapa tu mano ni el detalle
 
-Ningún menú de la mesa oscurece el fondo (`veil={false}`). `PileViewer` no es un modal: con él abierto el campo sigue vivo y no se mueve ni cambia de tamaño. Sin buscador mide lo de sus cartas (columnas fijas con `justify-between`, sin franja vacía; en el celular, una hoja angosta al medio); igual `CardPicker` y `SortSheet` (`Modal size="fit"`).
+Ningún menú de la mesa oscurece el fondo (`veil={false}`). `PileViewer` no es un modal: con él abierto el campo sigue vivo y no se mueve ni cambia de tamaño. Sin buscador mide lo de sus cartas (columnas fijas con `justify-between`, sin franja vacía; en el celular, hoja de borde a borde con las cartas al medio, como toda hoja que sale de abajo); igual `CardPicker` (`Modal size="fit"`).
 
 - En escritorio es una ventana (hasta 56 rem, centrada en el campo y fuera de los laterales) apoyada en el borde de abajo de la fila de las Zonas Extra: crece hacia arriba hasta la barra (la pisa si no entran dos renglones) sin llegar a tu mano ni a tus zonas; sin el campo del rival, baja sobre tus zonas lo que falte. Tocar o apuntar una carta del visor la muestra en el detalle (una del rival boca abajo, sólo como tal). Tapa el campo del rival y las fases, y se esconde mientras se elige en el campo. Bajo 1101 px es la hoja de abajo (hasta 55 dvh), que se cierra al tocar afuera.
 - La caja que lo aloja es `absolute` (la mide `--strip-*`) y no ataja toques, sólo el panel.

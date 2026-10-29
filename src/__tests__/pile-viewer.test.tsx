@@ -333,6 +333,17 @@ describe('el visor queda montado (así sale al cerrarse): arranca de cero al abr
   })
 })
 
+describe('en el celular es una hoja de abajo de todo el ancho (Gastón: «siempre deberían ocupar todo el ancho de la pantalla»)', () => {
+  it.each([[[]], [['a']], [['a', 'b', 'c']], [Array.from({ length: 24 }, (_, index) => `x${index}`)]])('de borde a borde con %j cartas; las cartas, al medio', (ids) => {
+    open({ ids, many: null })
+    const sheet = screen.getByRole('dialog')
+
+    expect(sheet).toHaveClass('fixed', 'inset-x-0', 'bottom-0')
+    expect(sheet.className).not.toMatch(/(^|\s)(w-max|w-fit|mx-auto|max-w-(?!full))/)
+    expect(screen.getByRole('list', { name: 'Cartas' })).toHaveClass('justify-self-center')
+  })
+})
+
 describe('en la mesa del duelo de escritorio es una tira: renglones de cartas que se deslizan de arriba abajo', () => {
   const media = window.matchMedia
 
