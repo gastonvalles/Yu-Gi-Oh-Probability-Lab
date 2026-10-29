@@ -2251,7 +2251,9 @@ function PracticeMatBody({
       const left = Math.min(Math.max((first.left + last.right) / 2 - width / 2, from), to - width)
       const right = left + width
       const bar = rails ? null : column.firstElementChild?.getBoundingClientRect().bottom
-      const top = Math.max(area.top + 8, Math.min(Math.max(area.top, bar ?? area.top) + 8, row.bottom - STRIP_MIN_REM * rem))
+      // La píldora o la pila de la cadena (arriba, al medio de la mesa) no se pisa con la ventana: ésta empieza debajo; sólo si no le queda lugar para dos renglones (`STRIP_MIN_REM`), la pisa.
+      const chain = chainRef.current?.querySelector('[data-testid="chain-notice"]')?.getBoundingClientRect()
+      const top = Math.max(area.top + 8, Math.min(Math.max(Math.max(area.top, bar ?? area.top) + 8, chain ? chain.bottom + 8 : 0), row.bottom - STRIP_MIN_REM * rem))
 
       slot.style.setProperty('--strip-top', `${Math.round(top - box.top)}px`)
       slot.style.setProperty('--strip-left', `${Math.round(left - box.left)}px`)
@@ -2269,6 +2271,8 @@ function PracticeMatBody({
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later)
 
     measure()
+    // La cadena se acomoda debajo de la barra en otro efecto de este mismo cuadro: se vuelve a medir en el siguiente.
+    later()
     observer?.observe(section)
     observer?.observe(field)
     column.addEventListener('scroll', later, { passive: true })
@@ -2278,7 +2282,7 @@ function PracticeMatBody({
       column.removeEventListener('scroll', later)
       cancelAnimationFrame(frame)
     }
-  }, [stripOpen, fieldNode, view, rails, isDuel])
+  }, [stripOpen, fieldNode, view, rails, isDuel, duel?.chain])
 
   // El aviso de la cadena (`duel.chain`), debajo de la barra y del lugar de su aviso (sin laterales la barra es lo primero de la columna; con laterales, arriba del campo).
   const chainRef = useRef<HTMLDivElement | null>(null)
@@ -3024,7 +3028,12 @@ function PracticeMatBody({
           kicker={byName ? t('practice.dialog.byName') : undefined}
           info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
           targeted={targetedIds}
-          glow={(id) => glowOf(id, glowSets)}
+          // Eligiendo en el visor (una búsqueda del núcleo), las candidatas no se iluminan: el brillo es de la que ya elegiste, no de todas las que se pueden elegir.
+          glow={(id) => {
+            const kind = glowOf(id, glowSets)
+
+            return duel?.auto?.viewer && kind === 'can' && !duel.auto.cardPick?.chosen.includes(id) ? null : kind
+          }}
           // Tocar una carta del visor (también eligiendo varias) la muestra, fija, en el detalle de la izquierda, y pasarle el mouse también (mientras no haya otra fija), como una de la mano o del campo.
           onPeek={
             onPeek
