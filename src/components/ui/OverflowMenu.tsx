@@ -63,6 +63,13 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
   const root = useRef<HTMLDivElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const bar = trigger === 'bar'
+  // Lo que hay del borde izquierdo de la ventana al borde derecho del botón: el menú de la barra (que se pega a ese borde) no pasa de ahí, así no se corta a 320 px.
+  const [room, setRoom] = useState<number | null>(null)
+  const toggle = () => {
+    setTouched(true)
+    setRoom(root.current ? Math.round(root.current.getBoundingClientRect().right) : null)
+    setOpen((current) => !current)
+  }
 
   useFocusTrap(menuRef, open && touched)
 
@@ -134,6 +141,7 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
         role="menu"
         aria-label={label}
         tabIndex={-1}
+        style={bar && room !== null ? { maxWidth: `min(calc(100vw - 1rem), ${room - 8}px)` } : undefined}
         className={cx('absolute right-0 top-full z-70 mt-1 grid animate-pop gap-0.5 border border-border shadow-overlay focus-visible:outline-none motion-reduce:animate-none', bar ? 'w-80 max-w-[calc(100vw-1rem)] rounded-panel bg-card-background p-2' : 'min-w-48 rounded-control bg-surface-raised p-1')}
       >
         {sections(items).map((section, index) =>
@@ -156,11 +164,11 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
   return (
     <div ref={root} className={cx('relative', className)}>
       {bar ? (
-        <IconButton tone="flat" size="sm" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} className="aria-expanded:bg-tint/12 aria-expanded:text-info" onClick={() => { setTouched(true); setOpen((current) => !current) }}>
+        <IconButton tone="flat" size="sm" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} className="aria-expanded:bg-tint/12 aria-expanded:text-info" onClick={toggle}>
           <Icon name="more" />
         </IconButton>
       ) : (
-        <IconButton tone="ghost" size="sm" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => { setTouched(true); setOpen((current) => !current) }}>
+        <IconButton tone="ghost" size="sm" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
           <Icon name="more" size={20} />
         </IconButton>
       )}

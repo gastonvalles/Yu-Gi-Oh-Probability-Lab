@@ -451,9 +451,7 @@ export const duel: Translated<typeof es> = {
   'duel.turn.drew': 'Your turn started: you drew a card.',
 
   // A room with automatic rules (beta): the rules engine applies the rules for both players.
-  'duel.auto.rules': 'Automatic rules (beta)',
-  'duel.auto.rulesHint': 'The rules engine applies the rules for both of you. No spectators.',
-  'duel.auto.locked': 'With automatic rules: no spectators yet.',
+  'duel.auto.rulesHint': 'Beta: the rules engine applies the rules for both of you. No spectators yet.',
   'duel.auto.unsupported': "Your browser can't run the automatic rules.",
   'duel.auto.off': 'Automatic rules are turned off for now.',
   'duel.auto.rulesRow': 'Automatic (beta)',

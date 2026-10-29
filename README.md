@@ -78,7 +78,7 @@ docs/               la documentación
 
 - No hay importación desde imagen (por decisión de UX).
 - El cálculo es exacto sólo para la mano inicial: no simula robos posteriores.
-- La mesa y el duelo son manuales: no aplican las reglas (el asistente avisa, no decide); sólo el duelo automático (beta: el interruptor del lobby de Jugar, prendido de entrada) las aplica, con el núcleo real, solo (rival pasivo o con las handtraps del simulador) o con un amigo por enlace (sala privada). El simulador de handtraps reparte la mano del rival, pero cuándo usa cada carta lo decidís vos.
+- La mesa y el duelo son manuales: no aplican las reglas (el asistente avisa, no decide); sólo el duelo automático (beta: «Modo del duelo» en las reglas de Jugar, automático de entrada) las aplica, con el núcleo real, solo (rival pasivo o con las handtraps del simulador) o con un amigo por enlace (sala privada). El simulador de handtraps reparte la mano del rival, pero cuándo usa cada carta lo decidís vos.
 - El duelo es para jugar con amigos: nada impide mirar el tráfico de red.
 - Los textos de las cartas y el filtro Efecto son sólo en inglés (los da YGOPRODeck), y los precios son los del último `sync:prices`.
 

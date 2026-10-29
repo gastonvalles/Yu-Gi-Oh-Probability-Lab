@@ -109,7 +109,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelC
           <FieldBox className="min-w-0 flex-1">
             <input aria-label={t('duel.chat.placeholder')} placeholder={t('duel.chat.placeholder')} maxLength={MAX_CHAT_LENGTH} value={text} disabled={!peerPresent} onChange={(event) => setText(event.target.value)} className={fieldInline} />
           </FieldBox>
-          <IconButton type="submit" tone="primary" size="sm" aria-label={t('duel.chat.send')} title={t('duel.chat.send')} className="shrink-0 rounded-full disabled:opacity-40" disabled={!peerPresent || text.trim() === ''}>
+          <IconButton type="submit" tone="primary" size="sm" aria-label={t('duel.chat.send')} title={t('duel.chat.send')} className="shrink-0 rounded-full disabled:opacity-40 pointer-coarse:size-11" disabled={!peerPresent || text.trim() === ''}>
             <Icon name="send" />
           </IconButton>
         </form>

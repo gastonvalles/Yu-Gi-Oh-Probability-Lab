@@ -313,7 +313,8 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
   const undo = useContext(MatUndoContext)
   // El turno, una sola vez (sin la píldora de la fase: la dice el botón del campo).
   const turnLine = (className: string) => (
-    <span data-testid="duel-turn" className={cx('min-w-0 truncate text-lead font-bold', turn === 'mine' ? 'text-accent' : 'text-info-soft', className)}>
+    // Bajo 360 px un paso más chica: entre las dos vidas, «Turno de Beto · 3» se cortaba antes del número (el alto de la fila no cambia).
+    <span data-testid="duel-turn" className={cx('min-w-0 truncate text-lead font-bold max-[359px]:text-body', turn === 'mine' ? 'text-accent' : 'text-info-soft', className)}>
       {turn === 'mine' ? t('duel.bar.yourTurnN', { turn: turnNumber }) : t('duel.bar.theirTurnN', { name: rivalName, turn: turnNumber })}
     </span>
   )

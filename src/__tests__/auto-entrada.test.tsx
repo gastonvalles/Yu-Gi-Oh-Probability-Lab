@@ -10,7 +10,7 @@ import { DeckModeScreen } from '../components/deck-mode/DeckModeScreen'
 import { PlayHome } from '../components/duel/PlayHome'
 import { deckState, fortyCardMain, storeWith } from './support/deck-fixtures'
 
-// La entrada al duelo automático, para todos: el interruptor del lobby de Jugar y la mesa que abre «Entrenar solo». Las dos mesas van de mentira (lo que dibujan lo prueban
+// La entrada al duelo automático, para todos: «Modo del duelo» en las reglas de Jugar y la mesa que abre «Entrenar solo». Las dos mesas van de mentira (lo que dibujan lo prueban
 // `practice-*` y `auto-screen-*`): acá importa cuál se abre.
 vi.mock('../components/deck-mode/lazy-steps', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../components/deck-mode/lazy-steps')>()),
@@ -48,7 +48,6 @@ vi.mock('../components/auto/AutoSoloScreen', async () => {
   }
 })
 
-const SWITCH = { name: 'Duelo automático (beta)' }
 /** jsdom no tiene `Worker`: el navegador «puede» correr el núcleo sólo cuando la prueba le pone uno. */
 const withWorker = () => vi.stubGlobal('Worker', class {})
 
@@ -68,63 +67,79 @@ afterEach(() => {
 const lobby = (props: Partial<ComponentProps<typeof PlayHome>> = {}) =>
   render(<PlayHome view={null} name="" onName={() => {}} deckName="Mi deck" onOpenBuilder={() => {}} deckReady deckSize={40} minDeck={40} trainReady onTrain={() => {}} onOpenDuel={() => {}} onJoin={() => {}} paused={null} onResume={() => {}} onDropPaused={() => {}} {...props} />)
 
-describe('el interruptor del lobby de Jugar', () => {
-  it('con deck es una fila de la tarjeta del nombre, apagado de entrada, con lo largo en la ⓘ; tocarlo lo prende y lo apaga, y queda guardado', () => {
-    withWorker()
-    lobby()
-    const toggle = screen.getByRole('switch', SWITCH)
+/** La hoja de «Reglas del duelo» abierta desde el atajo de la portada. */
+const openRules = () => {
+  fireEvent.click(screen.getByRole('button', { name: /^Reglas del duelo/ }))
 
-    expect(toggle).not.toBeChecked()
-    expect(toggle).toBeEnabled()
-    // Va en la misma tarjeta de filas que «Tu nombre», debajo de los atajos.
-    const rows = screen.getByRole('button', { name: /^Tu nombre/ }).closest('ul')!
-    expect(rows).toContainElement(toggle)
-    expect(within(rows).getByText('El núcleo aplica las reglas.')).toBeInTheDocument()
-    fireEvent.click(within(rows).getByRole('button', { name: 'Qué hace el duelo automático' }))
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/solo o con un amigo/)
-    fireEvent.click(toggle)
-    expect(toggle).toBeChecked()
-    expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([true, 'on'])
-    fireEvent.click(toggle)
-    expect(toggle).not.toBeChecked()
-    expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([false, 'off'])
+  return screen.getByRole('dialog', { name: 'Reglas del duelo' })
+}
+const MODE = { name: 'Modo del duelo' }
+
+describe('«Modo del duelo», en las reglas de Jugar', () => {
+  it('la portada ya no tiene el interruptor: el nombre se escribe ahí mismo (hasta 20 letras, «Duelista» si queda vacío) y se guarda mientras se escribe', () => {
+    withWorker()
+    const onName = vi.fn()
+    lobby({ onName })
+
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.queryByText('Duelo automático (beta)')).toBeNull()
+    const input = screen.getByLabelText('Tu nombre')
+
+    expect(input).toHaveAttribute('maxlength', '20')
+    expect(input).toHaveAttribute('placeholder', 'Duelista')
+    expect(input).toHaveAccessibleDescription('Cómo te ve tu rival')
+    expect(input).not.toHaveFocus()
+    fireEvent.change(input, { target: { value: 'Ana' } })
+    expect(onName).toHaveBeenCalledWith('Ana')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('sin deck no está: el atajo «Entrenar solo» ya dice que falta', () => {
+  it('automático de entrada, con rival y en Solo: elegir «Manual» lo guarda y vale para las dos, y «Automático» lo vuelve', () => {
+    withWorker()
+    setAutoPref('duel', true)
+    lobby()
+    const rules = openRules()
+    const mode = within(rules).getByRole('radiogroup', MODE)
+
+    expect(within(mode).getByRole('radio', { name: 'Automático' })).toBeChecked()
+    expect(within(rules).getByText(/^Beta: el núcleo aplica las reglas por los dos/)).toBeInTheDocument()
+    fireEvent.click(within(mode).getByRole('radio', { name: 'Manual' }))
+    expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([false, 'off'])
+    expect(within(rules).getByText(/^Movés las cartas vos/)).toBeInTheDocument()
+
+    fireEvent.click(within(rules).getByRole('radio', { name: 'Solo' }))
+    const solo = within(rules).getByRole('radiogroup', MODE)
+    expect(within(solo).getByRole('radio', { name: 'Manual' })).toBeChecked()
+    expect(within(rules).getByRole('switch', { name: 'Handtraps del rival' })).toBeInTheDocument()
+    fireEvent.click(within(solo).getByRole('radio', { name: 'Automático' }))
+    expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([true, 'on'])
+    expect(within(rules).getByText(/^Beta: el núcleo aplica las reglas. El rival no juega su turno/)).toBeInTheDocument()
+  })
+
+  it('sin deck, «Entrenar solo» dice que falta', () => {
     withWorker()
     lobby({ deckReady: false, trainReady: false, deckSize: 3 })
 
     expect(screen.getByRole('button', { name: 'Entrenar solo' })).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByRole('button', { name: 'Entrenar solo' })).toHaveAccessibleDescription('Para entrenar hace falta un deck armado en el builder.')
-    expect(screen.queryByRole('switch', SWITCH)).toBeNull()
   })
 
-  it('un navegador que no puede correr el núcleo lo ve apagado, sin poder tocarlo, y con el porqué (aunque lo hubiera prendido)', () => {
+  it('un navegador que no puede correr el núcleo lo ve en «Manual», sin poder tocarlo, y con el porqué (aunque lo hubiera dejado en automático)', () => {
     setAutoPref('duel', true)
     lobby()
-    const toggle = screen.getByRole('switch', SWITCH)
-
-    expect(toggle).toBeDisabled()
-    expect(toggle).not.toBeChecked()
-    expect(screen.getByText('Tu navegador no puede correr el motor de reglas.')).toBeInTheDocument()
-  })
-
-  it('las reglas del duelo en Solo ya no lo repiten: el interruptor es uno solo, el del lobby', () => {
-    withWorker()
-    lobby()
-    fireEvent.click(screen.getByRole('button', { name: /^Reglas del duelo/ }))
-    const rules = screen.getByRole('dialog', { name: 'Reglas del duelo' })
+    const rules = openRules()
 
     fireEvent.click(within(rules).getByRole('radio', { name: 'Solo' }))
-    expect(within(rules).getByRole('switch', { name: 'Handtraps del rival' })).toBeInTheDocument()
-    expect(within(rules).queryByRole('switch', SWITCH)).toBeNull()
+    const mode = within(rules).getByRole('radiogroup', MODE)
+    expect(within(mode).getByRole('radio', { name: 'Manual' })).toBeChecked()
+    expect(within(mode).getByRole('radio', { name: 'Automático' })).toBeDisabled()
+    expect(within(rules).getByText('Tu navegador no puede correr el motor de reglas.')).toBeInTheDocument()
   })
 
   it('en Solo con el automático, «Quién empieza» (Yo de entrada) se elige y queda guardado; con la manual no está (no tiene turnos del rival)', () => {
     withWorker()
     lobby()
-    fireEvent.click(screen.getByRole('button', { name: /^Reglas del duelo/ }))
-    const rules = screen.getByRole('dialog', { name: 'Reglas del duelo' })
+    const rules = openRules()
 
     fireEvent.click(within(rules).getByRole('radio', { name: 'Solo' }))
     expect(within(rules).queryByRole('radiogroup', { name: 'Quién empieza' })).toBeNull()
@@ -140,7 +155,7 @@ describe('el interruptor del lobby de Jugar', () => {
   })
 })
 
-describe('«Entrenar solo» abre la mesa que dice el interruptor', () => {
+describe('«Entrenar solo» abre la mesa que dice el modo', () => {
   const practice = () => {
     window.history.replaceState(null, '', '#practice')
 
