@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   LIFE_STORAGE_KEY,
+  MAX_COUNTER,
   MAX_LP,
   ROUND_LIMIT_MS,
   createLifeState,
   formatClock,
   impliedZeros,
   interpretAmount,
+  lifeCounters,
   lifeReducer,
   readLifeState,
   timerElapsed,
@@ -112,6 +114,21 @@ describe('calculadora de LP', () => {
     expect(run(state, { type: 'timer-reset' }).lp).toEqual([7900, 8000])
   })
 
+  it('los cuatro contadores de Herramientas: arrancan en 0, no bajan de 0 ni pasan el tope, no van al registro y Reiniciar los vuelve a 0', () => {
+    const counter = (index: number, delta: number) => ({ type: 'counter', index, delta }) as const
+    const fresh = createLifeState()
+
+    expect(lifeCounters(fresh)).toEqual([0, 0, 0, 0])
+    expect(run(fresh, counter(0, -1))).toBe(fresh)
+    expect(run(fresh, counter(4, 1))).toBe(fresh)
+
+    const state = run(fresh, counter(1, 1), counter(1, 1), counter(3, 1), counter(3, -1))
+    expect(lifeCounters(state)).toEqual([0, 2, 0, 0])
+    expect(state.log).toEqual([])
+    expect(lifeCounters(run(state, counter(2, MAX_COUNTER + 5)))[2]).toBe(MAX_COUNTER)
+    expect(lifeCounters(run(state, { type: 'reset' }))).toEqual([0, 0, 0, 0])
+  })
+
   it('formatea mm:ss y, pasada la hora, h:mm:ss', () => {
     expect(formatClock(0)).toBe('00:00')
     expect(formatClock(65_999)).toBe('01:05')
@@ -135,6 +152,20 @@ describe('calculadora de LP', () => {
 
       localStorage.setItem(LIFE_STORAGE_KEY, 'no es json')
       expect(readLifeState()).toEqual(createLifeState())
+    })
+
+    it('los contadores se guardan; un duelo guardado sin ellos (o con ellos rotos) se sigue leyendo, con los contadores en 0', () => {
+      const state = run(createLifeState(), { type: 'counter', index: 2, delta: 5 })
+      writeLifeState(state)
+      expect(lifeCounters(readLifeState())).toEqual([0, 0, 5, 0])
+
+      const old = { lp: [6000, 8000], log: [], timer: { running: false, startedAt: 0, elapsedMs: 0 } }
+      localStorage.setItem(LIFE_STORAGE_KEY, JSON.stringify(old))
+      expect(readLifeState()).toEqual(old)
+
+      localStorage.setItem(LIFE_STORAGE_KEY, JSON.stringify({ ...old, counters: [1, -2, 'x'] }))
+      expect(readLifeState()).toEqual(old)
+      expect(lifeCounters(readLifeState())).toEqual([0, 0, 0, 0])
     })
   })
 })

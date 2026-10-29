@@ -667,6 +667,35 @@ describe('el armazón', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('la calculadora de LP con el celular acostado (marcador) no lleva la barra de abajo; parado sí. La hamburguesa de arriba sigue para irse', () => {
+    const original = window.matchMedia
+    const landscape = (on: boolean) => {
+      window.matchMedia = ((query: string) => ({ matches: on && query.includes('orientation: landscape'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    }
+
+    try {
+      landscape(true)
+      const { unmount } = render(
+        <AppShell groups={GROUPS} activeKey="life" onSelect={() => {}} fitScreen>
+          <p>Vidas</p>
+        </AppShell>,
+      )
+      expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(1)
+      expect(screen.getByRole('button', { name: 'Abrir el menú' })).toBeInTheDocument()
+      unmount()
+
+      // Otra pantalla acostada conserva la barra: sólo el marcador la esconde.
+      render(
+        <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}}>
+          <p>Exportar</p>
+        </AppShell>,
+      )
+      expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
   it('la mesa a pantalla completa que trae su propia hamburguesa reemplaza la barra de arriba: una sola barra, y el botón abre el mismo menú', () => {
     const onSelect = vi.fn()
     const { rerender } = render(

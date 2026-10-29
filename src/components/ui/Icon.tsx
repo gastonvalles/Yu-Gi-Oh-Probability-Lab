@@ -131,6 +131,14 @@ const PATHS = {
       <circle data-cut cx="15.5" cy="15.5" r="1" />
     </>
   ),
+  /** La calculadora: el visor arriba y tres filas de teclas. */
+  calculator: (
+    <>
+      <rect data-fill x="5" y="2.5" width="14" height="19" rx="2.5" />
+      <path data-cut d="M8.5 6.5h7" />
+      <path data-cut d="M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01M8.5 18h.01M12 18h.01M15.5 18h.01" />
+    </>
+  ),
   send: (
     <>
       <path data-fill d="M20.4 4.2 3.9 10.6a.8.8 0 0 0 .05 1.5l6.2 2.1 2.1 6.2a.8.8 0 0 0 1.5.05z" />
