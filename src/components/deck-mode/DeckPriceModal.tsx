@@ -58,7 +58,7 @@ export function DeckPriceModal({ isOpen, onClose, deckBuilder }: DeckPriceModalP
             {state.price.lines.map((line) => (
               <li key={line.cardId} className="flex min-w-0 items-baseline gap-3 border-t border-border-subtle py-2">
                 <span className="w-8 shrink-0 text-body tabular-nums text-muted">{line.copies}×</span>
-                <span className="min-w-0 flex-1 truncate text-body text-foreground">{line.name}</span>
+                <span className="min-w-0 flex-1 text-body text-foreground wrap-break-word">{line.name}</span>
                 <span className="shrink-0 text-micro tabular-nums text-soft">{line.unit === null ? '' : formatUsd(line.unit)}</span>
                 <span className="w-20 shrink-0 text-right text-body font-semibold tabular-nums text-foreground">
                   {line.total === null ? t('deck.price.noPrice') : formatUsd(line.total)}
