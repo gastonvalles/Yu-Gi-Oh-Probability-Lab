@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import type { OcgCardData } from 'ocgcore-wasm'
+import { promotedScripts, readLock, scriptDirs } from '../../../scripts/build-auto-data.mjs'
 import { cardData, type CardRow, type DataSource } from '../../app/auto/auto-data'
 import type { AutoHost } from '../../app/auto/core-host'
 import { mapDeck, type DeckList } from '../../app/auto/deck-map'
@@ -87,13 +88,14 @@ export function nodeSource(rows = cardRows(), store = scriptStore()): DataSource
   }
 }
 
-/** Los scripts del clon, con caché: `c<código>.lua` en `official/` y después en `pre-release/`; las bibliotecas, en la raíz y en `unofficial/`. */
+/** Los scripts del clon, con caché y el orden de búsqueda de `/auto-data` (`scriptDirs`, y el de preestreno para una carta ascendida). */
 export function scriptStore(root = CARD_SCRIPTS_DIR): { read: (name: string) => string | null; has: (name: string) => boolean } {
   const cache = new Map<string, string | null>()
+  const promoted = promotedScripts(readLock()) as Map<string, string>
+  const find = (name: string) => (scriptDirs(name) as string[]).map((dir) => path.join(root, dir, name)).find((candidate) => existsSync(candidate))
   const read = (name: string) => {
     if (!cache.has(name)) {
-      const dirs = /^c\d+\.lua$/.test(name) ? ['official', 'pre-release'] : ['.', 'unofficial']
-      const file = dirs.map((dir) => path.join(root, dir, name)).find((candidate) => existsSync(candidate))
+      const file = find(name) ?? (promoted.has(name) ? find(promoted.get(name)!) : undefined)
 
       cache.set(name, file ? readFileSync(file, 'utf8') : null)
     }

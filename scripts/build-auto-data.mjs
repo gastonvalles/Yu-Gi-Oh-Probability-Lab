@@ -4,8 +4,8 @@
  * (vite.config.ts) en desarrollo, y las filas y el manifiesto salen de las mismas funciones (las de acá), así que dan lo mismo.
  *
  * Corre antes de cada `npm run build` pero sólo trabaja en el de Vercel (`VERCEL`) o con `AUTO_DATA_BUILD=1`: un build común (local, CI,
- * pruebas) no toca la red ni necesita `node:sqlite`. Baja de GitHub las versiones de `auto-data.lock.json` (`cards.cdb` de
- * ProjectIgnis/BabelCDB y el tarball de ProjectIgnis/CardScripts) y deja en `.auto-data/` (fuera del repo: el `.cdb` no tiene licencia)
+ * pruebas) no toca la red ni necesita `node:sqlite`. Baja de GitHub las versiones de `auto-data.lock.json` (las bases de
+ * ProjectIgnis/BabelCDB que nombra, que junta `mergeCdbs`, y el tarball de ProjectIgnis/CardScripts) y deja en `.auto-data/` (fuera del repo: el `.cdb` no tiene licencia)
  * lo que la función lleva consigo, entero, en su paquete:
  * - `data.json`: el manifiesto (`version`, `tokens`, `filler` y, con `AUTO_ONLINE=0`, `features: { online: false }`), las filas de todas las cartas (`cards`, por código) y dónde está cada
  *   script dentro del paquete (`scripts`: nombre → [inicio, largo], en bytes).
@@ -25,9 +25,11 @@ import { gunzipSync } from 'node:zlib'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const LOCK = path.join(ROOT, 'auto-data.lock.json')
+/** El lock: el commit de cada repo y, de BabelCDB, qué bases se juntan (`files`) y qué cartas de preestreno ya tienen su passcode (`released`). */
+export const readLock = () => JSON.parse(readFileSync(LOCK, 'utf8'))
 const OUT_DIR = path.join(ROOT, '.auto-data')
 const USER_AGENT = 'YGO Probability Lab build (+https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab)'
-/** Las dos bajadas tardan un par de segundos; un GitHub colgado no puede dejar el build esperando. */
+/** Las bajadas tardan un par de segundos; un GitHub colgado no puede dejar el build esperando. */
 const DOWNLOAD_TIMEOUT_MS = 60_000
 
 /** Las columnas de una carta: las de `datas` y, de `texts`, el nombre y los rótulos de los efectos (`str1`…`str16`: lo que `aux.Stringid` nombra en un menú). */
@@ -70,6 +72,40 @@ export function manifestCodes(db, hasScript) {
 /** Dónde se busca un script, en orden: las cartas en `official/` y después `pre-release/`; las bibliotecas en la raíz y después `unofficial/`. */
 export const scriptDirs = (name) => (/^c\d+\.lua$/.test(name) ? ['official', 'pre-release'] : ['.', 'unofficial'])
 
+/** El script de una carta ascendida (`released`, ver `mergeCdbs`): `c<passcode>.lua` → el de su id de preestreno, mientras no tenga uno propio. */
+export const promotedScripts = (lock) => new Map(Object.entries(lock.BabelCDB.released ?? {}).map(([pre, code]) => [`c${code}.lua`, `c${pre}.lua`]))
+
+const DATAS = 'id, ot, alias, setcode, type, atk, def, level, race, attribute, category'
+const TEXTS = `id, name, desc, ${Array.from({ length: 16 }, (_, i) => `str${i + 1}`).join(', ')}`
+
+/**
+ * Junta en el primero de `files` (ya bajados, en el orden de `files` del lock: `cards.cdb`, las `release-*` y las `prerelease-*`) las filas
+ * de los demás. Un id que ya está no se pisa: gana la base que va antes, así la oficial le gana a la de preestreno. Después asciende las
+ * cartas de preestreno que ya tienen passcode (`released`: id provisorio → el passcode de YGOPRODeck, el de nuestros decks): una copia de
+ * la fila con ese código y `alias` al provisorio (lo que nombren por ese número otros scripts sigue valiendo) que juega con el script del
+ * provisorio (`promotedScripts`). Si Project Ignis ya la pasó a una base con su passcode, gana la de ellos.
+ */
+export async function mergeCdbs(files, released = {}) {
+  const { DatabaseSync } = await import('node:sqlite')
+  const db = new DatabaseSync(files[0])
+
+  try {
+    for (const file of files.slice(1)) {
+      db.prepare('attach database ? as extra').run(file)
+      db.exec(`insert or ignore into datas (${DATAS}) select ${DATAS} from extra.datas; insert or ignore into texts (${TEXTS}) select ${TEXTS} from extra.texts; detach database extra`)
+    }
+    const data = db.prepare(`insert or ignore into datas (${DATAS}) select ?, ot, id, setcode, type, atk, def, level, race, attribute, category from datas where id = ?`)
+    const text = db.prepare(`insert or ignore into texts (${TEXTS}) select ?, ${TEXTS.slice('id, '.length)} from texts where id = ?`)
+
+    for (const [pre, code] of Object.entries(released)) {
+      data.run(code, Number(pre))
+      text.run(code, Number(pre))
+    }
+  } finally {
+    db.close()
+  }
+}
+
 /** Los archivos de un tar (el tarball de GitHub ya descomprimido), con el nombre largo de pax si lo trae. */
 function* untar(tar) {
   let long = null
@@ -88,8 +124,8 @@ function* untar(tar) {
   }
 }
 
-/** Los scripts que se sirven, del tarball (`<repo>-<commit>/` adelante), con el orden de `scriptDirs`: el índice y el paquete. */
-function packScripts(files) {
+/** Los scripts que se sirven, del tarball (`<repo>-<commit>/` adelante), con el orden de `scriptDirs`: el índice y el paquete. Una carta ascendida apunta a los bytes de su script de preestreno (`promoted`). */
+function packScripts(files, promoted) {
   const best = new Map()
 
   for (const { path: file, body } of files) {
@@ -109,26 +145,28 @@ function packScripts(files) {
     index[name] = [offset, best.get(name).body.length]
     offset += best.get(name).body.length
   }
+  for (const [name, pre] of promoted) if (!Object.hasOwn(index, name) && Object.hasOwn(index, pre)) index[name] = index[pre]
 
   return { index, pack: Buffer.concat(names.map((name) => best.get(name).body)) }
 }
 
-/** La versión del manifiesto (la clave de la caché de la app): cambia sólo con el lock. */
-export const versionOf = (lock) => createHash('sha1').update(`${lock.CardScripts.commit}:${lock.BabelCDB.commit}`).digest('hex').slice(0, 12)
+/** La versión del manifiesto (la clave de la caché de la app): cambia sólo con el lock (también si cambian las bases o las cartas ascendidas). */
+export const versionOf = (lock) => createHash('sha1').update(JSON.stringify([lock.CardScripts.commit, lock.BabelCDB])).digest('hex').slice(0, 12)
 
 /** Arma `data.json` y `scripts.pack` en `outDir` con lo bajado. `features` va tal cual en el manifiesto (los interruptores del despliegue). */
-async function writeAutoData(outDir, { cdb, tarball, lock, features }) {
+async function writeAutoData(outDir, { cdbs, tarball, lock, features }) {
   // Se importa recién acá: un build que no arma datos no lo necesita, y un Node sin `node:sqlite` cae en el aviso de `buildAutoData`.
   const { DatabaseSync } = await import('node:sqlite')
-  // El `.cdb` va a una carpeta temporal y no a `outDir`: la función lleva todo lo que haya ahí.
+  // Los `.cdb` van a una carpeta temporal y no a `outDir`: la función lleva todo lo que haya ahí.
   const temp = mkdtempSync(path.join(os.tmpdir(), 'ygo-lab-auto-data-'))
-  const file = path.join(temp, 'cards.cdb')
-
-  writeFileSync(file, cdb)
-  const db = new DatabaseSync(file, { readOnly: true })
+  const files = lock.BabelCDB.files.map((name) => path.join(temp, name))
+  let db = null
 
   try {
-    const { index, pack } = packScripts(untar(gunzipSync(tarball)))
+    files.forEach((file, i) => writeFileSync(file, cdbs[i]))
+    await mergeCdbs(files, lock.BabelCDB.released)
+    db = new DatabaseSync(files[0], { readOnly: true })
+    const { index, pack } = packScripts(untar(gunzipSync(tarball)), promotedScripts(lock))
     const data = { version: versionOf(lock), ...manifestCodes(db, (name) => Object.hasOwn(index, name)), ...(features ? { features } : {}), cards: Object.fromEntries(allCards(db).map((row) => [row.id, row])), scripts: index }
 
     mkdirSync(outDir, { recursive: true })
@@ -137,7 +175,7 @@ async function writeAutoData(outDir, { cdb, tarball, lock, features }) {
     writeFileSync(path.join(outDir, 'data.json'), JSON.stringify(data))
     return data
   } finally {
-    db.close()
+    db?.close()
     rmSync(temp, { recursive: true, force: true })
   }
 }
@@ -155,17 +193,20 @@ async function download(url) {
   return Buffer.from(await response.arrayBuffer())
 }
 
-/** Arma `.auto-data/` si toca (ver arriba). Devuelve si quedaron datos; sólo falla con `AUTO_DATA_STRICT`. */
-export async function buildAutoData({ outDir = OUT_DIR, env = process.env } = {}) {
+/**
+ * Arma `.auto-data/` si toca (ver arriba). Devuelve si quedaron datos; sólo falla con `AUTO_DATA_STRICT`. `lock` reemplaza al del repo (las pruebas).
+ * @param {{ outDir?: string, env?: Record<string, string | undefined>, lock?: ReturnType<typeof readLock> }} [options]
+ */
+export async function buildAutoData({ outDir = OUT_DIR, env = process.env, lock: locked } = {}) {
   if (!env.VERCEL && !env.AUTO_DATA_BUILD) return false
   rmSync(outDir, { recursive: true, force: true })
 
   try {
-    const lock = JSON.parse(readFileSync(LOCK, 'utf8'))
+    const lock = locked ?? readLock()
     const github = env.AUTO_DATA_GITHUB ?? 'https://github.com'
-    const [cdb, tarball] = await Promise.all([download(`${github}/ProjectIgnis/BabelCDB/raw/${lock.BabelCDB.commit}/cards.cdb`), download(`${github}/ProjectIgnis/CardScripts/archive/${lock.CardScripts.commit}.tar.gz`)])
+    const [tarball, ...cdbs] = await Promise.all([download(`${github}/ProjectIgnis/CardScripts/archive/${lock.CardScripts.commit}.tar.gz`), ...lock.BabelCDB.files.map((name) => download(`${github}/ProjectIgnis/BabelCDB/raw/${lock.BabelCDB.commit}/${name}`))])
     // `AUTO_ONLINE=0` apaga el duelo automático por enlace sin tocar código (un redeploy): el lobby no lo ofrece y el anfitrión de una sala vieja no lo arranca.
-    const data = await writeAutoData(outDir, { cdb, tarball, lock, features: env.AUTO_ONLINE === '0' ? { online: false } : undefined })
+    const data = await writeAutoData(outDir, { cdbs, tarball, lock, features: env.AUTO_ONLINE === '0' ? { online: false } : undefined })
 
     console.log(`auto-data: ${Object.keys(data.cards).length} cartas y ${Object.keys(data.scripts).length} scripts (versión ${data.version}) en ${outDir}`)
     return true

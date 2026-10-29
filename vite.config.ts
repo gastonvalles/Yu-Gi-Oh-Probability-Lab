@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { configDefaults } from 'vitest/config'
 import { defineConfig, type Plugin } from 'vite'
-import { cardsByCodes, manifestCodes, scriptDirs } from './scripts/build-auto-data.mjs'
+import { cardsByCodes, manifestCodes, promotedScripts, readLock, scriptDirs } from './scripts/build-auto-data.mjs'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
 
@@ -70,7 +70,7 @@ function apiDev(): Plugin {
  * `npm run sync:core` (`CORE_DATA_DIR` con `cards.cdb` y `CARD_SCRIPTS_DIR` con los scripts; ninguna está en el repo) con las rutas que
  * lee `httpSource` (`src/app/auto/auto-data.ts`): `/auto-data/manifest`, `/auto-data/cards?codes=…` y `/auto-data/script/<nombre>`
  * (404 si no existe); y la consola de pruebas `/__auto/` (`src/app/auto/dev-console.ts`). Las respuestas van con gzip, como las daría un CDN.
- * Las filas, el manifiesto y el orden de búsqueda de los scripts son las funciones de `scripts/build-auto-data.mjs`, las mismas con las
+ * Las filas, el manifiesto y el orden de búsqueda de los scripts (con los de las cartas ascendidas) son las funciones de `scripts/build-auto-data.mjs`, las mismas con las
  * que el build arma los datos de producción (`api/auto-data.ts`).
  */
 function autoDataDev(): Plugin {
@@ -84,7 +84,9 @@ function autoDataDev(): Plugin {
       // `node:sqlite` se carga recién al primer pedido (avisa que es experimental en Node 22).
       let db: Promise<import('node:sqlite').DatabaseSync> | null = null
       const open = () => (db ??= import('node:sqlite').then(({ DatabaseSync }) => new DatabaseSync(cdb, { readOnly: true })))
-      const scriptFile = (name: string) => scriptDirs(name).map((dir: string) => join(scriptsDir, dir, name)).find((file: string) => existsSync(file))
+      const promoted = promotedScripts(readLock())
+      const findScript = (name: string) => scriptDirs(name).map((dir: string) => join(scriptsDir, dir, name)).find((file: string) => existsSync(file))
+      const scriptFile = (name: string) => findScript(name) ?? (promoted.has(name) ? findScript(promoted.get(name)!) : undefined)
       const reply = (request: { headers: Record<string, string | string[] | undefined> }, response: import('node:http').ServerResponse, status: number, type: string, body: string) => {
         response.statusCode = status
         response.setHeader('Content-Type', type)
