@@ -88,12 +88,12 @@ describe('auto-screen · seguir en modo manual', () => {
     expect(within(dialog()).getByRole('button', { name: 'Seguir en manual' })).toBeEnabled()
   })
 
-  it('sin mesa todavía (cartas sin reglas), «Jugar en modo manual» pasa directo, con una mano nueva', () => {
+  it('sin mesa todavía (el núcleo no arrancó), «Seguir en modo manual» pasa directo, con una mano nueva', () => {
     const onManual = vi.fn()
     const fake = renderAuto(undefined, undefined, onManual)
 
-    core(() => fake.fault({ kind: 'rules', message: 'cards without automatic rules', cards: [700] }))
-    fireEvent.click(screen.getByRole('button', { name: 'Jugar en modo manual' }))
+    core(() => fake.fault({ kind: 'setup', message: 'createDuel returned null', cards: [] }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Seguir en modo manual' }))
     expect(onManual).toHaveBeenCalledWith(null)
     expect(screen.queryByRole('dialog', { name: 'Seguir en modo manual' })).toBeNull()
   })

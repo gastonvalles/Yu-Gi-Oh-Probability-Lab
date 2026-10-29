@@ -24,7 +24,7 @@ import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
 import { AutoBar, AutoDock, type AutoOptions } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
-import { deckListOf } from './deck-list'
+import { deckOf } from './deck-list'
 import { ManualDialog } from './ManualDialog'
 import { sentinel, useAutoAsks } from './use-auto-asks'
 
@@ -51,7 +51,7 @@ export interface AutoSoloScreenProps {
   onExit: () => void
   /**
    * «Seguir en modo manual» (de «Más opciones», del error del núcleo o del final): la partida, para seguirla en la mesa manual (vuelta atrás las jugadas que se eligieron), o `null`
-   * si no llegó a empezar (cartas sin reglas: una mano nueva). Sin esto, no se ofrece.
+   * si no llegó a empezar (el núcleo no arrancó: una mano nueva). Sin esto, no se ofrece.
    */
   onManual?: (game: ManualGame | null) => void
   /** Las reglas del Lab: con esto, las salidas y problemas de tu mano de apertura (los chips de la práctica) debajo de los pasos o sobre tu mano. */
@@ -93,10 +93,16 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   // La mesa manual de la que sigue (`resume`): cambiar las handtraps le suelta la mano del rival (reparte la semilla) y «Nueva mano», la mesa entera.
   const [from, setFrom] = useState(() => resume && { ...resume, rival: resumedRival(resume.state.rival, handtraps) })
 
+  // Las cartas del deck (para la fila de una que no esté en ninguna base): se leen al armar la sesión; otro mapa con las mismas cartas no arma otra.
+  const cardsRef = useRef(cardsById)
+
+  useEffect(() => {
+    cardsRef.current = cardsById
+  }, [cardsById])
   // En un efecto (y no en el render): con `StrictMode` el montaje se repite y la sesión de la primera pasada se destruye.
   useEffect(() => {
     const resumeOf = (at: NonNullable<typeof from>): SessionOptions['resume'] => ({ mine: at.state, codeOf: (_, id) => parseDerivedCardId(cardIdOfDrawId(id)) ?? 0, lp: at.lp, ...(at.rival ? { rivalHand: at.rival.hand.map(rivalCode) } : {}) })
-    const session = connect({ main: deckListOf(mainIds), extra: deckListOf(extraIds) }, { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), ...(seed.current === undefined ? {} : { seed: seed.current }), ...(from ? { resume: resumeOf(from) } : {}) })
+    const session = connect(deckOf(mainIds, extraIds, cardsRef.current), { ...(handSize === undefined ? {} : { handSize }), rival: autoRival(handtraps), ...(seed.current === undefined ? {} : { seed: seed.current }), ...(from ? { resume: resumeOf(from) } : {}) })
 
     // Otra sesión, otra mesa: la pantalla arranca de cero (`key`).
     setLive((current) => ({ session, n: (current?.n ?? 0) + 1 }))
@@ -161,8 +167,8 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
   // El rival de handtraps (con el simulador encendido y alguna carta): su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
   const rivalOn = useMemo(() => autoRival(handtraps) !== null, [handtraps])
-  // «Seguir en modo manual»: el diálogo (`opened` lo vuelve a «Nada» cada vez que se abre) y la partida que pasa, calculada sólo con él abierto. Sin una mesa todavía (cartas sin
-  // reglas, el núcleo que no arrancó), una mano nueva: no hay nada que elegir.
+  // «Seguir en modo manual»: el diálogo (`opened` lo vuelve a «Nada» cada vez que se abre) y la partida que pasa, calculada sólo con él abierto. Sin una mesa todavía (el núcleo
+  // que no arrancó), una mano nueva: no hay nada que elegir.
   const [switching, setSwitching] = useState(false)
   const [opened, setOpened] = useState(0)
   // Una sola función por sesión (lee la mesa y el `onManual` de ahora al tocarse, no al dibujarse: la pantalla de arriba lo arma de nuevo en cada dibujo suyo): lo que la recibe (la mesa, la
@@ -235,13 +241,13 @@ function AutoDuel({ session, cardsById, deckName, onExit, onManual, handtraps, o
   const cover = useMemo(
     () =>
       fault ? (
-        <FaultCover fault={fault} nameOf={(code) => nameOf(null, code)} artOf={(code) => artOf(null, code)} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+        <FaultCover fault={fault} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'ended' && end ? (
         <EndCover end={end} lp={lp} rival={rivalName} onAgain={restart} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} rival={rivalOn} />
       ) : undefined,
-    [fault, nameOf, artOf, restart, recoverable, undo, openManual, onExit, status, end, lp, rivalName, progress, rivalOn],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, rivalName, progress, rivalOn],
   )
 
   const life = useMemo(() => ({ mine: lp[0], theirs: lp[1] }), [lp])

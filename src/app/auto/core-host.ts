@@ -92,6 +92,8 @@ const IGNORED = new Set<string>(IGNORED_MESSAGES)
 const STAT_FLAGS = (OcgQueryFlags.CODE | OcgQueryFlags.POSITION | OcgQueryFlags.ATTACK | OcgQueryFlags.DEFENSE | OcgQueryFlags.LEVEL) as QueryFlags
 
 const TYPE_MONSTER = 0x1
+/** El script de una carta sin reglas automáticas (`vanillaScript`). */
+const VANILLA_SCRIPT = 'local s,id=GetID()\nfunction s.initial_effect(c) end\n'
 const LUA_LOCATION: Record<number, string> = { [OcgLocation.DECK]: 'LOCATION_DECK', [OcgLocation.HAND]: 'LOCATION_HAND', [OcgLocation.MZONE]: 'LOCATION_MZONE', [OcgLocation.SZONE]: 'LOCATION_SZONE', [OcgLocation.GRAVE]: 'LOCATION_GRAVE', [OcgLocation.REMOVED]: 'LOCATION_REMOVED', [OcgLocation.EXTRA]: 'LOCATION_EXTRA' }
 
 /**
@@ -439,18 +441,25 @@ export function createAutoHost(options: HostOptions): AutoHost {
     else timings.push(performance.now() - start)
   }
 
+  /**
+   * Una carta con efecto y sin script juega sin efectos, como en Dueling Nexus: con un script vacío (sin él, el núcleo igual la deja sin efectos, pero avisa un error de
+   * script por cada copia al llamar a `initial_effect`). Las fichas y los Normales no lo piden.
+   */
+  function vanillaScript(name: string): string | null {
+    const code = /^c(\d+)\.lua$/.exec(name)?.[1]
+    const card = code ? options.cardReader(Number(code)) : null
+
+    return card && needsScript(card) && scriptName(card) === name ? VANILLA_SCRIPT : null
+  }
+
   async function start(command: CreateCommand, replay: readonly CoreAnswer[]) {
     free()
     const codes = [...new Set([...command.decks.flatMap((deck) => [...deck.main, ...deck.extra]), ...(command.setup?.cards.flatMap((card) => [card.code, ...(card.materials ?? [])]).filter((code) => code > 0) ?? [])])]
+    // Una carta sin script juega sin efectos (`deck-map.ts`); una sin datos no puede jugar: la sesión la deja afuera, así que un `create` que la nombra está mal armado.
     const missing = codes.filter((code) => !options.cardReader(code))
-    const noRules = codes.filter((code) => {
-      const card = options.cardReader(code)
 
-      return card !== null && needsScript(card) && options.scriptReader(scriptName(card)) === null
-    })
-
-    if (missing.length > 0 || noRules.length > 0) {
-      fault('rules', `cards without automatic rules: ${missing.length} without data, ${noRules.length} without a script`, [...missing, ...noRules])
+    if (missing.length > 0) {
+      fault('rules', `cards without data: ${missing.length}`, missing)
       return
     }
 
@@ -481,7 +490,7 @@ export function createAutoHost(options: HostOptions): AutoHost {
       scriptReader: (name) => {
         if (started) hotScripts.push(name)
 
-        return options.scriptReader(name)
+        return options.scriptReader(name) ?? vanillaScript(name)
       },
       errorHandler: (type, text) => fault('script', `${LOG_TYPES[type] ?? type}: ${text}`),
     })

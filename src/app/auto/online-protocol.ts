@@ -11,7 +11,7 @@ import { parseAnswer, parseAutoEvent, parsePlacedCards, parseSetup, type AutoEve
  */
 
 /** 2: lo del anfitrión va numerado (`s`) y la semilla no viaja (el deck del invitado va por código, sin orden). Otra versión enfrente se ve antes del duelo; a mitad de uno, se pierde. */
-export const AUTO_PROTOCOL_VERSION = 2
+export const AUTO_PROTOCOL_VERSION = 3
 /** Más de esto se trocea en `autoPart` (deja margen al tope de 16 KB del relay: el sobre del `autoEvent` y, si algún día va cifrado, el base64). */
 export const MAX_AUTO_BYTES = 12 * 1024
 export const MAX_PARTS = 16
@@ -43,8 +43,12 @@ export interface AutoCardInfo {
  * el próximo `1`, pidiendo el duelo de nuevo. Lo manda el invitado (`autoManual`, `autoUndo`) sin `s`.
  */
 type Numbered =
-  /** Anfitrión → invitado: si se puede jugar con esos dos decks. `bad`: los códigos del invitado sin reglas; `theirsBad`: cuántas del anfitrión. `reason` cuando no es por reglas. */
-  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true; /** Y lleva el reloj de turnos con quien decide (`setAutoClock`). */ turnClock?: true }
+  /**
+   * Anfitrión → invitado: si se puede jugar con esos dos decks. `bad`: los códigos del invitado sin reglas (juegan sin efecto); `theirsBad`: cuántas del anfitrión. Una carta
+   * sin datos en ninguna base no deja jugar a ninguno de los dos: `guestMissing`, las del invitado (él les sabe el nombre), y `hostMissing`, las del anfitrión, con nombre.
+   * `reason` cuando no es por las cartas.
+   */
+  | { t: 'autoCheck'; v: number; ok: boolean; bad: number[]; theirsBad: number; guestMissing?: number[]; hostMissing?: MissingCard[]; reason?: 'version' | 'off' | 'data' | 'lost'; /** Este anfitrión sabe deshacer (`autoUndo`); uno de antes no lo pone. */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true; /** Y lleva el reloj de turnos con quien decide (`setAutoClock`). */ turnClock?: true }
   /**
    * Anfitrión → invitado: el duelo que empieza. `seat` es el asiento del invitado; `mine` su deck en códigos del núcleo como lo puso el anfitrión, el Main por código (el orden
    * no viaja: con él, o con la semilla, el invitado sabría sus próximos robos); `theirs`, sólo cuántas cartas tiene el anfitrión. `setup`: el duelo no empieza de cero sino desde
@@ -75,8 +79,8 @@ type Numbered =
 
 export type AutoMessage =
   | (Numbered & { s?: number })
-  /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver). */
-  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true; /** Y lleva el reloj de turnos. */ turnClock?: true }
+  /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver) y, con nombre, mis cartas sin datos en ninguna base (`missing`: las revisé yo). */
+  | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; missing?: MissingCard[]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true; /** Y lleva el reloj de turnos. */ turnClock?: true }
   /**
    * Los dos, sin número (no es del flujo del núcleo): la fase que se ve en mi mesa en el turno `turn` del núcleo (la mesa de quien tiene el turno frena en su DP y su SP aunque el
    * núcleo ya esté en la M1: `phase-stops.ts`) y si estoy contestando una pregunta del núcleo que no es mi turno libre (`busy`). Sólo viaja entre dos que lo anuncian (`phase` en
@@ -96,6 +100,15 @@ export type AutoMessage =
    * (`ask`, `yes`) lleva su mesa entera (`table`: sus cartas con código, `placedCards`), que el anfitrión compara con lo que ve de él antes de aceptarla.
    */
   | { t: 'autoResume'; step: ResumeStep; table?: PlacedCard[]; why?: ResumeWhy; /** Un `hello` que contesta a otro (no se contesta de nuevo). */ back?: true }
+
+/** Una carta sin datos en ninguna base, con el nombre que le da quien la tiene en el deck (texto del otro: se muestra como texto). */
+export interface MissingCard {
+  code: number
+  name: string
+}
+/** Cuántas cartas sin datos viajan (un deck tiene a lo sumo 75 distintas) y el largo de cada nombre. */
+export const MAX_MISSING = 75
+export const MAX_MISSING_NAME = 80
 
 /** Lo que el anfitrión le manda al invitado: lo que va numerado. */
 export type HostMessage = Extract<AutoMessage, Numbered>
@@ -136,6 +149,21 @@ const isPlain = (value: unknown): value is Record<string, unknown> => typeof val
 const isInt = (value: unknown, min: number, max: number): value is number => Number.isSafeInteger(value) && (value as number) >= min && (value as number) <= max
 const ints = (value: unknown, max: number, min = 1, top = MAX_CODE): number[] | null => (Array.isArray(value) && value.length <= max && value.every((item) => isInt(item, min, top)) ? [...(value as number[])] : null)
 const text = (value: unknown, max: number): value is string => typeof value === 'string' && value.length <= max
+/** Un nombre de carta del otro: texto de una línea, sin caracteres de control. */
+const cardName = (value: unknown): value is string => text(value, MAX_MISSING_NAME) && value.trim() !== '' && ![...value].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
+
+/** Las cartas sin datos que manda el otro (`MissingCard`), o null si alguna no tiene forma. */
+function missingCards(value: unknown): MissingCard[] | null {
+  if (!Array.isArray(value) || value.length > MAX_MISSING) return null
+  const out: MissingCard[] = []
+
+  for (const card of value) {
+    if (!isPlain(card) || !isInt(card.code, 1, MAX_CODE) || !cardName(card.name)) return null
+    out.push({ code: card.code, name: card.name })
+  }
+
+  return out
+}
 
 /** Las filas `[passcode, copias]` de un deck: el formato de la sala ya revisa cuántas copias valen; acá, que no pase de `cards` cartas. */
 function deckRows(value: unknown, rows: number, cards: number): [number, number][] | null {
@@ -199,16 +227,21 @@ function parseBody(raw: Record<string, unknown>): AutoMessage | null {
       const main = deckRows(raw.main, 200, 200)
       const extra = deckRows(raw.extra, 100, 100)
 
-      return isInt(raw.v, 0, 1000) && main && extra ? { t: 'autoDeck', v: raw.v, main, extra, ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}), ...(raw.turnClock === true ? { turnClock: true as const } : {}) } : null
+      const missing = raw.missing === undefined ? undefined : missingCards(raw.missing)
+
+      return isInt(raw.v, 0, 1000) && main && extra && missing !== null ? { t: 'autoDeck', v: raw.v, main, extra, ...(missing?.length ? { missing } : {}), ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}), ...(raw.turnClock === true ? { turnClock: true as const } : {}) } : null
     }
 
     case 'autoCheck': {
       const bad = ints(raw.bad, 300)
       const reason = raw.reason === undefined ? undefined : REASONS.find((item) => item === raw.reason)
 
-      if (!isInt(raw.v, 0, 1000) || typeof raw.ok !== 'boolean' || !bad || !isInt(raw.theirsBad, 0, 300) || (raw.reason !== undefined && !reason)) return null
+      const guestMissing = raw.guestMissing === undefined ? undefined : ints(raw.guestMissing, MAX_MISSING)
+      const hostMissing = raw.hostMissing === undefined ? undefined : missingCards(raw.hostMissing)
 
-      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(reason ? { reason } : {}), ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}), ...(raw.turnClock === true ? { turnClock: true as const } : {}) }
+      if (!isInt(raw.v, 0, 1000) || typeof raw.ok !== 'boolean' || !bad || !isInt(raw.theirsBad, 0, 300) || (raw.reason !== undefined && !reason) || guestMissing === null || hostMissing === null) return null
+
+      return { t: 'autoCheck', v: raw.v, ok: raw.ok, bad, theirsBad: raw.theirsBad, ...(guestMissing?.length ? { guestMissing } : {}), ...(hostMissing?.length ? { hostMissing } : {}), ...(reason ? { reason } : {}), ...(raw.undo === true ? { undo: true as const } : {}), ...(raw.phase === true ? { phase: true as const } : {}), ...(raw.turnClock === true ? { turnClock: true as const } : {}) }
     }
 
     case 'autoPhase': {

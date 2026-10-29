@@ -208,9 +208,6 @@ export const auto = {
   'auto.loading.rules': 'Cargando las reglas de tus cartas… {done} de {total}',
 
   // Los errores que no dejan jugar.
-  'auto.fault.rules': { one: 'A {count} carta le faltan sus reglas', other: 'A {count} cartas les faltan sus reglas' },
-  'auto.fault.rulesText': 'El núcleo no tiene sus datos o su script: con ellas el duelo automático no arranca.',
-  'auto.fault.manual': 'Jugar en modo manual',
   'auto.fault.back': 'Volver al lobby',
   'auto.fault.setup': 'No se pudo crear el duelo',
   'auto.fault.crash': 'El núcleo se cayó',
@@ -260,8 +257,12 @@ export const auto = {
   // El duelo automático por enlace: lo que la sala le dice a quien espera (debajo del deck), la línea mientras elige el otro y lo que corta el duelo.
   'auto.online.waitingDeck': 'Esperando el deck de {name}…',
   'auto.online.checking': 'Revisando que las cartas de los dos tengan reglas…',
-  'auto.online.blockedMine': { one: 'A {count} carta tuya le faltan sus reglas: cambiala en el builder.', other: 'A {count} cartas tuyas les faltan sus reglas: cambialas en el builder.' },
-  'auto.online.blockedTheirs': { one: 'A {count} carta de {name} le faltan sus reglas.', other: 'A {count} cartas de {name} les faltan sus reglas.' },
+  'auto.online.noData': { one: 'No se puede jugar con reglas automáticas: {cards} no tiene datos para el núcleo.', other: 'No se puede jugar con reglas automáticas: {cards} no tienen datos para el núcleo.' },
+  'auto.online.noDataMine': '«{name}» (tuya)',
+  'auto.online.noDataTheirs': '«{name}» de {rival}',
+  'auto.online.noDataMore': { one: '{count} más', other: '{count} más' },
+  'auto.online.vanillaMine': { one: '{count} carta tuya no tiene reglas automáticas: se juega sin efecto.', other: '{count} cartas tuyas no tienen reglas automáticas: se juegan sin efecto.' },
+  'auto.online.vanillaTheirs': { one: '{count} carta de {name} no tiene reglas automáticas: se juega sin efecto.', other: '{count} cartas de {name} no tienen reglas automáticas: se juegan sin efecto.' },
   'auto.online.outdated': '{name} tiene que actualizar la app para jugar con reglas automáticas.',
   'auto.online.version': 'Tu app y la de {name} no son la misma versión: recarguen la página para jugar con reglas automáticas.',
   'auto.online.off': 'El duelo automático por enlace está apagado por ahora.',
@@ -319,6 +320,8 @@ export const auto = {
   'auto.why.title': 'Ahora no tiene jugadas',
   'auto.why.unknown': 'El automático no ofrece jugadas para esta carta ahora.',
   'auto.why.rivalTurn': 'Es el turno del rival.',
+  'auto.why.noRules': 'No tiene reglas automáticas: se juega sin efecto.',
+  'auto.vanilla': { one: '{count} de tus cartas no tiene reglas automáticas y se juega sin efecto: {names}.', other: '{count} de tus cartas no tienen reglas automáticas y se juegan sin efecto: {names}.' },
   'auto.why.summoned': 'Ya hiciste una Invocación Normal este turno.',
   'auto.why.set': 'Ya Colocaste un monstruo este turno.',
   'auto.why.monsterZones': 'Tus cinco zonas de monstruo están ocupadas.',

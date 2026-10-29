@@ -18,7 +18,7 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { LifeHold } from '../../app/life-effects'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { showToastMessage } from '../../app/use-toast-message'
-import { t } from '../../i18n'
+import { getLocale, t } from '../../i18n'
 import { TurnOrderBanner } from '../duel/DuelBanner'
 import { TurnDial } from '../duel/TurnDial'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from '../duel/DuelBar'
@@ -34,7 +34,7 @@ import { Segmented } from '../ui/Segmented'
 import { AskPrompt } from './AskPrompt'
 import { chainModeHint, chainModeOptions, Setting } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
-import { deckListOf } from './deck-list'
+import { deckOf } from './deck-list'
 import { sentinel, useAutoAsks } from './use-auto-asks'
 
 /**
@@ -102,7 +102,11 @@ const sessionKey = (session: AutoSession) => sessionIds.get(session) ?? (session
 
 export function AutoDuelScreen({ duel, snapshot, status, transport, myName, deck, handSize, room, onLeave, onAbandon, onRematch, code, onManual, resume, siding, connect }: AutoDuelScreenProps) {
   const { role, peerPresent } = snapshot
-  const list = useMemo<DeckList>(() => ({ main: deckListOf(deck.mainIds), extra: deckListOf(deck.extraIds) }), [deck.mainIds, deck.extraIds])
+  // Con la fila de cada carta según nuestros datos: la que no esté en ninguna base juega sin efectos. El mapa se lee con el deck (un mapa nuevo con las mismas cartas no cambia la lista).
+  const cardsRef = useRef(deck.cardsById)
+
+  cardsRef.current = deck.cardsById
+  const list = useMemo<DeckList>(() => deckOf(deck.mainIds, deck.extraIds, cardsRef.current), [deck.mainIds, deck.extraIds])
   const [link, setLink] = useState<OnlineLink | null>(null)
   // La mesa rearmada y el deck se leen cuando se arma el enlace (cambiarlos después no arma otro: el deck nuevo del siding se le pasa con `deck`).
   const resumeRef = useRef(resume)
@@ -213,7 +217,22 @@ function useCodeName(cardsById: ReadonlyMap<string, MatCard>, cards: OnlineSnaps
   }, [cardsById, cards])
 }
 
-/** Lo que la sala muestra mientras no hay duelo: «Estoy listo» sólo con los dos decks revisados (`ready`); el aviso, `info` mientras espera, `warning` si algo impide empezar y `danger` si algo se perdió. */
+/** Cuántos nombres de cartas sin datos se dicen; las demás, «y N más». */
+const NO_DATA_NAMES = 20
+
+/**
+ * Por qué no se puede jugar con reglas automáticas: las cartas sin datos de los dos, por nombre (las mías, «(tuya)»; las del otro, «de Beto»). Los nombres del otro son texto suyo:
+ * van como texto (los valida `online-protocol.ts`).
+ */
+function noDataText(missing: NonNullable<OnlineSnapshot['problems']['missing']>, rival: string): string {
+  const names = [...missing.mine.map((card) => t('auto.online.noDataMine', { name: card.name })), ...missing.theirs.map((card) => t('auto.online.noDataTheirs', { name: card.name, rival }))]
+  const shown = names.slice(0, NO_DATA_NAMES)
+  const more = names.length - shown.length
+
+  return t('auto.online.noData', { count: names.length, cards: new Intl.ListFormat(getLocale(), { type: 'conjunction' }).format(more > 0 ? [...shown, t('auto.online.noDataMore', { count: more })] : shown) })
+}
+
+/** Lo que la sala muestra mientras no hay duelo: «Estoy listo» sólo con los dos decks revisados (`ready`); el aviso, `info` mientras espera, `warning` si algo impide empezar o hay cartas sin reglas, y `danger` si algo se perdió. */
 function roomAutoState(online: OnlineSnapshot | null, rival: string, nameOf: (code: number) => string): RoomAutoState {
   const say = (tone: 'info' | 'warning' | 'danger', text: string, cards?: { code: number; name: string }[]) => ({ tone, text, ...(cards && cards.length > 0 ? { cards } : {}) })
 
@@ -227,18 +246,20 @@ function roomAutoState(online: OnlineSnapshot | null, rival: string, nameOf: (co
     case 'outdated':
       return { canReady: false, notice: say('warning', t('auto.online.outdated', { name: rival })) }
     case 'blocked': {
-      const { mine, theirs, reason } = online!.problems
+      const { reason, missing } = online!.problems
 
       if (reason === 'lost') return { canReady: false, notice: say('danger', t('auto.online.lost')) }
-      if (reason !== null) return { canReady: false, notice: say('warning', reason === 'off' ? t('auto.online.off') : reason === 'version' ? t('auto.online.version', { name: rival }) : t('auto.online.data')) }
-      const text = [...(mine.length > 0 ? [t('auto.online.blockedMine', { count: mine.length })] : []), ...(theirs > 0 ? [t('auto.online.blockedTheirs', { count: theirs, name: rival })] : [])].join(' ')
-
-      return { canReady: false, notice: say('warning', text || t('auto.online.data'), mine.map((code) => ({ code, name: nameOf(code) }))) }
+      if (reason === null && missing) return { canReady: false, notice: say('warning', noDataText(missing, rival)) }
+      return { canReady: false, notice: say('warning', reason === 'off' ? t('auto.online.off') : reason === 'version' ? t('auto.online.version', { name: rival }) : t('auto.online.data')) }
     }
-    // Entre un duelo y su revancha (`ended`) los decks ya se revisaron.
+    // Entre un duelo y su revancha (`ended`) los decks ya se revisaron. Las cartas sin reglas no frenan: juegan sin efectos, y se avisa cuáles (las propias, con nombre).
     case 'ready':
-    case 'ended':
-      return { canReady: true, notice: null }
+    case 'ended': {
+      const { mine, theirs } = online!.problems
+      const text = [...(mine.length > 0 ? [t('auto.online.vanillaMine', { count: mine.length })] : []), ...(theirs > 0 ? [t('auto.online.vanillaTheirs', { count: theirs, name: rival })] : [])].join(' ')
+
+      return { canReady: true, notice: text ? say('warning', text, mine.map((code) => ({ code, name: nameOf(code) }))) : null }
+    }
     case 'starting':
     case 'playing':
       return { canReady: false, notice: say('info', t('auto.loading.start')) }
@@ -480,7 +501,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   const faultTitle = snap.fault?.kind === 'retry' ? t('auto.online.cut', { name: rivalName }) : online.phase === 'lost' && !snap.fault ? (online.problems.reason === 'lost' ? t('auto.online.lost') : t('auto.online.broken')) : undefined
 
   const cover = fault ? (
-    <FaultCover fault={fault} {...(faultTitle ? { title: faultTitle } : {})} nameOf={(code) => asks.nameOf(null, code)} artOf={(code) => asks.artOf(null, code)} rematch={{ snapshot, rival: rivalName, onRematch }} onExit={onLeave} />
+    <FaultCover fault={fault} {...(faultTitle ? { title: faultTitle } : {})} rematch={{ snapshot, rival: rivalName, onRematch }} onExit={onLeave} />
   ) : paused ? (
     <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
   ) : resultOpen ? (

@@ -25,6 +25,7 @@ import { useChange } from '../../app/use-duel-sounds'
 import type { MatSession } from '../../app/use-mat-session'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { usePracticeSounds } from '../../app/use-practice-sounds'
+import { showToastMessage } from '../../app/use-toast-message'
 import { Presence } from '../../app/use-presence'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -410,6 +411,15 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     },
     [cardsById, byCode, codeOf, snap.names, cards],
   )
+  // Tus cartas sin reglas automáticas juegan sin efectos (como en Dueling Nexus): se avisa una vez al empezar, con sus nombres, y su «sin jugadas» dice por qué.
+  const vanilla = useMemo(() => new Set(snap.vanilla), [snap.vanilla])
+  const warned = useRef(false)
+
+  useEffect(() => {
+    if (warned.current || snap.vanilla.length === 0 || snap.status === 'loading') return
+    warned.current = true
+    showToastMessage(t('auto.vanilla', { count: snap.vanilla.length, names: snap.vanilla.map((code) => nameOf(null, code)).join(', ') }), 'warning')
+  }, [snap.vanilla, snap.status, nameOf])
   const artOf = useCallback(
     (ref: CardRef | null, code = 0): string | null => {
       const mine = ref?.side === 'mine' ? cardsById.get(ref.id) : undefined
@@ -695,10 +705,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         return item?.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : null
       },
       // Repasando o con el duelo terminado, el menú vacío dice lo de siempre.
-      whyNot: reviewing || frozen || ended ? null : (id) => [...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: myNormal }), ...limitTexts],
+      whyNot: reviewing || frozen || ended ? null : (id) => [...(vanilla.has(codeOf({ side: 'mine', id })) ? [t('auto.why.noRules')] : []), ...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: myNormal }), ...limitTexts],
       manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine])
+  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine, vanilla, codeOf])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
   // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).

@@ -11,6 +11,8 @@ import {
   HOST_ACCEPTS,
   isAutoText,
   MAX_AUTO_BYTES,
+  MAX_MISSING,
+  MAX_MISSING_NAME,
   MAX_PARTS,
   MAX_WHOLE_BYTES,
   parseAutoMessage,
@@ -25,6 +27,9 @@ const GOOD: AutoMessage[] = [
   { t: 'autoDeck', v, main: [[14558127, 3], [23434538, 2]], extra: [[1, 1]] },
   { t: 'autoCheck', v, ok: false, bad: [99], theirsBad: 2 },
   { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 0, reason: 'lost' },
+  // Las cartas sin datos en ninguna base: las del invitado, con el nombre que les da él; en la revisión, las suyas por código y las del anfitrión con nombre.
+  { t: 'autoDeck', v, main: [[7, 1]], extra: [], missing: [{ code: 7, name: 'Angelechy «Nueva» & Co.' }] },
+  { t: 'autoCheck', v, ok: false, bad: [7], theirsBad: 1, guestMissing: [7], hostMissing: [{ code: 8, name: 'Del anfitrión' }] },
   { t: 'autoInit', v, s: 1, seat: 1, players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], mine: { main: [5, 6, 7], extra: [8] }, theirs: { main: 40, extra: 15 } },
   { t: 'autoReplay', skip: 12, s: 10_000_000 },
   EVENT,
@@ -75,7 +80,7 @@ describe('el protocolo del duelo automático por enlace', () => {
     expect(parseAutoMessage('{"t":"autoResync","x":1}')).toEqual({ t: 'autoResync' })
     expect(parseAutoMessage(JSON.stringify({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true, hack: 1 } }))).toEqual({ t: 'autoAnswer', askId: 1, answer: { type: 'select_yesno', yes: true } })
     expect(parseAutoMessage('{"t":"autoResync","s":3}')).toEqual({ t: 'autoResync' })
-    expect(parseAutoMessage(JSON.stringify({ ...GOOD[3], seed: 7 }))).toEqual(GOOD[3])
+    expect(parseAutoMessage(JSON.stringify({ ...GOOD[5], seed: 7 }))).toEqual(GOOD[5])
     // `undo` sólo vale `true`: otra cosa se lee como de alguien que no sabe deshacer.
     expect(parseAutoMessage(JSON.stringify({ t: 'autoDeck', v, main: [], extra: [], undo: 1 }))).toEqual({ t: 'autoDeck', v, main: [], extra: [] })
     // Una fase que no es de las seis o un turno fuera de rango no pasan; `busy` y `phase` sólo valen `true`, y el número de orden no se queda (no es del anfitrión).
@@ -92,7 +97,7 @@ describe('el protocolo del duelo automático por enlace', () => {
 
   it('rechaza lo mal formado o lo que pasa los topes', () => {
     const rows = (n: number, copies = 1) => Array.from({ length: n }, (_, i) => [i + 1, copies])
-    const init = GOOD[3] as Extract<AutoMessage, { t: 'autoInit' }>
+    const init = GOOD.find((message) => message.t === 'autoInit') as Extract<AutoMessage, { t: 'autoInit' }>
     const bad: unknown[] = [
       { t: 'autoNada' },
       { t: 'autoDeck', v: -1, main: [], extra: [] },
@@ -108,6 +113,18 @@ describe('el protocolo del duelo automático por enlace', () => {
       { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 301 },
       { t: 'autoCheck', v, ok: false, bad: [0], theirsBad: 0 },
       { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 0, reason: 'otra' },
+      // Los nombres de las cartas sin datos son texto del otro: de una línea, no vacíos, hasta MAX_MISSING_NAME, y hasta MAX_MISSING cartas.
+      { t: 'autoDeck', v, main: [], extra: [], missing: [{ code: 7, name: 'x'.repeat(MAX_MISSING_NAME + 1) }] },
+      { t: 'autoDeck', v, main: [], extra: [], missing: Array.from({ length: MAX_MISSING + 1 }, (_, i) => ({ code: i + 1, name: 'x' })) },
+      { t: 'autoDeck', v, main: [], extra: [], missing: [{ code: 7, name: 'dos\nlíneas' }] },
+      { t: 'autoDeck', v, main: [], extra: [], missing: [{ code: 7, name: '   ' }] },
+      { t: 'autoDeck', v, main: [], extra: [], missing: [{ code: 7, name: 7 }] },
+      { t: 'autoDeck', v, main: [], extra: [], missing: [{ code: 0, name: 'x' }] },
+      { t: 'autoDeck', v, main: [], extra: [], missing: [7] },
+      { t: 'autoDeck', v, main: [], extra: [], missing: 'Ash' },
+      { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 0, guestMissing: Array(MAX_MISSING + 1).fill(1) },
+      { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 0, guestMissing: ['7'] },
+      { t: 'autoCheck', v, ok: false, bad: [], theirsBad: 0, hostMissing: [{ code: 8, name: { html: '<b>' } }] },
       { ...init, seat: 2 },
       { ...init, players: [init.players[0]] },
       { ...init, players: [{ lp: 0, hand: 5, draw: 1 }, init.players[1]] },

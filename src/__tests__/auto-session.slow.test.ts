@@ -4,12 +4,13 @@ import { cardMatchesOpcode, OcgLocation as L } from 'ocgcore-wasm'
 import { mirrorApply, openMirror } from '../app/mat-public'
 import { matReducer } from '../app/practice-mat'
 import { askView, openAsk } from '../app/auto/ask-ui'
-import { createDataLoader } from '../app/auto/auto-data'
+import { createDataLoader, rowOfApiCard } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { passivePolicy, randomLegalPolicy, type CardPicker, type Policy } from '../app/auto/policies'
 import { splitDesc } from '../app/auto/protocol'
+import type { ApiCardReference } from '../types'
 import { codeOfId, compare, readMat, readReal, TRANSIT, xyzInTransit } from './support/core-compare'
 import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
@@ -206,13 +207,26 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
   })
 
   // Busca la carta sin script leyendo scripts del disco fila por fila (`store.has`): con el disco frío (antivirus, otro proceso leyendo lo mismo) pasa de los 15 s por defecto.
-  it('una carta sin reglas (o sin datos) no deja arrancar: error con la lista', async () => {
+  it('las cartas sin reglas no frenan (como en Dueling Nexus): una sin script y una que no está en ninguna base (con la fila de la app) juegan sin efectos, sin fallas', async () => {
     const effectWithoutScript = rows.find((row) => (row.type & 0x21) === 0x21 && row.alias === 0 && (row.ot & 3) !== 0 && !store.has(`c${row.id}.lua`))!
-    const deck = { main: [...lists[pool[0]!]!.main, [effectWithoutScript.id, 1], [1, 1]] } as DeckList
+    // La 2 no está en ninguna base: juega con lo que sabe la app (un monstruo de efecto de Nivel 4); la 1 no está en ningún lado: queda afuera.
+    const spare = rowOfApiCard(2, 'Recién salida', { cardType: 'Effect Monster', race: 'Warrior', attribute: 'LIGHT', level: 4, linkValue: null, atk: '1900', def: '1200' } as ApiCardReference)
+    const deck = { main: [...lists[pool[0]!]!.main, [effectWithoutScript.id, 3], [2, 3], [1, 1]], rows: [spare] } as DeckList
     const session = createAutoSession({ loader, deck, transport: localTransport({ wasmBinary: wasm }) })
-    const failed = await pending(session, (s) => s.status === 'error')
+    const ready = await settled(session)
 
-    expect(failed.fault).toMatchObject({ kind: 'rules' })
-    expect([...failed.fault!.cards].sort()).toEqual([1, effectWithoutScript.id].sort())
+    expect(ready.fault).toBeNull()
+    expect([...ready.vanilla].sort((a, b) => a - b)).toEqual([1, 2, effectWithoutScript.id].sort((a, b) => a - b))
+    expect(ready.names[2]).toBe('Recién salida')
+    const bot = randomLegalPolicy(3)
+    let snapshot = ready
+
+    for (let n = 0; n < 200 && snapshot.status === 'ready' && snapshot.ask; n += 1) {
+      session.answer(bot(snapshot.ask.ask))
+      snapshot = await settled(session)
+    }
+    expect(snapshot.fault).toBeNull()
+    expect(snapshot.faults).toEqual([])
+    session.destroy()
   }, 120_000)
 })

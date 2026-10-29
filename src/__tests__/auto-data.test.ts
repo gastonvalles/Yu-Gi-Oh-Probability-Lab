@@ -1,4 +1,5 @@
-import { cardData, createDataLoader, DATA_UNAVAILABLE, DataUnavailableError, httpSource, preloadedReaders, type CardRow, type DataSource } from '../app/auto/auto-data'
+import { cardData, createDataLoader, DATA_UNAVAILABLE, DataUnavailableError, httpSource, preloadedReaders, rowOfApiCard, type CardRow, type DataSource } from '../app/auto/auto-data'
+import type { ApiCardReference } from '../types'
 
 const row = (id: number, type: number, extra: Partial<CardRow> = {}): CardRow => ({ id, alias: 0, setcode: '0', type, atk: 1000, def: 1000, level: 4, race: '1', attribute: 1, name: `card ${id}`, ...extra })
 const EFFECT = 0x21
@@ -48,6 +49,31 @@ function memoryCaches() {
 const deck = { main: [[100, 3], [300, 1], [400, 2], [999, 1]], extra: [[200, 1]] } as const
 
 describe('los datos de un duelo automático', () => {
+  it('una carta que no está en ninguna base juega con la fila que armó la app (sin script: sin efectos); la de la base siempre gana', async () => {
+    const { source } = fakeSource()
+    const spare = row(999, EFFECT, { name: 'Recién salida', atk: 1800 })
+    const data = await createDataLoader(source, null).load([{ ...deck, rows: [spare, row(100, NORMAL, { name: 'No pisa' })] }])
+
+    expect(data.decks[0]).toEqual({ main: [100, 100, 100, 300, 400, 400, 999], extra: [200], missing: [], noRules: [300, 999] })
+    expect(data.cards.find((card) => card.code === 999)).toMatchObject({ code: 999, type: EFFECT, attack: 1800 })
+    expect(data.names[999]).toBe('Recién salida')
+    expect(data.names[100]).toBe('card 100')
+    expect(data.scripts['c999.lua']).toBeUndefined()
+  })
+
+  it('la fila de una carta con los datos de YGOPRODeck: tipo, Atributo, Tipo de monstruo, Nivel, escalas y ATK/DEF; lo que no da, neutro', () => {
+    const api = (patch: Partial<ApiCardReference>) => ({ cardType: 'Effect Monster', race: 'Spellcaster', attribute: 'DARK', level: 4, linkValue: null, scale: null, atk: '1800', def: '?', ...patch }) as ApiCardReference
+
+    expect(rowOfApiCard(1, 'Mago', api({}))).toEqual({ id: 1, alias: 0, setcode: '0', type: 0x21, atk: 1800, def: -2, level: 4, race: '2', attribute: 0x20, name: 'Mago' })
+    expect(rowOfApiCard(2, 'Péndulo', api({ cardType: 'Pendulum Tuner Effect Monster', scale: 5, race: 'Dragon', attribute: 'LIGHT' }))).toMatchObject({ type: 0x1 | 0x20 | 0x1000 | 0x1000000, level: 4 | (5 << 16) | (5 << 24), race: String(0x2000), attribute: 0x10 })
+    // Un Link: su número es el Nivel y sin flechas (YGOPRODeck no las da en nuestra carta: `def` 0).
+    expect(rowOfApiCard(3, 'Link', api({ cardType: 'Link Monster', level: null, linkValue: 3, def: null, race: 'Cyberse' }))).toMatchObject({ type: 0x1 | 0x20 | 0x4000000, level: 3, def: 0, race: String(0x1000000) })
+    expect(rowOfApiCard(4, 'Xyz', api({ cardType: 'XYZ Monster', level: 4 }))).toMatchObject({ type: 0x1 | 0x20 | 0x800000, level: 4 })
+    expect(rowOfApiCard(5, 'Normal', api({ cardType: 'Normal Monster' }))).toMatchObject({ type: 0x11 })
+    expect(rowOfApiCard(6, 'Rápida', api({ cardType: 'Spell Card', race: 'Quick-Play', attribute: null, level: null, atk: null, def: null }))).toEqual({ id: 6, alias: 0, setcode: '0', type: 0x2 | 0x10000, atk: 0, def: 0, level: 0, race: '0', attribute: 0, name: 'Rápida' })
+    expect(rowOfApiCard(7, 'Contraefecto', api({ cardType: 'Trap Card', race: 'Counter' }))).toMatchObject({ type: 0x4 | 0x100000, atk: 0, attribute: 0 })
+  })
+
   it('arma el cierre de scripts en cadena, sin pedir scripts para los Normales, y dice qué cartas faltan o no tienen reglas', async () => {
     const { source, calls } = fakeSource()
     const progress: [number, number][] = []

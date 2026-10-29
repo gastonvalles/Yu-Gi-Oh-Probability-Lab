@@ -17,11 +17,14 @@ import {
   isAutoText,
   isHostMessage,
   MAX_AUTO_BYTES,
+  MAX_MISSING,
+  MAX_MISSING_NAME,
   MAX_WHOLE_BYTES,
   parseAutoMessage,
   type AutoCardInfo,
   type AutoMessage,
   type HostMessage,
+  type MissingCard,
 } from './online-protocol'
 import { splitDesc, type AutoCommand, type AutoEvent, type CoreAnswer, type Seat, type Setup } from './protocol'
 import { filterSetup, statesOf } from './resume'
@@ -53,8 +56,11 @@ export type OnlinePhase = 'idle' | 'awaitingDeck' | 'outdated' | 'checking' | 'b
 
 export interface OnlineSnapshot {
   phase: OnlinePhase
-  /** Lo que impide empezar: los códigos propios sin reglas (para listarlos con nombre), cuántas del otro, o la razón. */
-  problems: { mine: number[]; theirs: number; reason: 'version' | 'off' | 'data' | 'lost' | null }
+  /**
+   * Los códigos propios sin reglas (se juegan sin efectos: se listan con nombre), cuántas del otro, y la razón de lo que impide empezar (o null). `missing`: las cartas sin datos
+   * en ninguna base, propias y del otro, con nombre: con una sola, no juega ninguno de los dos (`blocked`).
+   */
+  problems: { mine: number[]; theirs: number; reason: 'version' | 'off' | 'data' | 'lost' | null; missing?: { mine: MissingCard[]; theirs: MissingCard[] } }
   /**
    * La sesión del duelo que corre (anfitrión o invitado), o null antes de `ordered`. Cambia de objeto en cada revancha (y, en el invitado, cada vez que el anfitrión le repone el
    * duelo). En `ended` y en `lost` queda la última, para ver la mesa.
@@ -178,9 +184,24 @@ interface Check {
   mine: number[]
   theirs: number
   reason: Reason
+  missing?: { mine: MissingCard[]; theirs: MissingCard[] }
 }
 
+/** Los nombres de las cartas de un deck, de las filas que armó la app (`DeckList.rows`). */
+const namesOf = (deck: DeckList) => new Map((deck.rows ?? []).flatMap((row) => (row.name ? [[row.id, row.name] as const] : [])))
+
+/**
+ * Las cartas de `codes` con su nombre, recortado a `MAX_MISSING_NAME` (una sin nombre, con el número). Es lo que le cuento al otro de mis cartas sin datos en ninguna base:
+ * él no tiene cómo saber cómo se llaman.
+ */
+function namedCards(codes: readonly number[], names: ReadonlyMap<number, string>): MissingCard[] {
+  return codes.slice(0, MAX_MISSING).map((code) => ({ code, name: (names.get(code)?.trim() || String(code)).slice(0, MAX_MISSING_NAME) }))
+}
+/** El deck sin las filas de la app: en el duelo por enlace una carta sin datos en ninguna base no juega (no deja jugar), así que tiene que salir `missing`. */
+const withoutRows = ({ main, extra }: DeckList): DeckList => ({ main, ...(extra ? { extra } : {}) })
+
 const NONE: number[] = []
+const NONE_CARDS: MissingCard[] = []
 const NO_PROBLEMS: OnlineSnapshot['problems'] = { mine: NONE, theirs: 0, reason: null }
 /** Cuánto espera el anfitrión el deck del invitado: un cliente sin el duelo automático nunca lo manda. */
 const DECK_WAIT_MS = 10_000
@@ -536,6 +557,8 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
   let clockPeer = false
   // El deck del invitado y si se puede jugar con los dos (`bad`: los del invitado sin reglas).
   let guestDeck: DeckList | null = null
+  // Los nombres que el invitado le da a sus cartas sin datos (`autoDeck.missing`): sólo él los sabe.
+  let guestNames = new Map<number, string>()
   let check: (Check & { bad: number[] }) | null = null
   let checks = 0
   // El último deck del invitado que se mandó a revisar (uno que cambió en pleno duelo se revisa en la revancha) y la versión de los datos con que se revisó (va a lo guardado).
@@ -596,7 +619,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     store.set({
       phase: phase(),
       // Perdido por otra versión del invitado: la pantalla no dice «el anfitrión recargó» (y en la revancha, «versión»).
-      problems: lost ? { mine: NONE, theirs: 0, reason: check?.reason === 'version' ? 'version' : 'lost' } : check ? { mine: check.mine, theirs: check.theirs, reason: check.reason } : NO_PROBLEMS,
+      problems: lost ? { mine: NONE, theirs: 0, reason: check?.reason === 'version' ? 'version' : 'lost' } : check ? { mine: check.mine, theirs: check.theirs, reason: check.reason, ...(check.missing ? { missing: check.missing } : {}) } : NO_PROBLEMS,
       session,
       cards,
       seat: seats?.host ?? null,
@@ -652,7 +675,11 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
   function sendCheck() {
     if (lost) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: false, bad: [], theirsBad: 0, reason: 'lost' })
-    else if (check) post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(check.reason ? { reason: check.reason } : {}), undo: true, phase: true, turnClock: true })
+    else if (check) {
+      const missing = check.missing
+
+      post({ t: 'autoCheck', v: AUTO_PROTOCOL_VERSION, ok: check.ok, bad: check.bad, theirsBad: check.mine.length, ...(missing?.theirs.length ? { guestMissing: missing.theirs.map((card) => card.code) } : {}), ...(missing?.mine.length ? { hostMissing: missing.mine } : {}), ...(check.reason ? { reason: check.reason } : {}), undo: true, phase: true, turnClock: true })
+    }
   }
 
   function stopWait() {
@@ -684,22 +711,26 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     try {
       if (!(await options.enabled())) next = { ok: false, mine: NONE, theirs: 0, bad: NONE, reason: 'off' }
       else {
-        const data = await loader.load([hostDeck, deck])
+        // Sin las filas de la app: una carta sin datos en ninguna base sale `missing`.
+        const data = await loader.load([withoutRows(hostDeck), deck])
 
         if (token !== checks) return
         const mine = badOf(data.decks[0])
         const bad = badOf(data.decks[1])
+        // Una carta sin datos no deja jugar a ninguno de los dos, y los dos ven cuál (con el nombre que le da quien la tiene). Una sin script juega sin efectos: sólo se cuenta.
+        const missing = { mine: namedCards(data.decks[0]?.missing ?? NONE, namesOf(hostDeck)), theirs: namedCards(data.decks[1]?.missing ?? NONE, guestNames) }
+        const blocked = missing.mine.length > 0 || missing.theirs.length > 0
 
         cards = cardsOf(data)
         dataVersion = data.version
-        next = { ok: mine.length === 0 && bad.length === 0, mine, theirs: bad.length, bad, reason: null }
+        next = { ok: !blocked, mine, theirs: bad.length, bad, reason: null, ...(blocked ? { missing } : {}) }
       }
     } catch {
       next = { ok: false, mine: NONE, theirs: 0, bad: NONE, reason: 'data' }
     }
     if (token !== checks || destroyed) return
     check = next
-    // Lo guardado ya no se puede jugar (otros datos en el despliegue, cartas sin reglas): el duelo se perdió. Con otra versión de los datos tampoco se re-simula: las mismas
+    // Lo guardado ya no se puede jugar (otros datos en el despliegue, el duelo automático apagado): el duelo se perdió. Con otra versión de los datos tampoco se re-simula: las mismas
     // respuestas podrían armar otro duelo sin que nadie lo note.
     if (restoring && (!next.ok || (restoring.data && dataVersion && restoring.data !== dataVersion))) {
       restoring = null
@@ -770,6 +801,7 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
     }
     const deck = { main: message.main, extra: message.extra }
 
+    guestNames = new Map((message.missing ?? []).map((card) => [card.code, card.name]))
     undo.peer(message.undo === true)
     if (clockPeer !== (message.turnClock === true)) {
       clockPeer = message.turnClock === true
@@ -1202,7 +1234,7 @@ function relayTransport(answer: (askId: number, answer: CoreAnswer) => void) {
  * no llegan, la pantalla tiene los nombres del builder. Los decks van en el orden de las listas pedidas (la mía y la del rival), como `loader.load`: la sesión los pone en el
  * orden de los asientos.
  */
-function guestLoader(init: InitMessage, source: DataSource): DataLoader {
+function guestLoader(init: InitMessage, source: DataSource, vanilla: number[]): DataLoader {
   return {
     manifest: async () => ({ version: 'remote', tokens: [], filler: [] }),
     async load() {
@@ -1211,7 +1243,8 @@ function guestLoader(init: InitMessage, source: DataSource): DataLoader {
 
       return {
         decks: [
-          { main: init.mine.main, extra: init.mine.extra, missing: [], noRules: [] },
+          // Mis cartas sin reglas, las que contó el anfitrión al revisar los decks: para el «sin jugadas» de mi mesa.
+          { main: init.mine.main, extra: init.mine.extra, missing: [], noRules: vanilla },
           { main: zeros(init.theirs.main), extra: zeros(init.theirs.extra), missing: [], noRules: [] },
         ],
         cards: rows.map(cardData),
@@ -1256,6 +1289,8 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   let myPhase: PhaseView | null = null
   let myDeck = options.deck
   let clockPeer = false
+  // Mis cartas sin datos en ninguna base, con nombre (las reviso yo contra los datos: el anfitrión no sabe cómo se llaman), del deck que se revisó.
+  let myMissing: { deck: DeckList; cards: MissingCard[] } | null = null
 
   const phase = (): OnlinePhase => {
     if (lost) return 'lost'
@@ -1268,7 +1303,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
   const refresh = () =>
     store.set({
       phase: phase(),
-      problems: lost ? { mine: NONE, theirs: 0, reason: 'lost' } : check ? { mine: check.mine, theirs: check.theirs, reason: check.reason } : NO_PROBLEMS,
+      problems: lost ? { mine: NONE, theirs: 0, reason: 'lost' } : check ? { mine: check.mine, theirs: check.theirs, reason: check.reason, ...(check.missing ? { missing: check.missing } : {}) } : NO_PROBLEMS,
       session,
       cards,
       seat,
@@ -1287,8 +1322,22 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
 
   const sendDeck = () => {
     const rows = (list: DeckList['main'] = []) => list.map(([code, copies]): [number, number] => [code, copies])
+    const missing = myMissing?.deck === myDeck ? myMissing.cards : []
 
-    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(myDeck.main), extra: rows(myDeck.extra), undo: true, phase: true, turnClock: true })
+    send({ t: 'autoDeck', v: AUTO_PROTOCOL_VERSION, main: rows(myDeck.main), extra: rows(myDeck.extra), ...(missing.length > 0 ? { missing } : {}), undo: true, phase: true, turnClock: true })
+    if (myMissing?.deck !== myDeck) void reviewDeck(myDeck)
+  }
+
+  /** Revisa mi deck contra los datos: si tiene cartas sin datos, se lo vuelvo a mandar al anfitrión con sus nombres (el primero salió sin ellos). */
+  async function reviewDeck(deck: DeckList) {
+    const codes = [...new Set([...deck.main, ...(deck.extra ?? [])].map(([code]) => code))]
+    const found = await source.cards(codes).catch(() => null)
+
+    if (!found || destroyed || deck !== myDeck) return
+    const known = new Set(found.map((row) => row.id))
+
+    myMissing = { deck, cards: namedCards(codes.filter((code) => !known.has(code)), namesOf(deck)) }
+    if (myMissing.cards.length > 0 && here) sendDeck()
   }
 
   /** Al entrar o volver: mi deck (lo revisa el anfitrión) y el duelo, si hay uno. */
@@ -1360,7 +1409,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     relay = port
     // Sin la clave: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado). Con la mesa rearmada (pasar de manual a automático), desde ella.
     session = createAutoSession({
-      loader: guestLoader(init, source),
+      loader: guestLoader(init, source, check?.mine ?? NONE),
       deck: myDeck,
       seat: init.seat,
       handSize: init.players[init.seat].hand,
@@ -1417,7 +1466,13 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
       case 'autoCheck':
         // El anfitrión perdió el duelo: la revisión de los decks sigue valiendo para el próximo.
         if (message.reason === 'lost') lost = true
-        else check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null }
+        else {
+          // Mis cartas sin datos las nombro yo (con lo que le mandé al anfitrión, o con mi deck); las del anfitrión vienen con su nombre.
+          const mine = message.guestMissing ? namedCards(message.guestMissing, namesOf(myDeck)) : NONE_CARDS
+          const theirs = message.hostMissing ?? NONE_CARDS
+
+          check = { ok: message.ok, mine: message.bad, theirs: message.theirsBad, reason: message.reason ?? null, ...(mine.length > 0 || theirs.length > 0 ? { missing: { mine, theirs } } : {}) }
+        }
         undo.peer(message.undo === true)
         clockPeer = message.turnClock === true
         // Un flujo nuevo que no pedí (el anfitrión recargó: mi deck pudo llegarle antes que su enlace): se lo repito, con lo que sé hacer.

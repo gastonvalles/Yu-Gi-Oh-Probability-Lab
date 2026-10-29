@@ -40,7 +40,7 @@ jobs:
           path: |
             ${{ env.CORE_DATA_DIR }}
             ${{ env.CARD_SCRIPTS_DIR }}
-          key: core-data-${{ hashFiles('auto-data.lock.json', 'scripts/sync-core-data.mjs') }}
+          key: core-data-${{ hashFiles('auto-data.lock.json', 'scripts/sync-core-data.mjs', 'scripts/build-auto-data.mjs') }}
       - if: steps.core-data.outputs.cache-hit != 'true'
         run: npm run sync:core
 

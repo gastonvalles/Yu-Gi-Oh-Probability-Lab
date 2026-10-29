@@ -132,6 +132,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
     progress: { done: 1, total: 1 },
     replaying: false,
     names: { 700: 'Blue-Eyes White Dragon', 100: 'Ash Blossom', 400: 'Nibiru' },
+    vanilla: [],
     // Los rótulos del `.cdb` por código (el `desc` de un efecto es `stringId(código, n)`; con carta 0, un texto del sistema): los de Nibiru, `stringId(400, 1)` y `stringId(400, 2)`.
     texts: { 400: ['', 'Summon a Token', 'Destroy a monster'] },
     unmapped: [],

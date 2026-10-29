@@ -96,7 +96,7 @@ export interface AutoSnapshot {
   ask: PendingAsk | null
   /** La pregunta que espera el asiento remoto (sólo con `remote`): la pantalla dice «X está eligiendo». */
   remoteAsk: PendingAsk | null
-  /** Lo que cortó la sesión (`status: 'error'`): `rules` (cartas sin reglas, en `cards`, antes de la primera pregunta), `setup`, `crash`, `retry`. */
+  /** Lo que cortó la sesión (`status: 'error'`): `rules` (una carta sin datos en el anfitrión, en `cards`: un `create` mal armado), `setup`, `crash`, `retry`. */
   fault: SessionFault | null
   /** Lo que salió mal sin cortar el duelo (errores de un script, un `RETRY`). */
   faults: SessionFault[]
@@ -108,6 +108,8 @@ export interface AutoSnapshot {
   replaying: boolean
   /** Los nombres del `.cdb` de las cartas del duelo (y de las fichas). */
   names: Readonly<Record<number, string>>
+  /** Tus cartas sin reglas automáticas (sin script, o sin datos en ningún lado y fuera del deck): se juegan sin efectos; la pantalla lo avisa al empezar y en «sin jugadas». */
+  vanilla: readonly number[]
   /** Los rótulos de los efectos (`str1`…`str16` del `.cdb`), por código: el `desc` de una pregunta nombra la carta y cuál (`splitDesc`). */
   texts: Readonly<Record<number, readonly string[]>>
   /** Lo que el adaptador no pudo proyectar en la mesa, en orden (se vacía al rearmarse). */
@@ -293,6 +295,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     progress: { done: 0, total: 0 },
     replaying: false,
     names: {},
+    vanilla: [],
     texts: {},
     unmapped: [],
     rivalHand: [],
@@ -559,10 +562,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     }
     if (destroyed) return
     const [mine, theirs] = data.decks as [DuelData['decks'][number], DuelData['decks'][number]]
-    const bad = [...new Set([...mine.missing, ...mine.noRules, ...theirs.missing, ...theirs.noRules])]
-
-    // Ante la duda no se automatiza: una carta sin datos o sin script no deja crear el duelo.
-    if (bad.length > 0) return fail('rules', `cards without automatic rules: ${mine.missing.length + theirs.missing.length} without data, ${mine.noRules.length + theirs.noRules.length} without a script`, bad)
+    // Como en Dueling Nexus, una carta sin reglas no frena el duelo: juega sin efectos (`deck-map.ts`) y la pantalla avisa cuáles son tuyas.
+    const vanilla = [...new Set([...mine.noRules, ...mine.missing])]
     const types = new Map(data.cards.map((card) => [card.code, card.type]))
     const own = { main: mine.main, extra: mine.extra, hand: options.hand ?? [] }
     const mine_ = { ...PLAYER, hand: options.handSize ?? PLAYER.hand }
@@ -611,7 +612,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     // vacío es la tanda del `create`, y el invitado que entra a un duelo empezado ya pidió la suya (`expectReplay`).
     answers = [...(options.restore?.answers ?? [])]
     if (answers.length > 0) streams = [answers.length]
-    set({ names: data.names, texts: data.texts ?? {}, ...(answers.length > 0 ? { answers, replaying: true } : {}) })
+    set({ names: data.names, vanilla, texts: data.texts ?? {}, ...(answers.length > 0 ? { answers, replaying: true } : {}) })
     transport.send(answers.length > 0 ? { ...create, answers: answers.map((item) => item.answer) } : create)
     // Después del `create` (que el enlace le cuenta al invitado) y antes del primer evento, que llega después.
     if (answers.length > 0) replayed(answers.length)

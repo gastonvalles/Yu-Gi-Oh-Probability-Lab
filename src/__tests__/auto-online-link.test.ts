@@ -28,13 +28,14 @@ const KEYS = [keyOf(1), keyOf(2), keyOf(3)]
 const row = (id: number): CardRow => ({ id, alias: 0, setcode: '0', type: 0x21, atk: 0, def: 0, level: 4, race: '1', attribute: 1, name: `Carta ${id}`, strs: [`Efecto de ${id}`] })
 const expand = (rows: DeckList['main'] = []) => rows.flatMap(([code, copies]) => Array<number>(copies).fill(code))
 
-/** Arma cada deck con lo que se le pide; los códigos de `noRules` no tienen script. Cada carga anota en `loads` los decks pedidos. */
-function listLoader(noRules: number[] = [], loads: (readonly DeckList[])[] = []): DataLoader {
+/** Arma cada deck con lo que se le pide; los códigos de `noRules` no tienen script y los de `missing`, ni datos (quedan afuera). Cada carga anota en `loads` los decks pedidos. */
+function listLoader(noRules: number[] = [], loads: (readonly DeckList[])[] = [], missing: number[] = []): DataLoader {
   return {
     manifest: async () => ({ version: 't', tokens: [], filler: [] }),
     async load(lists) {
       loads.push(lists)
-      const decks = lists.map((list) => ({ main: expand(list.main), extra: expand(list.extra), missing: [], noRules: [...new Set(expand(list.main).filter((code) => noRules.includes(code)))] }))
+      const known = (codes: number[]) => codes.filter((code) => !missing.includes(code))
+      const decks = lists.map((list) => ({ main: known(expand(list.main)), extra: known(expand(list.extra)), missing: [...new Set(expand(list.main).filter((code) => missing.includes(code)))], noRules: [...new Set(expand(list.main).filter((code) => noRules.includes(code)))] }))
       const codes = [...new Set(decks.flatMap((deck) => [...deck.main, ...deck.extra]))]
 
       return { decks, cards: codes.map((code) => cardData(row(code))), scripts: {}, names: Object.fromEntries(codes.map((code) => [code, `Carta ${code}`])), version: 't' }
@@ -70,7 +71,7 @@ interface Game {
  * `flaky`: mientras `down`, lo que manda el anfitrión se pierde sin que nadie se entere (su red se cayó y el relay no lo sabe: la presencia no cambia); `lose` pierde los próximos
  * tantos mensajes y después sigue. `guestNow` y `hostNow`: el reloj de cada uno (sus respiros entre pedidos y sus topes de frecuencia).
  */
-function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEYS], noCrypto = false, react, save, flaky, guestNow, hostNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; keys?: string[]; noCrypto?: boolean; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number; hostNow?: () => number } = {}): Game {
+function setup({ seatOf, firstCode, enabled = true, noRules = [], missing = [], hostDeck = HOST_DECK, guestDeck = GUEST_DECK, keys = [...KEYS], noCrypto = false, react, save, flaky, guestNow, hostNow }: { seatOf?: (k: number) => Seat; firstCode?: number; enabled?: boolean; noRules?: number[]; missing?: number[]; hostDeck?: DeckList; guestDeck?: DeckList; keys?: string[]; noCrypto?: boolean; react?: Parameters<typeof fakeHost>[1]; save?: AutoSaveStore; flaky?: { down: boolean; lose?: number }; guestNow?: () => number; hostNow?: () => number } = {}): Game {
   const room = createMemoryRoom()
   const hostEnd = room.join()
   const guestEnd = room.join()
@@ -89,8 +90,10 @@ function setup({ seatOf, firstCode, enabled = true, noRules = [], keys = [...KEY
   }
   const transport = flaky ? { send, onMessage: hostEnd.onMessage.bind(hostEnd) } : hostEnd
   const loads: (readonly DeckList[])[] = []
-  const hostLink = createHostLink({ transport, loader: listLoader(noRules, loads), deck: HOST_DECK, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, newKey, ...(save ? { save } : {}), ...(hostNow ? { now: hostNow } : {}) })
-  const guestLink = createGuestLink({ transport: guestEnd, source, deck: GUEST_DECK, ...(guestNow ? { now: guestNow } : {}) })
+  const hostLink = createHostLink({ transport, loader: listLoader(noRules, loads, missing), deck: hostDeck, handSize: 5, makeTransport: core.factory, enabled: async () => enabled, newKey, ...(save ? { save } : {}), ...(hostNow ? { now: hostNow } : {}) })
+  // La fuente del invitado tampoco tiene las de `missing`: con ella revisa su deck.
+  const guestSource: DataSource = { ...source, cards: async (codes) => codes.filter((code) => !missing.includes(code)).map(row) }
+  const guestLink = createGuestLink({ transport: guestEnd, source: guestSource, deck: guestDeck, ...(guestNow ? { now: guestNow } : {}) })
 
   host.subscribe(() => hostLink.observe(host.getSnapshot()))
   guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
@@ -162,11 +165,44 @@ describe('el enlace del duelo automático por enlace', () => {
     // Ni la mano ni el deck del anfitrión viajan en la sala: sólo la revisión.
     expect(toGuest(game.room).map((message) => message.t)).toEqual(['autoCheck'])
 
-    const blocked = setup({ noRules: [2] })
+    // Una carta sin reglas no frena (juega sin efectos, como en Dueling Nexus): los dos quedan listos y cada uno sabe cuántas hay de cada lado.
+    const vanilla = setup({ noRules: [2] })
 
-    await settle(blocked.room)
-    expect(blocked.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { mine: [], theirs: 1, reason: null } })
-    expect(blocked.guestLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { mine: [2], theirs: 0, reason: null } })
+    await settle(vanilla.room)
+    expect(vanilla.hostLink.getSnapshot()).toMatchObject({ phase: 'ready', problems: { mine: [], theirs: 1, reason: null } })
+    expect(vanilla.guestLink.getSnapshot()).toMatchObject({ phase: 'ready', problems: { mine: [2], theirs: 0, reason: null } })
+  })
+
+  it('una carta del invitado sin datos en ninguna base no deja jugar a ninguno de los dos, y los dos ven cuál por su nombre (el que le da el invitado)', async () => {
+    const guestDeck: DeckList = { main: [[2, 4], [7, 1]], rows: [{ ...row(7), name: 'Carta nueva' }] }
+    const game = setup({ missing: [7], guestDeck })
+
+    await settle(game.room)
+    const card = { code: 7, name: 'Carta nueva' }
+
+    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { reason: null, missing: { mine: [], theirs: [card] } } })
+    expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { reason: null, missing: { mine: [card], theirs: [] } } })
+    // El invitado revisó su deck y se lo volvió a mandar con el nombre; la revisión le dice cuáles son (por código) y nada del anfitrión.
+    expect(game.room.sent.filter((text) => text.includes('"t":"autoDeck"')).map((text) => parseAutoMessage(text))).toContainEqual(expect.objectContaining({ missing: [card] }))
+    expect(toGuest(game.room, 'autoCheck').at(-1)).toMatchObject({ ok: false, guestMissing: [7] })
+    expect(toGuest(game.room, 'autoCheck').at(-1)).not.toHaveProperty('hostMissing')
+  })
+
+  it('una carta del anfitrión sin datos tampoco deja jugar a ninguno: el invitado ve su nombre; el anfitrión no la juega sin efectos como en solo', async () => {
+    const hostDeck: DeckList = { main: [[1, 4], [8, 1]], rows: [{ ...row(8), name: 'Del anfitrión' }] }
+    const game = setup({ missing: [8], hostDeck })
+
+    await settle(game.room)
+    const card = { code: 8, name: 'Del anfitrión' }
+
+    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { missing: { mine: [card], theirs: [] } } })
+    expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { missing: { mine: [], theirs: [card] } } })
+    // El anfitrión revisa su deck sin las filas de la app: así la carta sale sin datos.
+    expect(game.loads.at(-1)![0]).toEqual({ main: hostDeck.main })
+    game.host.setReady(true)
+    game.guest.setReady(true)
+    await settle(game.room)
+    expect(game.hostLink.getSnapshot().session).toBeNull()
   })
 
   it('apagado en el despliegue (o con otra versión del protocolo), nadie puede empezar y se dice por qué', async () => {
@@ -213,7 +249,7 @@ describe('el enlace del duelo automático por enlace', () => {
     const [init] = toGuest(game.room, 'autoInit') as Extract<AutoMessage, { t: 'autoInit' }>[]
 
     // Cómo empieza abre un flujo nuevo (`s` 1); la clave del duelo queda en el anfitrión (con ella el invitado sabría sus robos) y la semilla, con clave, no se usa.
-    expect(init).toEqual({ t: 'autoInit', v: 2, s: 1, seat: 0, players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], mine: { main: [2, 2, 2, 2, 2], extra: [] }, theirs: { main: 5, extra: 0 } })
+    expect(init).toEqual({ t: 'autoInit', v: AUTO_PROTOCOL_VERSION, s: 1, seat: 0, players: [{ lp: 8000, hand: 5, draw: 1 }, { lp: 8000, hand: 5, draw: 1 }], mine: { main: [2, 2, 2, 2, 2], extra: [] }, theirs: { main: 5, extra: 0 } })
     expect(game.core.commands[0]).toMatchObject({ t: 'create', key: KEYS[0], seed: 0, decks: [{ main: [2, 2, 2, 2, 2] }, { main: [1, 1, 1, 1, 1] }] })
     expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 1 })
     expect(game.guestLink.getSnapshot()).toMatchObject({ phase: 'playing', seat: 0 })
@@ -455,13 +491,13 @@ describe('el enlace del duelo automático por enlace', () => {
     const checks = () => toGuest(game.room, 'autoCheck')
 
     await settle(game.room)
-    // En la sala: otro deck se baja y se revisa (la 3 no tiene reglas) y volver al de antes, también.
+    // En la sala: otro deck se baja y se revisa (la 3 no tiene reglas: se cuenta, pero no frena) y volver al de antes, también.
     let loads = game.loads.length
 
     sendDeck([[3, 5]])
     await settle(game.room)
     expect(game.loads).toHaveLength(loads + 1)
-    expect(checks().at(-1)).toMatchObject({ ok: false, bad: [3] })
+    expect(checks().at(-1)).toMatchObject({ ok: true, bad: [3] })
     sendDeck([[2, 5]])
     await settle(game.room)
     expect(game.loads).toHaveLength(loads + 2)
@@ -485,15 +521,16 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(game.hostLink.getSnapshot().phase).toBe('playing')
     expect(game.hostLink.getSnapshot().cards).toBe(cards)
     expect(checks()).toHaveLength(sent + 1)
-    // La revancha lo revisa: con la 3 sin reglas, nadie queda listo.
+    // La revancha lo revisa: la 3 sin reglas se cuenta y se puede jugar igual.
     game.guest.concede()
     await settle(game.room)
     game.host.rematch()
     game.guest.rematch()
     await settle(game.room)
     expect(game.loads.slice(loads)).toEqual([[HOST_DECK, { main: [[3, 5]], extra: [] }]])
-    expect(checks().at(-1)).toMatchObject({ ok: false, bad: [3] })
-    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { theirs: 1 } })
+    expect(checks().at(-1)).toMatchObject({ ok: true, bad: [3] })
+    expect(game.hostLink.getSnapshot()).toMatchObject({ problems: { theirs: 1 } })
+    expect(game.hostLink.getSnapshot().phase).not.toBe('blocked')
   })
 
   it('el anfitrión corta lo que piensa el núcleo: el invitado recibe la re-emisión y vuelve a su pregunta; un pedido suyo en medio espera a que termine', async () => {
