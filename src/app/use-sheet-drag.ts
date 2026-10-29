@@ -11,10 +11,10 @@ import { EASE_SNAP, prefersReducedMotion } from './motion'
  * Se corre con `translate`, no con `transform`: la entrada de las hojas (`sheet-in`, `sheet-up`) anima `transform` y se queda en su último cuadro, que pisaría uno en línea.
  */
 
-/** Dónde queda bajada: se ve el asa (`h-7`, 28 px) sobre lo que tapa el sistema abajo. La mano de la mesa deja 28 px libres debajo: la tira entra ahí y no la tapa. */
-const LOWERED = 'calc(100% - 1.75rem - env(safe-area-inset-bottom, 0px))'
+/** Dónde queda bajada: se ve la tira del asa (`h-11`, 44 px) sobre lo que tapa el sistema abajo. La mano de la mesa deja ese lugar libre debajo: la tira entra ahí y no la tapa. */
+const LOWERED = 'calc(100% - 2.75rem - env(safe-area-inset-bottom, 0px))'
 /** El alto de esa tira en px, para medir el recorrido al soltar. */
-const STRIP_PX = 28
+const STRIP_PX = 44
 /** Lo que hay que arrastrar antes de que cuente como gesto (y no como un toque): px. */
 const START_PX = 8
 /** Soltada a esta distancia (px) de donde estaba, cambia de lugar. */

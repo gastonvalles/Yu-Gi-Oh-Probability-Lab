@@ -2524,12 +2524,15 @@ function PracticeMatBody({
   const passTurn = () => (duel?.auto ? duel.auto.endTurn?.() : play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) }))
   // El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos).
   // Eligiendo se apoya sobre la fila de abajo que ese momento no se usa (`absolute inset-0`): no suma ni quita alto. En un duelo de escritorio es una cápsula centrada que sí recibe toques (la barra de abajo no los ataja: el medio es de la mano).
+  const pileSheet = !isDesktop && !covered && (viewerPile !== null || rivalViewing)
   const status = (
     <div
       className={cx(
         'flex min-w-0 items-center gap-2 px-1 text-micro text-muted',
         choosing ? (duel ? 'pointer-events-auto absolute inset-0 z-10' : 'pointer-events-auto absolute inset-x-0 bottom-0 z-10 h-10 border-t border-primary-hover/30 bg-background/80') : 'sr-only',
         choosing && duel && 'max-[1101px]:bg-background min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
+        // Con el visor de una pila del celular abierto, la hoja lo tapa y, bajada, su tira (44 px) también: no queda cortado ni asomando por encima de ella.
+        choosing && pileSheet && 'invisible',
       )}
       role="status"
       aria-label={t('practice.mat.currentStep')}
