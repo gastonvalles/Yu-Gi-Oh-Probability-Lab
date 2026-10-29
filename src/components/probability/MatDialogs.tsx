@@ -111,12 +111,13 @@ export function NoPlays({ reasons, onManual }: { reasons: readonly string[]; onM
         </p>
       ))}
       {onManual ? (
-        <p className="m-0 mt-1 flex flex-wrap items-center gap-x-1 text-micro text-soft">
-          {t('auto.why.mismatch')}
-          <Button variant="tertiary" size="sm" onClick={onManual}>
+        // El botón a lo ancho del menú y con el texto en dos renglones si hace falta: uno de su ancho natural («Continue in manual mode») se pasaba del panel y le sumaba un scroll de costado.
+        <div className="mt-1 grid gap-1">
+          <p className="m-0 text-micro text-soft">{t('auto.why.mismatch')}</p>
+          <Button variant="tertiary" size="sm" fullWidth onClick={onManual}>
             {t('auto.bar.manual')}
           </Button>
-        </p>
+        </div>
       ) : null}
     </div>
   )
@@ -385,7 +386,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
         tabIndex={-1}
         // Sin nada que elegir, el foco va al panel.
         data-initial-focus={items.length === 0 && !onInspect ? '' : undefined}
-        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto px-1 py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
+        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] overflow-y-auto overflow-x-hidden px-1 py-1 outline-none animate-dialog-enter motion-reduce:animate-none', wide ? 'w-[min(22rem,calc(100vw-1rem))]' : 'w-[13rem]', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={onPanelKey}
