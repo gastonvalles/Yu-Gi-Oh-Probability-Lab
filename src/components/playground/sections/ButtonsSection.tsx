@@ -150,7 +150,7 @@ export function ButtonsSection() {
         <Specimen title="IconButton" note={<>Un botón sin texto va <b>sin fondo y siempre blanco</b>: el aviso es que se pone <b>ámbar</b> al pasar el mouse y mientras está seleccionado (el único con relleno es <Tag>primary</Tag>, la acción principal de una barra). Siempre con <Tag>aria-label</Tag>. Archivo: <Tag>ui/IconButton.tsx</Tag></>} layout="column">
           {ICON_TONES.map((tone) => (
             <div key={tone} className="flex items-center gap-3">
-              <span className="w-14"><Tag>{tone}</Tag></span>
+              <span className="w-16 shrink-0"><Tag>{tone}</Tag></span>
               {SIZES.map((size) => (
                 <IconButton key={size} tone={tone} size={size} aria-label={`${tone} ${size}`}>
                   <Icon name="plus" />
@@ -159,12 +159,12 @@ export function ButtonsSection() {
             </div>
           ))}
           <div className="flex items-center gap-3">
-            <span className="w-14"><Tag>close</Tag></span>
+            <span className="w-16 shrink-0"><Tag>close</Tag></span>
             <CloseButton aria-label="Cerrar" />
           </div>
           {/* El color de una fila de tier list (el menú de la fila): el elegido, con el aro ámbar y la tilde; el gris oscuro, con la tilde clara y un filo lavanda. */}
           <div className="flex items-center gap-3">
-            <span className="w-14"><Tag>swatch</Tag></span>
+            <span className="w-16 shrink-0"><Tag>swatch</Tag></span>
             {SWATCHES.map((color, index) => (
               <IconButton key={color} tone="swatch" aria-pressed={index !== 1} aria-label={`Color ${color}`} className={cx(labelInk(color), prefersLightText(color) && 'inset-ring inset-ring-tint/50')} style={{ backgroundColor: color }}>
                 {index !== 1 ? <Icon name="check" strokeWidth={2.5} /> : null}
@@ -220,7 +220,7 @@ export function ButtonsSection() {
               key={value}
               type="button"
               aria-pressed={chosen.includes(value)}
-              className={cx(choiceChip, 'min-h-9 px-4 text-body')}
+              className={cx(choiceChip, 'min-h-9 px-4 text-body pointer-coarse:min-h-11')}
               onClick={() => setChosen((current) => (current.includes(value) ? current.filter((entry) => entry !== value) : [...current, value]))}
             >
               Opción {value.toUpperCase()}
@@ -311,7 +311,7 @@ export function ButtonsSection() {
       <Specimen title="Badge" layout="column" note={<>Estado, conteo o tipo. El color significa algo: <Tag>brand</Tag> lo tuyo · <Tag>success</Tag> bien · <Tag>warning</Tag> ojo · <Tag>danger</Tag> mal · <Tag>info</Tag> dato. Archivo: <Tag>ui/Badge.tsx</Tag></>}>
         {(['pill', 'tag'] as const).map((shape) => (
           <div key={shape} className="flex flex-wrap items-center gap-2">
-            <span className="w-10"><Tag>{shape}</Tag></span>
+            <span className="w-16 shrink-0"><Tag>{shape}</Tag></span>
             {TONES.map((tone) => (
               <Badge key={tone} tone={tone} shape={shape} dot>
                 {tone}
@@ -339,7 +339,7 @@ export function ButtonsSection() {
         </div>
         {/* `solid`: lleno con el texto blanco, sólo verde, rojo y violeta (la etiqueta Salida / Problema de una regla, del color de su opción en «Qué es»; la «Mano» de una carta para elegir). */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="w-10"><Tag>solid</Tag></span>
+          <span className="w-16 shrink-0"><Tag>solid</Tag></span>
           <Badge tone="success" shape="tag" size="sm" solid>
             Salida
           </Badge>
@@ -357,13 +357,13 @@ export function ButtonsSection() {
           </Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="w-10"><Tag>copias</Tag></span>
+          <span className="w-16 shrink-0"><Tag>copias</Tag></span>
           <CopiesBadge copies={1} />
           <CopiesBadge copies={3} />
         </div>
         {/* `rgb`: un color de afuera de los tonos; el chip de cada jugada en la lista de pasos lleva el de su destello en la mesa. */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="w-10"><Tag>rgb</Tag></span>
+          <span className="w-16 shrink-0"><Tag>rgb</Tag></span>
           {(Object.keys(FX_RGB) as FxTone[]).map((fx) => (
             <Badge key={fx} size="sm" shape="tag" rgb={FX_RGB[fx]}>
               {fx}

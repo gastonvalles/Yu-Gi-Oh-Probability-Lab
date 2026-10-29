@@ -78,11 +78,12 @@ export function TokensSection() {
   }, [tokens, query, kind])
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <SearchField label="Buscar un token" value={query} onChange={setQuery} placeholder="Buscar un token (primary, radius, 0.75rem…)" className="min-w-0 flex-1" inputClassName="h-10" />
         <Segmented<TokenKind | 'all'>
           label="Tipo de token"
+          className="min-w-0 overflow-x-auto"
           size="sm"
           value={kind}
           onChange={setKind}

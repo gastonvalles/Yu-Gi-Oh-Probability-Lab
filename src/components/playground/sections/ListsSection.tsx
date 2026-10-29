@@ -98,8 +98,8 @@ export function ListsSection() {
                   <CardStub key={card} className="aspect-[59/86] min-w-0 flex-1" />
                 ))}
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
-                <span className="text-body tabular-nums text-muted">{deck.size}</span>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-border-subtle pt-3">
+                <span className="whitespace-nowrap text-body tabular-nums text-muted">{deck.size}</span>
                 <Button variant="outline" size="sm" onClick={() => setSaid(deck.name)}>
                   Ver el deck
                 </Button>

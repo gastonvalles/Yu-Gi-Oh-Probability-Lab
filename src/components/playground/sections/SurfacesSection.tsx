@@ -37,7 +37,7 @@ export function SurfacesSection() {
               </Button>
             </div>
           </Card>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-[400px]:grid-cols-1">
             {TONES.filter((tone) => tone !== 'neutral').map((tone) => (
               <Card key={tone} tone={tone} padding="sm">
                 <strong className="text-body font-semibold text-foreground">tone="{tone}"</strong>

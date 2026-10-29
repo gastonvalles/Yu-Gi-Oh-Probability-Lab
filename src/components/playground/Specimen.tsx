@@ -34,7 +34,7 @@ export function Specimen({ title, note, children, className, layout = 'row' }: S
 
 /** Rótulo chico de un renglón o una columna de muestras ("sm", "primary"). */
 export function Tag({ children }: { children: ReactNode }) {
-  return <code className="rounded-tag bg-tint/8 px-1.5 py-0.5 text-micro text-muted">{children}</code>
+  return <code className="rounded-tag bg-tint/8 box-decoration-clone px-1.5 py-0.5 text-micro text-muted [overflow-wrap:anywhere]">{children}</code>
 }
 
 /** Una grilla de muestras que se acomoda al ancho disponible. */
