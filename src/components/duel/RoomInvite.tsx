@@ -44,34 +44,29 @@ export function InviteButtons({ peerPresent, canShare, onShare, onCopy, stacked 
 interface InviteLinkProps {
   link: string
   room: string
-  /** El rival ya entró: el enlace ya no hace falta a la vista (queda para el lector de pantalla y para copiar con los botones). */
+  /** El rival ya entró: el código y quién puede mirar ya no hacen falta a la vista. */
   peerPresent: boolean
   /** Se puede mirar la sala: sin esto no se dice quién puede mirar. */
   watchable?: boolean
 }
 
 /**
- * Lo que se le manda al rival, mientras no entró: el enlace entero, el código y quién puede mirar, en el centro del escenario de la sala (es lo que toca hacer en el primer paso). Con el rival adentro
- * se esconde a la vista —el enlace sigue en el documento—: ocupaba el lugar de lo que sigue (estar listo y definir quién empieza).
+ * Lo que acompaña a los botones para invitar, mientras el rival no entró: el código (chico, para dictarlo o tipearlo en «Tengo un código» desde otro dispositivo) y quién puede mirar. El enlace NO se
+ * dibuja (Gastón, 2026-10-29: «el link no debe verse pero sí poder copiarse»): lo copian y lo comparten los botones; queda `hidden` (ni a la vista ni para el lector de pantalla) sólo para que las pruebas lo lean.
  */
 export function InviteLink({ link, room, peerPresent, watchable = true }: InviteLinkProps) {
-  if (peerPresent) {
-    return (
-      <span className="sr-only" data-testid="duel-link">
+  return (
+    <>
+      <span hidden data-testid="duel-link">
         {link}
       </span>
-    )
-  }
-
-  return (
-    <div className="grid justify-items-center gap-1.5 text-center">
-      <p className="m-0 text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.room.link')}</p>
-      <p className="m-0 max-w-full break-all text-body font-semibold text-info-soft" data-testid="duel-link">
-        {link}
-      </p>
-      {/* En un celular bajo (menos de 760 px de alto) el código y la aclaración de quién mira se esconden: el enlace y los botones dicen lo que hace falta y la sala tiene que entrar sin scroll. */}
-      <p className="m-0 text-micro text-soft max-[1101px]:[@media(max-height:760px)]:hidden">{t('duel.room.code', { code: room })}</p>
-      {watchable ? <p className="m-0 max-w-md text-micro text-soft max-[1101px]:[@media(max-height:760px)]:hidden">{t('duel.room.watchHint')}</p> : null}
-    </div>
+      {peerPresent ? null : (
+        // En un celular bajo (menos de 760 px de alto) se esconden: los botones dicen lo que hace falta y la sala tiene que entrar sin scroll.
+        <div className="grid justify-items-center gap-1 text-center max-[1101px]:[@media(max-height:760px)]:hidden">
+          <p className="m-0 text-micro text-soft">{t('duel.room.code', { code: room })}</p>
+          {watchable ? <p className="m-0 max-w-md text-micro text-soft">{t('duel.room.watchHint')}</p> : null}
+        </div>
+      )}
+    </>
   )
 }

@@ -272,8 +272,16 @@ describe('la pantalla del duelo', () => {
     expect(rooms.register).toHaveBeenCalledWith(room, { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 50 }, expect.stringMatching(/^[A-Za-z0-9]{16}$/))
     const token = rooms.register.mock.calls[0]![2]
 
-    // Cancelar la espera: salir de la sala la baja de la lista.
+    // La X pide confirmar: «Seguir en la sala» no cierra nada.
     click(view, 'Salir')
+    expect(screen.getByRole('alertdialog', { name: '¿Seguro que querés cerrar la sala?' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Seguir en la sala' }))
+    expect(rooms.unlist).not.toHaveBeenCalled()
+    expect(window.location.hash).toBe(`#duel?room=${room}`)
+
+    // Cancelar la espera: cerrar la sala la baja de la lista.
+    click(view, 'Salir')
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar la sala' }))
     expect(rooms.unlist).toHaveBeenCalledWith(room, token)
     expect(window.location.hash).toBe('#duel')
   })
@@ -317,16 +325,17 @@ describe('la pantalla del duelo', () => {
     expect(within(within(host.container).getByTestId('room-summary')).getByText('Sin tiempo')).toBeInTheDocument()
   })
 
-  it('la sala dice en qué paso va (Invitar · Listos · Quién empieza) y muestra desde el principio tu tarjeta y el lugar que espera al rival', () => {
+  it('la sala muestra desde el principio tu tarjeta y el lugar que espera al rival, sin pasos ni el enlace a la vista: el enlace se copia o se comparte', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     createRoom(host)
 
     const view = within(host.container)
-    const steps = view.getByRole('list', { name: 'Pasos de la sala' })
 
-    expect(within(steps).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Invitar', 'Listos', 'Quién empieza'])
-    expect(within(steps).getByText('Invitar').closest('li')).toHaveAttribute('aria-current', 'step')
+    expect(view.queryByRole('list', { name: 'Pasos de la sala' })).not.toBeInTheDocument()
+    // El enlace no se dibuja ni lo lee el lector de pantalla: lo copian y lo comparten los botones.
+    expect(view.getByTestId('duel-link')).not.toBeVisible()
+    expect(view.queryByText(/#duel\?room=/, { ignore: '[hidden]' })).not.toBeInTheDocument()
     // Tu tarjeta con tu deck y, al lado, el lugar del rival.
     expect(view.getByText('Ana')).toBeInTheDocument()
     expect(view.getByText(/\d+ \+ \d+/)).toBeInTheDocument()
@@ -335,19 +344,6 @@ describe('la pantalla del duelo', () => {
     const labels = view.getAllByRole('button').map((button) => button.textContent)
     expect(labels).toContain('Copiar enlace')
     expect(labels.indexOf('Copiar enlace')).toBeLessThan(labels.indexOf('Copiar enlace para mirar'))
-  })
-
-  it('con el rival adentro el paso es «Listos» y con los dos listos, «Quién empieza»', () => {
-    const { host, guest } = startDuel()
-    const current = (view: RenderResult) => within(within(view.container).getByRole('list', { name: 'Pasos de la sala' })).getAllByRole('listitem').find((item) => item.getAttribute('aria-current') === 'step')?.textContent
-
-    expect(current(host)).toBe('Listos')
-    expect(current(guest)).toBe('Listos')
-
-    click(host, 'Estoy listo')
-    click(guest, 'Estoy listo')
-    flush()
-    expect(current(host)).toBe('Quién empieza')
   })
 
   it('con un formato, un deck que no lo cumple no puede estar listo y se dice qué carta sobra', () => {

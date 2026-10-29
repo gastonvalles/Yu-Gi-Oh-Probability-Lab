@@ -12,7 +12,7 @@ Dos personas juegan la mesa de práctica una contra la otra, cada una en su disp
 
 ## La sala
 
-Quien llega por un enlace no pasa por el lobby: escribe su nombre en la sala y elige su deck en el builder, que vuelve a la sala.
+Quien llega por un enlace no pasa por el lobby: escribe su nombre en la sala y elige su deck en el builder, que vuelve a la sala. En escritorio son tres paneles iguales (reglas y deck · escenario · chat), apilados en el celular; el enlace no se dibuja (se copia o se comparte con los botones, y queda el código chico) y la X pide confirmar.
 
 ## La mesa del duelo
 
