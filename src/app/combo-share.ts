@@ -4,7 +4,8 @@ import { createId, isRecord } from './utils'
 
 /**
  * Un combo que viaja: dentro de un enlace (`#combo=<datos>`, sin servidor ni cuenta) o en un archivo `*.ygolab-combo.json`. Los dos llevan el mismo sobre versionado
- * (`{ app, kind: 'combo', v: 1, combo }`, sin el id local); lo que se escribe con `v: 1` se lee para siempre, y `kind` deja lugar para otras cosas (un duelo entero).
+ * (`{ app, kind: 'combo', v: 1, combo }`, sin el id local; el enlace se escribe en `v: 2`, la forma compacta de más abajo); lo que se escribió con `v: 1` o `v: 2` se lee para
+ * siempre, y `kind` deja lugar para otras cosas (un duelo entero).
  *
  * Lo que llega es de otra persona: **entrada no confiable**. Antes de decodificar se topa el largo, la descompresión se corta a `MAX_JSON_BYTES` (una bomba de
  * deflate no pasa) y del JSON se copian sólo los campos conocidos, con sus tipos, rangos y largos, y los ids de carta con su patrón (ni `__proto__` ni un host: el arte
@@ -84,7 +85,8 @@ export async function packPayload(value: unknown): Promise<string> {
   return `z${toBase64Url(packed!)}`
 }
 
-export const encodeComboPayload = (combo: SavedCombo | SharedCombo): Promise<string> => packPayload(comboEnvelope(combo))
+/** El enlace va en v2 (`compactEnvelope`, menos de la mitad que v1); el archivo sigue en v1. */
+export const encodeComboPayload = (combo: SavedCombo | SharedCombo): Promise<string> => packPayload(compactEnvelope(combo))
 
 /** El texto (el JSON) de los datos de un enlace, con el tope de lo descomprimido (`maxJson`). No lanza. */
 export async function unpackPayload(payload: string, maxJson = MAX_JSON_BYTES): Promise<{ ok: true; text: string } | { ok: false; error: 'broken' | 'tooBig' }> {
@@ -156,9 +158,9 @@ export function parseComboText(text: string): ShareResult {
   }
   if (isRecord(value) && value.app === APP && value.kind === 'duel') return { ok: false, error: 'duel' }
   if (!isRecord(value) || value.app !== APP || value.kind !== 'combo' || typeof value.v !== 'number') return { ok: false, error: 'notCombo' }
-  if (value.v > COMBO_SHARE_VERSION) return { ok: false, error: 'newer' }
-  if (value.v !== COMBO_SHARE_VERSION) return { ok: false, error: 'broken' }
-  const combo = readCombo(value.combo)
+  if (value.v > COMPACT_VERSION) return { ok: false, error: 'newer' }
+  if (value.v !== COMBO_SHARE_VERSION && value.v !== COMPACT_VERSION) return { ok: false, error: 'broken' }
+  const combo = value.v === COMPACT_VERSION ? readCompact(value.c) : readCombo(value.combo)
   return combo ? { ok: true, combo } : { ok: false, error: 'broken' }
 }
 
@@ -296,6 +298,168 @@ function readCombo(value: unknown): SharedCombo | null {
     if (Number.isNaN(Date.parse(savedAt))) fail()
     const actions = Array.isArray(v.actions) && v.actions.length <= MAX_ACTIONS ? v.actions.map((entry) => action(entry)) : fail()
     return clean({ name: str(v.name).trim(), deckName: str(v.deckName), savedAt, initial: state(v.initial), names: names(v.names), actions, auto: opt(v.auto, yes) })
+  } catch {
+    return null
+  }
+}
+
+// ── v2, la del enlace: lo mismo, compacto ──
+
+/**
+ * `{ app, kind: 'combo', v: 2, c: [name, deckName, savedAt, tabla, mesa, jugadas, auto?] }`: el mismo sobre (una versión vieja de la app dice `newer`, «recargá»), sin `names` (los
+ * nombres se piden por passcode al abrir; sin red, «Carta») y con cada id como su lugar en una tabla que va una sola vez: `[passcode, n]` (o el passcode solo, n = 1) es
+ * `card-<passcode>-1…n`; detrás, como texto, los ids de otra forma (fichas, el rival, el duelo). La mesa y cada jugada son tuplas en el orden de `FIELDS`, y los valores fijos,
+ * su lugar en `ENUMS`. **`ENUMS` y `FIELDS` son el formato: sólo se agrega al final.** Leer v2 es armar la forma de v1 y pasarla por el mismo `readCombo` (la validación es una).
+ * `savedAt` va en ms si vuelve igual; si no, el texto.
+ */
+const COMPACT_VERSION = 2
+const MAX_TABLE = 1000
+const MAX_COPIES = 99
+const ENUMS = ['atk', 'def', 'set', 'mz', 'emz', 'st', 'field', 'deck', 'extra', 'hand', 'gy', 'banished', 'deck-bottom', 'normal', 'special', 'pendulum', 'scale', 'fusion', 'synchro', 'xyz', 'link', 'discard', 'banish', ...PHASE_IDS] as const
+/** Los campos de cada jugada, en orden: `#` un id, `*` una lista de ids, `@` uno de `ENUMS`; `actions`, las del lote; lo demás, tal cual. El tipo va primero, por su lugar acá. */
+const FIELDS: Record<MatAction['type'], readonly string[]> = {
+  draw: ['count', '*ids'],
+  mill: ['count'],
+  shuffle: ['seed'],
+  move: ['#id', '@to', 'faceDown', 'faceUp', 'shuffle'],
+  place: ['#id', '@zone', 'index', '@pos', '@how', 'shuffle'],
+  tribute: ['#id', '*tributes', '@zone', 'index', '@pos'],
+  summon: ['#id', '@how', '*materials', '@zone', 'index', '@pos'],
+  attach: ['#id', '#to'],
+  position: ['#id', '@pos'],
+  counter: ['#id', 'delta'],
+  token: ['@zone', 'index', '@pos'],
+  activate: ['#id', '@cost', 'effect'],
+  reveal: ['#id'],
+  declare: ['#id'],
+  target: ['#id'],
+  rivalUse: ['#id'],
+  attack: ['#id', '#target'],
+  phase: ['@phase', 'skipDraw'],
+  give: ['#id', 'auto'],
+  take: ['#id', '@zone', 'index', '@pos', 'auto'],
+  regain: ['#id', '@to', 'index', '@pos', 'faceDown', 'faceUp', 'auto'],
+  batch: ['actions'],
+}
+const TYPES = Object.keys(FIELDS) as Array<MatAction['type']>
+/** La mesa va como `[deck, extra, mano, rival | null, ...lo de acá]`; esto es cómo está en una mesa recién repartida (lo que falta al final, es esto). */
+const FRESH_MAT: readonly unknown[] = [[], [], [null, null, null, null, null], [null, null], [null, null, null, null, null], null, 0, ENUMS.indexOf('draw'), 1, [], [], []]
+const keyOf = (field: string) => field.replace(/^[#*@]/, '')
+const CARD_COPY = /^card-(\d{1,12})-(\d{1,2})$/
+
+/** El sobre v2, listo para JSON. */
+export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto }: SavedCombo | SharedCombo) {
+  // La tabla: los passcodes en el orden en que aparecen, con su copia más alta; lo que no es `card-<passcode>-<n>` tal cual, como texto.
+  const seen = new Set<string>()
+  const collect = (value: unknown): void => {
+    if (typeof value === 'string') {
+      if (ID.test(value)) seen.add(value)
+    } else if (value && typeof value === 'object') Object.values(value).forEach(collect)
+  }
+  collect([initial, actions])
+  const copies = new Map<number, number>()
+  const others: string[] = []
+  for (const cardId of seen) {
+    const match = CARD_COPY.exec(cardId)
+    const [code, copy] = [Number(match?.[1]), Number(match?.[2])]
+    if (match && cardId === `card-${code}-${copy}` && copy >= 1 && copy <= MAX_COPIES) copies.set(code, Math.max(copies.get(code) ?? 0, copy))
+    else others.push(cardId)
+  }
+  const table = [...[...copies].flatMap(([code, count]) => Array.from({ length: count }, (_, n) => `card-${code}-${n + 1}`)), ...others]
+  const index = new Map(table.map((cardId, n) => [cardId, n]))
+  const ref = (cardId: string) => index.get(cardId)!
+  const refs = (list: readonly string[]) => list.map(ref)
+  const place = (card: Placed | null) => card && [ref(card.id), ENUMS.indexOf(card.pos), card.counters, refs(card.materials)]
+  const pack = (action: MatAction): unknown[] => {
+    const values = FIELDS[action.type].map((field) => {
+      const value = (action as unknown as Record<string, unknown>)[keyOf(field)]
+      if (value === undefined) return null
+      if (field[0] === '#') return ref(value as string)
+      if (field[0] === '*') return refs(value as string[])
+      if (field[0] === '@') return ENUMS.indexOf(value as (typeof ENUMS)[number])
+      return field === 'actions' ? (value as MatAction[]).map(pack) : value
+    })
+    while (values.length > 0 && values.at(-1) === null) values.pop()
+    return [TYPES.indexOf(action.type), ...values]
+  }
+  const s = initial
+  const rest = [refs(s.gy), refs(s.banished), s.mz.map(place), s.emz.map(place), s.st.map(place), place(s.field), s.tokens, ENUMS.indexOf(s.phase), s.turn, refs(s.facedown), refs(s.extraUp), refs(s.targeted)]
+  // Lo que está como en una mesa recién repartida, del final para atrás, no viaja: el lector lo completa.
+  while (rest.length > 0 && JSON.stringify(rest.at(-1)) === JSON.stringify(FRESH_MAT[rest.length - 1])) rest.pop()
+  const mat = [refs(s.deck), refs(s.extra), refs(s.hand), s.rival ? [refs(s.rival.hand), refs(s.rival.used)] : null, ...rest]
+  const ms = Date.parse(savedAt)
+  const when = ms >= 0 && new Date(ms).toISOString() === savedAt ? ms : savedAt
+  return { app: APP, kind: 'combo', v: COMPACT_VERSION, c: [name, deckName, when, [[...copies].map(([code, count]) => (count === 1 ? code : [code, count])), others], mat, actions.map(pack), ...(auto ? [true] : [])] }
+}
+
+const list = (value: unknown, max: number): unknown[] => (Array.isArray(value) && value.length <= max ? value : fail())
+const at = <T>(items: readonly T[], value: unknown): T => items[int(value, 0, items.length - 1)]!
+
+/** La tabla de ids, con su tope (un `[passcode, 99]` repetido no la infla). */
+function readTable(value: unknown): string[] {
+  const [cards, others] = list(value, 2)
+  const table: string[] = []
+  for (const entry of list(cards, MAX_TABLE)) {
+    const [code, count = 1] = typeof entry === 'number' ? [entry] : list(entry, 2)
+    const copies = int(count, 1, MAX_COPIES)
+    if (table.length + copies > MAX_TABLE) fail()
+    const passcode = int(code, 0, 999_999_999_999)
+    for (let n = 1; n <= copies; n++) table.push(`card-${passcode}-${n}`)
+  }
+  table.push(...list(others, MAX_TABLE - table.length).map(id))
+  return table
+}
+
+/** La forma v1 de un combo v2 (lanza si no se puede armar); `readCombo` la valida entera. */
+function expandCompact(value: unknown): unknown {
+  const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto] = list(value, 7)
+  const table = readTable(rawTable)
+  const ref = (n: unknown) => at(table, n)
+  const refs = (items: unknown) => list(items, MAX_PILE).map(ref)
+  const place = (card: unknown) => {
+    if (card === null) return null
+    const [cardId, pos, counters, materials] = list(card, 4)
+    return { id: ref(cardId), pos: at(ENUMS, pos), counters, materials: refs(materials) }
+  }
+  const unpack = (raw: unknown, nested = false): Record<string, unknown> => {
+    const [type, ...values] = list(raw, 8)
+    const kind = at(TYPES, type)
+    const action: Record<string, unknown> = { type: kind }
+    FIELDS[kind].forEach((field, n) => {
+      const v = values[n]
+      if (v === null || v === undefined) return
+      action[keyOf(field)] =
+        field[0] === '#' ? ref(v) : field[0] === '*' ? refs(v) : field[0] === '@' ? at(ENUMS, v) : field === 'actions' ? (nested ? fail() : list(v, MAX_BATCH).map((part) => unpack(part, true))) : v
+    })
+    return action
+  }
+  const [deck, extra, hand, rival, ...rest] = list(rawMat, 16)
+  const [gy, banished, mz, emz, st, field, tokens, phase, turn, facedown, extraUp, targeted] = FRESH_MAT.map((fresh, n) => (rest[n] === undefined ? fresh : rest[n]))
+  const [rivalHand, rivalUsed] = rival === null ? [] : list(rival, 2)
+  const initial = {
+    deck: refs(deck),
+    extra: refs(extra),
+    hand: refs(hand),
+    gy: refs(gy),
+    banished: refs(banished),
+    mz: list(mz, 5).map(place),
+    emz: list(emz, 2).map(place),
+    st: list(st, 5).map(place),
+    field: place(field),
+    tokens,
+    phase: at(ENUMS, phase),
+    turn,
+    facedown: refs(facedown),
+    extraUp: refs(extraUp),
+    targeted: refs(targeted),
+    ...(rival === null ? {} : { rival: { hand: refs(rivalHand), used: refs(rivalUsed) } }),
+  }
+  return { name, deckName, savedAt: typeof savedAt === 'number' ? new Date(int(savedAt, 0, 8.64e15)).toISOString() : savedAt, initial, names: {}, actions: list(rawActions, MAX_ACTIONS).map((raw) => unpack(raw)), auto }
+}
+
+function readCompact(value: unknown): SharedCombo | null {
+  try {
+    return readCombo(expandCompact(value))
   } catch {
     return null
   }

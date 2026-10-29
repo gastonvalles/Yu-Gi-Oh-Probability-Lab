@@ -41,13 +41,14 @@ describe('compartir combos', () => {
     const link = buildComboLink('https://ygoultralab.app', '/', payload)
     const plain = toPayload(JSON.parse(comboFileText(combo)))
 
-    // Medido: 1,7 mil caracteres comprimido contra 9,5 mil sin comprimir.
+    // Medido: el enlace (v2, sin los nombres y con una tabla de ids) ~0,7 mil caracteres, contra 1,7 mil en v1 y 9,5 mil sin comprimir.
     expect(payload[0]).toBe('z')
     expect(link.length).toBeLessThan(MAX_LINK_LENGTH)
     expect(plain.length).toBeGreaterThan(link.length * 2)
 
+    // Los nombres no viajan en el enlace: se piden al abrirlo.
     const result = await decodeComboPayload(comboPayloadOf(link)!)
-    expect(result).toEqual({ ok: true, combo: shared })
+    expect(result).toEqual({ ok: true, combo: { ...shared, names: {} } })
     if (!result.ok) return
     expect(replayMat(result.combo.initial, result.combo.actions, 45)).toEqual(replayMat(combo.initial, combo.actions, 45))
     // También sin comprimir (un navegador sin `CompressionStream`).
@@ -84,7 +85,7 @@ describe('compartir combos', () => {
       ['[]', 'notCombo'],
       [JSON.stringify({ app: 'otra', kind: 'combo', v: 1, combo: shared }), 'notCombo'],
       [JSON.stringify(envelope(shared, { kind: 'duel' })), 'duel'],
-      [JSON.stringify(envelope(shared, { v: 2 })), 'newer'],
+      [JSON.stringify(envelope(shared, { v: 3 })), 'newer'],
       [JSON.stringify(envelope(shared, { v: '1' })), 'notCombo'],
       [JSON.stringify(envelope({ ...shared, actions: [{ type: 'place', id: 'card-1-1', zone: 'mz', index: 99, pos: 'atk' }] })), 'broken'],
       [JSON.stringify(envelope({ ...shared, actions: [{ type: 'nuke' }] })), 'broken'],

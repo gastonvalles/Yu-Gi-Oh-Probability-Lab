@@ -46,7 +46,8 @@ describe('compartir combos desde la lista', () => {
     const link = (writeText.mock.calls[0] as unknown as [string])[0]
     expect(link).toMatch(/#combo=/)
     const { id: _id, ...shared } = combo
-    expect(await decodeComboPayload(comboPayloadOf(link)!)).toEqual({ ok: true, combo: shared })
+    // Los nombres no viajan en el enlace: se piden al abrirlo.
+    expect(await decodeComboPayload(comboPayloadOf(link)!)).toEqual({ ok: true, combo: { ...shared, names: {} } })
   })
 
   it('importar un archivo lo suma con un nombre que no se repite; uno ajeno no toca la lista', async () => {
