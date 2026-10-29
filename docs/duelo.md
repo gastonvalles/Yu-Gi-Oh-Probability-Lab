@@ -116,7 +116,7 @@ En **Windows**, `wrangler dev` levantado varias veces deja procesos `workerd` co
 
 ## Qué se descartó a propósito
 
-- El replay de un duelo (`duel-replay.ts`, Replays › Tus duelos) es lo de un espectador: sin chat ni lo que nadie mostró. El manual lo anota la sesión (`DuelRecord`, con su clave en `duel-save.ts`): si se pierde una jugada del rival, llega hasta ahí.
+- El replay de un duelo (`duel-replay.ts`) es lo de un espectador, sin chat; el manual lo anota `DuelRecord` (`duel-save.ts`): sin una jugada del rival, corta ahí. Viaja por enlace o como .mp4 9:16 hecho en el navegador (`replays/video/`).
 - No hay ofertas de empate, revelar de forma persistente, chat libre de los espectadores, torneos ni cuentas, ni una sala «Solo» a la que se sume alguien: Jugar solo es la práctica, local y sin relay.
 - No hay selector de deck ni deck pegado en Jugar, y los puntos de vida no se eligen: siempre 8000.
 - No hay ✋ «Esperá»: las señales son 🤔 y 👍.

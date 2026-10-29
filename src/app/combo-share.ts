@@ -493,8 +493,8 @@ export async function shareComboLink(combo: SavedCombo | SharedCombo): Promise<S
   return shareLink(buildComboLink(location.origin, location.pathname, await encodeComboPayload(combo)), combo.name, () => new File([comboFileText(combo)], comboFileName(combo.name), { type: 'application/json' }))
 }
 
-/** Lo mismo con cualquier enlace (el de un replay): `file` arma el archivo para cuando el enlace no entra. */
-export async function shareLink(link: string, title: string, file: () => File): Promise<ShareOutcome> {
+/** Lo mismo con cualquier enlace (el de un replay): `file` arma el archivo para cuando el enlace no entra; sin él (el replay, que se manda como video), `tooLong`. */
+export async function shareLink(link: string, title: string, file?: () => File): Promise<ShareOutcome> {
   const share = async (data: ShareData): Promise<ShareOutcome | null> => {
     try {
       await navigator.share(data)
@@ -505,6 +505,7 @@ export async function shareLink(link: string, title: string, file: () => File): 
   }
 
   if (link.length > MAX_LINK_LENGTH) {
+    if (!file) return 'tooLong'
     const files = [file()]
     return (touchDevice() && navigator.canShare?.({ files }) && (await share({ files, title }))) || 'tooLong'
   }

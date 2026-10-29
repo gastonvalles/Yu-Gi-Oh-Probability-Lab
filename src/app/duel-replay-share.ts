@@ -1,5 +1,4 @@
 import {
-  downloadTextFile,
   invalid,
   MAX_PAYLOAD_CHARS,
   packPayload,
@@ -12,7 +11,6 @@ import {
   readOneOf,
   readRecord,
   readText,
-  safeFileName,
   SHARE_APP,
   shareLink,
   unpackPayload,
@@ -25,7 +23,7 @@ import type { DuelReplay, ReplayResult, ReplayStep } from './duel-replay'
 import { createId, isRecord } from './utils'
 
 /**
- * El replay de un duelo que viaja (enlace `#replay=<datos>` o archivo `*.ygolab-duel.json`) y los que se guardan en este navegador. El mismo sobre que el combo
+ * El replay de un duelo que viaja (enlace `#replay=<datos>`; como archivo viaja el video, `components/replays/video/`) y los que se guardan en este navegador. El mismo sobre que el combo
  * (`{ app, kind: 'duel', v: 1, replay }`, `combo-share.ts`), el mismo códec (deflate-raw + base64url) y la misma desconfianza: es **entrada no confiable**. Se topa el
  * largo antes de decodificar, la descompresión se corta a `MAX_REPLAY_JSON`, del JSON se copian sólo los campos conocidos (las mesas y las jugadas con los lectores del
  * combo), los ids con su patrón, los nombres pasan por `cleanName` y se dibujan como texto, y nada lanza.
@@ -33,11 +31,9 @@ import { createId, isRecord } from './utils'
 
 export const DUEL_REPLAY_VERSION = 1
 export const REPLAY_HASH = 'replay'
-export const DUEL_FILE_SUFFIX = '.ygolab-duel.json'
-/** El JSON de un duelo largo pasa los 100 KB: el tope es más alto que el del combo, y el del archivo, igual. */
+/** El JSON de un duelo largo pasa los 100 KB: el tope es más alto que el del combo. */
 export const MAX_REPLAY_JSON = 2 * 1024 * 1024
-export const MAX_REPLAY_FILE = MAX_REPLAY_JSON
-/** El enlace se ofrece si entra en lo que pasan los chats sin cortarlo (el mismo tope del combo); si no, sólo el archivo. */
+/** El enlace se ofrece si entra en lo que pasan los chats sin cortarlo (el mismo tope del combo); si no, sólo el video. */
 export { MAX_LINK_LENGTH } from './combo-share'
 const MAX_STEPS = 6000
 const MAX_CARDS = 1000
@@ -47,16 +43,12 @@ const MAX_LP = 999_999
 
 export type ReplayError = 'notReplay' | 'newer' | 'broken' | 'tooBig'
 export type ReplayRead = { ok: true; replay: DuelReplay } | { ok: false; error: ReplayError }
-/** Lo que trae un archivo o un enlace pegado: un duelo, un combo (va a la mesa) o por qué no se pudo leer. */
+/** Lo que trae un enlace pegado: un duelo, un combo (va a la mesa) o por qué no se pudo leer. */
 export type SharedRead = { ok: true; kind: 'duel'; replay: DuelReplay } | { ok: true; kind: 'combo'; combo: SharedCombo } | { ok: false; error: ReplayError }
 
 export const replayEnvelope = (replay: DuelReplay) => ({ app: SHARE_APP, kind: 'duel', v: DUEL_REPLAY_VERSION, replay })
 export const encodeReplayPayload = (replay: DuelReplay) => packPayload(replayEnvelope(replay))
 export const buildReplayLink = (origin: string, pathname: string, payload: string) => `${origin}${pathname}#${REPLAY_HASH}=${payload}`
-/** El archivo: JSON sin sangría (un duelo largo tiene miles de jugadas), que cualquiera puede abrir y leer. */
-export const replayFileText = (replay: DuelReplay) => `${JSON.stringify(replayEnvelope(replay))}\n`
-/** «Ana vs Beto»: `title` es el que arma la pantalla (un nombre vacío —el de jugar solo— lo pone ella, en su idioma). */
-export const replayFileName = (replay: DuelReplay, title: string) => safeFileName(`${title} ${replay.savedAt.slice(0, 10)}`, 'duelo', DUEL_FILE_SUFFIX)
 
 /** Los datos de un enlace de replay (entero o sólo el hash), o null si no lo es. */
 export function replayPayloadOf(text: string): string | null {
@@ -79,7 +71,7 @@ const envelopeOf = (text: string): Record<string, unknown> | null => {
   }
 }
 
-/** Lee el texto de un archivo (o el JSON de un enlace). No lanza. */
+/** Lee el JSON de un enlace. No lanza. */
 export function parseReplayText(text: string): ReplayRead {
   if (text.length > MAX_REPLAY_JSON) return { ok: false, error: 'tooBig' }
   const value = envelopeOf(text)
@@ -93,12 +85,13 @@ export function parseReplayText(text: string): ReplayRead {
 const fromCombo = (result: Awaited<ReturnType<typeof readComboLink>>): SharedRead =>
   result.ok ? { ok: true, kind: 'combo', combo: result.combo } : { ok: false, error: result.error === 'notCombo' || result.error === 'duel' ? 'notReplay' : result.error }
 
-/** Un archivo (su texto) o un enlace pegado, de un duelo o de un combo: lo que sea, por su `kind`. No lanza. */
-export async function readShared(text: string): Promise<SharedRead> {
+/** Un enlace pegado (o sus datos solos), de un duelo o de un combo: lo que sea, por su `kind`. No lanza. */
+export async function readShared(text: string, nested = false): Promise<SharedRead> {
   if (text.length > MAX_REPLAY_JSON) return { ok: false, error: 'tooBig' }
   const trimmed = text.trim()
 
-  if (trimmed.startsWith('{')) {
+  // El JSON sólo llega de adentro de unos datos (`z…`): pegado a mano ya no se lee (el archivo del duelo ahora es un video).
+  if (nested && trimmed.startsWith('{')) {
     const kind = envelopeOf(trimmed)?.kind
     if (kind === 'combo') return fromCombo(parseComboText(trimmed))
     const read = parseReplayText(trimmed)
@@ -114,7 +107,7 @@ export async function readShared(text: string): Promise<SharedRead> {
   // Los datos solos (`z…`): de un combo o de un duelo, según lo que traigan adentro.
   if (/^[zj][A-Za-z0-9_-]+$/.test(trimmed)) {
     const unpacked = await unpackPayload(trimmed, MAX_REPLAY_JSON)
-    return unpacked.ok ? readShared(unpacked.text) : unpacked
+    return unpacked.ok ? readShared(unpacked.text, true) : unpacked
   }
   return { ok: false, error: 'notReplay' }
 }
@@ -249,14 +242,11 @@ export function deleteSavedReplay(id: string): SavedReplay[] {
   return next
 }
 
-// ── En el navegador: compartir y bajar ──
+// ── En el navegador: compartir ──
 
-export const downloadReplayFile = (replay: DuelReplay, title: string) => downloadTextFile(replayFileText(replay), replayFileName(replay, title))
-
-/** Comparte el enlace (en el celular con la hoja del sistema; si no, lo copia). Un duelo que no entra en un enlace: `tooLong` (quien llama ofrece el archivo). */
+/** Comparte el enlace (en el celular con la hoja del sistema; si no, lo copia). Un duelo que no entra en un enlace: `tooLong` (quien llama ofrece el video). */
 export async function shareReplayLink(replay: DuelReplay, title: string, payload?: string): Promise<ShareOutcome> {
-  const link = buildReplayLink(location.origin, location.pathname, payload ?? (await encodeReplayPayload(replay)))
-  return shareLink(link, title, () => new File([replayFileText(replay)], replayFileName(replay, title), { type: 'application/json' }))
+  return shareLink(buildReplayLink(location.origin, location.pathname, payload ?? (await encodeReplayPayload(replay))), title)
 }
 
 /** Si el enlace de unos datos entra bajo el tope (para no ofrecerlo cuando no). */

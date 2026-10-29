@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { duelReplayAt, passcodeOf, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide } from '../../app/duel-replay'
-import { describeMatAction, isToken } from '../../app/practice-mat'
+import { duelReplayAt, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
+import { isToken } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { artOfDrawId } from '../duel/duel-art'
 import { DuelTable, TheirHand, type DuelSideView } from '../duel/DuelTable'
@@ -14,7 +14,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { OverflowMenu, type OverflowItem } from '../ui/OverflowMenu'
-import { playerName, replayResultText, titleOf } from './duel-replay-text'
+import { cardName, playerName, realOf, replayResultText, stepText, titleOf } from './duel-replay-text'
 
 /**
  * El replay de un duelo, de sólo lectura: las dos mesas como las vería un espectador (lo que nadie mostró, de dorso; con «mi mano», la de quien grabó boca arriba), las vidas, de quién
@@ -32,13 +32,6 @@ interface DuelReplayScreenProps {
 
 /** Cuánto dura cada jugada al reproducir, a velocidad normal. */
 const STEP_MS = 900
-
-/** El id real de una carta de un lado: lo que mostró ese lado (o, si es una del otro que controla —`f.c12`—, lo que mostró su dueño) y, con «mi mano», lo oculto de quien grabó. */
-function realOf(replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, id: string): string | undefined {
-  const owner = (id.startsWith('f.') ? 1 - side : side) as ReplaySide
-  const own = id.startsWith('f.') ? id.slice(2) : id
-  return frame.known[owner][own] ?? (owner === 0 ? replay.hidden?.[own] : undefined)
-}
 
 export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelReplayScreenProps) {
   const total = replay.steps.length
@@ -60,21 +53,14 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
   const frame = useMemo(() => duelReplayAt(replay, cursor, shots), [replay, cursor, shots])
   const names = [playerName(replay, 0), playerName(replay, 1)] as const
 
-  const nameOfCard = useCallback(
-    (at: ReplayFrame, side: ReplaySide) => (id: string) => {
-      const code = passcodeOf(realOf(replay, at, side, id) ?? '')
-      return (code !== null ? replay.cards[String(code)] : undefined) ?? t('practice.card.unknown')
-    },
-    [replay],
-  )
   const describe = useCallback(
     (at: number) => {
       if (at <= 0) return t('meta.duels.start')
-      const [side, action] = replay.steps[at - 1]!
-      // Los nombres, con lo que se sabe después de la jugada (lo que mostró ya la nombra; lo que se mostró más adelante, todavía no).
-      return `${playerName(replay, side)}: ${describeMatAction(duelReplayAt(replay, at - 1, shots).states[side], action, nameOfCard(duelReplayAt(replay, at, shots), side))}`
+      const step = replay.steps[at - 1]!
+      // Los nombres, con lo que se sabe después de la jugada (lo que mostró ya la nombra; lo que se mostró más adelante, todavía no). La misma línea que el video.
+      return stepText(replay, step, duelReplayAt(replay, at - 1, shots).states[step[0]], duelReplayAt(replay, at, shots))
     },
-    [replay, shots, nameOfCard],
+    [replay, shots],
   )
 
   // Reproducir: una jugada cada `STEP_MS` (según la velocidad) hasta el final.
@@ -94,7 +80,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
   const bottomView = view(bottom)
   const topView = view(top)
   // Con «mi mano», la de quien grabó boca arriba (abajo; dada vuelta la mesa, de dorso como la del rival).
-  const openHand = replay.view === 'mine' && bottom === 0 ? frame.states[0].hand.map((id) => ({ name: nameOfCard(frame, 0)(id), art: bottomView.artOf(id) })) : undefined
+  const openHand = replay.view === 'mine' && bottom === 0 ? frame.states[0].hand.map((id) => ({ name: cardName(replay, frame, 0)(id), art: bottomView.artOf(id) })) : undefined
   const playLabel = playing ? t('practice.mat.pause') : cursor >= total ? t('practice.mat.watchAgain') : t('practice.mat.play')
   const title = titleOf(replay)
   const result = cursor >= total ? replayResultText(replay) : null

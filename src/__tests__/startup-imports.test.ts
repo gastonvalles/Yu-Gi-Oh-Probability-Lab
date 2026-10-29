@@ -32,6 +32,12 @@ const NOT_AT_STARTUP = [
   'src/app/auto/policies.ts',
   'src/app/auto/protocol.ts',
   'src/app/auto/referee.ts',
+  // El video de un replay: lo que dibuja, mueve, codifica y arma el .mp4 se carga con `import()` al pedir un video (`ReplayVideo.tsx`).
+  'src/components/replays/video/video-encode.ts',
+  'src/components/replays/video/video-draw.ts',
+  'src/components/replays/video/video-motion.ts',
+  'src/components/replays/video/video-scene.ts',
+  'src/components/replays/video/mp4-mux.ts',
 ]
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')

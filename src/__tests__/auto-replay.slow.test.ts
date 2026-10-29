@@ -7,7 +7,7 @@ import { localTransport } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { randomLegalPolicy } from '../app/auto/policies'
 import { duelReplayAt, walkReplay } from '../app/duel-replay'
-import { buildReplayLink, decodeReplayPayload, encodeReplayPayload, MAX_LINK_LENGTH, parseReplayText, replayFileText } from '../app/duel-replay-share'
+import { buildReplayLink, decodeReplayPayload, encodeReplayPayload, MAX_LINK_LENGTH, parseReplayText, replayEnvelope } from '../app/duel-replay-share'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
@@ -76,7 +76,7 @@ describe.skipIf(!hasCoreData)('el replay de duelos automáticos reales (npm run 
       if (snap.overlay.turnPlayer !== null) expect(end.turn).toBe(snap.overlay.turnPlayer === seat ? 0 : 1)
 
       // Vista pública: ningún id real fuera de lo revelado.
-      const json = replayFileText(replay)
+      const json = JSON.stringify(replayEnvelope(replay))
       const shown = new Set([...Object.values(replay.sides[0].reveal), ...Object.values(replay.sides[1].reveal), ...replay.steps.flatMap((step) => Object.values(step[2] ?? {}))])
       const reals = new Set(json.match(/card-\d+-\d+/g) ?? [])
       expect([...reals].filter((id) => !shown.has(id))).toEqual([])

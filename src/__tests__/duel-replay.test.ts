@@ -2,7 +2,7 @@ import { deflateRawSync } from 'node:zlib'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { comboFileText, encodeComboPayload, buildComboLink } from '../app/combo-share'
+import { encodeComboPayload, buildComboLink } from '../app/combo-share'
 import { buildDuelReplay, duelReplayAt, walkReplay, type DuelReplay, type ReplayInput } from '../app/duel-replay'
 import {
   buildReplayLink,
@@ -12,8 +12,7 @@ import {
   parseReplayText,
   readSavedReplays,
   readShared,
-  replayFileName,
-  replayFileText,
+  replayEnvelope,
   replayPayloadOf,
   saveReplay,
 } from '../app/duel-replay-share'
@@ -76,7 +75,7 @@ describe('el replay de un duelo', () => {
   })
 
   it('vista pública: ninguna carta sin mostrar lleva su id real; con «mi mano», la mano y lo boca abajo sí, el deck no', () => {
-    const json = replayFileText(replay)
+    const json = JSON.stringify(replayEnvelope(replay))
     const shown = new Set(Object.values(replay.sides[0].reveal).concat(replay.steps.flatMap((step) => Object.values(step[2] ?? {}))))
 
     expect((json.match(/card-\d+-\d+/g) ?? []).filter((id) => !shown.has(id))).toEqual([])
@@ -91,7 +90,7 @@ describe('el replay de un duelo', () => {
     expect(hidden.has(deck[19]!)).toBe(false)
   })
 
-  it('ida y vuelta por enlace y por archivo; el enlace se reconoce entero o por el hash', async () => {
+  it('ida y vuelta por enlace; el enlace se reconoce entero o por el hash', async () => {
     const payload = await encodeReplayPayload(replay)
     const link = buildReplayLink('https://ygoultralab.app', '/', payload)
 
@@ -99,17 +98,15 @@ describe('el replay de un duelo', () => {
     expect(replayPayloadOf('https://x.app/#combo=zAbC')).toBeNull()
     expect(await decodeReplayPayload(payload)).toEqual({ ok: true, replay })
     expect(await decodeReplayPayload(toPayload(envelope(replay)))).toEqual({ ok: true, replay })
-    expect(parseReplayText(replayFileText(replay))).toEqual({ ok: true, replay })
-    expect(replayFileName(replay, 'Ana vs Beto')).toBe('Ana-vs-Beto-2026-10-29.ygolab-duel.json')
+    expect(parseReplayText(JSON.stringify(replayEnvelope(replay)))).toEqual({ ok: true, replay })
   })
 
-  it('un solo «Abrir archivo»: elige por el tipo (duelo o combo), del archivo o del enlace', async () => {
+  it('un solo «Pegar enlace»: elige por el tipo (duelo o combo); el JSON pegado ya no se lee (el archivo del duelo es un video)', async () => {
     const combo = createSavedCombo({ name: 'Línea', deckName: 'Deck', initial: mine, actions: myActions, nameOf: () => 'X' }, [])
 
-    expect(await readShared(replayFileText(replay))).toEqual({ ok: true, kind: 'duel', replay })
+    expect(await readShared(JSON.stringify(replayEnvelope(replay)))).toEqual({ ok: false, error: 'notReplay' })
     expect(await readShared(buildReplayLink('https://x.app', '/', await encodeReplayPayload(replay)))).toEqual({ ok: true, kind: 'duel', replay })
     expect(await readShared(await encodeReplayPayload(replay))).toEqual({ ok: true, kind: 'duel', replay })
-    expect(await readShared(comboFileText(combo))).toMatchObject({ ok: true, kind: 'combo' })
     expect(await readShared(buildComboLink('https://x.app', '/', await encodeComboPayload(combo)))).toMatchObject({ ok: true, kind: 'combo' })
     expect(await readShared('hola')).toEqual({ ok: false, error: 'notReplay' })
   })
