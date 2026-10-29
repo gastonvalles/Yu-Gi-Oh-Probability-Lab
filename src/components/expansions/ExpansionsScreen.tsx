@@ -302,7 +302,8 @@ const PrintTile = memo(function PrintTile({ card, highlighted, liRef, onOpen }: 
           target="_blank"
           rel="noreferrer"
           aria-label={t('catalog.sets.openProduct', { name: card.name })}
-          className={cx('mt-0.5 inline-flex items-center gap-1.5 justify-self-start text-body tabular-nums', textLink)}
+          // Con el dedo toca en 44 px de alto sin agrandar la ficha (el margen negativo devuelve lo que suma), como el enlace de `SectionHeader`.
+          className={cx('mt-0.5 inline-flex items-center gap-1.5 justify-self-start text-body tabular-nums pointer-coarse:-mt-2.25 pointer-coarse:-mb-2.75 pointer-coarse:min-h-11', textLink)}
         >
           {card.market === null ? t('search.prices.noPrice') : formatUsd(card.market)}
           <Icon name="link" size={13} />

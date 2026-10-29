@@ -133,11 +133,12 @@ export function BanlistsScreen() {
         subtitle={t('catalog.banlists.subtitle')}
         help={<p className="m-0">{t('catalog.banlists.help', { tcg: formatBanlistDate(banlistsOf('tcg').at(-1)!.date), ocg: formatBanlistDate(banlistsOf('ocg').at(-1)!.date) })}</p>}
         side={
-          <div className="flex w-full items-center gap-2 min-[1101px]:w-auto">
+          // `flex-wrap` y TCG / OCG sin `min-w-0`: en 320 px y en inglés la fecha no les deja lugar y baja a su renglón, en vez de apretarlos hasta cortar «OCG».
+          <div className="flex w-full flex-wrap items-center gap-2 min-[1101px]:w-auto">
             <Badge icon="refresh" title={t('catalog.banlists.updatedTitle')} className="min-[1101px]:order-first">
               {t('catalog.banlists.updated', { date: formatDay(new Date(`${BANLISTS_FETCHED_AT}T00:00:00Z`), 'UTC') })}
             </Badge>
-            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="min-w-0 max-[1101px]:order-first max-[560px]:flex-1" />
+            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="max-[1101px]:order-first max-[560px]:flex-1" />
           </div>
         }
       />
@@ -149,8 +150,9 @@ export function BanlistsScreen() {
               <Icon name="chevron-left" />
             </IconButton>
             {/* La fecha y su estado se ven en el medio; el <select> de verdad (que deja saltar a cualquier lista) va encima, transparente. */}
-            <div className="relative grid h-11 min-w-0 flex-1 content-center justify-items-center rounded-control text-center focus-within:shadow-focus min-[700px]:w-64 min-[700px]:flex-none">
-              <strong className="max-w-full truncate text-body font-semibold text-foreground">{formatBanlistDate(list.date)}</strong>
+            {/* La fecha no se recorta: en 320 px baja a dos renglones y la caja crece. */}
+            <div className="relative grid min-h-11 min-w-0 flex-1 content-center justify-items-center rounded-control text-center focus-within:shadow-focus min-[700px]:w-64 min-[700px]:flex-none">
+              <strong className="max-w-full text-balance text-body font-semibold text-foreground">{formatBanlistDate(list.date)}</strong>
               {status || list.partial ? (
                 <span className="flex items-center justify-center gap-1.5 text-micro text-muted">
                   {status}
