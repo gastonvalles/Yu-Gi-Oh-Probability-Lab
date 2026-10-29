@@ -2625,7 +2625,7 @@ function PracticeMatBody({
           !duel && '@container',
           Boolean(detail) && 'min-[1440px]:col-start-2',
           'col-start-1 row-start-2 min-h-0 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2',
-          rails ? 'grid grid-cols-[minmax(13rem,1fr)_minmax(0,calc(var(--cell-h)*6.3714+3rem))_minmax(13rem,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] gap-x-4' : 'flex flex-col gap-2',
+          rails ? 'grid grid-cols-[minmax(13rem,1fr)_minmax(0,calc(var(--cell-h)*6.3714+3rem))_minmax(13rem,1fr)] grid-rows-[auto_minmax(0,1fr)_auto_auto] gap-x-4' : 'flex flex-col gap-2',
         )}
       >
         <DuelRailsContext.Provider value={rails}>
@@ -2641,7 +2641,7 @@ function PracticeMatBody({
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-3 row-start-1 flex flex-col gap-2 self-center' : cx('relative my-auto flex flex-col gap-2', !bare && 'max-[1101px]:pb-12')) : 'contents')}>
+        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative my-auto flex flex-col gap-2', !bare && 'max-[1101px]:pb-12')) : 'contents')}>
         {/* Las vidas del rival en la esquina de arriba a la derecha (sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
         {duel?.corner && !rails && (isDesktop || duel.rivalHand) ? (
           <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room }}>
@@ -2807,8 +2807,9 @@ function PracticeMatBody({
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van en la píldora de la barra en el celu (`rulesPill`) y en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
-        {/* Repasando un combo en un duelo de escritorio sin laterales, con poco alto (la columna no entra), la línea de tiempo de la fila de abajo tapaba la franja de abajo de tu mano: ahí se achica como `REVIEW_HAND`. */}
-        <div className={cx('relative', duel && 'pointer-events-none z-10', duel && isDesktop && replayBar && !rails && '[@media(max-height:46rem)]:origin-top [@media(max-height:46rem)]:translate-y-1 [@media(max-height:46rem)]:scale-72')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
+        {/* Repasando un combo en un duelo de escritorio, tu mano se achica como `REVIEW_HAND`: la barra del replay va debajo, a lo largo de la mesa, y le tapaba la franja de abajo. Con poco
+            alto (46 rem o menos, la mesa angosta: 1101 × 700), al 66 % y sin bajar: al 72 % le asomaban 9 px debajo de la barra. */}
+        <div className={cx('relative', duel && 'pointer-events-none z-10', duel && isDesktop && replayBar && 'origin-top translate-y-1 scale-72 [@media(max-height:46rem)]:translate-y-0 [@media(max-height:46rem)]:scale-66')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"
@@ -2862,8 +2863,7 @@ function PracticeMatBody({
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* La barra tiene su propia fila abajo de la mano, también en escritorio: antes subía sobre la franja de abajo de la mano, y con la mano ancha de una notebook (1280–1440 px, con el menú y el chat abiertos) las fases y Pasar turno quedaban encima de las cartas, entre el 55 y el 75 % de su área. */}
         {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
-        {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven.
-            Repasando un combo en un duelo, los controles del replay toman también ese margen (abajo, al lado de la mano, está libre): en el lateral solo no entraban y se cortaban. */}
+        {/* Con laterales, lo que falta elegir (`status`) se centra en lo que el campo agrandado deja libre del lateral (`--field-overhang`): nunca debajo del tablero. Las vidas y Deshacer van a la derecha: no se mueven. */}
         {/* Sin fila de abajo («Jugar solo automático» hasta 1100 px: tus vidas van en el marcador de la barra): lo que falta elegir se apoya sobre los 44 px de abajo de tu
             mano sólo mientras está (no ocupa alto ni ataja toques si no); los botones del replay van ahí, debajo de tu mano achicada (`REVIEW_HAND`); el aviso de lo que acabás de activar va en la barra. */}
         {bare ? (
@@ -2878,13 +2878,14 @@ function PracticeMatBody({
             {duel?.tools}
           </div>
         ) : (
-        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails && !(duel && replayBar) ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
+        <div className={cx('z-55 grid grid-cols-[minmax(0,1fr)] gap-1 max-[1101px]:bg-background', rails ? 'relative col-start-3 row-start-3 self-end' : 'sticky bottom-0')} style={rails ? { paddingLeft: 'var(--field-overhang, 0px)' } : undefined}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido. Celular: las vidas a la izquierda, las dos reacciones en el medio (centradas, alineadas con las vidas y los botones) y deshacer y el chat a la derecha
               (el pulgar de quien juega con la derecha). Escritorio: deshacer junto a tus vidas, en la esquina opuesta a las del rival. */}
           {duel ? (
-            <div className="relative">
-              {/* Repasando un combo, los controles del replay van en el lugar de esta fila (en escritorio miden lo mismo, 44 px: el campo no se corre). */}
-              {replayBar ?? (
+            <div className={cx('relative', replayBar && !rails && '@container')}>
+              {/* Repasando un combo, los controles del replay van en el lugar de esta fila (en escritorio miden lo mismo, 44 px: el campo no se corre); con laterales, en su propia fila de abajo.
+                  Angosta, la barra pasa a dos renglones y el de más sube sobre la franja que deja libre tu mano achicada: la fila sigue midiendo uno (con poco alto va en uno: `ReplayBar`). */}
+              {replayBar ? (rails ? null : <div className="-mt-11 @min-[46rem]:mt-0 min-[1101px]:[@media(max-height:46rem)]:mt-0">{replayBar}</div>) : (
               <div
                 // Con Deshacer arriba (`undoInHeader`) la fila no lleva botones (a lo sumo las vidas): no es una barra, y la de arriba es la única «Mesa».
                 role={duel.undoInHeader ? undefined : 'toolbar'}
@@ -2922,6 +2923,9 @@ function PracticeMatBody({
           )}
         </div>
         )}
+        {/* Con laterales, el replay va en una fila propia abajo de todo, a lo largo de la mesa, de lateral a lateral (Gastón, 2026-10-29: «siempre a lo largo, nunca colapsado en una esquina»). El
+            campo ocupa las cuatro filas: la de la barra le quita alto a la del medio y no a él, así no se corre al entrar o salir del repaso; tus vidas suben con la fila de arriba. */}
+        {rails && duel && replayBar ? <div className="relative z-55 col-span-full row-start-4 pt-2">{replayBar}</div> : null}
       </div>
 
       {/* El panel fijo de un duelo (el chat), a la derecha y a todo el alto, sólo en escritorio. */}

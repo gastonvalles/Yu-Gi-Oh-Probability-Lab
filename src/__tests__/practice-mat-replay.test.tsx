@@ -6,7 +6,7 @@ import { createMatState, replayMat, type MatAction } from '../app/practice-mat'
 import { FLIGHT_MS, LANDING_AT } from '../app/use-card-flights'
 import { CARDS, Harness, INITIAL, WITH_ART, endTurn, goToPhase, hand, pointer, render, status, tap, zone } from './support/practice-mat-harness'
 import { tapMenu } from './support/mat-menu'
-import { ReplayTimeline, ReplayTransport } from '../components/probability/ReplayBar'
+import { ReplayBar, ReplayTimeline, ReplayTransport } from '../components/probability/ReplayBar'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 
@@ -608,6 +608,16 @@ describe('la mesa de práctica', () => {
       expect(slider().className).not.toMatch(/(^|\s)gap-/)
       expect(slider().style.gap).toBe(`min(3px, ${40 / 46}%)`)
       for (const pill of slider().querySelectorAll('[data-state]')) expect(pill.className).not.toMatch(/(^|\s)(min-)?w-\[/)
+    })
+
+    it('la barra va a lo largo: ancha, un renglón con la línea de tiempo en el medio llevándose lo que sobra; angosta (menos de 46 rem), la línea baja a su renglón, a todo el ancho, salvo en un escritorio bajo', () => {
+      const marks = Array.from({ length: 45 }, () => ({ phase: false, turnStart: false }))
+      render(<ReplayBar marks={marks} cursor={0} playing={false} playLabel="Reproducir" speed={1} describe={(step) => `Paso ${step}`} onSeek={() => {}} onTogglePlay={() => {}} onRestart={() => {}} onPrevious={() => {}} onNext={() => {}} onOpenSteps={() => {}} onSpeed={() => {}} />)
+
+      expect(screen.getByRole('group', { name: 'Controles del replay' })).toHaveClass('@container')
+      expect(slider()).toHaveClass('min-w-0', 'flex-1', 'order-last', 'basis-full', '@min-[46rem]:order-none', '@min-[46rem]:basis-0')
+      // Con poco alto, en dos renglones la barra le tapaba la mano: un renglón aunque las pastillas queden finas (sólo en escritorio: el celular no cambia).
+      expect(slider()).toHaveClass('min-[1101px]:[@media(max-height:46rem)]:order-none', 'min-[1101px]:[@media(max-height:46rem)]:basis-0')
     })
 
     it('la línea de tiempo tiene una pastilla por paso (y la mano inicial), marca los cambios de fase y separa los turnos', () => {
