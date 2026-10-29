@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-28T13:34:48.442Z",
+  "fetchedAt": "2026-10-29T13:45:22.908Z",
   "windowDays": 75,
   "channels": {"eu":{"name":"Yu-Gi-Oh! TCG Europe","url":"https://www.youtube.com/@YuGiOhCardEU"},"tcg":{"name":"Yu-Gi-Oh! TCG","url":"https://www.youtube.com/@OfficialYuGiOhTCG"}},
   "videos": [
@@ -27,6 +27,7 @@
     {"id":"AkMqV-s1nRw","channel":"eu","title":"Genesys Championship Day 1 - Round 4 - Paul F. vs. Zio M. | YCS Paris 2026","duration":"37:10","date":"2026-09-21"},
     {"id":"vZbcVvNx_yo","channel":"eu","title":"Genesys Championship Day 1 - Round 3 - Emre K. vs. Daniel M. | YCS Paris 2026","duration":"49:19","date":"2026-09-21"},
     {"id":"1CnFHzfE6t0","channel":"eu","title":"Genesys Championship Day 1 - Round 2 - Simonutti E. vs. Aryan T. | YCS Paris 2026","duration":"53:19","date":"2026-09-21"},
-    {"id":"0nfw5ipU0o0","channel":"eu","title":"Genesys Championship Day 1 - Round 1 - Richard S. vs. Rocco R. | YCS Paris 2026","duration":"43:01","date":"2026-09-21"}
+    {"id":"0nfw5ipU0o0","channel":"eu","title":"Genesys Championship Day 1 - Round 1 - Richard S. vs. Rocco R. | YCS Paris 2026","duration":"43:01","date":"2026-09-21"},
+    {"id":"KHcIPPJrjN4","channel":"tcg","title":"2026 North American WCQ Minneapolis, MN // Dragon Duel Championship Finals - Emmett P. vs. Simon B.","duration":"44:47","date":"2026-08-30"}
   ]
 }
