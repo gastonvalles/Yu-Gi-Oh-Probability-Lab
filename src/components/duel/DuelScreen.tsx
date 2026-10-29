@@ -1496,7 +1496,8 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     }
 
     const action = acts[acts.length - 1]!
-    const { spotlight, showcase, quiet, shuffle } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
+    // Su mano es la que no ves: sumar una carta a ella baraja a la vista (`hiddenHand`), así no se adivina cuál es la nueva.
+    const { spotlight, showcase, quiet, shuffle } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action, true)
 
     if (shuffle) {
       setShuffles((count) => count + 1)

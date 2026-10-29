@@ -30,8 +30,9 @@ export interface MatEffects {
   /** Una carta entró a la mano (robada, buscada o devuelta): la mano se enmarca un instante. */
   hand?: true
   /**
-   * La jugada barajó el deck (Barajar, buscar una carta, devolverla al azar) o sumó una carta a la mano (robar también): el deck y la mano se barajan a la vista.
-   * Mandar cartas del deck al cementerio o al destierro, o devolver una arriba o abajo, no baraja: se ve volar la carta y la pila da su golpe (`use-card-flights`).
+   * La jugada barajó el deck (Barajar, buscar una carta, devolverla al azar): el deck y la mano se barajan a la vista. Sumar una carta a la mano sólo baraja en la vista del rival (`hiddenHand`:
+   * así quien mira no adivina cuál es la nueva); en la tuya robar no baraja nada. Mandar cartas del deck al cementerio o al destierro, o devolver una arriba o abajo, tampoco: se ve volar la
+   * carta y la pila da su golpe (`use-card-flights`).
    */
   shuffle?: true
 }
@@ -46,8 +47,8 @@ const SHOWCASE_OF_PILE = { hand: 'hand', extra: 'extra', deck: 'deck', 'deck-bot
  * antes: una jugada que no cambió nada (zona ocupada, carta que no existe) no destella. Una Mágica o Trampa que pasa boca arriba
  * se activa; un monstruo que sale boca arriba a una zona de monstruo se invoca (una carta que sólo cambia de zona no); colocar boca abajo no hace ruido.
  */
-export function matEffects(before: MatState, action: MatAction): MatEffects {
-  if (action.type === 'batch') return batchEffects(before, action.actions)
+export function matEffects(before: MatState, action: MatAction, hiddenHand = false): MatEffects {
+  if (action.type === 'batch') return batchEffects(before, action.actions, hiddenHand)
 
   const after = matReducer(before, action)
   const effects = effectsOf(before, after, action)
@@ -55,21 +56,21 @@ export function matEffects(before: MatState, action: MatAction): MatEffects {
   // Barajar de verdad: «Barajar», o una jugada con la semilla de lo que se sacó o se metió mirando el deck (buscar una carta, devolverla «Al azar»).
   const shuffled = action.type === 'shuffle' || (after !== before && 'shuffle' in action && action.shuffle !== undefined)
 
-  return { ...effects, ...(handGained ? { hand: true as const } : {}), ...(handGained || shuffled ? { shuffle: true as const } : {}) }
+  return { ...effects, ...(handGained ? { hand: true as const } : {}), ...((handGained && hiddenHand) || shuffled ? { shuffle: true as const } : {}) }
 }
 
 /**
  * Los efectos de un lote: los de cada parte (contra la mesa que dejó la anterior), juntos. Las cartas que destacan, se muestran o van en silencio se suman a las de la primera parte que lo
  * hizo (las de otra clase, en un lote mezclado, no); lo demás (la mano, el barajado) queda si alguna parte lo tuvo. Un lote dentro de otro no hace nada.
  */
-function batchEffects(before: MatState, actions: readonly MatAction[]): MatEffects {
+function batchEffects(before: MatState, actions: readonly MatAction[], hiddenHand: boolean): MatEffects {
   let state = before
   let joined: MatEffects = {}
 
   for (const part of actions) {
     if (part.type === 'batch') continue
 
-    const effects = matEffects(state, part)
+    const effects = matEffects(state, part, hiddenHand)
     const { spotlight, showcase, quiet } = joined
 
     state = matReducer(state, part)
