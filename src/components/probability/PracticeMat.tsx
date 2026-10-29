@@ -2807,7 +2807,8 @@ function PracticeMatBody({
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van en la píldora de la barra en el celu (`rulesPill`) y en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
-        <div className={cx('relative', duel && 'pointer-events-none z-10')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
+        {/* Repasando un combo en un duelo de escritorio sin laterales, con poco alto (la columna no entra), la línea de tiempo de la fila de abajo tapaba la franja de abajo de tu mano: ahí se achica como `REVIEW_HAND`. */}
+        <div className={cx('relative', duel && 'pointer-events-none z-10', duel && isDesktop && replayBar && !rails && '[@media(max-height:46rem)]:origin-top [@media(max-height:46rem)]:translate-y-1 [@media(max-height:46rem)]:scale-72')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : splitReplay ? REVIEW_HAND : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"
