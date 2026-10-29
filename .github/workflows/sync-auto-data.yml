@@ -56,7 +56,7 @@ jobs:
         run: npm test
       # El fuzz corto de CI (4 decks del meta, un duelo contra otro deck y uno contra el rival de handtraps) y las cartas de la última expansión con el núcleo de verdad.
       - if: steps.lock.outputs.changed == 'true'
-        run: npm run test:auto -- auto-fuzz auto-recientes
+        run: npm run test:auto -- auto-fuzz auto-recientes auto-ascendidas
         env:
           FUZZ_DECKS: 4
           FUZZ_DUELS: 1
@@ -89,7 +89,7 @@ jobs:
           - Lo abre solo \`sync-auto-data.yml\` (cada lunes): sube \`auto-data.lock.json\` al último commit de cada repo.
           - Scripts (CardScripts): [\`${scripts_old:0:7}\`...\`${scripts:0:7}\`](https://github.com/ProjectIgnis/CardScripts/compare/${scripts_old}...${scripts}) · del ${scripts_date}.
           - Cartas (BabelCDB): [\`${cards_old:0:7}\`...\`${cards:0:7}\`](https://github.com/ProjectIgnis/BabelCDB/compare/${cards_old}...${cards}) · del ${cards_date}. Cartas de preestreno con passcode: ${promoted}.
-          - Pasaron, con los datos nuevos y el núcleo de verdad: \`npm test\`, el fuzz corto (\`auto-fuzz\`) y \`auto-recientes\`. No corrieron \`typecheck\`, \`lint\` ni \`build\` (sólo cambia el lock) ni las pruebas lentas del enlace.
+          - Pasaron, con los datos nuevos y el núcleo de verdad: \`npm test\`, el fuzz corto (\`auto-fuzz\`), \`auto-recientes\` y \`auto-ascendidas\`. No corrieron \`typecheck\`, \`lint\` ni \`build\` (sólo cambia el lock) ni las pruebas lentas del enlace.
           - Mergear despliega los datos nuevos en el próximo deploy. Si el fuzz o una prueba falla, no se abre PR y el fallo queda en la corrida de la Action.
           EOF
 

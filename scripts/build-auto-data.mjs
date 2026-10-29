@@ -81,9 +81,10 @@ const TEXTS = `id, name, desc, ${Array.from({ length: 16 }, (_, i) => `str${i + 
 /**
  * Junta en el primero de `files` (ya bajados, en el orden de `files` del lock: `cards.cdb`, las `release-*` y las `prerelease-*`) las filas
  * de los demás. Un id que ya está no se pisa: gana la base que va antes, así la oficial le gana a la de preestreno. Después asciende las
- * cartas de preestreno que ya tienen passcode (`released`: id provisorio → el passcode de YGOPRODeck, el de nuestros decks): una copia de
- * la fila con ese código y `alias` al provisorio (lo que nombren por ese número otros scripts sigue valiendo) que juega con el script del
- * provisorio (`promotedScripts`). Si Project Ignis ya la pasó a una base con su passcode, gana la de ellos.
+ * cartas de preestreno que ya tienen passcode (`released`: id provisorio → el passcode de YGOPRODeck, el de nuestros decks): una copia
+ * tal cual de la fila con ese código, que juega con el script del provisorio (`promotedScripts`). Sin `alias` al provisorio: el núcleo
+ * le da al script el id del passcode (`GetID`) y con un `alias` lejano la carta se llamaría por el provisorio, así que `IsCode(id)` («excepto
+ * "…"») no la reconocería. Si Project Ignis ya la pasó a una base con su passcode, gana la de ellos.
  */
 export async function mergeCdbs(files, released = {}) {
   const { DatabaseSync } = await import('node:sqlite')
@@ -94,7 +95,7 @@ export async function mergeCdbs(files, released = {}) {
       db.prepare('attach database ? as extra').run(file)
       db.exec(`insert or ignore into datas (${DATAS}) select ${DATAS} from extra.datas; insert or ignore into texts (${TEXTS}) select ${TEXTS} from extra.texts; detach database extra`)
     }
-    const data = db.prepare(`insert or ignore into datas (${DATAS}) select ?, ot, id, setcode, type, atk, def, level, race, attribute, category from datas where id = ?`)
+    const data = db.prepare(`insert or ignore into datas (${DATAS}) select ?, ${DATAS.slice('id, '.length)} from datas where id = ?`)
     const text = db.prepare(`insert or ignore into texts (${TEXTS}) select ?, ${TEXTS.slice('id, '.length)} from texts where id = ?`)
 
     for (const [pre, code] of Object.entries(released)) {
@@ -150,8 +151,12 @@ function packScripts(files, promoted) {
   return { index, pack: Buffer.concat(names.map((name) => best.get(name).body)) }
 }
 
-/** La versión del manifiesto (la clave de la caché de la app): cambia sólo con el lock (también si cambian las bases o las cartas ascendidas). */
-export const versionOf = (lock) => createHash('sha1').update(JSON.stringify([lock.CardScripts.commit, lock.BabelCDB])).digest('hex').slice(0, 12)
+/**
+ * La versión del manifiesto (la clave de la caché de la app): cambia con el lock (también si cambian las bases o las cartas ascendidas) y con
+ * `FORMAT`, que se sube cuando cambia cómo se arman las filas con el mismo lock (2: las ascendidas sin `alias`), para que nadie siga con las viejas.
+ */
+const FORMAT = 2
+export const versionOf = (lock) => createHash('sha1').update(JSON.stringify([lock.CardScripts.commit, lock.BabelCDB, FORMAT])).digest('hex').slice(0, 12)
 
 /** Arma `data.json` y `scripts.pack` en `outDir` con lo bajado. `features` va tal cual en el manifiesto (los interruptores del despliegue). */
 async function writeAutoData(outDir, { cdbs, tarball, lock, features }) {

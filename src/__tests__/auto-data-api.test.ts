@@ -191,13 +191,14 @@ describe('los datos del duelo automático en producción (scripts/build-auto-dat
   it('junta las bases en el orden del lock (un id repetido lo gana la que va antes) y asciende las de preestreno con passcode, con su script', async () => {
     const rows = (await (await get('?path=cards&codes=100,500,700,701,710')).json()) as Record<string, unknown>[]
 
-    // La 701 no se asciende: su passcode (100) ya es de otra carta, que no se pisa.
+    // La 701 no se asciende: su passcode (100) ya es de otra carta, que no se pisa. La 710 no lleva `alias` a la 700: se llama por su
+    // passcode, el id que el núcleo le da a su script (si no, «excepto "…"» con `IsCode(id)` no la reconoce; auto-ascendidas.slow.test.ts).
     expect(rows.map((row) => [row.id, row.alias, row.name])).toEqual([
       [100, 0, 'Carta 100'],
       [500, 0, 'Release 500'],
       [700, 0, 'Pre 700'],
       [701, 0, 'Pre 701'],
-      [710, 700, 'Pre 700'],
+      [710, 0, 'Pre 700'],
     ])
     expect(rows[4]).toMatchObject({ type: EFFECT, strs: ['Su efecto'] })
     expect(await (await get('?path=script/c710.lua')).text()).toBe('c700 de preestreno')
