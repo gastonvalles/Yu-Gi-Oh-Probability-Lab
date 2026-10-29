@@ -7,8 +7,8 @@
  * Nada de esto va al repo: el `.cdb` no tiene licencia y los scripts son AGPL. Se corre a mano: `npm run sync:core`.
  *
  * Subir de versión: `npm run sync:core -- --update-lock` reescribe el lock con el último commit de `master` de cada repo, las bases de
- * BabelCDB que se juntan y las cartas de preestreno que ya tienen passcode (por nombre, en YGOPRODeck), y después baja esos. No hay cron: lo
- * corre quien quiera datos nuevos, prueba la beta y commitea el lock; el próximo despliegue los usa.
+ * BabelCDB que se juntan y las cartas de preestreno que ya tienen passcode (por nombre, en YGOPRODeck), y después baja esos. Cada lunes lo corre
+ * `.github/workflows/sync-auto-data.yml`, prueba con el núcleo de verdad y abre la PR con el lock; el próximo despliegue lo usa. A mano, igual.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
