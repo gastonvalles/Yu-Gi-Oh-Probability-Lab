@@ -55,8 +55,8 @@ export const encodeReplayPayload = (replay: DuelReplay) => packPayload(replayEnv
 export const buildReplayLink = (origin: string, pathname: string, payload: string) => `${origin}${pathname}#${REPLAY_HASH}=${payload}`
 /** El archivo: JSON sin sangría (un duelo largo tiene miles de jugadas), que cualquiera puede abrir y leer. */
 export const replayFileText = (replay: DuelReplay) => `${JSON.stringify(replayEnvelope(replay))}\n`
-export const replayTitle = (replay: Pick<DuelReplay, 'players'>) => `${replay.players[0]} vs ${replay.players[1]}`
-export const replayFileName = (replay: DuelReplay) => safeFileName(`${replayTitle(replay)} ${replay.savedAt.slice(0, 10)}`, 'duelo', DUEL_FILE_SUFFIX)
+/** «Ana vs Beto»: `title` es el que arma la pantalla (un nombre vacío —el de jugar solo— lo pone ella, en su idioma). */
+export const replayFileName = (replay: DuelReplay, title: string) => safeFileName(`${title} ${replay.savedAt.slice(0, 10)}`, 'duelo', DUEL_FILE_SUFFIX)
 
 /** Los datos de un enlace de replay (entero o sólo el hash), o null si no lo es. */
 export function replayPayloadOf(text: string): string | null {
@@ -132,7 +132,8 @@ const entries = (value: unknown, max: number) => {
 /** id opaco → id real; las claves pasan su patrón (nunca `__proto__`) y van a un objeto nuevo. */
 const reveal = (value: unknown, max = MAX_REVEAL, key: (id: unknown) => string = readId) => Object.fromEntries(entries(value, max).map(([opaque, id]) => [key(opaque), real(id)]))
 const side = (value: unknown): 0 | 1 => (value === 0 || value === 1 ? value : invalid())
-const name = (value: unknown) => cleanName(readText(value, 60)) || invalid()
+/** Vacío vale: «Jugar solo» no tiene nombres (la pantalla pone «Duelista» y «Rival» al dibujar). */
+const name = (value: unknown) => cleanName(readText(value, 60))
 
 function step(value: unknown): ReplayStep {
   const [who, action, shown, ...rest] = Array.isArray(value) ? value : invalid()
@@ -155,7 +156,7 @@ function readReplay(value: unknown): DuelReplay | null {
       const s = readRecord(item)
       return { initial: readMatState(s.initial), reveal: reveal(s.reveal, 400) }
     })
-    if (!first || !second || more.length > 0 || sides.length !== 2) invalid()
+    if (first === undefined || second === undefined || more.length > 0 || sides.length !== 2) invalid()
     const steps = list(v.steps, MAX_STEPS, step)
     const life = list(v.life, MAX_STEPS + 1, (item) => {
       const [at, a, b, ...rest] = Array.isArray(item) ? item : invalid()
@@ -197,6 +198,8 @@ export interface SavedReplay {
   savedAt: string
   players: [string, string]
   steps: number
+  /** Con «Incluir mi mano»: la lista lo dice. */
+  view?: 'mine'
   result?: ReplayResult
   payload: string
 }
@@ -206,7 +209,7 @@ const savedOf = (value: unknown): SavedReplay | null => {
     const v = readRecord(value)
     const [first, second] = list(v.players, 2, name)
     const payload = readText(v.payload, MAX_PAYLOAD_CHARS)
-    return withoutUndefined({ id: readText(v.id, 80), savedAt: readText(v.savedAt, 40), players: [first ?? invalid(), second ?? invalid()] as [string, string], steps: readInt(v.steps, 0, MAX_STEPS), result: v.result === undefined ? undefined : result(v.result), payload: /^[zj][A-Za-z0-9_-]+$/.test(payload) ? payload : invalid() })
+    return withoutUndefined({ id: readText(v.id, 80), savedAt: readText(v.savedAt, 40), players: [first ?? invalid(), second ?? invalid()] as [string, string], steps: readInt(v.steps, 0, MAX_STEPS), view: v.view === 'mine' ? ('mine' as const) : undefined, result: v.result === undefined ? undefined : result(v.result), payload: /^[zj][A-Za-z0-9_-]+$/.test(payload) ? payload : invalid() })
   } catch {
     return null
   }
@@ -233,7 +236,7 @@ function writeSavedReplays(list: readonly SavedReplay[]): boolean {
 
 /** Guarda uno arriba de la lista. `dropped`: la lista estaba llena y se fue el más viejo; `failed`: el navegador no dejó guardar. */
 export async function saveReplay(replay: DuelReplay): Promise<{ saved: SavedReplay | null; dropped: boolean }> {
-  const saved: SavedReplay = withoutUndefined({ id: createId('replay'), savedAt: replay.savedAt, players: replay.players, steps: replay.steps.length, result: replay.result, payload: await encodeReplayPayload(replay) })
+  const saved: SavedReplay = withoutUndefined({ id: createId('replay'), savedAt: replay.savedAt, players: replay.players, steps: replay.steps.length, view: replay.view === 'mine' ? 'mine' : undefined, result: replay.result, payload: await encodeReplayPayload(replay) })
   const before = readSavedReplays()
   const next = [saved, ...before].slice(0, MAX_SAVED_REPLAYS)
 
@@ -248,12 +251,12 @@ export function deleteSavedReplay(id: string): SavedReplay[] {
 
 // ── En el navegador: compartir y bajar ──
 
-export const downloadReplayFile = (replay: DuelReplay) => downloadTextFile(replayFileText(replay), replayFileName(replay))
+export const downloadReplayFile = (replay: DuelReplay, title: string) => downloadTextFile(replayFileText(replay), replayFileName(replay, title))
 
 /** Comparte el enlace (en el celular con la hoja del sistema; si no, lo copia). Un duelo que no entra en un enlace: `tooLong` (quien llama ofrece el archivo). */
-export async function shareReplayLink(replay: DuelReplay, payload?: string): Promise<ShareOutcome> {
+export async function shareReplayLink(replay: DuelReplay, title: string, payload?: string): Promise<ShareOutcome> {
   const link = buildReplayLink(location.origin, location.pathname, payload ?? (await encodeReplayPayload(replay)))
-  return shareLink(link, replayTitle(replay), () => new File([replayFileText(replay)], replayFileName(replay), { type: 'application/json' }))
+  return shareLink(link, title, () => new File([replayFileText(replay)], replayFileName(replay, title), { type: 'application/json' }))
 }
 
 /** Si el enlace de unos datos entra bajo el tope (para no ofrecerlo cuando no). */

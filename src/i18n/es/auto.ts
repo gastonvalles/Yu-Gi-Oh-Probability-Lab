@@ -149,6 +149,7 @@ export const auto = {
   // «Nueva mano» (la barra) arma otro duelo; éste repite el mismo.
   'auto.bar.restart': 'Reiniciar el mismo duelo',
   'auto.bar.restartHint': 'El mismo duelo desde el principio: las mismas cartas, en el mismo orden.',
+  'auto.bar.saveReplayHint': 'Guardá el duelo como está, para mirarlo o compartirlo desde Replays.',
   // Las handtraps del rival (el simulador de «Jugar solo») y la mano del rival de dorso.
   'auto.bar.handtrapsOn': '{cards} · {hand} en la mano',
   'auto.bar.handtrapsOff': 'Apagadas: el rival no usa nada.',

@@ -100,7 +100,7 @@ describe('el replay de un duelo', () => {
     expect(await decodeReplayPayload(payload)).toEqual({ ok: true, replay })
     expect(await decodeReplayPayload(toPayload(envelope(replay)))).toEqual({ ok: true, replay })
     expect(parseReplayText(replayFileText(replay))).toEqual({ ok: true, replay })
-    expect(replayFileName(replay)).toBe('Ana-vs-Beto-2026-10-29.ygolab-duel.json')
+    expect(replayFileName(replay, 'Ana vs Beto')).toBe('Ana-vs-Beto-2026-10-29.ygolab-duel.json')
   })
 
   it('un solo «Abrir archivo»: elige por el tipo (duelo o combo), del archivo o del enlace', async () => {
@@ -132,6 +132,7 @@ describe('el replay de un duelo', () => {
       [text({ ...plain, life: [[3, 8000, 8000]] }), 'broken'],
       [text({ ...plain, players: ['Ana'] }), 'broken'],
       [text({ ...plain, players: ['x'.repeat(500), 'Beto'] }), 'broken'],
+      [text({ ...plain, players: ['Ana', 7] }), 'broken'],
       [text({ ...plain, starter: '0' }), 'broken'],
       [text({ ...plain, sides: [plain.sides[0], { ...plain.sides[1], initial: { ...plain.sides[1].initial, hand: ['__proto__'] } }] }), 'broken'],
       [text({ ...plain, cards: JSON.parse('{"__proto__":"x"}') as Record<string, string> }), 'broken'],

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { describeMatSteps } from '../../../app/practice-mat'
+import { buildDuelReplay, type DuelReplay } from '../../../app/duel-replay'
+import type { SavedReplay } from '../../../app/duel-replay-share'
+import type { WireAct } from '../../../app/mat-public'
+import { createMatState, describeMatSteps } from '../../../app/practice-mat'
+import { DuelReplayScreen } from '../../replays/DuelReplayScreen'
+import { YourDuels } from '../../replays/YourDuels'
 import { createSavedCombo, type SavedCombo } from '../../../app/saved-combos'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
 import { MatSnapshot } from '../../probability/MatSnapshot'
@@ -103,6 +108,63 @@ type StepListWidth = keyof typeof STEP_LIST_WIDTHS
 
 const NO_COMBOS: SavedCombo[] = []
 const noop = () => {}
+
+/** Un duelo de muestra: tu lado es el combo de muestra y el rival invoca Ash Blossom (que se ve) y coloca una carta (que no). */
+function sampleReplay(view: 'public' | 'mine'): DuelReplay {
+  const combo = sampleCombo()
+  const rival = createMatState(Array.from({ length: 40 }, (_, i) => `c${i + 1}`), [], 5)
+  const acts: WireAct[] = [
+    { action: { type: 'phase', phase: 'main1' }, reveal: {} },
+    { action: { type: 'place', id: 'c1', zone: 'mz', index: 2, pos: 'atk', how: 'normal' }, reveal: { c1: 'card-14558127-1' } },
+    { action: { type: 'place', id: 'c2', zone: 'st', index: 2, pos: 'set' }, reveal: {} },
+  ]
+  const mine = combo.actions.slice(0, 17)
+
+  return buildDuelReplay({
+    mode: 'link-auto',
+    view,
+    players: ['Ana', 'Beto con un apodo largo'],
+    starter: 0,
+    mine: { initial: combo.initial, actions: mine },
+    theirs: { initial: rival, acts },
+    order: [...mine.map(() => 'mine' as const), 'theirs', 'theirs', 'theirs'],
+    life: [{ at: 0, lp: [8000, 8000] }, { at: 16, lp: [8000, 6200] }],
+    nameOf: (code) => combo.nameOf(`card-${code}-1`),
+    result: { winner: 0, reason: 'lp' },
+    now: new Date('2026-10-29T12:00:00Z'),
+  })
+}
+
+/** «Tus duelos» (con replays y vacía) y la pantalla del replay con el aviso «Replay compartido». */
+function DuelReplaySamples() {
+  const [view, setView] = useState<'public' | 'mine'>('public')
+  const replay = useMemo(() => sampleReplay(view), [view])
+  const items = useMemo<SavedReplay[]>(
+    () => [
+      { id: 'a', savedAt: '2026-10-29T12:00:00Z', players: ['Ana', 'Beto con un apodo largo'], steps: 412, result: { winner: 0, reason: 'lp' }, payload: 'zMUESTRA' },
+      { id: 'b', savedAt: '2026-10-28T21:30:00Z', players: ['', ''], steps: 96, view: 'mine', payload: 'zMUESTRA' },
+      { id: 'c', savedAt: '2026-10-27T18:05:00Z', players: ['Ana', 'Caro'], steps: 1006, result: { winner: 1, reason: 'concede' }, payload: `z${'A'.repeat(8000)}` },
+    ],
+    [],
+  )
+
+  return (
+    <>
+      <Specimen title="Tus duelos" layout="column" note={<>En Replays, junto a los videos: los duelos guardados en este navegador (hasta 20), una fila por duelo (la fila lo abre; el ⋯ copia el enlace si entra en uno, baja el archivo o lo borra, con confirmación). Arriba, pegar un enlace y <Tag>Abrir archivo</Tag>: un solo lector que elige por el tipo (un combo va a la mesa). «Jugar solo» no tiene nombres: «Duelista vs Rival». Vacía, cómo se guarda uno. Archivos: <Tag>replays/YourDuels.tsx</Tag> y <Tag>app/duel-replay-share.ts</Tag></>}>
+        <div className="grid gap-6 rounded-card border border-border-subtle bg-background p-3">
+          <YourDuels items={items} onOpen={noop} onCopyLink={noop} onDownload={noop} onDelete={noop} onImport={noop} />
+          <YourDuels items={[]} onOpen={noop} onCopyLink={noop} onDownload={noop} onDelete={noop} onImport={noop} />
+        </div>
+      </Specimen>
+      <Specimen title="Replay de un duelo · compartido" layout="column" note={<>Lo que vería un espectador (lo que nadie mostró, de dorso; con «Incluir mi mano», la de quien grabó boca arriba), las vidas, el turno y la jugada, con la línea de tiempo y los botones del replay de la práctica (los turnos marcados con una línea). Abierto de un enlace o un archivo, el aviso <Tag>Replay compartido</Tag> con <Tag>Guardar en mis replays</Tag>. Archivos: <Tag>replays/DuelReplayScreen.tsx</Tag> y <Tag>app/duel-replay.ts</Tag></>}>
+        <Segmented label="Qué se ve" variant="chips" size="sm" value={view} onChange={setView} options={[{ value: 'public', label: 'De espectador' }, { value: 'mine', label: 'Con mi mano' }]} />
+        <div className="h-[52rem] max-w-full overflow-hidden rounded-card border border-border-subtle bg-background">
+          <DuelReplayScreen replay={replay} onClose={noop} shared={{ onSave: noop }} actions={[{ label: 'Descargar archivo', icon: 'download', onSelect: noop }]} />
+        </div>
+      </Specimen>
+    </>
+  )
+}
 
 /**
  * La lista de pasos de la mesa con un combo de muestra (`sampleCombo`): la línea de tiempo con los círculos, las cabeceras de fase, las fichas con su chip, su tablero y,
@@ -392,6 +454,8 @@ export function NavigationSection() {
       </Specimen>
 
       <StepListSamples />
+
+      <DuelReplaySamples />
 
       <Specimen title="Final del menú" layout="free" note={<>Las tres redes del autor arriba y, debajo, la privacidad y el aviso legal, con la autoría y el aviso de sitio no oficial; va al final de lo que scrollea del menú lateral (no hay pie en ninguna pantalla). Con el menú contraído se desvanece. Archivo: <Tag>shell/SidebarLegal.tsx</Tag></>}>
         <div className="w-60 overflow-hidden rounded-card border border-border-subtle bg-nav">

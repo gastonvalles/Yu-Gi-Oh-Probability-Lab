@@ -116,8 +116,8 @@ En **Windows**, `wrangler dev` levantado varias veces deja procesos `workerd` co
 
 ## Qué se descartó a propósito
 
-- El registro no es un replay: anota lo que cada uno hizo, con las palabras de un combo.
-- No hay guardar el duelo como replay, ofertas de empate, revelar de forma persistente, chat libre de los espectadores, torneos ni cuentas, ni una sala «Solo» a la que se sume alguien: Jugar solo es la práctica, local y sin relay.
+- El replay de un duelo (`duel-replay.ts`, Replays › Tus duelos) es lo de un espectador: sin chat ni lo que nadie mostró. El manual por enlace todavía no se graba.
+- No hay ofertas de empate, revelar de forma persistente, chat libre de los espectadores, torneos ni cuentas, ni una sala «Solo» a la que se sume alguien: Jugar solo es la práctica, local y sin relay.
 - No hay selector de deck ni deck pegado en Jugar, y los puntos de vida no se eligen: siempre 8000.
 - No hay ✋ «Esperá»: las señales son 🤔 y 👍.
 - Las vidas no llevan un anillo con la inicial: se probó y no va.
