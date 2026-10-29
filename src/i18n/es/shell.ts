@@ -193,6 +193,8 @@ export const shell = {
   'shell.life.tools.counters': 'Contadores',
   'shell.life.tools.cues': 'Avisos',
   'shell.life.calc.open': 'Calcular',
+  'shell.life.calc.title': 'Vidas de {name}',
+  'shell.life.calc.back': 'Volver al marcador sin aplicar',
   'shell.life.counter.name': 'Contador {n}',
   'shell.life.counter.minus': 'Contador {n}: menos',
   'shell.life.counter.plus': 'Contador {n}: más',

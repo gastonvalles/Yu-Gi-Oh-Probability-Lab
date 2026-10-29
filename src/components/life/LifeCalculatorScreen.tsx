@@ -133,6 +133,8 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
     if (!editable(player)) return
     if (!duel) lastSelected = player
     setSelected(player)
+    // Acostado, tocar una vida abre directo su teclado (como en Neuron); «Calcular» abre el de la elegida.
+    if (landscape) setPadOpen(true)
   }
   const applyDelta = (delta: number) => {
     if (delta === 0) {
@@ -257,30 +259,35 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
   )
 
   // La operación en curso: LP del elegido, signo y cantidad; los ceros que se sobreentienden (las centenas de «5» o «55») van apagados.
+  const operation = (
+    <output
+      aria-live="polite"
+      aria-label={digits ? t(operator === '-' ? 'shell.life.operation.minus' : 'shell.life.operation.plus', { name, lp, amount }) : `${name}: ${lp} LP`}
+      className={cx('flex min-w-0 items-baseline gap-1.5 font-bold tabular-nums text-foreground', landscape ? 'text-display' : 'text-[1.75rem]')}
+    >
+      <span>{lp}</span>
+      {digits ? (
+        <>
+          <span className={operator === '-' ? 'text-danger-soft' : 'text-success-soft'}>{operator === '-' ? '−' : '+'}</span>
+          <span>
+            {digits}
+            {impliedZeros(digits) ? <span className="text-soft">{impliedZeros(digits)}</span> : null}
+          </span>
+        </>
+      ) : null}
+    </output>
+  )
+  const nameBadge = <span className={cx('rounded-tag px-2 py-0.5 text-micro font-semibold', landscape ? 'min-w-0 truncate' : 'shrink-0', BADGE[order[0] === selected ? 0 : 1])}>{name}</span>
   const display = (
     <div className="flex min-h-12 items-center justify-between gap-2 rounded-control bg-input px-3 [grid-area:disp]">
-      <output
-        aria-live="polite"
-        aria-label={digits ? t(operator === '-' ? 'shell.life.operation.minus' : 'shell.life.operation.plus', { name, lp, amount }) : `${name}: ${lp} LP`}
-        className="flex min-w-0 items-baseline gap-1.5 text-[1.75rem] font-bold tabular-nums text-foreground"
-      >
-        <span>{lp}</span>
-        {digits ? (
-          <>
-            <span className={operator === '-' ? 'text-danger-soft' : 'text-success-soft'}>{operator === '-' ? '−' : '+'}</span>
-            <span>
-              {digits}
-              {impliedZeros(digits) ? <span className="text-soft">{impliedZeros(digits)}</span> : null}
-            </span>
-          </>
-        ) : null}
-      </output>
-      <span className={cx('shrink-0 rounded-tag px-2 py-0.5 text-micro font-semibold', BADGE[order[0] === selected ? 0 : 1])}>{name}</span>
+      {operation}
+      {nameBadge}
     </div>
   )
 
+  // Acostado el teclado es la grilla de afuera (`grid-*-subgrid`): «volver» queda encima de la columna de Borrar y las operaciones, y el «=» al lado de las cuatro filas.
   const keypad = (
-    <div className="grid grid-cols-4 grid-rows-4 gap-2 [grid-area:pad]" role="group" aria-label={t('shell.life.keypad')}>
+    <div className={cx('grid [grid-area:pad]', landscape ? 'grid-cols-subgrid grid-rows-subgrid' : 'grid-cols-4 grid-rows-4 gap-2')} role="group" aria-label={t('shell.life.keypad')}>
       {KEYS.map((key) => {
         const isOperator = key === '+' || key === '-'
         const active = isOperator && operator === key
@@ -308,7 +315,7 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
   const equals = (
     <button
       type="button"
-      className={cx(PRESSABLE, 'rounded-none bg-primary text-stat text-primary-foreground active:bg-primary-hover [grid-area:eq] @xl:min-h-14')}
+      className={cx(PRESSABLE, 'rounded-none bg-primary text-primary-foreground active:bg-primary-hover [grid-area:eq] @xl:min-h-14', landscape ? 'text-display' : 'text-stat')}
       disabled={amount === 0}
       aria-label={t(operator === '-' ? 'shell.life.apply.subtract' : 'shell.life.apply.add', { amount, name })}
       onClick={() => applyDelta(operator === '-' ? -amount : amount)}
@@ -369,10 +376,22 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
         </>
       )}
 
-      {/* Acostado, el teclado se abre aparte: el número, el «=» abajo (al alcance del pulgar) y las teclas a la derecha, todo en el alto del celular. Al aplicar se cierra y el marcador muestra el cambio. */}
-      <Modal isOpen={landscape && padOpen} onClose={() => setPadOpen(false)} size="md" flush title={t('shell.life.calc.open')}>
-        <div className="grid h-full min-h-0 gap-2 p-3 [grid-template-areas:'disp_pad'_'eq_pad'] [grid-template-columns:minmax(0,1fr)_minmax(0,1.4fr)] [grid-template-rows:auto_minmax(0,1fr)]">
-          {display}
+      {/*
+        Acostado, el teclado de una vida a pantalla completa, como el de Neuron: «volver» arriba de Borrar y las operaciones, al lado de quién es y el número que se teclea; en el medio los
+        dígitos y a la derecha el «=» a todo el alto de las teclas. «Volver» cierra sin aplicar (lo tecleado queda); aplicar lo cierra y el marcador muestra el cambio.
+      */}
+      <Modal isOpen={landscape && padOpen} onClose={() => setPadOpen(false)} size="screen" bare flush hideCloseButton ariaLabel={t('shell.life.calc.title', { name })}>
+        <div className="grid h-full min-h-0 grid-cols-5 gap-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] [grid-template-areas:'back_disp_disp_disp_disp'_'pad_pad_pad_pad_eq'_'pad_pad_pad_pad_eq'_'pad_pad_pad_pad_eq'_'pad_pad_pad_pad_eq'] [grid-template-rows:auto_repeat(4,minmax(0,1fr))]">
+          <button type="button" className={cx(KEY, 'grid place-items-center [grid-area:back]')} aria-label={t('shell.life.calc.back')} onClick={() => setPadOpen(false)}>
+            <Icon name="arrow-left" size={28} />
+          </button>
+          <div className="grid min-w-0 content-center gap-1 px-2 [grid-area:disp]">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0 rounded-tag bg-tint/12 px-1.5 text-micro font-bold text-muted">LP</span>
+              {nameBadge}
+            </div>
+            {operation}
+          </div>
           {keypad}
           {equals}
         </div>
