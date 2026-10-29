@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
-import type { DuelReplay } from '../../app/duel-replay'
 import { numberLocale, t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { Modal } from '../ui/Modal'
 import { ProgressRing } from '../ui/ProgressRing'
 import { Switch } from '../ui/Switch'
-import { titleOf } from './duel-replay-text'
 import { videoSupport, type VideoSupport } from './video/video-support'
-import { LONG_VIDEO_MS, videoDurationMs, videoFileName, type VideoSpeed } from './video/video-timeline'
+import { LONG_VIDEO_MS, videoDurationMs, videoFileName, type VideoSpeed, type VideoSubject } from './video/video-timeline'
 
 /**
  * «Descargar video» de un replay: se arma en el navegador (`video/video-encode.ts`, que se carga recién acá con `import()`), con su progreso y «Cancelar», y al terminar queda
  * «Video listo» con «Guardar video» y, si el sistema puede, «Compartir video». Ese paso de más es a propósito: compartir un archivo necesita un toque reciente y armar el
- * video tarda unos segundos. Cerrar el diálogo cancela. Lo usan «Guardar replay» (adentro de su mismo diálogo), el ⋯ de «Tus duelos» y el del replay abierto.
+ * video tarda unos segundos. Cerrar el diálogo cancela. Lo usan «Guardar replay» (adentro de su mismo diálogo), el ⋯ de «Tus duelos» y el del replay abierto, y los combos de la
+ * práctica (su ⋯ y la barra del combo compartido): el video es de un `VideoSubject`, un duelo o un combo.
  */
 
 /** Si este navegador puede armar el video (null mientras se fija). */
@@ -32,7 +31,7 @@ export function useVideoSupport(): VideoSupport | null {
 
 export type VideoState = { stage: 'idle' } | { stage: 'working'; progress: number } | { stage: 'ready'; file: File; durationMs: number } | { stage: 'failed' }
 
-/** Armar el video de un replay: el estado, empezar y cancelar (también al desmontar). */
+/** Armar el video de un duelo o un combo: el estado, empezar y cancelar (también al desmontar). */
 export function useReplayVideo() {
   const [state, setState] = useState<VideoState>({ stage: 'idle' })
   const job = useRef<AbortController | null>(null)
@@ -41,16 +40,16 @@ export function useReplayVideo() {
     job.current = null
     setState({ stage: 'idle' })
   }, [])
-  const start = useCallback(async (replay: DuelReplay, speed: VideoSpeed) => {
+  const start = useCallback(async (subject: VideoSubject, speed: VideoSpeed) => {
     job.current?.abort()
     const controller = new AbortController()
     job.current = controller
     setState({ stage: 'working', progress: 0 })
     try {
       const { makeReplayVideo } = await import('./video/video-encode')
-      const result = await makeReplayVideo(replay, { speed, signal: controller.signal, onProgress: (progress) => !controller.signal.aborted && setState({ stage: 'working', progress }) })
+      const result = await makeReplayVideo(subject, { speed, signal: controller.signal, onProgress: (progress) => !controller.signal.aborted && setState({ stage: 'working', progress }) })
       if (controller.signal.aborted) return
-      setState({ stage: 'ready', file: new File([result.blob], videoFileName(replay, titleOf(replay)), { type: 'video/mp4' }), durationMs: result.durationMs })
+      setState({ stage: 'ready', file: new File([result.blob], videoFileName(subject), { type: 'video/mp4' }), durationMs: result.durationMs })
     } catch {
       if (!controller.signal.aborted) setState({ stage: 'failed' })
     } finally {
@@ -84,19 +83,19 @@ const canShare = (file: File) => typeof navigator.canShare === 'function' && nav
 export const unsupportedText = (value: VideoSupport | null) => (value && !value.ok ? t(`meta.duels.video.unsupported.${value.reason}`) : null)
 
 /** «Rápido (2×)», sólo si el video pasa de 6 minutos. */
-export function FastSwitch({ replay, fast, onChange }: { replay: DuelReplay; fast: boolean; onChange: (fast: boolean) => void }) {
+export function FastSwitch({ subject, fast, onChange }: { subject: VideoSubject; fast: boolean; onChange: (fast: boolean) => void }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="grid min-w-0 gap-0.5">
         <span className="text-body font-semibold text-foreground">{t('meta.duels.video.fast')}</span>
-        <span className="text-micro text-soft">{t('meta.duels.video.fastHint', { normal: clock(videoDurationMs(replay, 1)), fast: clock(videoDurationMs(replay, 2)) })}</span>
+        <span className="text-micro text-soft">{t('meta.duels.video.fastHint', { normal: clock(videoDurationMs(subject, 1)), fast: clock(videoDurationMs(subject, 2)) })}</span>
       </span>
       <Switch checked={fast} onChange={onChange} label={t('meta.duels.video.fast')} />
     </div>
   )
 }
 
-export const isLongVideo = (replay: DuelReplay) => videoDurationMs(replay, 1) > LONG_VIDEO_MS
+export const isLongVideo = (subject: VideoSubject) => videoDurationMs(subject, 1) > LONG_VIDEO_MS
 
 /**
  * Lo que muestra el diálogo mientras se arma, cuando está listo o si falló (el título, el cuerpo y el pie); `retry` lo arma de nuevo y `back` (en «Guardar replay») vuelve a sus
@@ -164,44 +163,44 @@ export function videoStage(state: Exclude<VideoState, { stage: 'idle' }>, action
 }
 
 /**
- * El video de un replay ya guardado (el ⋯ de «Tus duelos» y el del replay abierto). Uno corto se empieza a armar al abrir; uno de más de 6 minutos primero ofrece
+ * El video de un replay ya guardado (el ⋯ de «Tus duelos» y el del replay abierto) o de un combo (su ⋯ y la barra del compartido). Uno corto se empieza a armar al abrir; uno de más de 6 minutos primero ofrece
  * «Rápido (2×)» (prendido: es para lo que se ofrece) y «Armar video». Sin soporte, el motivo.
  */
-export function ReplayVideoDialog({ replay, onClose }: { replay: DuelReplay | null; onClose: () => void }) {
+export function ReplayVideoDialog({ subject, onClose }: { subject: VideoSubject | null; onClose: () => void }) {
   const { state, start, cancel } = useReplayVideo()
   const supported = useVideoSupport()
   const [fast, setFast] = useState(true)
-  const long = replay ? isLongVideo(replay) : false
+  const long = subject ? isLongVideo(subject) : false
   const speed: VideoSpeed = long && fast ? 2 : 1
   const reason = unsupportedText(supported)
 
   useEffect(() => {
-    if (replay && supported?.ok && !isLongVideo(replay)) void start(replay, 1)
-  }, [replay, supported, start])
+    if (subject && supported?.ok && !isLongVideo(subject)) void start(subject, 1)
+  }, [subject, supported, start])
 
   const close = () => {
     cancel()
     setFast(true)
     onClose()
   }
-  const stage = state.stage === 'idle' ? null : videoStage(state, { cancel: close, retry: () => replay && void start(replay, speed) })
+  const stage = state.stage === 'idle' ? null : videoStage(state, { cancel: close, retry: () => subject && void start(subject, speed) })
 
   return (
     <Modal
-      isOpen={replay !== null}
+      isOpen={subject !== null}
       onClose={close}
       size="keypad"
       title={stage?.title ?? t('meta.duels.video.title')}
       footer={
         stage?.footer ??
         (long && supported?.ok ? (
-          <Button variant="primary" icon="play" onClick={() => replay && void start(replay, speed)}>
+          <Button variant="primary" icon="play" onClick={() => subject && void start(subject, speed)}>
             {t('meta.duels.video.make')}
           </Button>
         ) : undefined)
       }
     >
-      {stage?.body ?? (reason ? <Callout tone="warning">{reason}</Callout> : replay && long && supported?.ok ? <FastSwitch replay={replay} fast={fast} onChange={setFast} /> : <div className="min-h-24" aria-busy="true" />)}
+      {stage?.body ?? (reason ? <Callout tone="warning">{reason}</Callout> : subject && long && supported?.ok ? <FastSwitch subject={subject} fast={fast} onChange={setFast} /> : <div className="min-h-24" aria-busy="true" />)}
     </Modal>
   )
 }

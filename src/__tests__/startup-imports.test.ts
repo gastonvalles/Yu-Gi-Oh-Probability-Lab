@@ -37,6 +37,7 @@ const NOT_AT_STARTUP = [
   'src/components/replays/video/video-draw.ts',
   'src/components/replays/video/video-motion.ts',
   'src/components/replays/video/video-scene.ts',
+  'src/components/replays/video/video-combo.ts',
   'src/components/replays/video/mp4-mux.ts',
 ]
 

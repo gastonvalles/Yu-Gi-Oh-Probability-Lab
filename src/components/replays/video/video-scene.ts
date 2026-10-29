@@ -1,4 +1,4 @@
-import { duelReplayAt, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide, type ReplayStep } from '../../../app/duel-replay'
+import { duelReplayAt, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide } from '../../../app/duel-replay'
 import { cardImageSrc } from '../../../app/card-image-source'
 import { isToken, PHASES, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
@@ -7,7 +7,8 @@ import { cardName, playerName, realOf, stepText } from '../duel-replay-text'
 
 /**
  * Qué se dibuja en un cuadro del video de un replay, sin dibujar nada: dónde va cada casilla (en un lienzo vertical 9:16, la mesa compacta del celular: las pilas del rival arriba,
- * espejadas, y las tuyas abajo, como en `DuelTable`) y qué carta hay en cada una, de qué lado se ve y qué hay que resaltar. Puro: `video-draw.ts` lo pinta.
+ * espejadas, y las tuyas abajo, como en `DuelTable`) y qué carta hay en cada una, de qué lado se ve y qué hay que resaltar. Puro: `video-draw.ts` lo pinta. Las casillas de un
+ * lado (`sideSlots`) y la mano (`handSlots`) las usa también el video de un combo (`video-combo.ts`), que es de un solo jugador.
  */
 
 export interface Rect {
@@ -33,6 +34,8 @@ export interface SceneCard {
   upsideDown: boolean
   counters: number
   materials: number
+  /** Atenuada: una handtrap del rival que ya usó (el simulador de «Jugar solo»). */
+  dim?: boolean
 }
 
 export interface SceneSlot {
@@ -72,6 +75,12 @@ export interface Scene {
   banner?: { title: string; subtitle: string }
   /** Lo que se movió o se activó en esta jugada: un aro ámbar. */
   focus: Rect[]
+  /** Las casillas de la mesa (sus líneas tenues, con carta o sin ella). */
+  cells: Rect[]
+  /** Un combo: su nombre y el del deck arriba, en vez de las vidas y el turno. */
+  heading?: { title: string; subtitle: string }
+  /** Un rótulo chico (la «Mano del rival» del simulador de handtraps en un combo). */
+  caption?: { text: string; rect: Rect }
   layout: VideoLayout
 }
 
@@ -85,6 +94,8 @@ export interface VideoLayout {
   cell: number
   /** La casilla de la fila `row` (0 = la de arriba, la de las pilas del rival) y la columna `col` (0 = izquierda). */
   cellAt: (row: number, col: number) => Rect
+  /** La fila del medio (las Zonas Extra y las fases): ahí va el título y el cierre. */
+  middle: number
 }
 
 /** El diseño del lienzo: medidas en el de referencia (720×1280) por la escala. Un alto distinto de 16:9 deja aire abajo o lo recorta: el video es siempre 9:16. */
@@ -106,8 +117,15 @@ export function videoLayout(width: number): VideoLayout {
     footer: box(24, 1244, 672, 28),
     cell,
     cellAt: (row, col) => ({ x: x0 + col * (cell + gap), y: y0 + row * (cell + gap), w: cell, h: cell }),
+    middle: 3,
   }
 }
+
+/** Las casillas de `rows` filas de 5, sin las de las fases (columnas 0, 2 y 4 de la fila del medio). */
+export const cellsOf = (layout: VideoLayout, rows: number) =>
+  Array.from({ length: rows * 5 }, (_, index) => [Math.floor(index / 5), index % 5] as const)
+    .filter(([row, col]) => !(row === layout.middle && col % 2 === 0))
+    .map(([row, col]) => layout.cellAt(row, col))
 
 export const VIDEO_HEIGHT_OF = (width: number) => Math.round((width * BASE_H) / BASE_W)
 
@@ -131,10 +149,19 @@ export function handRects(area: Rect, count: number): Rect[] {
   return Array.from({ length: count }, (_, index) => ({ x: x0 + index * step, y: area.y, w, h }))
 }
 
-/** El arte de una carta, por el proxy (chico: 128 px alcanzan para una casilla del video). */
-const artOf = (replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, id: string) => {
-  const url = artOfDrawId(isToken(id) ? id : realOf(replay, frame, side, id))
+/** El arte de una carta por su id real (o una ficha), por el proxy (chico: 128 px alcanzan para una casilla del video). */
+export const artOfId = (id: string | undefined) => {
+  const url = artOfDrawId(id)
   return url ? cardImageSrc(url, 128) : null
+}
+
+/** Cómo se ve una carta que está boca arriba: su arte y su nombre; null si no se sabe cuál es (se dibuja de dorso). */
+export type Look = (id: string) => { art: string | null; name: string } | null
+
+/** En el replay de un duelo: lo que se sabe de cada lado en ese momento (`realOf`). */
+const duelLook = (replay: DuelReplay, frame: ReplayFrame, side: ReplaySide): Look => (id) => {
+  if (!isToken(id) && !realOf(replay, frame, side, id)) return null
+  return { art: artOfId(isToken(id) ? id : realOf(replay, frame, side, id)), name: cardName(replay, frame, side)(id) }
 }
 
 
@@ -146,22 +173,22 @@ const PILE_COLS: Record<ReplaySide, Record<MatPile | 'field', number>> = {
   1: { deck: 0, gy: 1, field: 2, banished: 3, extra: 4, hand: -1 },
 }
 
-/** Las casillas de un lado con lo que tienen. */
-function sideSlots(replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, layout: VideoLayout, shown: string | null): SceneSlot[] {
-  const state = frame.states[side]
-  const top = side === 1
-  const rows = top ? { piles: 0, st: 1, mz: 2 } : { piles: 6, st: 5, mz: 4 }
+/**
+ * Las casillas de un lado con lo que tienen. `rows`: en qué fila de `layout` van sus pilas, sus Mágicas y Trampas y sus monstruos (las Zonas Extra, en `layout.middle`);
+ * `top`: es el de arriba, espejado y de cabeza. `shown`: la carta que se muestra en esta jugada (una colocada que se revela se ve boca arriba en ese cuadro).
+ */
+export function sideSlots(state: MatState, layout: VideoLayout, rows: { piles: number; st: number; mz: number }, top: boolean, look: Look, shown: string | null): SceneSlot[] {
+  const side: ReplaySide = top ? 1 : 0
   // El rival, espejado: su zona 1 queda a la derecha.
   const col = (index: number) => (top ? 4 - index : index)
   // En una zona de monstruo, lo que no está en ataque va acostado (en defensa, o colocado).
   const card = (id: string, placed?: Placed, faceUp = true, monster = false): SceneCard => {
-    // Lo que se muestra en esta jugada (una carta colocada que se revela) se ve boca arriba en ese cuadro.
-    const faceDown = (id !== shown && (!faceUp || placed?.pos === 'set')) || (!isToken(id) && !realOf(replay, frame, side, id))
+    const face = id !== shown && (!faceUp || placed?.pos === 'set') ? null : look(id)
     return {
       id,
-      art: faceDown ? null : artOf(replay, frame, side, id),
-      name: faceDown ? '' : cardName(replay, frame, side)(id),
-      faceDown,
+      art: face?.art ?? null,
+      name: face?.name ?? '',
+      faceDown: !face,
       sideways: monster && placed !== undefined && placed.pos !== 'atk',
       upsideDown: top,
       counters: placed?.counters ?? 0,
@@ -186,7 +213,7 @@ function sideSlots(replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, lay
     ...state.st.map((placed, index) => zone(placed, layout.cellAt(rows.st, col(index)))),
     zone(state.field, layout.cellAt(rows.piles, PILE_COLS[side].field)),
     // Las Zonas Extra son de los dos: la 0 tuya es la 1 del rival (`SharedZone`). Están en las columnas 1 y 3 del medio.
-    ...state.emz.flatMap((placed, index) => (placed ? [zone(placed, layout.cellAt(3, top ? 3 - 2 * index : 1 + 2 * index), true)] : [])),
+    ...state.emz.flatMap((placed, index) => (placed ? [zone(placed, layout.cellAt(layout.middle, top ? 3 - 2 * index : 1 + 2 * index), true)] : [])),
     pile('deck', state.deck, () => false),
     pile('extra', state.extra, (id) => state.extraUp.includes(id)),
     pile('gy', state.gy, () => true),
@@ -214,10 +241,8 @@ export function actionIds(action: MatAction): { own: string[]; other: string[] }
  * Dónde está, después de la jugada, lo que la jugada tocó: las casillas (o las cartas de la mano) que tienen alguna de sus cartas. Robar sin `ids` resalta lo que entró a la mano;
  * una ficha nueva, su zona; mandar al cementerio desde el deck, el cementerio.
  */
-export function focusOf(step: ReplayStep, before: MatState, after: ReplayFrame, sides: readonly [SceneSide, SceneSide]): Rect[] {
-  const [side, action] = step
+export function focusOf(action: MatAction, before: MatState, state: MatState, mine: SceneSide, theirs: SceneSide): Rect[] {
   const { own, other } = actionIds(action)
-  const state = after.states[side]
   if (action.type === 'draw' && !action.ids) own.push(...state.hand.filter((id) => !before.hand.includes(id)))
   if (action.type === 'mill') own.push(...state.gy.filter((id) => !before.gy.includes(id)))
   if (action.type === 'token') {
@@ -226,13 +251,22 @@ export function focusOf(step: ReplayStep, before: MatState, after: ReplayFrame, 
   }
   const find = (scene: SceneSide, ids: readonly string[]) =>
     [...scene.slots, ...scene.hand].filter((slot) => slot.ids.some((id) => ids.includes(id))).map((slot) => slot.rect)
-  return [...find(sides[side], own), ...find(sides[1 - side]!, other)]
+  return [...find(mine, own), ...find(theirs, other)]
+}
+
+/** Las mismas cartas de una mano en su franja: boca arriba lo que `look` conoce y `open` deja ver (o la que se muestra en esta jugada). */
+export function handSlots(ids: readonly string[], area: Rect, look: Look, open: (id: string) => boolean): SceneSlot[] {
+  const rects = handRects(area, ids.length)
+  return ids.map((id, index) => {
+    const face = open(id) ? look(id) : null
+    return { rect: rects[index]!, ids: [id], card: { id, art: face?.art ?? null, name: face?.name ?? '', faceDown: !face, sideways: false, upsideDown: false, counters: 0, materials: 0 } }
+  })
 }
 
 /** Las casillas de las fases, de a dos en las tres del medio que no son Zonas Extra (columnas 0, 2 y 4), una encima de la otra. */
-function phaseRects(layout: VideoLayout) {
+export function phaseRects(layout: VideoLayout) {
   return PHASES.map((phase, index) => {
-    const cell = layout.cellAt(3, [0, 2, 4][Math.floor(index / 2)]!)
+    const cell = layout.cellAt(layout.middle, [0, 2, 4][Math.floor(index / 2)]!)
     const half = (cell.h - 8 * layout.scale) / 2
     return { id: phase.id, short: phase.short, rect: { x: cell.x, y: cell.y + (index % 2) * (half + 8 * layout.scale), w: cell.w, h: half } }
   })
@@ -244,27 +278,20 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
   const step = cursor > 0 ? replay.steps[cursor - 1] : undefined
   const sides = ([0, 1] as const).map((side): SceneSide => {
     const state = frame.states[side]
+    const look = duelLook(replay, frame, side)
     // La mano de quien grabó, boca arriba sólo con «mi mano»; la del rival, de dorso. La carta que se muestra en esta jugada, boca arriba en la mano de cualquiera.
     const shown = step?.[0] === side && step[1].type === 'reveal' ? step[1].id : null
-    const rects = handRects(side === 0 ? layout.myHand : layout.theirHand, state.hand.length)
     return {
       name: playerName(replay, side),
       lp: frame.lp[side],
-      slots: sideSlots(replay, frame, side, layout, shown),
-      hand: state.hand.map((id, index) => {
-        const faceDown = !((side === 0 && replay.view === 'mine') || id === shown) || !realOf(replay, frame, side, id)
-        return {
-          rect: rects[index]!,
-          ids: [id],
-          card: { id, art: faceDown ? null : artOf(replay, frame, side, id), name: faceDown ? '' : cardName(replay, frame, side)(id), faceDown, sideways: false, upsideDown: false, counters: 0, materials: 0 },
-        }
-      }),
+      slots: sideSlots(state, layout, side === 1 ? { piles: 0, st: 1, mz: 2 } : { piles: 6, st: 5, mz: 4 }, side === 1, look, shown),
+      hand: handSlots(state.hand, side === 0 ? layout.myHand : layout.theirHand, look, (id) => (side === 0 && replay.view === 'mine') || id === shown),
     }
   }) as [SceneSide, SceneSide]
   const phases = phaseRects(layout)
   // Un cambio de fase no mueve cartas: se resalta la fase nueva.
   const action = step?.[1]
-  const focus = action?.type === 'phase' ? phases.filter((phase) => phase.id === action.phase).map((phase) => phase.rect) : step && before ? focusOf(step, before, frame, sides) : []
+  const focus = action?.type === 'phase' ? phases.filter((phase) => phase.id === action.phase).map((phase) => phase.rect) : step && before ? focusOf(step[1], before, frame.states[step[0]], sides[step[0]], sides[1 - step[0]]!) : []
 
   return {
     width,
@@ -277,10 +304,13 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     stepLabel: cursor === 0 ? t('meta.duels.start') : t('meta.duels.step', { n: cursor, total: replay.steps.length }),
     stepText: step && before ? stepText(replay, step, before, frame) : '',
     focus,
-    footer: `YGOUltraLab · ${t('shell.brand.unofficial')}`,
+    footer: VIDEO_FOOTER(),
+    cells: cellsOf(layout, 7),
     layout,
   }
 }
+
+export const VIDEO_FOOTER = () => `YGOUltraLab · ${t('shell.brand.unofficial')}`
 
 /** Las imágenes que puede pedir el video: el arte de cada carta que aparece (por su passcode) y el de la ficha. Se cargan antes de dibujar el primer cuadro. */
 export const artUrls = (replay: Pick<DuelReplay, 'cards'>) =>

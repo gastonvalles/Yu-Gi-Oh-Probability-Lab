@@ -19,9 +19,7 @@ export const COMBO_HASH = 'combo'
 export const MAX_LINK_LENGTH = 7500
 /** Tope de lo que se acepta decodificar (un enlace pegado o abierto) y de un archivo, y del JSON ya descomprimido (anti-bomba). */
 export const MAX_PAYLOAD_CHARS = 200_000
-export const MAX_FILE_BYTES = 256 * 1024
 export const MAX_JSON_BYTES = 256 * 1024
-export const COMBO_FILE_SUFFIX = '.ygolab-combo.json'
 
 export type SharedCombo = Omit<SavedCombo, 'id'>
 /** `duel`: es el replay de un duelo (`duel-replay.ts`), que se abre en Replays. */
@@ -137,7 +135,6 @@ export async function readComboLink(text: string): Promise<ShareResult> {
 // ── Archivo ──
 
 /** El nombre del archivo: el del combo, sin lo que un sistema de archivos no acepta. */
-export const comboFileName = (name: string) => safeFileName(name, 'combo', COMBO_FILE_SUFFIX)
 
 /** Un nombre de archivo sin lo que un sistema de archivos no acepta (`fallback` si no queda nada). */
 export function safeFileName(name: string, fallback: string, suffix: string): string {
@@ -145,7 +142,6 @@ export function safeFileName(name: string, fallback: string, suffix: string): st
   return `${safe || fallback}${suffix}`
 }
 
-export const comboFileText = (combo: SavedCombo | SharedCombo) => `${JSON.stringify(comboEnvelope(combo), null, 2)}\n`
 
 /** Lee el texto de un archivo (o el JSON de un enlace). No lanza. */
 export function parseComboText(text: string): ShareResult {
@@ -473,28 +469,18 @@ export const SHARE_APP = APP
 
 const touchDevice = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
 
-/** Baja el combo como archivo (un `Blob` y un `<a download>`). */
-export const downloadComboFile = (combo: SavedCombo | SharedCombo): void => downloadTextFile(comboFileText(combo), comboFileName(combo.name))
-
-export function downloadTextFile(text: string, fileName: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
-  const link = Object.assign(document.createElement('a'), { href: url, download: fileName })
-  link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
 export type ShareOutcome = 'shared' | 'copied' | 'cancelled' | 'tooLong' | 'failed'
 
 /**
- * Comparte el enlace del combo: en el celular, con la hoja de compartir del sistema; si no, lo copia. Un combo que no entra en un enlace (`MAX_LINK_LENGTH`): en el celular se
- * comparte el archivo, si el sistema puede; si no, `tooLong` (quien llama ofrece bajarlo).
+ * Comparte el enlace del combo: en el celular, con la hoja de compartir del sistema; si no, lo copia. Un combo que no entra en un enlace (`MAX_LINK_LENGTH`): `tooLong` (quien
+ * llama ofrece el video).
  */
 export async function shareComboLink(combo: SavedCombo | SharedCombo): Promise<ShareOutcome> {
-  return shareLink(buildComboLink(location.origin, location.pathname, await encodeComboPayload(combo)), combo.name, () => new File([comboFileText(combo)], comboFileName(combo.name), { type: 'application/json' }))
+  return shareLink(buildComboLink(location.origin, location.pathname, await encodeComboPayload(combo)), combo.name)
 }
 
-/** Lo mismo con cualquier enlace (el de un replay): `file` arma el archivo para cuando el enlace no entra; sin él (el replay, que se manda como video), `tooLong`. */
-export async function shareLink(link: string, title: string, file?: () => File): Promise<ShareOutcome> {
+/** Lo mismo con cualquier enlace (el de un replay). Uno que no entra en lo que pasan los chats: `tooLong` (se manda como video). */
+export async function shareLink(link: string, title: string): Promise<ShareOutcome> {
   const share = async (data: ShareData): Promise<ShareOutcome | null> => {
     try {
       await navigator.share(data)
@@ -504,11 +490,7 @@ export async function shareLink(link: string, title: string, file?: () => File):
     }
   }
 
-  if (link.length > MAX_LINK_LENGTH) {
-    if (!file) return 'tooLong'
-    const files = [file()]
-    return (touchDevice() && navigator.canShare?.({ files }) && (await share({ files, title }))) || 'tooLong'
-  }
+  if (link.length > MAX_LINK_LENGTH) return 'tooLong'
 
   const shared = touchDevice() && typeof navigator.share === 'function' ? await share({ title, url: link }) : null
   if (shared) return shared

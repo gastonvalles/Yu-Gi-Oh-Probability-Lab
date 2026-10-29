@@ -2,7 +2,7 @@ import { deflateRawSync } from 'node:zlib'
 
 import { describe, expect, it } from 'vitest'
 
-import { buildComboLink, comboFileName, comboFileText, comboPayloadOf, decodeComboPayload, encodeComboPayload, MAX_LINK_LENGTH, parseComboText, toSavedCombo } from '../app/combo-share'
+import { buildComboLink, comboEnvelope, comboPayloadOf, decodeComboPayload, encodeComboPayload, MAX_LINK_LENGTH, parseComboText, toSavedCombo } from '../app/combo-share'
 import { createMatState, replayMat, type MatAction } from '../app/practice-mat'
 import { createSavedCombo, type SavedCombo } from '../app/saved-combos'
 
@@ -39,7 +39,7 @@ describe('compartir combos', () => {
   it('ida y vuelta por enlace: 45 jugadas entran comprimidas debajo del tope, y se reproducen igual', async () => {
     const payload = await encodeComboPayload(combo)
     const link = buildComboLink('https://ygoultralab.app', '/', payload)
-    const plain = toPayload(JSON.parse(comboFileText(combo)))
+    const plain = toPayload(comboEnvelope(combo))
 
     // Medido: el enlace (v2, sin los nombres y con una tabla de ids) ~0,7 mil caracteres, contra 1,7 mil en v1 y 9,5 mil sin comprimir.
     expect(payload[0]).toBe('z')
@@ -55,10 +55,8 @@ describe('compartir combos', () => {
     expect(await decodeComboPayload(plain)).toEqual({ ok: true, combo: shared })
   })
 
-  it('ida y vuelta por archivo, con nombre de archivo limpio; importar no repite un nombre', () => {
-    expect(parseComboText(comboFileText(combo))).toEqual({ ok: true, combo: shared })
-    expect(comboFileName(combo.name)).toBe('Linea-Snake-Eye-1-corte.ygolab-combo.json')
-    expect(comboFileName('../../ «»')).toBe('combo.ygolab-combo.json')
+  it('el sobre v1 (el de los enlaces viejos) se sigue leyendo; sumar uno no repite un nombre', () => {
+    expect(parseComboText(JSON.stringify(comboEnvelope(combo)))).toEqual({ ok: true, combo: shared })
 
     const imported = toSavedCombo(shared, [combo])
     expect(imported.name).toBe(`${combo.name} (2)`)
@@ -78,7 +76,7 @@ describe('compartir combos', () => {
   })
 
   it('las entradas hostiles no rompen ni lanzan: dicen qué pasó', async () => {
-    const proto = JSON.parse(comboFileText(combo)) as { combo: { names: Record<string, string> } }
+    const proto = comboEnvelope(combo) as { combo: { names: Record<string, string> } }
     const hostile: Array<[string, string]> = [
       ['{', 'notCombo'],
       ['null', 'notCombo'],

@@ -114,6 +114,7 @@ function drawCard(ctx: Ctx, pose: Pose, card: SceneCard, assets: VideoAssets, s:
   const image = card.faceDown ? assets.back : card.art ? assets.arts.get(card.art) : null
 
   ctx.save()
+  if (card.dim) ctx.globalAlpha *= 0.4
   ctx.translate(pose.x, pose.y)
   ctx.rotate(pose.angle)
   if (image) ctx.drawImage(image, -w / 2, -h / 2, w, h)
@@ -197,13 +198,9 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   ctx.strokeStyle = theme.fieldLine
   ctx.globalAlpha = 0.18
   ctx.lineWidth = 1.5 * s
-  for (let row = 0; row < 7; row += 1) {
-    for (let col = 0; col < 5; col += 1) {
-      if (row === 3 && col % 2 === 0) continue
-      const r = layout.cellAt(row, col)
-      roundRect(ctx, r, 6 * s)
-      ctx.stroke()
-    }
+  for (const r of scene.cells) {
+    roundRect(ctx, r, 6 * s)
+    ctx.stroke()
   }
   ctx.globalAlpha = 1
 
@@ -239,13 +236,32 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
 
   // Arriba: tus vidas, de quién es el turno y las del rival.
   const [mine, theirs] = scene.sides
-  drawScore(ctx, layout.score, mine.name, mine.lp, theme.accent, 'left', assets, s)
-  drawScore(ctx, layout.score, theirs.name, theirs.lp, theme.infoSoft, 'right', assets, s)
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = scene.turn === 0 ? theme.accent : theme.infoSoft
-  ctx.font = `700 ${26 * s}px ${FONT}`
-  ctx.fillText(wrap(ctx, scene.turnText, layout.score.w * 0.4, 1)[0]!, layout.score.x + layout.score.w / 2, layout.score.y + layout.score.h / 2)
+  if (scene.heading) {
+    // Un combo: su nombre grande y el del deck abajo.
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = theme.foreground
+    ctx.font = `700 ${30 * s}px ${FONT}`
+    ctx.fillText(wrap(ctx, scene.heading.title, layout.score.w, 1)[0]!, layout.score.x, layout.score.y + 36 * s)
+    ctx.fillStyle = theme.muted
+    ctx.font = `600 ${20 * s}px ${FONT}`
+    ctx.fillText(wrap(ctx, scene.heading.subtitle, layout.score.w, 1)[0]!, layout.score.x, layout.score.y + 70 * s)
+  } else {
+    drawScore(ctx, layout.score, mine.name, mine.lp, theme.accent, 'left', assets, s)
+    drawScore(ctx, layout.score, theirs.name, theirs.lp, theme.infoSoft, 'right', assets, s)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = scene.turn === 0 ? theme.accent : theme.infoSoft
+    ctx.font = `700 ${26 * s}px ${FONT}`
+    ctx.fillText(wrap(ctx, scene.turnText, layout.score.w * 0.4, 1)[0]!, layout.score.x + layout.score.w / 2, layout.score.y + layout.score.h / 2)
+  }
+  if (scene.caption) {
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    ctx.fillStyle = theme.soft
+    ctx.font = `600 ${16 * s}px ${FONT}`
+    ctx.fillText(scene.caption.text, scene.caption.rect.x, scene.caption.rect.y)
+  }
 
   // La jugada: su número chico y lo que hizo, en hasta dos renglones.
   const text = layout.text
@@ -283,7 +299,7 @@ export function drawMotions(ctx: Ctx, motions: readonly Motion[], t: number, ass
 function drawBanner(ctx: Ctx, scene: Scene, banner: NonNullable<Scene['banner']>, assets: VideoAssets) {
   const { theme } = assets
   const s = scene.layout.scale
-  const middle = scene.layout.cellAt(3, 0)
+  const middle = scene.layout.cellAt(scene.layout.middle, 0)
   const r = { x: 40 * s, y: middle.y - 40 * s, w: scene.width - 80 * s, h: middle.h + 80 * s }
   ctx.globalAlpha = 0.94
   ctx.fillStyle = theme.card
