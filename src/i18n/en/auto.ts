@@ -201,9 +201,6 @@ export const auto: Translated<typeof es> = {
   'auto.loading.rules': "Loading your cards' rules… {done} of {total}",
 
   // The errors that don't let you play.
-  'auto.fault.rules': { one: '{count} card is missing its rules', other: '{count} cards are missing their rules' },
-  'auto.fault.rulesText': "The rules engine doesn't have their data or script: the automatic duel can't start with them.",
-  'auto.fault.manual': 'Play in manual mode',
   'auto.fault.back': 'Back to the lobby',
   'auto.fault.setup': "The duel couldn't be created",
   'auto.fault.crash': 'The rules engine crashed',
@@ -251,8 +248,8 @@ export const auto: Translated<typeof es> = {
   // The automatic link duel: what the room tells whoever is waiting (below the deck), the line while the other one chooses and what cuts the duel short.
   'auto.online.waitingDeck': "Waiting for {name}'s deck…",
   'auto.online.checking': "Checking that both players' cards have rules…",
-  'auto.online.blockedMine': { one: '{count} of your cards is missing its rules: swap it in the builder.', other: '{count} of your cards are missing their rules: swap them in the builder.' },
-  'auto.online.blockedTheirs': { one: "{count} of {name}'s cards is missing its rules.", other: "{count} of {name}'s cards are missing their rules." },
+  'auto.online.vanillaMine': { one: '{count} of your cards has no automatic rules: it plays without its effect.', other: '{count} of your cards have no automatic rules: they play without their effects.' },
+  'auto.online.vanillaTheirs': { one: "{count} of {name}'s cards has no automatic rules: it plays without its effect.", other: "{count} of {name}'s cards have no automatic rules: they play without their effects." },
   'auto.online.outdated': '{name} has to update the app to play with automatic rules.',
   'auto.online.version': "Your app and {name}'s aren't the same version: reload the page to play with automatic rules.",
   'auto.online.off': 'Automatic link duels are turned off for now.',
@@ -310,6 +307,8 @@ export const auto: Translated<typeof es> = {
   'auto.why.title': 'No plays right now',
   'auto.why.unknown': 'The automatic duel offers no plays for this card right now.',
   'auto.why.rivalTurn': "It's your opponent's turn.",
+  'auto.why.noRules': 'It has no automatic rules: it plays without its effect.',
+  'auto.vanilla': { one: '{count} of your cards has no automatic rules and plays without its effect: {names}.', other: '{count} of your cards have no automatic rules and play without their effects: {names}.' },
   'auto.why.summoned': 'You already Normal Summoned this turn.',
   'auto.why.set': 'You already Set a monster this turn.',
   'auto.why.monsterZones': 'Your five Monster Zones are taken.',

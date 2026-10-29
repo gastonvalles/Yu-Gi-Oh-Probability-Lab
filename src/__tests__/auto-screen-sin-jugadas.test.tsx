@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { AutoOverlay } from '../app/auto/adapter'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
+import { showToastMessage } from '../app/use-toast-message'
 import { fakeSession, loc, stringId, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, handCard, renderAuto } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
@@ -18,6 +19,8 @@ const IDLE: CoreAsk = { type: 'select_idlecmd', player: 0, summons: [loc(100, L.
 const LOCK = stringId(400, 2)
 
 const withOverlay = (fake: FakeSession, patch: Partial<AutoOverlay>) => fake.set({ overlay: { ...fake.getSnapshot().overlay, ...patch } })
+
+vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
 
 describe('auto-screen · una carta sin jugadas dice por qué', () => {
   it('celular: la hoja dice la restricción del núcleo con su texto y el atajo abre el modo manual; el chip muestra la restricción', () => {
@@ -43,6 +46,28 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
     // Sin jugadas todavía no hay nada que volver atrás: pasa derecho a la mesa manual.
     expect(onManual).toHaveBeenCalledWith(null)
     expect(fake.answers).toEqual([])
+    expect(dispatches).toBe(0)
+  })
+
+  it('una carta sin reglas automáticas juega igual: se avisa una vez, con su nombre, y su menú dice por qué no tiene jugadas', () => {
+    const fake = renderAuto()
+
+    vi.mocked(showToastMessage).mockClear()
+    core(() => {
+      fake.set({ vanilla: [900] })
+      fake.ask(IDLE)
+    })
+    expect(showToastMessage).toHaveBeenCalledTimes(1)
+    expect(showToastMessage).toHaveBeenCalledWith('1 de tus cartas no tiene reglas automáticas y se juega sin efecto: Called by the Grave.', 'warning')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    tap(handCard('Called by the Grave'))
+    expect(screen.getByTestId('no-plays')).toHaveTextContent('No tiene reglas automáticas: se juega sin efecto.')
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    // Las de siempre no dicen nada de eso.
+    tap(handCard('Ash Blossom'))
+    expect(screen.queryByTestId('no-plays')).toBeNull()
+    core(() => fake.ask(IDLE))
+    expect(showToastMessage).toHaveBeenCalledTimes(1)
     expect(dispatches).toBe(0)
   })
 

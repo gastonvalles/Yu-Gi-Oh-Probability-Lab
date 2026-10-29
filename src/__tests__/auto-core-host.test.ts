@@ -303,11 +303,21 @@ describe('el anfitrión del núcleo', () => {
       expect([inCore(auto, 0), inCore(auto, 1)]).toEqual([deckOrder(small, 5), deckOrder(small, 6)])
     })
 
-    it('no crea el duelo si una carta no tiene datos o reglas', async () => {
+    it('no crea el duelo si una carta no tiene datos', async () => {
       const events: AutoEvent[] = []
 
       await host(events).handle({ t: 'create', seed: 1, flags: MR5, players: PLAYERS, decks: [deck([...small, 1]), deck(small)] })
       expect(events).toEqual([expect.objectContaining({ t: 'fault', kind: 'rules', cards: [1] })])
+    })
+
+    it('una carta con efecto y sin script juega igual, sin efectos (como en Dueling Nexus): el duelo arranca sin fallas', async () => {
+      const events: AutoEvent[] = []
+      // Pot of Greed sin su script: el núcleo la deja sin efectos.
+      const auto = createAutoHost({ core: { wasmBinary: wasmBinary() }, cardReader: (code) => cards.get(code) ?? null, scriptReader: (name) => (name === 'c55144522.lua' ? null : store.read(name)), emit: (event) => events.push(event) })
+
+      await auto.handle({ t: 'create', seed: 1, flags: MR5, players: PLAYERS, decks: [deck(small), deck(small)] })
+      expect(events.filter((event) => event.t === 'fault')).toEqual([])
+      expect(events.some((event) => event.t === 'ask')).toBe(true)
     })
   })
 })

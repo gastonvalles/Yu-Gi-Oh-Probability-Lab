@@ -86,16 +86,14 @@ describe('auto-screen · los estados', () => {
     expect(fake.undos).toBe(1)
   })
 
-  it('cartas sin reglas: la portada las lista y ofrece el modo manual o volver', () => {
+  it('una carta sin datos en el anfitrión (un create mal armado): la portada de siempre, sin lista, y volver', () => {
     const onExit = vi.fn()
     const fake = renderAuto(undefined, onExit)
 
-    core(() => fake.fault({ kind: 'rules', message: 'cards without automatic rules', cards: [700, 400] }))
-    const cover = screen.getByRole('alertdialog', { name: 'A 2 cartas les faltan sus reglas' })
+    core(() => fake.fault({ kind: 'rules', message: 'cards without data: 1', cards: [700] }))
+    const cover = screen.getByRole('alertdialog', { name: 'No se pudo crear el duelo' })
 
-    expect(cover).toHaveTextContent('Blue-Eyes White Dragon')
-    expect(cover).toHaveTextContent('Nibiru')
-    expect(within(cover).getByRole('button', { name: 'Jugar en modo manual' })).toBeInTheDocument()
+    expect(cover).not.toHaveTextContent('Blue-Eyes White Dragon')
     fireEvent.click(within(cover).getByRole('button', { name: 'Volver al lobby' }))
     expect(onExit).toHaveBeenCalledTimes(1)
   })

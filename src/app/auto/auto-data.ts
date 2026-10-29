@@ -1,6 +1,7 @@
 import type { OcgCardData } from 'ocgcore-wasm'
 import { CODE_CONSTANT, mapDeck, needsScript, scriptClosure, type DeckList, type MappedDeck } from './deck-map'
 import type { AutoEvent } from './protocol'
+import type { ApiCardReference } from '../../types'
 
 /**
  * Los datos de un duelo automático: las filas del `.cdb` de las cartas (y de las fichas, que el núcleo lee en caliente al crearlas, y de
@@ -48,7 +49,7 @@ export interface DataSource {
 
 /** Lo que el anfitrión necesita para sus lectores, ya en memoria. Viaja al Worker tal cual (`bigint` se clona). */
 export interface DuelData {
-  /** Los decks pedidos, en códigos del núcleo, con lo que falta (`missing`, `noRules`: con eso no se arranca). */
+  /** Los decks pedidos, en códigos del núcleo, con lo que no tiene reglas (`missing`, `noRules`: se juega igual, sin efectos, y se avisa). */
   decks: MappedDeck[]
   cards: OcgCardData[]
   scripts: Record<string, string>
@@ -88,6 +89,52 @@ export function cardData(row: CardRow): OcgCardData {
     rscale: (row.level >>> 16) & 0xff,
     link_marker: isLink ? row.def : 0,
   }
+}
+
+const ATTRIBUTES = ['EARTH', 'WATER', 'FIRE', 'WIND', 'LIGHT', 'DARK', 'DIVINE']
+const RACES = ['Warrior', 'Spellcaster', 'Fairy', 'Fiend', 'Zombie', 'Machine', 'Aqua', 'Pyro', 'Rock', 'Winged Beast', 'Plant', 'Insect', 'Thunder', 'Dragon', 'Beast', 'Beast-Warrior', 'Dinosaur', 'Fish', 'Sea Serpent', 'Reptile', 'Psychic', 'Divine-Beast', 'Creator-God', 'Wyrm', 'Cyberse', 'Illusion']
+/** Las palabras de `cardType` de YGOPRODeck y su bit de `type` (`TYPE_*` de `constant.lua`). */
+const TYPE_WORDS: readonly [RegExp, number][] = [
+  [/Fusion/, 0x40],
+  [/Ritual/, 0x80],
+  [/Spirit/, 0x200],
+  [/Union/, 0x400],
+  [/Gemini/, 0x800],
+  [/Tuner/, 0x1000],
+  [/Synchro/, 0x2000],
+  [/Flip/, 0x200000],
+  [/Toon/, 0x400000],
+  [/XYZ/i, 0x800000],
+  [/Pendulum/, 0x1000000],
+  [/Link/, 0x4000000],
+]
+/** La clase de Mágica o Trampa (`race` en YGOPRODeck) y su bit. */
+const SPELL_TRAP_KIND: Record<string, number> = { 'Quick-Play': 0x10000, Continuous: 0x20000, Equip: 0x40000, Field: 0x80000, Counter: 0x100000, Ritual: 0x80 }
+const stat = (value: string | null) => (value === null ? 0 : value === '?' ? -2 : Number.parseInt(value, 10) || 0)
+
+/**
+ * La fila de una carta que no está en ninguna base, con lo que la app sabe de ella (YGOPRODeck): juega sin script (sin efectos), con su tipo, Atributo, Tipo de monstruo,
+ * Nivel/Rango/Link, escalas y ATK/DEF. Lo que YGOPRODeck no da queda neutro: sin arquetipo (`setcode` 0) ni flechas de Link (`def` 0); un monstruo del Extra o uno
+ * Normal/de Ritual sin «Effect» en el tipo, como dice su nombre; un tipo que no se reconoce, 0.
+ */
+export function rowOfApiCard(code: number, name: string, card: ApiCardReference): CardRow {
+  const kind = card.cardType
+  const spell = /Spell/.test(kind)
+  const trap = /Trap/.test(kind)
+  let type = spell ? 0x2 : trap ? 0x4 : 0x1
+
+  if (spell || trap) type |= SPELL_TRAP_KIND[card.race ?? ''] ?? 0
+  else {
+    for (const [word, bit] of TYPE_WORDS) if (word.test(kind)) type |= bit
+    type |= /Normal/.test(kind) || /^(Fusion|Ritual) Monster$/.test(kind) ? 0x10 : 0x20
+  }
+  const monster = (type & 0x1) !== 0
+  const link = (type & 0x4000000) !== 0
+  const scale = card.scale ?? 0
+  const level = (link ? (card.linkValue ?? 0) : (card.level ?? 0)) | (scale << 16) | (scale << 24)
+  const bit = (list: readonly string[], value: string | null) => (value !== null && list.includes(value) ? 2 ** list.indexOf(value) : 0)
+
+  return { id: code, alias: 0, setcode: '0', type, atk: monster ? stat(card.atk) : 0, def: monster && !link ? stat(card.def) : 0, level: monster ? level : 0, race: String(monster ? bit(RACES, card.race) : 0), attribute: monster ? bit(ATTRIBUTES, card.attribute) : 0, name }
 }
 
 /** El código que manda el servidor en `{ error }` cuando el despliegue no tiene los datos de la beta (la copia de `api/auto-data.ts`; un test los compara). */
@@ -219,7 +266,10 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
       done += 1
       tick()
 
-      const data = new Map(codes.flatMap((code) => (rows.get(code) ? [[code, cardData(rows.get(code)!)] as const] : [])))
+      // Una carta que no está en ninguna base juega con la fila que armó la app (`DeckList.rows`, sin script: sin efectos); la de la base siempre gana.
+      const spare = new Map(lists.flatMap((list) => list.rows ?? []).map((row) => [row.id, row]))
+      const rowOf = (code: number) => rows.get(code) ?? spare.get(code) ?? null
+      const data = new Map(codes.flatMap((code) => (rowOf(code) ? [[code, cardData(rowOf(code)!)] as const] : [])))
       const resolve = (code: number) => data.get(code) ?? null
       // El cierre lo arma `scriptClosure` (síncrono, el de F1): cada vuelta pide en paralelo lo que le faltó, hasta que no falte nada
       // (2 o 3 vueltas: las cartas y `utility.lua`; después lo que ésa carga con `Duel.LoadScript`). Los Normales no necesitan script: no se piden.
@@ -261,14 +311,14 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
         done += 1
         tick()
       }
-      for (const code of more) if (rows.get(code)) data.set(code, cardData(rows.get(code)!))
+      for (const code of more) if (rowOf(code)) data.set(code, cardData(rowOf(code)!))
 
       return {
         decks: lists.map((list) => mapDeck(list, resolve, (name) => typeof texts[name] === 'string')),
         cards: [...data.values()],
         scripts: texts,
-        names: Object.fromEntries([...data.keys()].flatMap((code) => (rows.get(code)?.name ? [[code, rows.get(code)!.name!]] : []))),
-        texts: Object.fromEntries([...data.keys()].flatMap((code) => (rows.get(code)?.strs?.length ? [[code, rows.get(code)!.strs!]] : []))),
+        names: Object.fromEntries([...data.keys()].flatMap((code) => (rowOf(code)?.name ? [[code, rowOf(code)!.name!]] : []))),
+        texts: Object.fromEntries([...data.keys()].flatMap((code) => (rowOf(code)?.strs?.length ? [[code, rowOf(code)!.strs!]] : []))),
         version: manifest.version,
       }
     },

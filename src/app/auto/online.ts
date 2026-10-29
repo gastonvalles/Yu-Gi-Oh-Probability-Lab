@@ -53,7 +53,7 @@ export type OnlinePhase = 'idle' | 'awaitingDeck' | 'outdated' | 'checking' | 'b
 
 export interface OnlineSnapshot {
   phase: OnlinePhase
-  /** Lo que impide empezar: los códigos propios sin reglas (para listarlos con nombre), cuántas del otro, o la razón. */
+  /** Los códigos propios sin reglas (se juegan sin efectos: se listan con nombre), cuántas del otro, y la razón de lo que impide empezar (o null). */
   problems: { mine: number[]; theirs: number; reason: 'version' | 'off' | 'data' | 'lost' | null }
   /**
    * La sesión del duelo que corre (anfitrión o invitado), o null antes de `ordered`. Cambia de objeto en cada revancha (y, en el invitado, cada vez que el anfitrión le repone el
@@ -692,14 +692,15 @@ export function createHostLink(options: HostLinkOptions): OnlineLink {
 
         cards = cardsOf(data)
         dataVersion = data.version
-        next = { ok: mine.length === 0 && bad.length === 0, mine, theirs: bad.length, bad, reason: null }
+        // Las cartas sin reglas no frenan el duelo (juegan sin efectos): sólo se cuentan, para el aviso de los dos.
+        next = { ok: true, mine, theirs: bad.length, bad, reason: null }
       }
     } catch {
       next = { ok: false, mine: NONE, theirs: 0, bad: NONE, reason: 'data' }
     }
     if (token !== checks || destroyed) return
     check = next
-    // Lo guardado ya no se puede jugar (otros datos en el despliegue, cartas sin reglas): el duelo se perdió. Con otra versión de los datos tampoco se re-simula: las mismas
+    // Lo guardado ya no se puede jugar (otros datos en el despliegue, el duelo automático apagado): el duelo se perdió. Con otra versión de los datos tampoco se re-simula: las mismas
     // respuestas podrían armar otro duelo sin que nadie lo note.
     if (restoring && (!next.ok || (restoring.data && dataVersion && restoring.data !== dataVersion))) {
       restoring = null
@@ -1202,7 +1203,7 @@ function relayTransport(answer: (askId: number, answer: CoreAnswer) => void) {
  * no llegan, la pantalla tiene los nombres del builder. Los decks van en el orden de las listas pedidas (la mía y la del rival), como `loader.load`: la sesión los pone en el
  * orden de los asientos.
  */
-function guestLoader(init: InitMessage, source: DataSource): DataLoader {
+function guestLoader(init: InitMessage, source: DataSource, vanilla: number[]): DataLoader {
   return {
     manifest: async () => ({ version: 'remote', tokens: [], filler: [] }),
     async load() {
@@ -1211,7 +1212,8 @@ function guestLoader(init: InitMessage, source: DataSource): DataLoader {
 
       return {
         decks: [
-          { main: init.mine.main, extra: init.mine.extra, missing: [], noRules: [] },
+          // Mis cartas sin reglas, las que contó el anfitrión al revisar los decks: para el «sin jugadas» de mi mesa.
+          { main: init.mine.main, extra: init.mine.extra, missing: [], noRules: vanilla },
           { main: zeros(init.theirs.main), extra: zeros(init.theirs.extra), missing: [], noRules: [] },
         ],
         cards: rows.map(cardData),
@@ -1360,7 +1362,7 @@ export function createGuestLink(options: GuestLinkOptions): OnlineLink {
     relay = port
     // Sin la clave: el deck propio es bolsa desde el arranque (`typeOf` lo dice: es el invitado). Con la mesa rearmada (pasar de manual a automático), desde ella.
     session = createAutoSession({
-      loader: guestLoader(init, source),
+      loader: guestLoader(init, source, check?.mine ?? NONE),
       deck: myDeck,
       seat: init.seat,
       handSize: init.players[init.seat].hand,

@@ -162,11 +162,12 @@ describe('el enlace del duelo automático por enlace', () => {
     // Ni la mano ni el deck del anfitrión viajan en la sala: sólo la revisión.
     expect(toGuest(game.room).map((message) => message.t)).toEqual(['autoCheck'])
 
-    const blocked = setup({ noRules: [2] })
+    // Una carta sin reglas no frena (juega sin efectos, como en Dueling Nexus): los dos quedan listos y cada uno sabe cuántas hay de cada lado.
+    const vanilla = setup({ noRules: [2] })
 
-    await settle(blocked.room)
-    expect(blocked.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { mine: [], theirs: 1, reason: null } })
-    expect(blocked.guestLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { mine: [2], theirs: 0, reason: null } })
+    await settle(vanilla.room)
+    expect(vanilla.hostLink.getSnapshot()).toMatchObject({ phase: 'ready', problems: { mine: [], theirs: 1, reason: null } })
+    expect(vanilla.guestLink.getSnapshot()).toMatchObject({ phase: 'ready', problems: { mine: [2], theirs: 0, reason: null } })
   })
 
   it('apagado en el despliegue (o con otra versión del protocolo), nadie puede empezar y se dice por qué', async () => {
@@ -455,13 +456,13 @@ describe('el enlace del duelo automático por enlace', () => {
     const checks = () => toGuest(game.room, 'autoCheck')
 
     await settle(game.room)
-    // En la sala: otro deck se baja y se revisa (la 3 no tiene reglas) y volver al de antes, también.
+    // En la sala: otro deck se baja y se revisa (la 3 no tiene reglas: se cuenta, pero no frena) y volver al de antes, también.
     let loads = game.loads.length
 
     sendDeck([[3, 5]])
     await settle(game.room)
     expect(game.loads).toHaveLength(loads + 1)
-    expect(checks().at(-1)).toMatchObject({ ok: false, bad: [3] })
+    expect(checks().at(-1)).toMatchObject({ ok: true, bad: [3] })
     sendDeck([[2, 5]])
     await settle(game.room)
     expect(game.loads).toHaveLength(loads + 2)
@@ -485,15 +486,16 @@ describe('el enlace del duelo automático por enlace', () => {
     expect(game.hostLink.getSnapshot().phase).toBe('playing')
     expect(game.hostLink.getSnapshot().cards).toBe(cards)
     expect(checks()).toHaveLength(sent + 1)
-    // La revancha lo revisa: con la 3 sin reglas, nadie queda listo.
+    // La revancha lo revisa: la 3 sin reglas se cuenta y se puede jugar igual.
     game.guest.concede()
     await settle(game.room)
     game.host.rematch()
     game.guest.rematch()
     await settle(game.room)
     expect(game.loads.slice(loads)).toEqual([[HOST_DECK, { main: [[3, 5]], extra: [] }]])
-    expect(checks().at(-1)).toMatchObject({ ok: false, bad: [3] })
-    expect(game.hostLink.getSnapshot()).toMatchObject({ phase: 'blocked', problems: { theirs: 1 } })
+    expect(checks().at(-1)).toMatchObject({ ok: true, bad: [3] })
+    expect(game.hostLink.getSnapshot()).toMatchObject({ problems: { theirs: 1 } })
+    expect(game.hostLink.getSnapshot().phase).not.toBe('blocked')
   })
 
   it('el anfitrión corta lo que piensa el núcleo: el invitado recibe la re-emisión y vuelve a su pregunta; un pedido suyo en medio espera a que termine', async () => {

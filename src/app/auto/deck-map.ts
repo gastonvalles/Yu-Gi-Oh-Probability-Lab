@@ -1,11 +1,14 @@
 import { shuffleWithSeed } from '../practice-mat'
+import type { CardRow } from './auto-data'
 import { shuffleWithKey } from './duel-key'
 
 /**
  * De nuestros decks a lo que el núcleo necesita antes de `startDuel` (§3.5 y §3.10 del diseño): los códigos del `.cdb`, el orden del
  * deck (barajar lo hace quien llama: el núcleo no baraja el deck inicial) y el cierre de scripts. Los lectores son síncronos, así que
  * todo script tiene que estar en memoria antes; los que el núcleo pide en caliente (las fichas) los atiende el mismo lector (`core-host.ts`).
- * Ante la duda no se automatiza: una carta que no está en el `.cdb`, o que tiene efecto y no tiene script, no deja crear el duelo.
+ * Como en Dueling Nexus, una carta sin reglas no frena el duelo: la que tiene efecto y no tiene script (`noRules`) juega sin efectos (el núcleo ignora el script que
+ * falta), y la que no está en ninguna base juega con la fila que armó la app (`DeckList.rows`, también sin script); sólo la que no tiene datos en ningún lado
+ * (`missing`) queda afuera del deck. La pantalla avisa cuáles son.
  */
 
 /** Lo que el núcleo sabe de una carta (`OcgCardData` del paquete, lo justo). */
@@ -19,14 +22,16 @@ export interface CoreCardInfo {
 export interface DeckList {
   main: readonly (readonly [number, number])[]
   extra?: readonly (readonly [number, number])[]
+  /** Las filas que la app arma con sus datos (`rowOfApiCard`) para las cartas que no estén en ninguna base. */
+  rows?: readonly CardRow[]
 }
 
 export interface MappedDeck {
   main: number[]
   extra: number[]
-  /** Passcodes que el `.cdb` no tiene (ni por sí ni por un arte alternativo). */
+  /** Passcodes sin datos en ningún lado (ni en la base ni en `rows`): quedan afuera del deck. */
   missing: number[]
-  /** Cartas con efecto sin script: el núcleo las dejaría sin efectos, sin avisar. */
+  /** Cartas con efecto sin script: juegan sin efectos (la pantalla lo avisa). */
   noRules: number[]
 }
 

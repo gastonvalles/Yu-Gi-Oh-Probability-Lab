@@ -285,13 +285,15 @@ describe('la sesión del duelo automático', () => {
     session.destroy()
   })
 
-  it('una carta sin reglas no deja arrancar: error con la lista y sin crear el duelo', async () => {
+  it('una carta sin reglas no frena el duelo (como en Dueling Nexus): arranca igual y la sesión dice cuáles son tuyas', async () => {
     const host = fakeHost()
     const session = createAutoSession({ loader: loader({ main: [1, 1], extra: [], missing: [999], noRules: [300] }), deck: { main: [[1, 2]] }, transport: host.factory })
-    const failed = await until(session, (s) => s.status === 'error')
+    const ready = await until(session, (s) => s.status === 'ready')
 
-    expect(failed.fault).toMatchObject({ kind: 'rules', cards: [999, 300] })
-    expect(host.commands).toEqual([])
+    expect(ready.fault).toBeNull()
+    expect(ready.vanilla).toEqual([300, 999])
+    expect(host.commands).toMatchObject([{ t: 'create' }])
+    session.destroy()
   })
 
   it('los errores de un script se juntan sin cortar; tres RETRY seguidos del rival cortan la sesión', async () => {
