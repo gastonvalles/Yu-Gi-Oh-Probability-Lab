@@ -106,8 +106,11 @@ interface NewCombo {
   auto?: boolean
 }
 
+/** Las cartas de un combo que llevan nombre en `names`: las del deck, el Extra, la mano y la mano del rival. */
+export const comboCardIds = (initial: MatState) => [...initial.deck, ...initial.extra, ...initial.hand, ...(initial.rival?.hand ?? [])]
+
 export function createSavedCombo({ name, deckName, initial, actions, nameOf, auto = false }: NewCombo, combos: readonly SavedCombo[], now = new Date()): SavedCombo {
-  const ids = [...initial.deck, ...initial.extra, ...initial.hand, ...(initial.rival?.hand ?? [])]
+  const ids = comboCardIds(initial)
 
   return {
     id: createId('combo'),

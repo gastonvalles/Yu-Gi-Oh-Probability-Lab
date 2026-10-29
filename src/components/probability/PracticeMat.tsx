@@ -46,7 +46,7 @@ import {
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
-import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { comboCardIds, createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { downloadComboFile, shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
@@ -2014,7 +2014,9 @@ function PracticeMatBody({
   const importCombo = useCallback((result: ShareResult) => (result.ok ? addCombo(result.combo, 'practice.share.imported') : showToastMessage(t(`practice.share.error.${result.error}`), 'error')), [addCombo])
   const saveShared = () => {
     if (!shared) return
-    addCombo(shared.combo, 'practice.combo.saved')
+    // El enlace no trae los nombres (se piden al abrirlo): se guardan los que ya llegaron, así la lista de pasos sale al instante la próxima vez.
+    const known = comboCardIds(shared.combo.initial).flatMap((id) => (nameOf(id) === UNKNOWN_CARD.name ? [] : [[id, nameOf(id)] as const]))
+    addCombo({ ...shared.combo, names: { ...Object.fromEntries(known), ...shared.combo.names } }, 'practice.combo.saved')
     shared.onSaved()
   }
 
