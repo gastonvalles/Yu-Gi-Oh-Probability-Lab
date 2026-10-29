@@ -4,9 +4,10 @@ import { buildDuelReplay, duelReplayAt, type ReplayInput } from '../app/duel-rep
 import type { WireAct } from '../app/mat-public'
 import { createMatState, type MatAction } from '../app/practice-mat'
 import { muxMp4 } from '../components/replays/video/mp4-mux'
-import { videoSupport } from '../components/replays/video/video-encode'
+import { easeOut, placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { handRects, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
-import { frameDurations, INTRO_MS, OUTRO_MS, STEP_MS, videoFileName } from '../components/replays/video/video-timeline'
+import { videoSupport } from '../components/replays/video/video-support'
+import { frameDurations, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
 
 // Un duelo chico (como el de `duel-replay.test.ts`): invoco, coloco, activo y paso; el rival roba, invoca y me ataca.
 const deck = Array.from({ length: 20 }, (_, i) => `card-${14558127 + (i % 7) * 1000}-${Math.floor(i / 7) + 1}`)
@@ -121,7 +122,58 @@ describe('la escena de cada jugada', () => {
   })
 })
 
+describe('las transiciones', () => {
+  const motions = scenes.slice(1).map((scene, index) => transitionOf(scenes[index]!, scene))
+
+  it('la carta que se mueve va de su lugar de antes al de después, con ease-out; lo que no cambia no se mueve', () => {
+    // Jugada 2: invoco h0 de la mano a mi zona 1; las otras cartas de la mano se reacomodan.
+    const summon = motions[1]!
+    const placed = cardIn(scenes[2]!, 0, scenes[2]!.layout.cellAt(4, 0))!
+    const move = summon.find((motion) => motion.key === `0:${placed.id}`)!
+    expect(move.from).toEqual(placesOf(scenes[1]!).get(`0:${placed.id}`)!.pose)
+    expect(move.to).toEqual(placesOf(scenes[2]!).get(`0:${placed.id}`)!.pose)
+    expect(poseAt(move, 0)).toEqual(move.from)
+    expect(poseAt(move, 1)).toEqual(move.to)
+    const mid = poseAt(move, 0.5)
+    expect((mid.y - move.from!.y) / (move.to.y - move.from!.y)).toBeCloseTo(easeOut(0.5))
+    expect(easeOut(0.5)).toBeGreaterThan(0.5)
+    // Lo del rival no se movió.
+    expect(summon.every((motion) => motion.key.startsWith('0:'))).toBe(true)
+    // Un cambio de fase no mueve nada.
+    expect(motions[0]).toEqual([])
+  })
+
+  it('lo que sale de una pila arranca en la pila (el rival roba: del deck a la mano, de dorso)', () => {
+    const deckRect = scenes[5]!.layout.cellAt(0, 0)
+    const drawn = motions[5]!.find((motion) => motion.from && Math.abs(motion.from.x - (deckRect.x + deckRect.w / 2)) < 1 && Math.abs(motion.from.y - (deckRect.y + deckRect.h / 2)) < 1)
+    expect(drawn?.to.y).toBeLessThan(deckRect.y)
+    expect(drawn?.card.faceDown).toBe(true)
+  })
+
+  it('en la vista pública ningún cuadro muestra una carta que nadie mostró, ni durante una transición', () => {
+    const hidden = [14559127, 14561127, 14562127, 14563127, 14564127].map(String)
+    const faces = (cards: Motion['card'][]) => cards.flatMap((card) => [card.art ?? '', card.name])
+    const all = [
+      ...scenes.flatMap((scene) => faces(scene.sides.flatMap((side) => [...side.slots, ...side.hand].flatMap((slot) => (slot.card ? [slot.card] : []))))),
+      ...motions.flat().flatMap((motion) => faces([motion.card, ...(motion.fromCard ? [motion.fromCard] : [])])),
+    ]
+    expect(all.filter((text) => hidden.some((code) => text.includes(code)))).toEqual([])
+    // Y lo que sí se mostró aparece (la prueba no pasa por no mirar nada).
+    expect(all.some((text) => text.includes('14558127'))).toBe(true)
+  })
+})
+
 describe('los tiempos y el nombre del archivo', () => {
+  it('«Rápido (2×)»: cada jugada a la mitad; el principio y el cierre, igual', () => {
+    const normal = frameDurations(replay, 1)
+    const fast = frameDurations(replay, 2)
+    expect(fast[2]).toBe(STEP_MS / 2)
+    expect(fast[0]).toBe(INTRO_MS)
+    expect(fast.at(-1)).toBe(OUTRO_MS)
+    expect(videoDurationMs(replay, 2)).toBe(fast.reduce((sum, ms) => sum + ms, 0))
+    expect(fast.slice(1, -1)).toEqual(normal.slice(1, -1).map((ms) => ms / 2))
+  })
+
   it('la mesa al empezar, una jugada por cuadro (las fases más rápido) y la última se queda con el resultado', () => {
     const durations = frameDurations(replay)
     expect(durations).toHaveLength(replay.steps.length + 1)
@@ -150,14 +202,14 @@ describe('el soporte de WebCodecs', () => {
   })
 
   it('sin WebCodecs no hay video (y se dice por qué)', async () => {
-    expect(await videoSupport(720, {})).toEqual({ ok: false, reason: 'webcodecs' })
-    expect(await videoSupport(720, { VideoEncoder: fake(() => true).VideoEncoder })).toEqual({ ok: false, reason: 'webcodecs' })
+    expect(await videoSupport({})).toEqual({ ok: false, reason: 'webcodecs' })
+    expect(await videoSupport({ VideoEncoder: fake(() => true).VideoEncoder })).toEqual({ ok: false, reason: 'webcodecs' })
   })
 
   it('usa el primer perfil H.264 que acepta, y si ninguno, avisa', async () => {
-    expect(await videoSupport(720, fake((codec) => codec.startsWith('avc1.42')))).toEqual({ ok: true, codec: 'avc1.42e028' })
-    expect(await videoSupport(720, fake((codec) => (codec === 'avc1.640028' ? new Error('no') : codec === 'avc1.4d0028')))).toEqual({ ok: true, codec: 'avc1.4d0028' })
-    expect(await videoSupport(720, fake(() => false))).toEqual({ ok: false, reason: 'h264' })
+    expect(await videoSupport(fake((codec) => codec.startsWith('avc1.42')))).toEqual({ ok: true, codec: 'avc1.42e028' })
+    expect(await videoSupport(fake((codec) => (codec === 'avc1.640028' ? new Error('no') : codec === 'avc1.4d0028')))).toEqual({ ok: true, codec: 'avc1.4d0028' })
+    expect(await videoSupport(fake(() => false))).toEqual({ ok: false, reason: 'h264' })
   })
 })
 

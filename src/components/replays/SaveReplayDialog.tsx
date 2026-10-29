@@ -1,35 +1,53 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { DuelReplay, ReplayView } from '../../app/duel-replay'
-import { downloadReplayFile, MAX_SAVED_REPLAYS, saveReplay } from '../../app/duel-replay-share'
+import { MAX_SAVED_REPLAYS, saveReplay } from '../../app/duel-replay-share'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { Modal } from '../ui/Modal'
 import { Switch } from '../ui/Switch'
-import { titleOf } from './duel-replay-text'
+import { FastSwitch, isLongVideo, unsupportedText, useReplayVideo, useVideoSupport, videoStage } from './ReplayVideo'
 
-/** Guarda uno arriba de «Tus duelos» y dice cómo salió (lleno: se fue el más viejo; sin almacenamiento: que lo baje). */
+/** Guarda uno arriba de «Tus duelos» y dice cómo salió (lleno: se fue el más viejo; sin almacenamiento: que baje el video). */
 export async function keepReplay(replay: DuelReplay): Promise<boolean> {
   const { saved, dropped } = await saveReplay(replay)
-  if (!saved) showToastMessage(t('meta.duels.saveFailed'), 'error', { action: { label: t('meta.duels.download'), onAction: () => downloadReplayFile(replay, titleOf(replay)) } })
+  if (!saved) showToastMessage(t('meta.duels.saveFailed'), 'error')
   else showToastMessage(dropped ? t('meta.duels.full', { max: MAX_SAVED_REPLAYS }) : t('meta.duels.saved'), dropped ? 'warning' : 'success')
   return saved !== null
 }
 
 /**
  * «Guardar replay» de un duelo (al terminar y en «Más opciones»): qué se guarda (lo de un espectador; con la casilla, también tu mano y tus cartas boca abajo, apagada al abrir) y
- * guardarlo en «Tus duelos» o bajar el archivo ya. El replay se arma al tocar (`build`), con el duelo como está en ese momento. Sin velo: la mesa se sigue viendo.
+ * guardarlo en «Tus duelos» o bajarlo ya como video (`ReplayVideo.tsx`: se arma acá mismo, con su progreso, y queda listo para guardar o compartir). El replay se arma al tocar
+ * (`build`), con el duelo como está en ese momento. Sin velo: la mesa se sigue viendo.
  */
 export function SaveReplayDialog({ isOpen, onClose, build, note }: { isOpen: boolean; onClose: () => void; build: (view: ReplayView) => DuelReplay; /** Un límite de lo grabado (el manual con un corte: hasta dónde llega). */ note?: string }) {
   const [mine, setMine] = useState(false)
+  const [fast, setFast] = useState(true)
+  // El replay de la vista pública al abrir: para saber si el video pasa de 6 minutos (y ofrecer «Rápido (2×)»). Se rearma al tocar, con la vista elegida.
+  const [sample, setSample] = useState<DuelReplay | null>(null)
+  const supported = useVideoSupport()
+  const video = useReplayVideo()
   const view: ReplayView = mine ? 'mine' : 'public'
-  // La casilla vuelve a apagarse cada vez que se cierra.
+  const long = sample !== null && isLongVideo(sample)
+  const reason = unsupportedText(supported)
+
+  useEffect(() => {
+    if (isOpen) setSample(build('public'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez por apertura: `build` cambia con cada jugada
+  }, [isOpen])
+
+  // La casilla vuelve a apagarse cada vez que se cierra; cerrar cancela el video.
   const close = () => {
+    video.cancel()
     setMine(false)
+    setFast(true)
     onClose()
   }
+  const makeVideo = () => void video.start(build(view), long && fast ? 2 : 1)
+  const stage = video.state.stage === 'idle' ? null : videoStage(video.state, { cancel: video.cancel, retry: makeVideo, back: video.cancel })
 
   return (
     <Modal
@@ -38,36 +56,35 @@ export function SaveReplayDialog({ isOpen, onClose, build, note }: { isOpen: boo
       size="keypad"
       anchor="mat"
       veil={false}
-      title={t('meta.duels.save.title')}
+      title={stage?.title ?? t('meta.duels.save.title')}
       footer={
-        <>
-          <Button
-            variant="secondary"
-            icon="download"
-            onClick={() => {
-              const replay = build(view)
-              downloadReplayFile(replay, titleOf(replay))
-            }}
-          >
-            {t('meta.duels.download')}
-          </Button>
-          <Button variant="primary" icon="save" onClick={() => void keepReplay(build(view)).then((ok) => ok && close())}>
-            {t('meta.duels.save.button')}
-          </Button>
-        </>
+        stage?.footer ?? (
+          <>
+            <Button variant="secondary" icon="download" disabled={!supported?.ok} onClick={makeVideo}>
+              {t('meta.duels.video.download')}
+            </Button>
+            <Button variant="primary" icon="save" onClick={() => void keepReplay(build(view)).then((ok) => ok && close())}>
+              {t('meta.duels.save.button')}
+            </Button>
+          </>
+        )
       }
     >
-      <div className="grid gap-4">
-        <p className="m-0 text-body text-muted">{t('meta.duels.save.hint')}</p>
-        {note ? <Callout tone="warning">{note}</Callout> : null}
-        <div className="flex items-center justify-between gap-3">
-          <span className="grid min-w-0 gap-0.5">
-            <span className="text-body font-semibold text-foreground">{t('meta.duels.save.mine')}</span>
-            <span className="text-micro text-soft">{t('meta.duels.save.mineHint')}</span>
-          </span>
-          <Switch checked={mine} onChange={setMine} label={t('meta.duels.save.mine')} />
+      {stage?.body ?? (
+        <div className="grid gap-4">
+          <p className="m-0 text-body text-muted">{t('meta.duels.save.hint')}</p>
+          {note ? <Callout tone="warning">{note}</Callout> : null}
+          <div className="flex items-center justify-between gap-3">
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-body font-semibold text-foreground">{t('meta.duels.save.mine')}</span>
+              <span className="text-micro text-soft">{t('meta.duels.save.mineHint')}</span>
+            </span>
+            <Switch checked={mine} onChange={setMine} label={t('meta.duels.save.mine')} />
+          </div>
+          {long && supported?.ok ? <FastSwitch replay={sample} fast={fast} onChange={setFast} /> : null}
+          {reason ? <p className="m-0 text-micro text-soft">{reason}</p> : null}
         </div>
-      </div>
+      )}
     </Modal>
   )
 }

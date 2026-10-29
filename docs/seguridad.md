@@ -28,9 +28,10 @@ sus despliegues).
   ofrece hasta 7.500 caracteres y, más largo, el archivo. No lleva usuario ni relay. El enlace va en `v: 2` (45 jugadas ≈ 730
   contra 1.700): sin los nombres (se piden por passcode al abrir; sin red, «Carta») y con cada id como índice de una tabla de
   passcodes (tope de 1.000, todo índice dentro de ella); se arma la forma `v: 1` y pasa por el mismo validador.
-- **El replay de un duelo, igual** (`duel-replay-share.ts`): el mismo sobre (`kind: 'duel'`, `#replay=`, `*.ygolab-duel.json`), 2 MB
+- **El replay de un duelo, igual** (`duel-replay-share.ts`): el mismo sobre (`kind: 'duel'`, `#replay=`), 2 MB
   inflado y 6.000 jugadas de tope, nombres por `cleanName`. Sin la clave del duelo, las respuestas del núcleo, el chat ni el relay;
-  lo oculto del rival nunca estuvo y lo propio sólo va con «Incluir mi mano». Un enlace entra hasta ~950 jugadas; si no, el archivo.
+  lo oculto del rival nunca estuvo y lo propio sólo va con «Incluir mi mano». Un enlace entra hasta ~950 jugadas; si no, el video
+  (`replays/video/`: un .mp4 que se arma en el navegador con la misma vista; no se lee ningún archivo de duelo).
 - **El proxy de imágenes** (`api/card-image.ts`): sólo rutas con la forma de una imagen de carta o de set de YGOPRODeck, con el
   host fijo y sin seguir redirecciones; sólo los parámetros `path` y `w` (cada valor distinto sería otra copia en el CDN); sólo
   JPEG, PNG o WebP, con tope de bytes y de píxeles; lo que falla es un 502 que no se guarda. Sale con

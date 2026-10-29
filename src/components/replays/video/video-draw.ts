@@ -1,10 +1,11 @@
 import { CARD_BACK_URL } from '../../probability/practice-styles'
+import { easeOut, poseAt, poseOf, slotUnder, type Motion, type Pose } from './video-motion'
 import { cardRect, type Rect, type Scene, type SceneCard, type SceneSlot } from './video-scene'
 
 /**
  * Pinta una escena (`video-scene.ts`) en un lienzo: la mesa, las manos, las vidas, el turno, la jugada en texto y la marca del sitio. Los colores son los tokens del sitio
- * (`readVideoTheme`, leídos de las variables CSS) y la letra, Lexend Deca. Corte seco: cada cuadro es una escena entera. Para las transiciones (la carta que se desliza),
- * `drawFrame` recibiría la escena de antes y la de después con un `t`: las cartas llevan su id, así que se interpola el lugar de cada una entre las dos.
+ * (`readVideoTheme`, leídos de las variables CSS) y la letra, Lexend Deca. Las transiciones (`video-motion.ts`): `drawFrame` con `moving` pinta el fondo sin las cartas en
+ * vuelo, y `drawMotions` las pone encima en cada momento.
  */
 
 export interface VideoTheme {
@@ -106,16 +107,15 @@ function wrap(ctx: Ctx, text: string, width: number, lines: number): string[] {
   return out
 }
 
-function drawCard(ctx: Ctx, rect: Rect, card: SceneCard, assets: VideoAssets, s: number) {
+/** Una carta parada de `w`×`h`, centrada en su lugar y girada (acostada o de cabeza): la misma cuenta en su casilla y en vuelo. */
+function drawCard(ctx: Ctx, pose: Pose, card: SceneCard, assets: VideoAssets, s: number) {
   const { theme } = assets
-  const angle = (card.sideways ? Math.PI / 2 : 0) + (card.upsideDown ? Math.PI : 0)
-  // Parada, mide lo que mide la casilla; acostada, se dibuja parada y se gira.
-  const [w, h] = card.sideways ? [rect.h, rect.w] : [rect.w, rect.h]
+  const { w, h } = pose
   const image = card.faceDown ? assets.back : card.art ? assets.arts.get(card.art) : null
 
   ctx.save()
-  ctx.translate(rect.x + rect.w / 2, rect.y + rect.h / 2)
-  ctx.rotate(angle)
+  ctx.translate(pose.x, pose.y)
+  ctx.rotate(pose.angle)
   if (image) ctx.drawImage(image, -w / 2, -h / 2, w, h)
   else {
     // Sin imagen: el dorso de color o un hueco con el nombre.
@@ -129,14 +129,10 @@ function drawCard(ctx: Ctx, rect: Rect, card: SceneCard, assets: VideoAssets, s:
       wrap(ctx, card.name, w - 8 * s, 5).forEach((line, index) => ctx.fillText(line, 0, -h / 2 + 6 * s + index * 14 * s))
     }
   }
-  ctx.restore()
   ctx.strokeStyle = theme.border
   ctx.lineWidth = 1 * s
-  ctx.strokeRect(rect.x, rect.y, rect.w, rect.h)
-
-  // Contadores y materiales: chapas derechas (no giran con la carta), arriba a la izquierda y abajo a la derecha.
-  if (card.counters > 0) badge(ctx, rect.x + 2 * s, rect.y + 2 * s, String(card.counters), theme.info, theme.background, s)
-  if (card.materials > 0) badge(ctx, rect.x + rect.w - 2 * s, rect.y + rect.h - 2 * s, `×${card.materials}`, theme.primary, theme.foreground, s, true)
+  ctx.strokeRect(-w / 2, -h / 2, w, h)
+  ctx.restore()
 }
 
 function badge(ctx: Ctx, x: number, y: number, text: string, fill: string, color: string, s: number, fromEnd = false) {
@@ -156,8 +152,13 @@ function badge(ctx: Ctx, x: number, y: number, text: string, fill: string, color
 
 function drawSlot(ctx: Ctx, slot: SceneSlot, assets: VideoAssets, s: number) {
   const { theme } = assets
-  if (slot.card) drawCard(ctx, cardRect(slot.rect, slot.card.sideways), slot.card, assets, s)
-  else if (slot.label) {
+  if (slot.card) {
+    drawCard(ctx, poseOf(slot.rect, slot.card), slot.card, assets, s)
+    // Contadores y materiales: chapas derechas (no giran con la carta), arriba a la izquierda y abajo a la derecha.
+    const r = cardRect(slot.rect, slot.card.sideways)
+    if (slot.card.counters > 0) badge(ctx, r.x + 2 * s, r.y + 2 * s, String(slot.card.counters), theme.info, theme.background, s)
+    if (slot.card.materials > 0) badge(ctx, r.x + r.w - 2 * s, r.y + r.h - 2 * s, `×${slot.card.materials}`, theme.primary, theme.foreground, s, true)
+  } else if (slot.label) {
     ctx.fillStyle = theme.soft
     ctx.font = `600 ${15 * s}px ${FONT}`
     ctx.textAlign = 'center'
@@ -180,7 +181,11 @@ function drawScore(ctx: Ctx, rect: Rect, name: string, lp: number, color: string
   ctx.fillText(String(lp), x, rect.y + 72 * s)
 }
 
-export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets) {
+/**
+ * Un cuadro entero. Con `moving` (las cartas que dibuja una transición, `video-motion.ts`), esas no se dibujan en su casilla: ahí va lo que había en `before` (la pila con
+ * su carta de antes, la zona vacía) hasta que llegan. Así sale el fondo de toda la transición de una vez, y cada cuadro de ella es ese fondo más las cartas en vuelo.
+ */
+export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: { keys: ReadonlySet<string>; before: Scene }) {
   const { theme } = assets
   const { layout } = scene
   const s = layout.scale
@@ -215,7 +220,14 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets) {
     ctx.fillText(phase.short, phase.rect.x + phase.rect.w / 2, phase.rect.y + phase.rect.h / 2 + 1 * s)
   }
 
-  for (const side of scene.sides) for (const slot of [...side.slots, ...side.hand]) drawSlot(ctx, slot, assets, s)
+  scene.sides.forEach((side, index) => {
+    for (const slot of side.slots) {
+      const under = slot.card && moving?.keys.has(`${index}:${slot.card.id}`) ? (slotUnder(moving.before, index as 0 | 1, slot) ?? { ...slot, card: undefined }) : slot
+      // Lo de antes también puede estar volando (la carta que se va de esa misma pila): entonces, la casilla vacía.
+      drawSlot(ctx, under.card && moving?.keys.has(`${index}:${under.card.id}`) ? { ...under, card: undefined } : under, assets, s)
+    }
+    for (const slot of side.hand) if (!(slot.card && moving?.keys.has(`${index}:${slot.card.id}`))) drawSlot(ctx, slot, assets, s)
+  })
 
   // Lo que tocó la jugada: un aro ámbar («se activa / ahora»).
   ctx.strokeStyle = theme.info
@@ -253,6 +265,18 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets) {
   ctx.fillText(scene.footer, layout.footer.x + layout.footer.w / 2, layout.footer.y + layout.footer.h / 2)
 
   if (scene.banner) drawBanner(ctx, scene, scene.banner, assets)
+}
+
+/** Las cartas en vuelo en el momento `t` (0 a 1) de la transición: arriba de todo; la que aparece, con un fundido; la que se da vuelta, de una cara a la otra. */
+export function drawMotions(ctx: Ctx, motions: readonly Motion[], t: number, assets: VideoAssets, s: number) {
+  const e = easeOut(t)
+  for (const motion of motions) {
+    const pose = poseAt(motion, t)
+    if (motion.fromCard) drawCard(ctx, pose, motion.fromCard, assets, s)
+    ctx.globalAlpha = motion.from && !motion.fromCard ? 1 : e
+    drawCard(ctx, pose, motion.card, assets, s)
+    ctx.globalAlpha = 1
+  }
 }
 
 /** El título o el cierre: una placa sobre el medio de la mesa, con los nombres o el resultado. */

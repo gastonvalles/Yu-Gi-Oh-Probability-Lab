@@ -77,7 +77,7 @@ describe('Tus duelos', () => {
   it('una fila por duelo: la abre; el enlace sólo si entra; borrar pide confirmación', () => {
     const onOpen = vi.fn()
     const onDelete = vi.fn()
-    render(<YourDuels items={items} onOpen={onOpen} onCopyLink={() => {}} onDownload={() => {}} onDelete={onDelete} onImport={() => {}} />)
+    render(<YourDuels items={items} onOpen={onOpen} onCopyLink={() => {}} onVideo={() => {}} onDelete={onDelete} onImport={() => {}} />)
 
     expect(screen.getByRole('button', { name: 'Ver el replay de Ana vs Beto' })).toHaveTextContent('412 jugadas · Ganó Beto · por rendición')
     expect(screen.getByRole('button', { name: 'Ver el replay de Duelista vs Rival' })).toHaveTextContent('Sin terminar · Con tu mano')
@@ -93,8 +93,9 @@ describe('Tus duelos', () => {
   })
 
   it('vacía, dice cómo se guarda uno', () => {
-    render(<YourDuels items={[]} onOpen={() => {}} onCopyLink={() => {}} onDownload={() => {}} onDelete={() => {}} onImport={() => {}} />)
+    render(<YourDuels items={[]} onOpen={() => {}} onCopyLink={() => {}} onVideo={() => {}} onDelete={() => {}} onImport={() => {}} />)
     expect(screen.getByText('Todavía no guardaste duelos')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Abrir archivo' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir archivo' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Pegar enlace' })).toBeInTheDocument()
   })
 })

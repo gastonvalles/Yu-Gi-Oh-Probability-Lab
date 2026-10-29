@@ -5,7 +5,6 @@ import type { DuelReplay } from '../../app/duel-replay'
 import {
   decodeReplayPayload,
   deleteSavedReplay,
-  downloadReplayFile,
   encodeReplayPayload,
   linkFits,
   MAX_LINK_LENGTH,
@@ -58,6 +57,7 @@ import { ReplayModal } from './ReplayModal'
 import { textLink } from '../ui/typography'
 import { titleOf } from './duel-replay-text'
 import { DuelReplayScreen } from './DuelReplayScreen'
+import { ReplayVideoDialog } from './ReplayVideo'
 import { keepReplay } from './SaveReplayDialog'
 import { YourDuels } from './YourDuels'
 
@@ -88,17 +88,18 @@ interface ReplaysScreenProps {
 
 const fail = (error: ReplayError) => showToastMessage(t(`meta.duels.error.${error}`), 'error')
 
-/** Lo que dice el aviso después de compartir el enlace de un replay; `download` lo baja cuando el enlace no entra o no se pudo copiar. */
-function tellShared(outcome: Awaited<ReturnType<typeof shareReplayLink>>, download: () => void) {
+/** Lo que dice el aviso después de compartir el enlace de un replay; `video` ofrece el video cuando el enlace no entra o no se pudo copiar. */
+function tellShared(outcome: Awaited<ReturnType<typeof shareReplayLink>>, video: () => void) {
   if (outcome === 'copied') showToastMessage(t('meta.duels.copied'), 'success')
-  else if (outcome === 'failed') showToastMessage(t('meta.duels.copyFailed'), 'error', { action: { label: t('meta.duels.download'), onAction: download } })
-  else if (outcome === 'tooLong') showToastMessage(t('meta.duels.tooLong'), 'warning', { action: { label: t('meta.duels.download'), onAction: download } })
+  else if (outcome === 'failed') showToastMessage(t('meta.duels.copyFailed'), 'error', { action: { label: t('meta.duels.video.download'), onAction: video } })
+  else if (outcome === 'tooLong') showToastMessage(t('meta.duels.tooLong'), 'warning', { action: { label: t('meta.duels.video.download'), onAction: video } })
 }
 
-/** «Tus duelos» y el replay abierto: la lista guardada, abrir uno (guardado, de un archivo o de un enlace) y lo que se hace con él. */
+/** «Tus duelos» y el replay abierto: la lista guardada, abrir uno (guardado o de un enlace) y lo que se hace con él (el video, en `ReplayVideoDialog`). */
 function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProps) {
   const [items, setItems] = useState<SavedReplay[]>(readSavedReplays)
   const [opened, setOpened] = useState<{ replay: DuelReplay; payload: string; shared: boolean } | null>(null)
+  const [filming, setFilming] = useState<DuelReplay | null>(null)
 
   // El enlace con el que se abrió la app: es de otra persona (`duel-replay-share.ts` lo valida).
   useEffect(() => {
@@ -132,8 +133,11 @@ function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProp
     close: () => setOpened(null),
     open: (item: SavedReplay) => withReplay(item, (replay) => setOpened({ replay, payload: item.payload, shared: false })),
     importShared: (read: SharedRead) => void importShared(read),
-    copyLink: (item: SavedReplay) => withReplay(item, (replay) => void shareReplayLink(replay, titleOf(replay), item.payload).then((outcome) => tellShared(outcome, () => downloadReplayFile(replay, titleOf(replay))))),
-    download: (item: SavedReplay) => withReplay(item, (replay) => downloadReplayFile(replay, titleOf(replay))),
+    filming,
+    film: setFilming,
+    stopFilming: () => setFilming(null),
+    copyLink: (item: SavedReplay) => withReplay(item, (replay) => void shareReplayLink(replay, titleOf(replay), item.payload).then((outcome) => tellShared(outcome, () => setFilming(replay)))),
+    video: (item: SavedReplay) => withReplay(item, setFilming),
     remove: (item: SavedReplay) => {
       setItems(deleteSavedReplay(item.id))
       showToastMessage(t('meta.duels.deleted'), 'info')
@@ -206,19 +210,22 @@ export function ReplaysScreen(props: ReplaysScreenProps = {}) {
   if (duels.opened) {
     const { replay, payload } = duels.opened
     const title = titleOf(replay)
-    const download = () => downloadReplayFile(replay, title)
+    const video = () => duels.film(replay)
 
     return (
-      <DuelReplayScreen
-        key={payload}
-        replay={replay}
-        onClose={duels.close}
-        shared={duels.opened.shared ? { onSave: duels.saveOpened } : undefined}
-        actions={[
-          ...(linkFits(payload, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, payload).then((outcome) => tellShared(outcome, download)) }] : []),
-          { label: t('meta.duels.download'), icon: 'download', onSelect: download },
-        ]}
-      />
+      <>
+        <DuelReplayScreen
+          key={payload}
+          replay={replay}
+          onClose={duels.close}
+          shared={duels.opened.shared ? { onSave: duels.saveOpened } : undefined}
+          actions={[
+            ...(linkFits(payload, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, payload).then((outcome) => tellShared(outcome, video)) }] : []),
+            { label: t('meta.duels.video.download'), icon: 'download', onSelect: video },
+          ]}
+        />
+        <ReplayVideoDialog replay={duels.filming} onClose={duels.stopFilming} />
+      </>
     )
   }
 
@@ -252,7 +259,8 @@ export function ReplaysScreen(props: ReplaysScreenProps = {}) {
 
       <LiveStreamsSection state={live} />
 
-      <YourDuels items={duels.items} onOpen={duels.open} onCopyLink={duels.copyLink} onDownload={duels.download} onDelete={duels.remove} onImport={duels.importShared} />
+      <YourDuels items={duels.items} onOpen={duels.open} onCopyLink={duels.copyLink} onVideo={duels.video} onDelete={duels.remove} onImport={duels.importShared} />
+      <ReplayVideoDialog replay={duels.filming} onClose={duels.stopFilming} />
 
       <section id="replays-list" aria-labelledby="replays-list-title" className="grid gap-4">
         <Heading level="section" id="replays-list-title">

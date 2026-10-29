@@ -5,6 +5,7 @@ import type { SavedReplay } from '../../../app/duel-replay-share'
 import type { WireAct } from '../../../app/mat-public'
 import { createMatState, describeMatSteps } from '../../../app/practice-mat'
 import { DuelReplayScreen } from '../../replays/DuelReplayScreen'
+import { videoStage } from '../../replays/ReplayVideo'
 import { YourDuels } from '../../replays/YourDuels'
 import { createSavedCombo, type SavedCombo } from '../../../app/saved-combos'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
@@ -148,18 +149,39 @@ function DuelReplaySamples() {
     [],
   )
 
+  // Los tres estados del video, con un archivo de 3,4 MB de mentira.
+  const videoSamples = useMemo(() => {
+    const file = new File([new Uint8Array(3_400_000)], 'Ana-vs-Beto-2026-10-29.mp4', { type: 'video/mp4' })
+    return [
+      videoStage({ stage: 'working', progress: 0.42 }, { cancel: noop, retry: noop }),
+      videoStage({ stage: 'ready', file, durationMs: 414_000 }, { cancel: noop, retry: noop, back: noop }),
+      videoStage({ stage: 'failed' }, { cancel: noop, retry: noop, back: noop }),
+    ]
+  }, [])
+
   return (
     <>
-      <Specimen title="Tus duelos" layout="column" note={<>En Replays, junto a los videos: los duelos guardados en este navegador (hasta 20), una fila por duelo (la fila lo abre; el ⋯ copia el enlace si entra en uno, baja el archivo o lo borra, con confirmación). Arriba, pegar un enlace y <Tag>Abrir archivo</Tag>: un solo lector que elige por el tipo (un combo va a la mesa). «Jugar solo» no tiene nombres: «Duelista vs Rival». Vacía, cómo se guarda uno. Archivos: <Tag>replays/YourDuels.tsx</Tag> y <Tag>app/duel-replay-share.ts</Tag></>}>
+      <Specimen title="Tus duelos" layout="column" note={<>En Replays, junto a los videos: los duelos guardados en este navegador (hasta 20), una fila por duelo (la fila lo abre; el ⋯ copia el enlace si entra en uno, baja el video —<Tag>ReplayVideo.tsx</Tag>, con su progreso y «Video listo»— o lo borra, con confirmación). Arriba, pegar un enlace: un solo lector que elige por el tipo (un combo va a la mesa). «Jugar solo» no tiene nombres: «Duelista vs Rival». Vacía, cómo se guarda uno. Archivos: <Tag>replays/YourDuels.tsx</Tag> y <Tag>app/duel-replay-share.ts</Tag></>}>
         <div className="grid gap-6 rounded-card border border-border-subtle bg-background p-3">
-          <YourDuels items={items} onOpen={noop} onCopyLink={noop} onDownload={noop} onDelete={noop} onImport={noop} />
-          <YourDuels items={[]} onOpen={noop} onCopyLink={noop} onDownload={noop} onDelete={noop} onImport={noop} />
+          <YourDuels items={items} onOpen={noop} onCopyLink={noop} onVideo={noop} onDelete={noop} onImport={noop} />
+          <YourDuels items={[]} onOpen={noop} onCopyLink={noop} onVideo={noop} onDelete={noop} onImport={noop} />
         </div>
       </Specimen>
-      <Specimen title="Replay de un duelo · compartido" layout="column" note={<>Lo que vería un espectador (lo que nadie mostró, de dorso; con «Incluir mi mano», la de quien grabó boca arriba), las vidas, el turno y la jugada, con la línea de tiempo y los botones del replay de la práctica (los turnos marcados con una línea). Abierto de un enlace o un archivo, el aviso <Tag>Replay compartido</Tag> con <Tag>Guardar en mis replays</Tag>. Archivos: <Tag>replays/DuelReplayScreen.tsx</Tag> y <Tag>app/duel-replay.ts</Tag></>}>
+      <Specimen title="Video del replay · estados" layout="column" note={<>«Descargar video» (en «Guardar replay» y en el ⋯): se arma en el navegador con un anillo de progreso y «Cancelar»; listo, dice cuánto pesa y ofrece <Tag>Guardar video</Tag> y, si el sistema puede, <Tag>Compartir video</Tag> (compartir pide un toque reciente: por eso es un paso aparte). Sin WebCodecs, el botón apagado con el motivo. Archivos: <Tag>replays/ReplayVideo.tsx</Tag> y <Tag>replays/video/</Tag></>}>
+        <SpecimenGrid>
+          {videoSamples.map((sample) => (
+            <Card key={sample.title} className="grid gap-4">
+              <strong className="text-lead font-bold text-foreground">{sample.title}</strong>
+              {sample.body}
+              <div className="flex flex-wrap justify-end gap-2">{sample.footer}</div>
+            </Card>
+          ))}
+        </SpecimenGrid>
+      </Specimen>
+      <Specimen title="Replay de un duelo · compartido" layout="column" note={<>Lo que vería un espectador (lo que nadie mostró, de dorso; con «Incluir mi mano», la de quien grabó boca arriba), las vidas, el turno y la jugada, con la línea de tiempo y los botones del replay de la práctica (los turnos marcados con una línea). Abierto de un enlace, el aviso <Tag>Replay compartido</Tag> con <Tag>Guardar en mis replays</Tag>. Archivos: <Tag>replays/DuelReplayScreen.tsx</Tag> y <Tag>app/duel-replay.ts</Tag></>}>
         <Segmented label="Qué se ve" variant="chips" size="sm" value={view} onChange={setView} options={[{ value: 'public', label: 'De espectador' }, { value: 'mine', label: 'Con mi mano' }]} />
         <div className="h-[52rem] max-w-full overflow-hidden rounded-card border border-border-subtle bg-background">
-          <DuelReplayScreen replay={replay} onClose={noop} shared={{ onSave: noop }} actions={[{ label: 'Descargar archivo', icon: 'download', onSelect: noop }]} />
+          <DuelReplayScreen replay={replay} onClose={noop} shared={{ onSave: noop }} actions={[{ label: 'Descargar video', icon: 'download', onSelect: noop }]} />
         </div>
       </Specimen>
     </>

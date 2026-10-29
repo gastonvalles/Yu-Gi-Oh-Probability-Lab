@@ -1,9 +1,9 @@
-import { duelReplayAt, passcodeOf, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide, type ReplayStep } from '../../../app/duel-replay'
+import { duelReplayAt, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide, type ReplayStep } from '../../../app/duel-replay'
 import { cardImageSrc } from '../../../app/card-image-source'
-import { describeMatAction, isToken, PHASES, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
+import { isToken, PHASES, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { artOfDrawId } from '../../duel/duel-art'
-import { playerName } from '../duel-replay-text'
+import { cardName, playerName, realOf, stepText } from '../duel-replay-text'
 
 /**
  * Qué se dibuja en un cuadro del video de un replay, sin dibujar nada: dónde va cada casilla (en un lienzo vertical 9:16, la mesa compacta del celular: las pilas del rival arriba,
@@ -131,33 +131,12 @@ export function handRects(area: Rect, count: number): Rect[] {
   return Array.from({ length: count }, (_, index) => ({ x: x0 + index * step, y: area.y, w, h }))
 }
 
-/** El id real de una carta de un lado (como en `DuelReplayScreen`): lo que mostró su dueño o, con «mi mano», lo oculto de quien grabó. */
-export function realOf(replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, id: string): string | undefined {
-  const owner = (id.startsWith('f.') ? 1 - side : side) as ReplaySide
-  const own = id.startsWith('f.') ? id.slice(2) : id
-  return frame.known[owner][own] ?? (owner === 0 ? replay.hidden?.[own] : undefined)
-}
-
-const cardName = (replay: DuelReplay, frame: ReplayFrame, side: ReplaySide) => (id: string) => {
-  const code = passcodeOf(realOf(replay, frame, side, id) ?? '')
-  return (code !== null ? replay.cards[String(code)] : undefined) ?? t('practice.card.unknown')
-}
-
 /** El arte de una carta, por el proxy (chico: 128 px alcanzan para una casilla del video). */
 const artOf = (replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, id: string) => {
   const url = artOfDrawId(isToken(id) ? id : realOf(replay, frame, side, id))
   return url ? cardImageSrc(url, 128) : null
 }
 
-/** «Ana: Invocación Normal de X», como la línea de la jugada del reproductor; `before` es la mesa del lado que jugó antes de la jugada. */
-export function stepText(replay: DuelReplay, step: ReplayStep, before: MatState, after: ReplayFrame): string {
-  const [side, action] = step
-  const own = cardName(replay, after, side)
-  // A quién ataca es del otro lado, con el id que le dio su dueño (`DuelReplayScreen` lo busca del lado propio y dice «Carta»).
-  const other = cardName(replay, after, (1 - side) as ReplaySide)
-  const nameOf = (id: string) => (action.type === 'attack' && id === action.target ? other(id) : own(id))
-  return `${playerName(replay, side)}: ${describeMatAction(before, action, nameOf)}`
-}
 
 // Las filas de la mesa compacta: 0 pilas del rival, 1 sus Mágicas y Trampas, 2 sus monstruos, 3 el medio, 4 tus monstruos, 5 tus Mágicas y Trampas, 6 tus pilas.
 const PILE_COLS: Record<ReplaySide, Record<MatPile | 'field', number>> = {
@@ -168,7 +147,7 @@ const PILE_COLS: Record<ReplaySide, Record<MatPile | 'field', number>> = {
 }
 
 /** Las casillas de un lado con lo que tienen. */
-function sideSlots(replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, layout: VideoLayout): SceneSlot[] {
+function sideSlots(replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, layout: VideoLayout, shown: string | null): SceneSlot[] {
   const state = frame.states[side]
   const top = side === 1
   const rows = top ? { piles: 0, st: 1, mz: 2 } : { piles: 6, st: 5, mz: 4 }
@@ -176,7 +155,8 @@ function sideSlots(replay: DuelReplay, frame: ReplayFrame, side: ReplaySide, lay
   const col = (index: number) => (top ? 4 - index : index)
   // En una zona de monstruo, lo que no está en ataque va acostado (en defensa, o colocado).
   const card = (id: string, placed?: Placed, faceUp = true, monster = false): SceneCard => {
-    const faceDown = !faceUp || placed?.pos === 'set' || (!isToken(id) && !realOf(replay, frame, side, id))
+    // Lo que se muestra en esta jugada (una carta colocada que se revela) se ve boca arriba en ese cuadro.
+    const faceDown = (id !== shown && (!faceUp || placed?.pos === 'set')) || (!isToken(id) && !realOf(replay, frame, side, id))
     return {
       id,
       art: faceDown ? null : artOf(replay, frame, side, id),
@@ -270,7 +250,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     return {
       name: playerName(replay, side),
       lp: frame.lp[side],
-      slots: sideSlots(replay, frame, side, layout),
+      slots: sideSlots(replay, frame, side, layout, shown),
       hand: state.hand.map((id, index) => {
         const faceDown = !((side === 0 && replay.view === 'mine') || id === shown) || !realOf(replay, frame, side, id)
         return {

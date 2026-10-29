@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { duelReplayAt, type DuelReplay } from '../app/duel-replay'
-import { decodeReplayPayload, encodeReplayPayload, parseReplayText, replayFileText } from '../app/duel-replay-share'
+import { decodeReplayPayload, encodeReplayPayload, parseReplayText, replayEnvelope } from '../app/duel-replay-share'
 import { clearDuelSave, parseDuelRecord, readDuelSave, saveOf, writeDuelRecord, writeDuelSave } from '../app/duel-save'
 import { createDuel, type Duel } from '../app/duel-session'
 import { canReplay, replayFromManual } from '../app/manual-replay'
@@ -97,7 +97,7 @@ describe('el replay del duelo manual por enlace', () => {
       expectReplayMatches(replay, duel, table)
       // Por enlace y por archivo vuelve igual.
       expect(await decodeReplayPayload(await encodeReplayPayload(replay))).toEqual({ ok: true, replay })
-      expect(parseReplayText(replayFileText(replay))).toEqual({ ok: true, replay })
+      expect(parseReplayText(JSON.stringify(replayEnvelope(replay)))).toEqual({ ok: true, replay })
     }
 
     // Lo mismo desde las dos puntas: el mismo duelo, cada uno abajo.
