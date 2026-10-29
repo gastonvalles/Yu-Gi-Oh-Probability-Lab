@@ -528,13 +528,14 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByText('Beto')).toBeInTheDocument()
   })
 
-  it('un nombre tiene hasta 20 caracteres: se escribe en la hoja que abre su fila, que muestra «Duelista» mientras no hay otro', () => {
+  it('un nombre tiene hasta 20 caracteres: se escribe en la portada, que muestra «Duelista» mientras no hay otro', () => {
     const view = render(<DuelScreen {...screenProps()} />)
-    const row = within(view.container).getByRole('button', { name: /^Tu nombre/ })
+    const input = within(view.container).getByLabelText('Tu nombre')
 
-    expect(row).toHaveTextContent('Duelista')
-    fireEvent.click(row)
-    expect(within(screen.getByRole('dialog', { name: 'Tu nombre' })).getByLabelText('Tu nombre')).toHaveAttribute('maxlength', '20')
+    expect(input).toHaveAttribute('placeholder', 'Duelista')
+    expect(input).toHaveAttribute('maxlength', '20')
+    fireEvent.change(input, { target: { value: 'Ana' } })
+    expect(input).toHaveValue('Ana')
   })
 
   it('quien llega con el mismo nombre que el anfitrión pasa a llamarse con un número (sin tocar el nombre guardado)', () => {
@@ -1267,11 +1268,12 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByText(/Tenés un duelo en pausa con/)).toBeInTheDocument()
 
     // Sin duelo en pausa lo principal es crear uno; con uno en pausa lo principal es volver a él (una sola principal en la vista).
-    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).not.toHaveClass('bg-primary')
+    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).not.toHaveClass('bg-lavender-light')
     expect(within(guest.container).getByRole('button', { name: 'Volver al duelo' })).toHaveClass('bg-primary')
 
     click(guest, 'Dejar ese duelo')
-    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toHaveClass('bg-primary')
+    // Sin pausa, «Jugar ahora» es lo que se distingue: lavanda clara sobre la portada violeta.
+    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toHaveClass('bg-lavender-light')
     expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
     expect(hasSave('guest')).toBe(false)
   })

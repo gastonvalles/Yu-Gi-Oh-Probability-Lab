@@ -1,11 +1,11 @@
 /** El duelo automático (beta): las preguntas del núcleo de reglas, la barra, la línea del registro, la carga, los errores, el fin y la entrada. */
 export const auto = {
-  // La entrada: el interruptor del lobby de Jugar, en la tarjeta de filas debajo de los atajos.
-  'auto.entry.switch': 'Duelo automático (beta)',
-  // Vale con el simulador de handtraps encendido o apagado.
-  'auto.entry.hint': 'El núcleo aplica las reglas, solo o con un amigo (en sala privada). Solo, el rival no juega su turno: sólo usa las handtraps que le des.',
-  'auto.entry.short': 'El núcleo aplica las reglas.',
-  'auto.entry.info': 'Qué hace el duelo automático',
+  // La entrada: «Modo del duelo» en la hoja de «Reglas del duelo» de Jugar (solo y con rival). La ayuda de Solo vale con el simulador de handtraps encendido o apagado.
+  'auto.mode.label': 'Modo del duelo',
+  'auto.mode.auto': 'Automático',
+  'auto.mode.manual': 'Manual',
+  'auto.mode.soloHint': 'Beta: el núcleo aplica las reglas. El rival no juega su turno: sólo usa las handtraps que le des.',
+  'auto.mode.manualHint': 'Movés las cartas vos y las reglas las aplican los duelistas, como en una mesa de verdad.',
   // Quién empieza en «Jugar solo» automático, en la hoja de reglas de Jugar (si empieza el rival, pasa su turno y vos robás en el 2).
   'auto.first.label': 'Quién empieza',
   'auto.first.me': 'Yo',

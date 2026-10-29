@@ -25,7 +25,8 @@ let connect: DuelConnect
 
 const { click, flush, joinByLink, openRules, openTable, screenProps, startDuel } = createDuelHarness(() => ({ memory, connect }))
 
-const AUTO = 'Reglas automáticas (beta)'
+/** «Automático» de «Modo del duelo», en la hoja de las reglas. */
+const AUTO = 'Automático'
 const CHECKING = 'Revisando los decks de los dos…'
 
 /** Lo que la mesa de mentira le pasa a la sala, por rol: la prueba lo cambia como lo haría el enlace del núcleo (revisar los decks, dejar estar listo). */
@@ -80,17 +81,17 @@ describe('una sala con reglas automáticas', () => {
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
     const sheet = within(rulesDialog())
-    const toggle = sheet.getByRole('switch', { name: AUTO })
+    const toggle = sheet.getByRole('radio', { name: AUTO })
 
-    expect(toggle).not.toBeChecked()
-    expect(sheet.getByText(/^El núcleo aplica las reglas por los dos/)).toBeInTheDocument()
+    expect(sheet.getByRole('radio', { name: 'Manual' })).toBeChecked()
+    expect(sheet.getByText(/^Movés las cartas vos/)).toBeInTheDocument()
     fireEvent.click(sheet.getByRole('radio', { name: 'Match · mejor de 3' }))
     fireEvent.click(toggle)
 
-    // Es el mismo interruptor que el del lobby: prende el modo automático entero.
+    // Es la misma preferencia que la de Solo: prende el modo automático entero.
     expect(toggle).toBeChecked()
     expect(autoPrefs().duel).toBe(true)
-    expect(sheet.getByText('Con reglas automáticas: sin espectadores todavía.')).toBeInTheDocument()
+    expect(sheet.getByText('Beta: el núcleo aplica las reglas por los dos. Sin espectadores todavía.')).toBeInTheDocument()
     // Match, su siding y el reloj de turnos se siguen eligiendo; Solo también (ahí rige el simulador de handtraps).
     expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
     expect(sheet.getByRole('switch', { name: 'Sidedeck' })).toBeEnabled()
@@ -159,7 +160,7 @@ describe('una sala con reglas automáticas', () => {
     expect(lastProps('host').myName).toBe('Ana')
     expect(lastProps('guest').myName).toBe('Beto')
 
-    // Se decidió al abrirla: apagar el interruptor después no la cambia.
+    // Se decidió al abrirla: pasar a «Manual» después no la cambia.
     act(() => setAutoPref('duel', false))
     expect(within(host.container).getByTestId('auto-duel')).toBeInTheDocument()
 
@@ -251,7 +252,7 @@ describe('una sala con reglas automáticas', () => {
 
     expect(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' })).toBeChecked()
     expect(within(rulesDialog()).getByLabelText('Formato')).toHaveValue('ocg')
-    expect(within(rulesDialog()).getByRole('switch', { name: AUTO })).toBeChecked()
+    expect(within(rulesDialog()).getByRole('radio', { name: AUTO })).toBeChecked()
   })
 
   it('sin poder correr el núcleo, o apagado en el despliegue, la fila va apagada y sin tocar, con el porqué, y la sala que se abre es manual', async () => {
@@ -260,8 +261,8 @@ describe('una sala con reglas automáticas', () => {
     const old = render(<DuelScreen {...screenProps({ autoDuel: FakeAutoDuel })} />)
 
     openRules(old)
-    expect(within(rulesDialog()).getByRole('switch', { name: AUTO })).toBeDisabled()
-    expect(within(rulesDialog()).getByRole('switch', { name: AUTO })).not.toBeChecked()
+    expect(within(rulesDialog()).getByRole('radio', { name: AUTO })).toBeDisabled()
+    expect(within(rulesDialog()).getByRole('radio', { name: AUTO })).not.toBeChecked()
     expect(within(rulesDialog()).getByText('Tu navegador no puede correr las reglas automáticas.')).toBeInTheDocument()
     expect(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' })).toBeEnabled()
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
@@ -276,7 +277,7 @@ describe('una sala con reglas automáticas', () => {
 
     openRules(off)
     expect(await within(rulesDialog()).findByText('Las reglas automáticas están apagadas por ahora.', {}, { timeout: 5000 })).toBeInTheDocument()
-    expect(within(rulesDialog()).getByRole('switch', { name: AUTO })).toBeDisabled()
+    expect(within(rulesDialog()).getByRole('radio', { name: AUTO })).toBeDisabled()
     fireEvent.keyDown(document, { key: 'Escape' })
     click(off, 'Retar a un amigo')
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { canRunAuto, setAutoPref, useAutoPrefs, type AutoPrefs } from '../../app/auto-prefs'
 import { getDeckFormatLabel } from '../../app/deck-format'
@@ -14,16 +14,15 @@ import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Icon } from '../ui/Icon'
-import { InfoTip } from '../ui/InfoTip'
-import { ListGroup, ListRow } from '../ui/ListRow'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
 import { ShortcutGrid, ShortcutTile } from '../ui/ShortcutGrid'
 import { Stepper } from '../ui/Stepper'
+import { field, surface } from '../ui/surfaces'
 import { Switch } from '../ui/Switch'
 import { textLink } from '../ui/typography'
 import { ArenaPanel } from './ArenaPanel'
-import { AutoRoomRow, useAutoRooms, type AutoRooms } from './AutoRoomRow'
+import { DuelModeRow, useAutoRooms, type AutoRooms } from './DuelModeRow'
 import { HandtrapsRow } from './HandtrapPool'
 import { formatName } from './room-chips'
 
@@ -56,28 +55,6 @@ interface PlayHomeProps {
   onDropPaused: () => void
 }
 
-/**
- * «Duelo automático (beta)», una fila de la tarjeta de ajustes de Jugar (con deck armado): prendido, «Entrenar solo» abre la mesa jugada contra el núcleo de reglas; apagado, la práctica
- * manual de siempre. Lo largo va en la ⓘ (su globo, debajo de toda la tarjeta: `ListGroup` es `relative`). Se recuerda en el navegador (`app/auto-prefs.ts`). Un navegador que no puede correr el núcleo lo ve apagado y sin poder tocarlo, con el porqué.
- */
-function AutoDuelRow() {
-  const prefs = useAutoPrefs()
-  const supported = canRunAuto()
-
-  return (
-    <ListRow
-      title={t('auto.entry.switch')}
-      subtitle={supported ? t('auto.entry.short') : t('auto.entry.unsupported')}
-      end={
-        <span className="flex items-center gap-3">
-          {supported ? <InfoTip label={t('auto.entry.info')} anchor="parent">{t('auto.entry.hint')}</InfoTip> : null}
-          <Switch size="lg" checked={supported && prefs.duel} disabled={!supported} onChange={(on) => setAutoPref('duel', on)} label={t('auto.entry.switch')} />
-        </span>
-      }
-    />
-  )
-}
-
 /** Las reglas con que se abre tu sala, en una línea (con reglas automáticas, también eso). */
 const rulesLine = (prefs: DuelPrefs, auto: boolean) => [formatName(prefs.format, prefs.genesysCap), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle'), ...(auto ? [t('duel.auto.rulesRow')] : [])].join(' · ')
 
@@ -90,12 +67,12 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
   const [search, setSearch] = useState<Search>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [codeOpen, setCodeOpen] = useState(false)
-  const [nameOpen, setNameOpen] = useState(false)
-  const [code, setCode] = useState('')
+    const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
   const codeRef = useRef<HTMLInputElement | null>(null)
+  const nameId = useId()
   const alive = useRef(true)
-  // El modo automático (el interruptor del lobby, el mismo que el de las reglas; prendido de entrada): la sala que abrís, pública o privada, tiene reglas automáticas si está
+  // El modo automático («Modo del duelo» de las reglas; automático de entrada): la sala que abrís, pública o privada, tiene reglas automáticas si está
   // prendido y se puede. Se decide al abrirla y queda así mientras dure.
   const autoDuel = useAutoPrefs().duel
   const autoRooms = useAutoRooms(rulesOpen || autoDuel)
@@ -232,12 +209,13 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 border-t border-tint/18 pt-3">
-              {/* Sin «Automáticas (beta)»: eso lo dice el interruptor, dos tarjetas más abajo (cada dato una vez); el atajo de las reglas lo lleva entero. */}
+              {/* Sin «Automáticas (beta)»: eso lo dice el atajo de las reglas, que lo lleva entero (cada dato una vez). */}
               <span className="grid min-w-0 flex-1 basis-28">
                 <span className="text-micro text-muted">{t('duel.play.rulesYours')}</span>
                 <span className="text-body font-semibold text-foreground">{rulesLine(prefs, false)}</span>
               </span>
-              <Button variant={paused ? 'secondary' : 'primary'} icon="play" className="ml-auto" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
+              {/* Lo que se distingue de la vista: lavanda clara sobre la portada violeta (`onBrand`; el violeta lleno no se despegaba de ella). Con un duelo en pausa, lo principal es volver a él. */}
+              <Button variant={paused ? 'secondary' : 'onBrand'} icon="play" className="ml-auto" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
                 {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
               </Button>
             </div>
@@ -285,11 +263,26 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
             </form>
           ) : null}
 
-          {/* Lo que se ajusta, en una tarjeta con filas: el nombre (como te ve tu rival; se escribe en una hoja chica) y, con deck, el interruptor que decide qué mesa abre «Entrenar solo». */}
-          <ListGroup className="relative">
-            <ListRow title={t('duel.lobby.name')} subtitle={t('duel.lobby.namePlaceholder')} value={<span className="max-w-32 truncate">{name.trim() || t('duel.lobby.defaultName')}</span>} onClick={() => setNameOpen(true)} />
-            {trainReady ? <AutoDuelRow /> : null}
-          </ListGroup>
+          {/* El nombre (como te ve tu rival), escrito acá mismo: se guarda mientras se escribe (lo limpia y lo recorta la pantalla); vacío, vale «Duelista». Nada lo enfoca solo
+              (`opensKeyboard`). Con 16 px de letra: con menos, iOS agranda la página al enfocarlo. Automático o manual va en las reglas («Modo del duelo»). */}
+          <div className={cx(surface.card, 'grid gap-1.5 p-4')}>
+            <label htmlFor={nameId} className="text-body font-semibold text-foreground">
+              {t('duel.lobby.name')}
+            </label>
+            <input
+              id={nameId}
+              aria-describedby={`${nameId}-hint`}
+              placeholder={t('duel.lobby.defaultName')}
+              maxLength={MAX_NAME_LENGTH}
+              autoComplete="nickname"
+              value={name}
+              onChange={(event) => onName(event.target.value)}
+              className={cx(field, 'h-11 w-full min-w-0 px-3 text-base font-semibold placeholder:font-normal placeholder:text-soft')}
+            />
+            <span id={`${nameId}-hint`} className="text-micro text-soft">
+              {t('duel.lobby.namePlaceholder')}
+            </span>
+          </div>
         </div>
 
         {/* La arena, al costado en escritorio (debajo en el celular): una tarjeta por sala que espera y por duelo en vivo. Sólo lo que dice el relay; sin relay no hay arena. */}
@@ -321,19 +314,6 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
         }}
       />
 
-      {/* El nombre, en una hoja chica que sale de abajo: se guarda mientras se escribe y Enter la cierra. Con el dedo no se abre el teclado solo (`opensKeyboard`). */}
-      <Modal isOpen={nameOpen} onClose={() => setNameOpen(false)} size="keypad" title={t('duel.lobby.name')}>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            setNameOpen(false)
-          }}
-        >
-          <FieldBox>
-            <input data-initial-focus aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={MAX_NAME_LENGTH} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
-          </FieldBox>
-        </form>
-      </Modal>
     </>
   )
 }
@@ -347,7 +327,7 @@ interface RulesSheetProps {
   canOpen: boolean
   /** Hay un deck armado en el builder: «Solo» juega con ése. */
   canTrain: boolean
-  /** Si se pueden abrir salas con reglas automáticas (y si no, por qué): la fila de su interruptor. */
+  /** Si se pueden abrir salas con reglas automáticas (y si no, por qué): «Modo del duelo». */
   autoRooms: AutoRooms
   onClose: () => void
   onSave: (prefs: DuelPrefs) => void
@@ -441,9 +421,9 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, o
           />
         </RuleField>
 
-        {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, en la tarjeta de filas.
-            Con rival: las reglas automáticas, el mismo interruptor que el del lobby. */}
-        {solo ? <HandtrapsRow /> : <AutoRoomRow rooms={autoRooms} />}
+        {/* Automático o manual (una sola preferencia: con rival, la sala que se abre; en Solo, la mesa de «Entrenar solo»). Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). */}
+        <DuelModeRow rooms={autoRooms} solo={solo} className="sm:col-span-2" />
+        {solo ? <HandtrapsRow /> : null}
 
         {/* Solo automático: quién empieza (el núcleo arranca con el asiento 0; ir segundo es ocupar el 1). La práctica manual no tiene turnos del rival: no va. */}
         {solo && autoSolo ? (
