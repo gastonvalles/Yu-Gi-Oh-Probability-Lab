@@ -282,7 +282,7 @@ export function NavigationSection() {
         <div className="grid gap-3">
           <div className="overflow-x-auto rounded-card border border-border-subtle">
             {/* Es de escritorio: en un celular se desliza en vez de apretarse (la marca y el idioma se pisaban). */}
-            <AppNavbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((current) => !current)} onSearch={() => setFinding(true)} onMascots={() => {}} className="min-w-[56rem]" />
+            <AppNavbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((current) => !current)} onSearch={() => setFinding(true)} onMascots={() => {}} className="min-w-[63.5rem]" />
           </div>
           <Button variant="secondary" size="sm" icon="search" className="w-fit" onClick={() => setFinding(true)}>
             Abrir el buscador
