@@ -60,21 +60,32 @@ describe('calculadora de LP', () => {
     expect(run(odd, { type: 'halve', player: 0, now: 0 }).lp[0]).toBe(2002)
   })
 
-  it('con uno o dos dígitos lo tecleado son centenas, con tres se completa el cuarto con un 0 y con cuatro es literal', () => {
-    expect(interpretAmount('')).toBe(0)
-    expect(interpretAmount('8')).toBe(800)
-    expect(interpretAmount('25')).toBe(2500)
-    expect(interpretAmount('185')).toBe(1850)
-    expect(interpretAmount('150')).toBe(1500)
-    expect(interpretAmount('050')).toBe(500)
-    expect(interpretAmount('015')).toBe(150)
-    expect(interpretAmount('1850')).toBe(1850)
-    expect(interpretAmount('0150')).toBe(150)
-    expect(interpretAmount('0050')).toBe(50)
+  it('como en Neuron: uno o dos dígitos sin ningún 0 son centenas; con un 0 o desde tres dígitos, literal', () => {
+    const cases: [string, number][] = [
+      ['', 0],
+      ['5', 500],
+      ['55', 5500],
+      ['8', 800],
+      ['25', 2500],
+      ['50', 50],
+      ['500', 500],
+      ['100', 100],
+      ['185', 185],
+      ['015', 15],
+      ['10', 10],
+      ['05', 5],
+      ['1000', 1000],
+      ['0', 0],
+      // La tecla «00» y la «000» suman ceros tecleados: 5 y «00» es 500, 5 y «000» es 5000.
+      ['5' + '00', 500],
+      ['5' + '000', 5000],
+    ]
+
+    expect(cases.map(([digits]) => interpretAmount(digits))).toEqual(cases.map(([, amount]) => amount))
   })
 
-  it('los ceros que se sobreentienden: dos con uno o dos dígitos, uno con tres y ninguno desde cuatro', () => {
-    expect(['', '8', '25', '185', '1850'].map(impliedZeros)).toEqual(['00', '00', '00', '0', ''])
+  it('los ceros que se sobreentienden: «00» sólo con uno o dos dígitos sin ningún 0', () => {
+    expect(['', '5', '55', '50', '05', '0', '185', '1850'].map(impliedZeros)).toEqual(['', '00', '00', '', '', '', '', ''])
   })
 
   it('la ronda cuenta 50 minutos para atrás y acumula entre pausas', () => {

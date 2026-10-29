@@ -394,7 +394,7 @@ describe('la pantalla del duelo', () => {
     closeCalculator()
     openCalculator(guest)
     key('1')
-    key('0')
+    key('000')
     apply(/^Aplicar: restar 1000/)
     flush()
     closeCalculator()

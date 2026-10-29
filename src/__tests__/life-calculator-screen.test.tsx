@@ -49,7 +49,7 @@ describe('la calculadora de LP', () => {
     expect(screen.getByRole('button', { name: 'Deshacer' })).toHaveClass('rounded-none')
   })
 
-  it('se teclea un monto (con menos de tres cifras son centenas) y se resta con «=»; entre el número y el teclado no queda ninguna fila (la de los cambios recientes ya no está)', () => {
+  it('se teclea un monto (uno o dos dígitos sin 0 son centenas) y se resta con «=»; entre el número y el teclado no queda ninguna fila (la de los cambios recientes ya no está)', () => {
     renderScreen()
 
     tap('1')
@@ -65,21 +65,31 @@ describe('la calculadora de LP', () => {
     expect(screen.queryByRole('button', { name: /^Restar 1200 a/ })).not.toBeInTheDocument()
   })
 
-  it('con tres cifras el cuarto se completa solo con un 0 (185 es 1850), se ve apagado y un cuarto dígito lo vuelve literal', () => {
+  it('como en Neuron: «5» es 500 con el «00» apagado, «50» y «500» son literales (500 no resta 5000) y «185» es 185', () => {
     renderScreen()
+
+    tap('5')
+    const status = screen.getByRole('status', { name: 'Duelista 1: 8000 menos 500' })
+    expect(status).toHaveTextContent('8000−500')
+    expect(status.querySelector('.text-soft')).toHaveTextContent(/^00$/)
+
+    tap('0')
+    expect(screen.getByRole('status', { name: 'Duelista 1: 8000 menos 50' }).querySelector('.text-soft')).toBeNull()
+
+    tap('0')
+    expect(screen.getByRole('status', { name: 'Duelista 1: 8000 menos 500' }).querySelector('.text-soft')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Aplicar: restar 500 a Duelista 1/ }))
+    expect(duelist(/^Duelista 1: 7500 LP/)).toBeInTheDocument()
 
     tap('1')
     tap('8')
     tap('5')
-    const status = screen.getByRole('status', { name: 'Duelista 1: 8000 menos 1850' })
-    expect(status).toHaveTextContent('8000−1850')
-    expect(status.querySelector('.text-soft')).toHaveTextContent(/^0$/)
+    expect(screen.getByRole('status', { name: 'Duelista 1: 7500 menos 185' }).querySelector('.text-soft')).toBeNull()
 
-    tap('0')
-    expect(screen.getByRole('status', { name: 'Duelista 1: 8000 menos 1850' }).querySelector('.text-soft')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: /^Aplicar: restar 1850 a Duelista 1/ }))
-    expect(duelist(/^Duelista 1: 6150 LP/)).toBeInTheDocument()
+    tap('Borrar lo tecleado')
+    tap('5')
+    tap('00')
+    expect(screen.getByRole('status', { name: 'Duelista 1: 7500 menos 500' })).toBeInTheDocument()
   })
 
   it('los ceros rápidos (00 y 000), Sumar con el otro duelista elegido y Borrar', () => {
