@@ -149,7 +149,8 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
   return (
     // Cada fila va en su caja (`data-tier-row`): es lo que se levanta al arrastrarla y lo que vuela a su lugar al reordenarlas; los botones de abajo y la bandeja también. Donde se puede soltar una carta
     // (`data-tier-drop`) es la caja entera de cada fila y la de la bandeja, con el recuadro de color y la columna del final.
-    <div ref={boardRef} className={cx('relative grid gap-0.5', !reordered && 'stagger [--stagger-step:60ms]', (rowDrag.draggingId || cardDrag.ghost) && 'select-none')}>
+    // Una columna `minmax(0,1fr)`: con la columna `auto`, el nombre largo de la carta elegida (en la barra de abajo) ensanchaba el tablero y la página se corría de costado.
+    <div ref={boardRef} className={cx('relative grid grid-cols-[minmax(0,1fr)] gap-0.5', !reordered && 'stagger [--stagger-step:60ms]', (rowDrag.draggingId || cardDrag.ghost) && 'select-none')}>
       {list.tiers.map((tier, index) => {
         const to: Place = { kind: 'tier', id: tier.id }
 
@@ -237,7 +238,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
                 type="button"
                 aria-label={t('meta.maker.moveTo', { name: selected.name, tier: tier.label })}
                 aria-current={currentTierId === tier.id ? 'true' : undefined}
-                className={cx('h-10 min-w-10 max-w-24 cursor-pointer truncate rounded-control border-0 px-2 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus aria-[current=true]:shadow-focus', labelInk(tier.color))}
+                className={cx('h-10 min-w-10 max-w-24 pointer-coarse:h-11 pointer-coarse:min-w-11 cursor-pointer truncate rounded-control border-0 px-2 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus aria-[current=true]:shadow-focus', labelInk(tier.color))}
                 style={{ backgroundColor: tier.color }}
                 onClick={() => onMove(selected.id, { kind: 'tier', id: tier.id })}
               >
@@ -247,7 +248,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
             <button
               type="button"
               aria-label={t('meta.maker.moveTo', { name: selected.name, tier: t('meta.maker.pool') })}
-              className="h-10 cursor-pointer rounded-control border-0 bg-surface-raised px-3 text-micro font-bold uppercase tracking-[0.08em] text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+              className="h-10 pointer-coarse:h-11 cursor-pointer rounded-control border-0 bg-surface-raised px-3 text-micro font-bold uppercase tracking-[0.08em] text-foreground focus-visible:outline-none focus-visible:shadow-focus"
               onClick={() => onMove(selected.id, { kind: 'pool' })}
             >
               {t('meta.maker.poolShort')}
