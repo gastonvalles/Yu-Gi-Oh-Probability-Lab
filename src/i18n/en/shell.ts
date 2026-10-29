@@ -195,6 +195,8 @@ export const shell: Translated<typeof es> = {
   'shell.life.tools.counters': 'Counters',
   'shell.life.tools.cues': 'Alerts',
   'shell.life.calc.open': 'Calculate',
+  'shell.life.calc.title': "{name}'s life points",
+  'shell.life.calc.back': 'Back to the scoreboard without applying',
   'shell.life.counter.name': 'Counter {n}',
   'shell.life.counter.minus': 'Counter {n}: minus',
   'shell.life.counter.plus': 'Counter {n}: plus',

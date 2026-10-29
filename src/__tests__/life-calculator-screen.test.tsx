@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createLifeState } from '../app/life-calculator'
 import { dispatchLife } from '../app/life-store'
 import { LifeCalculatorScreen } from '../components/life/LifeCalculatorScreen'
 
@@ -253,8 +254,14 @@ describe('la calculadora de LP', () => {
       window.matchMedia = original
     })
 
-    it('es un marcador sin teclado: el reloj, las dos vidas con Reiniciar y Deshacer en el medio y abajo Registro, Herramientas y Calcular', () => {
+    // Acostado, tocar una vida abre su teclado: `renderScreen` elige al Duelista 1 tocándolo, así que se arranca cerrándolo.
+    const renderScoreboard = () => {
       renderScreen()
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al marcador sin aplicar' }))
+    }
+
+    it('es un marcador sin teclado: el reloj, las dos vidas con Reiniciar y Deshacer en el medio y abajo Registro, Herramientas y Calcular', () => {
+      renderScoreboard()
 
       expect(screen.queryByRole('group', { name: 'Teclado' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Poner a correr el reloj de la ronda' })).toHaveTextContent('50:00')
@@ -265,18 +272,49 @@ describe('la calculadora de LP', () => {
       expect(screen.getByRole('button', { name: 'Herramientas' })).toBeInTheDocument()
     })
 
-    it('Calcular abre el teclado aparte; aplicar cambia la vida del elegido y lo cierra', () => {
-      renderScreen()
+    it('tocar la vida de un duelista abre su teclado a pantalla completa: «volver», Borrar y las operaciones a la izquierda, los dígitos en el medio y el «=»; aplicar cambia esa vida y lo cierra', () => {
+      renderScoreboard()
 
       fireEvent.click(duelist(/^Duelista 2:/))
-      fireEvent.click(screen.getByRole('button', { name: 'Calcular' }))
-      const dialog = within(screen.getByRole('dialog', { name: 'Calcular' }))
-      fireEvent.click(within(dialog.getByRole('group', { name: 'Teclado' })).getByRole('button', { name: '5' }))
+      const dialog = within(screen.getByRole('dialog', { name: 'Vidas de Duelista 2' }))
+      const keys = within(dialog.getByRole('group', { name: 'Teclado' }))
+      expect(keys.getAllByRole('button').map((key) => key.textContent)).toEqual(['Borrar', '7', '8', '9', '+', '4', '5', '6', '−', '1', '2', '3', '÷2', '0', '00', '000'])
+      fireEvent.click(keys.getByRole('button', { name: '5' }))
+      expect(dialog.getByRole('status', { name: 'Duelista 2: 8000 menos 500' })).toBeInTheDocument()
       fireEvent.click(dialog.getByRole('button', { name: /^Aplicar: restar 500 a Duelista 2/ }))
 
-      expect(screen.queryByRole('dialog', { name: 'Calcular' })).not.toBeInTheDocument()
-      expect(duelist(/^Duelista 2: 7500 LP/)).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(duelist(/^Duelista 2: 7500 LP/)).toHaveAttribute('aria-pressed', 'true')
       expect(screen.getByRole('button', { name: 'Deshacer' })).toBeEnabled()
+    })
+
+    it('«volver» cierra sin aplicar y lo tecleado queda; Calcular reabre el teclado de la elegida', () => {
+      renderScoreboard()
+
+      fireEvent.click(duelist(/^Duelista 1:/))
+      const dialog = within(screen.getByRole('dialog', { name: 'Vidas de Duelista 1' }))
+      fireEvent.click(within(dialog.getByRole('group', { name: 'Teclado' })).getByRole('button', { name: '3' }))
+      fireEvent.click(dialog.getByRole('button', { name: 'Volver al marcador sin aplicar' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(duelist(/^Duelista 1: 8000 LP/)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Calcular' }))
+      expect(within(screen.getByRole('dialog', { name: 'Vidas de Duelista 1' })).getByRole('status', { name: 'Duelista 1: 8000 menos 300' })).toBeInTheDocument()
+    })
+
+    it('en un duelo, tocar mis vidas abre el teclado; las del rival no', () => {
+      const duel = { state: createLifeState(), me: 1 as const, names: ['Rival', 'Yo'] as const, limitMin: 0, onChange: vi.fn(), onHalve: vi.fn(), onToggleClock: vi.fn() }
+      render(<LifeCalculatorScreen onClose={vi.fn()} duel={duel} />)
+
+      fireEvent.click(duelist(/^Rival:/))
+      expect(screen.queryByRole('dialog', { name: /^Vidas de/ })).not.toBeInTheDocument()
+
+      fireEvent.click(duelist(/^Yo:/))
+      const dialog = within(screen.getByRole('dialog', { name: 'Vidas de Yo' }))
+      fireEvent.click(within(dialog.getByRole('group', { name: 'Teclado' })).getByRole('button', { name: '5' }))
+      fireEvent.click(dialog.getByRole('button', { name: /^Aplicar: restar 500 a Yo/ }))
+      expect(duel.onChange).toHaveBeenCalledWith(-500)
+      expect(screen.queryByRole('dialog', { name: /^Vidas de/ })).not.toBeInTheDocument()
     })
   })
 })
