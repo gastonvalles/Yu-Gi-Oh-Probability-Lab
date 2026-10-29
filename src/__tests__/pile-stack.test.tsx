@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { PileStack } from '../components/probability/PileStack'
 import { pileDepth } from '../components/probability/practice-styles'
-import { IconButton } from '../components/ui/IconButton'
+import { IconButton, TileButton } from '../components/ui/IconButton'
 
 const layers = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>('[data-pile-edge] > span')]
 const offset = (layer: HTMLElement) => Number(/translateY\((-?[\d.]+)%\)/.exec(layer.style.transform)?.[1])
@@ -37,13 +37,28 @@ describe('el volumen de las pilas de cartas', () => {
 })
 
 describe('los botones de la botonera de la mesa', () => {
-  it('«tile» es una caja oscura sin borde', () => {
+  it('«tile» es una caja oscura con un borde fino que sólo cambia de color al prenderse (nada se corre), sin relleno de color', () => {
     render(<IconButton tone="tile" aria-label="Deshacer" />)
 
     const button = screen.getByRole('button', { name: 'Deshacer' })
 
-    expect(button).toHaveClass('bg-card-background', 'rounded-card')
-    // (`transition-[…border-color…]` no cuenta: sólo las clases de borde.)
-    expect(button.className.split(/\s+/).filter((name) => /^(hover:)?border(-|$)/.test(name))).toEqual([])
+    expect(button).toHaveClass('bg-card-background', 'rounded-card', 'border', 'border-border', 'aria-pressed:border-info', 'data-[active=true]:border-info')
+    expect(button.className).not.toMatch(/\bbg-(primary|info)\b/)
+  })
+
+  it('«TileButton» es la misma caja con su nombre: prendido o el de ahora, en ámbar; «Todavía no», en lila', () => {
+    render(
+      <>
+        <TileButton label="Automático" aria-label="Automático" aria-pressed="true" />
+        <TileButton label="Battle" aria-label="Battle" aria-disabled />
+      </>,
+    )
+
+    const on = screen.getByRole('button', { name: 'Automático' })
+
+    expect(on).toHaveClass('aria-pressed:text-info', 'aria-[current=true]:text-info', 'aria-disabled:text-muted')
+    expect(on.firstElementChild).toHaveClass('bg-card-background', 'border-border', 'group-aria-pressed:border-info')
+    expect(on).toHaveTextContent('Automático')
+    expect(screen.getByRole('button', { name: 'Battle' })).toHaveAttribute('aria-disabled', 'true')
   })
 })

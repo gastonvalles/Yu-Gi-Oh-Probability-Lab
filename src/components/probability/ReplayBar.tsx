@@ -249,7 +249,7 @@ type ReplayBarProps = Omit<TransportProps, 'total'> & Omit<TimelineRowProps, 'cl
 
 function RestartButton({ cursor, onRestart }: Pick<TransportProps, 'cursor' | 'onRestart'>) {
   return (
-    <IconButton tone="outline" size="sm" aria-label={t('practice.replay.restart')} title={t('practice.replay.restart')} disabled={cursor === 0} onClick={onRestart}>
+    <IconButton tone="raised" size="sm" aria-label={t('practice.replay.restart')} title={t('practice.replay.restart')} disabled={cursor === 0} onClick={onRestart}>
       <Icon name="skip-back" variant="bold" />
     </IconButton>
   )

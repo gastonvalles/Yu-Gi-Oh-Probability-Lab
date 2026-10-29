@@ -7,6 +7,7 @@ import { PHASES } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
+import { TileButton } from '../ui/IconButton'
 import { surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { GHOST_CLICK_MS, type MenuItem } from './MatDialogs'
@@ -34,7 +35,7 @@ export function phaseRowEntries(items: readonly MenuItem[]) {
 
 /**
  * Las fases en una línea (lámina 06, como el selector de fase de Master Duel): sale del botón de la fase de ahora (el «M1» del campo), arriba de él (abajo si no entra) y sin
- * velo, en el lugar donde salía el menú de fases; en el celular también (reemplaza a la hoja). Cada fase es un círculo de 44 px con su nombre debajo: la actual, violeta con aro
+ * velo, en el lugar donde salía el menú de fases; en el celular también (reemplaza a la hoja). Cada fase es la caja de la mesa con su nombre debajo (`TileButton`): la actual, en
  * ámbar; las que todavía no, apagadas pero enfocables. Elegir una hace lo mismo que el menú (`items`, las mismas opciones); «Cancelar» (sin caja), Escape o tocar afuera la
  * cierran. ← → Inicio y Fin recorren las que se pueden elegir; Enter elige. El foco arranca en la fase de ahora y vuelve al botón al cerrar.
  */
@@ -100,38 +101,21 @@ export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; i
       >
         <p className={cx('m-0 px-1 [grid-area:title]', overline)}>{title}</p>
         <div role="menu" aria-orientation="horizontal" aria-label={title} className="flex [grid-area:row]" onKeyDown={onKey}>
+          {/* Cada fase es la caja de la mesa con su nombre (`TileButton`, como la botonera): la de ahora en ámbar; las que todavía no, en lila y enfocables. */}
           {entries.map(({ item, short, word, name }) => (
-            <button
+            <TileButton
               key={item.label}
-              type="button"
               role="menuitem"
+              label={word}
               aria-label={name}
               aria-current={item.current ? 'true' : undefined}
               aria-disabled={item.disabled || undefined}
               data-initial-focus={item.current ? '' : undefined}
-              className={cx(
-                'group grid w-14 justify-items-center gap-1 rounded-control border-0 bg-transparent px-0 py-1 outline-none focus-visible:shadow-focus',
-                item.disabled ? 'cursor-default' : 'cursor-pointer',
-              )}
+              className="w-14 py-1"
               onClick={item.disabled ? undefined : item.onSelect}
             >
-              <span
-                aria-hidden="true"
-                className={cx(
-                  'grid size-11 place-items-center rounded-full border-2 text-micro font-extrabold leading-none transition-colors',
-                  item.current
-                    ? 'border-info bg-primary text-white'
-                    : item.disabled
-                      ? 'border-border-subtle text-muted'
-                      : 'border-border text-foreground group-hover:bg-tint/12',
-                )}
-              >
-                {short}
-              </span>
-              <span aria-hidden="true" className={cx('whitespace-nowrap text-micro', item.current ? 'font-bold text-info' : item.disabled ? 'text-muted' : 'font-semibold text-foreground')}>
-                {word}
-              </span>
-            </button>
+              <span className="text-micro font-extrabold leading-none">{short}</span>
+            </TileButton>
           ))}
         </div>
         <Button variant="tertiary" size="sm" className="[grid-area:cancel]" onClick={onClose}>

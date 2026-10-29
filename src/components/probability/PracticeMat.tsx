@@ -2427,9 +2427,10 @@ function PracticeMatBody({
     </IconButton>
   )
   // Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo.
+  // Va en el campo (al medio, junto a la fase): la caja de la mesa también en la práctica.
   const tokenButton = (
     <IconButton
-      tone={dockTone}
+      tone="tile"
       size="sm"
       aria-label={t('practice.token.name')}
       title={t('practice.token.create')}
@@ -2681,20 +2682,17 @@ function PracticeMatBody({
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{duel.clock}</div> : null}
           <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel?.auto ? duel.limits : tokenButton}</div>
           <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
-              <button
-                type="button"
+              {/* Sólo la sigla de dos letras, en todos los anchos y en todos los duelos (Gastón, 2026-10-27: «está bien que sólo muestre 2 letras y se abra el menú al tocarlo»): el nombre completo lo
+                  dicen la línea de fases que abre y su `aria-label`. La caja de la mesa (`tile`): en ámbar cuando el turno es tuyo (es lo que se toca); en el del rival, la sigla en lila. */}
+              <IconButton
+                tone="tile"
+                size="sm"
                 aria-label={`${t('practice.mat.phases')}: ${PHASES.find((phase) => phase.id === phaseNow)?.name ?? ''}`}
                 aria-haspopup="menu"
                 aria-expanded={menu?.kind === 'phases'}
+                data-active={myTurn}
                 disabled={!myTurn}
-                className={cx(
-                  'grid place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
-                  // Sólo la sigla de dos letras, en todos los anchos y en todos los duelos (Gastón, 2026-10-27: «está bien que sólo muestre 2 letras y se abra el menú al tocarlo»): el nombre completo lo
-                  // dicen la línea de fases que abre y su `aria-label`. Con el nombre adentro, a 1101 px se partía en tres renglones («DP / Draw / Phase»).
-                  'size-11',
-                  // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
-                  myTurn ? 'cursor-pointer border-info bg-primary text-white hover:border-info-soft' : 'border-accent bg-primary text-white',
-                )}
+                className="text-micro font-extrabold leading-none"
                 onClick={(event) => {
                   // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
                   if (!isDesktop && phaseNow === 'end') setEndingTurn(true)
@@ -2702,7 +2700,7 @@ function PracticeMatBody({
                 }}
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
-              </button>
+              </IconButton>
               {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
               {isDesktop && myTurn && phaseNow === 'end' ? (
                 <Button

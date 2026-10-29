@@ -75,7 +75,8 @@ const RoundClock = memo(function RoundClock({ timer, limitMin, onToggle }: { tim
       type="button"
       aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
       title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-      className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-body font-bold focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
+      // La caja de la mesa (la de `IconButton tone="tile"`): ámbar al apuntarlo, como todo lo que se toca del duelo.
+      className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border bg-card-background px-2.5 text-body font-bold transition-colors hover:text-info focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:text-micro min-[1101px]:text-lead max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
       onClick={onToggle}
     >
       {/* El cronómetro; en pausa, la pausa (el estado se ve sin tocar). */}

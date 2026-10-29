@@ -784,7 +784,7 @@ describe('la pantalla del duelo', () => {
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
   })
 
-  it('en el celular no hay «Pasar turno»: llegar a la End Phase pregunta si se termina el turno; «Seguir jugando» no lo termina y hay que volver a tocar el botón de la End Phase; la fase va ámbar si el turno es tuyo y violeta si es del rival', () => {
+  it('en el celular no hay «Pasar turno»: llegar a la End Phase pregunta si se termina el turno; «Seguir jugando» no lo termina y hay que volver a tocar el botón de la End Phase; la fase va ámbar si el turno es tuyo y apagada si es del rival', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
@@ -792,11 +792,11 @@ describe('la pantalla del duelo', () => {
     const ask = () => screen.getByRole('alertdialog', { name: '¿Terminar tu turno?' })
 
     expect(within(host.container).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
-    // La fase de ahora va en ámbar si el turno es tuyo (lo que se toca) y la misma, vista por Beto, en violeta (es del rival).
+    // La fase de ahora va en ámbar si el turno es tuyo (lo que se toca: `data-active`) y la misma, vista por Beto, apagada en lila (es del rival).
     click(host, 'Main Phase 1')
     flush()
-    expect(phaseChip(host)).toHaveClass('bg-primary')
-    expect(phaseChip(guest)).toHaveClass('bg-primary')
+    expect(phaseChip(host)).toHaveAttribute('data-active', 'true')
+    expect(phaseChip(guest)).toHaveAttribute('data-active', 'false')
 
     // En la Main Phase 1 el botón abre las fases; llegar a la End Phase pregunta si se termina el turno, y «Seguir jugando» deja todo como está.
     click(host, 'End Phase')
@@ -813,8 +813,8 @@ describe('la pantalla del duelo', () => {
     confirmEndTurn()
     expect(within(guest.container).getAllByText(/^Tu turno( · \d+)?$/).length).toBeGreaterThan(0)
     expect(phase(guest)).toBe('Draw Phase')
-    expect(phaseChip(guest)).toHaveClass('bg-primary')
-    expect(phaseChip(host)).toHaveClass('bg-primary')
+    expect(phaseChip(guest)).toHaveAttribute('data-active', 'true')
+    expect(phaseChip(host)).toHaveAttribute('data-active', 'false')
   })
 
   it('en escritorio «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases, sin preguntar', () => {
