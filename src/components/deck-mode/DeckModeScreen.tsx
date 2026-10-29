@@ -2,6 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 
 import type { ManualGame } from '../../app/auto/manual-handover'
 import { canRunAuto, useAutoPrefs } from '../../app/auto-prefs'
+import { comboPayloadOf, decodeComboPayload, type SharedCombo } from '../../app/combo-share'
+import { showToastMessage } from '../../app/use-toast-message'
 import { clearPlayReturn, readPlayReturn } from '../../app/play-return'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
@@ -63,6 +65,9 @@ import { useDeckModeController } from './use-deck-mode-controller'
 const LazyAutoSolo = lazy(() => import('../auto/AutoSoloScreen').then((m) => ({ default: m.AutoSoloScreen })))
 const LazyAutoDuel = lazy(() => import('../auto/AutoDuelScreen').then((m) => ({ default: m.AutoDuelScreen })))
 
+/** Los datos de un enlace de combo (`#combo=…`), o null. */
+const comboHash = (hash: string) => (hash.startsWith('#combo=') ? comboPayloadOf(hash) : null)
+
 /** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#tournaments?deck=123`). */
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
   const [step = '', query = ''] = hash.replace(/^#/, '').split('?')
@@ -115,7 +120,8 @@ export function DeckModeScreen() {
       return recommendedStep
     }
 
-    return getStepFromHash(window.location.hash) ?? recommendedStep
+    // Un enlace de combo (`#combo=…`) abre la práctica, que lo repasa.
+    return comboHash(window.location.hash) ? 'practice' : (getStepFromHash(window.location.hash) ?? recommendedStep)
   })
   const isDeckBuilderStep = activeStep === 'deck-builder'
   // Si se llegó al builder desde Jugar (el lobby o la sala), ofrece volver a donde se estaba; volver a Jugar borra el recuerdo.
@@ -144,7 +150,7 @@ export function DeckModeScreen() {
   const searchAvailable = (!isDeckBuilderStep || !isDesktopDeckBuilder) && !isPracticeStep && (!isDuelStep || duelConnect === null || duelLobby)
   const searchActive = searchOpen && searchAvailable
   // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
-  const { props: practice, resume: resumePractice } = usePracticeSession({
+  const { props: practice, resume: resumePractice, openShared } = usePracticeSession({
     active: isPracticeStep,
     handSize: controller.probability.handSize,
     derivedMainCards: controller.probability.derivedMainCards,
@@ -180,7 +186,24 @@ export function DeckModeScreen() {
       return
     }
 
+    // Un enlace de combo: se decodifica (es de otra persona: `combo-share.ts` lo valida) y se repasa en la práctica manual; si no sirve, se dice por qué.
+    const openComboLink = () => {
+      const payload = comboHash(window.location.hash)
+      if (!payload) return
+      void decodeComboPayload(payload).then((result) => {
+        if (!result.ok) {
+          showToastMessage(t(`practice.share.error.${result.error}`), 'error')
+          window.history.replaceState(null, '', `#${activeStepRef.current}`)
+          return
+        }
+        window.history.replaceState(null, '', '#practice')
+        setManualHere(true)
+        setActiveStep('practice')
+        openShared(result.combo)
+      })
+    }
     const handleHashChange = () => {
+      openComboLink()
       const nextStep = getStepFromHash(window.location.hash)
 
       if (nextStep) {
@@ -188,12 +211,13 @@ export function DeckModeScreen() {
       }
     }
 
+    openComboLink()
     window.addEventListener('hashchange', handleHashChange)
 
     return () => {
       window.removeEventListener('hashchange', handleHashChange)
     }
-  }, [])
+  }, [openShared])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -206,7 +230,8 @@ export function DeckModeScreen() {
     if (getStepFromHash(window.location.hash) !== activeStep) {
       // Cada paso es una entrada del historial: "Atrás" vuelve al paso anterior en vez de salir de la app.
       // La primera vez (sin hash) se reemplaza para no duplicar la entrada inicial.
-      if (window.location.hash) {
+      // El enlace de un combo se reemplaza (los datos salen de la barra y «Atrás» no lo vuelve a abrir).
+      if (window.location.hash && !comboHash(window.location.hash)) {
         window.history.pushState(null, '', nextHash)
       } else {
         window.history.replaceState(null, '', nextHash)
@@ -527,7 +552,7 @@ function usePracticeSession({
   disabledGenericRuleIds,
   systemRuleNames,
   hasCompletedClassification,
-}: PracticeSessionInput): { props: PracticeScreenProps | null; resume: (game: ManualGame) => void } {
+}: PracticeSessionInput): { props: PracticeScreenProps | null; resume: (game: ManualGame) => void; openShared: (combo: SharedCombo) => void } {
   const activePatterns = useMemo(
     () => buildActiveRuleSet(derivedMainCards, curatePatterns(patterns, derivedMainCards), disabledGenericRuleIds, systemRuleNames),
     [patterns, derivedMainCards, disabledGenericRuleIds, systemRuleNames],
@@ -537,7 +562,17 @@ function usePracticeSession({
   const pendingReviewCount = useMemo(() => countCardsPendingReview(derivedMainCards), [derivedMainCards])
   const reviewPendingPatternCount = useMemo(() => patterns.filter((p) => p.needsReview).length, [patterns])
 
-  const { session, state, start, dispatch, undo, seek } = useMatSession()
+  const { session, state, start, dispatch, undo, seek, clear } = useMatSession()
+  // El combo que llegó por enlace, mientras no se guarde ni se cierre: la mesa lo repasa con su aviso arriba.
+  const [sharedCombo, setSharedCombo] = useState<SharedCombo | null>(null)
+  const openShared = useCallback((combo: SharedCombo) => {
+    setSharedCombo(combo)
+    start(combo.initial, combo.actions, combo.names)
+  }, [start])
+  const shared = useMemo(
+    () => (sharedCombo ? { combo: sharedCombo, onSaved: () => setSharedCombo(null), onClose: () => { setSharedCombo(null); clear() } } : undefined),
+    [sharedCombo, clear],
+  )
   // Con qué simulador de handtraps se repartió la mano de ahora (lo que se eligió en Jugar → Solo): si al volver a la mesa sin haber jugado nada es otro, se reparte de nuevo.
   const dealtWith = useRef<string | null>(null)
   const newHand = useCallback(() => {
@@ -547,9 +582,10 @@ function usePracticeSession({
     const rival = dealRival(config, randomSeed())
 
     dealtWith.current = JSON.stringify(config)
+    setSharedCombo(null)
     start(rival ? { ...table, rival: rival.rival } : table, [], rival?.names)
   }, [start, mainIds, extraIds, handSize])
-  const loadCombo = useCallback((combo: SavedCombo) => start(combo.initial, combo.actions, combo.names), [start])
+  const loadCombo = useCallback((combo: SavedCombo) => { setSharedCombo(null); start(combo.initial, combo.actions, combo.names) }, [start])
   // La partida del automático («Seguir en manual»): en vivo, con todo su historial (Deshacer y los Pasos siguen), y sin repartir otra mano al entrar.
   const resume = useCallback(
     (game: ManualGame) => {
@@ -571,7 +607,7 @@ function usePracticeSession({
   }, [active, session, mainIds.length, handSize, newHand])
 
   if (!session || !state) {
-    return { props: null, resume }
+    return { props: null, resume, openShared }
   }
 
   const props: PracticeScreenProps = {
@@ -592,7 +628,8 @@ function usePracticeSession({
     onSeek: seek,
     onLoadCombo: loadCombo,
     onNewHand: newHand,
+    shared,
   }
 
-  return { props, resume }
+  return { props, resume, openShared }
 }

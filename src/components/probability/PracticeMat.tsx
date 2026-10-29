@@ -47,6 +47,7 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { downloadComboFile, shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
@@ -100,7 +101,7 @@ import { ShellMenuButton } from '../shell/ShellMenu'
 import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
-import { PracticeMatPanel } from './PracticeMatPanel'
+import { PracticeMatPanel, SharedComboBar } from './PracticeMatPanel'
 import { createPanelSteps } from './panel-steps'
 import { ReplayBar, ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
@@ -299,6 +300,8 @@ interface PracticeMatProps {
   onHighlight?: (highlight: CardTextHighlight | null) => void
   /** En un duelo, el visor de las pilas del rival (lo maneja la pantalla del duelo): va en el mismo lugar que el de la mesa. */
   rivalViewer?: ReactNode
+  /** Un combo abierto desde un enlace (`#combo=…`): la mesa lo repasa y arriba ofrece guardarlo (`onSaved`: ya está en la lista) o cerrarlo. Estable (`useMemo`): la mesa es `memo`. */
+  shared?: { combo: SharedCombo; onSaved: () => void; onClose: () => void } | undefined
 }
 
 /** Fuentes de arrastre que no son cartas: el tope del deck y la ficha. */
@@ -633,6 +636,7 @@ function PracticeMatBody({
   onHover: practiceHover,
   onHighlight: practiceHighlight,
   rivalViewer,
+  shared,
 }: PracticeMatProps) {
   // El detalle fijo de la izquierda y la carta que se tocó: de un duelo, o de la práctica.
   const detail = duel?.detail ?? practiceDetail
@@ -1990,6 +1994,30 @@ function PracticeMatBody({
     [combos],
   )
 
+  // Compartir: el enlace (la hoja del sistema en el celular, o copiado) y, si no entra en un enlace, el archivo. Importar (un archivo o un enlace pegado) lo suma a la lista con un nombre que no se repite.
+  const shareCombo = useCallback(async (combo: SavedCombo) => {
+    const outcome = await shareComboLink(combo)
+    if (outcome === 'copied') showToastMessage(t('practice.share.copied', { name: combo.name }), 'success')
+    else if (outcome === 'failed') showToastMessage(t('practice.share.copyFailed'), 'error', { action: { label: t('practice.share.file'), onAction: () => downloadComboFile(combo) } })
+    else if (outcome === 'tooLong') showToastMessage(t('practice.share.tooLong', { name: combo.name }), 'warning', { action: { label: t('practice.share.file'), onAction: () => downloadComboFile(combo) } })
+  }, [])
+  const addCombo = useCallback(
+    (incoming: SharedCombo, message: 'practice.share.imported' | 'practice.combo.saved') => {
+      const combo = toSavedCombo(incoming, combos)
+      const next = [...combos, combo]
+      writeSavedCombos(next)
+      setCombos(next)
+      showToastMessage(t(message, { name: combo.name }), 'success')
+    },
+    [combos],
+  )
+  const importCombo = useCallback((result: ShareResult) => (result.ok ? addCombo(result.combo, 'practice.share.imported') : showToastMessage(t(`practice.share.error.${result.error}`), 'error')), [addCombo])
+  const saveShared = () => {
+    if (!shared) return
+    addCombo(shared.combo, 'practice.combo.saved')
+    shared.onSaved()
+  }
+
   // Los callbacks del panel y de los controles del replay son estables: así, con un destello o un cartel que se va, no se vuelven a dibujar (el panel es una lista de todos los pasos).
   // `onSeek` puede cambiar con cada jugada (el de «Jugar solo automático» mira tus jugadas): se lee del último dibujo, así el de cada ficha no cambia.
   const onSeekRef = useRef(onSeek)
@@ -2011,6 +2039,9 @@ function PracticeMatBody({
       onLoad={loadFromPanel}
       onRename={renameCombo}
       onDelete={deleteCombo}
+      onShare={shareCombo}
+      onDownload={downloadComboFile}
+      onImport={importCombo}
       showCombos={stepsPanel}
       {...(duel?.auto ? { emptyHint: t('auto.steps.empty') } : {})}
       className="min-h-0 flex-1"
@@ -2565,7 +2596,7 @@ function PracticeMatBody({
   // desde 1101. Cada agarre va sobre su borde, fuera de la grilla (no ocupa lugar ni corre nada) y encima de la mesa y de los paneles; en el orden del foco, junto a su panel.
   const rightHandle = <ResizeHandle panel="right" {...panels.right} label={t('practice.mat.resizePanel')} title={t('practice.mat.resizeHint')} className="hidden right-[var(--mat-right,20rem)] translate-x-1/2 min-[1101px]:block" />
 
-  return (
+  const mat = (
     <section
       ref={sectionRef}
       aria-label={t('practice.mat.label')}
@@ -3167,7 +3198,18 @@ function PracticeMatBody({
         : null}
     </section>
   )
+
+  if (!shared) return mat
+
+  // Un combo que llegó por enlace: arriba de la mesa, de quién es y «Guardar en mis combos» (la mesa lo repasa como uno cargado de la lista).
+  return (
+    <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
+      <SharedComboBar combo={shared.combo} onSave={saveShared} onClose={shared.onClose} />
+      {mat}
+    </div>
+  )
 }
+
 
 /** "mz:2" / "field" / "gy" → destino de la mesa (lo mismo que lee el arrastre de las zonas). */
 function parseDrop(value: string): MatDropTarget | null {

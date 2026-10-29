@@ -22,6 +22,10 @@ sus despliegues).
   mucho 400 para deshacer (`MAX_MIRROR_ACTS`: quien las manda a ráfagas no congela a quien las recibe), y la identidad de una
   carta secreta nunca viaja: ids opacos y sólo se revela lo que el rival puede ver (`mat-public.ts`). En el duelo automático por
   enlace sólo el deck del invitado (`autoDeck`, con tope de frecuencia) hace bajar datos al anfitrión, y en pleno duelo no baja nada.
+- **Un combo compartido también es de otro** (`combo-share.ts`): viaja en el hash (`#combo=`, deflate + base64url, nunca al
+  servidor) o en un `*.ygolab-combo.json`, en un sobre versionado (`v: 1` se lee siempre). Topes antes de decodificar y al
+  inflar (256 KB: una bomba se corta), y se copian sólo los campos conocidos con tipos, rangos e ids con su patrón; el enlace se
+  ofrece hasta 7.500 caracteres (45 jugadas ≈ 1.700) y, más largo, el archivo. No lleva usuario ni relay.
 - **El proxy de imágenes** (`api/card-image.ts`): sólo rutas con la forma de una imagen de carta o de set de YGOPRODeck, con el
   host fijo y sin seguir redirecciones; sólo los parámetros `path` y `w` (cada valor distinto sería otra copia en el CDN); sólo
   JPEG, PNG o WebP, con tope de bytes y de píxeles; lo que falla es un 502 que no se guarda. Sale con
