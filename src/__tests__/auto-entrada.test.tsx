@@ -119,6 +119,25 @@ describe('el interruptor del lobby de Jugar', () => {
     expect(within(rules).getByRole('switch', { name: 'Handtraps del rival' })).toBeInTheDocument()
     expect(within(rules).queryByRole('switch', SWITCH)).toBeNull()
   })
+
+  it('en Solo con el automático, «Quién empieza» (Yo de entrada) se elige y queda guardado; con la manual no está (no tiene turnos del rival)', () => {
+    withWorker()
+    lobby()
+    fireEvent.click(screen.getByRole('button', { name: /^Reglas del duelo/ }))
+    const rules = screen.getByRole('dialog', { name: 'Reglas del duelo' })
+
+    fireEvent.click(within(rules).getByRole('radio', { name: 'Solo' }))
+    expect(within(rules).queryByRole('radiogroup', { name: 'Quién empieza' })).toBeNull()
+    act(() => setAutoPref('duel', true))
+    const first = within(rules).getByRole('radiogroup', { name: 'Quién empieza' })
+
+    expect(within(first).getByRole('radio', { name: 'Yo' })).toBeChecked()
+    fireEvent.click(within(first).getByRole('radio', { name: 'El rival' }))
+    expect([autoPrefs().first, localStorage.getItem(AUTO_KEYS.first)]).toEqual(['rival', 'rival'])
+    fireEvent.click(within(first).getByRole('radio', { name: 'Al azar' }))
+    expect(within(first).getByRole('radio', { name: 'Al azar' })).toBeChecked()
+    setAutoPref('first', 'me')
+  })
 })
 
 describe('«Entrenar solo» abre la mesa que dice el interruptor', () => {

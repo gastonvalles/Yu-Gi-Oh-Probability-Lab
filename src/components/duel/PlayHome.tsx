@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
-import { canRunAuto, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
+import { canRunAuto, setAutoPref, useAutoPrefs, type AutoPrefs } from '../../app/auto-prefs'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
@@ -379,6 +379,8 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, o
   const [isPublic, setIsPublic] = useState(true)
   const [solo, setSolo] = useState(false)
   const set = (patch: Partial<DuelPrefs>) => setDraft((current) => ({ ...current, ...patch }))
+  const autoPrefsNow = useAutoPrefs()
+  const autoSolo = autoPrefsNow.duel && canRunAuto()
 
   // Cada vez que se abre arranca de lo que está guardado (y en un duelo con rival: «Solo» no se recuerda).
   useEffect(() => {
@@ -442,6 +444,23 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, o
         {/* Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). Qué mesa abre «Jugar solo» lo dice el interruptor del lobby, en la tarjeta de filas.
             Con rival: las reglas automáticas, el mismo interruptor que el del lobby. */}
         {solo ? <HandtrapsRow /> : <AutoRoomRow rooms={autoRooms} />}
+
+        {/* Solo automático: quién empieza (el núcleo arranca con el asiento 0; ir segundo es ocupar el 1). La práctica manual no tiene turnos del rival: no va. */}
+        {solo && autoSolo ? (
+          <RuleField label={t('auto.first.label')} className="sm:col-span-2">
+            <Segmented<AutoPrefs['first']>
+              label={t('auto.first.label')}
+              fullWidth
+              value={autoPrefsNow.first}
+              onChange={(value) => setAutoPref('first', value)}
+              options={[
+                { value: 'me', label: t('auto.first.me') },
+                { value: 'rival', label: t('auto.first.rival') },
+                { value: 'random', label: t('auto.first.random') },
+              ]}
+            />
+          </RuleField>
+        ) : null}
 
         {solo ? null : (
           <RuleField label={t('duel.create.time')} className="sm:col-span-2">
