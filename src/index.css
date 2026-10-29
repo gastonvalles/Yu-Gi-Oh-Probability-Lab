@@ -125,11 +125,8 @@
   --animate-card-activate-linger: card-activate-linger 3000ms var(--ease-out) both;
   /* Lo mismo, con el efecto que activó escrito debajo de la carta: 7 s, lo que lleva leer una frase de una carta (y decidir si se responde). */
   --animate-card-activate-read: card-activate-linger 7000ms var(--ease-out) both;
-  /* El mazo de la mesa: tirón de la carta de arriba al repartir y barajado (las dos de abajo se abren a los costados). */
+  /* El mazo de la mesa: tirón de la carta de arriba al repartir (el barajado va en `app/shuffle-fx.ts`, carta por carta). */
   --animate-pile-draw: pile-draw 200ms var(--ease-out);
-  --animate-riffle-left: riffle-left 640ms var(--ease-in-out);
-  --animate-riffle-right: riffle-right 640ms var(--ease-in-out);
-  --animate-riffle-lift: riffle-lift 640ms var(--ease-in-out);
   /* Mantener apretada una carta del campo o el deck: se hunde de a poco mientras se espera la retención (`HOLD_MS` de use-mat-drag.ts: 120 ms de espera, así un toque no la mueve, y 330 de hundirse). */
   --animate-hold-press: hold-press 330ms var(--ease-out) 120ms both;
   /* Efectos de la mesa de práctica (MatFx.tsx): marcos de colores con una luz que les da la vuelta, mira de objetivo, destello de invocación, cartel de fase y zonas que se ofrecen. `--fx-rgb` (r g b) es el color de cada uno. */
@@ -493,69 +490,6 @@
 
     100% {
       transform: translate(0, 0) rotate(0deg);
-    }
-  }
-
-  /* Barajar el mazo, como a mano: el mazo se parte en dos que se abren (25 %), se levantan y se entrelazan (50 % y 72 %: la mitad de cada lado pasa un poco del centro) y se golpean contra la mesa para quedar parejos (86 %). */
-  @keyframes riffle-left {
-    0%,
-    100% {
-      transform: translate(-3px, 3px);
-    }
-
-    25% {
-      transform: translate(-22px, -2px) rotate(-10deg);
-    }
-
-    50% {
-      transform: translate(-9px, -9px) rotate(-4deg);
-    }
-
-    72% {
-      transform: translate(2px, -4px) rotate(1.5deg);
-    }
-
-    86% {
-      transform: translate(-4px, 4px) rotate(-0.5deg);
-    }
-  }
-
-  @keyframes riffle-right {
-    0%,
-    100% {
-      transform: translate(-1.5px, 1.5px);
-    }
-
-    25% {
-      transform: translate(21px, -2px) rotate(10deg);
-    }
-
-    50% {
-      transform: translate(8px, -9px) rotate(4deg);
-    }
-
-    72% {
-      transform: translate(-5px, -4px) rotate(-1.5deg);
-    }
-
-    86% {
-      transform: translate(0, 3px) rotate(0.5deg);
-    }
-  }
-
-  /* Todo el mazo se alza un poco mientras se baraja y vuelve a apoyarse con el golpe. */
-  @keyframes riffle-lift {
-    0%,
-    100% {
-      transform: translateY(0) scale(1);
-    }
-
-    50% {
-      transform: translateY(-3px) scale(1.05);
-    }
-
-    86% {
-      transform: translateY(1px) scale(0.99);
     }
   }
 

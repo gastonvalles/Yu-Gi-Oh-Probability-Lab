@@ -49,9 +49,13 @@ describe('las curvas de movimiento', () => {
     expect(easeSnap(1)).toBe(1)
   })
 
-  it('el barajado del mazo (CSS) va con la misma curva que el de la mano (JS)', () => {
-    expect(CSS.match(/--animate-riffle-[a-z]+:[^;]+;/g)?.every((rule) => rule.includes('var(--ease-in-out)'))).toBe(true)
-    expect(readFileSync(path.join(SRC, 'app', 'shuffle-fx.ts'), 'utf8')).toContain('easing: EASE_IN_OUT')
+  it('el mazo y la mano se barajan con el mismo movimiento (JS, con las curvas del proyecto), sin keyframes propios en CSS', () => {
+    expect(CSS).not.toMatch(/--animate-riffle-|@keyframes riffle-/)
+    const shuffle = readFileSync(path.join(SRC, 'app', 'shuffle-fx.ts'), 'utf8')
+
+    expect(shuffle).toMatch(/export const shuffleDeck = [^\n]*shuffle\(/)
+    expect(shuffle).toMatch(/export const shuffleHand = [^\n]*shuffle\(/)
+    expect(shuffle).toContain('EASE_IN_OUT]')
   })
 
   it('dar vuelta una carta en la mesa va con una sola curva de punta a punta: no se frena de canto', () => {

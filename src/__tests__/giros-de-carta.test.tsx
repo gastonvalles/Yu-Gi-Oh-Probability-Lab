@@ -6,7 +6,6 @@ import { Provider } from 'react-redux'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { DEAL_EDGE_AT } from '../app/deal-flight'
-import { EASE_IN_OUT } from '../app/motion'
 import { PracticeHand, type HandCardData } from '../components/probability/PracticeHand'
 
 const originalAnimate = Element.prototype.animate
@@ -80,14 +79,15 @@ describe('repartir una carta desde el mazo', () => {
     const edge = path.keyframes.filter((frame) => frame.offset !== undefined && Math.abs(Number(frame.offset) - DEAL_EDGE_AT) < 0.001)
 
     expect(edge.map((frame) => /rotateY\((-?\d+(?:\.\d+)?)deg\)/.exec(String(frame.transform))![1])).toEqual(['90', '-90'])
-    expect(shadows).toHaveLength(3)
+    // La de la carta en el aire y la suya, que vuelve al apoyarse.
+    expect(shadows).toHaveLength(2)
     for (const shadow of shadows) {
       expect(shadow.keyframes.every((frame) => Object.keys(frame).every((key) => ['offset', 'easing', 'opacity'].includes(key)))).toBe(true)
       expect(shadow.options.duration).toBe(path.options.duration)
     }
 
-    // El dorso se cambia por la cara a mitad de la curva (al quedar de canto), con el mismo reloj que el vuelo.
-    expect(back.options).toMatchObject({ duration: path.options.duration, easing: EASE_IN_OUT })
-    expect(back.keyframes.find((frame) => frame.offset === 0.5 && frame.opacity === 0)).toBeDefined()
+    // El dorso se cambia por la cara al quedar de canto, con el mismo reloj que el vuelo, y no queda colgado en la carta (sin relleno hacia adelante: al llegar se esconde).
+    expect(back.options).toMatchObject({ duration: path.options.duration, fill: 'backwards' })
+    expect(back.keyframes.find((frame) => frame.offset === DEAL_EDGE_AT && frame.opacity === 0)).toBeDefined()
   })
 })

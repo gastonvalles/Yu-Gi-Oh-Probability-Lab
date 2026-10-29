@@ -20,7 +20,7 @@ import {
   type HandLayout,
 } from '../../app/practice-hand-layout'
 import type { SpotlightKind } from '../../app/mat-effects'
-import { dealFrames } from '../../app/deal-flight'
+import { DEAL_EDGE_AT, DEAL_LAND_AT, dealFrames } from '../../app/deal-flight'
 import { EASE_IN_OUT, EASE_OUT, cancelWhenDone } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import { t } from '../../i18n'
@@ -36,16 +36,15 @@ const TOP_ROOM = 8
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
-/** Cuánto tarda una carta en llegar a la mano desde el mazo al repartir (sale, se da vuelta arriba, aterriza con un rebote). */
-const DEAL_MS = 460
+/** Cuánto tarda una carta en llegar a la mano desde el mazo al repartir (sale, se da vuelta en el camino y se asienta). */
+const DEAL_MS = 380
 /**
- * Las capas de la sombra del reparto y cuándo se ve cada una (`opacity`), con las curvas del camino: nada al salir, la grande arriba (42 %), la del rebote (82 %) y, al
- * asentarse, la de la carta (`own`). Fundirlas una en otra se ve como la sombra que antes se animaba entera.
+ * Las capas de la sombra del reparto y cuándo se ve cada una (`opacity`): la de la carta en el aire, que crece al salir y se apaga al aterrizar, y la suya (`own`), que vuelve al
+ * apoyarse. Fundirlas una en otra se ve como una sombra que se anima entera.
  */
 const dealShadows = (own: string) => [
-  { shadow: '0 22px 30px rgb(0 0 0 / 0.5)', frames: [{ opacity: 0, easing: EASE_IN_OUT }, { opacity: 1, offset: 0.42, easing: EASE_OUT }, { opacity: 0, offset: 0.82 }, { opacity: 0 }] },
-  { shadow: '0 12px 20px rgb(0 0 0 / 0.4)', frames: [{ opacity: 0 }, { opacity: 0, offset: 0.42, easing: EASE_OUT }, { opacity: 1, offset: 0.82, easing: EASE_OUT }, { opacity: 0 }] },
-  { shadow: own, frames: [{ opacity: 0 }, { opacity: 0, offset: 0.82, easing: EASE_OUT }, { opacity: 1 }] },
+  { shadow: '0 18px 26px rgb(0 0 0 / 0.5)', frames: [{ opacity: 0, easing: EASE_OUT }, { opacity: 1, offset: 0.3, easing: EASE_IN_OUT }, { opacity: 0, offset: DEAL_LAND_AT }, { opacity: 0 }] },
+  { shadow: own, frames: [{ opacity: 0 }, { opacity: 0, offset: DEAL_LAND_AT - 0.2, easing: EASE_OUT }, { opacity: 1 }] },
 ]
 /** Ancho por defecto mientras el contenedor no se midió (p. ej. en tests). */
 const FALLBACK_WIDTH = 340
@@ -496,16 +495,11 @@ const HandCard = memo(function HandCard({
     const toX = Number(target[1])
     const toY = Number(target[2])
     const angle = Number(fan[1])
-    // Sale del mazo; arriba, a mitad de camino, más alta y un poco más grande (se acerca a la cámara al darse vuelta); aterriza con un rebote (pasa un poco de su
-    // lugar, con un grado más de giro) y se asienta en el abanico. El camino y el giro 3D van en una sola animación (`dealFrames`), con las curvas de siempre.
-    // Terminado se cancela (`cancelWhenDone`): si no, le sacaba a la GPU cada vez que el abanico se abre o se cierra (`transform` de la carta).
+    // Del mazo a su lugar en el abanico por una curva baja, dándose vuelta en el camino, y un asentamiento corto. El camino y el giro 3D van en una sola animación (`dealFrames`).
+    // Mientras tanto las demás cartas se corren para hacerle lugar (su transición de `transform`). Terminado se cancela (`cancelWhenDone`): si no, le sacaba a la GPU cada vez que el
+    // abanico se abre o se cierra (`transform` de la carta).
     const flight = cancelWhenDone(element.animate(
-      dealFrames([
-        { x: fromX, y: fromY, rotate: -16, scale: startScale, opacity: 0.9 },
-        { x: (fromX + toX) / 2, y: Math.min(fromY, toY) - 34, rotate: -4, scale: 1.12, opacity: 1 },
-        { x: toX, y: toY - 7, rotate: angle + 1.5, scale: 1.03, opacity: 1 },
-        { x: toX, y: toY, rotate: angle, scale: 1, opacity: 1 },
-      ]),
+      dealFrames({ x: fromX, y: fromY, rotate: -10, scale: startScale, opacity: 0.9 }, { x: toX, y: toY, rotate: angle, scale: 1, opacity: 1 }, 24),
       { duration: DEAL_MS, fill: 'backwards' },
     ))
     // La sombra crece al subir y baja al aterrizar: tres capas fijas (la de arriba, la del rebote y la que la carta tiene, con su aro si brilla) que se funden con `opacity`, que lo
@@ -522,25 +516,23 @@ const HandCard = memo(function HandCard({
     })
     element.style.overflow = 'visible'
     element.style.boxShadow = 'none'
+    // El dorso se cambia por la cara justo al quedar de canto, con el mismo reloj que el giro; al llegar se esconde (y su animación no queda colgada en la carta).
+    const flip = back.animate([{ opacity: 1 }, { opacity: 1, offset: DEAL_EDGE_AT }, { opacity: 0, offset: DEAL_EDGE_AT }, { opacity: 0 }], { duration: DEAL_MS, fill: 'backwards' })
     const settle = () => {
       for (const { layer, animation } of shadows) {
         animation.cancel()
         layer.remove()
       }
+      flip.cancel()
+      back.style.setProperty('display', 'none')
       element.style.removeProperty('overflow')
       element.style.removeProperty('box-shadow')
     }
     flight.addEventListener?.('finish', settle)
-    // El dorso se cambia por la cara justo al quedar de canto: a mitad de la curva, con el mismo reloj que el giro.
-    const flip = back.animate(
-      [{ opacity: 1 }, { opacity: 1, offset: 0.5 }, { opacity: 0, offset: 0.5 }, { opacity: 0 }],
-      { duration: DEAL_MS, easing: EASE_IN_OUT, fill: 'both' },
-    )
 
     return () => {
       flight.cancel()
       settle()
-      flip.cancel()
     }
     // Sólo al montarse: reordenar o redimensionar no debe volver a repartir.
     // eslint-disable-next-line react-hooks/exhaustive-deps

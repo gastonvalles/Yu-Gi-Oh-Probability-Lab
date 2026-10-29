@@ -18,6 +18,7 @@ import { FieldArt, PickMarks, fieldArtSrc } from '../probability/MatArena'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
 import { PileStack } from '../probability/PileStack'
+import { DECK_LAYERS } from '../probability/practice-styles'
 import { MaterialCount, MaterialStack } from '../probability/MaterialStack'
 
 /**
@@ -455,29 +456,25 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
   const acting = cards.some((id) => side.act?.has(id))
   const link = pileLinksOf(cards, side.links)
+  const rivalDeck = pile === 'deck' && owner === 'theirs' && cards.length > 0
   const label = `${PILE_TITLES[pile]}: ${cards.length}${up.length > 0 ? `, ${t('practice.pile.faceUpCount', { count: up.length })}` : ''}`
 
   return (
     <div role="group" aria-label={link ? chainLinkLabel(label, link) : label} title={PILE_TITLES[pile]} data-drop={owner === 'mine' ? pile : undefined} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} data-glow={acting ? 'true' : 'false'} data-glow-kind={acting ? 'act' : undefined} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent] data-[glow=true]:z-6')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {/* El grosor del deck y del Extra, en perspectiva con el campo: el canto que se ve es el de abajo (el que mira a quien juega), también en las pilas del rival. */}
       {pile === 'deck' || pile === 'extra' ? <PileStack count={cards.length} /> : null}
+      {/* El deck del rival, de capas como el propio y fuera del recorte: así se baraja a la vista cuando lo toca (`shuffleDeck`). */}
+      {rivalDeck
+        ? [...DECK_LAYERS, ''].map((layer, index) => (
+            <span key={index} data-layer className={cx('absolute inset-0', layer)}>
+              <CardBack className="h-full" />
+            </span>
+          ))
+        : null}
       {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}
       <span className="absolute inset-0 overflow-hidden">
       {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}
-      {pile === 'deck' && owner === 'theirs' && cards.length > 0 ? (
-        // El deck del rival, de capas como el propio: así se baraja a la vista cuando lo toca.
-        <>
-          <span data-layer className="absolute inset-0 [transform:translate(-3px,3px)]">
-            <CardBack className="h-full" />
-          </span>
-          <span data-layer className="absolute inset-0 [transform:translate(-1.5px,1.5px)]">
-            <CardBack className="h-full" />
-          </span>
-          <span className="absolute inset-0">
-            <CardBack className="h-full" />
-          </span>
-        </>
-      ) : cards.length > 0 ? (art ? <CardArt key={shown} remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} /> : <CardBack key={shown} className={cx('h-full', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} />) : null}
+      {!rivalDeck && cards.length > 0 ? (art ? <CardArt key={shown} remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} /> : <CardBack key={shown} className={cx('h-full', owner === 'theirs' && 'rotate-180', swapped && 'animate-pop motion-reduce:animate-none', link?.voided && VOIDED_ART)} />) : null}
       <PileBadge label={PILE_SHORT[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark key={`mira:${shown}`} /> : null}

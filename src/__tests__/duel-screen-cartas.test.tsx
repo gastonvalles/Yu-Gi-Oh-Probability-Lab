@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadCardEffectMap, loadCardEffects } from '../app/card-effect-data'
 import CARD_EFFECTS from '../data/card-effects.json'
-import { RIFFLE_MS } from '../app/shuffle-fx'
+import { SHUFFLE_ID } from '../app/shuffle-fx'
 import type { DuelConnect } from '../app/use-duel'
 import { HOLD_MS } from '../app/use-mat-drag'
 import type { ApiCardReference } from '../types'
@@ -411,9 +411,9 @@ describe('la pantalla del duelo', () => {
 
     vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
     Element.prototype.getAnimations = () => []
-    // Sólo se cuentan las animaciones del barajado (las demás, como los vuelos, duran otra cosa).
+    // Sólo se cuentan las animaciones del barajado (las de su `id`).
     Element.prototype.animate = function (this: Element, _frames: unknown, options?: KeyframeAnimationOptions | number) {
-      if (typeof options === 'object' && options.duration === RIFFLE_MS) animated.push(this)
+      if (typeof options === 'object' && options.id === SHUFFLE_ID) animated.push(this)
 
       return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
     }
@@ -429,7 +429,7 @@ describe('la pantalla del duelo', () => {
       const inRivalDeck = animated.filter((element) => guest.container.contains(element) && element.hasAttribute('data-layer') && element.closest('[data-rival-drop="deck"]') !== null)
 
       expect(inRivalHand.length).toBeGreaterThan(0)
-      expect(inRivalDeck.length).toBe(2)
+      expect(inRivalDeck.length).toBe(8)
 
       // Una jugada que no toca ni el deck ni la mano (poner una carta en el campo) no los baraja.
       animated.length = 0
@@ -489,7 +489,7 @@ describe('la pantalla del duelo', () => {
     vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
     Element.prototype.getAnimations = () => []
     Element.prototype.animate = function (this: Element, _frames: unknown, options?: KeyframeAnimationOptions | number) {
-      if (typeof options === 'object' && options.duration === RIFFLE_MS) animated.push(this)
+      if (typeof options === 'object' && options.id === SHUFFLE_ID) animated.push(this)
 
       return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
     }
@@ -509,7 +509,7 @@ describe('la pantalla del duelo', () => {
       expect(screen.queryByRole('dialog', { name: /^Main · / })).not.toBeInTheDocument()
       expect(guest.container.querySelector('[data-activation]')).toHaveAttribute('data-kind', 'hand')
       expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana lleva 2 cartas a su mano')
-      expect(animated.filter((element) => guest.container.contains(element) && element.hasAttribute('data-layer') && element.closest('[data-rival-drop="deck"]') !== null)).toHaveLength(2)
+      expect(animated.filter((element) => guest.container.contains(element) && element.hasAttribute('data-layer') && element.closest('[data-rival-drop="deck"]') !== null)).toHaveLength(8)
     } finally {
       vi.unstubAllGlobals()
       Element.prototype.animate = animate

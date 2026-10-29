@@ -27,6 +27,7 @@ import { Segmented } from '../../ui/Segmented'
 import { cx } from '../../ui/cx'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleDuel } from './duel-sample'
+import { ShuffleSamples } from './ShuffleSamples'
 
 /**
  * El duelo por enlace: cómo se ven los dos campos. Las tres variantes son las que se ofrecen para el celular; en una
@@ -81,6 +82,7 @@ export function DuelSection() {
       <StatTagSample duel={duel} />
       <MaterialSamples />
       <HoldSample />
+      <ShuffleSamples />
       <RingsSample />
       <ResizeHandleSample />
 

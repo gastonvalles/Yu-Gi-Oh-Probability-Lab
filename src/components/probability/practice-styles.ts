@@ -56,3 +56,9 @@ export const CARD_BACK_HD_URL = '/card-back.webp'
  * ve las clases escritas completas.
  */
 export const CARD_BACK = 'absolute inset-0 z-1 overflow-hidden bg-[#1d1033] bg-cover bg-center bg-[url(/card-back-sm.webp)]'
+
+/**
+ * Las capas de dorso bajo la carta de arriba del mazo (el propio y el del rival), que se barajan a la vista (`shuffleDeck`): quietas, las dos de arriba asoman corridas como
+ * el canto del mazo y las demás quedan debajo; al barajar, cada una es una carta de la pila. Con la de arriba son 8: bastan para leerse como una pila y son pocas capas en la GPU.
+ */
+export const DECK_LAYERS = [...Array<string>(6).fill('[transform:translate(-3px,3px)]'), '[transform:translate(-1.5px,1.5px)]']

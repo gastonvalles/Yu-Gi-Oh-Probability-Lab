@@ -54,7 +54,8 @@ import { NO_FIELD_STATS, fieldStatsOf, printedStat } from '../../app/field-stats
 import { whyNotResume } from '../../app/auto/resume'
 import { playSfx } from '../../app/sfx'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
-import { riffle } from '../../app/shuffle-fx'
+import { shuffleDeck, shuffleHand } from '../../app/shuffle-fx'
+import { FIRST_DEAL_MS, NEXT_DEAL_MS } from '../../app/deal-flight'
 import { cardPose, useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
 import { useMatPanels } from '../../app/mat-panels'
@@ -106,7 +107,7 @@ import { RivalHandStrip } from './RivalHandStrip'
 import { UndoChip, useUndoPlay, type UndoPlay } from './UndoChip'
 import { PileStack } from './PileStack'
 import { MaterialCount, MaterialStack } from './MaterialStack'
-import { CARD_BACK, CARD_BACK_URL, glowFrame } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL, DECK_LAYERS, glowFrame } from './practice-styles'
 import { glowOf, pileGlowOf, pileLinksOf, type ChainBadgeData } from '../../app/card-glow'
 
 export interface MatCard {
@@ -312,10 +313,6 @@ const UNKNOWN_CARD: MatCard = { get name() { return t('practice.card.unknown') }
 /** Una carta del rival que todavía no mostró (el objetivo de un ataque a un monstruo boca abajo). */
 const RIVAL_MONSTER: MatCard = { get name() { return t('practice.attack.rivalMonster') }, apiCard: null }
 const EMPTY_IDS: ReadonlySet<string> = new Set()
-
-/** Pausa antes de repartir la primera carta (el mazo se baraja antes: `riffle-*` dura 640 ms y se reparte cuando ya se golpeó contra la mesa) y entre carta y carta (el ritmo de quien reparte). */
-const FIRST_DEAL_MS = 560
-const NEXT_DEAL_MS = 105
 
 /**
  * El borde y el velo de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) con un velo parejo, para que la zona se lea como un lugar y no como un hueco.
@@ -839,6 +836,8 @@ function PracticeMatBody({
   // Lo que se mide en la página va después del dibujo: la espada de un ataque (del atacante a su objetivo, a una carta del rival o directo a su barra de vida; sin rival, al borde de la mesa)
   // y el barajado (tocar el deck o sumar una carta a la mano: el deck con su animación, la mano carta por carta). Deshacer o saltar de paso corta la espada.
   const { step } = fxStep
+  // La mano se baraja cuando ya está entera (la carta que entra se reparte un dibujo después): ver el efecto del reparto, más abajo.
+  const handShuffleRef = useRef(false)
 
   useEffect(() => {
     if (!step) return
@@ -852,8 +851,8 @@ function PracticeMatBody({
     if (action.type === 'attack') {
       setStrike(strikeOf({ from: `[data-card-id="${action.id}"]`, to: action.target === undefined ? undefined : `[data-rival-card-id="${action.target}"]`, direct: 'theirs', bounds: sectionRef.current }))
     }
-    // El deck ya se barajó con el dibujo del paso (`shuffles`); la mano, carta por carta, acá.
-    if (step.shuffle) riffle(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])
+    // El deck se baraja con el dibujo del paso (`shuffles`); la mano, cuando está entera.
+    if (step.shuffle) handShuffleRef.current = true
   }, [step])
 
   // Cada efecto se va solo, `FX_MS` después de dibujarse (`shownRef`: cuándo se dibujó cada uno, por su `key`). Un solo temporizador, al más próximo (y de ahí al siguiente): los que vencen
@@ -913,9 +912,13 @@ function PracticeMatBody({
   const [handOrder, setHandOrder] = useState<string[]>([])
   const [dealt, setDealt] = useState(0)
   const [shuffleKey, setShuffleKey] = useState(0)
-  // El deck se baraja a la vista con una mano nueva o un barajado a mano (`shuffleKey`) y con cada paso que baraja (`fxStep.shuffles`, en el mismo dibujo del paso).
+  // El deck se baraja a la vista con una mano nueva o un barajado a mano (`shuffleKey`) y con cada paso que baraja (`fxStep.shuffles`, que cambia en el mismo dibujo del paso): sus capas, después del dibujo.
   const deckKey = shuffleKey + fxStep.shuffles
   const deckRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (deckKey > 0) shuffleDeck(deckRef.current?.querySelectorAll('[data-layer]') ?? [])
+  }, [deckKey])
   const fieldRef = useRef<HTMLDivElement | null>(null)
   // El campo se dibuja cuando ya hay mano repartida: el efecto de abajo lo espera (por eso es estado y no sólo una referencia).
   const [fieldNode, setFieldNode] = useState<HTMLDivElement | null>(null)
@@ -986,6 +989,7 @@ function PracticeMatBody({
 
   useEffect(() => {
     initialDealRef.current = true
+    handShuffleRef.current = false
     setHandOrder([])
     setDealt(0)
     setShuffleKey((key) => key + 1)
@@ -995,6 +999,13 @@ function PracticeMatBody({
   }, [session.initial])
 
   const handTotal = state.hand.length
+
+  // La mano que se baraja (un paso que baraja o que le suma una carta), ya entera: si la carta nueva todavía vuela, `shuffleHand` espera a que aterrice.
+  useEffect(() => {
+    if (!handShuffleRef.current || dealt < handTotal) return
+    handShuffleRef.current = false
+    shuffleHand(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])
+  }, [step, dealt, handTotal])
 
   useEffect(() => {
     if (dealt >= handTotal) {
@@ -1069,8 +1080,8 @@ function PracticeMatBody({
     if (rivalShuffle === 0) return
 
     const root = sectionRef.current
-    riffle(root?.querySelectorAll('[data-rival-drop="deck"] [data-layer]') ?? [])
-    riffle(root?.querySelectorAll('[data-rival-drop="hand"] [role="img"] > span') ?? [])
+    shuffleDeck(root?.querySelectorAll('[data-rival-drop="deck"] [data-layer]') ?? [])
+    shuffleHand(root?.querySelectorAll('[data-rival-drop="hand"] [role="img"] > span') ?? [])
   }, [rivalShuffle])
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
   useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
@@ -2743,11 +2754,14 @@ function PracticeMatBody({
             {/* El grosor del deck, debajo: se afina al robar. */}
             <PileStack count={state.deck.length} />
             {state.deck.length > 0 ? (
-              <span key={deckKey} className={cx('absolute inset-0', deckKey > 0 && 'animate-riffle-lift motion-reduce:animate-none', deckLink?.voided && VOIDED_ART)}>
-                <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', deckKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />
-                <span className={cx(CARD_BACK, '[transform:translate(-1.5px,1.5px)]', deckKey > 0 && 'animate-riffle-right motion-reduce:animate-none')} />
-                {/* Cada carta repartida le da un tirón a la de arriba. */}
-                <span key={dealt} className={cx(CARD_BACK, 'animate-pile-draw motion-reduce:animate-none')} />
+              <span className={cx('absolute inset-0', deckLink?.voided && VOIDED_ART)}>
+                {DECK_LAYERS.map((layer, index) => (
+                  <span key={index} data-layer className={cx(CARD_BACK, layer)} />
+                ))}
+                {/* Cada carta repartida le da un tirón a la de arriba (por dentro: su capa es la que se baraja). */}
+                <span data-layer className="absolute inset-0 z-1">
+                  <span key={dealt} className={cx(CARD_BACK, 'animate-pile-draw motion-reduce:animate-none')} />
+                </span>
               </span>
             ) : null}
             <PileBadge label={PILE_SHORT.deck} count={state.deck.length} />
