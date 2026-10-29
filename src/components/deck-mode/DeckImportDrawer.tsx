@@ -471,9 +471,9 @@ export function DeckImportDrawer({
           aria-label={t('deck.import.dialog')}
           className="absolute right-0 top-0 flex h-full w-full max-w-136 animate-side-drawer flex-col border-l outline-none border-border-subtle bg-card-background p-0 shadow-overlay motion-reduce:animate-none"
         >
-          <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
-            <div className="flex min-w-0 items-start gap-3">
-              <Icon name="upload" size={22} className="mt-1 shrink-0 text-foreground" />
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
+            <div className="flex min-w-0 items-center gap-3">
+              <Icon name="upload" size={22} className="shrink-0 text-foreground" />
               <div className="min-w-0">
                 <Heading level="section" as="h3">
                   {t('deck.import.title')}
@@ -509,6 +509,8 @@ export function DeckImportDrawer({
                     options={methodOptions}
                     label={t('deck.import.method.label')}
                     fullWidth
+                    // En un renglón: partes iguales, y «Pegar texto» no se parte en el celular angosto.
+                    dense
                   />
 
                   {method === 'file' ? (
