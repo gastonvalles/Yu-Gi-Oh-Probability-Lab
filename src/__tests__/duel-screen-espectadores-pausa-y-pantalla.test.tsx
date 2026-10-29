@@ -628,8 +628,8 @@ describe('la pantalla del duelo', () => {
     expect(savedActions()).toBe(1)
     flush()
 
-    // Con menos de tres cifras se entiende en centenas: "10" es 1000.
-    changeLife(guest, ['1', '0'])
+    // Un dígito sin 0 se entiende en centenas: "1" y «000» es 1000.
+    changeLife(guest, ['1', '000'])
     expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
 
     const hand = cardsOf(guest)
@@ -1003,8 +1003,8 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    // Beto se queda sin puntos de vida: 80 es 8000.
-    changeLife(guest, ['8', '0'], /^Aplicar: restar 8000/)
+    // Beto se queda sin puntos de vida: 8 y «000» es 8000.
+    changeLife(guest, ['8', '000'], /^Aplicar: restar 8000/)
 
     const lost = within(guest.container).getByRole('dialog', { name: 'Perdiste' })
     expect(within(lost).getByText('Te quedaste sin puntos de vida.')).toBeInTheDocument()

@@ -975,8 +975,8 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByText(/^Turno de Ana · \d+$/)).toBeInTheDocument()
 
     // El anfitrión pierde 1000: el invitado lo ve en la tarjeta del rival.
-    // Con menos de tres cifras se entiende en centenas: "10" es 1000.
-    changeLife(host, ['1', '0'])
+    // Un dígito sin 0 se entiende en centenas: "1" y «000» es 1000.
+    changeLife(host, ['1', '000'])
 
     expect(within(host.container).getByRole('button', { name: /Puntos de vida de Ana: 7000/ })).toBeInTheDocument()
     expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Ana: 7000/ })).toBeInTheDocument()

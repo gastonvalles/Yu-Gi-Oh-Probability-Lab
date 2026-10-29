@@ -31,7 +31,7 @@ function MainApp() {
   }, [])
 
   return (
-    <main className="min-h-screen w-full bg-transparent p-0">
+    <main className="min-h-dvh w-full bg-transparent p-0">
       <DeckModeScreen />
       <Mascot />
       <AppToaster />

@@ -1901,8 +1901,9 @@
     }
   }
 
+  /* `dvh` y no `vh`: en el celular `100vh` es el alto sin la barra de direcciones, y con ella a la vista la página scrolleaba lo que mide (la calculadora de LP). */
   body {
-    min-height: 100vh;
+    min-height: 100dvh;
     font-family: var(--font-sans);
     line-height: 1.4;
     letter-spacing: 0;

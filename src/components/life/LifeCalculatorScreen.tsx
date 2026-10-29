@@ -262,7 +262,7 @@ export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la c
         <DuelistPanel position={1} name={nameOf(order[1])} lp={state.lp[order[1]]} selected={selected === order[1]} disabled={!editable(order[1])} onSelect={() => select(order[1])} />
       </div>
 
-      {/* La operación en curso: LP del elegido, signo y cantidad; los ceros que se sobreentienden (las centenas, o el cuarto dígito con tres) van apagados. */}
+      {/* La operación en curso: LP del elegido, signo y cantidad; los ceros que se sobreentienden (las centenas de «5» o «55») van apagados. */}
       <div className="flex min-h-12 items-center justify-between gap-2 rounded-control bg-input px-3 [grid-area:disp]">
         <output
           aria-live="polite"
