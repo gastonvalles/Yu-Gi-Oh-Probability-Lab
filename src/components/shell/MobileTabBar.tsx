@@ -23,6 +23,9 @@ interface MobileTabBarProps {
 
 const TAB = 'relative flex h-[calc(4rem-1px)] min-w-0 flex-1 flex-col items-center text-micro font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none'
 
+/** El rótulo de un lugar: en 320 px cada lugar mide 64 y «Descubrir» o «Your deck» no entraban (salían con «…»); por eso el relleno es mínimo y, debajo de 360 px, las letras se juntan un poco. */
+const LABEL = 'max-w-full truncate px-0.5 max-[359px]:tracking-tight'
+
 /** La rayita ámbar arriba del lugar abierto: lo marca también por la forma, no sólo por el color del texto. */
 const Indicator = () => <span aria-hidden="true" className="absolute top-0 h-0.75 w-8 rounded-b-full bg-nav-active" />
 
@@ -64,7 +67,7 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, onSearch, sea
         >
           {hasActive ? <Indicator /> : null}
           <Icon name={group.icon} size={22} variant={hasActive ? 'bold' : 'bulk'} className="[--icon-cut:var(--nav)]" />
-          <span className="max-w-full truncate px-1">{group.label}</span>
+          <span className={LABEL}>{group.label}</span>
         </button>
       )
     })
@@ -74,7 +77,7 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, onSearch, sea
       <button key="search" type="button" aria-label={t('shell.find.open')} aria-haspopup="dialog" aria-expanded={searchOpen} className={cx(TAB, 'justify-center gap-1', searchOpen ? 'text-nav-active' : 'text-foreground')} onClick={onSearch}>
         {searchOpen ? <Indicator /> : null}
         <Icon name="search" size={22} strokeWidth={searchOpen ? 2.1 : 1.75} />
-        <span className="max-w-full truncate px-1">{t('shell.nav.searchShort')}</span>
+        <span className={LABEL}>{t('shell.nav.searchShort')}</span>
       </button>,
     )
   }
@@ -103,7 +106,7 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, onSearch, sea
         <span aria-hidden="true" className={cx('absolute -top-3 left-1/2 grid size-13 -translate-x-1/2 place-items-center rounded-full bg-primary text-white ring-3 ring-background', hasActive && 'outline-2 outline-offset-3 outline-nav-active')}>
           <Icon name={play.icon} size={26} strokeWidth={2} />
         </span>
-        <span className="max-w-full truncate px-1">{play.label}</span>
+        <span className={LABEL}>{play.label}</span>
       </button>,
     )
   }

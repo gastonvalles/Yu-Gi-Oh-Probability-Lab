@@ -61,7 +61,7 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
           {onOpenHelp ? (
             <button
               type="button"
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-micro font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-micro pointer-coarse:min-h-11 font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
               onClick={onOpenHelp}
             >
               <Icon name="info" size={14} />
@@ -84,7 +84,7 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
                     type="button"
                     aria-pressed={active}
                     title={ROLE_HELP_TEXT[role]}
-                    className={cx(roleOptionButton(active), 'min-h-9 px-3 py-1.5 text-body leading-none min-[1101px]:min-h-8')}
+                    className={cx(roleOptionButton(active), 'min-h-9 px-3 py-1.5 text-body leading-none min-[1101px]:min-h-8 pointer-coarse:min-h-11')}
                     style={getClassificationStyle(definition.key)}
                     onClick={() => onToggleRole(role)}
                   >

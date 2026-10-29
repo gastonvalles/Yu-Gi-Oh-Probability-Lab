@@ -67,7 +67,7 @@ const CARD_TYPES: readonly CardType[] = ['monster', 'spell', 'trap']
 
 const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-/** Chip de un rol o de un criterio de «Más»: elegido, el aro ámbar por dentro y el texto ámbar (no corre nada de lugar). */
+/** Chip de un rol o de un criterio de «Más»: elegido, el aro ámbar por dentro y el texto ámbar (no corre nada de lugar). De a dos por fila desde 360 px; en 320, de a uno (de a dos, «Disruption» se cortaba). */
 const CHIP =
   'flex min-h-13 w-full items-center gap-2.5 rounded-control bg-input px-3 text-left text-body font-semibold text-foreground transition-[background-color,color,box-shadow] duration-150 hover:bg-input-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:text-info-soft aria-pressed:inset-ring-2 aria-pressed:inset-ring-info disabled:pointer-events-none disabled:opacity-45'
 
@@ -188,7 +188,7 @@ export function CategoryPicker({ index, currentMatcher, derivedMainCards: allCar
               {visibleRoles.length === 0 ? (
                 empty(t('builder.picker.noMatches'))
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
                   {visibleRoles.map((option) => (
                     <button
                       key={option.key}
@@ -276,8 +276,9 @@ export function CategoryPicker({ index, currentMatcher, derivedMainCards: allCar
         </div>
       </div>
 
-      <footer className="flex items-center gap-2 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 md:px-6">
-        <span className="min-w-0 flex-1 text-body text-muted">{summary}</span>
+      {/* Por debajo de 380 px lo elegido va en su renglón, arriba de los botones: al lado, «Todavía no elegiste nada» quedaba en una columna de una palabra. */}
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 md:px-6">
+        <span className="min-w-0 flex-1 text-body text-muted max-[380px]:basis-full">{summary}</span>
         <Button variant="tertiary" size="md" onClick={onBack}>
           {t('builder.picker.cancel')}
         </Button>
@@ -293,7 +294,7 @@ function MoreSection({ title, children }: { title: string; children: ReactNode }
   return (
     <section className="grid gap-2">
       <h3 className={cx('m-0', overline)}>{title}</h3>
-      <div className="grid grid-cols-2 gap-2">{children}</div>
+      <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">{children}</div>
     </section>
   )
 }

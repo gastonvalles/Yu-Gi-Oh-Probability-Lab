@@ -21,10 +21,11 @@ export function FirstTimeCard({ onTryLab, onImport }: { onTryLab: () => void; on
         title={t('meta.compare.empty.title')}
         actions={
           <>
-            <Button variant="secondary" icon="upload" onClick={onImport}>
+            {/* `max-w-full`: en 320–360 px «Probar un cambio en el Lab» no entra en un renglón y se salía de la tarjeta; así baja de renglón adentro del botón. */}
+            <Button variant="secondary" icon="upload" className="max-w-full" onClick={onImport}>
               {t('meta.compare.import')}
             </Button>
-            <Button variant="primary" icon="flask" onClick={onTryLab}>
+            <Button variant="primary" icon="flask" className="max-w-full" onClick={onTryLab}>
               {t('meta.compare.empty.lab')}
             </Button>
           </>
@@ -80,10 +81,10 @@ export function SameDeckCard({ result, computing, cards, onGoToBuilder, onTryLab
       <div className="grid gap-3 border-t border-border-subtle pt-4">
         <p className="m-0 text-body text-muted">{t('meta.compare.same.next')}</p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" icon="cards" onClick={onGoToBuilder}>
+          <Button variant="secondary" icon="cards" className="max-w-full" onClick={onGoToBuilder}>
             {t('meta.compare.goToBuilder')}
           </Button>
-          <Button variant="primary" icon="flask" onClick={onTryLab}>
+          <Button variant="primary" icon="flask" className="max-w-full" onClick={onTryLab}>
             {t('meta.compare.empty.lab')}
           </Button>
         </div>

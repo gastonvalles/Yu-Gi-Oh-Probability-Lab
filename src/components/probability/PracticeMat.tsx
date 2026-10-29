@@ -2063,7 +2063,7 @@ function PracticeMatBody({
         {spot === 'field' ? null : <ZoneLines kind={spot === 'st' ? 'spell' : 'monster'} />}
         {pickableZone || pickableTribute ? <PickMarks diamond={pickableZone && !shown} /> : null}
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
-        {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
+        {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft @container min-[1101px]:text-[0.6rem]"><span className="@max-[2rem]:hidden">{t('practice.zone.fieldLabel')}</span></span> : null}
         {shown ? (
           <PlacedCard
             key={shown.id}
@@ -3167,12 +3167,15 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
   }
 }
 
-/** Cantidad grande en el centro de la pila, como en la mesa real, y el nombre de la casilla chico debajo. */
+/**
+ * Cantidad grande en el centro de la pila, como en la mesa real, y el nombre de la casilla chico debajo. En una pila angosta (el campo de 320 o 360 px con el marcador arriba, de unos
+ * 23 px) el nombre no entra y se monta sobre el borde: se esconde (lo dice el nombre de la pila) y el número baja un paso.
+ */
 export const PileBadge = memo(function PileBadge({ label, count }: { label: string; count: number }) {
   return (
-    <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none">
-      <span className={cx('rounded-full px-1.5 py-0.5 text-lead font-extrabold tabular-nums text-foreground min-[1101px]:text-title', count > 0 && 'bg-background/70')}>{count}</span>
-      <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{label}</span>
+    <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none @container">
+      <span className={cx('rounded-full px-1.5 py-0.5 text-lead font-extrabold tabular-nums text-foreground min-[1101px]:text-title @max-[2rem]:px-0.5 @max-[2rem]:text-body', count > 0 && 'bg-background/70')}>{count}</span>
+      <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem] @max-[2rem]:hidden">{label}</span>
     </span>
   )
 })

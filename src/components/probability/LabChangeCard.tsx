@@ -128,7 +128,7 @@ export function LabChangeActions({ compact = false, onDiscard, onCompare, onAppl
  */
 export function LabChangeBar(props: ChangeActions) {
   return createPortal(
-    <div role="group" aria-label={t('lab.change.label')} className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 border-t border-border-subtle bg-background px-gutter py-3">
+    <div role="group" aria-label={t('lab.change.label')} className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 border-t border-border-subtle bg-background px-gutter pb-5 pt-3">
       <LabChangeActions compact {...props} />
     </div>,
     document.body,
@@ -147,7 +147,7 @@ function ChangeLine({ action, line }: { action: 'remove' | 'add'; line: DraftLin
         <CardArt remoteUrl={line.card.apiCard.imageUrlSmall} name={line.card.name} className="block aspect-[421/614] w-full object-cover" />
       </span>
       <span className="grid min-w-0">
-        <strong className="min-w-0 truncate text-body font-semibold text-foreground">
+        <strong className="min-w-0 line-clamp-2 text-body font-semibold text-foreground">
           {t(remove ? 'lab.suggestion.removeVerb' : 'lab.suggestion.addVerb')} {line.card.name}
         </strong>
         <span className="text-body text-muted">{t(remove ? 'lab.change.out' : 'lab.change.in', { role: roleLabel, count: line.after, n: formatInteger(line.after) })}</span>

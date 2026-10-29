@@ -100,7 +100,7 @@ function MetaCardOverlay({ stat, onClose, onPickArchetype, onShowDecks }: MetaCa
                 <button
                   key={archetype.name}
                   type="button"
-                  className={cx(choiceChip, 'h-7 gap-1.5 px-2.5 text-micro')}
+                  className={cx(choiceChip, 'min-h-7 gap-1.5 px-2.5 py-1 text-micro pointer-coarse:min-h-11')}
                   title={t('meta.card.onlyArchetype', { name: archetype.name })}
                   onClick={() => onPickArchetype(archetype.name)}
                 >

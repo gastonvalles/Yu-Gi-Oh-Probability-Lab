@@ -94,7 +94,8 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
       aria-label={t('builder.condition.label', { index: index + 1 })}
       className={cx('grid gap-2 rounded-control transition-[background-color,box-shadow] duration-150', dragging && 'bg-tint/6 shadow-overlay')}
     >
-      <div className="flex items-center gap-1.5">
+      {/* Por debajo de 380 px «Tiene / No tiene», la cantidad y la X no entran en una fila: la elección va arriba, entera, y debajo el resto (la X a la derecha). */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {count > 1 ? (
           <button
             type="button"
@@ -110,7 +111,7 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
         <Segmented
           fullWidth
           dense
-          className="min-w-0 flex-1"
+          className="min-w-0 flex-1 max-[380px]:order-first max-[380px]:basis-full"
           label={t('builder.condition.hasLabel')}
           value={condition.kind}
           options={[
@@ -129,7 +130,7 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
             onChange={(quantity) => actions.setRequirementCount(patternId, condition.id, String(quantity))}
           />
         ) : null}
-        <IconButton tone="raised" size="lg" aria-label={t('builder.condition.remove', { index: index + 1 })} onClick={onRemove}>
+        <IconButton tone="raised" size="lg" className="max-[380px]:ml-auto" aria-label={t('builder.condition.remove', { index: index + 1 })} onClick={onRemove}>
           <CloseIcon />
         </IconButton>
       </div>

@@ -324,6 +324,8 @@ export function ExportDeckPanel({
               variant="primary"
               size="sm"
               icon="download"
+              // «Descargar imagen, decklist PDF y YDK» no entra en el celular angosto: se parte adentro del botón en vez de salirse de la hoja.
+              className="max-w-full text-center"
               disabled={busy || mainDeckCount === 0 || selectedCount === 0}
               title={mainDeckCount === 0 ? t('deck.export.modal.needsMain') : selectedCount === 0 ? t('deck.export.modal.pickOne') : undefined}
               onClick={() => {
@@ -365,14 +367,15 @@ export function ExportDeckPanel({
       </Modal>
 
       {/* En el celular, abajo y al alcance del pulgar: volver al deck y descargar (la principal, a la derecha). Pegada a la barra de abajo; el círculo de Jugar asoma 12 px
-          (`TAB_BAR_PX`) y cae en el margen de abajo, más alto que el de arriba: no toca los botones. */}
+          (`TAB_BAR_PX`) y cae en el margen de abajo, más alto que el de arriba: no toca los botones. Volver mide lo que su texto, en un renglón (a medias, en 320 px se partía), y
+          Descargar se queda con el resto. */}
       <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background px-gutter pb-5 pt-3 min-[1101px]:hidden">
         {onBack ? (
-          <Button variant="secondary" size="md" className="min-w-0 flex-1" onClick={onBack}>
+          <Button variant="secondary" size="md" className="whitespace-nowrap max-[360px]:px-3" onClick={onBack}>
             {t('deck.export.back')}
           </Button>
         ) : null}
-        <Button variant="primary" size="md" icon="download" className="min-w-0 flex-1" disabled={busy || mainDeckCount === 0} onClick={() => setDownloadOpen(true)}>
+        <Button variant="primary" size="md" icon="download" className="min-w-0 flex-1 max-[360px]:px-3" disabled={busy || mainDeckCount === 0} onClick={() => setDownloadOpen(true)}>
           {busy ? t('deck.export.generating') : t('deck.export.download')}
         </Button>
       </div>

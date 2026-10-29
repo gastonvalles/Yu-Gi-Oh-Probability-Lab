@@ -136,7 +136,8 @@ export function TierMakerScreen() {
 
       {/* `justify-between` y no `ml-auto`: si en el celular no entran juntos, los dos quedan alineados a la izquierda, uno abajo del otro (con `ml-auto`, «Descargar imagen» bajaba sola a la derecha). */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button variant="tertiary" size="sm" disabled={ranked === 0} onClick={() => update(resetPlacements)}>
+        {/* `max-w-full`: en 320 px y en inglés no entra en un renglón y se parte adentro, en vez de salirse. */}
+        <Button variant="tertiary" size="sm" className="max-w-full" disabled={ranked === 0} onClick={() => update(resetPlacements)}>
           {t('meta.maker.resetTiers')}
         </Button>
         <Button variant="primary" size="sm" icon="download" aria-busy={busy} disabled={busy} onClick={() => void download()}>

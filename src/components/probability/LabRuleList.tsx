@@ -257,9 +257,10 @@ function leanTitle(kind: PatternKind, lean: TurnLean): string {
   })
 }
 
+/** `wrap`: en una columna angosta (las dos columnas de la tableta, el celular acostado) «Más yendo 2º» baja de renglón en vez de meterse bajo el interruptor. */
 function Tag({ children, title }: { children: ReactNode; title?: string }) {
   return (
-    <Badge tone="neutral" size="sm" shape="tag" title={title}>
+    <Badge tone="neutral" size="sm" shape="tag" wrap title={title}>
       {children}
     </Badge>
   )

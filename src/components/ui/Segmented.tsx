@@ -51,7 +51,7 @@ const GROUP: Record<SegmentedVariant, string> = {
   track: 'grid auto-cols-[minmax(min-content,1fr)] grid-flow-col gap-1 rounded-control bg-lavender p-1',
   chips: 'flex flex-wrap gap-2',
   scroll: 'flex gap-2',
-  cards: 'grid auto-cols-fr grid-flow-col gap-2',
+  cards: 'grid auto-cols-fr grid-flow-col gap-2 max-[400px]:gap-1',
   lens: 'grid auto-cols-fr grid-flow-col gap-1 rounded-card bg-lavender p-1',
   list: 'grid gap-2',
 }
@@ -67,7 +67,8 @@ const ON = 'bg-primary text-white'
 
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {
-    base: 'rounded-lg px-3',
+    // En un celular angosto, menos relleno: tres opciones con su detalle («Primero · Segundo · Promedio») se salían de la pista a 320 px.
+    base: 'rounded-lg px-3 max-[400px]:px-1.5',
     on: ON,
     off: 'text-foreground/85 hover:bg-tint/10',
   },
@@ -83,7 +84,7 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
     off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
   cards: {
-    base: 'rounded-card border px-3',
+    base: 'rounded-card border px-3 max-[400px]:px-1',
     // Una tarjeta elegida dice su estado con el borde (regla G.1 de docs/ux-ui-guidelines.md, como el ganador de Comparar), en ámbar y con el texto ámbar:
     // rellena de ámbar era lo más brillante de la pantalla y le ganaba al número que decide (el anillo del Lab), y teñida se ve marrón (como en `MatSnapshot`).
     on: 'border-info bg-card-background text-info-soft',
@@ -125,7 +126,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             className={cx(
               'grid min-w-0 content-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
               list ? 'justify-items-start text-left' : 'justify-items-center',
-              dense ? 'rounded-lg px-1' : look.base,
+              dense ? 'rounded-lg px-1 pointer-coarse:min-w-11' : look.base,
               active ? (option.tone && variant === 'track' ? TONE_ON[option.tone] : look.on) : look.off,
               variant === 'lens' ? null : size === 'md' ? 'min-h-10 text-body pointer-coarse:min-h-11' : 'min-h-9 text-micro pointer-coarse:min-h-11',
               variant === 'cards' && size === 'md' && 'py-2',
@@ -139,7 +140,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             </span>
             {option.detail ? (
               // Elegida, el detalle sigue el color del texto de la opción, un poco más tenue (blanco sobre el ámbar, el verde o el rojo; ámbar en la tarjeta).
-              <span aria-hidden={option.detailLabel ? true : undefined} className={cx('text-micro tabular-nums', list ? 'min-w-0 break-words' : 'whitespace-nowrap', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
+              <span aria-hidden={option.detailLabel ? true : undefined} className={cx('text-micro tabular-nums', list ? 'min-w-0 break-words' : dense ? 'max-[400px]:whitespace-normal min-[400px]:whitespace-nowrap' : 'max-[520px]:whitespace-normal min-[520px]:whitespace-nowrap', active ? 'font-normal opacity-80' : option.detailTone ? DETAIL_TONE[option.detailTone] : 'font-normal text-soft')}>
                 {option.detail}
               </span>
             ) : null}

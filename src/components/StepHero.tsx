@@ -32,8 +32,8 @@ const sideStyle = variants({
   variants: {
     variant: {
       actions: 'flex flex-wrap items-center justify-end max-[1101px]:w-full max-[1101px]:justify-stretch max-[1101px]:[&>button]:flex-1',
-      // Formulario (nombre y formato del deck): el nombre se queda con el ancho que sobra y el formato con uno fijo.
-      form: 'grid w-full grid-cols-[minmax(0,1fr)_8.5rem] gap-2',
+      // Formulario (nombre y formato del deck): el nombre se queda con el ancho que sobra y el formato con uno fijo. En el celular más angosto (< 360 px) el nombre no entraba: van uno debajo del otro.
+      form: 'grid w-full grid-cols-[minmax(0,1fr)_8.5rem] gap-2 max-[360px]:grid-cols-1',
       inline: 'flex shrink-0 items-center justify-end',
     },
   },

@@ -39,8 +39,9 @@ interface TierStripProps {
  */
 export function TierStrip({ label, color, neutral = false, ariaLabel, title, onLabel, labelAriaLabel, highlighted = false, onListClick, trailing, children }: TierStripProps) {
   const length = Array.from(label).length
-  const size = neutral ? 'text-micro uppercase tracking-[0.08em]' : length <= 2 ? 'text-stat' : length <= 6 ? 'text-lead' : 'text-body'
-  const labelClass = cx('grid size-full place-items-center break-words px-1 text-center font-bold leading-tight', neutral ? 'bg-surface-raised text-foreground' : labelInk(color ?? ''), size)
+  // En el recuadro angosto del celular (56 px) un nombre de 3 a 6 letras («Nueva») va en `text-body`: en `text-lead` se cortaba. Y uno largo se parte donde haga falta antes que recortarse.
+  const size = neutral ? 'text-micro uppercase tracking-[0.08em]' : length <= 2 ? 'text-stat' : length <= 6 ? 'text-body min-[1101px]:text-lead' : 'text-body'
+  const labelClass = cx('grid size-full place-items-center wrap-anywhere px-1 text-center font-bold leading-tight', neutral ? 'bg-surface-raised text-foreground' : labelInk(color ?? ''), size)
   const labelStyle = neutral ? undefined : { backgroundColor: color }
   // La bandeja de las cartas sin clasificar: el nombre no entra en el recuadro angosto del celular, ahí va un ícono (el nombre sigue para el lector de pantalla).
   const content = neutral ? (

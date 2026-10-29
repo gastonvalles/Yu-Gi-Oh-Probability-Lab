@@ -219,8 +219,8 @@ function MetaDeckDialog({ deck, onClose, onOpenDeck }: MetaDeckModalProps) {
         flush
         ariaLabel={deck.name}
         footer={
-          // En mobile los dos botones van en la misma fila: copiar a la izquierda, cargar a la derecha.
-          <div className="flex w-full items-center justify-between gap-2 min-[1101px]:w-auto min-[1101px]:justify-end">
+          // En mobile los dos botones van en la misma fila: copiar a la izquierda, cargar a la derecha. Si no entran (390 px o menos), cargar baja a su renglón, a la derecha: no se sale del diálogo.
+          <div className="flex w-full flex-wrap items-center justify-between gap-2 min-[1101px]:w-auto min-[1101px]:justify-end">
             <Button variant="secondary" size="sm" icon="link" onClick={() => void copyLink()}>
               {t('meta.deckModal.copyLink')}
             </Button>
@@ -228,6 +228,7 @@ function MetaDeckDialog({ deck, onClose, onOpenDeck }: MetaDeckModalProps) {
               variant="primary"
               size="sm"
               icon="upload"
+              className="ml-auto"
               disabled={load.status !== 'ready'}
               onClick={() => (builderHasCards ? setConfirmReplace(true) : loadIntoBuilder())}
             >

@@ -280,8 +280,9 @@ export function NavigationSection() {
         note={<>Como la de YouTube: a la izquierda la hamburguesa (contrae el menú lateral; se ilumina en ámbar) con la marca; en el centro el buscador de la app (<Tag>FeatureSearch</Tag>: escribís «vidas», «pdf», «banlist»… y lleva a la pantalla o abre la herramienta; entre los resultados están las cartas) y a la derecha las mascotas y el idioma, que ya no están en el menú lateral. También se abre con <Tag>/</Tag> y <Tag>Ctrl+K</Tag>; en el celular, con «Buscar» de la barra de abajo. No está en la práctica ni en la mesa de un duelo. Archivos: <Tag>shell/AppNavbar.tsx</Tag> <Tag>shell/FeatureSearch.tsx</Tag> <Tag>shell/feature-search.ts</Tag></>}
       >
         <div className="grid gap-3">
-          <div className="overflow-hidden rounded-card border border-border-subtle">
-            <AppNavbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((current) => !current)} onSearch={() => setFinding(true)} onMascots={() => {}} />
+          <div className="overflow-x-auto rounded-card border border-border-subtle">
+            {/* Es de escritorio: en un celular se desliza en vez de apretarse (la marca y el idioma se pisaban). */}
+            <AppNavbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((current) => !current)} onSearch={() => setFinding(true)} onMascots={() => {}} className="min-w-[63.5rem]" />
           </div>
           <Button variant="secondary" size="sm" icon="search" className="w-fit" onClick={() => setFinding(true)}>
             Abrir el buscador

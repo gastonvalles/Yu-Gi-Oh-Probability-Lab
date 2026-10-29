@@ -46,15 +46,18 @@ export function CardDetail({ card, deckFormat, showActions = true, deckCopy = nu
 function ZoneButtons({ entries, onAddToZone }: { entries: ReturnType<typeof buildZoneActionEntries>; onAddToZone: (zone: DeckZone) => boolean }) {
   const close = useCloseCardOverlay()
 
+  // Angosto (el celular de 320 px), «Agregar al Extra Deck» se partía en tres renglones: ahí van uno debajo del otro, en un renglón cada uno.
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      {entries.map((entry) => (
-        <Button key={entry.zone} variant={entry.variant} size="md" fullWidth onClick={() => {
-          if (onAddToZone(entry.zone)) close()
-        }}>
-          {entry.label}
-        </Button>
-      ))}
+    <div className="@container">
+      <div className="grid grid-cols-2 gap-2.5 @max-[15rem]:grid-cols-1">
+        {entries.map((entry) => (
+          <Button key={entry.zone} variant={entry.variant} size="md" fullWidth onClick={() => {
+            if (onAddToZone(entry.zone)) close()
+          }}>
+            {entry.label}
+          </Button>
+        ))}
+      </div>
     </div>
   )
 }

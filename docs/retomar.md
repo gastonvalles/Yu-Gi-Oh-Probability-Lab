@@ -77,7 +77,7 @@ pantalla o estado, en celular y en escritorio; sus fuentes (`*.dc.html`) no est�
 ## 6. Pendiente
 
 **Abierto**
-- **Duelos automáticos (capa 4):** «Jugar solo automático» (beta; el interruptor del lobby de Jugar, apagado de entrada) juega la mesa de siempre contra el núcleo real, solo (rival pasivo o con las handtraps del simulador) o con un amigo por enlace (sala privada; `docs/duelos-automaticos.md` y `docs/duelo-automatico-enlace.md`). Falta: cerrar el espejo del rival del adaptador, ir segundo, que el rival juegue su turno y, en el duelo por enlace, Deshacer, Match, espectadores y salas públicas.
+- **Duelos automáticos (capa 4):** «Jugar solo automático» (beta; «Modo del duelo» de las reglas de Jugar, automático de entrada) juega la mesa de siempre contra el núcleo real, solo (rival pasivo o con las handtraps del simulador) o con un amigo por enlace (sala privada; `docs/duelos-automaticos.md` y `docs/duelo-automatico-enlace.md`). Falta: cerrar el espejo del rival del adaptador, ir segundo, que el rival juegue su turno y, en el duelo por enlace, Deshacer, Match, espectadores y salas públicas.
 - **Handtraps en tableta:** por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`) aunque el campo sea ancho;
   se puede escalar entre 640 y 1100 px.
 - **Links y Extra Deck en la mesa:** un Link en la zona de Mágicas y Trampas todavía ofrece «Poner boca abajo»
