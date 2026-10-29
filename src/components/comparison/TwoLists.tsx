@@ -97,7 +97,7 @@ export function TwoLists({ isOpen, onClose, a, b, changes, onCardClick, footer }
           {([['A', a], ['B', b]] as const).map(([side, option], index) => (
             <span key={side} className={cx('flex min-w-0 items-center gap-2', index === 1 && 'col-start-3')}>
               <SideBadge side={side} size="sm" />
-              <strong className="truncate text-body font-semibold text-foreground">
+              <strong className="line-clamp-2 text-body font-semibold text-foreground">
                 <span className="sr-only">{t('meta.compare.build', { side })}: </span>
                 {option.name}
               </strong>

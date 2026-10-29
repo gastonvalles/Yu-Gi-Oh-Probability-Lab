@@ -185,9 +185,10 @@ export function VerdictCard({ comparison, view, onViewChange, handSize, moversOf
         </p>
       ) : null}
 
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      {/* En una tarjeta angosta (320–360 px) los dos anillos no dejan lugar a «manos buenas de cada 100» en el medio: la unidad baja abajo de los dos. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 @max-[18rem]:grid-cols-2">
         <BuildRing side="A" build={comparison.a} view={view} computing={computing} />
-        <p className="m-0 max-w-28 text-center text-body text-muted">{t('meta.compare.ringsUnit')}</p>
+        <p className="m-0 max-w-28 text-center text-body text-muted @max-[18rem]:col-span-2 @max-[18rem]:row-start-2 @max-[18rem]:max-w-none">{t('meta.compare.ringsUnit')}</p>
         <BuildRing side="B" build={comparison.b} view={view} computing={computing} />
       </div>
 
@@ -211,7 +212,16 @@ export function VerdictCard({ comparison, view, onViewChange, handSize, moversOf
               <MirrorRow key={row.key} row={row} view={view} moversOf={moversOf} dot={row.key === 'noOpening' ? 'danger' : 'warning'} />
             ))}
           </div>
-          <Segmented label={t('meta.compare.lens')} variant="cards" fullWidth value={view} onChange={onViewChange} options={lens} />
+          {/* En la tarjeta angosta (320–360 px) «Promedio» no entra en un tercio con el relleno de siempre: menos relleno y la letra chica. */}
+          <Segmented
+            label={t('meta.compare.lens')}
+            variant="cards"
+            fullWidth
+            className="@max-[18rem]:[&>button]:px-1.5 @max-[18rem]:[&>button]:text-micro"
+            value={view}
+            onChange={onViewChange}
+            options={lens}
+          />
         </>
       )}
 
@@ -282,7 +292,7 @@ export function VerdictAction({ points, loading = false, layout, adopt, onSaveDr
  */
 export function CompareActionBar({ onSwap, children }: { onSwap: () => void; children: ReactNode }) {
   return (
-    <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex items-center gap-2 border-t border-border-subtle bg-background px-gutter py-3">
+    <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex items-center gap-2 border-t border-border-subtle bg-background px-gutter pb-5 pt-3">
       <IconButton tone="outline" aria-label={t('meta.compare.swap')} onClick={onSwap}>
         <Icon name="swap" />
       </IconButton>
