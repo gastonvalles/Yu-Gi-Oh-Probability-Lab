@@ -58,6 +58,7 @@ import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/Prac
 import { DuelCalculator } from './DuelCalculator'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, RivalLife, type LaneNotice } from './DuelBar'
 import { ResumeAutoSetting, useResumeLane, type ResumeAuto } from './ResumeAuto'
+import { useManualReplay } from './ManualReplay'
 import { DuelCardDock, type CardPeek } from './DuelCardDock'
 import { useDockPeek } from './use-dock-peek'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNotice, useSignals } from './use-duel-table'
@@ -1794,6 +1795,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const notice = useRivalNotice(snapshot.theirs?.state.phase, turn, snapshot.peerName ?? t('duel.bar.rival'))
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const undoResult = useUndoResult(snapshot)
+  // «Guardar replay» (al terminar y en «Más opciones»), si este duelo se pudo grabar.
+  const { onSave: onSaveReplay, setting: replaySetting, dialog: replayDialog } = useManualReplay(snapshot, myName, cardsById)
   const passHeld = usePassHeld(snapshot)
   // Las cartas mías que pueden responder cuando el rival pregunta si hacés algo antes: brillan en la mesa y el aviso las nombra.
   const responders = useResponders(snapshot, cardsById)
@@ -1907,12 +1910,12 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
-        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
+        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(onSaveReplay ? { onSaveReplay } : {})} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : undefined} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} myName={myName} mySignal={signals.mine} mySignalKey={signals.mineKey} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onAbandon={onAbandon} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} onOpenLife={() => setLifeOpen(true)} rivalSignal={rivalSignal} rivalSignalKey={signals.theirsKey} lane={lane} extraSettings={replaySetting || resume ? (close: () => void) => <>{replaySetting?.(close)}{resume ? <ResumeAutoSetting resume={resume} rivalName={rivalName} /> : null}</> : undefined} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onAbandon, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, rivalSignal, lane, pointed, openMark, feed, chatOpen, gamesOpen, dockShown, dockHover, dockLock, rivalPeekOf, highlight, wide, respondIds, prompt, lookAt, rivalViewer, resume, onSaveReplay, replaySetting],
   )
 
   const markTarget = markMenu?.target
@@ -2029,6 +2032,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       />
       <Presence>{rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}</Presence>
       <DuelCalculator isOpen={lifeOpen} snapshot={snapshot} myName={myName} duel={duel} onClose={() => setLifeOpen(false)} />
+      {replayDialog}
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
       <TossOverlay snapshot={snapshot} myName={myName} />
       {firstBanner !== null ? <TurnOrderBanner key={snapshot.starter + '-' + snapshot.series.game} first={firstBanner} rival={rivalName} onDone={hideBanner} /> : null}

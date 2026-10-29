@@ -488,6 +488,7 @@ export const meta: Translated<typeof es> = {
   'meta.duels.save.mine': 'Include my hand and my face-down cards',
   'meta.duels.save.mineHint': 'Off, whoever watches sees only what a spectator would.',
   'meta.duels.save.button': 'Save replay',
+  'meta.duels.save.cut': "One of your rival's plays was lost while you were disconnected: the replay stops there.",
   'meta.duels.saved': 'Replay saved in Replays › Your duels.',
   'meta.duels.full': 'You already had {max} saved replays: the oldest one was deleted.',
   'meta.duels.saveFailed': 'The browser didn’t let the replay be saved (private mode or out of space): download the file.',

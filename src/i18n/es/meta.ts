@@ -485,6 +485,7 @@ export const meta = {
   'meta.duels.save.mine': 'Incluir mi mano y mis cartas boca abajo',
   'meta.duels.save.mineHint': 'Apagado, quien lo mire ve sólo lo que vería un espectador.',
   'meta.duels.save.button': 'Guardar replay',
+  'meta.duels.save.cut': 'Se perdió una jugada del rival mientras no estabas conectado: el replay llega hasta ahí.',
   'meta.duels.saved': 'Replay guardado en Replays › Tus duelos.',
   'meta.duels.full': 'Ya tenías {max} replays guardados: se borró el más viejo.',
   'meta.duels.saveFailed': 'El navegador no dejó guardar el replay (modo privado o sin espacio): descargá el archivo.',

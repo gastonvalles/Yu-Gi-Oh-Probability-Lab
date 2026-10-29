@@ -89,7 +89,7 @@ interface ResultProps {
  * El final del duelo, al centro de la mesa: la medalla en 3D (ganar o perder pesa más que cualquier otro cartel), cómo te fue en grande, por qué y qué sigue
  * (revancha, salir o mirar cómo quedó la mesa). Quien ya pidió la revancha ve que espera a su rival; si el rival la pidió, "Revancha" la acepta.
  */
-export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose, onSaveReplay, reason }: ResultProps & { onLeave: () => void; onClose: () => void; /** «Guardar replay» (el duelo automático). */ onSaveReplay?: () => void }) {
+export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose, onSaveReplay, reason }: ResultProps & { onLeave: () => void; onClose: () => void; /** «Guardar replay» (el automático y el manual por enlace). */ onSaveReplay?: () => void }) {
   const view = viewOf(result, snapshot, rival, reason)
   const titleId = useId()
 
