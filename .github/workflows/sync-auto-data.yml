@@ -1,0 +1,116 @@
+name: Sync auto data
+
+# Los datos del duelo automático (`auto-data.lock.json`: los scripts y las cartas de Project Ignis) quedan fijados en un commit: sin esto, cada set nuevo falta hasta que alguien sube
+# el lock a mano. Cada lunes se sube al último commit de Project Ignis, se bajan esos datos, se corren las pruebas con el núcleo de verdad y, si pasan, queda una PR lista para mergear
+# (el merge despliega los datos nuevos). Si algo falla, no se abre nada: los datos de producción quedan como estaban y el fallo se ve en esta corrida.
+on:
+  schedule:
+    - cron: '40 7 * * 1'
+  workflow_dispatch:
+
+# Escribe una rama con el lock y abre su PR. Abrirla pide «Allow GitHub Actions to create and approve pull requests» (Settings → Actions → General).
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency: sync-auto-data
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Los datos del núcleo de reglas, fuera del checkout (como en CI): con ellos `npm test` corre también las pruebas con el núcleo de verdad.
+    env:
+      CORE_DATA_DIR: /tmp/ygo-lab-core-data
+      CARD_SCRIPTS_DIR: /tmp/ygo-lab-card-scripts
+      BRANCH: datos-automatico-semanal
+    steps:
+      # Acciones fijadas por commit (no por tag movible): lo que corre es exactamente lo que se revisó.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Los pasos que bajan datos y corren pruebas ejecutan código de dependencias: sin credencial guardada en `.git`. El push usa el token por separado, en su propio paso.
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Sin scripts de instalación: ninguna dependencia necesita correr código al instalarse (ver `.npmrc`).
+      - run: npm ci --ignore-scripts
+
+      # Reescribe el lock con lo último de Project Ignis y baja esos datos. Si GitHub o YGOPRODeck fallan, el paso falla y no se commitea nada.
+      - run: npm run sync:core -- --update-lock
+
+      - id: lock
+        name: Hay datos nuevos
+        run: |
+          if git diff --quiet auto-data.lock.json; then
+            echo "El lock ya estaba al día."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.lock.outputs.changed == 'true'
+        run: npm test
+      # El fuzz corto de CI (4 decks del meta, un duelo contra otro deck y uno contra el rival de handtraps) y las cartas de la última expansión con el núcleo de verdad.
+      - if: steps.lock.outputs.changed == 'true'
+        run: npm run test:auto -- auto-fuzz auto-recientes
+        env:
+          FUZZ_DECKS: 4
+          FUZZ_DUELS: 1
+          FUZZ_HANDTRAP_DUELS: 1
+
+      - if: steps.lock.outputs.changed == 'true'
+        name: Subir la rama y abrir la PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          old=$(git show HEAD:auto-data.lock.json)
+          scripts_old=$(jq -r '.CardScripts.commit' <<<"$old")
+          cards_old=$(jq -r '.BabelCDB.commit' <<<"$old")
+          scripts=$(jq -r '.CardScripts.commit' auto-data.lock.json)
+          cards=$(jq -r '.BabelCDB.commit' auto-data.lock.json)
+          scripts_date=$(jq -r '.CardScripts.date[:10]' auto-data.lock.json)
+          cards_date=$(jq -r '.BabelCDB.date[:10]' auto-data.lock.json)
+          promoted=$(jq -r '.BabelCDB.released | length' auto-data.lock.json)
+
+          cat > "$RUNNER_TEMP/pr-body.md" <<EOF
+          ## Notas del parche
+
+          ### Duelo automático: datos al día
+
+          - El duelo automático tiene los scripts y las cartas más nuevos de Project Ignis: lo que salió desde la última actualización ya se puede jugar. Una carta a la que todavía le falte su script se juega sin efecto y se avisa.
+
+          ## Técnico
+
+          - Lo abre solo \`sync-auto-data.yml\` (cada lunes): sube \`auto-data.lock.json\` al último commit de cada repo.
+          - Scripts (CardScripts): [\`${scripts_old:0:7}\`...\`${scripts:0:7}\`](https://github.com/ProjectIgnis/CardScripts/compare/${scripts_old}...${scripts}) · del ${scripts_date}.
+          - Cartas (BabelCDB): [\`${cards_old:0:7}\`...\`${cards:0:7}\`](https://github.com/ProjectIgnis/BabelCDB/compare/${cards_old}...${cards}) · del ${cards_date}. Cartas de preestreno con passcode: ${promoted}.
+          - Pasaron, con los datos nuevos y el núcleo de verdad: \`npm test\`, el fuzz corto (\`auto-fuzz\`) y \`auto-recientes\`. No corrieron \`typecheck\`, \`lint\` ni \`build\` (sólo cambia el lock) ni las pruebas lentas del enlace.
+          - Mergear despliega los datos nuevos en el próximo deploy. Si el fuzz o una prueba falla, no se abre PR y el fallo queda en la corrida de la Action.
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add auto-data.lock.json
+          git commit -m "Duelo automático: datos al día (scripts ${scripts:0:7} del ${scripts_date}, cartas ${cards:0:7} del ${cards_date})"
+          # El checkout no dejó la credencial guardada: el token se usa recién acá, sólo para este push. La rama es de la Action: si quedó una semana sin mergear, se pisa con lo nuevo.
+          auth=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push --force origin "$BRANCH"
+
+          title="Duelo automático: datos al día (scripts del ${scripts_date}, cartas del ${cards_date})"
+          open=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh pr edit "$open" --title "$title" --body-file "$RUNNER_TEMP/pr-body.md"
+            echo "Ya había una PR abierta (#$open): quedó actualizada con estos datos."
+            exit 0
+          fi
+          if ! gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/pr-body.md"; then
+            echo "::error::La rama $BRANCH quedó subida pero no se pudo abrir la PR. Activá «Allow GitHub Actions to create and approve pull requests» en Settings → Actions → General, o abrila a mano desde la rama."
+            exit 1
+          fi
