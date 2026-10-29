@@ -8,7 +8,7 @@
 ["SDLI-EN007","Common","1st Edition",0.36,90997,96235275,"Jain, Lightsworn Paladin"],
 ["SDLI-EN008","Common","1st Edition",0.47,90998,22624373,"Lyla, Lightsworn Sorceress"],
 ["SDLI-EN009","Common","1st Edition",0.2,90999,59019082,"Garoth, Lightsworn Warrior"],
-["SDLI-EN010","Common","1st Edition",1.29,91001,58996430,"Wulf, Lightsworn Beast"],
+["SDLI-EN010","Common","1st Edition",1.23,91001,58996430,"Wulf, Lightsworn Beast"],
 ["SDLI-EN011","Common","1st Edition",0.73,91002,44178886,"Ehren, Lightsworn Monk"],
 ["SDLI-EN012","Common","1st Edition",0.16,91000,95503687,"Lumina, Lightsworn Summoner"],
 ["SDLI-EN013","Common","1st Edition",1.01,91003,7183277,"Aurkus, Lightsworn Druid"],
@@ -19,7 +19,7 @@
 ["SDLI-EN018","Common","1st Edition",0.11,91008,38737148,"Lightray Daedalus"],
 ["SDLI-EN019","Common","1st Edition",0.24,91009,74064212,"Vylon Prism"],
 ["SDLI-EN020","Common","1st Edition",0.15,91010,47217354,"Fabled Raven"],
-["SDLI-EN021","Common","1st Edition",0.35,91011,82888408,"The Fabled Cerburrel"],
+["SDLI-EN021","Common","1st Edition",0.32,91011,82888408,"The Fabled Cerburrel"],
 ["SDLI-EN022","Common","1st Edition",0.16,91012,14785765,"Blackwing - Zephyros the Elite"],
 ["SDLI-EN023","Common","1st Edition",0.53,91013,4906301,"Necro Gardna"],
 ["SDLI-EN024","Ultra Rare","1st Edition",0.35,91014,52665542,"Lightsworn Sanctuary"],
@@ -33,6 +33,6 @@
 ["SDLI-EN032","Common","1st Edition",0.21,91022,32233746,"Vanquishing Light"],
 ["SDLI-EN033","Common","1st Edition",0.29,91023,16255442,"Beckoning Light"],
 ["SDLI-EN034","Common","1st Edition",0.19,91024,73729209,"Skill Successor"],
-["SDLI-EN035","Common","1st Edition",0.76,91025,78474168,"Breakthrough Skill"],
+["SDLI-EN035","Common","1st Edition",0.83,91025,78474168,"Breakthrough Skill"],
 ["SDLI-EN036","Ultra Rare","1st Edition",0.89,91026,4779823,"Michael, the Arch-Lightsworn"]
 ]

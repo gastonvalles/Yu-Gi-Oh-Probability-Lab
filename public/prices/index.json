@@ -1,4 +1,4 @@
-{"updated":"2026-10-28","shards":256,"groups":[
+{"updated":"2026-10-29","shards":256,"groups":[
 [126,"2003 Collectors Tin","2003-09-01",6,"BPT"],
 [127,"2004 Collectors Tin","2004-09-01",6,"CT1"],
 [128,"2005 Collectors Tin","2005-09-01",6,"CT2"],
@@ -131,7 +131,7 @@
 [287,"Stairway to the Destined Duel","2003-04-15",6,"SDD"],
 [288,"Stardust Accelerator Promos","2009-05-19",3,"WC09"],
 [289,"Stardust Overdrive","2009-11-17",225,"SOVR"],
-[290,"Starstrike Blast","2010-11-16",158,"STBL"],
+[290,"Starstrike Blast","2010-11-16",156,"STBL"],
 [291,"Starter Deck 2006","2006-03-23",81,"YSD"],
 [292,"Starter Deck: Jaden Yuki","2007-07-25",81,"YSDJ"],
 [293,"Starter Deck: Joey","2003-03-30",100,"SDJ"],
@@ -258,7 +258,7 @@
 [1322,"Yu-Gi-Oh! Tokens","2006-07-20",4,"TKN1"],
 [1323,"Mattel Action Figure Promos: Series 1","2006-01-01",1,"MF01"],
 [1327,"Duel Terminal 1","2010-01-29",100,"DT01"],
-[1328,"Duel Terminal 2","2010-05-25",100,"DT02"],
+[1328,"Duel Terminal 2","2010-05-25",99,"DT02"],
 [1329,"Duel Terminal 3","2010-09-25",101,"DT03"],
 [1330,"Duel Terminal 4","2011-01-25",100,"DT04"],
 [1331,"Duel Terminal 5","2011-05-29",101,"DT05"],
@@ -282,7 +282,7 @@
 [1479,"Astral Pack 5","2014-07-25",26,"AP05"],
 [1480,"Duelist Alliance","2014-08-15",214,"DUEA"],
 [1484,"2014 Mega-Tins","2014-08-29",6,"CT11"],
-[1485,"2014 Mega-Tins Mega Pack","2014-08-29",428,"MP14"],
+[1485,"2014 Mega-Tins Mega Pack","2014-08-29",431,"MP14"],
 [1488,"Duelist Alliance: Deluxe Edition","2014-09-12",7,"DUEA"],
 [1489,"Structure Deck: Geargia Rampage","2014-10-17",35,"SDGR"],
 [1491,"Legendary Collection 5D's","2014-10-24",265,"LC5D"],
@@ -595,7 +595,7 @@
 [24679,"Legendary Arc-V Decks","2026-08-07",139,"LAVD"],
 [24703,"Limited Pack World Championship 2026","2026-08-29",87,"26LP"],
 [24704,"Ultimate Tournament Pack 1","2026-07-08",49,"UP01"],
-[24707,"Magnificent Monsters","2026-09-04",219,"MAMO"],
+[24707,"Magnificent Monsters","2026-09-04",220,"MAMO"],
 [24789,"Winner's Pack 2026-2027","2026-07-15",92,"WI26"],
 [24815,"Beyond the Brave","2026-10-09",130,"BETB"],
 [24918,"Thank You Pack","2026-07-22",4,"TYP1"]

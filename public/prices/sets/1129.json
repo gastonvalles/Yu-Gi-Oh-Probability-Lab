@@ -1,7 +1,7 @@
 [
 ["YS13-ENV01","Ultra Rare","1st Edition",0.65,69072,66970002,"Number C39: Utopia Ray V"],
 ["YS13-ENV01","Ultra Rare","Unlimited",0.19,69072,66970002,"Number C39: Utopia Ray V"],
-["YS13-ENV02","Ultra Rare","1st Edition",0.65,69073,92365601,"Rank-Up-Magic Limited Barian's Force"],
+["YS13-ENV02","Ultra Rare","1st Edition",0.63,69073,92365601,"Rank-Up-Magic Limited Barian's Force"],
 ["YS13-ENV02","Ultra Rare","Unlimited",0.41,69073,92365601,"Rank-Up-Magic Limited Barian's Force"],
 ["YS13-ENV03","Common","1st Edition",0.23,69074,29353756,"ZW - Eagle Claw"],
 ["YS13-ENV03","Common","Unlimited",null,69074,29353756,"ZW - Eagle Claw"],
@@ -17,7 +17,7 @@
 ["YS13-ENV08","Common","Unlimited",null,69079,47506081,"Grenosaurus"],
 ["YS13-ENV09","Common","1st Edition",0.81,69080,81330115,"Number 30: Acid Golem of Destruction"],
 ["YS13-ENV09","Common","Unlimited",0.5,69080,81330115,"Number 30: Acid Golem of Destruction"],
-["YS13-ENV10","Common","1st Edition",0.47,69081,97170107,"Shining Elf"],
+["YS13-ENV10","Common","1st Edition",0.49,69081,97170107,"Shining Elf"],
 ["YS13-ENV10","Common","Unlimited",null,69081,97170107,"Shining Elf"],
 ["YS13-ENV11","Common","1st Edition",3.16,69082,9161357,"Number 6: Chronomaly Atlandis"],
 ["YS13-ENV11","Common","Unlimited",1.13,69082,9161357,"Number 6: Chronomaly Atlandis"],
@@ -26,7 +26,7 @@
 ["YS13-ENV13","Super Rare","1st Edition",0.9,69084,72302403,"Swords of Revealing Light"],
 ["YS13-ENV13","Super Rare","Limited",null,69084,72302403,"Swords of Revealing Light"],
 ["YS13-ENV13","Super Rare","Unlimited",1.76,69084,72302403,"Swords of Revealing Light"],
-["YS13-ENV14","Super Rare","1st Edition",2.25,69085,44095762,"Mirror Force"],
+["YS13-ENV14","Super Rare","1st Edition",2.24,69085,44095762,"Mirror Force"],
 ["YS13-ENV14","Super Rare","Unlimited",1.89,69085,44095762,"Mirror Force"],
 ["YS13-ENV15","Super Rare","1st Edition",0.69,69086,62279055,"Magic Cylinder"],
 ["YS13-ENV15","Super Rare","Unlimited",0.71,69086,62279055,"Magic Cylinder"]
