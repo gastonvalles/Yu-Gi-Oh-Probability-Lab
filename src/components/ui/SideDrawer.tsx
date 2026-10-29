@@ -59,7 +59,7 @@ export function SideDrawer({ isOpen, onClose, title, children, size = 'half', ve
         tabIndex={-1}
         className={cx('relative flex h-full animate-side-drawer flex-col overflow-hidden rounded-r-none border-r-0 outline-none motion-reduce:animate-none', PANEL_SIZE[size], veil ? surface.panel : surface.floating)}
       >
-        <header className="flex items-start justify-between gap-2 border-b border-border-subtle px-3 py-3">
+        <header className="flex items-center justify-between gap-2 border-b border-border-subtle px-3 py-3">
           <Heading level="card" id={titleId}>
             {title}
           </Heading>

@@ -23,7 +23,8 @@ const RECENT_CHIP: Record<FeedbackLayout, string> = {
   mobile: 'min-h-11 text-body',
 }
 const EMPTY_ACTION_BASE = `${choiceChip} px-4 text-foreground`
-const EMPTY_BOX = 'grid content-start justify-items-center px-4 py-8 text-center'
+// Una columna `minmax(0,1fr)`: con la de siempre (`auto`), una búsqueda reciente larga la estiraba más allá de la pantalla y se cortaban los textos.
+const EMPTY_BOX = 'grid grid-cols-[minmax(0,1fr)] content-start justify-items-center px-4 py-8 text-center'
 
 /** Barra sobre los resultados: cuántos hay y en qué orden se muestran. */
 export function SearchResultsToolbar({
@@ -50,7 +51,7 @@ export function SearchResultsToolbar({
         layout === 'mobile' ? '-top-2 -mx-3 -mt-2 mb-2 px-3 py-2' : 'top-0 px-3 py-2',
       )}
     >
-      <p className="m-0 min-w-0 truncate text-micro text-muted [&_strong]:text-foreground" aria-live="polite">
+      <p className="m-0 min-w-0 text-micro text-muted [&_strong]:text-foreground" aria-live="polite">
         {/* Con "+" (hay más) el plural va siempre: 0 elige la forma plural. */}
         {tRich('search.toolbar.results', { b: (text) => <strong>{text}</strong> }, { count: hasMore ? 0 : count, shown: `${formatInteger(count)}${hasMore ? '+' : ''}` })}
         {hint ? <span className="text-soft"> · {hint}</span> : null}
@@ -60,7 +61,7 @@ export function SearchResultsToolbar({
         <select
           className={cx(
             'cursor-pointer rounded-full border border-border-subtle bg-tint/5 px-3 font-semibold text-foreground [color-scheme:dark] focus-visible:outline-none focus-visible:shadow-focus',
-            layout === 'mobile' ? 'min-h-9 text-body' : 'min-h-8 text-micro',
+            layout === 'mobile' ? 'min-h-9 text-body pointer-coarse:min-h-11' : 'min-h-8 text-micro',
           )}
           value={sortOrder} onChange={(event) => onSortOrderChange(event.target.value as SearchSortOrder)}>
           {SEARCH_SORT_OPTIONS.map((option) => (
@@ -156,10 +157,10 @@ export function SearchStart({
       </div>
 
       {recent.length > 0 ? (
-        <section className="grid w-full max-w-[30rem] gap-2" aria-label={t('search.start.recentAria')}>
+        <section className="grid w-full max-w-[30rem] grid-cols-[minmax(0,1fr)] gap-2" aria-label={t('search.start.recentAria')}>
           <div className="flex items-center justify-between text-micro font-semibold uppercase tracking-[0.08em] text-soft">
             <span>{t('search.start.recent')}</span>
-            <button type="button" className="rounded-tag border-0 bg-transparent px-1 text-micro normal-case tracking-normal text-muted hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus" onClick={onClearRecent}>
+            <button type="button" className="rounded-tag border-0 bg-transparent px-1 text-micro normal-case pointer-coarse:min-h-11 pointer-coarse:px-3 tracking-normal text-muted hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus" onClick={onClearRecent}>
               {t('search.start.clearRecent')}
             </button>
           </div>
