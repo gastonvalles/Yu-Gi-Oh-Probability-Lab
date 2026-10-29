@@ -1672,6 +1672,9 @@
 }
 
 @theme inline {
+  /* El número de vidas de la calculadora (`text-score`): llena el ancho de su panel con `--digits` dígitos, hasta `--score-max` (el marcador acostado lo agranda). Va inline: lo resuelve cada panel. */
+  --text-score: clamp(2rem, calc(152cqw / var(--digits, 4)), var(--score-max, 4.25rem));
+  --text-score--line-height: 1;
   --default-transition-duration: 160ms;
   --default-transition-timing-function: var(--ease-out);
   --animate-spin: spin 700ms linear infinite;

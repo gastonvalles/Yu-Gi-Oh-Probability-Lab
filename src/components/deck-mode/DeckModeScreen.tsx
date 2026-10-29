@@ -368,7 +368,8 @@ export function DeckModeScreen() {
       ) : null}
 
       {activeStep === 'life' ? (
-        <div id="life" className="mx-auto h-full min-h-0 w-full min-w-0 max-w-2xl">
+        // Con el celular acostado (`PHONE_LANDSCAPE_MEDIA_QUERY`) la calculadora es un marcador y usa todo el ancho.
+        <div id="life" className="mx-auto h-full min-h-0 w-full min-w-0 max-w-2xl [@media(width<1101px)_and_(orientation:landscape)_and_(height<=500px)]:max-w-none">
           <Heading level="page" className="sr-only">
             {t('shell.life.title')}
           </Heading>

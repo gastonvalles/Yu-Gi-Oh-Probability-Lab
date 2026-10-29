@@ -9,25 +9,25 @@ import { cx } from '../ui/cx'
  * El salto (con su sombra en el piso) va aparte del giro: cada uno es una animación continua y el conjunto se ve fluido. El piso de abajo mide un 30 % del dado (`--die`: 1,5 rem con los 5 rem de siempre) para que
  * un dado chico (`[--die:3.5rem]` en un padre) no deje el mismo hueco.
  */
-function Toss({ shadowWidth, children }: { shadowWidth: string; children: React.ReactNode }) {
+function Toss({ shadowWidth, still, children }: { shadowWidth: string; still: boolean; children: React.ReactNode }) {
   return (
     <div className="relative grid place-items-center pb-[calc(var(--die,5rem)*0.3)]">
       {/* Sobre el fondo oscuro una sombra sola no se ve: va una mesa tenue y, encima, la sombra que se achica en el aire. */}
-      <span aria-hidden="true" className="absolute bottom-0 h-6 w-40 rounded-[50%] bg-tint/10" />
-      <span aria-hidden="true" className={cx('absolute bottom-1.5 h-3 animate-toss-shadow rounded-[50%] bg-black/75 blur-[3px] motion-reduce:animate-none', shadowWidth)} />
-      <div className="animate-toss-hop [transform-style:preserve-3d] motion-reduce:animate-none">{children}</div>
+      <span aria-hidden="true" className="absolute bottom-0 h-6 w-40 max-w-full rounded-[50%] bg-tint/10" />
+      <span aria-hidden="true" className={cx('absolute bottom-1.5 h-3 rounded-[50%] bg-black/75 blur-[3px]', !still && 'animate-toss-shadow motion-reduce:animate-none', shadowWidth)} />
+      <div className={cx('[transform-style:preserve-3d]', !still && 'animate-toss-hop motion-reduce:animate-none')}>{children}</div>
     </div>
   )
 }
 
-/** La moneda King of Games: cara adelante, cruz atrás; gira cinco vueltas frenando suave y cae del lado que salió. */
-export function Coin({ face }: { face: 0 | 1 }) {
+/** La moneda King of Games: cara adelante, cruz atrás; gira cinco vueltas frenando suave y cae del lado que salió (`still`: quieta, sin tirar). Mide `--coin` (7 rem si nadie lo cambia). */
+export function Coin({ face, still = false }: { face: 0 | 1; still?: boolean }) {
   const coin = currentCoin()
 
   return (
-    <Toss shadowWidth="w-20">
+    <Toss shadowWidth="w-20" still={still}>
       <div
-        className="relative size-28 animate-coin-spin [transform-style:preserve-3d] motion-reduce:animate-none"
+        className={cx('relative size-[var(--coin,7rem)] [transform-style:preserve-3d]', !still && 'animate-coin-spin motion-reduce:animate-none')}
         style={{ transform: `rotateY(${face * 180}deg)`, '--coin-turns': `${1800 + face * 180}deg` } as CSSProperties}
       >
         <img src={coin.heads} alt="" draggable={false} className="absolute inset-0 size-full rounded-full object-cover [backface-visibility:hidden]" />
@@ -47,14 +47,14 @@ const FACE =
   'absolute inset-0 grid grid-cols-3 grid-rows-3 gap-1 p-[calc(var(--die,5rem)*0.15)] [backface-visibility:hidden] bg-[linear-gradient(145deg,#fbe48f_0%,#dcb345_48%,#b5841c_100%)] shadow-[inset_0_0_0_2px_rgba(255,244,196,0.8),inset_0_-8px_14px_rgba(110,70,0,0.4)]'
 const PIP = 'rounded-full bg-[radial-gradient(circle_at_35%_35%,#ffeaa8,#d68a0e_55%,#6e4100)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]'
 
-/** El dado: mide `--die` (5 rem si nadie lo cambia). */
-export function Die({ value }: { value: number }) {
+/** El dado: mide `--die` (5 rem si nadie lo cambia); `still`, quieto. */
+export function Die({ value, still = false }: { value: number; still?: boolean }) {
   const [x, y] = FACE_UP[value] ?? [0, 0]
 
   return (
-    <Toss shadowWidth="w-16">
+    <Toss shadowWidth="w-16" still={still}>
       <div
-        className="relative size-[var(--die,5rem)] animate-die-spin [transform-style:preserve-3d] motion-reduce:animate-none"
+        className={cx('relative size-[var(--die,5rem)] [transform-style:preserve-3d]', !still && 'animate-die-spin motion-reduce:animate-none')}
         style={{ transform: `rotateX(${x}deg) rotateY(${y}deg)`, '--die-x': `${x + 720}deg`, '--die-y': `${y + 1080}deg` } as CSSProperties}
       >
         {[1, 2, 3, 4, 5, 6].map((face) => (

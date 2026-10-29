@@ -37,14 +37,21 @@ export interface LifeTimer {
   elapsedMs: number
 }
 
+/** Los cuatro contadores de Herramientas (como en Neuron): enteros de 0 a `MAX_COUNTER`. */
+export type Counters = [number, number, number, number]
+export const MAX_COUNTER = 999
+
 export interface LifeState {
   lp: [number, number]
   log: LifeEntry[]
   timer: LifeTimer
+  /** Sin ellos, los cuatro en 0: un duelo nuevo (Reiniciar los borra), uno guardado antes de que existieran o el de un duelo por enlace. */
+  counters?: Counters
 }
 
 export type LifeAction =
   | { type: 'change'; player: Duelist; delta: number; now: number }
+  | { type: 'counter'; index: number; delta: number }
   | { type: 'halve'; player: Duelist; now: number }
   | { type: 'undo' }
   | { type: 'reset' }
@@ -104,8 +111,21 @@ function setLp(state: LifeState, player: Duelist, to: number, now: number): Life
   return { ...state, lp, log: [...state.log, { at: timerElapsed(state.timer, now), player, delta: next - from, from, to: next }] }
 }
 
+export function lifeCounters(state: LifeState): Counters {
+  return state.counters ?? [0, 0, 0, 0]
+}
+
 export function lifeReducer(state: LifeState, action: LifeAction): LifeState {
   switch (action.type) {
+    case 'counter': {
+      const counters: Counters = [...lifeCounters(state)]
+      const from = counters[action.index]
+
+      if (from === undefined) return state
+      counters[action.index] = Math.max(0, Math.min(MAX_COUNTER, from + action.delta))
+
+      return counters[action.index] === from ? state : { ...state, counters }
+    }
     case 'change':
       return setLp(state, action.player, state.lp[action.player] + action.delta, action.now)
     case 'halve':
@@ -141,6 +161,9 @@ const isLp = (value: unknown): boolean => typeof value === 'number' && Number.is
 const isEntry = (value: unknown): boolean =>
   isRecord(value) && (value.player === 0 || value.player === 1) && [value.at, value.delta, value.from, value.to].every((n) => typeof n === 'number')
 
+const isCounters = (value: unknown): value is Counters =>
+  Array.isArray(value) && value.length === 4 && value.every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= MAX_COUNTER)
+
 function isLifeState(value: unknown): value is LifeState {
   if (!isRecord(value) || !isRecord(value.timer) || !Array.isArray(value.lp) || !Array.isArray(value.log)) {
     return false
@@ -164,7 +187,10 @@ export function readLifeState(): LifeState {
     const parsed: unknown = JSON.parse(localStorage.getItem(LIFE_STORAGE_KEY) ?? 'null')
 
     if (isLifeState(parsed)) {
-      return parsed
+      // Unos contadores rotos no se llevan las vidas: se descartan (quedan en 0).
+      const { counters, ...rest } = parsed
+
+      return isCounters(counters) ? parsed : rest
     }
   } catch {
     // Sin storage o con basura: duelo nuevo.

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactN
 
 import { NO_SHELL_INSETS, readSidebarCollapsed, setShellInsets, shellInsetsFor, writeSidebarCollapsed } from '../../app/shell-layout'
 import { useDuelFullscreen } from '../../app/duel-fullscreen'
-import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, PHONE_LANDSCAPE_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { cx } from '../ui/cx'
@@ -76,6 +76,9 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   const openFind = useCallback(() => setFindOpen(true), [])
   const closeFind = useCallback(() => setFindOpen(false), [])
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // La calculadora de LP con el celular acostado es un marcador: la barra de abajo le robaría casi un cuarto del alto. Se sale por la hamburguesa de la barra de arriba, que sigue.
+  const scoreboard = useMediaQuery(fitScreen ? PHONE_LANDSCAPE_MEDIA_QUERY : null)
+  const tabBar = !immersive && !scoreboard
   // La barra de arriba de escritorio: en las pantallas a pantalla completa (la práctica, la mesa de un duelo) no está, manda la mesa.
   const showNavbar = isDesktop && !bigWindow && navbar
   // La barra de arriba del celular dice en qué pantalla estás (como en el lienzo); sin pantalla conocida, la marca.
@@ -119,13 +122,13 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   // Los botones flotantes (y las mascotas, mientras nadie las mueva) dejan libres el menú lateral (con su ancho de ahora) y el pie. En el celular no hay menú fijo.
   // Va en un layout effect para que el cambio (contraer el menú, girar la pantalla) se vea en el mismo cuadro; el valor del primer cuadro ya lo trae el módulo.
   useLayoutEffect(() => {
-    setShellInsets(shellInsetsFor(collapsed, isDesktop && !bigWindow, !immersive))
+    setShellInsets(shellInsetsFor(collapsed, isDesktop && !bigWindow, tabBar))
 
     return () => setShellInsets(NO_SHELL_INSETS)
-  }, [collapsed, isDesktop, bigWindow, immersive])
+  }, [collapsed, isDesktop, bigWindow, tabBar])
 
   return (
-    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', showNavbar && 'min-[1101px]:grid-rows-[auto_minmax(0,1fr)]', immersive ? 'max-[1101px]:h-dvh max-[1101px]:overflow-hidden' : 'max-[1101px]:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]')}>
+    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:overflow-hidden', bigWindow ? 'min-[1101px]:grid-cols-[minmax(0,1fr)]' : 'min-[1101px]:grid-cols-[auto_minmax(0,1fr)]', showNavbar && 'min-[1101px]:grid-rows-[auto_minmax(0,1fr)]', immersive ? 'max-[1101px]:h-dvh max-[1101px]:overflow-hidden' : tabBar && 'max-[1101px]:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]')}>
       {/* Es un botón y no un enlace: las rutas viajan en el hash, y un `href="#contenido"` cambiaría de pantalla. */}
       <button
         type="button"
@@ -136,7 +139,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
       </button>
       {showNavbar ? <AppNavbar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onSearch={openFind} onMascots={() => onSelect('mascots')} className="min-[1101px]:col-span-2" /> : null}
       {bigWindow ? null : <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} withNavbar={showNavbar} className="max-[1101px]:hidden" />}
-      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && 'max-[1101px]:h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))]', ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
+      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1101px]:h-dvh' : 'min-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', fitScreen && !immersive && (tabBar ? 'max-[1101px]:h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom,0px))]' : 'max-[1101px]:h-dvh'), ownMenu && 'max-[1101px]:pt-[env(safe-area-inset-top,0px)]')}>
         {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} toolsRef={setTopBarTools} className="min-[1101px]:hidden" />}
         <div
           ref={contentScrollRef}
@@ -159,7 +162,7 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
         </div>
       </div>
       {/* La mesa a pantalla completa (práctica y duelo) trae sus propios controles abajo: sin barra. */}
-      {immersive ? null : <MobileTabBar groups={groups} activeKey={activeKey} openKey={openGroupKey} onSearch={openFind} searchOpen={findOpen} onOpen={(key) => {
+      {!tabBar ? null : <MobileTabBar groups={groups} activeKey={activeKey} openKey={openGroupKey} onSearch={openFind} searchOpen={findOpen} onOpen={(key) => {
           if (openGroupKey !== key) onSheetOpen?.(key)
           setOpenGroupKey((current) => (current === key ? null : key))
         }} className="min-[1101px]:hidden" />}

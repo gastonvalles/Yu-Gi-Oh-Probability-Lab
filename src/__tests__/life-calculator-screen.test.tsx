@@ -166,14 +166,102 @@ describe('la calculadora de LP', () => {
     expect(log.getByText(/→ 7200/)).toBeInTheDocument()
     fireEvent.keyDown(document, { key: 'Escape' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Moneda, dado y avisos' }))
-    const tools = within(screen.getByRole('dialog', { name: 'Moneda, dado y avisos' }))
-    expect(tools.getByText('Tocá para tirar.')).toBeInTheDocument()
-    fireEvent.click(tools.getByRole('button', { name: 'Moneda' }))
-    expect(tools.getByText(/^(Cara|Cruz)$/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Herramientas' }))
+    expect(screen.getByRole('dialog', { name: 'Herramientas' })).toBeInTheDocument()
     fireEvent.keyDown(document, { key: 'Escape' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar la calculadora' }))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('Herramientas, en pestañas: Dados + Monedas (se tira tocando la figura y el resultado queda abajo), Contadores y Avisos', () => {
+    renderScreen()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Herramientas' }))
+    const tools = within(screen.getByRole('dialog', { name: 'Herramientas' }))
+    const tabs = within(tools.getByRole('radiogroup', { name: 'Herramientas' }))
+    expect(tabs.getAllByRole('radio').map((tab) => tab.textContent)).toEqual(['Dados + Monedas', 'Contadores', 'Avisos'])
+    expect(tabs.getByRole('radio', { name: 'Dados + Monedas' })).toHaveAttribute('aria-checked', 'true')
+
+    // Sin tirar, cada resultado es una raya; tocar la figura tira y el resultado queda en su recuadro.
+    expect(tools.getByText('Tocá para tirar.')).toBeInTheDocument()
+    fireEvent.click(tools.getByRole('button', { name: 'Tirar la moneda' }))
+    expect(tools.getByText(/^(Cara|Cruz)$/)).toBeInTheDocument()
+    fireEvent.click(tools.getByRole('button', { name: 'Tirar el dado' }))
+    expect(tools.getByText(/^Salió [1-6]$/)).toBeInTheDocument()
+    // Las otras pestañas están montadas pero escondidas (el diálogo no cambia de alto): no se leen ni se tocan.
+    expect(tools.queryByRole('button', { name: 'Contador 1: más' })).not.toBeInTheDocument()
+
+    fireEvent.click(tabs.getByRole('radio', { name: 'Avisos' }))
+    expect(tools.getByText('Probar los avisos de la ronda')).toBeInTheDocument()
+    expect(tools.getByRole('button', { name: '10 min' })).toBeInTheDocument()
+    expect(tools.queryByRole('button', { name: 'Tirar el dado' })).not.toBeInTheDocument()
+  })
+
+  it('los cuatro contadores: «−» apagado en 0, «+» y «−» de a uno; siguen al cerrar y reabrir y Reiniciar los vuelve a 0', () => {
+    renderScreen()
+    const openCounters = () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Herramientas' }))
+      const tools = within(screen.getByRole('dialog', { name: 'Herramientas' }))
+      fireEvent.click(tools.getByRole('radio', { name: 'Contadores' }))
+      return tools
+    }
+
+    let tools = openCounters()
+    expect(tools.getAllByRole('status').filter((value) => /^Contador/.test(value.getAttribute('aria-label') ?? ''))).toHaveLength(4)
+    expect(tools.getByRole('button', { name: 'Contador 1: menos' })).toBeDisabled()
+    for (let i = 0; i < 5; i += 1) fireEvent.click(tools.getByRole('button', { name: 'Contador 1: más' }))
+    fireEvent.click(tools.getByRole('button', { name: 'Contador 1: menos' }))
+    fireEvent.click(tools.getByRole('button', { name: 'Contador 4: más' }))
+    expect(tools.getByRole('status', { name: 'Contador 1' })).toHaveTextContent('4')
+    expect(tools.getByRole('status', { name: 'Contador 4' })).toHaveTextContent('1')
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    tools = openCounters()
+    expect(tools.getByRole('status', { name: 'Contador 1' })).toHaveTextContent('4')
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Reiniciar vidas' }))
+    tools = openCounters()
+    expect(tools.getByRole('status', { name: 'Contador 1' })).toHaveTextContent('0')
+    expect(tools.getByRole('status', { name: 'Contador 4' })).toHaveTextContent('0')
+  })
+
+  describe('con el celular acostado', () => {
+    const original = window.matchMedia
+
+    beforeEach(() => {
+      window.matchMedia = ((query: string) => ({ matches: query.includes('orientation: landscape'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    })
+    afterEach(() => {
+      window.matchMedia = original
+    })
+
+    it('es un marcador sin teclado: el reloj, las dos vidas con Reiniciar y Deshacer en el medio y abajo Registro, Herramientas y Calcular', () => {
+      renderScreen()
+
+      expect(screen.queryByRole('group', { name: 'Teclado' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Poner a correr el reloj de la ronda' })).toHaveTextContent('50:00')
+      expect(duelist(/^Duelista 1: 8000 LP/)).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: 'Reiniciar' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Registro' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Herramientas' })).toBeInTheDocument()
+    })
+
+    it('Calcular abre el teclado aparte; aplicar cambia la vida del elegido y lo cierra', () => {
+      renderScreen()
+
+      fireEvent.click(duelist(/^Duelista 2:/))
+      fireEvent.click(screen.getByRole('button', { name: 'Calcular' }))
+      const dialog = within(screen.getByRole('dialog', { name: 'Calcular' }))
+      fireEvent.click(within(dialog.getByRole('group', { name: 'Teclado' })).getByRole('button', { name: '5' }))
+      fireEvent.click(dialog.getByRole('button', { name: /^Aplicar: restar 500 a Duelista 2/ }))
+
+      expect(screen.queryByRole('dialog', { name: 'Calcular' })).not.toBeInTheDocument()
+      expect(duelist(/^Duelista 2: 7500 LP/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deshacer' })).toBeEnabled()
+    })
   })
 })
