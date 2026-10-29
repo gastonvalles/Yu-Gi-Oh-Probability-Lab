@@ -919,6 +919,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     [feed, cardsById, byCode, wide, lockDock, nameOf, showRival],
   )
   const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
+  // El visor de pilas de una búsqueda flota sobre el centro de la mesa (escritorio): mientras se elige ahí, la cadena va plegada a su píldora para no pisarlo (después vuelve a como estaba).
+  const viewerOpen = desktop && pick !== null && list === null && pick.surface === 'pile'
   const chainNotice = useMemo(
     () =>
       chainShown && feed ? (
@@ -926,13 +928,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}) }))}
           focus={feed.focus}
           resolving={feed.resolving}
-          open={chainOpen}
+          open={chainOpen && !viewerOpen}
           compact={!desktop}
           onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
           onPick={readLink}
         />
       ) : null,
-    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, desktop, readLink],
+    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, viewerOpen, desktop, readLink],
   )
   const linkText = linkRead?.card ?? linkRivalCard
   const linkHighlight = useMemo<CardTextHighlight | null>(() => {

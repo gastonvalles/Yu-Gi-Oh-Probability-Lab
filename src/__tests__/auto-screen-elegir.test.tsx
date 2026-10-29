@@ -242,6 +242,8 @@ describe('auto-screen · elegir', () => {
 
     // Sólo las dos candidatas (con la inicial de su ficha delante); ninguna de las demás cartas.
     expect(shown.filter((text) => /Droll|Imperm|Ash|Maxx|Nibiru/.test(text))).toEqual(['DDroll', 'IImperm'])
+    // Y ninguna se ilumina hasta que se elige (el brillo de la mano y el campo es de lo que se puede usar; en el visor, de lo elegido).
+    expect(viewer.querySelectorAll('[data-glow="true"]')).toHaveLength(0)
     fireEvent.click(within(viewer).getByRole('button', { name: /Imperm/ }))
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
     expect(dispatches).toBe(0)
