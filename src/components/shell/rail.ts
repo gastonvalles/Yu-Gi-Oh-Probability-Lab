@@ -9,8 +9,8 @@ export const RAIL_SLOT = 'grid h-full w-13 shrink-0 place-items-center'
 /** El nombre de un grupo del menú: sobre el índigo se lee con el texto apagado (no el suave). */
 export const NAV_OVERLINE = 'text-micro font-semibold uppercase tracking-[0.08em] text-muted'
 
-/** Alto de una fila del menú (destino). */
-export const RAIL_ROW = 'h-10.5'
+/** Alto de una fila del menú (destino): 44 px con el dedo (el cajón del celular). */
+export const RAIL_ROW = 'h-10.5 pointer-coarse:h-11'
 
 /** Un rótulo del menú: ancho fijo (nada se reacomoda ni se trunca mientras el menú cambia de ancho) y se desvanece al contraer, rápido, y vuelve un poco después de que el menú empezó a abrirse. */
 export const RAIL_LABEL =

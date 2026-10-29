@@ -178,8 +178,8 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
             <Icon name={item.icon} size={20} className="shrink-0" />
           )}
           <span className="grid min-w-0 flex-1">
-            <span className="truncate text-body font-semibold">{item.label}</span>
-            {item.hint ? <span className="truncate text-micro font-normal text-muted">{item.hint}</span> : null}
+            <span className="line-clamp-2 text-body font-semibold">{item.label}</span>
+            {item.hint ? <span className="line-clamp-2 text-micro font-normal text-muted">{item.hint}</span> : null}
           </span>
           {here ? <span className="shrink-0 rounded-full bg-nav-raised px-2.5 py-1 text-micro font-semibold text-white">{t('shell.sheet.here')}</span> : showGroup ? <span className="shrink-0 text-micro text-muted">{item.group}</span> : null}
         </button>
