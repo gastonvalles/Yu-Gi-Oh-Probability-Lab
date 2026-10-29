@@ -90,7 +90,8 @@ export function PhaseRow({ anchor, items, onClose }: { anchor: DOMRect | null; i
         // El título arriba; «Cancelar» al final de la línea (escritorio) o arriba a la derecha (bajo 1101 px: seis fases y «Cancelar» no entran en 390 px).
         className={cx(
           surface.floating,
-          'absolute grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-2 pb-2 pt-1.5 animate-dialog-enter motion-reduce:animate-none',
+          // Con el mismo margen de 8 px a los dos lados de la ventana (a 320 px las seis fases no entran a 56 px y se angostan).
+          'absolute grid max-w-[calc(100vw-1rem)] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-2 pb-2 pt-1.5 animate-dialog-enter motion-reduce:animate-none',
           "[grid-template-areas:'title_cancel'_'row_row'] min-[1101px]:[grid-template-areas:'title_.'_'row_cancel']",
           position ? 'visible' : 'invisible',
         )}
