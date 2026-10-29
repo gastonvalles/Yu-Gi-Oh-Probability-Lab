@@ -14,7 +14,7 @@ interface StepperProps {
   step?: number
   /** field: caja propia (lavanda, redondeada) · inline: sin caja, para ir dentro de otro control. */
   variant?: 'field' | 'inline'
-  /** md: botones de 32 px (una fila de controles chicos) · lg: botones de 44 px y el número más grande, para tocarlo con el dedo (las condiciones de una regla). */
+  /** md: botones de 32 px (una fila de controles chicos; 44 con el dedo) · lg: botones de 44 px y el número más grande, para tocarlo con el dedo (las condiciones de una regla). */
   size?: 'md' | 'lg'
 }
 
@@ -22,7 +22,7 @@ const STEP_BUTTON =
   'grid place-items-center text-muted transition-colors duration-150 hover:bg-tint/10 hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus disabled:opacity-35 disabled:hover:bg-transparent'
 
 const SIZE = {
-  md: { button: 'w-8', icon: 14, field: 'w-10 text-body' },
+  md: { button: 'w-8 pointer-coarse:w-11 pointer-coarse:min-h-11', icon: 14, field: 'w-10 text-body' },
   lg: { button: 'size-11', icon: 16, field: 'w-7 text-lead' },
 } as const
 

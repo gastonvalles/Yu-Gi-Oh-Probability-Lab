@@ -24,7 +24,7 @@ export function LanguageSwitcher({ className, variant = 'chips' }: { className?:
           title={NAMES[locale]}
           className={cx(
             'transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
-            segmented ? 'h-11 rounded-tag px-2 text-body font-medium' : 'h-8 min-w-9 rounded-[0.55rem] px-2 text-micro font-semibold uppercase',
+            segmented ? 'h-11 rounded-tag px-2 text-body font-medium' : 'h-8 min-w-9 rounded-[0.55rem] px-2 text-micro font-semibold uppercase pointer-coarse:h-11 pointer-coarse:min-w-11',
             // El idioma elegido, en violeta con el texto blanco: como todo lo elegido (Segmented, los chips).
             locale === current ? (segmented ? 'bg-primary font-semibold text-white' : 'bg-primary text-white') : 'text-foreground/85 hover:bg-tint/10',
           )}

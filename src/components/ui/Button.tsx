@@ -69,7 +69,7 @@ const COLORS = { primary: FILLED, secondary: QUIET, tertiary: GHOST, onBrand: ON
 const ICON_SIZE: Record<ButtonSize, number> = { sm: 16, md: 18, lg: 20 }
 
 const buttonStyle = variants({
-  base: 'inline-flex shrink-0 items-center justify-center gap-2 font-semibold leading-tight transition-[background-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
+  base: 'inline-flex max-w-full shrink-0 items-center justify-center gap-2 font-semibold leading-tight transition-[background-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
   variants: {
     size: {
       sm: 'min-h-9 rounded-control px-4 py-1.5 text-body pointer-coarse:min-h-11',
@@ -102,9 +102,9 @@ export function Button({
       className={cx(buttonStyle({ size }, COLORS[variant][color]), fullWidth && 'w-full', disabledFocusable && 'opacity-40 focus-visible:opacity-100', className)}
       {...props}
     >
-      {icon ? <Icon name={icon} size={iconSize} /> : null}
+      {icon ? <Icon name={icon} size={iconSize} className="shrink-0" /> : null}
       {children}
-      {iconEnd ? <Icon name={iconEnd} size={iconSize} /> : null}
+      {iconEnd ? <Icon name={iconEnd} size={iconSize} className="shrink-0" /> : null}
     </button>
   )
 }
