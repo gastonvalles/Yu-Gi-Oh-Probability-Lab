@@ -16,7 +16,7 @@ Quien llega por un enlace no pasa por el lobby: escribe su nombre en la sala y e
 
 ## La mesa del duelo
 
-La de la práctica, con el campo del rival espejado arriba y las Extra Monster Zones compartidas en el medio. Barajar y repartir: `app/shuffle-fx.ts` (riffle en dos paquetes con capas de dorso; la mano se baraja cuando la carta que entra ya aterrizó) y `app/deal-flight.ts` (una curva, sin rebote); muestra en `/playground`.
+La de la práctica, con el campo del rival espejado arriba y las Extra Monster Zones compartidas en el medio. Barajar y repartir: `app/shuffle-fx.ts` (riffle en dos paquetes con capas de dorso; la mano se baraja cuando la carta que entra ya aterrizó) y `app/deal-flight.ts` (una curva, sin rebote); muestra en `/playground`. Robar no baraja tu mano ni tu deck; sumar una carta a la mano del rival sí, para que no se adivine cuál es la nueva (`hiddenHand` de `matEffects`).
 
 - **Cada uno es dueño de lo suyo:** cada jugador mueve sólo sus cartas, sus vidas y su reloj de turnos. Lo que le pasa a una carta del rival lo hace él en su mesa, a pedido por el chat, Target o Señalar. Deshacer vuelve la última jugada de la mesa, sea de quien sea: con el rival presente se le pide permiso, y si la jugada es suya la deshace él. Cambiar el control de una carta son dos jugadas, una en cada mesa, que se completan solas (`mat-control.ts`) y no se deshacen: la otra mesa ya las completó. Quien llega a cero en el reloj de turnos se rinde desde su propio dispositivo: un cliente modificado podría no hacerlo y no hay servidor que lo corte.
 - **El ATK y la DEF se ven siempre** en cada monstruo boca arriba, de los dos lados, sin cambiar su caja (`StatTag`, `fieldStatsOf`): los de ahora en el automático, los impresos en el manual.

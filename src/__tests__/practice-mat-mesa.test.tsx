@@ -504,7 +504,7 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
   })
 
-  it('barajar, robar o sumar una carta a la mano baraja el deck y la mano a la vista; mandar el tope al cementerio no (la carta se ve volar)', async () => {
+  it('barajar baraja el deck y la mano a la vista; robar, mandar el tope al cementerio o descartar no (la carta se ve volar)', async () => {
     const animated: Element[] = []
     const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
 
@@ -542,14 +542,16 @@ describe('la mesa de práctica', () => {
       expect(inDeck()).toHaveLength(0)
       expect(inHand()).toHaveLength(0)
 
-      // Robar sí (la última carta: el deck queda vacío): la mano se baraja cuando la carta robada ya está en ella (se reparte un momento después).
+      // Robar tampoco (la última carta: el deck queda vacío): se ve salir la carta del deck y entrar a la mano (se reparte un momento después), sin barajar ni el deck ni la mano.
       animated.length = 0
       deckMenu()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+      await waitFor(() => expect(within(hand()).getAllByRole('listitem')).toHaveLength(5))
+      await new Promise((resolve) => setTimeout(resolve, 150))
+      expect(inDeck()).toHaveLength(0)
       expect(inHand()).toHaveLength(0)
-      await waitFor(() => expect(inHand()).toHaveLength(5))
 
-      // Una jugada que no toca ni el deck ni suma a la mano (mandar una carta de la mano al cementerio) no baraja nada.
+      // Una jugada que no toca el deck (mandar una carta de la mano al cementerio) no baraja nada.
       animated.length = 0
       tap(within(hand()).getAllByRole('listitem')[0]!)
       fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
