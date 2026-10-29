@@ -599,6 +599,17 @@ describe('la mesa de práctica', () => {
       expect(onSeek).toHaveBeenCalledWith(0)
     })
 
+    it('la línea de tiempo entra en cualquier ancho: sin ancho mínimo por pastilla y con el espacio entre ellas relativo a cuántas son (el lateral de la mesa ancha mide 13rem)', () => {
+      const marks = Array.from({ length: 45 }, () => ({ phase: false, turnStart: false }))
+      render(<ReplayTimeline marks={marks} cursor={0} describe={(step) => `Paso ${step}`} onSeek={() => {}} onOpenSteps={() => {}} />)
+
+      // 45 pasos de 3 px más 3 px de espacio pedían ~280 px y se pasaban al panel de Pasos y Combos.
+      expect(slider()).toHaveClass('min-w-0')
+      expect(slider().className).not.toMatch(/(^|\s)gap-/)
+      expect(slider().style.gap).toBe(`min(3px, ${40 / 46}%)`)
+      for (const pill of slider().querySelectorAll('[data-state]')) expect(pill.className).not.toMatch(/(^|\s)(min-)?w-\[/)
+    })
+
     it('la línea de tiempo tiene una pastilla por paso (y la mano inicial), marca los cambios de fase y separa los turnos', () => {
       render(<Harness actions={ACTIONS} />)
 

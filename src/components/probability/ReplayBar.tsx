@@ -97,7 +97,10 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
       aria-valuemax={total}
       aria-valuenow={cursor}
       aria-valuetext={describe(cursor)}
-      className={cx('relative flex min-w-0 flex-1 cursor-pointer touch-none select-none items-center gap-[3px] rounded-control px-1 outline-none focus-visible:shadow-focus', className)}
+      // Las pastillas no tienen ancho mínimo y el espacio entre ellas es, a lo sumo, el 40 % de lo que le toca a cada paso: la línea entra en lo que haya (el lateral de la mesa ancha
+      // mide 13rem) con cualquier cantidad de pasos, sin pasarse al panel de al lado. Con lugar, 3 px como siempre.
+      style={{ gap: `min(3px, ${40 / (total + 1)}%)` }}
+      className={cx('relative flex min-w-0 flex-1 cursor-pointer touch-none select-none items-center rounded-control px-1 outline-none focus-visible:shadow-focus', className)}
       onKeyDown={handleKeyDown}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         if (event.button !== 0) return
@@ -131,7 +134,7 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
               data-phase={mark?.phase ? 'true' : undefined}
               style={tone ? ({ '--pill': FX_RGB[tone] } as CSSProperties) : undefined}
               className={cx(
-                'relative min-w-[3px] flex-1 rounded-full transition-[height,background-color,box-shadow] duration-150 motion-reduce:transition-none',
+                'relative min-w-0 flex-1 rounded-full transition-[height,background-color,box-shadow] duration-150 motion-reduce:transition-none',
                 tone ? PILL[state] : PILL_PLAIN[state],
                 mark?.phase && 'before:absolute before:inset-x-0 before:-top-1.5 before:h-0.5 before:rounded-full before:bg-warning',
               )}
@@ -295,8 +298,8 @@ export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playL
           <StepButtons total={marks.length} cursor={cursor} playing={playing} playLabel={playLabel} onTogglePlay={onTogglePlay} onPrevious={onPrevious} onNext={onNext} />
         </div>
         {/* Angosta, la línea de tiempo baja a su propio renglón; ancha, va en el medio. */}
-        <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="order-last h-9 basis-full @min-[34rem]:order-none @min-[34rem]:basis-0" />
-        <div className="ml-auto flex items-center gap-2 @min-[34rem]:ml-0">
+        <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="order-last h-9 basis-full @min-[28rem]:order-none @min-[28rem]:basis-0" />
+        <div className="ml-auto flex items-center gap-2 @min-[28rem]:ml-0">
           <StepsButton onOpenSteps={onOpenSteps} />
           <SpeedMenu speed={speed} onSpeed={onSpeed} />
         </div>
