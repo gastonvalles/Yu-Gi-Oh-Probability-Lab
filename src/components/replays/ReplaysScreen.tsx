@@ -1,4 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
+import type { SharedCombo } from '../../app/combo-share'
+import type { DuelReplay } from '../../app/duel-replay'
+import {
+  decodeReplayPayload,
+  deleteSavedReplay,
+  downloadReplayFile,
+  encodeReplayPayload,
+  linkFits,
+  MAX_LINK_LENGTH,
+  readSavedReplays,
+  shareReplayLink,
+  type ReplayError,
+  type SavedReplay,
+  type SharedRead,
+} from '../../app/duel-replay-share'
+import { showToastMessage } from '../../app/use-toast-message'
 
 import { META_DECKS, type MetaDeck } from '../../app/meta'
 import { useLiveStreams } from '../../app/use-live-streams'
@@ -39,6 +56,10 @@ import { filterChip } from '../ui/surfaces'
 import { LiveStreamsSection } from './LiveStreams'
 import { ReplayModal } from './ReplayModal'
 import { textLink } from '../ui/typography'
+import { titleOf } from './duel-replay-text'
+import { DuelReplayScreen } from './DuelReplayScreen'
+import { keepReplay } from './SaveReplayDialog'
+import { YourDuels } from './YourDuels'
 
 /** Lo que muestra la fila de chips (una sola a la vez, como las categorías de YouTube): los de un deck del Meta, todos, o los de un torneo. */
 type Topic = 'meta' | 'all' | `event:${string}`
@@ -56,7 +77,80 @@ const channelLink = (key: ReplayChannel) => (text: string) => (
   </a>
 )
 
-export function ReplaysScreen() {
+interface ReplaysScreenProps {
+  /** Los datos de un enlace de replay (`#replay=…`) con el que se abrió la app: se decodifica y se mira con el aviso «Replay compartido». */
+  shared?: string | null
+  /** Ya se leyó el enlace (bien o mal): quien lo pasó lo suelta. */
+  onSharedRead?: () => void
+  /** «Abrir archivo» trajo un combo: a la mesa de la práctica, como su enlace. */
+  onOpenCombo?: (combo: SharedCombo) => void
+}
+
+const fail = (error: ReplayError) => showToastMessage(t(`meta.duels.error.${error}`), 'error')
+
+/** Lo que dice el aviso después de compartir el enlace de un replay; `download` lo baja cuando el enlace no entra o no se pudo copiar. */
+function tellShared(outcome: Awaited<ReturnType<typeof shareReplayLink>>, download: () => void) {
+  if (outcome === 'copied') showToastMessage(t('meta.duels.copied'), 'success')
+  else if (outcome === 'failed') showToastMessage(t('meta.duels.copyFailed'), 'error', { action: { label: t('meta.duels.download'), onAction: download } })
+  else if (outcome === 'tooLong') showToastMessage(t('meta.duels.tooLong'), 'warning', { action: { label: t('meta.duels.download'), onAction: download } })
+}
+
+/** «Tus duelos» y el replay abierto: la lista guardada, abrir uno (guardado, de un archivo o de un enlace) y lo que se hace con él. */
+function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProps) {
+  const [items, setItems] = useState<SavedReplay[]>(readSavedReplays)
+  const [opened, setOpened] = useState<{ replay: DuelReplay; payload: string; shared: boolean } | null>(null)
+
+  // El enlace con el que se abrió la app: es de otra persona (`duel-replay-share.ts` lo valida).
+  useEffect(() => {
+    if (!shared) return
+    let live = true
+    void decodeReplayPayload(shared).then((read) => {
+      if (!live) return
+      onSharedRead?.()
+      if (read.ok) setOpened({ replay: read.replay, payload: shared, shared: true })
+      else fail(read.error)
+    })
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se lee una vez por enlace
+  }, [shared])
+
+  const importShared = useCallback(
+    async (read: SharedRead) => {
+      if (!read.ok) return fail(read.error)
+      if (read.kind === 'combo') return onOpenCombo ? onOpenCombo(read.combo) : fail('notReplay')
+      setOpened({ replay: read.replay, payload: await encodeReplayPayload(read.replay), shared: true })
+    },
+    [onOpenCombo],
+  )
+  const withReplay = (item: SavedReplay, then: (replay: DuelReplay) => void) => void decodeReplayPayload(item.payload).then((read) => (read.ok ? then(read.replay) : fail(read.error)))
+
+  return {
+    items,
+    opened,
+    close: () => setOpened(null),
+    open: (item: SavedReplay) => withReplay(item, (replay) => setOpened({ replay, payload: item.payload, shared: false })),
+    importShared: (read: SharedRead) => void importShared(read),
+    copyLink: (item: SavedReplay) => withReplay(item, (replay) => void shareReplayLink(replay, titleOf(replay), item.payload).then((outcome) => tellShared(outcome, () => downloadReplayFile(replay, titleOf(replay))))),
+    download: (item: SavedReplay) => withReplay(item, (replay) => downloadReplayFile(replay, titleOf(replay))),
+    remove: (item: SavedReplay) => {
+      setItems(deleteSavedReplay(item.id))
+      showToastMessage(t('meta.duels.deleted'), 'info')
+    },
+    saveOpened: () => {
+      if (!opened) return
+      void keepReplay(opened.replay).then((ok) => {
+        if (!ok) return
+        setItems(readSavedReplays())
+        setOpened({ ...opened, shared: false })
+      })
+    },
+  }
+}
+
+export function ReplaysScreen(props: ReplaysScreenProps = {}) {
+  const duels = useDuelReplays(props)
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const entries = useMemo(getReplayEntries, [])
   // Lo que está al aire ahora en los canales oficiales: va arriba de los replays mientras haya algo.
@@ -109,6 +203,25 @@ export function ReplaysScreen() {
     window.history.replaceState(null, '', buildReplaysHash(target))
   }
 
+  if (duels.opened) {
+    const { replay, payload } = duels.opened
+    const title = titleOf(replay)
+    const download = () => downloadReplayFile(replay, title)
+
+    return (
+      <DuelReplayScreen
+        key={payload}
+        replay={replay}
+        onClose={duels.close}
+        shared={duels.opened.shared ? { onSave: duels.saveOpened } : undefined}
+        actions={[
+          ...(linkFits(payload, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, payload).then((outcome) => tellShared(outcome, download)) }] : []),
+          { label: t('meta.duels.download'), icon: 'download', onSelect: download },
+        ]}
+      />
+    )
+  }
+
   return (
     <StepPage as="article" wide>
       <StepHero
@@ -138,6 +251,8 @@ export function ReplaysScreen() {
       />
 
       <LiveStreamsSection state={live} />
+
+      <YourDuels items={duels.items} onOpen={duels.open} onCopyLink={duels.copyLink} onDownload={duels.download} onDelete={duels.remove} onImport={duels.importShared} />
 
       <section id="replays-list" aria-labelledby="replays-list-title" className="grid gap-4">
         <Heading level="section" id="replays-list-title">

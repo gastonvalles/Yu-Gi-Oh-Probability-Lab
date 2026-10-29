@@ -107,6 +107,8 @@ export interface AdapterOutput {
   chain: ChainStep[]
   /** De quién fue cada jugada de la tanda, intercaladas como pasaron (`mine` y `theirs` por separado pierden el orden): la mesa manual lo hereda al pasar a manual. */
   order: ('mine' | 'theirs')[]
+  /** Las vidas (por asiento) cada vez que cambian, con cuántas jugadas de la tanda (`order`) había: el replay del duelo las sigue paso a paso. */
+  lp: { at: number; lp: [number, number] }[]
 }
 
 /** Un ataque del rival en el espejo: su lugar en `theirs` (`index`), cuántas jugadas de tu mesa había antes (`at`, donde la mesa lo cuenta) y quién ataca a qué (sin `target`, directo). */
@@ -855,6 +857,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
 
         lp[player] = event.type === 'lpupdate' ? event.lp : event.type === 'recover' ? lp[player] + event.amount : Math.max(0, lp[player] - event.amount)
         overlay = { ...overlay, lp }
+        out.lp.push({ at: out.order.length, lp })
         return
       }
 
@@ -927,7 +930,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
       return overlay
     },
     apply(event) {
-      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [] }
+      out = { mine: [], theirs: [], overlay, unmapped: [], chain: [], order: [], lp: [] }
       fromDeck = [null, null]
       openedNow = new Set()
 

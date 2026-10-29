@@ -26,6 +26,9 @@ sus despliegues).
   servidor) o en un `*.ygolab-combo.json`, en un sobre versionado (`v: 1` se lee siempre). Topes antes de decodificar y al
   inflar (256 KB: una bomba se corta), y se copian sólo los campos conocidos con tipos, rangos e ids con su patrón; el enlace se
   ofrece hasta 7.500 caracteres (45 jugadas ≈ 1.700) y, más largo, el archivo. No lleva usuario ni relay.
+- **El replay de un duelo, igual** (`duel-replay-share.ts`): el mismo sobre (`kind: 'duel'`, `#replay=`, `*.ygolab-duel.json`), 2 MB
+  inflado y 6.000 jugadas de tope, nombres por `cleanName`. Sin la clave del duelo, las respuestas del núcleo, el chat ni el relay;
+  lo oculto del rival nunca estuvo y lo propio sólo va con «Incluir mi mano». Un enlace entra hasta ~950 jugadas; si no, el archivo.
 - **El proxy de imágenes** (`api/card-image.ts`): sólo rutas con la forma de una imagen de carta o de set de YGOPRODeck, con el
   host fijo y sin seguir redirecciones; sólo los parámetros `path` y `w` (cada valor distinto sería otra copia en el CDN); sólo
   JPEG, PNG o WebP, con tope de bytes y de píxeles; lo que falla es un 502 que no se guarda. Sale con

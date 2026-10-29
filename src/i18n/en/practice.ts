@@ -277,6 +277,7 @@ export const practice: Translated<typeof es> = {
   'practice.share.error.newer': 'This combo comes from a newer version of YGOUltraLab: reload the page and try again.',
   'practice.share.error.broken': 'The combo is broken or incomplete: ask for it to be shared again.',
   'practice.share.error.tooBig': 'The combo is too big to open.',
+  'practice.share.error.duel': 'This is a duel replay: open it in Replays, under “Your duels”.',
   'practice.share.banner': 'Shared combo',
   'practice.share.save': 'Save to my combos',
 

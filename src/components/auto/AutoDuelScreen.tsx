@@ -6,12 +6,14 @@ import { undoPoint, workerTransport, type AutoSession, type AutoSnapshot } from 
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
+import { replayFromAuto } from '../../app/auto/auto-replay'
 import { createGuestLink, createHostLink, underControl, type HostLinkOptions, type OnlineLink, type OnlineSnapshot, type OnlineTransport, type PhaseView, type RoomAutoState } from '../../app/auto/online'
 import type { Seat } from '../../app/auto/protocol'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { duelResult, type DuelResult } from '../../app/duel-games'
 import { duelTurnNumber } from '../../app/duel-turn'
+import type { ReplayView } from '../../app/duel-replay'
 import type { AutoClock, Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import { isEmojiSignal } from '../../app/duel-signals'
 import type { SocketStatus } from '../../app/duel-socket'
@@ -30,6 +32,7 @@ import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNo
 import { cardIdOfDrawId } from '../probability/practice'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { Button } from '../ui/Button'
+import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { Segmented } from '../ui/Segmented'
 import { AskPrompt } from './AskPrompt'
 import { chainModeHint, chainModeOptions, Setting } from './AutoBar'
@@ -505,10 +508,22 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   ) : paused ? (
     <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
   ) : resultOpen ? (
-    <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} {...(reason ? { reason } : {})} />
+    <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} onSaveReplay={() => setSaving(true)} {...(reason ? { reason } : {})} />
   ) : snap.status === 'loading' || online.phase === 'starting' ? (
     <LoadingCover progress={snap.progress} note={null} />
   ) : undefined
+
+  // «Guardar replay» (el resultado y «Más opciones»): el duelo como está al tocar, desde mi lado, con los dos nombres; si alguien se rindió (o se le acabó el tiempo), lo dice la sala.
+  const [saving, setSaving] = useState(false)
+  const buildReplay = (view: ReplayView) =>
+    replayFromAuto(session.getSnapshot(), {
+      seat,
+      mode: 'link-auto',
+      view,
+      players: [myName, snapshot.peerName ?? ''],
+      theirCode: (id) => session.adapter?.codeOf({ side: 'theirs', id }) ?? 0,
+      ...(snapshot.conceded !== null ? { result: { winner: snapshot.conceded === snapshot.me ? 1 : 0, reason: snapshot.timeUp ? 'time' : 'concede' } } : {}),
+    })
 
   // Pasar a manual: con el duelo en juego y el rival en la sala. Una carta bajo el control del otro no se puede seguir en la mesa manual (ver `underControl`).
   const want = request ?? NOTHING
@@ -517,13 +532,27 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
   const manualHint = switching ? t('auto.online.manualSwitching') : manual === 'asking' ? t('auto.online.manualAsking', { name: rivalName }) : control ? t('auto.online.manualControlHint') : t('auto.online.manualHint', { name: rivalName })
 
   // «Más opciones» de la barra: lo mismo que en solo (las respuestas a la cadena y la casilla) y pasar a manual; los sonidos y reconectar ya están.
-  const settings = (
+  const settings = (close: () => void) => (
     <>
       <Setting title={t('auto.bar.chain')} hint={chainModeHint(prefs.chain)}>
         <Segmented label={t('auto.bar.chain')} value={prefs.chain} onChange={(mode) => setAutoPref('chain', mode)} fullWidth options={chainModeOptions()} />
       </Setting>
       <Setting title={t('auto.bar.place')} hint={t('auto.bar.placeHint')}>
         <Segmented label={t('auto.bar.place')} value={prefs.place} onChange={(mode) => setAutoPref('place', mode)} fullWidth options={[{ value: 'ask', label: t('auto.bar.ask') }, { value: 'auto', label: t('auto.bar.auto') }]} />
+      </Setting>
+      <Setting title={t('meta.duels.save.title')} hint={t('auto.bar.saveReplayHint')}>
+        <Button
+          variant="secondary"
+          icon="save"
+          className="justify-self-start"
+          aria-haspopup="dialog"
+          onClick={() => {
+            close()
+            setSaving(true)
+          }}
+        >
+          {t('meta.duels.save.button')}
+        </Button>
       </Setting>
       {canSwitch ? (
         <Setting title={t('auto.online.manualTitle')} hint={manualHint}>
@@ -612,6 +641,7 @@ function AutoDuelTable({ session, online, seat, duel, snapshot, status, myName, 
         <PracticeMat session={asks.matSession} state={asks.state} cardsById={deck.cardsById} deckName={deck.name} onDispatch={sentinel} onUndo={askUndo ? () => askUndo(true) : NOTHING} onSeek={NOTHING} onLoadCombo={NOTHING} onNewHand={NOTHING} duel={link} rivalViewer={asks.rivalViewer} />
       </LifeHold>
       {asks.pieces}
+      <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
       {banner ? <TurnOrderBanner first={seat === 0} rival={rivalName} onDone={hideBanner} /> : null}
       {docked ? <RivalEmoji burst={signals.burst} name={rivalName} onDismiss={signals.dismissBurst} /> : null}
     </div>

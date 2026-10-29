@@ -7,6 +7,7 @@ import { createAutoSession, workerTransport, type AutoSession, type SessionOptio
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
+import { replayFromAuto } from '../../app/auto/auto-replay'
 import type { Seat } from '../../app/auto/protocol'
 import { seatOf, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
@@ -14,6 +15,7 @@ import { autoRival, dealRival, poolCount, readHandtrapConfig, rivalCardOf, write
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { LifeHold } from '../../app/life-effects'
 import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
+import type { ReplayView } from '../../app/duel-replay'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { LifeScore } from '../duel/LifeScore'
@@ -23,6 +25,7 @@ import { cardIdOfDrawId } from '../probability/practice'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
+import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { AutoBar, AutoDock, type AutoOptions } from './AutoBar'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckOf } from './deck-list'
@@ -222,6 +225,13 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const chips = usePracticeChips(lab, asks.matSession)
   // La hoja para cambiar las handtraps del rival.
   const [choosing, setChoosing] = useState(false)
+  // «Guardar replay» (el final y «Más opciones»): el duelo como está al tocar guardar, desde tu lado (sin nombres: «Jugar solo» no los tiene).
+  const [saving, setSaving] = useState(false)
+  const openSave = useCallback(() => setSaving(true), [])
+  const buildReplay = useCallback(
+    (view: ReplayView) => replayFromAuto(session.getSnapshot(), { seat, mode: 'solo-auto', view, players: ['', ''], theirCode: (id) => session.adapter?.codeOf({ side: 'theirs', id }) ?? 0 }),
+    [session, seat],
+  )
   const kept = resumed?.rival
   const rivalDeal = useMemo(() => (kept ? { rival: { hand: kept.hand, used: [] }, names: kept.names } : dealRival(handtraps, snap.seed)), [kept, handtraps, snap.seed])
   const handover = useMemo(
@@ -269,11 +279,11 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       fault ? (
         <FaultCover fault={fault} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'ended' && end ? (
-        <EndCover end={end} lp={lp} seat={seat} rival={rivalName} onAgain={restart} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+        <EndCover end={end} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} rival={rivalOn} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, rivalOn],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, rivalOn, openSave],
   )
 
   // Las vidas del núcleo van por asiento: las tuyas son las de `seat`.
@@ -289,6 +299,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       place: prefs.place,
       onPlace: (mode) => setAutoPref('place', mode),
       onRestart: restart,
+      onSaveReplay: openSave,
       ...(openManual ? { onManual: openManual } : {}),
       handtraps: {
         on: rivalOn,
@@ -298,7 +309,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       blind: prefs.blind,
       onBlind: (on) => setAutoPref('blind', on),
     }),
-    [prefs.chain, prefs.place, prefs.blind, restart, openManual, rivalOn, handtraps],
+    [prefs.chain, prefs.place, prefs.blind, restart, openSave, openManual, rivalOn, handtraps],
   )
   const turn = reviewing ? asks.state.turn : snap.overlay.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
@@ -382,6 +393,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
           : {})}
       />
       {asks.pieces}
+      <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
       <ManualDialog
         key={opened}
         isOpen={switching}
@@ -398,8 +410,8 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   )
 }
 
-/** El final: quién ganó y por qué, y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
-function EndCover({ end, lp, seat, rival, onAgain, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onManual?: () => void; onExit: () => void }) {
+/** El final: quién ganó y por qué, «Guardar replay» y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
+function EndCover({ end, lp, seat, rival, onAgain, onSave, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onManual?: () => void; onExit: () => void }) {
   const won = end.winner === seat
   const [mine, theirs] = [lp[seat], lp[1 - seat]!]
   const title = end.winner === 2 ? t('duel.result.title.draw') : won ? t('duel.result.title.win') : t('duel.result.title.lose')
@@ -425,6 +437,9 @@ function EndCover({ end, lp, seat, rival, onAgain, onManual, onExit }: { end: { 
         </p>
         <p className="m-0 text-micro tabular-nums text-soft">{`${t('duel.bar.you')} ${mine} · ${rival} ${theirs}`}</p>
         <div className="flex flex-wrap justify-center gap-2">
+          <Button variant="secondary" icon="save" aria-haspopup="dialog" onClick={onSave}>
+            {t('meta.duels.save.button')}
+          </Button>
           {onManual ? (
             <Button variant="secondary" icon="hand" onClick={onManual}>
               {t('auto.bar.manual')}

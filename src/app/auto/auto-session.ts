@@ -88,6 +88,8 @@ export interface AutoSnapshot {
   order: readonly ('mine' | 'theirs')[]
   /** Los mensajes de la cadena desde `initial`, en orden, con `at` contado en `mineActions` (`adapter.apply().chain`): el aviso de la cadena los muestra de a uno. */
   chainSteps: readonly ChainStep[]
+  /** Las vidas (por asiento) desde `initial`: las de arranque (`at` 0) y cada cambio, con `at` contado en `order` (`adapter.apply().lp`): el replay del duelo (`duel-replay.ts`). */
+  lifeSteps: readonly { at: number; lp: readonly [number, number] }[]
   /** Tu mesa y el espejo de la del rival al final de la última tanda (= `initial` + todas las jugadas). */
   mine: MatState
   theirs: MatState
@@ -284,6 +286,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     theirsActs: [],
     order: [],
     chainSteps: [],
+    lifeSteps: [],
     mine: blank.mine,
     theirs: blank.theirs.state,
     overlay: blank.overlay,
@@ -379,7 +382,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         bag: seat === bagged,
       }),
     )
-    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], order: [], chainSteps: [], unmapped: [], playStarts: [], ...view() }, false)
+    set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], order: [], chainSteps: [], lifeSteps: [{ at: 0, lp: [...adapters[me]!.overlay.lp] }], unmapped: [], playStarts: [], ...view() }, false)
   }
 
   /** Un anfitrión nuevo (otro Worker): arma el duelo con las primeras `to` respuestas ya dadas. Lo que mande el anterior ya no se escucha. */
@@ -432,6 +435,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         ...(out.order.length > 0 ? { order: snapshot.order.concat(out.order) } : {}),
         ...(out.chain.length > 0 ? { chainSteps: snapshot.chainSteps.concat(out.chain.map((step) => ({ ...step, at: step.at + snapshot.mineActions.length }))) } : {}),
         ...(out.unmapped.length > 0 ? { unmapped: snapshot.unmapped.concat(out.unmapped) } : {}),
+        ...(out.lp.length > 0 ? { lifeSteps: snapshot.lifeSteps.concat(out.lp.map((step) => ({ at: step.at + snapshot.order.length, lp: step.lp }))) } : {}),
       },
       !snapshot.replaying,
     )

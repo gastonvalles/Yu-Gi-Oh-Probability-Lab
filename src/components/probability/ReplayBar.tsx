@@ -247,7 +247,8 @@ interface TimelineRowProps {
   /** Lo que anuncia un paso a un lector de pantalla. */
   describe: (cursor: number) => string
   onSeek: (cursor: number) => void
-  onOpenSteps: () => void
+  /** La lista de pasos; sin esto (el replay de un duelo), la línea de tiempo va sola. */
+  onOpenSteps?: () => void
   className?: string
 }
 
@@ -334,7 +335,7 @@ export const ReplayTimeline = memo(function ReplayTimeline({ marks, cursor, desc
   return (
     <div className={cx('flex items-center gap-1.5', className)}>
       <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="h-11" />
-      <StepsButton onOpenSteps={onOpenSteps} />
+      {onOpenSteps ? <StepsButton onOpenSteps={onOpenSteps} /> : null}
     </div>
   )
 })

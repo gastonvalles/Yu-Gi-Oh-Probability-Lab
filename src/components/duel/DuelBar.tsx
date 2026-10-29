@@ -131,8 +131,8 @@ interface DuelBarProps {
   onOpenLife?: () => void
   /** El turno del duelo, si no sale de las mesas de la sala (el duelo automático: lo cuenta el núcleo y `mine`/`theirs` no existen). */
   turnNumber?: number
-  /** Más ajustes al final de «Más opciones» (el duelo automático: las respuestas a la cadena y la casilla). */
-  extraSettings?: ReactNode
+  /** Más ajustes al final de «Más opciones» (el duelo automático: las respuestas a la cadena y la casilla); con una función, recibe cómo cerrarlo (lo que abre otro diálogo). */
+  extraSettings?: ReactNode | ((close: () => void) => ReactNode)
   /** Por qué terminó, si no es lo que dicen las vidas o la rendición (el duelo automático: sin cartas para robar, el efecto de una carta). */
   resultReason?: string
 }
@@ -327,7 +327,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
       {/* «Opciones del duelo» del ⋯ (el duelo automático: las respuestas a la cadena y la casilla). */}
       {extraSettings ? (
         <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" anchor="mat" veil={false} title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
-          <div className="grid gap-4">{extraSettings}</div>
+          <div className="grid gap-4">{typeof extraSettings === 'function' ? extraSettings(() => setMoreOpen(false)) : extraSettings}</div>
         </Modal>
       ) : null}
 

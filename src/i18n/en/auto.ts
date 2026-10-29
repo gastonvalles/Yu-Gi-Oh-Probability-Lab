@@ -143,6 +143,7 @@ export const auto: Translated<typeof es> = {
   // «New hand» (the bar) sets up another duel; this one repeats the same.
   'auto.bar.restart': 'Restart the same duel',
   'auto.bar.restartHint': 'The same duel from the start: the same cards, in the same order.',
+  'auto.bar.saveReplayHint': 'Save the duel as it is, to watch it or share it from Replays.',
   'auto.bar.handtrapsOn': '{cards} · {hand} in hand',
   'auto.bar.handtrapsOff': 'Off: the opponent uses nothing.',
   'auto.bar.handtrapsChange': 'Change hand traps',
