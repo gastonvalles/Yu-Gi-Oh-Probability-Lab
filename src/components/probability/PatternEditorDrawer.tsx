@@ -198,7 +198,7 @@ export function PatternEditorDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={view === 'picker' && pickingIndex >= 0 ? t('builder.picker.title', { index: pickingIndex + 1 }) : title}
-        className="absolute inset-y-0 right-0 grid w-full animate-drawer-enter grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-card-background outline-none motion-reduce:animate-none md:w-140 md:border-l md:border-border-subtle md:shadow-overlay"
+        className="absolute inset-y-0 right-0 grid w-full animate-drawer-enter grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-card-background outline-none motion-reduce:animate-none md:w-140 md:border-l md:border-border-subtle md:shadow-overlay"
       >
         {view === 'picker' && pattern && pickingCondition ? (
           <CategoryPicker
@@ -275,7 +275,8 @@ export function PatternEditorDrawer({
               ) : null}
             </div>
 
-            <footer className="flex items-center gap-2 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 md:px-6">
+            {/* Como en el selector: por debajo de 380 px lo que falta va en su renglón, arriba de los botones. */}
+            <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 md:px-6">
               {view === 'examples' ? (
                 <span className="flex-1" />
               ) : onDelete ? (
@@ -292,7 +293,7 @@ export function PatternEditorDrawer({
                   </Button>
                 </span>
               ) : (
-                <span id={reasonId} className={cx('min-w-0 flex-1 text-body', flagReason ? 'font-semibold text-danger-soft' : 'text-muted')} aria-live="polite">
+                <span id={reasonId} className={cx('min-w-0 flex-1 text-body max-[380px]:basis-full', flagReason ? 'font-semibold text-danger-soft' : 'text-muted')} aria-live="polite">
                   {blockReason}
                 </span>
               )}

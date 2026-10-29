@@ -41,11 +41,12 @@ export function BuildPair({ a, b, layout, onPick, onSwap }: BuildPairProps) {
       )}
     >
       <SideBadge side={side} />
-      <span className={cx('min-w-0 flex-1', layout === 'row' ? 'grid' : 'flex items-baseline gap-2')}>
+      {/* Apilada, por debajo de 430 px el nombre y de dónde sale no entran lado a lado (se cortaban los dos): de dónde sale baja abajo del nombre, como en escritorio. */}
+      <span className={cx('min-w-0 flex-1', layout === 'row' ? 'grid' : 'flex items-baseline gap-2 max-[430px]:grid max-[430px]:gap-0')}>
         <span className={cx('truncate text-body font-semibold', option ? 'text-foreground' : 'text-muted', layout === 'stacked' && 'min-w-0 flex-1')}>
           {option ? option.name : t('meta.compare.pickPlaceholder')}
         </span>
-        {option ? <span className={cx('truncate text-micro', option.pending > 0 ? 'text-warning-soft' : 'text-muted', layout === 'stacked' && 'max-w-[45%] shrink-0')}>{option.pending > 0 ? pendingText(option) : option.meta}</span> : null}
+        {option ? <span className={cx('truncate text-micro', option.pending > 0 ? 'text-warning-soft' : 'text-muted', layout === 'stacked' && 'shrink-0 min-[430px]:max-w-[45%]')}>{option.pending > 0 ? pendingText(option) : option.meta}</span> : null}
       </span>
       <Icon name="chevron-down" size={16} className="shrink-0 text-soft" />
     </button>

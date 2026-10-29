@@ -28,14 +28,14 @@ interface LabRoleDistributionProps {
 
 /**
  * Qué robás de cada rol: una fila por rol con su anillo (de cada 100 manos, cuántas traen al menos una copia), el nombre y las copias. El dato se ve sin abrir nada:
- * la fila abre las cartas del rol. Lista en escritorio, grilla de 2 × 2 en el celular. El reparto en 0 / 1 / 2 / 3+ queda en el texto al pasar el mouse.
+ * la fila abre las cartas del rol. Lista en escritorio, grilla de 2 × 2 en el celular (lista otra vez por debajo de 385 px: ahí «Interacción» no entra al lado del anillo). El reparto en 0 / 1 / 2 / 3+ queda en el texto al pasar el mouse.
  */
 export function LabRoleDistribution({ distributions, onOpenRole, before, className }: LabRoleDistributionProps) {
   const id = useId()
 
   return (
     <LabSection title={t('lab.roles.title')} icon="layers" description={t('lab.roles.description')} collapsible={false} className={className}>
-      <ul className="m-0 grid list-none grid-cols-2 gap-x-2 gap-y-1 p-0 md:grid-cols-1">
+      <ul className="m-0 grid list-none grid-cols-1 gap-x-2 gap-y-1 p-0 min-[385px]:grid-cols-2 md:grid-cols-1">
         {distributions.map((distribution, index) => {
           const empty = distribution.copies === 0
           const previous = before?.find((entry) => entry.key === distribution.key)
@@ -46,7 +46,7 @@ export function LabRoleDistribution({ distributions, onOpenRole, before, classNa
             <li key={distribution.key} className="min-w-0">
               <button
                 type="button"
-                className="grid min-h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-control p-0.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:bg-tint/6 disabled:opacity-50 md:gap-3"
+                className="grid min-h-16 w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-control p-0.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:bg-tint/6 disabled:opacity-50 md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-3"
                 disabled={empty}
                 aria-label={t('lab.roles.chanceOpen', { label: distribution.label, percent: formatShortPercent(distribution.atLeastOne) })}
                 // El nombre del botón es el de siempre: el ▲ / ▼ del cambio («4 más») llega como su descripción.
@@ -68,7 +68,7 @@ export function LabRoleDistribution({ distributions, onOpenRole, before, classNa
                   {/* Un renglón chico debajo: entra en el alto de la fila (no la agranda) y no le quita ancho al nombre en la grilla del celular. */}
                   {diff !== 0 ? <LabDelta id={deltaId} diff={diff} higherIsBetter={distribution.key !== 'brick'} className="text-micro" /> : null}
                 </span>
-                {empty ? <span aria-hidden="true" /> : <Icon name="chevron-right" size={18} className="text-soft max-md:hidden" />}
+                {empty ? <span aria-hidden="true" className="max-md:hidden" /> : <Icon name="chevron-right" size={18} className="text-soft max-md:hidden" />}
               </button>
             </li>
           )

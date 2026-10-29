@@ -86,7 +86,7 @@ export function KpiDetailModal({
                       <CopiesBadge copies={card.copies} placement="overlay" />
                     </span>
                     <span className="grid min-w-0 gap-0.5">
-                      <strong className="truncate text-body font-semibold text-foreground">{card.name}</strong>
+                      <strong className="line-clamp-2 text-body font-semibold text-foreground">{card.name}</strong>
                       {card.needsReview ? (
                         <Badge tone="warning" size="sm" shape="tag" className="w-fit">
                           {t('meta.kpi.review')}
