@@ -66,9 +66,9 @@ describe('los hipervínculos', () => {
     expect(css).toMatch(/::selection\s*\{\s*background: var\(--info\);/)
   })
 
-  it('el enlace de la sala del duelo (el que se copia para invitar) también es ámbar', () => {
+  it('el enlace de la sala del duelo no se dibuja (Gastón, 2026-10-29): se copia o se comparte con los botones', () => {
     const source = readFileSync(path.join(ROOT, 'duel', 'RoomInvite.tsx'), 'utf8')
 
-    expect(source).toMatch(/text-info-soft[^>]*data-testid="duel-link"/)
+    expect(source).toMatch(/<span hidden data-testid="duel-link">/)
   })
 })

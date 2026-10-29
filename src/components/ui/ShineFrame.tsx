@@ -12,7 +12,7 @@ interface ShineFrameProps {
 }
 
 /**
- * El marco de la acción principal de una pantalla (la «Jugar ahora» de la portada): un hilo ámbar que le da la vuelta al botón y, de a ratos, un brillo que lo barre. Es lo único que se
+ * El marco de la acción principal de una pantalla (la «Jugar ahora» de la portada, verde lleno): un hilo ámbar que le da la vuelta al botón y, de a ratos, un brillo blanco que lo barre. Es lo único que se
  * mueve de la portada, así que se distingue (Von Restorff); va en **un solo botón por pantalla**.
  *
  * - **Rendimiento:** las dos capas sólo mueven `transform`/`translate` (el hilo es un degradé cónico grande que gira, `animate-spin`; el brillo, una barra que cruza con `animate-shine`):
@@ -32,7 +32,7 @@ export function ShineFrame({ active = true, className, children }: ShineFramePro
           </span>
           {children}
           <span aria-hidden="true" className="pointer-events-none absolute inset-0.5 overflow-hidden rounded-[calc(var(--radius-control)-2px)] motion-reduce:hidden">
-            <span className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 animate-shine bg-linear-to-r from-transparent via-info/40 to-transparent" />
+            <span className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 animate-shine bg-linear-to-r from-transparent via-white/35 to-transparent" />
           </span>
         </>
       ) : (

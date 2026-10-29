@@ -215,9 +215,10 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
                 <span className="text-micro text-muted">{t('duel.play.rulesYours')}</span>
                 <span className="text-body font-semibold text-foreground">{rulesLine(prefs, false)}</span>
               </span>
-              {/* Lo que se distingue de la vista: lavanda clara sobre la portada violeta (`onBrand`; el violeta lleno no se despegaba de ella) y, con deck, el marco que se mueve (`ShineFrame`). Con un duelo en pausa, lo principal es volver a él. */}
+              {/* Lo que se distingue de la vista: verde lleno con el texto blanco sobre la portada violeta («listo, a jugar»; el violeta lleno no se despegaba de ella y la lavanda clara no tenía color) y, con
+                  deck, el marco ámbar que se mueve (`ShineFrame`). Con un duelo en pausa, lo principal es volver a él. */}
               <ShineFrame className="ml-auto" active={!paused && deckReady && !busy}>
-                <Button variant={paused ? 'secondary' : 'onBrand'} icon="play" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
+                <Button variant={paused ? 'secondary' : 'primary'} color={paused ? 'brand' : 'success'} icon="play" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
                   {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
                 </Button>
               </ShineFrame>

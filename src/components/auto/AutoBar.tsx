@@ -12,6 +12,7 @@ import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
+import { TileButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Segmented, type SegmentedOption } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
@@ -150,20 +151,12 @@ function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, o
   )
 }
 
-/**
- * Un botón de la botonera: el círculo de 40 px con su ícono y el nombre debajo; se toca todo el botón (56 × 56), como las fases de `PhaseRow`. `on`: el modo que está prendido (violeta con aro
- * ámbar); uno que se prende y apaga (`aria-pressed`), con el ícono ámbar.
- */
-function DockButton({ icon, label, on = false, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string; on?: boolean }) {
+/** Un botón de la botonera (`TileButton`, el de la línea de fases): la caja de la mesa con su ícono y el nombre debajo. Prendido (`aria-pressed`: el modo de ahora, los pasos abiertos), en ámbar. */
+function DockButton({ icon, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string }) {
   return (
-    <button type="button" className={cx('group grid min-w-14 cursor-pointer justify-items-center gap-1 rounded-control border-0 bg-transparent p-0 outline-none focus-visible:shadow-focus', className)} {...props}>
-      <span aria-hidden="true" className={cx('grid size-10 place-items-center rounded-full border-2 transition-colors', on ? 'border-info bg-primary text-white' : 'border-border text-foreground group-hover:bg-tint/12 group-aria-pressed:text-info')}>
-        <Icon name={icon} size={20} />
-      </span>
-      <span aria-hidden="true" className={cx('whitespace-nowrap text-micro font-semibold leading-none', on ? 'text-info' : 'text-foreground')}>
-        {label}
-      </span>
-    </button>
+    <TileButton {...props}>
+      <Icon name={icon} />
+    </TileButton>
   )
 }
 
@@ -180,7 +173,7 @@ export function AutoDock({ steps, ...options }: AutoOptions & { steps: { open: b
 
   return (
     <div role="group" aria-label={t('auto.dock.label')} data-mat-dock="" className="-mt-3 flex items-start gap-1">
-      {onManual ? <DockButton icon="play" label={t('auto.dock.auto')} on aria-pressed="true" aria-haspopup="dialog" aria-label={t('auto.dock.autoName')} onClick={onManual} /> : null}
+      {onManual ? <DockButton icon="play" label={t('auto.dock.auto')} aria-pressed="true" aria-haspopup="dialog" aria-label={t('auto.dock.autoName')} onClick={onManual} /> : null}
       <DockButton icon="link" label={t('auto.dock.chain')} aria-haspopup="dialog" aria-label={t('auto.dock.chainName', { mode: t(CHAIN_MODES[chain][0]) })} onClick={() => setOpen('chain')} />
       <DockButton icon="list" label={t('auto.dock.steps')} aria-pressed={steps.open} aria-label={t('practice.mat.stepsAndCombos')} onClick={steps.onToggle} />
       <DockButton icon="gear" label={t('auto.dock.options')} aria-haspopup="dialog" aria-label={t('duel.bar.more')} onClick={() => setOpen('more')} />

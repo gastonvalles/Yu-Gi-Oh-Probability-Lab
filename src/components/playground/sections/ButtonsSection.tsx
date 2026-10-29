@@ -11,7 +11,7 @@ import { cx } from '../../ui/cx'
 import { DraggableFab } from '../../ui/DraggableFab'
 import { FilterChips } from '../../ui/FilterChips'
 import { Icon } from '../../ui/Icon'
-import { CloseButton, IconButton } from '../../ui/IconButton'
+import { CloseButton, IconButton, TileButton } from '../../ui/IconButton'
 import { OverflowMenu } from '../../ui/OverflowMenu'
 import { ScrollRow } from '../../ui/ScrollRow'
 import { Segmented } from '../../ui/Segmented'
@@ -134,16 +134,17 @@ export function ButtonsSection() {
               Ver
             </Button>
           </Card>
-          {/* La acción principal de una pantalla, sobre la portada violeta: el marco que se mueve (un hilo ámbar que da la vuelta y un brillo que cruza), sólo transform; quieto con movimiento reducido. Uno por pantalla. */}
+          {/* La acción principal de una pantalla, sobre la portada violeta: verde lleno con el texto blanco y el marco que se mueve (un hilo ámbar que da la vuelta y un brillo blanco que cruza), sólo transform;
+              quieto con movimiento reducido. Uno por pantalla. */}
           <Card level="hero" padding="md" className="flex flex-wrap items-center gap-3">
             <Tag>ShineFrame</Tag>
             <ShineFrame>
-              <Button variant="onBrand" icon="play">
+              <Button variant="primary" color="success" icon="play">
                 Jugar ahora
               </Button>
             </ShineFrame>
             <ShineFrame active={false}>
-              <Button variant="onBrand" icon="play" disabled>
+              <Button variant="primary" color="success" icon="play" disabled>
                 Quieto
               </Button>
             </ShineFrame>
@@ -185,6 +186,51 @@ export function ButtonsSection() {
                 {index !== 1 ? <Icon name="check" strokeWidth={2.5} /> : null}
               </IconButton>
             ))}
+          </div>
+        </Specimen>
+
+        {/* La familia de la mesa del duelo: una sola caja para todo lo que se toca en el campo y en la botonera; el estado es siempre el mismo (ámbar = prendido o lo de ahora). */}
+        <Specimen
+          title="TileButton · la mesa"
+          note={<>Todo lo que se toca en la mesa es <b>la misma caja</b> (<Tag>IconButton tone=&quot;tile&quot;</Tag>; con su nombre debajo, <Tag>TileButton</Tag>): ícono blanco, <b>ámbar</b> al apuntarlo y ámbar con el borde ámbar si está prendido o es lo de ahora. Sin rellenos: el violeta lleno es sólo de la acción con texto (Listo, Pasar turno). Archivo: <Tag>ui/IconButton.tsx</Tag></>}
+          layout="column"
+        >
+          <div className="flex flex-wrap items-start gap-1">
+            <TileButton label="Automático" aria-pressed="true" aria-label="Automático (prendido)">
+              <Icon name="play" />
+            </TileButton>
+            <TileButton label="Cadena" aria-label="Cadena">
+              <Icon name="link" />
+            </TileButton>
+            <TileButton label="Pasos" aria-pressed="false" aria-label="Pasos">
+              <Icon name="list" />
+            </TileButton>
+            <TileButton label="Opciones" aria-label="Opciones">
+              <Icon name="gear" />
+            </TileButton>
+          </div>
+          <div className="flex flex-wrap items-start gap-1">
+            {(['DP', 'SP', 'M1', 'BP'] as const).map((short, at) => (
+              <TileButton key={short} label={['Draw', 'Standby', 'Main 1', 'Battle'][at]!} aria-label={short} aria-current={at === 0 ? 'true' : undefined} aria-disabled={at === 3 || undefined}>
+                <span className="text-micro font-extrabold leading-none">{short}</span>
+              </TileButton>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tag>la fase</Tag>
+            <IconButton tone="tile" size="sm" data-active aria-label="Fase de ahora, tu turno" className="text-micro font-extrabold leading-none">
+              M1
+            </IconButton>
+            <IconButton tone="tile" size="sm" disabled aria-label="Fase del rival" className="text-micro font-extrabold leading-none">
+              M1
+            </IconButton>
+            <Tag>+ y deshacer</Tag>
+            <IconButton tone="tile" size="sm" aria-label="Ficha">
+              <Icon name="plus" />
+            </IconButton>
+            <IconButton tone="tile" size="sm" disabled aria-label="Deshacer (nada que deshacer)">
+              <Icon name="undo" />
+            </IconButton>
           </div>
         </Specimen>
 

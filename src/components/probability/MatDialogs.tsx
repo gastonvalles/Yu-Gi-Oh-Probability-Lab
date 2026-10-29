@@ -1,4 +1,4 @@
-import { Fragment, createContext, type ReactNode, useContext, useDeferredValue, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { Fragment, createContext, type CSSProperties, type ReactNode, useContext, useDeferredValue, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
 import { opensKeyboard, useFocusTrap } from '../../app/use-focus-trap'
@@ -769,15 +769,24 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
     <>
       {/* En la tira, lo que se desliza de arriba abajo: hasta tres renglones (si hay más); con menos alto, lo que entre en su caja (la achica `max-h-full`), con un poco menos
           de aire arriba para que asome el renglón siguiente. */}
-      <div className={cx('grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain', strip ? 'max-h-[calc(3*(5.25rem*614/421+1.25rem)+1rem+0.5rem+0.75rem)] grid-cols-[minmax(0,1fr)] px-3 pb-3 pt-2' : 'p-3')}>
+      <div className={cx('grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 overflow-y-auto overflow-x-hidden overscroll-contain', strip ? 'max-h-[calc(3*(5.25rem*614/421+1.25rem)+1rem+0.5rem+0.75rem)] px-3 pb-3 pt-2' : 'p-3')}>
         {strip ? null : search}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
-        {/* En el celular, cinco por fila (como el campo); en la hoja de una tableta, las que entren de 5.25 rem; en el panel de escritorio, más angosto, las de 4.5 rem (tres en la columna de la derecha). En la tira,
-            renglones de cartas de 5.25 rem: con pocas, uno solo y la tira mide lo justo (su ancho es el de las cartas en fila); con más, bajan al renglón siguiente. */}
+        {/* Renglones sin espacio muerto: la lista mide lo de sus cartas en fila (`--n`; así, con pocas, el panel mide lo justo) y, si no entran, bajan al renglón siguiente y lo que sobra de ancho se
+            reparte entre las columnas (la primera y la última, al ras): ni una columna vacía ni una franja a la derecha. En el celular, del tamaño de cinco por fila (como el campo); desde 640 px y en la
+            tira, de 5.25 rem (las cartas no se agrandan: la tira sigue midiendo sus renglones de 5.25 rem). En el panel de escritorio sin tira, las de 4.5 rem. */}
         <ul
           ref={gridRef}
-          className={cx('m-0 list-none p-0', strip ? 'flex flex-wrap gap-2' : desktop ? 'grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2' : 'grid grid-cols-5 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2')}
+          style={{ '--n': visible.length } as CSSProperties}
+          className={cx(
+            'm-0 list-none p-0',
+            strip
+              ? 'grid grid-cols-[repeat(auto-fill,5.25rem)] justify-between gap-2 w-[calc(var(--n)*5.75rem-0.5rem)] max-w-full'
+              : desktop
+                ? 'grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2'
+                : 'grid grid-cols-[repeat(auto-fill,calc((100vw-3rem-4px)/5))] justify-between gap-1.5 w-[calc(var(--n)*((100vw-3rem-4px)/5+0.375rem)-0.375rem)] max-w-full sm:grid-cols-[repeat(auto-fill,5.25rem)] sm:gap-2 sm:w-[calc(var(--n)*5.75rem-0.5rem)]',
+          )}
           aria-label={t('practice.dialog.cards')}
         >
           {visible.map((card) => {
@@ -788,7 +797,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
             const lit = glow?.(card.id) ?? null
 
             return (
-              <li key={card.id} className={strip ? 'w-21 flex-none' : undefined}>
+              <li key={card.id}>
                 <button
                   type="button"
                   aria-pressed={choosing ? order >= 0 : undefined}
@@ -840,6 +849,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
     ) : (
       // Celular: la hoja de abajo, por encima de la mesa y debajo del menú de una carta (`CardSheet`), con un fondo sin velo que la cierra al tocar afuera. Con su asa se baja sin cerrarse
       // (`useSheetDrag`): queda la tira del asa, el fondo deja de atajar toques (se toca la mano y el campo) y lo de adentro queda como estaba, inerte, hasta que se sube.
+      // Sin buscador mide lo de sus cartas y va al medio (como la tira): no queda una hoja ancha con dos cartas a la izquierda; con buscador, todo el ancho (no cambia mientras se escribe).
       createPortal(
         <>
           <div
@@ -853,7 +863,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
               if (pressedBackdropRef.current && event.target === event.currentTarget) onClose()
             }}
           />
-          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} style={drag.style} className="fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none">
+          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} style={drag.style} className={cx('fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none', !search && 'mx-auto w-max max-w-full')}>
             <SheetHandle drag={drag} label={title} className="bg-surface-raised">
               {header}
             </SheetHandle>

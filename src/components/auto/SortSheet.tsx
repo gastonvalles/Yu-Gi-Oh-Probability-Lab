@@ -20,6 +20,8 @@ interface SortSheetProps {
   onSort: (keys: string[] | null) => void
 }
 
+const SORT_COLUMNS: Record<number, string> = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' }
+
 /**
  * Ordenar cartas (`sort_card`: el tope del deck; `sort_chain`: los costos de un ataque, que no son eslabones: varios disparos a la vez se piden de a uno con `select_chain`) en una hoja chica (`Modal keypad`): tocarlas en el orden en que van las numera (el marco celeste y el número de `PickGrid`) y tocar una numerada la suelta
  * (las de después se corren). «Ordenar así» se enciende con todas numeradas; «Dejar como está» contesta sin cambiar nada. Hay que contestar: no se cierra con Escape ni tocando afuera (se minimiza
@@ -58,7 +60,8 @@ export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hi
         </>
       }
     >
-      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} className="grid-cols-3 sm:grid-cols-4" />
+      {/* Hasta cuatro, una sola fila con todas (sin una columna vacía al lado de tres); con más, de a tres (de a cuatro desde 640 px). */}
+      <PickGrid label={title} cards={cards} chosen={order} multi onToggle={toggle} className={SORT_COLUMNS[cards.length] ?? 'grid-cols-3 sm:grid-cols-4'} />
     </Modal>
   )
 }

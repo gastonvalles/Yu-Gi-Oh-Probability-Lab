@@ -1268,12 +1268,12 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByText(/Tenés un duelo en pausa con/)).toBeInTheDocument()
 
     // Sin duelo en pausa lo principal es crear uno; con uno en pausa lo principal es volver a él (una sola principal en la vista).
-    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).not.toHaveClass('bg-lavender-light')
+    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).not.toHaveClass('bg-success-solid')
     expect(within(guest.container).getByRole('button', { name: 'Volver al duelo' })).toHaveClass('bg-primary')
 
     click(guest, 'Dejar ese duelo')
-    // Sin pausa, «Jugar ahora» es lo que se distingue: lavanda clara sobre la portada violeta.
-    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toHaveClass('bg-lavender-light')
+    // Sin pausa, «Jugar ahora» es lo que se distingue: verde lleno sobre la portada violeta.
+    expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toHaveClass('bg-success-solid')
     expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
     expect(hasSave('guest')).toBe(false)
   })

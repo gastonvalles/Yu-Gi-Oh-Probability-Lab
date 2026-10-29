@@ -12,11 +12,11 @@ Dos personas juegan la mesa de práctica una contra la otra, cada una en su disp
 
 ## La sala
 
-Quien llega por un enlace no pasa por el lobby: escribe su nombre en la sala y elige su deck en el builder, que vuelve a la sala.
+Quien llega por un enlace no pasa por el lobby: escribe su nombre en la sala y elige su deck en el builder, que vuelve a la sala. En escritorio son tres paneles iguales (reglas y deck · escenario · chat), apilados en el celular; el enlace no se dibuja (se copia o se comparte con los botones, y queda el código chico) y la X pide confirmar.
 
 ## La mesa del duelo
 
-La de la práctica, con el campo del rival espejado arriba y las Extra Monster Zones compartidas en el medio.
+La de la práctica, con el campo del rival espejado arriba y las Extra Monster Zones compartidas en el medio. Barajar y repartir: `app/shuffle-fx.ts` (riffle en dos paquetes con capas de dorso; la mano se baraja cuando la carta que entra ya aterrizó) y `app/deal-flight.ts` (una curva, sin rebote); muestra en `/playground`.
 
 - **Cada uno es dueño de lo suyo:** cada jugador mueve sólo sus cartas, sus vidas y su reloj de turnos. Lo que le pasa a una carta del rival lo hace él en su mesa, a pedido por el chat, Target o Señalar. Deshacer vuelve la última jugada de la mesa, sea de quien sea: con el rival presente se le pide permiso, y si la jugada es suya la deshace él. Cambiar el control de una carta son dos jugadas, una en cada mesa, que se completan solas (`mat-control.ts`) y no se deshacen: la otra mesa ya las completó. Quien llega a cero en el reloj de turnos se rinde desde su propio dispositivo: un cliente modificado podría no hacerlo y no hay servidor que lo corte.
 - **El ATK y la DEF se ven siempre** en cada monstruo boca arriba, de los dos lados, sin cambiar su caja (`StatTag`, `fieldStatsOf`): los de ahora en el automático, los impresos en el manual.
@@ -35,7 +35,7 @@ La de la práctica, con el campo del rival espejado arriba y las Extra Monster Z
 
 ### El visor de una pila no tapa tu mano ni el detalle
 
-Ningún menú de la mesa oscurece el fondo (`veil={false}`). `PileViewer` no es un modal: con él abierto el campo sigue vivo y no se mueve ni cambia de tamaño.
+Ningún menú de la mesa oscurece el fondo (`veil={false}`). `PileViewer` no es un modal: con él abierto el campo sigue vivo y no se mueve ni cambia de tamaño. Sin buscador mide lo de sus cartas (columnas fijas con `justify-between`, sin franja vacía; en el celular, una hoja angosta al medio); igual `CardPicker` y `SortSheet` (`Modal size="fit"`).
 
 - En escritorio es una ventana (hasta 56 rem, centrada en el campo y fuera de los laterales) apoyada en el borde de abajo de la fila de las Zonas Extra: crece hacia arriba hasta la barra (la pisa si no entran dos renglones) sin llegar a tu mano ni a tus zonas; sin el campo del rival, baja sobre tus zonas lo que falte. Tocar o apuntar una carta del visor la muestra en el detalle (una del rival boca abajo, sólo como tal). Tapa el campo del rival y las fases, y se esconde mientras se elige en el campo. Bajo 1101 px es la hoja de abajo (hasta 55 dvh), que se cierra al tocar afuera.
 - La caja que lo aloja es `absolute` (la mide `--strip-*`) y no ataja toques, sólo el panel.

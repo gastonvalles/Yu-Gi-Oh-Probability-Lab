@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatState, replayMat } from '../app/practice-mat'
-import { RIFFLE_MS } from '../app/shuffle-fx'
+import { SHUFFLE_ID } from '../app/shuffle-fx'
 import { HOLD_MS } from '../app/use-mat-drag'
 import { setSoundsOn, soundsOn } from '../app/sound-prefs'
 import type { MatCard } from '../components/probability/PracticeMat'
@@ -504,7 +504,7 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
   })
 
-  it('barajar, robar o sumar una carta a la mano baraja el deck y la mano a la vista; mandar el tope al cementerio no (la carta se ve volar)', () => {
+  it('barajar, robar o sumar una carta a la mano baraja el deck y la mano a la vista; mandar el tope al cementerio no (la carta se ve volar)', async () => {
     const animated: Element[] = []
     const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
 
@@ -515,41 +515,39 @@ describe('la mesa de práctica', () => {
     Element.prototype.getAnimations = () => []
     // Sólo se cuentan las animaciones del barajado (las demás, como los vuelos, duran otra cosa).
     Element.prototype.animate = function (this: Element, _frames: unknown, options?: KeyframeAnimationOptions | number) {
-      if (typeof options === 'object' && options.duration === RIFFLE_MS) animated.push(this)
+      if (typeof options === 'object' && options.id === SHUFFLE_ID) animated.push(this)
 
       return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
     }
     window.matchMedia = (() => ({ matches: false, media: '', addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
 
     try {
-      // Las capas del deck se arman de nuevo (otro elemento) cada vez que se baraja.
+      // Las capas del deck (`data-layer`) se barajan cada una con su animación.
       const deck = () => screen.getByRole('button', { name: /^Main: [0-9]+$/ })
-      const layers = () => deck().querySelector(':scope > span.absolute:not([data-pile-edge])')
-      const before = layers()
+      const inDeck = () => animated.filter((element) => element.hasAttribute('data-layer') && deck().contains(element))
 
-      // Barajar: el deck se vuelve a armar con su animación y la mano se baraja carta por carta. Su menú, con el teclado (tocarlo es buscar).
+      // Barajar: las capas del deck se barajan y la mano también, carta por carta. Su menú, con el teclado (tocarlo es buscar).
       const deckMenu = () => fireEvent.keyDown(deck(), { key: 'Enter' })
       deckMenu()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Barajar' }))
-      expect(layers()).not.toBe(before)
-      expect(layers()?.querySelector('.animate-riffle-left')).not.toBeNull()
+      expect(inDeck()).toHaveLength(8)
       const inHand = () => animated.filter((element) => element.closest('[data-drop="hand"]') !== null && element.getAttribute('role') === 'listitem')
       expect(inHand().length).toBeGreaterThan(0)
 
-      // Mandar el tope al cementerio no baraja nada: ni el deck (sus capas siguen siendo las mismas) ni la mano.
+      // Mandar el tope al cementerio no baraja nada: ni el deck ni la mano.
       animated.length = 0
-      const shuffled = layers()
       deckMenu()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Mandar al cementerio' }))
       expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
-      expect(layers()).toBe(shuffled)
+      expect(inDeck()).toHaveLength(0)
       expect(inHand()).toHaveLength(0)
 
-      // Robar sí: la mano se baraja de nuevo.
+      // Robar sí (la última carta: el deck queda vacío): la mano se baraja cuando la carta robada ya está en ella (se reparte un momento después).
       animated.length = 0
       deckMenu()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
-      expect(inHand().length).toBeGreaterThan(0)
+      expect(inHand()).toHaveLength(0)
+      await waitFor(() => expect(inHand()).toHaveLength(5))
 
       // Una jugada que no toca ni el deck ni suma a la mano (mandar una carta de la mano al cementerio) no baraja nada.
       animated.length = 0
