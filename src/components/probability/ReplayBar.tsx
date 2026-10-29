@@ -19,7 +19,10 @@ export interface ReplayMark {
   tone?: FxTone | null
 }
 
-const formatSpeed = (speed: number) => `${new Intl.NumberFormat(numberLocale()).format(speed)}×`
+/** En escritorio con poco alto, la línea de tiempo va en el renglón de los botones aunque la barra sea angosta (en dos renglones le tapaba la mano). */
+const SHORT_DESKTOP_ROW = 'min-[1101px]:[@media(max-height:46rem)]:order-none min-[1101px]:[@media(max-height:46rem)]:basis-0'
+
+const formatSpeed =(speed: number) => `${new Intl.NumberFormat(numberLocale()).format(speed)}×`
 
 /** La mano inicial, verde: el principio. */
 const START_TONE: FxTone = 'green'
@@ -97,8 +100,8 @@ function Timeline({ marks, cursor, describe, onSeek, className }: TimelineProps)
       aria-valuemax={total}
       aria-valuenow={cursor}
       aria-valuetext={describe(cursor)}
-      // Las pastillas no tienen ancho mínimo y el espacio entre ellas es, a lo sumo, el 40 % de lo que le toca a cada paso: la línea entra en lo que haya (el lateral de la mesa ancha
-      // mide 13rem) con cualquier cantidad de pasos, sin pasarse al panel de al lado. Con lugar, 3 px como siempre.
+      // Las pastillas no tienen ancho mínimo y el espacio entre ellas es, a lo sumo, el 40 % de lo que le toca a cada paso: la línea entra en lo que haya (la mesa con los paneles de
+      // los costados agrandados) con cualquier cantidad de pasos, sin pasarse al panel de al lado. Con lugar, 3 px como siempre.
       style={{ gap: `min(3px, ${40 / (total + 1)}%)` }}
       className={cx('relative flex min-w-0 flex-1 cursor-pointer touch-none select-none items-center rounded-control px-1 outline-none focus-visible:shadow-focus', className)}
       onKeyDown={handleKeyDown}
@@ -297,9 +300,11 @@ export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playL
           <RestartButton cursor={cursor} onRestart={onRestart} />
           <StepButtons total={marks.length} cursor={cursor} playing={playing} playLabel={playLabel} onTogglePlay={onTogglePlay} onPrevious={onPrevious} onNext={onNext} />
         </div>
-        {/* Angosta, la línea de tiempo baja a su propio renglón; ancha, va en el medio. */}
-        <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className="order-last h-9 basis-full @min-[28rem]:order-none @min-[28rem]:basis-0" />
-        <div className="ml-auto flex items-center gap-2 @min-[28rem]:ml-0">
+        {/* Ancha, un renglón de punta a punta: los botones a los costados y la línea de tiempo en el medio, con todo lo que sobra. Angosta (con menos de 46 rem a 45 pasos las pastillas bajaban de
+            6 px), la línea de tiempo baja a su propio renglón, a todo el ancho. En escritorio con poco alto (46 rem o menos) va siempre en un renglón aunque las pastillas queden finas: en dos, la barra
+            le tapaba la mano (Gastón, 2026-10-29: «Sí, un renglón»). */}
+        <Timeline marks={marks} cursor={cursor} describe={describe} onSeek={onSeek} className={cx('order-last h-9 basis-full @min-[46rem]:order-none @min-[46rem]:basis-0', SHORT_DESKTOP_ROW)} />
+        <div className="ml-auto flex items-center gap-2 @min-[46rem]:ml-0 min-[1101px]:[@media(max-height:46rem)]:ml-0">
           <StepsButton onOpenSteps={onOpenSteps} />
           <SpeedMenu speed={speed} onSpeed={onSpeed} />
         </div>

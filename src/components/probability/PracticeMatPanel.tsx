@@ -168,10 +168,11 @@ function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: Saved
           <li key={combo.id} className="grid gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
             {/* El nombre y los datos arriba, con todo el ancho (con tres botones al lado el nombre quedaba en unas quince letras); las acciones, abajo. */}
             <div className="grid min-w-0 gap-0.5">
-              <strong className="truncate text-body font-semibold text-foreground" title={combo.name}>
+              {/* Con el panel angosto (se arrastra su borde) el nombre baja a un segundo renglón y los datos, a los que hagan falta: nada se corta a mitad de la fecha. */}
+              <strong className="line-clamp-2 wrap-break-word text-body font-semibold text-foreground" title={combo.name}>
                 {combo.name}
               </strong>
-              <span className="truncate text-micro text-muted">
+              <span className="wrap-break-word text-micro text-muted">
                 {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
               </span>
             </div>
