@@ -1498,8 +1498,11 @@ function PracticeMatBody({
       // seguir en manual y, sin el detalle fijo a la izquierda, «Ver carta» (como en la mesa manual, tocar siempre muestra algo). Eligiendo cartas o una casilla, tocar otra no hace nada.
       if (duel?.auto) {
         const { cardPick, zonePick } = duel.auto
+        // Eligiendo la casilla, tocar la carta que ocupa una que el núcleo ofrece (el material de un Xyz, de una Sincronía o de un Link: su casilla se libera al invocar) elige esa casilla, como en la mesa manual.
+        const where = zonePick ? locateCard(state, id) : null
 
         if (cardPick?.eligible.has(id)) cardPick.onToggle(id)
+        else if (zonePick && where?.kind === 'spot' && zonePick.targets.some((target) => target.zone === where.spot && target.index === where.index)) zonePick.onPick(where.spot, where.index)
         else if (duel.auto.itemsFor(id) || !(cardPick || zonePick)) setMenu({ kind: 'card', id, rect })
         return
       }

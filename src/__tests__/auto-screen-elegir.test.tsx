@@ -119,6 +119,20 @@ describe('auto-screen · elegir', () => {
     expect(dispatches).toBe(0)
   })
 
+  it('place con un monstruo en una casilla que el núcleo ofrece (el material de un Xyz, que se va al invocar): tocar la carta elige esa casilla', () => {
+    const fake = renderAuto()
+
+    // Libres: mi mz 1, donde está Maxx C, y mi mz 3.
+    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~0b101 >>> 0 }))
+    tap(screen.getByRole('button', { name: /^Maxx C/ }))
+    expect(fake.answers).toEqual([{ type: 'select_place', places: [{ player: 0, location: L.MZONE, sequence: 0 }] }])
+    expect(dispatches).toBe(0)
+    // Una carta en una casilla que el núcleo no ofrece no hace nada.
+    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~0b110 >>> 0 }))
+    tap(screen.getByRole('button', { name: /^Maxx C/ }))
+    expect(fake.answers).toHaveLength(1)
+  })
+
   it('place y disfield con casillas del rival: se encienden en su campo (su Zona Extra, en la tuya de enfrente) y tocar una contesta con su lado', () => {
     const fake = renderAuto()
 
