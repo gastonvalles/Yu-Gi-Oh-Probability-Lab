@@ -167,6 +167,28 @@ const sameStart = (a: MatState, b: MatState) => a.deck.join() === b.deck.join() 
 
 const drawIdOf = (code: number) => `card-${code}-1`
 
+/** Cuánto se ve el cartel de cada fase del rival, y cada cuánto sale el siguiente: lo del cartel de la mesa (`fx-banner`). */
+const RIVAL_PHASE_MS = 1100
+/** Una fase del rival (`theirsActs`), con su lugar en la cinta de tus jugadas (`at`, por `order`); `turnBack`, la que te devuelve el turno («Tu turno»). */
+type RivalPhase = { at: number; phase: MatPhase; turnBack: boolean }
+const NO_PHASES: RivalPhase[] = []
+
+function rivalPhasesOf(order: readonly Side[], theirs: AutoSnapshot['theirsActs']): RivalPhase[] {
+  const out: RivalPhase[] = []
+  let at = 0
+  let index = 0
+
+  for (const side of order) {
+    if (side === 'mine') at += 1
+    else {
+      const action = theirs[index++]?.action
+
+      if (action?.type === 'phase') out.push({ at, phase: action.phase, turnBack: Boolean(action.skipDraw) })
+    }
+  }
+  return out
+}
+
 /** La mesa intentó jugar sola: en automático es un bug (cada gesto se contesta, nunca se despacha). Se anota y no se hace nada. */
 export const sentinel = (action: MatAction) => console.error('[auto] la mesa intentó despachar una jugada en modo automático', action)
 
@@ -198,6 +220,8 @@ export interface AutoAsksInput {
    * núcleo: en su turno el botón de fase dice la suya, y «X está eligiendo…» va sólo con `busy`. Sin esto, la fase del espejo y la línea con cualquier espera.
    */
   rival?: { phase: MatPhase; busy: boolean }
+  /** «Jugar solo»: el turno del rival (que el núcleo juega de una) se cuenta fase por fase con su cartel (`notice`), y tu mesa espera a que termine. */
+  rivalPhases?: boolean
 }
 
 export interface AutoAsks {
@@ -206,8 +230,8 @@ export interface AutoAsks {
   matSession: MatSession
   /** La mesa terminó de contar la última tanda; `skipAhead` salta al final (tocar la mesa; los botones del aviso de la cadena, no: se toca para mirarla). */
   settled: boolean
-  /** Hasta qué jugada tuya contó la mesa (`snap.mineActions`, como las cuenta `snap.order`): lo del rival que pasó después espera a que llegue. */
-  counted: number
+  /** El cartel de la fase del rival que se ve ahora (`rivalPhases`; `PracticeMat.duel.notice`). */
+  notice: DuelMatLink['notice']
   skipAhead: (event?: { target: EventTarget | null }) => void
   lane: LaneNotice | null
   /** Lo que la mesa recibe del núcleo (`PracticeMat.duel`): falta lo de cada pantalla (la barra, tus vidas, los botones, las portadas). */
@@ -233,7 +257,7 @@ export interface AutoAsks {
   told: PhaseView | null
 }
 
-export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual, rival }: AutoAsksInput): AutoAsks {
+export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCancel, canUndo, waitingText, frozen = false, rivalName = t('duel.bar.rival'), rivalHand, onManual, rival, rivalPhases = false }: AutoAsksInput): AutoAsks {
   const prefs = useAutoPrefs()
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -291,13 +315,44 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const attacks = useMemo(() => rivalAttacks(snap.order, snap.theirsActs), [snap.order, snap.theirsActs])
   const rivalStrike = useRivalStrike(attacks, snap.theirsActs.length, snap.initial, paced.cursor, limit, !reviewing && !snap.replaying)
   const { impactAt } = rivalStrike
+  // Las fases del rival (`rivalPhases`; Gastón, 2026-10-29: «no veo en pantalla el cartel del oponente pasando de fases»): el núcleo juega su turno de una y tu mesa lo cuenta con su ritmo. Cada
+  // fase sale cuando la mesa llegó a donde pasó (después del «Turno de Rival» de tu mesa) y `RIVAL_PHASE_MS` después de la anterior; la que te devuelve el turno dice «Tu turno». Como la
+  // cadena, la mesa no pasa de ahí hasta mostrarlas: tu turno (tu robo, tus fases, lo que podés hacer) empieza después de «Tu turno», así lo tuyo no tapa su End Phase. Lo que ya había al
+  // empezar o al rearmarse el núcleo, y lo que se salta tocando la mesa, se da por visto.
+  const phases = useMemo(() => (rivalPhases ? rivalPhasesOf(snap.order, snap.theirsActs) : NO_PHASES), [rivalPhases, snap.order, snap.theirsActs])
+  const [phaseSeen, setPhaseSeen] = useState(phases.length)
+  const [notice, setNotice] = useState<DuelMatLink['notice']>(undefined)
+
+  if (phaseSeen > phases.length || (snap.replaying && phaseSeen !== phases.length)) setPhaseSeen(phases.length)
+  const phaseNext = phases[phaseSeen]?.at ?? Infinity
+  const due = !reviewing && !snap.replaying && phaseNext <= paced.cursor ? phases[phaseSeen]! : null
+  const duePhase = due?.phase ?? null
+  const dueBack = due?.turnBack ?? false
+
+  // Por valor (no por `phases`): cada tanda nueva del núcleo no reinicia la espera.
+  useEffect(() => {
+    if (duePhase === null) return
+    const timer = window.setTimeout(() => {
+      setNotice({ key: Date.now(), phase: duePhase, ...(dueBack ? { label: t('duel.bar.yourTurn') } : { who: rivalName }) })
+      setPhaseSeen(phaseSeen + 1)
+    }, RIVAL_PHASE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [duePhase, dueBack, phaseSeen, rivalName])
+  // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante.
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice((current) => (current === notice ? undefined : current)), RIVAL_PHASE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [notice])
 
   useEffect(() => {
-    if (reviewing || paced.cursor >= Math.min(limit, chainNext)) return
+    if (reviewing || paced.cursor >= Math.min(limit, chainNext, phaseNext)) return
     const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), Math.max(STEP_MS, impactAt - Date.now()))
 
     return () => window.clearTimeout(timer)
-  }, [paced, limit, reviewing, chainNext, impactAt])
+  }, [paced, limit, reviewing, chainNext, phaseNext, impactAt])
   // El próximo mensaje de la cadena, cuando la mesa llegó hasta él y el anterior se vio su rato (contado desde que se mostró: una tanda nueva no lo reinicia).
   useEffect(() => {
     if (reviewing || snap.replaying || chainNext > paced.cursor) return
@@ -323,9 +378,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       return to > current.cursor ? { ...current, cursor: to } : current
     })
     // La cadena, hasta ahí también (lo que llegó después de la parada espera).
-    setChainSeen((count) => Math.max(count, stepsUpTo(steps, stopAt(paced.initial, paced.actions, paced.cursor, allowed))))
-  }, [allowed, reviewing, steps, paced])
-  const settled = paced.cursor === paced.actions.length && chainSeen >= steps.length && !snap.replaying
+    const to = stopAt(paced.initial, paced.actions, paced.cursor, allowed)
+
+    setChainSeen((count) => Math.max(count, stepsUpTo(steps, to)))
+    // Las fases del rival de antes de ahí, también (sin carteles en ráfaga).
+    setPhaseSeen((count) => Math.max(count, phases.filter((phase) => phase.at <= to).length))
+  }, [allowed, reviewing, steps, paced, phases])
+  const settled = paced.cursor === paced.actions.length && chainSeen >= steps.length && phaseSeen >= phases.length && !snap.replaying
   const lifeHeld = useStrikeHold(paced.actions, paced.cursor, limit, !reviewing && !snap.replaying) || rivalStrike.held
   // Lo que se ve, como en la práctica: la mano de apertura plegada en la mesa del arranque (`foldOpeningHand`), así el paso 0 es «Mano inicial». Se pliega por contenido:
   // deshacer re-simula y la jugada vuelve como otro objeto con las mismas cartas (la mano no se reparte de nuevo).
@@ -1223,7 +1282,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     state: reviewState ?? state,
     matSession: review?.session ?? matSession,
     settled,
-    counted: paced.cursor,
+    notice: reviewing ? undefined : notice,
     skipAhead,
     lane,
     mat: reviewState ? reviewMat(mat, reviewState.phase) : mat,
