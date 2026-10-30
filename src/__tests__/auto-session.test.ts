@@ -1,5 +1,6 @@
 import { OcgDuelMode } from 'ocgcore-wasm'
 import { matReducer } from '../app/practice-mat'
+import { DEFAULT_RIVAL_EXTRA } from '../app/handtraps'
 import { DATA_UNAVAILABLE, DataUnavailableError, type DataLoader } from '../app/auto/auto-data'
 import { activatedCode, createAutoSession, MR5, workerTransport, type AutoSession, type AutoSnapshot, type SessionOptions, type TransportFactory } from '../app/auto/auto-session'
 import { LOCATION as L, type AskOf, type AutoCommand, type AutoEvent, type CoreAsk, type Seat } from '../app/auto/protocol'
@@ -221,14 +222,16 @@ describe('la sesión del duelo automático', () => {
     session.destroy()
   })
 
-  it('con handtraps: el deck del rival son esas cartas y el relleno hasta su tamaño, roba su mano de la semilla y otra semilla le reparte otra', async () => {
+  it('con handtraps: el deck del rival son esas cartas y el relleno hasta su tamaño (con su Extra Deck), roba su mano de la semilla y otra semilla le reparte otra', async () => {
     const host = fakeHost()
     const lists: number[][][] = []
+    const extras: unknown[] = []
     // Este cargador arma cada deck con lo que se le pide (el de arriba devuelve siempre los mismos).
     const asked: DataLoader = {
       manifest: async () => ({ version: 't', tokens: [], filler: [2, 2, 2, 2, 2] }),
       load: async (decks) => {
         lists.push(decks.map((deck) => deck.main.flatMap(([code, copies]) => Array<number>(copies).fill(code))))
+        extras.push(decks.map((deck) => deck.extra))
         return { decks: lists.at(-1)!.map(mapped), cards: [], scripts: {}, names: {}, version: 't' }
       },
     }
@@ -237,6 +240,7 @@ describe('la sesión del duelo automático', () => {
 
     await until(session, (s) => s.status === 'ready')
     expect(lists).toEqual([[[1, 1, 1, 1, 1], [7, 8, 8, 2, 2]]])
+    expect(extras).toEqual([[undefined, DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1])]])
     expect(host.commands[0]).toMatchObject({ seed: 7, players: [{ hand: 5 }, { lp: 8000, hand: 2, draw: 1 }], decks: [{ hand: [] }, { main: [7, 8, 8, 2, 2], hand: [8, 7] }] })
     // La pregunta del rival (una cadena sin nada que activar) la contesta solo, como antes.
     session.answer(END)

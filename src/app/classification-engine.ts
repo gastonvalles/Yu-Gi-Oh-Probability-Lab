@@ -89,6 +89,7 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['herald of purple light', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
   // Una Trampa que se activa desde la mano si el rival controla una carta (la «Impulse» del simulador de handtraps).
   ['dominus impulse', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
+  ['dominus purge', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
 
   // Modern staple spells & traps
   ['forbidden crown', { origin: 'non_engine', roles: ['disruption'] }],

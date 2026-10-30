@@ -7,6 +7,8 @@ import {
   AUTO_RULES,
   autoRival,
   DEFAULT_HANDTRAP_CONFIG,
+  DEFAULT_RIVAL_EXTRA,
+  extraKindOf,
   HANDTRAP_CATALOG,
   HANDTRAP_CONFIG_KEY,
   MAX_COPIES,
@@ -14,10 +16,12 @@ import {
   MIN_RIVAL_HAND,
   dealRival,
   isRivalId,
+  missingExtra,
   poolCount,
   readHandtrapConfig,
   rivalCardOf,
   writeHandtrapConfig,
+  type ExtraPick,
   type HandtrapConfig,
   type HandtrapPick,
 } from '../app/handtraps'
@@ -129,11 +133,12 @@ describe('la mano del rival que se reparte', () => {
 describe('el rival del duelo automático', () => {
   const GAMMA = pick(38814750, 2, 'PSY-Framegear Gamma')
 
-  it('apagado es el pasivo; encendido, su deck son las copias elegidas en el orden de la hoja (con Gamma, también PSY-Frame Driver)', () => {
+  it('apagado es el pasivo; encendido, su deck son las copias elegidas en el orden de la hoja (con Gamma o Delta, también un PSY-Frame Driver)', () => {
     expect(autoRival({ enabled: false, picks: [ASH], hand: 3 })).toBeNull()
     expect(autoRival(on([], 3))).toBeNull()
     expect(autoRival(on([{ ...VEILER, copies: 2 }, ASH], 3))?.main).toEqual([[97268402, 2], [14558127, 1]])
     expect(autoRival(on([ASH, GAMMA], 3))?.main).toEqual([[14558127, 1], [38814750, 2], [49036338, 1]])
+    expect(autoRival(on([GAMMA, pick(74203495, 1, 'PSY-Framegear Delta')], 3))?.main).toEqual([[38814750, 2], [74203495, 1], [49036338, 1]])
   })
 
   it('su mano es la que repartiría el simulador con esa semilla, en passcodes', () => {
@@ -143,10 +148,13 @@ describe('el rival del duelo automático', () => {
     expect(new Set(SEEDS.slice(0, 40).map((seed) => rival.hand(seed).join())).size).toBeGreaterThan(1)
   })
 
-  it('cada handtrap del catálogo tiene su regla (y nada más la tiene)', () => {
-    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual(HANDTRAP_CATALOG.map((card) => card.id).sort())
+  it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark y Dominus Spiral, del buscador)', () => {
+    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632].sort())
   })
 })
+
+const GAIA: ExtraPick = { id: 97204936, name: 'Gaia Knight, the Force of Earth', kind: 'synchro' }
+const SCRAP: ExtraPick = { id: 45815891, name: 'Scrap Archfiend', kind: 'synchro' }
 
 describe('lo que se recuerda del simulador', () => {
   const storage = memory()
@@ -156,20 +164,46 @@ describe('lo que se recuerda del simulador', () => {
   }
 
   it('sin nada guardado: apagado, con Ash Blossom, Effect Veiler e Infinite Impermanence (una copia de cada una) y 3 en la mano', () => {
-    expect(readHandtrapConfig(memory)).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM], hand: 3 })
-    expect(DEFAULT_HANDTRAP_CONFIG).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM], hand: 3 })
+    expect(readHandtrapConfig(memory)).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
+    expect(DEFAULT_HANDTRAP_CONFIG).toEqual({ enabled: false, picks: [ASH, VEILER, IMPERM], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
   })
 
   it('lo que se guarda vuelve igual, también un deck del rival grande (no tiene tope)', () => {
-    const config = on([...HANDTRAP_CATALOG.map((card) => ({ ...card, copies: 3 })), pick(91800273, 2, 'Dimension Shifter')], 5)
+    const config = { ...on([...HANDTRAP_CATALOG.map((card) => ({ ...card, copies: 3 })), pick(91800273, 2, 'Dimension Shifter')], 5), extra: [SCRAP, GAIA, SCRAP] }
 
     writeHandtrapConfig(config, () => storage)
     expect(readHandtrapConfig(() => storage)).toEqual(config)
-    expect(poolCount(readHandtrapConfig(() => storage).picks)).toBe(47)
+    expect(poolCount(readHandtrapConfig(() => storage).picks)).toBe(50)
   })
 
   it('lo guardado antes de la mano de 1 a 5 (sin `hand`) sigue valiendo: sus cartas son el deck del rival y la mano es de 3', () => {
-    expect(read(JSON.stringify({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] }))).toEqual({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH], hand: 3 })
+    expect(read(JSON.stringify({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] }))).toEqual({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
+  })
+
+  it('el Extra Deck: lo guardado antes (sin `extra`) usa el de siempre; vacío es vacío; se acota a 15 y a 3 copias por carta, y lo que no se entiende queda afuera', () => {
+    expect(read(JSON.stringify({ enabled: true, picks: [ASH], hand: 3 })).extra).toEqual(DEFAULT_RIVAL_EXTRA)
+    expect(read(JSON.stringify({ enabled: true, picks: [ASH], extra: [] })).extra).toEqual([])
+    expect(read(JSON.stringify({ enabled: true, picks: [ASH], extra: 'Stardust' })).extra).toEqual(DEFAULT_RIVAL_EXTRA)
+    expect(read(JSON.stringify({ enabled: true, picks: [ASH], extra: [GAIA, GAIA, GAIA, GAIA, SCRAP, { ...GAIA, kind: 'ritual' }, { id: 1, name: ' ', kind: 'xyz' }, null] })).extra).toEqual([GAIA, GAIA, GAIA, SCRAP])
+    expect(read(JSON.stringify({ enabled: true, picks: [ASH], extra: [...DEFAULT_RIVAL_EXTRA, GAIA] })).extra).toEqual(DEFAULT_RIVAL_EXTRA)
+  })
+
+  it('el Extra Deck no cambia la mano que se reparte para una semilla (`dealRival` no lo mira): lo guardado antes reparte igual', () => {
+    const before = on(THREE_OF_THREE, 3)
+
+    for (const seed of SEEDS.slice(0, 20)) expect(dealRival({ ...before, extra: [] }, seed)).toEqual(dealRival(before, seed))
+    expect(autoRival(before)!.extra).toEqual(DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1]))
+    expect(autoRival({ ...before, extra: [SCRAP, GAIA] })!.extra).toEqual([[SCRAP.id, 1], [GAIA.id, 1]])
+  })
+
+  it('avisa qué handtraps piden un Extra Deck que no está: Fydraulis Harmonia sin ningún Sincro', () => {
+    const harmonia = pick(70088809, 1, 'Fydraulis Harmonia')
+
+    expect(missingExtra([ASH, harmonia], [])).toEqual([harmonia])
+    expect(missingExtra([ASH, harmonia], [{ ...GAIA, kind: 'xyz' }])).toEqual([harmonia])
+    expect(missingExtra([ASH, harmonia], [GAIA])).toEqual([])
+    expect(extraKindOf('synchro_pendulum')).toBe('synchro')
+    expect(extraKindOf('effect')).toBeNull()
   })
 
   it('la mano se acota de 1 a 5, y si no es un número es de 3', () => {
@@ -184,6 +218,7 @@ describe('lo que se recuerda del simulador', () => {
     expect(read('{}')).toEqual(DEFAULT_HANDTRAP_CONFIG)
     expect(read(JSON.stringify({ enabled: 'sí', picks: 'Ash' }))).toEqual(DEFAULT_HANDTRAP_CONFIG)
     expect(read(JSON.stringify({ enabled: true, picks: [], hand: 4 }))).toEqual({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true, hand: 4 })
+    // Un Extra que no se entiende entero, el de siempre.
     expect(read(JSON.stringify({ enabled: true, picks: [{ id: -1, name: 'X', copies: 1 }, { id: 2, name: '  ', copies: 1 }, { id: 3, name: 'Sin copias' }, 'nada', null] }))).toEqual({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true })
   })
 

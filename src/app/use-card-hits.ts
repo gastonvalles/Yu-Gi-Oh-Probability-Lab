@@ -43,7 +43,7 @@ export function useCardHits(query: string, expansions: Expansion[]): CardHitsSta
       const byName = LOOKS_LIKE_CODE.test(typed)
         ? Promise.resolve<CardHit[]>([])
         : searchCards({ query: typed }, MAX_CARD_HITS).then(
-            (page) => page.results.map((card) => ({ cardId: card.ygoprodeckId, name: card.name, code: '' })),
+            (page) => page.results.map((card) => ({ cardId: card.ygoprodeckId, name: card.name, code: '', frameType: card.frameType })),
             (): CardHit[] => [],
           )
       const found = [...(await byCode), ...(await byName)]

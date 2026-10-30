@@ -1,4 +1,5 @@
 import { getLocale } from '../../i18n'
+import { DEFAULT_RIVAL_EXTRA } from '../handtraps'
 import type { WireAct } from '../mat-public'
 import { createMatState, type MatAction, type MatState } from '../practice-mat'
 import { copyIds, createAdapter, type Adapter, type AutoOverlay } from './adapter'
@@ -147,9 +148,10 @@ export interface SessionOptions {
   control?: 'seat' | 'both'
   /**
    * El rival con handtraps (`autoRival` de `handtraps.ts`): esas cartas van en su deck antes del relleno (que lo completa hasta su tamaño), su mano de arranque es
-   * `hand(semilla)` y las usa con `handtrapPolicy`, en el orden de `main`. Sin esto, el rival pasivo de 40 Normales.
+   * `hand(semilla)` y las usa con `handtrapPolicy`, en el orden de `main`; `extra` es su Extra Deck, en orden de preferencia para los costos (sin él, `DEFAULT_RIVAL_EXTRA`).
+   * Sin esto, el rival pasivo de 40 Normales, con el Extra de siempre (nunca lo usa, pero hay cartas tuyas que lo miran).
    */
-  rival?: { main: readonly (readonly [number, number])[]; hand: (seed: number) => number[] } | null
+  rival?: { main: readonly (readonly [number, number])[]; extra?: readonly (readonly [number, number])[]; hand: (seed: number) => number[] } | null
   /** Cada evento del anfitrión tal como llega (para un registro). */
   onEvent?: (event: AutoEvent) => void
   thinkingMs?: number
@@ -272,7 +274,10 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   // (El asiento 0 es el que tiene el turno: su mesa dice hasta qué fase; los dos adaptadores ven las mismas fases del núcleo.)
   const catchingUp = () => adapters[0] !== undefined && adapters[0]!.overlay.phase < (CORE_PHASE[adapters[0]!.mine.phase] ?? 0)
   /** Con la semilla del duelo: la mano de piedra, papel o tijera del rival es al azar pero la misma con la misma semilla. */
-  const rivalPolicy = (seed: number): RivalPolicy => (rival ? handtrapPolicy(rival.main.map(([code]) => code), passivePolicy(undefined, seed)) : passivePolicy(undefined, seed))
+  /** El Extra Deck del rival (`[passcode, 1]` en orden de preferencia): el suyo, o el de siempre (también el del pasivo). */
+  const rivalExtra = rival?.extra ?? DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1] as const)
+  const rivalPolicy = (seed: number): RivalPolicy =>
+    rival ? handtrapPolicy(rival.main.map(([code]) => code), passivePolicy(undefined, seed), rivalExtra.map(([code]) => code)) : passivePolicy(undefined, seed)
   const listeners = new Set<() => void>()
   const blank = emptyAdapter()
   // La mesa del rival rearmada y el código de cada id suyo (`resume.theirs`, o la que arma `build` en jugar solo).
@@ -546,10 +551,10 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     }
     const loading = (async () => {
       const { filler } = await loader.manifest()
-      // Las handtraps del rival y el relleno hasta el tamaño del deck pasivo (así roba sin quedarse sin cartas).
+      // Las handtraps del rival y el relleno hasta el tamaño del deck pasivo (así roba sin quedarse sin cartas), y su Extra Deck.
       const own = rival?.main ?? []
       const room = Math.max(0, filler.length - own.reduce((sum, [, copies]) => sum + copies, 0))
-      const theirs: DeckList = { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)] }
+      const theirs: DeckList = { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)], extra: rivalExtra }
 
       // En el duelo por enlace, el deck del otro (entero, sin relleno).
       return loader.load([options.deck, options.remote?.deck ?? theirs], progress)

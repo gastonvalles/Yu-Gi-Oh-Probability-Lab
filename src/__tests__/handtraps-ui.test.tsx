@@ -3,7 +3,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HANDTRAP_CONFIG_KEY, readHandtrapConfig, type HandtrapConfig } from '../app/handtraps'
+import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CONFIG_KEY, readHandtrapConfig, type HandtrapConfig } from '../app/handtraps'
 import type { MatState } from '../app/practice-mat'
 import { HandtrapPicker, HandtrapsRow } from '../components/duel/HandtrapPool'
 import { MatBarActions } from '../components/probability/MatBarActions'
@@ -140,7 +140,7 @@ describe('la hoja de las handtraps del rival', () => {
 
     // En el orden del catálogo: Maxx "C" antes que Effect Veiler; la mano, la guardada.
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
-    expect(onSave).toHaveBeenCalledWith([{ ...MAXX, copies: 1 }, { ...VEILER, copies: 1 }], 3)
+    expect(onSave).toHaveBeenCalledWith([{ ...MAXX, copies: 1 }, { ...VEILER, copies: 1 }], 3, DEFAULT_RIVAL_EXTRA)
   })
 
   it('cada carta va hasta 3 copias y el deck del rival no tiene tope: el «+» sólo se apaga en 3', () => {
@@ -175,7 +175,7 @@ describe('la hoja de las handtraps del rival', () => {
 
     fireEvent.click(more(handCounter()))
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
-    expect(onSave).toHaveBeenCalledWith([{ ...ASH, copies: 3 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 3 }], 2)
+    expect(onSave).toHaveBeenCalledWith([{ ...ASH, copies: 3 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 3 }], 2, DEFAULT_RIVAL_EXTRA)
   })
 
   it('con menos cartas que la mano lo avisa (la mano sale más corta); sin ninguna, no deja usarlas', () => {
@@ -213,6 +213,80 @@ describe('la hoja de las handtraps del rival', () => {
   })
 })
 
+describe('el Extra Deck del rival en la hoja', () => {
+  const HARMONIA = { id: 70088809, name: 'Fydraulis Harmonia' }
+  const extraList = () => screen.getByRole('list', { name: 'Extra Deck del rival, en orden de preferencia' })
+  const names = () => within(extraList()).getAllByRole('listitem').map((item) => item.textContent?.replace(/^\d+/, '').replace(/(Fusión|Sincro|Xyz|Enlace)$/, ''))
+  const extraOf = (count: number) => DEFAULT_RIVAL_EXTRA.slice(0, count).map((card) => ({ ...card }))
+
+  it('arranca con el de siempre (15 de 15) y se ordena con subir y bajar, se saca y se restablece; usar lo guarda en ese orden', () => {
+    const onSave = vi.fn()
+
+    render(<HandtrapPicker isOpen auto config={{ enabled: true, picks: [{ ...ASH, copies: 1 }], hand: 1 }} onClose={() => {}} onSave={onSave} />)
+
+    expect(screen.getByText('15 de 15')).toBeInTheDocument()
+    expect(screen.getByText('El primero que cumpla es el que usa como costo. Nunca los Invoca.')).toBeInTheDocument()
+    expect(names().slice(0, 2)).toEqual([DEFAULT_RIVAL_EXTRA[0]!.name, DEFAULT_RIVAL_EXTRA[1]!.name])
+    expect(screen.getByRole('button', { name: `Subir ${DEFAULT_RIVAL_EXTRA[0]!.name}` })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: `Bajar ${DEFAULT_RIVAL_EXTRA[0]!.name}` }))
+    expect(names().slice(0, 2)).toEqual([DEFAULT_RIVAL_EXTRA[1]!.name, DEFAULT_RIVAL_EXTRA[0]!.name])
+    fireEvent.click(screen.getByRole('button', { name: `Sacar ${DEFAULT_RIVAL_EXTRA[2]!.name} del Extra Deck` }))
+    expect(screen.getByText('14 de 15')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
+    expect(onSave.mock.calls[0]![2].map((card: { id: number }) => card.id)).toEqual([DEFAULT_RIVAL_EXTRA[1]!.id, DEFAULT_RIVAL_EXTRA[0]!.id, ...DEFAULT_RIVAL_EXTRA.slice(3).map((card) => card.id)])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restablecer el Extra Deck' }))
+    expect(screen.getByText('15 de 15')).toBeInTheDocument()
+    expect(names()[0]).toBe(DEFAULT_RIVAL_EXTRA[0]!.name)
+  })
+
+  it('vacío dice que el rival juega sin él; con Fydraulis Harmonia y sin Sincros, avisa que no la usa', () => {
+    const { unmount } = render(<HandtrapPicker isOpen auto config={{ enabled: true, picks: [{ ...HARMONIA, copies: 1 }], hand: 1, extra: [] }} onClose={() => {}} onSave={() => {}} />)
+
+    expect(screen.getByText('Sin Extra Deck: el rival juega sin él.')).toBeInTheDocument()
+    expect(screen.getByText('0 de 15')).toBeInTheDocument()
+    expect(screen.getByText('Fydraulis Harmonia necesita un Sincro en el Extra Deck: sin eso no la usa.')).toBeInTheDocument()
+
+    unmount()
+    render(<HandtrapPicker isOpen auto config={{ enabled: true, picks: [{ ...HARMONIA, copies: 1 }], hand: 1, extra: extraOf(1) }} onClose={() => {}} onSave={() => {}} />)
+    expect(screen.queryByText(/necesita un Sincro/)).toBeNull()
+  })
+
+  it('el buscador sólo ofrece monstruos del Extra Deck; una carta va hasta 3 copias y con 15 no se suma nada', async () => {
+    vi.useFakeTimers()
+
+    try {
+      render(<HandtrapPicker isOpen auto config={{ enabled: true, picks: [{ ...ASH, copies: 1 }], hand: 1, extra: extraOf(12) }} onClose={() => {}} onSave={() => {}} />)
+      searchCards.mockResolvedValue({ results: [{ ygoprodeckId: 63977008, name: 'Junk Synchron', frameType: 'effect' }, { ygoprodeckId: 2403771, name: 'Junk Warrior', frameType: 'synchro' }], hasMore: false } as never)
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar un monstruo del Extra Deck' }), { target: { value: 'Junk' } })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(400)
+      })
+
+      expect(screen.queryByRole('button', { name: 'Agregar Junk Synchron al Extra Deck' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Agregar Junk Warrior al Extra Deck' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Agregar Junk Warrior al Extra Deck' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Agregar Junk Warrior al Extra Deck' }))
+      expect(screen.getByText('15 de 15')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Junk Warrior ya tiene 3 copias' })).toBeDisabled()
+      expect(screen.getByText('El Extra Deck está completo (15): sacá uno para sumar otro.')).toBeInTheDocument()
+      expect(names().slice(-3)).toEqual(['Junk Warrior', 'Junk Warrior', 'Junk Warrior'])
+    } finally {
+      searchCards.mockReset()
+      searchCards.mockImplementation(async () => ({ results: [], hasMore: false }))
+      vi.useRealTimers()
+    }
+  })
+
+  it('en la práctica manual (aplicar reparte otra mano) no está: ahí el rival no tiene Extra Deck', () => {
+    render(<HandtrapPicker isOpen dealsNew config={{ enabled: true, picks: [{ ...ASH, copies: 1 }], hand: 1 }} onClose={() => {}} onSave={() => {}} />)
+
+    expect(screen.queryByRole('heading', { name: 'Extra Deck del rival' })).toBeNull()
+  })
+})
+
 describe('la fila de las reglas de Solo', () => {
   it('dice cuántas tiene el rival en la mano y entre cuántas cartas, y el interruptor se recuerda', () => {
     render(<HandtrapsRow />)
@@ -224,7 +298,7 @@ describe('la fila de las reglas de Solo', () => {
     expect(toggle).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-checked', 'true')
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }, { ...IMPERM, copies: 1 }], hand: 3 })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }, { ...IMPERM, copies: 1 }], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
     expect(JSON.parse(localStorage.getItem(HANDTRAP_CONFIG_KEY) ?? '{}')).toMatchObject({ enabled: true, hand: 3 })
   })
 
@@ -244,7 +318,7 @@ describe('la fila de las reglas de Solo', () => {
     fireEvent.click(more(handCounter()))
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 1 }], hand: 4 })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 1 }], hand: 4, extra: DEFAULT_RIVAL_EXTRA })
     expect(screen.getByText('4 en mano · de 5 cartas')).toBeInTheDocument()
   })
 })
@@ -271,7 +345,7 @@ describe('«Handtraps del rival» del ⋯ de la barra de la mesa (Entrenar solo)
     fireEvent.click(more(handCounter()))
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }], hand: 4 })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }], hand: 4, extra: DEFAULT_RIVAL_EXTRA })
     expect(onApply).toHaveBeenCalledTimes(1)
     expect(row()).toHaveTextContent('prendidas')
   })
@@ -287,7 +361,7 @@ describe('«Handtraps del rival» del ⋯ de la barra de la mesa (Entrenar solo)
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Apagar el simulador' }))
 
-    expect(readHandtrapConfig()).toEqual({ ...saved, enabled: false })
+    expect(readHandtrapConfig()).toEqual({ ...saved, enabled: false, extra: DEFAULT_RIVAL_EXTRA })
     expect(onApply).toHaveBeenCalledTimes(1)
   })
 

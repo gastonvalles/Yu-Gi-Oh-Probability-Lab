@@ -165,16 +165,23 @@ export interface RivalView {
 }
 export type RivalPolicy = (ask: CoreAsk, view: RivalView) => CoreAnswer
 
+const FYDRAULIS_HARMONIA = 70088809
 /** `TIMING_SUMMON | TIMING_SPSUMMON | TIMING_FLIPSUMMON`: en `hint_timing_other`, la ventana que abre una Invocación del otro. */
 const SUMMON_TIMINGS = 0x40 | 0x80 | 0x100
+/**
+ * `TIMING_DRAW_PHASE`: en `hint_timing_other`, la ventana libre de la Draw Phase del otro (la de la Standby es `0x2`). La Draw y no la Standby: la mesa frena en tu Draw
+ * Phase, y ahí se ve lo que hizo el rival (con la Standby, su descarte aparecía con tu mesa todavía en la Draw).
+ */
+const DRAW_TIMING = 0x1
 
 /**
  * El rival con handtraps: contesta como el pasivo salvo dos cosas. Ante una cadena, activa la primera de `priority` (los passcodes, en el
  * orden de la hoja) que su regla (`AUTO_RULES`) pide usar ahora, sólo contra un eslabón tuyo que todavía espera (nunca contra lo suyo:
  * Ash también negaría su propio Maxx "C"). Y al elegir el objetivo de la que acaba de activar (`monster`, `graveyard`), apunta a la carta
- * de tu eslabón. Lo demás (y lo que no sabe resolver) es del pasivo: nunca da una respuesta que el núcleo rechace.
+ * de tu eslabón. Cuando elige cartas de su Extra Deck (un costo, como los Sincros que revela Fydraulis Harmonia, o lo que manda al cementerio), toma
+ * primero las de `extra` (sus passcodes, en el orden de la hoja). Lo demás (y lo que no sabe resolver) es del pasivo: nunca da una respuesta que el núcleo rechace.
  */
-export function handtrapPolicy(priority: readonly number[], fallback: Policy = passivePolicy()): RivalPolicy {
+export function handtrapPolicy(priority: readonly number[], fallback: Policy = passivePolicy(), extra: readonly number[] = []): RivalPolicy {
   /** De tu lado (visto por el rival) y esperando respuesta. */
   const yours = (link: ChainLink | undefined): link is ChainLink & { card: CardRef } => link?.card?.side === 'theirs' && link.state === 'chained'
 
@@ -190,7 +197,8 @@ export function handtrapPolicy(priority: readonly number[], fallback: Policy = p
         monster: at?.controller === opponent && at.location === LOCATION.MZONE,
         graveyard: at?.controller === opponent && at.location === LOCATION.GRAVE,
         offered: true,
-        draw: view.overlay.turnPlayer === opponent && (yours(top) || (chain.length === 0 && (ask.hint_timing_other & SUMMON_TIMINGS) !== 0)),
+        // Como se juegan: en tu Draw Phase; si no llegó a usarla ahí, a tu primera activación o Invocación.
+        draw: view.overlay.turnPlayer === opponent && (yours(top) || (chain.length === 0 && (ask.hint_timing_other & (SUMMON_TIMINGS | DRAW_TIMING)) !== 0)),
       }
 
       for (const code of priority) {
@@ -199,6 +207,24 @@ export function handtrapPolicy(priority: readonly number[], fallback: Policy = p
 
         if (index >= 0) return { type: ask.type, index }
       }
+    }
+
+    /** El lugar de una carta en la preferencia: las de su Extra Deck en el orden de la hoja; lo demás, después y en el orden dado. */
+    const rank = (card: { code: number; controller: number; location: number }) => {
+      const at = card.controller === ask.player && card.location === LOCATION.EXTRA ? extra.indexOf(card.code) : -1
+
+      return at < 0 ? extra.length : at
+    }
+    const fromExtra = (cards: readonly { controller: number; location: number }[]) => cards.some((card) => card.controller === ask.player && card.location === LOCATION.EXTRA)
+    const best = (cards: readonly { code: number; controller: number; location: number }[]) => cards.map((_, i) => i).sort((a, b) => rank(cards[a]!) - rank(cards[b]!) || a - b)
+
+    if (ask.type === 'select_unselect_card' && fromExtra(ask.select_cards) && ask.select_cards.length > 0) {
+      // El costo de Fydraulis Harmonia (revelar hasta 5 Sincros): todos los que pueda, así se Invoca, manda uno al cementerio y destruye a tu monstruo. Lo demás, lo justo.
+      if (top?.card?.side === 'mine' && top.code === FYDRAULIS_HARMONIA) return { type: ask.type, index: best(ask.select_cards)[0]! }
+      if (!ask.can_finish) return { type: ask.type, index: best(ask.select_cards)[0]! }
+    }
+    if (ask.type === 'select_card' && fromExtra(ask.selects) && !(ask.can_cancel && ask.min === 0)) {
+      return { type: ask.type, indices: best(ask.selects).slice(0, Math.min(ask.min, ask.selects.length)) }
     }
 
     // El objetivo de la que acaba de activar (el eslabón de arriba es suyo): la carta de tu eslabón, el de abajo.

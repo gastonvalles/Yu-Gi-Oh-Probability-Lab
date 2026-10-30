@@ -7,7 +7,8 @@ import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
 import { HandtrapPicker, HandtrapPoolCard } from '../../duel/HandtrapPool'
-import { HANDTRAP_CATALOG, type HandtrapConfig } from '../../../app/handtraps'
+import { RivalExtraDeck } from '../../duel/RivalExtraDeck'
+import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CATALOG, type ExtraPick, type HandtrapConfig } from '../../../app/handtraps'
 import type { PickStat } from '../../../app/auto/ask-ui'
 import type { ChainBadgeData } from '../../../app/card-glow'
 import { ArenaPanel } from '../../duel/ArenaPanel'
@@ -470,6 +471,7 @@ function HandtrapSamples() {
   const [open, setOpen] = useState(false)
   const [openFromMat, setOpenFromMat] = useState(false)
   const [copies, setCopies] = useState([0, 1, 3])
+  const [extra, setExtra] = useState<ExtraPick[]>(() => DEFAULT_RIVAL_EXTRA.slice(5, 8).map((card) => ({ ...card })))
 
   return (
     <>
@@ -512,6 +514,21 @@ function HandtrapSamples() {
           Abrir la hoja como se ve desde la mesa
         </Button>
         <HandtrapPicker isOpen={openFromMat} config={SAMPLE_HAND} dealsNew onClose={() => setOpenFromMat(false)} onSave={() => setOpenFromMat(false)} onTurnOff={() => setOpenFromMat(false)} />
+      </Specimen>
+
+      <Specimen
+        title="Handtraps del rival · el Extra Deck del duelo automático"
+        layout="column"
+        note={
+          <>
+            En la hoja del duelo automático (no en la práctica manual): el Extra Deck del rival en orden de preferencia (el primero que cumpla es el que usa como costo), con subir, bajar y sacar (<Tag>IconButton lg</Tag>, 44 px), «N de 15», <Tag>Restablecer el Extra Deck</Tag> y un buscador que sólo ofrece monstruos del Extra (hasta 3 copias de cada uno). Con Fydraulis Harmonia elegida y sin Sincros, el aviso en ámbar; vacío, «el rival juega sin él». Archivo: <Tag>duel/RivalExtraDeck.tsx</Tag>
+          </>
+        }
+      >
+        <RivalExtraDeck extra={extra} onChange={setExtra} picks={[{ id: 70088809, name: 'Fydraulis Harmonia' }]} active={false} />
+        <Button variant="secondary" size="sm" className="w-fit" onClick={() => setExtra([])}>
+          Vaciar el Extra Deck
+        </Button>
       </Specimen>
     </>
   )

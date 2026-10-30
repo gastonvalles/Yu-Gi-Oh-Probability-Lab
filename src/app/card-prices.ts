@@ -202,6 +202,8 @@ export interface CardHit {
   cardId: number
   name: string
   code: string
+  /** El marco de YGOPRODeck (`synchro`, `xyz`…), si vino de la búsqueda por nombre. */
+  frameType?: string
 }
 
 /** Un código para comparar: sin signos ni mayúsculas y con la letra O como cero (TCGplayer tiene códigos con la O de «LAVD-ENO01» donde la carta dice «LAVD-EN001»: se encuentran con cualquiera de las dos). */

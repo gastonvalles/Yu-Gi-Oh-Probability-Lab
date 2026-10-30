@@ -33,6 +33,28 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.picker.notAuto': "It doesn't use it on its own yet",
   'handtraps.picker.turnOff': 'Turn the simulator off',
 
+  // Automatic duel: the opponent's Extra Deck, in order of preference for costs (Fydraulis Harmonia reveals Synchros from it).
+  'handtraps.extra.title': "Opponent's Extra Deck",
+  'handtraps.extra.count': '{count} of {max}',
+  'handtraps.extra.hint': 'It pays costs with the first one that fits. It never summons them.',
+  'handtraps.extra.empty': 'No Extra Deck: the opponent plays without one.',
+  'handtraps.extra.needs': "{name} needs a {kind} in the Extra Deck; without one it won't use it.",
+  'handtraps.extra.list': "Opponent's Extra Deck, in order of preference",
+  'handtraps.extra.kind.fusion': 'Fusion',
+  'handtraps.extra.kind.synchro': 'Synchro',
+  'handtraps.extra.kind.xyz': 'Xyz',
+  'handtraps.extra.kind.link': 'Link',
+  'handtraps.extra.up': 'Move {name} up',
+  'handtraps.extra.down': 'Move {name} down',
+  'handtraps.extra.remove': 'Remove {name} from the Extra Deck',
+  'handtraps.extra.reset': 'Reset the Extra Deck',
+  'handtraps.extra.search': 'Search for an Extra Deck monster',
+  'handtraps.extra.noResults': 'No Extra Deck monsters match “{query}”.',
+  'handtraps.extra.full': 'The Extra Deck is full ({max}): remove one to add another.',
+  'handtraps.extra.add': 'Add {name} to the Extra Deck',
+  'handtraps.extra.capped': '{name} already has {max} copies',
+  'handtraps.extra.copies': { one: '{count} copy in the Extra', other: '{count} copies in the Extra' },
+
   // The mat.
   'handtraps.strip.label': "Opponent's hand",
   'handtraps.strip.used': '{name}, used on step {step}',
