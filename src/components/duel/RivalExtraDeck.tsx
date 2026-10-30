@@ -78,7 +78,7 @@ export function RivalExtraDeck({ extra, onChange, picks, active = true }: RivalE
                 <CardArt remoteUrl={cardSmallImageUrl(card.id)} name={card.name} className="block h-full w-full object-cover" />
               </span>
               <span className="grid min-w-0 flex-1">
-                <span className="truncate text-body text-foreground">{card.name}</span>
+                <span className="line-clamp-2 break-words text-body text-foreground">{card.name}</span>
                 <span className="text-micro text-soft">{t(`handtraps.extra.kind.${card.kind}`)}</span>
               </span>
               <IconButton size="lg" aria-label={t('handtraps.extra.up', { name: card.name })} disabled={index === 0} onClick={() => move(index, index - 1)}>
