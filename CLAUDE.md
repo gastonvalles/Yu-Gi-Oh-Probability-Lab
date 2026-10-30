@@ -23,7 +23,7 @@ Sin contexto previo (otra PC, sin la memoria de Claude), leé `docs/retomar.md`:
 Pocos documentos, cada uno con su trabajo, y **no son un diario**: el historial es `git log` y el cuerpo de cada PR.
 
 - `README.md` (qué es, cómo se corre, dónde está cada cosa) y `PRODUCT.md` (para quién es y el tono).
-- `docs/`: `retomar.md`, `design-system.md` (reglas, tokens, componentes y el catálogo `/playground`), `ux-ui-guidelines.md`, `duelo.md`, `duelo-relay.md`, `motor-de-cartas.md`, `duelos-automaticos.md`, `i18n.md` y `seguridad.md`.
+- `docs/`: `roadmap.md`, `retomar.md`, `design-system.md` (reglas y tokens), `movimiento.md`, `ux-ui-guidelines.md`, `duelo.md`, `duelo-relay.md`, `motor-de-cartas.md`, `duelos-automaticos.md`, `i18n.md` y `seguridad.md`.
 - **Un renglón se queda sólo si** un test o el código lo hace cumplir, **o** dice algo que no se ve leyendo el código (una decisión, regla, trampa o límite, con su porqué), **o** orienta (dónde vive algo, cómo se corre). Lo demás sobra: lo que ya dice el comentario del archivo, la historia, las citas, las mediciones.
 - **Se toca un doc sólo si cambia una regla, un componente o un comportamiento**, en una o dos líneas y donde corresponde: sin entradas con fecha ni números de PR. Los planes y los informes de una sola vez se borran al cumplirse (quedan en git; los de antes de la poda, en el commit `e4b63f6`).
 - `src/__tests__/docs.test.ts` le pone un tope de tamaño a cada doc, no deja ninguno huérfano y revisa que toda ruta `docs/….md` exista.

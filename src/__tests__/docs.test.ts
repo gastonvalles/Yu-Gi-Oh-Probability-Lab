@@ -16,11 +16,17 @@ const BUDGET_KB: Record<string, number> = {
   'README.md': 8,
   'CLAUDE.md': 10,
   'PRODUCT.md': 9,
-  'docs/retomar.md': 15,
-  'docs/design-system.md': 20,
-  'docs/duelo.md': 16,
-  'docs/motor-de-cartas.md': 10,
-  'docs/duelos-automaticos.md': 12,
+  'docs/retomar.md': 11,
+  'docs/design-system.md': 16,
+  'docs/duelo.md': 13,
+  'docs/motor-de-cartas.md': 8,
+  'docs/duelos-automaticos.md': 9,
+  'docs/duelo-automatico-enlace.md': 6,
+  'docs/duelo-relay.md': 6,
+  'docs/i18n.md': 4,
+  'docs/movimiento.md': 4,
+  'docs/seguridad.md': 7,
+  'docs/ux-ui-guidelines.md': 7,
 }
 /** Carpetas que no se miran: dependencias, salidas y datos. Las que empiezan con punto tampoco (configuración local de otras herramientas), salvo `.github`. */
 const SKIPPED = new Set(['node_modules', 'dist', 'coverage', 'public', 'graphify-out'])
