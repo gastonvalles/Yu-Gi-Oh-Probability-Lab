@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { copyIds } from '../app/auto/adapter'
 import { openAsk } from '../app/auto/ask-ui'
@@ -13,7 +11,7 @@ import { whyNotResume } from '../app/auto/resume'
 import { createMatState, matReducer, type MatAction } from '../app/practice-mat'
 import { playAsk, seeded } from './support/ask-ui-player'
 import { compare, readMat, readReal } from './support/core-compare'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * Pasar de manual a automático por la sesión (`resume`), con decks del meta y el núcleo real (lento: `npm run test:auto`): una mesa manual armada con el reductor (monstruos
@@ -30,7 +28,7 @@ describe.skipIf(!hasCoreData)('pasar de manual a automático por la sesión, con
   const store = scriptStore()
   const source = nodeSource(rows, store)
   const loader = createDataLoader(source, null)
-  const lists = hasCoreData ? (JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>) : {}
+  const lists = hasCoreData ? (slowDecklists()) : {}
   const ok = new Set(hasCoreData ? metaDecks(cards, store).map((deck) => deck.id) : [])
   const ids = Object.keys(lists).filter((id) => ok.has(id))
   const wasm = hasCoreData ? wasmBinary() : new ArrayBuffer(0)

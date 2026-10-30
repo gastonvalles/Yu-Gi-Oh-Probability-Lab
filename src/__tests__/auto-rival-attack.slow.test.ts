@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { mirrorApply, openMirror } from '../app/mat-public'
 import { matReducer, type MatState } from '../app/practice-mat'
@@ -7,9 +5,8 @@ import { rivalAttacks } from '../app/auto/adapter'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
 import { randomLegalPolicy, type Policy } from '../app/auto/policies'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * El ataque del rival con el núcleo real (lento: `npm run test:auto`; se salta sin datos): el rival de relleno (40 Normales) juega al azar (`control: 'both'`), así invoca y
@@ -42,7 +39,7 @@ describe.skipIf(!hasCoreData)('el ataque del rival con el núcleo real (npm run 
   const { cards } = hasCoreData ? loadCards() : { cards: new Map() }
   const store = scriptStore()
   const loader = createDataLoader(nodeSource(rows, store), null)
-  const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+  const lists = slowDecklists()
   const ok = new Set(hasCoreData ? metaDecks(cards, store).map((deck) => deck.id) : [])
   const ids = Object.keys(lists).filter((id) => ok.has(id))
   const pool = Array.from({ length: Math.min(DECKS, ids.length) }, (_, i) => ids[Math.floor((i * ids.length) / Math.min(DECKS, ids.length))]!)

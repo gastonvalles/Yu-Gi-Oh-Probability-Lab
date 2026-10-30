@@ -1,11 +1,8 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { cardMatchesOpcode } from 'ocgcore-wasm'
 import { openAsk, type AskContext } from '../app/auto/ask-ui'
 import { createDataLoader } from '../app/auto/auto-data'
 import type { AutoSession, PendingAsk } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
 import { manualHandover } from '../app/auto/manual-handover'
 import { createGuestLink, createHostLink } from '../app/auto/online'
 import { randomLegalPolicy, type Policy } from '../app/auto/policies'
@@ -16,7 +13,7 @@ import { duelTurnNumber, sharedPhase, whoseTurn } from '../app/duel-turn'
 import type { Duelist } from '../app/life-calculator'
 import { replayMat, type MatPhase, type MatState } from '../app/practice-mat'
 import { playAsk, seeded, seededKey } from './support/ask-ui-player'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 
 /**
@@ -66,7 +63,7 @@ describe.skipIf(!hasCoreData)('pasar a manual con el núcleo real (npm run test:
   const { cards } = hasCoreData ? loadCards() : { cards: new Map() }
   const store = scriptStore()
   const source = nodeSource(rows, store)
-  const lists = hasCoreData ? (JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>) : {}
+  const lists = hasCoreData ? (slowDecklists()) : {}
   const ok = new Set(hasCoreData ? metaDecks(cards, store).map((deck) => deck.id) : [])
   const ids = Object.keys(lists).filter((id) => ok.has(id))
   const cardList = [...cards.values()]

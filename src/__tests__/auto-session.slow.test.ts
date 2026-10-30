@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { cardMatchesOpcode, OcgLocation as L } from 'ocgcore-wasm'
 import { mirrorApply, openMirror } from '../app/mat-public'
 import { matReducer } from '../app/practice-mat'
@@ -12,7 +10,7 @@ import { passivePolicy, randomLegalPolicy, type CardPicker, type Policy } from '
 import { splitDesc } from '../app/auto/protocol'
 import type { ApiCardReference } from '../types'
 import { codeOfId, compare, readMat, readReal } from './support/core-compare'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * La sesión de «Jugar solo automático» con el núcleo real, en el mismo proceso (lento: `npm run test:auto`; se salta sin datos). En
@@ -48,7 +46,7 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
   const store = scriptStore()
   const source = nodeSource(rows, store)
   const loader = createDataLoader(source, null)
-  const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+  const lists = slowDecklists()
   const ok = new Set(metaDecks(cards, store).map((deck) => deck.id))
   const ids = Object.keys(lists).filter((id) => ok.has(id))
   const pool = Array.from({ length: Math.min(DECKS, ids.length) }, (_, i) => ids[Math.floor((i * ids.length) / Math.min(DECKS, ids.length))]!)
@@ -142,25 +140,34 @@ describe.skipIf(!hasCoreData)(`la sesión con el núcleo real, ${DECKS} decks (n
       expect(view(again)).toEqual(view(end))
       tally.restarts += 1
 
-      // (c) Deshacer: en mi próxima jugada (idle o batalla), la mesa de antes, exacta.
+      // (c) Deshacer: en mi próxima jugada (idle o batalla), la mesa de antes, exacta. Si el duelo termina antes (el bot al azar de Xenovader se destierra el
+      // deck y pierde al robar en el turno 5), desde el principio: con la misma semilla, la primera jugada llega en el turno 1.
       let snapshot = again
+      let undone = false
 
-      for (let n = 0; n < CAP && snapshot.status === 'ready'; n += 1) {
-        const before = snapshot
-        const bot = randomLegalPolicy(seed + n, pickCard)
+      for (let pass = 0; pass < 2 && !undone; pass += 1) {
+        if (pass === 1) {
+          session.restart()
+          snapshot = await settled(session)
+        }
+        for (let n = 0; n < CAP && snapshot.status === 'ready'; n += 1) {
+          const before = snapshot
+          const bot = randomLegalPolicy(seed + n, pickCard)
 
-        session.answer(bot(snapshot.ask!.ask))
-        snapshot = await settled(session)
-        if ((before.ask!.ask.type === 'select_idlecmd' || before.ask!.ask.type === 'select_battlecmd') && snapshot.status === 'ready') {
-          // La jugada empieza donde estaba la mesa al preguntar: recortar ahí («Seguir en manual») da la mesa de deshacer.
-          expect(snapshot.playStarts).toContain(before.mineActions.length)
-          expect(session.undo()).toBe(true)
-          const back = await settled(session)
+          session.answer(bot(snapshot.ask!.ask))
+          snapshot = await settled(session)
+          if ((before.ask!.ask.type === 'select_idlecmd' || before.ask!.ask.type === 'select_battlecmd') && snapshot.status === 'ready') {
+            // La jugada empieza donde estaba la mesa al preguntar: recortar ahí («Seguir en manual») da la mesa de deshacer.
+            expect(snapshot.playStarts).toContain(before.mineActions.length)
+            expect(session.undo()).toBe(true)
+            const back = await settled(session)
 
-          expect(view(back)).toEqual(view(before))
-          expect(back.mineActions).toEqual(snapshot.mineActions.slice(0, before.mineActions.length))
-          tally.undos += 1
-          break
+            expect(view(back)).toEqual(view(before))
+            expect(back.mineActions).toEqual(snapshot.mineActions.slice(0, before.mineActions.length))
+            tally.undos += 1
+            undone = true
+            break
+          }
         }
       }
     }

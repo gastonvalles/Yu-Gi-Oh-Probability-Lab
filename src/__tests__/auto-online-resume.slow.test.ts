@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { cardMatchesOpcode } from 'ocgcore-wasm'
 import { describe, expect, it } from 'vitest'
 import { openAsk, type AskContext } from '../app/auto/ask-ui'
@@ -7,7 +5,6 @@ import { createDataLoader } from '../app/auto/auto-data'
 import { autoSaveStore } from '../app/auto/auto-save'
 import { undoPoint, type AutoSession, type PendingAsk } from '../app/auto/auto-session'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
 import { manualHandover } from '../app/auto/manual-handover'
 import { createGuestLink, createHostLink, type OnlineLink } from '../app/auto/online'
 import { codeOfId, createResumeLink, type ResumeLink } from '../app/auto/online-resume'
@@ -21,7 +18,7 @@ import type { Duelist } from '../app/life-calculator'
 import { isToken, type MatPhase, type MatState } from '../app/practice-mat'
 import { playAsk, seeded, seededKey } from './support/ask-ui-player'
 import { compare, readMat, readReal } from './support/core-compare'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 
 /**
@@ -76,7 +73,7 @@ describe.skipIf(!hasCoreData)('pasar de manual a automático en el duelo por enl
   const { cards } = hasCoreData ? loadCards() : { cards: new Map() }
   const store = scriptStore()
   const source = nodeSource(rows, store)
-  const lists = hasCoreData ? (JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>) : {}
+  const lists = hasCoreData ? (slowDecklists()) : {}
   const ok = new Set(hasCoreData ? metaDecks(cards, store).map((deck) => deck.id) : [])
   const ids = Object.keys(lists).filter((id) => ok.has(id))
   const cardList = [...cards.values()]
