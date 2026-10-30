@@ -3,10 +3,12 @@ import path from 'node:path'
 import { cardMatchesOpcode, OcgDuelMode, OcgLocation as L, OcgQueryFlags as Q, ocgMessageTypeStrings, type OcgCoreSync, type OcgDuelHandle, type OcgMessage } from 'ocgcore-wasm'
 import { createAdapter, type Adapter } from '../app/auto/adapter'
 import { botViewOf, publicEventsOf, type PublicEvent } from '../app/auto/bot/bot'
+import { SKY_STRIKER_DECK } from '../app/auto/bot/decks/sky-striker'
+import { skyStrikerBot } from '../app/auto/bot/executors/sky-striker'
 import { MAX_IDLE, turnBot } from '../app/auto/bot/turn'
 import { createAutoHost } from '../app/auto/core-host'
-import { teamOrder } from '../app/auto/deck-map'
-import { handtrapPolicy, mulberry32, randomLegalPolicy, type CardPicker } from '../app/auto/policies'
+import { mapDeck, teamOrder } from '../app/auto/deck-map'
+import { handtrapPolicy, mulberry32, passivePolicy, randomLegalPolicy, type CardPicker } from '../app/auto/policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type Seat } from '../app/auto/protocol'
 import { autoRival, HANDTRAP_CATALOG, MAX_RIVAL_HAND, TURN_RULES } from '../app/handtraps'
 import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, runDuel, scriptStore, wasmBinary } from './support/core-data'
@@ -17,7 +19,8 @@ import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, runDuel, 
  * cuelgues; el asiento filtrado nunca ve lo oculto (un oráculo aparte, con el estado real que da `duelQueryLocation`); `rewind` reproduce
  * los eventos y un duelo con semilla fija se repite igual. Lo mismo con el rival de handtraps en el asiento 1 (`Rival`). Escribe el
  * informe por carta y el de lentitud en CORE_DATA_DIR (nunca en el repo). Parámetros: FUZZ_DECKS (20), FUZZ_DUELS por deck (4),
- * FUZZ_HANDTRAP_DUELS por deck contra el rival de handtraps (2), FUZZ_TURN_DUELS por deck contra el que además juega su turno (2), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S
+ * FUZZ_HANDTRAP_DUELS por deck contra el rival de handtraps (2), FUZZ_TURN_DUELS por deck contra el que además juega su turno (2), FUZZ_SKY_DUELS por deck contra el
+ * ejecutor de Sky Striker (1, con tu lado al azar y otra vez con tu lado pasivo), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S
  * segundos por duelo (120: un duelo más largo se corta y queda en el informe de lentitud, no cuenta como cuelgue). El avance va a
  * fuzz-progress.log (y fuzz-progress-handtraps.log, fuzz-progress-turn.log).
  */
@@ -25,6 +28,7 @@ const DECKS = Number(process.env.FUZZ_DECKS ?? 20)
 const DUELS = Number(process.env.FUZZ_DUELS ?? 4)
 const HANDTRAP_DUELS = Number(process.env.FUZZ_HANDTRAP_DUELS ?? 2)
 const TURN_DUELS = Number(process.env.FUZZ_TURN_DUELS ?? 2)
+const SKY_DUELS = Number(process.env.FUZZ_SKY_DUELS ?? 1)
 const SEED = Number(process.env.FUZZ_SEED ?? 1)
 const CAP = Number(process.env.FUZZ_CAP ?? 2000)
 const DUEL_MS = Number(process.env.FUZZ_DUEL_S ?? 120) * 1000
@@ -167,9 +171,10 @@ const normalized = (events: AutoEvent[]) => events.filter((event) => event.t ===
 /**
  * Contra quién juega el asiento 1: otro bot al azar con un deck del meta, o el rival de handtraps de la pantalla (`handtrapPolicy`, con lo que ve
  * su adaptador): las 15 del catálogo, una copia de cada una, 5 en la mano repartidas con la semilla del duelo y el relleno de Normales. O el que además juega su
- * turno (`turnBot`, con su `BotView` como en la sesión): cinco handtraps, dos copias de cada carta de `TURN_RULES` (y de Ra, para Sphere Mode) y el relleno.
+ * turno (`turnBot`, con su `BotView` como en la sesión): cinco handtraps, dos copias de cada carta de `TURN_RULES` (y de Ra, para Sphere Mode) y el relleno. O el ejecutor de
+ * Sky Striker con su lista fija (`sky`; `sky-passive`: tu lado contesta como el pasivo en vez de al azar).
  */
-type Rival = 'random' | 'handtraps' | 'turn'
+type Rival = 'random' | 'handtraps' | 'turn' | 'sky' | 'sky-passive'
 /** Las handtraps del rival que juega su turno: Ash, Maxx "C", Veiler, Impermanence y Droll & Lock Bird. */
 const TURN_HANDTRAPS = [14558127, 23434538, 97268402, 10045474, 94145022]
 
@@ -177,6 +182,8 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
   it(`${DECKS} decks × ${DUELS} duelos`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('random', DUELS))
   it(`${DECKS} decks × ${HANDTRAP_DUELS} duelos contra el rival de handtraps`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('handtraps', HANDTRAP_DUELS))
   it(`${DECKS} decks × ${TURN_DUELS} duelos contra el rival que juega su turno`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('turn', TURN_DUELS))
+  it(`${DECKS} decks × ${SKY_DUELS} duelos contra el ejecutor de Sky Striker (tu lado al azar)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('sky', SKY_DUELS))
+  it(`${DECKS} decks × ${SKY_DUELS} duelos contra el ejecutor de Sky Striker (tu lado pasivo)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('sky-passive', SKY_DUELS))
 
   async function fuzz(rival: Rival, duels: number) {
     const { cards, names } = loadCards()
@@ -186,8 +193,9 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
     const turnPicks = [...TURN_HANDTRAPS.map((id) => ({ id, name: '', copies: 1 })), ...[...Object.keys(TURN_RULES).map(Number), 10000010].map((id) => ({ id, name: '', copies: 2 }))]
     const setup = autoRival(rival === 'turn' ? { enabled: true, picks: turnPicks, hand: MAX_RIVAL_HAND, ownTurn: true } : { enabled: true, picks: HANDTRAP_CATALOG.map((card) => ({ ...card, copies: 1 })), hand: MAX_RIVAL_HAND })!
     const own = setup.main.flatMap(([code, copies]) => Array<number>(copies).fill(code))
-    const filler = rival !== 'random' ? (await nodeSource(undefined, store).manifest()).filler : []
-    const handtraps = { id: 'handtraps', main: [...own, ...filler.slice(0, Math.max(0, filler.length - own.length))], extra: [] as number[], missing: [], noRules: [] }
+    const filler = rival === 'handtraps' || rival === 'turn' ? (await nodeSource(undefined, store).manifest()).filler : []
+    const sky = rival === 'sky' || rival === 'sky-passive'
+    const handtraps = sky ? { id: 'sky-striker', ...mapDeck(SKY_STRIKER_DECK, (code) => cards.get(code) ?? null, store.has) } : { id: 'handtraps', main: [...own, ...filler.slice(0, Math.max(0, filler.length - own.length))], extra: [] as number[], missing: [] as number[], noRules: [] as number[] }
     const suffix = rival !== 'random' ? `-${rival}` : ''
     const cardList = [...cards.values()]
     const pickCard: CardPicker = (ask, random) => {
@@ -257,7 +265,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
           // Quién negó (`ChainStep.by`, deducido por el adaptador): siempre otro eslabón de la cadena en curso, nunca el negado ni uno que no está.
           const out = view?.apply(event)
 
-          if (out && rival === 'turn') botHistory.push(...publicEventsOf(out, view!, 1))
+          if (out && (rival === 'turn' || sky)) botHistory.push(...publicEventsOf(out, view!, 1))
           for (const step of out?.chain ?? []) {
             if (step.kind === 'chain') {
               if (step.index === 0) links.length = 0
@@ -276,12 +284,12 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       const seed = (SEED * 100_003 + d) >>> 0
       // Los duelos impares van con una clave de 256 bits (el camino del duelo por enlace), derivada de la semilla para que el fuzz siga siendo reproducible.
       const key = d % 2 === 1 ? seed.toString(16).padStart(8, '0').repeat(8) : undefined
-      const hand = rival !== 'random' ? setup.hand(seed) : []
+      const hand = rival === 'handtraps' || rival === 'turn' ? setup.hand(seed) : []
       const create: Extract<AutoCommand, { t: 'create' }> = { t: 'create', seed, ...(key ? { key } : {}), flags: MR5, players: [PLAYERS[0]!, { ...PLAYERS[1]!, hand: hand.length || PLAYERS[1]!.hand }], decks: [{ main: a.main, extra: a.extra, hand: [] }, { main: b.main, extra: b.extra, hand }] }
       // Con el Atributo de cada carta (público), como en la sesión: las Bystial sólo destierran LUZ u OSCURIDAD.
       const attributeOf = (code: number) => cards.get(code)?.attribute ?? 0
       const handtrapRival = rival === 'handtraps' ? handtrapPolicy(setup.main.map(([code]) => code), undefined, [], undefined, attributeOf) : null
-      const bot = rival === 'turn' ? turnBot(setup.main.map(([code]) => code), [], (code) => cards.get(code)?.alias ?? 0, attributeOf, (code) => cards.get(code)) : null
+      const bot = rival === 'turn' ? turnBot(setup.main.map(([code]) => code), [], (code) => cards.get(code)?.alias ?? 0, attributeOf, (code) => cards.get(code)) : sky ? skyStrikerBot((code) => cards.get(code), (code) => cards.get(code)?.alias ?? 0, attributeOf) : null
       const context = { random: mulberry32(seed), level: 'normal' as const }
       let idle = { turn: -1, count: 0 }
       const second = bot
@@ -358,7 +366,7 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
 
       await host.handle(create)
       audit()
-      const result = await runDuel(host, events, [randomLegalPolicy(seed * 2 + 1, pickCard), second ?? randomLegalPolicy(seed * 2 + 2, pickCard)], CAP, (ask, answer) => {
+      const result = await runDuel(host, events, [rival === 'sky-passive' ? passivePolicy(pickCard, seed) : randomLegalPolicy(seed * 2 + 1, pickCard), second ?? randomLegalPolicy(seed * 2 + 2, pickCard)], CAP, (ask, answer) => {
         lastCard = cardOf(ask.ask, answer)
         if (lastCard) stat(lastCard).played += 1
         const ms = host.timings.at(-1) ?? 0
@@ -416,10 +424,10 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
     const report = {
       parameters: { rival, decks: pool.length, duelsPerDeck: duels, seed: SEED, cap: CAP, seconds: Math.round((performance.now() - started) / 1000) },
       // Cuántas veces el rival activó cada handtrap (y cuántas se la ofreció el núcleo).
-      ...(rival !== 'random' ? { handtraps: Object.fromEntries(setup.main.map(([code]) => [label(code), perCard.get(code) ?? { offered: 0, played: 0, faulted: 0 }])) } : {}),
+      ...(rival === 'handtraps' || rival === 'turn' ? { handtraps: Object.fromEntries(setup.main.map(([code]) => [label(code), perCard.get(code) ?? { offered: 0, played: 0, faulted: 0 }])) } : {}),
       tally,
       msPerAnswer: { answers: sorted.length, median: pct(50), p95: pct(95), p99: pct(99), max: pct(100) },
-      ...(rival === 'turn' ? { turn: { msPerBotDecision: botMs(), maxIdlePerTurn: maxIdle, cap: MAX_IDLE, rules } } : {}),
+      ...(rival === 'turn' || sky ? { turn: { msPerBotDecision: botMs(), maxIdlePerTurn: maxIdle, cap: MAX_IDLE, rules } } : {}),
       slowDuels,
       slowest: slow.sort((x, y) => y.ms - x.ms).slice(0, 40).map((entry) => ({ ...entry, card: label(entry.card) })),
       slowCards: Object.entries(slow.reduce<Record<string, number>>((acc, entry) => ({ ...acc, [label(entry.card) || entry.ask]: Math.max(acc[label(entry.card) || entry.ask] ?? 0, entry.ms) }), {}))
@@ -452,5 +460,12 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       repeatMismatch: 0,
       badBy: 0,
     })
+    // El ejecutor: decide en menos de 5 ms (p99; el núcleo es lo lento) y ningún turno pasa su tope de jugadas (el que llega al tope termina el turno con la siguiente).
+    if (sky) {
+      console.log(JSON.stringify({ sky: report.turn }))
+      expect(botMs().p99).toBeLessThanOrEqual(5)
+      expect(maxIdle).toBeLessThanOrEqual(MAX_IDLE + 1)
+      expect(tally.duels).toBeGreaterThan(0)
+    }
   }
 })

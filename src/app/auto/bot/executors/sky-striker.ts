@@ -434,6 +434,15 @@ export const SKY_STRIKER_EXECUTOR: DeckExecutor = { plays: PLAYS, chain, choose,
 
 /** El bot de Sky Striker: el ejecutor y, para lo que no decide, sus handtraps y Called by the Grave como el rival que juega su turno (`turnBot`). */
 export function skyStrikerBot(facts: (code: number) => CardFacts | undefined, aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number): Bot {
-  return executorBot(SKY_STRIKER_EXECUTOR, facts, turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts))
+  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts)
+  // «Tenía X y no la usé: todavía no sé cuándo conviene» es de las handtraps sin regla; sus Mágicas tienen regla (`chain`): si no la usó, no era el momento, y no se cuenta.
+  const fallback: Bot = (ask, view, context) => {
+    const decision = reacts(ask, view, context)
+    const held = decision.rule === 'handtrap.hold.noRule' ? (decision.reason?.cards?.[0] ?? 0) : 0
+
+    return held && OWN.has(held) && !HANDTRAPS.includes(held) ? { answer: decision.answer, rule: 'sky.hold' } : decision
+  }
+
+  return executorBot(SKY_STRIKER_EXECUTOR, facts, fallback)
 }
 
