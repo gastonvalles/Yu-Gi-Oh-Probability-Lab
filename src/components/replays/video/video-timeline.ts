@@ -5,10 +5,10 @@ import type { SavedCombo } from '../../../app/saved-combos'
 import { titleOf } from '../duel-replay-text'
 
 /**
- * Cuánto se ve cada jugada en el video de un replay. Una jugada dura lo del reproductor (`STEP_MS`); un cambio de fase o un barajado, que no mueven nada a la vista, menos.
- * Lo que se mueve se desliza al principio de la jugada (`moveFrames` cuadros a 30 por segundo) y el resto es un solo cuadro quieto que dura lo que falta: casi todo el video
- * la imagen está quieta, y un cuadro repetido no agrega nada. Al principio, la mesa al empezar con los nombres; al final, el resultado. «Rápido (2×)»: cada jugada y cada
- * movimiento a la mitad (el título y el cierre, igual).
+ * Cuánto se ve cada jugada en el video. El video va a cuadros constantes (`FPS`): lo que se mueve se anima cuadro a cuadro como en la mesa y lo quieto repite el cuadro (en
+ * H.264 casi no pesa). Una jugada de un duelo dura lo del reproductor (`STEP_MS`); la de un combo, lo que espera la mesa al reproducirlo (`COMBO_STEP_MS`); un cambio de fase,
+ * que no mueve cartas, menos (su cartel sigue encima de lo que viene). Al principio, la mesa al empezar con los nombres; al final, el resultado. «Rápido (2×)»: cada jugada
+ * y cada animación a la mitad (el título y el cierre, igual).
  */
 
 export type VideoSpeed = 1 | 2
@@ -18,28 +18,26 @@ export type VideoSubject = { kind: 'duel'; replay: DuelReplay } | { kind: 'combo
 
 export const subjectActions = (subject: VideoSubject): readonly MatAction[] => (subject.kind === 'duel' ? subject.replay.steps.map(([, action]) => action) : subject.combo.actions)
 
+/** Cuadros por segundo, siempre los mismos: los reproductores (WhatsApp, iOS) se traban con cuadros de duración variable. */
+export const FPS = 30
+/** El cuadro en el que cae el momento `ms` del video (contado desde el principio, sin que se acumule el redondeo). */
+export const frameOf = (ms: number) => Math.round((ms * FPS) / 1000)
+
 export const STEP_MS = 900
-const QUICK_MS = 400
+/** La mesa al reproducir un combo espera esto entre jugadas (`AUTOPLAY_MS` de `PracticeMat.tsx`). */
+export const COMBO_STEP_MS = 1400
+const PHASE_MS = 400
 export const INTRO_MS = 2000
 export const OUTRO_MS = 3000
-/** Un cuadro de una transición, en microsegundos (30 por segundo). */
-export const FRAME_US = 33_333
-/** Lo que dura el deslizamiento: 10 cuadros (333 ms); a 2×, 5. */
-export const moveFrames = (speed: VideoSpeed) => (speed === 2 ? 5 : 10)
 /** Desde cuánto se ofrece «Rápido (2×)». */
 export const LONG_VIDEO_MS = 6 * 60_000
 
-/** Lo que pasa sin que se mueva una carta: va más rápido. */
-const quick = (action: MatAction) => action.type === 'phase' || action.type === 'shuffle'
+export const stepMs = (action: MatAction, speed: VideoSpeed = 1, kind: VideoSubject['kind'] = 'duel') => (action.type === 'phase' ? PHASE_MS : kind === 'combo' ? COMBO_STEP_MS : STEP_MS) / speed
 
-export const stepMs = (action: MatAction, speed: VideoSpeed = 1) => (quick(action) ? QUICK_MS : STEP_MS) / speed
-
-/** Cuánto dura el cuadro de cada cursor (0 = la mesa al empezar; el último, la última jugada, que se queda con el resultado o el cierre). */
+/** Cuánto dura cada tramo: la mesa al empezar (con el título), cada jugada y el cierre con el resultado. Sin jugadas, un solo tramo. */
 export function frameDurations(subject: VideoSubject, speed: VideoSpeed = 1): number[] {
-  const steps: number[] = subjectActions(subject).map((action) => stepMs(action, speed))
-  if (steps.length === 0) return [INTRO_MS + OUTRO_MS]
-  steps[steps.length - 1] = OUTRO_MS
-  return [INTRO_MS, ...steps]
+  const steps = subjectActions(subject).map((action) => stepMs(action, speed, subject.kind))
+  return steps.length === 0 ? [INTRO_MS + OUTRO_MS] : [INTRO_MS, ...steps, OUTRO_MS]
 }
 
 export const videoDurationMs = (subject: VideoSubject, speed: VideoSpeed = 1) => frameDurations(subject, speed).reduce((sum, ms) => sum + ms, 0)

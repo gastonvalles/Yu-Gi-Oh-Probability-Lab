@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 
 import { buildDuelReplay, duelReplayAt, type ReplayInput } from '../app/duel-replay'
 import type { WireAct } from '../app/mat-public'
+import { easeInOut } from '../app/motion'
 import { createMatState, type MatAction } from '../app/practice-mat'
 import { muxMp4 } from '../components/replays/video/mp4-mux'
-import { easeOut, placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
+import { lifeMs, lifeOf, overlaysOf } from '../components/replays/video/video-fx'
+import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
 import { handRects, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
-import { frameDurations, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
+import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
+import { fakeAssets } from './support/video-fakes'
 
 // Un duelo chico (como el de `duel-replay.test.ts`): invoco, coloco, activo y paso; el rival roba, invoca y me ataca.
 const deck = Array.from({ length: 20 }, (_, i) => `card-${14558127 + (i % 7) * 1000}-${Math.floor(i / 7) + 1}`)
@@ -108,9 +111,11 @@ describe('la escena de cada jugada', () => {
     const attack = last
     expect(attack.stepText).toBe('Beto: Atacás a Carta 14558127 con Carta 55144522')
     expect(attack.focus).toEqual([last.layout.cellAt(2, 2), last.layout.cellAt(4, 0)])
-    // Un cambio de fase resalta la fase nueva.
-    expect(scenes[1]!.focus).toEqual([scenes[1]!.phases.find((phase) => phase.id === 'main1')!.rect])
+    // Un cambio de fase no resalta ninguna casilla (no hay fila de fases): lo dice su cartel, que sale de `matEffects`.
+    expect(scenes[1]!.focus).toEqual([])
     expect(scenes[1]!.phase).toBe('main1')
+    expect(scenes[1]!.effects?.banner).toMatchObject({ phase: 'main1' })
+    expect(scenes[1]!).toMatchObject({ actor: 0, action: { type: 'phase', phase: 'main1' } })
   })
 
   it('sceneAt da lo mismo saltando que recorriendo', () => {
@@ -125,7 +130,7 @@ describe('la escena de cada jugada', () => {
 describe('las transiciones', () => {
   const motions = scenes.slice(1).map((scene, index) => transitionOf(scenes[index]!, scene))
 
-  it('la carta que se mueve va de su lugar de antes al de después, con ease-out; lo que no cambia no se mueve', () => {
+  it('la carta que se mueve va de su lugar de antes al de después, con la curva de los vuelos de la mesa; lo que no cambia no se mueve', () => {
     // Jugada 2: invoco h0 de la mano a mi zona 1; las otras cartas de la mano se reacomodan.
     const summon = motions[1]!
     const placed = cardIn(scenes[2]!, 0, scenes[2]!.layout.cellAt(4, 0))!
@@ -135,8 +140,7 @@ describe('las transiciones', () => {
     expect(poseAt(move, 0)).toEqual(move.from)
     expect(poseAt(move, 1)).toEqual(move.to)
     const mid = poseAt(move, 0.5)
-    expect((mid.y - move.from!.y) / (move.to.y - move.from!.y)).toBeCloseTo(easeOut(0.5))
-    expect(easeOut(0.5)).toBeGreaterThan(0.5)
+    expect((mid.y - move.from!.y) / (move.to.y - move.from!.y)).toBeCloseTo(easeInOut(0.5))
     // Lo del rival no se movió.
     expect(summon.every((motion) => motion.key.startsWith('0:'))).toBe(true)
     // Un cambio de fase no mueve nada.
@@ -156,10 +160,27 @@ describe('las transiciones', () => {
     const all = [
       ...scenes.flatMap((scene) => faces(scene.sides.flatMap((side) => [...side.slots, ...side.hand].flatMap((slot) => (slot.card ? [slot.card] : []))))),
       ...motions.flat().flatMap((motion) => faces([motion.card, ...(motion.fromCard ? [motion.fromCard] : [])])),
+      // La carta grande del centro.
+      ...scenes.flatMap((scene) => Object.values(scene.spotlit ?? {}).flatMap((face) => [face.art ?? '', face.name])),
     ]
     expect(all.filter((text) => hidden.some((code) => text.includes(code)))).toEqual([])
     // Y lo que sí se mostró aparece (la prueba no pasa por no mirar nada).
     expect(all.some((text) => text.includes('14558127'))).toBe(true)
+  })
+
+  it('el ataque cruza del atacante a su objetivo; el rival que roba no se muestra grande (en un duelo sólo activar, mostrar y declarar); las vidas cuentan', () => {
+    const fx = (index: number) => overlaysOf(scenes[index - 1]!, scenes[index]!, [], fakeAssets, 1, 0, 'duel').map((overlay) => overlay.kind)
+    expect(fx(replay.steps.length)).toEqual(['attack'])
+    expect(fx(6)).toEqual([])
+    expect(fx(4)).toEqual(['stage'])
+    // 8000 → 7000 de mi lado: cuenta como en la mesa (`lifeMs`), con «−1000» abajo.
+    const hit = { ...last, sides: [{ ...last.sides[0], lp: 7000 }, last.sides[1]] as Scene['sides'] }
+    const life = lifeOf(last, hit, 1)!
+    expect(life(0)).toEqual([8000, 8000])
+    expect(life(200)![0]).toBeLessThan(8000)
+    expect(life(lifeMs(-1000))).toBeNull()
+    expect(lifeOf(last, last, 1)).toBeNull()
+    expect(overlaysOf(scenes.at(-2)!, hit, [], fakeAssets, 1, 0, 'duel').map((overlay) => overlay.kind)).toContain('delta')
   })
 })
 
@@ -169,20 +190,27 @@ describe('los tiempos y el nombre del archivo', () => {
     const normal = frameDurations(subject, 1)
     const fast = frameDurations(subject, 2)
     expect(fast[2]).toBe(STEP_MS / 2)
+    expect(fast.at(-1)).toBe(OUTRO_MS)
     expect(fast[0]).toBe(INTRO_MS)
     expect(fast.at(-1)).toBe(OUTRO_MS)
     expect(videoDurationMs(subject, 2)).toBe(fast.reduce((sum, ms) => sum + ms, 0))
     expect(fast.slice(1, -1)).toEqual(normal.slice(1, -1).map((ms) => ms / 2))
   })
 
-  it('la mesa al empezar, una jugada por cuadro (las fases más rápido) y la última se queda con el resultado', () => {
+  it('la mesa al empezar, cada jugada (las fases más rápido), el cierre con el resultado; a cuadros constantes', () => {
     const durations = frameDurations(subject)
-    expect(durations).toHaveLength(replay.steps.length + 1)
+    expect(durations).toHaveLength(replay.steps.length + 2)
     expect(durations[0]).toBe(INTRO_MS)
     expect(durations[1]).toBeLessThan(STEP_MS)
     expect(durations[2]).toBe(STEP_MS)
+    expect(durations.at(-2)).toBe(STEP_MS)
     expect(durations.at(-1)).toBe(OUTRO_MS)
     expect(frameDurations({ kind: 'duel', replay: { ...replay, steps: [] } })).toEqual([INTRO_MS + OUTRO_MS])
+    // 30 cuadros por segundo, sin que el redondeo se acumule: el cuadro de cada momento sale de la cuenta desde el principio.
+    expect(FPS).toBe(30)
+    expect(frameOf(1000)).toBe(30)
+    expect(frameOf(videoDurationMs(subject))).toBe(Math.round((videoDurationMs(subject) * 30) / 1000))
+    expect(frameOf(400) + (frameOf(1300) - frameOf(400))).toBe(frameOf(1300))
   })
 
   it('el archivo se llama como el duelo, con la fecha', () => {

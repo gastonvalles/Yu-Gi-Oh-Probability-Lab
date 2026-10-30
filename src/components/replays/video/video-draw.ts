@@ -1,11 +1,13 @@
+import { easeInOut } from '../../../app/motion'
 import { CARD_BACK_URL } from '../../probability/practice-styles'
-import { easeOut, poseAt, poseOf, slotUnder, type Motion, type Pose } from './video-motion'
+import type { Flight } from './video-fx'
+import { poseAt, poseOf, slotUnder, type Pose } from './video-motion'
 import { cardRect, type Rect, type Scene, type SceneCard, type SceneSlot } from './video-scene'
 
 /**
  * Pinta una escena (`video-scene.ts`) en un lienzo: la mesa, las manos, las vidas, el turno, la jugada en texto y la marca del sitio. Los colores son los tokens del sitio
  * (`readVideoTheme`, leídos de las variables CSS) y la letra, Lexend Deca. Las transiciones (`video-motion.ts`): `drawFrame` con `moving` pinta el fondo sin las cartas en
- * vuelo, y `drawMotions` las pone encima en cada momento.
+ * vuelo, y `drawFlight` las pone encima en cada momento; lo demás que anima la mesa (la carta grande, el cartel de la fase…) lo pinta `video-fx.ts`.
  */
 
 export interface VideoTheme {
@@ -22,6 +24,11 @@ export interface VideoTheme {
   soft: string
   fieldLine: string
   danger: string
+  success: string
+  /** Los mismos, como «r g b» para `rgb(r g b / alfa)`. */
+  primaryRgb: string
+  backgroundRgb: string
+  accentRgb: string
 }
 
 /** Los colores del sitio, de sus variables CSS (los mismos del tema índigo de la app). */
@@ -42,6 +49,10 @@ export function readVideoTheme(root: Element = document.documentElement): VideoT
     soft: v('--text-soft'),
     fieldLine: v('--field-line'),
     danger: v('--danger-soft'),
+    success: v('--success-soft'),
+    primaryRgb: v('--primary-rgb'),
+    backgroundRgb: v('--background-rgb'),
+    accentRgb: v('--accent-rgb'),
   }
 }
 
@@ -52,7 +63,7 @@ export interface VideoAssets {
   back: ImageBitmap | null
 }
 
-const FONT = '"Lexend Deca", system-ui, sans-serif'
+export const FONT = '"Lexend Deca", system-ui, sans-serif'
 
 /** Una imagen como `ImageBitmap` (del mismo origen: el proxy de las cartas, o el dorso propio), achicada al ancho que se usa. `null` si no carga: el video sigue igual. */
 async function loadBitmap(url: string, signal?: AbortSignal): Promise<ImageBitmap | null> {
@@ -72,7 +83,7 @@ export async function loadVideoAssets(urls: readonly string[], signal?: AbortSig
   return { theme: readVideoTheme(), arts: new Map(urls.map((url, index) => [url, arts[index] ?? null])), back: back ?? null }
 }
 
-type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+export type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 
 function roundRect(ctx: Ctx, r: Rect, radius: number) {
   ctx.beginPath()
@@ -80,7 +91,7 @@ function roundRect(ctx: Ctx, r: Rect, radius: number) {
 }
 
 /** El texto en hasta `lines` renglones que entran en `width`; el último, con «…» si sobra. */
-function wrap(ctx: Ctx, text: string, width: number, lines: number): string[] {
+export function wrap(ctx: Ctx, text: string, width: number, lines: number): string[] {
   const out: string[] = []
   let line = ''
   const words = text.split(/\s+/)
@@ -90,12 +101,13 @@ function wrap(ctx: Ctx, text: string, width: number, lines: number): string[] {
       line = next
       continue
     }
-    out.push(line)
-    line = words[index]!
+    // El último renglón se lleva lo que queda (y se corta con «…»): con un solo renglón, todo el texto.
     if (out.length === lines - 1) {
-      line = words.slice(index).join(' ')
+      line = [line, ...words.slice(index)].join(' ')
       break
     }
+    out.push(line)
+    line = words[index]!
   }
   out.push(line)
   const last = out.length - 1
@@ -108,7 +120,7 @@ function wrap(ctx: Ctx, text: string, width: number, lines: number): string[] {
 }
 
 /** Una carta parada de `w`×`h`, centrada en su lugar y girada (acostada o de cabeza): la misma cuenta en su casilla y en vuelo. */
-function drawCard(ctx: Ctx, pose: Pose, card: SceneCard, assets: VideoAssets, s: number) {
+export function drawCard(ctx: Ctx, pose: Pose, card: SceneCard, assets: VideoAssets, s: number) {
   const { theme } = assets
   const { w, h } = pose
   const image = card.faceDown ? assets.back : card.art ? assets.arts.get(card.art) : null
@@ -184,9 +196,10 @@ function drawScore(ctx: Ctx, rect: Rect, name: string, lp: number, color: string
 
 /**
  * Un cuadro entero. Con `moving` (las cartas que dibuja una transición, `video-motion.ts`), esas no se dibujan en su casilla: ahí va lo que había en `before` (la pila con
- * su carta de antes, la zona vacía) hasta que llegan. Así sale el fondo de toda la transición de una vez, y cada cuadro de ella es ese fondo más las cartas en vuelo.
+ * su carta de antes, la zona vacía) hasta que llegan, y el aro de la jugada espera a que lleguen. Así sale el fondo de toda la transición de una vez, y cada cuadro de ella es
+ * ese fondo más las cartas en vuelo. `lp`: las vidas mientras cuentan.
  */
-export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: { keys: ReadonlySet<string>; before: Scene }) {
+export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: { keys: ReadonlySet<string>; before: Scene }, lp?: readonly [number, number] | null) {
   const { theme } = assets
   const { layout } = scene
   const s = layout.scale
@@ -194,7 +207,7 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   ctx.fillStyle = theme.background
   ctx.fillRect(0, 0, scene.width, scene.height)
 
-  // Las casillas vacías: las líneas blancas de la mesa, tenues (las fases del medio no son casillas).
+  // Las casillas vacías: las líneas blancas de la mesa, tenues.
   ctx.strokeStyle = theme.fieldLine
   ctx.globalAlpha = 0.18
   ctx.lineWidth = 1.5 * s
@@ -203,19 +216,6 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
     ctx.stroke()
   }
   ctx.globalAlpha = 1
-
-  // Las fases: la de ahora, llena de violeta con el texto blanco.
-  for (const phase of scene.phases) {
-    const active = phase.id === scene.phase
-    roundRect(ctx, phase.rect, 8 * s)
-    ctx.fillStyle = active ? theme.primary : theme.card
-    ctx.fill()
-    ctx.fillStyle = active ? theme.foreground : theme.soft
-    ctx.font = `${active ? 700 : 600} ${18 * s}px ${FONT}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(phase.short, phase.rect.x + phase.rect.w / 2, phase.rect.y + phase.rect.h / 2 + 1 * s)
-  }
 
   scene.sides.forEach((side, index) => {
     for (const slot of side.slots) {
@@ -226,10 +226,10 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
     for (const slot of side.hand) if (!(slot.card && moving?.keys.has(`${index}:${slot.card.id}`))) drawSlot(ctx, slot, assets, s)
   })
 
-  // Lo que tocó la jugada: un aro ámbar («se activa / ahora»).
+  // Lo que tocó la jugada: un aro ámbar («se activa / ahora»), cuando ya llegó.
   ctx.strokeStyle = theme.info
   ctx.lineWidth = 4 * s
-  for (const r of scene.focus) {
+  for (const r of moving ? [] : scene.focus) {
     roundRect(ctx, { x: r.x - 4 * s, y: r.y - 4 * s, w: r.w + 8 * s, h: r.h + 8 * s }, 8 * s)
     ctx.stroke()
   }
@@ -247,8 +247,8 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
     ctx.font = `600 ${20 * s}px ${FONT}`
     ctx.fillText(wrap(ctx, scene.heading.subtitle, layout.score.w, 1)[0]!, layout.score.x, layout.score.y + 70 * s)
   } else {
-    drawScore(ctx, layout.score, mine.name, mine.lp, theme.accent, 'left', assets, s)
-    drawScore(ctx, layout.score, theirs.name, theirs.lp, theme.infoSoft, 'right', assets, s)
+    drawScore(ctx, layout.score, mine.name, lp?.[0] ?? mine.lp, theme.accent, 'left', assets, s)
+    drawScore(ctx, layout.score, theirs.name, lp?.[1] ?? theirs.lp, theme.infoSoft, 'right', assets, s)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = scene.turn === 0 ? theme.accent : theme.infoSoft
@@ -279,33 +279,38 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   ctx.fillStyle = theme.soft
   ctx.font = `600 ${16 * s}px ${FONT}`
   ctx.fillText(scene.footer, layout.footer.x + layout.footer.w / 2, layout.footer.y + layout.footer.h / 2)
-
-  if (scene.banner) drawBanner(ctx, scene, scene.banner, assets)
 }
 
-/** Las cartas en vuelo en el momento `t` (0 a 1) de la transición: arriba de todo; la que aparece, con un fundido; la que se da vuelta, de una cara a la otra. */
-export function drawMotions(ctx: Ctx, motions: readonly Motion[], t: number, assets: VideoAssets, s: number) {
-  const e = easeOut(t)
-  for (const motion of motions) {
-    const pose = poseAt(motion, t)
-    if (motion.fromCard) drawCard(ctx, pose, motion.fromCard, assets, s)
-    ctx.globalAlpha = motion.from && !motion.fromCard ? 1 : e
+/**
+ * Una carta en vuelo, `ms` después de que empezó su jugada: arriba de todo, con la curva de los vuelos de la mesa; la que aparece, con un fundido; la que cambia de cara se da
+ * vuelta en 3D (se angosta hasta quedar de canto y se abre del otro lado), en su lugar o en el camino.
+ */
+export function drawFlight(ctx: Ctx, flight: Flight, ms: number, assets: VideoAssets, s: number) {
+  const { motion } = flight
+  const t = Math.min(1, Math.max(0, (ms - flight.delay) / flight.duration))
+  const pose = poseAt(motion, t)
+  if (!motion.from) {
+    ctx.globalAlpha = t
     drawCard(ctx, pose, motion.card, assets, s)
     ctx.globalAlpha = 1
+    return
   }
+  if (!motion.fromCard) return drawCard(ctx, pose, motion.card, assets, s)
+  const turn = Math.cos(Math.PI * easeInOut(t))
+  drawCard(ctx, { ...pose, w: pose.w * Math.abs(turn) }, turn > 0 ? motion.fromCard : motion.card, assets, s)
 }
 
-/** El título o el cierre: una placa sobre el medio de la mesa, con los nombres o el resultado. */
-function drawBanner(ctx: Ctx, scene: Scene, banner: NonNullable<Scene['banner']>, assets: VideoAssets) {
+/** El título o el cierre: una placa sobre el medio de la mesa, con los nombres o el resultado (`alpha`: mientras aparece o se va). */
+export function drawBanner(ctx: Ctx, scene: Scene, banner: { title: string; subtitle: string }, assets: VideoAssets, alpha = 1) {
   const { theme } = assets
   const s = scene.layout.scale
   const middle = scene.layout.cellAt(scene.layout.middle, 0)
   const r = { x: 40 * s, y: middle.y - 40 * s, w: scene.width - 80 * s, h: middle.h + 80 * s }
-  ctx.globalAlpha = 0.94
+  ctx.globalAlpha = 0.94 * alpha
   ctx.fillStyle = theme.card
   roundRect(ctx, r, 24 * s)
   ctx.fill()
-  ctx.globalAlpha = 1
+  ctx.globalAlpha = alpha
   ctx.strokeStyle = theme.primary
   ctx.lineWidth = 2 * s
   ctx.stroke()
@@ -317,4 +322,5 @@ function drawBanner(ctx: Ctx, scene: Scene, banner: NonNullable<Scene['banner']>
   ctx.fillStyle = theme.infoSoft
   ctx.font = `600 ${22 * s}px ${FONT}`
   ctx.fillText(wrap(ctx, banner.subtitle, r.w - 40 * s, 1)[0]!, r.x + r.w / 2, r.y + r.h / 2 + 26 * s)
+  ctx.globalAlpha = 1
 }

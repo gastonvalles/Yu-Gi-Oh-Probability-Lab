@@ -1,6 +1,7 @@
 import { duelReplayAt, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide } from '../../../app/duel-replay'
 import { cardImageSrc } from '../../../app/card-image-source'
-import { isToken, PHASES, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
+import { matEffects, type MatEffects } from '../../../app/mat-effects'
+import { isToken, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
 import { artOfDrawId } from '../../duel/duel-art'
 import { cardName, playerName, realOf, stepText } from '../duel-replay-text'
@@ -47,6 +48,8 @@ export interface SceneSlot {
   card?: SceneCard
   /** Todos los ids que hay en la casilla (una pila entera): para saber qué resaltar. */
   ids: string[]
+  /** Es una pila (el deck se baraja ahí). */
+  pile?: MatPile
 }
 
 export interface SceneSide {
@@ -63,16 +66,19 @@ export interface Scene {
   sides: [SceneSide, SceneSide]
   turn: ReplaySide
   turnText: string
+  /** La fase de quien tiene el turno: no se dibuja siempre, sólo el cartel cuando cambia (`video-fx.ts`). */
   phase: MatPhase
-  /** Las fases del medio, con su lugar. */
-  phases: { id: MatPhase; short: string; rect: Rect }[]
+  /** Quién hizo la jugada de este cuadro, cuál fue y lo que la mesa muestra con ella (`matEffects`: la carta grande del centro, el destello, el cartel de la fase…). */
+  actor: ReplaySide | null
+  action: MatAction | null
+  effects: MatEffects | null
+  /** Cómo se ve lo que se activa, se muestra o se declara en esta jugada, aunque esté en una mano tapada (activarlo lo muestra): la carta grande del centro. */
+  spotlit?: Record<string, { art: string | null; name: string }>
   /** La jugada en texto (o «La mesa al empezar»), y su número. */
   stepLabel: string
   stepText: string
   /** La marca del sitio, abajo. */
   footer: string
-  /** El título del principio (los nombres) o el cierre (el resultado), sobre el medio de la mesa. */
-  banner?: { title: string; subtitle: string }
   /** Lo que se movió o se activó en esta jugada: un aro ámbar. */
   focus: Rect[]
   /** Las casillas de la mesa (sus líneas tenues, con carta o sin ella). */
@@ -94,7 +100,7 @@ export interface VideoLayout {
   cell: number
   /** La casilla de la fila `row` (0 = la de arriba, la de las pilas del rival) y la columna `col` (0 = izquierda). */
   cellAt: (row: number, col: number) => Rect
-  /** La fila del medio (las Zonas Extra y las fases): ahí va el título y el cierre. */
+  /** La fila del medio (las Zonas Extra): ahí va el título y el cierre. */
   middle: number
 }
 
@@ -121,7 +127,7 @@ export function videoLayout(width: number): VideoLayout {
   }
 }
 
-/** Las casillas de `rows` filas de 5, sin las de las fases (columnas 0, 2 y 4 de la fila del medio). */
+/** Las casillas de `rows` filas de 5, sin las tres de la fila del medio que no son Zonas Extra (columnas 0, 2 y 4). */
 export const cellsOf = (layout: VideoLayout, rows: number) =>
   Array.from({ length: rows * 5 }, (_, index) => [Math.floor(index / 5), index % 5] as const)
     .filter(([row, col]) => !(row === layout.middle && col % 2 === 0))
@@ -201,6 +207,7 @@ export function sideSlots(state: MatState, layout: VideoLayout, rows: { piles: n
     const last = name === 'deck' ? ids[0] : ids.at(-1)
     return {
       rect: layout.cellAt(rows.piles, PILE_COLS[side][name]),
+      pile: name,
       label: t(`practice.pile.short.${name}`),
       count: ids.length,
       ids: [...ids],
@@ -263,15 +270,6 @@ export function handSlots(ids: readonly string[], area: Rect, look: Look, open: 
   })
 }
 
-/** Las casillas de las fases, de a dos en las tres del medio que no son Zonas Extra (columnas 0, 2 y 4), una encima de la otra. */
-export function phaseRects(layout: VideoLayout) {
-  return PHASES.map((phase, index) => {
-    const cell = layout.cellAt(layout.middle, [0, 2, 4][Math.floor(index / 2)]!)
-    const half = (cell.h - 8 * layout.scale) / 2
-    return { id: phase.id, short: phase.short, rect: { x: cell.x, y: cell.y + (index % 2) * (half + 8 * layout.scale), w: cell.w, h: half } }
-  })
-}
-
 /** La escena de un cuadro: la mesa después de `cursor` jugadas. `before` (la mesa del lado que jugó, antes) hace falta para el texto y el resaltado de la jugada. */
 export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, before: MatState | null, width: number): Scene {
   const layout = videoLayout(width)
@@ -288,10 +286,15 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
       hand: handSlots(state.hand, side === 0 ? layout.myHand : layout.theirHand, look, (id) => (side === 0 && replay.view === 'mine') || id === shown),
     }
   }) as [SceneSide, SceneSide]
-  const phases = phaseRects(layout)
-  // Un cambio de fase no mueve cartas: se resalta la fase nueva.
+  // Un cambio de fase no resalta ninguna casilla: lo dice su cartel.
   const action = step?.[1]
-  const focus = action?.type === 'phase' ? phases.filter((phase) => phase.id === action.phase).map((phase) => phase.rect) : step && before ? focusOf(step[1], before, frame.states[step[0]], sides[step[0]], sides[1 - step[0]]!) : []
+  const focus = action?.type !== 'phase' && step && before ? focusOf(step[1], before, frame.states[step[0]], sides[step[0]], sides[1 - step[0]]!) : []
+  const effects = step && before ? matEffects(before, step[1]) : null
+  const lit = effects?.spotlight ? (effects.spotlight.ids ?? [effects.spotlight.id]) : []
+  const spotlit = Object.fromEntries(lit.flatMap((id) => {
+    const face = duelLook(replay, frame, step![0])(id)
+    return face ? [[id, face] as const] : []
+  }))
 
   return {
     width,
@@ -300,7 +303,10 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     turn: frame.turn,
     turnText: t('meta.duels.turn', { turn: frame.turnNumber, name: playerName(replay, frame.turn) }),
     phase: frame.states[frame.turn].phase,
-    phases,
+    actor: step?.[0] ?? null,
+    action: action ?? null,
+    effects,
+    spotlit,
     stepLabel: cursor === 0 ? t('meta.duels.start') : t('meta.duels.step', { n: cursor, total: replay.steps.length }),
     stepText: step && before ? stepText(replay, step, before, frame) : '',
     focus,
