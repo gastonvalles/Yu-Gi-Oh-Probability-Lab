@@ -469,11 +469,26 @@ const SAMPLE_HAND: HandtrapConfig = {
 /** Con Dominus Purge (prohíbe OSCURIDAD, AGUA y FUEGO): Ash (FUEGO) y D.D. Crow (OSCURIDAD) quedan sin usar; Veiler (LUZ), no. */
 const DOMINUS_HAND: HandtrapConfig = { enabled: true, picks: [14558127, 97268402, 97045737, 24508238].map((id) => ({ ...HANDTRAP_CATALOG.find((card) => card.id === id)!, copies: 1 })), hand: 3 }
 
+/** «El rival juega su turno» encendido, con las tres que Tributan tus monstruos (agregadas con el buscador) y Ra, que Sphere Mode trae a su vuelta. */
+const TURN_HAND: HandtrapConfig = {
+  enabled: true,
+  picks: [
+    { ...HANDTRAP_CATALOG[0]!, copies: 1 },
+    { id: 102380, name: 'Lava Golem', copies: 1 },
+    { id: 10000080, name: 'The Winged Dragon of Ra - Sphere Mode', copies: 1 },
+    { id: 10000010, name: 'The Winged Dragon of Ra', copies: 1 },
+    { id: 24203749, name: 'The Great Gallant Bandit', copies: 1 },
+  ],
+  hand: 5,
+  ownTurn: true,
+}
+
 /** El simulador de handtraps de «Jugar solo»: la franja de la mano del rival en la mesa, las cartas de la hoja con su contador (en 0, 1 y 3) y las dos hojas. */
 function HandtrapSamples() {
   const [open, setOpen] = useState(false)
   const [openFromMat, setOpenFromMat] = useState(false)
   const [openDominus, setOpenDominus] = useState(false)
+  const [openTurn, setOpenTurn] = useState(false)
   const [copies, setCopies] = useState([0, 1, 3])
   const [extra, setExtra] = useState<ExtraPick[]>(() => DEFAULT_RIVAL_EXTRA.slice(5, 8).map((card) => ({ ...card })))
 
@@ -523,6 +538,11 @@ function HandtrapSamples() {
           Abrir la hoja del duelo automático con Dominus Purge
         </Button>
         <HandtrapPicker isOpen={openDominus} config={DOMINUS_HAND} auto onClose={() => setOpenDominus(false)} onSave={() => setOpenDominus(false)} />
+        {/* «El rival juega su turno (beta)», arriba de la hoja del duelo automático (`ListRow` con `toggle`: la fila entera es el interruptor). Las cartas de su turno dicen «La juega en su turno»; apagado, «La usa sólo si juega su turno». */}
+        <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpenTurn(true)}>
+          Abrir la hoja del duelo automático con «El rival juega su turno»
+        </Button>
+        <HandtrapPicker isOpen={openTurn} config={TURN_HAND} auto onClose={() => setOpenTurn(false)} onSave={() => setOpenTurn(false)} />
       </Specimen>
 
       <Specimen

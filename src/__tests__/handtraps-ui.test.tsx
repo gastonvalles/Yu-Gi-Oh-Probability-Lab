@@ -145,7 +145,7 @@ describe('la hoja de las handtraps del rival', () => {
 
     // En el orden del catálogo: Maxx "C" antes que Effect Veiler; la mano, la guardada.
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
-    expect(onSave).toHaveBeenCalledWith([{ ...MAXX, copies: 1 }, { ...VEILER, copies: 1 }], 3, DEFAULT_RIVAL_EXTRA)
+    expect(onSave).toHaveBeenCalledWith([{ ...MAXX, copies: 1 }, { ...VEILER, copies: 1 }], 3, DEFAULT_RIVAL_EXTRA, false)
   })
 
   it('cada carta va hasta 3 copias y el deck del rival no tiene tope: el «+» sólo se apaga en 3', () => {
@@ -180,7 +180,7 @@ describe('la hoja de las handtraps del rival', () => {
 
     fireEvent.click(more(handCounter()))
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
-    expect(onSave).toHaveBeenCalledWith([{ ...ASH, copies: 3 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 3 }], 2, DEFAULT_RIVAL_EXTRA)
+    expect(onSave).toHaveBeenCalledWith([{ ...ASH, copies: 3 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 3 }], 2, DEFAULT_RIVAL_EXTRA, false)
   })
 
   it('con menos cartas que la mano lo avisa (la mano sale más corta); sin ninguna, no deja usarlas', () => {
@@ -215,6 +215,29 @@ describe('la hoja de las handtraps del rival', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('en el duelo automático, arriba, «El rival juega su turno (beta)»: apagado de entrada, la fila entera es el interruptor y se guarda con lo elegido; las cartas de su turno lo dicen', () => {
+    const onSave = vi.fn()
+    const GOLEM = { id: 102380, name: 'Lava Golem' }
+
+    render(<HandtrapPicker isOpen auto config={{ ...SAVED, picks: [...SAVED.picks, { ...GOLEM, copies: 1 }] }} onClose={() => {}} onSave={onSave} />)
+    const own = screen.getByRole('switch', { name: 'El rival juega su turno (beta)' })
+
+    expect(own).toHaveAttribute('aria-checked', 'false')
+    expect(own).toHaveAccessibleDescription('Invoca, coloca, activa sus cartas y ataca: tus combos pueden terminar con daño.')
+    expect(screen.getByText('La usa sólo si juega su turno')).toBeInTheDocument()
+    fireEvent.click(own)
+    expect(own).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('La juega en su turno')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
+    expect(onSave).toHaveBeenCalledWith([{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...GOLEM, copies: 1 }], 3, DEFAULT_RIVAL_EXTRA, true)
+  })
+
+  it('fuera del duelo automático (la práctica manual, las reglas de la sala) no está: ahí el rival no juega', () => {
+    render(<HandtrapPicker isOpen dealsNew config={SAVED} onClose={() => {}} onSave={() => {}} />)
+
+    expect(screen.queryByRole('switch', { name: 'El rival juega su turno (beta)' })).toBeNull()
   })
 
   describe('lo que prohíbe una Dominus (por Atributo, el resto del duelo)', () => {

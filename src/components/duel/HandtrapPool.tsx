@@ -12,6 +12,7 @@ import {
   MIN_RIVAL_HAND,
   poolCount,
   readHandtrapConfig,
+  TURN_RULES,
   writeHandtrapConfig,
   type ExtraPick,
   type HandtrapCard,
@@ -26,6 +27,7 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { ListRow } from '../ui/ListRow'
 import { Modal } from '../ui/Modal'
 import { SearchField } from '../ui/SearchField'
 import { Stepper } from '../ui/Stepper'
@@ -66,9 +68,9 @@ export function HandtrapsRow() {
         isOpen={choosing}
         config={config}
         onClose={() => setChoosing(false)}
-        onSave={(picks, hand, extra) => {
+        onSave={(picks, hand, extra, ownTurn) => {
           // Elegir las handtraps es querer usarlas: el simulador queda encendido.
-          save({ enabled: true, picks, hand, extra })
+          save({ ...config, enabled: true, picks, hand, extra, ownTurn })
           setChoosing(false)
         }}
       />
@@ -103,7 +105,7 @@ export function useHandtrapsSheet({ onApply, auto = false }: { onApply: () => vo
         auto={auto}
         onClose={() => setChoosing(false)}
         // Elegir las handtraps es querer usarlas: el simulador queda encendido.
-        onSave={(picks, hand, extra) => apply({ enabled: true, picks, hand, extra })}
+        onSave={(picks, hand, extra, ownTurn) => apply({ ...config, enabled: true, picks, hand, extra, ownTurn })}
         onTurnOff={config.enabled ? () => apply({ ...config, enabled: false }) : undefined}
       />
     ),
@@ -158,9 +160,15 @@ interface Draft {
   hand: number
   /** Su Extra Deck, en orden de preferencia. */
   extra: ExtraPick[]
+  /** «El rival juega su turno (beta)»: sólo se ve y se cambia en el duelo automático. */
+  ownTurn: boolean
 }
 
 const CATALOG_IDS = new Set(HANDTRAP_CATALOG.map((card) => card.id))
+
+/** En el duelo automático, lo que la carta dice debajo de su nombre: nada si el rival la usa solo; las de su turno, según «El rival juega su turno». */
+const noteOf = (id: number, ownTurn: boolean): { note?: string } =>
+  AUTO_RULES[id] ? {} : TURN_RULES[id] ? { note: t(ownTurn ? 'handtraps.picker.turnCard' : 'handtraps.picker.turnOnly') } : { note: t('handtraps.picker.notAuto') }
 
 /**
  * Lo que una Dominus elegida le deja sin usar al rival (`dominusLocks`), con el Atributo de cada carta de YGOPRODeck: se pide sólo con una Dominus en la lista y una vez por carta.
@@ -195,17 +203,21 @@ const draftOf = (config: HandtrapConfig): Draft => ({
   extras: config.picks.filter((pick) => !CATALOG_IDS.has(pick.id)).map(({ id, name }) => ({ id, name })),
   hand: config.hand,
   extra: (config.extra ?? DEFAULT_RIVAL_EXTRA).map((card) => ({ ...card })),
+  ownTurn: config.ownTurn === true,
 })
 
 interface HandtrapPickerProps {
   isOpen: boolean
   config: HandtrapConfig
   onClose: () => void
-  /** Las handtraps del deck del rival (las cartas con al menos una copia, en el orden del catálogo y después las agregadas), cuántas tiene en la mano y su Extra Deck. */
-  onSave: (picks: HandtrapPick[], hand: number, extra: ExtraPick[]) => void
+  /** Las handtraps del deck del rival (las cartas con al menos una copia, en el orden del catálogo y después las agregadas), cuántas tiene en la mano, su Extra Deck y si juega su turno. */
+  onSave: (picks: HandtrapPick[], hand: number, extra: ExtraPick[], ownTurn: boolean) => void
   /** Dentro de la práctica: aplicar reparte una mano nueva, y la hoja lo avisa abajo. */
   dealsNew?: boolean
-  /** En el duelo automático: aplicar reinicia el duelo (la hoja lo avisa abajo) y las cartas sin regla (`AUTO_RULES`) dicen que el rival todavía no las usa solo. */
+  /**
+   * En el duelo automático: aplicar reinicia el duelo (la hoja lo avisa abajo), arriba va «El rival juega su turno (beta)» y las cartas sin regla (`AUTO_RULES`) dicen que el rival
+   * todavía no las usa solo (las de su turno, `TURN_RULES`, que las juega en su turno o que las usa sólo si lo juega).
+   */
   auto?: boolean
   /** Con el simulador encendido, «Apagar el simulador» (sin caja: es lo que descarta). */
   onTurnOff?: () => void
@@ -284,16 +296,22 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, auto = false,
             <Button variant="tertiary" onClick={onClose}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" disabled={total === 0} onClick={() => onSave(picks, draft.hand, draft.extra)}>
+            <Button variant="primary" disabled={total === 0} onClick={() => onSave(picks, draft.hand, draft.extra, draft.ownTurn)}>
               {t('handtraps.picker.use')}
             </Button>
           </div>
         </div>
       }
     >
+      {/* Lo que cambia qué hace el rival, antes que sus cartas: la fila entera es el interruptor. */}
+      {auto ? (
+        <ul className="m-0 mb-4 list-none border-b border-border-subtle p-0 pb-1">
+          <ListRow title={t('handtraps.picker.ownTurn')} subtitle={t('handtraps.picker.ownTurnHint')} toggle={{ checked: draft.ownTurn, onChange: (ownTurn) => setDraft((current) => ({ ...current, ownTurn })) }} />
+        </ul>
+      ) : null}
       <ul aria-label={t('handtraps.picker.list')} className={POOL_LIST}>
         {entries.map((card) => (
-          <HandtrapPoolCard key={card.id} card={card} copies={copiesOf(card)} onChange={(copies) => setCopies(card, copies)} {...(auto && !AUTO_RULES[card.id] ? { note: t('handtraps.picker.notAuto') } : {})} />
+          <HandtrapPoolCard key={card.id} card={card} copies={copiesOf(card)} onChange={(copies) => setCopies(card, copies)} {...(auto ? noteOf(card.id, draft.ownTurn) : {})} />
         ))}
       </ul>
 

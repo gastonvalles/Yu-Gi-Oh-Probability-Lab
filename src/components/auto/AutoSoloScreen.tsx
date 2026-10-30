@@ -400,9 +400,9 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
         config={handtraps}
         auto
         onClose={() => setChoosing(false)}
-        onSave={(picks, hand) => {
+        onSave={(picks, hand, extra, ownTurn) => {
           setChoosing(false)
-          onHandtraps({ enabled: true, picks, hand })
+          onHandtraps({ enabled: true, picks, hand, extra, ownTurn })
         }}
         {...(handtraps.enabled
           ? {
