@@ -6,11 +6,11 @@ lo que se descarta pasa a «En pausa» con su porqué. Tamaño: S (horas), M (un
 ## En curso
 
 **Bot para jugar en contra** (L, por etapas). Hecho: la interfaz `Bot` (`app/auto/bot/`) con su vista limitada a su asiento, el
-motivo de cada decisión, la hoja «Qué hizo el bot y por qué» y la prueba de privacidad con el núcleo real. Sigue: las reglas de
-reacción que faltan (Skull Meister, Multiplying Kuriboh!, Bystial Magnamhut, Dimension Shifter, Dogmatika Fleurdelis, las «C» de
-contacto, Hecahands Godos); un turno propio mínimo (hoy el bot no juega su Main Phase: Lava Golem, Sphere Mode y Gallant Bandit
-esperan a eso); después, un ejecutor por mazo (Sky Striker, Branded, Ryzeal, Elfnote) con su goldfish y su fuzz. De paso: la hoja
-de handtraps dice «no la usa sola» de más con un arte alternativo agregado desde el buscador (`HandtrapPool.tsx`).
+motivo de cada decisión, la hoja «Qué hizo el bot y por qué», la prueba de privacidad con el núcleo real y las reglas de reacción
+(Skull Meister, Multiplying Kuriboh!, Bystial, Dimension Shifter, Fleurdelis, Godos, los Herald). Sigue: un turno propio mínimo
+(hoy el bot no juega su Main Phase: Lava Golem, Sphere Mode y Gallant Bandit esperan a eso); después, un ejecutor por mazo (Sky
+Striker, Branded, Ryzeal, Elfnote) con su goldfish y su fuzz. Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el
+núcleo tarda ~23 s por jugada) y las que el núcleo ofrece y no están (Shiina, Token Collector, Gnomaterial).
 
 ## Próximo
 
