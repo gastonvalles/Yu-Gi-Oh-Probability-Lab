@@ -14,8 +14,7 @@ import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { autoRival, dealRival, poolCount, readHandtrapConfig, rivalCardOf, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { LifeHold } from '../../app/life-effects'
-import { randomSeed, type MatPhase, type MatState, type RivalHand } from '../../app/practice-mat'
-import type { WireAct } from '../../app/mat-public'
+import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
 import type { ReplayView } from '../../app/duel-replay'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
@@ -87,60 +86,6 @@ function resumedRival(rival: RivalHand | undefined, config: HandtrapConfig): Res
 /** Lo que se deja leer lo que hizo el rival (la carta que activó, grande, y lo que se negó): lo mismo que en el duelo por enlace. */
 export const RIVAL_READ_MS = 3000
 const NOTHING = () => {}
-
-/** Cuánto se ve el cartel de cada fase del rival, y cada cuánto sale el siguiente: lo del cartel de la mesa (`fx-banner`). */
-const RIVAL_PHASE_MS = 1100
-
-/**
- * Las fases que pasa el rival en su turno, de a una, con el cartel del duelo (Gastón, 2026-10-29: «no veo en pantalla el cartel del oponente pasando de fases»). El núcleo juega su turno de una
- * vez (el del simulador de handtraps pasa en un instante) y tu mesa cuenta lo tuyo con su ritmo: cada fase espera a que la mesa llegue a donde pasó (`counted`: tus jugadas de antes, por
- * `order`) y sale `RIVAL_PHASE_MS` después (la primera, después del «Turno de Rival» de tu mesa). La última, la que le devuelve el turno, dice «Tu turno». Repasando, espera; lo que ya
- * había al empezar o al rearmarse el núcleo (`replaying`) no se repite.
- */
-function useRivalPhases(order: readonly ('mine' | 'theirs')[], acts: readonly WireAct[], counted: number, paused: boolean, replaying: boolean, rival: string): DuelMatLink['notice'] {
-  const events = useMemo(() => {
-    const out: { at: number; phase: MatPhase; turnBack: boolean }[] = []
-    let mine = 0
-    let theirs = 0
-
-    for (const who of order) {
-      if (who === 'mine') mine += 1
-      else {
-        const action = acts[theirs++]?.action
-
-        if (action?.type === 'phase') out.push({ at: mine, phase: action.phase, turnBack: Boolean(action.skipDraw) })
-      }
-    }
-    return out
-  }, [order, acts])
-  const [done, setDone] = useState(events.length)
-  const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
-
-  // Otro duelo (la cinta vuelve a empezar) o el núcleo rearmándose: lo que hay, ya se vio.
-  if (done > events.length || (replaying && done !== events.length)) setDone(events.length)
-  const ready = !paused && !replaying && done < events.length && events[done]!.at <= counted
-
-  useEffect(() => {
-    if (!ready) return
-    const next = events[done]!
-    const timer = window.setTimeout(() => {
-      setShown({ key: Date.now(), phase: next.phase, ...(next.turnBack ? { label: t('duel.bar.yourTurn') } : { who: rival }) })
-      setDone(done + 1)
-    }, RIVAL_PHASE_MS)
-
-    return () => window.clearTimeout(timer)
-  }, [ready, events, done, rival])
-  // Se va solo (con menos movimiento queda quieto ese rato).
-  useEffect(() => {
-    if (!shown) return
-    // Sólo el que se ve: el siguiente pudo salir en el mismo instante.
-    const timer = window.setTimeout(() => setShown((current) => (current === shown ? undefined : current)), RIVAL_PHASE_MS)
-
-    return () => window.clearTimeout(timer)
-  }, [shown])
-
-  return shown
-}
 
 const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options) => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...options })
 
@@ -274,7 +219,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
         : undefined,
     [hasManual, session],
   )
-  const asks = useAutoAsks({ session, snap, cardsById, seat, canCancel: true, canUndo: true, waitingText: null, rivalName, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
+  const asks = useAutoAsks({ session, snap, cardsById, seat, canCancel: true, canUndo: true, waitingText: null, rivalName, rivalPhases: true, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
   const { nameOf, artOf } = asks
   // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo). Con la mesa de la práctica rearmada (`resumed`) la mano ya no es de apertura: sin chips.
   const chips = usePracticeChips(lab, asks.matSession)
@@ -392,7 +337,6 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const corner = useMemo(() => (docked ? <LifeScore name={rivalName} label={t('duel.bar.rivalTag')} life={life.theirs} size="lg" /> : undefined), [docked, rivalName, life.theirs])
   const toggleSteps = useCallback(() => setStepsOpen((open) => !open), [])
   const dock = useMemo(() => (docked ? <AutoDock {...options} steps={{ open: stepsOpen, onToggle: toggleSteps }} /> : undefined), [docked, options, stepsOpen, toggleSteps])
-  const notice = useRivalPhases(snap.order, snap.theirsActs, asks.counted, reviewing, snap.replaying, rivalName)
   const link: DuelMatLink = {
     ...asks.mat,
     header,
@@ -401,7 +345,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     ...(docked ? { corner } : { scoreInHeader: true }),
     ...(docked ? { dock } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
-    ...(notice ? { notice } : {}),
+    ...(asks.notice ? { notice: asks.notice } : {}),
     ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),
     // Deshacer va arriba, con los íconos de la práctica.
     undoInHeader: true,
