@@ -371,8 +371,12 @@ export function createAdapter(options: AdapterOptions): Adapter {
     return -1
   }
 
-  /** Dónde está, en la copia del núcleo, la carta de ese lugar: la lista y el índice (en una casilla, la fila entera y su número). */
-  function locate(place: CorePlace & { location: number }, code: number): { list: (Card | null)[]; index: number } | null {
+  /**
+   * Dónde está, en la copia del núcleo, la carta de ese lugar: la lista y el índice (en una casilla, la fila entera y su número). En una bolsa
+   * sólo acomoda las sueltas cuando el núcleo dice algo (un código, o una carta que sale: `leaving`); una consulta sin código (`idAt`, las
+   * preguntas) no cambia nada, así dos adaptadores con los mismos mensajes (el del invitado y el que lo proyecta) eligen las mismas cartas.
+   */
+  function locate(place: CorePlace & { location: number }, code: number, leaving = false): { list: (Card | null)[]; index: number } | null {
     if (isMaterial(place)) {
       const xyz = cardAt({ controller: place.controller, location: baseLocation(place.location), sequence: place.sequence })
       const list = xyz ? materials.get(xyz) : undefined
@@ -392,7 +396,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const pile = list as Card[]
     const card = pile[place.sequence]
 
-    if (card && !card.loose && (code === 0 || card.code === 0 || card.code === code)) return { list, index: place.sequence }
+    if (card && (card.loose ? code === 0 && !leaving : code === 0 || card.code === 0 || card.code === code)) return { list, index: place.sequence }
     // Una suelta: la que corresponde (por su código) pasa a ese lugar. Se corren sólo las sueltas (da lo mismo cuál es cuál), en su orden.
     const other = card?.loose ? bagIndex(pile, code, true) : -1
 
@@ -414,7 +418,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
   }
 
   function take(place: LocPos, code: number): Card | null {
-    const found = locate(place, code)
+    const found = locate(place, code, true)
     const card = found ? (found.list[found.index] ?? null) : null
 
     if (!found || !card) return null

@@ -284,6 +284,15 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(adapter.codeOf({ side: 'theirs', id: shown })).toBe(777)
   })
 
+  it('consultar una bolsa (`idAt`) no la cambia: dos adaptadores con los mismos mensajes roban las mismas copias, se consulte o no', () => {
+    const bagged = () => createAdapter({ seat: 0, mine: { deck: [111, 111, 111, 222], extra: [] }, theirs: { deck: 3, extra: 0 }, typeOf: () => 1, bag: true })
+    const [asked, quiet] = [bagged(), bagged()]
+    const draws = events(0, { type: 'draw', player: 0, drawn: [{ code: 222, position: 10 }, { code: 111, position: 10 }] })
+
+    for (let sequence = 0; sequence < 4; sequence += 1) asked.idAt(at(0, L.DECK, sequence))
+    expect(asked.apply(draws).mine).toEqual(quiet.apply(draws).mine)
+  })
+
   it('una carta que cambia de código en su lugar: `codeOf` sigue al núcleo (el id y el `known` del espejo no cambian)', () => {
     const adapter = make()
 
