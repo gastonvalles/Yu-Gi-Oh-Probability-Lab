@@ -1031,11 +1031,15 @@ export function activeScales(state: MatState, kindOf: (id: string) => MatCardKin
 }
 
 /**
- * La jugada de mandar una carta a una pila. Un Monstruo de Péndulo que **sale del campo al cementerio** (destruido, mandado, usado como Sacrificio) va, por regla, al Extra Deck boca arriba: es la misma jugada con ese destino. Lo demás
- * (otra pila, o una carta que no estaba en el campo) va adonde se dijo.
+ * La jugada de mandar una carta a una pila. Un Monstruo de Péndulo que **sale del campo al cementerio** (destruido, mandado, usado como Sacrificio) va, por regla, al Extra Deck boca arriba, y un monstruo del Extra Deck
+ * que iba a la mano o al deck vuelve al Extra Deck boca abajo: es la misma jugada con ese destino (la arma quien juega, así las dos mesas de un duelo la aplican igual). Lo demás va adonde se dijo.
  */
 export function pileAction(state: MatState, id: string, to: MatPile, kindOf: (id: string) => MatCardKind): MatAction {
-  return to === 'gy' && pendulumOnField(state, id, kindOf) ? { type: 'move', id, to: 'extra', faceUp: true } : { type: 'move', id, to }
+  if (to === 'gy' && pendulumOnField(state, id, kindOf)) return { type: 'move', id, to: 'extra', faceUp: true }
+  // Un monstruo del Extra Deck que iba a la mano o al deck vuelve, por regla, al Extra Deck (boca abajo).
+  if ((to === 'hand' || to === 'deck') && kindOf(id).extra) return { type: 'move', id, to: 'extra' }
+
+  return { type: 'move', id, to }
 }
 
 /**
@@ -1060,6 +1064,10 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const add = (label: string, action: MatAction) => items.push({ label, action })
   /** Una jugada de apoyo: no es una jugada del juego (invocar, colocar, activar). */
   const addUtility = (label: string, action: MatAction) => items.push({ label, action, utility: true })
+  /** Un monstruo del Extra Deck nunca va a la mano: por regla vuelve al Extra Deck (lo ofrece «Al Extra Deck»). */
+  const toHand = () => {
+    if (!kind.extra) add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
+  }
   const target = () => addUtility(state.targeted.includes(id) ? t('practice.menu.untarget') : t('practice.menu.target'), { type: 'target', id })
   const banish = () => items.push({ ...banishItem(id, t('practice.menu.banish')), utility: true })
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
@@ -1107,7 +1115,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (spot === 'st' || spot === 'field') {
       if (placed.pos === 'set') add(t('practice.menu.activate'), { type: 'position', id, pos: 'atk' })
       else if (kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
-      if (placed.pos !== 'set') add(t('practice.menu.turnFaceDown'), { type: 'position', id, pos: 'set' })
+      // Un monstruo del Extra Deck ahí (una Mágica de Equipo) no se pone boca abajo.
+      if (placed.pos !== 'set' && !kind.extra) add(t('practice.menu.turnFaceDown'), { type: 'position', id, pos: 'set' })
     } else {
       if (placed.pos === 'set') {
         add(t('practice.menu.flipSummon'), { type: 'position', id, pos: 'atk' })
@@ -1150,7 +1159,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   if (where.kind === 'material') {
     add(t('practice.menu.detachToGy'), { type: 'move', id, to: 'gy' })
     banish()
-    add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
+    toHand()
+    if (kind.extra) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
     return items
   }
 
@@ -1205,13 +1215,13 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     banish()
   } else if (pile) {
     // Deck, Extra, cementerio o destierro.
-    if (pile === 'deck' || faceUpExtra) add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
+    if (pile === 'deck' || faceUpExtra) toHand()
     // Las Mágicas de Campo se activan directo desde el Deck (hay efectos que lo piden).
     if (pile === 'deck' && kind.fieldSpell) placeIn(t('practice.menu.activate'), ['field'], 'atk')
     // Colocar boca abajo directo desde el Deck (hay efectos que piden "Colocar 1 carta de tu Deck"): Mágicas y Trampas a su zona (la de Campo, a la suya) y monstruos a una Zona de Monstruo.
-    // Un Link (que llegó al Deck arrastrado: la mesa no lo impide) nunca queda boca abajo.
+    // Un monstruo del Extra Deck (de una mesa de antes, cuando podía llegar al Deck) nunca se coloca.
     if (pile === 'deck' && (kind.spell || kind.trap)) placeIn(t('practice.menu.set'), kind.fieldSpell ? ['field'] : ['st'], 'set')
-    else if (pile === 'deck' && kind.monster && !kind.link) placeIn(t('practice.menu.set'), zones, 'set')
+    else if (pile === 'deck' && kind.monster && !kind.extra) placeIn(t('practice.menu.set'), zones, 'set')
 
     const how = pile === 'extra' && !faceUpExtra ? extraSummonOf(kind) : null
 
@@ -1241,7 +1251,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (pile === 'gy' || pile === 'banished') {
       // Efectos que se activan en el cementerio o en el destierro.
       if (kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
-      add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
+      toHand()
       target()
     }
     // Del Deck o del Extra (que nadie ve) se puede mostrar una carta al rival sin moverla.
@@ -1250,7 +1260,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (pile !== 'banished') banish()
   } else {
     // En el campo.
-    add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
+    toHand()
     // Un Monstruo de Péndulo que sale del campo al cementerio va, por regla, al Extra Deck boca arriba: la jugada ya lo hace sola.
     if (leavesToExtra) add(t('practice.menu.toGyPendulum'), pileAction(state, id, 'gy', kindOf))
     else add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })

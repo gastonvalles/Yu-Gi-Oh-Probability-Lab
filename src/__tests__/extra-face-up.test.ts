@@ -11,8 +11,10 @@ const PENDULUM: MatCardKind = { ...MONSTER, pendulum: true }
 const FUSION_PENDULUM: MatCardKind = { ...PENDULUM, extra: true, fusion: true }
 
 const DECK = ['a1', 'p1', 'p2', 'b1', 'c1', 'd1', 'e1']
-const EXTRA = ['x1', 'x2']
-const KINDS: Record<string, MatCardKind> = { a1: MONSTER, p1: PENDULUM, p2: PENDULUM, b1: MONSTER, c1: MONSTER, d1: MONSTER, e1: MONSTER, x1: FUSION_PENDULUM, x2: { ...MONSTER, extra: true, link: true, level: null } }
+const EXTRA = ['x1', 'x2', 'x3']
+const LINK: MatCardKind = { ...MONSTER, extra: true, link: true, level: null }
+const XYZ: MatCardKind = { ...MONSTER, extra: true, xyz: true }
+const KINDS: Record<string, MatCardKind> = { a1: MONSTER, p1: PENDULUM, p2: PENDULUM, b1: MONSTER, c1: MONSTER, d1: MONSTER, e1: MONSTER, x1: FUSION_PENDULUM, x2: LINK, x3: XYZ, 'f.c9': LINK }
 const kindOf = (id: string) => KINDS[id] ?? TOKEN_KIND
 const nameOf = (id: string) => id.toUpperCase()
 const labels = (state: MatState, id: string) => listCardActions(state, id, kindOf, nameOf).map((item) => item.label)
@@ -157,6 +159,77 @@ describe('el menú de una carta con el Extra boca arriba', () => {
     expect(labels(down, 'x1')).toContain('Revelar')
     expect(labels(down, 'x1')).not.toContain('Invocación de Péndulo')
     expect(listCardActions(down, 'x1', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')?.choices?.every((choice) => choice.materials)).toBe(true)
+  })
+})
+
+describe('los monstruos del Extra Deck (Fusión, Sincronía, Xyz, Enlace): reglas de la mesa manual', () => {
+  const inSt = (id: string) => run([{ type: 'place', id, zone: 'st', index: 2, pos: 'atk' }])
+  const inMz = (id: string) => run([{ type: 'place', id, zone: 'mz', index: 0, pos: 'atk', how: 'special' }])
+  const actionOf = (state: MatState, id: string, label: string) => listCardActions(state, id, kindOf, nameOf).find((item) => item.label === label)?.action
+
+  it('en la zona de Mágicas y Trampas (como Mágica de Equipo) no se ponen boca abajo; un monstruo del Main Deck sí', () => {
+    expect(labels(inSt('x2'), 'x2')).not.toContain('Poner boca abajo')
+    expect(labels(inSt('x3'), 'x3')).not.toContain('Poner boca abajo')
+    expect(labels(inSt('x2'), 'x2')).toEqual(expect.arrayContaining(['Al cementerio', 'Al Extra Deck']))
+    expect(labels(inSt('a1'), 'a1')).toContain('Poner boca abajo')
+  })
+
+  it('en una zona de monstruo: un Xyz cambia de posición y se pone boca abajo (Libro de la Luna); un Link, nunca', () => {
+    expect(labels(inMz('x3'), 'x3')).toEqual(expect.arrayContaining(['Pasar a defensa', 'Poner boca abajo']))
+    expect(labels(inMz('x2'), 'x2')).not.toContain('Pasar a defensa')
+    expect(labels(inMz('x2'), 'x2')).not.toContain('Poner boca abajo')
+  })
+
+  it('no ofrecen «A la mano» ni «Al deck» desde el campo, el cementerio, el destierro, como material ni boca arriba en el Extra: «Al Extra Deck», boca abajo', () => {
+    const material = run([
+      { type: 'place', id: 'x3', zone: 'emz', index: 0, pos: 'atk', how: 'special' },
+      { type: 'attach', id: 'x2', to: 'x3' },
+      { type: 'move', id: 'a1', to: 'gy' },
+      { type: 'attach', id: 'a1', to: 'x3' },
+    ])
+    const places = [
+      [inMz('x3'), 'x3'],
+      [inSt('x2'), 'x2'],
+      [run([{ type: 'move', id: 'x3', to: 'gy' }]), 'x3'],
+      [run([{ type: 'move', id: 'x2', to: 'banished' }]), 'x2'],
+      [material, 'x2'],
+    ] as const
+
+    for (const [state, id] of places) {
+      expect(labels(state, id)).not.toContain('A la mano')
+      expect(labels(state, id)).not.toContain('Al deck')
+      expect(actionOf(state, id, 'Al Extra Deck')).toEqual({ type: 'move', id, to: 'extra' })
+    }
+
+    // Un material del Main Deck sigue volviendo a la mano; un Péndulo del Main boca arriba en el Extra también, uno del Extra (Fusión de Péndulo) no.
+    expect(labels(material, 'a1')).toContain('A la mano')
+    expect(labels(run([{ type: 'move', id: 'p1', to: 'extra', faceUp: true }]), 'p1')).toContain('A la mano')
+    expect(labels(run([{ type: 'place', id: 'x1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'move', id: 'x1', to: 'extra', faceUp: true }]), 'x1')).not.toContain('A la mano')
+  })
+
+  it('arrastrado a la mano o al deck (`pileAction`) vuelve al Extra Deck boca abajo; uno del Main, o a otra pila, va adonde se soltó', () => {
+    const fused = inMz('x1')
+    const toExtra = { type: 'move', id: 'x1', to: 'extra' }
+
+    expect(pileAction(fused, 'x1', 'hand', kindOf)).toEqual(toExtra)
+    expect(pileAction(fused, 'x1', 'deck', kindOf)).toEqual(toExtra)
+    expect(pileAction(run([{ type: 'move', id: 'x2', to: 'gy' }]), 'x2', 'hand', kindOf)).toEqual({ type: 'move', id: 'x2', to: 'extra' })
+    expect(pileAction(fused, 'x1', 'banished', kindOf)).toEqual({ type: 'move', id: 'x1', to: 'banished' })
+    expect(pileAction(onField('p1'), 'p1', 'hand', kindOf)).toEqual({ type: 'move', id: 'p1', to: 'hand' })
+
+    const after = matReducer(fused, pileAction(fused, 'x1', 'hand', kindOf))
+
+    expect(after.hand).not.toContain('x1')
+    expect(after.extra).toContain('x1')
+    expect(after.extraUp).toEqual([])
+    expect(describeMatAction(fused, toExtra as MatAction, nameOf)).toBe('X1 vuelve al Extra Deck')
+  })
+
+  it('uno del rival que controlo (`f.`) tampoco va a la mano: «Al Extra Deck» lo devuelve al Extra de su dueño', () => {
+    const taken = matReducer(start(), { type: 'take', id: 'f.c9', zone: 'mz', index: 0, pos: 'atk' })
+
+    expect(labels(taken, 'f.c9')).not.toContain('A la mano')
+    expect(actionOf(taken, 'f.c9', 'Al Extra Deck')).toEqual({ type: 'move', id: 'f.c9', to: 'extra' })
   })
 })
 

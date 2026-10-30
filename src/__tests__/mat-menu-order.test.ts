@@ -60,7 +60,6 @@ describe('el orden del menú pegado a la carta (escritorio)', () => {
     expect(desktop(items, ['x1'])).toEqual([
       'Target',
       '|',
-      'A la mano',
       'Al cementerio',
       'Al Extra Deck',
       'Desterrar',
@@ -108,7 +107,7 @@ describe('el orden del menú pegado a la carta (escritorio)', () => {
     const rows = items.map((item) => ({ entry: { label: item.label } as { label: string; divider?: boolean }, place: menuPlaceOf(item, ['x1']) }))
 
     rows.splice(rows.findIndex((row) => row.entry.label === 'Target'), 0, { entry: { label: 'Señalar' }, place: SUPPORT_PLACE })
-    expect(inMenuBlocks(rows).slice(0, 3).map((entry) => (entry.divider ? `|${entry.label}` : entry.label))).toEqual(['Señalar', 'Target', '|A la mano'])
+    expect(inMenuBlocks(rows).slice(0, 3).map((entry) => (entry.divider ? `|${entry.label}` : entry.label))).toEqual(['Señalar', 'Target', '|Al cementerio'])
   })
 })
 
