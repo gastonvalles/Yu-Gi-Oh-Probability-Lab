@@ -473,7 +473,45 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const pos = posOf(to.location, to.position)
 
     emit(from.controller, { type: 'give', id: matId(card, from.controller) })
-    emit(to.controller, card.owner === to.controller ? { type: 'regain', id: card.id, to: zone, index: spot.index, pos } : { type: 'take', id: `f.${card.id}`, zone, index: spot.index, pos })
+    enter(card, to.controller, zone, spot.index, pos)
+  }
+
+  /** Una carta que otro entregó entra al campo de `player`: vuelve a su dueño o la toma como ajena. */
+  function enter(card: Card, player: Seat, zone: MatTakeZone, index: number, pos: MatPos) {
+    emit(player, card.owner === player ? { type: 'regain', id: card.id, to: zone, index, pos } : { type: 'take', id: `f.${card.id}`, zone, index, pos })
+  }
+
+  /**
+   * Dos cartas del campo cambian de casilla, cada una con su posición. La mesa no pone una carta en una casilla ocupada: del mismo lado, una
+   * pasa por una casilla libre (un lote: una sola jugada); de lados distintos, las dos se entregan antes de que cada una entre donde estaba la otra.
+   */
+  function swap({ card1, card2 }: EventOf<'swap'>) {
+    const a = isMaterial(card1) ? null : locate(card1, 0)
+    const b = isMaterial(card2) ? null : locate(card2, 0)
+    const one = a?.list[a.index]
+    const two = b?.list[b.index]
+    const spot1 = spotOf(card1.location, card1.sequence)
+    const spot2 = spotOf(card2.location, card2.sequence)
+
+    if (!a || !b || !one || !two || !spot1 || !spot2) return note('unsupported: swap')
+    ;[a.list[a.index], b.list[b.index]] = [two, one]
+    const [p1, p2] = [card1.controller as Seat, card2.controller as Seat]
+    const [id1, id2] = [matId(one, p1), matId(two, p2)]
+    const pos1 = placedIn(stateOf(p1), id1)?.pos ?? 'atk'
+    const pos2 = placedIn(stateOf(p2), id2)?.pos ?? 'atk'
+
+    if (p1 === p2) {
+      const state = stateOf(p1)
+      const free = (['mz', 'emz', 'st'] as const).flatMap((zone) => state[zone].flatMap((placed, index) => (placed ? [] : [{ zone, index }])))[0]
+
+      if (!free) return note('unsupported: swap with no free zone')
+      return emit(p1, { type: 'batch', actions: [{ type: 'place', id: id1, ...free, pos: pos1 }, { type: 'place', id: id2, ...spot1, pos: pos2 }, { type: 'place', id: id1, ...spot2, pos: pos1 }] })
+    }
+    if (spot1.zone === 'emz' || spot2.zone === 'emz') return note('unsupported: swap with an Extra Monster Zone')
+    emit(p1, { type: 'give', id: id1 })
+    emit(p2, { type: 'give', id: id2 })
+    enter(one, p2, spot2.zone, spot2.index, pos1)
+    enter(two, p1, spot1.zone, spot1.index, pos2)
   }
 
   function move(event: EventOf<'move'>, rest: readonly WireEvent[]) {
@@ -895,17 +933,11 @@ export function createAdapter(options: AdapterOptions): Adapter {
         }
         return
 
-      // Sin jugada en la mesa (la lista blanca del reporte): `swap` (dos monstruos cambian de dueño a la vez), `shuffle_set_card`
-      // (barajar cartas colocadas entre zonas), `swap_grave_deck` y `reverse_deck`. Quedan en `unmapped`.
-      // Dos cartas del campo intercambian sus lugares (`Duel.SwapSequence`, o de controlador): la copia del núcleo las sigue; la mesa no
-      // tiene una jugada para intercambiar dos casillas ocupadas (lista blanca).
-      case 'swap': {
-        const a = locate(event.card1, 0)
-        const b = locate(event.card2, 0)
-
-        if (a && b && !isMaterial(event.card1) && !isMaterial(event.card2)) [a.list[a.index], b.list[b.index]] = [b.list[b.index] ?? null, a.list[a.index] ?? null]
-        return note('unsupported: swap')
-      }
+      // Dos cartas del campo intercambian sus lugares (`Duel.SwapSequence`) o su controlador (`Duel.SwapControl`); cada una con su posición.
+      case 'swap':
+        return swap(event)
+      // Sin jugada en la mesa (la lista blanca del reporte): `shuffle_set_card` (barajar cartas colocadas entre zonas), `swap_grave_deck` y
+      // `reverse_deck`. Quedan en `unmapped`.
       case 'shuffle_set_card':
       case 'swap_grave_deck':
       case 'reverse_deck':

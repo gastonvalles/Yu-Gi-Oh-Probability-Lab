@@ -247,6 +247,29 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
 
   const hidden = (count: number) => Array.from({ length: count }, () => ({ code: 0, position: 10 }))
 
+  it('`swap`: dos cartas del campo cambian de casilla, cada una con su posición (del mismo lado, por una libre; de lados distintos, se entregan las dos)', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(2) }))
+    adapter.apply(events(0, move(777, at(1, L.HAND, 0, 10), at(1, L.MZONE, 1)), move(778, at(1, L.HAND, 0, 10), at(1, L.MZONE, 3, P.FACEUP_DEFENSE))))
+    const [one, two] = [adapter.idAt(at(1, L.MZONE, 1))!, adapter.idAt(at(1, L.MZONE, 3))!]
+    const out = adapter.apply(events(0, { type: 'swap', card1: { code: 777, ...at(1, L.MZONE, 1) }, card2: { code: 778, ...at(1, L.MZONE, 3, P.FACEUP_DEFENSE) } }))
+
+    expect(out.unmapped).toEqual([])
+    expect(out.theirs).toHaveLength(1)
+    expect(adapter.theirs.state.mz[1]).toMatchObject({ id: two, pos: 'def' })
+    expect(adapter.theirs.state.mz[3]).toMatchObject({ id: one, pos: 'atk' })
+    expect(adapter.idAt(at(1, L.MZONE, 1))).toBe(two)
+    // De lados distintos (Creature Swap): mi carta pasa a su campo y la suya al mío.
+    adapter.apply(events(0, { type: 'draw', player: 0, drawn: [{ code: 111, position: 10 }] }, move(111, at(0, L.HAND, 0, 10), at(0, L.MZONE, 0))))
+    const crossed = adapter.apply(events(0, { type: 'swap', card1: { code: 111, ...at(0, L.MZONE, 0) }, card2: { code: 778, ...at(1, L.MZONE, 1, P.FACEUP_DEFENSE) } }))
+
+    expect(crossed.unmapped).toEqual([])
+    expect(adapter.mine.mz[0]).toMatchObject({ id: `f.${two}`, pos: 'def' })
+    expect(adapter.theirs.state.mz[1]).toMatchObject({ id: 'f.card-111-1', pos: 'atk' })
+    expect(adapter.idAt(at(0, L.MZONE, 0))).toBe(`f.${two}`)
+  })
+
   it('una bolsa sigue el orden del núcleo: la carta que el núcleo nombró en un lugar es la que sale de ahí después, aunque salga oculta', () => {
     const adapter = make()
 
@@ -260,5 +283,4 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(adapter.theirs.state.banished).toEqual([shown])
     expect(adapter.codeOf({ side: 'theirs', id: shown })).toBe(777)
   })
-
 })
