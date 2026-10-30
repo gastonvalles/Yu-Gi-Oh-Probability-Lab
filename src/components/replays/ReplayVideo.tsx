@@ -102,11 +102,13 @@ export const isLongVideo = (subject: VideoSubject) => videoDurationMs(subject, 1
  * opciones, para guardarlo también.
  */
 export function videoStage(state: Exclude<VideoState, { stage: 'idle' }>, actions: { cancel: () => void; retry: () => void; back?: () => void }): { title: string; body: ReactNode; footer: ReactNode } {
-  const back = actions.back ? (
-    <Button variant="tertiary" onClick={actions.back}>
-      {t('meta.duels.video.back')}
-    </Button>
-  ) : null
+  const backButton = (className?: string) =>
+    actions.back ? (
+      <Button variant="tertiary" className={className} onClick={actions.back}>
+        {t('meta.duels.video.back')}
+      </Button>
+    ) : null
+  const back = backButton()
   if (state.stage === 'working') {
     const percent = Math.round(state.progress * 100)
     return {
@@ -146,17 +148,21 @@ export function videoStage(state: Exclude<VideoState, { stage: 'idle' }>, action
     body: (
       <Callout tone="success">{t('meta.duels.video.readyHint', { duration: clock(state.durationMs) })}</Callout>
     ),
+    // Compartir y Guardar van juntos, en una fila desde 360 px: sin ícono (con ícono no entran en la hoja de un celular) y sin partirse entre ellos; «Volver», si está, queda
+    // a la izquierda y, si no entra, solo en su fila de arriba.
     footer: (
       <>
-        {back}
-        {canShare(file) ? (
-          <Button variant="secondary" icon="send" onClick={() => void navigator.share({ files: [file], title: file.name }).catch(() => undefined)}>
-            {t('meta.duels.video.share')}
+        {backButton('mr-auto')}
+        <div className="flex flex-wrap justify-end gap-2">
+          {canShare(file) ? (
+            <Button variant="secondary" onClick={() => void navigator.share({ files: [file], title: file.name }).catch(() => undefined)}>
+              {t('meta.duels.video.share')}
+            </Button>
+          ) : null}
+          <Button variant="primary" onClick={() => saveFile(file)}>
+            {t('meta.duels.video.save')}
           </Button>
-        ) : null}
-        <Button variant="primary" icon="download" onClick={() => saveFile(file)}>
-          {t('meta.duels.video.save')}
-        </Button>
+        </div>
       </>
     ),
   }

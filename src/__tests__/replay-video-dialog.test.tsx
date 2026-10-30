@@ -115,7 +115,10 @@ describe('«Descargar video» en «Guardar replay»', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Descargar video' }))
     await waitFor(() => expect(fake.calls).toHaveLength(1))
     await finish()
-    expect(screen.getByRole('button', { name: 'Compartir video' })).toBeInTheDocument()
+    const share = screen.getByRole('button', { name: 'Compartir video' })
+    // Compartir y Guardar van juntos (no se parten entre ellos en el celular) y «Volver» queda aparte, a la izquierda.
+    expect(share.parentElement).toBe(screen.getByRole('button', { name: 'Guardar video' }).parentElement)
+    expect(screen.getByRole('button', { name: 'Volver' }).parentElement).not.toBe(share.parentElement)
   })
 
   it('un duelo de más de 6 minutos de video ofrece «Rápido (2×)», prendido', async () => {
