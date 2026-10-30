@@ -4,7 +4,7 @@
 
 @docs/ux-ui-guidelines.md
 
-Reglas visuales, componentes y tokens: `docs/design-system.md`. El catálogo vivo es `/playground`: todo cambio de diseño se prueba ahí primero y después se lleva a las pantallas.
+Reglas visuales y tokens: `docs/design-system.md`. El catálogo vivo de los componentes es `/playground`: todo cambio de diseño se prueba ahí primero y después se lleva a las pantallas.
 
 ## Estilos: Tailwind, nunca CSS puro
 
@@ -16,7 +16,7 @@ El repo es público y la licencia es la AGPL-3.0-or-later (`LICENSE`, `NOTICE.md
 
 ## Retomar el trabajo
 
-Sin contexto previo (otra PC, sin la memoria de Claude), leé `docs/retomar.md`: cómo arrancar, las decisiones en pie, lo pendiente y la forma de trabajo.
+Sin contexto previo (otra PC, sin la memoria de Claude), leé `docs/retomar.md` (cómo arrancar, las decisiones en pie y la forma de trabajo) y `docs/roadmap.md` (lo pendiente).
 
 ## Documentación
 
