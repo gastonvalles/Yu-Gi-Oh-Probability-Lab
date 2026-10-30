@@ -120,10 +120,12 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
 
 /**
  * Lo que el rival juega en su propio turno con «El rival juega su turno» (`HandtrapConfig.ownTurn`; `auto/bot/turn.ts`), además de Invocar su relleno y atacar. Las tres de Gastón
- * Tributan monstruos tuyos (`golem`, `sphere`, `bandit`); `sweepMonsters` / `sweepSpells` barren lo tuyo en su Main Phase; `counter` se coloca y niega tu Invocación o tu efecto;
- * `evenly` (Evenly Matched, `AUTO_RULES`) se coloca para tu Battle Phase. Un arte alternativo usa la regla de su original (`alias`).
+ * Tributan monstruos tuyos (`golem`, `sphere`, `bandit`); `sweepMonsters` / `sweepSpells` barren lo tuyo en su Main Phase y `storm` (Lightning Storm), lo que más se lleva: tus
+ * monstruos en ataque o tus Mágicas y Trampas; `counter` se coloca y niega tu Invocación o tu efecto. También se colocan para tu turno: `evenly` (Evenly Matched, `AUTO_RULES`),
+ * `moon` (Book of Moon: pone boca abajo al monstruo que te declara un ataque que le destruye uno suyo, o directo de 2000 o más o letal) y `called` (Called by the Grave: destierra
+ * de tu cementerio el monstruo de tu eslabón, lo que niega ese efecto; en su turno, también desde la mano). Un arte alternativo usa la regla de su original (`alias`).
  */
-export type TurnRule = 'golem' | 'sphere' | 'bandit' | 'sweepMonsters' | 'sweepSpells' | 'counter' | 'evenly'
+export type TurnRule = 'golem' | 'sphere' | 'bandit' | 'sweepMonsters' | 'sweepSpells' | 'storm' | 'counter' | 'evenly' | 'moon' | 'called'
 
 export const TURN_RULES: Readonly<Record<number, TurnRule>> = {
   102380: 'golem', // Lava Golem
@@ -135,7 +137,10 @@ export const TURN_RULES: Readonly<Record<number, TurnRule>> = {
   40605147: 'counter', // Solemn Strike
   41420027: 'counter', // Solemn Judgment
   84749824: 'counter', // Solemn Warning
+  14532163: 'storm', // Lightning Storm (sólo sin cartas boca arriba suyas: antes de Invocar)
   15693423: 'evenly', // Evenly Matched
+  14087893: 'moon', // Book of Moon
+  24224830: 'called', // Called by the Grave
 }
 
 /**

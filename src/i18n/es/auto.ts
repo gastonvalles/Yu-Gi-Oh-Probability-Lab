@@ -70,6 +70,10 @@ export const auto = {
   'auto.bot.reason.handtrap.evenly': 'Activé {card} al final de la Battle Phase: tenés {count} cartas más que yo en el campo y las desterrás boca abajo (elegís vos cuáles).',
   'auto.bot.reason.hold.evenly': 'No activé {card}: tenés una sola carta más que yo y elegirías la que menos te importa.',
   'auto.bot.reason.play.setEvenly': 'Coloqué {card}: la activo al final de tu Battle Phase si tenés más cartas que yo.',
+  'auto.bot.reason.play.setMoon': 'Coloqué {card}: si me atacás para destruir un monstruo mío o con un golpe fuerte, pongo tu atacante boca abajo.',
+  'auto.bot.reason.play.setCalled': 'Coloqué {card}: si activás un monstruo en tu cementerio, lo destierro y su efecto queda negado.',
+  'auto.bot.reason.play.moon': 'Usé {card} contra tu {to}: lo pongo boca abajo y su ataque se frena.',
+  'auto.bot.reason.play.called': 'Usé {card} contra {to}: lo destierro de tu cementerio y su efecto queda negado.',
 
   // La pregunta de sí o no del núcleo, en la mesa: corta y sin el nombre de la carta (la dice su arte). Arriba, chico, qué pasó justo antes, sin nombres.
   'auto.ask.effect': '¿Activás el efecto?',

@@ -8,15 +8,15 @@ import { handtrapBot } from './rivals'
  * «El rival juega su turno» (beta): el rival de handtraps que además juega su Main Phase y su Battle Phase con lo que le ofrece el núcleo (que ya filtra lo legal). Decide sólo con su
  * vista (`BotView`) y con los datos impresos de las cartas (`factsOf`, del `.cdb`: lo sabe cualquiera que lea la carta). En cada `select_idlecmd`, la primera que conviene de:
  * 1. traer a Ra con Sphere Mode que volvió a su campo (si el núcleo se lo ofrece, tiene a Ra en la mano o el Deck);
- * 2. un barrido (`sweepMonsters` / `sweepSpells`) si se lleva al menos una carta tuya (el bot no tiene un plan donde valga más después y abre el ataque directo);
+ * 2. un barrido (`sweepMonsters` / `sweepSpells` / `storm`) si se lleva al menos una carta tuya (el bot no tiene un plan donde valga más después y abre el ataque directo);
  * 3. las que Tributan tus monstruos, de la que más te saca a la que menos: Sphere Mode (3, con su campo vacío), Gallant Bandit con 2 de los tuyos, Lava Golem (2; antes de la
  *    Invocación Normal, porque después ya no se puede) y Gallant Bandit con uno tuyo y relleno de su mano (sólo con su relleno, no: se juega para sacarte monstruos);
  * 4. Invocar de modo Normal su monstruo de más ATK (sin Tributar salvo que el nuevo valga más), o colocarlo si tenés uno boca arriba con más ATK;
- * 5. colocar sus negaciones (`counter`) y lo que usa en tu turno (Evenly Matched);
+ * 5. colocar sus negaciones (`counter`) y lo que usa en tu turno (Evenly Matched, Book of Moon, Called by the Grave);
  * 6. la Battle Phase si tiene un ataque seguro: directo sin monstruos tuyos, o contra uno boca arriba que destruye sin perder el suyo (ATK contra ATK o DEF). Lo boca abajo no lo ataca;
  * 7. terminar el turno.
  * Los Tributos que elige: tus monstruos de más ATK primero (boca abajo, al final), después lo suyo de menos valor, y nunca primero una handtrap con regla. En tus turnos responde como el de
- * handtraps; además niega con sus `counter` colocadas (contra tu eslabón o tu Invocación) y usa los dos efectos de Gallant Bandit. Un tope de `MAX_IDLE` jugadas por turno evita
+ * handtraps; además niega con sus `counter` colocadas (contra tu eslabón o tu Invocación), usa los dos efectos de Gallant Bandit, Book of Moon y Called by the Grave. Un tope de `MAX_IDLE` jugadas por turno evita
  * un turno eterno; el núcleo rechaza lo ilegal y la sesión contesta entonces con la de reserva.
  */
 
@@ -38,7 +38,19 @@ const RA = 10000010
 /** Las jugadas de `select_idlecmd` de un turno que el bot contesta como mucho: pasado el tope, termina el turno. ponytail: un tope fijo; si un mazo de verdad juega más, se sube. */
 export const MAX_IDLE = 30
 
-type Pending = { play: TurnRule | 'summon' } | { play: 'attack'; attacker: number; target: number }
+const GRAVE = 0x10
+/** `TIMING_ATTACK`: en `hint_timing_other`, la ventana que abre tu declaración de ataque. */
+const ATTACK_TIMING = 0x1000
+/** Lo que coloca para usar en tu turno, con su motivo. */
+const SET_FOR_YOUR_TURN: Partial<Record<TurnRule, BotReason['key']>> = { evenly: 'auto.bot.reason.play.setEvenly', moon: 'auto.bot.reason.play.setMoon', called: 'auto.bot.reason.play.setCalled' }
+/** Para qué guarda las de tu turno (el motivo `hold.*` de las handtraps). */
+const HOLD_FOR: Partial<Record<TurnRule, string>> = { moon: 'attack', called: 'graveyard' }
+
+type Pending =
+  | { play: Exclude<TurnRule, 'storm' | 'moon'> | 'summon' }
+  | { play: 'storm'; choice: number }
+  | { play: 'attack'; attacker: number; target: number }
+  | { play: 'moon'; attacker: number }
 type IdleAsk = AskOf<'select_idlecmd'>
 
 const NO_FACTS = () => undefined
@@ -76,6 +88,25 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
     })
 
     return best as { i: number; target: number | null; value: number } | null
+  }
+
+  /**
+   * Tu ataque recién declarado (el último del historial), si conviene frenarlo con Book of Moon: destruye un monstruo suyo, o es directo de 2000 o más (o letal). Un golpe chico no
+   * la gasta. ponytail: tu atacante se reconoce por su código; con dos iguales boca arriba, apunta al primero.
+   */
+  function stopAttack(view: BotView): { code: number } | null {
+    const last = [...view.history].reverse().find((event) => event.kind === 'attack')
+
+    if (last?.kind !== 'attack' || last.side !== 'them') return null
+    const attacker = view.them.monsters.find((card) => card?.code === last.code && card.pos === 'atk')
+    const atk = atkOf(attacker)
+
+    if (!attacker) return null
+    if (last.target === null) return atk >= 2000 || atk >= view.lp.me ? { code: last.code } : null
+    const target = view.me.monsters.find((card) => card !== null && card.code === last.target)
+    const guard = target?.pos === 'atk' ? atkOf(target) : (target?.stats?.defense ?? factsOf(target?.code ?? 0)?.defense ?? 0)
+
+    return target && atk > guard ? { code: last.code } : null
   }
 
   /** Sus monstruos boca arriba en ataque (los que pueden atacar). */
@@ -116,14 +147,17 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
 
     if (sphere >= 0) return play(5, sphere, { key: 'auto.bot.reason.play.ra', cards: [ask.activates[sphere]!.code, RA] }, 'turn.ra')
 
-    // 2. Un barrido que se lleva algo tuyo (los de monstruos, con más tuyos que suyos: Dark Hole también se lleva los suyos).
+    // 2. Un barrido que se lleva algo tuyo (los de monstruos, con más tuyos que suyos: Dark Hole también se lleva los suyos). Lightning Storm (el núcleo la ofrece sólo sin cartas
+    // boca arriba suyas), lo que más se lleva: tus monstruos en ataque (si empata, éstos: le abren el ataque) o tus Mágicas y Trampas.
     const yourSpells = view.them.spells.filter((card) => card !== null).length
+    const yourAttackers = yours.filter((card) => card.pos === 'atk').length
 
     for (const [i, card] of ask.activates.entries()) {
       const rule = card.location === HAND || card.location === SZONE ? turnRule(card.code) : undefined
-      const hits = rule === 'sweepMonsters' && yours.length > own.length ? yours.length : rule === 'sweepSpells' ? yourSpells : 0
+      const hits = rule === 'sweepMonsters' && yours.length > own.length ? yours.length : rule === 'sweepSpells' ? yourSpells : rule === 'storm' ? Math.max(yourAttackers, yourSpells) : 0
+      const next = rule === 'storm' ? { play: 'storm' as const, choice: yourAttackers >= yourSpells ? 0 : 1 } : null
 
-      if (hits > 0) return play(5, i, { key: 'auto.bot.reason.play.sweep', cards: [card.code], params: { count: hits } }, `turn.sweep`)
+      if (hits > 0) return play(5, i, { key: 'auto.bot.reason.play.sweep', cards: [card.code], params: { count: hits } }, `turn.sweep`, next)
     }
 
     // 3. Lo que Tributa tus monstruos, de lo que más te saca a lo que menos.
@@ -159,10 +193,11 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
 
     // 5. Sus negaciones, colocadas, y lo que usa en tu turno.
     const counter = find(ask.spell_sets, (card) => turnRule(card.code) === 'counter')
-    const trap = find(ask.spell_sets, (card) => turnRule(card.code) === 'evenly')
+    const setKey = (code: number) => SET_FOR_YOUR_TURN[turnRule(code) ?? 'counter']
+    const later = find(ask.spell_sets, (card) => setKey(card.code) !== undefined)
 
     if (counter >= 0) return play(4, counter, { key: 'auto.bot.reason.play.setCounter', cards: [ask.spell_sets[counter]!.code] }, 'turn.setCounter')
-    if (trap >= 0) return play(4, trap, { key: 'auto.bot.reason.play.setEvenly', cards: [ask.spell_sets[trap]!.code] }, 'turn.setEvenly')
+    if (later >= 0) return play(4, later, { key: setKey(ask.spell_sets[later]!.code)!, cards: [ask.spell_sets[later]!.code] }, `turn.set.${turnRule(ask.spell_sets[later]!.code)}`)
 
     // 6. La Battle Phase, si tiene un ataque seguro.
     if (ask.to_bp && bestAttack(view, attackersOf(view))) {
@@ -234,19 +269,53 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
       pending = null
       if (index >= 0) return { answer: { type: ask.type, indices: [index] }, reason: { key: 'auto.bot.reason.battle.safe', cards: [attacker, view.them.monsters[target]?.code ?? 0] }, rule: 'turn.attack.safe' }
     }
+    // Lightning Storm: la opción (`n` del `desc`: 0 tus monstruos en ataque, 1 tus Mágicas y Trampas) que eligió al activarla.
+    if (mine && ask.type === 'select_option' && pending?.play === 'storm') {
+      const { choice } = pending
+      const index = ask.options.findIndex((option) => Number(BigInt(option) & 0xfffffn) === choice)
+
+      pending = null
+      if (index >= 0) return { answer: { type: ask.type, index }, rule: 'turn.storm' }
+    }
+    // Book of Moon: el objetivo es tu monstruo que atacó (boca arriba, por su código).
+    if (!mine && ask.type === 'select_card' && pending?.play === 'moon') {
+      const { attacker } = pending
+      const index = ask.selects.findIndex((card) => card.controller !== view.seat && card.location === MZONE && card.code === attacker)
+
+      pending = null
+      if (index >= 0) return { answer: { type: ask.type, indices: [index] }, rule: 'turn.moon.target' }
+    }
+    // Called by the Grave: el objetivo es la carta de tu eslabón, en tu cementerio (el de abajo del suyo).
+    const below = view.chain.at(-2)
+    const at = below?.card?.ref.side === 'theirs' ? below.card.place : null
+
+    if (ask.type === 'select_card' && at && view.chain.at(-1)?.card?.ref.side === 'mine' && turnRule(view.chain.at(-1)!.code) === 'called') {
+      const index = ask.selects.findIndex((card) => card.controller === at.controller && card.location === at.location && card.sequence === at.sequence)
+
+      if (index >= 0) return { answer: { type: ask.type, indices: [index] }, reason: { key: 'auto.bot.reason.target.link', cards: [view.chain.at(-1)!.code, below!.code] }, rule: 'turn.called.target' }
+    }
 
     const decision = reacts(ask, view, context)
 
     if (ask.type !== 'select_chain' || ask.forced || decision.answer.type !== 'select_chain' || decision.answer.index !== null) return decision
-    // Lo de su campo: sus negaciones colocadas y los dos efectos de Gallant Bandit (`n` del `desc`: 1 niega, 2 te pasa a defensa en tu Battle Phase).
+    // Lo de su campo: sus negaciones colocadas, los dos efectos de Gallant Bandit (`n` del `desc`: 1 niega, 2 te pasa a defensa en tu Battle Phase), Book of Moon contra tu ataque y
+    // Called by the Grave (también de la mano, en su turno) contra un monstruo tuyo que activás en tu cementerio (o que llegó ahí al activarse, como Ash Blossom).
     const top = view.chain.at(-1)
     const yours = top?.card?.ref.side === 'theirs' && top.state === 'chained'
+    const fromYourGrave = yours && top.card!.place?.location === GRAVE && top.card!.place.controller !== view.seat && ((factsOf(top.code)?.type ?? 0) & MONSTER) !== 0
+    const attack = !mine && view.chain.length === 0 && (ask.hint_timing_other & ATTACK_TIMING) !== 0 ? stopAttack(view) : null
 
     for (const [index, card] of ask.selects.entries()) {
-      const rule = card.location === MZONE || card.location === SZONE ? turnRule(card.code) : undefined
+      const its = turnRule(card.code)
+      const rule = card.location === MZONE || card.location === SZONE || its === 'called' ? its : undefined
       const n = Number(BigInt(card.description) & 0xfffffn)
       const use = (reason: BotReason, id: string): BotDecision => ({ answer: { type: ask.type, index }, reason, rule: id })
 
+      if (rule === 'called' && fromYourGrave) return use({ key: 'auto.bot.reason.play.called', cards: [card.code, top.code] }, 'turn.called')
+      if (rule === 'moon' && attack) {
+        pending = { play: 'moon', attacker: attack.code }
+        return use({ key: 'auto.bot.reason.play.moon', cards: [card.code, attack.code] }, 'turn.moon')
+      }
       if (rule === 'counter' && yours) return use({ key: 'auto.bot.reason.handtrap.respond', cards: [card.code, top.code] }, 'turn.counter')
       if (rule === 'counter' && !mine && view.chain.length === 0) return use({ key: 'auto.bot.reason.play.counterSummon', cards: [card.code] }, 'turn.counter.summon')
       if (rule === 'bandit' && n === 1 && yours) return use({ key: 'auto.bot.reason.handtrap.respond', cards: [card.code, top.code] }, 'turn.bandit.negate')
@@ -254,6 +323,9 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
         return use({ key: 'auto.bot.reason.play.banditDefense', cards: [card.code] }, 'turn.bandit.defense')
       }
     }
-    return decision
+    // Las que guardó contra tu eslabón dicen para qué, en vez de «no sé cuándo conviene».
+    const held = decision.rule === 'handtrap.hold.noRule' && decision.reason?.cards ? HOLD_FOR[turnRule(decision.reason.cards[0]!) ?? 'counter'] : undefined
+
+    return held ? { ...decision, reason: { ...decision.reason!, key: `auto.bot.reason.hold.${held}` }, rule: `handtrap.hold.${held}` } : decision
   }
 }
