@@ -50,6 +50,23 @@ export const auto = {
   'auto.bot.reason.hold.noRule': 'Tenía {card} y no la usé contra {to}: todavía no sé cuándo conviene.',
   'auto.bot.reason.hold.other': 'Tenía {card} y no la usé contra {to}.',
   'auto.bot.reason.end.noPlays': 'Terminé el turno: no juego cartas al campo, sólo uso handtraps.',
+  // «El rival juega su turno» (beta): lo que hace en su Main Phase y su Battle Phase.
+  'auto.bot.reason.play.ra': 'Tributé {card} para Invocar a {to} con 4000 de ATK y DEF.',
+  'auto.bot.reason.play.sweep': { one: 'Activé {card}: se lleva tu carta.', other: 'Activé {card}: se lleva {count} de tus cartas.' },
+  'auto.bot.reason.play.sphere': 'Invoqué {card} Tributando 3 de tus monstruos: vuelve a mi lado al final del próximo turno.',
+  'auto.bot.reason.play.bandit': 'Invoqué {card} Tributando primero tus monstruos: con él niego tus efectos desde la mano, el cementerio o el destierro.',
+  'auto.bot.reason.play.golem': 'Invoqué {card} en tu campo Tributando 2 de tus monstruos, antes de mi Invocación Normal: después ya no se puede.',
+  'auto.bot.reason.play.summon': 'Invoqué {card}: es mi monstruo de más ATK.',
+  'auto.bot.reason.play.set': 'Coloqué un monstruo boca abajo: tu {to} tiene más ATK que los míos.',
+  'auto.bot.reason.play.setCounter': 'Coloqué {card}: niega tu próxima Invocación o tu efecto.',
+  'auto.bot.reason.play.counterSummon': 'Usé {card} contra tu Invocación.',
+  'auto.bot.reason.play.banditDefense': 'Revelé mi mano con {card}: tus monstruos pasaron a defensa y no pueden atacar.',
+  'auto.bot.reason.target.threat': 'Tributé tu {card}: es el de más ATK que podía sacarte.',
+  'auto.bot.reason.battle.safe': 'Ataqué a {to} con {card}: lo destruyo sin perder el mío.',
+  'auto.bot.reason.battle.direct': 'Ataqué directo con {card}: no tenés monstruos.',
+  'auto.bot.reason.end.done': 'Terminé el turno: no me quedaban jugadas que convengan.',
+  'auto.bot.reason.end.faceDown': 'Terminé el turno sin atacar con {card}: tus monstruos están boca abajo y no sé qué son.',
+  'auto.bot.reason.end.noSafeAttack': 'Terminé el turno sin atacar: {card} no gana el combate contra tu {to} y lo boca abajo no lo ataco.',
 
   // La pregunta de sí o no del núcleo, en la mesa: corta y sin el nombre de la carta (la dice su arte). Arriba, chico, qué pasó justo antes, sin nombres.
   'auto.ask.effect': '¿Activás el efecto?',

@@ -9,6 +9,7 @@ import type { WorkerData } from './core-host.worker'
 import { bagOrder, teamOrder, type DeckList } from './deck-map'
 import { botViewOf, publicEventsOf, type Bot, type BotContext, type BotReason, type PublicEvent } from './bot/bot'
 import { handtrapBot, passiveBot } from './bot/rivals'
+import { turnBot, type CardFacts } from './bot/turn'
 import { mulberry32, randomLegalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
 import { RESUME_FLAGS, setupOf } from './resume'
@@ -164,9 +165,9 @@ export interface SessionOptions {
   /**
    * El rival con handtraps (`autoRival` de `handtraps.ts`): esas cartas van en su deck antes del relleno (que lo completa hasta su tamaño), su mano de arranque es
    * `hand(semilla)` y las usa con `handtrapPolicy`, en el orden de `main`; `extra` es su Extra Deck, en orden de preferencia para los costos (sin él, `DEFAULT_RIVAL_EXTRA`).
-   * Sin esto, el rival pasivo de 40 Normales, con el Extra de siempre (nunca lo usa, pero hay cartas tuyas que lo miran).
+   * Sin esto, el rival pasivo de 40 Normales, con el Extra de siempre (nunca lo usa, pero hay cartas tuyas que lo miran). Con `ownTurn`, además juega su turno (`turnBot`).
    */
-  rival?: { main: readonly (readonly [number, number])[]; extra?: readonly (readonly [number, number])[]; hand: (seed: number) => number[] } | null
+  rival?: { main: readonly (readonly [number, number])[]; extra?: readonly (readonly [number, number])[]; hand: (seed: number) => number[]; ownTurn?: boolean } | null
   /** Cada evento del anfitrión tal como llega (para un registro). */
   onEvent?: (event: AutoEvent) => void
   thinkingMs?: number
@@ -294,8 +295,10 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const aliases = new Map<number, number>()
   /** El Atributo de cada carta del duelo (público: es la carta): las Bystial sólo destierran LUZ u OSCURIDAD. */
   const attributes = new Map<number, number>()
-  const bot: Bot =
-    options.bot ?? (rival ? handtrapBot(rival.main.map(([code]) => code), rivalExtra.map(([code]) => code), (code) => aliases.get(code) ?? 0, (code) => attributes.get(code) ?? 0) : passiveBot())
+  /** Lo impreso de cada carta del duelo (público: es la carta), para el rival que juega su turno: el ATK de lo que tiene en la mano, su Nivel, si es un monstruo. */
+  const facts = new Map<number, CardFacts>()
+  const handtrapArgs = [rival?.main.map(([code]) => code) ?? [], rivalExtra.map(([code]) => code), (code: number) => aliases.get(code) ?? 0, (code: number) => attributes.get(code) ?? 0] as const
+  const bot: Bot = options.bot ?? (rival?.ownTurn ? turnBot(...handtrapArgs, (code) => facts.get(code)) : rival ? handtrapBot(...handtrapArgs) : passiveBot())
   const newBotSeed = () => Math.floor(Math.random() * 2 ** 32) >>> 0
   let botSeed = (options.botSeed ?? newBotSeed()) >>> 0
   /** El azar del bot (piedra, papel o tijera), con su semilla: el mismo duelo, la misma mano. */
@@ -615,6 +618,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     for (const card of data.cards) {
       if (card.alias) aliases.set(card.code, card.alias)
       attributes.set(card.code, card.attribute)
+      facts.set(card.code, { type: card.type, attack: card.attack, defense: card.defense, level: card.level })
     }
     build = (seed) => {
       // Con handtraps, el rival roba al empezar justo su mano (la del simulador con esa semilla), que va arriba de su deck.

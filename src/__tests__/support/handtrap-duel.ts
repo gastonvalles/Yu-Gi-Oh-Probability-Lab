@@ -15,8 +15,9 @@ import { cardRows, hasCoreData, nodeSource, scriptStore, wasmBinary } from './co
 
 const IDLE = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
 /** Una jugada tuya en un `select_idlecmd` (su `action`: 0 Normal, 1 Especial, 4 colocar una Mágica o Trampa, 5 activar). */
-const ACTION = { summon: 0, spsummon: 1, set: 4, activate: 5 } as const
-export type Step = { do: keyof typeof ACTION; code: number } | { do: 'battle' } | { do: 'attack'; code: number }
+const ACTION = { summon: 0, spsummon: 1, mset: 3, set: 4, activate: 5 } as const
+/** `end` termina tu turno (para que juegue el rival el suyo) y `mset` coloca un monstruo. */
+export type Step = { do: keyof typeof ACTION; code: number } | { do: 'battle' | 'end' } | { do: 'attack'; code: number }
 
 export interface DuelScenario {
   /** Tu deck (sin contar la mano) y tu mano, arriba en ese orden. */
@@ -24,6 +25,8 @@ export interface DuelScenario {
   extra?: [number, number][]
   hand: number[]
   steps: Step[]
+  /** Lo que elegís al buscar, mandar al cementerio o revivir (`select_card` de una), en orden de preferencia; sin esto, la primera. */
+  wants?: number[]
 }
 
 /** Las cartas de H3 (bot para jugar en contra): cada una con su uso y su no uso en `auto-handtraps-h3.slow.test.ts`. */
@@ -31,7 +34,7 @@ export const H3_CARDS = [67750322, 46502744, 68144894, 14965712, 33854624, 66373
 
 const END = (type: 'select_idlecmd'): CoreAnswer => ({ type, action: 7, index: null })
 
-function player(steps: readonly Step[]) {
+function player(steps: readonly Step[], wants: readonly number[] = []) {
   const passive = passivePolicy()
   let next = 0
 
@@ -43,13 +46,18 @@ function player(steps: readonly Step[]) {
       const step = steps[next]
 
       if (ask.type === 'select_idlecmd') {
+        if (step?.do === 'end') {
+          next += 1
+
+          return END(ask.type)
+        }
         if (step?.do === 'battle') {
           if (!ask.to_bp) return END(ask.type)
           next += 1
 
           return { type: ask.type, action: 6, index: null }
         }
-        const index = step && step.do !== 'attack' ? ask[IDLE[ACTION[step.do]]].findIndex((card) => card.code === step.code) : -1
+        const index = step && 'code' in step && step.do !== 'attack' ? ask[IDLE[ACTION[step.do]]].findIndex((card) => card.code === step.code) : -1
 
         // Lo que todavía no se puede (una Trampa recién colocada) espera al turno siguiente.
         if (!step || index < 0) return END(ask.type)
@@ -67,6 +75,11 @@ function player(steps: readonly Step[]) {
         }
       }
       if (ask.type === 'select_effectyn') return { type: ask.type, yes: own.has(ask.code) }
+      if (ask.type === 'select_card' && ask.min <= 1) {
+        const index = ask.selects.findIndex((card) => card.code === wants.find((code) => ask.selects.some((other) => other.code === code)))
+
+        if (index >= 0) return { type: ask.type, indices: [index] }
+      }
       return passive(ask)
     },
   }
@@ -103,6 +116,8 @@ export function handtrapDuels() {
     const offers: number[][] = []
     /** Cada pregunta al rival, en orden (sin las ventanas de cadena vacías): sus respuestas están en `snapshot.answers`. */
     const asks: string[] = []
+    /** Cada pregunta al rival tal cual, en orden (también las ventanas de cadena vacías): van una a una con sus respuestas de `snapshot.answers`. */
+    const rivalAsks: CoreAsk[] = []
     const deck: DeckList = { main: [...scenario.hand.map((code) => [code, 1] as [number, number]), ...scenario.deck], extra: scenario.extra ?? [] }
     const session = createAutoSession({
       loader,
@@ -116,9 +131,10 @@ export function handtrapDuels() {
         if (event.t === 'events' && event.seat === 0) events.push(...event.events)
         if (event.t === 'ask' && event.seat === 1 && event.ask.type === 'select_chain') offers.push(event.ask.selects.map((card) => card.code))
         if (event.t === 'ask' && event.seat === 1 && !(event.ask.type === 'select_chain' && event.ask.selects.length === 0)) asks.push(askLine(event.ask))
+        if (event.t === 'ask' && event.seat === 1) rivalAsks.push(event.ask)
       },
     })
-    const me = player(scenario.steps)
+    const me = player(scenario.steps, scenario.wants)
     const own = new Set(deck.main.map(([code]) => code))
     let snapshot = await settled(session)
     // Su mano, como la ve él: la que repartió el simulador.
@@ -130,7 +146,7 @@ export function handtrapDuels() {
     }
     session.destroy()
 
-    return { events, offers, asks, snapshot, handAtStart }
+    return { events, offers, asks, rivalAsks, snapshot, handAtStart }
   }
 
   return { duel, names }
