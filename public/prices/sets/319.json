@@ -1,6 +1,6 @@
 [
-["SDLS-EN001","Ultra Rare","1st Edition",0.46,47132,55794644,"Master Hyperion"],
-["SDLS-EN002","Super Rare","1st Edition",0.35,47150,91188343,"The Agent of Mystery - Earth"],
+["SDLS-EN001","Ultra Rare","1st Edition",0.44,47132,55794644,"Master Hyperion"],
+["SDLS-EN002","Super Rare","1st Edition",0.39,47150,91188343,"The Agent of Mystery - Earth"],
 ["SDLS-EN003","Super Rare","1st Edition",0.35,47149,28573958,"The Agent of Miracles - Jupiter"],
 ["SDLS-EN004","Common","1st Edition",0.12,47148,91345518,"The Agent of Judgment - Saturn"],
 ["SDLS-EN005","Common","1st Edition",0.09,47151,38730226,"The Agent of Wisdom - Mercury"],
@@ -11,7 +11,7 @@
 ["SDLS-EN010","Common","1st Edition",0.62,47145,87148330,"Tethys, Goddess of Light"],
 ["SDLS-EN011","Common","1st Edition",0.57,47156,75162696,"Victoria"],
 ["SDLS-EN012","Common","1st Edition",0.3,47121,48964966,"Athena"],
-["SDLS-EN013","Common","1st Edition",0.32,47131,31305911,"Marshmallon"],
+["SDLS-EN013","Common","1st Edition",0.3,47131,31305911,"Marshmallon"],
 ["SDLS-EN014","Common","1st Edition",0.46,47129,74968065,"Hecatrice"],
 ["SDLS-EN015","Common","1st Edition",0.36,47138,95956346,"Shining Angel"],
 ["SDLS-EN016","Common","1st Edition",0.73,47142,77527210,"Soul of Purity and Light"],
@@ -20,10 +20,10 @@
 ["SDLS-EN019","Common","1st Edition",0.42,47157,12171659,"Zeradias, Herald of Heaven"],
 ["SDLS-EN020","Common","1st Edition",0.44,47130,37742478,"Honest"],
 ["SDLS-EN021","Common","1st Edition",0.22,47128,20450925,"Hanewata"],
-["SDLS-EN022","Common","1st Edition",6.66,47126,2980764,"Consecrated Light"],
+["SDLS-EN022","Common","1st Edition",6.76,47126,2980764,"Consecrated Light"],
 ["SDLS-EN023","Common","1st Edition",0.27,47124,54977057,"Cards from the Sky"],
 ["SDLS-EN024","Common","1st Edition",0.23,47155,1353770,"Valhalla, Hall of the Fallen"],
-["SDLS-EN025","Common","1st Edition",0.22,47144,73628505,"Terraforming"],
+["SDLS-EN025","Common","1st Edition",0.23,47144,73628505,"Terraforming"],
 ["SDLS-EN026","Common","1st Edition",1.39,47139,97169186,"Smashing Ground"],
 ["SDLS-EN027","Common","1st Edition",0.28,47153,56433456,"The Sanctuary in the Sky"],
 ["SDLS-EN028","Common","1st Edition",0.18,47125,28890974,"Celestial Transformation"],
@@ -36,5 +36,5 @@
 ["SDLS-EN035","Common","1st Edition",0.43,47154,53582587,"Torrential Tribute"],
 ["SDLS-EN036","Common","1st Edition",0.29,47122,16255442,"Beckoning Light"],
 ["SDLS-EN037","Common","1st Edition",0.13,47134,80551130,"Miraculous Descent"],
-["SDLS-EN038","Common","1st Edition",1.96,47140,41420027,"Solemn Judgment"]
+["SDLS-EN038","Common","1st Edition",2.01,47140,41420027,"Solemn Judgment"]
 ]

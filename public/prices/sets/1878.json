@@ -5,7 +5,7 @@
 ["SDPD-EN004","Super Rare","1st Edition",2.66,127026,72181263,"D/D Orthros"],
 ["SDPD-EN005","Super Rare","1st Edition",0.16,127027,19580308,"D/D Lamia"],
 ["SDPD-EN006","Common","1st Edition",0.59,127028,47198668,"D/D/D Doom King Armageddon"],
-["SDPD-EN007","Common","1st Edition",0.91,127029,39153655,"D/D Cerberus"],
+["SDPD-EN007","Common","1st Edition",0.85,127029,39153655,"D/D Cerberus"],
 ["SDPD-EN008","Common","1st Edition",0.42,127030,12822541,"D/D Lilith"],
 ["SDPD-EN009","Common","1st Edition",0.5,127031,48210156,"D/D Nighthowl"],
 ["SDPD-EN010","Common","1st Edition",0.12,127032,74605254,"D/D Savant Galilei"],
@@ -16,7 +16,7 @@
 ["SDPD-EN015","Common","1st Edition",0.2,127037,17979378,"D/D Proud Chevalier"],
 ["SDPD-EN016","Common","1st Edition",0.52,127038,65192027,"Dark Armed Dragon"],
 ["SDPD-EN017","Common","1st Edition",6.51,127039,14536035,"Dark Grepher"],
-["SDPD-EN018","Common","1st Edition",0.34,127040,28985331,"Armageddon Knight"],
+["SDPD-EN018","Common","1st Edition",0.32,127040,28985331,"Armageddon Knight"],
 ["SDPD-EN019","Common","1st Edition",0.34,127041,94283662,"Trance Archfiend"],
 ["SDPD-EN020","Common","1st Edition",0.12,127042,16404809,"Kuribandit"],
 ["SDPD-EN021","Common","1st Edition",0.18,127043,13521194,"Stygian Street Patrol"],
@@ -40,6 +40,6 @@
 ["SDPD-EN039","Common","1st Edition",0.19,127061,31550470,"Escape from the Dark Dimension"],
 ["SDPD-EN040","Common","1st Edition",0.34,127062,80036543,"Hope for Escape"],
 ["SDPD-EN041","Ultra Rare","1st Edition",0.29,127063,8463720,"D/D/D Dragonbane King Beowulf"],
-["SDPD-EN042","Super Rare","1st Edition",1.24,127064,44852429,"D/D/D Cursed King Siegfried"],
-["SDPD-EN043","Common","1st Edition",0.94,127065,3758046,"D/D/D Wave King Caesar"]
+["SDPD-EN042","Super Rare","1st Edition",1.22,127064,44852429,"D/D/D Cursed King Siegfried"],
+["SDPD-EN043","Common","1st Edition",0.89,127065,3758046,"D/D/D Wave King Caesar"]
 ]

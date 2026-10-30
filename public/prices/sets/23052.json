@@ -39,7 +39,7 @@
 ["MRD-EN037","Common","Unlimited",0.22,486276,93221206,"Ancient Elf"],
 ["MRD-EN038","Common","Unlimited",0.17,486277,28593363,"Deepsea Shark"],
 ["MRD-EN039","Common","Unlimited",0.15,486278,81386177,"Bottom Dweller"],
-["MRD-EN040","Common","Unlimited",0.21,486279,73481154,"Destroyer Golem"],
+["MRD-EN040","Common","Unlimited",0.23,486279,73481154,"Destroyer Golem"],
 ["MRD-EN041","Common","Unlimited",0.28,486280,9653271,"Kaminari Attack"],
 ["MRD-EN042","Common","Unlimited",0.14,486281,21347810,"Rainbow Flower"],
 ["MRD-EN043","Common","Unlimited",0.13,486282,55784832,"Morinphen"],
@@ -109,7 +109,7 @@
 ["MRD-EN107","Rare","Unlimited",0.24,486418,46657337,"Muka Muka"],
 ["MRD-EN108","Common","Unlimited",0.19,486420,71107816,"The Bistro Butcher"],
 ["MRD-EN109","Rare","Unlimited",0.29,486421,8201910,"Star Boy"],
-["MRD-EN110","Rare","Unlimited",0.34,486423,7489323,"Milus Radiant"],
+["MRD-EN110","Rare","Unlimited",0.35,486423,7489323,"Milus Radiant"],
 ["MRD-EN111","Common","Unlimited",0.17,486424,60862676,"Flame Cerebrus"],
 ["MRD-EN112","Common","Unlimited",0.17,486426,7805359,"Niwatori"],
 ["MRD-EN113","Rare","Unlimited",1.07,486427,21417692,"Dark Elf"],
@@ -125,7 +125,7 @@
 ["MRD-EN123","Common","Unlimited",0.24,486440,2504891,"Skull Knight"],
 ["MRD-EN124","Common","Unlimited",0.2,486442,5818798,"Gazelle the King of Mythical Beasts"],
 ["MRD-EN125","Super Rare","Unlimited",1.33,486443,49888191,"Garnecia Elefantis"],
-["MRD-EN126","Ultra Rare","Unlimited",10.09,486444,81480461,"Barrel Dragon"],
+["MRD-EN126","Ultra Rare","Unlimited",9.87,486444,81480461,"Barrel Dragon"],
 ["MRD-EN127","Ultra Rare","Unlimited",8.16,486446,41420027,"Solemn Judgment"],
 ["MRD-EN128","Ultra Rare","Unlimited",5.71,486447,77414722,"Magic Jammer"],
 ["MRD-EN129","Ultra Rare","Unlimited",9.23,486449,3819470,"Seven Tools of the Bandit"],
@@ -142,5 +142,5 @@
 ["MRD-EN140","Common","Unlimited",0.21,486475,56830749,"Share the Pain"],
 ["MRD-EN141","Common","Unlimited",0.17,486476,83225447,"Stim-Pack"],
 ["MRD-EN142","Super Rare","Unlimited",10.07,486478,19613556,"Heavy Storm"],
-["MRD-EN143","Secret Rare","Unlimited",5.94,486479,41462083,"Thousand Dragon"]
+["MRD-EN143","Secret Rare","Unlimited",5.98,486479,41462083,"Thousand Dragon"]
 ]

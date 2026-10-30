@@ -6,7 +6,7 @@
 ["AP08-EN005","Super Rare","Unlimited",0.38,107522,96802306,"Igknight Gallant"],
 ["AP08-EN006","Super Rare","Unlimited",5.25,107523,16392422,"Toon Masked Sorcerer"],
 ["AP08-EN007","Super Rare","Unlimited",2.82,107524,20758643,"Graff, Malebranche of the Burning Abyss"],
-["AP08-EN008","Super Rare","Unlimited",2.62,107525,77498348,"Black Luster Soldier - Envoy of the Evening Twilight"],
+["AP08-EN008","Super Rare","Unlimited",2.64,107525,77498348,"Black Luster Soldier - Envoy of the Evening Twilight"],
 ["AP08-EN009","Super Rare","Unlimited",1.38,107526,88123329,"Spiritual Beast Rampengu"],
 ["AP08-EN010","Super Rare","Unlimited",4.84,107527,1845204,"Instant Fusion"],
 ["AP08-EN011","Super Rare","Unlimited",1.66,107528,67237709,"Kozmotown"],
@@ -22,8 +22,8 @@
 ["AP08-EN021","Common","Unlimited",6.46,107538,35752363,"Vermillion Sparrow"],
 ["AP08-EN022","Common","Unlimited",0.39,107539,50608164,"Masked HERO Koga"],
 ["AP08-EN023","Common","Unlimited",0.58,107540,63995093,"Machine Duplication"],
-["AP08-EN024","Common","Unlimited",0.43,107541,19814508,"U.A. Stadium"],
-["AP08-EN025","Common","Unlimited",2.95,107542,50323155,"Black Horn of Heaven"],
-["AP08-EN026","Common","Unlimited",0.64,107543,38296564,"Safe Zone"],
-["AP08-EN027","Common","Unlimited",0.09,107544,25704359,"Unpossessed"]
+["AP08-EN024","Common","Unlimited",0.42,107541,19814508,"U.A. Stadium"],
+["AP08-EN025","Common","Unlimited",2.97,107542,50323155,"Black Horn of Heaven"],
+["AP08-EN026","Common","Unlimited",0.62,107543,38296564,"Safe Zone"],
+["AP08-EN027","Common","Unlimited",null,107544,25704359,"Unpossessed"]
 ]

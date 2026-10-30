@@ -1,4 +1,4 @@
-{"updated":"2026-10-29","shards":256,"groups":[
+{"updated":"2026-10-30","shards":256,"groups":[
 [126,"2003 Collectors Tin","2003-09-01",6,"BPT"],
 [127,"2004 Collectors Tin","2004-09-01",6,"CT1"],
 [128,"2005 Collectors Tin","2005-09-01",6,"CT2"],
@@ -197,7 +197,7 @@
 [571,"2012 Collectors Tin","2012-08-14",23,"CT09"],
 [572,"2013 Zexal Collection Tin","2013-03-08",24,"ZTIN"],
 [573,"Abyss Rising","2012-11-13",225,"ABYR"],
-[575,"Battle Pack: Epic Dawn","2012-05-28",878,"BP01"],
+[575,"Battle Pack: Epic Dawn","2012-05-28",879,"BP01"],
 [576,"Cosmo Blazer","2013-01-25",223,"CBLZ"],
 [577,"Cosmo Blazer SE","2013-01-25",2,"CBLZ"],
 [578,"Galactic Overlord","2012-05-08",223,"GAOV"],
@@ -258,7 +258,7 @@
 [1322,"Yu-Gi-Oh! Tokens","2006-07-20",4,"TKN1"],
 [1323,"Mattel Action Figure Promos: Series 1","2006-01-01",1,"MF01"],
 [1327,"Duel Terminal 1","2010-01-29",100,"DT01"],
-[1328,"Duel Terminal 2","2010-05-25",99,"DT02"],
+[1328,"Duel Terminal 2","2010-05-25",100,"DT02"],
 [1329,"Duel Terminal 3","2010-09-25",101,"DT03"],
 [1330,"Duel Terminal 4","2011-01-25",100,"DT04"],
 [1331,"Duel Terminal 5","2011-05-29",101,"DT05"],
@@ -282,7 +282,7 @@
 [1479,"Astral Pack 5","2014-07-25",26,"AP05"],
 [1480,"Duelist Alliance","2014-08-15",214,"DUEA"],
 [1484,"2014 Mega-Tins","2014-08-29",6,"CT11"],
-[1485,"2014 Mega-Tins Mega Pack","2014-08-29",431,"MP14"],
+[1485,"2014 Mega-Tins Mega Pack","2014-08-29",433,"MP14"],
 [1488,"Duelist Alliance: Deluxe Edition","2014-09-12",7,"DUEA"],
 [1489,"Structure Deck: Geargia Rampage","2014-10-17",35,"SDGR"],
 [1491,"Legendary Collection 5D's","2014-10-24",265,"LC5D"],
@@ -308,7 +308,7 @@
 [1653,"2015 Mega-Tins Mega Pack","2015-09-18",247,"MP15"],
 [1655,"Structure Deck: Deluxe Edition","2005-01-01",2,"SD1"],
 [1659,"High-Speed Riders","2015-10-02",60,"HSRD"],
-[1660,"Dimension of Chaos","2015-11-13",216,"DOCS"],
+[1660,"Dimension of Chaos","2015-11-13",217,"DOCS"],
 [1671,"Astral Pack 8","2015-10-23",27,"AP08"],
 [1672,"King of Games: Yugi's Legendary Decks","2015-11-13",249,"YGLD"],
 [1674,"Structure Deck: Master of Pendulum","2015-12-04",43,"SDMP"],
@@ -598,5 +598,5 @@
 [24707,"Magnificent Monsters","2026-09-04",220,"MAMO"],
 [24789,"Winner's Pack 2026-2027","2026-07-15",92,"WI26"],
 [24815,"Beyond the Brave","2026-10-09",130,"BETB"],
-[24918,"Thank You Pack","2026-07-22",4,"TYP1"]
+[24918,"Thank You Pack","2026-07-22",3,"TYP1"]
 ]}

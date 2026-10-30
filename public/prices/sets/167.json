@@ -1,5 +1,5 @@
 [
-["DLG1-EN000","Secret Rare","Limited",6.58,33486,44330098,"Gorz the Emissary of Darkness"],
+["DLG1-EN000","Secret Rare","Limited",6.5,33486,44330098,"Gorz the Emissary of Darkness"],
 ["DLG1-EN001","Super Rare","Unlimited",25.4,33487,23995346,"Blue-Eyes Ultimate Dragon"],
 ["DLG1-EN002","Super Rare","Unlimited",24.23,33488,89631139,"Blue-Eyes White Dragon"],
 ["DLG1-EN003","Common","Unlimited",0.86,33489,45231177,"Flame Swordsman"],
@@ -24,8 +24,8 @@
 ["DLG1-EN022","Ultra Rare","Unlimited",17.97,33508,33396948,"Exodia the Forbidden One"],
 ["DLG1-EN023","Common","Unlimited",0.66,33509,66889139,"Gaia the Dragon Champion"],
 ["DLG1-EN024","Rare","Unlimited",2.49,33510,25833572,"Gate Guardian"],
-["DLG1-EN025","Common","Unlimited",1.19,33511,70781052,"Summoned Skull"],
-["DLG1-EN026","Common","Unlimited",0.88,33512,76812113,"Harpie Lady"],
+["DLG1-EN025","Common","Unlimited",1.23,33511,70781052,"Summoned Skull"],
+["DLG1-EN026","Common","Unlimited",0.92,33512,76812113,"Harpie Lady"],
 ["DLG1-EN027","Common","Unlimited",0.24,33513,12206212,"Harpie Lady Sisters"],
 ["DLG1-EN028","Rare","Unlimited",1.16,33514,28933734,"Mask of Darkness"],
 ["DLG1-EN029","Rare","Unlimited",5.92,33515,11901678,"Black Skull Dragon"],
@@ -92,7 +92,7 @@
 ["DLG1-EN090","Rare","Unlimited",0.92,33576,93920745,"Penguin Soldier"],
 ["DLG1-EN091","Super Rare","Unlimited",13.21,33577,73915051,"Scapegoat"],
 ["DLG1-EN092","Ultra Rare","Unlimited",14.98,33578,26302522,"Blast Sphere"],
-["DLG1-EN093","Rare","Unlimited",8,33579,26376390,"Copycat"],
+["DLG1-EN093","Rare","Unlimited",9,33579,26376390,"Copycat"],
 ["DLG1-EN094","Ultra Rare","Unlimited",3.63,33580,37507488,"Relieve Monster"],
 ["DLG1-EN095","Super Rare","Unlimited",0.91,33581,86871614,"Cloning"],
 ["DLG1-EN096","Rare","Unlimited",0.96,33582,34627841,"Kaibaman"],
@@ -110,6 +110,6 @@
 ["DLG1-EN108","Super Rare","Unlimited",16.78,33594,9411399,"Destiny HERO - Malicious"],
 ["DLG1-EN109","Super Rare","Unlimited",3.03,33595,45809008,"Destiny Draw"],
 ["DLG1-EN110","Ultra Rare","Unlimited",6.25,79685,49905576,"Meltiel, Sage of the Sky"],
-["DLG1-EN111","Ultra Rare","Unlimited",27.69,33597,48783998,"Nova Summoner"],
+["DLG1-EN111","Ultra Rare","Unlimited",27.57,33597,48783998,"Nova Summoner"],
 ["DLG1-EN112","Ultra Rare","Unlimited",17.53,33598,11662742,"Gellenduo"]
 ]
