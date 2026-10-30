@@ -148,8 +148,8 @@ describe('el rival del duelo automático', () => {
     expect(new Set(SEEDS.slice(0, 40).map((seed) => rival.hand(seed).join())).size).toBeGreaterThan(1)
   })
 
-  it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark y Dominus Spiral, del buscador)', () => {
-    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632].sort())
+  it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark, Dominus Spiral y el Droll & Lock Bird original, del buscador)', () => {
+    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632, 94145021].sort())
   })
 })
 

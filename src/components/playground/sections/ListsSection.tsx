@@ -69,6 +69,7 @@ export function ListsSection() {
             <ListRow media={<CardStub />} title="Fire King · 1° en el regional" subtitle="40 + 15 · hace 2 días" selected={picked === 'fk'} onClick={() => setPicked('fk')} />
             <ListRow icon="trophy" tone="success" title="Ganaste 2 de 3" subtitle="Tinte con significado (success)" href="#listas" />
             <ListRow icon="lock" title="Sala cerrada" subtitle="Apagada: todavía no se puede entrar" disabled onClick={() => setSaid('no llega')} />
+            <ListRow media={<CardStub className="h-12 w-9" />} wrap title="Con wrap, un registro: el título es una frase entera, en varios renglones y sin negrita (Qué hizo el bot y por qué)." onClick={() => setSaid('Registro')} />
           </ListGroup>
         </Specimen>
 

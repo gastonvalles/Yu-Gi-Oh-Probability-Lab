@@ -3,6 +3,15 @@
 El único lugar de lo pendiente: qué falta, en qué orden y qué espera una decisión. Lo hecho se borra de acá (queda en `git log`);
 lo que se descarta pasa a «En pausa» con su porqué. Tamaño: S (horas), M (un día), L (varios).
 
+## En curso
+
+**Bot para jugar en contra** (L, por etapas). Hecho: la interfaz `Bot` (`app/auto/bot/`) con su vista limitada a su asiento, el
+motivo de cada decisión, la hoja «Qué hizo el bot y por qué» y la prueba de privacidad con el núcleo real. Sigue: las reglas de
+reacción que faltan (Skull Meister, Multiplying Kuriboh!, Bystial Magnamhut, Dimension Shifter, Dogmatika Fleurdelis, las «C» de
+contacto, Hecahands Godos); un turno propio mínimo (hoy el bot no juega su Main Phase: Lava Golem, Sphere Mode y Gallant Bandit
+esperan a eso); después, un ejecutor por mazo (Sky Striker, Branded, Ryzeal, Elfnote) con su goldfish y su fuzz. De paso: la hoja
+de handtraps dice «no la usa sola» de más con un arte alternativo agregado desde el buscador (`HandtrapPool.tsx`).
+
 ## Próximo
 
 En orden de valor sobre costo.
@@ -58,6 +67,9 @@ En orden de valor sobre costo.
 ## En pausa o descartado
 
 No se vuelve a proponer sin un motivo nuevo.
+
+- **Búsqueda general para el bot:** volver a un estado cuesta ~35 ms más ~0,3 ms por respuesta en escritorio (~12× en el celular) y
+  lo oculto no se puede sortear; pide copia de estado, un servidor o un modelo entrenado.
 
 - **Espectadores en salas automáticas:** el relay reenvía todo texto de un jugador a los espectadores, que verían el deck y la
   mano del invitado; abrirlas pide cifrado entre jugadores o un flujo aparte (`docs/duelos-automaticos.md`).

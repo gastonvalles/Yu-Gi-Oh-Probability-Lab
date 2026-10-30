@@ -8,6 +8,7 @@ import { t } from '../../../i18n'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
+import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
 import { CounterSheet } from '../../auto/CounterSheet'
@@ -142,6 +143,7 @@ export function AutoSection() {
 
       <SortSample onAnswer={setAnswer} />
       <CounterSample onAnswer={setAnswer} />
+      <BotLogSample />
 
       <Specimen title="Lo que contestó la última muestra" note="Cada hoja y cada pregunta de arriba le pasan lo elegido a quien la abrió; acá se ve qué devolvió.">
         <Tag>{answer}</Tag>
@@ -640,6 +642,39 @@ function CounterSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
           />
         ) : null}
       </Presence>
+    </Specimen>
+  )
+}
+
+/** Los motivos de un duelo de muestra (los de `SessionAnswer.reason`): tu turno con una que guardó y una que usó; el suyo, el Extra Deck de Harmonia en un renglón y el fin. */
+const BOT_ANSWERS = [
+  { key: 'hold.monster', cards: [10045474, 73628505], turn: 1, yours: true, at: 2 },
+  { key: 'handtrap.respond', cards: [14558127, 73628505], turn: 1, yours: true, at: 2 },
+  { key: 'handtrap.draw', cards: [23434538], turn: 3, yours: true, at: 6 },
+  { key: 'handtrap.monster', cards: [70088809, 40044918], turn: 3, yours: true, at: 8 },
+  { key: 'cost.extra', cards: [97204936, 45815891, 44508094], turn: 3, yours: true, at: 8 },
+  { key: 'target.link', cards: [70088809, 40044918], turn: 3, yours: true, at: 8 },
+  { key: 'end.noPlays', cards: [], turn: 4, yours: false, at: 9 },
+].map(({ key, ...rest }) => ({ seat: 1 as const, answer: { type: 'select_chain' as const, index: null }, reason: { key: `auto.bot.reason.${key}` as const, ...rest } }))
+const BOT_NAMES: Record<number, string> = { 10045474: 'Infinite Impermanence', 73628505: 'Terraforming', 14558127: 'Ash Blossom & Joyous Spring', 23434538: 'Maxx "C"', 70088809: 'Fydraulis Harmonia', 40044918: 'Elemental HERO Stratos', 97204936: 'Gaia Knight, the Force of Earth', 45815891: 'Scrap Archfiend', 44508094: 'Stardust Dragon' }
+
+function BotLogSample() {
+  const [open, setOpen] = useState(false)
+  const [picked, setPicked] = useState('')
+  const nameOf = (code: number) => BOT_NAMES[code] ?? ''
+  const artOf = (code: number) => (code ? art(code) : null)
+
+  return (
+    <Specimen title="Qué hizo el bot y por qué" layout="column" note={<>Después del duelo (el final y «Opciones del duelo»): un bloque por turno («Turno 1 · vos»), un renglón por decisión con el arte de la carta y la frase entera (<Tag>ListRow wrap</Tag>), y abajo sus límites. «Tenía y no la usé», una vez por carta y por turno; lo que eligió seguido de su Extra Deck, en un renglón. Tocar uno lleva tu mesa a ese momento. Con el rival pasivo, lo dice; rearmando, el esqueleto. Archivo: <Tag>auto/BotLog.tsx</Tag></>}>
+      <Button variant="secondary" size="sm" className="w-fit" icon="chat" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        Qué hizo el bot
+      </Button>
+      {picked ? <p className="m-0 text-micro text-soft">{picked}</p> : null}
+      <BotLogSheet isOpen={open} onClose={() => setOpen(false)} turns={botTurns(BOT_ANSWERS)} deciding nameOf={nameOf} artOf={artOf} onPick={(note) => { setOpen(false); setPicked(`Tu mesa tras ${note.at} jugadas`) }} />
+      <Tag>el rival pasivo</Tag>
+      <BotLog turns={[]} deciding={false} nameOf={nameOf} artOf={artOf} />
+      <Tag>rearmando</Tag>
+      <BotLog turns={[]} deciding loading nameOf={nameOf} artOf={artOf} />
     </Specimen>
   )
 }

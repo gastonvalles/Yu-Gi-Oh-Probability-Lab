@@ -7,7 +7,9 @@ import { DataUnavailableError, type DataLoader, type DuelData } from './auto-dat
 import type { ChainStep } from './chain-feed'
 import type { WorkerData } from './core-host.worker'
 import { bagOrder, teamOrder, type DeckList } from './deck-map'
-import { handtrapPolicy, passivePolicy, randomLegalPolicy, type RivalPolicy } from './policies'
+import { botViewOf, publicEventsOf, type Bot, type BotContext, type BotReason, type PublicEvent } from './bot/bot'
+import { handtrapBot, passiveBot } from './bot/rivals'
+import { mulberry32, randomLegalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
 import { RESUME_FLAGS, setupOf } from './resume'
 
@@ -15,7 +17,7 @@ import { RESUME_FLAGS, setupOf } from './resume'
  * «Jugar solo automático»: la sesión de un duelo contra el rival, sin React (F2b la lee con `useSyncExternalStore`). Junta el
  * cargador de datos, el anfitrión del núcleo (en un Worker o en el mismo proceso: `HostTransport`), un adaptador por asiento (§3.3 del
  * diseño: la mesa es una proyección de lo que cuenta el núcleo) y el rival, que contesta solo lo del asiento que no juega nadie: el
- * pasivo o, con `rival`, el de handtraps (`handtrapPolicy`, que decide con lo que ve su adaptador).
+ * pasivo o, con `rival`, el de handtraps: un `Bot` (`bot/`) que decide con la vista de su asiento (`botViewOf`, desde su adaptador) y su propia semilla, y dice por qué.
  *
  * Deshacer, reiniciar y cancelar re-simulan (§3.6): el anfitrión vuelve a mandar todos los eventos desde cero, así que cada tanda nueva
  * (la marca `loading` con `done` 0) rearma los adaptadores, y las preguntas ya contestadas se saltan hasta la que espera de verdad. Mientras
@@ -57,6 +59,15 @@ export interface SessionAnswer {
   activation?: true
   /** La contestó sola la sesión al rearmar una mesa (pasar de manual a automático: las fases que el núcleo pasa hasta la de la mesa): no es una jugada a la que volver. */
   auto?: true
+  /** Sólo del rival automático: por qué contestó así (`BotNote`). Va en la respuesta, así deshacer, reiniciar y re-simular lo recortan solos; no viaja por el enlace. */
+  reason?: BotNote
+}
+
+/** El motivo del rival automático con el turno en que lo dijo (`yours`: el turno era tuyo) y cuántas jugadas de tu mesa había (`mineActions`): «Qué hizo el bot y por qué». */
+export interface BotNote extends BotReason {
+  turn: number
+  yours: boolean
+  at: number
 }
 
 /**
@@ -133,6 +144,10 @@ export interface SessionOptions {
   transport: TransportFactory
   /** La semilla del duelo (u32); sin ella, una al azar. */
   seed?: number
+  /** La del rival automático (u32, la de su azar: `BotContext.random`), aparte de la del duelo, que nunca ve; sin ella, una al azar. Reiniciar el mismo duelo la conserva. */
+  botSeed?: number
+  /** Quién decide por el rival automático (las pruebas de privacidad le ponen uno que anota lo que ve); sin esto, el pasivo o, con `rival`, el de handtraps. */
+  bot?: Bot
   /**
    * El anfitrión del duelo por enlace: la clave del duelo (`duel-key.ts`, 256 bits), de la que salen las barajas y el estado del núcleo en lugar de la semilla, que con clave vale 0
    * y no se usa (32 bits se prueban todos desde la mano de arranque). Va en cada `create`, también al reiniciar, cancelar y deshacer, y nunca en el snapshot.
@@ -273,11 +288,17 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   /** Con la mesa rearmada, el núcleo todavía va por una fase anterior a la de la mesa (las pasa al empezar; las fases del núcleo crecen con la del turno). */
   // (El asiento 0 es el que tiene el turno: su mesa dice hasta qué fase; los dos adaptadores ven las mismas fases del núcleo.)
   const catchingUp = () => adapters[0] !== undefined && adapters[0]!.overlay.phase < (CORE_PHASE[adapters[0]!.mine.phase] ?? 0)
-  /** Con la semilla del duelo: la mano de piedra, papel o tijera del rival es al azar pero la misma con la misma semilla. */
   /** El Extra Deck del rival (`[passcode, 1]` en orden de preferencia): el suyo, o el de siempre (también el del pasivo). */
   const rivalExtra = rival?.extra ?? DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1] as const)
-  const rivalPolicy = (seed: number): RivalPolicy =>
-    rival ? handtrapPolicy(rival.main.map(([code]) => code), passivePolicy(undefined, seed), rivalExtra.map(([code]) => code)) : passivePolicy(undefined, seed)
+  /** El original de cada arte alternativo del duelo (`alias` del `.cdb`): la regla de una handtrap es la de su original. Se llena con los datos. */
+  const aliases = new Map<number, number>()
+  const bot: Bot = options.bot ?? (rival ? handtrapBot(rival.main.map(([code]) => code), rivalExtra.map(([code]) => code), (code) => aliases.get(code) ?? 0) : passiveBot())
+  const newBotSeed = () => Math.floor(Math.random() * 2 ** 32) >>> 0
+  let botSeed = (options.botSeed ?? newBotSeed()) >>> 0
+  /** El azar del bot (piedra, papel o tijera), con su semilla: el mismo duelo, la misma mano. */
+  let context: BotContext = { random: mulberry32(botSeed), level: 'normal' }
+  /** Lo público que vio el asiento del rival, en orden (`publicEventsOf` de su adaptador): el historial de su vista. Se rearma con la mesa. */
+  let history: PublicEvent[] = []
   const listeners = new Set<() => void>()
   const blank = emptyAdapter()
   // La mesa del rival rearmada y el código de cada id suyo (`resume.theirs`, o la que arma `build` en jugar solo).
@@ -309,7 +330,6 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     rivalHand: [],
     playStarts: [],
   }
-  let policy = rivalPolicy(snapshot.seed)
   let data: DuelData | null = null
   let create: CreateCommand | null = null
   /** El `create` de una semilla (reiniciar con otra semilla le reparte otra mano al rival de handtraps). */
@@ -387,6 +407,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         bag: seat === bagged,
       }),
     )
+    history = []
     set({ initial: adapters[me]!.initial, mineActions: [], theirsActs: [], order: [], chainSteps: [], lifeSteps: [{ at: 0, lp: [...adapters[me]!.overlay.lp] }], unmapped: [], playStarts: [], ...view() }, false)
   }
 
@@ -401,19 +422,19 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     transport.send(to > 0 ? { ...create!, answers: answers.slice(0, to).map((item) => item.answer) } : create!)
   }
 
-  function send(seat: Seat, askId: number, answer: CoreAnswer, activation = false, auto = false) {
-    inFlight = { seat, askId, answer, ...(activation ? { activation } : {}), ...(auto ? { auto } : {}) }
+  function send(seat: Seat, askId: number, answer: CoreAnswer, activation = false, auto = false, reason?: BotNote) {
+    inFlight = { seat, askId, answer, ...(activation ? { activation } : {}), ...(auto ? { auto } : {}), ...(reason ? { reason } : {}) }
     transport!.send({ t: 'answer', askId, answer })
     startTimer()
   }
 
   /**
    * El rival, cuando el núcleo le rechazó la respuesta (`retry`): su política es determinista y repetiría la misma (un `announce_card` sin candidatas, una suma que agota
-   * la búsqueda), así que contesta una legal al azar (`randomLegalPolicy`, con la semilla del duelo, las respuestas que van y los rechazos: el mismo duelo, la misma),
+   * la búsqueda), así que contesta una legal al azar (`randomLegalPolicy`, con la semilla del bot, las respuestas que van y los rechazos: el mismo duelo, la misma),
    * distinta de la rechazada si la encuentra. Los `MAX_RETRIES` rechazos seguidos siguen cortando el duelo.
    */
   function fallback(ask: CoreAsk): CoreAnswer {
-    const random = randomLegalPolicy((snapshot.seed ^ Math.imul(answers.length + 1, 0x9e3779b1) ^ retries) >>> 0)
+    const random = randomLegalPolicy((botSeed ^ Math.imul(answers.length + 1, 0x9e3779b1) ^ retries) >>> 0)
     let answer = random(ask)
 
     for (let tries = 0; tries < 8 && JSON.stringify(answer) === rejected; tries += 1) answer = random(ask)
@@ -422,7 +443,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
   function commit() {
     if (!inFlight) return
-    answers = [...answers, { seat: inFlight.seat, answer: inFlight.answer, ...(inFlight.activation ? { activation: true as const } : {}), ...(inFlight.auto ? { auto: true as const } : {}) }]
+    answers = [...answers, { seat: inFlight.seat, answer: inFlight.answer, ...(inFlight.activation ? { activation: true as const } : {}), ...(inFlight.auto ? { auto: true as const } : {}), ...(inFlight.reason ? { reason: inFlight.reason } : {}) }]
     inFlight = null
     retries = 0
   }
@@ -430,8 +451,11 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   /** Lo que cuenta el núcleo, a los dos adaptadores; las jugadas de mi asiento se acumulan para la pantalla. */
   function apply(event: AutoEvent) {
     const out = adapters[me]!.apply(event)
+    const other = adapters[1 - me]!
+    const seen = other.apply(event)
 
-    adapters[1 - me]!.apply(event)
+    // Sólo hay bot sin el duelo por enlace y sin jugar los dos lados.
+    if (!online && options.control !== 'both') history.push(...publicEventsOf(seen, other, (1 - me) as Seat))
     set(
       {
         ...view(),
@@ -507,7 +531,13 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         // El duelo por enlace: la contesta una persona en otro navegador (`answerRemote`).
         if (!controlled(event.seat) && options.remote) return set({ status: 'waiting', remoteAsk: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, ask: null, replaying: false, answers })
         // El rival contesta solo, con lo que ve su adaptador (o, si el núcleo le rechazó la de recién, con la de reserva); la pantalla se entera recién con la pregunta tuya.
-        if (!controlled(event.seat)) return send(event.seat, event.askId, retries > 0 ? fallback(event.ask) : policy(event.ask, adapters[event.seat]!))
+        if (!controlled(event.seat)) {
+          if (retries > 0) return send(event.seat, event.askId, fallback(event.ask))
+          const { answer, reason } = bot(event.ask, botViewOf(adapters[event.seat]!, event.seat, history), context)
+          const now = adapters[me]!.overlay
+
+          return send(event.seat, event.askId, answer, false, false, reason && { ...reason, turn: now.turn, yours: now.turnPlayer === me, at: snapshot.mineActions.length })
+        }
 
         return set({ status: 'ready', ask: { askId: event.askId, seat: event.seat, ask: event.ask, ...(event.title === undefined ? {} : { title: event.title }) }, replaying: false, answers })
       }
@@ -579,6 +609,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
     // El invitado no tiene las cartas del rival: el tipo de las que el flujo le deja ver llega aparte.
     typeOf = (code) => types.get(code) ?? options.typeOf?.(code) ?? 0
+    for (const card of data.cards) if (card.alias) aliases.set(card.code, card.alias)
     build = (seed) => {
       // Con handtraps, el rival roba al empezar justo su mano (la del simulador con esa semilla), que va arriba de su deck.
       const hand = resume?.rivalHand ?? rival?.hand(seed) ?? []
@@ -693,8 +724,10 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         return void start()
       }
       if (!create || !build || !data) return
+      // Otra semilla es otro duelo: el bot también sortea la suya; con la misma, el mismo duelo (también su piedra, papel o tijera).
+      if (seed >>> 0 !== create.seed) botSeed = newBotSeed()
+      context = { random: mulberry32(botSeed), level: 'normal' }
       create = build(seed >>> 0)
-      policy = rivalPolicy(seed >>> 0)
       answers = []
       inFlight = null
       retries = 0

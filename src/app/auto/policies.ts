@@ -99,62 +99,66 @@ function counterPick(ask: AskOf<'select_counter'>, pick: (open: number[]) => num
  * orden como está; en piedra, papel o tijera saca una mano al azar, la misma con la misma semilla.
  */
 export function passivePolicy(pickCard?: CardPicker, seed = 0): Policy {
-  const first = (n: number) => Array.from({ length: n }, (_, i) => i)
-  // Lo único que no es fijo: la mano de piedra, papel o tijera (si no, la mano que le gana ganaría siempre). Con la semilla del duelo y avanzando en cada pregunta: un empate no se repite.
+  // Lo único que no es fijo: la mano de piedra, papel o tijera (si no, la mano que le gana ganaría siempre). Con la semilla dada y avanzando en cada pregunta: un empate no se repite.
   const hand = mulberry32(seed)
 
-  return (ask) => {
-    switch (ask.type) {
-      case 'select_idlecmd': {
-        if (ask.to_ep) return { type: ask.type, action: 7, index: null }
-        if (ask.to_bp) return { type: ask.type, action: 6, index: null }
-        const action = IDLE_LISTS.findIndex((key) => ask[key].length > 0)
+  return (ask) => passiveAnswer(ask, hand, pickCard)
+}
 
-        return action >= 0 ? { type: ask.type, action, index: 0 } : { type: ask.type, action: 8, index: null }
-      }
-      case 'select_battlecmd':
-        if (ask.to_ep) return { type: ask.type, action: 3, index: null }
-        if (ask.to_m2) return { type: ask.type, action: 2, index: null }
+/** La respuesta del pasivo (`passivePolicy`) con el azar de quien la usa: el bot pasivo (`bot/rivals.ts`) le pasa el suyo, nunca la semilla del duelo. */
+export function passiveAnswer(ask: CoreAsk, random: () => number, pickCard?: CardPicker): CoreAnswer {
+  const first = (n: number) => Array.from({ length: n }, (_, i) => i)
 
-        return ask.attacks.length > 0 ? { type: ask.type, action: 1, index: 0 } : { type: ask.type, action: 0, index: 0 }
-      case 'select_chain':
-        return { type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }
-      case 'select_effectyn':
-      case 'select_yesno':
-        return { type: ask.type, yes: false }
-      case 'select_option':
-        return { type: ask.type, index: 0 }
-      case 'select_card':
-        return { type: ask.type, indices: ask.can_cancel && ask.min === 0 ? null : first(Math.min(ask.min, ask.selects.length)) }
-      case 'select_tribute':
-        return { type: ask.type, indices: tributePick(ask, first(ask.selects.length), () => false) }
-      case 'select_unselect_card':
-        if (ask.can_finish) return { type: ask.type, index: null }
+  switch (ask.type) {
+    case 'select_idlecmd': {
+      if (ask.to_ep) return { type: ask.type, action: 7, index: null }
+      if (ask.to_bp) return { type: ask.type, action: 6, index: null }
+      const action = IDLE_LISTS.findIndex((key) => ask[key].length > 0)
 
-        return { type: ask.type, index: ask.select_cards.length > 0 ? 0 : null }
-      case 'select_place':
-      case 'select_disfield':
-        return { type: ask.type, places: freePlaces(ask).slice(0, ask.count) }
-      case 'select_position':
-        return { type: ask.type, position: [1, 2, 4, 8].find((position) => (ask.positions & position) !== 0) ?? 1 }
-      case 'select_counter':
-        return { type: ask.type, counters: counterPick(ask, (open) => open[0]!) }
-      case 'select_sum':
-        return { type: ask.type, indices: sumPick(ask, first(ask.selects.length)) }
-      case 'sort_card':
-      case 'sort_chain':
-        return { type: ask.type, order: null }
-      case 'announce_race':
-        return { type: ask.type, races: String(bits(BigInt(ask.available)).slice(0, ask.count).reduce((mask, bit) => mask | bit, 0n)) }
-      case 'announce_attrib':
-        return { type: ask.type, attributes: Number(bits(BigInt(ask.available)).slice(0, ask.count).reduce((mask, bit) => mask | bit, 0n)) }
-      case 'announce_card':
-        return { type: ask.type, code: pickCard?.(ask, () => 0) ?? ask.cards?.[0] ?? 0 }
-      case 'announce_number':
-        return { type: ask.type, index: 0 }
-      case 'rock_paper_scissors':
-        return { type: ask.type, value: 1 + Math.floor(hand() * 3) }
+      return action >= 0 ? { type: ask.type, action, index: 0 } : { type: ask.type, action: 8, index: null }
     }
+    case 'select_battlecmd':
+      if (ask.to_ep) return { type: ask.type, action: 3, index: null }
+      if (ask.to_m2) return { type: ask.type, action: 2, index: null }
+
+      return ask.attacks.length > 0 ? { type: ask.type, action: 1, index: 0 } : { type: ask.type, action: 0, index: 0 }
+    case 'select_chain':
+      return { type: ask.type, index: ask.forced && ask.selects.length > 0 ? 0 : null }
+    case 'select_effectyn':
+    case 'select_yesno':
+      return { type: ask.type, yes: false }
+    case 'select_option':
+      return { type: ask.type, index: 0 }
+    case 'select_card':
+      return { type: ask.type, indices: ask.can_cancel && ask.min === 0 ? null : first(Math.min(ask.min, ask.selects.length)) }
+    case 'select_tribute':
+      return { type: ask.type, indices: tributePick(ask, first(ask.selects.length), () => false) }
+    case 'select_unselect_card':
+      if (ask.can_finish) return { type: ask.type, index: null }
+
+      return { type: ask.type, index: ask.select_cards.length > 0 ? 0 : null }
+    case 'select_place':
+    case 'select_disfield':
+      return { type: ask.type, places: freePlaces(ask).slice(0, ask.count) }
+    case 'select_position':
+      return { type: ask.type, position: [1, 2, 4, 8].find((position) => (ask.positions & position) !== 0) ?? 1 }
+    case 'select_counter':
+      return { type: ask.type, counters: counterPick(ask, (open) => open[0]!) }
+    case 'select_sum':
+      return { type: ask.type, indices: sumPick(ask, first(ask.selects.length)) }
+    case 'sort_card':
+    case 'sort_chain':
+      return { type: ask.type, order: null }
+    case 'announce_race':
+      return { type: ask.type, races: String(bits(BigInt(ask.available)).slice(0, ask.count).reduce((mask, bit) => mask | bit, 0n)) }
+    case 'announce_attrib':
+      return { type: ask.type, attributes: Number(bits(BigInt(ask.available)).slice(0, ask.count).reduce((mask, bit) => mask | bit, 0n)) }
+    case 'announce_card':
+      return { type: ask.type, code: pickCard?.(ask, () => 0) ?? ask.cards?.[0] ?? 0 }
+    case 'announce_number':
+      return { type: ask.type, index: 0 }
+    case 'rock_paper_scissors':
+      return { type: ask.type, value: 1 + Math.floor(random() * 3) }
   }
 }
 
@@ -175,23 +179,57 @@ const SUMMON_TIMINGS = 0x40 | 0x80 | 0x100
 const DRAW_TIMING = 0x1
 
 /**
+ * La regla de una handtrap (`AUTO_RULES`) por su código o, si no tiene, por el de su original (el `alias` del `.cdb`, que da quien tiene los datos: la sesión): un arte alternativo
+ * (Ash 14558128) juega con la regla de su original.
+ */
+export function ruleOf(code: number, aliasOf: (code: number) => number = () => 0): AutoRule | undefined {
+  const alias = aliasOf(code)
+
+  return AUTO_RULES[code] ?? (alias ? AUTO_RULES[alias] : undefined)
+}
+
+/**
+ * Por qué contestó así el rival de handtraps (el motivo para la persona lo arma `bot/rivals.ts`): `use` activó una (`to`, el código de tu eslabón, si respondió a uno), `aim` eligió
+ * de objetivo la carta de tu eslabón, `extra` eligió de su Extra Deck por el orden de la hoja y `hold` tenía una que el núcleo le ofreció contra tu eslabón y su regla dijo que no
+ * (`rule` undefined: no tiene regla).
+ */
+export type HandtrapWhy =
+  | { kind: 'use'; code: number; rule: AutoRule; to: number | null; drawPhase: boolean }
+  | { kind: 'aim'; code: number; target: number }
+  | { kind: 'extra'; picked: number[] }
+  | { kind: 'hold'; code: number; rule: AutoRule | undefined; to: number }
+
+/**
  * El rival con handtraps: contesta como el pasivo salvo dos cosas. Ante una cadena, activa la primera de `priority` (los passcodes, en el
- * orden de la hoja) que su regla (`AUTO_RULES`) pide usar ahora, sólo contra un eslabón tuyo que todavía espera (nunca contra lo suyo:
+ * orden de la hoja) que su regla (`ruleOf`) pide usar ahora, sólo contra un eslabón tuyo que todavía espera (nunca contra lo suyo:
  * Ash también negaría su propio Maxx "C"). Y al elegir el objetivo de la que acaba de activar (`monster`, `graveyard`), apunta a la carta
  * de tu eslabón. Cuando elige cartas de su Extra Deck (un costo, como los Sincros que revela Fydraulis Harmonia, o lo que manda al cementerio), toma
  * primero las de `extra` (sus passcodes, en el orden de la hoja). Lo demás (y lo que no sabe resolver) es del pasivo: nunca da una respuesta que el núcleo rechace.
  */
-export function handtrapPolicy(priority: readonly number[], fallback: Policy = passivePolicy(), extra: readonly number[] = []): RivalPolicy {
+export function handtrapPolicy(priority: readonly number[], fallback: Policy = passivePolicy(), extra: readonly number[] = [], aliasOf?: (code: number) => number): RivalPolicy {
+  const decide = handtrapDecide(priority, extra, aliasOf)
+
+  return (ask, view) => decide(ask, view, fallback).answer
+}
+
+/** `handtrapPolicy` con su porqué (`why`; sin él, contestó como el pasivo): la usa el bot de handtraps (`bot/rivals.ts`), con el azar suyo en `fallback`. */
+export function handtrapDecide(priority: readonly number[], extra: readonly number[] = [], aliasOf?: (code: number) => number) {
   /** De tu lado (visto por el rival) y esperando respuesta. */
   const yours = (link: ChainLink | undefined): link is ChainLink & { card: CardRef } => link?.card?.side === 'theirs' && link.state === 'chained'
+  const rules = new Map<number, AutoRule | undefined>()
+  const rule = (code: number) => {
+    if (!rules.has(code)) rules.set(code, ruleOf(code, aliasOf))
+    return rules.get(code)
+  }
 
-  return (ask, view) => {
+  return (ask: CoreAsk, view: RivalView, fallback: Policy): { answer: CoreAnswer; why?: HandtrapWhy } => {
     const chain = view.overlay.chain
     const top = chain.at(-1)
     const opponent = (1 - ask.player) as Seat
 
     if (ask.type === 'select_chain' && !ask.forced) {
       const at = yours(top) ? view.locationOf(top.card) : null
+      const drawPhase = chain.length === 0 && (ask.hint_timing_other & DRAW_TIMING) !== 0
       const wants: Record<AutoRule, boolean> = {
         respond: yours(top),
         monster: at?.controller === opponent && at.location === LOCATION.MZONE,
@@ -202,11 +240,15 @@ export function handtrapPolicy(priority: readonly number[], fallback: Policy = p
       }
 
       for (const code of priority) {
-        const rule = AUTO_RULES[code]
-        const index = rule && wants[rule] ? ask.selects.findIndex((card) => card.code === code) : -1
+        const used = rule(code)
+        const index = used && wants[used] ? ask.selects.findIndex((card) => card.code === code) : -1
 
-        if (index >= 0) return { type: ask.type, index }
+        if (index >= 0) return { answer: { type: ask.type, index }, why: { kind: 'use', code, rule: used!, to: yours(top) ? top.code : null, drawPhase } }
       }
+      // Contra tu eslabón tenía una y no la usó: la primera que el núcleo le ofreció.
+      const held = yours(top) ? ask.selects[0] : undefined
+
+      if (held && yours(top)) return { answer: fallback(ask), why: { kind: 'hold', code: held.code, rule: rule(held.code), to: top.code } }
     }
 
     /** El lugar de una carta en la preferencia: las de su Extra Deck en el orden de la hoja; lo demás, después y en el orden dado. */
@@ -219,31 +261,36 @@ export function handtrapPolicy(priority: readonly number[], fallback: Policy = p
     const best = (cards: readonly { code: number; controller: number; location: number }[]) => cards.map((_, i) => i).sort((a, b) => rank(cards[a]!) - rank(cards[b]!) || a - b)
 
     if (ask.type === 'select_unselect_card' && fromExtra(ask.select_cards) && ask.select_cards.length > 0) {
+      const index = best(ask.select_cards)[0]!
+      const why: HandtrapWhy = { kind: 'extra', picked: [ask.select_cards[index]!.code] }
+
       // El costo de Fydraulis Harmonia (revelar hasta 5 Sincros): todos los que pueda, así se Invoca, manda uno al cementerio y destruye a tu monstruo. Lo demás, lo justo.
-      if (top?.card?.side === 'mine' && top.code === FYDRAULIS_HARMONIA) return { type: ask.type, index: best(ask.select_cards)[0]! }
-      if (!ask.can_finish) return { type: ask.type, index: best(ask.select_cards)[0]! }
+      if (top?.card?.side === 'mine' && top.code === FYDRAULIS_HARMONIA) return { answer: { type: ask.type, index }, why }
+      if (!ask.can_finish) return { answer: { type: ask.type, index }, why }
     }
     if (ask.type === 'select_card' && fromExtra(ask.selects) && !(ask.can_cancel && ask.min === 0)) {
-      return { type: ask.type, indices: best(ask.selects).slice(0, Math.min(ask.min, ask.selects.length)) }
+      const indices = best(ask.selects).slice(0, Math.min(ask.min, ask.selects.length))
+
+      return { answer: { type: ask.type, indices }, why: { kind: 'extra', picked: indices.map((i) => ask.selects[i]!.code) } }
     }
 
     // El objetivo de la que acaba de activar (el eslabón de arriba es suyo): la carta de tu eslabón, el de abajo.
     const below = chain.at(-2)
-    const aims = top?.card?.side === 'mine' && (AUTO_RULES[top.code] === 'monster' || AUTO_RULES[top.code] === 'graveyard')
+    const aims = top?.card?.side === 'mine' && (rule(top.code) === 'monster' || rule(top.code) === 'graveyard')
 
     if (ask.type === 'select_card' && aims && below?.card?.side === 'theirs' && ask.min <= 1) {
       const at = view.locationOf(below.card)
       const index = at ? ask.selects.findIndex((card) => card.controller === at.controller && card.location === at.location && card.sequence === at.sequence) : -1
 
-      if (index >= 0) return { type: ask.type, indices: [index] }
+      if (index >= 0) return { answer: { type: ask.type, indices: [index] }, why: { kind: 'aim', code: top.code, target: below.code } }
     }
 
-    return fallback(ask)
+    return { answer: fallback(ask) }
   }
 }
 
 /** mulberry32, el mismo generador que `shuffleWithSeed` de la mesa. */
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   let a = seed >>> 0
 
   return () => {

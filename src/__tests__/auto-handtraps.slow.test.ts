@@ -26,6 +26,10 @@ const BELLE = 73642297
 const MOURNER = 52038442
 const NIBIRU = 27204311
 const DROLL = 94145022
+/** El Droll & Lock Bird original (del buscador): el del catálogo es su arte alternativo. */
+const DROLL_BASE = 94145021
+/** Ash con su arte alternativo (`alias` 14558127): sin regla propia, juega con la de su original. */
+const ASH_ALT = 14558128
 const GAMMA = 38814750
 const CROW = 24508238
 const DOMINUS = 40366667
@@ -169,6 +173,13 @@ const SCENARIOS: Scenario[] = [
     deck: [[SOGEN, 1], [AVIAN, 1], ...SPELLS],
     hand: [TERRAFORMING, STRATOS],
     // Buscás con Terraforming; después, el efecto de Stratos ya no puede sumar del deck.
+    steps: [{ do: 'activate', code: TERRAFORMING }, { do: 'summon', code: STRATOS }],
+    check: (after) => (has(after, (event) => event.type === 'chain_solved') && !moved(after, AVIAN, L.DECK, L.HAND) ? null : 'después de Droll se sumó una carta del deck'),
+  },
+  {
+    card: DROLL_BASE,
+    deck: [[SOGEN, 1], [AVIAN, 1], ...SPELLS],
+    hand: [TERRAFORMING, STRATOS],
     steps: [{ do: 'activate', code: TERRAFORMING }, { do: 'summon', code: STRATOS }],
     check: (after) => (has(after, (event) => event.type === 'chain_solved') && !moved(after, AVIAN, L.DECK, L.HAND) ? null : 'después de Droll se sumó una carta del deck'),
   },
@@ -368,7 +379,9 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     const outcome = at >= 0 ? scenario.check(events.slice(at), events) : 'el rival no la activó'
     const faults = snapshot.faults.filter((fault) => fault.kind !== 'script' || !fault.message.startsWith('card data'))
 
-    report.push({ card: names.get(scenario.card), offers, activated: at >= 0, outcome, status: snapshot.status, faults, rival: snapshot.answers.filter((item) => item.seat === 1 && JSON.stringify(item.answer) !== '{"type":"select_chain","index":null}').map((item) => item.answer) })
+    const reasons = snapshot.answers.flatMap((item) => (item.reason ? [item.reason] : []))
+
+    report.push({ card: names.get(scenario.card), offers, activated: at >= 0, outcome, status: snapshot.status, faults, rival: snapshot.answers.filter((item) => item.seat === 1 && JSON.stringify(item.answer) !== '{"type":"select_chain","index":null}').map((item) => item.answer), reasons: reasons.map((reason) => reason.key) })
 
     expect({ status: snapshot.status, fault: snapshot.fault, faults, outcome }).toEqual({ status: 'ready', fault: null, faults: [], outcome: null })
     // Quién negó (`ChainStep.by`, deducido por el adaptador: el núcleo no lo dice): toda negación de estos escenarios es de la handtrap y apunta a su eslabón, o no se sabe (`BY_UNKNOWN`).
@@ -380,6 +393,19 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     // Las que roban (`draw`) ya las usó en tu Draw Phase, antes de tu primera pregunta.
     expect(handAtStart).toEqual(AUTO_RULES[scenario.card] === 'draw' ? [] : [scenario.card])
     expect(snapshot.rivalHand).not.toContain(scenario.card)
+    // El motivo de usarla (`auto.bot.reason.handtrap.*`, con la carta primero) va en su respuesta, sólo en las del rival.
+    expect(reasons.some((reason) => reason.key.startsWith('auto.bot.reason.handtrap.') && reason.cards?.[0] === scenario.card)).toBe(true)
+    expect(snapshot.answers.filter((item) => item.reason && item.seat !== 1)).toEqual([])
+  })
+
+  it('un arte alternativo (Ash 14558128) juega con la regla de su original (`alias`): niega Terraforming y lo dice', async () => {
+    const ash = SCENARIOS.find((scenario) => scenario.card === ASH)!
+    const { events, snapshot } = await duel(ash, { enabled: true, picks: [{ id: ASH_ALT, name: '', copies: 1 }], hand: 1 })
+    const at = chainingOf(events, ASH_ALT, 1)
+
+    expect(at).toBeGreaterThanOrEqual(0)
+    expect(ash.check(events.slice(at), events)).toBeNull()
+    expect(snapshot.answers.flatMap((item) => (item.reason ? [item.reason] : []))).toContainEqual(expect.objectContaining({ key: 'auto.bot.reason.handtrap.respond', cards: [ASH_ALT, TERRAFORMING], yours: true }))
   })
 
   it('Dominus Impulse y Dominus Purge en la misma mano: cada una tiene su «1 por turno», así que usa las dos en tu turno (antes Purge no tenía regla y la guardaba)', async () => {

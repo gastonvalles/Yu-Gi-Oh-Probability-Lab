@@ -16,7 +16,8 @@ import { TONE, type Tone } from './tone'
  *   `icon` o `initials` (un círculo de 40 px teñido con el ícono o las letras en blanco; `tone` le da un tinte con significado, si no es el lila de siempre) o `media`
  *   (una carta, recta) · el final, uno solo: `end` (un `Button` secondary si la fila hace algo distinto de abrir, una `Badge`), `toggle` (la fila entera es el
  *   interruptor) o `value` + la flecha (que sale sola si la fila abre algo) · qué es: `href` (un enlace), `onClick` (un botón) o nada (una fila quieta) ·
- *   `selected` (`aria-current`, el aro ámbar de `listItemSelected`) · `disabled`.
+ *   `selected` (`aria-current`, el aro ámbar de `listItemSelected`) · `disabled` · `wrap` (un registro: el título es una frase entera, en varios renglones y sin negrita, como
+ *   «Qué hizo el bot y por qué»).
  * - **`ListGroup`:** `label` (el nombre de la lista para el lector) · `loading` (3 filas de esqueleto y `aria-busy`) · `empty` (lo que se ve sin filas: un `EmptyState`
  *   adentro de la misma tarjeta).
  * - **Estados:** reposo · al pasar el mouse o apretar, el velo `bg-tint/7` de `listItem` · foco `shadow-focus` · elegida · apagada al 40 % · vacía · cargando.
@@ -60,9 +61,10 @@ interface ListRowProps {
   onClick?: () => void
   selected?: boolean
   disabled?: boolean
+  wrap?: boolean
 }
 
-export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutral', value, end, toggle, href, onClick, selected = false, disabled = false }: ListRowProps) {
+export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutral', value, end, toggle, href, onClick, selected = false, disabled = false, wrap = false }: ListRowProps) {
   const subtitleId = useId()
   const opens = !toggle && !end && Boolean(href ?? onClick)
   const Tag: ElementType = toggle || (onClick && !href) ? 'button' : href ? 'a' : 'div'
@@ -91,7 +93,7 @@ export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutra
       >
         {lead ? <span className="flex shrink-0">{lead}</span> : null}
         <span className="grid min-w-0 flex-1 gap-0.5">
-          <span className="truncate text-body font-semibold text-foreground">{title}</span>
+          <span className={cx('text-body text-foreground', wrap ? 'text-pretty font-normal' : 'truncate font-semibold')}>{title}</span>
           {subtitle ? <span id={subtitleId} className="line-clamp-2 text-micro text-muted">{subtitle}</span> : null}
         </span>
         {end ? <span className="flex shrink-0 items-center">{end}</span> : null}

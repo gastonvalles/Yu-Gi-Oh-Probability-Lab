@@ -7,8 +7,10 @@ import { createAutoSession, workerTransport, type AutoSession, type SessionOptio
 import type { DeckList } from '../../app/auto/deck-map'
 import { REASON_DECK, REASON_LP, SCRIPT_REASON } from '../../app/auto/end-reasons'
 import { manualHandover, type ManualGame } from '../../app/auto/manual-handover'
+import { foldOpeningHand } from '../../app/auto/opening-hand'
 import { replayFromAuto } from '../../app/auto/auto-replay'
 import type { Seat } from '../../app/auto/protocol'
+import type { BotNote } from '../../app/auto/auto-session'
 import { seatOf, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { autoRival, dealRival, poolCount, readHandtrapConfig, rivalCardOf, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
@@ -27,6 +29,7 @@ import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
 import { SaveReplayDialog } from '../replays/SaveReplayDialog'
 import { AutoBar, AutoDock, type AutoOptions } from './AutoBar'
+import { BotLogSheet, botTurns } from './BotLog'
 import { FaultCover, LoadingCover } from './AutoCovers'
 import { deckOf } from './deck-list'
 import { ManualDialog } from './ManualDialog'
@@ -239,6 +242,22 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     [switching, snap, cardsById, rivalDeal],
   )
   const linkName = useCallback((link: ChainLink) => nameOf(link.card, link.code), [nameOf])
+  // «Qué hizo el bot y por qué» (el final y «Opciones del duelo»): los motivos del rival, que van en sus respuestas. Tocar uno lleva tu mesa a ese momento (el repaso de tus jugadas;
+  // la mano de apertura es el paso 0, así que se cuenta sin su jugada).
+  const [logOpen, setLogOpen] = useState(false)
+  const openLog = useCallback(() => setLogOpen(true), [])
+  const botLog = useMemo(() => botTurns(snap.answers), [snap.answers])
+  const skipped = foldOpeningHand(snap.initial.mine, snap.mineActions.slice(0, 1)).skip
+  const { seek } = asks.review
+  const pickNote = useCallback(
+    (note: BotNote) => {
+      setLogOpen(false)
+      seek(Math.max(0, note.at - skipped))
+    },
+    [seek, skipped],
+  )
+  const codeName = useCallback((code: number) => nameOf(null, code), [nameOf])
+  const codeArt = useCallback((code: number) => artOf(null, code), [artOf])
 
   // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,
   // con a qué responde (como en el duelo por enlace); lo que se negó lo dice su eslabón en el aviso de la cadena. Se mira la cadena (una Trampa que activa desde la mano llega a la mesa colocada, no como
@@ -279,11 +298,11 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       fault ? (
         <FaultCover fault={fault} onRetry={restart} {...(recoverable ? { onUndo: undo } : {})} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'ended' && end ? (
-        <EndCover end={end} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
+        <EndCover end={end} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onLog={openLog} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'loading' ? (
         <LoadingCover progress={progress} rival={rivalOn} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, rivalOn, openSave],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, rivalOn, openSave, openLog],
   )
 
   // Las vidas del núcleo van por asiento: las tuyas son las de `seat`.
@@ -300,6 +319,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       onPlace: (mode) => setAutoPref('place', mode),
       onRestart: restart,
       onSaveReplay: openSave,
+      onBotLog: openLog,
       ...(openManual ? { onManual: openManual } : {}),
       handtraps: {
         on: rivalOn,
@@ -309,7 +329,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       blind: prefs.blind,
       onBlind: (on) => setAutoPref('blind', on),
     }),
-    [prefs.chain, prefs.place, prefs.blind, restart, openSave, openManual, rivalOn, handtraps],
+    [prefs.chain, prefs.place, prefs.blind, restart, openSave, openLog, openManual, rivalOn, handtraps],
   )
   const turn = reviewing ? asks.state.turn : snap.overlay.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
@@ -395,6 +415,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       />
       {asks.pieces}
       <SaveReplayDialog isOpen={saving} onClose={() => setSaving(false)} build={buildReplay} />
+      <BotLogSheet isOpen={logOpen} onClose={() => setLogOpen(false)} turns={botLog} deciding={rivalOn} loading={snap.replaying} nameOf={codeName} artOf={codeArt} onPick={pickNote} />
       <ManualDialog
         key={opened}
         isOpen={switching}
@@ -411,8 +432,8 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   )
 }
 
-/** El final: quién ganó y por qué, «Guardar replay» y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
-function EndCover({ end, lp, seat, rival, onAgain, onSave, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onManual?: () => void; onExit: () => void }) {
+/** El final: quién ganó y por qué, «Qué hizo el bot», «Guardar replay» y «Jugar otra vez» (la misma semilla: el mismo duelo) o, con `onManual`, seguir la partida en la mesa manual. */
+function EndCover({ end, lp, seat, rival, onAgain, onSave, onLog, onManual, onExit }: { end: { winner: number; reason: number }; lp: readonly [number, number]; seat: Seat; rival: string; onAgain: () => void; onSave: () => void; onLog: () => void; onManual?: () => void; onExit: () => void }) {
   const won = end.winner === seat
   const [mine, theirs] = [lp[seat], lp[1 - seat]!]
   const title = end.winner === 2 ? t('duel.result.title.draw') : won ? t('duel.result.title.win') : t('duel.result.title.lose')
@@ -437,6 +458,9 @@ function EndCover({ end, lp, seat, rival, onAgain, onSave, onManual, onExit }: {
           {reason}
         </p>
         <p className="m-0 text-micro tabular-nums text-soft">{`${t('duel.bar.you')} ${mine} · ${rival} ${theirs}`}</p>
+        <Button variant="tertiary" icon="chat" aria-haspopup="dialog" onClick={onLog}>
+          {t('auto.bot.log.open')}
+        </Button>
         <div className="flex flex-wrap justify-center gap-2">
           <Button variant="secondary" icon="save" aria-haspopup="dialog" onClick={onSave}>
             {t('meta.duels.save.button')}

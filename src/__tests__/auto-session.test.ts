@@ -334,7 +334,7 @@ describe('la sesión del duelo automático', () => {
     session.destroy()
   })
 
-  it('el núcleo rechaza la respuesta del rival: la repregunta va con otra (legal y la misma con la misma semilla) y el duelo sigue; sin otra, tres rechazos cortan', async () => {
+  it('el núcleo rechaza la respuesta del rival: la repregunta va con otra (legal y la misma con la misma semilla del bot, no la del duelo) y el duelo sigue; sin otra, tres rechazos cortan', async () => {
     /** Tras mi jugada, el rival declara una carta; el núcleo rechaza la 11 (y, con `strict`, todas) y, aceptada otra, vuelve a mí. */
     const duel = async (cards: number[], strict = false) => {
       let id = 2000
@@ -351,7 +351,7 @@ describe('la sesión del duelo automático', () => {
           return true
         },
       )
-      const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 5 })
+      const session = createAutoSession({ loader: loader(), deck: { main: [[1, 5]] }, transport: host.factory, seed: 5, botSeed: 9 })
 
       await until(session, (s) => s.status === 'ready')
       session.answer(END)
