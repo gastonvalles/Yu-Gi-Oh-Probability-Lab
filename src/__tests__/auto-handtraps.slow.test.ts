@@ -4,7 +4,7 @@ import type { ChainStep } from '../app/auto/chain-feed'
 import { LOCATION as L, type WireEvent } from '../app/auto/protocol'
 import { AUTO_RULES, HANDTRAP_CATALOG, type ExtraPick } from '../app/handtraps'
 import { CORE_DATA_DIR, hasCoreData } from './support/core-data'
-import { chainingOf, H3_CARDS, handtrapDuels, has, moved, type DuelScenario, type Step } from './support/handtrap-duel'
+import { BOT_CARDS, chainingOf, H3_CARDS, handtrapDuels, has, moved, type DuelScenario, type Step } from './support/handtrap-duel'
 
 /**
  * Cada handtrap del simulador contra el núcleo real (lento: `npm run test:auto`; se salta sin datos). En un escenario armado a mano el rival
@@ -270,7 +270,7 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
   })
 
   it('toda carta con regla tiene escenario (las de H3, en auto-handtraps-h3.slow.test.ts), y el catálogo entero tiene regla', () => {
-    expect(new Set([...SCENARIOS.map((scenario) => scenario.card), ...H3_CARDS])).toEqual(new Set(Object.keys(AUTO_RULES).map(Number)))
+    expect(new Set([...SCENARIOS.map((scenario) => scenario.card), ...H3_CARDS, ...BOT_CARDS])).toEqual(new Set(Object.keys(AUTO_RULES).map(Number)))
     expect(HANDTRAP_CATALOG.filter((card) => !AUTO_RULES[card.id])).toEqual([])
   })
 

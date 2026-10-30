@@ -264,6 +264,8 @@ export function handtrapDecide(priority: readonly number[], extra: readonly numb
         // Tu ataque: Battle Phase tuya y sin cadena (el núcleo la ofrece al declararlo).
         attack: yourTurn && chain.length === 0 && ((view.overlay.phase ?? 0) & BATTLE_PHASES) !== 0,
         extra: yourTurn,
+        // Cuenta las cartas del campo: la decide el bot con su vista (`bot/rivals.ts`); acá (el fuzz con `handtrapPolicy`) nunca.
+        evenly: false,
       }
 
       for (const code of priority) {

@@ -70,9 +70,11 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
  * - `attack`: cuando declarás un ataque (en tu Battle Phase, sin cadena); en respuesta a un efecto, la guarda.
  * - `floodgate`: un candado para el turno, en el momento de `draw` (tu Draw Phase o tu primera jugada).
  * - `extra`: en tu turno, apenas el núcleo la ofrece (sólo lo hace con un monstruo Invocado desde el Extra Deck en el campo).
+ * - `evenly`: Evenly Matched, al final de una Battle Phase (la única ventana de su script), si destierra al menos 2 de tus cartas; la decide el bot con su vista (`bot/rivals.ts`),
+ *   porque cuenta lo que hay en el campo. Desde la mano (con su campo vacío) o colocada en su turno (`TURN_RULES`).
  * `offered` y `attack` usan sólo el efecto de la mano: el de la carta ya en el campo (Hecahands Godos se lleva un monstruo de tu cementerio) no lo usa.
  */
-export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard' | 'bystial' | 'attack' | 'floodgate' | 'extra'
+export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard' | 'bystial' | 'attack' | 'floodgate' | 'extra' | 'evenly'
 
 export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   14558127: 'respond', // Ash Blossom & Joyous Spring
@@ -113,14 +115,17 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   17266660: 'respond', // Herald of Orange Light (un efecto de monstruo)
   21074344: 'respond', // Herald of Green Light (la activación de una Mágica)
   94689635: 'respond', // Herald of Purple Light (la activación de una Trampa)
+  15693423: 'evenly', // Evenly Matched
 }
 
 /**
  * Lo que el rival juega en su propio turno con «El rival juega su turno» (`HandtrapConfig.ownTurn`; `auto/bot/turn.ts`), además de Invocar su relleno y atacar. Las tres de Gastón
- * Tributan monstruos tuyos (`golem`, `sphere`, `bandit`); `sweepMonsters` / `sweepSpells` barren lo tuyo en su Main Phase; `counter` se coloca y niega tu Invocación o tu efecto.
- * Un arte alternativo usa la regla de su original (`alias`).
+ * Tributan monstruos tuyos (`golem`, `sphere`, `bandit`); `sweepMonsters` / `sweepSpells` barren lo tuyo en su Main Phase y `storm` (Lightning Storm), lo que más se lleva: tus
+ * monstruos en ataque o tus Mágicas y Trampas; `counter` se coloca y niega tu Invocación o tu efecto. También se colocan para tu turno: `evenly` (Evenly Matched, `AUTO_RULES`),
+ * `moon` (Book of Moon: pone boca abajo al monstruo que te declara un ataque que le destruye uno suyo, o directo de 2000 o más o letal) y `called` (Called by the Grave: destierra
+ * de tu cementerio el monstruo de tu eslabón, lo que niega ese efecto; en su turno, también desde la mano). Un arte alternativo usa la regla de su original (`alias`).
  */
-export type TurnRule = 'golem' | 'sphere' | 'bandit' | 'sweepMonsters' | 'sweepSpells' | 'counter'
+export type TurnRule = 'golem' | 'sphere' | 'bandit' | 'sweepMonsters' | 'sweepSpells' | 'storm' | 'counter' | 'evenly' | 'moon' | 'called'
 
 export const TURN_RULES: Readonly<Record<number, TurnRule>> = {
   102380: 'golem', // Lava Golem
@@ -132,6 +137,10 @@ export const TURN_RULES: Readonly<Record<number, TurnRule>> = {
   40605147: 'counter', // Solemn Strike
   41420027: 'counter', // Solemn Judgment
   84749824: 'counter', // Solemn Warning
+  14532163: 'storm', // Lightning Storm (sólo sin cartas boca arriba suyas: antes de Invocar)
+  15693423: 'evenly', // Evenly Matched
+  14087893: 'moon', // Book of Moon
+  24224830: 'called', // Called by the Grave
 }
 
 /**

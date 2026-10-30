@@ -20,7 +20,7 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, nodeSource, scriptStore, wasmBina
  * Límite: demuestra que el bot no depende de lo oculto en estos escenarios; lo general lo dicen la capa 1 y la 2 (`auto-bot-privacy.test.ts`, `auto-bot.test.ts`) y el oráculo del fuzz.
  * Aparte informa cuánto difiere lo que le llega a su asiento tal cual (los `waiting` y `stats`: el canal lateral que la vista no deja pasar), en CORE_DATA_DIR.
  * Todo dos veces: con el rival de handtraps y con el que además juega su turno (`turnBot`: Invoca, barre, Tributa tus monstruos y ataca; su tramposo, con Called by the Grave
- * en tu mano, termina su turno sin jugar). Sin Harpie's Feather Duster: destruir lo que colocaste lo mostraría, y desde ahí lo público ya sería distinto.
+ * en tu mano, termina su turno sin jugar), y una tercera con Evenly Matched en su mano (cuenta tus cartas del campo, la oculta también). Sin Harpie's Feather Duster: destruir lo que colocaste lo mostraría, y desde ahí lo público ya sería distinto.
  */
 
 const ASH = 14558127
@@ -69,9 +69,12 @@ const VERSIONS = 8
 const RIVAL: HandtrapConfig = { enabled: true, picks: [ASH, MAXX, VEILER, IMPERM, OGRE].map((id) => ({ id, name: '', copies: 1 })), hand: 5 }
 /** El que juega su turno: Ash, Blazing Inpachi (un Normal para Invocar y atacar), Raigeki, Lava Golem y Gallant Bandit en la mano. */
 const RIVAL_TURN: HandtrapConfig = { enabled: true, picks: [ASH, 5464695, 12580477, 102380, 24203749].map((id) => ({ id, name: '', copies: 1 })), hand: 5, ownTurn: true }
+/** Evenly Matched cuenta tus cartas del campo, también la que colocás (oculta): con Ash y Veiler, en la mano y sin jugar su turno. */
+const RIVAL_EVENLY: HandtrapConfig = { enabled: true, picks: [15693423, ASH, VEILER].map((id) => ({ id, name: '', copies: 1 })), hand: 3 }
 const MODES = [
   { name: 'el rival de handtraps', config: RIVAL, file: 'bot-privacy-report.json' },
   { name: 'el rival que juega su turno', config: RIVAL_TURN, file: 'bot-privacy-turn-report.json' },
+  { name: 'el rival con Evenly Matched', config: RIVAL_EVENLY, file: 'bot-privacy-evenly-report.json' },
 ]
 
 function player(line: Line, setCode: number) {
