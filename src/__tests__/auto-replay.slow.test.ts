@@ -1,15 +1,14 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createDataLoader } from '../app/auto/auto-data'
 import { replayFromAuto } from '../app/auto/auto-replay'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
 import { randomLegalPolicy } from '../app/auto/policies'
 import { duelReplayAt, walkReplay } from '../app/duel-replay'
 import { buildReplayLink, decodeReplayPayload, encodeReplayPayload, MAX_LINK_LENGTH, parseReplayText, replayEnvelope } from '../app/duel-replay-share'
 import { mapMatIds, openPublic } from '../app/mat-public'
-import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * El replay de duelos automáticos reales (lento: `npm run test:auto`; se salta sin datos): los dos asientos juegan al azar (legal) con decks del Meta hasta el final. El replay
@@ -37,7 +36,7 @@ describe.skipIf(!hasCoreData)('el replay de duelos automáticos reales (npm run 
   const store = scriptStore()
   const loader = createDataLoader(nodeSource(rows, store), null)
   const wasm = hasCoreData ? wasmBinary() : new ArrayBuffer(0)
-  const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+  const lists = slowDecklists()
   const ok = hasCoreData ? metaDecks(cards, store).map((deck) => deck.id).filter((key) => lists[key]) : []
 
   it('termina en las mesas del duelo, no filtra lo oculto y va y vuelve por enlace y archivo; mide el tamaño', async () => {

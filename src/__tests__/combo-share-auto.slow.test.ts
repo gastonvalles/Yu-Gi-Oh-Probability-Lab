@@ -1,16 +1,13 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
 import { foldOpeningHand } from '../app/auto/opening-hand'
 import { randomLegalPolicy } from '../app/auto/policies'
 import { comboEnvelope, decodeComboPayload, encodeComboPayload, packPayload } from '../app/combo-share'
 import { replayMat } from '../app/practice-mat'
 import { createSavedCombo } from '../app/saved-combos'
 import { withoutId } from './support/combo-fixtures'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * El enlace v2 de combos grabados con el núcleo real (`auto: true`; lento: `npm run test:auto`; se salta sin datos): van y vuelven igual (sin los nombres), se reproducen
@@ -36,7 +33,7 @@ describe.skipIf(!hasCoreData)('el enlace de un combo grabado con el núcleo real
     const rows = cardRows()
     const store = scriptStore()
     const { cards } = loadCards()
-    const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+    const lists = slowDecklists()
     const report = ['jugadas | enlace v1 → v2']
 
     for (const [n, deck] of metaDecks(cards, store).slice(0, 3).entries()) {

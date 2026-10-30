@@ -1,12 +1,10 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { cardMatchesOpcode } from 'ocgcore-wasm'
 import { openAsk, type AskContext } from '../app/auto/ask-ui'
 import { createDataLoader } from '../app/auto/auto-data'
 import { autoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession, PendingAsk, TransportFactory } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
-import { bagOrder, teamOrder, type DeckList } from '../app/auto/deck-map'
+import { bagOrder, teamOrder } from '../app/auto/deck-map'
 import { codesOf, createGuestLink, createHostLink, type OnlineLink } from '../app/auto/online'
 import { createReassembler, GUEST_ACCEPTS, isAutoText, MAX_WHOLE_BYTES, parseAutoMessage, type AutoMessage } from '../app/auto/online-protocol'
 import { randomLegalPolicy, type Policy } from '../app/auto/policies'
@@ -16,7 +14,7 @@ import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import type { Duelist } from '../app/life-calculator'
 import { playAsk, seeded, seededKey } from './support/ask-ui-player'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 
 /**
@@ -73,7 +71,7 @@ describe.skipIf(!hasCoreData)('el duelo automático por enlace con el núcleo re
   const { cards } = hasCoreData ? loadCards() : { cards: new Map() }
   const store = scriptStore()
   const source = nodeSource(rows, store)
-  const lists = hasCoreData ? (JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>) : {}
+  const lists = hasCoreData ? (slowDecklists()) : {}
   const ok = new Set(hasCoreData ? metaDecks(cards, store).map((deck) => deck.id) : [])
   const ids = Object.keys(lists).filter((id) => ok.has(id))
   const cardList = [...cards.values()]

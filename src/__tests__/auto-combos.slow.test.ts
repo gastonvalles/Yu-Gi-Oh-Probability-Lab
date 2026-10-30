@@ -1,14 +1,11 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
 import { foldOpeningHand } from '../app/auto/opening-hand'
 import { randomLegalPolicy } from '../app/auto/policies'
 import { describeMatSteps, replayMat } from '../app/practice-mat'
 import { createSavedCombo, readSavedCombos, writeSavedCombos } from '../app/saved-combos'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * Un combo grabado en «Jugar solo automático» con el núcleo real (lento: `npm run test:auto`; se salta sin datos): la cinta del núcleo, con la mano de apertura plegada en la
@@ -39,7 +36,7 @@ describe.skipIf(!hasCoreData)('un combo grabado con el núcleo real (npm run tes
     const rows = cardRows()
     const store = scriptStore()
     const { cards } = loadCards()
-    const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+    const lists = slowDecklists()
     const id = metaDecks(cards, store)[0]!.id
     const session = createAutoSession({ loader: createDataLoader(nodeSource(rows, store), null), deck: lists[id]!, seed: 7, transport: localTransport({ wasmBinary: wasmBinary() }) })
     const bot = randomLegalPolicy(7)

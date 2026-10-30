@@ -106,10 +106,17 @@ export function scriptStore(root = CARD_SCRIPTS_DIR): { read: (name: string) => 
   return { read, has: (name) => read(name) !== null }
 }
 
-/** Las listas del meta, ya en códigos del núcleo; sólo las que se pueden automatizar (todas sus cartas en el `.cdb` y con reglas). */
-export function metaDecks(cards: Map<number, OcgCardData>, store: { has: (name: string) => boolean }) {
-  const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+/**
+ * Las listas de las pruebas lentas: 20 del meta del 2026-10-30, fijas (`slow-decklists.json`; Ritual, Fusión, Sincronía, Xyz, Enlace y Péndulo). No se leen las de
+ * `src/data/`, que cambian todos los días: corrían la selección de cada prueba y un mazo nuevo la rompía sin que cambiara el código. Qué mazos del meta de hoy no se
+ * pueden jugar lo dice `auto-meta-today.slow.test.ts`.
+ */
+export function slowDecklists(): Record<string, DeckList> {
+  return JSON.parse(readFileSync(path.join(process.cwd(), 'src/__tests__/support/slow-decklists.json'), 'utf8')) as Record<string, DeckList>
+}
 
+/** Las listas (las de las pruebas lentas, u otras), ya en códigos del núcleo; sólo las que se pueden automatizar (todas sus cartas en el `.cdb` y con reglas). */
+export function metaDecks(cards: Map<number, OcgCardData>, store: { has: (name: string) => boolean }, lists = slowDecklists()) {
   return Object.entries(lists)
     .map(([id, list]) => ({ id, ...mapDeck(list, (code) => cards.get(code) ?? null, store.has) }))
     .filter((deck) => deck.missing.length === 0 && deck.noRules.length === 0)

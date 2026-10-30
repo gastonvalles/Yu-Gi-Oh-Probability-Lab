@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { createDataLoader } from '../app/auto/auto-data'
 import { autoSaveStore } from '../app/auto/auto-save'
 import type { AutoSession } from '../app/auto/auto-session'
@@ -10,7 +8,7 @@ import type { AutoCommand } from '../app/auto/protocol'
 import { DEFAULT_SETTINGS } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import { seeded, seededKey } from './support/ask-ui-player'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 
 /**
@@ -53,7 +51,7 @@ describe.skipIf(!hasCoreData)('un Match con siding por enlace, con el núcleo re
     const { cards } = loadCards()
     const store = scriptStore()
     const source = nodeSource(rows, store)
-    const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+    const lists = slowDecklists()
     const ok = new Set(metaDecks(cards, store).map((deck) => deck.id))
     const [hostId, guestId] = Object.keys(lists).filter((id) => ok.has(id))
     const hostDeck = lists[hostId!]!

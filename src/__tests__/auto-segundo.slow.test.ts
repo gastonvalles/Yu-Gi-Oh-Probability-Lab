@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
@@ -8,7 +6,7 @@ import { passivePolicy, randomLegalPolicy } from '../app/auto/policies'
 import type { AutoEvent, CoreAnswer, CoreAsk, WireEvent } from '../app/auto/protocol'
 import { autoRival } from '../app/handtraps'
 import { matReducer } from '../app/practice-mat'
-import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
 /**
  * Ir segundo en jugar solo automático con el núcleo real (lento: `npm run test:auto`; se salta sin datos). Vas en el asiento 1 (el núcleo siempre empieza con el 0): el rival
@@ -44,7 +42,7 @@ describe.skipIf(!hasCoreData)('ir segundo en jugar solo, con el núcleo real (np
   const store = scriptStore()
   const loader = createDataLoader(nodeSource(rows, store), null)
   const wasm = hasCoreData ? wasmBinary() : new ArrayBuffer(0)
-  const lists = JSON.parse(readFileSync(path.join(process.cwd(), 'src/data/meta-decklists.json'), 'utf8')) as Record<string, DeckList>
+  const lists = slowDecklists()
   const ok = new Set(hasCoreData ? metaDecks(cards, store).map((deck) => deck.id) : [])
   const id = Object.keys(lists).find((key) => ok.has(key)) ?? ''
 

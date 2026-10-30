@@ -124,6 +124,23 @@ describe('el adaptador: del núcleo a la mesa', () => {
     expect([adapter.theirs.state.hand, adapter.codeOf({ side: 'mine', id: 'f.c1' })]).toEqual([[], 777])
   })
 
+  it('una carta mía que el rival controló y usó de material vuelve a mi cementerio cuando su Xyz se va (el núcleo la manda después, desde el cementerio)', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 0, drawn: [{ code: 111, position: 10 }] }))
+    adapter.apply(events(0, move(111, at(0, L.HAND, 0, 10), at(0, L.MZONE, 0)), played('summoning', 111, at(0, L.MZONE, 0))))
+    // La toma el rival, la junta debajo de su Xyz e invoca.
+    adapter.apply(events(0, move(111, at(0, L.MZONE, 0), at(1, L.MZONE, 0))))
+    adapter.apply(events(0, move(111, at(1, L.MZONE, 0), at(1, L.EXTRA, 0, P.FACEUP_ATTACK, 0))))
+    adapter.apply(events(0, move(900, at(1, L.EXTRA, 0, 10), at(1, L.MZONE, 5)), played('spsummoning', 900, at(1, L.MZONE, 5))))
+    expect(adapter.theirs.state.emz[0]).toMatchObject({ id: 'c4', materials: ['f.card-111-1'] })
+    // Como lo manda el núcleo (grabado de `auto-adapter.slow.test.ts`, semilla 1, duelo 33): el Xyz al cementerio y después su material, desde debajo de él ahí.
+    const out = adapter.apply(events(0, move(900, at(1, L.MZONE, 5), at(1, L.GRAVE, 0)), move(111, at(1, L.GRAVE, 0, P.FACEUP_ATTACK, 0), at(0, L.GRAVE, 0))))
+
+    expect([out.unmapped, adapter.theirs.state.gy, adapter.mine.gy]).toEqual([[], ['c4'], ['card-111-1']])
+    expect(out.mine).toEqual([{ type: 'regain', id: 'card-111-1', to: 'gy' }])
+  })
+
   it('fichas que aparecen y se van, y un Péndulo que vuelve al Extra boca arriba', () => {
     const adapter = make()
 
@@ -295,6 +312,34 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     adapter.apply(events(0, move(0, at(1, L.HAND, 0, 10), at(1, L.REMOVED, 0, P.FACEDOWN_ATTACK))))
     expect(adapter.theirs.state.banished).toEqual([shown])
     expect(adapter.codeOf({ side: 'theirs', id: shown })).toBe(777)
+  })
+
+  it('una carta robada oculta con un código supuesto (`unsure`) está en su lugar de la mano: lo que el núcleo dice de ese lugar es de ella, no de otra', () => {
+    const adapter = make()
+
+    // Una del deck se mostró y se barajó; los robos ocultos la dejan dudosa y la última llega a la mano en el lugar 2 (como en el semilla 1, duelo 1).
+    adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 777, controller: 1, location: L.DECK, sequence: 0 }] }, { type: 'shuffle_deck', player: 1 }))
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(3) }))
+    const hand = adapter.theirs.state.hand
+
+    expect(hand.map((id) => adapter.codeOf({ side: 'theirs', id }))).toEqual([0, 0, 0])
+    adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 888, controller: 1, location: L.HAND, sequence: 2 }] }))
+    expect(hand.map((id) => adapter.codeOf({ side: 'theirs', id }))).toEqual([0, 0, 888])
+  })
+
+  it('cartas colocadas que se barajan entre sus zonas (`shuffle_set_card`): las del rival que se conocían pasan a dudosas', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(2) }, move(0, at(1, L.HAND, 0, 10), at(1, L.MZONE, 0, P.FACEDOWN_DEFENSE)), move(0, at(1, L.HAND, 0, 10), at(1, L.MZONE, 1, P.FACEDOWN_DEFENSE))))
+    adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 777, controller: 1, location: L.MZONE, sequence: 0 }, { code: 778, controller: 1, location: L.MZONE, sequence: 1 }] }))
+    const [one, two] = [adapter.idAt(at(1, L.MZONE, 0))!, adapter.idAt(at(1, L.MZONE, 1))!]
+    // El paquete da los lugares de a pares (`from`/`to`); el núcleo no dice cuál quedó dónde.
+    const out = adapter.apply(events(0, { type: 'shuffle_set_card', location: L.MZONE, cards: [{ from: at(1, L.MZONE, 0, P.FACEDOWN_DEFENSE), to: at(1, L.MZONE, 1, P.FACEDOWN_DEFENSE) }, { from: at(0, 0, 0, 0), to: at(0, 0, 0, 0) }] }))
+
+    expect(out.unmapped).toEqual(['unsupported: shuffle_set_card'])
+    expect([one, two].map((id) => adapter.codeOf({ side: 'theirs', id }))).toEqual([0, 0])
+    // Al darse vuelta, la de la zona 0 es la otra: no es una identidad que no cierra.
+    expect(adapter.apply(events(0, { type: 'pos_change', code: 778, controller: 1, location: L.MZONE, sequence: 0, prev_position: P.FACEDOWN_DEFENSE, position: P.FACEUP_ATTACK })).unmapped).toEqual([])
   })
 
   it('consultar una bolsa (`idAt`) no la cambia: dos adaptadores con los mismos mensajes roban las mismas copias, se consulte o no', () => {
