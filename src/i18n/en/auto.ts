@@ -188,7 +188,6 @@ export const auto: Translated<typeof es> = {
   'auto.bar.never': 'Never',
   'auto.bar.always': 'Always',
   'auto.bar.turnMine': 'Your turn · {turn}',
-  'auto.bar.turnRival': "Rival's turn · {turn}",
   'auto.bar.whenItMatters': 'When it matters',
   'auto.bar.chainAlwaysHint': 'It asks you every time you could respond, even if nothing changes.',
   'auto.bar.chainAskHint': 'It asks you only if something of yours really responds to this moment.',

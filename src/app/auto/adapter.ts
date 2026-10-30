@@ -847,7 +847,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         // Una Mágica o Trampa que esta tanda dio vuelta o puso boca arriba ya cuenta como activada (la jugada la anota y destella).
         if (card && !openedNow.has(card)) emit(event.controller, { type: 'activate', id: matId(card, event.controller) })
         // Después de su activación: la mesa la muestra y recién ahí se suma el eslabón.
-        out.chain.push({ kind: 'chain', at: out.mine.length, index, link: { card: card ? ref(card, event.controller) : null, code: event.code, mine: event.controller === seat, description: event.description, from: event.triggering_location } })
+        out.chain.push({ kind: 'chain', at: out.mine.length, seq: out.order.length, index, link: { card: card ? ref(card, event.controller) : null, code: event.code, mine: event.controller === seat, description: event.description, from: event.triggering_location } })
         if (!card) return note('chaining: nothing there')
         return
       }
@@ -863,7 +863,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
         const solving = negation ? overlay.chain.findIndex((item, i) => item.state === 'solving' && i !== event.chain_size - 1) : -1
         const by = solving >= 0 ? { by: solving + 1 } : {}
 
-        out.chain.push({ kind: state, at: out.mine.length, index: event.chain_size - 1, ...by })
+        out.chain.push({ kind: state, at: out.mine.length, seq: out.order.length, index: event.chain_size - 1, ...by })
 
         // Un eslabón resuelto sale de la cadena (como en el núcleo); los demás cambian de estado.
         const link = overlay.chain[event.chain_size - 1]
@@ -878,7 +878,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
 
       case 'chain_end':
         overlay = { ...overlay, chain: [] }
-        out.chain.push({ kind: 'end', at: out.mine.length, index: -1 })
+        out.chain.push({ kind: 'end', at: out.mine.length, seq: out.order.length, index: -1 })
         // Las miras de los objetivos se van al terminar la cadena (las de `card_target` siguen hasta su `cancel_target`).
         for (const card of [...marks]) {
           const at = where(card)

@@ -139,16 +139,20 @@ export function handtrapDuels() {
     const me = player(scenario.steps, scenario.wants)
     const own = new Set(deck.main.map(([code]) => code))
     let snapshot = await settled(session)
+    /** Cada mesa en que el núcleo esperó una respuesta tuya, en orden (la prueba de pantalla del turno del rival la reproduce). */
+    const history = [snapshot]
     // Su mano, como la ve él: la que repartió el simulador.
     const handAtStart = snapshot.rivalHand
 
     for (let n = 0; n < 120 && snapshot.status === 'ready' && !(me.done && snapshot.ask?.ask.type === 'select_idlecmd'); n += 1) {
       session.answer(me.answer(snapshot.ask!.ask, own))
       snapshot = await settled(session)
+      history.push(snapshot)
     }
+    const adapter = session.adapter!
     session.destroy()
 
-    return { events, offers, asks, rivalAsks, snapshot, handAtStart }
+    return { events, offers, asks, rivalAsks, snapshot, handAtStart, history, adapter }
   }
 
   return { duel, names }

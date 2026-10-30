@@ -749,7 +749,7 @@ function LifeScoreSample() {
         <MatScene className="absolute inset-0 -z-10" />
         <div className="flex min-h-10 min-w-0 items-center gap-2 px-1">
           <LifeScore name={t('duel.bar.you')} label={t('duel.bar.you')} life={3200} mine />
-          <span className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold', mineTurn ? 'text-accent' : 'text-info-soft')}>{t(mineTurn ? 'auto.bar.turnMine' : 'auto.bar.turnRival', { turn: mineTurn ? 1 : 2 })}</span>
+          <span className={cx('min-w-0 flex-1 truncate text-center text-lead font-bold', mineTurn ? 'text-accent' : 'text-info-soft')}>{mineTurn ? t('auto.bar.turnMine', { turn: 1 }) : t('duel.bar.theirTurnN', { name: t('duel.bar.rival'), turn: 2 })}</span>
           <LifeScore name={t('duel.bar.rival')} label={t('duel.bar.rivalTag')} life={theirs} />
         </div>
       </div>

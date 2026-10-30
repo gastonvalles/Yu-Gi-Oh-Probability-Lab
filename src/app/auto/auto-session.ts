@@ -468,7 +468,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
         ...(out.mine.length > 0 ? { mineActions: snapshot.mineActions.concat(out.mine) } : {}),
         ...(out.theirs.length > 0 ? { theirsActs: snapshot.theirsActs.concat(out.theirs) } : {}),
         ...(out.order.length > 0 ? { order: snapshot.order.concat(out.order) } : {}),
-        ...(out.chain.length > 0 ? { chainSteps: snapshot.chainSteps.concat(out.chain.map((step) => ({ ...step, at: step.at + snapshot.mineActions.length }))) } : {}),
+        ...(out.chain.length > 0 ? { chainSteps: snapshot.chainSteps.concat(out.chain.map((step) => ({ ...step, at: step.at + snapshot.mineActions.length, ...(step.seq === undefined ? {} : { seq: step.seq + snapshot.order.length }) }))) } : {}),
         ...(out.unmapped.length > 0 ? { unmapped: snapshot.unmapped.concat(out.unmapped) } : {}),
         ...(out.lp.length > 0 ? { lifeSteps: snapshot.lifeSteps.concat(out.lp.map((step) => ({ at: step.at + snapshot.order.length, lp: step.lp }))) } : {}),
       },

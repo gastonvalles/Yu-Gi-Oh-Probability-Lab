@@ -232,6 +232,8 @@ describe('auto-screen · las fases son manuales', () => {
     step()
     step()
     expect(banners()).toContain('Turno de Rival')
+    // Su robo va con «Turno de Rival», sin cartel propio.
+    act(() => vi.advanceTimersByTime(0))
     const seen: string[] = []
     for (let i = 0; i < 4; i += 1) {
       act(() => vi.advanceTimersByTime(1100))
@@ -255,6 +257,7 @@ describe('auto-screen · las fases son manuales', () => {
     rivalTurn(fake)
     step()
     step()
+    act(() => vi.advanceTimersByTime(0))
     act(() => vi.advanceTimersByTime(1100))
     expect(rivalBanner()).toBe('RivalStandby Phase')
     fireEvent.pointerDown(hand())

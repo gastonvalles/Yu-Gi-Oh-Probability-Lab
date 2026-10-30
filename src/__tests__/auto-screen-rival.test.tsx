@@ -9,6 +9,7 @@ import { setAutoPref } from '../app/auto-prefs'
 import { readHandtrapConfig, writeHandtrapConfig } from '../app/handtraps'
 import { AutoSoloScreen, RIVAL_READ_MS, type AutoSoloScreenProps } from '../components/auto/AutoSoloScreen'
 import { LOCATION as L, type CoreAsk } from '../app/auto/protocol'
+import { FLIGHT_MS } from '../app/use-card-flights'
 import { CARDS, fakeSession, pos, SPOTS, type FakeSession } from './support/auto-session-fake'
 import { core, dispatches, renderAuto, status } from './support/auto-screen-harness'
 import { render } from './support/practice-mat-harness'
@@ -256,11 +257,14 @@ describe('auto-screen · el ataque del rival', () => {
   it('cuando llega, la mesa lo avisa (y dibuja la espada) una sola vez; lo que ya estaba al abrir no se repite', () => {
     const fake = renderAuto()
 
+    // Lo del rival se cuenta a su ritmo, en su lugar (`order`).
     core(() => fake.set({ theirsActs: [attack('card-200-1')], order: ['theirs'] }))
+    act(() => vi.advanceTimersByTime(FLIGHT_MS))
     expect(screen.getByText('Rival ataca a Maxx C')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(4000))
     expect(screen.queryByText('Rival ataca a Maxx C')).toBeNull()
     core(() => fake.set({ theirsActs: [attack('card-200-1'), attack()], order: ['theirs', 'theirs'] }))
+    act(() => vi.advanceTimersByTime(FLIGHT_MS))
     expect(screen.getByText('Rival te ataca directo')).toBeInTheDocument()
     expect(dispatches).toBe(0)
   })
