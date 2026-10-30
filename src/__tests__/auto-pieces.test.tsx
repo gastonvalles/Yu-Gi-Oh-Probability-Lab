@@ -95,6 +95,13 @@ describe('AskPrompt', () => {
     expect(prompt).not.toHaveTextContent(/Ponix|Qué hace/)
     expect(names(buttons)).toEqual(['Minimizar', 'Seguir en modo manual', 'No activar', 'Activar efecto'])
     expect(buttons[3]).toHaveFocus()
+    // Los tres en una sola fila, siempre (Gastón: «los 3 botones no están alineados»): el pie no se parte; el atajo cede su ancho (parte su texto) y el «no» y la principal van juntos al final.
+    const footer = buttons[1]!.parentElement!.parentElement!
+    expect(footer).toHaveClass('flex')
+    expect(footer).not.toHaveClass('flex-wrap')
+    expect(buttons[1]!.parentElement).toHaveClass('min-w-0', 'flex-1')
+    expect(buttons[2]!.parentElement).toBe(buttons[3]!.parentElement)
+    expect(buttons[2]!.parentElement!.parentElement).toBe(footer)
     fireEvent.click(buttons[1]!)
     expect(manual).toHaveBeenCalledTimes(1)
   })
