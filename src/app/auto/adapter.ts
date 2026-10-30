@@ -396,7 +396,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const pile = list as Card[]
     const card = pile[place.sequence]
 
-    if (card && (card.loose ? code === 0 && !leaving : code === 0 || card.code === 0 || card.code === code)) return { list, index: place.sequence }
+    // Una que no está suelta está en su lugar: si su código era una suposición (`unsure`: salió oculta de una bolsa), es ella igual y el núcleo dice cuál es.
+    if (card && (card.loose ? code === 0 && !leaving : code === 0 || card.code === 0 || card.code === code || card.unsure === true)) return { list, index: place.sequence }
     // Una suelta: la que corresponde (por su código) pasa a ese lugar. Se corren sólo las sueltas (da lo mismo cuál es cuál), en su orden.
     const other = card?.loose ? bagIndex(pile, code, true) : -1
 
@@ -624,6 +625,14 @@ export function createAdapter(options: AdapterOptions): Adapter {
     // Del campo de quien la controlaba a la pila de su dueño.
     if (fromSpot && card.owner !== from.controller) {
       emit(from.controller, { type: 'move', id: matId(card, from.controller), to: toPile })
+      return emit(card.owner, { type: 'regain', id: card.id, to: toPile, ...extra })
+    }
+    // Un material ajeno (el rival lo tenía bajo un Xyz suyo: lo controló y lo usó de material) vuelve a su dueño. Si el Xyz ya dejó el campo, la mesa de quien
+    // lo controlaba ya lo soltó (`dropMaterials` no pasa una carta ajena a sus pilas) y el núcleo lo manda después, desde debajo del Xyz en su nuevo lugar.
+    if (isMaterial(from) && card.owner !== from.controller && !locateCard(stateOf(card.owner), card.id)) {
+      const held = matId(card, from.controller)
+
+      if (locateCard(stateOf(from.controller), held)) emit(from.controller, { type: 'move', id: held, to: toPile })
       return emit(card.owner, { type: 'regain', id: card.id, to: toPile, ...extra })
     }
     if (to.controller !== card.owner) return note(`move: ${card.id} to a pile of the other side`)
@@ -952,9 +961,17 @@ export function createAdapter(options: AdapterOptions): Adapter {
       // Dos cartas del campo intercambian sus lugares (`Duel.SwapSequence`) o su controlador (`Duel.SwapControl`); cada una con su posición.
       case 'swap':
         return swap(event)
-      // Sin jugada en la mesa (la lista blanca del reporte): `shuffle_set_card` (barajar cartas colocadas entre zonas), `swap_grave_deck` y
-      // `reverse_deck`. Quedan en `unmapped`.
+      // Barajar cartas colocadas entre sus zonas: el núcleo no dice cuál quedó dónde, así que las del rival que conocíamos pasan a dudosas (como al salir de una
+      // bolsa). El paquete lee mal el mensaje (el núcleo manda los lugares de antes y después los de las que tienen materiales; los da de a pares en `from`/`to`):
+      // se toma todo lugar que nombra. La mesa del dueño no tiene esa jugada: sigue en la lista blanca.
       case 'shuffle_set_card':
+        for (const place of event.cards.flatMap((item) => [item.from, item.to])) {
+          const card = place.location === 0 ? null : cardAt(place)
+
+          if (card && card.owner === rival && card.code !== 0) card.unsure = true
+        }
+        return note(`unsupported: ${event.type}`)
+      // Sin jugada en la mesa (la lista blanca del reporte): `swap_grave_deck` y `reverse_deck`. Quedan en `unmapped`.
       case 'swap_grave_deck':
       case 'reverse_deck':
         return note(`unsupported: ${event.type}`)
