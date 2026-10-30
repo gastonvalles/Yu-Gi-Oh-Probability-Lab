@@ -323,6 +323,7 @@ export const auto: Translated<typeof es> = {
   'auto.why.monsterZones': 'Your five Monster Zones are taken.',
   'auto.why.spellZones': 'Your five Spell & Trap Zones are taken.',
   'auto.why.limitOf': 'A restriction from {card} applies.',
+  'auto.why.limits': 'Also in effect (may not be the cause):',
   'auto.why.mismatch': 'Not what you expected?',
   'auto.limits.label': { one: '{count} active restriction', other: '{count} active restrictions' },
 }

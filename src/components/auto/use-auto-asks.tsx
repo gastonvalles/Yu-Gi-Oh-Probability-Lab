@@ -769,7 +769,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         return item?.answer ? () => gesture({ kind: 'item', answer: item.answer! }) : null
       },
       // Repasando o con el duelo terminado, el menú vacío dice lo de siempre.
-      whyNot: reviewing || frozen || ended ? null : (id) => [...(vanilla.has(codeOf({ side: 'mine', id })) ? [t('auto.why.noRules')] : []), ...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: myNormal }), ...limitTexts],
+      // Las restricciones activas van aparte y después: rigen, pero no tienen por qué ser la causa (una de «salvo Sincronía» no frena a una Trampa sin zona libre).
+      whyNot: reviewing || frozen || ended
+        ? null
+        : (id) => {
+            const known = [...(vanilla.has(codeOf({ side: 'mine', id })) ? [t('auto.why.noRules')] : []), ...turnReasons({ state, id, kind: cardKindOf(cardsById.get(id)?.apiCard ?? null), turnMine, ask: shown?.type ?? null, normal: myNormal })]
+
+            return [...(known.length > 0 ? known : [t('auto.why.unknown')]), ...(limitTexts.length > 0 ? [t('auto.why.limits'), ...limitTexts] : [])]
+          },
       manual: onManual ?? null,
     }
   }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine, vanilla, codeOf])
