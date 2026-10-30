@@ -19,8 +19,11 @@ En orden de valor sobre costo.
    (`combo-share.ts`, v2) bajaría un 30–40 % y entrarían duelos más largos en un enlace.
 5. **Péndulo** (M). Hoy se invoca de a una carta y el rango no se muestra ni se valida. Plan: elegir varias de la mano y del Extra
    boca arriba con el rango resaltado y después validar; un deck guardado sin `scale` queda «sin rango», nunca un número inventado.
-6. **Espejo del rival en el adaptador automático** (L): `it.fails` en `auto-adapter.slow.test.ts` (`swap` de casillas ocupadas,
-   Xyz con materiales que no salen del Extra, cartas que cambian de código). Depende de `npm run sync:core`.
+6. **Xyz con materiales en la mesa** (L): el espejo del rival ya sigue al núcleo (`swap`, cambio de código, bolsas), pero
+   `MatState` no puede poner materiales debajo de una carta del Extra, así que mientras el núcleo pregunta zona y posición la mesa
+   muestra ocupadas casillas que él ofrece libres (42 tandas en la semilla 1 de `auto-adapter.slow.test.ts`); tampoco pasa el
+   control de un Xyz con material (`give` manda los materiales al cementerio) ni el de una ficha (`give` rechaza fichas). Es
+   cambiar `app/practice-mat.ts`, que comparten la mesa manual y el enlace.
 7. **Handtraps en tableta** (M): por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`, alto fijo) aunque el
    campo sea ancho; escalarla entre 640 y 1100 px.
 8. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
@@ -83,8 +86,6 @@ Inventario, sin ejecutar. `npx knip` es la fuente de lo que no se usa.
 - **Datos a mano:** ningún workflow corre `sync:effects` (la capa 1 del motor) ni `sync:genesys`; `sync:effects` baja CardScripts
   de `master` sin fijar el commit (decidir si se fija como en `auto-data.lock.json`). Las muestras y los scripts de medición del
   filtro Efecto no están en el repo (`docs/motor-de-cartas.md`).
-- **Pruebas lentas:** `auto-online-undo.slow.test.ts` falla en `main` (cada par se corta en la línea 200, «el anfitrión
-  recarga»): un fallo de deshacer y recargar en el enlace automático o de la prueba, sin investigar. Va primero de esta lista.
 - **CSS propio:** `src/foil.css` (28 KB) es la excepción heredada a «Tailwind, nunca CSS puro»; migrarlo a `@utility` y `@theme`.
 - **Archivos grandes** (candidatos a partir; los toca casi todo cambio): `PracticeMat.tsx` (~3.400 líneas), `DuelScreen.tsx`
   (~2.000), `duel-session.ts` (~1.800), `auto/online.ts` (~1.600), `practice-mat.ts` (~1.400), `use-auto-asks.tsx` (~1.260).
