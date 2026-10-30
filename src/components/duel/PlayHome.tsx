@@ -25,6 +25,7 @@ import { textLink } from '../ui/typography'
 import { ArenaPanel } from './ArenaPanel'
 import { DuelModeRow, useAutoRooms, type AutoRooms } from './DuelModeRow'
 import { HandtrapsRow } from './HandtrapPool'
+import { RivalRow } from './RivalRow'
 import { formatName } from './room-chips'
 
 /** Lo que dice la búsqueda de «Jugar ahora» mientras pasa de verdad: se busca, se entra o se abre la tuya. */
@@ -425,9 +426,10 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, canTrain, autoRooms, o
           />
         </RuleField>
 
-        {/* Automático o manual (una sola preferencia: con rival, la sala que se abre; en Solo, la mesa de «Entrenar solo»). Solo: el simulador de handtraps del rival (apagado, la mesa es la de siempre). */}
+        {/* Automático o manual (una sola preferencia: con rival, la sala que se abre; en Solo, la mesa de «Entrenar solo»). */}
         <DuelModeRow rooms={autoRooms} solo={solo} className="sm:col-span-2" />
-        {solo ? <HandtrapsRow /> : null}
+        {/* Con el automático, contra quién (Pasivo · Handtraps · Bot); la práctica manual no tiene bot: el simulador de siempre. */}
+        {solo ? autoSolo ? <RivalRow className="sm:col-span-2" /> : <HandtrapsRow /> : null}
 
         {/* Solo automático: quién empieza (el núcleo arranca con el asiento 0; ir segundo es ocupar el 1). La práctica manual no tiene turnos del rival: no va. */}
         {solo && autoSolo ? (
