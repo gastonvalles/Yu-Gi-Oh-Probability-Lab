@@ -546,7 +546,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
     if (from.location === L.DECK && to.location === L.DECK && from.controller === to.controller) return put(to, card)
     put(to, card)
 
-    // Debajo de un Xyz, en el campo o todavía en el Extra (la Invocación Xyz los junta antes de preguntar dónde va: la mesa los guarda en `held` y sus zonas quedan libres, como en el núcleo).
+    // Debajo de un Xyz, en el campo o todavía en el Extra (la Invocación Xyz los junta antes de preguntar dónde va: la mesa del adaptador los guarda en `held` y sus zonas quedan libres, como en el núcleo).
     if (isMaterial(to)) {
       const xyz = cardAt({ controller: to.controller, location: baseLocation(to.location), sequence: to.sequence })
 
@@ -555,7 +555,16 @@ export function createAdapter(options: AdapterOptions): Adapter {
       const source = fromSpot || isMaterial(from) ? from.controller : card.owner
 
       if (source !== to.controller) return note('move: a material from the other side')
-      return emit(to.controller, { type: 'attach', id: matId(card, to.controller), to: matId(xyz, to.controller), ...(baseLocation(to.location) === L.EXTRA ? { held: true as const } : {}) })
+      const attach: MatAction = { type: 'attach', id: matId(card, to.controller), to: matId(xyz, to.controller) }
+
+      if (baseLocation(to.location) === L.MZONE) return emit(to.controller, attach)
+      // Debajo de una carta del Extra: cambia la mesa pero no es una jugada (la Invocación Xyz es un solo paso, el `summon` que sigue): no entra en la cinta, ni en Pasos, ni en
+      // el replay. La pantalla la ve en `mine.held` y el espejo del rival, en su mesa. ponytail: un barajado que rehace la cinta de esta tanda (`shuffleDeck`) la perdería.
+      const held = { ...attach, held: true as const }
+
+      if (to.controller === seat) mine = matReducer(mine, held)
+      else theirs = { ...theirs, state: matReducer(theirs.state, held) }
+      return
     }
 
     const toSpot = spotOf(to.location, to.sequence)

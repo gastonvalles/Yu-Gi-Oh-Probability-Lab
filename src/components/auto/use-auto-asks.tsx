@@ -18,7 +18,7 @@ import { prefersReducedMotion } from '../../app/motion'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import type { CardTextHighlight } from '../../app/card-text'
 import type { Activity } from '../../app/duel-protocol'
-import { allMatIds, cardKindOf, createMatState, locateCard, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
+import { allMatIds, cardKindOf, createMatState, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatSpot, type MatState, type MatTarget } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import { playSfx } from '../../app/sfx'
 import { useChange } from '../../app/use-duel-sounds'
@@ -394,7 +394,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const opening = useMemo(() => foldOpeningHand(paced.initial, first ? [first] : []), [paced.initial, openingKey])
   // Las jugadas, hasta la que ya se contó: lo que el núcleo decidió y la mesa todavía no muestra (el ritmo, una parada de fase) no se adelanta en la lista de pasos.
   const played = useMemo(() => paced.actions.slice(opening.skip, Math.max(opening.skip, paced.cursor)), [paced.actions, paced.cursor, opening.skip])
-  const state = useMemo(() => replayMat(opening.initial, played, played.length), [opening.initial, played])
+  const replayed = useMemo(() => replayMat(opening.initial, played, played.length), [opening.initial, played])
+  // Los materiales que una Invocación Xyz ya juntó debajo de la carta del Extra (`held`, mientras el núcleo pregunta zona y posición): se ven al final de la cinta, sin ser un paso.
+  const extraHeld = paced.cursor === paced.actions.length ? snap.mine.held : undefined
+  const state = useMemo(() => (extraHeld ? Object.entries(extraHeld).flatMap(([to, ids]) => ids.map((id): MatAction => ({ type: 'attach', id, to, held: true }))).reduce(matReducer, replayed) : replayed), [extraHeld, replayed])
   /** La mesa espera en tu DP o tu SP (una parada): el botón de fases la pasa. */
   const stopped = !reviewing && !frozen && !snap.replaying && paced.cursor === limit && limit < paced.actions.length
   /** Pedir pasar a una fase: la parada que deja se cruza ya (lo que sigue, a su ritmo). */
