@@ -30,6 +30,8 @@ const GAMMA = 38814750
 const CROW = 24508238
 const DOMINUS = 40366667
 const PURGE = 97045737
+const SPARK = 6325660
+const SPIRAL = 42091632
 const FUWALOS = 42141493
 const PURULIA = 84192580
 const MEOWLS = 87126721
@@ -224,6 +226,21 @@ const SCENARIOS: Scenario[] = [
     check: (after) => (negatedLink(after, 'chain_disabled', 1) && !moved(after, SOGEN, L.DECK, L.HAND) ? null : 'Terraforming no quedó negada'),
   },
   {
+    card: SPARK,
+    deck: [[AVIAN, 1], ...SPELLS],
+    hand: [MAXX, STRATOS],
+    // Tu Maxx "C" (un efecto de monstruo en la mano: desde ahí puede activarla de la mano) y después el efecto de Stratos en el campo.
+    steps: [{ do: 'activate', code: MAXX }, { do: 'summon', code: STRATOS }],
+    check: (after) => (moved(after, STRATOS, L.MZONE, L.REMOVED) ? null : 'Stratos no quedó desterrado'),
+  },
+  {
+    card: SPIRAL,
+    deck: [[AVIAN, 1], ...SPELLS],
+    hand: [MAXX, STRATOS],
+    steps: [{ do: 'activate', code: MAXX }, { do: 'summon', code: STRATOS }],
+    check: (after) => (moved(after, STRATOS, L.MZONE, L.HAND) ? null : 'Stratos no volvió a tu mano'),
+  },
+  {
     card: FUWALOS,
     deck: SPELLS,
     extra: [[LINKURIBOH, 1]],
@@ -271,7 +288,6 @@ function player(steps: readonly Step[]) {
         return { type: ask.type, action: ACTION[step.do], index }
       }
       if (ask.type === 'select_effectyn') return { type: ask.type, yes: own.has(ask.code) }
-
       return passive(ask)
     },
   }
@@ -312,6 +328,8 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
   /** Un duelo de la sesión de verdad: tu deck y tu mano, tus pasos, y el rival del simulador con `config` (sus handtraps, su mano y su Extra Deck). Termina cuando hiciste todo. */
   async function duel(scenario: Pick<Scenario, 'deck' | 'extra' | 'hand' | 'steps'>, config: HandtrapConfig) {
     const events: WireEvent[] = []
+    /** Lo que el núcleo le ofreció al rival en cada ventana de cadena (códigos), en orden. */
+    const offers: number[][] = []
     const deck: DeckList = { main: [...scenario.hand.map((code) => [code, 1] as [number, number]), ...scenario.deck], extra: scenario.extra ?? [] }
     const session = createAutoSession({
       loader,
@@ -323,6 +341,7 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
       rival: autoRival(config),
       onEvent: (event: AutoEvent) => {
         if (event.t === 'events' && event.seat === 0) events.push(...event.events)
+        if (event.t === 'ask' && event.seat === 1 && event.ask.type === 'select_chain') offers.push(event.ask.selects.map((card) => card.code))
       },
     })
     const me = player(scenario.steps)
@@ -338,18 +357,18 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     }
     session.destroy()
 
-    return { events, snapshot, handAtStart }
+    return { events, offers, snapshot, handAtStart }
   }
 
   it.each(SCENARIOS.map((scenario) => [names.get(scenario.card) ?? String(scenario.card), scenario] as const))('%s: el rival la usa sola y se resuelve', async (_name, scenario) => {
     // El rival de la pantalla: el del simulador con esa sola carta (con Gamma o Delta, también PSY-Frame Driver en su deck) y el Extra Deck de siempre.
-    const { events, snapshot, handAtStart } = await duel(scenario, { enabled: true, picks: [{ id: scenario.card, name: names.get(scenario.card) ?? '', copies: 1 }], hand: 1 })
+    const { events, offers, snapshot, handAtStart } = await duel(scenario, { enabled: true, picks: [{ id: scenario.card, name: names.get(scenario.card) ?? '', copies: 1 }], hand: 1 })
 
     const at = chainingOf(events, scenario.card, 1)
     const outcome = at >= 0 ? scenario.check(events.slice(at), events) : 'el rival no la activó'
     const faults = snapshot.faults.filter((fault) => fault.kind !== 'script' || !fault.message.startsWith('card data'))
 
-    report.push({ card: names.get(scenario.card), activated: at >= 0, outcome, status: snapshot.status, faults, rival: snapshot.answers.filter((item) => item.seat === 1 && JSON.stringify(item.answer) !== '{"type":"select_chain","index":null}').map((item) => item.answer) })
+    report.push({ card: names.get(scenario.card), offers, activated: at >= 0, outcome, status: snapshot.status, faults, rival: snapshot.answers.filter((item) => item.seat === 1 && JSON.stringify(item.answer) !== '{"type":"select_chain","index":null}').map((item) => item.answer) })
 
     expect({ status: snapshot.status, fault: snapshot.fault, faults, outcome }).toEqual({ status: 'ready', fault: null, faults: [], outcome: null })
     // Quién negó (`ChainStep.by`, deducido por el adaptador: el núcleo no lo dice): toda negación de estos escenarios es de la handtrap y apunta a su eslabón, o no se sabe (`BY_UNKNOWN`).
@@ -371,6 +390,25 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     // Purge contra Terraforming (suma del deck) e Impulse contra Monster Reborn (Invoca).
     expect(events.flatMap((event) => (event.type === 'chaining' && event.controller === 1 ? [event.code] : []))).toEqual([PURGE, DOMINUS])
     expect(moved(events, SOGEN, L.DECK, L.HAND) || moved(events, AVIAN, L.GRAVE, L.MZONE)).toBe(false)
+  })
+
+  it('cada Dominus usada desde la mano le prohíbe al rival los efectos de monstruo de sus Atributos (Purge: OSCURIDAD, AGUA y FUEGO; Impulse: LUZ, TIERRA y VIENTO) y nada más: la otra Dominus sigue', async () => {
+    const steps: Step[] = [{ do: 'activate', code: TERRAFORMING }, { do: 'activate', code: FOOLISH }, { do: 'activate', code: REBORN }, { do: 'summon', code: STRATOS }]
+    const scenario = { deck: [[SOGEN, 1], [AVIAN, 2], ...SPELLS] as [number, number][], hand: [TERRAFORMING, FOOLISH, REBORN, STRATOS], steps }
+    const hand = (ids: number[]) => ({ enabled: true, picks: ids.map((id) => ({ id, name: names.get(id) ?? '', copies: 1 })), hand: ids.length })
+    // Sin Dominus: Ash (FUEGO) contra Terraforming y Veiler (LUZ) contra el efecto de Stratos.
+    const control = await duel(scenario, hand([VEILER, ASH]))
+    // Con las Dominus primero: Purge contra Terraforming e Impulse contra Monster Reborn; después ni Ash ni Veiler se ofrecen.
+    const { events, offers, snapshot } = await duel(scenario, hand([PURGE, DOMINUS, VEILER, ASH]))
+    const used = (list: readonly WireEvent[]) => list.flatMap((event) => (event.type === 'chaining' && event.controller === 1 ? [event.code] : []))
+    const after = (code: number) => offers.slice(offers.findIndex((offer) => offer.includes(code)) + 1)
+
+    expect(used(control.events)).toEqual([ASH, VEILER])
+    expect(snapshot.fault).toBeNull()
+    expect(used(events)).toEqual([PURGE, DOMINUS])
+    expect(after(PURGE).flat()).not.toContain(ASH)
+    expect(after(PURGE).flat()).toContain(DOMINUS)
+    expect(after(DOMINUS).flat()).not.toContain(VEILER)
   })
 
   describe('el Extra Deck del rival y Fydraulis Harmonia (revela hasta 5 Sincros de su Extra y manda uno al cementerio)', () => {

@@ -82,6 +82,9 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   // Fuera del catálogo, del buscador:
   70088809: 'monster', // Fydraulis Harmonia (revela Sincros de su Extra Deck: `EXTRA_NEEDS`)
   74203495: 'respond', // PSY-Framegear Delta
+  // Las otras Dominus (libres, contra un monstruo tuyo en el campo; desde la mano sólo si activaste un efecto de monstruo en la mano o el cementerio ese turno).
+  6325660: 'monster', // Dominus Spark (lo destierra)
+  42091632: 'monster', // Dominus Spiral (lo devuelve a la mano o al Extra)
 }
 
 /** PSY-Framegear Gamma y Delta Invocan a PSY-Frame Driver (de la mano, el deck o el cementerio): sin Driver en el deck, el núcleo nunca las ofrece. */
