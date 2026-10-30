@@ -174,9 +174,13 @@ export function ReplayVideoDialog({ subject, onClose }: { subject: VideoSubject 
   const speed: VideoSpeed = long && fast ? 2 : 1
   const reason = unsupportedText(supported)
 
+  // Quien abre el diálogo arma `{ kind, combo }` en cada dibujo suyo: lo que se filma es lo de adentro. Con el objeto de afuera, cada dibujo de la mesa cancelaba el video
+  // y lo empezaba de nuevo.
+  const filmed = subject ? (subject.kind === 'duel' ? subject.replay : subject.combo) : null
   useEffect(() => {
     if (subject && supported?.ok && !isLongVideo(subject)) void start(subject, 1)
-  }, [subject, supported, start])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filmed, supported, start])
 
   const close = () => {
     cancel()
