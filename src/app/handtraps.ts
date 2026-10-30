@@ -115,6 +115,27 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   94689635: 'respond', // Herald of Purple Light (la activación de una Trampa)
 }
 
+/**
+ * Los Atributos (como los escribe YGOPRODeck) cuyos efectos de monstruo se prohíbe cada Dominus activada desde la mano, por el resto del duelo (lo dice su script: Impulse,
+ * Purge, Spark y Spiral). El rival sólo las usa desde la mano.
+ */
+export const DOMINUS_LOCKS: Readonly<Record<number, readonly string[]>> = {
+  40366667: ['LIGHT', 'EARTH', 'WIND'],
+  97045737: ['DARK', 'WATER', 'FIRE'],
+  6325660: ['EARTH', 'WATER', 'FIRE', 'WIND'],
+  42091632: ['LIGHT', 'DARK'],
+}
+
+/** Por cada Dominus elegida, las otras elegidas que después ya no podría usar (monstruos de los Atributos que prohíbe); sólo las Dominus que bloquean alguna. */
+export function dominusLocks(picks: readonly HandtrapCard[], attributeOf: (id: number) => string | null | undefined): { dominus: HandtrapCard; blocked: HandtrapCard[] }[] {
+  return picks.flatMap((dominus) => {
+    const locked = DOMINUS_LOCKS[dominus.id]
+    const blocked = locked ? picks.filter((card) => card.id !== dominus.id && locked.includes(attributeOf(card.id) ?? '')) : []
+
+    return blocked.length > 0 ? [{ dominus, blocked }] : []
+  })
+}
+
 /** PSY-Framegear Gamma y Delta Invocan a PSY-Frame Driver (de la mano, el deck o el cementerio): sin Driver en el deck, el núcleo nunca las ofrece. */
 const PSY_FRAMEGEARS = new Set([38814750, 74203495])
 const PSY_FRAME_DRIVER = 49036338
