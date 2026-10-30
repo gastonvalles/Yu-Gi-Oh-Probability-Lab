@@ -27,7 +27,7 @@ export interface DuelScenario {
 }
 
 /** Las cartas de H3 (bot para jugar en contra): cada una con su uso y su no uso en `auto-handtraps-h3.slow.test.ts`. */
-export const H3_CARDS = [67750322, 46502744, 87170768, 68144894, 14965712, 33854624, 6637331, 60242223, 91800273, 69680031]
+export const H3_CARDS = [67750322, 46502744, 68144894, 14965712, 33854624, 6637331, 60242223, 91800273, 69680031]
 
 const END = (type: 'select_idlecmd'): CoreAnswer => ({ type, action: 7, index: null })
 

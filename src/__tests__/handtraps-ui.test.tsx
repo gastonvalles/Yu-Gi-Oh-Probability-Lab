@@ -197,16 +197,16 @@ describe('la hoja de las handtraps del rival', () => {
 
     try {
       render(<HandtrapPicker isOpen config={SAVED} onClose={() => {}} onSave={() => {}} />)
-      searchCards.mockResolvedValueOnce({ results: [{ ygoprodeckId: 91800273, name: 'Dimension Shifter' }], hasMore: false } as never)
-      fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar otra carta' }), { target: { value: 'Dimension' } })
+      searchCards.mockResolvedValueOnce({ results: [{ ygoprodeckId: 60242223, name: 'Bystial Saronir' }], hasMore: false } as never)
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar otra carta' }), { target: { value: 'Saronir' } })
       await act(async () => {
         await vi.advanceTimersByTimeAsync(400)
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Agregar Dimension Shifter a la lista' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Agregar Bystial Saronir a la lista' }))
 
-      expect(valueOf(copies('Dimension Shifter'))).toHaveValue('1')
+      expect(valueOf(copies('Bystial Saronir'))).toHaveValue('1')
       expect(summary()).toHaveTextContent('Se reparte al azar entre 4 cartas.')
-      expect(screen.getByRole('button', { name: 'Dimension Shifter ya está en la lista' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Bystial Saronir ya está en la lista' })).toBeDisabled()
     } finally {
       vi.useRealTimers()
     }

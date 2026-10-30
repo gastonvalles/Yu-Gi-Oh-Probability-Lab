@@ -98,22 +98,6 @@ const CASES: Case[] = [
     check: (result) => (neverOffered(result, RETALIATING) ? null : 'se la ofreció'),
   },
   {
-    card: CONTACT,
-    kind: 'use',
-    what: 'cuando Invocás a Kuriboh: se Invoca a tu campo, boca arriba en defensa',
-    scenario: { deck: SPELLS, hand: [KURIBOH], steps: [{ do: 'summon', code: KURIBOH }] },
-    reason: 'handtrap.offered',
-    check: ({ events }) => (has(events, (event) => event.type === 'move' && event.card === CONTACT && event.to.controller === 0 && event.to.location === L.MZONE) ? null : 'Contact «C» no llegó a tu campo'),
-  },
-  {
-    card: CONTACT,
-    kind: 'hold',
-    what: 'sin una Invocación tuya el núcleo no se la ofrece',
-    scenario: { deck: [[SOGEN, 1], ...SPELLS], hand: [TERRAFORMING], steps: [{ do: 'activate', code: TERRAFORMING }] },
-    reason: null,
-    check: (result) => (neverOffered(result, CONTACT) ? null : 'se la ofreció'),
-  },
-  {
     card: GODOS,
     kind: 'use',
     what: 'cuando sumás Sogen a tu mano con Terraforming: se Invoca',
@@ -231,5 +215,14 @@ describe.skipIf(!hasCoreData)('las reacciones de H3 contra el núcleo real (npm 
     else expect(reasons.filter((reason) => reason.cards?.includes(item.card))).toEqual([])
     // Los motivos van sólo en las respuestas del rival.
     expect(snapshot.answers.filter((answer) => answer.reason && answer.seat !== 1)).toEqual([])
+  })
+
+  it('Contact «C» no tiene regla a propósito (en tu campo frena al núcleo con un mazo de Sincronía): el núcleo se la ofrece cuando Invocás y no la usa', async () => {
+    const { events, offers, snapshot } = await duel({ deck: SPELLS, hand: [KURIBOH], steps: [{ do: 'summon', code: KURIBOH }] }, { enabled: true, picks: [{ id: CONTACT, name: '', copies: 1 }], hand: 1 })
+
+    expect(AUTO_RULES[CONTACT]).toBeUndefined()
+    expect(offers).toContainEqual([CONTACT])
+    expect(used(events, CONTACT)).toBe(false)
+    expect(snapshot.rivalHand).toEqual([CONTACT])
   })
 })

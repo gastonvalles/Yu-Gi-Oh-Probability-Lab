@@ -49,6 +49,13 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
   { id: 42141493, name: 'Mulcharmy Fuwalos' },
   { id: 84192580, name: 'Mulcharmy Purulia' },
   { id: 87126721, name: 'Mulcharmy Meowls' },
+  // Las de H3 (el bot para jugar en contra), verificadas contra el `.cdb` del núcleo el 2026-10-30.
+  { id: 33854624, name: 'Bystial Magnamhut' },
+  { id: 6637331, name: 'Bystial Druiswurm' },
+  { id: 91800273, name: 'Dimension Shifter' },
+  { id: 67750322, name: 'Skull Meister' },
+  { id: 14965712, name: 'Multiplying Kuriboh!' },
+  { id: 46502744, name: 'Retaliating "C"' },
 ]
 
 /**
@@ -91,9 +98,10 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   // Las otras Dominus (libres, contra un monstruo tuyo en el campo; desde la mano sólo si activaste un efecto de monstruo en la mano o el cementerio ese turno).
   6325660: 'monster', // Dominus Spark (lo destierra)
   42091632: 'monster', // Dominus Spiral (lo devuelve a la mano o al Extra)
+  // Las de H3 (el bot para jugar en contra); Bystial Saronir, Hecahands Godos y Fleurdelis, del buscador. Contact "C" no tiene regla a propósito: en tu campo, con un mazo de
+  // Sincronía (Kewl Tune), el núcleo tardó ~23 s en cada jugada tuya (su «tenés que usarla de material» multiplica los materiales que prueba); sin ella, 0,1 s.
   67750322: 'respond', // Skull Meister (el núcleo la ofrece sólo contra un efecto que activás en el cementerio)
   46502744: 'respond', // Retaliating "C" (sólo contra una Mágica tuya que Invoca de modo Especial)
-  87170768: 'offered', // Contact "C" (cuando Invocás: se Invoca a tu campo y tenés que usarla de material)
   68144894: 'offered', // Hecahands Godos (cuando sumás una carta a tu mano fuera de la Draw Phase)
   14965712: 'attack', // Multiplying Kuriboh!
   33854624: 'bystial', // Bystial Magnamhut
