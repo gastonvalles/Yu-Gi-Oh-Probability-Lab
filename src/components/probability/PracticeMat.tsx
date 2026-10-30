@@ -2538,31 +2538,6 @@ function PracticeMatBody({
   const replayLink = splitReplay
     ? { step: session.cursor === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepShort', { step: session.cursor, total: session.actions.length, text: steps[session.cursor - 1] ?? '' }) }
     : null
-  // La carta grande del repaso partido va entre el aviso (en la barra) y la fila del medio del campo: la mitad del rival, vacía mientras se repasa. Se mide al entrar y al cambiar el tamaño.
-  useLayoutEffect(() => {
-    const section = sectionRef.current
-
-    if (!splitReplay || !section) return
-
-    const place = () => {
-      const top = section.getBoundingClientRect().top
-      const from = section.querySelector('[data-lane]')?.getBoundingClientRect().bottom
-      const mid = Math.min(...[...section.querySelectorAll('[data-drop^="emz:"]')].map((zone) => zone.getBoundingClientRect().top))
-
-      if (from === undefined || !Number.isFinite(mid)) return
-      section.style.setProperty('--review-stage-top', `${from + 4 - top}px`)
-      section.style.setProperty('--review-stage-height', `${Math.max(0, mid - from - 8)}px`)
-    }
-
-    place()
-    window.addEventListener('resize', place)
-    return () => {
-      window.removeEventListener('resize', place)
-      section.style.removeProperty('--review-stage-top')
-      section.style.removeProperty('--review-stage-height')
-    }
-  }, [splitReplay])
-
   // Una carta tuya sin jugadas en automático: por qué (lo que se sabe) y el atajo a la mesa manual, en lugar de «No hay nada para hacer desde acá».
   const whyNot = duel?.auto?.whyNot && menu?.kind === 'card' && !menu.drop ? duel.auto.whyNot(menu.id) : null
   const manual = duel?.auto?.manual
@@ -3155,12 +3130,12 @@ function PracticeMatBody({
               key={shown.key}
               kind={shown.kind}
               cards={shown.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-              // Repasando con el replay partido el paso ya se lee en el aviso de arriba: la carta va sin cartel, en la mitad del rival (vacía), del alto que queda (`fit`).
+              // Repasando con el replay partido el paso ya se lee en el aviso de arriba: la carta va sin cartel, en el medio como siempre (en una franja de la mitad del rival quedaba arriba y su
+              // resplandor, cortado por los bordes de la franja: Gastón, 2026-10-30).
               caption={splitReplay ? null : (steps[shown.step - 1] ?? null)}
-              fit={splitReplay}
               flip={shown.flip}
               origin={(id) => cardPose(sectionRef.current, state, id, 'mine')}
-              className={cx(splitReplay ? 'absolute inset-x-0 top-[var(--review-stage-top,0px)] z-[120] h-[var(--review-stage-height,100%)]' : 'absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
+              className={cx('absolute inset-y-0 left-0 right-0 z-[120]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}
             />
           ) : null
         }
