@@ -3,8 +3,9 @@ import { t } from '../../../i18n'
 import { fetchCardNamesByIds } from '../../../ygoprodeck'
 import { playerName, replayResultText, titleOf } from '../duel-replay-text'
 import { muxMp4, type Mp4Sample } from './mp4-mux'
-import { drawBanner, drawFlight, drawFrame, loadVideoAssets } from './video-draw'
-import { flightsOf, lifeOf, overlaysOf, replaceOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
+import { EASE_OUT, UI_ANIMATION_MS, bezierEase } from '../../../app/motion'
+import { drawBanner, drawFlight, drawFrame, loadFieldArt, loadVideoAssets, type FieldLayer } from './video-draw'
+import { dealOverlays, flightsOf, lifeOf, overlaysOf, replaceOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
 import { movingKeys, transitionOf } from './video-motion'
 import { comboArtUrls, comboScenes, resolveComboNames } from './video-combo'
 import { artUrls, replayScenes, type Scene } from './video-scene'
@@ -87,6 +88,26 @@ async function comboPlan(combo: Extract<VideoSubject, { kind: 'combo' }>['combo'
     outro: combo.actions.length > 0 ? { title: combo.name, subtitle: t('meta.duels.video.comboEnd') } : null,
   }
 }
+
+/**
+ * El arte de campo de cada lado mientras cambia en una jugada (el de antes se apaga y el nuevo aparece, con el fundido de `mat-field-art`: `UI_ANIMATION_MS` y `EASE_OUT`); null
+ * cuando ya terminó o no cambió (se pinta el de la escena, quieto).
+ */
+function fieldFade(before: Scene | null, after: Scene, speed: VideoSpeed): ((ms: number) => FieldLayer[][] | null) | null {
+  if (!before || before.sides.every((side, index) => (side.fieldArt ?? null) === (after.sides[index]!.fieldArt ?? null))) return null
+  const duration = UI_ANIMATION_MS / speed
+  return (ms) => {
+    if (ms >= duration) return null
+    const e = fadeEase(ms / duration)
+    return after.sides.map((side, index) => {
+      const was = before.sides[index]!.fieldArt ?? null
+      const now = side.fieldArt ?? null
+      if (was === now) return now ? [{ src: now, alpha: 1 }] : []
+      return [...(was ? [{ src: was, alpha: 1 - e }] : []), ...(now ? [{ src: now, alpha: e }] : [])]
+    })
+  }
+}
+const fadeEase = bezierEase(EASE_OUT)
 
 export async function makeReplayVideo(subject: VideoSubject, options: VideoOptions = {}): Promise<VideoResult> {
   const { signal, speed = 1 } = options
@@ -175,7 +196,10 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
         life = lifeOf(before, scene, speed)
       }
       const shown = scene
-      if (index === 0) live.push(titleOverlay((target, alpha) => drawBanner(target, shown, plan.intro, assets, alpha), 0, durations[0]! + TITLE_FADE_MS, TITLE_FADE_MS, false))
+      // El arte de una Magia de Campo que aparece se baja antes de pintarla (una vez por carta).
+      for (const side of scene.sides) if (side.fieldArt) await loadFieldArt(side.fieldArt, assets, signal)
+      const fields = fieldFade(before, scene, speed)
+      if (index === 0) live.push(...dealOverlays(scene, assets, speed), titleOverlay((target, alpha) => drawBanner(target, shown, plan.intro, assets, alpha), 0, durations[0]! + TITLE_FADE_MS, TITLE_FADE_MS, false))
       if (outro && plan.outro) {
         const banner = plan.outro
         live.push(titleOverlay((target, alpha) => drawBanner(target, shown, banner, assets, alpha), start, durations[index]!, TITLE_FADE_MS, true))
@@ -193,14 +217,17 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
         const flying = ms < landed
         const lp = life?.(ms) ?? null
         const alive = live.filter((overlay) => now >= overlay.start && now < overlay.start + overlay.duration)
-        // La mesa de abajo: sin las cartas en vuelo mientras vuelan, y con las vidas que cuentan.
-        const key = `${flying}:${lp?.join(',') ?? ''}`
+        // La mesa de abajo: sin las cartas en vuelo mientras vuelan ni las que anima un efecto (el barajado, el reparto), con las vidas que cuentan y el arte del campo que entra o se va.
+        const hiding = alive.filter((overlay) => overlay.hides)
+        const field = fields?.(ms) ?? null
+        const key = `${flying}:${hiding.map((overlay) => `${overlay.kind}${overlay.start}`).join()}:${lp?.join(',') ?? ''}:${field?.map((layers) => layers.map((art) => art.alpha.toFixed(2)).join()).join('|') ?? ''}`
         if (key !== drawnBase) {
-          drawFrame(baseCtx, scene, assets, flying ? moving : undefined, lp)
+          const keys = flying || hiding.length > 0 ? new Set([...(flying && moving ? moving.keys : []), ...hiding.flatMap((overlay) => overlay.hides!)]) : null
+          drawFrame(baseCtx, scene, assets, keys ? { keys, before: flying && before ? before : scene } : undefined, lp, field ?? undefined)
           drawnBase = key
           clean = false
         }
-        const animated = flying || alive.length > 0
+        const animated = flying || alive.length > 0 || field !== null
         if (animated || !clean) {
           ctx.drawImage(base, 0, 0)
           if (flying) for (const flight of flights) drawFlight(ctx, flight, ms, assets, scene.layout.scale)

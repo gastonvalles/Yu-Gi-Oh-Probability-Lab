@@ -1,9 +1,12 @@
 import { duelReplayAt, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide } from '../../../app/duel-replay'
 import { cardImageSrc } from '../../../app/card-image-source'
-import { matEffects, type MatEffects } from '../../../app/mat-effects'
+import { matEffects, type MatEffects, type ShowcaseKind, type SpotlightKind } from '../../../app/mat-effects'
+import { describeStep } from '../../../app/mat-step-info'
+import { KIND_KEY, ORIGIN_KEY, routeOf } from '../../../app/mat-step-text'
 import { isToken, type MatAction, type MatPhase, type MatPile, type MatState, type Placed } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
-import { artOfDrawId } from '../../duel/duel-art'
+import { artOfDrawId, passcodeOfDrawId } from '../../duel/duel-art'
+import type { FxTone } from '../../probability/practice-styles'
 import { cardName, playerName, realOf, stepText } from '../duel-replay-text'
 
 /**
@@ -37,6 +40,8 @@ export interface SceneCard {
   materials: number
   /** Atenuada: una handtrap del rival que ya usó (el simulador de «Jugar solo»). */
   dim?: boolean
+  /** Su giro en el abanico de la mano (radianes), como `fanAngle` de la mesa. */
+  tilt?: number
 }
 
 export interface SceneSlot {
@@ -57,6 +62,22 @@ export interface SceneSide {
   lp: number
   slots: SceneSlot[]
   hand: SceneSlot[]
+  /** El arte recortado de su Magia de Campo boca arriba (`fieldArtUrl`), de fondo de su mitad del campo (`half`), como `FieldArt` de la mesa. */
+  fieldArt?: string | null
+  half?: Rect
+}
+
+/**
+ * Lo que explica la franja de abajo, sólo con lo que la jugada dice (`describeStep`, lo mismo que el panel de Pasos): su clase (el chip, en el color de su destello), de dónde
+ * sale la carta, «Qué se mueve» (una línea por carta; la que se paga como costo, marcada: sólo si la jugada lo dice, `activate.cost`) y si se barajó el Deck.
+ */
+export interface Explain {
+  kind: string
+  tone: FxTone | null
+  origin: string | null
+  lines: { name: string; route: string; tag?: string }[]
+  more: string | null
+  note: string | null
 }
 
 export interface Scene {
@@ -85,6 +106,8 @@ export interface Scene {
   cells: Rect[]
   /** Un combo: su nombre y el del deck arriba, en vez de las vidas y el turno. */
   heading?: { title: string; subtitle: string }
+  /** La franja que explica la jugada (null al empezar). */
+  explain: Explain | null
   /** Un rótulo chico (la «Mano del rival» del simulador de handtraps en un combo). */
   caption?: { text: string; rect: Rect }
   layout: VideoLayout
@@ -119,11 +142,59 @@ export function videoLayout(width: number): VideoLayout {
     score: box(24, 20, 672, 84),
     theirHand: box(64, 116, 592, 70),
     myHand: box(64, 1040, 592, 104),
-    text: box(24, 1156, 672, 84),
+    text: box(24, 1150, 672, 90),
     footer: box(24, 1244, 672, 28),
     cell,
     cellAt: (row, col) => ({ x: x0 + col * (cell + gap), y: y0 + row * (cell + gap), w: cell, h: cell }),
     middle: 3,
+  }
+}
+
+/** El rectángulo de la mesa (todas sus casillas): ahí van la placa, la carta grande y el cartel. */
+export function fieldRect(cells: readonly Rect[]): Rect {
+  const xs = cells.flatMap((cell) => [cell.x, cell.x + cell.w])
+  const ys = cells.flatMap((cell) => [cell.y, cell.y + cell.h])
+  const x = Math.min(...xs)
+  const y = Math.min(...ys)
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }
+}
+
+/** La mitad del campo de un lado: de su fila de monstruos a la de sus pilas, de punta a punta (`FIELD_HALF` de la mesa). */
+export function halfOf(layout: VideoLayout, rows: { piles: number; mz: number }): Rect {
+  const top = layout.cellAt(Math.min(rows.piles, rows.mz), 0)
+  const bottom = layout.cellAt(Math.max(rows.piles, rows.mz), 4)
+  return { x: top.x, y: top.y, w: bottom.x + bottom.w - top.x, h: bottom.y + bottom.h - top.y }
+}
+
+/** El arte recortado de la Magia de Campo boca arriba (`real`: su id real), por el proxy a 512 px, como `fieldArtSrc` de la mesa; null boca abajo o si no se sabe cuál es. */
+export function fieldArtUrl(field: Placed | null, real: string | null | undefined): string | null {
+  if (!field || field.pos === 'set' || !real) return null
+  const passcode = passcodeOfDrawId(real)
+  return passcode === null ? null : cardImageSrc(`https://images.ygoprodeck.com/images/cards_cropped/${passcode}.jpg`, 512)
+}
+
+/** El color de la carta grande y del destello, como `STAGE_TONE` de `MatFx.tsx` (el test lo vigila); también el del chip de la franja (`stepTone` de la mesa). */
+export const STAGE_TONE: Record<SpotlightKind | ShowcaseKind, FxTone> = {
+  activate: 'gold', target: 'red', reveal: 'cyan', declare: 'violet', attack: 'red',
+  normal: 'gold', special: 'cyan', fusion: 'violet', synchro: 'white', xyz: 'indigo', link: 'teal',
+  hand: 'cyan', gy: 'violet', banish: 'amber', extra: 'cyan', deck: 'cyan', attach: 'indigo',
+}
+
+/** Cuántas cartas nombra «Qué se mueve» en el video; las demás, «y N cartas más». */
+const MAX_LINES = 4
+
+/** La franja de una jugada (`before`: la mesa de quien jugó, antes). */
+export function explainOf(before: MatState, action: MatAction, effects: MatEffects, nameOf: (id: string) => string): Explain {
+  const info = describeStep(before, action)
+  const cost = action.type === 'activate' && action.cost ? action.id : null
+  const tone = effects.spotlight ? STAGE_TONE[effects.spotlight.kind] : effects.landing ? STAGE_TONE[effects.landing.tone] : effects.showcase ? STAGE_TONE[effects.showcase.kind] : effects.quiet ? STAGE_TONE[effects.quiet.kind] : null
+  return {
+    kind: t(KIND_KEY[info.kind]),
+    tone: action.type === 'phase' ? null : tone,
+    origin: info.origin ? t(ORIGIN_KEY[info.origin]) : null,
+    lines: info.moves.slice(0, MAX_LINES).map((move) => ({ name: nameOf(move.id), route: routeOf(move, nameOf), ...(move.id === cost ? { tag: t('meta.duels.video.cost') } : {}) })),
+    more: info.moves.length > MAX_LINES ? t('practice.moves.more', { count: info.moves.length - MAX_LINES }) : null,
+    note: effects.shuffle ? t('meta.duels.video.shuffled') : null,
   }
 }
 
@@ -218,7 +289,7 @@ export function sideSlots(state: MatState, layout: VideoLayout, rows: { piles: n
   return [
     ...state.mz.map((placed, index) => zone(placed, layout.cellAt(rows.mz, col(index)), true)),
     ...state.st.map((placed, index) => zone(placed, layout.cellAt(rows.st, col(index)))),
-    zone(state.field, layout.cellAt(rows.piles, PILE_COLS[side].field)),
+    { ...zone(state.field, layout.cellAt(rows.piles, PILE_COLS[side].field)), ...(state.field ? {} : { label: t('practice.zone.fieldLabel') }) },
     // Las Zonas Extra son de los dos: la 0 tuya es la 1 del rival (`SharedZone`). Están en las columnas 1 y 3 del medio.
     ...state.emz.flatMap((placed, index) => (placed ? [zone(placed, layout.cellAt(layout.middle, top ? 3 - 2 * index : 1 + 2 * index), true)] : [])),
     pile('deck', state.deck, () => false),
@@ -264,11 +335,22 @@ export function focusOf(action: MatAction, before: MatState, state: MatState, mi
 /** Las mismas cartas de una mano en su franja: boca arriba lo que `look` conoce y `open` deja ver (o la que se muestra en esta jugada). */
 export function handSlots(ids: readonly string[], area: Rect, look: Look, open: (id: string) => boolean): SceneSlot[] {
   const rects = handRects(area, ids.length)
+  // El abanico de la mesa (`restTransform` de `PracticeHand`): 2,2° por carta desde el medio y las de los costados un poco más abajo (1,6 px por carta², en una de ~96 px de alto).
+  const middle = (ids.length - 1) / 2
+  const dip = area.h / 96
   return ids.map((id, index) => {
     const face = open(id) ? look(id) : null
-    return { rect: rects[index]!, ids: [id], card: { id, art: face?.art ?? null, name: face?.name ?? '', faceDown: !face, sideways: false, upsideDown: false, counters: 0, materials: 0 } }
+    const rect = rects[index]!
+    return {
+      rect: { ...rect, y: rect.y + Math.min(6, (index - middle) ** 2 * 1.6) * dip },
+      ids: [id],
+      card: { id, art: face?.art ?? null, name: face?.name ?? '', faceDown: !face, sideways: false, upsideDown: false, counters: 0, materials: 0, tilt: ((index - middle) * FAN_DEGREES * Math.PI) / 180 },
+    }
   })
 }
+
+/** Los grados por carta del abanico de la mano (`fanDegrees` de la mesa). */
+export const FAN_DEGREES = 2.2
 
 /** La escena de un cuadro: la mesa después de `cursor` jugadas. `before` (la mesa del lado que jugó, antes) hace falta para el texto y el resaltado de la jugada. */
 export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, before: MatState | null, width: number): Scene {
@@ -279,10 +361,13 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     const look = duelLook(replay, frame, side)
     // La mano de quien grabó, boca arriba sólo con «mi mano»; la del rival, de dorso. La carta que se muestra en esta jugada, boca arriba en la mano de cualquiera.
     const shown = step?.[0] === side && step[1].type === 'reveal' ? step[1].id : null
+    const rows = side === 1 ? { piles: 0, st: 1, mz: 2 } : { piles: 6, st: 5, mz: 4 }
     return {
       name: playerName(replay, side),
       lp: frame.lp[side],
-      slots: sideSlots(state, layout, side === 1 ? { piles: 0, st: 1, mz: 2 } : { piles: 6, st: 5, mz: 4 }, side === 1, look, shown),
+      fieldArt: state.field ? fieldArtUrl(state.field, realOf(replay, frame, side, state.field.id)) : null,
+      half: halfOf(layout, rows),
+      slots: sideSlots(state, layout, rows, side === 1, look, shown),
       hand: handSlots(state.hand, side === 0 ? layout.myHand : layout.theirHand, look, (id) => (side === 0 && replay.view === 'mine') || id === shown),
     }
   }) as [SceneSide, SceneSide]
@@ -309,6 +394,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
     spotlit,
     stepLabel: cursor === 0 ? t('meta.duels.start') : t('meta.duels.step', { n: cursor, total: replay.steps.length }),
     stepText: step && before ? stepText(replay, step, before, frame) : '',
+    explain: step && before && effects ? explainOf(before, step[1], effects, cardName(replay, frame, step[0])) : null,
     focus,
     footer: VIDEO_FOOTER(),
     cells: cellsOf(layout, 7),

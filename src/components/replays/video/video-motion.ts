@@ -28,10 +28,10 @@ export interface Motion {
   fromCard?: SceneCard
 }
 
-export function poseOf(rect: Rect, card: Pick<SceneCard, 'sideways' | 'upsideDown'>): Pose {
+export function poseOf(rect: Rect, card: Pick<SceneCard, 'sideways' | 'upsideDown' | 'tilt'>): Pose {
   const r = cardRect(rect, card.sideways)
   const [w, h] = card.sideways ? [r.h, r.w] : [r.w, r.h]
-  return { x: r.x + r.w / 2, y: r.y + r.h / 2, w, h, angle: (card.sideways ? Math.PI / 2 : 0) + (card.upsideDown ? Math.PI : 0) }
+  return { x: r.x + r.w / 2, y: r.y + r.h / 2, w, h, angle: (card.sideways ? Math.PI / 2 : 0) + (card.upsideDown ? Math.PI : 0) + (card.tilt ?? 0) }
 }
 
 interface Place {
