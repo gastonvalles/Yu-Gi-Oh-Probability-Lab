@@ -1,4 +1,5 @@
 import { easeInOut } from '../../../app/motion'
+import { t } from '../../../i18n'
 import { CARD_BACK_URL, FX_RGB } from '../../probability/practice-styles'
 import type { Flight } from './video-fx'
 import { poseAt, poseOf, slotUnder, type Pose } from './video-motion'
@@ -491,9 +492,12 @@ function drawExplain(ctx: Ctx, scene: Scene, theme: VideoTheme, s: number) {
   }
   if (!explain) return
   // «Qué se mueve» y el barajado, mientras entren (en el duelo, la franja es chica y no entran).
-  const rows = [...explain.lines.map((line) => ({ ...line, more: false })), ...(explain.more ? [{ name: explain.more, route: '', more: true }] : [])]
   const lineH = 28 * s
   y += 8 * s
+  // Las que no entran se cuentan en la última que entra («y 2 cartas más»), como en el panel de Pasos.
+  const fit = Math.max(0, Math.floor((box.y + box.h - y - 6 * s - (explain.note ? lineH : 0)) / lineH))
+  const shown = explain.total > Math.min(fit, explain.lines.length) ? Math.max(0, Math.min(fit, explain.lines.length + 1) - 1) : explain.lines.length
+  const rows = [...explain.lines.slice(0, shown).map((line) => ({ ...line, more: false })), ...(explain.total > shown && fit > 0 ? [{ name: t('practice.moves.more', { count: explain.total - shown }), route: '', tag: undefined, more: true }] : [])]
   if (rows.length > 0 && y + lineH <= box.y + box.h) {
     ctx.strokeStyle = rgba(theme.fieldLineRgb, 0.12)
     ctx.lineWidth = 1 * s
@@ -504,7 +508,6 @@ function drawExplain(ctx: Ctx, scene: Scene, theme: VideoTheme, s: number) {
     y += 6 * s
   }
   for (const row of rows) {
-    if (y + lineH > box.y + box.h - (explain.note ? lineH : 0)) break
     let x = box.x
     if (row.tag) {
       ctx.font = `800 ${13 * s}px ${FONT}`
@@ -570,9 +573,9 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
   ctx.lineWidth = 1.5 * s
   for (const r of scene.cells) {
     roundRect(ctx, r, 8 * s)
-    ctx.fillStyle = rgba(theme.backgroundRgb, 0.3)
+    ctx.fillStyle = rgba(theme.backgroundRgb, 0.12)
     ctx.fill()
-    ctx.strokeStyle = rgba(theme.fieldLineRgb, 0.26)
+    ctx.strokeStyle = rgba(theme.fieldLineRgb, 0.3)
     ctx.stroke()
   }
 

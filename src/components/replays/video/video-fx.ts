@@ -19,7 +19,7 @@ export { STAGE_TONE }
 /**
  * Los tiempos de la mesa, copiados para no cargar la mesa (React) con el video: `FLIGHT_MS`, `FLIGHT_STAGGER_MS` y `LANDING_AT` de `use-card-flights.ts`, `SPOTLIGHT_TRAVEL_MS`
  * de `MatFx.tsx`, `DECK_SHUFFLE_MS` y `HAND_SHUFFLE_MS` de `shuffle-fx.ts`, `FIRST_DEAL_MS`, `NEXT_DEAL_MS` y `DEAL_LAND_AT` de `deal-flight.ts`, `IMPACT_MS` de `AttackFx.tsx`,
- * `DELTA_MS` de `life-effects.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS`, `BANNER_MS` y `FLIP_MS` de `PracticeMat.tsx`, `DEAL_MS` de
+ * `DELTA_MS` de `life-effects.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS`, `BANNER_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
  * `PracticeHand.tsx` y `STRIKE_MS` de `AttackFx.tsx`.
  */
 export const MESA = {
@@ -29,6 +29,7 @@ export const MESA = {
   travel: 320,
   stage: 950,
   banner: 1100,
+  handFlash: 900,
   flip: 380,
   shuffle: 620,
   handShuffle: 900,
@@ -98,7 +99,7 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'attack' | 'delta' | 'title'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
@@ -187,6 +188,9 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     const lead = kind === 'duel' ? after.sides[actor].name : effects.banner.turn !== null ? t('practice.mat.turn', { turn: effects.banner.turn }) : ''
     out.push(bannerOverlay(name, lead, field, after.width, theme, s, at(0), speed))
   }
+
+  // Una carta entró a tu mano: la mano se enmarca un instante en celeste (`fx-zone` de la mesa; la del rival, no).
+  if (effects.hand && actor === 0) out.push(handFrameOverlay(after.layout.myHand, s, at(0), speed))
 
   // El barajado: el deck de quien jugó (y su mano, cuando ya llegó lo que se sumó a ella), como en la mesa.
   if (effects.shuffle) {
@@ -562,6 +566,28 @@ export function dealOverlays(scene: Scene, assets: VideoAssets, speed: VideoSpee
       },
     },
   ]
+}
+
+function handFrameOverlay(area: Rect, s: number, start: number, speed: VideoSpeed): Overlay {
+  const tone = FX_RGB.cyan
+  const r = { x: area.x - 10 * s, y: area.y - 10 * s, w: area.w + 20 * s, h: area.h + 20 * s }
+  return {
+    kind: 'hand',
+    start,
+    duration: MESA.handFlash / speed,
+    draw: (ctx, p) => {
+      ctx.save()
+      ctx.globalAlpha = keyed(p, [[0, 0], [0.15, 1], [0.7, 1], [1, 0]])
+      ctx.fillStyle = rgba(tone, 0.06)
+      ctx.fillRect(r.x, r.y, r.w, r.h)
+      ctx.shadowColor = rgba(tone, 0.5)
+      ctx.shadowBlur = 20 * s
+      ctx.strokeStyle = rgba(tone, 1)
+      ctx.lineWidth = 2.5 * s
+      ctx.strokeRect(r.x, r.y, r.w, r.h)
+      ctx.restore()
+    },
+  }
 }
 
 function attackOverlay(from: Pose, to: { x: number; y: number }, cell: number, s: number, start: number, speed: VideoSpeed): Overlay {

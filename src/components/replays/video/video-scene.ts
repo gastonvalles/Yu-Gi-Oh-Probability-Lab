@@ -76,7 +76,8 @@ export interface Explain {
   tone: FxTone | null
   origin: string | null
   lines: { name: string; route: string; tag?: string }[]
-  more: string | null
+  /** Cuántas cartas se mueven en total (las de más, «y N cartas más»). */
+  total: number
   note: string | null
 }
 
@@ -193,7 +194,7 @@ export function explainOf(before: MatState, action: MatAction, effects: MatEffec
     tone: action.type === 'phase' ? null : tone,
     origin: info.origin ? t(ORIGIN_KEY[info.origin]) : null,
     lines: info.moves.slice(0, MAX_LINES).map((move) => ({ name: nameOf(move.id), route: routeOf(move, nameOf), ...(move.id === cost ? { tag: t('meta.duels.video.cost') } : {}) })),
-    more: info.moves.length > MAX_LINES ? t('practice.moves.more', { count: info.moves.length - MAX_LINES }) : null,
+    total: info.moves.length,
     note: effects.shuffle ? t('meta.duels.video.shuffled') : null,
   }
 }
