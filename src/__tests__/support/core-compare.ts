@@ -68,14 +68,12 @@ export function readReal(lib: OcgCoreSync, handle: OcgDuelHandle, controller: Se
 
 /**
  * Un Xyz con materiales mientras sigue en el Extra: la Invocación Xyz los junta debajo de la carta antes de sacarla, y en ese tramo el núcleo
- * puede preguntar (dónde va, en qué posición). La mesa no lo puede mostrar y los deja en el campo hasta que sale (`adapter.ts`): mientras tanto
- * no se comparan el campo ni el cementerio (las diferencias de `TRANSIT`).
+ * puede preguntar (dónde va, en qué posición). La mesa los guarda en `held` (`practice-mat.ts`) y se compara igual: se cuenta para saber que el
+ * tramo se probó.
  */
 export function xyzInTransit(lib: OcgCoreSync, handle: OcgDuelHandle): boolean {
   return ([0, 1] as const).some((controller) => lib.duelQueryLocation(handle, { flags: Q.OVERLAY_CARD as Q, controller, location: L.EXTRA }).some((card) => (card?.overlayCards?.length ?? 0) > 0))
 }
-
-export const TRANSIT = /^(mzone|szone)|^grave/
 
 /** La mesa en el mismo formato que `readReal`; `code` da el código de cada id (0 = no se sabe). */
 export function readMat(state: MatState, code: (id: string) => number) {

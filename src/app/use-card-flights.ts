@@ -102,6 +102,8 @@ function homeOf(root: HTMLElement, state: MatState, id: string, side: Side): HTM
 
   try {
     if (where?.kind === 'pile') return root.querySelector<HTMLElement>(`[${SIDES[side].drop}="${quoted(where.pile)}"]`)
+    // Debajo de una carta que sigue en el Extra Deck (`held`): se dibuja en el Extra.
+    if (where?.kind === 'material' && state.held?.[where.of]) return root.querySelector<HTMLElement>(`[${SIDES[side].drop}="extra"]`)
     if (where?.kind === 'material') return root.querySelector<HTMLElement>(`[${SIDES[side].card}="${quoted(where.of)}"]`)
   } catch {
     // Un id que no se puede usar de selector: la carta no vuela, y nada más.
@@ -128,7 +130,7 @@ const boxOf = (home: HTMLElement, side: Side, size: Size): Box => (isHand(home, 
 function placeOf(state: MatState, id: string): string | null {
   const where = locateCard(state, id)
 
-  return where?.kind === 'pile' ? where.pile : where?.kind === 'material' ? `under:${where.of}` : null
+  return where?.kind === 'pile' ? where.pile : where?.kind === 'material' ? (state.held?.[where.of] ? 'extra' : `under:${where.of}`) : null
 }
 
 /** Boca abajo a donde va: al deck, al Extra (salvo boca arriba, un Monstruo de Péndulo), desterrada boca abajo o como material. */

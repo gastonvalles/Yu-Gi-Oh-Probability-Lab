@@ -101,6 +101,25 @@ describe('la mesa de práctica', () => {
     expect(detached.hand).toContain('a2')
   })
 
+  it('materiales debajo de una carta que sigue en el Extra (la Invocación Xyz del automático): dejan libres sus zonas y salen con ella', () => {
+    const field = run([
+      { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' },
+      { type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'atk' },
+    ])
+    const held = run([{ type: 'attach', id: 'a1', to: 'x1' }, { type: 'attach', id: 'a2', to: 'x1' }], field)
+
+    expect([held.mz[0], held.mz[1], held.gy, held.extra, held.held]).toEqual([null, null, [], ['x1', 'x2'], { x1: ['a1', 'a2'] }])
+    expect(locateCard(held, 'a2')).toEqual({ kind: 'material', of: 'x1' })
+    expect(allMatIds(held).sort()).toEqual(allMatIds(field).sort())
+    // Sale a una zona (la de un material): los lleva debajo, y la mesa vuelve a no tener `held`.
+    const summoned = matReducer(held, { type: 'summon', id: 'x1', how: 'xyz', materials: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })
+
+    expect([summoned.mz[0], summoned.gy, 'held' in summoned]).toEqual([{ id: 'x1', pos: 'atk', counters: 0, materials: ['a1', 'a2'] }, [], false])
+    // A otro lado que no es el campo, van al cementerio; sólo debajo de una carta del Extra (no de la mano).
+    expect(matReducer(held, { type: 'move', id: 'x1', to: 'gy' }).gy).toEqual(['a1', 'a2', 'x1'])
+    expect(matReducer(field, { type: 'attach', id: 'a1', to: 'c1' })).toBe(field)
+  })
+
   it('la Invocación Normal con Sacrificios manda los sacrificios al cementerio y saca la carta, incluso a la zona que se liberó', () => {
     const two = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'def' }])
     const summoned = matReducer(two, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })

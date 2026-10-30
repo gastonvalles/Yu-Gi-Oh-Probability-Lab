@@ -1,5 +1,5 @@
 import { mirrorApply, openMirror, type Mirror, type WireAct } from '../mat-public'
-import { createMatState, matReducer, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type MatSummon, type MatTakeZone, type Placed } from '../practice-mat'
+import { createMatState, locateCard, matReducer, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type MatSummon, type MatTakeZone, type Placed } from '../practice-mat'
 import { LOCATION as L, POSITION as P, type AutoEvent, type EventOf, type LocPos, type Seat, type WireEvent } from './protocol'
 import type { ChainStep } from './chain-feed'
 import { isPublic } from './referee'
@@ -546,11 +546,11 @@ export function createAdapter(options: AdapterOptions): Adapter {
     if (from.location === L.DECK && to.location === L.DECK && from.controller === to.controller) return put(to, card)
     put(to, card)
 
-    // Debajo de un Xyz: si está en el campo, `attach`; si está en el Extra (la Invocación Xyz los junta antes de sacarlo), se espera a que salga.
+    // Debajo de un Xyz, en el campo o todavía en el Extra (la Invocación Xyz los junta antes de preguntar dónde va: la mesa los guarda en `held` y sus zonas quedan libres, como en el núcleo).
     if (isMaterial(to)) {
       const xyz = cardAt({ controller: to.controller, location: baseLocation(to.location), sequence: to.sequence })
 
-      if (!xyz || baseLocation(to.location) !== L.MZONE) return
+      if (!xyz || (baseLocation(to.location) !== L.MZONE && baseLocation(to.location) !== L.EXTRA)) return
       // La carta tiene que estar en la mesa del Xyz: viene de su campo, de debajo de otro de sus Xyz o de una pila de su dueño.
       const source = fromSpot || isMaterial(from) ? from.controller : card.owner
 
@@ -584,15 +584,16 @@ export function createAdapter(options: AdapterOptions): Adapter {
           materials.set(card, materials.get(holder)!)
           materials.delete(holder)
         }
-        // Los materiales del Xyz siguen en la mesa hasta ahora (no se pueden poner debajo de una carta del Extra): la invocación los lleva.
+        // Los materiales: en el campo (Fusión, Sincronía, Enlace) o ya debajo de una carta del Extra (`held`; en el del rival, quizá de otra: la que tomó el núcleo).
         const held = (materials.get(card) ?? []).map((material) => matId(material, to.controller))
-        const onField = held.filter((material) => {
-          const where = locateIn(stateOf(to.controller), material)
+        const state = stateOf(to.controller)
+        const usable = held.filter((material) => {
+          const where = locateCard(state, material)
 
-          return where === 'mz' || where === 'emz'
+          return where?.kind === 'spot' ? where.spot === 'mz' || where.spot === 'emz' : where?.kind === 'material' && state.held?.[where.of] !== undefined
         })
 
-        emit(to.controller, { type: 'summon', id, how, materials: onField, zone: toSpot.zone, index: toSpot.index, pos })
+        emit(to.controller, { type: 'summon', id, how, materials: usable, zone: toSpot.zone, index: toSpot.index, pos })
         const under = placedIn(stateOf(to.controller), id)?.materials ?? []
 
         for (const material of held) if (!under.includes(material)) emit(to.controller, { type: 'attach', id: material, to: id })
@@ -1031,19 +1032,6 @@ export function createAdapter(options: AdapterOptions): Adapter {
 
     return null
   }
-}
-
-/** En qué parte de la mesa está una carta (para saber si un material sigue en el campo). */
-function locateIn(state: MatState, id: string): MatSpot | MatPile | 'material' | null {
-  for (const pile of ['deck', 'extra', 'hand', 'gy', 'banished'] as const) if (state[pile].includes(id)) return pile
-  for (const zone of ['mz', 'emz', 'st'] as const) {
-    for (const placed of state[zone]) {
-      if (placed?.id === id) return zone
-      if (placed?.materials.includes(id)) return 'material'
-    }
-  }
-
-  return state.field?.id === id ? 'field' : state.field?.materials.includes(id) ? 'material' : null
 }
 
 function placedIn(state: MatState, id: string) {

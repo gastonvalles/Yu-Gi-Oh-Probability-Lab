@@ -7,7 +7,7 @@ import { teamOrder } from '../app/auto/deck-map'
 import { randomLegalPolicy, type CardPicker } from '../app/auto/policies'
 import type { AutoCommand, AutoEvent, Seat } from '../app/auto/protocol'
 import { whoseTurn } from '../app/duel-turn'
-import { codeOfId, codesIn, compare, readMat, readReal, TRANSIT, xyzInTransit } from './support/core-compare'
+import { codeOfId, codesIn, compare, readMat, readReal, xyzInTransit } from './support/core-compare'
 import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, runDuel, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -31,7 +31,7 @@ const PLAYERS = [
 const UNSUPPORTED = /unsupported|other side|Extra Monster Zone|Field Zone|leaves the duel|from nowhere/
 
 describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks × ${DUELS} duelos (npm run test:auto)`, () => {
-  const tally = { duels: 0, tandas: 0, checks: 0, diffs: {} as Record<string, number>, whitelist: {} as Record<string, number>, unmapped: {} as Record<string, number>, hiddenRevealed: 0, ends: {} as Record<string, number> }
+  const tally = { duels: 0, tandas: 0, transit: 0, checks: 0, diffs: {} as Record<string, number>, whitelist: {} as Record<string, number>, unmapped: {} as Record<string, number>, hiddenRevealed: 0, ends: {} as Record<string, number> }
   const pick = (record: Record<string, number>, test: (key: string) => boolean) => Object.fromEntries(Object.entries(record).filter(([key]) => test(key)))
 
   beforeAll(async () => {
@@ -112,9 +112,8 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
         if (!host.live) return
         tally.tandas += 1
         const { lib, handle } = host.live
-        const extraHeld = xyzInTransit(lib, handle)
+        if (xyzInTransit(lib, handle)) tally.transit += 1
 
-        if (extraHeld) tally.whitelist['xyz: materials under an Extra Deck card (transit)'] = (tally.whitelist['xyz: materials under an Extra Deck card (transit)'] ?? 0) + 1
         const field = lib.duelQueryField(handle)
 
         for (const seat of [0, 1] as const) {
@@ -137,9 +136,8 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
           for (const [side, controller, mat, own] of sides) {
             if (stopped.has(`${seat}:${side}`)) continue
             const real = readReal(lib, handle, controller)
-            let diffs = compare(real, mat, own)
+            const diffs = compare(real, mat, own)
 
-            if (extraHeld) diffs = diffs.filter((diff) => !TRANSIT.test(diff))
             // (c) el overlay: las vidas, el ATK/DEF de lo que se ve y quién juega.
             // Las vidas del núcleo son u32: debajo de 0 dan la vuelta (y la pantalla muestra 0).
             const lp = Math.max(0, (field.players[controller] as unknown as { lp: number }).lp | 0)
@@ -187,6 +185,8 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
 
   it('(a) mi mesa es la del núcleo: códigos, orden, posiciones, contadores y materiales', () => {
     expect(tally.checks).toBeGreaterThan(0)
+    // También en el tramo de una Invocación Xyz con los materiales todavía debajo de la carta en el Extra (zonas libres, como en el núcleo).
+    expect(tally.transit).toBeGreaterThan(0)
     expect(pick(tally.diffs, (key) => key.startsWith('mine:') && !key.includes('overlay'))).toEqual({})
   })
 
@@ -203,7 +203,7 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
   })
 
   // Lo que el espejo no puede saber queda en la lista blanca, contado: una carta ya mostrada que vuelve a una pila barajada y sale oculta
-  // (`identity lost`: cualquiera de las sueltas pudo ser ella) y el Xyz con sus materiales todavía en el Extra (`TRANSIT`).
+  // (`identity lost`: cualquiera de las sueltas pudo ser ella).
   it('(b) el espejo del rival: sin diferencias ni identidades que no cierran', () => {
     expect({ theirs: pick(tally.diffs, (key) => key.startsWith('theirs:') && !key.includes('overlay')), identity: pick(tally.unmapped, (key) => key.startsWith('identity:')) }).toEqual({ theirs: {}, identity: {} })
   })

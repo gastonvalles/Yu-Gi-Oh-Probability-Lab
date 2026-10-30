@@ -64,6 +64,11 @@ export interface MatState {
   targeted: string[]
   /** El simulador de handtraps de «Jugar solo» (`app/handtraps.ts`): la mano del rival. Sin él (la práctica de siempre, un duelo, las mesas y los combos de antes) no hay rival. */
   rival?: RivalHand
+  /**
+   * Materiales Xyz debajo de una carta que sigue en el Extra Deck, por su id (duelos automáticos: la Invocación Xyz del núcleo junta los materiales antes de preguntar dónde
+   * va y en qué posición). No se ven; al salir la carta del Extra se los lleva (al campo, debajo; a otro lado, al cementerio). Sin ninguno, no está.
+   */
+  held?: Record<string, string[]>
 }
 
 /** La mano del rival en el simulador de handtraps: lo que robó (`hand`, que no cambia: una usada se queda en su lugar) y lo que ya usó, en el orden en que lo usó. */
@@ -226,14 +231,25 @@ export function locateCard(state: MatState, id: string): MatLocation | null {
     }
   }
 
-  return null
+  const of = Object.keys(state.held ?? {}).find((xyz) => state.held![xyz]!.includes(id))
+
+  return of === undefined ? null : { kind: 'material', of }
 }
 
 /** Todas las cartas en juego (deck, Extra, mano, pilas, campo y materiales). */
 export function allMatIds(state: MatState): string[] {
   const placed = SPOTS.flatMap((spot) => spotCards(state, spot)).filter((card): card is Placed => card !== null)
 
-  return [...PILES.flatMap((pile) => state[pile]), ...placed.flatMap((card) => [card.id, ...card.materials])]
+  return [...PILES.flatMap((pile) => state[pile]), ...placed.flatMap((card) => [card.id, ...card.materials]), ...Object.values(state.held ?? {}).flat()]
+}
+
+/** Los materiales de una carta del Extra Deck (`held`): sin ninguno, la carta sale de la lista y, sin cartas, la lista de la mesa. */
+function withHeld(state: MatState, xyz: string, materials: readonly string[]): MatState {
+  const { [xyz]: _, ...rest } = state.held ?? {}
+  const held = materials.length > 0 ? { ...rest, [xyz]: [...materials] } : rest
+  const { held: __, ...bare } = state
+
+  return Object.keys(held).length > 0 ? { ...bare, held } : bare
 }
 
 export function placedAt(state: MatState, spot: MatSpot, index: number): Placed | null {
@@ -274,7 +290,15 @@ function removeEverywhere(source: MatState, id: string): { state: MatState; plac
   if (where.kind === 'pile') {
     const facedown = where.pile === 'banished' ? state.facedown.filter((card) => card !== id) : state.facedown
     const extraUp = where.pile === 'extra' ? state.extraUp.filter((card) => card !== id) : state.extraUp
-    return { state: { ...state, [where.pile]: state[where.pile].filter((card) => card !== id), facedown, extraUp }, placed: null }
+    const left = { ...state, [where.pile]: state[where.pile].filter((card) => card !== id), facedown, extraUp }
+    // Del Extra con materiales (`held`): se los lleva, como una carta del campo.
+    const held = where.pile === 'extra' ? state.held?.[id] : undefined
+
+    return held ? { state: withHeld(left, id, []), placed: { id, pos: 'atk', counters: 0, materials: held } } : { state: left, placed: null }
+  }
+
+  if (where.kind === 'material' && state.held?.[where.of]) {
+    return { state: withHeld(state, where.of, state.held[where.of]!.filter((card) => card !== id)), placed: null }
   }
 
   if (where.kind === 'material') {
@@ -383,13 +407,18 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
     case 'attach': {
       const target = locateCard(state, action.to)
+      const inExtra = target?.kind === 'pile' && target.pile === 'extra'
 
-      if (action.id === action.to || isToken(action.id) || target?.kind !== 'spot' || !locateCard(state, action.id)) {
+      if (action.id === action.to || isToken(action.id) || (target?.kind !== 'spot' && !inExtra) || !locateCard(state, action.id)) {
         return state
       }
 
       // La carta se lleva sus materiales (un Xyz con materiales pasa debajo de otro con todo lo que tenía): no van al cementerio.
       const removed = removeEverywhere(state, action.id)
+
+      // Debajo de una carta del Extra Deck (la Invocación Xyz del núcleo): queda en `held` hasta que la carta sale.
+      if (inExtra) return withHeld(removed.state, action.to, [...(removed.state.held?.[action.to] ?? []), action.id, ...carriedMaterials(removed.placed)])
+
       const owner = locateCard(removed.state, action.to)
 
       if (owner?.kind !== 'spot') {
@@ -461,6 +490,9 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
       for (const material of action.materials) {
         const where = locateCard(next, material)
+
+        // Ya debajo de una carta del Extra Deck (`held`): pasa debajo de la que sale.
+        if (action.how === 'xyz' && where?.kind === 'material' && next.held?.[where.of]) continue
 
         // Sólo monstruos propios en el campo; una ficha no puede ser material Xyz (sí de Enlace: desaparece al salir del campo).
         if (where?.kind !== 'spot' || where.spot === 'st' || where.spot === 'field' || (action.how === 'xyz' && isToken(material))) {
