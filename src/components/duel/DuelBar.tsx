@@ -230,7 +230,8 @@ function ThinkingCancel({ onCancel, label }: { onCancel: () => void; label?: str
 
 /** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo), tu pregunta de pasar de fase y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
 export function LaneBanner({ lane, rivalName, rail = false, detail }: { lane: LaneNotice; rivalName: string; /** En un lateral: ocupa el alto que necesite, en vez de la fila de la línea del registro. */ rail?: boolean; /** Un segundo renglón, apagado (el paso que se repasa): el texto va en negrita en el primero y cada uno se corta con «…». */ detail?: string | undefined }) {
-  const place = rail ? 'flex-wrap py-2' : 'absolute inset-0 max-sm:pointer-events-auto'
+  // En la fila del registro (44 px) se apoya arriba y crece hacia abajo lo que haga falta: con el dedo un botón mide 44 px y, en una caja de 44, pisaba el borde («se sale del contenedor», Gastón, 2026-10-29).
+  const place = rail ? 'flex-wrap py-2' : 'absolute inset-x-0 top-0 min-h-full pointer-coarse:py-1 max-sm:pointer-events-auto'
   // En la fila de la línea del registro, dos renglones a lo sumo; en un lateral (angosto), los que necesite, y una palabra larga se parte en vez de salirse.
   const text = cx('min-w-0 flex-1', rail ? '[overflow-wrap:anywhere]' : 'line-clamp-2')
 
