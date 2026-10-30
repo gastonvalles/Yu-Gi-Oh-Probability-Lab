@@ -3,7 +3,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HANDTRAP_CONFIG_KEY, readHandtrapConfig, type HandtrapConfig } from '../app/handtraps'
+import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CONFIG_KEY, readHandtrapConfig, type HandtrapConfig } from '../app/handtraps'
 import type { MatState } from '../app/practice-mat'
 import { HandtrapPicker, HandtrapsRow } from '../components/duel/HandtrapPool'
 import { MatBarActions } from '../components/probability/MatBarActions'
@@ -224,7 +224,7 @@ describe('la fila de las reglas de Solo', () => {
     expect(toggle).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-checked', 'true')
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }, { ...IMPERM, copies: 1 }], hand: 3 })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }, { ...IMPERM, copies: 1 }], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
     expect(JSON.parse(localStorage.getItem(HANDTRAP_CONFIG_KEY) ?? '{}')).toMatchObject({ enabled: true, hand: 3 })
   })
 
@@ -244,7 +244,7 @@ describe('la fila de las reglas de Solo', () => {
     fireEvent.click(more(handCounter()))
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 1 }], hand: 4 })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 1 }], hand: 4, extra: DEFAULT_RIVAL_EXTRA })
     expect(screen.getByText('4 en mano · de 5 cartas')).toBeInTheDocument()
   })
 })
@@ -271,7 +271,7 @@ describe('«Handtraps del rival» del ⋯ de la barra de la mesa (Entrenar solo)
     fireEvent.click(more(handCounter()))
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
-    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }], hand: 4 })
+    expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 2 }, { ...IMPERM, copies: 1 }], hand: 4, extra: DEFAULT_RIVAL_EXTRA })
     expect(onApply).toHaveBeenCalledTimes(1)
     expect(row()).toHaveTextContent('prendidas')
   })
@@ -287,7 +287,7 @@ describe('«Handtraps del rival» del ⋯ de la barra de la mesa (Entrenar solo)
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Apagar el simulador' }))
 
-    expect(readHandtrapConfig()).toEqual({ ...saved, enabled: false })
+    expect(readHandtrapConfig()).toEqual({ ...saved, enabled: false, extra: DEFAULT_RIVAL_EXTRA })
     expect(onApply).toHaveBeenCalledTimes(1)
   })
 

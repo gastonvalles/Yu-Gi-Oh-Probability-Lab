@@ -7,7 +7,7 @@ import { localTransport } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
 import { passivePolicy } from '../app/auto/policies'
 import { LOCATION as L, type AutoEvent, type CoreAnswer, type CoreAsk, type WireEvent } from '../app/auto/protocol'
-import { AUTO_RULES, autoRival, HANDTRAP_CATALOG } from '../app/handtraps'
+import { AUTO_RULES, autoRival, HANDTRAP_CATALOG, type ExtraPick, type HandtrapConfig } from '../app/handtraps'
 import { cardRows, CORE_DATA_DIR, hasCoreData, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -33,6 +33,9 @@ const FUWALOS = 42141493
 const PURULIA = 84192580
 const MEOWLS = 87126721
 const DRIVER = 49036338
+// Del buscador (fuera del catálogo), con su regla: Harmonia revela Sincros del Extra Deck del rival (`RIVAL_EXTRA`) y Delta Invoca a Driver.
+const HARMONIA = 70088809
+const DELTA = 74203495
 
 const TERRAFORMING = 73628505
 const SOGEN = 86318356
@@ -67,7 +70,7 @@ const has = (events: readonly WireEvent[], test: (event: WireEvent) => boolean) 
 const drewRival = (events: readonly WireEvent[]) => has(events, (event) => event.type === 'draw' && event.player === 1)
 const negatedLink = (events: readonly WireEvent[], kind: 'chain_disabled' | 'chain_negated', link: number) => has(events, (event) => event.type === kind && event.chain_size === link)
 /** Las handtraps de los escenarios que niegan un eslabón (`chain_negated` o `chain_disabled`). */
-const NEGATES = new Set([ASH, VEILER, IMPERM, BELLE, GAMMA, DOMINUS])
+const NEGATES = new Set([ASH, VEILER, IMPERM, BELLE, GAMMA, DOMINUS, DELTA])
 /**
  * Las que niegan con un efecto que queda (los efectos del monstruo, hasta el final del turno): el núcleo dice «sin efecto» cuando le llega el turno al eslabón negado, no mientras se resuelve
  * la handtrap, así que no se sabe quién fue (sin `by`: la pantalla dice sólo «Sin efecto»).
@@ -175,6 +178,27 @@ const SCENARIOS: Scenario[] = [
     check: (after) => (negatedLink(after, 'chain_negated', 1) && has(after, (event) => event.type === 'move' && event.card === DRIVER && event.to.location === L.MZONE) ? null : 'Gamma no negó a Stratos ni Invocó a Driver'),
   },
   {
+    card: DELTA,
+    deck: [[SOGEN, 1], ...SPELLS],
+    hand: [TERRAFORMING],
+    steps: [{ do: 'activate', code: TERRAFORMING }],
+    // Niega Terraforming (una Mágica) e Invoca a Delta y a PSY-Frame Driver.
+    check: (after) => (negatedLink(after, 'chain_negated', 1) && has(after, (event) => event.type === 'move' && event.card === DRIVER && event.to.location === L.MZONE) ? null : 'Delta no negó Terraforming ni Invocó a Driver'),
+  },
+  {
+    card: HARMONIA,
+    deck: [[AVIAN, 1], ...SPELLS],
+    hand: [STRATOS],
+    steps: [{ do: 'summon', code: STRATOS }],
+    // Contra el efecto de Stratos en el campo: revela 5 Sincros de su Extra, se Invoca, manda una al cementerio y destruye a Stratos.
+    check: (after) =>
+      has(after, (event) => event.type === 'move' && event.card === HARMONIA && event.to.controller === 1 && event.to.location === L.MZONE) &&
+      has(after, (event) => event.type === 'move' && event.from.controller === 1 && event.from.location === L.EXTRA && event.to.location === L.GRAVE) &&
+      moved(after, STRATOS, L.MZONE, L.GRAVE)
+        ? null
+        : 'Harmonia no se Invocó, no mandó un Sincro al cementerio o no destruyó a Stratos',
+  },
+  {
     card: CROW,
     deck: [[BULB, 1], ...SPELLS],
     hand: [FOOLISH],
@@ -271,12 +295,13 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     if (hasCoreData) writeFileSync(path.join(CORE_DATA_DIR, 'handtraps-report.json'), JSON.stringify(report, null, 1))
   })
 
-  it('el catálogo entero tiene escenario', () => {
-    expect(new Set(SCENARIOS.map((scenario) => scenario.card))).toEqual(new Set(HANDTRAP_CATALOG.map((card) => card.id)))
-    expect(new Set(Object.keys(AUTO_RULES).map(Number))).toEqual(new Set(HANDTRAP_CATALOG.map((card) => card.id)))
+  it('toda carta con regla tiene escenario, y el catálogo entero tiene regla', () => {
+    expect(new Set(SCENARIOS.map((scenario) => scenario.card))).toEqual(new Set(Object.keys(AUTO_RULES).map(Number)))
+    expect(HANDTRAP_CATALOG.filter((card) => !AUTO_RULES[card.id])).toEqual([])
   })
 
-  it.each(SCENARIOS.map((scenario) => [names.get(scenario.card) ?? String(scenario.card), scenario] as const))('%s: el rival la usa sola y se resuelve', async (_name, scenario) => {
+  /** Un duelo de la sesión de verdad: tu deck y tu mano, tus pasos, y el rival del simulador con `config` (sus handtraps, su mano y su Extra Deck). Termina cuando hiciste todo. */
+  async function duel(scenario: Pick<Scenario, 'deck' | 'extra' | 'hand' | 'steps'>, config: HandtrapConfig) {
     const events: WireEvent[] = []
     const deck: DeckList = { main: [...scenario.hand.map((code) => [code, 1] as [number, number]), ...scenario.deck], extra: scenario.extra ?? [] }
     const session = createAutoSession({
@@ -286,8 +311,7 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
       handSize: scenario.hand.length,
       seed: 1,
       transport: localTransport({ wasmBinary: wasm }),
-      // El rival de la pantalla: el del simulador con esa sola carta (con Gamma, también PSY-Frame Driver en su deck).
-      rival: autoRival({ enabled: true, picks: [{ id: scenario.card, name: names.get(scenario.card) ?? '', copies: 1 }], hand: 1 }),
+      rival: autoRival(config),
       onEvent: (event: AutoEvent) => {
         if (event.t === 'events' && event.seat === 0) events.push(...event.events)
       },
@@ -303,13 +327,20 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
       session.answer(me.answer(snapshot.ask!.ask, own))
       snapshot = await settled(session)
     }
+    session.destroy()
+
+    return { events, snapshot, handAtStart }
+  }
+
+  it.each(SCENARIOS.map((scenario) => [names.get(scenario.card) ?? String(scenario.card), scenario] as const))('%s: el rival la usa sola y se resuelve', async (_name, scenario) => {
+    // El rival de la pantalla: el del simulador con esa sola carta (con Gamma o Delta, también PSY-Frame Driver en su deck) y el Extra Deck de siempre.
+    const { events, snapshot, handAtStart } = await duel(scenario, { enabled: true, picks: [{ id: scenario.card, name: names.get(scenario.card) ?? '', copies: 1 }], hand: 1 })
 
     const at = chainingOf(events, scenario.card, 1)
     const outcome = at >= 0 ? scenario.check(events.slice(at), events) : 'el rival no la activó'
     const faults = snapshot.faults.filter((fault) => fault.kind !== 'script' || !fault.message.startsWith('card data'))
 
     report.push({ card: names.get(scenario.card), activated: at >= 0, outcome, status: snapshot.status, faults, rival: snapshot.answers.filter((item) => item.seat === 1 && JSON.stringify(item.answer) !== '{"type":"select_chain","index":null}').map((item) => item.answer) })
-    session.destroy()
 
     expect({ status: snapshot.status, fault: snapshot.fault, faults, outcome }).toEqual({ status: 'ready', fault: null, faults: [], outcome: null })
     // Quién negó (`ChainStep.by`, deducido por el adaptador: el núcleo no lo dice): toda negación de estos escenarios es de la handtrap y apunta a su eslabón, o no se sabe (`BY_UNKNOWN`).
@@ -320,5 +351,24 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     expect(negators).toEqual(negators.map(() => (BY_UNKNOWN.has(scenario.card) ? null : scenario.card)))
     expect(handAtStart).toEqual([scenario.card])
     expect(snapshot.rivalHand).not.toContain(scenario.card)
+  })
+
+  describe('el Extra Deck del rival y Fydraulis Harmonia (revela hasta 5 Sincros de su Extra y manda uno al cementerio)', () => {
+    const SYNCHROS = [97204936, 45815891, 44508094, 16527176, 50091196]
+    const synchros = (codes: readonly number[]): ExtraPick[] => codes.map((id) => ({ id, name: names.get(id) ?? '', kind: 'synchro' }))
+    const harmonia = (extra?: ExtraPick[]) =>
+      duel({ deck: [[AVIAN, 1], ...SPELLS], hand: [STRATOS], steps: [{ do: 'summon', code: STRATOS }] }, { enabled: true, picks: [{ id: HARMONIA, name: '', copies: 1 }], hand: 1, ...(extra ? { extra } : {}) })
+    /** Los Sincros que mandó de su Extra al cementerio. */
+    const sent = (events: readonly WireEvent[]) => events.flatMap((event) => (event.type === 'move' && event.from.controller === 1 && event.from.location === L.EXTRA && event.to.location === L.GRAVE ? [event.card] : []))
+
+    it('sin Extra Deck el núcleo no se la ofrece (no la usa); con el de siempre, sí', async () => {
+      expect(chainingOf((await harmonia([])).events, HARMONIA, 1)).toBe(-1)
+      expect(chainingOf((await harmonia()).events, HARMONIA, 1)).toBeGreaterThanOrEqual(0)
+    })
+
+    it('el orden de la lista es la preferencia: manda al cementerio el primer Sincro; reordenada, otro', async () => {
+      expect(sent((await harmonia(synchros(SYNCHROS))).events)).toEqual([SYNCHROS[0]])
+      expect(sent((await harmonia(synchros([SYNCHROS[2]!, ...SYNCHROS.filter((_, i) => i !== 2)]))).events)).toEqual([SYNCHROS[2]])
+    })
   })
 })
