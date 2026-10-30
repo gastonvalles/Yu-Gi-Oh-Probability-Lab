@@ -239,7 +239,7 @@ export interface HandtrapConfig {
   hand: number
   /** En orden de preferencia; vacío, juega sin Extra Deck; sin el campo, `DEFAULT_RIVAL_EXTRA`. No cambia la mano que se reparte (`dealRival` no lo mira). */
   extra?: ExtraPick[]
-  /** «El rival juega su turno (beta)», sólo en el duelo automático: Invoca, coloca, activa sus cartas (`TURN_RULES`) y ataca. Sin el campo (lo guardado antes), apagado. */
+  /** «El rival juega su turno», sólo en el duelo automático: Invoca, coloca, activa sus cartas (`TURN_RULES`) y ataca. Sin el campo (lo guardado antes), apagado. */
   ownTurn?: boolean
 }
 

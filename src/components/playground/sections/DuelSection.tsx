@@ -538,7 +538,7 @@ function HandtrapSamples() {
           Abrir la hoja del duelo automático con Dominus Purge
         </Button>
         <HandtrapPicker isOpen={openDominus} config={DOMINUS_HAND} auto onClose={() => setOpenDominus(false)} onSave={() => setOpenDominus(false)} />
-        {/* «El rival juega su turno (beta)», arriba de la hoja del duelo automático (`ListRow` con `toggle`: la fila entera es el interruptor). Las cartas de su turno dicen «La juega en su turno»; apagado, «La usa sólo si juega su turno». */}
+        {/* «El rival juega su turno», arriba de la hoja del duelo automático (`ListRow` con `toggle`: la fila entera es el interruptor). Las cartas de su turno dicen «La juega en su turno»; apagado, «La usa sólo si juega su turno». */}
         <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpenTurn(true)}>
           Abrir la hoja del duelo automático con «El rival juega su turno»
         </Button>

@@ -217,12 +217,12 @@ describe('la hoja de las handtraps del rival', () => {
     }
   })
 
-  it('en el duelo automático, arriba, «El rival juega su turno (beta)»: apagado de entrada, la fila entera es el interruptor y se guarda con lo elegido; las cartas de su turno lo dicen', () => {
+  it('en el duelo automático, arriba, «El rival juega su turno»: apagado de entrada, la fila entera es el interruptor y se guarda con lo elegido; las cartas de su turno lo dicen', () => {
     const onSave = vi.fn()
     const GOLEM = { id: 102380, name: 'Lava Golem' }
 
     render(<HandtrapPicker isOpen auto config={{ ...SAVED, picks: [...SAVED.picks, { ...GOLEM, copies: 1 }] }} onClose={() => {}} onSave={onSave} />)
-    const own = screen.getByRole('switch', { name: 'El rival juega su turno (beta)' })
+    const own = screen.getByRole('switch', { name: 'El rival juega su turno' })
 
     expect(own).toHaveAttribute('aria-checked', 'false')
     expect(own).toHaveAccessibleDescription('Invoca, coloca, activa sus cartas y ataca: tus combos pueden terminar con daño.')
@@ -237,7 +237,7 @@ describe('la hoja de las handtraps del rival', () => {
   it('fuera del duelo automático (la práctica manual, las reglas de la sala) no está: ahí el rival no juega', () => {
     render(<HandtrapPicker isOpen dealsNew config={SAVED} onClose={() => {}} onSave={() => {}} />)
 
-    expect(screen.queryByRole('switch', { name: 'El rival juega su turno (beta)' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'El rival juega su turno' })).toBeNull()
   })
 
   describe('lo que prohíbe una Dominus (por Atributo, el resto del duelo)', () => {

@@ -31,7 +31,7 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.picker.dealsNew': 'Applying deals a new hand.',
   'handtraps.picker.restarts': 'Applying restarts the duel.',
   'handtraps.picker.notAuto': "It doesn't use it on its own yet",
-  'handtraps.picker.ownTurn': 'The opponent plays its turn (beta)',
+  'handtraps.picker.ownTurn': 'The opponent plays its turn',
   'handtraps.picker.ownTurnHint': 'It Summons, Sets, activates its cards and attacks: your combos may end with damage.',
   'handtraps.picker.turnCard': 'It plays it on its turn',
   'handtraps.picker.turnOnly': 'It only uses it if it plays its turn',
