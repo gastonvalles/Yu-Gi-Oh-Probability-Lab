@@ -261,8 +261,9 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
 
   // ── Lo que activa el rival (sus handtraps): el núcleo resuelve la cadena de una, así que se cuenta después y se deja leer (`RIVAL_READ_MS`). La carta grande en el centro,
   // con a qué responde (como en el duelo por enlace); lo que se negó lo dice su eslabón en el aviso de la cadena. Se mira la cadena (una Trampa que activa desde la mano llega a la mesa colocada, no como
-  // «activar»): después de cada eslabón del rival el núcleo te pregunta, así que la mesa siempre lo ve abierto. Lo que vuelve a llegar al rearmarse la mesa no se cuenta otra vez. ──
-  const [told, setTold] = useState<{ effect?: NonNullable<DuelMatLink['rivalEffect']> } | null>(null)
+  // «activar»): después de cada eslabón del rival el núcleo te pregunta, así que la mesa siempre lo ve abierto. Sale cuando la mesa llega a su eslabón (`from`, su lugar en `order`: en su
+  // turno, después de lo que jugó antes). Lo que vuelve a llegar al rearmarse la mesa no se cuenta otra vez. ──
+  const [told, setTold] = useState<{ effect?: NonNullable<DuelMatLink['rivalEffect']>; from: number } | null>(null)
   const heard = useRef({ initial: snap.initial, chain: snap.overlay.chain.length })
 
   useEffect(() => {
@@ -277,14 +278,17 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       ? { key: Date.now(), kind: 'activate' as const, cards: [{ id: link.card!.id, art: artOf(link.card, link.code), name: linkName(link) }], caption: at > 0 ? t('auto.rival.responds', { name: rivalName, to: linkName(now.chain[at - 1]!) }) : t('duel.announce.activate', { name: rivalName }), linger: true }
       : undefined
 
-    if (effect) setTold({ effect })
-  }, [snap.initial, snap.overlay, snap.replaying, artOf, linkName, rivalName])
+    const from = snap.chainSteps.findLast((step) => step.kind === 'chain' && step.link?.card?.side === 'theirs' && step.link.card.id === link?.card?.id)?.seq ?? 0
+
+    if (effect) setTold({ effect, from })
+  }, [snap.initial, snap.overlay, snap.replaying, snap.chainSteps, artOf, linkName, rivalName])
+  const toldNow = told !== null && asks.shownAt >= told.from
   useEffect(() => {
-    if (!told) return
+    if (!toldNow) return
     const timer = window.setTimeout(() => setTold(null), RIVAL_READ_MS)
 
     return () => window.clearTimeout(timer)
-  }, [told])
+  }, [toldNow, told])
 
   // El núcleo se cayó o se trabó a mitad del duelo: además de reiniciar, volver a antes de tu última jugada (la sesión arma otro núcleo).
   const recoverable = (snap.fault?.kind === 'crash' || snap.fault?.kind === 'retry') && asks.undoable
@@ -305,8 +309,9 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, rivalOn, openSave, openLog],
   )
 
-  // Las vidas del núcleo van por asiento: las tuyas son las de `seat`.
-  const life = useMemo(() => ({ mine: lp[seat], theirs: lp[1 - seat]! }), [lp, seat])
+  // Las vidas van por asiento (las tuyas son las de `seat`): las de lo que la mesa ya contó (`asks.lp`).
+  const [shownMine, shownTheirs] = [asks.lp[seat]!, asks.lp[1 - seat]!]
+  const life = useMemo(() => ({ mine: shownMine, theirs: shownTheirs }), [shownMine, shownTheirs])
   // Repasando un combo (o tus jugadas) la mesa es la del repaso: el turno de la barra es el del paso que se mira, y la portada (el fin, un error), la mano del rival y lo que activa
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
@@ -331,7 +336,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     }),
     [prefs.chain, prefs.place, prefs.blind, restart, openSave, openLog, openManual, rivalOn, handtraps],
   )
-  const turn = reviewing ? asks.state.turn : snap.overlay.turn
+  const turn = reviewing ? asks.state.turn : asks.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
   const { turnMine, lane } = asks
   // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
@@ -366,7 +371,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     ...(docked ? { dock } : {}),
     rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
     ...(asks.notice ? { notice: asks.notice } : {}),
-    ...(told?.effect && !reviewing ? { rivalEffect: told.effect } : {}),
+    ...(told?.effect && toldNow && !reviewing ? { rivalEffect: told.effect } : {}),
     // Deshacer va arriba, con los íconos de la práctica.
     undoInHeader: true,
     // El panel de la práctica: los pasos (la cinta del núcleo, con la mano de apertura como paso 0) y los combos. En escritorio, «Pasos» de la botonera lo oculta.

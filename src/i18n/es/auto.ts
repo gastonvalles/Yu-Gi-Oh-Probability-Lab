@@ -197,7 +197,6 @@ export const auto = {
   'auto.bar.never': 'Nunca',
   'auto.bar.always': 'Siempre',
   'auto.bar.turnMine': 'Tu turno · {turn}',
-  'auto.bar.turnRival': 'Turno del rival · {turn}',
   'auto.bar.whenItMatters': 'Cuando importa',
   'auto.bar.chainAlwaysHint': 'Te pregunta cada vez que podrías responder, aunque no cambie nada.',
   'auto.bar.chainAskHint': 'Te pregunta sólo si algo tuyo responde de verdad a este momento.',

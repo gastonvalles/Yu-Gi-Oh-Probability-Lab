@@ -14,6 +14,8 @@ export interface ChainStep {
   kind: ChainStepKind
   /** Cuántas jugadas de tu mesa (`mineActions`) había cuando llegó: se muestra recién cuando la mesa contó hasta ahí. */
   at: number
+  /** Cuántas jugadas de `order` (tuyas y del rival) había: «Jugar solo» cuenta lo del rival en su lugar (`useAutoAsks`). */
+  seq?: number
   /** El eslabón (0 = CL1); en `end`, -1. */
   index: number
   /** Sólo `chain`: la carta que se activó, si es tuya, el `desc` del efecto (`aux.Stringid(carta, n)`: qué texto del `.cdb` lo nombra; ver `linkPhrase`) y desde dónde se activó (`from`: el `triggering_location` del núcleo, una máscara `LOCATION`). */

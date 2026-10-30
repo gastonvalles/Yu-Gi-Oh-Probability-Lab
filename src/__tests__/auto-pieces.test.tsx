@@ -526,7 +526,7 @@ describe('AutoBar', () => {
     expect(screen.queryByTestId('auto-phase')).toBeNull()
     expect(screen.queryByText('Turno 3')).toBeNull()
     rerender(<AutoBar {...props} myTurn={false} turn={4} />)
-    expect(screen.getByTestId('auto-turn')).toHaveTextContent('Turno del rival · 4')
+    expect(screen.getByTestId('auto-turn')).toHaveTextContent('Turno de Rival · 4')
     expect(screen.getByTestId('auto-turn')).toHaveClass('text-info-soft')
   })
 

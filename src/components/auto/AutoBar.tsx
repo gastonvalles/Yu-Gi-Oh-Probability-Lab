@@ -243,7 +243,7 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
   // El turno, una sola vez (Gastón, 2026-10-27): sin el chip «Turno N» ni la píldora de la fase.
   const turnLine = (className: string) => (
     <span data-testid="auto-turn" className={cx('min-w-0 truncate text-lead font-bold max-[359px]:text-body', myTurn ? 'text-accent' : 'text-info-soft', className)}>
-      {turn > 0 ? t(myTurn ? 'auto.bar.turnMine' : 'auto.bar.turnRival', { turn }) : null}
+      {turn > 0 ? (myTurn ? t('auto.bar.turnMine', { turn }) : t('duel.bar.theirTurnN', { name: rivalName, turn })) : null}
     </span>
   )
 
