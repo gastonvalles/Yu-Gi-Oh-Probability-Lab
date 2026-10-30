@@ -9,6 +9,7 @@ import type { WorkerData } from './core-host.worker'
 import { bagOrder, teamOrder, type DeckList } from './deck-map'
 import { botViewOf, publicEventsOf, type Bot, type BotContext, type BotReason, type PublicEvent } from './bot/bot'
 import { handtrapBot, passiveBot } from './bot/rivals'
+import { botDeckOf } from './bot/decks'
 import { turnBot, type CardFacts } from './bot/turn'
 import { mulberry32, randomLegalPolicy } from './policies'
 import { parseAutoEvent, type AutoCommand, type AutoEvent, type CoreAnswer, type CoreAsk, type FaultKind, type Seat } from './protocol'
@@ -165,9 +166,10 @@ export interface SessionOptions {
   /**
    * El rival con handtraps (`autoRival` de `handtraps.ts`): esas cartas van en su deck antes del relleno (que lo completa hasta su tamaño), su mano de arranque es
    * `hand(semilla)` y las usa con `handtrapPolicy`, en el orden de `main`; `extra` es su Extra Deck, en orden de preferencia para los costos (sin él, `DEFAULT_RIVAL_EXTRA`).
-   * Sin esto, el rival pasivo de 40 Normales, con el Extra de siempre (nunca lo usa, pero hay cartas tuyas que lo miran). Con `ownTurn`, además juega su turno (`turnBot`).
+   * Sin esto, el rival pasivo de 40 Normales, con el Extra de siempre (nunca lo usa, pero hay cartas tuyas que lo miran). Con `ownTurn`, además juega su turno (`turnBot`). Con `botDeck` (un mazo de `BOT_DECKS`), el rival «Bot»: su deck es esa lista fija (sin relleno ni handtraps de la hoja), su mano sale del
+   * barajado de ese deck y decide su ejecutor.
    */
-  rival?: { main: readonly (readonly [number, number])[]; extra?: readonly (readonly [number, number])[]; hand: (seed: number) => number[]; ownTurn?: boolean } | null
+  rival?: { main: readonly (readonly [number, number])[]; extra?: readonly (readonly [number, number])[]; hand: (seed: number) => number[]; ownTurn?: boolean; botDeck?: string } | null
   /** Cada evento del anfitrión tal como llega (para un registro). */
   onEvent?: (event: AutoEvent) => void
   thinkingMs?: number
@@ -290,7 +292,9 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   // (El asiento 0 es el que tiene el turno: su mesa dice hasta qué fase; los dos adaptadores ven las mismas fases del núcleo.)
   const catchingUp = () => adapters[0] !== undefined && adapters[0]!.overlay.phase < (CORE_PHASE[adapters[0]!.mine.phase] ?? 0)
   /** El Extra Deck del rival (`[passcode, 1]` en orden de preferencia): el suyo, o el de siempre (también el del pasivo). */
-  const rivalExtra = rival?.extra ?? DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1] as const)
+  /** El rival «Bot» (`rival.botDeck`): su lista fija y su ejecutor; un id que no existe juega como siempre. */
+  const deckBot = botDeckOf(rival?.botDeck)
+  const rivalExtra = deckBot?.list.extra ?? rival?.extra ?? DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1] as const)
   /** El original de cada arte alternativo del duelo (`alias` del `.cdb`): la regla de una handtrap es la de su original. Se llena con los datos. */
   const aliases = new Map<number, number>()
   /** El Atributo de cada carta del duelo (público: es la carta): las Bystial sólo destierran LUZ u OSCURIDAD. */
@@ -298,7 +302,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   /** Lo impreso de cada carta del duelo (público: es la carta), para el rival que juega su turno: el ATK de lo que tiene en la mano, su Nivel, si es un monstruo. */
   const facts = new Map<number, CardFacts>()
   const handtrapArgs = [rival?.main.map(([code]) => code) ?? [], rivalExtra.map(([code]) => code), (code: number) => aliases.get(code) ?? 0, (code: number) => attributes.get(code) ?? 0] as const
-  const bot: Bot = options.bot ?? (rival?.ownTurn ? turnBot(...handtrapArgs, (code) => facts.get(code)) : rival ? handtrapBot(...handtrapArgs) : passiveBot())
+  const bot: Bot = options.bot ?? (deckBot ? deckBot.bot((code) => facts.get(code), handtrapArgs[2], handtrapArgs[3]) : rival?.ownTurn ? turnBot(...handtrapArgs, (code) => facts.get(code)) : rival ? handtrapBot(...handtrapArgs) : passiveBot())
   const newBotSeed = () => Math.floor(Math.random() * 2 ** 32) >>> 0
   let botSeed = (options.botSeed ?? newBotSeed()) >>> 0
   /** El azar del bot (piedra, papel o tijera), con su semilla: el mismo duelo, la misma mano. */
@@ -590,7 +594,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       // Las handtraps del rival y el relleno hasta el tamaño del deck pasivo (así roba sin quedarse sin cartas), y su Extra Deck.
       const own = rival?.main ?? []
       const room = Math.max(0, filler.length - own.reduce((sum, [, copies]) => sum + copies, 0))
-      const theirs: DeckList = { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)], extra: rivalExtra }
+      // El rival «Bot» juega su lista tal cual.
+      const theirs: DeckList = deckBot ? { main: deckBot.list.main, extra: rivalExtra } : { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)], extra: rivalExtra }
 
       // En el duelo por enlace, el deck del otro (entero, sin relleno).
       return loader.load([options.deck, options.remote?.deck ?? theirs], progress)
