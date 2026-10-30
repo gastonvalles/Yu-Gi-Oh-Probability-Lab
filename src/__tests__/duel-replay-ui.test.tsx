@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { cleanup, fireEvent, render as renderBare, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render as renderBare, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { Provider } from 'react-redux'
@@ -55,6 +55,46 @@ describe('la pantalla del replay de un duelo', () => {
     // La mano de abajo (la de Ana) no dice qué cartas son.
     expect(screen.queryByRole('img', { name: /^Mano del rival: .*Ash Blossom/ })).toBeNull()
     expect(screen.getByText('Vista de espectador')).toBeInTheDocument()
+  })
+
+  it('cada cambio de fase sale con el cartel de la mesa y el nombre de quien la pasa, al reproducir o con «Siguiente»; saltar con la línea de tiempo no lo repite', () => {
+    vi.useFakeTimers()
+    const replay = buildDuelReplay({
+      mode: 'link-auto',
+      view: 'public',
+      players: ['Ana', 'Beto'],
+      starter: 0,
+      mine: { initial: mine, actions: [{ type: 'phase', phase: 'main1' }] },
+      theirs: { initial: createMatState(Array.from({ length: 20 }, (_, i) => `c${i + 1}`), [], 5), acts: [{ action: { type: 'phase', phase: 'standby' }, reveal: {} }] },
+      order: ['mine', 'theirs'],
+      life: [{ at: 0, lp: [8000, 8000] }],
+      nameOf: () => undefined,
+    })
+    const banner = () => document.querySelector('[data-fx="banner"]')
+
+    try {
+      render(<DuelReplayScreen replay={replay} onClose={() => {}} actions={[]} />)
+      // Abre en el final: nada se anuncia.
+      expect(banner()).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      expect(banner()).toHaveTextContent('AnaMain Phase 1')
+      // Reproduciendo, la del rival con su nombre; y se va sola.
+      fireEvent.click(screen.getByRole('button', { name: 'Reproducir' }))
+      act(() => vi.advanceTimersByTime(900))
+      expect(banner()).toHaveTextContent('BetoStandby Phase')
+      act(() => vi.advanceTimersByTime(1100))
+      expect(banner()).toBeNull()
+      // La línea de tiempo salta (tocarla o arrastrarla): ni un cartel.
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      const timeline = screen.getByRole('slider', { name: 'Línea de tiempo del replay' })
+      fireEvent.keyDown(timeline, { key: 'ArrowRight' })
+      fireEvent.keyDown(timeline, { key: 'ArrowRight' })
+      expect(timeline).toHaveAttribute('aria-valuenow', '2')
+      expect(banner()).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('con «mi mano», la de quien grabó se ve; compartido, ofrece guardarlo', () => {

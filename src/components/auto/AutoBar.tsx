@@ -217,7 +217,7 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
   const [moreOpen, setMoreOpen] = useState(false)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const rails = useDuelRails()
-  // Repasando un combo en el celular: el paso va en el segundo renglón del aviso y la línea de tiempo, debajo (la mesa lo da; los botones quedan abajo).
+  // Repasando un combo en el celular: el paso va en el segundo renglón del aviso (la mesa lo da; los botones y la línea de tiempo quedan abajo).
   const replay = useContext(MatReplayContext)
 
   useLayoutEffect(() => onRails?.(rails), [rails, onRails])
@@ -307,12 +307,6 @@ export function AutoBar({ rivalName, life, onRails, dock = false, turn, myTurn, 
           {log ?? <div aria-hidden="true" className="min-h-11" />}
         </div>
         {lane ? <LaneBanner lane={lane} rivalName={rivalName} detail={replay?.step} /> : null}
-        {/* Flota debajo del aviso, en la franja de la mano del rival (vacía mientras se repasa): no suma alto y el campo no se mueve. */}
-        {replay ? (
-          <div data-replay-timeline="" className="pointer-events-auto absolute inset-x-0 top-full z-20 mt-1">
-            {replay.timeline}
-          </div>
-        ) : null}
       </div>
       {dialogs}
     </div>

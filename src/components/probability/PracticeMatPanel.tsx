@@ -13,7 +13,7 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
-import { IconButton } from '../ui/IconButton'
+import { CloseButton, IconButton } from '../ui/IconButton'
 import { OverflowMenu } from '../ui/OverflowMenu'
 import { Segmented } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
@@ -279,32 +279,33 @@ export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, 
 }
 
 /**
- * El aviso de un combo que llegó por enlace, arriba de la mesa que lo repasa: qué combo es (nombre, deck, jugadas y fecha, como su ficha en la lista), «Descargar video» y «Guardar
- * en mis combos» (la principal, al final) o «Cerrar». Lo de adentro es texto: nada de lo que vino en el enlace se interpreta.
+ * El aviso de un combo que llegó por enlace, arriba de la mesa que lo repasa: qué combo es (nombre, deck, jugadas y fecha, como su ficha en la lista), «Descargar video» (ícono) y
+ * «Guardar en mis combos» (la principal, al final) o «Cerrar» (la X). Lo de adentro es texto: nada de lo que vino en el enlace se interpreta.
  */
 export function SharedComboBar({ combo, onSave, onClose, onVideo }: { combo: SharedCombo; onSave: () => void; onClose: () => void; onVideo?: () => void }) {
   return (
-    <div role="region" aria-label={t('practice.share.banner')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle bg-card-background px-gutter py-2 min-[1101px]:px-4">
-      <div className="grid min-w-0 flex-1 basis-56 gap-0.5">
-        <span className="text-micro font-semibold uppercase tracking-wide text-info-soft">{t('practice.share.banner')}</span>
-        <strong className="line-clamp-2 wrap-break-word text-body font-semibold text-foreground">{combo.name}</strong>
-        <span className="wrap-break-word text-micro text-muted">
-          {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
-        </span>
-      </div>
-      {/* Con «Descargar video», en un celular los tres no entran en una fila: bajan a otra, la principal siempre al final. */}
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-        <Button variant="tertiary" size="sm" onClick={onClose}>
-          {t('common.close')}
-        </Button>
-        {onVideo ? (
-          <Button variant="secondary" size="sm" icon="download" onClick={onVideo}>
-            {t('practice.share.video')}
+    // Le roba alto a la mesa: el nombre y sus datos en un renglón cada uno (con «…»), «Cerrar» es la X y «Descargar video» un ícono, así la principal entra con su
+    // texto. Angosta (el celular), la X en la esquina de los datos y abajo el video y la principal; ancha (36 rem), todo en un renglón con la X al final.
+    <div role="region" aria-label={t('practice.share.banner')} className="@container border-b border-border-subtle bg-card-background px-gutter py-1.5 min-[1101px]:px-4">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="grid min-w-0 flex-1 basis-40">
+          <span className="text-micro font-semibold uppercase tracking-wide text-info-soft">{t('practice.share.banner')}</span>
+          <strong className="truncate text-body font-semibold text-foreground">{combo.name}</strong>
+          <span className="truncate text-micro text-muted">
+            {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
+          </span>
+        </div>
+        <CloseButton aria-label={t('common.close')} title={t('common.close')} className="@xl:order-last" onClick={onClose} />
+        <div className="flex basis-full items-center justify-end gap-2 @xl:basis-auto">
+          {onVideo ? (
+            <IconButton tone="ghost" aria-label={t('practice.share.video')} title={t('practice.share.video')} onClick={onVideo}>
+              <Icon name="download" />
+            </IconButton>
+          ) : null}
+          <Button variant="primary" size="sm" icon="save" onClick={onSave}>
+            {t('practice.share.save')}
           </Button>
-        ) : null}
-        <Button variant="primary" size="sm" icon="save" onClick={onSave}>
-          {t('practice.share.save')}
-        </Button>
+        </div>
       </div>
     </div>
   )

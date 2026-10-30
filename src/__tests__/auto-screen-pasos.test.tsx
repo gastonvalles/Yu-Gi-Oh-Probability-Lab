@@ -258,11 +258,14 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(phaseButton()).toBeDisabled()
     act(() => vi.advanceTimersByTime(1400 + 5))
     expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Droll' })).toBeInTheDocument()
-    // En el celular el replay va partido (opción B): el aviso dice qué paso se mira, la línea de tiempo y la lista van debajo de él (en la barra) y abajo quedan sólo los botones.
+    // En el celular el replay va partido (opción B): el aviso dice qué paso se mira y abajo van los botones y, debajo de ellos, la línea de tiempo con la lista.
     // «Volver al duelo» es secundario (lavanda: no compite con el botón grande) y la carta grande va sin cartel (el paso ya se lee arriba).
     expect(lane()).toHaveTextContent('Repasás “Línea Droll”1 de 2 · Invocación Normal de Droll')
     expect(within(lane()!).getByRole('button', { name: 'Volver al duelo' })).toHaveClass('bg-lavender')
     const timeline = document.querySelector<HTMLElement>('[data-replay-timeline]')!
+    // Abajo, con los botones, y después de ellos (Gastón, 2026-10-29: «chips de replay debajo del reproductor»).
+    expect(timeline.closest('[data-mat-float]')).not.toBeNull()
+    expect(replayControls()!.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(within(timeline).getByRole('slider', { name: 'Línea de tiempo del replay' })).toHaveAttribute('aria-valuenow', '1')
     expect(within(timeline).getByRole('button', { name: 'Ver los pasos' })).toBeInTheDocument()
     expect(within(replayControls()!).queryByRole('slider')).toBeNull()

@@ -67,6 +67,10 @@ describe('«Descargar video» en «Guardar replay»', () => {
     expect(await screen.findByText(/Este navegador no puede armar videos/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Descargar video' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Guardar replay' })).toBeEnabled()
+    // Los dos van juntos, en su propia fila (no se parten entre ellos en el celular).
+    const save = screen.getByRole('button', { name: 'Guardar replay' })
+    expect(screen.getByRole('button', { name: 'Descargar video' }).parentElement).toBe(save.parentElement)
+    expect(save.parentElement?.tagName).toBe('DIV')
   })
 
   it('arma el video con la vista elegida: progreso, «No cierres…» y «Cancelar», que corta y vuelve a las opciones', async () => {
@@ -115,7 +119,10 @@ describe('«Descargar video» en «Guardar replay»', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Descargar video' }))
     await waitFor(() => expect(fake.calls).toHaveLength(1))
     await finish()
-    expect(screen.getByRole('button', { name: 'Compartir video' })).toBeInTheDocument()
+    const share = screen.getByRole('button', { name: 'Compartir video' })
+    // Compartir y Guardar van juntos (no se parten entre ellos en el celular) y «Volver» queda aparte, a la izquierda.
+    expect(share.parentElement).toBe(screen.getByRole('button', { name: 'Guardar video' }).parentElement)
+    expect(screen.getByRole('button', { name: 'Volver' }).parentElement).not.toBe(share.parentElement)
   })
 
   it('un duelo de más de 6 minutos de video ofrece «Rápido (2×)», prendido', async () => {

@@ -39,6 +39,20 @@ describe('la mesa de práctica', () => {
     expect(within(hand()).getByRole('listitem', { name: 'Maxx C (target)' })).toHaveAttribute('data-flash', 'true')
   })
 
+  it('saltar con la línea de tiempo (tocarla, arrastrarla o con las flechas) no repite los efectos aunque caiga en el paso siguiente: arrastrando eran una ráfaga de carteles', () => {
+    render(<Harness actions={[{ type: 'phase', phase: 'standby' }, { type: 'activate', id: 'card-1-1' }, { type: 'phase', phase: 'main1' }]} />)
+    const timeline = screen.getByRole('slider', { name: 'Línea de tiempo del replay' })
+
+    fireEvent.keyDown(timeline, { key: 'ArrowRight' })
+    fireEvent.keyDown(timeline, { key: 'ArrowRight' })
+    expect(timeline).toHaveAttribute('aria-valuenow', '2')
+    expect(document.querySelector('[data-fx="banner"]')).toBeNull()
+    expect(document.querySelector('[data-activation]')).toBeNull()
+    // «Siguiente» sí: es avanzar un paso.
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Main Phase 1')
+  })
+
   it('mostrar o declarar una carta la pone grande en el centro con una línea de lo que pasó, cada uno con su color', () => {
     render(<Harness actions={[{ type: 'activate', id: 'card-1-1' }, { type: 'reveal', id: 'card-2-1' }, { type: 'declare', id: 'card-3-1' }]} />)
 
