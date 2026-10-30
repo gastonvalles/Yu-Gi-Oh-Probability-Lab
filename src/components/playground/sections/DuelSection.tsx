@@ -466,10 +466,14 @@ const SAMPLE_HAND: HandtrapConfig = {
   hand: 5,
 }
 
+/** Con Dominus Purge (prohíbe OSCURIDAD, AGUA y FUEGO): Ash (FUEGO) y D.D. Crow (OSCURIDAD) quedan sin usar; Veiler (LUZ), no. */
+const DOMINUS_HAND: HandtrapConfig = { enabled: true, picks: [14558127, 97268402, 97045737, 24508238].map((id) => ({ ...HANDTRAP_CATALOG.find((card) => card.id === id)!, copies: 1 })), hand: 3 }
+
 /** El simulador de handtraps de «Jugar solo»: la franja de la mano del rival en la mesa, las cartas de la hoja con su contador (en 0, 1 y 3) y las dos hojas. */
 function HandtrapSamples() {
   const [open, setOpen] = useState(false)
   const [openFromMat, setOpenFromMat] = useState(false)
+  const [openDominus, setOpenDominus] = useState(false)
   const [copies, setCopies] = useState([0, 1, 3])
   const [extra, setExtra] = useState<ExtraPick[]>(() => DEFAULT_RIVAL_EXTRA.slice(5, 8).map((card) => ({ ...card })))
 
@@ -514,6 +518,11 @@ function HandtrapSamples() {
           Abrir la hoja como se ve desde la mesa
         </Button>
         <HandtrapPicker isOpen={openFromMat} config={SAMPLE_HAND} dealsNew onClose={() => setOpenFromMat(false)} onSave={() => setOpenFromMat(false)} onTurnOff={() => setOpenFromMat(false)} />
+        {/* En el duelo automático, con una Dominus: abajo, en ámbar, qué otras elegidas deja sin usar por su Atributo (los datos de cada carta, de YGOPRODeck). */}
+        <Button variant="secondary" size="sm" className="w-fit" onClick={() => setOpenDominus(true)}>
+          Abrir la hoja del duelo automático con Dominus Purge
+        </Button>
+        <HandtrapPicker isOpen={openDominus} config={DOMINUS_HAND} auto onClose={() => setOpenDominus(false)} onSave={() => setOpenDominus(false)} />
       </Specimen>
 
       <Specimen

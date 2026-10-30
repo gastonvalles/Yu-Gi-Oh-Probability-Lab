@@ -292,7 +292,10 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const rivalExtra = rival?.extra ?? DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1] as const)
   /** El original de cada arte alternativo del duelo (`alias` del `.cdb`): la regla de una handtrap es la de su original. Se llena con los datos. */
   const aliases = new Map<number, number>()
-  const bot: Bot = options.bot ?? (rival ? handtrapBot(rival.main.map(([code]) => code), rivalExtra.map(([code]) => code), (code) => aliases.get(code) ?? 0) : passiveBot())
+  /** El Atributo de cada carta del duelo (público: es la carta): las Bystial sólo destierran LUZ u OSCURIDAD. */
+  const attributes = new Map<number, number>()
+  const bot: Bot =
+    options.bot ?? (rival ? handtrapBot(rival.main.map(([code]) => code), rivalExtra.map(([code]) => code), (code) => aliases.get(code) ?? 0, (code) => attributes.get(code) ?? 0) : passiveBot())
   const newBotSeed = () => Math.floor(Math.random() * 2 ** 32) >>> 0
   let botSeed = (options.botSeed ?? newBotSeed()) >>> 0
   /** El azar del bot (piedra, papel o tijera), con su semilla: el mismo duelo, la misma mano. */
@@ -609,7 +612,10 @@ export function createAutoSession(options: SessionOptions): AutoSession {
 
     // El invitado no tiene las cartas del rival: el tipo de las que el flujo le deja ver llega aparte.
     typeOf = (code) => types.get(code) ?? options.typeOf?.(code) ?? 0
-    for (const card of data.cards) if (card.alias) aliases.set(card.code, card.alias)
+    for (const card of data.cards) {
+      if (card.alias) aliases.set(card.code, card.alias)
+      attributes.set(card.code, card.attribute)
+    }
     build = (seed) => {
       // Con handtraps, el rival roba al empezar justo su mano (la del simulador con esa semilla), que va arriba de su deck.
       const hand = resume?.rivalHand ?? rival?.hand(seed) ?? []

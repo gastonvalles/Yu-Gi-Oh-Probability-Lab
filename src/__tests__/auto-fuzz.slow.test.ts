@@ -261,7 +261,8 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
       const key = d % 2 === 1 ? seed.toString(16).padStart(8, '0').repeat(8) : undefined
       const hand = rival === 'handtraps' ? setup.hand(seed) : []
       const create: Extract<AutoCommand, { t: 'create' }> = { t: 'create', seed, ...(key ? { key } : {}), flags: MR5, players: [PLAYERS[0]!, { ...PLAYERS[1]!, hand: hand.length || PLAYERS[1]!.hand }], decks: [{ main: a.main, extra: a.extra, hand: [] }, { main: b.main, extra: b.extra, hand }] }
-      const second = rival === 'handtraps' ? handtrapPolicy(setup.main.map(([code]) => code)) : null
+      // Con el Atributo de cada carta (público), como en la sesión: las Bystial sólo destierran LUZ u OSCURIDAD.
+      const second = rival === 'handtraps' ? handtrapPolicy(setup.main.map(([code]) => code), undefined, [], undefined, (code) => cards.get(code)?.attribute ?? 0) : null
 
       if (second) view = createAdapter({ seat: 1, mine: { deck: teamOrder(create, 1), extra: b.extra }, theirs: { deck: a.main.length, extra: a.extra.length }, typeOf: (code) => cards.get(code)?.type ?? 0 })
       let before = [new Set<number>(), new Set<number>()]

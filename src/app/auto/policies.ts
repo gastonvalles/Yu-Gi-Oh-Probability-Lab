@@ -164,7 +164,8 @@ export function passiveAnswer(ask: CoreAsk, random: () => number, pickCard?: Car
 
 /** Lo que el rival ve del duelo: su adaptador (`adapter.ts`), que sólo lleva lo que el árbitro le dejó ver a su asiento. */
 export interface RivalView {
-  readonly overlay: Pick<AutoOverlay, 'chain' | 'turnPlayer'>
+  /** `phase` (la constante del núcleo): sin ella, nunca es Battle Phase. */
+  readonly overlay: Pick<AutoOverlay, 'chain' | 'turnPlayer'> & Partial<Pick<AutoOverlay, 'phase'>>
   locationOf(ref: CardRef): CorePlace | null
 }
 export type RivalPolicy = (ask: CoreAsk, view: RivalView) => CoreAnswer
@@ -177,6 +178,14 @@ const SUMMON_TIMINGS = 0x40 | 0x80 | 0x100
  * Phase, y ahí se ve lo que hizo el rival (con la Standby, su descarte aparecía con tu mesa todavía en la Draw).
  */
 const DRAW_TIMING = 0x1
+/** `PHASE_BATTLE_START` … `PHASE_BATTLE` (0x08–0x80): la Battle Phase entera. */
+const BATTLE_PHASES = 0x08 | 0x10 | 0x20 | 0x40 | 0x80
+/** `ATTRIBUTE_LIGHT | ATTRIBUTE_DARK`: lo único que destierran las Bystial. */
+const LIGHT_DARK = 0x10 | 0x20
+/** Las reglas que usan sólo el efecto de la mano (`AUTO_RULES`): el de la carta ya en el campo, no. */
+const HAND_ONLY = new Set<AutoRule>(['offered', 'attack'])
+/** Las que eligen de objetivo la carta de tu eslabón. */
+const AIMS = new Set<AutoRule | undefined>(['monster', 'graveyard', 'bystial'])
 
 /**
  * La regla de una handtrap (`AUTO_RULES`) por su código o, si no tiene, por el de su original (el `alias` del `.cdb`, que da quien tiene los datos: la sesión): un arte alternativo
@@ -206,14 +215,17 @@ export type HandtrapWhy =
  * de tu eslabón. Cuando elige cartas de su Extra Deck (un costo, como los Sincros que revela Fydraulis Harmonia, o lo que manda al cementerio), toma
  * primero las de `extra` (sus passcodes, en el orden de la hoja). Lo demás (y lo que no sabe resolver) es del pasivo: nunca da una respuesta que el núcleo rechace.
  */
-export function handtrapPolicy(priority: readonly number[], fallback: Policy = passivePolicy(), extra: readonly number[] = [], aliasOf?: (code: number) => number): RivalPolicy {
-  const decide = handtrapDecide(priority, extra, aliasOf)
+export function handtrapPolicy(priority: readonly number[], fallback: Policy = passivePolicy(), extra: readonly number[] = [], aliasOf?: (code: number) => number, attributeOf?: (code: number) => number): RivalPolicy {
+  const decide = handtrapDecide(priority, extra, aliasOf, attributeOf)
 
   return (ask, view) => decide(ask, view, fallback).answer
 }
 
-/** `handtrapPolicy` con su porqué (`why`; sin él, contestó como el pasivo): la usa el bot de handtraps (`bot/rivals.ts`), con el azar suyo en `fallback`. */
-export function handtrapDecide(priority: readonly number[], extra: readonly number[] = [], aliasOf?: (code: number) => number) {
+/**
+ * `handtrapPolicy` con su porqué (`why`; sin él, contestó como el pasivo): la usa el bot de handtraps (`bot/rivals.ts`), con el azar suyo en `fallback`. `attributeOf`: el Atributo
+ * de una carta (dato público de la carta, del `.cdb`); sin él, las `bystial` nunca se usan.
+ */
+export function handtrapDecide(priority: readonly number[], extra: readonly number[] = [], aliasOf?: (code: number) => number, attributeOf: (code: number) => number = () => 0) {
   /** De tu lado (visto por el rival) y esperando respuesta. */
   const yours = (link: ChainLink | undefined): link is ChainLink & { card: CardRef } => link?.card?.side === 'theirs' && link.state === 'chained'
   const rules = new Map<number, AutoRule | undefined>()
@@ -230,18 +242,26 @@ export function handtrapDecide(priority: readonly number[], extra: readonly numb
     if (ask.type === 'select_chain' && !ask.forced) {
       const at = yours(top) ? view.locationOf(top.card) : null
       const drawPhase = chain.length === 0 && (ask.hint_timing_other & DRAW_TIMING) !== 0
+      const yourTurn = view.overlay.turnPlayer === opponent
+      const graveyard = at?.controller === opponent && at.location === LOCATION.GRAVE
+      // Como se juegan: en tu Draw Phase; si no llegó a usarla ahí, a tu primera activación o Invocación.
+      const draw = yourTurn && (yours(top) || (chain.length === 0 && (ask.hint_timing_other & (SUMMON_TIMINGS | DRAW_TIMING)) !== 0))
       const wants: Record<AutoRule, boolean> = {
         respond: yours(top),
         monster: at?.controller === opponent && at.location === LOCATION.MZONE,
-        graveyard: at?.controller === opponent && at.location === LOCATION.GRAVE,
+        graveyard,
+        bystial: graveyard && (attributeOf(top!.code) & LIGHT_DARK) !== 0,
         offered: true,
-        // Como se juegan: en tu Draw Phase; si no llegó a usarla ahí, a tu primera activación o Invocación.
-        draw: view.overlay.turnPlayer === opponent && (yours(top) || (chain.length === 0 && (ask.hint_timing_other & (SUMMON_TIMINGS | DRAW_TIMING)) !== 0)),
+        draw,
+        floodgate: draw,
+        // Tu ataque: Battle Phase tuya y sin cadena (el núcleo la ofrece al declararlo).
+        attack: yourTurn && chain.length === 0 && ((view.overlay.phase ?? 0) & BATTLE_PHASES) !== 0,
+        extra: yourTurn,
       }
 
       for (const code of priority) {
         const used = rule(code)
-        const index = used && wants[used] ? ask.selects.findIndex((card) => card.code === code) : -1
+        const index = used && wants[used] ? ask.selects.findIndex((card) => card.code === code && (!HAND_ONLY.has(used) || card.location === LOCATION.HAND)) : -1
 
         if (index >= 0) return { answer: { type: ask.type, index }, why: { kind: 'use', code, rule: used!, to: yours(top) ? top.code : null, drawPhase } }
       }
@@ -276,7 +296,7 @@ export function handtrapDecide(priority: readonly number[], extra: readonly numb
 
     // El objetivo de la que acaba de activar (el eslabón de arriba es suyo): la carta de tu eslabón, el de abajo.
     const below = chain.at(-2)
-    const aims = top?.card?.side === 'mine' && (rule(top.code) === 'monster' || rule(top.code) === 'graveyard')
+    const aims = top?.card?.side === 'mine' && AIMS.has(rule(top.code))
 
     if (ask.type === 'select_card' && aims && below?.card?.side === 'theirs' && ask.min <= 1) {
       const at = view.locationOf(below.card)

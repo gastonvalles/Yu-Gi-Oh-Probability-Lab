@@ -30,6 +30,7 @@ export const handtraps = {
   // En el duelo automático: aplicar reinicia el duelo y lo que no tiene regla (lo agregado con el buscador) el rival lo tiene pero no lo usa.
   'handtraps.picker.restarts': 'Al aplicar, el duelo empieza de nuevo.',
   'handtraps.picker.notAuto': 'Todavía no la usa solo',
+  'handtraps.picker.dominus': 'Con {dominus}, el rival ya no podrá usar {cards} después.',
   'handtraps.picker.turnOff': 'Apagar el simulador',
 
   // En el duelo automático: el Extra Deck del rival, en orden de preferencia para los costos (Fydraulis Harmonia revela Sincros de ahí).

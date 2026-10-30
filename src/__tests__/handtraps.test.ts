@@ -31,6 +31,9 @@ import { createMatState, describeMatAction, describeMatSteps, matReducer, replay
 import { createSavedCombo, readSavedCombos, writeSavedCombos } from '../app/saved-combos'
 import { sfxOfAction } from '../app/sfx'
 
+/** Las de H3 con regla que no están en el catálogo (se agregan con el buscador). */
+const H3_SEARCH = [68144894, 60242223, 69680031, 17266660, 21074344, 94689635]
+
 const memory = () => {
   const data = new Map<string, string>()
 
@@ -108,10 +111,10 @@ describe('la mano del rival que se reparte', () => {
   })
 
   it('cada carta repartida lleva su nombre; las agregadas con el buscador entran igual que las del catálogo', () => {
-    const dealt = dealRival(on([pick(91800273, 2, 'Dimension Shifter'), { ...ASH, copies: 1 }], 3), 9)!
+    const dealt = dealRival(on([pick(60242223, 2, 'Bystial Saronir'), { ...ASH, copies: 1 }], 3), 9)!
 
-    expect(dealt.rival.hand.sort()).toEqual(['rival.card-14558127-1', 'rival.card-91800273-1', 'rival.card-91800273-2'])
-    expect(dealt.names).toEqual({ 'rival.card-14558127-1': 'Ash Blossom & Joyous Spring', 'rival.card-91800273-1': 'Dimension Shifter', 'rival.card-91800273-2': 'Dimension Shifter' })
+    expect(dealt.rival.hand.sort()).toEqual(['rival.card-14558127-1', 'rival.card-60242223-1', 'rival.card-60242223-2'])
+    expect(dealt.names).toEqual({ 'rival.card-14558127-1': 'Ash Blossom & Joyous Spring', 'rival.card-60242223-1': 'Bystial Saronir', 'rival.card-60242223-2': 'Bystial Saronir' })
     expect(rivalCardOf('rival.card-14558127-2')).toBe('card-14558127-2')
     expect(rivalCardOf('card-14558127-2')).toBe('card-14558127-2')
   })
@@ -148,8 +151,8 @@ describe('el rival del duelo automático', () => {
     expect(new Set(SEEDS.slice(0, 40).map((seed) => rival.hand(seed).join())).size).toBeGreaterThan(1)
   })
 
-  it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark, Dominus Spiral y el Droll & Lock Bird original, del buscador)', () => {
-    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632, 94145021].sort())
+  it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark, Dominus Spiral, el Droll & Lock Bird original y las de H3 que no están en el catálogo, del buscador)', () => {
+    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632, 94145021, ...H3_SEARCH].sort())
   })
 })
 
@@ -169,11 +172,11 @@ describe('lo que se recuerda del simulador', () => {
   })
 
   it('lo que se guarda vuelve igual, también un deck del rival grande (no tiene tope)', () => {
-    const config = { ...on([...HANDTRAP_CATALOG.map((card) => ({ ...card, copies: 3 })), pick(91800273, 2, 'Dimension Shifter')], 5), extra: [SCRAP, GAIA, SCRAP] }
+    const config = { ...on([...HANDTRAP_CATALOG.map((card) => ({ ...card, copies: 3 })), pick(60242223, 2, 'Bystial Saronir')], 5), extra: [SCRAP, GAIA, SCRAP] }
 
     writeHandtrapConfig(config, () => storage)
     expect(readHandtrapConfig(() => storage)).toEqual(config)
-    expect(poolCount(readHandtrapConfig(() => storage).picks)).toBe(50)
+    expect(poolCount(readHandtrapConfig(() => storage).picks)).toBe(HANDTRAP_CATALOG.length * 3 + 2)
   })
 
   it('lo guardado antes de la mano de 1 a 5 (sin `hand`) sigue valiendo: sus cartas son el deck del rival y la mano es de 3', () => {

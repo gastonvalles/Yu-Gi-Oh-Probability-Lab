@@ -10,13 +10,18 @@ import { MatBarActions } from '../components/probability/MatBarActions'
 import { RivalHandStrip } from '../components/probability/RivalHandStrip'
 import { Harness, INITIAL, render, status } from './support/practice-mat-harness'
 
-const { searchCards } = vi.hoisted(() => ({ searchCards: vi.fn(async () => ({ results: [], hasMore: false })) }))
+const { searchCards, fetchCardsByIds } = vi.hoisted(() => ({
+  searchCards: vi.fn(async () => ({ results: [], hasMore: false })),
+  fetchCardsByIds: vi.fn(async (_ids: number[]): Promise<unknown[]> => []),
+}))
 
-vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []), searchCards }))
+vi.mock('../ygoprodeck', () => ({ fetchCardsByIds, searchCards }))
 
 beforeEach(() => {
   localStorage.clear()
   searchCards.mockClear()
+  fetchCardsByIds.mockReset()
+  fetchCardsByIds.mockImplementation(async () => [])
   HTMLElement.prototype.setPointerCapture = () => {}
   window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
   window.requestAnimationFrame = (callback) => {
@@ -197,19 +202,54 @@ describe('la hoja de las handtraps del rival', () => {
 
     try {
       render(<HandtrapPicker isOpen config={SAVED} onClose={() => {}} onSave={() => {}} />)
-      searchCards.mockResolvedValueOnce({ results: [{ ygoprodeckId: 91800273, name: 'Dimension Shifter' }], hasMore: false } as never)
-      fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar otra carta' }), { target: { value: 'Dimension' } })
+      searchCards.mockResolvedValueOnce({ results: [{ ygoprodeckId: 60242223, name: 'Bystial Saronir' }], hasMore: false } as never)
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar otra carta' }), { target: { value: 'Saronir' } })
       await act(async () => {
         await vi.advanceTimersByTimeAsync(400)
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Agregar Dimension Shifter a la lista' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Agregar Bystial Saronir a la lista' }))
 
-      expect(valueOf(copies('Dimension Shifter'))).toHaveValue('1')
+      expect(valueOf(copies('Bystial Saronir'))).toHaveValue('1')
       expect(summary()).toHaveTextContent('Se reparte al azar entre 4 cartas.')
-      expect(screen.getByRole('button', { name: 'Dimension Shifter ya está en la lista' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Bystial Saronir ya está en la lista' })).toBeDisabled()
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  describe('lo que prohíbe una Dominus (por Atributo, el resto del duelo)', () => {
+    const PURGE = { id: 97045737, name: 'Dominus Purge' }
+    const CROW = { id: 24508238, name: 'D.D. Crow' }
+    const ATTRIBUTES: Record<number, string | null> = { [ASH.id]: 'FIRE', [VEILER.id]: 'LIGHT', [PURGE.id]: null, [CROW.id]: 'DARK' }
+    const config = (cards: { id: number; name: string }[]): HandtrapConfig => ({ enabled: true, picks: cards.map((card) => ({ ...card, copies: 1 })), hand: 3 })
+
+    beforeEach(() => fetchCardsByIds.mockImplementation(async (ids?: number[]) => (ids ?? []).map((id) => ({ ygoprodeckId: id, attribute: ATTRIBUTES[id] ?? null }))))
+
+    it('en el duelo automático avisa qué otras elegidas deja sin usar, con el Atributo de cada una (Purge: OSCURIDAD, AGUA y FUEGO)', async () => {
+      render(<HandtrapPicker isOpen auto config={config([ASH, VEILER, PURGE, CROW])} onClose={() => {}} onSave={() => {}} />)
+
+      // Ash es de FUEGO y D.D. Crow de OSCURIDAD; Veiler (LUZ) sigue.
+      expect(await screen.findByText('Con Dominus Purge, el rival ya no podrá usar Ash Blossom & Joyous Spring o D.D. Crow después.')).toBeInTheDocument()
+      expect(fetchCardsByIds).toHaveBeenCalledTimes(1)
+    })
+
+    it('sin cartas que bloquee, sin Dominus o en la práctica manual no avisa (y sin Dominus no pide los datos)', async () => {
+      const { unmount } = render(<HandtrapPicker isOpen auto config={config([VEILER, PURGE])} onClose={() => {}} onSave={() => {}} />)
+
+      await act(async () => {})
+      expect(screen.queryByText(/ya no podrá usar/)).toBeNull()
+      unmount()
+
+      fetchCardsByIds.mockClear()
+      render(<HandtrapPicker isOpen auto config={config([ASH, CROW])} onClose={() => {}} onSave={() => {}} />)
+      await act(async () => {})
+      expect(fetchCardsByIds).not.toHaveBeenCalled()
+
+      render(<HandtrapPicker isOpen dealsNew config={config([PURGE, ASH])} onClose={() => {}} onSave={() => {}} />)
+      await act(async () => {})
+      expect(screen.queryByText(/ya no podrá usar/)).toBeNull()
+      expect(fetchCardsByIds).not.toHaveBeenCalled()
+    })
   })
 })
 

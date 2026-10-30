@@ -49,6 +49,13 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
   { id: 42141493, name: 'Mulcharmy Fuwalos' },
   { id: 84192580, name: 'Mulcharmy Purulia' },
   { id: 87126721, name: 'Mulcharmy Meowls' },
+  // Las de H3 (el bot para jugar en contra), verificadas contra el `.cdb` del núcleo el 2026-10-30.
+  { id: 33854624, name: 'Bystial Magnamhut' },
+  { id: 6637331, name: 'Bystial Druiswurm' },
+  { id: 91800273, name: 'Dimension Shifter' },
+  { id: 67750322, name: 'Skull Meister' },
+  { id: 14965712, name: 'Multiplying Kuriboh!' },
+  { id: 46502744, name: 'Retaliating "C"' },
 ]
 
 /**
@@ -59,8 +66,13 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
  * - `offered`: el núcleo la ofrece sólo cuando pasó lo que la dispara (Invocaste de modo Especial, sumaste del deck a la mano, 5 Invocaciones): se usa apenas aparece.
  * - `draw`: libre y roba mientras jugás: en tu Draw Phase (como se juegan; el núcleo se la ofrece ahí) o, si no, a tu primera activación o Invocación.
  * - `graveyard`: contra un efecto que activás desde tu cementerio, desterrando esa carta (un efecto que no la necesita ahí, como buscar al ser enviada, la gasta igual).
+ * - `bystial`: como `graveyard`, pero sólo si esa carta es de LUZ u OSCURIDAD (las únicas que puede desterrar); se Invoca a sí misma.
+ * - `attack`: cuando declarás un ataque (en tu Battle Phase, sin cadena); en respuesta a un efecto, la guarda.
+ * - `floodgate`: un candado para el turno, en el momento de `draw` (tu Draw Phase o tu primera jugada).
+ * - `extra`: en tu turno, apenas el núcleo la ofrece (sólo lo hace con un monstruo Invocado desde el Extra Deck en el campo).
+ * `offered` y `attack` usan sólo el efecto de la mano: el de la carta ya en el campo (Hecahands Godos se lleva un monstruo de tu cementerio) no lo usa.
  */
-export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard'
+export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard' | 'bystial' | 'attack' | 'floodgate' | 'extra'
 
 export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   14558127: 'respond', // Ash Blossom & Joyous Spring
@@ -86,6 +98,42 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   // Las otras Dominus (libres, contra un monstruo tuyo en el campo; desde la mano sólo si activaste un efecto de monstruo en la mano o el cementerio ese turno).
   6325660: 'monster', // Dominus Spark (lo destierra)
   42091632: 'monster', // Dominus Spiral (lo devuelve a la mano o al Extra)
+  // Las de H3 (el bot para jugar en contra); Bystial Saronir, Hecahands Godos y Fleurdelis, del buscador. Contact "C" no tiene regla a propósito: en tu campo, con un mazo de
+  // Sincronía (Kewl Tune), el núcleo tardó ~23 s en cada jugada tuya (su «tenés que usarla de material» multiplica los materiales que prueba); sin ella, 0,1 s.
+  67750322: 'respond', // Skull Meister (el núcleo la ofrece sólo contra un efecto que activás en el cementerio)
+  46502744: 'respond', // Retaliating "C" (sólo contra una Mágica tuya que Invoca de modo Especial)
+  68144894: 'offered', // Hecahands Godos (cuando sumás una carta a tu mano fuera de la Draw Phase)
+  14965712: 'attack', // Multiplying Kuriboh!
+  33854624: 'bystial', // Bystial Magnamhut
+  6637331: 'bystial', // Bystial Druiswurm
+  60242223: 'bystial', // Bystial Saronir
+  91800273: 'floodgate', // Dimension Shifter (sólo con su cementerio vacío)
+  69680031: 'extra', // Dogmatika Fleurdelis, the Knighted
+  // Los Herald (del buscador): niegan y destruyen; su costo es mandar otro Hada de la mano, así que el núcleo los ofrece sólo con dos en la mano.
+  17266660: 'respond', // Herald of Orange Light (un efecto de monstruo)
+  21074344: 'respond', // Herald of Green Light (la activación de una Mágica)
+  94689635: 'respond', // Herald of Purple Light (la activación de una Trampa)
+}
+
+/**
+ * Los Atributos (como los escribe YGOPRODeck) cuyos efectos de monstruo se prohíbe cada Dominus activada desde la mano, por el resto del duelo (lo dice su script: Impulse,
+ * Purge, Spark y Spiral). El rival sólo las usa desde la mano.
+ */
+export const DOMINUS_LOCKS: Readonly<Record<number, readonly string[]>> = {
+  40366667: ['LIGHT', 'EARTH', 'WIND'],
+  97045737: ['DARK', 'WATER', 'FIRE'],
+  6325660: ['EARTH', 'WATER', 'FIRE', 'WIND'],
+  42091632: ['LIGHT', 'DARK'],
+}
+
+/** Por cada Dominus elegida, las otras elegidas que después ya no podría usar (monstruos de los Atributos que prohíbe); sólo las Dominus que bloquean alguna. */
+export function dominusLocks(picks: readonly HandtrapCard[], attributeOf: (id: number) => string | null | undefined): { dominus: HandtrapCard; blocked: HandtrapCard[] }[] {
+  return picks.flatMap((dominus) => {
+    const locked = DOMINUS_LOCKS[dominus.id]
+    const blocked = locked ? picks.filter((card) => card.id !== dominus.id && locked.includes(attributeOf(card.id) ?? '')) : []
+
+    return blocked.length > 0 ? [{ dominus, blocked }] : []
+  })
 }
 
 /** PSY-Framegear Gamma y Delta Invocan a PSY-Frame Driver (de la mano, el deck o el cementerio): sin Driver en el deck, el núcleo nunca las ofrece. */

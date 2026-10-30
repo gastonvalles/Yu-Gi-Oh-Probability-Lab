@@ -31,6 +31,7 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.picker.dealsNew': 'Applying deals a new hand.',
   'handtraps.picker.restarts': 'Applying restarts the duel.',
   'handtraps.picker.notAuto': "It doesn't use it on its own yet",
+  'handtraps.picker.dominus': 'With {dominus}, the rival can no longer use {cards} afterwards.',
   'handtraps.picker.turnOff': 'Turn the simulator off',
 
   // Automatic duel: the opponent's Extra Deck, in order of preference for costs (Fydraulis Harmonia reveals Synchros from it).

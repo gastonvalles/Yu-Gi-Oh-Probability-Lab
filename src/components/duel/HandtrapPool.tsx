@@ -1,9 +1,11 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 
 import { cardSmallImageUrl, type Expansion } from '../../app/card-prices'
 import {
   AUTO_RULES,
   DEFAULT_RIVAL_EXTRA,
+  DOMINUS_LOCKS,
+  dominusLocks,
   HANDTRAP_CATALOG,
   MAX_COPIES,
   MAX_RIVAL_HAND,
@@ -17,7 +19,8 @@ import {
   type HandtrapPick,
 } from '../../app/handtraps'
 import { useCardHits } from '../../app/use-card-hits'
-import { t } from '../../i18n'
+import { getLocale, t } from '../../i18n'
+import { fetchCardsByIds } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -159,6 +162,34 @@ interface Draft {
 
 const CATALOG_IDS = new Set(HANDTRAP_CATALOG.map((card) => card.id))
 
+/**
+ * Lo que una Dominus elegida le deja sin usar al rival (`dominusLocks`), con el Atributo de cada carta de YGOPRODeck: se pide sólo con una Dominus en la lista y una vez por carta.
+ * Si no llega, no se avisa (es una pista, no un error).
+ */
+function useDominusLocks(picks: readonly HandtrapCard[], active: boolean) {
+  const [attributes, setAttributes] = useState<ReadonlyMap<number, string | null>>(() => new Map())
+  const missing = active && picks.some((card) => DOMINUS_LOCKS[card.id]) ? picks.filter((card) => !attributes.has(card.id)).map((card) => card.id) : []
+  const key = missing.join(',')
+
+  useEffect(() => {
+    if (!key) return
+    const ids = key.split(',').map(Number)
+    let alive = true
+
+    fetchCardsByIds(ids)
+      .then((cards) => {
+        if (alive) setAttributes((current) => new Map([...current, ...ids.map((id) => [id, cards.find((card) => card.ygoprodeckId === id)?.attribute ?? null] as const)]))
+      })
+      .catch(() => {})
+
+    return () => {
+      alive = false
+    }
+  }, [key])
+
+  return active ? dominusLocks(picks, (id) => attributes.get(id)) : []
+}
+
 const draftOf = (config: HandtrapConfig): Draft => ({
   copies: Object.fromEntries(config.picks.map((pick) => [pick.id, pick.copies])),
   extras: config.picks.filter((pick) => !CATALOG_IDS.has(pick.id)).map(({ id, name }) => ({ id, name })),
@@ -207,6 +238,9 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, auto = false,
   const total = poolCount(picks)
   const listed = new Set(entries.map((card) => card.id))
   const summary = total === 0 ? t('handtraps.picker.empty') : total < draft.hand ? t('handtraps.picker.short', { count: total }) : t('handtraps.picker.pool', { count: total })
+  // En el duelo automático, el núcleo hace cumplir lo que prohíbe cada Dominus: se avisa qué otras elegidas deja sin usar.
+  const locks = useDominusLocks(picks, auto && isOpen)
+  const either = new Intl.ListFormat(getLocale(), { type: 'disjunction' })
 
   const setCopies = (card: HandtrapCard, copies: number) => setDraft((current) => ({ ...current, copies: { ...current.copies, [card.id]: copies } }))
   // Lo agregado entra con una copia y queda en la lista.
@@ -233,6 +267,12 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, auto = false,
             <p className={cx('m-0 min-h-5 text-micro', total === 0 || total < draft.hand ? 'text-warning' : 'text-soft')} role="status">
               {summary}
             </p>
+            {locks.map(({ dominus, blocked }) => (
+              <p key={dominus.id} className="m-0 flex items-start gap-1.5 text-micro text-warning" role="status">
+                <Icon name="alert" size={14} className="mt-px shrink-0" />
+                {t('handtraps.picker.dominus', { dominus: dominus.name, cards: either.format(blocked.map((card) => card.name)) })}
+              </p>
+            ))}
           </div>
           {dealsNew || auto ? <p className="m-0 text-micro text-soft">{t(auto ? 'handtraps.picker.restarts' : 'handtraps.picker.dealsNew')}</p> : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
