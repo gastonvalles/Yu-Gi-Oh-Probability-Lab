@@ -63,7 +63,7 @@
 
   /* El movimiento de toda la app (Gastón, 2026-10-19: easing, offset y delay, parallax; 2026-10-21: tres curvas con nombre). Nada va en `linear` (se siente robótico): lo que
      entra desacelera. Sólo lo que cuenta tiempo de verdad (el reloj, un anillo que se barre) es lineal. En el JS (`app/motion.ts`) las mismas tres están espejadas y un test
-     las mantiene iguales; el criterio está en docs/design-system.md, «Movimiento». */
+     las mantiene iguales; el criterio está en docs/movimiento.md, «Curvas». */
   /* Lo que entra o se queda: desacelera. También es el default de las transiciones de Tailwind. */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   /* Lo que viaja de un lugar a otro (los vuelos de las cartas, el barajado, la espada del ataque): arranca suave y llega suave. */
