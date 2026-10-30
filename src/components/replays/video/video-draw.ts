@@ -565,7 +565,7 @@ export function drawFrame(ctx: Ctx, scene: Scene, assets: VideoAssets, moving?: 
     const shown = fields?.[index] ?? (side.fieldArt ? [{ src: side.fieldArt, alpha: 1 }] : [])
     for (const art of shown) {
       const image = assets.arts.get(art.src)
-      if (image && side.half && art.alpha > 0) paintFieldArt(ctx, image, side.half, index === 1, art.alpha, `campo:${art.src}:${index}:${Math.round(side.half.y)}`, assets)
+      if (image && side.half && art.alpha > 0) paintFieldArt(ctx, image, side.half, index === 1, art.alpha, `field:${art.src}:${index}:${Math.round(side.half.y)}`, assets)
     }
   })
 
