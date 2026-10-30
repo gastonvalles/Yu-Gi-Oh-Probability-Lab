@@ -67,6 +67,10 @@ describe('«Descargar video» en «Guardar replay»', () => {
     expect(await screen.findByText(/Este navegador no puede armar videos/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Descargar video' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Guardar replay' })).toBeEnabled()
+    // Los dos van juntos, en su propia fila (no se parten entre ellos en el celular).
+    const save = screen.getByRole('button', { name: 'Guardar replay' })
+    expect(screen.getByRole('button', { name: 'Descargar video' }).parentElement).toBe(save.parentElement)
+    expect(save.parentElement?.tagName).toBe('DIV')
   })
 
   it('arma el video con la vista elegida: progreso, «No cierres…» y «Cancelar», que corta y vuelve a las opciones', async () => {

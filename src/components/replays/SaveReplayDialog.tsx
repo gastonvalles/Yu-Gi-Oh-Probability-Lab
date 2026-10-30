@@ -59,14 +59,15 @@ export function SaveReplayDialog({ isOpen, onClose, build, note }: { isOpen: boo
       title={stage?.title ?? t('meta.duels.save.title')}
       footer={
         stage?.footer ?? (
-          <>
-            <Button variant="secondary" icon="download" disabled={!supported?.ok} onClick={makeVideo}>
+          // Juntos, sin ícono y chicos (en táctil siguen de 44 px): desde la mesa la hoja es 1 rem más angosta que la pantalla y, así, entran en una fila desde 360 px.
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" size="sm" disabled={!supported?.ok} onClick={makeVideo}>
               {t('meta.duels.video.download')}
             </Button>
-            <Button variant="primary" icon="save" onClick={() => void keepReplay(build(view)).then((ok) => ok && close())}>
+            <Button variant="primary" size="sm" onClick={() => void keepReplay(build(view)).then((ok) => ok && close())}>
               {t('meta.duels.save.button')}
             </Button>
-          </>
+          </div>
         )
       }
     >
