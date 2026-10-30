@@ -18,37 +18,34 @@ Shiina, Token Collector y Gnomaterial; Sphere Mode no juega con 3 monstruos prop
 
 En orden de valor sobre costo.
 
-1. **Links y Extra Deck en la mesa** (S). Un Link en la zona de Mágicas y Trampas ofrece «Poner boca abajo» (`listCardActions`,
-   `app/practice-mat.ts`), y un monstruo del Extra que va a la mano o al Main Deck no se desvía al Extra (`move` del reductor).
-   Son reglas del juego que la mesa manual ya sabe.
-2. **El visor de una pila nombra dos veces cada carta** a un lector de pantalla («Maxx CMaxx C»: el `alt` de `CardArt` más el
+1. **El visor de una pila nombra dos veces cada carta** a un lector de pantalla («Maxx CMaxx C»: el `alt` de `CardArt` más el
    texto, sin `aria-label` en el caso común; `PileViewer` en `MatDialogs.tsx`) (S).
-3. **Lab y Comparar** (S cada uno): «Aplicaste el cambio» (`LabAppliedNotice`) pasa al `AppToast`, que ya lleva acción (su
+2. **Lab y Comparar** (S cada uno): «Aplicaste el cambio» (`LabAppliedNotice`) pasa al `AppToast`, que ya lleva acción (su
    comentario dice lo contrario); ▲/▼ en las filas de `LabRuleList` con un borrador (`LabDelta`); la sugerencia del Lab en los
    vacíos de Comparar (`CompareEmpty`).
-4. **Enlace del replay de un duelo más corto** (M): `duel-replay-share.ts` sigue en el sobre v1; con la forma compacta del combo
+3. **Enlace del replay de un duelo más corto** (M): `duel-replay-share.ts` sigue en el sobre v1; con la forma compacta del combo
    (`combo-share.ts`, v2) bajaría un 30–40 % y entrarían duelos más largos en un enlace.
-5. **Péndulo** (M). Hoy se invoca de a una carta y el rango no se muestra ni se valida. Plan: elegir varias de la mano y del Extra
+4. **Péndulo** (M). Hoy se invoca de a una carta y el rango no se muestra ni se valida. Plan: elegir varias de la mano y del Extra
    boca arriba con el rango resaltado y después validar; un deck guardado sin `scale` queda «sin rango», nunca un número inventado.
-6. **Control de un Xyz con material y de una ficha** (M): el espejo del rival ya sigue al núcleo (`swap`, cambio de código,
+5. **Control de un Xyz con material y de una ficha** (M): el espejo del rival ya sigue al núcleo (`swap`, cambio de código,
    bolsas y materiales Xyz en `MatState.held`), pero al pasar el control de un Xyz con material `give` manda los materiales al
    cementerio, y `give` y `regain` rechazan fichas (`mat-control.test.ts` lo exige en la mesa manual). Es cambiar la mesa manual y
    su protocolo (`mat-control.ts` completa del otro lado esas jugadas).
-7. **Handtraps en tableta** (M): por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`, alto fijo) aunque el
+6. **Handtraps en tableta** (M): por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`, alto fijo) aunque el
    campo sea ancho; escalarla entre 640 y 1100 px.
-8. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
+7. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
    desplazar o girar el campo para cartas más grandes (L, idea abierta; el techo hoy es `compact-field.ts`).
-9. **Sala del duelo en un celular bajo** (~700 px) se desplaza en la tirada del dado (S): plegar las reglas y el deck en una fila.
-10. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
-11. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
+8. **Sala del duelo en un celular bajo** (~700 px) se desplaza en la tirada del dado (S): plegar las reglas y el deck en una fila.
+9. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
+10. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
     hojas de 28 px, chips «Salidas» de 32 px, «Match · mejor de 3» en tres renglones a 320 px, las barras de arriba y abajo comen
     120 de 360 px con el celular acostado, y `ReplayBar`, `LabChangeCard` y las muestras del duelo de `/playground` a 320 px.
-12. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
-13. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
+11. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
+12. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
     sólo pasados 3 minutos, si en el celular pesa.
-14. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
+13. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
     la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
-15. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax.
+14. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax.
 
 ## Espera a Gastón
 
