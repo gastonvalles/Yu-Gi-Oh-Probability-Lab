@@ -9,9 +9,10 @@ lo que se descarta pasa a «En pausa» con su porqué. Tamaño: S (horas), M (un
 motivo de cada decisión, la hoja «Qué hizo el bot y por qué», la prueba de privacidad con el núcleo real y las reglas de reacción
 (Skull Meister, Kuriboh!, Bystial, Shifter, Fleurdelis, Godos, Herald) y un turno propio mínimo (interruptor «El rival juega su
 turno»: invoca, barre, ataca seguro, Lava Golem, Sphere Mode, Gallant Bandit, Evenly Matched, Lightning Storm, Book of Moon,
-Called by the Grave). Sigue: un ejecutor por mazo (Sky Striker, Branded, Ryzeal, Elfnote) con su goldfish y su fuzz. Sin regla:
-Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada), Shiina, Token Collector y Gnomaterial;
-Sphere Mode no juega si el bot ya tiene 3 monstruos; la hoja no conoce los `alias` de las cartas elegidas.
+Called by the Grave) y el primer ejecutor, Sky Striker (`botDeck`; sin pantalla todavía). Sigue: la fila «Rival: Pasivo ·
+Handtraps · Bot» para elegirlo (con la mano del bot boca abajo de entrada) y más ejecutores (Branded, Ryzeal, Elfnote), cada uno
+con su goldfish y su fuzz. Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada),
+Shiina, Token Collector y Gnomaterial; Sphere Mode no juega con 3 monstruos propios; la hoja no conoce los `alias`.
 
 ## Próximo
 
