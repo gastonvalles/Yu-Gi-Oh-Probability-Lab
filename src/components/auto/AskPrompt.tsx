@@ -65,12 +65,16 @@ export function AskPrompt({ text, card, yes, no, kicker, place, manual }: AskPro
         </>
       }
     >
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Una sola fila, siempre (Gastón: «los 3 botones no están alineados»): sin `flex-wrap`. El atajo se queda con lo que dejan el «no» y la principal (`flex-1 basis-0`) y, si no le alcanza
+          (en inglés, o en español con los paneles de la mesa al máximo: la pregunta mide 496 px), parte su texto en dos líneas en vez de bajar a otro renglón. */}
+      <div className="flex items-center gap-2">
         {/* En el celular no va en el cartel (tres acciones no entran en una fila y tiene que caber arriba de tus monstruos): queda en «Más opciones». */}
         {manual ? (
-          <Button variant="tertiary" className="shrink-0 max-[1101px]:hidden" onClick={manual.onSelect}>
-            {manual.label}
-          </Button>
+          <div className="flex min-w-0 flex-1 max-[1101px]:hidden">
+            <Button variant="tertiary" className="text-balance" onClick={manual.onSelect}>
+              {manual.label}
+            </Button>
+          </div>
         ) : null}
         <div className="ml-auto flex justify-end gap-2">
           <Button variant="tertiary" className="shrink-0" onClick={no.onSelect}>
