@@ -47,6 +47,7 @@ export function mapMatIds(state: MatState, map: IdMap): MatState {
     facedown: state.facedown.map(map),
     extraUp: state.extraUp.map(map),
     targeted: state.targeted.map(map),
+    ...(state.held ? { held: Object.fromEntries(Object.entries(state.held).map(([xyz, materials]) => [map(xyz), materials.map(map)])) } : {}),
   }
 }
 

@@ -70,12 +70,21 @@ describe('el adaptador: del núcleo a la mesa', () => {
     adapter.apply(events(0, { type: 'draw', player: 0, drawn: [111, 222].map((code) => ({ code, position: 10 })) }))
     adapter.apply(events(0, move(111, at(0, L.HAND, 0, 10), at(0, L.MZONE, 0)), played('summoning', 111, at(0, L.MZONE, 0))))
     adapter.apply(events(0, move(222, at(0, L.HAND, 0, 10), at(0, L.MZONE, 1)), played('spsummoning', 222, at(0, L.MZONE, 1))))
-    const out = adapter.apply(
-      events(0, move(111, at(0, L.MZONE, 0), at(0, L.EXTRA, 0, P.FACEUP_ATTACK, 0)), move(222, at(0, L.MZONE, 1), at(0, L.EXTRA, 0, P.FACEUP_ATTACK, 1)), move(900, at(0, L.EXTRA, 0, 10), at(0, L.MZONE, 5)), played('spsummoning', 900, at(0, L.MZONE, 5))),
-    )
+    // Como lo manda el núcleo (grabado de `auto-adapter.slow.test.ts`, semilla 1, duelo 7): una tanda junta los materiales debajo de la carta del Extra y pregunta la zona
+    // (las de los materiales, libres); la posición es otra pregunta; y recién después sale.
+    const before = adapter.mine
+    const gathered = adapter.apply(events(0, move(111, at(0, L.MZONE, 0), at(0, L.EXTRA, 0, P.FACEUP_ATTACK, 0)), move(222, at(0, L.MZONE, 1), at(0, L.EXTRA, 0, P.FACEUP_ATTACK, 1))))
+
+    // La mesa del adaptador los tiene en `held` (sus zonas, libres), pero no es una jugada: la Invocación Xyz sigue siendo un solo paso, el `summon`.
+    expect([gathered.mine, gathered.order]).toEqual([[], []])
+    expect([adapter.mine.mz[0], adapter.mine.mz[1], adapter.mine.gy, adapter.mine.extra, adapter.mine.held]).toEqual([null, null, [], ['card-900-1'], { 'card-900-1': ['card-111-1', 'card-222-1'] }])
+    const out = adapter.apply(events(0, move(900, at(0, L.EXTRA, 0, P.FACEDOWN_DEFENSE), at(0, L.MZONE, 5)), played('spsummoning', 900, at(0, L.MZONE, 5))))
 
     expect(out.mine).toEqual([{ type: 'summon', id: 'card-900-1', how: 'xyz', materials: ['card-111-1', 'card-222-1'], zone: 'emz', index: 0, pos: 'atk' }])
     expect(adapter.mine.emz[0]).toMatchObject({ id: 'card-900-1', materials: ['card-111-1', 'card-222-1'] })
+    expect(adapter.mine.held).toBeUndefined()
+    // La cinta (lo que reproducen la mesa, Pasos y el replay) llega a la misma mesa sin `held`.
+    expect(out.mine.reduce(matReducer, before)).toEqual(adapter.mine)
     // Desacoplar un material: del debajo del Xyz al cementerio.
     adapter.apply(events(0, move(111, at(0, L.MZONE, 5, P.FACEUP_ATTACK, 0), at(0, L.GRAVE, 0))))
     expect(adapter.mine.emz[0]?.materials).toEqual(['card-222-1'])
@@ -88,9 +97,13 @@ describe('el adaptador: del núcleo a la mesa', () => {
     // Su Extra se mostró (c3 es el Xyz 900, c4 otra) y se barajó: es bolsa, y el núcleo junta los materiales debajo de una secuencia que no dice cuál.
     adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 900, controller: 1, location: L.EXTRA, sequence: 0 }, { code: 901, controller: 1, location: L.EXTRA, sequence: 1 }] }, { type: 'shuffle_extra', player: 1, cards: [0, 0] }))
     adapter.apply(events(0, move(555, at(1, L.DECK, 1, 10), at(1, L.MZONE, 0)), move(556, at(1, L.DECK, 0, 10), at(1, L.MZONE, 1))))
-    adapter.apply(events(0, move(555, at(1, L.MZONE, 0), at(1, L.EXTRA, 0, P.FACEUP_ATTACK, 0)), move(556, at(1, L.MZONE, 1), at(1, L.EXTRA, 0, P.FACEUP_ATTACK, 1)), move(900, at(1, L.EXTRA, 0, 10), at(1, L.MZONE, 5)), played('spsummoning', 900, at(1, L.MZONE, 5))))
+    const gathered = adapter.apply(events(0, move(555, at(1, L.MZONE, 0), at(1, L.EXTRA, 1, P.FACEUP_ATTACK, 0)), move(556, at(1, L.MZONE, 1), at(1, L.EXTRA, 1, P.FACEUP_ATTACK, 1))))
+    // Mientras el núcleo pregunta la zona, sus zonas están libres y los materiales, debajo de una carta de su Extra; no es una jugada de su cinta.
+    expect([gathered.theirs, adapter.theirs.state.mz.slice(0, 2), Object.values(adapter.theirs.state.held ?? {})]).toEqual([[], [null, null], [['c1', 'c2']]])
+    adapter.apply(events(0, move(900, at(1, L.EXTRA, 1, 10), at(1, L.MZONE, 5)), played('spsummoning', 900, at(1, L.MZONE, 5))))
 
     expect(adapter.theirs.state.emz[0]).toMatchObject({ id: 'c3', materials: ['c1', 'c2'] })
+    expect(adapter.theirs.state.held).toBeUndefined()
     expect(adapter.theirs.state.mz.slice(0, 2)).toEqual([null, null])
     expect(adapter.apply(events(0, move(555, at(1, L.MZONE, 5, P.FACEUP_ATTACK, 0), at(1, L.GRAVE, 0)))).unmapped).toEqual([])
     expect(adapter.theirs.state.gy).toEqual(['c1'])

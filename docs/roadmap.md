@@ -19,11 +19,10 @@ En orden de valor sobre costo.
    (`combo-share.ts`, v2) bajaría un 30–40 % y entrarían duelos más largos en un enlace.
 5. **Péndulo** (M). Hoy se invoca de a una carta y el rango no se muestra ni se valida. Plan: elegir varias de la mano y del Extra
    boca arriba con el rango resaltado y después validar; un deck guardado sin `scale` queda «sin rango», nunca un número inventado.
-6. **Xyz con materiales en la mesa** (L): el espejo del rival ya sigue al núcleo (`swap`, cambio de código, bolsas), pero
-   `MatState` no puede poner materiales debajo de una carta del Extra, así que mientras el núcleo pregunta zona y posición la mesa
-   muestra ocupadas casillas que él ofrece libres (42 tandas en la semilla 1 de `auto-adapter.slow.test.ts`); tampoco pasa el
-   control de un Xyz con material (`give` manda los materiales al cementerio) ni el de una ficha (`give` rechaza fichas). Es
-   cambiar `app/practice-mat.ts`, que comparten la mesa manual y el enlace.
+6. **Control de un Xyz con material y de una ficha** (M): el espejo del rival ya sigue al núcleo (`swap`, cambio de código,
+   bolsas y materiales Xyz en `MatState.held`), pero al pasar el control de un Xyz con material `give` manda los materiales al
+   cementerio, y `give` y `regain` rechazan fichas (`mat-control.test.ts` lo exige en la mesa manual). Es cambiar la mesa manual y
+   su protocolo (`mat-control.ts` completa del otro lado esas jugadas).
 7. **Handtraps en tableta** (M): por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`, alto fijo) aunque el
    campo sea ancho; escalarla entre 640 y 1100 px.
 8. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
