@@ -24,6 +24,8 @@ const NIBIRU = 27204311
 const DROLL = 94145022
 /** El Droll & Lock Bird original (del buscador): el del catálogo es su arte alternativo. */
 const DROLL_BASE = 94145021
+/** El arte original de Ghost Belle (el de la lista de Sky Striker del bot): su regla es la del catálogo. */
+const BELLE_BASE = 73642296
 /** Ash con su arte alternativo (`alias` 14558127): sin regla propia, juega con la de su original. */
 const ASH_ALT = 14558128
 const GAMMA = 38814750
@@ -61,7 +63,7 @@ interface Scenario extends DuelScenario {
 const drewRival = (events: readonly WireEvent[]) => has(events, (event) => event.type === 'draw' && event.player === 1)
 const negatedLink = (events: readonly WireEvent[], kind: 'chain_disabled' | 'chain_negated', link: number) => has(events, (event) => event.type === kind && event.chain_size === link)
 /** Las handtraps de los escenarios que niegan un eslabón (`chain_negated` o `chain_disabled`). */
-const NEGATES = new Set([ASH, VEILER, IMPERM, BELLE, GAMMA, DOMINUS, PURGE, DELTA])
+const NEGATES = new Set([ASH, VEILER, IMPERM, BELLE, BELLE_BASE, GAMMA, DOMINUS, PURGE, DELTA])
 /**
  * Las que niegan con un efecto que queda (los efectos del monstruo, hasta el final del turno): el núcleo dice «sin efecto» cuando le llega el turno al eslabón negado, no mientras se resuelve
  * la handtrap, así que no se sabe quién fue (sin `by`: la pantalla dice sólo «Sin efecto»).
@@ -131,6 +133,13 @@ const SCENARIOS: Scenario[] = [
     hand: [FOOLISH, REBORN],
     steps: [{ do: 'activate', code: FOOLISH }, { do: 'activate', code: REBORN }],
     // Niega la activación de Monster Reborn (Invoca desde el cementerio): Avian se queda ahí.
+    check: (after) => (negatedLink(after, 'chain_negated', 1) && !moved(after, AVIAN, L.GRAVE, L.MZONE) ? null : 'Monster Reborn no quedó negada'),
+  },
+  {
+    card: BELLE_BASE,
+    deck: [[AVIAN, 1], ...SPELLS],
+    hand: [FOOLISH, REBORN],
+    steps: [{ do: 'activate', code: FOOLISH }, { do: 'activate', code: REBORN }],
     check: (after) => (negatedLink(after, 'chain_negated', 1) && !moved(after, AVIAN, L.GRAVE, L.MZONE) ? null : 'Monster Reborn no quedó negada'),
   },
   {
