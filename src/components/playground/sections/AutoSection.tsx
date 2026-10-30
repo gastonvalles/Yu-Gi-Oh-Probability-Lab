@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 
 import type { ChainRowState } from '../../../app/auto/chain-feed'
 import { DuelRailsContext } from '../../../app/duel-rails'
+import { BOT_DECK_MENU, DEFAULT_HANDTRAP_CONFIG, rivalKindOf, withRival, type BotDeckInfo } from '../../../app/handtraps'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
 import { t } from '../../../i18n'
@@ -15,6 +16,7 @@ import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
+import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
@@ -144,6 +146,7 @@ export function AutoSection() {
       <SortSample onAnswer={setAnswer} />
       <CounterSample onAnswer={setAnswer} />
       <BotLogSample />
+      <RivalSample />
 
       <Specimen title="Lo que contestó la última muestra" note="Cada hoja y cada pregunta de arriba le pasan lo elegido a quien la abrió; acá se ve qué devolvió.">
         <Tag>{answer}</Tag>
@@ -156,8 +159,32 @@ export function AutoSection() {
       <LifeScoreSample />
       <DockSample />
       <BarSample title="AutoBar · el núcleo resolviendo" note={<>La barra de la práctica (la flecha y los íconos de <Tag>MatBarActions</Tag>) con lo propio del automático: el engranaje (en la mesa de escritorio va en la botonera), el turno, una sola vez, y las vidas planas (hasta 1100 px, en el marcador; con laterales, en el izquierdo; en escritorio sin ellos, en las esquinas del campo). La línea del registro dice que el núcleo está resolviendo, con el punto que late; a los 1,5 s aparece «Cancelar» (lo que es rápido no parpadea). En el celular el aviso se apoya sobre la línea del registro; en escritorio, centrado debajo de la barra. Archivo: <Tag>auto/AutoBar.tsx</Tag></>} lane="thinking" />
-      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Handtraps del rival» con «Cambiar handtraps» y, encendidas, «A ciegas» —en la del núcleo resolviendo están apagadas y dice que el rival no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
+      <BarSample title="AutoBar · la cadena" note={<>Un aviso que se contesta (<Tag>LaneNotice</Tag> <Tag>ask</Tag>): la cadena dicha por el núcleo y «No responder». Va enmarcado en ámbar. El engranaje abre «Más opciones» (respuestas, la casilla, «Rival» con «Cambiar rival» y, con el bot, «Mostrar la mano del bot» —con handtraps, «A ciegas»; en la del núcleo resolviendo es el pasivo y dice que no juega—, «Reiniciar el mismo duelo» y «Jugar en modo manual»). Probá «Laterales»: así va en una ventana ancha.</>} lane="chain" />
     </SpecimenGrid>
+  )
+}
+
+/** Una copia de muestra del único mazo listo: así se ve «Cambiar mazo», que aparece con dos o más. */
+const TWO_DECKS: readonly BotDeckInfo[] = [...BOT_DECK_MENU, { id: 'muestra', name: 'Sky Striker (copia de muestra)', line: 'auto.rival.deck.skyStriker' }]
+
+/** La fila «Rival» (la de las reglas de Jugar solo automático) y la hoja de «Cambiar rival» del duelo, con uno o dos mazos listos. */
+function RivalSample() {
+  const [two, setTwo] = useState(false)
+  const [draft, setDraft] = useState<RivalDraft>({ kind: 'bot', deck: 'sky-striker' })
+  const [open, setOpen] = useState(false)
+  const [applied, setApplied] = useState('—')
+  const decks = two ? TWO_DECKS : BOT_DECK_MENU
+
+  return (
+    <Specimen title="Rival · Pasivo, Handtraps o Bot" layout="column" note={<>Una elección por fila (<Tag>Segmented</Tag>): el pasivo dice que no juega; el de handtraps, cuántas tiene y «Elegir…»; el bot, su mazo y lo que es, sus límites siempre a la vista y «Mostrar la mano del bot» (apagado de entrada). Con un solo mazo listo no hay menú; con dos, «Cambiar mazo» abre la hoja. En el duelo, «Cambiar rival» abre la hoja: avisa que reinicia y la principal dice contra quién. Archivo: <Tag>duel/RivalRow.tsx</Tag></>}>
+      <Segmented label="Mazos listos" variant="chips" value={two ? 'two' : 'one'} onChange={(value) => setTwo(value === 'two')} options={[{ value: 'one', label: 'Uno' }, { value: 'two', label: 'Dos' }]} />
+      <RivalChoice value={draft} onChange={setDraft} config={DEFAULT_HANDTRAP_CONFIG} decks={decks} onChooseHandtraps={() => setApplied('Elegir handtraps')} />
+      <Button variant="secondary" size="sm" className="justify-self-start" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        Abrir «Cambiar rival»
+      </Button>
+      <RivalSheet isOpen={open} config={withRival(DEFAULT_HANDTRAP_CONFIG, 'bot', 'sky-striker')} decks={decks} onClose={() => setOpen(false)} onApply={(next) => { setApplied(rivalKindOf(next, decks)); setOpen(false) }} onChooseHandtraps={() => setOpen(false)} />
+      <Tag>{`Aplicado: ${applied}`}</Tag>
+    </Specimen>
   )
 }
 
@@ -771,7 +798,7 @@ function BarActionsSample() {
   const tap = () => setTaps((count) => count + 1)
 
   return (
-    <Specimen title="MatBarActions · tres a la vista y el ⋯" layout="column" className="col-span-full" note={<>A la vista sólo salir, deshacer y el ⋯ (blancos de 44 px; ámbar al apuntar, al enfocar o con el menú abierto: nada queda en ámbar por estar prendido). En el ⋯, <Tag>MatMoreMenu</Tag>: «La mesa» (la vista 3D, los sonidos y la ventana grande, sólo en escritorio, cada uno con su interruptor) y «El duelo» (las handtraps del rival, «Nueva mano», «Guardar combo», apagado «sin jugadas», y lo de cada mesa: el automático suma «Opciones del duelo» en el celular). El duelo por enlace arma su ⋯ con el mismo grupo «La mesa». Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Cambiá el idioma para verlo en inglés. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
+    <Specimen title="MatBarActions · tres a la vista y el ⋯" layout="column" className="col-span-full" note={<>A la vista sólo salir, deshacer y el ⋯ (blancos de 44 px; ámbar al apuntar, al enfocar o con el menú abierto: nada queda en ámbar por estar prendido). En el ⋯, <Tag>MatMoreMenu</Tag>: «La mesa» (la vista 3D, los sonidos y la ventana grande, sólo en escritorio, cada uno con su interruptor) y «El duelo» (las handtraps del rival —en el automático, «Rival», que abre su hoja—, «Nueva mano», «Guardar combo», apagado «sin jugadas», y lo de cada mesa: el automático suma «Opciones del duelo» en el celular). El duelo por enlace arma su ⋯ con el mismo grupo «La mesa». Los ajustes son de toda la app: tocarlos acá los cambia en las mesas. Cambiá el idioma para verlo en inglés. Archivo: <Tag>probability/MatBarActions.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Segmented label="Jugadas" variant="track" value={played ? 'some' : 'none'} onChange={(value) => setPlayed(value === 'some')} options={[{ value: 'none', label: 'Sin jugadas' }, { value: 'some', label: 'Con jugadas' }]} />
         <Tag>{`Toques: ${taps}`}</Tag>
@@ -787,7 +814,7 @@ function BarActionsSample() {
         {/* El menú abierto cae debajo de la barra: se le deja su alto para que no tape la muestra siguiente. */}
         <div role="toolbar" aria-label="Muestra del automático" className={cx('mb-96', MAT_BAR_ROW)}>
           <MatExitButton onExit={tap} />
-          <MatBarActions className="ml-auto" auto menuOpen onUndo={tap} canUndo={played} onNewHand={tap} onHandtraps={tap} more={[{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: tap }]} />
+          <MatBarActions className="ml-auto" menuOpen onUndo={tap} canUndo={played} onNewHand={tap} rival={{ meta: t('auto.rival.kind.bot'), onSelect: tap }} more={[{ label: t('duel.bar.options'), icon: 'gear', opens: true, onSelect: tap }]} />
         </div>
       </div>
     </Specimen>
@@ -932,7 +959,7 @@ function DockSample() {
             onPlace={setPlace}
             onRestart={() => setManual((count) => count + 1)}
             onManual={() => setManual((count) => count + 1)}
-            handtraps={{ on: false, summary: t('auto.bar.handtrapsOff'), onChange: () => undefined }}
+            rival={{ kind: 'passive', summary: t('auto.rival.kind.passive'), onChange: () => undefined }}
             blind={false}
             onBlind={() => undefined}
             steps={{ open: steps, onToggle: () => setSteps((open) => !open) }}
@@ -951,9 +978,9 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
   const [place, setPlace] = useState<AutoPlaceMode>('ask')
   const [layout, setLayout] = useState<'top' | 'rails'>('top')
   const [passed, setPassed] = useState(0)
-  // Las handtraps del rival en «Más opciones»: encendidas (con «A ciegas») en la de la cadena; apagadas (el rival pasivo) en la del núcleo resolviendo.
-  const [blind, setBlind] = useState(false)
-  const handtraps = { on: kind === 'chain', summary: kind === 'chain' ? t('auto.bar.handtrapsOn', { cards: 'Ash Blossom & Joyous Spring, Effect Veiler, Infinite Impermanence', hand: 3 }) : t('auto.bar.handtrapsOff'), onChange: () => setPassed((count) => count + 1) }
+  // El rival en «Más opciones»: el bot (con «Mostrar la mano del bot») en la de la cadena; el pasivo en la del núcleo resolviendo.
+  const [blind, setBlind] = useState(true)
+  const rival = { kind: kind === 'chain' ? ('bot' as const) : ('passive' as const), summary: kind === 'chain' ? t('auto.rival.botSummary', { deck: 'Sky Striker' }) : t('auto.rival.kind.passive'), onChange: () => setPassed((count) => count + 1) }
   const lane: LaneNotice =
     kind === 'thinking'
       ? { kind: 'thinking', onCancel: () => setPassed((count) => count + 1) }
@@ -968,7 +995,6 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
       onUndo={() => setPassed((count) => count + 1)}
       canUndo={kind === 'chain'}
       onNewHand={() => setPassed((count) => count + 1)}
-      onHandtraps={() => setPassed((count) => count + 1)}
       lane={lane}
       log={<DuelLogTicker feed={[{ id: 'e1', kind: 'event', side: 'mine', text: 'Activás Branded Fusion' }]} onOpen={() => undefined} />}
       chain={chain}
@@ -977,7 +1003,7 @@ function BarSample({ title, note, lane: kind }: { title: string; note: ReactNode
       onPlace={setPlace}
       onRestart={() => setPassed((count) => count + 1)}
       onManual={() => setPassed((count) => count + 1)}
-      handtraps={handtraps}
+      rival={rival}
       blind={blind}
       onBlind={setBlind}
     />

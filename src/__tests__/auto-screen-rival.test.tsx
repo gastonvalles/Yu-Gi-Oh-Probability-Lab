@@ -57,7 +57,20 @@ const more = () => {
   return screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 }
 
-afterEach(() => act(() => setAutoPref('blind', false)))
+afterEach(() =>
+  act(() => {
+    setAutoPref('blind', false)
+    setAutoPref('botHand', false)
+  }),
+)
+
+/** «Cambiar rival» de «Más opciones» y, con Handtraps, «Elegir…»: la hoja de las handtraps. */
+const handtrapSheet = () => {
+  fireEvent.click(within(more()).getByRole('button', { name: 'Cambiar rival' }))
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Rival' })).getByRole('button', { name: 'Elegir… las handtraps del rival' }))
+
+  return screen.getByRole('dialog', { name: 'Handtraps del rival' })
+}
 
 describe('auto-screen · el rival de handtraps', () => {
   it('con el simulador apagado, el rival es el pasivo de siempre: su mano de dorso y «Más opciones» dice que no juega', () => {
@@ -67,7 +80,7 @@ describe('auto-screen · el rival de handtraps', () => {
     expect(rivalHand()).toHaveAccessibleName('Mano del rival: 0')
     const dialog = more()
 
-    expect(dialog).toHaveTextContent('Apagadas: el rival no usa nada.')
+    expect(dialog).toHaveTextContent('RivalPasivo')
     expect(dialog).toHaveTextContent('El rival no juega: sólo recibe.')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
   })
@@ -92,12 +105,11 @@ describe('auto-screen · el rival de handtraps', () => {
     expect(dispatches).toBe(0)
   })
 
-  it('«Cambiar handtraps» abre la hoja del simulador; aplicar guarda y arma el duelo de nuevo con la misma semilla; apagarlo vuelve al pasivo', () => {
+  it('«Cambiar rival» y «Elegir…» abren la hoja del simulador; aplicar guarda y arma el duelo de nuevo con la misma semilla; apagarlo vuelve al pasivo', () => {
     writeHandtrapConfig({ enabled: true, picks: [{ ...ASH, copies: 1 }], hand: 1 })
     const { calls, fakes } = mount()
 
-    fireEvent.click(within(more()).getByRole('button', { name: 'Cambiar handtraps' }))
-    const sheet = screen.getByRole('dialog', { name: 'Handtraps del rival' })
+    const sheet = handtrapSheet()
 
     expect(sheet).toHaveTextContent('Al aplicar, el duelo empieza de nuevo.')
     fireEvent.click(within(within(sheet).getByRole('group', { name: `Copias de ${VEILER.name} en el deck del rival` })).getByRole('button', { name: 'Uno más' }))
@@ -109,7 +121,7 @@ describe('auto-screen · el rival de handtraps', () => {
     expect(fakes[0]!.destroyed).toBe(true)
     expect(readHandtrapConfig().picks.map((pick) => pick.id)).toEqual([ASH.id, VEILER.id])
 
-    fireEvent.click(within(more()).getByRole('button', { name: 'Cambiar handtraps' }))
+    handtrapSheet()
     fireEvent.click(screen.getByRole('button', { name: 'Apagar el simulador' }))
     expect(calls[2]).toEqual({ rival: null, seed: 99, seat: 0 })
     expect(readHandtrapConfig().enabled).toBe(false)
@@ -173,8 +185,7 @@ describe('auto-screen · el rival de handtraps', () => {
   it('una carta agregada con el buscador dice en la hoja que el rival todavía no la usa solo', () => {
     writeHandtrapConfig({ enabled: true, picks: [{ ...ASH, copies: 1 }, { id: 12345678, name: 'Otra carta', copies: 1 }], hand: 1 })
     mount()
-    fireEvent.click(within(more()).getByRole('button', { name: 'Cambiar handtraps' }))
-    const sheet = screen.getByRole('dialog', { name: 'Handtraps del rival' })
+    const sheet = handtrapSheet()
 
     expect(within(sheet).getByRole('group', { name: 'Copias de Otra carta en el deck del rival' }).closest('li')).toHaveTextContent('Todavía no la usa solo')
     expect(within(sheet).getByRole('group', { name: `Copias de ${ASH.name} en el deck del rival` }).closest('li')).not.toHaveTextContent('Todavía no la usa solo')
@@ -188,6 +199,70 @@ describe('auto-screen · el rival de handtraps', () => {
     fireEvent.click(within(rivalHand()).getByRole('button', { name: ASH.name }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(dispatches).toBe(0)
+  })
+})
+
+describe('auto-screen · el rival «Bot»', () => {
+  const BOT = { enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }], hand: 2, botDeck: 'sky-striker' }
+
+  it('el duelo se arma con su mazo; su mano va de dorso aunque «A ciegas» esté apagado, y «Mostrar la mano del bot» la da vuelta (y se recuerda)', () => {
+    writeHandtrapConfig(BOT)
+    const { calls, fakes } = mount()
+
+    expect(calls[0]!.rival).toMatchObject({ botDeck: 'sky-striker', main: [] })
+    act(() => fakes[0]!.set({ rivalHand: [ASH.id, VEILER.id], theirs: { ...fakes[0]!.getSnapshot().theirs, hand: ['c2', 'c3'] } }))
+    expect(rivalHand()).toHaveAccessibleName('Mano del rival: 2')
+    const dialog = more()
+
+    expect(dialog).toHaveTextContent('RivalBot · Sky Striker')
+    expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
+    fireEvent.click(within(dialog).getByRole('switch', { name: 'Mostrar la mano del bot' }))
+    expect(rivalHand()).toHaveAccessibleName(`Mano del rival: ${ASH.name}, ${VEILER.name}`)
+    expect([localStorage.getItem('ygo-lab:auto-bot-hand'), localStorage.getItem('ygo-lab:auto-blind')]).toEqual(['on', null])
+    expect(dispatches).toBe(0)
+  })
+
+  it('«Cambiar rival» avisa que reinicia; al bot y de vuelta a handtraps y al pasivo, con la misma semilla y sin perder las handtraps; cancelar no reinicia', () => {
+    writeHandtrapConfig({ ...BOT, botDeck: undefined })
+    const { calls } = mount()
+    const change = () => {
+      fireEvent.click(within(more()).getByRole('button', { name: 'Cambiar rival' }))
+
+      return screen.getByRole('dialog', { name: 'Rival' })
+    }
+    let sheet = change()
+
+    expect(sheet).toHaveTextContent('Al aplicar, el duelo empieza de nuevo.')
+    fireEvent.click(within(sheet).getByRole('radio', { name: 'Bot' }))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Cancelar' }))
+    expect(calls).toHaveLength(1)
+
+    sheet = change()
+    fireEvent.click(within(sheet).getByRole('radio', { name: 'Bot' }))
+    expect(sheet).toHaveTextContent('No es un rival de torneo')
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Jugar contra el bot' }))
+    expect(calls[1]).toMatchObject({ seed: 99, rival: { botDeck: 'sky-striker' } })
+    expect(readHandtrapConfig()).toMatchObject({ botDeck: 'sky-striker', hand: 2 })
+
+    sheet = change()
+    fireEvent.click(within(sheet).getByRole('radio', { name: 'Handtraps' }))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Usar estas handtraps' }))
+    expect(calls[2]!.rival!.main).toEqual([[ASH.id, 1], [VEILER.id, 1]])
+    expect(calls[2]!.rival).not.toHaveProperty('botDeck')
+    expect(readHandtrapConfig()).not.toHaveProperty('botDeck')
+
+    sheet = change()
+    fireEvent.click(within(sheet).getByRole('radio', { name: 'Pasivo' }))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Jugar contra el pasivo' }))
+    expect(calls[3]).toEqual({ rival: null, seed: 99, seat: 0 })
+    expect(readHandtrapConfig().picks).toHaveLength(2)
+  })
+
+  it('«Qué hizo el bot» con el bot espera sus decisiones (no dice que el rival no juega, como con el pasivo)', () => {
+    writeHandtrapConfig(BOT)
+    mount()
+    fireEvent.click(within(more()).getByRole('button', { name: 'Qué hizo el bot' }))
+    expect(screen.getByRole('dialog', { name: 'Qué hizo el bot y por qué' })).toHaveTextContent('Todavía no decidió nada')
   })
 })
 

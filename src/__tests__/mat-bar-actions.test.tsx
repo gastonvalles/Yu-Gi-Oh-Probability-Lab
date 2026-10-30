@@ -126,7 +126,10 @@ describe('la barra de la mesa es una sola', () => {
       // Hasta 1100 px el automático no tiene fila de abajo: «Pasos y combos» va primero.
       const steps = layout === 'escritorio' ? [] : [{ text: 'Pasos y combos', checked: null, disabled: false }]
 
-      expect(autoRows).toEqual([...steps, ...practiceRows, ...(layout === 'escritorio' ? [] : [{ text: 'Opciones del duelo', checked: null, disabled: false }])])
+      // En el automático, «Handtraps del rival» es «Rival» (contra quién: el pasivo, el de handtraps o el bot), que abre su hoja.
+      const rivalRows = practiceRows.map((row) => (row.text.startsWith('Handtraps del rival') ? { ...row, text: 'RivalPasivo' } : row))
+
+      expect(autoRows).toEqual([...steps, ...rivalRows, ...(layout === 'escritorio' ? [] : [{ text: 'Opciones del duelo', checked: null, disabled: false }])])
       expect(within(screen.getByRole('menu')).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['La mesa', 'El duelo'])
       cleanup()
     }
@@ -144,8 +147,12 @@ describe('la barra de la mesa es una sola', () => {
     expect(seed).not.toBe(99)
     expect(calls).toHaveLength(1)
 
-    // Las handtraps desde la barra (como en la práctica): la hoja es la del automático y, al aplicar, el duelo se arma de nuevo con la mano de ahora.
-    fireEvent.click(menuRow(/^Handtraps del rival/))
+    // Las handtraps desde la barra: «Rival» abre su hoja y, con Handtraps, «Elegir…» la del automático; al aplicar, el duelo se arma de nuevo con la mano de ahora.
+    fireEvent.click(menuRow(/^Rival/))
+    const rivalSheet = screen.getByRole('dialog', { name: 'Rival' })
+
+    fireEvent.click(within(rivalSheet).getByRole('radio', { name: 'Handtraps' }))
+    fireEvent.click(within(rivalSheet).getByRole('button', { name: 'Elegir… las handtraps del rival' }))
     const sheet = screen.getByRole('dialog', { name: 'Handtraps del rival' })
 
     expect(sheet).toHaveTextContent('Al aplicar, el duelo empieza de nuevo.')

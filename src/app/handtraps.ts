@@ -1,3 +1,4 @@
+import type { MessageKey } from '../i18n'
 import { isRecord } from './utils'
 import { shuffleWithSeed, type RivalHand } from './practice-mat'
 
@@ -233,8 +234,8 @@ export function normalizeExtra(cards: readonly ExtraPick[]): ExtraPick[] {
  * PSY-Frame Driver) y su mano, la misma que repartiría el simulador manual con esa semilla (`dealRival`). `null` con el simulador apagado: el rival pasivo.
  */
 export function autoRival(config: HandtrapConfig): AutoRival | null {
-  // El bot con su mazo: su lista y su mano salen de su deck (la sesión), no de la hoja; manda aunque el simulador esté apagado.
-  if (config.botDeck) return { main: [], extra: [], hand: () => [], botDeck: config.botDeck }
+  // El bot con su mazo: su lista y su mano salen de su deck (la sesión), no de la hoja; manda aunque el simulador esté apagado. Un id que ya no se ofrece, como si no estuviera.
+  if (rivalKindOf(config) === 'bot') return { main: [], extra: [], hand: () => [], botDeck: config.botDeck! }
   if (!dealRival(config, 0)) return null
   const picks = normalizePicks(config.picks)
 
@@ -261,6 +262,33 @@ export interface HandtrapConfig {
 
 /** El id de un mazo del bot como se guarda: minúsculas, números y guiones (cuál existe lo sabe la sesión). */
 const BOT_DECK_ID = /^[a-z0-9-]{1,40}$/
+
+/** Un mazo del rival «Bot» como lo ofrece la fila «Rival»: su id (`botDeck`), su nombre y una línea de lo que es. */
+export interface BotDeckInfo {
+  id: string
+  name: string
+  line: Extract<MessageKey, `auto.rival.deck.${string}`>
+}
+
+/**
+ * Los mazos listos del bot (`ready` en `BOT_DECKS` de `auto/bot/decks`), sin sus ejecutores: el lobby los ofrece y no puede importar `auto/` (`auto-isolation.test.ts`).
+ * `auto-rival.test.tsx` revisa que coincidan con `BOT_DECKS`.
+ */
+export const BOT_DECK_MENU: readonly BotDeckInfo[] = [{ id: 'sky-striker', name: 'Sky Striker', line: 'auto.rival.deck.skyStriker' }]
+
+/** Contra quién se juega «Jugar solo automático»: el pasivo, el de handtraps (el simulador) o el bot con su mazo. */
+export type RivalKind = 'passive' | 'handtraps' | 'bot'
+
+/** El rival de lo guardado: el bot si su mazo se ofrece (`decks`); si no, el de handtraps o el pasivo, según el simulador. */
+export const rivalKindOf = (config: HandtrapConfig, decks: readonly BotDeckInfo[] = BOT_DECK_MENU): RivalKind =>
+  config.botDeck && decks.some((deck) => deck.id === config.botDeck) ? 'bot' : config.enabled ? 'handtraps' : 'passive'
+
+/** Otro rival, sin perder lo de la hoja de handtraps (las cartas, la mano, el Extra Deck y su turno): el bot fija su mazo; los otros dos lo sueltan y prenden o apagan el simulador. */
+export function withRival(config: HandtrapConfig, kind: RivalKind, botDeck?: string): HandtrapConfig {
+  const { botDeck: _drop, ...rest } = config
+
+  return kind === 'bot' && botDeck ? { ...rest, botDeck } : { ...rest, enabled: kind === 'handtraps' }
+}
 
 /** Las tres de siempre, una copia de cada una: Ash Blossom, Effect Veiler e Infinite Impermanence. */
 const DEFAULT_PICKS: readonly HandtrapPick[] = [14558127, 97268402, 10045474].map((id) => ({ ...HANDTRAP_CATALOG.find((card) => card.id === id)!, copies: 1 }))

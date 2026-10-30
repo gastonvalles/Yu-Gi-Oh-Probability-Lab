@@ -13,7 +13,7 @@ import type { Seat } from '../../app/auto/protocol'
 import type { BotNote } from '../../app/auto/auto-session'
 import { seatOf, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
-import { autoRival, dealRival, poolCount, readHandtrapConfig, rivalCardOf, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
+import { autoRival, BOT_DECK_MENU, dealRival, poolCount, readHandtrapConfig, rivalCardOf, rivalKindOf, withRival, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { LifeHold } from '../../app/life-effects'
 import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
@@ -22,6 +22,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { t } from '../../i18n'
 import { LifeScore } from '../duel/LifeScore'
 import { HandtrapPicker } from '../duel/HandtrapPool'
+import { RivalSheet } from '../duel/RivalRow'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { cardIdOfDrawId } from '../probability/practice'
 import { usePracticeChips, type PracticeLab } from '../probability/use-practice-chips'
@@ -90,6 +91,9 @@ function resumedRival(rival: RivalHand | undefined, config: HandtrapConfig): Res
 export const RIVAL_READ_MS = 3000
 const NOTHING = () => {}
 
+/** Lo que dice la portada de carga del rival: el bot con sus límites, el de handtraps o el pasivo. */
+const rivalLine = (config: HandtrapConfig) => t(rivalKindOf(config) === 'bot' ? 'auto.rival.botLimits' : autoRival(config) ? 'auto.rival.handtraps' : 'auto.rival.passive')
+
 const connectLive: NonNullable<AutoSoloScreenProps['connect']> = (deck, options) => createAutoSession({ loader: createDataLoader(httpSource()), deck, transport: workerTransport(), ...options })
 
 export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSize, onExit, onManual, lab, resume, connect = connectLive }: AutoSoloScreenProps) {
@@ -103,7 +107,7 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   const fresh = useRef<number | undefined>(undefined)
   const [deal, setDeal] = useState(0)
   // La mesa manual de la que sigue (`resume`): cambiar las handtraps le suelta la mano del rival (reparte la semilla) y «Nueva mano», la mesa entera.
-  const [from, setFrom] = useState(() => resume && { ...resume, rival: resumedRival(resume.state.rival, handtraps) })
+  const [from, setFrom] = useState(() => resume && { ...resume, rival: rivalKindOf(handtraps) === 'bot' ? null : resumedRival(resume.state.rival, handtraps) })
 
   // Las cartas del deck (para la fila de una que no esté en ninguna base): se leen al armar la sesión; otro mapa con las mismas cartas no arma otra.
   const cardsRef = useRef(cardsById)
@@ -161,7 +165,7 @@ export function AutoSoloScreen({ mainIds, extraIds, cardsById, deckName, handSiz
   return live ? (
     <AutoDuel key={live.n} session={live.session} seat={live.seat} {...(redeal ? { redeal } : {})} cardsById={cardsById} deckName={deckName} onExit={onExit} {...(onManual ? { onManual } : {})} handtraps={handtraps} onHandtraps={changeHandtraps} lab={lab ?? NO_LAB} {...(from ? { resumed: { rival: from.rival, onNewHand: () => setFrom(undefined) } } : {})} />
   ) : (
-    <LoadingCover progress={{ done: 0, total: 0 }} rival={autoRival(handtraps) !== null} />
+    <LoadingCover progress={{ done: 0, total: 0 }} note={rivalLine(handtraps)} />
   )
 }
 
@@ -198,7 +202,10 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const rivalName = t('duel.bar.rival')
   // La mesa y las preguntas del núcleo (lo mismo que en el duelo por enlace): acá se puede cortar al núcleo y deshacer.
   // El rival de handtraps (con el simulador encendido y alguna carta): su mano boca arriba, como en el simulador manual (así se sabe qué tiene), salvo «A ciegas»: de dorso, y cada carta se ve al usarla.
+  // El bot, al revés: de dorso salvo «Mostrar la mano del bot» (una preferencia aparte: «A ciegas» sigue siendo la de las handtraps).
   const rivalOn = useMemo(() => autoRival(handtraps) !== null, [handtraps])
+  const kind = rivalKindOf(handtraps)
+  const facedown = kind === 'bot' ? !prefs.botHand : prefs.blind
   // «Seguir en modo manual»: el diálogo (`opened` lo vuelve a «Nada» cada vez que se abre) y la partida que pasa, calculada sólo con él abierto. Sin una mesa todavía (el núcleo
   // que no arrancó), una mano nueva: no hay nada que elegir.
   const [switching, setSwitching] = useState(false)
@@ -222,12 +229,12 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
         : undefined,
     [hasManual, session],
   )
-  const asks = useAutoAsks({ session, snap, cardsById, seat, canCancel: true, canUndo: true, waitingText: null, rivalName, rivalPhases: true, ...(rivalOn && !prefs.blind ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
+  const asks = useAutoAsks({ session, snap, cardsById, seat, canCancel: true, canUndo: true, waitingText: null, rivalName, rivalPhases: true, ...(rivalOn && !facedown ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
   const { nameOf, artOf } = asks
   // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo). Con la mesa de la práctica rearmada (`resumed`) la mano ya no es de apertura: sin chips.
   const chips = usePracticeChips(lab, asks.matSession)
-  // La hoja para cambiar las handtraps del rival.
-  const [choosing, setChoosing] = useState(false)
+  // La hoja del rival («Cambiar rival») y, desde ella, la de sus handtraps.
+  const [choosing, setChoosing] = useState<'rival' | 'handtraps' | null>(null)
   // «Guardar replay» (el final y «Más opciones»): el duelo como está al tocar guardar, desde tu lado (sin nombres: «Jugar solo» no los tiene).
   const [saving, setSaving] = useState(false)
   const openSave = useCallback(() => setSaving(true), [])
@@ -236,7 +243,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
     [session, seat],
   )
   const kept = resumed?.rival
-  const rivalDeal = useMemo(() => (kept ? { rival: { hand: kept.hand, used: [] }, names: kept.names } : dealRival(handtraps, snap.seed)), [kept, handtraps, snap.seed])
+  const rivalDeal = useMemo(() => (kept ? { rival: { hand: kept.hand, used: [] }, names: kept.names } : kind === 'bot' ? null : dealRival(handtraps, snap.seed)), [kept, kind, handtraps, snap.seed])
   const handover = useMemo(
     () => (switching ? manualHandover(snap, (id) => cardsById.get(id)?.name, rivalDeal ? { hand: rivalDeal.rival, names: rivalDeal.names } : undefined) : null),
     [switching, snap, cardsById, rivalDeal],
@@ -304,9 +311,9 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       ) : status === 'ended' && end ? (
         <EndCover end={end} lp={lp} seat={seat} rival={rivalName} onAgain={restart} onSave={openSave} onLog={openLog} {...(openManual ? { onManual: openManual } : {})} onExit={onExit} />
       ) : status === 'loading' ? (
-        <LoadingCover progress={progress} rival={rivalOn} />
+        <LoadingCover progress={progress} note={rivalLine(handtraps)} />
       ) : undefined,
-    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, rivalOn, openSave, openLog],
+    [fault, restart, recoverable, undo, openManual, onExit, status, end, lp, seat, rivalName, progress, handtraps, openSave, openLog],
   )
 
   // Las vidas van por asiento (las tuyas son las de `seat`): las de lo que la mesa ya contó (`asks.lp`).
@@ -326,26 +333,29 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       onSaveReplay: openSave,
       onBotLog: openLog,
       ...(openManual ? { onManual: openManual } : {}),
-      handtraps: {
-        on: rivalOn,
-        summary: rivalOn ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) }) : t('auto.bar.handtrapsOff'),
-        onChange: () => setChoosing(true),
+      rival: {
+        kind,
+        summary:
+          kind === 'bot'
+            ? t('auto.rival.botSummary', { deck: BOT_DECK_MENU.find((deck) => deck.id === handtraps.botDeck)?.name ?? '' })
+            : kind === 'handtraps'
+              ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) })
+              : t('auto.rival.kind.passive'),
+        onChange: () => setChoosing('rival'),
       },
-      blind: prefs.blind,
-      onBlind: (on) => setAutoPref('blind', on),
+      blind: facedown,
+      onBlind: (on) => (kind === 'bot' ? setAutoPref('botHand', !on) : setAutoPref('blind', on)),
     }),
-    [prefs.chain, prefs.place, prefs.blind, restart, openSave, openLog, openManual, rivalOn, handtraps],
+    [prefs.chain, prefs.place, restart, openSave, openLog, openManual, kind, facedown, handtraps],
   )
   const turn = reviewing ? asks.state.turn : asks.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying
   const { turnMine, lane } = asks
   // Otro duelo con otra semilla (otras cartas, también las del rival), sin volver a cargar el núcleo; «Reiniciar el mismo duelo» queda en «Más opciones».
   const newHand = useCallback(() => (resumed ? resumed.onNewHand() : redeal ? redeal() : session.restart(randomSeed())), [resumed, redeal, session])
-  // La hoja ya guardó las handtraps nuevas: el duelo se arma de nuevo con ellas (la misma semilla, como «Cambiar handtraps» de «Más opciones»).
-  const applyHandtraps = useCallback(() => onHandtraps(readHandtrapConfig()), [onHandtraps])
   const header = useMemo(
-    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} onHandtraps={applyHandtraps} lane={lane} dock {...options} />,
-    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, applyHandtraps, lane, options],
+    () => <AutoBar rivalName={rivalName} life={life} onRails={setRails} turn={turn} myTurn={turnMine} onExit={onExit} onUndo={undo} canUndo={canUndo} onNewHand={newHand} lane={lane} dock {...options} />,
+    [rivalName, life, turn, turnMine, onExit, undo, canUndo, newHand, lane, options],
   )
   // Escritorio sin laterales (Gastón, 2026-10-27, opción D2 «esquinas sin caja»): cada vida en su esquina, plana (sin placa, chapa, barra ni cartas en la mano): la del rival junto a su mano (arriba a la
   // derecha del campo, `corner`) y la tuya abajo a la izquierda, junto a la botonera, subida 12 px sobre el borde de la mano (`-mt-3`, como la placa: la fila no crece y el campo no se corre). Con
@@ -399,21 +409,31 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
           {...(chips.needCards || resumed ? {} : { footer: chips.footer, footerSummary: chips.summary, highlighted: chips.highlighted, highlightKind: chips.highlightKind, muted: chips.muted })}
         />
       </LifeHold>
-      {/* La hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
+      {/* «Cambiar rival» y, desde ella, la hoja del simulador de handtraps: aplicar (o apagarlo) arma el duelo de nuevo, con la misma semilla. */}
+      <RivalSheet
+        isOpen={choosing === 'rival'}
+        config={handtraps}
+        onClose={() => setChoosing(null)}
+        onApply={(next) => {
+          setChoosing(null)
+          onHandtraps(next)
+        }}
+        onChooseHandtraps={() => setChoosing('handtraps')}
+      />
       <HandtrapPicker
-        isOpen={choosing}
+        isOpen={choosing === 'handtraps'}
         config={handtraps}
         auto
-        onClose={() => setChoosing(false)}
+        onClose={() => setChoosing(null)}
         onSave={(picks, hand, extra, ownTurn) => {
-          setChoosing(false)
+          setChoosing(null)
           onHandtraps({ enabled: true, picks, hand, extra, ownTurn })
         }}
-        {...(handtraps.enabled
+        {...(kind === 'handtraps'
           ? {
               onTurnOff: () => {
-                setChoosing(false)
-                onHandtraps({ ...handtraps, enabled: false })
+                setChoosing(null)
+                onHandtraps(withRival(handtraps, 'passive'))
               },
             }
           : {})}

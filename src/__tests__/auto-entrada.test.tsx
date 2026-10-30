@@ -113,7 +113,10 @@ describe('«Modo del duelo», en las reglas de Jugar', () => {
     expect(within(rules).getByRole('switch', { name: 'Handtraps del rival' })).toBeInTheDocument()
     fireEvent.click(within(solo).getByRole('radio', { name: 'Automático' }))
     expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([true, 'on'])
-    expect(within(rules).getByText(/^Beta: el núcleo aplica las reglas. El rival no juega su turno/)).toBeInTheDocument()
+    expect(within(rules).getByText(/^El núcleo aplica las reglas por los dos; contra quién jugás lo elegís en «Rival»/)).toBeInTheDocument()
+    // Con el automático, el simulador de siempre pasa a ser «Rival: Pasivo · Handtraps · Bot».
+    expect(within(rules).queryByRole('switch', { name: 'Handtraps del rival' })).toBeNull()
+    expect(within(within(rules).getByRole('radiogroup', { name: 'Rival' })).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Pasivo', 'Handtraps', 'Bot'])
   })
 
   it('sin deck, «Entrenar solo» dice que falta', () => {

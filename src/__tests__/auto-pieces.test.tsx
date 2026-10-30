@@ -481,10 +481,9 @@ describe('AutoBar', () => {
     onUndo: () => {},
     canUndo: false,
     onNewHand: () => {},
-    onHandtraps: () => {},
     onChain: () => {},
     onPlace: () => {},
-    handtraps: { on: false, summary: 'Apagadas: el rival no usa nada.', onChange: () => {} },
+    rival: { kind: 'passive' as const, summary: 'Pasivo', onChange: () => {} },
     blind: false,
     onBlind: () => {},
   }
@@ -592,15 +591,15 @@ describe('AutoBar', () => {
     expect(onChain).toHaveBeenCalledWith('never')
     expect(onPlace).toHaveBeenCalledWith('auto')
     expect(dialog).toHaveTextContent('El rival no juega: sólo recibe.')
-    // Sin handtraps: «Apagadas» y sin «A ciegas».
-    expect(dialog).toHaveTextContent('Handtraps del rivalApagadas: el rival no usa nada.')
+    // El pasivo: «Rival · Pasivo» y sin «A ciegas».
+    expect(dialog).toHaveTextContent('RivalPasivoCambiar rival')
     expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
   })
 
-  it('«Más opciones» con handtraps: lo que tiene, «Cambiar handtraps» (cierra y abre la hoja) y «A ciegas»; ya no dice que el rival no juega', () => {
+  it('«Más opciones» con handtraps: lo que tiene, «Cambiar rival» (cierra y abre la hoja) y «A ciegas»; ya no dice que el rival no juega', () => {
     const onChange = vi.fn()
     const onBlind = vi.fn()
-    render(<AutoBar {...props} handtraps={{ on: true, summary: 'Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano', onChange }} onBlind={onBlind} />)
+    render(<AutoBar {...props} rival={{ kind: 'handtraps', summary: 'Ash Blossom & Joyous Spring, Effect Veiler · 2 en la mano', onChange }} onBlind={onBlind} />)
 
     tapMenu('Opciones del duelo')
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
@@ -609,9 +608,26 @@ describe('AutoBar', () => {
     expect(dialog).not.toHaveTextContent('El rival no juega')
     fireEvent.click(within(dialog).getByRole('switch', { name: 'A ciegas' }))
     expect(onBlind).toHaveBeenCalledWith(true)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cambiar handtraps' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cambiar rival' }))
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog', { name: 'Más opciones del duelo' })).toBeNull()
+  })
+
+  it('«Más opciones» con el bot: «Bot · su mazo» y «Mostrar la mano del bot» (lo contrario de la mano de dorso), en vez de «A ciegas»; el ⋯ dice «Rival · Bot»', () => {
+    const onBlind = vi.fn()
+    render(<AutoBar {...props} rival={{ kind: 'bot', summary: 'Bot · Sky Striker', onChange: () => {} }} blind onBlind={onBlind} />)
+
+    expect(menuRow('Rival')).toHaveTextContent('Bot')
+    tapMenu('Opciones del duelo')
+    const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
+
+    expect(dialog).toHaveTextContent('RivalBot · Sky Striker')
+    expect(within(dialog).queryByRole('switch', { name: 'A ciegas' })).toBeNull()
+    const show = within(dialog).getByRole('switch', { name: 'Mostrar la mano del bot' })
+
+    expect(show).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(show)
+    expect(onBlind).toHaveBeenCalledWith(false)
   })
 
   it('la línea: «resolviendo» con «Cancelar» recién a los 1,5 s; la cadena con «No responder», enmarcada; sin botones, sólo informa', () => {

@@ -3,19 +3,20 @@ import { useSyncExternalStore } from 'react'
 /**
  * Las preferencias del duelo automático (beta), recordadas en el navegador. `duel` es «Modo del duelo» de las reglas de Jugar: automático, «Entrenar solo» abre la mesa contra el núcleo de
  * reglas y la sala que se abre tiene reglas automáticas; manual, la mesa manual de siempre. `chain`, «Respuestas: Siempre · Cuando importa · Nunca»; `place`, «Casilla: preguntar · automática»; `blind`, «A ciegas»: la mano del rival de
- * handtraps de dorso; `first`, quién empieza en jugar solo (`seatOf`). No importa nada de `auto/`: lo lee el lobby. La bandera de antes (`?auto=1`, `ygo-lab:auto-flag`) ya no existe: el modo lo ve todo el mundo y la clave vieja se ignora.
+ * handtraps de dorso; `botHand`, «Mostrar la mano del bot» (apagado de entrada: la del rival «Bot» va de dorso, aparte de «A ciegas»); `first`, quién empieza en jugar solo (`seatOf`). No importa nada de `auto/`: lo lee el lobby. La bandera de antes (`?auto=1`, `ygo-lab:auto-flag`) ya no existe: el modo lo ve todo el mundo y la clave vieja se ignora.
  */
 export interface AutoPrefs {
   duel: boolean
   chain: 'always' | 'ask' | 'never'
   place: 'ask' | 'auto'
   blind: boolean
+  botHand: boolean
   first: 'me' | 'rival' | 'random'
 }
 
-export const AUTO_KEYS = { duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place', blind: 'ygo-lab:auto-blind', first: 'ygo-lab:auto-first' } as const
+export const AUTO_KEYS = { duel: 'ygo-lab:auto-duel', chain: 'ygo-lab:auto-chain', place: 'ygo-lab:auto-place', blind: 'ygo-lab:auto-blind', botHand: 'ygo-lab:auto-bot-hand', first: 'ygo-lab:auto-first' } as const
 /** Lo de quien no tocó nada. `duel: true` (Gastón, 2026-10-27: «la idea es que siempre se juegue en automático»): se arranca en el automático donde se puede (`canRunAuto`); quien lo apagó lo sigue teniendo apagado. */
-export const DEFAULT_AUTO_PREFS: AutoPrefs = { duel: true, chain: 'ask', place: 'ask', blind: false, first: 'me' }
+export const DEFAULT_AUTO_PREFS: AutoPrefs = { duel: true, chain: 'ask', place: 'ask', blind: false, botHand: false, first: 'me' }
 
 /** El núcleo corre en WebAssembly y en un Worker: un navegador sin alguno de los dos no lo puede correr, y entonces el interruptor va apagado y la preferencia no se usa. */
 export const canRunAuto = (scope: { WebAssembly?: unknown; Worker?: unknown } = globalThis): boolean => typeof scope.WebAssembly === 'object' && typeof scope.Worker === 'function'
@@ -48,6 +49,7 @@ export function readAutoPrefs(storage: () => Storage = () => localStorage): Auto
     chain: chain === 'never' || chain === 'always' ? chain : 'ask',
     place: get(AUTO_KEYS.place) === 'auto' ? 'auto' : 'ask',
     blind: get(AUTO_KEYS.blind) === 'on',
+    botHand: get(AUTO_KEYS.botHand) === 'on',
     first: first === 'rival' || first === 'random' ? first : 'me',
   }
 }

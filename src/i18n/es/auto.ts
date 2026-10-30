@@ -4,7 +4,7 @@ export const auto = {
   'auto.mode.label': 'Modo del duelo',
   'auto.mode.auto': 'Automático',
   'auto.mode.manual': 'Manual',
-  'auto.mode.soloHint': 'Beta: el núcleo aplica las reglas. El rival no juega su turno: sólo usa las handtraps que le des.',
+  'auto.mode.soloHint': 'El núcleo aplica las reglas por los dos; contra quién jugás lo elegís en «Rival».',
   'auto.mode.manualHint': 'Movés las cartas vos y las reglas las aplican los duelistas, como en una mesa de verdad.',
   // Quién empieza en «Jugar solo» automático, en la hoja de reglas de Jugar (si empieza el rival, pasa su turno y vos robás en el 2).
   'auto.first.label': 'Quién empieza',
@@ -17,6 +17,21 @@ export const auto = {
   'auto.rival.handtraps': 'El rival no juega su turno: usa sus handtraps solo, contra lo que hacés, cuando las reglas lo dejan.',
   // El cartel de la carta que el rival activa en respuesta (su nombre ya va debajo de la carta).
   'auto.rival.responds': '{name} responde a {to}',
+  // «Rival» de las reglas de Jugar solo automático y de «Opciones del duelo»: Pasivo · Handtraps · Bot. Con Bot, su mazo, lo que es, sus límites y su mano.
+  'auto.rival.label': 'Rival',
+  'auto.rival.kind.passive': 'Pasivo',
+  'auto.rival.kind.handtraps': 'Handtraps',
+  'auto.rival.kind.bot': 'Bot',
+  'auto.rival.botSummary': 'Bot · {deck}',
+  'auto.rival.botLimits': 'Sparring de práctica: juega su mazo con reglas escritas para ese mazo y sólo ve lo que vería un jugador. No es un rival de torneo: no improvisa ni cuenta tus outs.',
+  'auto.rival.deck.skyStriker': 'Magias Rápidas, Enlaces y mucha interacción.',
+  'auto.rival.deckTitle': 'Mazo del bot',
+  'auto.rival.deckChange': 'Cambiar mazo',
+  'auto.rival.botHand': 'Mostrar la mano del bot',
+  'auto.rival.botHandHint': 'Para aprender: ves sus cartas. Él nunca ve las tuyas.',
+  'auto.rival.change': 'Cambiar rival',
+  'auto.rival.playPassive': 'Jugar contra el pasivo',
+  'auto.rival.playBot': 'Jugar contra el bot',
 
   // «Qué hizo el bot y por qué» (la hoja del final y de «Opciones del duelo»): un bloque por turno con lo que decidió el rival automático, y sus límites.
   'auto.bot.log.title': 'Qué hizo el bot y por qué',
@@ -27,7 +42,7 @@ export const auto = {
   'auto.bot.log.turnBot': 'Turno {turn} · bot',
   'auto.bot.log.limits': 'Sparring de práctica: decide con reglas escritas y sólo ve lo que vería un jugador. No es un rival de torneo: no improvisa ni cuenta tus outs.',
   'auto.bot.log.passiveTitle': 'El rival no juega',
-  'auto.bot.log.passive': 'Con el rival pasivo no hay decisiones que contar. Prendé sus handtraps en «Opciones del duelo» para verlo responder.',
+  'auto.bot.log.passive': 'Con el rival pasivo no hay decisiones que contar. Elegí Handtraps o Bot en «Rival», de «Opciones del duelo», para verlo decidir.',
   'auto.bot.log.emptyTitle': 'Todavía no decidió nada',
   'auto.bot.log.empty': 'Cuando use o guarde una handtrap, o termine su turno, lo vas a ver acá.',
   // Los motivos del bot (en primera persona: habla el rival). {card} es su carta y {to}, la tuya.
@@ -230,8 +245,6 @@ export const auto = {
   'auto.bar.saveReplayHint': 'Guardá el duelo como está, para mirarlo o compartirlo desde Replays.',
   // Las handtraps del rival (el simulador de «Jugar solo») y la mano del rival de dorso.
   'auto.bar.handtrapsOn': '{cards} · {hand} en la mano',
-  'auto.bar.handtrapsOff': 'Apagadas: el rival no usa nada.',
-  'auto.bar.handtrapsChange': 'Cambiar handtraps',
   'auto.bar.blind': 'A ciegas',
   'auto.bar.blindHint': 'La mano del rival se ve de dorso: cada carta se ve cuando la usa.',
   // El ATK y la DEF de ahora en el detalle de la carta, cuando difieren de los impresos.
