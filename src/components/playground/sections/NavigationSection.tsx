@@ -89,9 +89,9 @@ function ReplayDemo({ className, split = false }: { className?: string; /** Part
   }
 
   return split ? (
-    <div className={cx('grid gap-3', className)}>
-      <ReplayTimeline {...timeline} />
+    <div className={cx('grid', className)}>
       <ReplayTransport total={DEMO_MARKS.length} {...transport} />
+      <ReplayTimeline {...timeline} />
     </div>
   ) : (
     <ReplayBar className={className} {...timeline} {...transport} />
@@ -469,7 +469,7 @@ export function NavigationSection() {
         </div>
       </Specimen>
 
-      <Specimen title="Controles del replay · partidos" layout="free" note={<>«Jugar solo automático» en el celular, repasando un combo: la línea de tiempo y la lista de pasos van arriba, debajo del aviso «Repasás “…”» (que dice qué paso se mira), y los botones abajo, en un renglón de 48 px al alcance del pulgar: volver al principio a la izquierda, anterior, reproducir y siguiente al medio y la velocidad a la derecha (todos de 44 px con el dedo). Tu mano se achica para quedar entera arriba de ellos y el campo no se mueve. En la mesa los separa la mesa; acá van juntos. Archivo: <Tag>probability/ReplayBar.tsx</Tag> (<Tag>ReplayTimeline</Tag> y <Tag>ReplayTransport</Tag>)</>}>
+      <Specimen title="Controles del replay · partidos" layout="free" note={<>«Jugar solo automático» en el celular, repasando un combo: el aviso «Repasás “…”» dice arriba qué paso se mira y abajo, al alcance del pulgar, van los botones en un renglón de 48 px (volver al principio a la izquierda, anterior, reproducir y siguiente al medio y la velocidad a la derecha, todos de 44 px con el dedo) y, debajo, la línea de tiempo con la lista de pasos. Tu mano se achica y el campo y ella suben lo que mide la línea de tiempo, para quedar enteros arriba de los dos renglones. El replay de un duelo los usa en el mismo orden. Archivo: <Tag>probability/ReplayBar.tsx</Tag> (<Tag>ReplayTimeline</Tag> y <Tag>ReplayTransport</Tag>)</>}>
         <div className="w-full max-w-[23.4rem] rounded-card border border-border-subtle p-3">
           <ReplayDemo split />
         </div>

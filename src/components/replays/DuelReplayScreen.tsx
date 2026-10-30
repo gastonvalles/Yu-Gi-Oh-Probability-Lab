@@ -144,7 +144,6 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
             <span className="block truncate text-micro font-semibold text-muted tabular-nums">{cursor === 0 ? t('meta.duels.start') : result ? `${t('meta.duels.step', { n: cursor, total })} · ${result}` : t('meta.duels.step', { n: cursor, total })}</span>
             {cursor > 0 ? <span className="line-clamp-2">{describe(cursor)}</span> : null}
           </p>
-          <ReplayTimeline marks={marks} cursor={cursor} describe={describe} onSeek={(at) => { setPlaying(false); setCursor(at) }} />
           <ReplayTransport
             total={total}
             cursor={cursor}
@@ -169,6 +168,8 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
             }}
             onSpeed={setSpeed}
           />
+          {/* La línea de tiempo, debajo de los botones (como la del repaso en el celular). */}
+          <ReplayTimeline marks={marks} cursor={cursor} describe={describe} onSeek={(at) => { setPlaying(false); setCursor(at) }} />
         </div>
       </div>
     </div>

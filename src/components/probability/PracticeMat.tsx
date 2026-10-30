@@ -136,6 +136,8 @@ const MOBILE_HAND_GAP = 14
  * transformación: no cambia el alto del grupo que se centra, así que el campo no se mueve al entrar ni al salir del repaso. Medido a 360 × 640–430 × 932: las cartas terminan 4–6 px arriba de los botones.
  */
 const REVIEW_HAND: CSSProperties = { transform: 'translateY(4px) scale(0.72)', transformOrigin: '50% 0' }
+/** Con el replay partido, el campo y tu mano suben lo que mide la línea de tiempo (44 px, pegada a los botones: sus pastillas ya llevan aire): ella pasó de arriba (debajo del aviso) a abajo, debajo de los botones. También es una transformación. */
+const REVIEW_LIFT = '-translate-y-11'
 
 /** Lo que baja el aviso de la cadena desde el borde de la barra: el aviso de la línea (44 px) va justo debajo de ella, y el de la cadena, debajo de ese. */
 const CHAIN_BELOW_BAR_PX = 52
@@ -2518,16 +2520,14 @@ function PracticeMatBody({
         onSpeed={setSpeed}
       />
     ) : null
-  // «Jugar solo automático» en el celular, sin la fila de abajo (Gastón, 2026-10-27, opción B): el replay se parte. Arriba, en el aviso del repaso, qué paso se mira y, debajo, la línea de tiempo con
-  // la lista (`MatReplayContext`, en la franja de la mano del rival, vacía al repasar); abajo, los botones en un renglón. Tu mano se achica (`REVIEW_HAND`) para quedar entera arriba de ellos.
+  // «Jugar solo automático» en el celular, sin la fila de abajo (Gastón, 2026-10-27, opción B): el replay se parte. Arriba, en el aviso del repaso, qué paso se mira (`MatReplayContext`); abajo, los
+  // botones en un renglón y, debajo, la línea de tiempo con la lista (Gastón, 2026-10-29: «chips de replay debajo del reproductor»). Tu mano se achica (`REVIEW_HAND`) y el campo y ella suben
+  // (`REVIEW_LIFT`) lo que dejó libre arriba la línea de tiempo, para quedar enteros arriba de los dos renglones.
   const splitReplay = bare && replayBar !== null
   const replayLink = splitReplay
-    ? {
-        step: session.cursor === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepShort', { step: session.cursor, total: session.actions.length, text: steps[session.cursor - 1] ?? '' }),
-        timeline: <ReplayTimeline marks={replayMarks} cursor={session.cursor} describe={describeStep} onSeek={onSeek} onOpenSteps={openSteps} />,
-      }
+    ? { step: session.cursor === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepShort', { step: session.cursor, total: session.actions.length, text: steps[session.cursor - 1] ?? '' }) }
     : null
-  // La carta grande del repaso partido va entre la línea de tiempo (en la barra) y la fila del medio del campo: la mitad del rival, vacía mientras se repasa. Se mide al entrar y al cambiar el tamaño.
+  // La carta grande del repaso partido va entre el aviso (en la barra) y la fila del medio del campo: la mitad del rival, vacía mientras se repasa. Se mide al entrar y al cambiar el tamaño.
   useLayoutEffect(() => {
     const section = sectionRef.current
 
@@ -2535,7 +2535,7 @@ function PracticeMatBody({
 
     const place = () => {
       const top = section.getBoundingClientRect().top
-      const from = section.querySelector('[data-replay-timeline]')?.getBoundingClientRect().bottom
+      const from = section.querySelector('[data-lane]')?.getBoundingClientRect().bottom
       const mid = Math.min(...[...section.querySelectorAll('[data-drop^="emz:"]')].map((zone) => zone.getBoundingClientRect().top))
 
       if (from === undefined || !Number.isFinite(mid)) return
@@ -2682,7 +2682,7 @@ function PracticeMatBody({
           </MatSaveContext.Provider>
         </DuelRailsContext.Provider>
         {/* En un duelo el campo y tu mano van en un mismo grupo, centrado: el aire que sobra queda arriba y abajo del grupo y no entre los dos (la mano tapa un poco de tu zona de magias y trampas). */}
-        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative my-auto flex flex-col gap-2', !bare && 'max-[1101px]:pb-12')) : 'contents')}>
+        <div className={cx(duel ? (rails ? '@container col-start-2 row-span-4 row-start-1 flex flex-col gap-2 self-center' : cx('relative my-auto flex flex-col gap-2', !bare && 'max-[1101px]:pb-12', splitReplay && REVIEW_LIFT)) : 'contents')}>
         {/* Las vidas del rival en la esquina de arriba a la derecha (sin laterales): apoyadas sobre el borde del campo, en el aire que se le deja a su mano (que va al centro). Flotan: no corren nada. */}
         {duel?.corner && !rails && (isDesktop || duel.rivalHand) ? (
           <div data-corner="theirs" className="absolute right-0 z-20 -translate-y-full" style={{ top: isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room }}>
@@ -2910,8 +2910,11 @@ function PracticeMatBody({
         {bare ? (
           <div className="pointer-events-none absolute inset-x-1.5 bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] z-55 h-11" data-mat-float="">
             {splitReplay ? (
-              <div className="pointer-events-auto absolute inset-x-0 bottom-0">
+              <div className="pointer-events-auto absolute inset-x-0 bottom-0 grid">
                 <ReplayTransport total={replayMarks.length} cursor={session.cursor} playing={autoplay} playLabel={replayLabel} speed={speed} onTogglePlay={togglePlay} onRestart={restart} onPrevious={previousStep} onNext={nextStep} onSpeed={setSpeed} />
+                <div data-replay-timeline="">
+                  <ReplayTimeline marks={replayMarks} cursor={session.cursor} describe={describeStep} onSeek={onSeek} onOpenSteps={openSteps} />
+                </div>
               </div>
             ) : null}
             {status}

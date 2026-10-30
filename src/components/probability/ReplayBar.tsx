@@ -316,7 +316,7 @@ export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playL
 
 /**
  * El replay partido, abajo (Gastón, 2026-10-27, opción B: «dónde estás arriba, los botones abajo»): lo que se toca seguido en un renglón de 48 px, al alcance del pulgar: volver al principio a la
- * izquierda, anterior, el botón grande y siguiente al medio, y la velocidad a la derecha. Todos de 44 px con el dedo (el grande, 48). La línea de tiempo va arriba (`ReplayTimeline`).
+ * izquierda, anterior, el botón grande y siguiente al medio, y la velocidad a la derecha. Todos de 44 px con el dedo (el grande, 48). La línea de tiempo va debajo (`ReplayTimeline`; Gastón, 2026-10-29).
  */
 export const ReplayTransport = memo(function ReplayTransport({ total, cursor, playing, playLabel, speed, onTogglePlay, onRestart, onPrevious, onNext, onSpeed, className }: TransportProps) {
   return (
@@ -330,7 +330,7 @@ export const ReplayTransport = memo(function ReplayTransport({ total, cursor, pl
   )
 })
 
-/** El replay partido, arriba: la línea de tiempo (44 px de alto para tocarla) y, a su derecha, la lista de pasos. Va debajo del aviso que dice qué se repasa y qué paso es. */
+/** El replay partido, debajo de los botones: la línea de tiempo (44 px de alto para tocarla) y, a su derecha, la lista de pasos (en el replay de un duelo, sin ella). */
 export const ReplayTimeline = memo(function ReplayTimeline({ marks, cursor, describe, onSeek, onOpenSteps, className }: TimelineRowProps) {
   return (
     <div className={cx('flex items-center gap-1.5', className)}>
