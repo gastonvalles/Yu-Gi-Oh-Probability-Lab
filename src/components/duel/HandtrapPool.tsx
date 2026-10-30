@@ -166,9 +166,9 @@ interface Draft {
 
 const CATALOG_IDS = new Set(HANDTRAP_CATALOG.map((card) => card.id))
 
-/** En el duelo automático, lo que la carta dice debajo de su nombre: nada si el rival la usa solo; las de su turno, según «El rival juega su turno». */
+/** En el duelo automático, lo que la carta dice debajo de su nombre: nada si el rival la usa solo; las de su turno y las demás (un monstruo lo Invoca de relleno), según «El rival juega su turno». */
 const noteOf = (id: number, ownTurn: boolean): { note?: string } =>
-  AUTO_RULES[id] ? {} : TURN_RULES[id] ? { note: t(ownTurn ? 'handtraps.picker.turnCard' : 'handtraps.picker.turnOnly') } : { note: t('handtraps.picker.notAuto') }
+  AUTO_RULES[id] ? {} : TURN_RULES[id] ? { note: t(ownTurn ? 'handtraps.picker.turnCard' : 'handtraps.picker.turnOnly') } : { note: t(ownTurn ? 'handtraps.picker.filler' : 'handtraps.picker.notAuto') }
 
 /**
  * Lo que una Dominus elegida le deja sin usar al rival (`dominusLocks`), con el Atributo de cada carta de YGOPRODeck: se pide sólo con una Dominus en la lista y una vez por carta.

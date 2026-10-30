@@ -35,6 +35,7 @@ export const handtraps = {
   'handtraps.picker.ownTurnHint': 'Invoca, coloca, activa sus cartas y ataca: tus combos pueden terminar con daño.',
   'handtraps.picker.turnCard': 'La juega en su turno',
   'handtraps.picker.turnOnly': 'La usa sólo si juega su turno',
+  'handtraps.picker.filler': 'Sin regla: si es un monstruo, lo Invoca',
   'handtraps.picker.dominus': 'Con {dominus}, el rival ya no podrá usar {cards} después.',
   'handtraps.picker.turnOff': 'Apagar el simulador',
 

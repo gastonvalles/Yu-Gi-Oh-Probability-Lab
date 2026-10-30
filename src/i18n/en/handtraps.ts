@@ -35,6 +35,7 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.picker.ownTurnHint': 'It Summons, Sets, activates its cards and attacks: your combos may end with damage.',
   'handtraps.picker.turnCard': 'It plays it on its turn',
   'handtraps.picker.turnOnly': 'It only uses it if it plays its turn',
+  'handtraps.picker.filler': "No rule: if it's a monster, it Summons it",
   'handtraps.picker.dominus': 'With {dominus}, the rival can no longer use {cards} afterwards.',
   'handtraps.picker.turnOff': 'Turn the simulator off',
 
