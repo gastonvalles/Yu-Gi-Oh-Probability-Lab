@@ -44,6 +44,8 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
   { id: 24508238, name: 'D.D. Crow' },
   // La «Impulse» de Andrés: de las cinco cartas con ese nombre es la única handtrap para cualquier deck (Rescue-ACE Impulse también sale de la mano, pero es de su arquetipo).
   { id: 40366667, name: 'Dominus Impulse' },
+  // Su par (busca en vez de Invocar): cada una con su propio «1 por turno», así que el rival puede usar las dos en el mismo turno.
+  { id: 97045737, name: 'Dominus Purge' },
   { id: 42141493, name: 'Mulcharmy Fuwalos' },
   { id: 84192580, name: 'Mulcharmy Purulia' },
   { id: 87126721, name: 'Mulcharmy Meowls' },
@@ -73,6 +75,7 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   38814750: 'respond', // PSY-Framegear Gamma
   24508238: 'graveyard', // D.D. Crow
   40366667: 'respond', // Dominus Impulse
+  97045737: 'respond', // Dominus Purge
   42141493: 'draw', // Mulcharmy Fuwalos
   84192580: 'draw', // Mulcharmy Purulia
   87126721: 'draw', // Mulcharmy Meowls

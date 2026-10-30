@@ -173,7 +173,7 @@ describe('lo que se recuerda del simulador', () => {
 
     writeHandtrapConfig(config, () => storage)
     expect(readHandtrapConfig(() => storage)).toEqual(config)
-    expect(poolCount(readHandtrapConfig(() => storage).picks)).toBe(47)
+    expect(poolCount(readHandtrapConfig(() => storage).picks)).toBe(50)
   })
 
   it('lo guardado antes de la mano de 1 a 5 (sin `hand`) sigue valiendo: sus cartas son el deck del rival y la mano es de 3', () => {

@@ -29,6 +29,7 @@ const DROLL = 94145022
 const GAMMA = 38814750
 const CROW = 24508238
 const DOMINUS = 40366667
+const PURGE = 97045737
 const FUWALOS = 42141493
 const PURULIA = 84192580
 const MEOWLS = 87126721
@@ -70,7 +71,7 @@ const has = (events: readonly WireEvent[], test: (event: WireEvent) => boolean) 
 const drewRival = (events: readonly WireEvent[]) => has(events, (event) => event.type === 'draw' && event.player === 1)
 const negatedLink = (events: readonly WireEvent[], kind: 'chain_disabled' | 'chain_negated', link: number) => has(events, (event) => event.type === kind && event.chain_size === link)
 /** Las handtraps de los escenarios que niegan un eslabón (`chain_negated` o `chain_disabled`). */
-const NEGATES = new Set([ASH, VEILER, IMPERM, BELLE, GAMMA, DOMINUS, DELTA])
+const NEGATES = new Set([ASH, VEILER, IMPERM, BELLE, GAMMA, DOMINUS, PURGE, DELTA])
 /**
  * Las que niegan con un efecto que queda (los efectos del monstruo, hasta el final del turno): el núcleo dice «sin efecto» cuando le llega el turno al eslabón negado, no mientras se resuelve
  * la handtrap, así que no se sabe quién fue (sin `by`: la pantalla dice sólo «Sin efecto»).
@@ -215,6 +216,14 @@ const SCENARIOS: Scenario[] = [
     check: (after) => (negatedLink(after, 'chain_disabled', 1) && !moved(after, AVIAN, L.GRAVE, L.MZONE) ? null : 'Monster Reborn no quedó negada'),
   },
   {
+    card: PURGE,
+    deck: [[SOGEN, 1], ...SPELLS],
+    hand: [TERRAFORMING],
+    steps: [{ do: 'activate', code: TERRAFORMING }],
+    // Niega Terraforming (suma del deck a la mano): el Sogen no llega a tu mano.
+    check: (after) => (negatedLink(after, 'chain_disabled', 1) && !moved(after, SOGEN, L.DECK, L.HAND) ? null : 'Terraforming no quedó negada'),
+  },
+  {
     card: FUWALOS,
     deck: SPELLS,
     extra: [[LINKURIBOH, 1]],
@@ -351,6 +360,17 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     expect(negators).toEqual(negators.map(() => (BY_UNKNOWN.has(scenario.card) ? null : scenario.card)))
     expect(handAtStart).toEqual([scenario.card])
     expect(snapshot.rivalHand).not.toContain(scenario.card)
+  })
+
+  it('Dominus Impulse y Dominus Purge en la misma mano: cada una tiene su «1 por turno», así que usa las dos en tu turno (antes Purge no tenía regla y la guardaba)', async () => {
+    const picks = [DOMINUS, PURGE].map((id) => ({ id, name: names.get(id) ?? '', copies: 1 }))
+    const steps: Step[] = [{ do: 'activate', code: TERRAFORMING }, { do: 'activate', code: FOOLISH }, { do: 'activate', code: REBORN }]
+    const { events, snapshot } = await duel({ deck: [[SOGEN, 1], [AVIAN, 1], ...SPELLS], hand: [TERRAFORMING, FOOLISH, REBORN], steps }, { enabled: true, picks, hand: 2 })
+
+    expect(snapshot.fault).toBeNull()
+    // Purge contra Terraforming (suma del deck) e Impulse contra Monster Reborn (Invoca).
+    expect(events.flatMap((event) => (event.type === 'chaining' && event.controller === 1 ? [event.code] : []))).toEqual([PURGE, DOMINUS])
+    expect(moved(events, SOGEN, L.DECK, L.HAND) || moved(events, AVIAN, L.GRAVE, L.MZONE)).toBe(false)
   })
 
   describe('el Extra Deck del rival y Fydraulis Harmonia (revela hasta 5 Sincros de su Extra y manda uno al cementerio)', () => {
