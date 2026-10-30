@@ -1653,9 +1653,11 @@ function PracticeMatBody({
       if (!where) return
 
       if (target.kind === 'pile') {
-        if (where.kind === 'pile' && where.pile === target.pile) return
-        // Un Monstruo de Péndulo del campo soltado en el cementerio va al Extra Deck boca arriba (regla de Péndulo).
-        onDispatch(pileAction(state, source.id, target.pile, kindOf))
+        // Un Monstruo de Péndulo del campo soltado en el cementerio va al Extra Deck boca arriba (regla de Péndulo); uno del Extra soltado en la mano o el deck, al Extra:
+        // si ya estaba en esa pila, no pasa nada.
+        const action = pileAction(state, source.id, target.pile, kindOf)
+        if (where.kind === 'pile' && action.type === 'move' && action.to === where.pile) return
+        onDispatch(action)
         return
       }
 
