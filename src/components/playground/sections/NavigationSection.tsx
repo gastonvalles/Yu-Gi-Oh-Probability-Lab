@@ -227,7 +227,7 @@ function StepListSamples() {
         </div>
         {/* Una sola lista (un combo largo dibuja muchas fichas): el ancho se elige. */}
         <Segmented label="Ancho de la muestra" variant="chips" size="sm" value={width} onChange={setWidth} options={(Object.keys(STEP_LIST_WIDTHS) as StepListWidth[]).map((key) => ({ value: key, label: STEP_LIST_WIDTHS[key].label }))} />
-        <div className={cx('h-[44rem] max-w-full overflow-hidden rounded-card border border-border-subtle bg-background p-3', STEP_LIST_WIDTHS[width].className)}>
+        <div className={cx('h-[44rem] max-w-full overflow-y-auto overflow-x-hidden rounded-card border border-border-subtle bg-background p-3', STEP_LIST_WIDTHS[width].className)}>
           <PracticeMatPanel steps={steps} initial={combo.initial} cursor={cursor} onSeek={setCursor} nameOf={combo.nameOf} artOf={combo.artOf} combos={NO_COMBOS} deckName="" onLoad={noop} onRename={noop} onDelete={noop} showCombos={false} className="h-full" />
         </div>
       </Specimen>

@@ -110,7 +110,7 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
               <Switch checked={details} onChange={toggleDetails} label={t('practice.panel.details')} />
             </div>
             {/* Una línea de tiempo: la última jugada arriba, como un registro, y la mano inicial al final. */}
-            <ol className={cx('m-0 grid list-none content-start overflow-y-auto overflow-x-hidden p-0', details ? 'gap-2' : 'gap-1')} aria-label={t('practice.panel.plays')}>
+            <ol className={cx('m-0 grid list-none content-start p-0 min-[1101px]:overflow-y-auto min-[1101px]:overflow-x-hidden', details ? 'gap-2' : 'gap-1')} aria-label={t('practice.panel.plays')}>
               {steps
                 .map((step, index) => (
                   <StepTile
@@ -203,7 +203,8 @@ export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, 
   return (
     <>
       {importer}
-      <ul className="m-0 grid list-none content-start gap-2 overflow-y-auto p-0" aria-label={t('practice.panel.saved')}>
+      {/* Un solo scroll por panel: en el celular lo lleva el diálogo; en escritorio, que acota el alto, la lista (si no, el ⋯ de la última ficha quedaba adentro de un scroll metido en otro). */}
+      <ul className="m-0 grid list-none content-start gap-2 p-0 min-[1101px]:overflow-y-auto" aria-label={t('practice.panel.saved')}>
         {ordered.map((combo) => (
           <li key={combo.id} className="grid gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
             {/* El nombre y los datos arriba, con todo el ancho (con tres botones al lado el nombre quedaba en unas quince letras); las acciones, abajo. */}
