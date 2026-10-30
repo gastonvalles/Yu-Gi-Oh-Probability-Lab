@@ -104,11 +104,17 @@ describe.skipIf(!hasCoreData)('deshacer en el duelo por enlace con el núcleo re
     let hostLink: OnlineLink = makeHost()
     const guestLink = createGuestLink({ transport: guestEnd, source, deck: lists[guestId]!, now })
 
-    host.subscribe(() => hostLink.observe(host.getSnapshot()))
+    // Dice en qué paso se colgó y cómo quedó cada enlace (un `false` solo no dice nada).
+    const wait = async (label: string, done: () => boolean, ms?: number) => {
+      const ok = await pump(room, done, ms)
+
+      expect(ok, `${label}: el anfitrión en «${hostLink.getSnapshot().phase}», el invitado en «${guestLink.getSnapshot().phase}»`).toBe(true)
+    }
+    const offHost = host.subscribe(() => hostLink.observe(host.getSnapshot()))
     guest.subscribe(() => guestLink.observe(guest.getSnapshot()))
     hostLink.observe(host.getSnapshot())
     guestLink.observe(guest.getSnapshot())
-    expect(await pump(room, () => hostLink.getSnapshot().phase === 'ready' && guestLink.getSnapshot().phase === 'ready')).toBe(true)
+    await wait('los dos revisan los decks', () => hostLink.getSnapshot().phase === 'ready' && guestLink.getSnapshot().phase === 'ready')
     host.setReady(true)
     guest.setReady(true)
     room.flush()
@@ -129,7 +135,7 @@ describe.skipIf(!hasCoreData)('deshacer en el duelo por enlace con el núcleo re
       return { mine: b.mine, theirs: b.theirs, overlay: b.overlay }
     }
 
-    expect(await pump(room, () => hostLink.getSnapshot().session !== null && guestLink.getSnapshot().session !== null && settled(hosted(), guested()))).toBe(true)
+    await wait('empieza el duelo', () => hostLink.getSnapshot().session !== null && guestLink.getSnapshot().session !== null && settled(hosted(), guested()))
     const bots: [Policy, Policy] = [randomLegalPolicy(seed, pickCard), randomLegalPolicy(seed + 1, pickCard)]
     // Cómo estaban las dos mesas con tantas respuestas dadas: adonde tiene que volver deshacer.
     const history = new Map<number, ReturnType<typeof views>>([[0, views()]])
@@ -138,7 +144,7 @@ describe.skipIf(!hasCoreData)('deshacer en el duelo por enlace con el núcleo re
 
       if (a.status === 'ready') hosted().answer(play(hosted(), a.ask!, random, bots[hostSeat]!))
       else guested().answer(play(guested(), guested().getSnapshot().ask!, random, bots[guestSeat]!))
-      expect(await pump(room, () => settled(hosted(), guested()), 120_000)).toBe(true)
+      await wait(`la respuesta ${hosted().getSnapshot().answers.length + 1}`, () => settled(hosted(), guested()), 120_000)
       expect(hosted().getSnapshot().status, hosted().getSnapshot().fault?.message).not.toBe('error')
       history.set(hosted().getSnapshot().answers.length, views())
     }
@@ -160,18 +166,18 @@ describe.skipIf(!hasCoreData)('deshacer en el duelo por enlace con el núcleo re
     expect(has(seat)).toBe(true)
     // Rechazado: nada cambia.
     asker.undo!(true)
-    expect(await pump(room, () => answerer.getSnapshot().undo?.state === 'asked')).toBe(true)
+    await wait('le llega el pedido de deshacer', () => answerer.getSnapshot().undo?.state === 'asked')
     answerer.undo!(false)
-    expect(await pump(room, () => asker.getSnapshot().undo?.state === 'declined')).toBe(true)
+    await wait('le llega el rechazo', () => asker.getSnapshot().undo?.state === 'declined')
     expect(hosted().getSnapshot().answers).toBe(before)
 
     // Aceptado: vuelve a antes de la última jugada de quien pidió.
     const to = before.findLastIndex((item) => item.seat === seat && undoPoint(item))
 
     asker.undo!(true)
-    expect(await pump(room, () => answerer.getSnapshot().undo?.state === 'asked')).toBe(true)
+    await wait('le llega el pedido de deshacer', () => answerer.getSnapshot().undo?.state === 'asked')
     answerer.undo!(true)
-    expect(await pump(room, () => guestLink.getSnapshot().undo?.done === 1 && hostLink.getSnapshot().undo?.done === 1 && settled(hosted(), guested()), 120_000)).toBe(true)
+    await wait('los dos deshacen', () => guestLink.getSnapshot().undo?.done === 1 && hostLink.getSnapshot().undo?.done === 1 && settled(hosted(), guested()), 120_000)
     expect(hosted().getSnapshot().answers).toEqual(before.slice(0, to))
     expect(views()).toEqual(history.get(to))
     expect(guestView()).toEqual(views().guest)
@@ -189,6 +195,8 @@ describe.skipIf(!hasCoreData)('deshacer en el duelo por enlace con el núcleo re
       const answers = hosted().getSnapshot().answers
       const kept = views()
 
+      // La página vieja deja de existir: su sala no le habla más al enlace nuevo (si no, le cuenta la mesa de antes de recargar y éste lo toma por una revancha, que borra lo guardado).
+      offHost()
       hostLink.destroy()
       hostEnd.close()
       const hostEnd2 = room.join()
@@ -197,7 +205,7 @@ describe.skipIf(!hasCoreData)('deshacer en el duelo por enlace con el núcleo re
       hostLink = makeHost(hostEnd2)
       host2.subscribe(() => hostLink.observe(host2.getSnapshot()))
       hostLink.observe(host2.getSnapshot())
-      expect(await pump(room, () => hostLink.getSnapshot().session !== null && settled(hosted(), guested()) && guestView().overlay.turn > 0, 120_000)).toBe(true)
+      await wait('el anfitrión recarga y rearma lo guardado', () => hostLink.getSnapshot().session !== null && settled(hosted(), guested()) && guestView().overlay.turn > 0, 120_000)
       expect(hosted().getSnapshot().answers.map((item) => item.answer)).toEqual(answers.map((item) => item.answer))
       expect(views()).toEqual(kept)
       expect(guestView()).toEqual(views().guest)
