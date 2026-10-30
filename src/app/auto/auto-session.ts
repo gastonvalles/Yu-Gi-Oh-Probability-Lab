@@ -146,6 +146,8 @@ export interface SessionOptions {
   seed?: number
   /** La del rival automático (u32, la de su azar: `BotContext.random`), aparte de la del duelo, que nunca ve; sin ella, una al azar. Reiniciar el mismo duelo la conserva. */
   botSeed?: number
+  /** Quién decide por el rival automático (las pruebas de privacidad le ponen uno que anota lo que ve); sin esto, el pasivo o, con `rival`, el de handtraps. */
+  bot?: Bot
   /**
    * El anfitrión del duelo por enlace: la clave del duelo (`duel-key.ts`, 256 bits), de la que salen las barajas y el estado del núcleo en lugar de la semilla, que con clave vale 0
    * y no se usa (32 bits se prueban todos desde la mano de arranque). Va en cada `create`, también al reiniciar, cancelar y deshacer, y nunca en el snapshot.
@@ -290,7 +292,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
   const rivalExtra = rival?.extra ?? DEFAULT_RIVAL_EXTRA.map((card) => [card.id, 1] as const)
   /** El original de cada arte alternativo del duelo (`alias` del `.cdb`): la regla de una handtrap es la de su original. Se llena con los datos. */
   const aliases = new Map<number, number>()
-  const bot: Bot = rival ? handtrapBot(rival.main.map(([code]) => code), rivalExtra.map(([code]) => code), (code) => aliases.get(code) ?? 0) : passiveBot()
+  const bot: Bot = options.bot ?? (rival ? handtrapBot(rival.main.map(([code]) => code), rivalExtra.map(([code]) => code), (code) => aliases.get(code) ?? 0) : passiveBot())
   const newBotSeed = () => Math.floor(Math.random() * 2 ** 32) >>> 0
   let botSeed = (options.botSeed ?? newBotSeed()) >>> 0
   /** El azar del bot (piedra, papel o tijera), con su semilla: el mismo duelo, la misma mano. */
