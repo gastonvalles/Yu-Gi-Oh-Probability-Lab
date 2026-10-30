@@ -3,6 +3,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { cardSmallImageUrl, type Expansion } from '../../app/card-prices'
 import {
   AUTO_RULES,
+  DEFAULT_RIVAL_EXTRA,
   HANDTRAP_CATALOG,
   MAX_COPIES,
   MAX_RIVAL_HAND,
@@ -10,6 +11,7 @@ import {
   poolCount,
   readHandtrapConfig,
   writeHandtrapConfig,
+  type ExtraPick,
   type HandtrapCard,
   type HandtrapConfig,
   type HandtrapPick,
@@ -26,6 +28,7 @@ import { SearchField } from '../ui/SearchField'
 import { Stepper } from '../ui/Stepper'
 import { listItemSelected } from '../ui/surfaces'
 import { Switch } from '../ui/Switch'
+import { RivalExtraDeck } from './RivalExtraDeck'
 
 /** Sin expansiones: la búsqueda de «Agregar otra carta» es por nombre (los códigos de impresión son de la vista de Expansiones). */
 const NO_EXPANSIONS: Expansion[] = []
@@ -60,9 +63,9 @@ export function HandtrapsRow() {
         isOpen={choosing}
         config={config}
         onClose={() => setChoosing(false)}
-        onSave={(picks, hand) => {
+        onSave={(picks, hand, extra) => {
           // Elegir las handtraps es querer usarlas: el simulador queda encendido.
-          save({ enabled: true, picks, hand })
+          save({ enabled: true, picks, hand, extra })
           setChoosing(false)
         }}
       />
@@ -97,7 +100,7 @@ export function useHandtrapsSheet({ onApply, auto = false }: { onApply: () => vo
         auto={auto}
         onClose={() => setChoosing(false)}
         // Elegir las handtraps es querer usarlas: el simulador queda encendido.
-        onSave={(picks, hand) => apply({ enabled: true, picks, hand })}
+        onSave={(picks, hand, extra) => apply({ enabled: true, picks, hand, extra })}
         onTurnOff={config.enabled ? () => apply({ ...config, enabled: false }) : undefined}
       />
     ),
@@ -150,6 +153,8 @@ interface Draft {
   extras: readonly HandtrapCard[]
   /** Cuántas cartas tiene el rival en la mano (de `MIN_RIVAL_HAND` a `MAX_RIVAL_HAND`). */
   hand: number
+  /** Su Extra Deck, en orden de preferencia. */
+  extra: ExtraPick[]
 }
 
 const CATALOG_IDS = new Set(HANDTRAP_CATALOG.map((card) => card.id))
@@ -158,14 +163,15 @@ const draftOf = (config: HandtrapConfig): Draft => ({
   copies: Object.fromEntries(config.picks.map((pick) => [pick.id, pick.copies])),
   extras: config.picks.filter((pick) => !CATALOG_IDS.has(pick.id)).map(({ id, name }) => ({ id, name })),
   hand: config.hand,
+  extra: (config.extra ?? DEFAULT_RIVAL_EXTRA).map((card) => ({ ...card })),
 })
 
 interface HandtrapPickerProps {
   isOpen: boolean
   config: HandtrapConfig
   onClose: () => void
-  /** Las handtraps del deck del rival (las cartas con al menos una copia, en el orden del catálogo y después las agregadas) y cuántas tiene en la mano. */
-  onSave: (picks: HandtrapPick[], hand: number) => void
+  /** Las handtraps del deck del rival (las cartas con al menos una copia, en el orden del catálogo y después las agregadas), cuántas tiene en la mano y su Extra Deck. */
+  onSave: (picks: HandtrapPick[], hand: number, extra: ExtraPick[]) => void
   /** Dentro de la práctica: aplicar reparte una mano nueva, y la hoja lo avisa abajo. */
   dealsNew?: boolean
   /** En el duelo automático: aplicar reinicia el duelo (la hoja lo avisa abajo) y las cartas sin regla (`AUTO_RULES`) dicen que el rival todavía no las usa solo. */
@@ -238,7 +244,7 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, auto = false,
             <Button variant="tertiary" onClick={onClose}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" disabled={total === 0} onClick={() => onSave(picks, draft.hand)}>
+            <Button variant="primary" disabled={total === 0} onClick={() => onSave(picks, draft.hand, draft.extra)}>
               {t('handtraps.picker.use')}
             </Button>
           </div>
@@ -290,6 +296,13 @@ export function HandtrapPicker({ isOpen, config, dealsNew = false, auto = false,
           </ul>
         ) : null}
       </section>
+
+      {/* Sólo cuenta en el duelo automático (el núcleo lo usa); en la práctica manual el rival no tiene Extra Deck. */}
+      {dealsNew ? null : (
+        <div className="mt-5 border-t border-border-subtle pt-4">
+          <RivalExtraDeck extra={draft.extra} picks={picks} active={isOpen} onChange={(extra) => setDraft((current) => ({ ...current, extra }))} />
+        </div>
+      )}
     </Modal>
   )
 }
