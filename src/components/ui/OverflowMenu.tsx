@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { usePresence } from '../../app/use-presence'
@@ -49,6 +49,23 @@ function sections(items: ReadonlyArray<OverflowItem>): Array<{ title?: string; i
   return out
 }
 
+/** Un menú de `height` px colgado de `box` (con su `mt-1`) se pasa del borde de abajo de lo que lo recorta (la ventana o un ancestro con overflow) y entra arriba. */
+function opensUp(box: HTMLElement, height: number): boolean {
+  const { top, bottom } = box.getBoundingClientRect()
+  let floor = window.innerHeight
+  let ceiling = 0
+
+  for (let element = box.parentElement; element; element = element.parentElement) {
+    if (getComputedStyle(element).overflowY === 'visible') continue
+    const rect = element.getBoundingClientRect()
+    floor = Math.min(floor, rect.bottom)
+    ceiling = Math.max(ceiling, rect.top)
+  }
+
+  const need = height + 4
+  return bottom + need > floor && top - need >= ceiling
+}
+
 /**
  * El menú de los tres puntos (⋯), como el de los videos de YouTube: un botón sin caja que abre una lista corta pegada a su borde derecho. Las acciones que importan van a la vista; acá, las de segundo plano.
  * Se cierra al elegir (un ajuste con interruptor no: se ve cómo cambia), al tocar afuera o con Escape (y el foco vuelve al botón). Al abrirse el foco entra a la primera fila (la trampa común: nunca a un
@@ -70,6 +87,16 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
     setRoom(root.current ? Math.round(root.current.getBoundingClientRect().right) : null)
     setOpen((current) => !current)
   }
+
+  // Si abajo no entra (la última ficha de una lista, el borde de la ventana) y arriba sí, se abre hacia arriba: nunca queda cortado por lo que lo contiene. Se mide antes de pintarse.
+  const [up, setUp] = useState(false)
+  useLayoutEffect(() => {
+    const box = root.current
+    const menu = menuRef.current
+
+    if (!open || !box || !menu) return
+    setUp(opensUp(box, menu.offsetHeight))
+  }, [open])
 
   useFocusTrap(menuRef, open && touched)
 
@@ -142,7 +169,7 @@ export function OverflowMenu({ label, items, trigger = 'ghost', defaultOpen = fa
         aria-label={label}
         tabIndex={-1}
         style={bar && room !== null ? { maxWidth: `min(calc(100vw - 1rem), ${room - 8}px)` } : undefined}
-        className={cx('absolute right-0 top-full z-70 mt-1 grid animate-pop gap-0.5 border border-border shadow-overlay focus-visible:outline-none motion-reduce:animate-none', bar ? 'w-80 max-w-[calc(100vw-1rem)] rounded-panel bg-card-background p-2' : 'min-w-48 rounded-control bg-surface-raised p-1')}
+        className={cx('absolute right-0 z-70 grid', up ? 'bottom-full mb-1' : 'top-full mt-1', 'animate-pop gap-0.5 border border-border shadow-overlay focus-visible:outline-none motion-reduce:animate-none', bar ? 'w-80 max-w-[calc(100vw-1rem)] rounded-panel bg-card-background p-2' : 'min-w-48 rounded-control bg-surface-raised p-1')}
       >
         {sections(items).map((section, index) =>
           section.title === undefined ? (

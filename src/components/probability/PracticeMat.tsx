@@ -1998,6 +1998,8 @@ function PracticeMatBody({
   // Compartir: el enlace (la hoja del sistema en el celular, o copiado) y, si no entra en un enlace, el video (`ReplayVideoDialog`, el mismo de los duelos). Pegar un enlace lo suma a la
   // lista con un nombre que no se repite.
   const [filming, setFilming] = useState<SavedCombo | SharedCombo | null>(null)
+  // El mismo objeto mientras no cambie el combo: el diálogo vuelve a empezar el video cada vez que cambia `subject` (antes, con cada dibujo de la mesa).
+  const filmingSubject = useMemo(() => (filming ? { kind: 'combo' as const, combo: filming } : null), [filming])
   const shareCombo = useCallback(async (combo: SavedCombo) => {
     const outcome = await shareComboLink(combo)
     if (outcome === 'copied') showToastMessage(t('practice.share.copied', { name: combo.name }), 'success')
@@ -3208,7 +3210,7 @@ function PracticeMatBody({
   )
 
   // El video de un combo (el ⋯ de la lista, o la barra del compartido): el mismo diálogo de progreso que el de un duelo.
-  const video = <ReplayVideoDialog subject={filming ? { kind: 'combo', combo: filming } : null} onClose={() => setFilming(null)} />
+  const video = <ReplayVideoDialog subject={filmingSubject} onClose={() => setFilming(null)} />
 
   if (!shared) {
     return (
