@@ -5,7 +5,7 @@ import { describeMatAction, isForeignId, isToken, matReducer, type MatState } fr
 import { comboCardIds, type SavedCombo } from '../../../app/saved-combos'
 import { t } from '../../../i18n'
 import { passcodeOfDrawId } from '../../duel/duel-art'
-import { artOfId, cellsOf, focusOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, type Look, type Rect, type Scene, type SceneSide, type VideoLayout } from './video-scene'
+import { artOfId, cellsOf, explainOf, fieldArtUrl, focusOf, halfOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, type Look, type Rect, type Scene, type SceneSide, type VideoLayout } from './video-scene'
 
 /**
  * El video de un combo de la práctica: es de un solo jugador, así que va **tu campo grande** (las Zonas Extra arriba, tus monstruos, tus Mágicas y Trampas y tus
@@ -23,16 +23,19 @@ export function comboLayout(width: number, rival: boolean): VideoLayout {
   const cell = 124 * s
   const gap = 10 * s
   const x0 = (width - (5 * cell + 4 * gap)) / 2
-  const y0 = (rival ? 290 : 200) * s
+  // El campo sube hasta abajo del título (o de la mano del rival): lo que queda abajo de tu mano es la franja que explica la jugada.
+  const top = rival ? 266 : 150
+  const y0 = top * s
   const box = (x: number, y: number, w: number, h: number): Rect => ({ x: x * s, y: y * s, w: w * s, h: h * s })
   // La fila 0 es la del medio de la mesa (las Zonas Extra); después, tus monstruos, tus Mágicas y Trampas y tus pilas.
-  const handTop = y0 / s + 4 * 124 + 3 * 10 + 26
+  const handTop = top + 4 * 124 + 3 * 10 + 34
+  const textTop = handTop + 180 + 34
   return {
     scale: s,
     score: box(24, 24, 672, 84),
-    theirHand: box(64, 150, 592, 110),
+    theirHand: box(64, 142, 592, 100),
     myHand: box(40, handTop, 640, 180),
-    text: box(24, 1156, 672, 84),
+    text: box(24, textTop, 672, 1236 - textTop),
     footer: box(24, 1244, 672, 28),
     cell,
     cellAt: (row, col) => ({ x: x0 + col * (cell + gap), y: y0 + row * (cell + gap), w: cell, h: cell }),
@@ -75,9 +78,12 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
   const layout = comboLayout(width, (combo.initial.rival?.hand.length ?? 0) > 0)
   const action = cursor > 0 ? combo.actions[cursor - 1] : undefined
   const shown = action?.type === 'reveal' ? action.id : null
+  const rows = { piles: 3, st: 2, mz: 1 }
   const mine: SceneSide = {
     ...emptySide(handSlots(state.hand, layout.myHand, look, () => true)),
-    slots: sideSlots(state, layout, { piles: 3, st: 2, mz: 1 }, false, look, shown),
+    slots: sideSlots(state, layout, rows, false, look, shown),
+    fieldArt: state.field && !isForeignId(state.field.id) ? fieldArtUrl(state.field, isRivalId(state.field.id) ? rivalCardOf(state.field.id) : state.field.id) : null,
+    half: halfOf(layout, rows),
   }
   const theirs = emptySide(
     rival
@@ -87,6 +93,7 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
   const nameOf = (id: string) => look(id)?.name ?? t('practice.card.unknown')
   // Lo que tocó la jugada, en tu campo, tu mano o la mano del rival del simulador (una handtrap que usó).
   const focus = action && before && action.type !== 'phase' ? focusOf(action, before, state, { ...mine, hand: [...mine.hand, ...theirs.hand] }, theirs) : []
+  const effects = action && before ? matEffects(before, action) : null
 
   return {
     width,
@@ -97,9 +104,10 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
     phase: state.phase,
     actor: action ? 0 : null,
     action: action ?? null,
-    effects: action && before ? matEffects(before, action) : null,
+    effects,
     stepLabel: cursor === 0 ? t('meta.duels.start') : t('meta.duels.step', { n: cursor, total: combo.actions.length }),
     stepText: action && before ? describeMatAction(before, action, nameOf) : '',
+    explain: action && before && effects ? explainOf(before, action, effects, nameOf) : null,
     focus,
     footer: VIDEO_FOOTER(),
     cells: cellsOf(layout, 4),

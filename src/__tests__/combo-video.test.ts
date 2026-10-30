@@ -110,7 +110,7 @@ describe('el archivo y los tiempos', () => {
     const durations = frameDurations({ kind: 'combo', combo })
     expect(durations).toHaveLength(actions.length + 2)
     expect(durations[0]).toBe(INTRO_MS)
-    expect(durations.slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? 400 : COMBO_STEP_MS)))
+    expect(durations.slice(1, -1)).toEqual(actions.map((action) => (action.type === 'phase' ? MESA.banner : COMBO_STEP_MS)))
     expect(durations.at(-1)).toBe(OUTRO_MS)
   })
 })

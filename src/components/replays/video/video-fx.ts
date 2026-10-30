@@ -2,11 +2,13 @@ import type { LandingTone, ShowcaseKind, SpotlightKind } from '../../../app/mat-
 import { EASE_OUT, EASE_SNAP, UI_ANIMATION_MS, bezierEase, easeInOut } from '../../../app/motion'
 import { PHASES } from '../../../app/practice-mat'
 import { t } from '../../../i18n'
-import { FX_RGB, type FxTone } from '../../probability/practice-styles'
+import { FX_RGB } from '../../probability/practice-styles'
 import { drawCard, FONT, wrap, type Ctx, type VideoAssets } from './video-draw'
 import { placesOf, poseOf, type Motion, type Pose } from './video-motion'
-import type { Rect, Scene, SceneCard } from './video-scene'
+import { fieldRect, STAGE_TONE, type Rect, type Scene, type SceneCard, type SceneSlot } from './video-scene'
 import type { VideoSpeed } from './video-timeline'
+
+export { STAGE_TONE }
 
 /**
  * Lo que la mesa anima con cada jugada, para el video: cuándo y cuánto vuela cada carta (`flightsOf`) y lo que se dibuja encima un rato (`overlaysOf`): la carta grande del
@@ -16,8 +18,9 @@ import type { VideoSpeed } from './video-timeline'
 
 /**
  * Los tiempos de la mesa, copiados para no cargar la mesa (React) con el video: `FLIGHT_MS`, `FLIGHT_STAGGER_MS` y `LANDING_AT` de `use-card-flights.ts`, `SPOTLIGHT_TRAVEL_MS`
- * de `MatFx.tsx`, `DECK_SHUFFLE_MS` de `shuffle-fx.ts`, `IMPACT_MS` de `AttackFx.tsx`, `DELTA_MS` de `life-effects.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin
- * exportar, `ACTIVATE_MS`, `BANNER_MS` y `FLIP_MS` de `PracticeMat.tsx` y `STRIKE_MS` de `AttackFx.tsx`.
+ * de `MatFx.tsx`, `DECK_SHUFFLE_MS` y `HAND_SHUFFLE_MS` de `shuffle-fx.ts`, `FIRST_DEAL_MS`, `NEXT_DEAL_MS` y `DEAL_LAND_AT` de `deal-flight.ts`, `IMPACT_MS` de `AttackFx.tsx`,
+ * `DELTA_MS` de `life-effects.ts` (`video-fx.test.ts` vigila que sigan iguales) y, sin exportar, `ACTIVATE_MS`, `BANNER_MS` y `FLIP_MS` de `PracticeMat.tsx`, `HAND_FLASH_MS` de `PracticeMat.tsx`, `DEAL_MS` de
+ * `PracticeHand.tsx` y `STRIKE_MS` de `AttackFx.tsx`.
  */
 export const MESA = {
   flight: UI_ANIMATION_MS * 2,
@@ -26,8 +29,14 @@ export const MESA = {
   travel: 320,
   stage: 950,
   banner: 1100,
+  handFlash: 900,
   flip: 380,
   shuffle: 620,
+  handShuffle: 900,
+  firstDeal: 760,
+  nextDeal: 100,
+  deal: 380,
+  dealLandAt: 0.8,
   impact: 300,
   strike: 1050,
   delta: 1600,
@@ -38,12 +47,6 @@ export const flightMs = (distance: number) => Math.round(UI_ANIMATION_MS + (MESA
 /** Lo que cuentan las vidas al cambiar `delta`: como `lifeCountMs` de `life-effects.ts`. */
 export const lifeMs = (delta: number) => Math.round(320 + (900 - 320) * Math.min(1, Math.abs(delta) / 8000))
 
-/** El color de la carta grande y del destello, como `STAGE_TONE` y `LANDING_TONE` de `MatFx.tsx` (el test lo vigila). */
-export const STAGE_TONE: Record<SpotlightKind | ShowcaseKind, FxTone> = {
-  activate: 'gold', target: 'red', reveal: 'cyan', declare: 'violet', attack: 'red',
-  normal: 'gold', special: 'cyan', fusion: 'violet', synchro: 'white', xyz: 'indigo', link: 'teal',
-  hand: 'cyan', gy: 'violet', banish: 'amber', extra: 'cyan', deck: 'cyan', attach: 'indigo',
-}
 const LANDING_TONE = (tone: LandingTone) => STAGE_TONE[tone]
 
 const easeOut = bezierEase(EASE_OUT)
@@ -96,20 +99,15 @@ export function flightsOf(motions: readonly Motion[], scale: number, speed: Vide
 /** Lo que se dibuja encima de la mesa un rato: desde cuándo (ms de video desde el principio), cuánto dura y cómo se pinta en cada momento `p` (0 a 1). */
 export interface Overlay {
   /** Uno nuevo del mismo tipo saca al anterior (como en la mesa: otra carta grande, otro cartel). */
-  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'attack' | 'delta' | 'title'
+  kind: 'stage' | 'landing' | 'banner' | 'shuffle' | 'handShuffle' | 'deal' | 'hand' | 'attack' | 'delta' | 'title'
   start: number
   duration: number
   draw: (ctx: Ctx, p: number) => void
+  /** Las cartas que este efecto anima en su lugar (`lado:id`, o `lado:pile:deck`): mientras dura, la mesa de abajo no las pinta. */
+  hides?: readonly string[]
 }
 
-/** El rectángulo de la mesa (todas sus casillas): ahí se centran la carta grande y el cartel. */
-function fieldOf(scene: Scene): Rect {
-  const xs = scene.cells.flatMap((cell) => [cell.x, cell.x + cell.w])
-  const ys = scene.cells.flatMap((cell) => [cell.y, cell.y + cell.h])
-  const x = Math.min(...xs)
-  const y = Math.min(...ys)
-  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }
-}
+const fieldOf = (scene: Scene): Rect => fieldRect(scene.cells)
 
 /** Dónde está una carta en la escena y con qué cara a la vista, buscándola de los dos lados (lo del rival del simulador está del otro). */
 const placeIn = (places: ReturnType<typeof placesOf>, id: string, sides: readonly number[]) => sides.map((side) => places.get(`${side}:${id}`)).find(Boolean)
@@ -191,10 +189,16 @@ export function overlaysOf(before: Scene, after: Scene, flights: readonly Flight
     out.push(bannerOverlay(name, lead, field, after.width, theme, s, at(0), speed))
   }
 
-  // El barajado: el deck de quien jugó se parte en dos y se vuelve a juntar.
+  // Una carta entró a tu mano: la mano se enmarca un instante en celeste (`fx-zone` de la mesa; la del rival, no).
+  if (effects.hand && actor === 0) out.push(handFrameOverlay(after.layout.myHand, s, at(0), speed))
+
+  // El barajado: el deck de quien jugó (y su mano, cuando ya llegó lo que se sumó a ella), como en la mesa.
   if (effects.shuffle) {
     const deck = after.sides[actor].slots.find((slot) => slot.pile === 'deck')
-    if (deck && assets.back) out.push(shuffleOverlay(deck.rect, assets, at(0), speed))
+    if (deck && assets.back) out.push(shuffleOverlay(deck, actor, assets, s, at(0), speed))
+    const hand = after.sides[actor].hand
+    const landed = Math.max(0, ...flights.map((flight) => flight.delay + flight.duration))
+    if (hand.length > 1) out.push(handShuffleOverlay(hand, actor, assets, s, start + landed, speed))
   }
 
   // El ataque: un rayo rojo del atacante a su objetivo (o a las vidas del rival) y el impacto al llegar.
@@ -419,23 +423,169 @@ function bannerOverlay(name: string, lead: string, field: Rect, width: number, t
   }
 }
 
-function shuffleOverlay(cell: Rect, assets: VideoAssets, start: number, speed: VideoSpeed): Overlay {
-  const card = poseOf(cell, { sideways: false, upsideDown: false })
+/**
+ * Los planes del barajado de la mesa (`DECK` y `HAND` de `shuffle-fx.ts`, en ms y en tamaños de carta; el test los vigila): el riffle en dos paquetes que caen alternando al
+ * centro y se golpean contra la mesa; la mano, antes, se junta en una pila y, después, se abre salteada a sus lugares.
+ */
+export const RIFFLE = {
+  deck: { gather: 0, split: 160, dropFrom: 170, dropSpan: 220, drop: 90, knock: 560, openFrom: 560, openSpan: 0, open: 60, spread: 0.38, lift: 0.32, shift: 0.38 },
+  hand: { gather: 170, split: 280, dropFrom: 290, dropSpan: 180, drop: 90, knock: 580, openFrom: 600, openSpan: 110, open: 190, spread: 0.42, lift: 0.32, shift: 0 },
+} as const
+type Plan = (typeof RIFFLE)[keyof typeof RIFFLE]
+/** Las capas del deck de la mesa (`DECK_LAYERS` y la de arriba), en px de una carta de 56 px de ancho. */
+const DECK_LAYERS = [...Array<number>(6).fill(3), 1.5, 0]
+const NOISE = [0.6, -0.9, 0.3, -0.4, 1, -0.7, 0.8, -0.2, 0.5, -1, 0.1, 0.9]
+const noise = (index: number) => NOISE[index % NOISE.length]!
+const easeOf = { out: easeOut, inOut: easeInOut, snap: easeSnap, linear: (x: number) => x }
+
+/** Una carta del barajado en `ms`: cuánto se corre (en el plano de su pila o de la mano) y cuánto gira de más, en grados; como los cuadros de `shuffle()` de la mesa. */
+function riffleAt(plan: Plan, index: number, count: number, gather: { dx: number; dy: number; straight: number } | null, size: { w: number; h: number }, k: number, ms: number) {
+  const dx = gather ? gather.dx : -plan.shift * size.w
+  const dy = gather ? gather.dy : 0
+  const straight = gather ? gather.straight : 0
+  const side = index % 2 === 0 ? -1 : 1
+  const inPacket = index >> 1
+  const pose = (x: number, y: number, r: number) => [dx + x * k, dy + y * k, straight + r] as const
+  const home = [0, 0, 0] as const
+  const pile = pose(noise(index) * 1.5, -index * 0.6, noise(index + 4) * 2)
+  const packet = [dx + side * (plan.spread * size.w + inPacket * 3 * k) + noise(index) * 2 * k, dy - plan.lift * size.h - inPacket * 3 * k + noise(index + 3) * 1.5 * k, straight + side * (7 + noise(index + 5) * 2)] as const
+  const landed = [dx - side * 0.12 * size.w, dy - index * 0.6 * k, straight - side * 2] as const
+  const knocked = gather ? pose(0, 2, 0) : ([0, 2 * k, 0] as const)
+  const dropAt = plan.dropFrom + (count > 1 ? (index * plan.dropSpan) / (count - 1) : 0)
+  const order = Array.from({ length: count }, (_, i) => i).sort((x, y) => ((x * 37 + 11) % 101) - ((y * 37 + 11) % 101))
+  const openAt = plan.openFrom + (count > 1 ? (order.indexOf(index) * plan.openSpan) / (count - 1) : 0)
+  const total = plan.openFrom + plan.openSpan + plan.open
+  const steps: [number, readonly [number, number, number], keyof typeof easeOf][] = [
+    [0, home, gather ? 'inOut' : 'out'],
+    ...(gather ? [[plan.gather, pile, 'out'] as [number, readonly [number, number, number], keyof typeof easeOf]] : []),
+    [plan.split, packet, 'linear'],
+    [dropAt, packet, 'inOut'],
+    [dropAt + plan.drop, landed, 'snap'],
+    [plan.knock, knocked, 'linear'],
+    [openAt, knocked, 'inOut'],
+    [openAt + plan.open, home, 'linear'],
+    [total, home, 'linear'],
+  ]
+  for (let i = 1; i < steps.length; i += 1) {
+    const [to, value] = steps[i]!
+    const [from, start, ease] = steps[i - 1]!
+    if (ms < to) {
+      const e = easeOf[ease](to === from ? 1 : clamp((ms - from) / (to - from)))
+      return { x: mix(start[0], value[0], e), y: mix(start[1], value[1], e), r: (mix(start[2], value[2], e) * Math.PI) / 180 }
+    }
+  }
+  return { x: 0, y: 0, r: 0 }
+}
+
+const BACK: SceneCard = { id: '', art: null, name: '', faceDown: true, sideways: false, upsideDown: false, counters: 0, materials: 0 }
+
+/** El deck se baraja a la vista: sus ocho capas de dorso, en el plano de su lado (el del rival, de cabeza), como `shuffleDeck`. */
+function shuffleOverlay(deck: SceneSlot, side: number, assets: VideoAssets, s: number, start: number, speed: VideoSpeed): Overlay {
+  const card = poseOf(deck.rect, { sideways: false, upsideDown: side === 1 })
+  const k = card.w / 56
   return {
     kind: 'shuffle',
     start,
     duration: MESA.shuffle / speed,
+    hides: [`${side}:pile:deck`],
     draw: (ctx, p) => {
-      // El riffle de `shuffle-fx.ts`: se parte en dos paquetes (pares a un lado, impares al otro), caen al centro alternando y la pila se golpea contra la mesa.
       const ms = p * MESA.shuffle
-      const split = easeOut(clamp(ms / 160))
-      const knock = ms > 560 ? 1 - 0.04 * Math.sin((Math.PI * (ms - 560)) / 60) : 1
-      for (let index = 0; index < 6; index += 1) {
-        const side = index % 2 === 0 ? -1 : 1
-        const back = easeInOut(clamp((ms - 170 - index * 37) / 90))
-        const open = split * (1 - back)
-        drawCard(ctx, { ...card, x: card.x + side * 0.38 * card.w * open, y: card.y - 0.32 * card.h * open * 0.5 - index * 0.6, w: card.w * knock, h: card.h * knock }, { id: '', art: null, name: '', faceDown: true, sideways: false, upsideDown: false, counters: 0, materials: 0 }, assets, 1)
-      }
+      ctx.save()
+      ctx.translate(card.x, card.y)
+      ctx.rotate(card.angle)
+      DECK_LAYERS.forEach((offset, index) => {
+        const at = riffleAt(RIFFLE.deck, index, DECK_LAYERS.length, null, card, k, ms)
+        ctx.save()
+        ctx.translate(at.x - offset * k, at.y + offset * k)
+        ctx.rotate(at.r)
+        drawCard(ctx, { x: 0, y: 0, w: card.w, h: card.h, angle: 0 }, BACK, assets, s, 0.4)
+        ctx.restore()
+      })
+      ctx.restore()
+    },
+  }
+}
+
+/** La mano se baraja a la vista (`shuffleHand`): se junta en una pila, el riffle y se abre salteada a su lugar en el abanico. */
+function handShuffleOverlay(hand: readonly SceneSlot[], side: number, assets: VideoAssets, s: number, start: number, speed: VideoSpeed): Overlay {
+  const poses = hand.map((slot) => poseOf(slot.rect, slot.card!))
+  const center = { x: poses.reduce((sum, pose) => sum + pose.x, 0) / poses.length, y: poses.reduce((sum, pose) => sum + pose.y, 0) / poses.length - 12 * s }
+  const k = poses[0]!.w / 64
+  return {
+    kind: 'handShuffle',
+    start,
+    duration: MESA.handShuffle / speed,
+    hides: hand.map((slot) => `${side}:${slot.card!.id}`),
+    draw: (ctx, p) => {
+      const ms = p * MESA.handShuffle
+      hand.forEach((slot, index) => {
+        const pose = poses[index]!
+        const at = riffleAt(RIFFLE.hand, index, hand.length, { dx: center.x - pose.x, dy: center.y - pose.y, straight: (-pose.angle * 180) / Math.PI }, pose, k, ms)
+        drawCard(ctx, { ...pose, x: pose.x + at.x, y: pose.y + at.y, angle: pose.angle + at.r }, slot.card!, assets, s, 0.5)
+      })
+    },
+  }
+}
+
+/**
+ * El reparto de la mano al empezar, como en la mesa: el deck se baraja y, `MESA.firstDeal` después, sale una carta cada `MESA.nextDeal` por una curva baja hasta su lugar en el
+ * abanico (`dealFrames`: arranca rápido y llega despacio, dándose vuelta en el camino, y se asienta apenas más grande).
+ */
+export function dealOverlays(scene: Scene, assets: VideoAssets, speed: VideoSpeed): Overlay[] {
+  const side = scene.sides[0]
+  const deck = side.slots.find((slot) => slot.pile === 'deck')
+  if (!deck || side.hand.length === 0 || !assets.back) return []
+  const s = scene.layout.scale
+  const from = poseOf(deck.rect, { sideways: false, upsideDown: false })
+  const cards = side.hand.map((slot) => ({ card: slot.card!, to: poseOf(slot.rect, slot.card!) }))
+  const total = MESA.firstDeal + (cards.length - 1) * MESA.nextDeal + MESA.deal
+  const turnEase = easeInOut
+  return [
+    shuffleOverlay(deck, 0, assets, s, 0, speed),
+    {
+      kind: 'deal',
+      start: 0,
+      duration: total / speed,
+      hides: cards.map(({ card }) => `0:${card.id}`),
+      draw: (ctx, p) => {
+        const ms = p * total
+        cards.forEach(({ card, to }, index) => {
+          const t = (ms - MESA.firstDeal - index * MESA.nextDeal) / MESA.deal
+          if (t <= 0) return
+          if (t >= 1) return drawCard(ctx, to, card, assets, s, 0.5)
+          const flying = t < MESA.dealLandAt
+          const done = flying ? easeOut(t / MESA.dealLandAt) : 1
+          const settle = flying ? 0 : easeOut((t - MESA.dealLandAt) / (1 - MESA.dealLandAt))
+          const startScale = Math.max(0.3, from.w / to.w)
+          const scale = flying ? mix(startScale, 1.04, done) : mix(1.04, 1, settle)
+          const turn = turnEase(Math.min(1, t / MESA.dealLandAt))
+          const arc = 24 * (to.h / 96)
+          const pose = { x: mix(from.x, to.x, done), y: mix(from.y, to.y, done) - arc * 4 * done * (1 - done), w: to.w * scale * Math.abs(Math.cos(Math.PI * turn)), h: to.h * scale, angle: mix(-Math.PI / 18, to.angle, done) }
+          drawCard(ctx, pose, turn < 0.5 ? BACK : card, assets, s, flying ? 1 : 0.5)
+        })
+      },
+    },
+  ]
+}
+
+function handFrameOverlay(area: Rect, s: number, start: number, speed: VideoSpeed): Overlay {
+  const tone = FX_RGB.cyan
+  const r = { x: area.x - 10 * s, y: area.y - 10 * s, w: area.w + 20 * s, h: area.h + 20 * s }
+  return {
+    kind: 'hand',
+    start,
+    duration: MESA.handFlash / speed,
+    draw: (ctx, p) => {
+      ctx.save()
+      ctx.globalAlpha = keyed(p, [[0, 0], [0.15, 1], [0.7, 1], [1, 0]])
+      ctx.fillStyle = rgba(tone, 0.06)
+      ctx.fillRect(r.x, r.y, r.w, r.h)
+      ctx.shadowColor = rgba(tone, 0.5)
+      ctx.shadowBlur = 20 * s
+      ctx.strokeStyle = rgba(tone, 1)
+      ctx.lineWidth = 2.5 * s
+      ctx.strokeRect(r.x, r.y, r.w, r.h)
+      ctx.restore()
     },
   }
 }
