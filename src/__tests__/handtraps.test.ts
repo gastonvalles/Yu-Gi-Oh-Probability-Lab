@@ -31,6 +31,9 @@ import { createMatState, describeMatAction, describeMatSteps, matReducer, replay
 import { createSavedCombo, readSavedCombos, writeSavedCombos } from '../app/saved-combos'
 import { sfxOfAction } from '../app/sfx'
 
+/** Las de H3 con regla que no están en el catálogo (se agregan con el buscador). */
+const H3_SEARCH = [67750322, 46502744, 87170768, 68144894, 14965712, 33854624, 6637331, 60242223, 91800273, 69680031]
+
 const memory = () => {
   const data = new Map<string, string>()
 
@@ -148,8 +151,8 @@ describe('el rival del duelo automático', () => {
     expect(new Set(SEEDS.slice(0, 40).map((seed) => rival.hand(seed).join())).size).toBeGreaterThan(1)
   })
 
-  it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark, Dominus Spiral y el Droll & Lock Bird original, del buscador)', () => {
-    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632, 94145021].sort())
+  it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark, Dominus Spiral, el Droll & Lock Bird original y las de H3 que no están en el catálogo, del buscador)', () => {
+    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632, 94145021, ...H3_SEARCH].sort())
   })
 })
 

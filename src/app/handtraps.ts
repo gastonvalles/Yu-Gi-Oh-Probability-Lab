@@ -59,8 +59,13 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
  * - `offered`: el núcleo la ofrece sólo cuando pasó lo que la dispara (Invocaste de modo Especial, sumaste del deck a la mano, 5 Invocaciones): se usa apenas aparece.
  * - `draw`: libre y roba mientras jugás: en tu Draw Phase (como se juegan; el núcleo se la ofrece ahí) o, si no, a tu primera activación o Invocación.
  * - `graveyard`: contra un efecto que activás desde tu cementerio, desterrando esa carta (un efecto que no la necesita ahí, como buscar al ser enviada, la gasta igual).
+ * - `bystial`: como `graveyard`, pero sólo si esa carta es de LUZ u OSCURIDAD (las únicas que puede desterrar); se Invoca a sí misma.
+ * - `attack`: cuando declarás un ataque (en tu Battle Phase, sin cadena); en respuesta a un efecto, la guarda.
+ * - `floodgate`: un candado para el turno, en el momento de `draw` (tu Draw Phase o tu primera jugada).
+ * - `extra`: en tu turno, apenas el núcleo la ofrece (sólo lo hace con un monstruo Invocado desde el Extra Deck en el campo).
+ * `offered` y `attack` usan sólo el efecto de la mano: el de la carta ya en el campo (Hecahands Godos se lleva un monstruo de tu cementerio) no lo usa.
  */
-export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard'
+export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard' | 'bystial' | 'attack' | 'floodgate' | 'extra'
 
 export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   14558127: 'respond', // Ash Blossom & Joyous Spring
@@ -86,6 +91,16 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   // Las otras Dominus (libres, contra un monstruo tuyo en el campo; desde la mano sólo si activaste un efecto de monstruo en la mano o el cementerio ese turno).
   6325660: 'monster', // Dominus Spark (lo destierra)
   42091632: 'monster', // Dominus Spiral (lo devuelve a la mano o al Extra)
+  67750322: 'respond', // Skull Meister (el núcleo la ofrece sólo contra un efecto que activás en el cementerio)
+  46502744: 'respond', // Retaliating "C" (sólo contra una Mágica tuya que Invoca de modo Especial)
+  87170768: 'offered', // Contact "C" (cuando Invocás: se Invoca a tu campo y tenés que usarla de material)
+  68144894: 'offered', // Hecahands Godos (cuando sumás una carta a tu mano fuera de la Draw Phase)
+  14965712: 'attack', // Multiplying Kuriboh!
+  33854624: 'bystial', // Bystial Magnamhut
+  6637331: 'bystial', // Bystial Druiswurm
+  60242223: 'bystial', // Bystial Saronir
+  91800273: 'floodgate', // Dimension Shifter (sólo con su cementerio vacío)
+  69680031: 'extra', // Dogmatika Fleurdelis, the Knighted
 }
 
 /** PSY-Framegear Gamma y Delta Invocan a PSY-Frame Driver (de la mano, el deck o el cementerio): sin Driver en el deck, el núcleo nunca las ofrece. */

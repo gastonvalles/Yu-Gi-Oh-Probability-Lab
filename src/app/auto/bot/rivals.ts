@@ -11,7 +11,7 @@ import type { Bot, BotReason, BotView } from './bot'
 export const passiveBot = (): Bot => (ask, _view, { random }) => ({ answer: passiveAnswer(ask, random) })
 
 /** El motivo de guardar una handtrap según su regla: `respond` y `offered` siempre se usan contra tu eslabón (si se guardan, es que no estaban en su lista). */
-const HOLD: Record<AutoRule, string> = { respond: 'other', monster: 'monster', graveyard: 'graveyard', offered: 'other', draw: 'draw' }
+const HOLD: Record<AutoRule, string> = { respond: 'other', monster: 'monster', graveyard: 'graveyard', bystial: 'graveyard', offered: 'other', draw: 'draw', floodgate: 'draw', attack: 'attack', extra: 'other' }
 
 function reasonOf(why: HandtrapWhy): { reason: BotReason; rule: string } {
   switch (why.kind) {
@@ -38,14 +38,14 @@ function rivalViewOf(view: BotView): RivalView {
   const turnPlayer = view.turnPlayer === null ? null : view.turnPlayer === 'me' ? view.seat : ((1 - view.seat) as Seat)
 
   return {
-    overlay: { chain: view.chain.map((link) => ({ card: link.card?.ref ?? null, code: link.code, description: link.description, state: link.state })), turnPlayer },
+    overlay: { chain: view.chain.map((link) => ({ card: link.card?.ref ?? null, code: link.code, description: link.description, state: link.state })), turnPlayer, phase: view.phase },
     locationOf: (ref) => view.chain.find((link) => link.card?.ref.side === ref.side && link.card.ref.id === ref.id)?.card?.place ?? null,
   }
 }
 
-/** El rival de handtraps (`handtrapPolicy`: `priority` y `extra` en el orden de la hoja; `aliasOf`, el original de un arte alternativo) con sus motivos. */
-export function handtrapBot(priority: readonly number[], extra: readonly number[] = [], aliasOf?: (code: number) => number): Bot {
-  const decide = handtrapDecide(priority, extra, aliasOf)
+/** El rival de handtraps (`handtrapPolicy`: `priority` y `extra` en el orden de la hoja; `aliasOf`, el original de un arte alternativo; `attributeOf`, el Atributo de una carta) con sus motivos. */
+export function handtrapBot(priority: readonly number[], extra: readonly number[] = [], aliasOf?: (code: number) => number, attributeOf?: (code: number) => number): Bot {
+  const decide = handtrapDecide(priority, extra, aliasOf, attributeOf)
 
   return (ask, view, { random }) => {
     const { answer, why } = decide(ask, rivalViewOf(view), (next) => passiveAnswer(next, random))

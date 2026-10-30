@@ -1,14 +1,10 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { createDataLoader } from '../app/auto/auto-data'
-import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import type { ChainStep } from '../app/auto/chain-feed'
-import { localTransport } from '../app/auto/core-host'
-import type { DeckList } from '../app/auto/deck-map'
-import { passivePolicy } from '../app/auto/policies'
-import { LOCATION as L, type AutoEvent, type CoreAnswer, type CoreAsk, type WireEvent } from '../app/auto/protocol'
-import { AUTO_RULES, autoRival, HANDTRAP_CATALOG, type ExtraPick, type HandtrapConfig } from '../app/handtraps'
-import { cardRows, CORE_DATA_DIR, hasCoreData, nodeSource, scriptStore, wasmBinary } from './support/core-data'
+import { LOCATION as L, type WireEvent } from '../app/auto/protocol'
+import { AUTO_RULES, HANDTRAP_CATALOG, type ExtraPick } from '../app/handtraps'
+import { CORE_DATA_DIR, hasCoreData } from './support/core-data'
+import { chainingOf, H3_CARDS, handtrapDuels, has, moved, type DuelScenario, type Step } from './support/handtrap-duel'
 
 /**
  * Cada handtrap del simulador contra el núcleo real (lento: `npm run test:auto`; se salta sin datos). En un escenario armado a mano el rival
@@ -56,24 +52,12 @@ const BULB = 67441435
 const OJAMA_TRIO = 29843091
 const POT = 55144522
 
-const IDLE = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
-/** Una jugada tuya en un `select_idlecmd` (su `action`: 0 Normal, 1 Especial, 4 colocar una Mágica o Trampa, 5 activar). */
-const ACTION = { summon: 0, spsummon: 1, set: 4, activate: 5 } as const
-type Step = { do: keyof typeof ACTION; code: number }
-
-interface Scenario {
+interface Scenario extends DuelScenario {
   card: number
-  /** Tu deck (sin contar la mano) y tu mano, arriba en ese orden. */
-  deck: [number, number][]
-  extra?: [number, number][]
-  hand: number[]
-  steps: Step[]
   /** Lo que tiene que haber pasado, mirando los eventos de tu asiento desde que el rival activó la handtrap. */
   check: (after: WireEvent[], all: WireEvent[]) => string | null
 }
 
-const chainingOf = (events: readonly WireEvent[], code: number, controller: 0 | 1) => events.findIndex((event) => event.type === 'chaining' && event.code === code && event.controller === controller)
-const has = (events: readonly WireEvent[], test: (event: WireEvent) => boolean) => events.some(test)
 const drewRival = (events: readonly WireEvent[]) => has(events, (event) => event.type === 'draw' && event.player === 1)
 const negatedLink = (events: readonly WireEvent[], kind: 'chain_disabled' | 'chain_negated', link: number) => has(events, (event) => event.type === kind && event.chain_size === link)
 /** Las handtraps de los escenarios que niegan un eslabón (`chain_negated` o `chain_disabled`). */
@@ -97,7 +81,6 @@ const negatorsOf = (steps: readonly ChainStep[]) => {
     return [step.by >= 1 && step.by !== step.index + 1 && step.by <= links.length ? links[step.by - 1]! : -1]
   })
 }
-const moved = (events: readonly WireEvent[], card: number, from: number, to: number) => has(events, (event) => event.type === 'move' && event.card === card && (event.from.location & from) !== 0 && (event.to.location & to) !== 0)
 
 /** Relleno de tu deck: Mágicas que nunca se juegan (así Foolish Burial y Monster Reborn sólo tienen el monstruo que se quiere). */
 const SPELLS: [number, number][] = [[POT, 1]]
@@ -278,98 +261,18 @@ const SCENARIOS: Scenario[] = [
   },
 ]
 
-/** Tus respuestas: los pasos en orden (en cada `select_idlecmd`, la jugada con esa carta); tus efectos opcionales, sí; no respondés a cadenas; lo demás, como el pasivo. */
-function player(steps: readonly Step[]) {
-  const passive = passivePolicy()
-  let next = 0
-
-  return {
-    get done() {
-      return next >= steps.length
-    },
-    answer(ask: CoreAsk, own: ReadonlySet<number>): CoreAnswer {
-      if (ask.type === 'select_idlecmd') {
-        const step = steps[next]
-        const index = step ? ask[IDLE[ACTION[step.do]]].findIndex((card) => card.code === step.code) : -1
-
-        // Lo que todavía no se puede (una Trampa recién colocada) espera al turno siguiente.
-        if (!step || index < 0) return { type: ask.type, action: 7, index: null }
-        next += 1
-
-        return { type: ask.type, action: ACTION[step.do], index }
-      }
-      if (ask.type === 'select_effectyn') return { type: ask.type, yes: own.has(ask.code) }
-      return passive(ask)
-    },
-  }
-}
-
-const settled = (session: AutoSession) =>
-  new Promise<AutoSnapshot>((resolve) => {
-    const check = () => {
-      const snapshot = session.getSnapshot()
-
-      if ((snapshot.status === 'ready' && snapshot.ask && !snapshot.replaying) || snapshot.status === 'ended' || snapshot.status === 'error') {
-        off()
-        resolve(snapshot)
-      }
-    }
-    const off = session.subscribe(check)
-
-    check()
-  })
-
 describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (npm run test:auto)', () => {
-  const rows = hasCoreData ? cardRows() : []
-  const store = scriptStore()
-  const loader = createDataLoader(nodeSource(rows, store), null)
-  const wasm = hasCoreData ? wasmBinary() : new ArrayBuffer(0)
-  const names = new Map(rows.map((row) => [row.id, row.name ?? String(row.id)]))
+  const { duel, names } = handtrapDuels()
   const report: Record<string, unknown>[] = []
 
   afterAll(() => {
     if (hasCoreData) writeFileSync(path.join(CORE_DATA_DIR, 'handtraps-report.json'), JSON.stringify(report, null, 1))
   })
 
-  it('toda carta con regla tiene escenario, y el catálogo entero tiene regla', () => {
-    expect(new Set(SCENARIOS.map((scenario) => scenario.card))).toEqual(new Set(Object.keys(AUTO_RULES).map(Number)))
+  it('toda carta con regla tiene escenario (las de H3, en auto-handtraps-h3.slow.test.ts), y el catálogo entero tiene regla', () => {
+    expect(new Set([...SCENARIOS.map((scenario) => scenario.card), ...H3_CARDS])).toEqual(new Set(Object.keys(AUTO_RULES).map(Number)))
     expect(HANDTRAP_CATALOG.filter((card) => !AUTO_RULES[card.id])).toEqual([])
   })
-
-  /** Un duelo de la sesión de verdad: tu deck y tu mano, tus pasos, y el rival del simulador con `config` (sus handtraps, su mano y su Extra Deck). Termina cuando hiciste todo. */
-  async function duel(scenario: Pick<Scenario, 'deck' | 'extra' | 'hand' | 'steps'>, config: HandtrapConfig) {
-    const events: WireEvent[] = []
-    /** Lo que el núcleo le ofreció al rival en cada ventana de cadena (códigos), en orden. */
-    const offers: number[][] = []
-    const deck: DeckList = { main: [...scenario.hand.map((code) => [code, 1] as [number, number]), ...scenario.deck], extra: scenario.extra ?? [] }
-    const session = createAutoSession({
-      loader,
-      deck,
-      hand: scenario.hand,
-      handSize: scenario.hand.length,
-      seed: 1,
-      transport: localTransport({ wasmBinary: wasm }),
-      rival: autoRival(config),
-      onEvent: (event: AutoEvent) => {
-        if (event.t === 'events' && event.seat === 0) events.push(...event.events)
-        if (event.t === 'ask' && event.seat === 1 && event.ask.type === 'select_chain') offers.push(event.ask.selects.map((card) => card.code))
-      },
-    })
-    const me = player(scenario.steps)
-    const own = new Set(deck.main.map(([code]) => code))
-    let snapshot = await settled(session)
-    // Su mano, como la ve él: la que repartió el simulador.
-    const handAtStart = snapshot.rivalHand
-
-    // Hasta que hiciste todo y vuelve a ser tu turno de elegir (o el tope).
-    for (let n = 0; n < 120 && snapshot.status === 'ready' && !(me.done && snapshot.ask?.ask.type === 'select_idlecmd'); n += 1) {
-      session.answer(me.answer(snapshot.ask!.ask, own))
-      snapshot = await settled(session)
-    }
-    session.destroy()
-
-    return { events, offers, snapshot, handAtStart }
-  }
 
   it.each(SCENARIOS.map((scenario) => [names.get(scenario.card) ?? String(scenario.card), scenario] as const))('%s: el rival la usa sola y se resuelve', async (_name, scenario) => {
     // El rival de la pantalla: el del simulador con esa sola carta (con Gamma o Delta, también PSY-Frame Driver en su deck) y el Extra Deck de siempre.
