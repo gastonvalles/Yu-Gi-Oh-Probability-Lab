@@ -271,6 +271,8 @@ describe('auto-screen · repasar en la misma mesa', () => {
     expect(within(replayControls()!).queryByRole('slider')).toBeNull()
     expect(within(replayControls()!).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Volver al principio', 'Anterior', 'Pausar', 'Siguiente', 'Velocidad: 1×'])
     expect(document.querySelector('[data-activation] span[data-stage-text]')).toBeNull()
+    // En el medio de la mesa, como en vivo: no en una franja arriba que le cortaba el resplandor (Gastón, 2026-10-30).
+    expect(document.querySelector('[data-activation]')).toHaveClass('absolute', 'inset-y-0', 'left-0', 'right-0')
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     fireEvent.pointerDown(document.querySelector('[data-drop="hand"]')!, { button: 0, pointerId: 1 })
     fireEvent.click(within(panel()).getByRole('radio', { name: /Pasos/ }))

@@ -304,8 +304,6 @@ interface SpotlightProps {
   origin?: (id: string) => CardPose | null
   /** Dónde se ubica (el padre dice sobre qué parte de la mesa se centran las cartas). */
   className?: string
-  /** Las cartas caben en el alto de su lugar (el repaso partido del celular: la mitad del rival): la capa mide su alto (`container-type: size`) y el nombre va en un renglón. */
-  fit?: boolean
 }
 
 /** Lo que tarda la carta grande en llegar desde su carta hasta el centro. */
@@ -427,22 +425,19 @@ const STAGE_CARD_WIDTH = ['', 'w-[min(42cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w
 /** Con el efecto escrito debajo la carta es más chica: lo que hay que leer es el texto, y el conjunto tiene que entrar en el alto de la mesa. */
 const STAGE_CARD_WIDTH_WITH_DETAIL = 'w-[min(34cqw,10.5rem)]'
 
-/** Con `fit`: lo mismo, pero sin pasarse del alto de la capa menos el nombre (2,5 rem): una carta es 0,6857 de su alto de ancho. */
-const STAGE_CARD_WIDTH_FIT = ['', 'w-[min(42cqw,13rem,calc((100cqh-2.5rem)*0.6857))]', 'w-[min(30cqw,10rem,calc((100cqh-2.5rem)*0.6857))]', 'w-[min(22cqw,7.5rem,calc((100cqh-2.5rem)*0.6857))]', 'w-[min(18cqw,6.5rem,calc((100cqh-2.5rem)*0.6857))]']
-
 /**
  * Las cartas grandes en el centro de la mesa cuando se activa, se muestra o se declara una carta (o, al reproducir un combo, cuando
  * un paso las mueve): aparecen con un resplandor y una onda, cada una con su marco de color, un reflejo y su nombre debajo, y arriba una
  * línea que dice qué pasó. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
  * recuadro, no las de la pantalla. Con `origin`, cada una sale de su carta en la mesa (`useStageTravel`).
  */
-export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className, fit = false }: SpotlightProps) {
+export function Spotlight({ kind, cards, caption, detail, flip = false, linger = false, origin, className }: SpotlightProps) {
   const tone = STAGE_TONE[kind]
   const shown = cards.slice(0, 4)
   const rootRef = useStageTravel(origin)
 
   return (
-    <div ref={rootRef} data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className={cx('pointer-events-none grid place-items-center overflow-hidden', fit ? '[container-type:size]' : '@container', className)} style={fxVars(tone)}>
+    <div ref={rootRef} data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className={cx('pointer-events-none grid place-items-center overflow-hidden @container', className)} style={fxVars(tone)}>
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
       <span data-stage-glow className="absolute left-1/2 top-1/2 aspect-square w-[min(56cqw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
       <div className={cx('relative motion-reduce:animate-none', detail ? 'animate-card-activate-read' : linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
@@ -453,7 +448,7 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
         ) : null}
         <div className="flex items-start justify-center gap-3">
           {shown.map((card) => (
-            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : (fit ? STAGE_CARD_WIDTH_FIT : STAGE_CARD_WIDTH)[shown.length])}>
+            <figure key={card.id} className={cx('m-0 grid justify-items-center gap-2', detail && shown.length === 1 ? STAGE_CARD_WIDTH_WITH_DETAIL : STAGE_CARD_WIDTH[shown.length])}>
               {/* Dos caras: la de adelante (la carta) y la de atrás (el dorso), que se muestra primero y se da vuelta en 3D. */}
               <div data-stage-card={card.id} className="relative aspect-[421/614] w-full [perspective:900px]">
                 <div className={cx('absolute inset-0 [transform-style:preserve-3d]', flip && 'animate-fx-flip-in motion-reduce:animate-none')}>
@@ -468,7 +463,7 @@ export function Spotlight({ kind, cards, caption, detail, flip = false, linger =
                   ) : null}
                 </div>
               </div>
-              {card.name ? <figcaption data-stage-text className={cx('max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground', fit ? 'line-clamp-1' : 'line-clamp-2')}>{card.name}</figcaption> : null}
+              {card.name ? <figcaption data-stage-text className="line-clamp-2 max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground">{card.name}</figcaption> : null}
             </figure>
           ))}
         </div>
