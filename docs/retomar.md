@@ -39,7 +39,10 @@ npm run dev   # http://localhost:5173; también sirve /api/card-image, /api/live
   `sync:*` de `package.json` (cuál es cuál: `README.md`).
 - **Las pruebas con el núcleo real** (`*.slow.test.ts`) corren sólo con `npm run test:auto` (el proyecto `slow` existe sólo
   así) y piden `npm run sync:core` (otra vez cuando cambie `auto-data.lock.json`): sin datos se saltan solas y con datos de otro
-  commit fallan (cuatro archivos rojos que no son del código).
+  commit fallan (cuatro archivos rojos que no son del código). Usan listas fijas (`support/slow-decklists.json`), no el meta
+  diario; `auto-meta-today.slow` avisa qué mazos de hoy no se pueden jugar. Ojo: `auto-fuzz.slow` puede dar un `rewindMismatch`
+  intermitente con el Péndulo de Solfachord (a veces no vence `GrantAdditionalPendulumSummon`: falta su `player_hint` 7); no es
+  del adaptador y sin investigar.
 - **Un duelo en local** necesita `VITE_DUEL_RELAY_URL` en `.env.local`, que git ignora: un worktree nuevo no lo trae (copialo
   del checkout principal). Con el relay publicado o con uno local: `docs/duelo-relay.md`.
 - **Windows:** `npm` desde Windows, no desde WSL (`node_modules` es de Windows y en WSL rolldown no encuentra su binario).
