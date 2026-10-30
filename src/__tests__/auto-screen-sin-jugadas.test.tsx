@@ -10,8 +10,8 @@ import { fakeSession, loc, stringId, type FakeSession } from './support/auto-ses
 import { core, dispatches, handCard, renderAuto } from './support/auto-screen-harness'
 import { tap } from './support/practice-mat-harness'
 
-// Una carta tuya sin jugadas en «Jugar solo automático»: el menú dice por qué (sólo lo que se sabe: una restricción del núcleo con el texto de su carta, la Invocación Normal hecha,
-// el turno del rival), ofrece seguir en manual y nunca despacha; las restricciones activas, además, en un chip al lado del botón de las fases.
+// Una carta tuya sin jugadas en «Jugar solo automático»: el menú dice por qué (sólo lo que se sabe: la Invocación Normal hecha, el turno del rival; si no, que el automático no la ofrece)
+// y, aparte, las restricciones del núcleo con el texto de su carta (rigen, pero pueden no ser la causa); ofrece seguir en manual y nunca despacha; las restricciones, además, en un chip.
 
 /** Tus jugadas del turno: sólo Ash se Invoca; Called by the Grave y Zeus (del Extra) no tienen nada. */
 const IDLE: CoreAsk = { type: 'select_idlecmd', player: 0, summons: [loc(100, L.HAND, 0)], special_summons: [], pos_changes: [], monster_sets: [], spell_sets: [], activates: [], to_bp: true, to_ep: true, shuffle: false }
@@ -23,7 +23,7 @@ const withOverlay = (fake: FakeSession, patch: Partial<AutoOverlay>) => fake.set
 vi.mock(import('../app/use-toast-message'), async (importOriginal) => ({ ...(await importOriginal()), showToastMessage: vi.fn() }))
 
 describe('auto-screen · una carta sin jugadas dice por qué', () => {
-  it('celular: la hoja dice la restricción del núcleo con su texto y el atajo abre el modo manual; el chip muestra la restricción', () => {
+  it('celular: la hoja dice que el automático no la ofrece y, aparte, la restricción del núcleo con su texto y el atajo abre el modo manual; el chip muestra la restricción', () => {
     const onManual = vi.fn()
     const fake = renderAuto(fakeSession(), () => {}, onManual)
 
@@ -40,7 +40,7 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
     tap(handCard('Called by the Grave'))
     const sheet = screen.getByRole('region', { name: 'Called by the Grave' })
 
-    expect(within(sheet).getByTestId('no-plays')).toHaveTextContent('Ahora no tiene jugadasDestroy a monster¿No coincide con lo que esperabas?Seguir en modo manual')
+    expect(within(sheet).getByTestId('no-plays')).toHaveTextContent('Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora.También rige (puede no ser la causa):Destroy a monster¿No coincide con lo que esperabas?Seguir en modo manual')
     expect(within(sheet).getByRole('button', { name: 'Ver carta' })).toBeInTheDocument()
     fireEvent.click(within(sheet).getByRole('button', { name: 'Seguir en modo manual' }))
     // Sin jugadas todavía no hay nada que volver atrás: pasa derecho a la mesa manual.
@@ -106,7 +106,7 @@ describe('auto-screen · una carta sin jugadas dice por qué', () => {
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: /^Zeus/ }))
     const menu = screen.getByRole('menu', { name: 'Zeus' })
 
-    expect(within(menu).getByTestId('no-plays')).toHaveTextContent('Ahora no tiene jugadasDestroy a monster')
+    expect(within(menu).getByTestId('no-plays')).toHaveTextContent('Ahora no tiene jugadasEl automático no ofrece jugadas para esta carta ahora.También rige (puede no ser la causa):Destroy a monster')
     expect(within(menu).queryByRole('menuitem', { name: 'Ver carta' })).toBeNull()
     expect(within(menu).getByRole('button', { name: 'Seguir en modo manual' })).toBeInTheDocument()
     expect(dispatches).toBe(0)

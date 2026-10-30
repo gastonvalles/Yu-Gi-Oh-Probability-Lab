@@ -333,6 +333,7 @@ export const auto = {
   'auto.why.monsterZones': 'Tus cinco zonas de monstruo están ocupadas.',
   'auto.why.spellZones': 'Tus cinco zonas de magia y trampa están ocupadas.',
   'auto.why.limitOf': 'Rige una restricción de {card}.',
+  'auto.why.limits': 'También rige (puede no ser la causa):',
   'auto.why.mismatch': '¿No coincide con lo que esperabas?',
   'auto.limits.label': { one: '{count} restricción activa', other: '{count} restricciones activas' },
 } as const
