@@ -30,8 +30,8 @@ export const handtraps = {
   // En el duelo automático: aplicar reinicia el duelo y lo que no tiene regla (lo agregado con el buscador) el rival lo tiene pero no lo usa.
   'handtraps.picker.restarts': 'Al aplicar, el duelo empieza de nuevo.',
   'handtraps.picker.notAuto': 'Todavía no la usa solo',
-  // «El rival juega su turno (beta)»: Invoca, coloca, activa sus cartas (las de `TURN_RULES`) y ataca.
-  'handtraps.picker.ownTurn': 'El rival juega su turno (beta)',
+  // «El rival juega su turno»: Invoca, coloca, activa sus cartas (las de `TURN_RULES`) y ataca.
+  'handtraps.picker.ownTurn': 'El rival juega su turno',
   'handtraps.picker.ownTurnHint': 'Invoca, coloca, activa sus cartas y ataca: tus combos pueden terminar con daño.',
   'handtraps.picker.turnCard': 'La juega en su turno',
   'handtraps.picker.turnOnly': 'La usa sólo si juega su turno',

@@ -160,7 +160,7 @@ interface Draft {
   hand: number
   /** Su Extra Deck, en orden de preferencia. */
   extra: ExtraPick[]
-  /** «El rival juega su turno (beta)»: sólo se ve y se cambia en el duelo automático. */
+  /** «El rival juega su turno»: sólo se ve y se cambia en el duelo automático. */
   ownTurn: boolean
 }
 
@@ -215,7 +215,7 @@ interface HandtrapPickerProps {
   /** Dentro de la práctica: aplicar reparte una mano nueva, y la hoja lo avisa abajo. */
   dealsNew?: boolean
   /**
-   * En el duelo automático: aplicar reinicia el duelo (la hoja lo avisa abajo), arriba va «El rival juega su turno (beta)» y las cartas sin regla (`AUTO_RULES`) dicen que el rival
+   * En el duelo automático: aplicar reinicia el duelo (la hoja lo avisa abajo), arriba va «El rival juega su turno» y las cartas sin regla (`AUTO_RULES`) dicen que el rival
    * todavía no las usa solo (las de su turno, `TURN_RULES`, que las juega en su turno o que las usa sólo si lo juega).
    */
   auto?: boolean
