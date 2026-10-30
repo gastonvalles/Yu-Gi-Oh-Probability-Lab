@@ -337,9 +337,10 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const bound = isBound(card)
 
     if (card.code !== 0 && card.code !== code) {
-      // Segura y con otro código: la carta cambió de código en su lugar (el núcleo la sigue consultando con el de antes). La mesa no cambia un id.
-      if (!card.unsure && (card.owner === seat || bound)) return note(`unsupported: code changed in place (${card.code} to ${code})`)
-      if (!card.unsure) note(`identity: ${card.id} was ${card.code}, the core says ${code}`)
+      // Segura y con otro código: la carta cambió de código en su lugar. La mesa no cambia un id (el mío lleva el código de antes; el `known`
+      // del espejo no olvida), pero `codeOf` sigue al núcleo.
+      if (!card.unsure && (card.owner === seat || bound)) note(`unsupported: code changed in place (${card.code} to ${code})`)
+      else if (!card.unsure) note(`identity: ${card.id} was ${card.code}, the core says ${code}`)
       // Dudosa y ya atada en el espejo: se perdió su identidad al barajar (el `known` del espejo la sigue mostrando como era).
       else if (bound) note(`unsupported: identity lost in a shuffled pile (${card.id})`)
     }

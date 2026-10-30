@@ -283,4 +283,15 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(adapter.theirs.state.banished).toEqual([shown])
     expect(adapter.codeOf({ side: 'theirs', id: shown })).toBe(777)
   })
+
+  it('una carta que cambia de código en su lugar: `codeOf` sigue al núcleo (el id y el `known` del espejo no cambian)', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(1) }, move(777, at(1, L.HAND, 0, 10), at(1, L.MZONE, 2))))
+    const id = adapter.idAt(at(1, L.MZONE, 2))!
+    const out = adapter.apply(events(0, { type: 'pos_change', code: 778, controller: 1, location: L.MZONE, sequence: 2, prev_position: P.FACEUP_ATTACK, position: P.FACEUP_DEFENSE }))
+
+    expect(out.unmapped).toEqual(['unsupported: code changed in place (777 to 778)'])
+    expect(adapter.codeOf({ side: 'theirs', id })).toBe(778)
+  })
 })

@@ -202,9 +202,9 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
     expect(pick(tally.unmapped, (key) => !key.startsWith('identity:'))).toEqual({})
   })
 
-  // Pendiente: en el espejo del rival, una carta vista en una pila oculta (mano, deck) a veces termina atada a otra (`identity:`) y el
-  // espejo pone otra carta en su campo o cementerio. Cuando se arregle, esta prueba se pone roja: sacarle el `fails`.
-  it.fails('(b) el espejo del rival: sin diferencias ni identidades que no cierran', () => {
+  // Lo que el espejo no puede saber queda en la lista blanca, contado: una carta ya mostrada que vuelve a una pila barajada y sale oculta
+  // (`identity lost`: cualquiera de las sueltas pudo ser ella) y el Xyz con sus materiales todavía en el Extra (`TRANSIT`).
+  it('(b) el espejo del rival: sin diferencias ni identidades que no cierran', () => {
     expect({ theirs: pick(tally.diffs, (key) => key.startsWith('theirs:') && !key.includes('overlay')), identity: pick(tally.unmapped, (key) => key.startsWith('identity:')) }).toEqual({ theirs: {}, identity: {} })
   })
 })
