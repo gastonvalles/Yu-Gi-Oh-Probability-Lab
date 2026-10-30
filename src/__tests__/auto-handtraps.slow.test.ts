@@ -377,7 +377,7 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     report.at(-1)!.negators = negators
     expect(negators.length > 0).toBe(NEGATES.has(scenario.card))
     expect(negators).toEqual(negators.map(() => (BY_UNKNOWN.has(scenario.card) ? null : scenario.card)))
-    // Las que roban (`draw`) ya las usó en tu Standby Phase, antes de tu primera pregunta.
+    // Las que roban (`draw`) ya las usó en tu Draw Phase, antes de tu primera pregunta.
     expect(handAtStart).toEqual(AUTO_RULES[scenario.card] === 'draw' ? [] : [scenario.card])
     expect(snapshot.rivalHand).not.toContain(scenario.card)
   })
@@ -412,14 +412,14 @@ describe.skipIf(!hasCoreData)('las handtraps del rival contra el núcleo real (n
     expect(after(DOMINUS).flat()).not.toContain(VEILER)
   })
 
-  it.each([MAXX, FUWALOS, PURULIA, MEOWLS].map((card) => [names.get(card) ?? String(card), card] as const))('%s: la usa en tu Standby Phase, como se juega (el núcleo se la ofrece ahí), no a tu primera jugada', async (_name, card) => {
+  it.each([MAXX, FUWALOS, PURULIA, MEOWLS].map((card) => [names.get(card) ?? String(card), card] as const))('%s: la usa en tu Draw Phase, como se juega (el núcleo se la ofrece ahí), no a tu primera jugada', async (_name, card) => {
     const { events } = await duel({ deck: [[AVIAN, 1], ...SPELLS], hand: [STRATOS], steps: [{ do: 'summon', code: STRATOS }] }, { enabled: true, picks: [{ id: card, name: '', copies: 1 }], hand: 1 })
     const phase = (id: number) => events.findIndex((event) => event.type === 'new_phase' && event.phase === id)
     const at = chainingOf(events, card, 1)
 
-    // PHASE_STANDBY = 2, PHASE_MAIN1 = 4.
-    expect(at).toBeGreaterThan(phase(2))
-    expect(at).toBeLessThan(phase(4))
+    // PHASE_DRAW = 1, PHASE_STANDBY = 2.
+    expect(at).toBeGreaterThan(phase(1))
+    expect(at).toBeLessThan(phase(2))
   })
 
   describe('el Extra Deck del rival y Fydraulis Harmonia (revela hasta 5 Sincros de su Extra y manda uno al cementerio)', () => {
