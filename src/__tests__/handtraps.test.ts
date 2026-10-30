@@ -183,6 +183,17 @@ describe('lo que se recuerda del simulador', () => {
     expect(read(JSON.stringify({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] }))).toEqual({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
   })
 
+  it('«El rival juega su turno»: lo guardado antes (sin el campo) y lo que no es `true`, apagado; encendido vuelve igual y no cambia la mano que se reparte', () => {
+    const own = memory()
+    const stored = () => own
+
+    expect(read(JSON.stringify({ enabled: true, picks: [ASH], hand: 3 }))).not.toHaveProperty('ownTurn')
+    expect(read(JSON.stringify({ enabled: true, picks: [ASH], ownTurn: 'sí' }))).not.toHaveProperty('ownTurn')
+    writeHandtrapConfig({ enabled: true, picks: [ASH, VEILER], hand: 1, ownTurn: true }, stored)
+    expect(readHandtrapConfig(stored)).toMatchObject({ ownTurn: true })
+    expect(dealRival({ ...readHandtrapConfig(stored), ownTurn: false }, 9)).toEqual(dealRival(readHandtrapConfig(stored), 9))
+  })
+
   it('el Extra Deck: lo guardado antes (sin `extra`) usa el de siempre; vacío es vacío; se acota a 15 y a 3 copias por carta, y lo que no se entiende queda afuera', () => {
     expect(read(JSON.stringify({ enabled: true, picks: [ASH], hand: 3 })).extra).toEqual(DEFAULT_RIVAL_EXTRA)
     expect(read(JSON.stringify({ enabled: true, picks: [ASH], extra: [] })).extra).toEqual([])

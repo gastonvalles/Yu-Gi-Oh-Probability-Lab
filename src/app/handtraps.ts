@@ -116,6 +116,25 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
 }
 
 /**
+ * Lo que el rival juega en su propio turno con «El rival juega su turno» (`HandtrapConfig.ownTurn`; `auto/bot/turn.ts`), además de Invocar su relleno y atacar. Las tres de Gastón
+ * Tributan monstruos tuyos (`golem`, `sphere`, `bandit`); `sweepMonsters` / `sweepSpells` barren lo tuyo en su Main Phase; `counter` se coloca y niega tu Invocación o tu efecto.
+ * Un arte alternativo usa la regla de su original (`alias`).
+ */
+export type TurnRule = 'golem' | 'sphere' | 'bandit' | 'sweepMonsters' | 'sweepSpells' | 'counter'
+
+export const TURN_RULES: Readonly<Record<number, TurnRule>> = {
+  102380: 'golem', // Lava Golem
+  10000080: 'sphere', // The Winged Dragon of Ra - Sphere Mode (a su vuelta, Tributarla trae a Ra de la mano o el Deck)
+  24203749: 'bandit', // The Great Gallant Bandit
+  12580477: 'sweepMonsters', // Raigeki
+  53129443: 'sweepMonsters', // Dark Hole (también los suyos: la activa antes de Invocar)
+  18144506: 'sweepSpells', // Harpie's Feather Duster
+  40605147: 'counter', // Solemn Strike
+  41420027: 'counter', // Solemn Judgment
+  84749824: 'counter', // Solemn Warning
+}
+
+/**
  * Los Atributos (como los escribe YGOPRODeck) cuyos efectos de monstruo se prohíbe cada Dominus activada desde la mano, por el resto del duelo (lo dice su script: Impulse,
  * Purge, Spark y Spiral). El rival sólo las usa desde la mano.
  */
@@ -145,6 +164,8 @@ export interface AutoRival {
   main: [number, number][]
   extra: [number, number][]
   hand: (seed: number) => number[]
+  /** Juega su turno (`HandtrapConfig.ownTurn`); sin esto, lo termina apenas puede. */
+  ownTurn?: boolean
 }
 
 /** Lo que es cada monstruo del Extra Deck: su marco de YGOPRODeck (`frameType`, sin el «_pendulum»). */
@@ -207,6 +228,7 @@ export function autoRival(config: HandtrapConfig): AutoRival | null {
     main: [...picks.map((pick): [number, number] => [pick.id, pick.copies]), ...(picks.some((pick) => PSY_FRAMEGEARS.has(pick.id)) ? [[PSY_FRAME_DRIVER, 1] as [number, number]] : [])],
     extra: normalizeExtra(config.extra ?? DEFAULT_RIVAL_EXTRA).map((card): [number, number] => [card.id, 1]),
     hand: (seed) => dealRival(config, seed)!.rival.hand.map((id) => Number(rivalCardOf(id).split('-')[1])),
+    ...(config.ownTurn ? { ownTurn: true } : {}),
   }
 }
 
@@ -217,6 +239,8 @@ export interface HandtrapConfig {
   hand: number
   /** En orden de preferencia; vacío, juega sin Extra Deck; sin el campo, `DEFAULT_RIVAL_EXTRA`. No cambia la mano que se reparte (`dealRival` no lo mira). */
   extra?: ExtraPick[]
+  /** «El rival juega su turno (beta)», sólo en el duelo automático: Invoca, coloca, activa sus cartas (`TURN_RULES`) y ataca. Sin el campo (lo guardado antes), apagado. */
+  ownTurn?: boolean
 }
 
 /** Las tres de siempre, una copia de cada una: Ash Blossom, Effect Veiler e Infinite Impermanence. */
@@ -286,12 +310,14 @@ export function readHandtrapConfig(storage: () => Storage = () => localStorage):
 
   const picks = Array.isArray(stored.picks) ? parsePicks(stored.picks) : []
 
-  return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra) }
+  return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra), ...(stored.ownTurn === true ? { ownTurn: true } : {}) }
 }
 
 export function writeHandtrapConfig(config: HandtrapConfig, storage: () => Storage = () => localStorage): void {
   try {
-    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })), hand: config.hand, extra: normalizeExtra(config.extra ?? DEFAULT_RIVAL_EXTRA) }))
+    const ownTurn = config.ownTurn ? { ownTurn: true } : {}
+
+    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })), hand: config.hand, extra: normalizeExtra(config.extra ?? DEFAULT_RIVAL_EXTRA), ...ownTurn }))
   } catch {
     // Sin almacenamiento (ventana privada, cuota): vale hasta recargar.
   }

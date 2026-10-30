@@ -1,4 +1,4 @@
-import { AUTO_RULES, type AutoRule } from '../handtraps'
+import { AUTO_RULES, TURN_RULES, type AutoRule, type TurnRule } from '../handtraps'
 import type { AutoOverlay, CardRef, ChainLink, CorePlace } from './adapter'
 import { LOCATION, type AskOf, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
 
@@ -65,8 +65,8 @@ function sumPick(ask: AskOf<'select_sum'>, order: readonly number[]): number[] {
   return best ?? []
 }
 
-/** Sacrificios: se suman los que valen (`release_param`) hasta llegar a `min`. */
-function tributePick(ask: AskOf<'select_tribute'>, order: readonly number[], more: () => boolean): number[] {
+/** Sacrificios: se suman los que valen (`release_param`), en el orden dado, hasta llegar a `min`. */
+export function tributePick(ask: AskOf<'select_tribute'>, order: readonly number[], more: () => boolean): number[] {
   const chosen: number[] = []
   let sum = 0
 
@@ -195,6 +195,13 @@ export function ruleOf(code: number, aliasOf: (code: number) => number = () => 0
   const alias = aliasOf(code)
 
   return AUTO_RULES[code] ?? (alias ? AUTO_RULES[alias] : undefined)
+}
+
+/** La jugada de su turno de una carta (`TURN_RULES`), por su código o el de su original, como `ruleOf`. */
+export function turnRuleOf(code: number, aliasOf: (code: number) => number = () => 0): TurnRule | undefined {
+  const alias = aliasOf(code)
+
+  return TURN_RULES[code] ?? (alias ? TURN_RULES[alias] : undefined)
 }
 
 /**

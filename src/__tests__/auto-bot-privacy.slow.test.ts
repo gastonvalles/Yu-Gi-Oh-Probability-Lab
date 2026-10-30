@@ -4,6 +4,7 @@ import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import type { Bot } from '../app/auto/bot/bot'
 import { handtrapBot } from '../app/auto/bot/rivals'
+import { turnBot } from '../app/auto/bot/turn'
 import { localTransport } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
 import type { AutoEvent, CoreAnswer, CoreAsk } from '../app/auto/protocol'
@@ -18,6 +19,8 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, nodeSource, scriptStore, wasmBina
  * iguales en las 8. El control: un bot tramposo (no usa nada si tu mano real tiene Called by the Grave) tiene que fallar la misma prueba; si deja de fallar, la prueba no prueba nada.
  * Límite: demuestra que el bot no depende de lo oculto en estos escenarios; lo general lo dicen la capa 1 y la 2 (`auto-bot-privacy.test.ts`, `auto-bot.test.ts`) y el oráculo del fuzz.
  * Aparte informa cuánto difiere lo que le llega a su asiento tal cual (los `waiting` y `stats`: el canal lateral que la vista no deja pasar), en CORE_DATA_DIR.
+ * Todo dos veces: con el rival de handtraps y con el que además juega su turno (`turnBot`: Invoca, barre, Tributa tus monstruos y ataca; su tramposo, con Called by the Grave
+ * en tu mano, termina su turno sin jugar). Sin Harpie's Feather Duster: destruir lo que colocaste lo mostraría, y desde ahí lo público ya sería distinto.
  */
 
 const ASH = 14558127
@@ -64,6 +67,12 @@ const EXTRA_POOL = [41999284, 44508094, 97204936, 45815891, 50091196]
 const VERSIONS = 8
 /** El rival: las cinco en la mano, siempre (cinco copias y mano de cinco). */
 const RIVAL: HandtrapConfig = { enabled: true, picks: [ASH, MAXX, VEILER, IMPERM, OGRE].map((id) => ({ id, name: '', copies: 1 })), hand: 5 }
+/** El que juega su turno: Ash, Blazing Inpachi (un Normal para Invocar y atacar), Raigeki, Lava Golem y Gallant Bandit en la mano. */
+const RIVAL_TURN: HandtrapConfig = { enabled: true, picks: [ASH, 5464695, 12580477, 102380, 24203749].map((id) => ({ id, name: '', copies: 1 })), hand: 5, ownTurn: true }
+const MODES = [
+  { name: 'el rival de handtraps', config: RIVAL, file: 'bot-privacy-report.json' },
+  { name: 'el rival que juega su turno', config: RIVAL_TURN, file: 'bot-privacy-turn-report.json' },
+]
 
 function player(line: Line, setCode: number) {
   const passive = passivePolicy()
@@ -117,17 +126,18 @@ const settled = (session: AutoSession) =>
     check()
   })
 
-describe.skipIf(!hasCoreData)('el bot no depende de lo que no ve (metamórfica, npm run test:auto)', () => {
+describe.skipIf(!hasCoreData).each(MODES)('el bot no depende de lo que no ve (metamórfica, npm run test:auto): $name', ({ config, file }) => {
   const rows = hasCoreData ? cardRows() : []
+  const facts = new Map(rows.map((row) => [row.id, { type: row.type, attack: row.atk, defense: row.def, level: row.level & 0xff }]))
   const store = scriptStore()
   const source = nodeSource(rows, store)
   const loader = createDataLoader(source, null)
   const wasm = hasCoreData ? wasmBinary() : new ArrayBuffer(0)
-  const rival = autoRival(RIVAL)!
+  const rival = autoRival(config)!
   const report: Record<string, unknown> = {}
 
   afterAll(() => {
-    if (hasCoreData) writeFileSync(path.join(CORE_DATA_DIR, 'bot-privacy-report.json'), JSON.stringify(report, null, 1))
+    if (hasCoreData) writeFileSync(path.join(CORE_DATA_DIR, file), JSON.stringify(report, null, 1))
   })
 
   /** Las 8 versiones de lo oculto, con semilla fija; la 0 lleva Called by the Grave en la mano y la 1 no (lo que mira el bot tramposo). */
@@ -150,12 +160,18 @@ describe.skipIf(!hasCoreData)('el bot no depende de lo que no ve (metamórfica, 
 
   /** Un duelo de la sesión de verdad hasta tu turno 3 hecho: lo que el bot vio y decidió en cada pregunta suya (con `cheat`, el tramposo), y lo que le llegó a su asiento tal cual. */
   async function duel(line: Line, version: Awaited<ReturnType<typeof versionsOf>>[number], cheat = false) {
-    const honest = handtrapBot(rival.main.map(([code]) => code), rival.extra.map(([code]) => code))
+    const honest = rival.ownTurn ? turnBot(rival.main.map(([code]) => code), rival.extra.map(([code]) => code), undefined, undefined, (code) => facts.get(code)) : handtrapBot(rival.main.map(([code]) => code), rival.extra.map(([code]) => code))
     const decisions: string[] = []
     const bot: Bot = (ask, view, context) => {
       const decision = honest(ask, view, context)
-      // Hace trampa: mira tu mano real (lo que sabe la prueba, no la vista) y, si tenés Called by the Grave, no usa nada.
-      const out = cheat && version.hidden.includes(CALLED) && ask.type === 'select_chain' && !ask.forced ? { answer: { type: 'select_chain' as const, index: null } } : decision
+      // Hace trampa: mira tu mano real (lo que sabe la prueba, no la vista) y, si tenés Called by the Grave, no usa nada (ni juega su turno).
+      const peeks = cheat && version.hidden.includes(CALLED)
+      const out =
+        peeks && ask.type === 'select_chain' && !ask.forced
+          ? { answer: { type: 'select_chain' as const, index: null } }
+          : peeks && ask.type === 'select_idlecmd' && view.turnPlayer === 'me' && ask.to_ep
+            ? { answer: { type: 'select_idlecmd' as const, action: 7, index: null } }
+            : decision
 
       decisions.push(JSON.stringify({ ask, view, decision: out }))
       return out
@@ -224,7 +240,7 @@ describe.skipIf(!hasCoreData)('el bot no depende de lo que no ve (metamórfica, 
       const [withCalled, without] = (await versionsOf(line)).slice(0, 2) as [Awaited<ReturnType<typeof versionsOf>>[number], Awaited<ReturnType<typeof versionsOf>>[number]]
       const honest = await duel(line, withCalled)
       const runs = [await duel(line, withCalled, true), await duel(line, without, true)]
-      const uses = honest.reasons.some((key) => key.startsWith('auto.bot.reason.handtrap.'))
+      const uses = honest.reasons.some((key) => /^auto\.bot\.reason\.(handtrap|play|battle)\./.test(key))
 
       if (firstDiff(runs.map((run) => run.decisions)) !== null) caught.push(line.name)
       if (uses) expect(caught).toContain(line.name)
