@@ -12,8 +12,9 @@ import { isPublic } from './referee'
  *
  * Identidad: el núcleo nombra cada carta por (controlador, lugar, secuencia). El adaptador lleva su propia copia de esas listas, en el orden
  * del núcleo, con una carta (`Card`: id, dueño y código si este asiento lo sabe) en cada lugar, y la corre con cada evento. Tres reglas:
- * - El deck es una bolsa: después de barajar nadie sabe el orden (ni su dueño), así que se roba y se saca por código (`pick`). Por eso `draw`
- *   lleva `ids`. La mano del rival también es bolsa (la vemos de dorso; al barajarla perdemos qué es cada una).
+ * - El deck es una bolsa: después de barajar nadie sabe el orden (ni su dueño), así que se roba y se saca por código (`bagIndex`). Por eso
+ *   `draw` lleva `ids`. La mano del rival también es bolsa (la vemos de dorso; al barajarla perdemos qué es cada una). La lista sigue igual
+ *   los lugares del núcleo: lo que se pierde es qué carta está en cada uno (`Card.loose`), y se recupera cuando el núcleo nombra uno.
  * - Un id opaco que ya se mostró queda atado a ese código para siempre (`Mirror.known` no olvida): de una bolsa se elige primero una carta
  *   conocida con ese código, después una desconocida, nunca una conocida con otro.
  * - Una carta está siempre en las pilas de su dueño; en el campo del otro va con `f.` + su id (`mat-control.ts`): las del rival que controlo,
@@ -166,6 +167,12 @@ interface Card {
   code: number
   /** Del rival: estaba en una bolsa de la que salió una carta oculta, así que ya no se sabe si sigue siendo esa (`codeOf` da 0). */
   unsure?: boolean
+  /**
+   * En una bolsa (una pila barajada): no se sabe en qué lugar de la pila está. La lista sigue el orden del núcleo; lo que no se sabe es qué
+   * carta ocupa cada lugar, así que las sueltas se intercambian entre sí cuando el núcleo nombra uno (`locate`). Deja de estar suelta cuando
+   * el núcleo dice su código en un lugar, o al entrar a una pila (su lugar lo da el núcleo).
+   */
+  loose?: boolean
 }
 
 type Slots = (Card | null)[]
@@ -233,11 +240,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
   const materials = new Map<Card, Card[]>()
   const realOf = new Map<number, number>()
   const marks = new Set<Card>()
-  /**
-   * Las bolsas: los lugares que se barajaron y de los que ya no se sabe el orden (el deck, y del rival la mano y el Extra). Hasta barajarse se
-   * siguen por secuencia (el árbitro las da todas, aunque oculte el código); vuelven a ser listas al vaciarse.
-   */
-  const bags: [Set<number>, Set<number>] = [new Set(), new Set()]
+  /** Barajar vuelve bolsa una pila (el deck, y del rival la mano y el Extra): sus cartas quedan sueltas (`Card.loose`). */
+  const scatter = (list: Card[]) => list.forEach((card) => (card.loose = true))
   const lasting = new Set<Card>()
 
   // Las cartas en el orden del núcleo: el deck de abajo hacia arriba (el anfitrión agrega el Main al revés, cada una arriba), el Extra tal cual.
@@ -269,8 +273,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
     places[rival].extra = theirExtra.map((id) => ({ id, owner: rival, code: 0 }))
   }
   // El deck del rival es bolsa desde el principio: su orden nunca es seguro para quien mira (un `sort_card` del rival lo cambia sin decir nada).
-  bags[rival].add(L.DECK)
-  if (options.bag) bags[seat].add(L.DECK)
+  scatter(places[rival].deck)
+  if (options.bag) scatter(places[seat].deck)
 
   const initial = setup ? { mine: setup.mine, theirs: setup.theirs } : { mine: createMatState(myDeck, myExtra, 0), theirs: createMatState(theirDeck, theirExtra, 0) }
   /** Con la mesa rearmada, las fases que el núcleo pasa al empezar hasta llegar a la de la mesa (Draw, Standby) no son jugadas. */
@@ -320,6 +324,9 @@ export function createAdapter(options: AdapterOptions): Adapter {
     else if (!STILL.has(action.type)) fromDeck[player] = null
   }
 
+  /** Del rival y ya atada a un código en el espejo (`Mirror.known`, o en el `reveal` de la jugada que sigue). */
+  const isBound = (card: Card) => card.owner === rival && (Object.hasOwn(theirs.known, card.id) || Object.hasOwn(pending, card.id))
+
   /**
    * Lo que este asiento acaba de ver de una carta (`open`: queda a la vista). Del rival, el id opaco se ata a su código (un id real
    * `card-<código>-<n>` en el `reveal` de la jugada que sigue) sólo cuando la carta queda a la vista: lo que se ve en la mano o en el deck lo
@@ -327,7 +334,7 @@ export function createAdapter(options: AdapterOptions): Adapter {
    */
   function learn(card: Card, code: number, open = false) {
     if (code === 0) return
-    const bound = card.owner === rival && (Object.hasOwn(theirs.known, card.id) || Object.hasOwn(pending, card.id))
+    const bound = isBound(card)
 
     if (card.code !== 0 && card.code !== code) {
       // Segura y con otro código: la carta cambió de código en su lugar (el núcleo la sigue consultando con el de antes). La mesa no cambia un id.
@@ -346,12 +353,21 @@ export function createAdapter(options: AdapterOptions): Adapter {
     }
   }
 
-  /** De una bolsa, la carta con ese código (una conocida antes que una desconocida; de arriba hacia abajo); con código 0, una desconocida. */
-  function bagIndex(list: readonly Card[], code: number): number {
-    const same = code === 0 ? -1 : list.findLastIndex((card) => card.code === code)
-    const unknown = list.findLastIndex((card) => card.code === 0)
+  /**
+   * De una bolsa (de sus cartas sueltas, con `loose`), la carta con ese código (una segura antes que una dudosa; de arriba hacia abajo); si no
+   * hay, una desconocida y después una dudosa (pudo ser cualquiera; mejor una que el espejo no tenga atada a otro código); con código 0, una
+   * desconocida. Una segura con otro código, sólo si no queda otra. -1 si no hay ninguna.
+   */
+  function bagIndex(list: readonly Card[], code: number, loose = false): number {
+    const tests: ((card: Card) => boolean)[] = [(card) => card.code === code && !card.unsure, (card) => card.code === code, (card) => card.code === 0, (card) => card.unsure === true && !isBound(card), (card) => card.unsure === true, () => true]
 
-    return same >= 0 ? same : unknown >= 0 ? unknown : list.length - 1
+    for (const test of code === 0 ? tests.slice(2) : tests) {
+      const index = list.findLastIndex((card) => (!loose || card.loose === true) && test(card))
+
+      if (index >= 0) return index
+    }
+
+    return -1
   }
 
   /** Dónde está, en la copia del núcleo, la carta de ese lugar: la lista y el índice (en una casilla, la fila entera y su número). */
@@ -372,10 +388,22 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const list = places[place.controller][key]
 
     if (key === 'mzone' || key === 'szone') return { list, index: place.sequence }
-    if (bags[place.controller].has(place.location)) return list.length > 0 ? { list, index: bagIndex(list as Card[], code) } : null
-    const card = list[place.sequence]
+    const pile = list as Card[]
+    const card = pile[place.sequence]
 
-    return { list, index: card && (code === 0 || card.code === 0 || card.code === code) ? place.sequence : bagIndex(list as Card[], code) }
+    if (card && !card.loose && (code === 0 || card.code === 0 || card.code === code)) return { list, index: place.sequence }
+    // Una suelta: la que corresponde (por su código) pasa a ese lugar. Se corren sólo las sueltas (da lo mismo cuál es cuál), en su orden.
+    const other = card?.loose ? bagIndex(pile, code, true) : -1
+
+    if (other < 0) return { list, index: bagIndex(pile, code) }
+    const slots = pile.flatMap((item, i) => (item.loose ? [i] : []))
+    const loose = slots.map((i) => pile[i]!)
+
+    loose.splice(slots.indexOf(place.sequence), 0, ...loose.splice(slots.indexOf(other), 1))
+    slots.forEach((i, k) => (pile[i] = loose[k]!))
+    if (code !== 0) pile[place.sequence]!.loose = false
+
+    return { list, index: place.sequence }
   }
 
   function cardAt(place: CorePlace, code = 0): Card | null {
@@ -391,14 +419,14 @@ export function createAdapter(options: AdapterOptions): Adapter {
     if (!found || !card) return null
     if (!isMaterial(place) && (place.location === L.MZONE || place.location === L.SZONE)) found.list[found.index] = null
     else found.list.splice(found.index, 1)
-    // Sale una carta oculta de una bolsa del rival: cualquiera de las que conocíamos pudo ser ella.
-    if (code === 0 && place.controller === rival && bags[rival].has(place.location)) for (const item of [card, ...(found.list as Card[])]) if (item.code !== 0) item.unsure = true
-    if (found.list.length === 0) bags[place.controller].delete(place.location)
+    // Sale una carta oculta y suelta de una bolsa del rival: si quedan otras sueltas, cualquiera de las que conocíamos pudo ser ella.
+    if (code === 0 && card.owner === rival && card.loose && (found.list as Card[]).some((item) => item.loose)) for (const item of [card, ...(found.list as Card[])]) if (item.loose && item.code !== 0) item.unsure = true
 
     return card
   }
 
   function put(place: LocPos, card: Card) {
+    card.loose = false
     if (isMaterial(place)) {
       const xyz = cardAt({ controller: place.controller, location: baseLocation(place.location), sequence: place.sequence })
 
@@ -553,19 +581,16 @@ export function createAdapter(options: AdapterOptions): Adapter {
     const ids: string[] = []
 
     for (const drawn of event.drawn) {
-      const deck = places[player].deck
-      // Se roba la de arriba; si el deck ya es bolsa (o la de arriba es otra carta conocida), la que diga el código.
-      const top = deck.at(-1)
-      const exact = !bags[player].has(L.DECK) && top && (drawn.code === 0 || top.code === 0 || top.code === drawn.code)
-      const card = deck.length > 0 ? deck.splice(exact ? deck.length - 1 : bagIndex(deck, drawn.code), 1)[0]! : null
+      // Se roba la de arriba (en una bolsa, la que diga el código: `locate`).
+      const card = take({ controller: player, location: L.DECK, sequence: places[player].deck.length - 1, position: drawn.position }, drawn.code)
 
       if (!card) {
         note('draw: the deck is empty')
         continue
       }
-      // Un robo oculto de una bolsa del rival: cualquiera de las que conocíamos en ese deck pudo ser la robada.
-      if (drawn.code === 0 && player === rival && bags[rival].has(L.DECK)) for (const item of [card, ...deck]) if (item.code !== 0) item.unsure = true
       learn(card, drawn.code)
+      // Entra al final de la mano: su lugar se sabe (aunque la mano sea bolsa).
+      card.loose = false
       places[player].hand.push(card)
       ids.push(card.id)
     }
@@ -662,17 +687,13 @@ export function createAdapter(options: AdapterOptions): Adapter {
       }
 
       case 'shuffle_deck':
-        bags[event.player as Seat].add(L.DECK)
+        scatter(places[event.player as Seat].deck)
         return shuffleDeck(event.player as Seat)
       // Lo mío se vuelve a emparejar con el orden nuevo (el árbitro me da los códigos); lo del rival pasa a ser bolsa.
       case 'shuffle_hand':
-        if (event.player === seat) return reorder(places[seat].hand, event.cards)
-        bags[rival].add(L.HAND)
-        return
+        return event.player === seat ? reorder(places[seat].hand, event.cards) : scatter(places[rival].hand)
       case 'shuffle_extra':
-        if (event.player === seat) return reorder(places[seat].extra, event.cards)
-        bags[rival].add(L.EXTRA)
-        return
+        return event.player === seat ? reorder(places[seat].extra, event.cards) : scatter(places[rival].extra)
 
       case 'confirm_cards':
       case 'confirm_decktop':

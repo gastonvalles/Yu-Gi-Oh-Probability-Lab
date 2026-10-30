@@ -244,4 +244,21 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(cause({ type: 'chaining', code: 111, controller: 0, location: L.MZONE, sequence: 0, position: P.FACEUP_ATTACK, triggering_controller: 0, triggering_location: L.MZONE, triggering_sequence: 0, description: '0', chain_size: 1 })).toBeNull()
     expect(cause(played('spsummoning', 222, at(0, L.MZONE, 1)), { type: 'attack', card: at(0, L.MZONE, 1), target: null })).toBeNull()
   })
+
+  const hidden = (count: number) => Array.from({ length: count }, () => ({ code: 0, position: 10 }))
+
+  it('una bolsa sigue el orden del núcleo: la carta que el núcleo nombró en un lugar es la que sale de ahí después, aunque salga oculta', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(3) }, { type: 'shuffle_hand', player: 1, cards: [0, 0, 0] }))
+    adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 777, controller: 1, location: L.HAND, sequence: 0 }] }))
+    const shown = adapter.idAt(at(1, L.HAND, 0))!
+
+    expect(adapter.codeOf({ side: 'theirs', id: shown })).toBe(777)
+    // Se destierra boca abajo la de ese lugar (la que mostró, como el costo de su efecto): es esa y se sigue sabiendo qué es.
+    adapter.apply(events(0, move(0, at(1, L.HAND, 0, 10), at(1, L.REMOVED, 0, P.FACEDOWN_ATTACK))))
+    expect(adapter.theirs.state.banished).toEqual([shown])
+    expect(adapter.codeOf({ side: 'theirs', id: shown })).toBe(777)
+  })
+
 })
