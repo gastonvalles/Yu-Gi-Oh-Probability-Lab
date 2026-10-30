@@ -89,7 +89,7 @@ Lo que ya dice `CLAUDE.md` (subagentes, cuántas PR, tests livianos, reintentos,
 - **Ramas desde `origin/main`.** Si otra sesión usa el mismo checkout (puede cambiarte la rama bajo los pies), trabajá en un
   `git worktree` aparte y mirá la rama antes de cada commit. `git stash` es común a todos los worktrees: no se usa.
 - **Se mergea sin esperar el CI** (orden de Gastón): con `typecheck`, `lint`, las pruebas y el build en verde en local,
-  `gh pr merge N --squash --admin --match-head-commit <sha>` (el sha del último commit verificado: sólo se mergea lo probado).
+  `gh pr merge N --merge --delete-branch` (sólo se mergea lo que se verificó: el último commit de la rama).
   Si el `check` de las Actions ya terminó en rojo (`gh run list`), no se mergea.
 - **No se prueba en producción:** cada PR se verifica en local; el sitio publicado lo revisa Gastón aparte.
 - **Un rediseño se presenta antes del código:** maquetas en imágenes, el antes y el después y las decisiones abiertas; el
