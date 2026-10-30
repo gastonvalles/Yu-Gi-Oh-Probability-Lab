@@ -40,7 +40,7 @@ export interface DuelSettings {
   match: boolean
   /** En un Match, cambiar cartas entre el Main, el Extra y el Side entre un duelo y el siguiente. */
   siding: boolean
-  /** Reglas automáticas (beta): el navegador del anfitrión corre el núcleo de reglas por los dos (`docs/duelos-automaticos.md`). Lo fija el anfitrión al crear la sala; sin dato, manual. */
+  /** Reglas automáticas (beta): el navegador del anfitrión corre el núcleo de reglas por los dos (`docs/duelo-automatico-enlace.md`). Lo fija el anfitrión al crear la sala; sin dato, manual. */
   auto?: boolean
 }
 

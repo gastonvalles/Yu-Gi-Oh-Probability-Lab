@@ -3,7 +3,7 @@ import { uniqueComboName, type SavedCombo } from './saved-combos'
 import { createId, isRecord } from './utils'
 
 /**
- * Un combo que viaja: dentro de un enlace (`#combo=<datos>`, sin servidor ni cuenta) o en un archivo `*.ygolab-combo.json`. Los dos llevan el mismo sobre versionado
+ * Un combo que viaja dentro de un enlace (`#combo=<datos>`, sin servidor ni cuenta), con un sobre versionado
  * (`{ app, kind: 'combo', v: 1, combo }`, sin el id local; el enlace se escribe en `v: 2`, la forma compacta de más abajo); lo que se escribió con `v: 1` o `v: 2` se lee para
  * siempre, y `kind` deja lugar para otras cosas (un duelo entero).
  *
@@ -15,9 +15,9 @@ import { createId, isRecord } from './utils'
 export const COMBO_SHARE_VERSION = 1
 const APP = 'ygoultralab'
 export const COMBO_HASH = 'combo'
-/** Tope de un enlace para ofrecerlo: WhatsApp, Discord y Telegram pasan ~8 mil caracteres sin cortarlos. Más largo, se ofrece el archivo. */
+/** Tope de un enlace para ofrecerlo: WhatsApp, Discord y Telegram pasan ~8 mil caracteres sin cortarlos. Más largo, se ofrece el video. */
 export const MAX_LINK_LENGTH = 7500
-/** Tope de lo que se acepta decodificar (un enlace pegado o abierto) y de un archivo, y del JSON ya descomprimido (anti-bomba). */
+/** Tope de lo que se acepta decodificar (un enlace pegado o abierto) y del JSON ya descomprimido (anti-bomba). */
 export const MAX_PAYLOAD_CHARS = 200_000
 export const MAX_JSON_BYTES = 256 * 1024
 
@@ -83,7 +83,7 @@ export async function packPayload(value: unknown): Promise<string> {
   return `z${toBase64Url(packed!)}`
 }
 
-/** El enlace va en v2 (`compactEnvelope`, menos de la mitad que v1); el archivo sigue en v1. */
+/** El enlace va en v2 (`compactEnvelope`, menos de la mitad que v1). */
 export const encodeComboPayload = (combo: SavedCombo | SharedCombo): Promise<string> => packPayload(compactEnvelope(combo))
 
 /** El texto (el JSON) de los datos de un enlace, con el tope de lo descomprimido (`maxJson`). No lanza. */
@@ -134,8 +134,6 @@ export async function readComboLink(text: string): Promise<ShareResult> {
 
 // ── Archivo ──
 
-/** El nombre del archivo: el del combo, sin lo que un sistema de archivos no acepta. */
-
 /** Un nombre de archivo sin lo que un sistema de archivos no acepta (`fallback` si no queda nada). */
 export function safeFileName(name: string, fallback: string, suffix: string): string {
   const safe = name.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 _-]+/g, ' ').trim().replace(/\s+/g, '-').slice(0, 60)
@@ -143,7 +141,7 @@ export function safeFileName(name: string, fallback: string, suffix: string): st
 }
 
 
-/** Lee el texto de un archivo (o el JSON de un enlace). No lanza. */
+/** Lee el JSON del sobre (el de un enlace, ya descomprimido). No lanza. */
 export function parseComboText(text: string): ShareResult {
   if (text.length > MAX_JSON_BYTES) return { ok: false, error: 'tooBig' }
   let value: unknown
