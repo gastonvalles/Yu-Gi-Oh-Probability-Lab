@@ -646,7 +646,7 @@ function CounterSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   )
 }
 
-/** Los motivos de un duelo de muestra (los de `SessionAnswer.reason`): tu turno con una que guardó y una que usó; el suyo, el Extra Deck de Harmonia en un renglón y el fin; tu turno 5, con Dimension Shifter, una Bystial y Multiplying Kuriboh! a tu ataque. */
+/** Los motivos de un duelo de muestra (los de `SessionAnswer.reason`): tu turno con una que guardó y una que usó; el suyo, el Extra Deck de Harmonia en un renglón y el fin; tu turno 5, con Dimension Shifter, una Bystial y Multiplying Kuriboh! a tu ataque; en el suyo coloca Evenly Matched y en tu turno 7 la activa, con Called by the Grave y Book of Moon. */
 const BOT_ANSWERS = [
   { key: 'hold.monster', cards: [10045474, 73628505], turn: 1, yours: true, at: 2 },
   { key: 'handtrap.respond', cards: [14558127, 73628505], turn: 1, yours: true, at: 2 },
@@ -660,8 +660,12 @@ const BOT_ANSWERS = [
   { key: 'handtrap.bystial', cards: [33854624, 33420078], turn: 5, yours: true, at: 13 },
   { key: 'target.link', cards: [33854624, 33420078], turn: 5, yours: true, at: 13 },
   { key: 'handtrap.attack', cards: [14965712], turn: 5, yours: true, at: 15 },
+  { key: 'play.setEvenly', cards: [15693423], turn: 6, yours: false, at: 17 },
+  { key: 'play.called', cards: [24224830, 67441435], turn: 7, yours: true, at: 19 },
+  { key: 'play.moon', cards: [14087893, 78658564], turn: 7, yours: true, at: 21 },
+  { key: 'handtrap.evenly', cards: [15693423], params: { count: 3 }, turn: 7, yours: true, at: 22 },
 ].map(({ key, ...rest }) => ({ seat: 1 as const, answer: { type: 'select_chain' as const, index: null }, reason: { key: `auto.bot.reason.${key}` as const, ...rest } }))
-const BOT_NAMES: Record<number, string> = { 10045474: 'Infinite Impermanence', 73628505: 'Terraforming', 14558127: 'Ash Blossom & Joyous Spring', 23434538: 'Maxx "C"', 70088809: 'Fydraulis Harmonia', 40044918: 'Elemental HERO Stratos', 97204936: 'Gaia Knight, the Force of Earth', 45815891: 'Scrap Archfiend', 44508094: 'Stardust Dragon', 14965712: 'Multiplying Kuriboh!', 91800273: 'Dimension Shifter', 33854624: 'Bystial Magnamhut', 33420078: 'Plaguespreader Zombie' }
+const BOT_NAMES: Record<number, string> = { 10045474: 'Infinite Impermanence', 73628505: 'Terraforming', 14558127: 'Ash Blossom & Joyous Spring', 23434538: 'Maxx "C"', 70088809: 'Fydraulis Harmonia', 40044918: 'Elemental HERO Stratos', 97204936: 'Gaia Knight, the Force of Earth', 45815891: 'Scrap Archfiend', 44508094: 'Stardust Dragon', 14965712: 'Multiplying Kuriboh!', 91800273: 'Dimension Shifter', 33854624: 'Bystial Magnamhut', 33420078: 'Plaguespreader Zombie', 15693423: 'Evenly Matched', 24224830: 'Called by the Grave', 67441435: 'Glow-Up Bulb', 14087893: 'Book of Moon', 78658564: 'Goblin Attack Force' }
 
 function BotLogSample() {
   const [open, setOpen] = useState(false)
