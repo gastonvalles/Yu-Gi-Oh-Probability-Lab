@@ -93,7 +93,7 @@ export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutra
       >
         {lead ? <span className="flex shrink-0">{lead}</span> : null}
         <span className="grid min-w-0 flex-1 gap-0.5">
-          <span className={cx('text-body text-foreground', wrap ? 'text-pretty' : 'truncate font-semibold')}>{title}</span>
+          <span className={cx('text-body text-foreground', wrap ? 'text-pretty font-normal' : 'truncate font-semibold')}>{title}</span>
           {subtitle ? <span id={subtitleId} className="line-clamp-2 text-micro text-muted">{subtitle}</span> : null}
         </span>
         {end ? <span className="flex shrink-0 items-center">{end}</span> : null}
