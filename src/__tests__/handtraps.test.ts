@@ -33,6 +33,8 @@ import { sfxOfAction } from '../app/sfx'
 
 /** Las de H3 con regla que no están en el catálogo (se agregan con el buscador). */
 const H3_SEARCH = [68144894, 60242223, 69680031, 17266660, 21074344, 94689635]
+/** Evenly Matched: del bot que juega en contra, con su prueba en `auto-bot-cartas.slow.test.ts`. */
+const BOT_SEARCH = [15693423]
 
 const memory = () => {
   const data = new Map<string, string>()
@@ -152,7 +154,7 @@ describe('el rival del duelo automático', () => {
   })
 
   it('cada handtrap del catálogo tiene su regla (también la tienen Fydraulis Harmonia, PSY-Framegear Delta, Dominus Spark, Dominus Spiral, el Droll & Lock Bird original y las de H3 que no están en el catálogo, del buscador)', () => {
-    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632, 94145021, ...H3_SEARCH].sort())
+    expect(Object.keys(AUTO_RULES).map(Number).sort()).toEqual([...HANDTRAP_CATALOG.map((card) => card.id), 70088809, 74203495, 6325660, 42091632, 94145021, ...H3_SEARCH, ...BOT_SEARCH].sort())
   })
 })
 

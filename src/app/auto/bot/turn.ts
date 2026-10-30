@@ -12,7 +12,7 @@ import { handtrapBot } from './rivals'
  * 3. las que Tributan tus monstruos, de la que más te saca a la que menos: Sphere Mode (3, con su campo vacío), Gallant Bandit con 2 de los tuyos, Lava Golem (2; antes de la
  *    Invocación Normal, porque después ya no se puede) y Gallant Bandit con uno tuyo y relleno de su mano (sólo con su relleno, no: se juega para sacarte monstruos);
  * 4. Invocar de modo Normal su monstruo de más ATK (sin Tributar salvo que el nuevo valga más), o colocarlo si tenés uno boca arriba con más ATK;
- * 5. colocar sus negaciones (`counter`);
+ * 5. colocar sus negaciones (`counter`) y lo que usa en tu turno (Evenly Matched);
  * 6. la Battle Phase si tiene un ataque seguro: directo sin monstruos tuyos, o contra uno boca arriba que destruye sin perder el suyo (ATK contra ATK o DEF). Lo boca abajo no lo ataca;
  * 7. terminar el turno.
  * Los Tributos que elige: tus monstruos de más ATK primero (boca abajo, al final), después lo suyo de menos valor, y nunca primero una handtrap con regla. En tus turnos responde como el de
@@ -157,10 +157,12 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
       return play(0, best.index, { key: 'auto.bot.reason.play.summon', cards: [best.card.code] }, 'turn.summon', { play: 'summon' })
     }
 
-    // 5. Sus negaciones, colocadas.
+    // 5. Sus negaciones, colocadas, y lo que usa en tu turno.
     const counter = find(ask.spell_sets, (card) => turnRule(card.code) === 'counter')
+    const trap = find(ask.spell_sets, (card) => turnRule(card.code) === 'evenly')
 
     if (counter >= 0) return play(4, counter, { key: 'auto.bot.reason.play.setCounter', cards: [ask.spell_sets[counter]!.code] }, 'turn.setCounter')
+    if (trap >= 0) return play(4, trap, { key: 'auto.bot.reason.play.setEvenly', cards: [ask.spell_sets[trap]!.code] }, 'turn.setEvenly')
 
     // 6. La Battle Phase, si tiene un ataque seguro.
     if (ask.to_bp && bestAttack(view, attackersOf(view))) {

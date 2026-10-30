@@ -63,6 +63,9 @@ export const auto: Translated<typeof es> = {
   'auto.bot.reason.end.done': 'I ended my turn: I had no plays left worth making.',
   'auto.bot.reason.end.faceDown': "I ended my turn without attacking with {card}: your monsters are face-down and I don't know what they are.",
   'auto.bot.reason.end.noSafeAttack': "I ended my turn without attacking: {card} doesn't win the battle against your {to}, and I don't attack face-down monsters.",
+  'auto.bot.reason.handtrap.evenly': 'I activated {card} at the end of the Battle Phase: you have {count} more cards than me on the field, and you banish that many face-down (you choose which).',
+  'auto.bot.reason.hold.evenly': "I didn't activate {card}: you have only one more card than me, and you'd pick the one you care about least.",
+  'auto.bot.reason.play.setEvenly': 'I Set {card}: I activate it at the end of your Battle Phase if you have more cards than me.',
 
   // The engine's yes/no question, in the middle of the mat.
   'auto.ask.effect': 'Activate the effect?',
