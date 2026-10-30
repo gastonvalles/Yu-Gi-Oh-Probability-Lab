@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { comboFileText, comboPayloadOf, decodeComboPayload } from '../app/combo-share'
+import { comboPayloadOf, decodeComboPayload, encodeComboPayload } from '../app/combo-share'
 import { createSavedCombo, readSavedCombos, writeSavedCombos } from '../app/saved-combos'
 import { SharedComboBar } from '../components/probability/PracticeMatPanel'
 import { Harness, INITIAL, render } from './support/practice-mat-harness'
@@ -39,7 +39,8 @@ describe('compartir combos desde la lista', () => {
     expect(within(aside).getByRole('button', { name: 'Cargar Línea básica' })).toBeInTheDocument()
     expect(within(aside).getByRole('button', { name: 'Renombrar Línea básica' })).toBeInTheDocument()
     fireEvent.click(within(aside).getByRole('button', { name: 'Más opciones de Línea básica' }))
-    expect(screen.getByRole('menuitem', { name: 'Descargar archivo' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Descargar video' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Descargar archivo' })).toBeNull()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Compartir enlace' }))
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
@@ -50,19 +51,18 @@ describe('compartir combos desde la lista', () => {
     expect(await decodeComboPayload(comboPayloadOf(link)!)).toEqual({ ok: true, combo: { ...shared, names: {} } })
   })
 
-  it('importar un archivo lo suma con un nombre que no se repite; uno ajeno no toca la lista', async () => {
+  it('ya no hay «Importar combo» ni archivo que elegir: pegar el enlace lo suma con un nombre que no se repite', async () => {
+    const { id: _id, ...shared } = combo
+    const link = `https://x.app/#combo=${await encodeComboPayload(shared)}`
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { readText: vi.fn(async () => link) } })
     render(<Harness />)
     const aside = openCombos()
-    const input = aside.querySelector<HTMLInputElement>('input[type="file"]')!
 
-    fireEvent.change(input, { target: { files: [new File([comboFileText(combo)], 'x.ygolab-combo.json')] } })
+    expect(aside.querySelector('input[type="file"]')).toBeNull()
+    expect(within(aside).queryByRole('button', { name: 'Importar combo' })).toBeNull()
+    fireEvent.click(within(aside).getByRole('button', { name: 'Pegar enlace' }))
     await waitFor(() => expect(within(aside).getByText('Línea básica (2)')).toBeInTheDocument())
     expect(readSavedCombos().map((entry) => entry.name)).toEqual(['Línea básica', 'Línea básica (2)'])
-
-    fireEvent.change(input, { target: { files: [new File(['{"hola":1}'], 'otro.json')] } })
-    fireEvent.change(input, { target: { files: [new File(['{'], 'roto.json')] } })
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(readSavedCombos()).toHaveLength(2)
   })
 
   it('el aviso de un combo compartido dice cuál es y ofrece guardarlo (la principal) o cerrarlo', () => {

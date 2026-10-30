@@ -19,15 +19,23 @@ export interface WebCodecsApi {
 }
 
 /**
- * Cuadros de duración variable con la cuenta de 30 por segundo: el codificador reparte `bitrate` como si fueran 30 por segundo (unos 1,7 KB por cuadro; un cuadro clave se
- * lleva más). Lo quieto es un cuadro por jugada y lo que se mueve, 10 cuadros: un duelo sale a unos 120 kbit/s, 10 minutos en menos de 10 MB (medido en Edge y Chrome de
- * escritorio). Con 1 Mbit/s pesaba 2,5 veces más sin verse mejor en un celular; con la cuenta real de cuadros (uno por segundo), cada uno se llevaba 30 veces más.
+ * Un video corto (un combo, un duelo de pocas jugadas) va a 1 Mbit/s: pesa poco igual (un combo de 25 s, 1 MB) y lo que se mueve sale nítido. Uno largo, a 400 kbit/s, para que
+ * 10 minutos no pasen de 10 MB (con muchas cartas moviéndose a la vez, como robar 5, ese cuadro sale algo borroso).
  */
-export const videoConfig = (codec: string): VideoEncoderConfig => ({
+const SHORT_BITRATE = 1_000_000
+const LONG_BITRATE = 400_000
+export const bitrateFor = (durationMs: number) => (durationMs <= 3 * 60_000 ? SHORT_BITRATE : LONG_BITRATE)
+
+/**
+ * Cuadros de duración variable con la cuenta de 30 por segundo: el codificador reparte `bitrate` como si fueran 30 por segundo (a 400 kbit/s, unos 1,7 KB por cuadro; un
+ * cuadro clave se lleva más). Lo quieto es un cuadro por jugada y lo que se mueve, 10 cuadros: un duelo largo sale a unos 120 kbit/s (medido en Edge y Chrome de escritorio).
+ * Con la cuenta real de cuadros (uno por segundo), cada uno se llevaba 30 veces más.
+ */
+export const videoConfig = (codec: string, bitrate = LONG_BITRATE): VideoEncoderConfig => ({
   codec,
   width: VIDEO_WIDTH,
   height: VIDEO_HEIGHT,
-  bitrate: 400_000,
+  bitrate,
   framerate: 30,
   bitrateMode: 'variable',
   latencyMode: 'quality',

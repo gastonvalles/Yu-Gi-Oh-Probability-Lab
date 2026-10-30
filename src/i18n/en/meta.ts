@@ -522,6 +522,7 @@ export const meta: Translated<typeof es> = {
   'meta.duels.video.back': 'Go back',
   'meta.duels.video.failed': 'Couldn’t make the video. Try again without switching tabs.',
   'meta.duels.video.retry': 'Make it again',
+  'meta.duels.video.comboEnd': 'End of the combo',
   'meta.duels.video.unsupported.webcodecs': 'This browser can’t make videos: try an up-to-date Chrome, Edge or Safari.',
   'meta.duels.video.unsupported.h264': 'This browser doesn’t have the H.264 video codec: try an up-to-date Chrome, Edge or Safari.',
 }

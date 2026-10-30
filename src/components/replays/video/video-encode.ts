@@ -1,12 +1,14 @@
 import type { DuelReplay } from '../../../app/duel-replay'
 import { t } from '../../../i18n'
+import { fetchCardNamesByIds } from '../../../ygoprodeck'
 import { playerName, replayResultText, titleOf } from '../duel-replay-text'
 import { muxMp4, type Mp4Sample } from './mp4-mux'
 import { drawFrame, drawMotions, loadVideoAssets } from './video-draw'
 import { movingKeys, transitionOf } from './video-motion'
+import { comboArtUrls, comboScenes, resolveComboNames } from './video-combo'
 import { artUrls, replayScenes, type Scene } from './video-scene'
-import { VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
-import { FRAME_US, frameDurations, moveFrames, type VideoSpeed } from './video-timeline'
+import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
+import { FRAME_US, frameDurations, moveFrames, type VideoSpeed, type VideoSubject } from './video-timeline'
 
 /**
  * El video de un replay, entero en el navegador: cada escena se pinta en un lienzo, `VideoEncoder` (WebCodecs) la codifica en H.264 y `mp4-mux.ts` arma el .mp4. Va más
@@ -52,15 +54,47 @@ const contextOf = (canvas: HTMLCanvasElement | OffscreenCanvas) => {
   return ctx
 }
 
-export async function makeReplayVideo(replay: DuelReplay, options: VideoOptions = {}): Promise<VideoResult> {
+/** Lo que cambia entre un duelo y un combo: las escenas, las imágenes a cargar, el título y el cierre. */
+interface Plan {
+  scenes: Iterable<Scene>
+  arts: string[]
+  intro: { title: string; subtitle: string }
+  outro: { title: string; subtitle: string } | null
+}
+
+function duelPlan(replay: DuelReplay): Plan {
+  const title = titleOf(replay)
+  return {
+    scenes: replayScenes(replay, VIDEO_WIDTH),
+    arts: artUrls(replay),
+    intro: { title, subtitle: replay.view === 'mine' ? t('meta.duels.withHand', { name: playerName(replay, 0) }) : t('meta.duels.public') },
+    outro: replay.steps.length > 0 ? { title, subtitle: replayResultText(replay) } : null,
+  }
+}
+
+/** Un combo abierto por enlace no trae los nombres de sus cartas: se piden antes (como hace la mesa); sin red, «Carta» donde falten. */
+async function comboPlan(combo: Extract<VideoSubject, { kind: 'combo' }>['combo']): Promise<Plan> {
+  const names = await resolveComboNames(combo, fetchCardNamesByIds)
+  const plays = t('meta.duels.plays', { count: combo.actions.length })
+  return {
+    scenes: comboScenes(combo, names, VIDEO_WIDTH),
+    arts: comboArtUrls(combo),
+    intro: { title: combo.name, subtitle: combo.deckName ? `${combo.deckName} · ${plays}` : plays },
+    outro: combo.actions.length > 0 ? { title: combo.name, subtitle: t('meta.duels.video.comboEnd') } : null,
+  }
+}
+
+export async function makeReplayVideo(subject: VideoSubject, options: VideoOptions = {}): Promise<VideoResult> {
   const { signal, speed = 1 } = options
   const support = await videoSupport()
   if (!support.ok) throw new Error(`replay-video: ${support.reason}`)
 
-  const assets = await loadVideoAssets(artUrls(replay), signal)
+  const plan = subject.kind === 'duel' ? duelPlan(subject.replay) : await comboPlan(subject.combo)
+  signal?.throwIfAborted()
+  const assets = await loadVideoAssets(plan.arts, signal)
   signal?.throwIfAborted()
 
-  const durations = frameDurations(replay, speed)
+  const durations = frameDurations(subject, speed)
   const canvas = canvasOf()
   const ctx = contextOf(canvas)
   // El fondo de una transición (todo menos las cartas en vuelo): se pinta una vez y cada cuadro lo copia.
@@ -87,16 +121,18 @@ export async function makeReplayVideo(replay: DuelReplay, options: VideoOptions 
       wake?.()
     },
   })
-  encoder.configure(videoConfig(support.codec))
+  encoder.configure(videoConfig(support.codec, bitrateFor(durations.reduce((sum, ms) => sum + ms, 0))))
 
-  const title = titleOf(replay)
-  const view = replay.view === 'mine' ? t('meta.duels.withHand', { name: playerName(replay, 0) }) : t('meta.duels.public')
   let at = 0
   let lastKey = -Infinity
   let slice = performance.now()
+  // Un cambio grande (se va el título, aparece el cierre) en un cuadro que no es clave sale borroso y queda así toda la jugada (con la cuenta de 30 por segundo cada cuadro
+  // tiene poco lugar, y el que sigue llega recién en la jugada siguiente): ese cuadro va clave. `force` es para el próximo que sale.
+  let force = false
   const emit = async (us: number) => {
     const frame = new VideoFrame(canvas, { timestamp: at, duration: us })
-    const key = at - lastKey >= KEY_EVERY_US
+    const key = force || at - lastKey >= KEY_EVERY_US
+    force = false
     if (key) lastKey = at
     encoder.encode(frame, { keyFrame: key })
     frame.close()
@@ -113,10 +149,11 @@ export async function makeReplayVideo(replay: DuelReplay, options: VideoOptions 
   try {
     let index = 0
     let before: Scene | null = null
-    for (const scene of replayScenes(replay, VIDEO_WIDTH)) {
+    for (const scene of plan.scenes) {
       if (failure) throw failure
       signal?.throwIfAborted()
       let rest = durations[index]! * 1000
+      force = index === 1
       const motions = before ? transitionOf(before, scene) : []
       if (before && motions.length > 0) {
         drawFrame(baseCtx, scene, assets, { keys: movingKeys(motions), before })
@@ -128,8 +165,11 @@ export async function makeReplayVideo(replay: DuelReplay, options: VideoOptions 
         }
         rest = Math.max(FRAME_US, rest - frames * FRAME_US)
       }
-      if (index === 0) scene.banner = { title, subtitle: view }
-      if (index === durations.length - 1 && replay.steps.length > 0) scene.banner = { title, subtitle: replayResultText(replay) }
+      if (index === 0) scene.banner = plan.intro
+      if (index === durations.length - 1 && plan.outro) {
+        scene.banner = plan.outro
+        force = true
+      }
       drawFrame(ctx, scene, assets)
       await emit(rest)
       before = scene

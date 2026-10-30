@@ -3,24 +3,25 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { buildDuelReplay, type DuelReplay } from '../app/duel-replay'
+import { buildDuelReplay } from '../app/duel-replay'
 import { createMatState } from '../app/practice-mat'
 import { ReplayVideoDialog } from '../components/replays/ReplayVideo'
 import { SaveReplayDialog } from '../components/replays/SaveReplayDialog'
 import type { VideoOptions } from '../components/replays/video/video-encode'
 import type { VideoSupport } from '../components/replays/video/video-support'
+import type { VideoSubject } from '../components/replays/video/video-timeline'
 
 // El codificador de verdad no existe en jsdom: uno falso que avisa el progreso y termina (o se cancela) cuando la prueba quiere.
 const fake = vi.hoisted(() => ({
   support: { ok: true, codec: 'avc1.640028' } as VideoSupport,
-  calls: [] as { replay: DuelReplay; options: VideoOptions; finish: () => void }[],
+  calls: [] as { subject: VideoSubject; options: VideoOptions; finish: () => void }[],
 }))
 vi.mock('../components/replays/video/video-support', () => ({ videoSupport: async () => fake.support }))
 vi.mock('../components/replays/video/video-encode', () => ({
-  makeReplayVideo: (replay: DuelReplay, options: VideoOptions) =>
+  makeReplayVideo: (subject: VideoSubject, options: VideoOptions) =>
     new Promise((resolve, reject) => {
       options.signal?.addEventListener('abort', () => reject(new DOMException('cancelado', 'AbortError')))
-      fake.calls.push({ replay, options, finish: () => resolve({ blob: new Blob([new Uint8Array(1048576)], { type: 'video/mp4' }), durationMs: 12_000, frames: 40, codec: 'avc1.640028' }) })
+      fake.calls.push({ subject, options, finish: () => resolve({ blob: new Blob([new Uint8Array(1048576)], { type: 'video/mp4' }), durationMs: 12_000, frames: 40, codec: 'avc1.640028' }) })
     }),
 }))
 
@@ -141,14 +142,14 @@ describe('«Descargar video» en «Guardar replay»', () => {
 
 describe('«Descargar video» de un replay guardado', () => {
   it('uno corto se arma al abrir; uno largo pregunta primero', async () => {
-    const { unmount } = render(<ReplayVideoDialog replay={replayOf('public')} onClose={() => {}} />)
+    const { unmount } = render(<ReplayVideoDialog subject={{ kind: 'duel', replay: replayOf('public') }} onClose={() => {}} />)
     await waitFor(() => expect(fake.calls).toHaveLength(1))
     expect(fake.calls[0]!.options.speed).toBe(1)
     // Cerrarlo (desmontarlo) también corta.
     unmount()
     expect(fake.calls[0]!.options.signal?.aborted).toBe(true)
 
-    render(<ReplayVideoDialog replay={long('public')} onClose={() => {}} />)
+    render(<ReplayVideoDialog subject={{ kind: 'duel', replay: long('public') }} onClose={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Armar video' }))
     await waitFor(() => expect(fake.calls).toHaveLength(2))
     expect(fake.calls[1]!.options.speed).toBe(2)
@@ -156,7 +157,7 @@ describe('«Descargar video» de un replay guardado', () => {
 
   it('sin soporte, el motivo', async () => {
     fake.support = { ok: false, reason: 'h264' }
-    render(<ReplayVideoDialog replay={replayOf('public')} onClose={() => {}} />)
+    render(<ReplayVideoDialog subject={{ kind: 'duel', replay: replayOf('public') }} onClose={() => {}} />)
     expect(await screen.findByText(/no tiene el códec de video H\.264/)).toBeInTheDocument()
     expect(fake.calls).toHaveLength(0)
   })

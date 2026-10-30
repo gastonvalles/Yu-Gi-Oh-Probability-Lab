@@ -164,28 +164,30 @@ describe('las transiciones', () => {
 })
 
 describe('los tiempos y el nombre del archivo', () => {
+  const subject = { kind: 'duel', replay } as const
   it('«Rápido (2×)»: cada jugada a la mitad; el principio y el cierre, igual', () => {
-    const normal = frameDurations(replay, 1)
-    const fast = frameDurations(replay, 2)
+    const normal = frameDurations(subject, 1)
+    const fast = frameDurations(subject, 2)
     expect(fast[2]).toBe(STEP_MS / 2)
     expect(fast[0]).toBe(INTRO_MS)
     expect(fast.at(-1)).toBe(OUTRO_MS)
-    expect(videoDurationMs(replay, 2)).toBe(fast.reduce((sum, ms) => sum + ms, 0))
+    expect(videoDurationMs(subject, 2)).toBe(fast.reduce((sum, ms) => sum + ms, 0))
     expect(fast.slice(1, -1)).toEqual(normal.slice(1, -1).map((ms) => ms / 2))
   })
 
   it('la mesa al empezar, una jugada por cuadro (las fases más rápido) y la última se queda con el resultado', () => {
-    const durations = frameDurations(replay)
+    const durations = frameDurations(subject)
     expect(durations).toHaveLength(replay.steps.length + 1)
     expect(durations[0]).toBe(INTRO_MS)
     expect(durations[1]).toBeLessThan(STEP_MS)
     expect(durations[2]).toBe(STEP_MS)
     expect(durations.at(-1)).toBe(OUTRO_MS)
-    expect(frameDurations({ steps: [] })).toEqual([INTRO_MS + OUTRO_MS])
+    expect(frameDurations({ kind: 'duel', replay: { ...replay, steps: [] } })).toEqual([INTRO_MS + OUTRO_MS])
   })
 
   it('el archivo se llama como el duelo, con la fecha', () => {
-    expect(videoFileName(replay, 'Ána vs Beto/2')).toBe('Ana-vs-Beto-2-2026-10-29.mp4')
+    expect(videoFileName(subject)).toBe('Ana-vs-Beto-2026-10-29.mp4')
+    expect(videoFileName({ kind: 'duel', replay: { ...replay, players: ['', ''] } })).toBe('Duelista-vs-Rival-2026-10-29.mp4')
   })
 })
 

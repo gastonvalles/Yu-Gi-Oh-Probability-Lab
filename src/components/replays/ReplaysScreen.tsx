@@ -224,7 +224,7 @@ export function ReplaysScreen(props: ReplaysScreenProps = {}) {
             { label: t('meta.duels.video.download'), icon: 'download', onSelect: video },
           ]}
         />
-        <ReplayVideoDialog replay={duels.filming} onClose={duels.stopFilming} />
+        <ReplayVideoDialog subject={duels.filming ? { kind: 'duel', replay: duels.filming } : null} onClose={duels.stopFilming} />
       </>
     )
   }
@@ -260,7 +260,7 @@ export function ReplaysScreen(props: ReplaysScreenProps = {}) {
       <LiveStreamsSection state={live} />
 
       <YourDuels items={duels.items} onOpen={duels.open} onCopyLink={duels.copyLink} onVideo={duels.video} onDelete={duels.remove} onImport={duels.importShared} />
-      <ReplayVideoDialog replay={duels.filming} onClose={duels.stopFilming} />
+      <ReplayVideoDialog subject={duels.filming ? { kind: 'duel', replay: duels.filming } : null} onClose={duels.stopFilming} />
 
       <section id="replays-list" aria-labelledby="replays-list-title" className="grid gap-4">
         <Heading level="section" id="replays-list-title">

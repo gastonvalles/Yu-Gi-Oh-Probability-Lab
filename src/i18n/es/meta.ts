@@ -519,6 +519,7 @@ export const meta = {
   'meta.duels.video.back': 'Volver',
   'meta.duels.video.failed': 'No se pudo armar el video. Probá de nuevo sin cambiar de pestaña.',
   'meta.duels.video.retry': 'Armar de nuevo',
+  'meta.duels.video.comboEnd': 'Fin del combo',
   'meta.duels.video.unsupported.webcodecs': 'Este navegador no puede armar videos: probá con Chrome, Edge o Safari actualizados.',
   'meta.duels.video.unsupported.h264': 'Este navegador no tiene el códec de video H.264: probá con Chrome, Edge o Safari actualizados.',
 } as const

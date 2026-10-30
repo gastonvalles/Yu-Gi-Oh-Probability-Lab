@@ -23,9 +23,9 @@ sus despliegues).
   carta secreta nunca viaja: ids opacos y sólo se revela lo que el rival puede ver (`mat-public.ts`). En el duelo automático por
   enlace sólo el deck del invitado (`autoDeck`, con tope de frecuencia) hace bajar datos al anfitrión, y en pleno duelo no baja nada.
 - **Un combo compartido también es de otro** (`combo-share.ts`): viaja en el hash (`#combo=`, deflate + base64url, nunca al
-  servidor) o en un `*.ygolab-combo.json`, en un sobre versionado (`v: 1` y `v: 2` se leen siempre). Topes antes de decodificar y al
+  servidor), en un sobre versionado (`v: 1` y `v: 2` se leen siempre; ya no se lee ningún archivo de combo). Topes antes de decodificar y al
   inflar (256 KB: una bomba se corta), y se copian sólo los campos conocidos con tipos, rangos e ids con su patrón; el enlace se
-  ofrece hasta 7.500 caracteres y, más largo, el archivo. No lleva usuario ni relay. El enlace va en `v: 2` (45 jugadas ≈ 730
+  ofrece hasta 7.500 caracteres y, más largo, el video (`replays/video/`). No lleva usuario ni relay. El enlace va en `v: 2` (45 jugadas ≈ 730
   contra 1.700): sin los nombres (se piden por passcode al abrir; sin red, «Carta») y con cada id como índice de una tabla de
   passcodes (tope de 1.000, todo índice dentro de ella); se arma la forma `v: 1` y pasa por el mismo validador.
 - **El replay de un duelo, igual** (`duel-replay-share.ts`): el mismo sobre (`kind: 'duel'`, `#replay=`), 2 MB

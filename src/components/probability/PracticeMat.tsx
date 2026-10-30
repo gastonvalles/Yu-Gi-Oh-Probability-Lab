@@ -47,7 +47,7 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
 import { comboCardIds, createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
-import { downloadComboFile, shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
+import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
 import type { AutoLink, PickStat } from '../../app/auto/ask-ui'
@@ -102,6 +102,7 @@ import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, H
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, SharedComboBar } from './PracticeMatPanel'
+import { ReplayVideoDialog } from '../replays/ReplayVideo'
 import { createPanelSteps } from './panel-steps'
 import { ReplayBar, ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { RivalHandStrip } from './RivalHandStrip'
@@ -1994,12 +1995,14 @@ function PracticeMatBody({
     [combos],
   )
 
-  // Compartir: el enlace (la hoja del sistema en el celular, o copiado) y, si no entra en un enlace, el archivo. Importar (un archivo o un enlace pegado) lo suma a la lista con un nombre que no se repite.
+  // Compartir: el enlace (la hoja del sistema en el celular, o copiado) y, si no entra en un enlace, el video (`ReplayVideoDialog`, el mismo de los duelos). Pegar un enlace lo suma a la
+  // lista con un nombre que no se repite.
+  const [filming, setFilming] = useState<SavedCombo | SharedCombo | null>(null)
   const shareCombo = useCallback(async (combo: SavedCombo) => {
     const outcome = await shareComboLink(combo)
     if (outcome === 'copied') showToastMessage(t('practice.share.copied', { name: combo.name }), 'success')
-    else if (outcome === 'failed') showToastMessage(t('practice.share.copyFailed'), 'error', { action: { label: t('practice.share.file'), onAction: () => downloadComboFile(combo) } })
-    else if (outcome === 'tooLong') showToastMessage(t('practice.share.tooLong', { name: combo.name }), 'warning', { action: { label: t('practice.share.file'), onAction: () => downloadComboFile(combo) } })
+    else if (outcome === 'failed') showToastMessage(t('practice.share.copyFailed'), 'error', { action: { label: t('practice.share.video'), onAction: () => setFilming(combo) } })
+    else if (outcome === 'tooLong') showToastMessage(t('practice.share.tooLong', { name: combo.name }), 'warning', { action: { label: t('practice.share.video'), onAction: () => setFilming(combo) } })
   }, [])
   const addCombo = useCallback(
     (incoming: SharedCombo, message: 'practice.share.imported' | 'practice.combo.saved') => {
@@ -2012,11 +2015,14 @@ function PracticeMatBody({
     [combos],
   )
   const importCombo = useCallback((result: ShareResult) => (result.ok ? addCombo(result.combo, 'practice.share.imported') : showToastMessage(t(`practice.share.error.${result.error}`), 'error')), [addCombo])
+  // El enlace no trae los nombres (se piden al abrirlo): se guardan los que ya llegaron, así la lista de pasos sale al instante la próxima vez (y el video no los vuelve a pedir).
+  const sharedWithNames = (combo: SharedCombo): SharedCombo => {
+    const known = comboCardIds(combo.initial).flatMap((id) => (nameOf(id) === UNKNOWN_CARD.name ? [] : [[id, nameOf(id)] as const]))
+    return { ...combo, names: { ...Object.fromEntries(known), ...combo.names } }
+  }
   const saveShared = () => {
     if (!shared) return
-    // El enlace no trae los nombres (se piden al abrirlo): se guardan los que ya llegaron, así la lista de pasos sale al instante la próxima vez.
-    const known = comboCardIds(shared.combo.initial).flatMap((id) => (nameOf(id) === UNKNOWN_CARD.name ? [] : [[id, nameOf(id)] as const]))
-    addCombo({ ...shared.combo, names: { ...Object.fromEntries(known), ...shared.combo.names } }, 'practice.combo.saved')
+    addCombo(sharedWithNames(shared.combo), 'practice.combo.saved')
     shared.onSaved()
   }
 
@@ -2042,7 +2048,7 @@ function PracticeMatBody({
       onRename={renameCombo}
       onDelete={deleteCombo}
       onShare={shareCombo}
-      onDownload={downloadComboFile}
+      onVideo={setFilming}
       onImport={importCombo}
       showCombos={stepsPanel}
       {...(duel?.auto ? { emptyHint: t('auto.steps.empty') } : {})}
@@ -3201,13 +3207,24 @@ function PracticeMatBody({
     </section>
   )
 
-  if (!shared) return mat
+  // El video de un combo (el ⋯ de la lista, o la barra del compartido): el mismo diálogo de progreso que el de un duelo.
+  const video = <ReplayVideoDialog subject={filming ? { kind: 'combo', combo: filming } : null} onClose={() => setFilming(null)} />
 
-  // Un combo que llegó por enlace: arriba de la mesa, de quién es y «Guardar en mis combos» (la mesa lo repasa como uno cargado de la lista).
+  if (!shared) {
+    return (
+      <>
+        {mat}
+        {video}
+      </>
+    )
+  }
+
+  // Un combo que llegó por enlace: arriba de la mesa, de quién es, «Descargar video» y «Guardar en mis combos» (la mesa lo repasa como uno cargado de la lista).
   return (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
-      <SharedComboBar combo={shared.combo} onSave={saveShared} onClose={shared.onClose} />
+      <SharedComboBar combo={shared.combo} onSave={saveShared} onClose={shared.onClose} onVideo={() => setFilming(sharedWithNames(shared.combo))} />
       {mat}
+      {video}
     </div>
   )
 }

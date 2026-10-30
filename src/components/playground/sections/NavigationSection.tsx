@@ -167,7 +167,7 @@ function DuelReplaySamples() {
           <YourDuels items={[]} onOpen={noop} onCopyLink={noop} onVideo={noop} onDelete={noop} onImport={noop} />
         </div>
       </Specimen>
-      <Specimen title="Video del replay · estados" layout="column" note={<>«Descargar video» (en «Guardar replay» y en el ⋯): se arma en el navegador con un anillo de progreso y «Cancelar»; listo, dice cuánto pesa y ofrece <Tag>Guardar video</Tag> y, si el sistema puede, <Tag>Compartir video</Tag> (compartir pide un toque reciente: por eso es un paso aparte). Sin WebCodecs, el botón apagado con el motivo. Archivos: <Tag>replays/ReplayVideo.tsx</Tag> y <Tag>replays/video/</Tag></>}>
+      <Specimen title="Video de un duelo o un combo · estados" layout="column" note={<>«Descargar video» de un duelo (en «Guardar replay» y en el ⋯) o de un combo (el ⋯ de su ficha y la barra del combo compartido, más abajo; el video del combo es tu campo grande con su nombre y el del deck arriba, <Tag>replays/video/video-combo.ts</Tag>): el mismo diálogo. Se arma en el navegador con un anillo de progreso y «Cancelar»; listo, dice cuánto pesa y ofrece <Tag>Guardar video</Tag> y, si el sistema puede, <Tag>Compartir video</Tag> (compartir pide un toque reciente: por eso es un paso aparte). Sin WebCodecs, el botón apagado con el motivo. Archivos: <Tag>replays/ReplayVideo.tsx</Tag> y <Tag>replays/video/</Tag></>}>
         <SpecimenGrid>
           {videoSamples.map((sample) => (
             <Card key={sample.title} className="grid gap-4">
@@ -249,13 +249,13 @@ function StepListSamples() {
             <div key={sample.label} className={cx('grid gap-2', sample.className)}>
               <Tag>{sample.label}</Tag>
               <div className="grid gap-3 rounded-card border border-border-subtle bg-background p-3">
-                <SavedCombosList combos={sharedSamples} deckName="Snake-Eye" onLoad={noop} onRename={noop} onDelete={noop} onShare={noop} onDownload={noop} onImport={noop} />
+                <SavedCombosList combos={sharedSamples} deckName="Snake-Eye" onLoad={noop} onRename={noop} onDelete={noop} onShare={noop} onVideo={noop} onImport={noop} />
               </div>
             </div>
           ))}
         </div>
         <div className="max-w-full overflow-hidden rounded-card border border-border-subtle">
-          <SharedComboBar combo={sharedSamples[0]!} onSave={noop} onClose={noop} />
+          <SharedComboBar combo={sharedSamples[0]!} onSave={noop} onClose={noop} onVideo={noop} />
         </div>
       </Specimen>
 

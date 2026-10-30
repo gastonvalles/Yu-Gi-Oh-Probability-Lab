@@ -31,7 +31,7 @@ export function SaveReplayDialog({ isOpen, onClose, build, note }: { isOpen: boo
   const supported = useVideoSupport()
   const video = useReplayVideo()
   const view: ReplayView = mine ? 'mine' : 'public'
-  const long = sample !== null && isLongVideo(sample)
+  const long = sample !== null && isLongVideo({ kind: 'duel', replay: sample })
   const reason = unsupportedText(supported)
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function SaveReplayDialog({ isOpen, onClose, build, note }: { isOpen: boo
     setFast(true)
     onClose()
   }
-  const makeVideo = () => void video.start(build(view), long && fast ? 2 : 1)
+  const makeVideo = () => void video.start({ kind: 'duel', replay: build(view) }, long && fast ? 2 : 1)
   const stage = video.state.stage === 'idle' ? null : videoStage(video.state, { cancel: video.cancel, retry: makeVideo, back: video.cancel })
 
   return (
@@ -81,7 +81,7 @@ export function SaveReplayDialog({ isOpen, onClose, build, note }: { isOpen: boo
             </span>
             <Switch checked={mine} onChange={setMine} label={t('meta.duels.save.mine')} />
           </div>
-          {long && supported?.ok ? <FastSwitch replay={sample} fast={fast} onChange={setFast} /> : null}
+          {long && supported?.ok ? <FastSwitch subject={{ kind: 'duel', replay: sample }} fast={fast} onChange={setFast} /> : null}
           {reason ? <p className="m-0 text-micro text-soft">{reason}</p> : null}
         </div>
       )}
