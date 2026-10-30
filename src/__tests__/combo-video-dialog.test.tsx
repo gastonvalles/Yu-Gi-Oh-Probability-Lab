@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render as plainRender, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSavedCombo, writeSavedCombos } from '../app/saved-combos'
 import { SharedComboBar } from '../components/probability/PracticeMatPanel'
+import { ReplayVideoDialog } from '../components/replays/ReplayVideo'
 import type { VideoOptions } from '../components/replays/video/video-encode'
 import type { VideoSubject } from '../components/replays/video/video-timeline'
 import { Harness, INITIAL, render } from './support/practice-mat-harness'
@@ -56,6 +57,15 @@ describe('el video de un combo', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar video' }))
     const file = vi.mocked(URL.createObjectURL).mock.calls.map(([value]) => value).find((value): value is File => value instanceof File)!
     expect(file.name).toBe(`Linea-basica-${combo.savedAt.slice(0, 10)}.mp4`)
+  })
+
+  it('el video sigue armándose aunque la mesa se vuelva a dibujar (el sujeto llega armado de nuevo en cada dibujo)', async () => {
+    const { rerender } = plainRender(<ReplayVideoDialog subject={{ kind: 'combo', combo }} onClose={() => {}} />)
+    await waitFor(() => expect(fake.calls).toHaveLength(1), { timeout: 5000 })
+    rerender(<ReplayVideoDialog subject={{ kind: 'combo', combo }} onClose={() => {}} />)
+    expect(fake.calls).toHaveLength(1)
+    await act(async () => fake.calls[0]!.finish())
+    expect(screen.getByText('Video listo (0,5 MB)')).toBeInTheDocument()
   })
 
   it('la barra de un combo compartido ofrece «Descargar video» (secundario: la principal sigue siendo guardarlo)', () => {

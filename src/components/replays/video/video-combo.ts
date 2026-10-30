@@ -1,13 +1,14 @@
 import type { SharedCombo } from '../../../app/combo-share'
 import { isRivalId, rivalCardOf } from '../../../app/handtraps'
+import { matEffects } from '../../../app/mat-effects'
 import { describeMatAction, isForeignId, isToken, matReducer, type MatState } from '../../../app/practice-mat'
 import { comboCardIds, type SavedCombo } from '../../../app/saved-combos'
 import { t } from '../../../i18n'
 import { passcodeOfDrawId } from '../../duel/duel-art'
-import { artOfId, cellsOf, focusOf, handSlots, phaseRects, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, type Look, type Rect, type Scene, type SceneSide, type VideoLayout } from './video-scene'
+import { artOfId, cellsOf, focusOf, handSlots, sideSlots, VIDEO_FOOTER, VIDEO_HEIGHT_OF, type Look, type Rect, type Scene, type SceneSide, type VideoLayout } from './video-scene'
 
 /**
- * El video de un combo de la práctica: es de un solo jugador, así que va **tu campo grande** (las Zonas Extra y las fases arriba, tus monstruos, tus Mágicas y Trampas y tus
+ * El video de un combo de la práctica: es de un solo jugador, así que va **tu campo grande** (las Zonas Extra arriba, tus monstruos, tus Mágicas y Trampas y tus
  * pilas, como la mitad de abajo de la mesa del celular) y tu mano abajo, boca arriba (el combo es tuyo y la mesa te la muestra). Arriba, el nombre del combo y el del deck en
  * vez de vidas y turno (un combo no los tiene). Si se grabó con el simulador de handtraps, su «Mano del rival» va arriba del campo, boca arriba como en la mesa, y las que ya usó,
  * atenuadas. Lo demás (las transiciones, el aro ámbar, la jugada en texto, la marca) es lo del video del duelo. Puro.
@@ -24,7 +25,7 @@ export function comboLayout(width: number, rival: boolean): VideoLayout {
   const x0 = (width - (5 * cell + 4 * gap)) / 2
   const y0 = (rival ? 290 : 200) * s
   const box = (x: number, y: number, w: number, h: number): Rect => ({ x: x * s, y: y * s, w: w * s, h: h * s })
-  // La fila 0 es la del medio de la mesa (Zonas Extra y fases); después, tus monstruos, tus Mágicas y Trampas y tus pilas.
+  // La fila 0 es la del medio de la mesa (las Zonas Extra); después, tus monstruos, tus Mágicas y Trampas y tus pilas.
   const handTop = y0 / s + 4 * 124 + 3 * 10 + 26
   return {
     scale: s,
@@ -83,15 +84,9 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
       ? handSlots(rival.hand, layout.theirHand, look, () => true).map((slot) => ({ ...slot, card: { ...slot.card!, dim: rival.used.includes(slot.ids[0]!) } }))
       : [],
   )
-  const phases = phaseRects(layout)
   const nameOf = (id: string) => look(id)?.name ?? t('practice.card.unknown')
   // Lo que tocó la jugada, en tu campo, tu mano o la mano del rival del simulador (una handtrap que usó).
-  const focus =
-    action?.type === 'phase'
-      ? phases.filter((phase) => phase.id === action.phase).map((phase) => phase.rect)
-      : action && before
-        ? focusOf(action, before, state, { ...mine, hand: [...mine.hand, ...theirs.hand] }, theirs)
-        : []
+  const focus = action && before && action.type !== 'phase' ? focusOf(action, before, state, { ...mine, hand: [...mine.hand, ...theirs.hand] }, theirs) : []
 
   return {
     width,
@@ -100,7 +95,9 @@ export function comboSceneAt(combo: Combo, state: MatState, cursor: number, befo
     turn: 0,
     turnText: '',
     phase: state.phase,
-    phases,
+    actor: action ? 0 : null,
+    action: action ?? null,
+    effects: action && before ? matEffects(before, action) : null,
     stepLabel: cursor === 0 ? t('meta.duels.start') : t('meta.duels.step', { n: cursor, total: combo.actions.length }),
     stepText: action && before ? describeMatAction(before, action, nameOf) : '',
     focus,

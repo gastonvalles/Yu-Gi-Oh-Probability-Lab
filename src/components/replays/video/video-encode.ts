@@ -3,23 +3,27 @@ import { t } from '../../../i18n'
 import { fetchCardNamesByIds } from '../../../ygoprodeck'
 import { playerName, replayResultText, titleOf } from '../duel-replay-text'
 import { muxMp4, type Mp4Sample } from './mp4-mux'
-import { drawFrame, drawMotions, loadVideoAssets } from './video-draw'
+import { drawBanner, drawFlight, drawFrame, loadVideoAssets } from './video-draw'
+import { flightsOf, lifeOf, overlaysOf, replaceOverlays, titleOverlay, type Flight, type Overlay } from './video-fx'
 import { movingKeys, transitionOf } from './video-motion'
 import { comboArtUrls, comboScenes, resolveComboNames } from './video-combo'
 import { artUrls, replayScenes, type Scene } from './video-scene'
 import { bitrateFor, VIDEO_HEIGHT, VIDEO_WIDTH, videoConfig, videoSupport } from './video-support'
-import { FRAME_US, frameDurations, moveFrames, type VideoSpeed, type VideoSubject } from './video-timeline'
+import { FPS, frameDurations, frameOf, type VideoSpeed, type VideoSubject } from './video-timeline'
 
 /**
- * El video de un replay, entero en el navegador: cada escena se pinta en un lienzo, `VideoEncoder` (WebCodecs) la codifica en H.264 y `mp4-mux.ts` arma el .mp4. Va más
- * rápido que el tiempo real (no se graba la pantalla) y cede el hilo cada tanto: la página no se congela, se puede cancelar y avisa cuánto lleva. Se carga con `import()`
- * cuando se pide un video: no pesa en la carga del sitio.
+ * El video de un replay o un combo, entero en el navegador: cada cuadro se pinta en un lienzo, `VideoEncoder` (WebCodecs) lo codifica en H.264 y `mp4-mux.ts` arma el .mp4.
+ * Va a cuadros constantes (`FPS`): lo que se mueve (las cartas que vuelan y lo que anima la mesa, `video-fx.ts`) se pinta cuadro a cuadro y lo quieto repite el último cuadro
+ * sin volver a pintarlo. Va más rápido que el tiempo real (no se graba la pantalla) y cede el hilo cada tanto: la página no se congela, se puede cancelar y avisa cuánto
+ * lleva. Se carga con `import()` cuando se pide un video: no pesa en la carga del sitio.
  */
 
-/** Un cuadro clave cada tanto (en tiempo de video): para poder adelantar sin que el archivo crezca de más. */
-const KEY_EVERY_US = 10_000_000
+/** Un cuadro clave cada tanto (10 s de video): para poder adelantar sin que el archivo crezca de más. */
+const KEY_EVERY = 10 * FPS
 /** Cuánto se trabaja de corrido antes de ceder el hilo (la página sigue respondiendo). */
 const SLICE_MS = 30
+/** Lo que tardan el título en irse y el cierre en aparecer. */
+const TITLE_FADE_MS = 250
 
 export interface VideoOptions {
   speed?: VideoSpeed
@@ -94,10 +98,13 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
   const assets = await loadVideoAssets(plan.arts, signal)
   signal?.throwIfAborted()
 
+  // Dónde empieza cada tramo (la mesa al empezar, cada jugada, el cierre), en ms de video.
   const durations = frameDurations(subject, speed)
+  const starts = durations.reduce<number[]>((list, ms) => [...list, list.at(-1)! + ms], [0])
+  const total = frameOf(starts.at(-1)!)
   const canvas = canvasOf()
   const ctx = contextOf(canvas)
-  // El fondo de una transición (todo menos las cartas en vuelo): se pinta una vez y cada cuadro lo copia.
+  // La mesa sin lo que se anima encima (las cartas en vuelo, los efectos): se pinta cuando cambia y cada cuadro animado la copia.
   const base = canvasOf()
   const baseCtx = contextOf(base)
 
@@ -121,22 +128,23 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
       wake?.()
     },
   })
-  encoder.configure(videoConfig(support.codec, bitrateFor(durations.reduce((sum, ms) => sum + ms, 0))))
+  encoder.configure(videoConfig(support.codec, bitrateFor(starts.at(-1)!)))
 
-  let at = 0
-  let lastKey = -Infinity
-  let slice = performance.now()
-  // Un cambio grande (se va el título, aparece el cierre) en un cuadro que no es clave sale borroso y queda así toda la jugada (con la cuenta de 30 por segundo cada cuadro
-  // tiene poco lugar, y el que sigue llega recién en la jugada siguiente): ese cuadro va clave. `force` es para el próximo que sale.
-  let force = false
-  const emit = async (us: number) => {
-    const frame = new VideoFrame(canvas, { timestamp: at, duration: us })
-    const key = force || at - lastKey >= KEY_EVERY_US
-    force = false
-    if (key) lastKey = at
-    encoder.encode(frame, { keyFrame: key })
-    frame.close()
-    at += us
+  // El último cuadro pintado: lo quieto lo repite (un `VideoFrame` de otro comparte la imagen, no la copia).
+  let still: VideoFrame | null = null
+  const usOf = (frame: number) => Math.round((frame * 1e6) / FPS)
+  const emit = async (frame: number, fresh: boolean) => {
+    const timestamp = usOf(frame)
+    const init = { timestamp, duration: usOf(frame + 1) - timestamp }
+    if (fresh || !still) {
+      still?.close()
+      still = new VideoFrame(canvas, init)
+      encoder.encode(still, { keyFrame: frame % KEY_EVERY === 0 })
+    } else {
+      const copy = new VideoFrame(still, init)
+      encoder.encode(copy, { keyFrame: frame % KEY_EVERY === 0 })
+      copy.close()
+    }
     // Que el codificador no se atrase de más (memoria): se espera su aviso (o el de un error), no se pregunta en vueltas.
     while (encoder.encodeQueueSize > 4 && !failure) {
       await new Promise<void>((resolve) => {
@@ -147,43 +155,74 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
   }
 
   try {
-    let index = 0
+    let live: Overlay[] = []
     let before: Scene | null = null
-    for (const scene of plan.scenes) {
-      if (failure) throw failure
-      signal?.throwIfAborted()
-      let rest = durations[index]! * 1000
-      force = index === 1
-      const motions = before ? transitionOf(before, scene) : []
-      if (before && motions.length > 0) {
-        drawFrame(baseCtx, scene, assets, { keys: movingKeys(motions), before })
-        const frames = moveFrames(speed)
-        for (let frame = 0; frame < frames; frame += 1) {
-          ctx.drawImage(base, 0, 0)
-          drawMotions(ctx, motions, frame / frames, assets, scene.layout.scale)
-          await emit(FRAME_US)
-        }
-        rest = Math.max(FRAME_US, rest - frames * FRAME_US)
+    let slice = performance.now()
+    const scenes = plan.scenes[Symbol.iterator]()
+    let scene: Scene | null = null
+    for (let index = 0; index < durations.length; index += 1) {
+      // El cierre no tiene escena propia: es la última jugada, quieta, con el resultado encima.
+      const next = scenes.next()
+      if (!next.done) scene = next.value
+      if (!scene) break
+      const start = starts[index]!
+      const outro = index === durations.length - 1 && index > 0
+      let flights: Flight[] = []
+      let life: ReturnType<typeof lifeOf> = null
+      if (before && before !== scene) {
+        flights = flightsOf(transitionOf(before, scene), scene.layout.scale, speed, durations[index]!)
+        live = replaceOverlays(live, overlaysOf(before, scene, flights, assets, speed, start, subject.kind), start)
+        life = lifeOf(before, scene, speed)
       }
-      if (index === 0) scene.banner = plan.intro
-      if (index === durations.length - 1 && plan.outro) {
-        scene.banner = plan.outro
-        force = true
+      const shown = scene
+      if (index === 0) live.push(titleOverlay((target, alpha) => drawBanner(target, shown, plan.intro, assets, alpha), 0, durations[0]! + TITLE_FADE_MS, TITLE_FADE_MS, false))
+      if (outro && plan.outro) {
+        const banner = plan.outro
+        live.push(titleOverlay((target, alpha) => drawBanner(target, shown, banner, assets, alpha), start, durations[index]!, TITLE_FADE_MS, true))
       }
-      drawFrame(ctx, scene, assets)
-      await emit(rest)
-      before = scene
-      index += 1
+      const moving = flights.length > 0 ? { keys: movingKeys(flights.map((flight) => flight.motion)), before: before! } : undefined
+      const landed = Math.max(0, ...flights.map((flight) => flight.delay + flight.duration))
+      let drawnBase = ''
+      let clean = false
 
-      if (performance.now() - slice > SLICE_MS) {
-        options.onProgress?.(index / durations.length)
-        await pause()
-        slice = performance.now()
+      for (let frame = frameOf(start); frame < frameOf(starts[index + 1]!); frame += 1) {
+        if (failure) throw failure
+        signal?.throwIfAborted()
+        const now = (frame * 1000) / FPS
+        const ms = now - start
+        const flying = ms < landed
+        const lp = life?.(ms) ?? null
+        const alive = live.filter((overlay) => now >= overlay.start && now < overlay.start + overlay.duration)
+        // La mesa de abajo: sin las cartas en vuelo mientras vuelan, y con las vidas que cuentan.
+        const key = `${flying}:${lp?.join(',') ?? ''}`
+        if (key !== drawnBase) {
+          drawFrame(baseCtx, scene, assets, flying ? moving : undefined, lp)
+          drawnBase = key
+          clean = false
+        }
+        const animated = flying || alive.length > 0
+        if (animated || !clean) {
+          ctx.drawImage(base, 0, 0)
+          if (flying) for (const flight of flights) drawFlight(ctx, flight, ms, assets, scene.layout.scale)
+          for (const overlay of alive) overlay.draw(ctx, (now - overlay.start) / overlay.duration)
+          clean = !animated
+          await emit(frame, true)
+        } else await emit(frame, false)
+
+        if (performance.now() - slice > SLICE_MS) {
+          options.onProgress?.(frame / total)
+          await pause()
+          slice = performance.now()
+        }
       }
+      // Lo que ya terminó no se arrastra a la jugada siguiente.
+      live = live.filter((overlay) => overlay.start + overlay.duration > starts[index + 1]!)
+      before = scene
     }
     await encoder.flush()
     if (failure) throw failure
   } finally {
+    ;(still as VideoFrame | null)?.close()
     if (encoder.state !== 'closed') encoder.close()
     for (const bitmap of [assets.back, ...assets.arts.values()]) bitmap?.close()
   }
@@ -191,5 +230,5 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
   options.onProgress?.(1)
 
   const parts = muxMp4({ width: VIDEO_WIDTH, height: VIDEO_HEIGHT, avcC, colorSpace }, samples)
-  return { blob: new Blob(parts, { type: 'video/mp4' }), durationMs: at / 1000, frames: samples.length, codec: support.codec }
+  return { blob: new Blob(parts, { type: 'video/mp4' }), durationMs: usOf(total) / 1000, frames: samples.length, codec: support.codec }
 }

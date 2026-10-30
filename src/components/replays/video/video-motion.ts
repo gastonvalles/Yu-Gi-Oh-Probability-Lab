@@ -1,10 +1,11 @@
+import { easeInOut } from '../../../app/motion'
 import { cardRect, type Rect, type Scene, type SceneCard, type SceneSlot } from './video-scene'
 
 /**
- * Las transiciones del video entre dos escenas seguidas (puro): cada carta se busca por su lado y su id en las dos, y la que cambió de lugar se desliza (del campo al
- * cementerio, del deck a la mano, de la mano al campo, la mano que se reacomoda), la que aparece de la nada (una ficha) entra con un fundido y la que se da vuelta en el
- * mismo lugar (se muestra, se voltea) pasa de una cara a la otra. Cada carta en vuelo se dibuja con la cara que muestra la escena de después, o la de antes si después
- * queda escondida en una pila: nunca algo que ninguna de las dos mostraba.
+ * Las transiciones del video entre dos escenas seguidas (puro): cada carta se busca por su lado y su id en las dos, y la que cambió de lugar vuela (del campo al
+ * cementerio, del deck a la mano, de la mano al campo, la mano que se reacomoda), la que aparece de la nada (una ficha) entra con un fundido y la que cambia de cara (se
+ * muestra, se voltea, sale del deck de dorso y llega boca arriba) se da vuelta, en su lugar o en el camino. Cada carta en vuelo se dibuja con la cara que muestra la
+ * escena de después, o la de antes si después queda escondida en una pila: nunca algo que ninguna de las dos mostraba. Cuándo y cuánto vuela cada una: `video-fx.ts`.
  */
 
 /** Dónde está una carta: su centro, su tamaño parada y su giro (acostada, π/2; la del rival, de cabeza, π más). */
@@ -23,7 +24,7 @@ export interface Motion {
   /** null: aparece (fundido). */
   from: Pose | null
   to: Pose
-  /** Se da vuelta en su lugar: la cara de antes. */
+  /** Se da vuelta (en su lugar o volando): la cara de antes. */
   fromCard?: SceneCard
 }
 
@@ -65,8 +66,8 @@ export function transitionOf(before: Scene, after: Scene): Motion[] {
     const was = from.get(key)
     if (place.card) {
       if (!was) motions.push({ key, card: place.card, from: null, to: place.pose })
-      else if (!samePose(was.pose, place.pose)) motions.push({ key, card: place.card, from: was.pose, to: place.pose })
       else if (was.card && !sameFace(was.card, place.card)) motions.push({ key, card: place.card, from: was.pose, to: place.pose, fromCard: was.card })
+      else if (!samePose(was.pose, place.pose)) motions.push({ key, card: place.card, from: was.pose, to: place.pose })
     } else if (was?.card && !samePose(was.pose, place.pose)) {
       // Se va a quedar tapada (al fondo del deck, debajo de un monstruo Xyz): vuela con la cara que tenía, y desaparece al llegar.
       motions.push({ key, card: was.card, from: was.pose, to: place.pose })
@@ -75,13 +76,11 @@ export function transitionOf(before: Scene, after: Scene): Motion[] {
   return motions
 }
 
-/** Arranca rápido y llega suave. */
-export const easeOut = (t: number) => 1 - (1 - t) ** 3
-
+/** Dónde va la carta en el momento `t` (0 a 1) de su vuelo: con la curva de los vuelos de la mesa (`EASE_IN_OUT`), arranca suave y llega suave. */
 export function poseAt(motion: Motion, t: number): Pose {
   const { from, to } = motion
   if (!from) return to
-  const e = easeOut(t)
+  const e = easeInOut(t)
   const mix = (a: number, b: number) => a + (b - a) * e
   return { x: mix(from.x, to.x), y: mix(from.y, to.y), w: mix(from.w, to.w), h: mix(from.h, to.h), angle: mix(from.angle, to.angle) }
 }
