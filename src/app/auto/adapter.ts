@@ -554,7 +554,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
       // La carta tiene que estar en la mesa del Xyz: viene de su campo, de debajo de otro de sus Xyz o de una pila de su dueño.
       const source = fromSpot || isMaterial(from) ? from.controller : card.owner
 
-      return source === to.controller ? emit(to.controller, { type: 'attach', id: matId(card, to.controller), to: matId(xyz, to.controller) }) : note('move: a material from the other side')
+      if (source !== to.controller) return note('move: a material from the other side')
+      return emit(to.controller, { type: 'attach', id: matId(card, to.controller), to: matId(xyz, to.controller), ...(baseLocation(to.location) === L.EXTRA ? { held: true as const } : {}) })
     }
 
     const toSpot = spotOf(to.location, to.sequence)

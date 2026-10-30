@@ -246,7 +246,7 @@ function action(value: unknown, nested = false): MatAction {
     case 'summon':
       return { type: 'summon', id: id(v.id), how: oneOf(v.how, ['fusion', 'synchro', 'xyz', 'link'] as const), materials: ids(v.materials, 20), zone: oneOf(v.zone, ZONE), index: index(), pos: oneOf(v.pos, POS) }
     case 'attach':
-      return { type: 'attach', id: id(v.id), to: id(v.to) }
+      return clean({ type: 'attach', id: id(v.id), to: id(v.to), held: opt(v.held, yes) })
     case 'position':
       return { type: 'position', id: id(v.id), pos: oneOf(v.pos, POS) }
     case 'counter':
@@ -319,7 +319,7 @@ const FIELDS: Record<MatAction['type'], readonly string[]> = {
   place: ['#id', '@zone', 'index', '@pos', '@how', 'shuffle'],
   tribute: ['#id', '*tributes', '@zone', 'index', '@pos'],
   summon: ['#id', '@how', '*materials', '@zone', 'index', '@pos'],
-  attach: ['#id', '#to'],
+  attach: ['#id', '#to', 'held'],
   position: ['#id', '@pos'],
   counter: ['#id', 'delta'],
   token: ['@zone', 'index', '@pos'],

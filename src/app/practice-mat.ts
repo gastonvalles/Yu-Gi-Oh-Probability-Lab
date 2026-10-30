@@ -97,8 +97,11 @@ export type MatAction =
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
   /** Invocación desde el Extra Deck, con materiales del campo o sin ninguno: Fusión, Sincronía y Enlace los mandan al cementerio; Xyz los pone debajo. Sin materiales sale igual (como cualquier Invocación Especial). */
   | { type: 'summon'; id: string; how: ExtraSummon; materials: string[]; zone: MatZone; index: number; pos: MatPos }
-  /** Pone la carta como material Xyz debajo de otra que está en el campo. */
-  | { type: 'attach'; id: string; to: string }
+  /**
+   * Pone la carta como material Xyz debajo de otra que está en el campo. `held` (sólo el automático: la Invocación Xyz del núcleo junta los materiales antes de preguntar dónde
+   * va la carta): debajo de una que sigue en el Extra Deck (`MatState.held`). Sin `held`, una carta del Extra no recibe materiales, como siempre en la mesa manual y el enlace.
+   */
+  | { type: 'attach'; id: string; to: string; held?: true }
   | { type: 'position'; id: string; pos: MatPos }
   | { type: 'counter'; id: string; delta: number }
   /** Una ficha en una zona de monstruo, en ataque o en defensa (las fichas guardadas antes de elegir la posición no tienen `pos` y salen en ataque). */
@@ -407,7 +410,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
     case 'attach': {
       const target = locateCard(state, action.to)
-      const inExtra = target?.kind === 'pile' && target.pile === 'extra'
+      const inExtra = action.held === true && target?.kind === 'pile' && target.pile === 'extra'
 
       if (action.id === action.to || isToken(action.id) || (target?.kind !== 'spot' && !inExtra) || !locateCard(state, action.id)) {
         return state

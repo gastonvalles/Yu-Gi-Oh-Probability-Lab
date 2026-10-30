@@ -75,8 +75,8 @@ describe('el adaptador: del núcleo a la mesa', () => {
     const gathered = adapter.apply(events(0, move(111, at(0, L.MZONE, 0), at(0, L.EXTRA, 0, P.FACEUP_ATTACK, 0)), move(222, at(0, L.MZONE, 1), at(0, L.EXTRA, 0, P.FACEUP_ATTACK, 1))))
 
     expect(gathered.mine).toEqual([
-      { type: 'attach', id: 'card-111-1', to: 'card-900-1' },
-      { type: 'attach', id: 'card-222-1', to: 'card-900-1' },
+      { type: 'attach', id: 'card-111-1', to: 'card-900-1', held: true },
+      { type: 'attach', id: 'card-222-1', to: 'card-900-1', held: true },
     ])
     expect([adapter.mine.mz[0], adapter.mine.mz[1], adapter.mine.gy, adapter.mine.extra, adapter.mine.held]).toEqual([null, null, [], ['card-900-1'], { 'card-900-1': ['card-111-1', 'card-222-1'] }])
     const out = adapter.apply(events(0, move(900, at(0, L.EXTRA, 0, P.FACEDOWN_DEFENSE), at(0, L.MZONE, 5)), played('spsummoning', 900, at(0, L.MZONE, 5))))
