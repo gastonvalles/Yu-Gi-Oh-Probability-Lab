@@ -39,6 +39,8 @@ const RA = 10000010
 export const MAX_IDLE = 30
 
 const GRAVE = 0x10
+const TOKEN = 0x4000
+const LINK = 0x4000000
 /** `TIMING_ATTACK`: en `hint_timing_other`, la ventana que abre tu declaración de ataque. */
 const ATTACK_TIMING = 0x1000
 /** Lo que coloca para usar en tu turno, con su motivo. */
@@ -92,7 +94,7 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
 
   /**
    * Tu ataque recién declarado (el último del historial), si conviene frenarlo con Book of Moon: destruye un monstruo suyo, o es directo de 2000 o más (o letal). Un golpe chico no
-   * la gasta. ponytail: tu atacante se reconoce por su código; con dos iguales boca arriba, apunta al primero.
+   * la gasta, ni un Link o una Ficha (no se ponen boca abajo). ponytail: tu atacante se reconoce por su código; con dos iguales boca arriba, apunta al primero.
    */
   function stopAttack(view: BotView): { code: number } | null {
     const last = [...view.history].reverse().find((event) => event.kind === 'attack')
@@ -101,7 +103,7 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
     const attacker = view.them.monsters.find((card) => card?.code === last.code && card.pos === 'atk')
     const atk = atkOf(attacker)
 
-    if (!attacker) return null
+    if (!attacker || ((factsOf(attacker.code)?.type ?? 0) & (LINK | TOKEN)) !== 0) return null
     if (last.target === null) return atk >= 2000 || atk >= view.lp.me ? { code: last.code } : null
     const target = view.me.monsters.find((card) => card !== null && card.code === last.target)
     const guard = target?.pos === 'atk' ? atkOf(target) : (target?.stats?.defense ?? factsOf(target?.code ?? 0)?.defense ?? 0)
@@ -277,13 +279,15 @@ export function turnBot(priority: readonly number[], extra: readonly number[] = 
       pending = null
       if (index >= 0) return { answer: { type: ask.type, index }, rule: 'turn.storm' }
     }
-    // Book of Moon: el objetivo es tu monstruo que atacó (boca arriba, por su código).
+    // Book of Moon: el objetivo es tu monstruo que atacó (boca arriba, por su código); si ya no está, otro tuyo, nunca uno suyo.
     if (!mine && ask.type === 'select_card' && pending?.play === 'moon') {
       const { attacker } = pending
-      const index = ask.selects.findIndex((card) => card.controller !== view.seat && card.location === MZONE && card.code === attacker)
+      const yourMonster = (card: CardLoc) => card.controller !== view.seat && card.location === MZONE
+      const index = ask.selects.findIndex((card) => yourMonster(card) && card.code === attacker)
+      const other = index >= 0 ? index : ask.selects.findIndex(yourMonster)
 
       pending = null
-      if (index >= 0) return { answer: { type: ask.type, indices: [index] }, rule: 'turn.moon.target' }
+      if (other >= 0) return { answer: { type: ask.type, indices: [other] }, rule: index >= 0 ? 'turn.moon.target' : 'turn.moon.other' }
     }
     // Called by the Grave: el objetivo es la carta de tu eslabón, en tu cementerio (el de abajo del suyo).
     const below = view.chain.at(-2)
