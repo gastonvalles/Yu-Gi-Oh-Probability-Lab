@@ -32,7 +32,7 @@ import { createSavedCombo, readSavedCombos, writeSavedCombos } from '../app/save
 import { sfxOfAction } from '../app/sfx'
 
 /** Las de H3 con regla que no están en el catálogo (se agregan con el buscador). */
-const H3_SEARCH = [68144894, 60242223, 69680031]
+const H3_SEARCH = [68144894, 60242223, 69680031, 17266660, 21074344, 94689635]
 
 const memory = () => {
   const data = new Map<string, string>()

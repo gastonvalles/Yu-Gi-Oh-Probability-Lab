@@ -109,6 +109,10 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   60242223: 'bystial', // Bystial Saronir
   91800273: 'floodgate', // Dimension Shifter (sólo con su cementerio vacío)
   69680031: 'extra', // Dogmatika Fleurdelis, the Knighted
+  // Los Herald (del buscador): niegan y destruyen; su costo es mandar otro Hada de la mano, así que el núcleo los ofrece sólo con dos en la mano.
+  17266660: 'respond', // Herald of Orange Light (un efecto de monstruo)
+  21074344: 'respond', // Herald of Green Light (la activación de una Mágica)
+  94689635: 'respond', // Herald of Purple Light (la activación de una Trampa)
 }
 
 /** PSY-Framegear Gamma y Delta Invocan a PSY-Frame Driver (de la mano, el deck o el cementerio): sin Driver en el deck, el núcleo nunca las ofrece. */

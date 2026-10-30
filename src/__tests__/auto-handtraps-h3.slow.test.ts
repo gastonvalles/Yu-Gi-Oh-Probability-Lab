@@ -34,6 +34,10 @@ const BULB = 67441435
 /** Plaguespreader Zombie: OSCURIDAD, se Invoca desde tu cementerio (lo que destierran las Bystial). */
 const PLAGUE = 33420078
 const POT = 55144522
+const OJAMA_TRIO = 29843091
+const ORANGE = 17266660
+const GREEN = 21074344
+const PURPLE = 94689635
 
 type Result = Awaited<ReturnType<ReturnType<typeof handtrapDuels>['duel']>>
 
@@ -60,6 +64,19 @@ const bystialUse = (card: number): Case => ({
   reason: 'handtrap.bystial',
   check: ({ events }) => (moved(events, PLAGUE, L.GRAVE, L.REMOVED) && !moved(events, PLAGUE, L.GRAVE, L.MZONE) && rivalSummoned(events, card) ? null : 'no desterró a Plaguespreader o no se Invocó'),
 })
+/** Los Herald: con dos en la mano (uno es el costo del otro) niegan tu jugada y destruyen la carta; con uno solo, el núcleo no se lo ofrece. */
+const heralds = (card: number, against: string, scenario: DuelScenario, target: number): Case[] => [
+  {
+    card,
+    kind: 'use',
+    what: `con dos en la mano, contra ${against}: niega y destruye`,
+    scenario,
+    copies: 2,
+    reason: 'handtrap.respond',
+    check: ({ events }) => (has(events, (event) => event.type === 'chain_negated') && moved(events, target, L.MZONE | L.SZONE, L.GRAVE) ? null : 'no negó ni destruyó'),
+  },
+  { card, kind: 'hold', what: `con uno solo en la mano (sin otra Hada para el costo), contra ${against}: el núcleo no se lo ofrece`, scenario, reason: null, check: (result) => (neverOffered(result, card) ? null : 'se lo ofreció') },
+]
 const used = (events: readonly WireEvent[], card: number) => chainingOf(events, card, 1) >= 0
 const rivalSummoned = (events: readonly WireEvent[], card: number) => has(events, (event) => event.type === 'move' && event.card === card && event.to.controller === 1 && event.to.location === L.MZONE)
 const neverOffered = ({ offers }: Result, card: number) => offers.every((offer) => !offer.includes(card))
@@ -182,6 +199,10 @@ const CASES: Case[] = [
     reason: null,
     check: (result) => (neverOffered(result, FLEURDELIS) ? null : 'se la ofreció'),
   },
+  ...heralds(ORANGE, 'el efecto de Stratos', { deck: [[AVIAN, 1], ...SPELLS], hand: [STRATOS], steps: [{ do: 'summon', code: STRATOS }] }, STRATOS),
+  ...heralds(GREEN, 'Terraforming', { deck: [[SOGEN, 1], ...SPELLS], hand: [TERRAFORMING], steps: [{ do: 'activate', code: TERRAFORMING }] }, TERRAFORMING),
+  // Ojama Trio es una Trampa: se coloca en tu turno 1 y se activa en el 3 (con relleno para robar).
+  ...heralds(PURPLE, 'Ojama Trio', { deck: [[POT, 3]], hand: [OJAMA_TRIO], steps: [{ do: 'set', code: OJAMA_TRIO }, { do: 'activate', code: OJAMA_TRIO }] }, OJAMA_TRIO),
 ]
 
 describe.skipIf(!hasCoreData)('las reacciones de H3 contra el núcleo real (npm run test:auto)', () => {
