@@ -3,6 +3,7 @@ import path from 'node:path'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import type { Bot } from '../app/auto/bot/bot'
+import { botDeckOf } from '../app/auto/bot/decks'
 import { handtrapBot } from '../app/auto/bot/rivals'
 import { turnBot } from '../app/auto/bot/turn'
 import { localTransport } from '../app/auto/core-host'
@@ -71,10 +72,13 @@ const RIVAL: HandtrapConfig = { enabled: true, picks: [ASH, MAXX, VEILER, IMPERM
 const RIVAL_TURN: HandtrapConfig = { enabled: true, picks: [ASH, 5464695, 12580477, 102380, 24203749].map((id) => ({ id, name: '', copies: 1 })), hand: 5, ownTurn: true }
 /** Evenly Matched cuenta tus cartas del campo, también la que colocás (oculta): con Ash y Veiler, en la mano y sin jugar su turno. */
 const RIVAL_EVENLY: HandtrapConfig = { enabled: true, picks: [15693423, ASH, VEILER].map((id) => ({ id, name: '', copies: 1 })), hand: 3 }
+/** El ejecutor de Sky Striker (`botDeck`): su lista fija, su mano del barajado de su deck (la misma semilla en las 8) y su turno entero (Enlaces, Mágicas, ataques). */
+const RIVAL_SKY: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'sky-striker' }
 const MODES = [
   { name: 'el rival de handtraps', config: RIVAL, file: 'bot-privacy-report.json' },
   { name: 'el rival que juega su turno', config: RIVAL_TURN, file: 'bot-privacy-turn-report.json' },
   { name: 'el rival con Evenly Matched', config: RIVAL_EVENLY, file: 'bot-privacy-evenly-report.json' },
+  { name: 'el bot de Sky Striker', config: RIVAL_SKY, file: 'bot-privacy-sky-report.json' },
 ]
 
 function player(line: Line, setCode: number) {
@@ -163,7 +167,8 @@ describe.skipIf(!hasCoreData).each(MODES)('el bot no depende de lo que no ve (me
 
   /** Un duelo de la sesión de verdad hasta tu turno 3 hecho: lo que el bot vio y decidió en cada pregunta suya (con `cheat`, el tramposo), y lo que le llegó a su asiento tal cual. */
   async function duel(line: Line, version: Awaited<ReturnType<typeof versionsOf>>[number], cheat = false) {
-    const honest = rival.ownTurn ? turnBot(rival.main.map(([code]) => code), rival.extra.map(([code]) => code), undefined, undefined, (code) => facts.get(code)) : handtrapBot(rival.main.map(([code]) => code), rival.extra.map(([code]) => code))
+    const deck = botDeckOf(rival.botDeck)
+    const honest = deck ? deck.bot((code) => facts.get(code)) : rival.ownTurn ? turnBot(rival.main.map(([code]) => code), rival.extra.map(([code]) => code), undefined, undefined, (code) => facts.get(code)) : handtrapBot(rival.main.map(([code]) => code), rival.extra.map(([code]) => code))
     const decisions: string[] = []
     const bot: Bot = (ask, view, context) => {
       const decision = honest(ask, view, context)

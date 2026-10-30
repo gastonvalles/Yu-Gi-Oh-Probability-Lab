@@ -83,6 +83,7 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   10045474: 'monster', // Infinite Impermanence
   59438930: 'respond', // Ghost Ogre & Snow Rabbit
   73642297: 'respond', // Ghost Belle & Haunted Mansion
+  73642296: 'respond', // Ghost Belle & Haunted Mansion, el original (del buscador y del mazo de Sky Striker del bot): su `alias` no lleva a la regla, como Droll & Lock Bird
   52038442: 'offered', // Ghost Mourner & Moonlit Chill
   27204311: 'offered', // Nibiru, the Primal Being
   94145022: 'offered', // Droll & Lock Bird (el del catálogo es este arte alternativo)
@@ -175,6 +176,8 @@ export interface AutoRival {
   hand: (seed: number) => number[]
   /** Juega su turno (`HandtrapConfig.ownTurn`); sin esto, lo termina apenas puede. */
   ownTurn?: boolean
+  /** El mazo del bot (`HandtrapConfig.botDeck`): la sesión arma su deck con esa lista fija y juega con su ejecutor (`auto/bot/decks`); `main`, `extra` y `hand` van vacíos. */
+  botDeck?: string
 }
 
 /** Lo que es cada monstruo del Extra Deck: su marco de YGOPRODeck (`frameType`, sin el «_pendulum»). */
@@ -230,6 +233,8 @@ export function normalizeExtra(cards: readonly ExtraPick[]): ExtraPick[] {
  * PSY-Frame Driver) y su mano, la misma que repartiría el simulador manual con esa semilla (`dealRival`). `null` con el simulador apagado: el rival pasivo.
  */
 export function autoRival(config: HandtrapConfig): AutoRival | null {
+  // El bot con su mazo: su lista y su mano salen de su deck (la sesión), no de la hoja; manda aunque el simulador esté apagado.
+  if (config.botDeck) return { main: [], extra: [], hand: () => [], botDeck: config.botDeck }
   if (!dealRival(config, 0)) return null
   const picks = normalizePicks(config.picks)
 
@@ -250,7 +255,12 @@ export interface HandtrapConfig {
   extra?: ExtraPick[]
   /** «El rival juega su turno», sólo en el duelo automático: Invoca, coloca, activa sus cartas (`TURN_RULES`) y ataca. Sin el campo (lo guardado antes), apagado. */
   ownTurn?: boolean
+  /** El rival «Bot»: el id de un mazo con ejecutor (`BOT_DECKS` de `auto/bot/decks`, como `'sky-striker'`), sólo en el duelo automático. Con él, `autoRival` da ese bot (sin mirar `enabled`); sin el campo, lo de siempre. */
+  botDeck?: string
 }
+
+/** El id de un mazo del bot como se guarda: minúsculas, números y guiones (cuál existe lo sabe la sesión). */
+const BOT_DECK_ID = /^[a-z0-9-]{1,40}$/
 
 /** Las tres de siempre, una copia de cada una: Ash Blossom, Effect Veiler e Infinite Impermanence. */
 const DEFAULT_PICKS: readonly HandtrapPick[] = [14558127, 97268402, 10045474].map((id) => ({ ...HANDTRAP_CATALOG.find((card) => card.id === id)!, copies: 1 }))
@@ -319,14 +329,17 @@ export function readHandtrapConfig(storage: () => Storage = () => localStorage):
 
   const picks = Array.isArray(stored.picks) ? parsePicks(stored.picks) : []
 
-  return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra), ...(stored.ownTurn === true ? { ownTurn: true } : {}) }
+  const botDeck = typeof stored.botDeck === 'string' && BOT_DECK_ID.test(stored.botDeck) ? { botDeck: stored.botDeck } : {}
+
+  return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra), ...(stored.ownTurn === true ? { ownTurn: true } : {}), ...botDeck }
 }
 
 export function writeHandtrapConfig(config: HandtrapConfig, storage: () => Storage = () => localStorage): void {
   try {
     const ownTurn = config.ownTurn ? { ownTurn: true } : {}
+    const botDeck = config.botDeck && BOT_DECK_ID.test(config.botDeck) ? { botDeck: config.botDeck } : {}
 
-    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })), hand: config.hand, extra: normalizeExtra(config.extra ?? DEFAULT_RIVAL_EXTRA), ...ownTurn }))
+    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })), hand: config.hand, extra: normalizeExtra(config.extra ?? DEFAULT_RIVAL_EXTRA), ...ownTurn, ...botDeck }))
   } catch {
     // Sin almacenamiento (ventana privada, cuota): vale hasta recargar.
   }

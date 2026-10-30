@@ -14,7 +14,8 @@ const resolve = (target: string) => [`${target}.ts`, `${target}.tsx`, `${target}
 
 describe('el bot sólo ve lo de su asiento: lo que importa', () => {
   it('estructural: nada de src/app/auto/bot llega con valores a la sesión, al anfitrión, al árbitro, al adaptador ni a las barajas (ni a ocgcore-wasm)', () => {
-    const start = readdirSync(join(ROOT, 'src/app/auto/bot')).map((name) => `src/app/auto/bot/${name}`)
+    // También lo de `decks/` y `executors/` (los ejecutores por mazo).
+    const start = readdirSync(join(ROOT, 'src/app/auto/bot'), { recursive: true, encoding: 'utf8' }).filter((name) => name.endsWith('.ts')).map((name) => `src/app/auto/bot/${name.replaceAll('\\', '/')}`)
     const seen = new Set<string>()
     const queue = [...start]
 
