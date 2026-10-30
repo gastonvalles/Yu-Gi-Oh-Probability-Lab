@@ -168,6 +168,8 @@ export type RivalPolicy = (ask: CoreAsk, view: RivalView) => CoreAnswer
 const FYDRAULIS_HARMONIA = 70088809
 /** `TIMING_SUMMON | TIMING_SPSUMMON | TIMING_FLIPSUMMON`: en `hint_timing_other`, la ventana que abre una Invocación del otro. */
 const SUMMON_TIMINGS = 0x40 | 0x80 | 0x100
+/** `TIMING_STANDBY_PHASE`: en `hint_timing_other`, la ventana libre de la Standby Phase del otro (la de la Draw Phase es `0x1`). */
+const STANDBY_TIMING = 0x2
 
 /**
  * El rival con handtraps: contesta como el pasivo salvo dos cosas. Ante una cadena, activa la primera de `priority` (los passcodes, en el
@@ -192,7 +194,8 @@ export function handtrapPolicy(priority: readonly number[], fallback: Policy = p
         monster: at?.controller === opponent && at.location === LOCATION.MZONE,
         graveyard: at?.controller === opponent && at.location === LOCATION.GRAVE,
         offered: true,
-        draw: view.overlay.turnPlayer === opponent && (yours(top) || (chain.length === 0 && (ask.hint_timing_other & SUMMON_TIMINGS) !== 0)),
+        // Como se juegan: en tu Standby Phase (la ventana que su script marca); si no llegó a usarla ahí, a tu primera activación o Invocación.
+        draw: view.overlay.turnPlayer === opponent && (yours(top) || (chain.length === 0 && (ask.hint_timing_other & (SUMMON_TIMINGS | STANDBY_TIMING)) !== 0)),
       }
 
       for (const code of priority) {

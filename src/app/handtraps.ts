@@ -57,7 +57,7 @@ export const HANDTRAP_CATALOG: readonly HandtrapCard[] = [
  * - `respond`: el script la ofrece sólo en respuesta a lo que niega (`EVENT_CHAINING`): se usa contra tu última activación.
  * - `monster`: contra el efecto de un monstruo tuyo en el campo, apuntándolo (sin esto, Veiler se gastaba en tu primera Invocación; Harmonia destruye a ese monstruo).
  * - `offered`: el núcleo la ofrece sólo cuando pasó lo que la dispara (Invocaste de modo Especial, sumaste del deck a la mano, 5 Invocaciones): se usa apenas aparece.
- * - `draw`: libre y roba mientras jugás: en tu turno, a tu primera activación o Invocación.
+ * - `draw`: libre y roba mientras jugás: en tu Standby Phase (como se juegan; el núcleo se la ofrece ahí) o, si no, a tu primera activación o Invocación.
  * - `graveyard`: contra un efecto que activás desde tu cementerio, desterrando esa carta (un efecto que no la necesita ahí, como buscar al ser enviada, la gasta igual).
  */
 export type AutoRule = 'respond' | 'monster' | 'offered' | 'draw' | 'graveyard'
