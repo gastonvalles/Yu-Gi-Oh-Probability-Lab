@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { duelReplayAt, walkReplay, type DuelReplay, type ReplaySide } from '../../app/duel-replay'
-import { isToken } from '../../app/practice-mat'
+import { isToken, type MatPhase } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { artOfDrawId } from '../duel/duel-art'
 import { DuelTable, TheirHand, type DuelSideView } from '../duel/DuelTable'
 import { LifeScore } from '../duel/LifeScore'
 import { PLAYER_COLOR } from '../duel/player-color'
+import { PhaseBanner } from '../probability/MatFx'
 import { ReplayTimeline, ReplayTransport, type ReplayMark, type ReplaySpeed } from '../probability/ReplayBar'
 import { stepTone } from '../probability/step-tone'
 import { Button } from '../ui/Button'
@@ -32,6 +33,20 @@ interface DuelReplayScreenProps {
 
 /** Cuánto dura cada jugada al reproducir, a velocidad normal. */
 const STEP_MS = 900
+/** Lo que dura el cartel de una fase (el de la mesa, `fx-banner`). */
+const BANNER_MS = 1100
+
+type Banner = { key: number; phase: MatPhase; who: string }
+
+/**
+ * El cartel de la fase al avanzar un paso (reproducir o «Siguiente») que cambia de fase: la fase en grande y arriba quien la pasa, como en el video. Saltar (la línea de tiempo, volver al
+ * principio, anterior) no anuncia nada: arrastrando, cada paso era un cartel.
+ */
+function bannerAt(replay: DuelReplay, from: number, to: number): Banner | null {
+  const step = to === from + 1 ? replay.steps[to - 1] : undefined
+
+  return step && step[1].type === 'phase' ? { key: to, phase: step[1].phase, who: playerName(replay, step[0]) } : null
+}
 
 export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelReplayScreenProps) {
   const total = replay.steps.length
@@ -39,6 +54,7 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
   const [flipped, setFlipped] = useState(false)
+  const [banner, setBanner] = useState<Banner | null>(null)
   // Una sola pasada: las fotos para saltar y la marca de cada jugada (su color, si cambia de fase, si empieza un turno).
   const { shots, marks } = useMemo(() => {
     const marks: ReplayMark[] = []
@@ -70,9 +86,24 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
       setPlaying(false)
       return
     }
-    const timer = window.setTimeout(() => setCursor((at) => Math.min(total, at + 1)), STEP_MS / speed)
+    const timer = window.setTimeout(() => {
+      setCursor(cursor + 1)
+      setBanner(bannerAt(replay, cursor, cursor + 1))
+    }, STEP_MS / speed)
     return () => window.clearTimeout(timer)
-  }, [playing, cursor, total, speed])
+  }, [playing, cursor, total, speed, replay])
+  // Se va solo (con menos movimiento queda quieto ese rato).
+  useEffect(() => {
+    if (!banner) return
+    // Sólo el que se ve: el de la jugada siguiente pudo salir antes.
+    const timer = window.setTimeout(() => setBanner((current) => (current === banner ? null : current)), BANNER_MS)
+    return () => window.clearTimeout(timer)
+  }, [banner])
+  const jump = (at: number) => {
+    setPlaying(false)
+    setBanner(null)
+    setCursor(at)
+  }
 
   const bottom: ReplaySide = flipped ? 1 : 0
   const top: ReplaySide = flipped ? 0 : 1
@@ -129,13 +160,16 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
           <LifeScore name={names[top]} life={frame.lp[top]} color={top === 0 ? 'mine' : 'theirs'} />
         </div>
 
-        {/* El tamaño de la casilla, como la del espectador, con lugar para la jugada y los controles (unos 9 rem más que él). */}
-        <DuelTable
-          mine={bottomView}
-          theirs={topView}
-          turn={frame.turn === bottom ? 'mine' : 'theirs'}
-          className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-sm:mx-auto max-sm:w-[min(100%,calc(5*max(3rem,(100dvh_-_32rem)/7)_+_1rem))] sm:max-[1101px]:mx-auto sm:max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
-        />
+        {/* El tamaño de la casilla, como la del espectador, con lugar para la jugada y los controles (unos 9 rem más que él). Encima, en el medio, el cartel de la fase. */}
+        <div className="relative">
+          <DuelTable
+            mine={bottomView}
+            theirs={topView}
+            turn={frame.turn === bottom ? 'mine' : 'theirs'}
+            className="[--cell:max(3rem,min(6.5rem,calc((100dvh-35rem)/5.2)))] max-sm:mx-auto max-sm:w-[min(100%,calc(5*max(3rem,(100dvh_-_32rem)/7)_+_1rem))] sm:max-[1101px]:mx-auto sm:max-[1101px]:w-[min(100%,calc(6.3714*max(3rem,(100dvh_-_35rem)/5.2)_+_1.5rem))]"
+          />
+          {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={null} who={banner.who} className="absolute inset-0 z-30" /> : null}
+        </div>
         <TheirHand count={bottomView.handCount ?? 0} align="start" {...(openHand ? { cards: openHand } : {})} />
 
         {/* La jugada y los controles quedan pegados abajo: con una pantalla baja, la mesa scrollea por detrás y los botones siguen a mano. */}
@@ -154,22 +188,19 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
               if (!playing && cursor >= total) setCursor(0)
               setPlaying((current) => !current)
             }}
-            onRestart={() => {
-              setPlaying(false)
-              setCursor(0)
-            }}
-            onPrevious={() => {
-              setPlaying(false)
-              setCursor((at) => Math.max(0, at - 1))
-            }}
+            onRestart={() => jump(0)}
+            onPrevious={() => jump(Math.max(0, cursor - 1))}
             onNext={() => {
+              const next = Math.min(total, cursor + 1)
+
               setPlaying(false)
-              setCursor((at) => Math.min(total, at + 1))
+              setCursor(next)
+              setBanner(bannerAt(replay, cursor, next))
             }}
             onSpeed={setSpeed}
           />
           {/* La línea de tiempo, debajo de los botones (como la del repaso en el celular). */}
-          <ReplayTimeline marks={marks} cursor={cursor} describe={describe} onSeek={(at) => { setPlaying(false); setCursor(at) }} />
+          <ReplayTimeline marks={marks} cursor={cursor} describe={describe} onSeek={jump} />
         </div>
       </div>
     </div>

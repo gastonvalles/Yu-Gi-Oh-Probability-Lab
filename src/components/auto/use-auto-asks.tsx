@@ -206,6 +206,8 @@ export interface AutoAsks {
   matSession: MatSession
   /** La mesa terminó de contar la última tanda; `skipAhead` salta al final (tocar la mesa; los botones del aviso de la cadena, no: se toca para mirarla). */
   settled: boolean
+  /** Hasta qué jugada tuya contó la mesa (`snap.mineActions`, como las cuenta `snap.order`): lo del rival que pasó después espera a que llegue. */
+  counted: number
   skipAhead: (event?: { target: EventTarget | null }) => void
   lane: LaneNotice | null
   /** Lo que la mesa recibe del núcleo (`PracticeMat.duel`): falta lo de cada pantalla (la barra, tus vidas, los botones, las portadas). */
@@ -1221,6 +1223,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     state: reviewState ?? state,
     matSession: review?.session ?? matSession,
     settled,
+    counted: paced.cursor,
     skipAhead,
     lane,
     mat: reviewState ? reviewMat(mat, reviewState.phase) : mat,

@@ -544,11 +544,12 @@ interface FxStep {
 /**
  * Los efectos del paso nuevo (puro: lo calcula la mesa en el mismo dibujo del paso). Avanzar un paso los trae; deshacer, saltar a otro paso, una mano nueva o cargar otro combo corta lo que
  * estaba en curso (no era de este paso). `pendingId`: la carta que estaba soltada en una zona (esperando) hasta la jugada anterior; ya está ahí, así que su destello no espera ningún vuelo.
+ * `jumped`: se llegó tocando o arrastrando la línea de tiempo; aunque caiga en el paso siguiente, es saltar (arrastrando, cada paso era un cartel y una carta grande: una ráfaga).
  */
-function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | null): FxStep {
+function nextFxStep(previous: FxStep, session: MatSession, pendingId: string | null, jumped = false): FxStep {
   const at = { cursor: session.cursor, actions: session.actions, initial: session.initial, replay: session.replay }
 
-  if (session.cursor !== previous.cursor + 1) return { ...at, fx: NO_FX, step: { cut: true }, shuffles: previous.shuffles }
+  if (jumped || session.cursor !== previous.cursor + 1) return { ...at, fx: NO_FX, step: { cut: true }, shuffles: previous.shuffles }
 
   const action = session.actions[session.cursor - 1]
 
@@ -835,10 +836,20 @@ function PracticeMatBody({
   // Se fijan en el mismo dibujo del paso (un `setState` durante el render: React rehace la mesa al instante, antes de dibujar los hijos), no en un efecto que la volvía a dibujar entera
   // justo cuando despegan los vuelos. `pendingRef` es la carta que esperaba en una zona hasta la jugada anterior (la escribe un efecto de más abajo, después de cada dibujo).
   const pendingRef = useRef<string | null>(null)
+  // El paso al que se saltó con la línea de tiempo (`seekTimeline`): llega en el mismo dibujo que el paso o en el siguiente, y se usa una vez.
+  const [jumpedTo, setJumpedTo] = useState<number | null>(null)
 
   if (fxStep.cursor !== session.cursor || fxStep.actions !== session.actions || fxStep.initial !== session.initial || fxStep.replay !== session.replay) {
-    setFxStep(nextFxStep(fxStep, session, pendingRef.current))
+    setFxStep(nextFxStep(fxStep, session, pendingRef.current, jumpedTo === session.cursor))
+    if (jumpedTo !== null) setJumpedTo(null)
   }
+  const seekTimeline = useCallback(
+    (step: number) => {
+      setJumpedTo(step)
+      onSeek(step)
+    },
+    [onSeek],
+  )
 
   // Lo que se mide en la página va después del dibujo: la espada de un ataque (del atacante a su objetivo, a una carta del rival o directo a su barra de vida; sin rival, al borde de la mesa)
   // y el barajado (tocar el deck o sumar una carta a la mano: el deck con su animación, la mano carta por carta). Deshacer o saltar de paso corta la espada.
@@ -2511,7 +2522,7 @@ function PracticeMatBody({
         playLabel={replayLabel}
         speed={speed}
         describe={describeStep}
-        onSeek={onSeek}
+        onSeek={seekTimeline}
         onTogglePlay={togglePlay}
         onRestart={restart}
         onPrevious={previousStep}
@@ -2823,9 +2834,9 @@ function PracticeMatBody({
                 <PhaseBanner
                   key={shown.key}
                   phase={shown.phase}
-                  turn={duel ? null : shown.turn}
-                  // En un duelo, pasar de la End Phase a la Draw Phase es pasar el turno: el cartel dice que ahora juega el rival.
-                  label={duel && shown.turn !== null ? duel.rivalTurnLabel : undefined}
+                  turn={duel && !session.replay ? null : shown.turn}
+                  // En un duelo, pasar de la End Phase a la Draw Phase es pasar el turno: el cartel dice que ahora juega el rival. Repasando un combo, el turno es tuyo: dice su número, como en la práctica.
+                  label={duel && !session.replay && shown.turn !== null ? duel.rivalTurnLabel : undefined}
                   className="absolute inset-0 z-30"
                 />
               ) : null
@@ -2913,7 +2924,7 @@ function PracticeMatBody({
               <div className="pointer-events-auto absolute inset-x-0 bottom-0 grid">
                 <ReplayTransport total={replayMarks.length} cursor={session.cursor} playing={autoplay} playLabel={replayLabel} speed={speed} onTogglePlay={togglePlay} onRestart={restart} onPrevious={previousStep} onNext={nextStep} onSpeed={setSpeed} />
                 <div data-replay-timeline="">
-                  <ReplayTimeline marks={replayMarks} cursor={session.cursor} describe={describeStep} onSeek={onSeek} onOpenSteps={openSteps} />
+                  <ReplayTimeline marks={replayMarks} cursor={session.cursor} describe={describeStep} onSeek={seekTimeline} onOpenSteps={openSteps} />
                 </div>
               </div>
             ) : null}

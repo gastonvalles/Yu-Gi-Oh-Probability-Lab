@@ -205,4 +205,29 @@ describe('auto-screen · las fases son manuales', () => {
     expect(phaseButton()).toHaveTextContent(/^BP$/)
     expect(screen.queryAllByText(/Battle Phase|Main Phase 1/)).toHaveLength(0)
   })
+
+  it('el turno del rival, que el núcleo juega de una, se ve fase por fase con su cartel después de que tu mesa cuenta tu End Phase; la que te devuelve el turno dice «Tu turno»', () => {
+    const fake = renderAuto()
+    // El de tu mesa («Turno de Rival») y los del rival van cada uno por su lado.
+    const banners = () => [...document.querySelectorAll('[data-fx="banner"]')].map((element) => element.textContent ?? '')
+    const rivalBanner = () => banners().find((text) => /^(Rival|Tu turno)/.test(text)) ?? null
+    const { overlay } = fake.getSnapshot()
+    const theirs = [to('standby'), to('main1'), to('end'), to('draw', true)].map((action) => ({ action, reveal: {} }))
+
+    // Terminás tu turno y, en la misma tanda, el rival juega el suyo entero y te lo devuelve.
+    core(() => fake.set({ overlay: { ...overlay, turn: 3, turnPlayer: 0 }, mineActions: [to('end'), to('draw', true)], theirsActs: theirs, order: ['mine', 'mine', 'theirs', 'theirs', 'theirs', 'theirs'] }))
+    // Ninguno antes de que tu mesa llegue: primero tu End Phase y «Turno de Rival».
+    expect(rivalBanner()).toBeNull()
+    step()
+    step()
+    expect(banners()).toContain('Turno de Rival')
+    const seen: string[] = []
+    for (let i = 0; i < 4; i += 1) {
+      act(() => vi.advanceTimersByTime(1100))
+      seen.push(rivalBanner() ?? '')
+    }
+    expect(seen).toEqual(['RivalStandby Phase', 'RivalMain Phase 1', 'RivalEnd Phase', 'Tu turno'])
+    act(() => vi.advanceTimersByTime(1100))
+    expect(rivalBanner()).toBeNull()
+  })
 })
