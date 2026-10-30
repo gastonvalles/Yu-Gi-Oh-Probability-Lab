@@ -71,7 +71,8 @@ export const AUTO_RULES: Readonly<Record<number, AutoRule>> = {
   73642297: 'respond', // Ghost Belle & Haunted Mansion
   52038442: 'offered', // Ghost Mourner & Moonlit Chill
   27204311: 'offered', // Nibiru, the Primal Being
-  94145022: 'offered', // Droll & Lock Bird
+  94145022: 'offered', // Droll & Lock Bird (el del catálogo es este arte alternativo)
+  94145021: 'offered', // Droll & Lock Bird, el original (del buscador): su `alias` no lleva a la regla, que está en el arte alternativo
   38814750: 'respond', // PSY-Framegear Gamma
   24508238: 'graveyard', // D.D. Crow
   40366667: 'respond', // Dominus Impulse

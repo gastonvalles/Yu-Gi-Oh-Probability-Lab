@@ -18,6 +18,34 @@ export const auto = {
   // El cartel de la carta que el rival activa en respuesta (su nombre ya va debajo de la carta).
   'auto.rival.responds': '{name} responde a {to}',
 
+  // «Qué hizo el bot y por qué» (la hoja del final y de «Opciones del duelo»): un bloque por turno con lo que decidió el rival automático, y sus límites.
+  'auto.bot.log.title': 'Qué hizo el bot y por qué',
+  'auto.bot.log.open': 'Qué hizo el bot',
+  'auto.bot.log.optionHint': 'Lo que decidió el rival en cada turno, con su motivo.',
+  'auto.bot.log.hint': 'Tocá una decisión para ver tu mesa en ese momento.',
+  'auto.bot.log.turnYou': 'Turno {turn} · vos',
+  'auto.bot.log.turnBot': 'Turno {turn} · bot',
+  'auto.bot.log.limits': 'Sparring de práctica: decide con reglas escritas y sólo ve lo que vería un jugador. No es un rival de torneo: no improvisa ni cuenta tus outs.',
+  'auto.bot.log.passiveTitle': 'El rival no juega',
+  'auto.bot.log.passive': 'Con el rival pasivo no hay decisiones que contar. Prendé sus handtraps en «Opciones del duelo» para verlo responder.',
+  'auto.bot.log.emptyTitle': 'Todavía no decidió nada',
+  'auto.bot.log.empty': 'Cuando use o guarde una handtrap, o termine su turno, lo vas a ver acá.',
+  // Los motivos del bot (en primera persona: habla el rival). {card} es su carta y {to}, la tuya.
+  'auto.bot.reason.handtrap.respond': 'Usé {card} en respuesta a {to}.',
+  'auto.bot.reason.handtrap.monster': 'Usé {card} contra {to}: es un efecto de monstruo en el campo.',
+  'auto.bot.reason.handtrap.graveyard': 'Usé {card} contra {to}: se activó en el cementerio.',
+  'auto.bot.reason.handtrap.offered': 'Activé {card} apenas se pudo: así se juega.',
+  'auto.bot.reason.handtrap.draw': 'Activé {card} en tu Draw Phase: así se juega.',
+  'auto.bot.reason.handtrap.drawLate': 'Activé {card} a tu primera jugada: así robo con lo que sigas haciendo.',
+  'auto.bot.reason.target.link': 'Elegí {to} como objetivo de {card}: es la carta de tu eslabón.',
+  'auto.bot.reason.cost.extra': { one: 'Elegí {card} de mi Extra Deck: es la primera de mi lista.', other: 'Elegí {count} veces de mi Extra Deck, en el orden de mi lista: primero {card}.' },
+  'auto.bot.reason.hold.monster': 'Tenía {card} y no la usé contra {to}: la guardo para un efecto de monstruo en el campo.',
+  'auto.bot.reason.hold.graveyard': 'Tenía {card} y no la usé contra {to}: la guardo para un efecto que se active en el cementerio.',
+  'auto.bot.reason.hold.draw': 'Tenía {card} y no la usé contra {to}: la uso en tu turno.',
+  'auto.bot.reason.hold.noRule': 'Tenía {card} y no la usé contra {to}: todavía no sé cuándo conviene.',
+  'auto.bot.reason.hold.other': 'Tenía {card} y no la usé contra {to}.',
+  'auto.bot.reason.end.noPlays': 'Terminé el turno: no juego cartas al campo, sólo uso handtraps.',
+
   // La pregunta de sí o no del núcleo, en la mesa: corta y sin el nombre de la carta (la dice su arte). Arriba, chico, qué pasó justo antes, sin nombres.
   'auto.ask.effect': '¿Activás el efecto?',
   'auto.ask.kicker': 'Efecto que se dispara',

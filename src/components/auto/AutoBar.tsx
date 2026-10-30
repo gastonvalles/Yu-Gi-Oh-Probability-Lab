@@ -45,6 +45,8 @@ export interface AutoOptions {
   onManual?: () => void
   /** «Guardar replay»: abre el diálogo para guardar el duelo como está (sin esto, no se ofrece). */
   onSaveReplay?: () => void
+  /** «Qué hizo el bot y por qué»: abre la hoja con los motivos del rival (sin esto, no se ofrece). */
+  onBotLog?: () => void
   /** «Handtraps del rival»: si las usa, lo que tiene y «Cambiar handtraps» (la pantalla abre la hoja del simulador; al aplicar, el duelo empieza de nuevo). Apagadas, el rival es el pasivo. */
   handtraps: { on: boolean; summary: string; onChange: () => void }
   /** «A ciegas» (sólo con handtraps): la mano del rival de dorso. */
@@ -82,7 +84,7 @@ export { Setting }
  * «Más opciones» del duelo: las respuestas a la cadena, la casilla, las handtraps del rival y «A ciegas», reiniciar el mismo duelo y seguir en modo manual. Desde la botonera (`inDock`) no repite lo
  * que ahí tiene su botón (las respuestas y el modo manual). Sin velo: la mesa se sigue viendo.
  */
-function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, onPlace, onRestart, onManual, onSaveReplay, handtraps, blind, onBlind }: AutoOptions & { isOpen: boolean; onClose: () => void; inDock?: boolean }) {
+function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, onPlace, onRestart, onManual, onSaveReplay, onBotLog, handtraps, blind, onBlind }: AutoOptions & { isOpen: boolean; onClose: () => void; inDock?: boolean }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="keypad" anchor="mat" veil={false} title={t('duel.bar.more')}>
       <div className="grid gap-5">
@@ -146,6 +148,22 @@ function MoreOptions({ isOpen, onClose, inDock = false, chain, onChain, place, o
               }}
             >
               {t('meta.duels.save.button')}
+            </Button>
+          </Setting>
+        ) : null}
+        {onBotLog ? (
+          <Setting title={t('auto.bot.log.title')} hint={t('auto.bot.log.optionHint')}>
+            <Button
+              variant="secondary"
+              icon="chat"
+              className="justify-self-start"
+              aria-haspopup="dialog"
+              onClick={() => {
+                onClose()
+                onBotLog()
+              }}
+            >
+              {t('auto.bot.log.open')}
             </Button>
           </Setting>
         ) : null}
