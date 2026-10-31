@@ -918,7 +918,7 @@ export interface AttackTarget {
   label: string
 }
 
-/** En un duelo: a quién se le puede dar el control de un monstruo y si tiene dónde ponerlo (sin una zona de monstruo libre, no se ofrece). */
+/** En un duelo: a quién se le puede dar el control de un monstruo y si tiene dónde ponerlo (sin una zona de monstruo libre, la opción va apagada y dice por qué). */
 export interface ControlOffer {
   rival: string
   rivalHasRoom: boolean
@@ -1147,9 +1147,13 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       return items
     }
 
-    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre. Una Mágica o Trampa del rival que tomé se devuelve siempre (sin lugar, vuelve a su cementerio).
-    if (control && (spot === 'mz' || spot === 'emz' ? control.rivalHasRoom : isForeignId(id))) {
+    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre; sin lugar, dar el de uno mío se ve apagado y dice por qué.
+    // Una Mágica o Trampa del rival que tomé se devuelve siempre (sin lugar, vuelve a su cementerio).
+    const monster = spot === 'mz' || spot === 'emz'
+    if (control && (monster ? control.rivalHasRoom : isForeignId(id))) {
       add(t(isForeignId(id) ? 'practice.menu.returnControl' : 'practice.menu.giveControl', { name: control.rival }), { type: 'give', id })
+    } else if (control && monster && !isForeignId(id)) {
+      items.push({ label: t('practice.menu.giveControl', { name: control.rival }), action: { type: 'give', id }, disabled: t('practice.menu.giveControlNoRoom', { name: control.rival }) })
     }
 
     // Un monstruo puede pasar a la zona de Mágicas y Trampas (los que se tratan como Mágicas de Equipo o Continuas).

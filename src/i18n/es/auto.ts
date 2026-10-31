@@ -198,6 +198,7 @@ export const auto = {
 
   // Lo que se elige en la mesa (la línea de estado de abajo): casillas y cartas.
   'auto.pick.zone': { one: 'Elegí {count} casilla', other: 'Elegí {count} casillas' },
+  'auto.pick.zoneRival': { one: 'Elegí una casilla del rival', other: 'Elegí {count} casillas del rival' },
   'auto.pick.disfield': { one: 'Elegí {count} casilla que no se va a poder usar', other: 'Elegí {count} casillas que no se van a poder usar' },
   'auto.pick.cards': { one: 'Elegí {count} carta', other: 'Elegí {count} cartas' },
   'auto.pick.range': 'Elegí de {min} a {max} cartas',

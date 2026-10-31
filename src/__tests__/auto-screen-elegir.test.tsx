@@ -119,6 +119,22 @@ describe('auto-screen · elegir', () => {
     expect(dispatches).toBe(0)
   })
 
+  it("place con todas las casillas del rival (dar el control con Shien's Spy, la máscara literal del núcleo): el estado dice que son del rival y tocar una contesta con su lado", () => {
+    const fake = renderAuto()
+
+    // Libres: las 5 zonas principales del rival (bits 16 a 20).
+    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: 4292935679 }))
+    expect(status()).toHaveTextContent('Elegí una casilla del rival')
+    expect(screen.getAllByRole('button', { name: /^Rival, Zona de monstruo \d: elegir$/ })).toHaveLength(5)
+    expect(screen.queryAllByRole('button', { name: /^Zona.*: elegir$/ })).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Rival, Zona de monstruo 3: elegir' }))
+    expect(fake.answers).toEqual([{ type: 'select_place', places: [{ player: 1, location: L.MZONE, sequence: 2 }] }])
+    // Con una casilla propia entre las libres, el texto de siempre.
+    core(() => fake.ask({ type: 'select_place', player: 0, count: 1, field_mask: ~((1 << 0) | (1 << 16)) >>> 0 }))
+    expect(status()).toHaveTextContent('Elegí 1 casilla')
+    expect(status()).not.toHaveTextContent('del rival')
+  })
+
   it('place con un monstruo en una casilla que el núcleo ofrece (el material de un Xyz, que se va al invocar): tocar la carta elige esa casilla', () => {
     const fake = renderAuto()
 

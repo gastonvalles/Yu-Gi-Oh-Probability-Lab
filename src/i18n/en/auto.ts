@@ -191,6 +191,7 @@ export const auto: Translated<typeof es> = {
 
   // What is chosen on the mat (the status line below): zones and cards.
   'auto.pick.zone': { one: 'Choose {count} zone', other: 'Choose {count} zones' },
+  'auto.pick.zoneRival': { one: "Choose one of your opponent's zones", other: "Choose {count} of your opponent's zones" },
   'auto.pick.disfield': { one: "Choose {count} zone that can't be used", other: "Choose {count} zones that can't be used" },
   'auto.pick.cards': { one: 'Choose {count} card', other: 'Choose {count} cards' },
   'auto.pick.range': 'Choose {min} to {max} cards',

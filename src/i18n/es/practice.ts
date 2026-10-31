@@ -57,6 +57,7 @@ export const practice = {
   // Con dos o más Xyz en el campo (o dos o más materiales), una sola opción que pregunta a cuál (o cuál) en el segundo paso.
   'practice.menu.attachToXyz': 'Adjuntar a un Xyz',
   'practice.menu.giveControl': 'Dar el control a {name}',
+  'practice.menu.giveControlNoRoom': '{name} no tiene una zona de monstruo libre',
   'practice.menu.returnControl': 'Devolver el control a {name}',
   'practice.menu.detach': 'Desacoplar {name}',
   'practice.menu.detachMaterial': 'Desacoplar',
