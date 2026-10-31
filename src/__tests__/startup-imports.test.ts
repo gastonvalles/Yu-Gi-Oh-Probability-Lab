@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url'
 // Lo que el arranque no lleva: los datos pesados se piden con `import()` cuando se usan (o se precargan en un momento ocioso, de a uno: `lazy-steps.ts`).
 // Si algo del grafo estático de `main.tsx` empieza a importar uno de estos, vuelve a viajar antes del primer pintado (en un celular con red lenta se nota).
 const NOT_AT_STARTUP = [
+  // Solo y su «Ver mazo» van detrás del `lazy` de la pantalla (`lazy-steps.ts`): las listas de los bots ya viajan (unos cientos de números, por `handtraps.ts`), la hoja no.
+  'src/components/duel/SoloScreen.tsx',
+  'src/components/duel/BotDeckSheet.tsx',
   'src/app/meta.ts', // los decks de torneo (~280 KB): Tier lists, Decks de torneo y el buscador de la app
   'src/app/replays.ts',
   'src/components/shell/finder-decks.ts',

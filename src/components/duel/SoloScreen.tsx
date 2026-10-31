@@ -22,6 +22,7 @@ import { ShineFrame } from '../ui/ShineFrame'
 import { StepPage } from '../ui/StepPage'
 import { Switch } from '../ui/Switch'
 import { overline, textLink } from '../ui/typography'
+import { BotDeckSheet } from './BotDeckSheet'
 import { HandtrapPicker } from './HandtrapPool'
 
 /** Cómo se abre la mesa: con el núcleo de reglas o la manual de siempre. */
@@ -101,6 +102,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
   const [last] = useState(() => config.botDeck)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [choosing, setChoosing] = useState(false)
+  const [deckOpen, setDeckOpen] = useState(false)
 
   const save = (next: HandtrapConfig) => {
     setConfig(next)
@@ -133,6 +135,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
     }
 
     setSheetOpen(false)
+    setDeckOpen(false)
     onPlay(auto ? 'auto' : 'manual')
   }
 
@@ -161,6 +164,12 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
   // Lo que dice la ficha: lo que es, los chips y los ajustes de lo elegido (cada uno en su fila).
   const list = pick.deck ? botDeckList(pick.deck.id) : null
   const chips = [auto ? t('auto.mode.auto') : t('auto.mode.manual'), ...(auto ? [t('solo.lp', { lp: STARTING_LP })] : []), ...(list ? [t('solo.deckSize', { main: copies(list.main), extra: copies(list.extra) })] : [])]
+  // «Ver mazo», sólo los bots (Pasivo y Handtraps no tienen lista): en escritorio, arriba a la derecha de la ficha; en el celular, a todo el ancho debajo de lo que es.
+  const viewDeck = list ? (
+    <Button variant="secondary" size={desktop ? 'sm' : 'md'} icon="cards" fullWidth={!desktop} aria-haspopup="dialog" className={desktop ? 'ml-auto shrink-0' : undefined} onClick={() => setDeckOpen(true)}>
+      {t('solo.deck.view')}
+    </Button>
+  ) : null
   const first = (
     <SettingRow label={t('auto.first.label')}>
       <Segmented<AutoPrefs['first']>
@@ -190,8 +199,9 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
             ))}
           </span>
         </span>
+        {desktop ? viewDeck : null}
       </div>
-      {/* El lugar de «Ver mazo» (los bots): llega con la hoja del mazo. */}
+      {desktop ? null : viewDeck}
       <div className="grid divide-y divide-border-subtle border-t border-border-subtle">
         {pick.deck ? null : (
           <SettingRow label={t('auto.mode.auto')} hint={canAuto ? t(prefs.duel ? 'auto.mode.soloHint' : 'auto.mode.soloManualHint') : t('auto.entry.unsupported')}>
@@ -315,6 +325,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
         </>
       )}
 
+      <BotDeckSheet isOpen={deckOpen && list !== null} deck={list} onClose={() => setDeckOpen(false)} footer={playButton(true)} />
       <HandtrapPicker
         isOpen={choosing}
         config={config}
