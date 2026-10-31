@@ -10,7 +10,7 @@ import { RivalRow, RivalSheet } from '../components/duel/RivalRow'
 import { render } from './support/practice-mat-harness'
 
 // La fila «Rival» (Pasivo · Handtraps · Bot) de las reglas de Jugar solo automático y la hoja «Cambiar rival» del duelo: qué guarda cada opción, que las handtraps elegidas no se pierden,
-// el bot con uno y con dos mazos, sus límites, su mano de dorso de entrada y el aviso de reinicio.
+// el bot con uno y con varios mazos, sus límites, su mano de dorso de entrada y el aviso de reinicio.
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []), searchCards: vi.fn(async () => ({ results: [], hasMore: false })) }))
 
@@ -100,7 +100,7 @@ describe('la fila «Rival» de las reglas', () => {
     expect(readHandtrapConfig()).not.toHaveProperty('botDeck')
   })
 
-  it('con los dos mazos listos (Sky Striker y Despia Branded), «Cambiar mazo» abre la hoja para elegirlo (cada uno con lo que es); elegido, se cierra y la fila lo dice', () => {
+  it('con los tres mazos listos (Sky Striker, Despia Branded y Elfnote), «Cambiar mazo» abre la hoja para elegirlo (cada uno con lo que es); elegido, se cierra y la fila lo dice', () => {
     render(<RivalRow />)
     pick('Bot')
     expect(readHandtrapConfig().botDeck).toBe('sky-striker')
@@ -108,7 +108,11 @@ describe('la fila «Rival» de las reglas', () => {
     const sheet = screen.getByRole('dialog', { name: 'Mazo del bot' })
     const decks = within(sheet).getByRole('radiogroup', { name: 'Mazo del bot' })
 
-    expect(within(decks).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Sky StrikerMagias Rápidas, Enlaces y mucha interacción.', 'Despia BrandedFusiones desde el Deck e interrupciones en tu turno.'])
+    expect(within(decks).getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
+      'Sky StrikerMagias Rápidas, Enlaces y mucha interacción.',
+      'Despia BrandedFusiones desde el Deck e interrupciones en tu turno.',
+      'ElfnoteSincronías en el centro, también en tu turno.',
+    ])
     expect(within(decks).getByRole('radio', { name: 'Sky Striker' })).toBeChecked()
     fireEvent.click(within(decks).getByRole('radio', { name: 'Despia Branded' }))
     expect(readHandtrapConfig().botDeck).toBe('branded')

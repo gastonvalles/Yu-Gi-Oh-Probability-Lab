@@ -76,12 +76,18 @@ const RIVAL_EVENLY: HandtrapConfig = { enabled: true, picks: [15693423, ASH, VEI
 const RIVAL_SKY: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'sky-striker' }
 /** El ejecutor de Despia Branded: igual (Fusiones del Deck, Mirrorjade y lo colocado en tu turno). */
 const RIVAL_BRANDED: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'branded' }
-const MODES = [
+/**
+ * El ejecutor de Elfnote: igual (Sincronías en el centro, Lars, Lucina y Fortuna en tu turno), pero empieza él (`seat: 1` es el tuyo): yendo segundo te gana en su primer turno con
+ * casi cualquier mano y la línea no llega a jugarse. Así la jugás en tus turnos 2 y 4 contra su campo; si te gana en su turno 3, se compara hasta ahí.
+ */
+const RIVAL_ELFNOTE: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'elfnote' }
+const MODES: { name: string; config: HandtrapConfig; file: string; seat?: 0 | 1 }[] = [
   { name: 'el rival de handtraps', config: RIVAL, file: 'bot-privacy-report.json' },
   { name: 'el rival que juega su turno', config: RIVAL_TURN, file: 'bot-privacy-turn-report.json' },
   { name: 'el rival con Evenly Matched', config: RIVAL_EVENLY, file: 'bot-privacy-evenly-report.json' },
   { name: 'el bot de Sky Striker', config: RIVAL_SKY, file: 'bot-privacy-sky-report.json' },
   { name: 'el bot de Despia Branded', config: RIVAL_BRANDED, file: 'bot-privacy-branded-report.json' },
+  { name: 'el bot de Elfnote', config: RIVAL_ELFNOTE, file: 'bot-privacy-elfnote-report.json', seat: 1 },
 ]
 
 function player(line: Line, setCode: number) {
@@ -136,7 +142,7 @@ const settled = (session: AutoSession) =>
     check()
   })
 
-describe.skipIf(!hasCoreData).each(MODES)('el bot no depende de lo que no ve (metamórfica, npm run test:auto): $name', ({ config, file }) => {
+describe.skipIf(!hasCoreData).each(MODES)('el bot no depende de lo que no ve (metamórfica, npm run test:auto): $name', ({ config, file, seat = 0 }) => {
   const rows = hasCoreData ? cardRows() : []
   const facts = new Map(rows.map((row) => [row.id, { type: row.type, attack: row.atk, defense: row.def, level: row.level & 0xff }]))
   const store = scriptStore()
@@ -195,6 +201,7 @@ describe.skipIf(!hasCoreData).each(MODES)('el bot no depende de lo que no ve (me
       handSize: version.hand.length,
       seed: 4242,
       botSeed: 7,
+      seat,
       transport: localTransport({ wasmBinary: wasm }),
       rival,
       bot,
@@ -206,7 +213,7 @@ describe.skipIf(!hasCoreData).each(MODES)('el bot no depende de lo que no ve (me
     const me = player(line, version.set)
     let snapshot = await settled(session)
 
-    for (let n = 0; n < 200 && snapshot.status === 'ready' && snapshot.overlay.turn <= 3; n += 1) {
+    for (let n = 0; n < 200 && snapshot.status === 'ready' && snapshot.overlay.turn <= 3 + seat; n += 1) {
       session.answer(me.answer(snapshot.ask!.ask))
       snapshot = await settled(session)
     }
@@ -229,8 +236,8 @@ describe.skipIf(!hasCoreData).each(MODES)('el bot no depende de lo que no ve (me
     const runs = []
 
     for (const version of versions) runs.push(await duel(line, version))
-    // La línea se jugó entera y hasta el turno 4, sin errores, en todas.
-    expect(runs.map((run) => [run.status, run.fault, run.done, run.turn > 3])).toEqual(runs.map(() => ['ready', null, true, true]))
+    // La línea se jugó entera y hasta tu turno 3 (o, si empieza el bot, hasta que te ganó), sin errores, en todas.
+    expect(runs.map((run) => [(seat === 1 && run.status === 'ended') || (run.status === 'ready' && run.turn > 3 + seat && run.done), run.fault])).toEqual(runs.map(() => [true, null]))
     const noSide = (run: { raw: string[] }) => run.raw.filter((item) => !item.includes('"waiting"') && !item.startsWith('stats'))
 
     report[name] = {
