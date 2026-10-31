@@ -16,8 +16,8 @@ vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []), search
 
 const ASH = { id: 14558127, name: 'Ash Blossom & Joyous Spring' }
 const VEILER = { id: 97268402, name: 'Effect Veiler' }
-/** Una lista de prueba con dos mazos listos: el de verdad y otro. */
-const TWO: readonly BotDeckInfo[] = [...BOT_DECK_MENU, { id: 'branded', name: 'Branded', line: 'auto.rival.deck.skyStriker' }]
+/** Uno solo de los mazos listos (la fila sin menú). */
+const ONE: readonly BotDeckInfo[] = BOT_DECK_MENU.slice(0, 1)
 const SAVED: HandtrapConfig = { enabled: false, picks: [{ ...ASH, copies: 2 }, { ...VEILER, copies: 1 }], hand: 2, extra: DEFAULT_RIVAL_EXTRA.slice(0, 2), ownTurn: true }
 
 const rival = () => screen.getByRole('radiogroup', { name: 'Rival' })
@@ -51,7 +51,7 @@ describe('los mazos del bot que ofrece la interfaz', () => {
 describe('la fila «Rival» de las reglas', () => {
   it('cada opción guarda lo suyo sin perder las handtraps, la mano, el Extra Deck ni su turno; el bot muestra su mazo y sus límites, sin menú con un solo mazo', () => {
     writeHandtrapConfig(SAVED)
-    render(<RivalRow />)
+    render(<RivalRow decks={ONE} />)
     const rest = { picks: SAVED.picks, hand: 2, extra: SAVED.extra, ownTurn: true }
 
     expect(within(rival()).getByRole('radio', { name: 'Pasivo' })).toBeChecked()
@@ -100,20 +100,20 @@ describe('la fila «Rival» de las reglas', () => {
     expect(readHandtrapConfig()).not.toHaveProperty('botDeck')
   })
 
-  it('con dos mazos listos, «Cambiar mazo» abre la hoja para elegirlo (cada uno con lo que es); elegido, se cierra y la fila lo dice', () => {
-    render(<RivalRow decks={TWO} />)
+  it('con los dos mazos listos (Sky Striker y Despia Branded), «Cambiar mazo» abre la hoja para elegirlo (cada uno con lo que es); elegido, se cierra y la fila lo dice', () => {
+    render(<RivalRow />)
     pick('Bot')
     expect(readHandtrapConfig().botDeck).toBe('sky-striker')
     fireEvent.click(screen.getByRole('button', { name: 'Cambiar mazo' }))
     const sheet = screen.getByRole('dialog', { name: 'Mazo del bot' })
     const decks = within(sheet).getByRole('radiogroup', { name: 'Mazo del bot' })
 
-    expect(within(decks).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Sky StrikerMagias Rápidas, Enlaces y mucha interacción.', 'BrandedMagias Rápidas, Enlaces y mucha interacción.'])
+    expect(within(decks).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Sky StrikerMagias Rápidas, Enlaces y mucha interacción.', 'Despia BrandedFusiones desde el Deck e interrupciones en tu turno.'])
     expect(within(decks).getByRole('radio', { name: 'Sky Striker' })).toBeChecked()
-    fireEvent.click(within(decks).getByRole('radio', { name: 'Branded' }))
+    fireEvent.click(within(decks).getByRole('radio', { name: 'Despia Branded' }))
     expect(readHandtrapConfig().botDeck).toBe('branded')
     expect(screen.queryByRole('dialog', { name: 'Mazo del bot' })).toBeNull()
-    expect(screen.getByText('Branded')).toBeInTheDocument()
+    expect(screen.getByText('Despia Branded')).toBeInTheDocument()
   })
 
   it('sin mazos listos no se ofrece «Bot»', () => {

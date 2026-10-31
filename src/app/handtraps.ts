@@ -274,7 +274,10 @@ export interface BotDeckInfo {
  * Los mazos listos del bot (`ready` en `BOT_DECKS` de `auto/bot/decks`), sin sus ejecutores: el lobby los ofrece y no puede importar `auto/` (`auto-isolation.test.ts`).
  * `auto-rival.test.tsx` revisa que coincidan con `BOT_DECKS`.
  */
-export const BOT_DECK_MENU: readonly BotDeckInfo[] = [{ id: 'sky-striker', name: 'Sky Striker', line: 'auto.rival.deck.skyStriker' }]
+export const BOT_DECK_MENU: readonly BotDeckInfo[] = [
+  { id: 'sky-striker', name: 'Sky Striker', line: 'auto.rival.deck.skyStriker' },
+  { id: 'branded', name: 'Despia Branded', line: 'auto.rival.deck.branded' },
+]
 
 /** Contra quién se juega «Jugar solo automático»: el pasivo, el de handtraps (el simulador) o el bot con su mazo. */
 export type RivalKind = 'passive' | 'handtraps' | 'bot'

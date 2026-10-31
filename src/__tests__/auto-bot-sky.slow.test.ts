@@ -114,7 +114,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
 
     expect(missing).toEqual([])
     expect([count(SKY_STRIKER_DECK.main), count(SKY_STRIKER_DECK.extra)]).toEqual([40, 15])
-    expect(BOT_DECKS.map(({ id, name: deck, ready }) => ({ id, deck, ready }))).toEqual([{ id: 'sky-striker', deck: 'Sky Striker', ready: true }])
+    expect(BOT_DECKS.map(({ id, name: deck, ready }) => ({ id, deck, ready }))).toContainEqual({ id: 'sky-striker', deck: 'Sky Striker', ready: true })
   })
 
   /** Una mano del goldfish: el bot empieza (vos vas segundo, pasivo, con 40 Normales); hasta tu turno 4. */
