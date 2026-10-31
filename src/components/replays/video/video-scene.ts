@@ -403,7 +403,7 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
   }
 }
 
-export const VIDEO_FOOTER = () => `YGOUltraLab · ${t('shell.brand.unofficial')}`
+export const VIDEO_FOOTER = () => 'YGOUltraLab'
 
 /** Las imágenes que puede pedir el video: el arte de cada carta que aparece (por su passcode) y el de la ficha. Se cargan antes de dibujar el primer cuadro. */
 export const artUrls = (replay: Pick<DuelReplay, 'cards'>) =>

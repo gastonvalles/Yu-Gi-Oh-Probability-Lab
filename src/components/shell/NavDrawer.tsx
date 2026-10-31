@@ -9,7 +9,7 @@ import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { SiteCredit, SocialLinks, SourceLink } from '../ui/SocialLinks'
+import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { AppBrand } from './AppBrand'
 import { BackupActions } from './BackupActions'
 import { mascotsNavItem, type NavGroup } from './nav-model'
@@ -32,7 +32,7 @@ interface DrawerPanelProps {
 
 /**
  * Lo de adentro del cajón del menú: la marca con su X, los destinos, las mascotas, el idioma (Español | English, de 44 px), «Tus datos» (guardar y restaurar la copia de
- * seguridad) y, abajo, lo legal: las redes, la privacidad y la autoría con el aviso de sitio no oficial.
+ * seguridad) y, abajo, lo legal: las redes, la privacidad y la autoría.
  */
 export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
   const id = useId()
@@ -93,7 +93,6 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
             <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
               {t('shell.legal.label')}
             </a>
-            <SourceLink className="inline-flex min-h-11 w-fit items-center text-body" />
           </div>
           <SiteCredit withDisclaimer />
         </div>

@@ -86,6 +86,6 @@ docs/               la documentación
 
 ## Licencia
 
-© 2026 Gastón Valles. Software libre bajo la **GNU AGPL v3 o posterior** (texto en `LICENSE`; lo que se entrega de terceros y lo que la licencia no cubre, en `NOTICE.md`). La app ofrece su código desde el enlace «Código fuente» del menú. Yu-Gi-Oh!, los nombres y las imágenes de las cartas son marcas y obras de Konami; este proyecto no es oficial ni está afiliado. Los datos de cartas provienen de YGOPRODeck.
+© 2026 Gastón Valles. Software libre bajo la **GNU AGPL v3 o posterior** (texto en `LICENSE`; lo que se entrega de terceros y lo que la licencia no cubre, en `NOTICE.md`). La app enlaza su código desde la página de privacidad y aviso legal, que se abre desde el pie del menú. Yu-Gi-Oh!, los nombres y las imágenes de las cartas son marcas y obras de Konami; este proyecto no es oficial ni está afiliado. Los datos de cartas provienen de YGOPRODeck.
 
 El repositorio es público: nada de secretos, mails ni datos personales en commits, documentos ni comentarios.

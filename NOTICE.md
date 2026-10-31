@@ -6,7 +6,7 @@ Este programa es software libre: podés redistribuirlo y modificarlo bajo los t�
 
 ## Código fuente
 
-<https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab>: la versión que está en línea es la de la rama `main`. La app lo ofrece a quien la usa desde el enlace «Código fuente» de su menú, como pide la cláusula 13 de la licencia. Cómo correrlo y dónde está cada cosa: `README.md`.
+<https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab>: la versión que está en línea es la de la rama `main`. La app lo enlaza desde su página de privacidad y aviso legal, que se abre desde el pie del menú. Cómo correrlo y dónde está cada cosa: `README.md`.
 
 ## Lo que la licencia no cubre
 

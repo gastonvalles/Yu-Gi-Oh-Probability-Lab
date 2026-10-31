@@ -42,7 +42,8 @@ describe('la barra de arriba de escritorio', () => {
     const bar = within(screen.getByTestId('app-navbar'))
 
     expect(bar.getByRole('button', { name: 'Contraer menú' })).toBeInTheDocument()
-    expect(bar.getByText('Sitio no oficial')).toBeInTheDocument()
+    expect(screen.getByTestId('app-navbar')).toHaveTextContent('YGOUltraLab')
+    expect(bar.queryByText('Sitio no oficial')).not.toBeInTheDocument()
     expect(bar.getByRole('button', { name: 'Buscar en la app' })).toBeInTheDocument()
     expect(bar.getByRole('button', { name: 'Mascotas' })).toBeInTheDocument()
     expect(bar.getByRole('group', { name: 'Idioma' })).toBeInTheDocument()

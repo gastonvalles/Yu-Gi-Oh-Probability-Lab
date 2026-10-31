@@ -77,7 +77,7 @@ Mantener apretada una carta del campo cambia su posición sin menú (práctica y
 El armazón vive en `components/shell/`.
 
 - **Un solo menú, armado una vez** (menú lateral, barra de abajo y cajón): un destino nuevo se suma en `buildAppNavGroups` (`deck-mode/deck-workflow-navigation.ts`). La barra de abajo: Tu deck · Descubrir · Jugar (círculo central, `PLAY_GROUP_KEY`) · Cartas · Buscar; lo que asoma lo cuenta `TAB_BAR_PX`.
-- **Jugar** es Solo · Online (con relay) · Calculadora · Exportar; en su hoja del celular, Solo y Online van en dos tarjetas (`sheetCards`). En Solo la acción principal va en una barra pegada sobre la de navegación (el patrón de Exportar), con lo elegido a la izquierda.
+- **Jugar** es Solo · Online (con relay) · Calculadora (Exportar va en Tu deck); en su hoja del celular, Solo y Online van en dos tarjetas (`sheetCards`). En Solo la acción principal va en una barra pegada sobre la de navegación (el patrón de Exportar), con lo elegido a la izquierda.
 - **No hay barra de pasos arriba de las pantallas del deck ni pie en ninguna pantalla** (lo legal va al final del menú, `SidebarLegal`, y del cajón).
 - **El scroll del menú** (`scroll-yt`): `scrollbar-width` y `scrollbar-color` van en `auto`, porque si no Chrome y Safari ignoran el `::-webkit-scrollbar`.
 - **Ningún diseño depende del ancho de un texto** (el inglés cambia el largo de los rótulos).

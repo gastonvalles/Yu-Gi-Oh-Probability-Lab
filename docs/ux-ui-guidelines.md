@@ -86,7 +86,7 @@ uno y en este orden.
 2. **Lo que va junto, se junta.** La distancia dice el parentesco: poco aire dentro de un grupo y más entre grupos (4 · 8 · 16
    · 24): «de cada 100» pegado a su número, el nombre pegado a sus vidas.
 3. **Lo legal, a la ficha.** La tarjeta lleva sólo lo que decide: la letra chica (cómo leer los %, los conteos exactos, los
-   créditos, las fuentes de precios, «sitio no oficial») va en la ficha o la hoja de detalle, a un toque con ⓘ.
+   créditos y las fuentes de precios) va en la ficha o la hoja de detalle, a un toque con ⓘ.
 4. **Número + acción.** El dato que decide y la acción que le sigue van en la misma fila, abajo (zona del pulgar): el número a
    la izquierda y el botón a la derecha. Orden de lectura: título y subtítulo, imagen y, abajo, número + acción. Una sola
    acción principal por tarjeta.

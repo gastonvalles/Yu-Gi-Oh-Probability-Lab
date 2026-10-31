@@ -36,15 +36,15 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('el menú de la app', () => {
-  it('agrupa los destinos en cuatro grupos, uno por lo que se viene a hacer: el recorrido del Lab, jugar (Solo, la calculadora y exportar), ver lo que gana y mirar las cartas', () => {
+  it('agrupa los destinos en cuatro grupos, uno por lo que se viene a hacer: el recorrido del Lab (y exportar lo armado), jugar (Solo y la calculadora), ver lo que gana y mirar las cartas', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
-      ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace']],
-      ['Jugar', ['solo', 'practice', 'life', 'export']],
+      ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
+      ['Jugar', ['solo', 'practice', 'life']],
       ['Descubrir', ['meta', 'tier-maker', 'tournaments', 'replays']],
       ['Cartas', ['expansions', 'banlists']],
     ])
     // La mesa (#practice) es adonde lleva Solo: el menú no la muestra, pero marca el grupo mientras se juega.
-    expect(GROUPS.find((group) => group.key === 'duel')?.items.filter((item) => !item.hidden).map((item) => item.label)).toEqual(['Solo', 'Calculadora de LP', 'Exportar'])
+    expect(GROUPS.find((group) => group.key === 'duel')?.items.filter((item) => !item.hidden).map((item) => item.label)).toEqual(['Solo', 'Calculadora de LP'])
     // Crear tier list es «La tuya» de Tier lists: el menú no la muestra (Descubrir son tres destinos), pero sigue ahí para el buscador de la app.
     expect(GROUPS.find((group) => group.key === 'discover')?.items.filter((item) => !item.hidden).map((item) => item.key)).toEqual(['meta', 'tournaments', 'replays'])
     // Las mascotas son una preferencia, no un destino: no están en ningún grupo.
@@ -58,18 +58,19 @@ describe('el menú de la app', () => {
     expect(isDeckWorkflowStepKey('mascots')).toBe(false)
   })
 
-  it('Solo, la calculadora de LP y exportar están siempre (Solo dice qué falta si no hay deck)', () => {
+  it('Solo y la calculadora de LP están siempre (Solo dice qué falta si no hay deck); Exportar está en Tu deck aunque el deck esté vacío', () => {
     expect(buildAppNavGroups(STEPS, {}).map((group) => group.key)).toEqual(['deck', 'duel', 'discover', 'cards'])
     const empty = buildAppNavGroups(buildDeckWorkflowNavigationItems({ mainDeckCount: 0, roleCardCount: 0, unclassifiedCardCount: 0, hasCompletedRoleStep: false, patternCount: 0 }), {})
-    expect(empty.find((group) => group.key === 'duel')?.items.map((item) => item.key)).toEqual(['solo', 'practice', 'life', 'export'])
+    expect(empty.find((group) => group.key === 'duel')?.items.map((item) => item.key)).toEqual(['solo', 'practice', 'life'])
+    expect(empty.find((group) => group.key === 'deck')?.items.map((item) => item.key)).toContain('export')
   })
 
   it('Online (#duel) es una pantalla del flujo que el menú ofrece sólo donde hay un relay, justo después de Solo', () => {
     expect(isDeckWorkflowStepKey('duel')).toBe(true)
     // Sin relay (o sin decirlo) el menú no lo ofrece.
-    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['solo', 'practice', 'life', 'export'])
+    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['solo', 'practice', 'life'])
     const online = buildAppNavGroups(STEPS, { duel: true })[1]?.items
-    expect(online?.map((item) => item.key)).toEqual(['solo', 'practice', 'duel', 'life', 'export'])
+    expect(online?.map((item) => item.key)).toEqual(['solo', 'practice', 'duel', 'life'])
     expect(online?.find((item) => item.key === 'duel')?.label).toBe('Online')
   })
 
@@ -140,9 +141,9 @@ describe('el menú de la app', () => {
 
     // Buscar, los cuatro grupos y las mascotas (y no los trece destinos), cada uno con su nombre a la vista.
     expect(buttons.map((button) => button.textContent)).toEqual(['Buscar', 'Tu deck', 'Jugar', 'Descubrir', 'Cartas', 'Mascotas'])
-    // El grupo en el que estás (Exportar es de Jugar) va marcado.
-    expect(within(nav).getByRole('button', { name: 'Jugar' })).toHaveAttribute('aria-current', 'true')
-    expect(within(nav).getByRole('button', { name: 'Tu deck' })).not.toHaveAttribute('aria-current')
+    // El grupo en el que estás (Exportar es de Tu deck) va marcado.
+    expect(within(nav).getByRole('button', { name: 'Tu deck' })).toHaveAttribute('aria-current', 'true')
+    expect(within(nav).getByRole('button', { name: 'Jugar' })).not.toHaveAttribute('aria-current')
   })
 
   it('tocar un grupo de la mini guía abre sus destinos al costado: elegir uno va a él y cierra la lista, y Escape también', () => {
@@ -221,10 +222,10 @@ describe('el menú lateral, como el de YouTube', () => {
       'https://www.instagram.com/gaston_valles/',
       'https://github.com/gastonvalles',
       '/privacidad.html',
-      'https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab',
     ])
     expect(legal).toHaveTextContent(`© ${new Date().getFullYear()} Gastón Valles`)
-    expect(legal).toHaveTextContent('Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.')
+    expect(legal).toHaveTextContent('Yu-Gi-Oh! es una marca de Konami.')
+    expect(legal).not.toHaveTextContent('Sitio no oficial')
     // Una sola hamburguesa: la de arriba (antes había una flecha de contraer al final del menú).
     expect(screen.getAllByRole('button', { name: 'Contraer menú' })).toHaveLength(1)
   })
@@ -252,7 +253,6 @@ describe('el cajón del menú del celular', () => {
       'https://www.instagram.com/gaston_valles/',
       'https://github.com/gastonvalles',
       '/privacidad.html',
-      'https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab',
     ])
     // Sin destinos (no se los pasó): sólo los ajustes; con ellos, ver el armazón.
     expect(within(dialog).queryByRole('button', { name: /^Exportar deck/ })).not.toBeInTheDocument()
@@ -420,7 +420,7 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(screen.getByRole('navigation')).toHaveClass('border-nav-raised')
   })
 
-  it('«Tu deck»: cada paso con su ícono y su estado a la derecha («Listo · 42» en verde, «3 sin clasificar», «Estás acá»), y el destino abierto en ámbar', () => {
+  it('«Tu deck»: cada paso con su ícono y su estado a la derecha («Listo · 42» en verde, «3 sin clasificar», «Estás acá»), Exportar al final con su estado, y el destino abierto en ámbar', () => {
     const { dialog } = sheet(GROUPS, 'deck', 'probability-lab')
     const row = (name: RegExp) => within(dialog).getByRole('button', { name })
 
@@ -431,8 +431,9 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(row(/^Probability Lab/)).toHaveTextContent('Estás acá')
     expect(row(/^Probability Lab/)).toHaveClass('text-nav-active')
     expect(row(/^Comparar/)).toHaveTextContent('0 builds')
-    // Exportar no es parte del recorrido del Lab: no está en esta hoja (está en Jugar).
-    expect(within(dialog).queryByRole('button', { name: /^Exportar/ })).not.toBeInTheDocument()
+    // Exportar cierra el recorrido del deck: va después de Comparar, con su propio estado (los formatos que sale).
+    expect(row(/^Exportar deck/)).toHaveTextContent('Imagen · PDF · YDK')
+    expect(within(dialog).getAllByRole('listitem').at(-1)).toHaveTextContent('Exportar')
   })
 
   it('el estado de los pasos sale de lo guardado: las builds para comparar, las sugerencias sin confirmar y las reglas propias', () => {
@@ -444,7 +445,7 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(within(dialog).getByRole('button', { name: /^Comparar/ })).toHaveTextContent('Estás acá')
   })
 
-  it('«Jugar»: Solo y Online arriba en dos tarjetas grandes (la abierta en ámbar) y debajo mirar un duelo, entrar con un enlace, la calculadora de LP y exportar, cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
+  it('«Jugar»: Solo y Online arriba en dos tarjetas grandes (la abierta en ámbar) y debajo mirar un duelo, entrar con un enlace y la calculadora de LP, cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
     const groups = buildAppNavGroups(STEPS, { duel: true, paused: { room: 'ABCDEFGH', rival: 'Ana' } })
     const { dialog, onSelect } = sheet(groups, 'duel', 'solo')
     const solo = within(dialog).getByRole('button', { name: /^Solo/ })
@@ -462,8 +463,9 @@ describe('las hojas del celular, como en el lienzo', () => {
       'Mirar un dueloPegá el enlace para mirar',
       'Entrar con un enlacePegá el enlace que te mandaron',
       'Calculadora de LPVidas, reloj de ronda, moneda y dado',
-      'ExportarImagen, PDF y YDK, para el torneo o el simulador',
     ])
+    // Exportar ya no es de Jugar: está en Tu deck.
+    expect(within(dialog).queryByRole('button', { name: /^Exportar/ })).not.toBeInTheDocument()
     expect(within(dialog).getByRole('status')).toHaveTextContent('Sala en pausa con Ana')
     expect(within(dialog).getByRole('status')).toHaveTextContent('Seguís desde donde quedó.')
 
@@ -479,11 +481,9 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(onSelect).toHaveBeenCalledWith('duel-join')
     fireEvent.click(within(dialog).getByRole('button', { name: /^Calculadora de LP/ }))
     expect(onSelect).toHaveBeenCalledWith('life')
-    fireEvent.click(within(dialog).getByRole('button', { name: /^Exportar deck/ }))
-    expect(onSelect).toHaveBeenCalledWith('export')
   })
 
-  it('sin una sala en pausa no hay aviso, y sin relay no hay tarjetas: Solo es una fila, con la calculadora y exportar', () => {
+  it('sin una sala en pausa no hay aviso, y sin relay no hay tarjetas: Solo es una fila, con la calculadora', () => {
     const withRelay = buildAppNavGroups(STEPS, { duel: true })
     const { dialog } = sheet(withRelay, 'duel', 'duel')
 
@@ -496,7 +496,6 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(within(solo.dialog).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       'SoloContra un bot con su mazo, o tu mesa sin bot',
       'Calculadora de LPVidas, reloj de ronda, moneda y dado',
-      'ExportarImagen, PDF y YDK, para el torneo o el simulador',
     ])
     expect(within(solo.dialog).queryByRole('button', { name: /^Online/ })).toBeNull()
   })
@@ -535,14 +534,16 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(tab('Tu deck')).toHaveAttribute('aria-current', 'true')
   })
 
-  it('la barra de arriba lleva el nombre de la pantalla (y la marca sólo si no hay)', () => {
+  it('la barra de arriba lleva el nombre de la pantalla (y la marca sólo si no hay), sin aviso de sitio no oficial', () => {
     const { rerender } = render(<MobileTopBar menuOpen={false} onMenu={() => {}} title="Lab" />)
 
     expect(screen.getByText('Lab')).toBeInTheDocument()
+    expect(screen.getByRole('banner')).not.toHaveTextContent('YGOUltraLab')
     expect(screen.queryByText('Sitio no oficial')).not.toBeInTheDocument()
 
     rerender(<MobileTopBar menuOpen={false} onMenu={() => {}} />)
-    expect(screen.getByText('Sitio no oficial')).toBeInTheDocument()
+    expect(screen.getByRole('banner')).toHaveTextContent('YGOUltraLab')
+    expect(screen.queryByText('Sitio no oficial')).not.toBeInTheDocument()
   })
 
   it('tocar el mismo grupo de la barra de abajo cierra su hoja, y tocar otro la cambia', () => {
