@@ -9,9 +9,9 @@ lo que se descarta pasa a «En pausa» con su porqué. Tamaño: S (horas), M (un
 motivo de cada decisión, la hoja «Qué hizo el bot y por qué», la prueba de privacidad con el núcleo real y las reglas de reacción
 (Skull Meister, Kuriboh!, Bystial, Shifter, Fleurdelis, Godos, Herald) y un turno propio mínimo (interruptor «El rival juega su
 turno»: invoca, barre, ataca seguro, Lava Golem, Sphere Mode, Gallant Bandit, Evenly Matched, Lightning Storm, Book of Moon,
-Called by the Grave), tres ejecutores, Sky Striker, Despia Branded y Elfnote (`botDeck`), y la fila «Rival: Pasivo · Handtraps · Bot» para
-elegirlo (`BOT_DECK_MENU` en `handtraps.ts` se actualiza a mano al sumar un mazo). Sigue: más ejecutores (Ryzeal), cada uno con
-su goldfish y su fuzz; el registro del bot dibuja un cuadro vacío en «Terminé el turno» (no nombra carta). Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada),
+Called by the Grave), tres ejecutores, Sky Striker, Despia Branded y Elfnote (`botDeck`; sus listas en `app/bot-deck-lists.ts`), y la
+pantalla Solo para elegirlos (un bot por mazo, con «Ver mazo»; `BOT_DECK_MENU` sale de ese archivo). Sigue: más ejecutores (Ryzeal),
+cada uno con su goldfish y su fuzz; el registro del bot dibuja un cuadro vacío en «Terminé el turno» (no nombra carta). Sin regla: Contact «C» (con ella en juego y un mazo de Sincronía el núcleo tarda ~23 s por jugada),
 Shiina, Token Collector y Gnomaterial; Sphere Mode no juega con 3 monstruos propios; la hoja no conoce los `alias`.
 
 ## Próximo
