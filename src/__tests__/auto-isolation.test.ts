@@ -49,6 +49,13 @@ describe('el núcleo de reglas queda aislado', () => {
     }
   })
 
+  it('las listas de los bots (bot-deck-lists.ts), que el lobby sí importa, son sólo datos: sin importaciones con valores y livianas', () => {
+    const text = readFileSync(join(ROOT, 'src/app/bot-deck-lists.ts'), 'utf8')
+
+    expect([...text.matchAll(/(?:^|\n)\s*(?:import|export)\s+(?!type\s)[^'"\n]*?from\s|import\(/g)]).toEqual([])
+    expect(text.length).toBeLessThan(16_000)
+  })
+
   it('ve las importaciones con valores, también las reexportaciones, y deja pasar los tipos', () => {
     const targets = (text: string) => [...text.matchAll(VALUE_IMPORT)].map((match) => match[1])
 

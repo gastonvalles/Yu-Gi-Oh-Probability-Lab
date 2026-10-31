@@ -14,8 +14,9 @@ const resolve = (target: string) => [`${target}.ts`, `${target}.tsx`, `${target}
 
 describe('el bot sólo ve lo de su asiento: lo que importa', () => {
   it('estructural: nada de src/app/auto/bot llega con valores a la sesión, al anfitrión, al árbitro, al adaptador ni a las barajas (ni a ocgcore-wasm)', () => {
-    // También lo de `decks/` y `executors/` (los ejecutores por mazo).
-    const start = readdirSync(join(ROOT, 'src/app/auto/bot'), { recursive: true, encoding: 'utf8' }).filter((name) => name.endsWith('.ts')).map((name) => `src/app/auto/bot/${name.replaceAll('\\', '/')}`)
+    // También lo de `decks/` y `executors/` (los ejecutores por mazo) y sus listas, que viven fuera de `auto/` para que el lobby las muestre (`bot-deck-lists.ts`).
+    const LISTS = 'src/app/bot-deck-lists.ts'
+    const start = [...readdirSync(join(ROOT, 'src/app/auto/bot'), { recursive: true, encoding: 'utf8' }).filter((name) => name.endsWith('.ts')).map((name) => `src/app/auto/bot/${name.replaceAll('\\', '/')}`), LISTS]
     const seen = new Set<string>()
     const queue = [...start]
 
@@ -39,8 +40,9 @@ describe('el bot sólo ve lo de su asiento: lo que importa', () => {
     const direct = start.flatMap((file) => [...readFileSync(join(ROOT, file), 'utf8').matchAll(VALUE_IMPORT)].map((match) => resolve(posix.join(posix.dirname(file), match[1]!))))
 
     expect([...seen].filter((file) => forbidden.includes(file))).toEqual([])
-    expect(direct.filter((file) => file !== 'src/app/auto/policies.ts' && !file?.startsWith('src/app/auto/bot/'))).toEqual([])
+    expect(direct.filter((file) => file !== 'src/app/auto/policies.ts' && file !== LISTS && !file?.startsWith('src/app/auto/bot/'))).toEqual([])
     expect(seen).toContain('src/app/auto/policies.ts')
+    expect(seen).toContain(LISTS)
   })
 
 })

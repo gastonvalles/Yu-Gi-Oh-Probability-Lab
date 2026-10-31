@@ -1,6 +1,6 @@
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotReason, BotView } from '../bot'
-import { BRANDED as B, BRANDED_DECK } from '../decks/branded'
+import { BRANDED as B, BRANDED_DECK } from '../../../bot-deck-lists'
 import { turnBot, type CardFacts } from '../turn'
 import {
   ATTACK_TIMING,
@@ -25,7 +25,7 @@ import {
 } from './executor'
 
 /**
- * El ejecutor de Despia Branded (etapa 2 del bot): juega la lista fija de `decks/branded.ts` con prioridades escritas a partir del texto impreso y los scripts (CardScripts al commit
+ * El ejecutor de Despia Branded (etapa 2 del bot): juega la lista fija de `bot-deck-lists.ts` con prioridades escritas a partir del texto impreso y los scripts (CardScripts al commit
  * de `testedWith`). La idea del mazo: Branded Fusion manda del Deck a Fallen of Albaz (o una carta con su nombre) y un monstruo OSCURIDAD para Lubellion, que con su efecto vuelve a
  * Fusionar desde el cementerio a Mirrorjade (destierra un monstruo en tu turno). En tu turno interrumpe con lo que armó y con lo colocado.
  *

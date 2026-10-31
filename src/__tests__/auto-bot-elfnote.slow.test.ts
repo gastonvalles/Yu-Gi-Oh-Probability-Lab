@@ -4,7 +4,7 @@ import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import type { Bot, BotDecision } from '../app/auto/bot/bot'
 import { BOT_DECKS } from '../app/auto/bot/decks'
-import { ELFNOTE as E, ELFNOTE_DECK } from '../app/auto/bot/decks/elfnote'
+import { ELFNOTE as E, ELFNOTE_DECK } from '../app/bot-deck-lists'
 import { elfnoteBot } from '../app/auto/bot/executors/elfnote'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
@@ -14,7 +14,7 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStor
 
 /**
  * El ejecutor de Elfnote con el núcleo real (lento: `npm run test:auto`).
- * - **Goldfish**: el bot (primero, con el mazo de `decks/elfnote.ts` por `botDeck`, como lo arma la sesión) contra un rival pasivo de 40 Normales, en `GOLDFISH` manos con semilla.
+ * - **Goldfish**: el bot (primero, con el mazo de `bot-deck-lists.ts` por `botDeck`, como lo arma la sesión) contra un rival pasivo de 40 Normales, en `GOLDFISH` manos con semilla.
  *   Falla si cae por debajo de los umbrales (`THRESHOLDS`, con su porqué), si el núcleo le rechaza una respuesta o si un turno suyo le cuesta al núcleo más de `CORE_TURN_MS`. Mide
  *   también cuántas preguntas contesta por turno, cuánto tarda cada decisión y cuánto tarda el núcleo en cada turno del bot (lo que encarece a un mazo de Sincronía).
  * - **Escenarios**: las decisiones clave con una mano fija, con la oferta literal del núcleo y la respuesta del bot.
