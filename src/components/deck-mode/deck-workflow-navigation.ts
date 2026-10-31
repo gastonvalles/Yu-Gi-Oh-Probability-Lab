@@ -165,7 +165,7 @@ export function buildDeckWorkflowNavigationItems({
       tone: 'pending',
       disabled: false,
     },
-    // Y la herramienta para armar las propias: cartas repartidas en filas, guardadas en el navegador y bajadas como imagen.
+    // Y la herramienta para armar las propias (cartas repartidas en filas, guardadas en el navegador y bajadas como imagen): es «La tuya» de Tier lists, así que el menú la oculta.
     {
       key: 'tier-maker',
       blurb: t('shell.blurb.tierMaker'),
@@ -279,7 +279,8 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
           }
         : undefined,
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'compass' as const, sheet: 'description' as const, items: pick('meta', 'tier-maker', 'tournaments', 'replays') },
+    // Crear la tuya es «La tuya» de Tier lists: el paso queda oculto, para que el buscador de la app lo siga encontrando por sus palabras.
+    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'compass' as const, sheet: 'description' as const, items: [...pick('meta'), ...pick('tier-maker').map((item) => ({ ...item, hidden: true })), ...pick('tournaments', 'replays')] },
     { key: 'cards', label: t('shell.nav.group.cards'), icon: 'package' as const, sheet: 'description' as const, items: pick('expansions', 'banlists') },
   ].filter((group) => group.items.length > 0)
 }

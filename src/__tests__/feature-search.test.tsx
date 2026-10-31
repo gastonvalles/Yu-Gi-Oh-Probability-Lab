@@ -36,6 +36,8 @@ describe('qué se puede buscar', () => {
     const keys = buildFindEntries(GROUPS, { cards: true }).map((entry) => entry.key)
 
     expect(keys).toEqual(expect.arrayContaining(['deck-builder', 'categorization', 'probability-lab', 'workspace', 'practice', 'duel', 'duel-watch', 'duel-join', 'life', 'export', 'meta', 'tier-maker', 'tournaments', 'replays', 'expansions', 'banlists', 'search', 'mascots']))
+    // Crear tier list ya no está a la vista en el menú (es «La tuya» de Tier lists), pero se encuentra por sus palabras.
+    expect(labels(filterFindEntries(buildFindEntries(GROUPS, { cards: true }), 'crear tier'))[0]).toBe('Crear tier list')
     // Sin buscador de cartas en la pantalla (el builder, la práctica) no se ofrece.
     expect(buildFindEntries(GROUPS, { cards: false }).map((entry) => entry.key)).not.toContain('search')
   })
