@@ -92,10 +92,10 @@ describe('una sala con reglas automáticas', () => {
     expect(toggle).toBeChecked()
     expect(autoPrefs().duel).toBe(true)
     expect(sheet.getByText('El núcleo aplica las reglas por los dos. Sin espectadores todavía.')).toBeInTheDocument()
-    // Match, su siding y el reloj de turnos se siguen eligiendo; Solo también (ahí rige el simulador de handtraps).
+    // Match, su siding y el reloj de turnos se siguen eligiendo (jugar solo ya no es un tipo de sala: es Solo, en el menú).
     expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
     expect(sheet.getByRole('switch', { name: 'Sidedeck' })).toBeEnabled()
-    expect(sheet.getByRole('radio', { name: 'Solo' })).toBeEnabled()
+    expect(sheet.queryByRole('radio', { name: 'Solo' })).toBeNull()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeEnabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeChecked()
     // Quién entra se elige como siempre.

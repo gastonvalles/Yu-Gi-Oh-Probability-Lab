@@ -1,13 +1,12 @@
 import { useState } from 'react'
 
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
-import { BOT_DECK_MENU, poolCount, readHandtrapConfig, rivalKindOf, withRival, writeHandtrapConfig, type BotDeckInfo, type HandtrapConfig, type RivalKind } from '../../app/handtraps'
+import { BOT_DECK_MENU, poolCount, rivalKindOf, withRival, type BotDeckInfo, type HandtrapConfig, type RivalKind } from '../../app/handtraps'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
-import { HandtrapPicker } from './HandtrapPool'
 
 /** Lo elegido: el rival y, con el bot, su mazo (el id de `BOT_DECK_MENU`). */
 export interface RivalDraft {
@@ -35,8 +34,8 @@ interface RivalChoiceProps {
 
 /**
  * «Rival: Pasivo · Handtraps · Bot» (una elección por fila) y, debajo, lo de cada uno: el pasivo dice que no juega; el de handtraps, cuántas tiene y «Elegir…»; el bot, su mazo con lo que es,
- * sus límites siempre a la vista y «Mostrar la mano del bot» (de dorso de entrada: su privacidad no está en juego, la tuya sí). Lo usan la fila de las reglas de Jugar (`RivalRow`) y la hoja del
- * duelo (`RivalSheet`).
+ * sus límites siempre a la vista y «Mostrar la mano del bot» (de dorso de entrada: su privacidad no está en juego, la tuya sí). La usa la hoja «Cambiar rival» del duelo (`RivalSheet`); antes
+ * de jugar, el rival se elige en Solo (`SoloScreen`).
  */
 export function RivalChoice({ value, onChange, config, onChooseHandtraps, decks, labelled = true }: RivalChoiceProps) {
   const prefs = useAutoPrefs()
@@ -97,35 +96,6 @@ export function RivalChoice({ value, onChange, config, onChooseHandtraps, decks,
           />
         </Modal>
       ) : null}
-    </div>
-  )
-}
-
-/**
- * «Rival» en las reglas de Jugar, con Solo y el modo automático: se guarda al tocarlo (`HandtrapConfig`: el bot fija `botDeck`; los otros lo sueltan y prenden o apagan el simulador, sin perder
- * las handtraps, la mano ni el Extra Deck elegidos). Todavía no hay duelo: nada que reiniciar.
- */
-export function RivalRow({ decks = BOT_DECK_MENU, className }: { decks?: readonly BotDeckInfo[]; className?: string }) {
-  const [config, setConfig] = useState<HandtrapConfig>(readHandtrapConfig)
-  const [choosing, setChoosing] = useState(false)
-  const save = (next: HandtrapConfig) => {
-    setConfig(next)
-    writeHandtrapConfig(next)
-  }
-
-  return (
-    <div className={className}>
-      <RivalChoice value={draftOf(config, decks)} onChange={(draft) => save(withRival(config, draft.kind, draft.deck))} config={config} decks={decks} onChooseHandtraps={() => setChoosing(true)} />
-      <HandtrapPicker
-        isOpen={choosing}
-        config={config}
-        onClose={() => setChoosing(false)}
-        onSave={(picks, hand, extra, ownTurn) => {
-          // Elegir las handtraps es querer usarlas: el rival pasa a ser el de handtraps.
-          save({ ...withRival(config, 'handtraps'), picks, hand, extra, ownTurn })
-          setChoosing(false)
-        }}
-      />
     </div>
   )
 }

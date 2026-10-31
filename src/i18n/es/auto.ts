@@ -4,7 +4,8 @@ export const auto = {
   'auto.mode.label': 'Modo del duelo',
   'auto.mode.auto': 'Automático',
   'auto.mode.manual': 'Manual',
-  'auto.mode.soloHint': 'El núcleo aplica las reglas por los dos; contra quién jugás lo elegís en «Rival».',
+  'auto.mode.soloHint': 'El núcleo aplica las reglas por los dos. El modo vale también para tus salas de Online.',
+  'auto.mode.soloManualHint': 'Movés vos las cartas. El modo vale también para tus salas de Online.',
   'auto.mode.manualHint': 'Movés las cartas vos y las reglas las aplican los duelistas, como en una mesa de verdad.',
   // Quién empieza en «Jugar solo» automático, en la hoja de reglas de Jugar (si empieza el rival, pasa su turno y vos robás en el 2).
   'auto.first.label': 'Quién empieza',

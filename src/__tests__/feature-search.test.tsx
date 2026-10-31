@@ -20,7 +20,7 @@ vi.mock('../app/card-prices', async (importOriginal) => ({
   fetchExpansionCards: vi.fn(async () => []),
 }))
 const STEPS = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 })
-const GROUPS = buildAppNavGroups(STEPS, { practice: true, duel: true })
+const GROUPS = buildAppNavGroups(STEPS, { duel: true })
 
 const labels = (entries: ReturnType<typeof filterFindEntries>) => entries.map((entry) => entry.label)
 
@@ -35,7 +35,7 @@ describe('qué se puede buscar', () => {
   it('todo lo del menú, también lo que el menú esconde o sólo trae la hoja del celular, más las mascotas y, donde hay buscador, las cartas', () => {
     const keys = buildFindEntries(GROUPS, { cards: true }).map((entry) => entry.key)
 
-    expect(keys).toEqual(expect.arrayContaining(['deck-builder', 'categorization', 'probability-lab', 'workspace', 'practice', 'duel', 'duel-watch', 'duel-join', 'life', 'export', 'meta', 'tier-maker', 'tournaments', 'replays', 'expansions', 'banlists', 'search', 'mascots']))
+    expect(keys).toEqual(expect.arrayContaining(['deck-builder', 'categorization', 'probability-lab', 'workspace', 'solo', 'duel', 'duel-watch', 'duel-join', 'life', 'export', 'meta', 'tier-maker', 'tournaments', 'replays', 'expansions', 'banlists', 'search', 'mascots']))
     // Crear tier list ya no está a la vista en el menú (es «La tuya» de Tier lists), pero se encuentra por sus palabras.
     expect(labels(filterFindEntries(buildFindEntries(GROUPS, { cards: true }), 'crear tier'))[0]).toBe('Crear tier list')
     // Sin buscador de cartas en la pantalla (el builder, la práctica) no se ofrece.
@@ -55,8 +55,13 @@ describe('qué se puede buscar', () => {
     const entries = buildFindEntries(GROUPS, { cards: true })
 
     expect(normalize('  Práctica ')).toBe('practica')
-    // «práctica» no es el nombre (es «Entrenar solo»): se llega por las palabras clave, sin tildes ni mayúsculas.
-    expect(labels(filterFindEntries(entries, 'PRACTICA'))[0]).toBe('Entrenar solo')
+    // «práctica» no es el nombre (es «Solo»): se llega por las palabras clave, sin tildes ni mayúsculas. Lo mismo «entrenar solo», «jugar solo» y «bot».
+    expect(labels(filterFindEntries(entries, 'PRACTICA'))[0]).toBe('Solo')
+    expect(labels(filterFindEntries(entries, 'entrenar solo'))[0]).toBe('Solo')
+    expect(labels(filterFindEntries(entries, 'jugar solo'))[0]).toBe('Solo')
+    expect(labels(filterFindEntries(entries, 'bot'))[0]).toBe('Solo')
+    // La mesa no es un destino aparte: se llega desde Solo.
+    expect(entries.map((entry) => entry.key)).not.toContain('practice')
     expect(labels(filterFindEntries(entries, 'mirar duelo'))[0]).toBe('Mirar un duelo')
     expect(filterFindEntries(entries, 'zzzz')).toEqual([])
     // «carta» lleva a Buscar cartas antes que a las Expansiones, que sólo lo nombran de pasada.

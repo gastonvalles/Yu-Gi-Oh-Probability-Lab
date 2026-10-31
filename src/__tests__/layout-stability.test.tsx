@@ -17,7 +17,7 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
   it('los destinos del menú reservan el ancho de la negrita: al abrirse uno, ninguno se mueve', () => {
     const groups = buildAppNavGroups(
       buildDeckWorkflowNavigationItems({ mainDeckCount: 40, roleCardCount: 40, unclassifiedCardCount: 0, hasCompletedRoleStep: true, patternCount: 2 }),
-      { practice: true },
+      {},
     )
 
     render(<SidebarNav groups={groups} activeKey="probability-lab" onSelect={() => {}} />)

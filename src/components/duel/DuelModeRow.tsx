@@ -41,14 +41,14 @@ export function useAutoRooms(active: boolean): AutoRooms {
 }
 
 /**
- * «Modo del duelo» en la hoja de las reglas (Single, Match y Solo): «Automático» o «Manual», la preferencia `duel` de `auto-prefs.ts` (automático de entrada). Con rival vale para la sala
- * que se abre; en Solo, para la mesa de «Entrenar solo». Si el navegador no puede correr el núcleo, o (con rival) el despliegue lo apagó, va en «Manual» y sin poder tocarlo, con el porqué.
+ * «Modo del duelo» en la hoja de las reglas de Online: «Automático» o «Manual», la preferencia `duel` de `auto-prefs.ts` (automático de entrada; la misma que el interruptor de la ficha de
+ * Solo, a propósito). Vale para la sala que se abre. Si el navegador no puede correr el núcleo o el despliegue lo apagó, va en «Manual» y sin poder tocarlo, con el porqué.
  */
-export function DuelModeRow({ rooms, solo, className }: { rooms: AutoRooms; solo: boolean; className?: string }) {
+export function DuelModeRow({ rooms, className }: { rooms: AutoRooms; className?: string }) {
   const prefs = useAutoPrefs()
-  const blocked = solo ? (canRunAuto() ? null : t('auto.entry.unsupported')) : rooms === 'unsupported' ? t('duel.auto.unsupported') : rooms === 'off' ? t('duel.auto.off') : null
+  const blocked = rooms === 'unsupported' ? t('duel.auto.unsupported') : rooms === 'off' ? t('duel.auto.off') : null
   const auto = prefs.duel && !blocked
-  const hint = blocked ?? (!auto ? t('auto.mode.manualHint') : solo ? t('auto.mode.soloHint') : t('duel.auto.rulesHint'))
+  const hint = blocked ?? (!auto ? t('auto.mode.manualHint') : t('duel.auto.rulesHint'))
 
   return (
     <div className={cx('grid content-start gap-1.5', className)}>

@@ -67,9 +67,9 @@ export function PracticeSection(props: PracticeSectionProps) {
       onNewHand={props.onNewHand}
       {...(props.onAuto ? { onAuto: props.onAuto } : {})}
       shared={props.shared}
-      // Se entra a la práctica desde «Entrenar solo» (el inicio de Jugar): la flecha de la barra vuelve ahí.
+      // Se entra a la mesa desde Solo: la flecha de la barra vuelve ahí.
       onExit={() => {
-        window.location.hash = '#duel'
+        window.location.hash = '#solo'
       }}
       footer={chips.footer}
       footerSummary={chips.summary}

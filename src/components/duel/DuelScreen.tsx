@@ -591,10 +591,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
         deckSize={deck.mainIds.length}
         minDeck={handSize}
         onCreate={(options) => enter(createRoomCode(), 'host', false, options)}
-        onPlaySolo={() => {
-          window.location.hash = '#practice'
-        }}
-        soloReady={mainIds.length >= handSize}
         rooms={rooms}
         onJoin={(room, watch) => enter(room, watch ? 'guest' : (savedRole(room) ?? 'guest'), watch)}
         paused={paused}
@@ -807,10 +803,6 @@ interface DuelLobbyProps {
   deckSize: number
   minDeck: number
   onCreate: (options: RoomOptions) => void
-  /** Jugar solo: la mesa de práctica, local y sin relay. */
-  onPlaySolo: () => void
-  /** Hay un deck armado en el builder (la práctica juega con ése). */
-  soloReady: boolean
   /** La lista de salas públicas, si el relay la tiene. */
   rooms?: RoomsApi
   /** Entrar a una sala: a jugar, o a mirar si el enlace pegado es de espectador. */
@@ -821,7 +813,7 @@ interface DuelLobbyProps {
   onDropPaused: () => void
 }
 
-function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, minDeck, onCreate, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
   const [watching, setWatching] = useState(view === 'watch')
 
   // Lo que pide el menú (Nueva sala, Mirar un duelo, Entrar con un enlace) se aplica una vez, también si el lobby ya estaba abierto. Crear y entrar los atiende el inicio de Jugar.
@@ -851,8 +843,6 @@ function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, on
         deckSize={deckSize}
         minDeck={minDeck}
         rooms={rooms}
-        trainReady={soloReady}
-        onTrain={onPlaySolo}
         onOpenDuel={onCreate}
         onJoin={onJoin}
         paused={paused}

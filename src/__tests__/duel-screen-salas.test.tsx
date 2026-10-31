@@ -60,7 +60,6 @@ describe('la pantalla del duelo', () => {
 
     expect(within(view.container).getByText(/hacen falta 5 cartas en el Main/)).toBeInTheDocument()
     expect(within(view.container).getByRole('button', { name: 'Retar a un amigo' })).toHaveAttribute('aria-disabled', 'true')
-    expect(within(view.container).getByRole('button', { name: 'Entrenar solo' })).toHaveAttribute('aria-disabled', 'true')
 
     click(view, 'Tengo un código')
     typeInto(view, 'Enlace o código', 'K7QF2M9X')
@@ -86,25 +85,14 @@ describe('la pantalla del duelo', () => {
     expect(screen.queryByRole('dialog', { name: 'Tu deck' })).not.toBeInTheDocument()
   })
 
-  it('al crear una sala se elige Single, Match o Solo; Solo esconde lo del rival y entra a la mesa sin crear sala', () => {
+  it('al crear una sala se elige Single o Match (jugar solo es otra entrada del menú, no un tipo de sala)', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 
     openRules(view)
-    expect(within(rulesDialog()).getAllByRole('radio').slice(0, 3).map((radio) => radio.getAttribute('aria-label') ?? radio.textContent)).toEqual(['Single', 'Match · mejor de 3', 'Solo'])
+    expect(within(within(rulesDialog()).getByRole('radiogroup', { name: 'Tipo' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label') ?? radio.textContent)).toEqual(['Single', 'Match · mejor de 3'])
     expect(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' })).toBeInTheDocument()
-
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Solo' }))
-
-    // Sin rival no hay tiempo, formato ni quién entra, ni se abre una sala: la acción es jugar solo.
-    expect(within(rulesDialog()).queryByRole('radio', { name: '50 min' })).not.toBeInTheDocument()
-    expect(within(rulesDialog()).queryByLabelText('Formato')).not.toBeInTheDocument()
-    expect(within(rulesDialog()).queryByRole('button', { name: 'Abrir duelo' })).not.toBeInTheDocument()
-    expect(within(rulesDialog()).queryByRole('button', { name: 'Guardar reglas' })).not.toBeInTheDocument()
-
-    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Jugar solo' }))
-
-    expect(window.location.hash).toBe('#practice')
-    expect(extractRoomCode(window.location.hash)).toBeNull()
+    expect(within(rulesDialog()).queryByRole('radio', { name: 'Solo' })).not.toBeInTheDocument()
+    expect(within(rulesDialog()).queryByRole('button', { name: 'Jugar solo' })).not.toBeInTheDocument()
   })
 
   it('en las reglas, el límite de tiempo por turno se enciende, se apaga y se personaliza: viene encendido con 7 minutos y 3 de más, y apagado esconde los minutos', () => {
@@ -121,32 +109,12 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(turn)
     expect(turn).not.toBeChecked()
     expect(within(rulesDialog()).queryByRole('group', { name: 'Minutos de cada jugador' })).not.toBeInTheDocument()
-
-    // Con Solo (sin rival) no hay reloj de turnos que elegir.
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Solo' }))
-    expect(within(rulesDialog()).queryByRole('switch', { name: 'Límite de tiempo por turno' })).not.toBeInTheDocument()
   })
 
-  it('Solo no se recuerda: al volver a abrir las reglas vuelve el tipo de antes, y sin deck armado no se puede jugar solo', () => {
-    const view = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 3) })} />)
-
-    openRules(view)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Solo' }))
-    expect(within(rulesDialog()).getByRole('button', { name: 'Jugar solo' })).toBeDisabled()
-    expect(within(rulesDialog()).getByText(/hace falta un deck armado en el builder/)).toBeInTheDocument()
-    closeMore()
-
-    openRules(view)
-    expect(within(rulesDialog()).getByRole('radio', { name: 'Single' })).toBeChecked()
-  })
-
-  it('Entrenar solo lleva a la mesa de práctica sin crear sala', () => {
+  it('la portada de Online no tiene «Entrenar solo»: jugar solo es Solo, en el menú', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 
-    click(view, 'Entrenar solo')
-
-    expect(window.location.hash).toBe('#practice')
-    expect(extractRoomCode(window.location.hash)).toBeNull()
+    expect(within(view.container).queryByRole('button', { name: /Entrenar solo/ })).not.toBeInTheDocument()
   })
 
   it('avisa si es el lobby (ahí está el buscador de cartas de la app) o ya la sala: sin sala es lobby, con sala no, y al irse de la pantalla deja de serlo', () => {

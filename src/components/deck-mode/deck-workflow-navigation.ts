@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'duel' | 'life' | 'meta' | 'tier-maker' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'solo' | 'practice' | 'duel' | 'life' | 'meta' | 'tier-maker' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -41,6 +41,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'probability-lab',
   'workspace',
   'export',
+  'solo',
   'practice',
   'duel',
   'life',
@@ -228,27 +229,29 @@ export function buildDeckWorkflowNavigationItems({
   ]
 }
 
-/** Qué herramientas se pueden usar ahora: la práctica (una pantalla entera) necesita cartas en el Main. */
+/** Lo que el menú necesita saber de afuera: si hay relay y el duelo en pausa. */
 interface AppNavTools {
   /** El duelo en pausa de este navegador: la hoja del celular ofrece volver a él. */
   paused?: { room: string; rival: string | null } | null
-  practice: boolean
-  /** El duelo por enlace sólo se ofrece donde hay un relay al que conectarse. */
+  /** El duelo en línea (Online) sólo se ofrece donde hay un relay al que conectarse. */
   duel?: boolean
 }
 
 /**
- * El menú de la app, en cuatro grupos, uno por lo que se viene a hacer: **Tu deck** (el recorrido del Lab: armarlo, clasificar sus cartas, medirlo y comparar builds), **Jugar** (el duelo en línea, «Entrenar solo»
- * —en su inicio, la única entrada sin relay—, la calculadora de LP y exportar el deck, que es para llevarlo a un torneo o a un simulador), **Descubrir** (lo que gana en los torneos: tier lists, decks y replays) y **Cartas** (la referencia: expansiones y banlists). Las mascotas no son un destino sino
- * una preferencia: van abajo, con el idioma (menú lateral y cajón del celular), y abren su panel.
- * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; el duelo, Descubrir
- * y Cartas con una línea que explica cada una. Jugar ofrece ahí jugar online, mirar un duelo, entrar con un enlace, la calculadora y exportar y, si hay un duelo en pausa, un aviso para volver a él.
+ * El menú de la app, en cuatro grupos, uno por lo que se viene a hacer: **Tu deck** (el recorrido del Lab: armarlo, clasificar sus cartas, medirlo y comparar builds), **Jugar** (Solo —contra un bot
+ * con su mazo o tu mesa sin bot—, Online —sólo con relay—, la calculadora de LP y exportar el deck, que es para llevarlo a un torneo o a un simulador), **Descubrir** (lo que gana en los torneos:
+ * tier lists, decks y replays) y **Cartas** (la referencia: expansiones y banlists). Las mascotas no son un destino sino una preferencia: van abajo, con el idioma, y abren su panel.
+ * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; Jugar, Descubrir y Cartas
+ * con una línea que explica cada una. En Jugar, con relay, Solo y Online van arriba en dos tarjetas grandes (el SOLO/ONLINE de Master Duel) y debajo mirar un duelo, entrar con un enlace, la
+ * calculadora y exportar; sin relay Solo es una fila más (con una sola entrada no hay tarjetas). Si hay un duelo en pausa, un aviso para volver a él.
  */
 export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
   const entry = (key: string, label: string, blurb: string): NavItem => ({ key, label, title: label, icon: 'link' as const, blurb })
-  // Con el duelo en línea, «Entrenar solo» está en el inicio de Jugar: el menú no lo repite (queda oculto, para que el grupo siga marcado en la práctica).
-  const practice: NavItem[] = tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const, blurb: t('shell.blurb.practice'), ...(tools.duel ? { hidden: true } : {}) }] : []
+  // Solo se ve aunque falten cartas (la pantalla dice qué falta). La mesa (`#practice`) es adonde lleva Solo: queda oculta, para que el grupo siga marcado en ella.
+  const solo: NavItem = { key: 'solo', label: t('shell.solo.title'), title: t('shell.solo.title'), icon: 'user' as const, blurb: t('shell.blurb.solo') }
+  const table: NavItem = { ...solo, key: 'practice', hidden: true }
+  const online: NavItem[] = tools.duel ? [{ key: 'duel', label: t('shell.online.title'), title: t('shell.online.title'), icon: 'link' as const, blurb: t('shell.blurb.online') }] : []
   const paused = tools.duel ? tools.paused ?? null : null
   const life: NavItem = { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const, blurb: t('shell.blurb.life') }
   // Exportar no es parte del recorrido del Lab (Deck → Roles → Lab → Comparar): es sacar el deck para llevarlo a un torneo (la lista en PDF) o a un simulador (YDK), así que va con Jugar.
@@ -261,15 +264,9 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
       label: t('shell.nav.group.duel'),
       icon: 'target' as const,
       sheet: 'description' as const,
-      items: [...practice, ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : []), life, ...exportDeck],
-      sheetItems: [
-        ...practice,
-        ...(tools.duel
-          ? [entry('duel', t('duel.nav.title'), t('shell.blurb.play')), entry('duel-watch', t('duel.watchRoom.open'), t('shell.blurb.watch')), entry('duel-join', t('shell.duel.join'), t('shell.blurb.join'))]
-          : []),
-        life,
-        ...exportDeck,
-      ],
+      items: [solo, table, ...online, life, ...exportDeck],
+      ...(tools.duel ? { sheetCards: [solo, ...online] } : {}),
+      sheetItems: tools.duel ? [entry('duel-watch', t('duel.watchRoom.open'), t('shell.blurb.watch')), entry('duel-join', t('shell.duel.join'), t('shell.blurb.join')), life, ...exportDeck] : [solo, life, ...exportDeck],
       sheetNotice: paused
         ? {
             title: paused.rival ? t('shell.paused.title', { name: paused.rival }) : t('shell.paused.titleNoName'),

@@ -2,7 +2,6 @@ import type { duel as es } from '../es/duel'
 import type { Translated } from '../types'
 
 export const duel: Translated<typeof es> = {
-  'duel.nav.title': 'Play',
   'duel.unavailable': "Dueling a friend isn't available in this version of the app yet.",
 
   'duel.table.label': 'Duel table',
@@ -93,16 +92,12 @@ export const duel: Translated<typeof es> = {
   'duel.play.friendHint': 'Send a link to anyone.',
   'duel.play.code': 'I have a code',
   'duel.play.codeHint': 'Join with a link or a code.',
-  'duel.play.train': 'Train solo',
-  'duel.play.trainHint': 'Your table, no opponent.',
-  'duel.play.trainNeedDeck': 'To train you need a deck built in the builder.',
   'duel.play.deckNone': 'No deck',
   'duel.play.deckChange': 'Change',
   'duel.play.rulesYours': 'Your rules',
   'duel.play.rules': 'Duel rules',
   'duel.play.rulesSave': 'Save rules',
   'duel.play.rulesOpen': 'Open duel',
-  'duel.play.rulesSolo': 'Play solo',
   'duel.play.timeNone': 'No time',
   'duel.play.genesysLine': 'Genesys {points} pts',
   'duel.play.timeMin': '{min} min',
@@ -146,8 +141,6 @@ export const duel: Translated<typeof es> = {
   'duel.create.match': 'Match · best of 3',
   'duel.create.singleHint': 'One duel.',
   'duel.create.matchHint': 'First to win 2 duels wins.',
-  'duel.create.solo': 'Solo',
-  'duel.create.soloHint': 'Your table, no opponent and no room: just you with your deck.',
   'duel.create.siding': 'Sidedeck',
   'duel.create.sidingHint': 'With the Side Deck: built between one duel and the next.',
   'duel.create.visibility': 'Who can join',

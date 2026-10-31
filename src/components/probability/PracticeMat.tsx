@@ -2628,7 +2628,7 @@ function PracticeMatBody({
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
           {rulesPill}
-          {/* Las handtraps del rival: «Entrenar solo» entra directo a la mesa, así que se encienden y se elige el pool acá; aplicar reparte una mano nueva. */}
+          {/* Las handtraps del rival: la mesa manual de Solo no tiene una hoja de reglas a mano, así que se encienden y se elige el pool acá; aplicar reparte una mano nueva. */}
           <MatBarActions
             className="ml-auto"
             onUndo={undoLast}

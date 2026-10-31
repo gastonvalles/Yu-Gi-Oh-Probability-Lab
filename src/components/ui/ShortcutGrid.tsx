@@ -18,7 +18,7 @@ import { Skeleton } from './Skeleton'
  * - **Von Restorff:** un solo tinte para todos los círculos (el lila de siempre, con el ícono blanco); lo único que resalta es la insignia, con aro ámbar sobre el lienzo
  *   (nunca un relleno ámbar con texto blanco), y una sola por grilla.
  * - **Hacer:** 4 u 8 atajos, nombres de una o dos palabras. **No hacer:** una línea de apoyo dentro del atajo (eso es una `ListRow`), colores distintos por atajo, cajas adentro.
- * - **Usos:** las entradas de Jugar (Retar a un amigo, Entrar con un código, Entrenar solo, Reglas), los pasos del deck (Deck, Roles, Lab, Comparar), Exportar y Vidas.
+ * - **Usos:** las entradas de Online (Retar a un amigo, Entrar con un código, Reglas), los pasos del deck (Deck, Roles, Lab, Comparar), Exportar y Vidas.
  */
 
 interface ShortcutTileProps {

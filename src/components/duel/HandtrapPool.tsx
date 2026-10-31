@@ -32,54 +32,13 @@ import { Modal } from '../ui/Modal'
 import { SearchField } from '../ui/SearchField'
 import { Stepper } from '../ui/Stepper'
 import { listItemSelected } from '../ui/surfaces'
-import { Switch } from '../ui/Switch'
 import { RivalExtraDeck } from './RivalExtraDeck'
 
 /** Sin expansiones: la búsqueda de «Agregar otra carta» es por nombre (los códigos de impresión son de la vista de Expansiones). */
 const NO_EXPANSIONS: Expansion[] = []
 
 /**
- * El simulador de handtraps en las reglas de la sala, con el modo Solo: encenderlo, cuántas tiene el rival en la mano y entre cuántas cartas se reparten («3 en mano · de 9 cartas»)
- * y la hoja para elegirlas. Se recuerda en el navegador (`app/handtraps.ts`) y vale para la próxima mano de «Jugar solo».
- */
-export function HandtrapsRow() {
-  const [config, setConfig] = useState<HandtrapConfig>(readHandtrapConfig)
-  const [choosing, setChoosing] = useState(false)
-  const count = poolCount(config.picks)
-  const save = (next: HandtrapConfig) => {
-    setConfig(next)
-    writeHandtrapConfig(next)
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-3 sm:col-span-2">
-      <span className="grid min-w-0 gap-0.5">
-        <span className="text-body font-semibold text-foreground">{t('handtraps.title')}</span>
-        {/* Con menos cartas que la mano, la mano sale con todas: se dice lo que sale. */}
-        <span className="text-micro text-soft">{t('handtraps.row.summary', { hand: Math.min(config.hand, count), count })}</span>
-      </span>
-      <span className="flex shrink-0 items-center gap-3">
-        <Button variant="secondary" size="sm" aria-label={t('handtraps.row.chooseLabel')} aria-haspopup="dialog" onClick={() => setChoosing(true)}>
-          {t('handtraps.row.choose')}
-        </Button>
-        <Switch checked={config.enabled} onChange={(enabled) => save({ ...config, enabled })} label={t('handtraps.title')} />
-      </span>
-      <HandtrapPicker
-        isOpen={choosing}
-        config={config}
-        onClose={() => setChoosing(false)}
-        onSave={(picks, hand, extra, ownTurn) => {
-          // Elegir las handtraps es querer usarlas: el simulador queda encendido.
-          save({ ...config, enabled: true, picks, hand, extra, ownTurn })
-          setChoosing(false)
-        }}
-      />
-    </div>
-  )
-}
-
-/**
- * El simulador de handtraps dentro de la mesa: «Entrenar solo» entra directo a la mesa, sin pasar por las reglas de la sala, así que «Handtraps del rival» del menú ⋯ de la barra (`MatMoreMenu`)
+ * El simulador de handtraps dentro de la mesa: la mesa manual de Solo no tiene una hoja de reglas a mano, así que «Handtraps del rival» del menú ⋯ de la barra (`MatMoreMenu`)
  * abre la misma hoja (`open`; la hoja es `sheet`). Aplicar guarda lo elegido y reparte una mano nueva (`onApply`), con el simulador encendido o apagado; se recuerda igual que lo de las reglas de la sala.
  */
 export function useHandtrapsSheet({ onApply }: { onApply: () => void }): { config: HandtrapConfig; open: () => void; sheet: ReactNode } {

@@ -82,9 +82,8 @@ export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, co
   // La barra de arriba de escritorio: en las pantallas a pantalla completa (la práctica, la mesa de un duelo) no está, manda la mesa.
   const showNavbar = isDesktop && !bigWindow && navbar
   // La barra de arriba del celular dice en qué pantalla estás (como en el lienzo); sin pantalla conocida, la marca.
-  // (El inicio del duelo es «Nueva sala» en el menú lateral, pero la pantalla es la del grupo: «Duelo».)
   const activeGroup = groups.find((group) => group.items.some((item) => item.key === activeKey))
-  const screenTitle = activeKey === 'duel' ? activeGroup?.label : activeGroup?.items.find((item) => item.key === activeKey)?.label
+  const screenTitle = activeGroup?.items.find((item) => item.key === activeKey)?.label
 
   // Otra pantalla (también con el botón Atrás): la hoja y el cajón que estaban abiertos se cierran.
   useEffect(() => {

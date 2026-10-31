@@ -363,7 +363,7 @@ export function NavigationSection() {
       buildAppNavGroups(
         buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0, savedBuildCount: 2 }),
         // El duelo con una sala en pausa: la hoja de Duelo muestra el aviso para volver a ella.
-        { practice: true, duel: true, paused: { room: 'K7QF2M9X', rival: 'Ana' } },
+        { duel: true, paused: { room: 'K7QF2M9X', rival: 'Ana' } },
       ),
     [],
   )
@@ -418,7 +418,7 @@ export function NavigationSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Cinco lugares: Tu deck · Descubrir · <b>Jugar</b> (el círculo violeta del centro, que asoma 12 px por arriba, separado por un aro del color del lienzo, sin sombra) · Cartas · Buscar (el buscador de la app, que bajó de la barra de arriba). Cada grupo abre una hoja que prolonga la barra (el mismo índigo, sin velo ni sombra): «Tu deck» con el estado de cada paso, «Jugar» con el aviso de la sala en pausa y las demás con una línea que explica cada destino. Lo abierto va en ámbar con una rayita arriba (el círculo, con un aro ámbar); con una hoja abierta, sólo su grupo. Arriba, la de verdad; abajo, Jugar abierto y la hoja de Cartas abierta. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
+        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Cinco lugares: Tu deck · Descubrir · <b>Jugar</b> (el círculo violeta del centro, que asoma 12 px por arriba, separado por un aro del color del lienzo, sin sombra) · Cartas · Buscar (el buscador de la app, que bajó de la barra de arriba). Cada grupo abre una hoja que prolonga la barra (el mismo índigo, sin velo ni sombra): «Tu deck» con el estado de cada paso, «Jugar» con Solo y Online en dos tarjetas grandes arriba (la variante `sheetCards`; sin relay, Solo es una fila) y el aviso de la sala en pausa, y las demás con una línea que explica cada destino. Lo abierto va en ámbar con una rayita arriba (el círculo, con un aro ámbar); con una hoja abierta, sólo su grupo. Arriba, la de verdad; abajo, Jugar abierto y la hoja de Cartas abierta. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
           <div className="grid gap-4">
             {/* El `pt-4` deja ver lo que asoma el círculo, como el contenido de la pantalla que la barra deja libre. */}
             <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle bg-background pt-4">

@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_RIVAL_EXTRA, HANDTRAP_CONFIG_KEY, readHandtrapConfig, type HandtrapConfig } from '../app/handtraps'
 import type { MatState } from '../app/practice-mat'
-import { HandtrapPicker, HandtrapsRow } from '../components/duel/HandtrapPool'
+import { HandtrapPicker } from '../components/duel/HandtrapPool'
+import { SoloScreen } from '../components/duel/SoloScreen'
 import { MatBarActions } from '../components/probability/MatBarActions'
 import { RivalHandStrip } from '../components/probability/RivalHandStrip'
 import { Harness, INITIAL, render, status } from './support/practice-mat-harness'
@@ -350,43 +351,48 @@ describe('el Extra Deck del rival en la hoja', () => {
   })
 })
 
-describe('la fila de las reglas de Solo', () => {
-  it('dice cuántas tiene el rival en la mano y entre cuántas cartas, y el interruptor se recuerda', () => {
-    render(<HandtrapsRow />)
+describe('Handtraps en Solo (la fila y su ficha)', () => {
+  const solo = () => render(<SoloScreen deckName="Mi deck" deckSize={40} minDeck={5} onOpenBuilder={() => {}} onPlay={() => {}} />)
+  const row = () => within(screen.getByRole('radiogroup', { name: 'Contra quién jugás' })).getByRole('radio', { name: /^Handtraps/ })
+  const ficha = () => {
+    fireEvent.click(screen.getByRole('button', { name: /Ficha y ajustes/ }))
 
-    expect(screen.getByText('3 en mano · de 3 cartas')).toBeInTheDocument()
+    return screen.getByRole('dialog')
+  }
 
-    const toggle = screen.getByRole('switch', { name: 'Handtraps del rival' })
+  it('dice cuántas tiene el rival en la mano y entre cuántas cartas; elegirla enciende el simulador y se recuerda', () => {
+    solo()
 
-    expect(toggle).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(toggle)
-    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    expect(row()).toHaveTextContent('3 en mano · de 3 cartas')
+    expect(row()).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(row())
+    expect(row()).toHaveAttribute('aria-checked', 'true')
     expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }, { ...IMPERM, copies: 1 }], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
     expect(JSON.parse(localStorage.getItem(HANDTRAP_CONFIG_KEY) ?? '{}')).toMatchObject({ enabled: true, hand: 3 })
   })
 
   it('con menos cartas que la mano, dice la mano que sale', () => {
     localStorage.setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }], hand: 5 }))
-    render(<HandtrapsRow />)
+    solo()
 
-    expect(screen.getByText('2 en mano · de 2 cartas')).toBeInTheDocument()
+    expect(row()).toHaveTextContent('2 en mano · de 2 cartas')
   })
 
-  it('elegir las handtraps las guarda con la mano y enciende el simulador', () => {
-    render(<HandtrapsRow />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Elegir… las handtraps del rival' }))
+  it('elegir las handtraps desde la ficha las guarda con la mano', () => {
+    solo()
+    fireEvent.click(row())
+    fireEvent.click(within(ficha()).getByRole('button', { name: 'Elegir… las handtraps del rival' }))
     fireEvent.click(more(copies(VEILER.name)))
     fireEvent.click(more(copies(VEILER.name)))
     fireEvent.click(more(handCounter()))
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
     expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 1 }], hand: 4, extra: DEFAULT_RIVAL_EXTRA })
-    expect(screen.getByText('4 en mano · de 5 cartas')).toBeInTheDocument()
+    expect(row()).toHaveTextContent('4 en mano · de 5 cartas')
   })
 })
 
-describe('«Handtraps del rival» del ⋯ de la barra de la mesa (Entrenar solo)', () => {
+describe('«Handtraps del rival» del ⋯ de la barra de la mesa manual', () => {
   const HandtrapsMatButton = ({ onApply }: { onApply: () => void }) => <MatBarActions onUndo={() => {}} canUndo={false} onNewHand={() => {}} onHandtraps={onApply} />
   // El estado se lee en el ⋯, en la fila («prendidas» o «apagadas»); tocarla abre la hoja.
   const row = () => {

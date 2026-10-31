@@ -17,6 +17,7 @@ import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
+import { SoloScreen } from '../../duel/SoloScreen'
 import { LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
@@ -147,6 +148,11 @@ export function AutoSection() {
       <CounterSample onAnswer={setAnswer} />
       <BotLogSample />
       <RivalSample />
+      <Specimen title="Solo · la lista de rivales, la ficha y la barra" layout="column" note={<>La pantalla Solo de verdad (lo que se toca se guarda como en la app): en escritorio, la lista (430 px) y la ficha lado a lado con «Jugar contra X»; en el celular (achicá la ventana), la lista y la barra pegada sobre la de navegación, con lo elegido a la izquierda (abre la ficha en una hoja) y «Jugar». Cada ajuste va en su fila: un solo segmentado (Quién empieza) y el resto interruptores. Archivo: <Tag>duel/SoloScreen.tsx</Tag></>}>
+        <div className="overflow-hidden rounded-card border border-border-subtle">
+          <SoloScreen deckName="Mi deck" deckSize={40} minDeck={5} onOpenBuilder={() => {}} onPlay={() => {}} />
+        </div>
+      </Specimen>
 
       <Specimen title="Lo que contestó la última muestra" note="Cada hoja y cada pregunta de arriba le pasan lo elegido a quien la abrió; acá se ve qué devolvió.">
         <Tag>{answer}</Tag>
@@ -167,7 +173,7 @@ export function AutoSection() {
 /** Uno solo de los mazos listos: así se ve la fila sin menú (con dos o más aparece «Cambiar mazo»). */
 const ONE_DECK: readonly BotDeckInfo[] = BOT_DECK_MENU.slice(0, 1)
 
-/** La fila «Rival» (la de las reglas de Jugar solo automático) y la hoja de «Cambiar rival» del duelo, con uno o todos los mazos listos. */
+/** La elección del rival y la hoja de «Cambiar rival» del duelo (antes de jugar, se elige en Solo), con uno o todos los mazos listos. */
 function RivalSample() {
   const [two, setTwo] = useState(false)
   const [draft, setDraft] = useState<RivalDraft>({ kind: 'bot', deck: 'sky-striker' })

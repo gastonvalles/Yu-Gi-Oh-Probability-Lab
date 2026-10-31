@@ -265,7 +265,7 @@ describe('el editor de reglas del Lab', () => {
 })
 
 describe('la lista de un grupo de la mini guía (el menú contraído)', () => {
-  const GROUPS = buildAppNavGroups(buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }), { practice: true })
+  const GROUPS = buildAppNavGroups(buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }), {})
 
   it('pasar a otro grupo es la misma lista, sin salida; cerrada con Escape se achica y se funde (la inversa de su `pop`) sin atajar toques', async () => {
     const { calls, finish } = fakeAnimate()

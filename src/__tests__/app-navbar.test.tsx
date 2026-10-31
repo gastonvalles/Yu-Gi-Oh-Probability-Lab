@@ -7,7 +7,7 @@ import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../componen
 import { AppShell } from '../components/shell/AppShell'
 
 const STEPS = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 })
-const GROUPS = buildAppNavGroups(STEPS, { practice: true })
+const GROUPS = buildAppNavGroups(STEPS, {})
 
 /** Una ventana de escritorio (desde 1101 px): hay barra de arriba y menú lateral. */
 function desktopWindow() {

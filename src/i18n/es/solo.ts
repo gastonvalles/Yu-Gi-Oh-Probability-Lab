@@ -1,0 +1,20 @@
+/** Solo: la lista de rivales (un bot por mazo y, sin bot, el pasivo y el de handtraps), su ficha y la barra de abajo del celular. */
+export const solo = {
+  'solo.subtitle': 'Elegí contra quién jugás: un bot con su mazo, o tu mesa sin bot.',
+  'solo.rival': 'Contra quién jugás',
+  'solo.group.bots': 'Bots · cada uno con su mazo',
+  'solo.group.noBot': 'Sin bot',
+  'solo.last': 'Último',
+  'solo.botNeedsAuto': 'Necesita el modo automático',
+  'solo.noAuto': 'Este navegador no puede correr el modo automático: los bots no juegan acá. Pasivo y Handtraps van en manual.',
+  'solo.passive': 'No juega: sólo recibe.',
+  'solo.passiveManual': 'Tu mesa sin rival: movés vos.',
+  'solo.lp': '{lp} vidas',
+  'solo.deckSize': 'Main {main} · Extra {extra}',
+  'solo.sheet': 'Ficha y ajustes',
+  'solo.play': 'Jugar contra {name}',
+  'solo.playShort': 'Jugar',
+  'solo.playHandtraps': 'Jugar contra las handtraps',
+  'solo.playTable': 'Abrir tu mesa',
+  'solo.needDeck': 'Elegí tu deck',
+} as const

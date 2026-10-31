@@ -72,7 +72,7 @@ describe('los íconos blancos se ponen ámbar al pasar el mouse y al seleccionar
 
   it('los destinos del menú: ícono y rótulo blancos; el ícono se pone ámbar al pasar el mouse, y el destino abierto va ámbar', () => {
     const steps = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 0, hasCompletedRoleStep: true, patternCount: 1 })
-    render(<SidebarNav groups={buildAppNavGroups(steps, { practice: true })} activeKey="export" onSelect={() => {}} />)
+    render(<SidebarNav groups={buildAppNavGroups(steps, {})} activeKey="export" onSelect={() => {}} />)
 
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     const inactive = within(nav).getByRole('button', { name: /^Deck Builder/ })
