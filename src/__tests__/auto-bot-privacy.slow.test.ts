@@ -74,11 +74,14 @@ const RIVAL_TURN: HandtrapConfig = { enabled: true, picks: [ASH, 5464695, 125804
 const RIVAL_EVENLY: HandtrapConfig = { enabled: true, picks: [15693423, ASH, VEILER].map((id) => ({ id, name: '', copies: 1 })), hand: 3 }
 /** El ejecutor de Sky Striker (`botDeck`): su lista fija, su mano del barajado de su deck (la misma semilla en las 8) y su turno entero (Enlaces, Mágicas, ataques). */
 const RIVAL_SKY: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'sky-striker' }
+/** El ejecutor de Despia Branded: igual (Fusiones del Deck, Mirrorjade y lo colocado en tu turno). */
+const RIVAL_BRANDED: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'branded' }
 const MODES = [
   { name: 'el rival de handtraps', config: RIVAL, file: 'bot-privacy-report.json' },
   { name: 'el rival que juega su turno', config: RIVAL_TURN, file: 'bot-privacy-turn-report.json' },
   { name: 'el rival con Evenly Matched', config: RIVAL_EVENLY, file: 'bot-privacy-evenly-report.json' },
   { name: 'el bot de Sky Striker', config: RIVAL_SKY, file: 'bot-privacy-sky-report.json' },
+  { name: 'el bot de Despia Branded', config: RIVAL_BRANDED, file: 'bot-privacy-branded-report.json' },
 ]
 
 function player(line: Line, setCode: number) {
