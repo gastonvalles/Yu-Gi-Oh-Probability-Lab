@@ -91,7 +91,7 @@ describe('una sala con reglas automáticas', () => {
     // Es la misma preferencia que la de Solo: prende el modo automático entero.
     expect(toggle).toBeChecked()
     expect(autoPrefs().duel).toBe(true)
-    expect(sheet.getByText('Beta: el núcleo aplica las reglas por los dos. Sin espectadores todavía.')).toBeInTheDocument()
+    expect(sheet.getByText('El núcleo aplica las reglas por los dos. Sin espectadores todavía.')).toBeInTheDocument()
     // Match, su siding y el reloj de turnos se siguen eligiendo; Solo también (ahí rige el simulador de handtraps).
     expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
     expect(sheet.getByRole('switch', { name: 'Sidedeck' })).toBeEnabled()
@@ -109,7 +109,7 @@ describe('una sala con reglas automáticas', () => {
     expect(optionsOf(room)).toMatchObject({ auto: true, isPublic: false })
     expect(rooms.register).not.toHaveBeenCalled()
     expect(lastProps('host').snapshot.settings).toMatchObject({ auto: true, match: true, siding: false, turnMin: 7, turnBonusMin: 3 })
-    expect(rule(host, 'Reglas')).toHaveTextContent('Automáticas (beta)')
+    expect(rule(host, 'Reglas')).toHaveTextContent('Automáticas')
     expect(rule(host, 'Tipo')).toHaveTextContent('Match')
     expect(rule(host, 'Quién puede entrar')).toHaveTextContent('Privada')
     expect(rule(host, 'Quién mira')).toHaveTextContent('No disponible')
@@ -124,7 +124,7 @@ describe('una sala con reglas automáticas', () => {
     const { host, guest } = startDuel({ autoDuel: FakeAutoDuel, onImmersiveChange: immersive })
     const ready = (view: RenderResult) => within(view.container).getByRole('button', { name: 'Estoy listo' })
 
-    expect(rule(guest, 'Reglas')).toHaveTextContent('Automáticas (beta)')
+    expect(rule(guest, 'Reglas')).toHaveTextContent('Automáticas')
     expect(rule(guest, 'Quién mira')).toHaveTextContent('No disponible')
     // Lo que dice la mesa va debajo del deck, con las cartas que nombra (su arte y su nombre).
     expect(within(guest.container).getByText(CHECKING)).toBeInTheDocument()
@@ -221,7 +221,7 @@ describe('una sala con reglas automáticas', () => {
     expect(rooms.unlist).toHaveBeenCalledWith(room, token)
     expect(rooms.live).not.toHaveBeenCalled()
     expect(rooms.register).toHaveBeenCalledTimes(1)
-    expect(rule(guest, 'Reglas')).toHaveTextContent('Automáticas (beta)')
+    expect(rule(guest, 'Reglas')).toHaveTextContent('Automáticas')
     expect(lastProps('guest').snapshot.settings.auto).toBe(true)
   })
 
