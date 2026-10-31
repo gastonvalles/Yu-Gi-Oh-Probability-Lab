@@ -261,7 +261,7 @@ describe('Meta en inglés', () => {
     expect(screen.getByText('1 TCG deck from the last 8 weeks, from newest to oldest. Tap it to see it in full.')).toBeInTheDocument()
   })
 
-  it('en el celular, las tier lists juntan qué lista y hoy o proyección en una fila de pastillas, y «Make your own» es el enlace del encabezado', () => {
+  it('en el celular, las tier lists juntan qué lista y hoy o proyección en una fila de pastillas, y la tuya es la otra opción del selector', () => {
     applyLocale('en')
     window.history.replaceState(null, '', '#meta')
     phoneScreen()
@@ -274,9 +274,9 @@ describe('Meta en inglés', () => {
     expect(lists.parentElement).toBe(view.parentElement)
     expect(screen.getByRole('button', { name: 'Adjust the tier list' })).toBeInTheDocument()
     expect(screen.queryByRole('radiogroup', { name: 'Where to count the card' })).not.toBeInTheDocument()
-    // «Crear la tuya» ya no es un botón ancho antes de la primera carta: es la acción del encabezado de la lista.
-    expect(screen.getByRole('link', { name: 'Make your own' })).toHaveAttribute('href', '#tier-maker')
-    expect(screen.queryByRole('button', { name: 'Make your own' })).not.toBeInTheDocument()
+    // La tuya no es un enlace del encabezado: es la otra opción del selector de arriba de todo.
+    expect(screen.queryByRole('link', { name: 'Make your own' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('radiogroup', { name: "The meta's or yours" })).getByRole('radio', { name: 'From the meta' })).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.click(within(lists).getByRole('radio', { name: 'Boardbreakers' }))
     expect(screen.getByRole('heading', { name: 'Boardbreaker tier list' })).toBeInTheDocument()

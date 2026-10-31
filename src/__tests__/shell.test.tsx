@@ -43,6 +43,8 @@ describe('el menú de la app', () => {
       ['Descubrir', ['meta', 'tier-maker', 'tournaments', 'replays']],
       ['Cartas', ['expansions', 'banlists']],
     ])
+    // Crear tier list es «La tuya» de Tier lists: el menú no la muestra (Descubrir son tres destinos), pero sigue ahí para el buscador de la app.
+    expect(GROUPS.find((group) => group.key === 'discover')?.items.filter((item) => !item.hidden).map((item) => item.key)).toEqual(['meta', 'tournaments', 'replays'])
     // Las mascotas son una preferencia, no un destino: no están en ningún grupo.
     expect(GROUPS.flatMap((group) => group.items).some((item) => item.key === 'mascots')).toBe(false)
   })
@@ -147,7 +149,7 @@ describe('el menú de la app', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Descubrir' }))
     const menu = screen.getByRole('menu', { name: 'Descubrir' })
-    expect(within(menu).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([expect.stringMatching(/^Tier lists/), expect.stringMatching(/^Crear tu propia tier list/), expect.stringMatching(/^Decks de torneo/), expect.stringMatching(/^Replays/)])
+    expect(within(menu).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([expect.stringMatching(/^Tier lists/), expect.stringMatching(/^Decks de torneo/), expect.stringMatching(/^Replays/)])
 
     fireEvent.click(within(menu).getByRole('button', { name: /^Replays/ }))
     expect(onSelect).toHaveBeenCalledWith('replays')
@@ -484,8 +486,12 @@ describe('las hojas del celular, como en el lienzo', () => {
     const discover = sheet(GROUPS, 'discover', 'practice')
 
     expect(discover.dialog).toHaveTextContent('Descubrir')
-    expect(discover.dialog).toHaveTextContent('Hand traps y boardbreakers de los torneos')
-    expect(discover.dialog).toHaveTextContent('Los duelos de esos decks, en video')
+    // Tres destinos: crear la tuya vive dentro de Tier lists.
+    expect(within(discover.dialog).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Tier listsLas del meta y la tuya, para bajar como imagen',
+      'Decks de torneoLos que llegaron al top, completos',
+      'ReplaysLos duelos de esos decks, en video',
+    ])
     expect(discover.dialog).not.toHaveTextContent('Banlists')
     cleanup()
 
