@@ -360,16 +360,27 @@ export type MetaList = MetaCardKind
 
 const META_LISTS: readonly MetaList[] = ['handtrap', 'boardbreaker']
 
-/** Link directo a un tier list (`#meta?list=boardbreaker`); el de las hand traps es el de la pantalla sin más. */
-export function buildTierListHash(list: MetaList): string {
-  return list === 'handtrap' ? '#meta' : `#meta?list=${list}`
+/** Qué se ve en Tier lists: las del meta o la tuya (el creador). */
+export type TierListView = 'meta' | 'mine'
+
+/** Link directo a un tier list (`#meta?list=boardbreaker`, `#meta?vista=tuya`); el de las hand traps del meta es el de la pantalla sin más. */
+export function buildTierListHash(list: MetaList, view: TierListView = 'meta'): string {
+  const query = new URLSearchParams()
+
+  if (list !== 'handtrap') query.set('list', list)
+  if (view === 'mine') query.set('vista', 'tuya')
+
+  const text = query.toString()
+
+  return text ? `#meta?${text}` : '#meta'
 }
 
-export function readTierListHash(hash: string): MetaList {
+export function readTierListHash(hash: string): { list: MetaList; view: TierListView } {
   const [step, query = ''] = hash.replace(/^#/, '').split('?')
-  const list = new URLSearchParams(query).get('list')
+  const params = new URLSearchParams(step === 'meta' ? query : '')
+  const list = params.get('list')
 
-  return (step === 'meta' ? META_LISTS.find((item) => item === list) : undefined) ?? 'handtrap'
+  return { list: META_LISTS.find((item) => item === list) ?? 'handtrap', view: params.get('vista') === 'tuya' ? 'mine' : 'meta' }
 }
 
 /** Links directos: los decks de torneo (con un deck abierto o filtrados por una carta o un nombre). */

@@ -49,10 +49,37 @@ function SheetRow({ item, status, active, onSelect }: { item: NavItem; status: b
 }
 
 /**
+ * Una entrada de primer nivel en grande (Solo | Online, como el SOLO/ONLINE de Master Duel): el ícono en un círculo violeta, el nombre y su línea. La abierta, con el borde ámbar.
+ * Dos por fila: van juntas, arriba de las filas de la hoja (`sheetCards`).
+ */
+function SheetCard({ item, active, onSelect }: { item: NavItem; active: boolean; onSelect: (key: string) => void }) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? 'page' : undefined}
+      aria-label={navItemDescription(item)}
+      className={cx(
+        'grid min-h-28 min-w-0 content-start justify-items-start gap-2 rounded-card border bg-nav-raised/40 p-3 text-left transition-colors duration-150 hover:bg-nav-raised/70 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none',
+        active ? 'border-nav-active' : 'border-nav-raised',
+      )}
+      onClick={() => onSelect(item.key)}
+    >
+      <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-primary text-white">
+        <Icon name={item.icon} size={16} />
+      </span>
+      <span aria-hidden="true" className="grid min-w-0 gap-0.5">
+        <span className={cx('text-lead font-bold leading-tight', active ? 'text-nav-active' : 'text-foreground')}>{item.label}</span>
+        {item.blurb ? <span className="text-micro text-muted">{item.blurb}</span> : null}
+      </span>
+    </button>
+  )
+}
+
+/**
  * La hoja que sube desde la barra de abajo del celular al tocar un grupo, **como la prolongación de la barra** (Gastón, 2026-10-19: «no continúan la barra sino que se separa y la oscurece con una sombra»):
  * el mismo índigo y sin la línea que las separaba, sin velo ni sombra (lo de arriba se ve igual; tocarlo cierra la hoja). La barra queda a la vista y a mano: tocar otro grupo
  * cambia de hoja y tocar el mismo la cierra. La hoja mide lo que mide su contenido (cada grupo es un submenú con sus propias filas) y, si no entra, se desplaza. Los pasos del deck llevan su ícono y su estado a la derecha; el duelo, las herramientas y
- * Descubrir, el nombre con una línea que explica y, en el duelo, el aviso de una sala en pausa para volver a ella. Elegir una abre su pantalla y cierra la hoja
+ * Descubrir, el nombre con una línea que explica y, en Jugar, Solo y Online en dos tarjetas grandes arriba (`SheetCard`) y el aviso de una sala en pausa para volver a ella. Elegir una abre su pantalla y cierra la hoja
  * (también el velo y Escape). El destino abierto va en ámbar, como en el menú lateral.
  */
 export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetProps) {
@@ -68,6 +95,7 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
   const status = group?.sheet === 'status'
   const rows = (group?.sheetItems ?? group?.items ?? []).filter((item) => !item.hidden)
   const notice = group?.sheetNotice
+  const cards = group?.sheetCards ?? []
 
   // Al cerrarse baja por detrás de la barra, por donde subió (`usePresence`).
   return usePresence(isOpen, group && !desktop && typeof document !== 'undefined' ? createPortal(
@@ -94,8 +122,15 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
               {notice.actionLabel}
             </Button>
           </div>
-        ) : !notice && group.key !== 'duel' ? (
+        ) : (
           <span className={cx(NAV_OVERLINE, 'px-1 pb-1.5')}>{group.label}</span>
+        )}
+        {cards.length > 0 ? (
+          <div className="mb-1.5 grid grid-cols-2 gap-2">
+            {cards.map((item) => (
+              <SheetCard key={item.key} item={item} active={item.key === activeKey} onSelect={onSelect} />
+            ))}
+          </div>
         ) : null}
         <ul className="stagger m-0 grid list-none p-0 [--stagger-step:40ms]">
           {rows.map((item, index) => (

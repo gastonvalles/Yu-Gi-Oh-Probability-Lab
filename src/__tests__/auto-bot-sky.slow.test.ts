@@ -4,7 +4,7 @@ import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import type { Bot, BotDecision } from '../app/auto/bot/bot'
 import { BOT_DECKS } from '../app/auto/bot/decks'
-import { SKY, SKY_STRIKER_DECK } from '../app/auto/bot/decks/sky-striker'
+import { SKY, SKY_STRIKER_DECK } from '../app/bot-deck-lists'
 import { skyStrikerBot } from '../app/auto/bot/executors/sky-striker'
 import { localTransport } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
@@ -14,7 +14,7 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStor
 
 /**
  * El ejecutor de Sky Striker con el núcleo real (lento: `npm run test:auto`).
- * - **Goldfish**: el bot (primero, con el mazo de `decks/sky-striker.ts` por `botDeck`, como lo arma la sesión) contra un rival pasivo de 40 Normales, en `GOLDFISH` manos con
+ * - **Goldfish**: el bot (primero, con el mazo de `bot-deck-lists.ts` por `botDeck`, como lo arma la sesión) contra un rival pasivo de 40 Normales, en `GOLDFISH` manos con
  *   semilla. Mide tres cosas y falla si caen por debajo del umbral (`THRESHOLDS`, con su porqué): termina su turno 1 con un Sky Striker Ace de Enlace en el campo, termina su turno 1
  *   con al menos 2 cartas colocadas para tu turno, y te hace daño en su turno 3. Ninguna respuesta suya rechazada por el núcleo.
  * - **Escenarios**: las decisiones clave con una mano fija, con la oferta literal del núcleo y la respuesta del bot: la línea de Engage!, subir a Zero por Enlace, Widow Anchor

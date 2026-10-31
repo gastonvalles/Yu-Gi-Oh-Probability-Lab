@@ -10,7 +10,7 @@ import { SOURCE_URL } from '../components/ui/SocialLinks'
 
 /**
  * La app es software libre bajo la AGPL-3.0 o posterior y eso se cumple: el texto de la licencia, el paquete y el aviso dicen lo mismo, y la app le ofrece su código a quien la usa en línea
- * (cláusula 13). Si alguien cambia la licencia o saca el enlace, esta prueba lo frena: un cambio así es una decisión de quien es dueño del proyecto, no un detalle.
+ * (cláusula 13). Si alguien cambia la licencia o saca el enlace a las páginas legales (que enlazan el código), esta prueba lo frena: un cambio así es una decisión de quien es dueño del proyecto, no un detalle.
  */
 const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8')
 
@@ -21,10 +21,13 @@ describe('la licencia', () => {
     expect(read('NOTICE.md')).toContain('AGPL-3.0-or-later')
   })
 
-  it('la app ofrece el código fuente a quien la usa en línea: un enlace en el pie del menú', () => {
+  it('la app ofrece el código fuente a quien la usa en línea: el pie del menú abre la página legal, que lo enlaza', () => {
     render(<SidebarLegal />)
 
-    expect(screen.getByRole('link', { name: 'Código fuente' })).toHaveAttribute('href', SOURCE_URL)
+    const legal = screen.getByRole('link', { name: 'Privacidad y aviso legal' })
+
+    expect(legal).toHaveAttribute('href', '/privacidad.html')
+    expect(read(`public${legal.getAttribute('href')}`)).toContain(SOURCE_URL)
   })
 
   it('las páginas legales no dicen «todos los derechos reservados» y enlazan el código', () => {

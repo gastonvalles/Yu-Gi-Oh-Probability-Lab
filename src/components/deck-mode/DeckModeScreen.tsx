@@ -4,7 +4,7 @@ import type { ManualGame } from '../../app/auto/manual-handover'
 import { canRunAuto, useAutoPrefs } from '../../app/auto-prefs'
 import { comboPayloadOf, decodeComboPayload, type SharedCombo } from '../../app/combo-share'
 import { showToastMessage } from '../../app/use-toast-message'
-import { clearPlayReturn, readPlayReturn } from '../../app/play-return'
+import { clearPlayReturn, openBuilderFromPlay, readPlayReturn } from '../../app/play-return'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
@@ -50,8 +50,8 @@ import {
   LazyPracticeSection,
   LazyProbabilityPanel,
   LazyReplaysScreen,
+  LazySoloScreen,
   LazyTierListsScreen,
-  LazyTierMakerScreen,
   LazyTournamentDecksScreen,
   preloadHeavySteps,
 } from './lazy-steps'
@@ -69,6 +69,14 @@ const LazyAutoDuel = lazy(() => import('../auto/AutoDuelScreen').then((m) => ({ 
 const comboHash = (hash: string) => (hash.startsWith('#combo=') ? comboPayloadOf(hash) : null)
 /** Los datos de un enlace de replay de un duelo (`#replay=…`), o null: los decodifica y valida la pantalla de Replays (`duel-replay-share.ts`). */
 const replayHash = (hash: string) => /^#replay=([A-Za-z0-9_-]+)$/.exec(hash)?.[1] ?? null
+
+/** Crear tier list es «La tuya» de Tier lists (`buildTierListHash` en `app/meta.ts`, que no se importa acá: trae los datos del meta). */
+const MY_TIER_LIST_HASH = '#meta?vista=tuya'
+
+/** `#tier-maker` es el enlace de cuando el creador era una pantalla aparte: se reescribe, sin sumar una entrada al historial. */
+function rewriteLegacyHash(): void {
+  if (/^#tier-maker(\?|$)/.test(window.location.hash)) window.history.replaceState(null, '', MY_TIER_LIST_HASH)
+}
 
 /** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#tournaments?deck=123`). */
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
@@ -124,16 +132,18 @@ export function DeckModeScreen() {
 
     // Un enlace de combo (`#combo=…`) abre la práctica, que lo repasa.
     // Uno de replay, Replays, que lo muestra.
+    rewriteLegacyHash()
     return comboHash(window.location.hash) ? 'practice' : replayHash(window.location.hash) ? 'replays' : (getStepFromHash(window.location.hash) ?? recommendedStep)
   })
   const [sharedReplay, setSharedReplay] = useState<string | null>(() => (typeof window === 'undefined' ? null : replayHash(window.location.hash)))
   const isDeckBuilderStep = activeStep === 'deck-builder'
-  // Si se llegó al builder desde Jugar (el lobby o la sala), ofrece volver a donde se estaba; volver a Jugar borra el recuerdo.
+  // Si se llegó al builder desde Jugar (Solo, el lobby o la sala), ofrece volver a donde se estaba; volver a Jugar borra el recuerdo.
   const [playReturn, setPlayReturn] = useState<string | null>(() => readPlayReturn())
+  const atPlayHome = activeStep === 'duel' || activeStep === 'solo'
   useEffect(() => {
-    if (activeStep === 'duel') clearPlayReturn()
-    setPlayReturn(activeStep === 'duel' ? null : readPlayReturn())
-  }, [activeStep])
+    if (atPlayHome) clearPlayReturn()
+    setPlayReturn(atPlayHome ? null : readPlayReturn())
+  }, [atPlayHome])
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
@@ -165,17 +175,20 @@ export function DeckModeScreen() {
     systemRuleNames: controller.probability.systemRuleNames,
     hasCompletedClassification: hasCompletedRoleStep,
   })
-  // El duelo automático (beta): con el interruptor del lobby de Jugar prendido (y un navegador que pueda correr el núcleo), «Entrenar solo» abre la mesa contra el núcleo de reglas en vez de la práctica.
+  // El duelo automático: con el modo prendido (y un navegador que pueda correr el núcleo), la mesa (`#practice`) es la del núcleo de reglas en vez de la práctica manual.
   const autoPrefs = useAutoPrefs()
-  // «Seguir en manual» del automático es de esta partida, no del interruptor (que queda como estaba): al volver al lobby de Jugar, se olvida.
+  // «Seguir en manual» del automático es de esta partida, no del interruptor (que queda como estaba): al volver a Solo o a Online, se olvida. Lo mismo el Manual elegido en Solo.
   const [manualHere, setManualHere] = useState(false)
+  // Un bot de Solo juega siempre en automático, aunque el modo esté en Manual: es de esta partida, como el de arriba.
+  const [autoHere, setAutoHere] = useState(false)
   // Y al revés, «Seguir en automático» de la práctica: la mesa manual desde la que sigue el núcleo (no se guarda: recargar vuelve a empezar).
   const [resumeFrom, setResumeFrom] = useState<MatState | null>(null)
 
-  if (manualHere && activeStep === 'duel') setManualHere(false)
-  if (resumeFrom && activeStep === 'duel') setResumeFrom(null)
+  if (manualHere && atPlayHome) setManualHere(false)
+  if (autoHere && atPlayHome) setAutoHere(false)
+  if (resumeFrom && atPlayHome) setResumeFrom(null)
   const canAuto = autoPrefs.duel && canRunAuto()
-  const autoSolo = canAuto && !manualHere
+  const autoSolo = (canAuto || (autoHere && canRunAuto())) && !manualHere
   // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -214,6 +227,7 @@ export function DeckModeScreen() {
       setActiveStep('replays')
     }
     const handleHashChange = () => {
+      rewriteLegacyHash()
       openComboLink()
       openReplayLink()
       const nextStep = getStepFromHash(window.location.hash)
@@ -324,7 +338,7 @@ export function DeckModeScreen() {
   const deckBuilderStep = controller.deckBuilderStep
   const onCardQuery = deckBuilderStep.onQueryChange
   // El menú: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel encima) y la referencia. La práctica necesita cartas en el Main.
-  const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0, duel: duelConnect !== null, paused: pausedDuel }), [navigationItems, mainDeckCount, duelConnect, pausedDuel])
+  const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { duel: duelConnect !== null, paused: pausedDuel }), [navigationItems, duelConnect, pausedDuel])
   const handleNavSelect = useCallback(
     (key: string, detail?: string) => {
       if (key === 'mascots') setMascotsOpen(true)
@@ -336,6 +350,8 @@ export function DeckModeScreen() {
       // La hoja de Jugar del celular: el paso del lobby que pide cada entrada (el duelo lo lee de la dirección) o volver al duelo en pausa.
       else if (key === 'duel-watch' || key === 'duel-join') window.location.hash = `#duel?view=${key.slice('duel-'.length)}`
       else if (key === 'duel-resume') window.location.hash = pausedDuel ? `#duel?room=${pausedDuel.room}` : '#duel'
+      // «Crear tier list» del buscador de la app: Tier lists, en «La tuya».
+      else if (key === 'tier-maker') window.location.hash = MY_TIER_LIST_HASH
       else if (isDeckWorkflowStepKey(key)) handleStepChange(key)
     },
     [handleStepChange, pausedDuel, onCardQuery],
@@ -391,16 +407,32 @@ export function DeckModeScreen() {
       {activeStep === 'practice' ? (
         <div id="practice" className="h-full min-h-0 min-w-0">
           <Heading level="page" className="sr-only">
-            {t('shell.practice.title')}
+            {t('shell.solo.title')}
           </Heading>
           {autoSolo && matDeck.mainIds.length > 0 ? (
             // Con las reglas del Lab de la práctica: las salidas y problemas de la mano de apertura, también acá.
-            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#duel' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
+            <LazyAutoSolo mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} handSize={controller.probability.handSize} onExit={() => { window.location.hash = '#solo' }} onManual={(game) => { if (game) resumePractice(game); setManualHere(true) }} {...(practice ? { lab: practice } : {})} {...(resumeFrom ? { resume: { state: resumeFrom, lp: [8000, 8000] as const } } : {})} />
           ) : practice ? (
             <LazyPracticeSection {...practice} {...(canAuto ? { onAuto: (state: MatState) => { setResumeFrom(state); setManualHere(false) } } : {})} />
           ) : (
             <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>
           )}
+        </div>
+      ) : null}
+
+      {activeStep === 'solo' ? (
+        <div id="solo" className="min-w-0 min-[1101px]:min-h-full">
+          <LazySoloScreen
+            deckName={controller.exportDeck.deckName}
+            deckSize={matDeck.mainIds.length}
+            minDeck={controller.probability.handSize}
+            onOpenBuilder={openBuilderFromPlay}
+            onPlay={(mode) => {
+              setManualHere(mode === 'manual')
+              setAutoHere(mode === 'auto')
+              setActiveStep('practice')
+            }}
+          />
         </div>
       ) : null}
 
@@ -430,12 +462,6 @@ export function DeckModeScreen() {
       {activeStep === 'meta' ? (
         <div id="meta" className="min-w-0 min-[1101px]:min-h-full">
           <LazyTierListsScreen />
-        </div>
-      ) : null}
-
-      {activeStep === 'tier-maker' ? (
-        <div id="tier-maker" className="min-w-0 min-[1101px]:min-h-full">
-          <LazyTierMakerScreen />
         </div>
       ) : null}
 

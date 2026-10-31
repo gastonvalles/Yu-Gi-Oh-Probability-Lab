@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { renderTierListImage } from '../../app/tierlist-image'
 import {
@@ -25,16 +25,15 @@ import {
   type Place,
 } from '../../app/tierlist-maker'
 import { canvasToJpegBlob, downloadBlob } from '../../app/deck-image-export-download'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
-import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
-import { StepPage } from '../ui/StepPage'
 import { TierMakerAddCards } from './TierMakerAddCards'
 import { TierMakerBoard } from './TierMakerBoard'
 import { labelInk } from './TierStrip'
@@ -44,19 +43,32 @@ const IMAGE_NAME = 'tier-list'
 /** La calidad del JPG (Gastón, 2026-10-22: «debe ser un jpg»): alta, porque la imagen lleva letras y bordes finos y los 0,92 de siempre los empastan un poco. */
 const IMAGE_QUALITY = 0.95
 
+interface TierMakerScreenProps {
+  /** El encabezado de afuera; en escritorio recibe «Descargar imagen» para su costado (en el celular el botón queda en la fila de acciones). */
+  header?: (download: ReactNode) => ReactNode
+  /** El selector «Del meta · La tuya»: encabeza la fila de acciones, con «Volver todo a…» a la derecha. */
+  switcher?: ReactNode
+  /** Cada cambio guardado: cuántas cartas tiene la lista (la cuenta de «La tuya»). */
+  onCountChange?: (count: number) => void
+}
+
 /**
  * El creador de tier lists propias (Gastón, 2026-10-19: «debe haber una herramienta para hacer nuestras propias tierlists»): una lista con filas de nombre y color (S a F de arranque), las cartas que se eligen
  * (buscador o meta) repartidas entre ellas arrastrando o tocando, guardada en el navegador, y salida como imagen (JPG). La pantalla muestra y edita sólo la lista activa. La lógica (filas, movimientos, lo guardado) es
- * de `app/tierlist-maker.ts`; esto es la pantalla.
+ * de `app/tierlist-maker.ts`; esto es la pantalla, sin página ni encabezado propios: va adentro de Tier lists («La tuya»), que los pone.
  */
-export function TierMakerScreen() {
+export function TierMakerScreen({ header, switcher, onCountChange }: TierMakerScreenProps) {
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [store, setStore] = useState<MakerStore>(() => readStore(t('meta.maker.defaultTitle')))
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [editingTier, setEditingTier] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const list = store.lists.find((candidate) => candidate.id === store.activeId) ?? (store.lists[0] as MakerList)
 
-  useEffect(() => writeStore(store), [store])
+  useEffect(() => {
+    writeStore(store)
+    onCountChange?.(countCards(list))
+  }, [store, list, onCountChange])
 
   const update = (change: (current: MakerList) => MakerList) =>
     setStore((current) => ({ ...current, lists: current.lists.map((candidate) => (candidate.id === list.id ? change(candidate) : candidate)) }))
@@ -116,33 +128,26 @@ export function TierMakerScreen() {
     if (next) requestAnimationFrame(() => [...document.querySelectorAll<HTMLElement>('[data-tier-row]')].find((box) => box.dataset.tierRow === next.id)?.querySelector<HTMLElement>('button')?.focus())
   }
 
-  return (
-    <StepPage as="article" wide>
-      <StepHero
-        title={t('meta.maker.title')}
-        icon="sort"
-        subtitle={t('meta.maker.subtitle')}
-        help={
-          <div className="grid gap-1">
-            <strong className="text-foreground">{t('meta.maker.how')}</strong>
-            <ul className="m-0 grid list-disc gap-1 pl-4">
-              <li>{t('meta.maker.help1')}</li>
-              <li>{t('meta.maker.help2')}</li>
-              <li>{t('meta.maker.help3')}</li>
-            </ul>
-          </div>
-        }
-      />
+  const downloadButton = (
+    <Button variant="primary" size="sm" icon="download" aria-busy={busy} disabled={busy} onClick={() => void download()}>
+      {t('meta.maker.download')}
+    </Button>
+  )
+  const downloadInHeader = header !== undefined && isDesktop
 
-      {/* `justify-between` y no `ml-auto`: si en el celular no entran juntos, los dos quedan alineados a la izquierda, uno abajo del otro (con `ml-auto`, «Descargar imagen» bajaba sola a la derecha). */}
+  return (
+    <>
+      {header?.(downloadInHeader ? downloadButton : null)}
+
+      {/* `justify-between` y no `ml-auto`: si en el celular no entran juntos, quedan alineados a la izquierda, uno abajo del otro (con `ml-auto`, «Descargar imagen» bajaba sola a la derecha).
+          El selector va primero; en el celular ocupa su renglón entero. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
+        {switcher}
         {/* `max-w-full`: en 320 px y en inglés no entra en un renglón y se parte adentro, en vez de salirse. */}
         <Button variant="tertiary" size="sm" className="max-w-full" disabled={ranked === 0} onClick={() => update(resetPlacements)}>
           {t('meta.maker.resetTiers')}
         </Button>
-        <Button variant="primary" size="sm" icon="download" aria-busy={busy} disabled={busy} onClick={() => void download()}>
-          {t('meta.maker.download')}
-        </Button>
+        {downloadInHeader ? null : downloadButton}
       </div>
 
       <div>
@@ -238,6 +243,20 @@ export function TierMakerScreen() {
           </div>
         ) : null}
       </Modal>
-    </StepPage>
+    </>
+  )
+}
+
+/** Cómo se usa el creador: la ayuda (ⓘ) del encabezado de Tier lists en «La tuya». */
+export function TierMakerHelp() {
+  return (
+    <div className="grid gap-1">
+      <strong className="text-foreground">{t('meta.maker.how')}</strong>
+      <ul className="m-0 grid list-disc gap-1 pl-4">
+        <li>{t('meta.maker.help1')}</li>
+        <li>{t('meta.maker.help2')}</li>
+        <li>{t('meta.maker.help3')}</li>
+      </ul>
+    </div>
   )
 }

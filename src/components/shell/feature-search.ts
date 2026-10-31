@@ -21,7 +21,7 @@ const KEYWORD_KEYS = {
   'probability-lab': 'shell.find.kw.probability-lab',
   workspace: 'shell.find.kw.workspace',
   export: 'shell.find.kw.export',
-  practice: 'shell.find.kw.practice',
+  solo: 'shell.find.kw.solo',
   duel: 'shell.find.kw.duel',
   'duel-watch': 'shell.find.kw.duel-watch',
   'duel-join': 'shell.find.kw.duel-join',
@@ -45,11 +45,11 @@ export function normalize(text: string): string {
 
 /**
  * Todo lo que se puede hacer en la app, en el orden del menú: los destinos de cada grupo (los de la hoja del celular, que son los más completos: traen «Mirar un duelo» y «Entrar con un enlace»;
- * también los que el menú esconde, como «Entrenar solo») más las herramientas que no son un destino: las mascotas y, donde hay buscador, las cartas.
+ * también los que el menú esconde, como «Crear tier list») más las herramientas que no son un destino: las mascotas y, donde hay buscador, las cartas.
  */
 export function buildFindEntries(groups: NavGroup[], { cards }: { cards: boolean }): FindEntry[] {
   const fromGroups = groups.flatMap((group) =>
-    (group.sheetItems ?? group.items).map<FindEntry>((item) => ({
+    [...(group.sheetCards ?? []), ...(group.sheetItems ?? group.items)].map<FindEntry>((item) => ({
       key: item.key,
       label: item.label,
       group: group.label,

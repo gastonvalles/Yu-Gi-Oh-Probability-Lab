@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from 'react'
 
 import type { ChainRowState } from '../../../app/auto/chain-feed'
+import { ELFNOTE, ELFNOTE_DECK } from '../../../app/bot-deck-lists'
 import { DuelRailsContext } from '../../../app/duel-rails'
 import { BOT_DECK_MENU, DEFAULT_HANDTRAP_CONFIG, rivalKindOf, withRival, type BotDeckInfo } from '../../../app/handtraps'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
 import { t } from '../../../i18n'
+import type { ApiCardSearchResult } from '../../../ygoprodeck'
 import { AskOptions, type AskOption } from '../../auto/AskOptions'
 import { AskPrompt } from '../../auto/AskPrompt'
 import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlaceMode } from '../../auto/AutoBar'
@@ -17,6 +19,8 @@ import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
+import { BotDeckSheet } from '../../duel/BotDeckSheet'
+import { SoloScreen } from '../../duel/SoloScreen'
 import { LifeScore } from '../../duel/LifeScore'
 import { MatScene } from '../../probability/MatArena'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatRulesContext } from '../../probability/MatBarActions'
@@ -147,6 +151,12 @@ export function AutoSection() {
       <CounterSample onAnswer={setAnswer} />
       <BotLogSample />
       <RivalSample />
+      <BotDeckSample />
+      <Specimen title="Solo · la lista de rivales, la ficha y la barra" layout="column" note={<>La pantalla Solo de verdad (lo que se toca se guarda como en la app): en escritorio, la lista (430 px) y la ficha lado a lado con «Jugar contra X»; en el celular (achicá la ventana), la lista y la barra pegada sobre la de navegación, con lo elegido a la izquierda (abre la ficha en una hoja) y «Jugar». Cada ajuste va en su fila: un solo segmentado (Quién empieza) y el resto interruptores. Archivo: <Tag>duel/SoloScreen.tsx</Tag></>}>
+        <div className="overflow-hidden rounded-card border border-border-subtle">
+          <SoloScreen deckName="Mi deck" deckSize={40} minDeck={5} onOpenBuilder={() => {}} onPlay={() => {}} />
+        </div>
+      </Specimen>
 
       <Specimen title="Lo que contestó la última muestra" note="Cada hoja y cada pregunta de arriba le pasan lo elegido a quien la abrió; acá se ve qué devolvió.">
         <Tag>{answer}</Tag>
@@ -167,7 +177,70 @@ export function AutoSection() {
 /** Uno solo de los mazos listos: así se ve la fila sin menú (con dos o más aparece «Cambiar mazo»). */
 const ONE_DECK: readonly BotDeckInfo[] = BOT_DECK_MENU.slice(0, 1)
 
-/** La fila «Rival» (la de las reglas de Jugar solo automático) y la hoja de «Cambiar rival» del duelo, con uno o todos los mazos listos. */
+/** «Ver mazo» sin red: los nombres son las claves de `ELFNOTE` (los apodos de la maqueta); las imágenes, las del proxy por passcode (sin red, las iniciales). */
+const ELFNOTE_NAMES = new Map<number, string>(Object.entries(ELFNOTE).map(([key, id]) => [id, key]))
+const sampleDeckCard = (id: number): ApiCardSearchResult => ({
+  ygoprodeckId: id,
+  name: ELFNOTE_NAMES.get(id) ?? String(id),
+  cardType: 'Effect Monster',
+  frameType: 'effect',
+  description: null,
+  race: null,
+  attribute: null,
+  level: null,
+  linkValue: null,
+  atk: null,
+  def: null,
+  archetype: null,
+  ygoprodeckUrl: null,
+  imageUrl: null,
+  imageUrlSmall: null,
+  banlist: { tcg: null, ocg: null, goat: null },
+  genesys: { points: null },
+})
+const DECK_LOADERS = {
+  ready: async (ids: number[]) => ids.map(sampleDeckCard),
+  loading: () => new Promise<ApiCardSearchResult[]>(() => {}),
+  error: async (): Promise<ApiCardSearchResult[]> => {
+    throw new Error('No se pudo conectar con YGOPRODeck. Revisá tu conexión e intentá de nuevo.')
+  },
+} as const
+
+function BotDeckSample() {
+  const [open, setOpen] = useState<keyof typeof DECK_LOADERS | null>(null)
+
+  return (
+    <Specimen title="Ver mazo · la lista fija de un bot" layout="column" note={<>Desde la ficha de un bot (no de Pasivo ni Handtraps): un solo <Tag>Segmented</Tag> «Main · 42 | Extra · 15» y la grilla de 5 por fila, de sólo lectura, con <Tag>CopiesBadge</Tag> si son más de una copia. Tocar una carta la abre en grande (<Tag>CardZoom</Tag>) y al cerrarla se vuelve a la hoja. Las cartas llegan en un solo pedido a YGOPRODeck (un día en el dispositivo); mientras, el esqueleto, y si falla, el error con «Reintentar». Abajo sigue la acción principal. Acá, sin red. Archivo: <Tag>duel/BotDeckSheet.tsx</Tag></>}>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" icon="cards" aria-haspopup="dialog" onClick={() => setOpen('ready')}>
+          Ver mazo
+        </Button>
+        <Button variant="secondary" size="sm" aria-haspopup="dialog" onClick={() => setOpen('loading')}>
+          Cargando
+        </Button>
+        <Button variant="secondary" size="sm" aria-haspopup="dialog" onClick={() => setOpen('error')}>
+          Sin red
+        </Button>
+      </div>
+      {(Object.keys(DECK_LOADERS) as (keyof typeof DECK_LOADERS)[]).map((key) => (
+        <BotDeckSheet
+          key={key}
+          isOpen={open === key}
+          deck={ELFNOTE_DECK}
+          loadCards={DECK_LOADERS[key]}
+          onClose={() => setOpen(null)}
+          footer={
+            <Button variant="primary" color="success" size="lg" icon="play" fullWidth onClick={() => setOpen(null)}>
+              {t('solo.play', { name: ELFNOTE_DECK.name })}
+            </Button>
+          }
+        />
+      ))}
+    </Specimen>
+  )
+}
+
+/** La elección del rival y la hoja de «Cambiar rival» del duelo (antes de jugar, se elige en Solo), con uno o todos los mazos listos. */
 function RivalSample() {
   const [two, setTwo] = useState(false)
   const [draft, setDraft] = useState<RivalDraft>({ kind: 'bot', deck: 'sky-striker' })

@@ -1,10 +1,9 @@
 import { cx } from '../ui/cx'
-import { t } from '../../i18n'
 import { RAIL_LABEL } from './rail'
 
 /**
- * La marca de la app: el anillo con una carta y el nombre, YGO·Ultra·Lab (Ultra en ámbar), con el aviso de sitio no oficial. En el menú lateral
- * contraído el nombre se desvanece y el menú lo recorta (no se quita: así el logo no se mueve y el ancho se anima sin saltos).
+ * La marca de la app: el anillo con una carta y el nombre, YGO·Ultra·Lab (Ultra en ámbar). En el menú lateral contraído el nombre se desvanece
+ * y el menú lo recorta (no se quita: así el logo no se mueve y el ancho se anima sin saltos).
  */
 export function AppBrand({ className }: { className?: string }) {
   return (
@@ -18,7 +17,6 @@ export function AppBrand({ className }: { className?: string }) {
         <span translate="no" className="truncate text-body font-bold tracking-[-0.01em] text-foreground">
           YGO<span className="text-nav-active">Ultra</span>Lab
         </span>
-        <span className="text-micro text-muted">{t('shell.brand.unofficial')}</span>
       </span>
     </div>
   )

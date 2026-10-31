@@ -1,4 +1,4 @@
-import type { MessageKey } from '../i18n'
+import { BOT_DECK_LISTS, type BotDeckList } from './bot-deck-lists'
 import { isRecord } from './utils'
 import { shuffleWithSeed, type RivalHand } from './practice-mat'
 
@@ -264,21 +264,10 @@ export interface HandtrapConfig {
 const BOT_DECK_ID = /^[a-z0-9-]{1,40}$/
 
 /** Un mazo del rival «Bot» como lo ofrece la fila «Rival»: su id (`botDeck`), su nombre y una línea de lo que es. */
-export interface BotDeckInfo {
-  id: string
-  name: string
-  line: Extract<MessageKey, `auto.rival.deck.${string}`>
-}
+export type BotDeckInfo = Pick<BotDeckList, 'id' | 'name' | 'line'>
 
-/**
- * Los mazos listos del bot (`ready` en `BOT_DECKS` de `auto/bot/decks`), sin sus ejecutores: el lobby los ofrece y no puede importar `auto/` (`auto-isolation.test.ts`).
- * `auto-rival.test.tsx` revisa que coincidan con `BOT_DECKS`.
- */
-export const BOT_DECK_MENU: readonly BotDeckInfo[] = [
-  { id: 'sky-striker', name: 'Sky Striker', line: 'auto.rival.deck.skyStriker' },
-  { id: 'branded', name: 'Despia Branded', line: 'auto.rival.deck.branded' },
-  { id: 'elfnote', name: 'Elfnote', line: 'auto.rival.deck.elfnote' },
-]
+/** Los mazos listos del bot (`bot-deck-lists.ts`, sin ejecutores: el lobby no puede importar `auto/`, `auto-isolation.test.ts`). */
+export const BOT_DECK_MENU: readonly BotDeckInfo[] = BOT_DECK_LISTS.filter((deck) => deck.ready).map(({ id, name, line }) => ({ id, name, line }))
 
 /** Contra quién se juega «Jugar solo automático»: el pasivo, el de handtraps (el simulador) o el bot con su mazo. */
 export type RivalKind = 'passive' | 'handtraps' | 'bot'

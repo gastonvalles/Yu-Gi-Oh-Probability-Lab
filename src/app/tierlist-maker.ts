@@ -297,6 +297,13 @@ export function readStore(fallbackTitle: string): MakerStore {
   }
 }
 
+/** Cuántas cartas tiene la lista activa guardada: la cuenta de «La tuya» en Tier lists, sin abrir el creador. */
+export function savedCardCount(): number {
+  const store = readStore('')
+
+  return countCards(store.lists.find((list) => list.id === store.activeId) ?? (store.lists[0] as MakerList))
+}
+
 export function writeStore(store: MakerStore): void {
   try {
     localStorage.setItem(TIERLIST_STORAGE_KEY, JSON.stringify(store))

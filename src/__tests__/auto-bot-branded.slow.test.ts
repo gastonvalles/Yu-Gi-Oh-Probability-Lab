@@ -4,7 +4,7 @@ import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import type { Bot, BotDecision } from '../app/auto/bot/bot'
 import { BOT_DECKS } from '../app/auto/bot/decks'
-import { BRANDED as B, BRANDED_DECK } from '../app/auto/bot/decks/branded'
+import { BRANDED as B, BRANDED_DECK } from '../app/bot-deck-lists'
 import { brandedBot } from '../app/auto/bot/executors/branded'
 import { localTransport } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
@@ -14,7 +14,7 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStor
 
 /**
  * El ejecutor de Despia Branded con el núcleo real (lento: `npm run test:auto`).
- * - **Goldfish**: el bot (primero, con el mazo de `decks/branded.ts` por `botDeck`, como lo arma la sesión) contra un rival pasivo de 40 Normales, en `GOLDFISH` manos con semilla.
+ * - **Goldfish**: el bot (primero, con el mazo de `bot-deck-lists.ts` por `botDeck`, como lo arma la sesión) contra un rival pasivo de 40 Normales, en `GOLDFISH` manos con semilla.
  *   Falla si cae por debajo de los umbrales (`THRESHOLDS`, con su porqué) o si el núcleo le rechaza una respuesta. Mide también cuántas preguntas contesta por turno y cuánto tarda
  *   cada decisión.
  * - **Escenarios**: las decisiones clave con una mano fija, con la oferta literal del núcleo y la respuesta del bot: Aluber busca Branded Fusion, Branded Fusion a Lubellion y

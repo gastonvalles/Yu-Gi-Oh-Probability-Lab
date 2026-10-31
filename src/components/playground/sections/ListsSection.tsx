@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { Badge } from '../../ui/Badge'
 import { Button } from '../../ui/Button'
 import { Card } from '../../ui/Card'
 import { cx } from '../../ui/cx'
@@ -25,6 +26,7 @@ export function ListsSection() {
   const [timer, setTimer] = useState(true)
   const [side, setSide] = useState(false)
   const [picked, setPicked] = useState('lu')
+  const [rival, setRival] = useState('elfnote')
   const [said, setSaid] = useState('')
 
   return (
@@ -44,7 +46,7 @@ export function ListsSection() {
             <ShortcutTile icon="tag" label="Roles" badge={{ text: '3', label: '3 cartas sin rol' }} onClick={() => setSaid('Roles')} />
             <ShortcutTile icon="flask" label="Lab" onClick={() => setSaid('Lab')} />
             <ShortcutTile icon="swap" label="Comparar" onClick={() => setSaid('Comparar')} />
-            <ShortcutTile icon="hand" label="Entrenar solo" onClick={() => setSaid('Entrenar solo')} />
+            <ShortcutTile icon="gear" label="Reglas" onClick={() => setSaid('Reglas')} />
             <ShortcutTile icon="link" label="Retar a un amigo" onClick={() => setSaid('Retar a un amigo')} />
             <ShortcutTile icon="heart" label="Vidas" href="#listas" />
             <ShortcutTile icon="download" label="Exportar" disabled onClick={() => setSaid('Exportar: primero armá un deck')} />
@@ -53,7 +55,6 @@ export function ListsSection() {
           <ShortcutGrid label="Play shortcuts">
             <ShortcutTile icon="link" label="Challenge a friend" onClick={() => setSaid('Challenge a friend')} />
             <ShortcutTile icon="tag" label="Join with a code" onClick={() => setSaid('Join with a code')} />
-            <ShortcutTile icon="hand" label="Train solo" onClick={() => setSaid('Train solo')} />
             <ShortcutTile icon="gear" label="Rules" onClick={() => setSaid('Rules')} />
           </ShortcutGrid>
           <Tag>cargando</Tag>
@@ -71,6 +72,16 @@ export function ListsSection() {
             <ListRow icon="lock" title="Sala cerrada" subtitle="Apagada: todavía no se puede entrar" disabled onClick={() => setSaid('no llega')} />
             <ListRow media={<CardStub className="h-12 w-9" />} wrap title="Con wrap, un registro: el título es una frase entera, en varios renglones y sin negrita (Qué hizo el bot y por qué)." onClick={() => setSaid('Registro')} />
           </ListGroup>
+        </Specimen>
+
+        <Specimen title="ListGroup + ListRow choice (una elección)" layout="column" note={<>Los rivales de Solo: adentro de un <Tag>role="radiogroup"</Tag>, cada fila es un <Tag>radio</Tag> (sin flecha: elegir no abre nada) y la elegida lleva el aro ámbar. Apagada, con <Tag>aria-disabled</Tag>: se enfoca y dice por qué. Archivos: <Tag>ui/ListRow.tsx</Tag> <Tag>duel/SoloScreen.tsx</Tag></>}>
+          <div role="radiogroup" aria-label="Rival de muestra">
+            <ListGroup>
+              <ListRow choice media={<CardStub />} title="Elfnote" subtitle="Sincronías en el centro, también en tu turno." selected={rival === 'elfnote'} end={<Badge>Último</Badge>} onClick={() => setRival('elfnote')} />
+              <ListRow choice icon="target" title="Pasivo" subtitle="No juega: sólo recibe." selected={rival === 'passive'} onClick={() => setRival('passive')} />
+              <ListRow choice media={<CardStub />} title="Ryzeal" subtitle="Necesita el modo automático" disabled onClick={() => setRival('ryzeal')} />
+            </ListGroup>
+          </div>
         </Specimen>
 
         <Specimen title="ListGroup (ajustes)" layout="column" note={<>Título y apoyo a la izquierda; a la derecha, el interruptor (la fila entera lo cambia) o el valor con la flecha.</>}>

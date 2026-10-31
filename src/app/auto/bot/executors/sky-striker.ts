@@ -1,6 +1,6 @@
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
-import { SKY, SKY_STRIKER_DECK } from '../decks/sky-striker'
+import { SKY, SKY_STRIKER_DECK } from '../../../bot-deck-lists'
 import { turnBot, type CardFacts } from '../turn'
 import {
   ATTACK_TIMING,
@@ -29,7 +29,7 @@ import {
 } from './executor'
 
 /**
- * El ejecutor de Sky Striker (etapa 2 del bot): juega la lista fija de `decks/sky-striker.ts` con prioridades escritas a partir del texto impreso y los scripts (CardScripts al
+ * El ejecutor de Sky Striker (etapa 2 del bot): juega la lista fija de `bot-deck-lists.ts` con prioridades escritas a partir del texto impreso y los scripts (CardScripts al
  * commit de `testedWith`). La idea del mazo: un solo monstruo (Raye o Roze) que pasa a la Zona de Monstruos Extra como un Sky Striker Ace de Enlace, así la Zona Principal queda
  * vacía y se pueden activar las Mágicas (todas piden «si no controlás monstruos en tu Zona Principal»). Sus Mágicas Rápidas se colocan para tu turno.
  *

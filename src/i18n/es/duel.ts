@@ -1,6 +1,5 @@
 /** Duelo por enlace: el menú, la sala, la mesa con los dos campos, la barra de puntos de vida y la conexión. */
 export const duel = {
-  'duel.nav.title': 'Jugar',
   'duel.unavailable': 'El duelo con un amigo todavía no está disponible en esta versión de la app.',
 
   // La mesa con los dos campos.
@@ -96,16 +95,12 @@ export const duel = {
   'duel.play.friendHint': 'Mandale un enlace a quien quieras.',
   'duel.play.code': 'Tengo un código',
   'duel.play.codeHint': 'Entrá con un enlace o un código.',
-  'duel.play.train': 'Entrenar solo',
-  'duel.play.trainHint': 'Tu mesa, sin rival.',
-  'duel.play.trainNeedDeck': 'Para entrenar hace falta un deck armado en el builder.',
   'duel.play.deckNone': 'Sin deck',
   'duel.play.deckChange': 'Cambiar',
   'duel.play.rulesYours': 'Con tus reglas',
   'duel.play.rules': 'Reglas del duelo',
   'duel.play.rulesSave': 'Guardar reglas',
   'duel.play.rulesOpen': 'Abrir duelo',
-  'duel.play.rulesSolo': 'Jugar solo',
   'duel.play.timeNone': 'Sin tiempo',
   'duel.play.genesysLine': 'Genesys {points} pts',
   'duel.play.timeMin': '{min} min',
@@ -150,8 +145,6 @@ export const duel = {
   'duel.create.match': 'Match · mejor de 3',
   'duel.create.singleHint': 'Un solo duelo.',
   'duel.create.matchHint': 'Gana quien llegue a 2 duelos.',
-  'duel.create.solo': 'Solo',
-  'duel.create.soloHint': 'Tu mesa, sin rival ni sala: vos solo con tu deck.',
   'duel.create.siding': 'Sidedeck',
   'duel.create.sidingHint': 'Con el Side Deck: se arma entre un duelo y el siguiente.',
   'duel.create.visibility': 'Quién puede entrar',

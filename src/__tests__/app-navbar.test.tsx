@@ -7,7 +7,7 @@ import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../componen
 import { AppShell } from '../components/shell/AppShell'
 
 const STEPS = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 })
-const GROUPS = buildAppNavGroups(STEPS, { practice: true })
+const GROUPS = buildAppNavGroups(STEPS, {})
 
 /** Una ventana de escritorio (desde 1101 px): hay barra de arriba y menú lateral. */
 function desktopWindow() {
@@ -42,7 +42,8 @@ describe('la barra de arriba de escritorio', () => {
     const bar = within(screen.getByTestId('app-navbar'))
 
     expect(bar.getByRole('button', { name: 'Contraer menú' })).toBeInTheDocument()
-    expect(bar.getByText('Sitio no oficial')).toBeInTheDocument()
+    expect(screen.getByTestId('app-navbar')).toHaveTextContent('YGOUltraLab')
+    expect(bar.queryByText('Sitio no oficial')).not.toBeInTheDocument()
     expect(bar.getByRole('button', { name: 'Buscar en la app' })).toBeInTheDocument()
     expect(bar.getByRole('button', { name: 'Mascotas' })).toBeInTheDocument()
     expect(bar.getByRole('group', { name: 'Idioma' })).toBeInTheDocument()

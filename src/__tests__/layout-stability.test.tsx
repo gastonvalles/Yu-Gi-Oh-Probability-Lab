@@ -17,12 +17,13 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
   it('los destinos del menú reservan el ancho de la negrita: al abrirse uno, ninguno se mueve', () => {
     const groups = buildAppNavGroups(
       buildDeckWorkflowNavigationItems({ mainDeckCount: 40, roleCardCount: 40, unclassifiedCardCount: 0, hasCompletedRoleStep: true, patternCount: 2 }),
-      { practice: true },
+      {},
     )
 
     render(<SidebarNav groups={groups} activeKey="probability-lab" onSelect={() => {}} />)
 
-    for (const item of groups.flatMap((group) => group.items)) {
+    // Los ocultos (Crear tier list, que es «La tuya» de Tier lists) no se dibujan.
+    for (const item of groups.flatMap((group) => group.items).filter((item) => !item.hidden)) {
       // El nombre accesible es uno solo: la copia que reserva el ancho está oculta a los lectores de pantalla.
       const [reserve, shown] = within(screen.getByRole('button', { name: new RegExp(`^${item.title}`) })).getAllByText(item.label)
 

@@ -10,7 +10,7 @@ import { DeckModeScreen } from '../components/deck-mode/DeckModeScreen'
 import { PlayHome } from '../components/duel/PlayHome'
 import { deckState, fortyCardMain, storeWith } from './support/deck-fixtures'
 
-// La entrada al duelo automático, para todos: «Modo del duelo» en las reglas de Jugar y la mesa que abre «Entrenar solo». Las dos mesas van de mentira (lo que dibujan lo prueban
+// La entrada al duelo automático, para todos: «Modo del duelo» en las reglas de Online y la mesa de Solo (`#practice`). Las dos mesas van de mentira (lo que dibujan lo prueban
 // `practice-*` y `auto-screen-*`): acá importa cuál se abre.
 vi.mock('../components/deck-mode/lazy-steps', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../components/deck-mode/lazy-steps')>()),
@@ -65,7 +65,7 @@ afterEach(() => {
 })
 
 const lobby = (props: Partial<ComponentProps<typeof PlayHome>> = {}) =>
-  render(<PlayHome view={null} name="" onName={() => {}} deckName="Mi deck" onOpenBuilder={() => {}} deckReady deckSize={40} minDeck={40} trainReady onTrain={() => {}} onOpenDuel={() => {}} onJoin={() => {}} paused={null} onResume={() => {}} onDropPaused={() => {}} {...props} />)
+  render(<PlayHome view={null} name="" onName={() => {}} deckName="Mi deck" onOpenBuilder={() => {}} deckReady deckSize={40} minDeck={40} onOpenDuel={() => {}} onJoin={() => {}} paused={null} onResume={() => {}} onDropPaused={() => {}} {...props} />)
 
 /** La hoja de «Reglas del duelo» abierta desde el atajo de la portada. */
 const openRules = () => {
@@ -94,37 +94,35 @@ describe('«Modo del duelo», en las reglas de Jugar', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('automático de entrada, con rival y en Solo: elegir «Manual» lo guarda y vale para las dos, y «Automático» lo vuelve', () => {
+  it('automático de entrada: elegir «Manual» lo guarda y «Automático» lo vuelve; el «Tipo» es Single · Match (jugar solo es otra entrada del menú)', () => {
     withWorker()
     setAutoPref('duel', true)
     lobby()
     const rules = openRules()
     const mode = within(rules).getByRole('radiogroup', MODE)
 
+    expect(within(within(rules).getByRole('radiogroup', { name: 'Tipo' })).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Single', 'Match · mejor de 3'])
     expect(within(mode).getByRole('radio', { name: 'Automático' })).toBeChecked()
     expect(within(rules).getByText(/^El núcleo aplica las reglas por los dos/)).toBeInTheDocument()
     fireEvent.click(within(mode).getByRole('radio', { name: 'Manual' }))
     expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([false, 'off'])
     expect(within(rules).getByText(/^Movés las cartas vos/)).toBeInTheDocument()
-
-    fireEvent.click(within(rules).getByRole('radio', { name: 'Solo' }))
-    const solo = within(rules).getByRole('radiogroup', MODE)
-    expect(within(solo).getByRole('radio', { name: 'Manual' })).toBeChecked()
-    expect(within(rules).getByRole('switch', { name: 'Handtraps del rival' })).toBeInTheDocument()
-    fireEvent.click(within(solo).getByRole('radio', { name: 'Automático' }))
+    fireEvent.click(within(mode).getByRole('radio', { name: 'Automático' }))
     expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([true, 'on'])
-    expect(within(rules).getByText(/^El núcleo aplica las reglas por los dos; contra quién jugás lo elegís en «Rival»/)).toBeInTheDocument()
-    // Con el automático, el simulador de siempre pasa a ser «Rival: Pasivo · Handtraps · Bot».
-    expect(within(rules).queryByRole('switch', { name: 'Handtraps del rival' })).toBeNull()
-    expect(within(within(rules).getByRole('radiogroup', { name: 'Rival' })).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Pasivo', 'Handtraps', 'Bot'])
+    // Lo de Solo ya no está acá: ni el rival ni quién empieza.
+    expect(within(rules).queryByRole('radiogroup', { name: 'Rival' })).toBeNull()
+    expect(within(rules).queryByRole('radiogroup', { name: 'Quién empieza' })).toBeNull()
+    expect(within(rules).queryByRole('switch', { name: 'Mostrar la mano del bot' })).toBeNull()
   })
 
-  it('sin deck, «Entrenar solo» dice que falta', () => {
+  it('la portada de Online ya no tiene «Entrenar solo»: tres atajos (un amigo, un código y las reglas)', () => {
     withWorker()
-    lobby({ deckReady: false, trainReady: false, deckSize: 3 })
+    lobby({ deckReady: false, deckSize: 3 })
 
-    expect(screen.getByRole('button', { name: 'Entrenar solo' })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('button', { name: 'Entrenar solo' })).toHaveAccessibleDescription('Para entrenar hace falta un deck armado en el builder.')
+    expect(screen.queryByRole('button', { name: /Entrenar solo/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Retar a un amigo/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Tengo un código/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Reglas del duelo/ })).toBeInTheDocument()
   })
 
   it('un navegador que no puede correr el núcleo lo ve en «Manual», sin poder tocarlo, y con el porqué (aunque lo hubiera dejado en automático)', () => {
@@ -132,29 +130,10 @@ describe('«Modo del duelo», en las reglas de Jugar', () => {
     lobby()
     const rules = openRules()
 
-    fireEvent.click(within(rules).getByRole('radio', { name: 'Solo' }))
     const mode = within(rules).getByRole('radiogroup', MODE)
     expect(within(mode).getByRole('radio', { name: 'Manual' })).toBeChecked()
     expect(within(mode).getByRole('radio', { name: 'Automático' })).toBeDisabled()
-    expect(within(rules).getByText('Tu navegador no puede correr el motor de reglas.')).toBeInTheDocument()
-  })
-
-  it('en Solo con el automático, «Quién empieza» (Yo de entrada) se elige y queda guardado; con la manual no está (no tiene turnos del rival)', () => {
-    withWorker()
-    lobby()
-    const rules = openRules()
-
-    fireEvent.click(within(rules).getByRole('radio', { name: 'Solo' }))
-    expect(within(rules).queryByRole('radiogroup', { name: 'Quién empieza' })).toBeNull()
-    act(() => setAutoPref('duel', true))
-    const first = within(rules).getByRole('radiogroup', { name: 'Quién empieza' })
-
-    expect(within(first).getByRole('radio', { name: 'Yo' })).toBeChecked()
-    fireEvent.click(within(first).getByRole('radio', { name: 'El rival' }))
-    expect([autoPrefs().first, localStorage.getItem(AUTO_KEYS.first)]).toEqual(['rival', 'rival'])
-    fireEvent.click(within(first).getByRole('radio', { name: 'Al azar' }))
-    expect(within(first).getByRole('radio', { name: 'Al azar' })).toBeChecked()
-    setAutoPref('first', 'me')
+    expect(within(rules).getByText('Tu navegador no puede correr las reglas automáticas.')).toBeInTheDocument()
   })
 })
 

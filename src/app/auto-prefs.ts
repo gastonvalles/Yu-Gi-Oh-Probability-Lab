@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Las preferencias del duelo automático (beta), recordadas en el navegador. `duel` es «Modo del duelo» de las reglas de Jugar: automático, «Entrenar solo» abre la mesa contra el núcleo de
+ * Las preferencias del duelo automático (beta), recordadas en el navegador. `duel` es «Modo del duelo» de las reglas de Jugar: automático, la mesa de Solo es la del núcleo de
  * reglas y la sala que se abre tiene reglas automáticas; manual, la mesa manual de siempre. `chain`, «Respuestas: Siempre · Cuando importa · Nunca»; `place`, «Casilla: preguntar · automática»; `blind`, «A ciegas»: la mano del rival de
  * handtraps de dorso; `botHand`, «Mostrar la mano del bot» (apagado de entrada: la del rival «Bot» va de dorso, aparte de «A ciegas»); `first`, quién empieza en jugar solo (`seatOf`). No importa nada de `auto/`: lo lee el lobby. La bandera de antes (`?auto=1`, `ygo-lab:auto-flag`) ya no existe: el modo lo ve todo el mundo y la clave vieja se ignora.
  */

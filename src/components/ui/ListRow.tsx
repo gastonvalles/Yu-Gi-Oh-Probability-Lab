@@ -17,7 +17,8 @@ import { TONE, type Tone } from './tone'
  *   (una carta, recta) · el final, uno solo: `end` (un `Button` secondary si la fila hace algo distinto de abrir, una `Badge`), `toggle` (la fila entera es el
  *   interruptor) o `value` + la flecha (que sale sola si la fila abre algo) · qué es: `href` (un enlace), `onClick` (un botón) o nada (una fila quieta) ·
  *   `selected` (`aria-current`, el aro ámbar de `listItemSelected`) · `disabled` · `wrap` (un registro: el título es una frase entera, en varios renglones y sin negrita, como
- *   «Qué hizo el bot y por qué»).
+ *   «Qué hizo el bot y por qué») · `choice` (una opción de una elección única, adentro de un `role="radiogroup"`: la fila es un `radio` con `selected` de `aria-checked`, sin flecha
+ *   —elegir no abre nada— y apagada con `aria-disabled`, enfocable y con el porqué en el apoyo; los rivales de Solo).
  * - **`ListGroup`:** `label` (el nombre de la lista para el lector) · `loading` (3 filas de esqueleto y `aria-busy`) · `empty` (lo que se ve sin filas: un `EmptyState`
  *   adentro de la misma tarjeta).
  * - **Estados:** reposo · al pasar el mouse o apretar, el velo `bg-tint/7` de `listItem` · foco `shadow-focus` · elegida · apagada al 40 % · vacía · cargando.
@@ -62,11 +63,12 @@ interface ListRowProps {
   selected?: boolean
   disabled?: boolean
   wrap?: boolean
+  choice?: boolean
 }
 
-export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutral', value, end, toggle, href, onClick, selected = false, disabled = false, wrap = false }: ListRowProps) {
+export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutral', value, end, toggle, href, onClick, selected = false, disabled = false, wrap = false, choice = false }: ListRowProps) {
   const subtitleId = useId()
-  const opens = !toggle && !end && Boolean(href ?? onClick)
+  const opens = !toggle && !end && !choice && Boolean(href ?? onClick)
   const Tag: ElementType = toggle || (onClick && !href) ? 'button' : href ? 'a' : 'div'
   const interactive = Tag !== 'div'
 
@@ -77,7 +79,10 @@ export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutra
   ) : null)
 
   const props = Tag === 'button'
-    ? { type: 'button' as const, disabled, onClick: toggle ? () => toggle.onChange(!toggle.checked) : onClick, ...(toggle ? { role: 'switch', 'aria-checked': toggle.checked, 'aria-label': title } : {}) }
+    ? choice
+      ? // Una opción apagada sigue enfocable y se lee entera (el porqué va en el apoyo): `aria-disabled` y sin clic.
+        { type: 'button' as const, role: 'radio', 'aria-checked': selected, 'aria-disabled': disabled || undefined, onClick: disabled ? undefined : onClick }
+      : { type: 'button' as const, disabled, onClick: toggle ? () => toggle.onChange(!toggle.checked) : onClick, ...(toggle ? { role: 'switch', 'aria-checked': toggle.checked, 'aria-label': title } : {}) }
     : Tag === 'a'
       ? { href: disabled ? undefined : href, onClick, 'aria-disabled': disabled || undefined }
       : {}
@@ -87,7 +92,7 @@ export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutra
       <Tag
         {...props}
         title={title}
-        aria-current={selected || undefined}
+        aria-current={(selected && !choice) || undefined}
         aria-describedby={toggle && subtitle ? subtitleId : undefined}
         className={rowStyle({ kind: interactive ? 'action' : 'still' }, selected && listItemSelected)}
       >

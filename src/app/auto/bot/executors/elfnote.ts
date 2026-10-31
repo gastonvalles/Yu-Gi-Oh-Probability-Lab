@@ -1,6 +1,6 @@
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
-import { ELFNOTE as E, ELFNOTE_DECK } from '../decks/elfnote'
+import { ELFNOTE as E, ELFNOTE_DECK } from '../../../bot-deck-lists'
 import { turnBot, type CardFacts } from '../turn'
 import {
   ATTACK_TIMING,
@@ -22,7 +22,7 @@ import {
 } from './executor'
 
 /**
- * El ejecutor de Elfnote (etapa 2 del bot): juega la lista fija de `decks/elfnote.ts` con prioridades escritas a partir del texto impreso y los scripts (CardScripts al commit de
+ * El ejecutor de Elfnote (etapa 2 del bot): juega la lista fija de `bot-deck-lists.ts` con prioridades escritas a partir del texto impreso y los scripts (CardScripts al commit de
  * `testedWith`). La idea del mazo: un Elfnote de Nivel 6 en la Zona de Monstruos Principal del centro y Elfnote Power Patron (Cantante de Nivel 1) le suma 3 Niveles e Invoca por
  * Sincronía a June Pride (Nivel 10) en el centro, en su turno o en el tuyo. June Pride vuelve al Extra Deck y trae un Elfnote de la mano, otro del Deck y otro del cementerio; con dos
  * de Nivel 6, Evolzar Lars.

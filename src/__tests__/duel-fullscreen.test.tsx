@@ -60,7 +60,7 @@ describe('el modo ventana grande del duelo', () => {
   })
 
   it('el armazón esconde el menú lateral mientras está prendido y lo devuelve al apagarse', () => {
-    const groups = buildAppNavGroups(buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }), { practice: true })
+    const groups = buildAppNavGroups(buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }), {})
 
     render(
       <AppShell groups={groups} activeKey="practice" onSelect={() => {}} immersive>

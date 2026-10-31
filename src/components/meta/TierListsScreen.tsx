@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
+
 import {
   META_DECKS,
   MIN_RELIABLE_DECKS,
@@ -14,8 +15,10 @@ import {
   type MetaList,
   type MetaTier,
   type MetaZone,
+  type TierListView,
 } from '../../app/meta'
 import { useAppSelector } from '../../app/store-hooks'
+import { savedCardCount } from '../../app/tierlist-maker'
 import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
@@ -36,6 +39,7 @@ import { overline, supportText } from '../ui/typography'
 import { MetaCardModal } from './MetaCardModal'
 import { MetaHeroSide } from './MetaHeroSide'
 import { CardTile, TierBoard, groupByTier, type BoardView } from './TierBoard'
+import { TierMakerHelp, TierMakerScreen } from './TierMakerScreen'
 import { percent, tierLabel } from './meta-format'
 
 type WindowWeeks = '2' | '4' | '8'
@@ -60,17 +64,24 @@ export function TierListsScreen() {
   const [adjustOpen, setAdjustOpen] = useState(false)
   // Arranca en la región del formato del builder; después se cambia desde el encabezado (y vale también para los decks de torneo).
   const region = useMetaRegion(deckFormat === 'ocg' ? 'ocg' : 'tcg')
-  const [list, setList] = useState<MetaList>(() => readTierListHash(window.location.hash))
+  const [list, setList] = useState<MetaList>(() => readTierListHash(window.location.hash).list)
+  // «Del meta» o «La tuya» (el creador, que antes era una pantalla aparte): el selector de arriba de todo.
+  const [tab, setTab] = useState<TierListView>(() => readTierListHash(window.location.hash).view)
+  // Cuántas cartas tiene la tuya: se lee de lo guardado y, con el creador abierto, cada cambio la actualiza.
+  const [mineCount, setMineCount] = useState(savedCardCount)
   const [zone, setZone] = useState<MetaZone>('both')
   const [weeks, setWeeks] = useState<WindowWeeks>('4')
   const [view, setView] = useState<BoardView>('now')
   const [selectedCard, setSelectedCard] = useState<MetaCardStat | null>(null)
 
-  // Un link a otra lista (o "Atrás") cambia el hash sin remontar la pantalla; si el hash ya es de otra pantalla, ella se va sola y no se toca nada.
+  // Un link a otra lista o vista (o "Atrás") cambia el hash sin remontar la pantalla; si el hash ya es de otra pantalla, ella se va sola y no se toca nada.
   useEffect(() => {
     const syncList = () => {
       if (/^#meta(\?|$)/.test(window.location.hash)) {
-        setList(readTierListHash(window.location.hash))
+        const next = readTierListHash(window.location.hash)
+
+        setList(next.list)
+        setTab(next.view)
       }
     }
 
@@ -98,7 +109,43 @@ export function TierListsScreen() {
 
   const changeList = (next: MetaList) => {
     setList(next)
-    window.history.replaceState(null, '', buildTierListHash(next))
+    window.history.replaceState(null, '', buildTierListHash(next, tab))
+  }
+  const changeTab = (next: TierListView) => {
+    setTab(next)
+    window.history.replaceState(null, '', buildTierListHash(list, next))
+  }
+
+  // Arriba de todo (en el celular, antes de la región): en escritorio, a su ancho; en el celular, de lado a lado.
+  const switcher = (
+    <Segmented
+      value={tab}
+      onChange={changeTab}
+      options={[
+        { value: 'meta', label: t('meta.view.meta') },
+        { value: 'mine', label: t('meta.view.mine'), ...(mineCount > 0 ? { count: mineCount, ariaLabel: t('meta.view.mineCount', { count: mineCount }) } : {}) },
+      ]}
+      label={t('meta.view.label')}
+      fullWidth={!isDesktop}
+    />
+  )
+  const hero = (side: ReactNode) => (
+    <StepHero
+      title={t('meta.screen.title')}
+      icon="chart"
+      subtitle={t(tab === 'mine' ? 'meta.maker.subtitle' : 'meta.screen.subtitle')}
+      help={tab === 'mine' ? <TierMakerHelp /> : <TierListHelp list={list} floors={floors} totalWeeks={totalWeeks} />}
+      side={side}
+    />
+  )
+
+  if (tab === 'mine') {
+    // El creador, entero: en escritorio «Descargar imagen» sube al costado del encabezado. El mismo ancho que «Del meta»: el selector no se corre al cambiar.
+    return (
+      <StepPage as="article" wide>
+        <TierMakerScreen header={hero} switcher={switcher} onCountChange={setMineCount} />
+      </StepPage>
+    )
   }
 
   // En celular la pista ocupa el ancho; desde 560 px (tableta) va a su contenido, como en escritorio.
@@ -111,36 +158,20 @@ export function TierListsScreen() {
   const viewControl = () => <Segmented value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} size="sm" />
 
   return (
-    <StepPage as="article">
-      <StepHero
-        title={t('meta.screen.title')}
-        icon="chart"
-        subtitle={t('meta.screen.subtitle')}
-        help={<TierListHelp list={list} floors={floors} totalWeeks={totalWeeks} />}
-        side={
-          isDesktop ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <MetaHeroSide region={region} onRegionChange={setMetaRegion} />
-              <Button variant="secondary" size="sm" icon="sort" onClick={() => goTo('#tier-maker')}>
-                {t('meta.maker.makeYours')}
-              </Button>
-            </div>
-          ) : (
-            <MetaHeroSide region={region} onRegionChange={setMetaRegion} />
-          )
-        }
-      />
+    <StepPage as="article" wide>
+      {/* En el celular el título va en la barra de arriba: el selector queda primero y la región debajo, en su propio renglón. */}
+      {hero(isDesktop ? <MetaHeroSide region={region} onRegionChange={setMetaRegion} /> : null)}
+      {switcher}
+      {isDesktop ? null : <MetaHeroSide region={region} onRegionChange={setMetaRegion} />}
 
       {isDesktop ? <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} className="min-w-[26rem]" /> : null}
 
       <section className="min-w-0">
-        {/* En celular «Crear la tuya» es la acción del encabezado (no un botón ancho más antes de la primera carta; en escritorio va arriba, al lado de la región)
-            y la descripción baja a todo el ancho: al lado del enlace quedaba en una columna de cuatro renglones. */}
+        {/* En celular la descripción baja a todo el ancho, debajo del título de la lista. */}
         <SectionHeader
           icon={isDesktop ? LIST_ICON[list] : undefined}
           title={t(LIST_TITLE_KEY[list])}
           description={isDesktop ? description : undefined}
-          link={isDesktop ? undefined : { label: t('meta.maker.makeYours'), href: '#tier-maker' }}
           actions={
             isDesktop ? (
               // Cada control lleva su rótulo: "2 sem." (cuántos decks se cuentan) y la proyección no se confunden.

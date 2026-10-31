@@ -285,12 +285,24 @@ describe('links directos', () => {
     expect(buildTierListHash('handtrap')).toBe('#meta')
     expect(buildTierListHash('boardbreaker')).toBe('#meta?list=boardbreaker')
 
-    expect(readTierListHash('#meta?list=boardbreaker')).toBe('boardbreaker')
+    expect(readTierListHash('#meta?list=boardbreaker').list).toBe('boardbreaker')
     // El link de la lista de decks, que ya no existe, abre la de hand traps.
-    expect(readTierListHash('#meta?list=deck')).toBe('handtrap')
-    expect(readTierListHash('#meta')).toBe('handtrap')
-    expect(readTierListHash('#meta?list=otra')).toBe('handtrap')
-    expect(readTierListHash('#tournaments?list=deck')).toBe('handtrap')
+    expect(readTierListHash('#meta?list=deck').list).toBe('handtrap')
+    expect(readTierListHash('#meta').list).toBe('handtrap')
+    expect(readTierListHash('#meta?list=otra').list).toBe('handtrap')
+    expect(readTierListHash('#tournaments?list=deck').list).toBe('handtrap')
+  })
+
+  it('la vista va en el link: `vista=tuya` es la tuya (el creador) y sin el parámetro, las del meta; la lista elegida se conserva', () => {
+    expect(buildTierListHash('handtrap', 'mine')).toBe('#meta?vista=tuya')
+    expect(buildTierListHash('boardbreaker', 'mine')).toBe('#meta?list=boardbreaker&vista=tuya')
+    expect(buildTierListHash('boardbreaker', 'meta')).toBe('#meta?list=boardbreaker')
+
+    expect(readTierListHash('#meta?vista=tuya')).toEqual({ list: 'handtrap', view: 'mine' })
+    expect(readTierListHash('#meta?list=boardbreaker&vista=tuya')).toEqual({ list: 'boardbreaker', view: 'mine' })
+    expect(readTierListHash('#meta').view).toBe('meta')
+    expect(readTierListHash('#meta?vista=otra').view).toBe('meta')
+    expect(readTierListHash('#tournaments?vista=tuya').view).toBe('meta')
   })
 })
 
