@@ -55,6 +55,7 @@ export const practice: Translated<typeof es> = {
   'practice.menu.attachTo': 'Attach to {name}',
   'practice.menu.attachToXyz': 'Attach to an Xyz',
   'practice.menu.giveControl': 'Give control to {name}',
+  'practice.menu.giveControlNoRoom': '{name} has no free Monster Zone',
   'practice.menu.returnControl': 'Return control to {name}',
   'practice.menu.detach': 'Detach {name}',
   'practice.menu.detachMaterial': 'Detach',

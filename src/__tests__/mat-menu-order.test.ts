@@ -111,6 +111,18 @@ describe('el orden del menú pegado a la carta (escritorio)', () => {
   })
 })
 
+describe('«Dar el control» de un monstruo del Extra Deck en la Zona de Monstruo Extra', () => {
+  const inEmz = replayMat(start, [{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk', how: 'special' }])
+  const give = (room: boolean | null) => listCardActions(inEmz, 'x1', kindOf, nameOf, [], undefined, room === null ? undefined : { rival: 'Ana', rivalHasRoom: room }).find((item) => item.action.type === 'give')
+
+  it('con lugar en el rival, se ofrece; sin lugar, se ve apagada y dice por qué (en el mismo bloque); fuera de un duelo, no está', () => {
+    expect(give(true)).toEqual({ label: 'Dar el control a Ana', action: { type: 'give', id: 'x1' } })
+    expect(give(false)).toEqual({ label: 'Dar el control a Ana', action: { type: 'give', id: 'x1' }, disabled: 'Ana no tiene una zona de monstruo libre' })
+    expect(menuPlaceOf(give(false)!, ['x1'])).toEqual(menuPlaceOf(give(true)!, ['x1']))
+    expect(give(null)).toBeUndefined()
+  })
+})
+
 describe('qué preguntas son de «cómo» (van en un submenú)', () => {
   const find = (items: readonly MatMenuItem[], label: string) => items.find((item) => item.label === label)!
 

@@ -1916,7 +1916,10 @@ function PracticeMatBody({
     const past = activationsRef.current.filter((activation) => live.has(activation.action))
     const items = !api || !effects ? listed : listed.map((item) => (item.action.type === 'activate' && !item.choices ? { ...item, choices: effectChoices(menu.id, api.ygoprodeckId, effects, past, turnNumber, listing!.verified) } : item))
 
-    const rows: { entry: MenuItem; place: MenuPlace }[] = items.map((item) => ({ entry: { label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility, children: childrenOf(item) }, place: menuPlaceOf(item, [menu.id]) }))
+    const rows: { entry: MenuItem; place: MenuPlace }[] = items.map((item) => ({
+      entry: { label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility, children: childrenOf(item), ...(item.disabled === undefined ? {} : { disabled: true, hint: item.disabled }) },
+      place: menuPlaceOf(item, [menu.id]),
+    }))
     const point = duel?.point
 
     // Una carta mía a la vista en el campo se puede señalar: un aro que late un rato en las dos pantallas. Comunica, no es una jugada (no cambia la mesa ni queda en los pasos), y va junto a Target.

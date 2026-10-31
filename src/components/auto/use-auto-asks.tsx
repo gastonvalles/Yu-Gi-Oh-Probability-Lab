@@ -780,9 +780,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       phaseItems: (stopped ? stopPhaseItems(state.phase) : (shown?.phaseItems ?? [])).map(menuItem),
       endTurn: shown?.endTurn ? () => gesture({ kind: 'item', answer: shown.endTurn! }) : null,
       // Las casillas tuyas, en tu mesa (las del rival, en su campo: `rivalZones`). Una Zona Extra del rival es, vista desde acá, la tuya de enfrente (`1 - index`): se toca ahí.
+      // Si todas son del rival (dar el control: Shien's Spy, Creature Swap), el texto lo dice: si no, parece trabado a quien no mira su campo.
       zonePick: shown?.zonePick
         ? {
-            label: t(shown.type === 'select_disfield' ? 'auto.pick.disfield' : 'auto.pick.zone', { count: shown.zonePick.count }),
+            label: t(
+              shown.type === 'select_disfield' ? 'auto.pick.disfield' : zoneTargets.length && zoneTargets.every((target) => target.side === 'theirs') ? 'auto.pick.zoneRival' : 'auto.pick.zone',
+              { count: shown.zonePick.count },
+            ),
             targets: [...ownZones, ...rivalEmz.map(({ index }) => ({ zone: 'emz' as const, index: 1 - index }))],
             onPick: (zone, index) => gesture(zone === 'emz' && !ownZones.some((own) => own.zone === 'emz' && own.index === index) ? { kind: 'zone', side: 'theirs', zone, index: 1 - index } : { kind: 'zone', side: 'mine', zone, index }),
           }
