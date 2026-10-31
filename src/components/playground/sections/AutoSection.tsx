@@ -167,7 +167,7 @@ export function AutoSection() {
 /** Uno solo de los mazos listos: así se ve la fila sin menú (con dos o más aparece «Cambiar mazo»). */
 const ONE_DECK: readonly BotDeckInfo[] = BOT_DECK_MENU.slice(0, 1)
 
-/** La fila «Rival» (la de las reglas de Jugar solo automático) y la hoja de «Cambiar rival» del duelo, con uno o dos mazos listos. */
+/** La fila «Rival» (la de las reglas de Jugar solo automático) y la hoja de «Cambiar rival» del duelo, con uno o todos los mazos listos. */
 function RivalSample() {
   const [two, setTwo] = useState(false)
   const [draft, setDraft] = useState<RivalDraft>({ kind: 'bot', deck: 'sky-striker' })
@@ -176,8 +176,8 @@ function RivalSample() {
   const decks = two ? BOT_DECK_MENU : ONE_DECK
 
   return (
-    <Specimen title="Rival · Pasivo, Handtraps o Bot" layout="column" note={<>Una elección por fila (<Tag>Segmented</Tag>): el pasivo dice que no juega; el de handtraps, cuántas tiene y «Elegir…»; el bot, su mazo y lo que es, sus límites siempre a la vista y «Mostrar la mano del bot» (apagado de entrada). Con un solo mazo listo no hay menú; con dos, «Cambiar mazo» abre la hoja. En el duelo, «Cambiar rival» abre la hoja: avisa que reinicia y la principal dice contra quién. Archivo: <Tag>duel/RivalRow.tsx</Tag></>}>
-      <Segmented label="Mazos listos" variant="chips" value={two ? 'two' : 'one'} onChange={(value) => setTwo(value === 'two')} options={[{ value: 'one', label: 'Uno' }, { value: 'two', label: 'Dos' }]} />
+    <Specimen title="Rival · Pasivo, Handtraps o Bot" layout="column" note={<>Una elección por fila (<Tag>Segmented</Tag>): el pasivo dice que no juega; el de handtraps, cuántas tiene y «Elegir…»; el bot, su mazo y lo que es, sus límites siempre a la vista y «Mostrar la mano del bot» (apagado de entrada). Con un solo mazo listo no hay menú; con dos o más, «Cambiar mazo» abre la hoja. En el duelo, «Cambiar rival» abre la hoja: avisa que reinicia y la principal dice contra quién. Archivo: <Tag>duel/RivalRow.tsx</Tag></>}>
+      <Segmented label="Mazos listos" variant="chips" value={two ? 'two' : 'one'} onChange={(value) => setTwo(value === 'two')} options={[{ value: 'one', label: 'Uno' }, { value: 'two', label: 'Todos' }]} />
       <RivalChoice value={draft} onChange={setDraft} config={DEFAULT_HANDTRAP_CONFIG} decks={decks} onChooseHandtraps={() => setApplied('Elegir handtraps')} />
       <Button variant="secondary" size="sm" className="justify-self-start" aria-haspopup="dialog" onClick={() => setOpen(true)}>
         Abrir «Cambiar rival»

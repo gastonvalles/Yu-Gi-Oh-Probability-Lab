@@ -277,6 +277,7 @@ export interface BotDeckInfo {
 export const BOT_DECK_MENU: readonly BotDeckInfo[] = [
   { id: 'sky-striker', name: 'Sky Striker', line: 'auto.rival.deck.skyStriker' },
   { id: 'branded', name: 'Despia Branded', line: 'auto.rival.deck.branded' },
+  { id: 'elfnote', name: 'Elfnote', line: 'auto.rival.deck.elfnote' },
 ]
 
 /** Contra quién se juega «Jugar solo automático»: el pasivo, el de handtraps (el simulador) o el bot con su mazo. */
