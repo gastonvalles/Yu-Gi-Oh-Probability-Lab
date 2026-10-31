@@ -467,11 +467,11 @@ export const duel = {
 
   // Jugar con otro deck que el del builder (por ejemplo desde un celular).
 
-  // Una sala con reglas automáticas (beta): el núcleo aplica las reglas por los dos.
-  'duel.auto.rulesHint': 'Beta: el núcleo aplica las reglas por los dos. Sin espectadores todavía.',
+  // Una sala con reglas automáticas: el núcleo aplica las reglas por los dos.
+  'duel.auto.rulesHint': 'El núcleo aplica las reglas por los dos. Sin espectadores todavía.',
   'duel.auto.unsupported': 'Tu navegador no puede correr las reglas automáticas.',
   'duel.auto.off': 'Las reglas automáticas están apagadas por ahora.',
-  'duel.auto.rulesRow': 'Automáticas (beta)',
+  'duel.auto.rulesRow': 'Automáticas',
   'duel.auto.watchLabel': 'Quién mira',
   'duel.auto.watchUnavailable': 'No disponible',
   'duel.auto.noWatch': 'Este duelo usa reglas automáticas: todavía no se puede mirar.',

@@ -211,7 +211,7 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 border-t border-tint/18 pt-3">
-              {/* Sin «Automáticas (beta)»: eso lo dice el atajo de las reglas, que lo lleva entero (cada dato una vez). */}
+              {/* Sin «Automáticas»: eso lo dice el atajo de las reglas, que lo lleva entero (cada dato una vez). */}
               <span className="grid min-w-0 flex-1 basis-28">
                 <span className="text-micro text-muted">{t('duel.play.rulesYours')}</span>
                 <span className="text-body font-semibold text-foreground">{rulesLine(prefs, false)}</span>

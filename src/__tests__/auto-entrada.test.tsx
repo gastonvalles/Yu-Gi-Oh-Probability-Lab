@@ -102,7 +102,7 @@ describe('«Modo del duelo», en las reglas de Jugar', () => {
     const mode = within(rules).getByRole('radiogroup', MODE)
 
     expect(within(mode).getByRole('radio', { name: 'Automático' })).toBeChecked()
-    expect(within(rules).getByText(/^Beta: el núcleo aplica las reglas por los dos/)).toBeInTheDocument()
+    expect(within(rules).getByText(/^El núcleo aplica las reglas por los dos/)).toBeInTheDocument()
     fireEvent.click(within(mode).getByRole('radio', { name: 'Manual' }))
     expect([autoPrefs().duel, localStorage.getItem(AUTO_KEYS.duel)]).toEqual([false, 'off'])
     expect(within(rules).getByText(/^Movés las cartas vos/)).toBeInTheDocument()
