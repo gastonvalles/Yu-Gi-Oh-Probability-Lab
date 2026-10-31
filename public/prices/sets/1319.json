@@ -41,7 +41,7 @@
 ["SP14-EN020","Starfoil Rare","1st Edition",0.47,79869,29455728,"Twin Photon Lizard"],
 ["SP14-EN021","Common","1st Edition",2.3,79874,698785,"Thunder End Dragon"],
 ["SP14-EN021","Starfoil Rare","1st Edition",1.47,79875,698785,"Thunder End Dragon"],
-["SP14-EN022","Common","1st Edition",0.48,79878,56840427,"Number C39: Utopia Ray"],
+["SP14-EN022","Common","1st Edition",0.51,79878,56840427,"Number C39: Utopia Ray"],
 ["SP14-EN022","Starfoil Rare","1st Edition",1.08,79879,56840427,"Number C39: Utopia Ray"],
 ["SP14-EN023","Common","1st Edition",1.11,79880,65676461,"Number 32: Shark Drake"],
 ["SP14-EN023","Starfoil Rare","1st Edition",2.06,79882,65676461,"Number 32: Shark Drake"],
@@ -57,7 +57,7 @@
 ["SP14-EN028","Starfoil Rare","1st Edition",0.54,79900,26563200,"Muzurhythm the String Djinn"],
 ["SP14-EN029","Common","1st Edition",0.69,79903,52558805,"Temtempo the Percussion Djinn"],
 ["SP14-EN029","Starfoil Rare","1st Edition",0.62,79904,52558805,"Temtempo the Percussion Djinn"],
-["SP14-EN030","Common","1st Edition",2.99,79907,88942504,"Melomelody the Brass Djinn"],
+["SP14-EN030","Common","1st Edition",2.89,79907,88942504,"Melomelody the Brass Djinn"],
 ["SP14-EN030","Starfoil Rare","1st Edition",7.69,79908,88942504,"Melomelody the Brass Djinn"],
 ["SP14-EN031","Common","1st Edition",2.16,79909,25341652,"Maestroke the Symphony Djinn"],
 ["SP14-EN031","Starfoil Rare","1st Edition",4.96,79910,25341652,"Maestroke the Symphony Djinn"],
@@ -98,5 +98,5 @@
 ["SP14-EN049","Common","1st Edition",0.23,79834,67098114,"Loki, Lord of the Aesir"],
 ["SP14-EN049","Starfoil Rare","1st Edition",0.71,79835,67098114,"Loki, Lord of the Aesir"],
 ["SP14-EN050","Common","1st Edition",0.5,79826,93483212,"Odin, Father of the Aesir"],
-["SP14-EN050","Starfoil Rare","1st Edition",4.87,79827,93483212,"Odin, Father of the Aesir"]
+["SP14-EN050","Starfoil Rare","1st Edition",4.77,79827,93483212,"Odin, Father of the Aesir"]
 ]

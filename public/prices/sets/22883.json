@@ -1,6 +1,6 @@
 [
 ["PSV-EN000","Secret Rare","Unlimited",63.47,476229,77585513,"Jinzo"],
-["PSV-EN001","Common","Unlimited",0.4,476230,90908427,"Steel Ogre Grotto #2"],
+["PSV-EN001","Common","Unlimited",null,476230,90908427,"Steel Ogre Grotto #2"],
 ["PSV-EN002","Common","Unlimited",null,476232,78423643,"Three-Headed Geedo"],
 ["PSV-EN003","Super Rare","Unlimited",null,476233,27911549,"Parasite Paracide"],
 ["PSV-EN004","Common","Unlimited",3,476234,86198326,"7 Completed"],
@@ -90,7 +90,7 @@
 ["PSV-EN093","Common","Unlimited",0.15,476359,32269855,"The All-Seeing White Tiger"],
 ["PSV-EN094","Ultra Rare","Unlimited",15.51,476360,78658564,"Goblin Attack Force"],
 ["PSV-EN095","Common","Unlimited",null,476361,4042268,"Island Turtle"],
-["PSV-EN096","Common","Unlimited",0.66,476363,31447217,"Wingweaver"],
+["PSV-EN096","Common","Unlimited",0.56,476363,31447217,"Wingweaver"],
 ["PSV-EN097","Common","Unlimited",0.29,476364,67532912,"Science Soldier"],
 ["PSV-EN098","Common","Unlimited",2.99,476366,4920010,"Souls of the Forgotten"],
 ["PSV-EN099","Common","Unlimited",0.25,476367,30325729,"Dokuroyaiba"],

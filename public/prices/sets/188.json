@@ -2,7 +2,7 @@
 ["DP08-EN001","Common","1st Edition",0.55,32910,63977008,"Junk Synchron"],
 ["DP08-EN001","Common","Unlimited",0.45,32910,63977008,"Junk Synchron"],
 ["DP08-EN002","Common","1st Edition",0.19,32918,9365703,"Speed Warrior"],
-["DP08-EN002","Common","Unlimited",0.38,32918,9365703,"Speed Warrior"],
+["DP08-EN002","Common","Unlimited",null,32918,9365703,"Speed Warrior"],
 ["DP08-EN003","Common","1st Edition",0.37,32922,60187739,"Turbo Booster"],
 ["DP08-EN003","Common","Unlimited",0.35,32922,60187739,"Turbo Booster"],
 ["DP08-EN004","Rare","1st Edition",0.37,32913,96182448,"Nitro Synchron"],
