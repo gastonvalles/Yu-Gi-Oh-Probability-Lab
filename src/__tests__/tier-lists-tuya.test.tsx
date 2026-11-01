@@ -9,6 +9,7 @@ import { TIERLIST_VERSION, addCards, newList, writeStore } from '../app/tierlist
 import { DeckModeScreen } from '../components/deck-mode/DeckModeScreen'
 import { TierListsScreen } from '../components/meta/TierListsScreen'
 import { deckState, storeWith } from './support/deck-fixtures'
+import { stackedGroups } from './support/stacked-groups'
 
 // «Crear tier list» es «La tuya» de Tier lists: la tercera pestaña, junto a las dos listas del meta, la cuenta de lo guardado y los enlaces viejos.
 vi.mock('../components/CardArt', () => ({ CardArt: () => <img alt="" /> }))
@@ -118,29 +119,6 @@ describe('Tier lists: las del meta y la tuya', () => {
     expect(screen.getByRole('tab', { name: 'La tuya, con 2 cartas' })).toHaveAttribute('aria-selected', 'true')
   })
 })
-
-/** Los pares de grupos de opciones (pestañas o pastillas) que van seguidos en el documento sin ningún texto propio entre ellos (fuera de los diálogos). */
-function stackedGroups(root: HTMLElement): string[] {
-  const GROUP = '[role=tablist], [role=radiogroup]'
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
-  const stacked: string[] = []
-  let previous: Element | null = null
-  let textSince = false
-
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node instanceof Element) {
-      if (node.matches(GROUP) && !node.closest('[role=dialog]')) {
-        if (previous && !textSince) stacked.push(`${previous.getAttribute('aria-label')} + ${node.getAttribute('aria-label')}`)
-        previous = node
-        textSince = false
-      }
-    } else if (node.textContent?.trim() && !node.parentElement?.closest(GROUP)) {
-      textSince = true
-    }
-  }
-
-  return stacked
-}
 
 describe('Tier lists: una sola vista y una sola fila de filtro', () => {
   it('en el celular, ni el meta ni la tuya apilan dos grupos de opciones sin nada que los nombre', () => {
