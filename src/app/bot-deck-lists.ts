@@ -15,6 +15,8 @@ export interface BotDeckList {
   main: readonly (readonly [number, number])[]
   extra: readonly (readonly [number, number])[]
   testedWith: string
+  /** Las cartas del Main que se pueden cambiar («Cambiar cartas», `bot-deck-edit.ts`), con su nombre: las handtraps y los staples. Lo demás es el motor (lo nombran las reglas del ejecutor) y no se toca. */
+  flex: Readonly<Record<number, string>>
 }
 
 /** Los passcodes del mazo de Sky Striker que nombran las reglas (verificados contra el `.cdb` del núcleo). */
@@ -92,6 +94,15 @@ export const SKY_STRIKER_DECK: BotDeckList = {
     [78397661, 1], // Ecclesia and the Dark Dragon
   ],
   testedWith: 'bc5d82d66842f3c62d20747c530b164ce98004f3',
+  flex: {
+    14558127: 'Ash Blossom & Joyous Spring',
+    59438930: 'Ghost Ogre & Snow Rabbit',
+    73642296: 'Ghost Belle & Haunted Mansion',
+    94145021: 'Droll & Lock Bird',
+    [SKY.mst]: 'Mystical Space Typhoon',
+    [SKY.talent]: 'Triple Tactics Talent',
+    [SKY.called]: 'Called by the Grave',
+  },
 }
 
 /**
@@ -175,6 +186,7 @@ export const ANGELECHY_DECK: BotDeckList = {
     [A.assaultDragon, 1],
   ],
   testedWith: 'bc5d82d66842f3c62d20747c530b164ce98004f3',
+  flex: { [A.fuwalos]: 'Mulcharmy Fuwalos', [A.ash]: 'Ash Blossom & Joyous Spring', [A.ogre]: 'Ghost Ogre & Snow Rabbit', [A.droll]: 'Droll & Lock Bird' },
 }
 
 /** Los passcodes del mazo de Elfnote que nombran las reglas (verificados contra el `.cdb` del núcleo, con su script). */
@@ -282,6 +294,14 @@ export const ELFNOTE_DECK: BotDeckList = {
     [E.lizardose, 1],
   ],
   testedWith: 'bc5d82d66842f3c62d20747c530b164ce98004f3',
+  flex: {
+    [E.fuwalos]: 'Mulcharmy Fuwalos',
+    [E.nibiru]: 'Nibiru, the Primal Being',
+    [E.ash]: 'Ash Blossom & Joyous Spring',
+    [E.ogre]: 'Ghost Ogre & Snow Rabbit',
+    [E.droll]: 'Droll & Lock Bird',
+    [E.veiler]: 'Effect Veiler',
+  },
 }
 
 /** Todos, en el orden en que se ofrecen. */

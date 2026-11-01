@@ -28,7 +28,7 @@ const total = (pairs: Pairs) => pairs.reduce((sum, [, copies]) => sum + copies, 
 
 interface BotDeckSheetProps {
   isOpen: boolean
-  /** La lista fija del bot (`bot-deck-lists.ts`); sin lista no se abre. */
+  /** La lista del bot (`bot-deck-lists.ts`, con sus cartas cambiadas si las tiene); sin lista no se abre. */
   deck: BotDeckList | null
   onClose: () => void
   /** La acción principal, abajo («Jugar contra X»). */
@@ -49,8 +49,10 @@ export function BotDeckSheet({ isOpen, deck, onClose, footer, loadCards = fetchD
   const [state, setState] = useState<{ id: string; load: Load } | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [wasOpen, setWasOpen] = useState(isOpen)
-  // El mazo cuyas cartas ya llegaron: volver a abrirlo no pide nada.
+  // Las cartas que ya llegaron (sus passcodes): volver a abrir el mismo mazo no pide nada; con una carta cambiada, se piden de nuevo.
   const readyId = useRef<string | null>(null)
+  const ids = deck ? [...new Set([...deck.main, ...deck.extra].map(([id]) => id))] : []
+  const key = ids.join(',')
   const fetchCards = useEffectEvent((ids: number[]) => loadCards(ids))
 
   // Cada vez que se abre, en el Main y sin carta en grande.
@@ -62,31 +64,30 @@ export function BotDeckSheet({ isOpen, deck, onClose, footer, loadCards = fetchD
   }
 
   useEffect(() => {
-    if (!isOpen || !deck || readyId.current === deck.id) return
+    if (!isOpen || !key || readyId.current === key) return
     let alive = true
-    const ids = [...new Set([...deck.main, ...deck.extra].map(([id]) => id))]
 
-    setState({ id: deck.id, load: { status: 'loading' } })
-    fetchCards(ids).then(
+    setState({ id: key, load: { status: 'loading' } })
+    fetchCards(key.split(',').map(Number)).then(
       (cards) => {
         if (!alive) return
         // Sin ninguna carta (lo vacío) se vuelve a pedir: reintentar o reabrir.
-        if (cards.length > 0) readyId.current = deck.id
-        setState({ id: deck.id, load: { status: 'ready', cards: new Map(cards.map((card) => [card.ygoprodeckId, card])) } })
+        if (cards.length > 0) readyId.current = key
+        setState({ id: key, load: { status: 'ready', cards: new Map(cards.map((card) => [card.ygoprodeckId, card])) } })
       },
       (error: unknown) => {
-        if (alive) setState({ id: deck.id, load: { status: 'error', message: error instanceof Error && error.message ? error.message : t('solo.deck.errorBody') } })
+        if (alive) setState({ id: key, load: { status: 'error', message: error instanceof Error && error.message ? error.message : t('solo.deck.errorBody') } })
       },
     )
 
     return () => {
       alive = false
     }
-  }, [isOpen, deck, attempt])
+  }, [isOpen, key, attempt])
 
   if (!deck) return null
 
-  const load: Load = state?.id === deck.id ? state.load : { status: 'loading' }
+  const load: Load = state?.id === key ? state.load : { status: 'loading' }
   const resolved = (pairs: Pairs) => (load.status === 'ready' ? pairs.flatMap(([id, copies]) => (load.cards.has(id) ? [{ card: load.cards.get(id)!, copies }] : [])) : [])
   const shown = resolved(deck[zone])
   const zoomCard = zoomed === null ? null : (shown[zoomed]?.card ?? null)

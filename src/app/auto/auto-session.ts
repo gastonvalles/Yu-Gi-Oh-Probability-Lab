@@ -166,7 +166,7 @@ export interface SessionOptions {
   /**
    * El rival con handtraps (`autoRival` de `handtraps.ts`): esas cartas van en su deck antes del relleno (que lo completa hasta su tamaño), su mano de arranque es
    * `hand(semilla)` y las usa con `handtrapPolicy`, en el orden de `main`; `extra` es su Extra Deck, en orden de preferencia para los costos (sin él, `DEFAULT_RIVAL_EXTRA`).
-   * Sin esto, el rival pasivo de 40 Normales, con el Extra de siempre (nunca lo usa, pero hay cartas tuyas que lo miran). Con `ownTurn`, además juega su turno (`turnBot`). Con `botDeck` (un mazo de `BOT_DECKS`), el rival «Bot»: su deck es esa lista fija (sin relleno ni handtraps de la hoja), su mano sale del
+   * Sin esto, el rival pasivo de 40 Normales, con el Extra de siempre (nunca lo usa, pero hay cartas tuyas que lo miran). Con `ownTurn`, además juega su turno (`turnBot`). Con `botDeck` (un mazo de `BOT_DECKS`), el rival «Bot»: su deck es esa lista fija (o `main`, si no viene vacío: sus cartas cambiadas), sin relleno ni handtraps de la hoja; su mano sale del
    * barajado de ese deck y decide su ejecutor.
    */
   rival?: { main: readonly (readonly [number, number])[]; extra?: readonly (readonly [number, number])[]; hand: (seed: number) => number[]; ownTurn?: boolean; botDeck?: string } | null
@@ -594,8 +594,8 @@ export function createAutoSession(options: SessionOptions): AutoSession {
       // Las handtraps del rival y el relleno hasta el tamaño del deck pasivo (así roba sin quedarse sin cartas), y su Extra Deck.
       const own = rival?.main ?? []
       const room = Math.max(0, filler.length - own.reduce((sum, [, copies]) => sum + copies, 0))
-      // El rival «Bot» juega su lista tal cual.
-      const theirs: DeckList = deckBot ? { main: deckBot.list.main, extra: rivalExtra } : { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)], extra: rivalExtra }
+      // El rival «Bot» juega su lista tal cual o, con cartas cambiadas, el Main que le llega (`autoRival`).
+      const theirs: DeckList = deckBot ? { main: own.length > 0 ? own : deckBot.list.main, extra: rivalExtra } : { main: [...own, ...filler.slice(0, room).map((code) => [code, 1] as const)], extra: rivalExtra }
 
       // En el duelo por enlace, el deck del otro (entero, sin relleno).
       return loader.load([options.deck, options.remote?.deck ?? theirs], progress)

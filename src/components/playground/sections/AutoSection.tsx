@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
 
 import type { ChainRowState } from '../../../app/auto/chain-feed'
-import { ELFNOTE, ELFNOTE_DECK } from '../../../app/bot-deck-lists'
+import { ELFNOTE, ELFNOTE_DECK, SKY_STRIKER_DECK } from '../../../app/bot-deck-lists'
 import { DuelRailsContext } from '../../../app/duel-rails'
 import { BOT_DECK_MENU, DEFAULT_HANDTRAP_CONFIG, rivalKindOf, withRival, type BotDeckInfo } from '../../../app/handtraps'
+import type { Banlist } from '../../../app/banlists'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
 import { t } from '../../../i18n'
@@ -19,6 +20,7 @@ import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
+import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
 import { SoloScreen } from '../../duel/SoloScreen'
 import { LifeScore } from '../../duel/LifeScore'
@@ -152,6 +154,7 @@ export function AutoSection() {
       <BotLogSample />
       <RivalSample />
       <BotDeckSample />
+      <BotDeckEditorSample />
       <Specimen title="Solo · la lista de rivales, la ficha y la barra" layout="column" note={<>La pantalla Solo de verdad (lo que se toca se guarda como en la app): arriba «Probá tu combo» (Handtraps, con sus cartas como arte y, en el celular y elegido, sus cartas y «Elegir…» debajo, y Pasivo) y los bots debajo; en escritorio, la lista (430 px) y la ficha lado a lado con «Jugar contra X»; en el celular (achicá la ventana), la lista y la barra pegada sobre la de navegación, con lo elegido a la izquierda (abre la ficha en una hoja) y «Jugar». Cada ajuste va en su fila: un solo segmentado (Quién empieza) y el resto interruptores. Archivo: <Tag>duel/SoloScreen.tsx</Tag></>}>
         <div className="overflow-hidden rounded-card border border-border-subtle">
           <SoloScreen deckName="Mi deck" deckSize={40} minDeck={5} onOpenBuilder={() => {}} onPlay={() => {}} />
@@ -236,6 +239,24 @@ function BotDeckSample() {
           }
         />
       ))}
+    </Specimen>
+  )
+}
+
+/** Un banlist fijo para la muestra: Maxx "C", Triple Tactics Talent y Called by the Grave prohibidas; Droll & Lock Bird limitada. */
+const SAMPLE_BANLIST: Banlist = { region: 'tcg', date: '2026-10-19', forbidden: [23434538, 25311006, 24224830], limited: [94145021], semiLimited: [] }
+
+function BotDeckEditorSample() {
+  const [open, setOpen] = useState(false)
+  const [flex, setFlex] = useState<[number, number][] | null>(null)
+
+  return (
+    <Specimen title="Cambiar cartas · las ranuras libres de un bot" layout="column" note={<>Desde «Ver mazo» de un bot. Sólo sus handtraps y staples (el motor no aparece) y las handtraps que el bot sabe usar, cada una con su <Tag>Stepper</Tag> (el de <Tag>HandtrapPoolCard</Tag>, con su tope): bajar una libera su ranura y subir otra la ocupa, así el Main no cambia de tamaño. El tope sale de 3 por nombre, el banlist (sólo para lo que se agrega) y las ranuras libres; lo prohibido lo dice debajo. «Guardar» pide las ranuras llenas; «Restaurar original» vuelve al mazo de la lista. Archivo: <Tag>duel/BotDeckEditor.tsx</Tag></>}>
+      <Button variant="secondary" size="sm" icon="pencil" className="justify-self-start" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        {t('solo.deck.edit')}
+      </Button>
+      <BotDeckEditor isOpen={open} list={SKY_STRIKER_DECK} flex={flex ?? undefined} banlist={SAMPLE_BANLIST} onClose={() => setOpen(false)} onSave={(next) => { setFlex(next); setOpen(false) }} />
+      <Tag>{flex ? `Guardado: ${flex.map(([code, copies]) => `${code}×${copies}`).join(', ')}` : 'Guardado: el original'}</Tag>
     </Specimen>
   )
 }

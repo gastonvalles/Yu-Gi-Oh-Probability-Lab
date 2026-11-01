@@ -9,7 +9,7 @@ import { elfnoteBot } from '../app/auto/bot/executors/elfnote'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
 import type { CoreAnswer, CoreAsk } from '../app/auto/protocol'
-import { autoRival } from '../app/handtraps'
+import { autoRival, originalFlex } from '../app/handtraps'
 import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -33,6 +33,8 @@ const LOG_SEED = Number(process.env.ELFNOTE_LOG ?? 0)
  * - `damage`: con tu campo vacío, te hace daño en su turno 3 (`wins`, sin umbral: las que te gana ahí).
  */
 const THRESHOLDS = { synchro: 0.9, interrupt: 0.68, damage: 0.9 }
+/** «Cambiar cartas»: un Ghost Ogre y la Droll & Lock Bird cambiados por Ghost Belle y Mulcharmy Purulia, que el bot no traía (handtrap por handtrap). */
+const FLEX: [number, number][] = [...originalFlex(ELFNOTE_DECK).map(([code, copies]): [number, number] => [code, copies - ([59438930, 94145021].includes(code) ? 1 : 0)]).filter(([, copies]) => copies > 0), [73642297, 1], [84192580, 1]]
 /** El tope del núcleo por turno del bot en escritorio (se midió un máximo de 0,24 s; se juega en un celular: un turno de varios segundos se nota). */
 const CORE_TURN_MS = 1500
 /** Lo que interrumpe tu turno desde el campo: Number 90 (niega tu efecto de monstruo) y Diactorus (niega tu carta del campo). */
@@ -141,7 +143,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
               : []
 
   /** Una mano del goldfish: el bot empieza (vos vas segundo, pasivo, con 40 Normales); hasta tu turno 4. */
-  async function goldfish(seed: number) {
+  async function goldfish(seed: number, flex?: [number, number][]) {
     const { filler } = await source.manifest()
     const faults: string[] = []
     const inner = elfnoteBot(facts, aliasOf, attributeOf)
@@ -167,7 +169,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
       botSeed: seed,
       seat: 1,
       transport: localTransport({ wasmBinary: wasm }, (made) => void (host = made)),
-      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'elfnote' }),
+      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'elfnote', ...(flex ? { botFlex: { 'elfnote': flex } } : {}) }),
       bot,
       onEvent: (event) => {
         if (event.t === 'fault') faults.push(`${event.kind}: ${event.message.slice(0, 160)}`)
@@ -226,10 +228,12 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
     return { seed, status: snapshot.status, turn: snapshot.overlay.turn, afterOne, lp, faults, reasons, times, perTurn, opening, coreMs, rules }
   }
 
-  it(`goldfish: ${GOLDFISH} manos contra el pasivo, sobre los umbrales y sin respuestas rechazadas`, { timeout: 60 * 60 * 1000 }, async () => {
+  it.each([['su lista', undefined], ['cartas cambiadas', FLEX]] as const)(`goldfish con %s: ${GOLDFISH} manos contra el pasivo, sobre los umbrales y sin respuestas rechazadas`, { timeout: 60 * 60 * 1000 }, async (label, flex) => {
     const hands: Awaited<ReturnType<typeof goldfish>>[] = []
 
-    for (let seed = 1; seed <= GOLDFISH; seed += 1) hands.push(await goldfish(seed))
+    // Las cartas cambiadas llegan a la sesión (un cambio que no sirve jugaría el original sin avisar).
+    expect(autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'elfnote', ...(flex ? { botFlex: { 'elfnote': [...flex] } } : {}) })!.main.length > 0).toBe(flex !== undefined)
+    for (let seed = 1; seed <= GOLDFISH; seed += 1) hands.push(await goldfish(seed, flex ? [...flex] : undefined))
     const share = (test: (hand: (typeof hands)[number]) => boolean) => Math.round((hands.filter(test).length / hands.length) * 100) / 100
     const measured = {
       synchro: share((hand) => (hand.afterOne?.extra ?? 0) > 0 || (hand.afterOne?.patron ?? false)),
@@ -247,7 +251,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
     const at = (list: number[], p: number) => Math.round((list[Math.min(list.length - 1, Math.floor(p * list.length))] ?? 0) * 1000) / 1000
 
     hands.forEach((hand) => hand.reasons.forEach((key) => (reasons[key] = (reasons[key] ?? 0) + 1)))
-    report.goldfish = {
+    report[`goldfish ${label}`] = {
       hands: hands.length,
       measured,
       extraOnly,
@@ -259,7 +263,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
       reasons,
       fields: hands.map(({ seed, afterOne, lp, opening }) => ({ seed, opening, afterOne, lp })),
     }
-    console.log(JSON.stringify({ ...(report.goldfish as object), fields: undefined }))
+    console.log(JSON.stringify({ ...(report[`goldfish ${label}`] as object), fields: undefined }))
 
     expect(hands.flatMap((hand) => hand.faults.filter((fault) => !fault.startsWith('script')))).toEqual([])
     // Hasta tu turno 4, o el bot ya ganó (en su turno 3, con tu campo vacío, puede).

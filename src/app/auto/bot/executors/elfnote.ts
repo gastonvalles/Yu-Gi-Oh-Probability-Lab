@@ -1,3 +1,4 @@
+import { withSwapCards } from '../../policies'
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
 import { ELFNOTE as E, ELFNOTE_DECK } from '../../../bot-deck-lists'
@@ -43,9 +44,9 @@ import {
  * Veiler, Nibiru, Droll & Lock Bird, Mulcharmy Fuwalos), como el rival de handtraps (`turnBot`). Sin regla (no las juega): Dragite, Haggard Lizardose, Clockwork Knight.
  */
 
-const OWN = new Set<number>([...ELFNOTE_DECK.main, ...ELFNOTE_DECK.extra].map(([code]) => code))
-/** Sus handtraps, en ese orden de preferencia: las usa como el rival de handtraps. */
-const HANDTRAPS: number[] = [E.ash, E.veiler, E.ogre, E.nibiru, E.droll, E.fuwalos]
+/** Sus handtraps, en ese orden de preferencia (y después las que se le pueden poner, «Cambiar cartas»): las usa como el rival de handtraps. */
+const HANDTRAPS: number[] = withSwapCards([E.ash, E.veiler, E.ogre, E.nibiru, E.droll, E.fuwalos])
+const OWN = new Set<number>([...ELFNOTE_DECK.main, ...ELFNOTE_DECK.extra].map(([code]) => code).concat(HANDTRAPS))
 /** Lo que niega tu eslabón desde su campo (cuenta para `mayInterrupt`). */
 const RESPONDERS = new Set<number>([E.n90, E.impasto, E.diactorus, E.rhapsodia])
 /** Los Elfnote de Nivel 6 (Lanzadores de Conjuros: June Pride pide uno de material): los que van al centro. */

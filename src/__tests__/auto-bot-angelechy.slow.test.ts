@@ -9,7 +9,7 @@ import { angelechyBot } from '../app/auto/bot/executors/angelechy'
 import { localTransport, type AutoHost } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
 import type { CoreAsk } from '../app/auto/protocol'
-import { autoRival } from '../app/handtraps'
+import { autoRival, originalFlex } from '../app/handtraps'
 import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -32,6 +32,8 @@ const LOG_SEED = Number(process.env.ANGELECHY_LOG ?? 0)
  * - `damage`: con tu campo vacío, te hace daño en su turno 3.
  */
 const THRESHOLDS = { monster: 0.82, continuous: 0.85, ready: 0.95, damage: 0.82 }
+/** «Cambiar cartas»: un Ghost Ogre y la Droll & Lock Bird cambiados por Effect Veiler y Nibiru, que el bot no traía (handtrap por handtrap). */
+const FLEX: [number, number][] = [...originalFlex(ANGELECHY_DECK).map(([code, copies]): [number, number] => [code, copies - ([59438930, 94145021].includes(code) ? 1 : 0)]).filter(([, copies]) => copies > 0), [97268402, 1], [27204311, 1]]
 /** El tope del núcleo por turno del bot (se midió un máximo de 0,09 s; se juega en un celular: un turno de varios segundos se nota). */
 const CORE_TURN_MS = 1500
 const MONSTERS = new Set<number>([A.shatranga, A.enlisted, A.castellan, A.seneschal, A.bastion, A.destrier])
@@ -94,7 +96,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Angelechy con el núcleo real (npm
               : []
 
   /** Una mano del goldfish: el bot empieza (vos vas segundo, pasivo, con 40 Normales); hasta tu turno 4. */
-  async function goldfish(seed: number) {
+  async function goldfish(seed: number, flex?: [number, number][]) {
     const { filler } = await source.manifest()
     const faults: string[] = []
     const inner = angelechyBot(facts, aliasOf, attributeOf)
@@ -118,7 +120,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Angelechy con el núcleo real (npm
       botSeed: seed,
       seat: 1,
       transport: localTransport({ wasmBinary: wasm }, (made) => void (host = made)),
-      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'angelechy' }),
+      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'angelechy', ...(flex ? { botFlex: { 'angelechy': flex } } : {}) }),
       bot,
       onEvent: (event) => {
         if (event.t === 'fault') faults.push(`${event.kind}: ${event.message.slice(0, 160)}`)
@@ -163,10 +165,12 @@ describe.skipIf(!hasCoreData)('el ejecutor de Angelechy con el núcleo real (npm
     return { seed, status: snapshot.status, turn: snapshot.overlay.turn, afterOne, lp, faults, times, opening, coreMs, rules }
   }
 
-  it(`goldfish: ${GOLDFISH} manos contra el pasivo, sobre los umbrales y sin respuestas rechazadas`, { timeout: 60 * 60 * 1000 }, async () => {
+  it.each([['su lista', undefined], ['cartas cambiadas', FLEX]] as const)(`goldfish con %s: ${GOLDFISH} manos contra el pasivo, sobre los umbrales y sin respuestas rechazadas`, { timeout: 60 * 60 * 1000 }, async (label, flex) => {
     const hands: Awaited<ReturnType<typeof goldfish>>[] = []
 
-    for (let seed = 1; seed <= GOLDFISH; seed += 1) hands.push(await goldfish(seed))
+    // Las cartas cambiadas llegan a la sesión (un cambio que no sirve jugaría el original sin avisar).
+    expect(autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'angelechy', ...(flex ? { botFlex: { 'angelechy': [...flex] } } : {}) })!.main.length > 0).toBe(flex !== undefined)
+    for (let seed = 1; seed <= GOLDFISH; seed += 1) hands.push(await goldfish(seed, flex ? [...flex] : undefined))
     const share = (test: (hand: (typeof hands)[number]) => boolean) => Math.round((hands.filter(test).length / hands.length) * 100) / 100
     const measured = {
       monster: share((hand) => (hand.afterOne?.monster ?? 0) > 0),
@@ -178,7 +182,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Angelechy con el núcleo real (npm
     const botCore = hands.flatMap((hand) => Object.entries(hand.coreMs).filter(([turn]) => Number(turn) % 2 === 1).map(([, ms]) => ms)).sort((x, y) => x - y)
     const at = (list: number[], p: number) => Math.round((list[Math.min(list.length - 1, Math.floor(p * list.length))] ?? 0) * 1000) / 1000
 
-    report.goldfish = {
+    report[`goldfish ${label}`] = {
       hands: hands.length,
       measured,
       thresholds: THRESHOLDS,
@@ -186,7 +190,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Angelechy con el núcleo real (npm
       coreMsPerBotTurn: { turns: botCore.length, median: at(botCore, 0.5), p95: at(botCore, 0.95), max: at(botCore, 1) },
       fields: hands.map(({ seed, afterOne, lp, opening }) => ({ seed, opening, afterOne, lp })),
     }
-    console.log(JSON.stringify({ ...(report.goldfish as object), fields: undefined }))
+    console.log(JSON.stringify({ ...(report[`goldfish ${label}`] as object), fields: undefined }))
 
     expect(hands.flatMap((hand) => hand.faults.filter((fault) => !fault.startsWith('script')))).toEqual([])
     expect(hands.filter((hand) => !(hand.status === 'ready' && hand.turn >= 4) && !(hand.status === 'ended' && hand.lp === 0)).map((hand) => hand.seed)).toEqual([])

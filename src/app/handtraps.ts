@@ -235,7 +235,13 @@ export function normalizeExtra(cards: readonly ExtraPick[]): ExtraPick[] {
  */
 export function autoRival(config: HandtrapConfig): AutoRival | null {
   // El bot con su mazo: su lista y su mano salen de su deck (la sesión), no de la hoja; manda aunque el simulador esté apagado. Un id que ya no se ofrece, como si no estuviera.
-  if (rivalKindOf(config) === 'bot') return { main: [], extra: [], hand: () => [], botDeck: config.botDeck! }
+  // Con sus cartas cambiadas («Cambiar cartas»), `main` es su Main ya cambiado; sin cambios, vacío (la sesión usa su lista).
+  if (rivalKindOf(config) === 'bot') {
+    const list = BOT_DECK_LISTS.find((deck) => deck.id === config.botDeck)
+    const main = list ? botDeckMain(list, config.botFlex?.[list.id]) : null
+
+    return { main: main && main !== list?.main ? main.map(([code, copies]): [number, number] => [code, copies]) : [], extra: [], hand: () => [], botDeck: config.botDeck! }
+  }
   if (!dealRival(config, 0)) return null
   const picks = normalizePicks(config.picks)
 
@@ -258,10 +264,81 @@ export interface HandtrapConfig {
   ownTurn?: boolean
   /** El rival «Bot»: el id de un mazo con ejecutor (`BOT_DECKS` de `auto/bot/decks`, como `'sky-striker'`), sólo en el duelo automático. Con él, `autoRival` da ese bot (sin mirar `enabled`); sin el campo, lo de siempre. */
   botDeck?: string
+  /** Las cartas cambiadas de cada bot («Cambiar cartas»): por id de mazo, su parte cambiable (`BotDeckList.flex`) como quedó. Sin el mazo, su lista original. */
+  botFlex?: Record<string, [number, number][]>
 }
 
 /** El id de un mazo del bot como se guarda: minúsculas, números y guiones (cuál existe lo sabe la sesión). */
 const BOT_DECK_ID = /^[a-z0-9-]{1,40}$/
+
+/**
+ * Lo que se le puede poner a un bot en una ranura libre: las handtraps del catálogo que sabe usar solo (`AUTO_RULES`). Infinite Impermanence no: desde la mano pide su campo vacío
+ * y ninguna jugada del bot la coloca, así que la tendría en la mano sin usarla.
+ */
+export const BOT_SWAP_CARDS: readonly HandtrapCard[] = HANDTRAP_CATALOG.filter((card) => AUTO_RULES[card.id] && card.id !== 10045474)
+
+/** El nombre de una carta cambiable de ese bot (las copias se cuentan por nombre: Droll & Lock Bird tiene dos passcodes); el motor, por su passcode. */
+export const flexNameOf = (list: BotDeckList, code: number): string => list.flex[code] ?? BOT_SWAP_CARDS.find((card) => card.id === code)?.name ?? String(code)
+
+/** Las copias por nombre de un Main. */
+export function copiesByName(list: BotDeckList, main: BotDeckList['main']): Map<string, number> {
+  const counts = new Map<string, number>()
+
+  for (const [code, copies] of main) counts.set(flexNameOf(list, code), (counts.get(flexNameOf(list, code)) ?? 0) + copies)
+  return counts
+}
+
+/** La parte cambiable del Main original de un bot. */
+export const originalFlex = (list: BotDeckList): [number, number][] => list.main.filter(([code]) => code in list.flex).map(([code, copies]) => [code, copies])
+
+/** Las mismas cartas con las mismas copias, en cualquier orden. */
+export const sameFlex = (a: readonly (readonly [number, number])[], b: readonly (readonly [number, number])[]) => {
+  const key = (pairs: readonly (readonly [number, number])[]) => JSON.stringify([...pairs].sort((x, y) => x[0] - y[0]))
+
+  return key(a) === key(b)
+}
+
+/**
+ * El Main de un bot con su parte cambiable reemplazada por `flex`: el motor como está y, después, lo cambiable. Si `flex` no sirve (otro total de copias, una carta que no es suya
+ * ni de `BOT_SWAP_CARDS`, más de `MAX_COPIES` por nombre) o es la original, el original tal cual (el mismo arreglo). El banlist no se mira acá: lo que se guardó, se juega.
+ */
+export function botDeckMain(list: BotDeckList, flex: readonly (readonly [number, number])[] | undefined): BotDeckList['main'] {
+  if (!flex || sameFlex(flex, originalFlex(list))) return list.main
+  const allowed = (code: number) => code in list.flex || BOT_SWAP_CARDS.some((card) => card.id === code)
+  const total = (pairs: readonly (readonly [number, number])[]) => pairs.reduce((sum, [, copies]) => sum + copies, 0)
+  const main = [...list.main.filter(([code]) => !(code in list.flex)), ...flex]
+  const ok =
+    flex.every(([code, copies]) => allowed(code) && Number.isInteger(copies) && copies >= 1) &&
+    new Set(flex.map(([code]) => code)).size === flex.length &&
+    total(flex) === total(originalFlex(list)) &&
+    [...copiesByName(list, main).values()].every((copies) => copies <= MAX_COPIES)
+
+  return ok ? main : list.main
+}
+
+/** Si el bot juega con cartas cambiadas (lo guardado sirve y no es el original). */
+export const isBotModified = (config: HandtrapConfig, list: BotDeckList | null): boolean => !!list && botDeckMain(list, config.botFlex?.[list.id]) !== list.main
+
+/** El cambio de un bot: `flex` (su parte cambiable) o, con `null` o igual al original, sin cambio. Los de los demás bots quedan. */
+export function withBotFlex(config: HandtrapConfig, list: BotDeckList, flex: [number, number][] | null): HandtrapConfig {
+  const { [list.id]: _drop, ...rest } = config.botFlex ?? {}
+  const next = flex && !sameFlex(flex, originalFlex(list)) ? { ...rest, [list.id]: flex } : rest
+  const { botFlex: _old, ...base } = config
+
+  return Object.keys(next).length > 0 ? { ...base, botFlex: next } : base
+}
+
+/** Lo guardado de los bots que tiene forma de cambio (cuál sirve lo decide `botDeckMain` al jugar). */
+function parseBotFlex(value: unknown): { botFlex?: Record<string, [number, number][]> } {
+  if (!isRecord(value) || Array.isArray(value)) return {}
+  const entries = Object.entries(value).flatMap(([id, pairs]): [string, [number, number][]][] =>
+    BOT_DECK_ID.test(id) && Array.isArray(pairs) && pairs.length <= 60 && pairs.every((pair) => Array.isArray(pair) && pair.length === 2 && pair.every(Number.isInteger))
+      ? [[id, pairs.map(([code, copies]: number[]) => [code!, copies!])]]
+      : [],
+  )
+
+  return entries.length > 0 ? { botFlex: Object.fromEntries(entries) } : {}
+}
 
 /** Un mazo del rival «Bot» como lo ofrece la fila «Rival»: su id (`botDeck`), su nombre y una línea de lo que es. */
 export type BotDeckInfo = Pick<BotDeckList, 'id' | 'name' | 'line'>
@@ -353,7 +430,7 @@ export function readHandtrapConfig(storage: () => Storage = () => localStorage):
   // Despia Branded se reemplazó por Angelechy: quien lo había elegido sigue con el bot.
   const botDeck = typeof stored.botDeck === 'string' && BOT_DECK_ID.test(stored.botDeck) ? { botDeck: stored.botDeck === 'branded' ? 'angelechy' : stored.botDeck } : {}
 
-  return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra), ...(stored.ownTurn === true ? { ownTurn: true } : {}), ...botDeck }
+  return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra), ...(stored.ownTurn === true ? { ownTurn: true } : {}), ...botDeck, ...parseBotFlex(stored.botFlex) }
 }
 
 /** Si hay algo guardado (aunque no se entienda): sin nada, es la primera vez y Solo arranca con Handtraps elegido; `DEFAULT_HANDTRAP_CONFIG` (lo de `#practice`) no cambia. */
@@ -370,7 +447,7 @@ export function writeHandtrapConfig(config: HandtrapConfig, storage: () => Stora
     const ownTurn = config.ownTurn ? { ownTurn: true } : {}
     const botDeck = config.botDeck && BOT_DECK_ID.test(config.botDeck) ? { botDeck: config.botDeck } : {}
 
-    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })), hand: config.hand, extra: normalizeExtra(config.extra ?? DEFAULT_RIVAL_EXTRA), ...ownTurn, ...botDeck }))
+    storage().setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: config.enabled, picks: config.picks.map(({ id, name, copies }) => ({ id, name, copies })), hand: config.hand, extra: normalizeExtra(config.extra ?? DEFAULT_RIVAL_EXTRA), ...ownTurn, ...botDeck, ...parseBotFlex(config.botFlex) }))
   } catch {
     // Sin almacenamiento (ventana privada, cuota): vale hasta recargar.
   }

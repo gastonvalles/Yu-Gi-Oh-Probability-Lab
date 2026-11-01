@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { canRunAuto, setAutoPref, useAutoPrefs, type AutoPrefs } from '../../app/auto-prefs'
 import { botDeckList } from '../../app/bot-deck-lists'
 import { cardSmallImageUrl } from '../../app/card-prices'
-import { BOT_DECK_MENU, hasHandtrapConfig, poolCount, readHandtrapConfig, rivalKindOf, withRival, writeHandtrapConfig, type BotDeckInfo, type HandtrapConfig, type HandtrapPick, type RivalKind } from '../../app/handtraps'
+import { BOT_DECK_MENU, botDeckMain, hasHandtrapConfig, isBotModified, poolCount, readHandtrapConfig, rivalKindOf, withBotFlex, withRival, writeHandtrapConfig, type BotDeckInfo, type HandtrapConfig, type HandtrapPick, type RivalKind } from '../../app/handtraps'
 import { STARTING_LP } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
@@ -23,6 +23,7 @@ import { ShineFrame } from '../ui/ShineFrame'
 import { StepPage } from '../ui/StepPage'
 import { Switch } from '../ui/Switch'
 import { overline, textLink } from '../ui/typography'
+import { BotDeckEditor } from './BotDeckEditor'
 import { BotDeckSheet } from './BotDeckSheet'
 import { HandtrapPicker } from './HandtrapPool'
 
@@ -143,6 +144,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
   const [sheetOpen, setSheetOpen] = useState(false)
   const [choosing, setChoosing] = useState(false)
   const [deckOpen, setDeckOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const save = (next: HandtrapConfig) => {
     setConfig(next)
@@ -157,7 +159,9 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
   const deckReady = deckSize >= minDeck
   const count = poolCount(config.picks)
   const summary = t('handtraps.row.summary', { hand: Math.min(config.hand, count), count })
-  const name = pick.deck?.name ?? t(`auto.rival.kind.${kind}`)
+  // Un bot con cartas cambiadas lo dice en su nombre («Sky Striker · modificado»).
+  const botName = (deck: BotDeckInfo) => (isBotModified(config, botDeckList(deck.id)) ? t('solo.deck.modified', { name: deck.name }) : deck.name)
+  const name = pick.deck ? botName(pick.deck) : t(`auto.rival.kind.${kind}`)
   const playLabel = !deckReady
     ? t('solo.needDeck')
     : pick.deck
@@ -178,6 +182,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
     writeHandtrapConfig(config)
     setSheetOpen(false)
     setDeckOpen(false)
+    setEditing(false)
     onPlay(auto ? 'auto' : 'manual')
   }
 
@@ -213,6 +218,8 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
 
   // Lo que dice la ficha: lo que es, los chips y los ajustes de lo elegido (cada uno en su fila).
   const list = pick.deck ? botDeckList(pick.deck.id) : null
+  // «Ver mazo» muestra el Main con sus cartas cambiadas.
+  const shown = list && pick.deck ? { ...list, name: botName(pick.deck), main: botDeckMain(list, config.botFlex?.[list.id]) } : null
   const chips = [auto ? t('auto.mode.auto') : t('auto.mode.manual'), ...(auto ? [t('solo.lp', { lp: STARTING_LP })] : []), ...(list ? [t('solo.deckSize', { main: copies(list.main), extra: copies(list.extra) })] : []), ...(ownTurn ? [t('solo.ownTurnOn')] : [])]
   // «Ver mazo», sólo los bots (Pasivo y Handtraps no tienen lista): en escritorio, arriba a la derecha de la ficha; en el celular, a todo el ancho debajo de lo que es.
   const viewDeck = list ? (
@@ -338,7 +345,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
                   <ListRow
                     key={deck.id}
                     choice
-                    title={deck.name}
+                    title={botName(deck)}
                     subtitle={canAuto ? t(deck.line) : t('solo.botNeedsAuto')}
                     media={<DeckArt deck={deck} />}
                     selected={pick.deck?.id === deck.id}
@@ -391,7 +398,31 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
         </>
       )}
 
-      <BotDeckSheet isOpen={deckOpen && list !== null} deck={list} onClose={() => setDeckOpen(false)} footer={playButton(true)} />
+      <BotDeckSheet
+        isOpen={deckOpen && shown !== null}
+        deck={shown}
+        onClose={() => setDeckOpen(false)}
+        footer={
+          <div className="grid w-full gap-2">
+            <Button variant="secondary" icon="pencil" fullWidth aria-haspopup="dialog" onClick={() => setEditing(true)}>
+              {t('solo.deck.edit')}
+            </Button>
+            {playButton(true)}
+          </div>
+        }
+      />
+      {list ? (
+        <BotDeckEditor
+          isOpen={editing && deckOpen}
+          list={list}
+          flex={config.botFlex?.[list.id]}
+          onClose={() => setEditing(false)}
+          onSave={(flex) => {
+            save(withBotFlex(config, list, flex))
+            setEditing(false)
+          }}
+        />
+      ) : null}
       <HandtrapPicker
         isOpen={choosing}
         config={config}

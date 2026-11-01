@@ -1,6 +1,9 @@
-import { AUTO_RULES, TURN_RULES, type AutoRule, type TurnRule } from '../handtraps'
+import { AUTO_RULES, BOT_SWAP_CARDS, TURN_RULES, type AutoRule, type TurnRule } from '../handtraps'
 import type { AutoOverlay, CardRef, ChainLink, CorePlace } from './adapter'
 import { LOCATION, type AskOf, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
+
+/** Las handtraps de un ejecutor (`base`, en su orden de preferencia) y después las de `BOT_SWAP_CARDS` que no tiene: si se las ponen, también las usa. Vive acá porque los ejecutores sólo importan valores de `policies` y de las listas (`auto-bot-privacy.test.ts`). */
+export const withSwapCards = (base: readonly number[]): number[] => [...base, ...BOT_SWAP_CARDS.map((card) => card.id).filter((id) => !base.includes(id))]
 
 /**
  * Quién contesta cuando no contesta una persona (§3.8 del diseño). Todas son puras y deterministas: `passivePolicy` es el rival que no
