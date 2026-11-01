@@ -3,7 +3,8 @@ import type { GlowKind } from '../types'
 
 /**
  * El brillo de una carta en un duelo, igual en todas las mesas (Gastón, 2026-10-25: «el color indicativo es un celeste/blanco tenue al rededor de la carta, el amarillo es para cuando se activan o
- * resuelven efectos»): `can`, con esta carta podés hacer algo ahora (activarla, invocarla de forma especial, elegirla); `act`, su efecto se está activando o resolviendo. Si es las dos cosas, gana `act`.
+ * resuelven efectos»): `can`, con esta carta podés hacer algo ahora (activarla, invocarla de forma especial, atacar, elegirla); `act`, su efecto se está activando o resolviendo. Si es las dos cosas, gana `act`.
+ * Un color por pregunta y una forma por verbo: lo que puede atacar es `can` y suma la espada (`AttackMark`); `act`, la luz que gira y la insignia CL. Sin brillo: la mesa manual, los replays y lo oculto del rival.
  */
 export type DuelGlow = Extract<GlowKind, 'can' | 'act'>
 

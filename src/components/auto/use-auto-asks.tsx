@@ -826,6 +826,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     }
   }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine, vanilla, codeOf])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
+  const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
   // Lo que se activa o se resuelve, de los dos lados, al ritmo del aviso de la cadena (repasando, nada).
   const acting = useMemo(() => actingOf(reviewing ? null : feed), [feed, reviewing])
@@ -1159,6 +1160,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // Cambiás de fase en tus jugadas del turno, en una parada de tu DP o tu SP y en la ventana de una fase tuya.
     myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
     respond,
+    attack,
     act: acting.mine,
     links: links.mine,
     prompt: prompt ? (

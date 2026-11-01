@@ -62,7 +62,7 @@ En orden de valor sobre costo.
 - **Decisiones:** la dependencia `motion` (hoy no está instalada); las filas del creador de tier lists entre 390 y 413 px (tres
   cartas por renglón: ¿achicar la carta o ir de borde a borde?); qué secciones faltan en Descubrir y en qué orden; qué más suma
   «Preguntarle al rival si responde» (hoy 🤔, 👍 y el chat); qué mostraría el botón «Info» y el «+» de la mesa (fichas,
-  contadores, moneda, dado); si «Descargar video» de la barra del combo compartido lleva texto en escritorio (hoy es ícono); el brillo de atacar y de las magias seteadas (hay propuesta con imágenes) y qué toma de la captura del ataque.
+  contadores, moneda, dado); si «Descargar video» de la barra del combo compartido lleva texto en escritorio (hoy es ícono); si se suma el aura y la estela de flechas del ataque (hay propuesta con imágenes: rojo del ataque, `translate`, tamaño M).
 
 ## En pausa o descartado
 

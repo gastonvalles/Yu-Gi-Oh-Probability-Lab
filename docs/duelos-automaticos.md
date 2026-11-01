@@ -32,7 +32,7 @@ Capa 4 del motor de cartas (`docs/motor-de-cartas.md`). Corre `ocgcore` con los 
 - **Cuándo se pregunta una cadena:** como EDOPro sin «Always chain», sólo si algo responde de verdad (`spe_count ≠ 0`) o es forzada (y se avisa). «Siempre» pregunta igual; tus ventanas de DP, SP y EP con algo para activar se muestran salvo con «Nunca»; el post-robo se pasa solo.
 - **Las preguntas** (`ask-ui.ts`, `AskPrompt`):
   - El rótulo de un efecto es el `strN` que nombra su `desc`, nunca un número (el orden de la pregunta no es el del texto). Los carteles no nombran cartas: bastan arte, lugar y CLn.
-  - Brilla en celeste lo que se activa o invoca especial y lo que se pide elegir; en ámbar, cada eslabón (`app/card-glow.ts`). Invocar normal, colocar, cambiar de posición o atacar no brillan.
+  - Brilla en celeste lo que se activa, invoca especial, ataca (con la espada) o se pide elegir; en ámbar, cada eslabón (`app/card-glow.ts`). Invocar normal, colocar o cambiar de posición, no.
   - Hasta 6 cartas van en banda (`PickBand`); con más, la hoja (`CardPicker`). Una lista de varios lugares se agrupa por lugar y cada carta lleva su chip: dos copias de la mano y del Deck nunca se ven iguales. Declarar una carta ofrece sólo lo que ese asiento conoce (`declarable`).
   - Todo cartel va en un lugar fijo (`matSpot`) y nada se minimiza solo. El título dice para qué por el `HINT_SELECTMSG` previo (`pickTitle`), sólo con los códigos comprobados.
   - Al rival automático rechazado se le repregunta con `randomLegalPolicy`; tres seguidas cortan.

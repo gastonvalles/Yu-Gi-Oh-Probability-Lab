@@ -176,8 +176,10 @@ export interface AskView {
   theirs: ReadonlyMap<string, AskItem[]>
   phaseItems: AskItem[]
   endTurn: CoreAnswer | null
-  /** Lo que brilla en celeste (`can` de `app/card-glow.ts`): lo que se puede activar o invocar de forma especial, lo que la pregunta pide elegir u ordenar y la carta del efecto preguntado (lo que sólo se invoca de forma normal, se coloca, cambia de posición o ataca se toca igual, sin brillar). */
+  /** Lo que brilla en celeste (`can` de `app/card-glow.ts`): lo que se puede activar, invocar de forma especial o atacar, lo que la pregunta pide elegir u ordenar y la carta del efecto preguntado (lo que sólo se invoca de forma normal, se coloca o cambia de posición se toca igual, sin brillar). */
   respond: CardRef[]
+  /** Tus monstruos que pueden atacar ahora (`select_battlecmd.attacks`, sólo lo tuyo): además del celeste, llevan la espada. */
+  attack: CardRef[]
   zonePick: ZonePick | null
   cardPick: CardPick | null
   prompt: AskPromptView | null
@@ -812,6 +814,7 @@ export function askView(state: AskState): AskView {
     phaseItems: base.phaseItems,
     endTurn: base.endTurn,
     respond: [],
+    attack: [],
     zonePick: null,
     cardPick: null,
     prompt: base.prompt,
@@ -828,10 +831,14 @@ export function askView(state: AskState): AskView {
     case 'select_idlecmd':
     case 'select_battlecmd':
     case 'select_chain':
-      // Brilla lo que se activa (sólo las activaciones llevan `effect` o `children`) y lo que se invoca de forma especial (`action` 1, también la de Péndulo, desde la mano, el campo, las pilas
-      // o el Extra); lo que se invoca de forma normal, se coloca, cambia de posición o ataca, no. Lo del rival que se activa, también (después de lo tuyo).
+      // Brilla lo que se activa (sólo las activaciones llevan `effect` o `children`), lo que se invoca de forma especial (`action` 1, también la de Péndulo, desde la mano, el campo, las pilas
+      // o el Extra) y lo tuyo que ataca (`select_battlecmd` `action` 1, que además lleva la espada); lo que se invoca de forma normal, se coloca o cambia de posición, no. Lo del rival que se
+      // activa, también (después de lo tuyo); lo suyo nunca ataca en tu pregunta.
+      view.attack = [...base.items].flatMap(([id, items]) => (items.some((item) => item.answer?.type === 'select_battlecmd' && item.answer.action === 1) ? [{ side: 'mine' as const, id }] : []))
       view.respond = (['mine', 'theirs'] as const).flatMap((side) =>
-        [...(side === 'mine' ? base.items : base.theirs)].flatMap(([id, items]) => (items.some((item) => item.effect || item.children || (item.answer?.type === 'select_idlecmd' && item.answer.action === 1)) ? [{ side, id }] : [])),
+        [...(side === 'mine' ? base.items : base.theirs)].flatMap(([id, items]) =>
+          items.some((item) => item.effect || item.children || (item.answer?.type === 'select_idlecmd' && item.answer.action === 1)) || (side === 'mine' && view.attack.some((ref) => ref.id === id)) ? [{ side, id }] : [],
+        ),
       )
       view.cancelable = ask.type === 'select_chain' && !ask.forced
       break

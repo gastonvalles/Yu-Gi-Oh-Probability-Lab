@@ -427,7 +427,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
         </span>
         {/* La cantidad queda derecha, como los contadores: es para leerla desde acá. */}
         <MaterialCount count={materials} sideways={sideways} />
-        {acting ? <FxFrame tone="gold" /> : null}
+        {acting ? <FxFrame tone="gold" fine /> : null}
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
         {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: named })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}

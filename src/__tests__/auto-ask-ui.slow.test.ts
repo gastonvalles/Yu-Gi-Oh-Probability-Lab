@@ -108,6 +108,8 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
       stuck: {} as Record<string, number>,
       dead: 0,
       unparsed: 0,
+      /** Preguntas donde la espada no coincide con lo que el núcleo deja atacar (tiene que ser 0). */
+      attackMismatch: 0,
       notOffered: {} as Record<string, number>,
       /** Lo que tarda `ask-ui` (abrir la pregunta y todos sus toques), en ms: en total y lo más lento por tipo. */
       uiMs: 0,
@@ -168,6 +170,16 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
         const legalOnes = view.auto ? null : legalAnswers(ask)
 
         bump(tally.questions, ask.type)
+        // La espada: en la Battle Phase, justo los monstruos que el núcleo deja atacar (`attacks`), todos tuyos y brillando en celeste; en cualquier otra pregunta, ninguno.
+        if (!view.auto) {
+          const attackers = ask.type === 'select_battlecmd' ? new Set(ask.attacks.map((card) => adapters[asked.seat]!.idAt(card))) : new Set<string | null>()
+          const lit = (id: string) => view.respond.some((ref) => ref.side === 'mine' && ref.id === id)
+
+          if (view.attack.length !== attackers.size || view.attack.some((ref) => ref.side !== 'mine' || !attackers.has(ref.id) || !lit(ref.id))) {
+            tally.attackMismatch += 1
+            if (samples.length < 40) samples.push({ duel: d, kind: `attack ${ask.type}`, detail: JSON.stringify({ attacks: ask.type === 'select_battlecmd' ? ask.attacks : [], attack: view.attack }).slice(0, 900) })
+          }
+        }
         if (legalOnes) {
           const offered = new Set(offeredAnswers(view))
 
@@ -222,7 +234,17 @@ describe.skipIf(!hasCoreData)('el oráculo de legalidad de ask-ui (npm run test:
     // Nada se contesta solo «sin pantalla».
     const undeclared = Object.keys(tally.auto).filter((key) => key.split(':')[1] === 'none')
 
-    expect({ retries: tally.retries, stuck: tally.stuck, dead: tally.dead, unparsed: tally.unparsed, undeclared, nullAnswers: Object.keys(tally.auto).filter((key) => key.endsWith(':null')) }).toEqual({ retries: {}, stuck: {}, dead: 0, unparsed: 0, undeclared: [], nullAnswers: [] })
+    expect({ retries: tally.retries, stuck: tally.stuck, dead: tally.dead, unparsed: tally.unparsed, undeclared, nullAnswers: Object.keys(tally.auto).filter((key) => key.endsWith(':null')), attackMismatch: tally.attackMismatch }).toEqual({
+      retries: {},
+      stuck: {},
+      dead: 0,
+      unparsed: 0,
+      undeclared: [],
+      nullAnswers: [],
+      attackMismatch: 0,
+    })
+    // Hubo Battle Phases con ataques: la espada se probó con ofertas reales.
+    expect(tally.questions.select_battlecmd ?? 0).toBeGreaterThan(0)
     // Lo legal que la pantalla no ofrece en las preguntas de menú: sólo barajar la mano (la mesa no lo tiene).
     expect(Object.keys(tally.notOffered).filter((key) => key !== 'select_idlecmd:8')).toEqual([])
     expect(tally.duels).toBe(DUELS)

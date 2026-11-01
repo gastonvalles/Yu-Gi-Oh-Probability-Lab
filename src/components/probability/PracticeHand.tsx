@@ -587,7 +587,7 @@ const HandCard = memo(function HandCard({
       />
       <div ref={backRef} data-back className={CARD_BACK} aria-hidden="true" />
       {selected ? <FxFrame tone="cyan" /> : null}
-      {frame ? <FxFrame tone={frame.tone} orbit={frame.orbit} /> : null}
+      {frame ? <FxFrame {...frame} /> : null}
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}
     </div>

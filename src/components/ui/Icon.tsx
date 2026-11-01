@@ -210,6 +210,13 @@ const PATHS = {
       <rect x="14.5" y="4" width="7" height="11" rx="1.2" transform="rotate(12 18 9.5)" />
     </>
   ),
+  /** «Puede atacar»: la ficha de la espada de un monstruo del duelo (`AttackMark`). */
+  sword: (
+    <>
+      <path data-fill d="M20 4v3.2l-8.6 8.6-3.2-3.2L16.8 4z" />
+      <path d="m6.5 10.5 7 7M8 16l-4 4" />
+    </>
+  ),
 
   // La patita de las mascotas: una almohadilla y cuatro deditos.
   paw: (
