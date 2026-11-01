@@ -41,7 +41,7 @@ interface SegmentedProps<T extends string> {
   size?: 'sm' | 'md'
   /** Ocupa todo el ancho y reparte las opciones en partes iguales. */
   fullWidth?: boolean
-  /** Opciones de relleno chico y en un solo renglón: para una pista que comparte la fila con otros controles (Tiene | No tiene en una condición de regla). */
+  /** Opciones de relleno chico y en un solo renglón: para una pista que comparte la fila con otros controles (las respuestas del duelo automático). */
   dense?: boolean
   className?: string
 }

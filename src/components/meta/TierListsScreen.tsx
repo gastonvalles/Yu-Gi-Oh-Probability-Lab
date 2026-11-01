@@ -19,7 +19,7 @@ import {
 } from '../../app/meta'
 import { useAppSelector } from '../../app/store-hooks'
 import { savedCardCount } from '../../app/tierlist-maker'
-import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
+import { useMetaRegion } from '../../app/use-meta-region'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
@@ -28,13 +28,13 @@ import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
-import { Icon, type IconName } from '../ui/Icon'
-import { IconButton } from '../ui/IconButton'
+import { type IconName } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { ScrollRow } from '../ui/ScrollRow'
 import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
+import { Tabs, type TabOption } from '../ui/Tabs'
 import { overline, supportText } from '../ui/typography'
 import { MetaCardModal } from './MetaCardModal'
 import { MetaHeroSide } from './MetaHeroSide'
@@ -53,6 +53,9 @@ const LIST_TITLE_KEY = { handtrap: 'meta.list.handtrapTitle', boardbreaker: 'met
 const LIST_THINGS_KEY = { handtrap: 'meta.list.handtrapThings', boardbreaker: 'meta.list.boardbreakerThings' } as const satisfies Record<MetaList, string>
 const LIST_ICON: Record<MetaList, IconName> = { handtrap: 'hand', boardbreaker: 'target' }
 
+/** La pestaña: una de las dos listas del meta o «La tuya» (el creador). En el enlace siguen siendo `list` + `vista=tuya`. */
+type TierTab = MetaList | 'mine'
+
 /** Pasa a otra pantalla por el hash: el armazón cambia de paso y "Atrás" vuelve al tier list. */
 function goTo(hash: string): void {
   window.location.hash = hash
@@ -65,7 +68,7 @@ export function TierListsScreen() {
   // Arranca en la región del formato del builder; después se cambia desde el encabezado (y vale también para los decks de torneo).
   const region = useMetaRegion(deckFormat === 'ocg' ? 'ocg' : 'tcg')
   const [list, setList] = useState<MetaList>(() => readTierListHash(window.location.hash).list)
-  // «Del meta» o «La tuya» (el creador, que antes era una pantalla aparte): el selector de arriba de todo.
+  // «La tuya» (el creador, que antes era una pantalla aparte) o el meta: con `list` arma la pestaña elegida.
   const [tab, setTab] = useState<TierListView>(() => readTierListHash(window.location.hash).view)
   // Cuántas cartas tiene la tuya: se lee de lo guardado y, con el creador abierto, cada cambio la actualiza.
   const [mineCount, setMineCount] = useState(savedCardCount)
@@ -103,32 +106,25 @@ export function TierListsScreen() {
     { value: 'now', label: t('meta.screen.viewNow') },
     { value: 'projected', label: t('meta.screen.viewProjected') },
   ]
-  const listOptions = LISTS.map((value) => ({ value, label: t(LIST_LABEL_KEY[value]) }))
   const descriptionParams = { count: deckCount, n: formatInteger(deckCount), region: region.toUpperCase(), weeks, ahead }
   const description = t(view === 'projected' ? 'meta.screen.tierProjected' : 'meta.screen.tierNow', descriptionParams)
 
-  const changeList = (next: MetaList) => {
-    setList(next)
-    window.history.replaceState(null, '', buildTierListHash(next, tab))
-  }
-  const changeTab = (next: TierListView) => {
-    setTab(next)
-    window.history.replaceState(null, '', buildTierListHash(list, next))
+  // Pasar a «La tuya» no olvida la lista del meta: el enlace la sigue diciendo y al volver está.
+  const changeTab = (next: TierTab) => {
+    const nextList = next === 'mine' ? list : next
+    const nextView: TierListView = next === 'mine' ? 'mine' : 'meta'
+
+    setList(nextList)
+    setTab(nextView)
+    window.history.replaceState(null, '', buildTierListHash(nextList, nextView))
   }
 
-  // Arriba de todo (en el celular, antes de la región): en escritorio, a su ancho; en el celular, de lado a lado.
-  const switcher = (
-    <Segmented
-      value={tab}
-      onChange={changeTab}
-      options={[
-        { value: 'meta', label: t('meta.view.meta') },
-        { value: 'mine', label: t('meta.view.mine'), ...(mineCount > 0 ? { count: mineCount, ariaLabel: t('meta.view.mineCount', { count: mineCount }) } : {}) },
-      ]}
-      label={t('meta.view.label')}
-      fullWidth={!isDesktop}
-    />
-  )
+  const tabOptions: ReadonlyArray<TabOption<TierTab>> = [
+    ...LISTS.map((value) => ({ value, label: t(LIST_LABEL_KEY[value]), icon: isDesktop ? LIST_ICON[value] : undefined })),
+    { value: 'mine', label: t('meta.view.mine'), icon: isDesktop ? 'pencil' : undefined, ...(mineCount > 0 ? { count: mineCount, ariaLabel: t('meta.view.mineCount', { count: mineCount }) } : {}) },
+  ]
+  // La vista, arriba de todo lo que aparece o desaparece (en el celular, antes de la fecha y la región): al pasar a «La tuya» no se mueve. En escritorio, a su ancho; en el celular, de lado a lado.
+  const switcher = <Tabs value={tab === 'mine' ? 'mine' : list} onChange={changeTab} options={tabOptions} label={t('meta.screen.listLabel')} fullWidth={!isDesktop} />
   const hero = (side: ReactNode) => (
     <StepHero
       title={t('meta.screen.title')}
@@ -140,7 +136,7 @@ export function TierListsScreen() {
   )
 
   if (tab === 'mine') {
-    // El creador, entero: en escritorio «Descargar imagen» sube al costado del encabezado. El mismo ancho que «Del meta»: el selector no se corre al cambiar.
+    // El creador, entero: en escritorio «Descargar imagen» sube al costado del encabezado. El mismo ancho que el meta: las pestañas no se corren al cambiar.
     return (
       <StepPage as="article" wide>
         <TierMakerScreen header={hero} switcher={switcher} onCountChange={setMineCount} />
@@ -159,17 +155,14 @@ export function TierListsScreen() {
 
   return (
     <StepPage as="article" wide>
-      {/* En el celular el título va en la barra de arriba: el selector queda primero y la región debajo, en su propio renglón. */}
-      {hero(isDesktop ? <MetaHeroSide region={region} onRegionChange={setMetaRegion} /> : null)}
+      {/* En el celular el título va en la barra de arriba: las pestañas quedan primero y la fecha y la región debajo, en su renglón (en «La tuya» se van sin mover las pestañas). */}
+      {hero(isDesktop ? <MetaHeroSide region={region} /> : null)}
       {switcher}
-      {isDesktop ? null : <MetaHeroSide region={region} onRegionChange={setMetaRegion} />}
-
-      {isDesktop ? <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} className="min-w-[26rem]" /> : null}
+      {isDesktop ? null : <MetaHeroSide region={region} />}
 
       <section className="min-w-0">
         {/* En celular la descripción baja a todo el ancho, debajo del título de la lista. */}
         <SectionHeader
-          icon={isDesktop ? LIST_ICON[list] : undefined}
           title={t(LIST_TITLE_KEY[list])}
           description={isDesktop ? description : undefined}
           actions={
@@ -186,15 +179,14 @@ export function TierListsScreen() {
         {isDesktop ? null : (
           <>
             <p className={cx(supportText, 'mt-1')}>{description}</p>
-            {/* Una sola fila de pastillas que se desliza: qué lista y, separado, hoy o proyección (lo que más se toca); lo que casi no se toca (zona y semanas) va en «Ajustar». */}
-            <div className="mt-3 flex items-center gap-2">
+            {/* Una sola fila de filtro: hoy o proyección (lo que más se toca); lo que casi no se toca (zona y semanas) va en «Ajustar». */}
+            <div className="mt-3 flex items-center justify-between gap-2">
               <ScrollRow>
-                <Segmented variant="scroll" value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} />
-                <Segmented variant="scroll" value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} className="ml-2" />
+                <Segmented variant="scroll" value={view} onChange={setView} options={viewOptions} label={t('meta.screen.viewLabel', { ahead })} />
               </ScrollRow>
-              <IconButton tone="raised" size="md" aria-label={t('meta.screen.adjust')} title={t('meta.screen.adjust')} onClick={() => setAdjustOpen(true)}>
-                <Icon name="sliders" size={20} />
-              </IconButton>
+              <Button variant="secondary" size="sm" icon="sliders" aria-label={t('meta.screen.adjust')} onClick={() => setAdjustOpen(true)}>
+                {t('meta.screen.adjustShort')}
+              </Button>
             </div>
           </>
         )}

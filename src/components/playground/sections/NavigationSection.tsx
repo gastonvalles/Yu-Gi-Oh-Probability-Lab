@@ -29,6 +29,7 @@ import { cx } from '../../ui/cx'
 import { Segmented } from '../../ui/Segmented'
 import { StepHero } from '../../StepHero'
 import { StepPage } from '../../ui/StepPage'
+import { Tabs } from '../../ui/Tabs'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleArrowCombo, sampleCombo } from './duel-sample'
 
@@ -357,6 +358,35 @@ function DemoPage({ onExit }: { onExit: () => void }) {
 }
 
 /** El menú (lateral en escritorio; en el celular, la barra de abajo con sus hojas y el cajón de ajustes), la barra de arriba y el pie: lo que arma `AppShell`. Todo sale de `src/components/shell/`. */
+/** `Tabs`: la de escritorio (a su ancho, con íconos y la cuenta), la del celular (partes iguales, en 390 px) y una con una pestaña apagada. */
+function TabsSamples() {
+  const [list, setList] = useState<'handtrap' | 'boardbreaker' | 'mine'>('handtrap')
+  const [view, setView] = useState<'changes' | 'full' | 'old'>('changes')
+
+  return (
+    <Specimen
+      title="Tabs"
+      layout="column"
+      note={<>La vista: lo que cambia la pantalla entera, <b>una por pantalla</b> y arriba de lo que aparece o desaparece. Texto con el subrayado ámbar, como la navegación; nunca una barra de pastillas (eso es un filtro, <Tag>Segmented</Tag>). Normal, hover (tinte), foco, elegida y apagada; la elegida no cambia de ancho. Con el teclado: ← → e Inicio/Fin. Si no entran, se deslizan. Archivo: <Tag>ui/Tabs.tsx</Tag></>}
+    >
+      <Tabs
+        label="Qué tier list ver"
+        value={list}
+        onChange={setList}
+        options={[
+          { value: 'handtrap', label: 'Hand traps', icon: 'hand' },
+          { value: 'boardbreaker', label: 'Boardbreakers', icon: 'target' },
+          { value: 'mine', label: 'La tuya', icon: 'pencil', count: 12, ariaLabel: 'La tuya, con 12 cartas' },
+        ]}
+      />
+      <div className="w-full max-w-[24.375rem]">
+        <Tabs label="Qué tier list ver, en el celular" fullWidth value={list} onChange={setList} options={[{ value: 'handtrap', label: 'Hand traps' }, { value: 'boardbreaker', label: 'Boardbreakers' }, { value: 'mine', label: 'La tuya', count: 12 }]} />
+      </div>
+      <Tabs label="Qué ver de la banlist" value={view} onChange={setView} options={[{ value: 'changes', label: 'Cambios' }, { value: 'full', label: 'Lista completa' }, { value: 'old', label: 'Apagada', disabled: true }]} />
+    </Specimen>
+  )
+}
+
 export function NavigationSection() {
   const groups = useMemo(
     () =>
@@ -388,6 +418,8 @@ export function NavigationSection() {
           </AppShell>
         </div>
       ) : null}
+
+      <TabsSamples />
 
       <Specimen
         title="Barra de arriba y buscador de la app (escritorio)"

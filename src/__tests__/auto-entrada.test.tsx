@@ -94,14 +94,15 @@ describe('«Modo del duelo», en las reglas de Jugar', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('automático de entrada: elegir «Manual» lo guarda y «Automático» lo vuelve; el «Tipo» es Single · Match (jugar solo es otra entrada del menú)', () => {
+  it('automático de entrada: elegir «Manual» lo guarda y «Automático» lo vuelve; Match es un interruptor, apagado un solo duelo (jugar solo es otra entrada del menú)', () => {
     withWorker()
     setAutoPref('duel', true)
     lobby()
     const rules = openRules()
     const mode = within(rules).getByRole('radiogroup', MODE)
 
-    expect(within(within(rules).getByRole('radiogroup', { name: 'Tipo' })).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Single', 'Match · mejor de 3'])
+    expect(within(rules).getByRole('switch', { name: 'Match, al mejor de 3' })).not.toBeChecked()
+    expect(within(rules).getAllByRole('radiogroup')).toEqual([mode])
     expect(within(mode).getByRole('radio', { name: 'Automático' })).toBeChecked()
     expect(within(rules).getByText(/^El núcleo aplica las reglas por los dos/)).toBeInTheDocument()
     fireEvent.click(within(mode).getByRole('radio', { name: 'Manual' }))

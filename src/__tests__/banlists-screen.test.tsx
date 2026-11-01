@@ -5,8 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { banlistsOf, type Banlist } from '../app/banlists'
 import { cardSmallImageUrl } from '../app/card-prices'
-import { setMetaRegion } from '../app/use-meta-region'
+import { setMetaRegion, useMetaRegion } from '../app/use-meta-region'
 import { BanlistsScreen } from '../components/banlists/BanlistsScreen'
+import { MetaHeroSide } from '../components/meta/MetaHeroSide'
+
+/** La fila de datos como la arman Tier lists y Torneos (arrancan en TCG). */
+function TierListsRegion() {
+  return <MetaHeroSide region={useMetaRegion('tcg')} />
+}
 
 // El arte real lee el store (el aviso de la banlist): acá sólo importa qué carta es, y se anota cada vez que se dibuja una.
 const { fetchCardsByIds, drawnArt, injected } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn(), drawnArt: [] as Array<string | null>, injected: { tcg: null as Banlist[] | null } }))
@@ -112,7 +118,12 @@ describe('la pantalla de banlists', () => {
   it('la lista completa trae las prohibidas, limitadas y semi-limitadas de esa lista, sin las liberadas', () => {
     render(<BanlistsScreen />)
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+    // «Cambios · Lista completa» son pestañas en la cabeza de la tarjeta, y lo de abajo es su panel.
+    expect(screen.getByRole('tablist', { name: 'Qué mostrar' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Cambios' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(screen.getByRole('tab', { name: 'Lista completa' }))
+    expect(screen.getByRole('tab', { name: 'Lista completa' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Lista completa' })).toContainElement(screen.getByRole('searchbox', { name: 'Buscar una carta en esta lista' }))
 
     const [current] = banlistsOf('tcg')
 
@@ -127,10 +138,26 @@ describe('la pantalla de banlists', () => {
     render(<BanlistsScreen />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Lista anterior' }))
-    fireEvent.click(screen.getByRole('radio', { name: 'OCG' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Región: TCG' }), { target: { value: 'ocg' } })
 
+    expect(screen.getByRole('combobox', { name: 'Región: OCG' })).toHaveDisplayValue('OCG')
     expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('1 de octubre de 2026')
     expect(screen.getByText('Vigente')).toBeInTheDocument()
+  })
+
+  it('la región es la misma pieza que en Tier lists y Torneos: «Región: TCG» al lado de «Datos al …», en el encabezado y sin pastillas', () => {
+    const view = render(<BanlistsScreen />)
+    const header = view.container.querySelector('header')!
+
+    expect(within(header).getByRole('combobox', { name: 'Región: TCG' })).toBeInTheDocument()
+    expect(within(header).getByText(/^Datos al /)).toHaveAttribute('title', 'Cuándo se bajaron las listas')
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+
+    // Elegida acá, vale para las otras dos pantallas (la misma región guardada).
+    fireEvent.change(within(header).getByRole('combobox', { name: 'Región: TCG' }), { target: { value: 'ocg' } })
+    cleanup()
+    render(<TierListsRegion />)
+    expect(screen.getByRole('combobox', { name: 'Región: OCG' })).toBeInTheDocument()
   })
 
   it('el buscador filtra las cartas por nombre en las secciones, y avisa si ninguna coincide', () => {
@@ -217,7 +244,7 @@ describe('las listas que se anuncian en partes', () => {
 describe('las cartas de la lista completa no se vuelven a dibujar de más', () => {
   it('escribir en el buscador no dibuja de nuevo las que siguen a la vista', () => {
     render(<BanlistsScreen />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Lista completa' }))
 
     const all = screen.getAllByRole('listitem').length
 
@@ -230,7 +257,7 @@ describe('las cartas de la lista completa no se vuelven a dibujar de más', () =
 
   it('abrir una carta sólo dibuja la del detalle (con su imagen chica mientras llega la completa)', () => {
     render(<BanlistsScreen />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Lista completa' }))
     drawnArt.length = 0
     fireEvent.click(screen.getByRole('button', { name: 'Ver el detalle de Archlord Kristya' }))
 

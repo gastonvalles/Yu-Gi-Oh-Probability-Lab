@@ -65,7 +65,10 @@ describe('condición: se lee como una frase', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Uno más' }))
     expect(actions.setRequirementCount).toHaveBeenCalledWith(expect.any(String), expect.any(String), '3')
 
-    fireEvent.click(screen.getByRole('radio', { name: 'No tiene' }))
+    // «Tiene ▾» es un selector al principio de la frase (no una pista «Tiene · No tiene»).
+    const kind = screen.getByRole('combobox', { name: 'Si la mano la tiene o no: Tiene' })
+    expect(kind).toHaveValue('include')
+    fireEvent.change(kind, { target: { value: 'exclude' } })
     expect(actions.setRequirementKind).toHaveBeenCalledWith(expect.any(String), expect.any(String), 'exclude')
     expect(actions.setRequirementCount).toHaveBeenLastCalledWith(expect.any(String), expect.any(String), '1')
   })

@@ -13,7 +13,8 @@ import {
 } from '../../app/banlists'
 import { buildCardNavigation, neighborsAt } from '../../app/card-neighbors'
 import { cardSmallImageUrl } from '../../app/card-prices'
-import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { useMetaRegion } from '../../app/use-meta-region'
 import { formatInteger, normalizeSearchText } from '../../app/utils'
 import { formatDay, t } from '../../i18n'
 import { useAppSelector } from '../../app/store-hooks'
@@ -27,18 +28,17 @@ import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
+import { MetaHeroSide } from '../meta/MetaHeroSide'
 import { SearchField } from '../ui/SearchField'
-import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
+import { Tabs, tabId } from '../ui/Tabs'
 import type { Tone } from '../ui/tone'
 import { BanlistCardModal } from './BanlistCardModal'
 
 type View = 'changes' | 'full'
 
-const REGIONS = [
-  { value: 'tcg', label: 'TCG' },
-  { value: 'ocg', label: 'OCG' },
-] as const satisfies ReadonlyArray<{ value: BanlistRegion; label: string }>
+/** El panel que cambian «Cambios · Lista completa» (una sola Banlists por pantalla). */
+const BANLIST_PANEL = 'banlist-panel'
 
 /** El orden de las secciones, como en los anuncios de Konami: de lo más duro a lo que se libera. */
 const STATUSES: readonly BanlistStatus[] = ['forbidden', 'limited', 'semi-limited', 'unlimited']
@@ -71,6 +71,7 @@ interface Entry {
  */
 export function BanlistsScreen() {
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Arranca en la región del formato del builder; después se cambia desde el encabezado (vale también para los tier lists y los decks de torneo).
   const region = useMetaRegion(deckFormat === 'ocg' ? 'ocg' : 'tcg')
   const lists = banlistsOf(region)
@@ -133,19 +134,30 @@ export function BanlistsScreen() {
         subtitle={t('catalog.banlists.subtitle')}
         help={<p className="m-0">{t('catalog.banlists.help', { tcg: formatBanlistDate(banlistsOf('tcg').at(-1)!.date), ocg: formatBanlistDate(banlistsOf('ocg').at(-1)!.date) })}</p>}
         side={
-          // `flex-wrap` y TCG / OCG sin `min-w-0`: en 320 px y en inglés la fecha no les deja lugar y baja a su renglón, en vez de apretarlos hasta cortar «OCG».
-          <div className="flex w-full flex-wrap items-center gap-2 min-[1101px]:w-auto">
-            <Badge icon="refresh" title={t('catalog.banlists.updatedTitle')} className="min-[1101px]:order-first">
-              {t('catalog.banlists.updated', { date: formatDay(new Date(`${BANLISTS_FETCHED_AT}T00:00:00Z`), 'UTC') })}
-            </Badge>
-            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="max-[1101px]:order-first max-[560px]:flex-1" />
-          </div>
+          <MetaHeroSide
+            region={region}
+            date={t('catalog.banlists.updated', { date: formatDay(new Date(`${BANLISTS_FETCHED_AT}T00:00:00Z`), 'UTC') })}
+            dateTitle={t('catalog.banlists.updatedTitle')}
+          />
         }
       />
 
       <Card className="grid gap-4">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 min-[560px]:basis-full min-[700px]:flex-none">
+        {/* La vista, en la cabeza de la tarjeta: cambiar de pestaña no corre la fecha ni el buscador. */}
+        <Tabs
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'changes', label: t('catalog.banlists.viewChanges') },
+            { value: 'full', label: t('catalog.banlists.viewFull') },
+          ]}
+          label={t('catalog.banlists.viewLabel')}
+          fullWidth={!isDesktop}
+          panelId={BANLIST_PANEL}
+        />
+
+        <div id={BANLIST_PANEL} role="tabpanel" aria-labelledby={tabId(BANLIST_PANEL, view)} className="grid gap-4">
+          <div className="flex min-w-0 items-center justify-between gap-1 min-[700px]:justify-self-start">
             <IconButton tone="raised" size="lg" aria-label={t('catalog.banlists.older')} title={t('catalog.banlists.older')} disabled={index >= lists.length - 1} onClick={() => pick(index + 1)}>
               <Icon name="chevron-left" />
             </IconButton>
@@ -180,51 +192,39 @@ export function BanlistsScreen() {
               <Icon name="chevron-right" />
             </IconButton>
           </div>
-          {/* Desde 560 px va a su contenido y a la derecha de su propia fila: la fecha ocupa la primera (basis-full) y si compartieran renglón la fecha se cortaba. */}
-          <Segmented
-            value={view}
-            onChange={setView}
-            options={[
-              { value: 'changes', label: t('catalog.banlists.viewChanges') },
-              { value: 'full', label: t('catalog.banlists.viewFull') },
-            ]}
-            label={t('catalog.banlists.viewLabel')}
-            fullWidth
-            className="min-[560px]:ml-auto min-[560px]:w-fit"
-          />
+
+          {list.partial ? (
+            <Callout tone="warning" icon="calendar" title={t('catalog.banlists.partialTitle')}>
+              {t('catalog.banlists.partialNote', { region: list.region.toUpperCase(), date: formatBanlistDate(list.date) })}
+            </Callout>
+          ) : null}
+
+          <p className="m-0 text-body text-muted" aria-live="polite">
+            {summary(view, list, previous, total)}
+          </p>
+
+          <SearchField label={t('catalog.banlists.searchLabel')} placeholder={t('catalog.banlists.searchLabel')} value={query} onChange={setQuery} className="min-[700px]:max-w-80" />
+
+          {visible.length === 0 ? (
+            <EmptyState icon="ban" title={query.trim() ? t('catalog.banlists.noMatch', { query: query.trim() }) : t('catalog.banlists.noChanges')} />
+          ) : (
+            visible.map(({ status, entries }) => (
+              <section key={status} aria-label={t(TITLE_KEY[status])} className="grid gap-3">
+                <div className="flex items-center gap-2 border-b border-border-subtle pb-2">
+                  <Badge tone={STATUS_TONE[status]} dot>
+                    {t(TITLE_KEY[status])}
+                  </Badge>
+                  <Badge size="sm">{formatInteger(entries.length)}</Badge>
+                </div>
+                <ul className="stagger m-0 grid list-none grid-cols-4 gap-x-2 gap-y-3 p-0 min-[560px]:grid-cols-5 min-[820px]:grid-cols-6 min-[1101px]:grid-cols-8 min-[1300px]:grid-cols-10">
+                  {entries.map((entry) => (
+                    <BanlistTile key={entry.cardId} entry={entry} status={status} onOpen={open} />
+                  ))}
+                </ul>
+              </section>
+            ))
+          )}
         </div>
-
-        {list.partial ? (
-          <Callout tone="warning" icon="calendar" title={t('catalog.banlists.partialTitle')}>
-            {t('catalog.banlists.partialNote', { region: list.region.toUpperCase(), date: formatBanlistDate(list.date) })}
-          </Callout>
-        ) : null}
-
-        <p className="m-0 text-body text-muted" aria-live="polite">
-          {summary(view, list, previous, total)}
-        </p>
-
-        <SearchField label={t('catalog.banlists.searchLabel')} placeholder={t('catalog.banlists.searchLabel')} value={query} onChange={setQuery} className="min-[700px]:max-w-80" />
-
-        {visible.length === 0 ? (
-          <EmptyState icon="ban" title={query.trim() ? t('catalog.banlists.noMatch', { query: query.trim() }) : t('catalog.banlists.noChanges')} />
-        ) : (
-          visible.map(({ status, entries }) => (
-            <section key={status} aria-label={t(TITLE_KEY[status])} className="grid gap-3">
-              <div className="flex items-center gap-2 border-b border-border-subtle pb-2">
-                <Badge tone={STATUS_TONE[status]} dot>
-                  {t(TITLE_KEY[status])}
-                </Badge>
-                <Badge size="sm">{formatInteger(entries.length)}</Badge>
-              </div>
-              <ul className="stagger m-0 grid list-none grid-cols-4 gap-x-2 gap-y-3 p-0 min-[560px]:grid-cols-5 min-[820px]:grid-cols-6 min-[1101px]:grid-cols-8 min-[1300px]:grid-cols-10">
-                {entries.map((entry) => (
-                  <BanlistTile key={entry.cardId} entry={entry} status={status} onOpen={open} />
-                ))}
-              </ul>
-            </section>
-          ))
-        )}
       </Card>
 
       <BanlistCardModal cardId={opened?.cardId ?? null} list={list} status={opened ? t(STATUS_KEY[opened.status]) : ''} navigation={navigation} onClose={() => setOpened(null)} />

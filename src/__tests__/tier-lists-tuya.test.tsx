@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,8 +9,9 @@ import { TIERLIST_VERSION, addCards, newList, writeStore } from '../app/tierlist
 import { DeckModeScreen } from '../components/deck-mode/DeckModeScreen'
 import { TierListsScreen } from '../components/meta/TierListsScreen'
 import { deckState, storeWith } from './support/deck-fixtures'
+import { stackedGroups } from './support/stacked-groups'
 
-// «Crear tier list» es «La tuya» de Tier lists: el selector de arriba de todo, la cuenta de lo guardado y los enlaces viejos.
+// «Crear tier list» es «La tuya» de Tier lists: la tercera pestaña, junto a las dos listas del meta, la cuenta de lo guardado y los enlaces viejos.
 vi.mock('../components/CardArt', () => ({ CardArt: () => <img alt="" /> }))
 vi.mock('../app/use-brief-loading', () => ({ BRIEF_LOADING_MS: 1000, useBriefLoading: () => false }))
 // En la app entera, Tier lists va de mentira (lo de arriba la prueba de verdad): acá importa a dónde se llega.
@@ -20,7 +21,7 @@ vi.mock('../components/deck-mode/lazy-steps', async (importOriginal) => ({
   preloadHeavySteps: () => {},
 }))
 
-const SWITCHER = { name: 'Las del meta o la tuya' }
+const TABS = { name: 'Qué tier list ver' }
 
 beforeEach(() => {
   localStorage.clear()
@@ -54,34 +55,43 @@ function renderTierLists(hash: string) {
 }
 
 const unranked = () => screen.queryByRole('region', { name: 'Sin clasificar' })
-const metaFilters = () => screen.queryByRole('radiogroup', { name: 'Qué tier list ver' })
+const metaFilters = () => screen.queryByRole('radiogroup', { name: /^Tier list de hoy/ })
 
 describe('Tier lists: las del meta y la tuya', () => {
-  it('sin vista en el enlace abre «Del meta», sin el creador; elegir «La tuya» lo muestra sin los filtros del meta y lo dice en el enlace (y vuelta)', () => {
+  it('sin vista en el enlace abre la lista del enlace, sin el creador; elegir «La tuya» lo muestra sin los filtros del meta y lo dice en el enlace (y vuelta)', () => {
     renderTierLists('#meta?list=boardbreaker')
-    const switcher = screen.getByRole('radiogroup', SWITCHER)
+    const tabs = screen.getByRole('tablist', TABS)
 
-    expect(within(switcher).getByRole('radio', { name: 'Del meta' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(tabs).getAllByRole('tab')).toEqual(['Hand traps', 'Boardbreakers', 'La tuya'].map((name) => within(tabs).getByRole('tab', { name })))
+    expect(within(tabs).getByRole('tab', { name: 'Boardbreakers' })).toHaveAttribute('aria-selected', 'true')
     expect(metaFilters()).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Región: TCG' })).toBeInTheDocument()
     expect(unranked()).toBeNull()
 
-    fireEvent.click(within(switcher).getByRole('radio', { name: 'La tuya' }))
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'La tuya' }))
     expect(unranked()).toBeInTheDocument()
     expect(metaFilters()).toBeNull()
-    expect(screen.queryByRole('radiogroup', { name: 'Región de los torneos' })).toBeNull()
+    expect(screen.queryByRole('combobox', { name: 'Región: TCG' })).toBeNull()
     // La lista elegida del meta no se pierde: vuelve al cambiar de nuevo.
     expect(window.location.hash).toBe('#meta?list=boardbreaker&vista=tuya')
 
-    fireEvent.click(within(screen.getByRole('radiogroup', SWITCHER)).getByRole('radio', { name: 'Del meta' }))
+    fireEvent.click(within(screen.getByRole('tablist', TABS)).getByRole('tab', { name: 'Boardbreakers' }))
     expect(window.location.hash).toBe('#meta?list=boardbreaker')
-    expect(screen.getByRole('radio', { name: 'Boardbreakers' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('tab', { name: 'Boardbreakers' })).toHaveAttribute('aria-selected', 'true')
+    expect(unranked()).toBeNull()
+
+    // Otra lista del meta, desde «La tuya»: la elige y la deja en el enlace.
+    fireEvent.click(screen.getByRole('tab', { name: 'La tuya' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Hand traps' }))
+    expect(window.location.hash).toBe('#meta')
+    expect(screen.getByRole('heading', { name: 'Tier list de hand traps' })).toBeInTheDocument()
     expect(unranked()).toBeNull()
   })
 
   it('`#meta?vista=tuya` abre la tuya, con «Descargar imagen», y un enlace a la vista cambia la pantalla abierta', () => {
     renderTierLists('#meta?vista=tuya')
 
-    expect(within(screen.getByRole('radiogroup', SWITCHER)).getByRole('radio', { name: 'La tuya' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(screen.getByRole('tablist', TABS)).getByRole('tab', { name: 'La tuya' })).toHaveAttribute('aria-selected', 'true')
     expect(unranked()).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Descargar imagen' })).toBeInTheDocument()
 
@@ -95,17 +105,64 @@ describe('Tier lists: las del meta y la tuya', () => {
 
   it('«La tuya» lleva la cuenta de las cartas guardadas (sin nada, no lleva número) y se actualiza al sacar una', () => {
     renderTierLists('#meta')
-    expect(within(screen.getByRole('radiogroup', SWITCHER)).getByRole('radio', { name: 'La tuya' })).toHaveTextContent(/^La tuya$/)
+    expect(within(screen.getByRole('tablist', TABS)).getByRole('tab', { name: 'La tuya' })).toHaveTextContent(/^La tuyaLa tuya$/)
     cleanup()
 
     seed()
     renderTierLists('#meta')
-    expect(within(screen.getByRole('radiogroup', SWITCHER)).getByRole('radio', { name: 'La tuya, con 3 cartas' })).toHaveTextContent('La tuya3')
+    // La copia que reserva el ancho de la negrita repite el rótulo, oculta al lector.
+    expect(within(screen.getByRole('tablist', TABS)).getByRole('tab', { name: 'La tuya, con 3 cartas' })).toHaveTextContent('La tuyaLa tuya3')
 
-    fireEvent.click(screen.getByRole('radio', { name: 'La tuya, con 3 cartas' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'La tuya, con 3 cartas' }))
     fireEvent.click(screen.getAllByRole('button', { name: /^Carta / })[0] as HTMLElement)
     fireEvent.click(screen.getByRole('button', { name: 'Sacar de la lista' }))
-    expect(screen.getByRole('radio', { name: 'La tuya, con 2 cartas' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('tab', { name: 'La tuya, con 2 cartas' })).toHaveAttribute('aria-selected', 'true')
+  })
+})
+
+describe('Tier lists: una sola vista y una sola fila de filtro', () => {
+  it('en el celular, ni el meta ni la tuya apilan dos grupos de opciones sin nada que los nombre', () => {
+    seed()
+    const view = renderTierLists('#meta')
+
+    expect(stackedGroups(view.container)).toEqual([])
+    fireEvent.click(screen.getByRole('tab', { name: 'La tuya, con 3 cartas' }))
+    expect(stackedGroups(view.container)).toEqual([])
+  })
+
+  it('en escritorio la región ya no es un grupo de pastillas pegado a las pestañas: es «Región: TCG», un selector al lado de la fecha', () => {
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const view = renderTierLists('#meta')
+    const header = view.container.querySelector('header')!
+
+    expect(within(header).getByRole('combobox', { name: 'Región: TCG' })).toBeInTheDocument()
+    expect(within(header).getByText(/^Actualizado el/)).toBeInTheDocument()
+    expect(within(header).queryByRole('radiogroup')).toBeNull()
+    expect(stackedGroups(view.container)).toEqual([])
+  })
+
+  it('con el teclado, ir a «La tuya» y volver (la pantalla cambia entera) deja el foco en la pestaña elegida', async () => {
+    renderTierLists('#meta')
+    const hand = screen.getByRole('tab', { name: 'Hand traps' })
+
+    hand.focus()
+    fireEvent.keyDown(hand, { key: 'End' })
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'La tuya' })).toHaveFocus())
+    expect(unranked()).toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'La tuya' }), { key: 'ArrowLeft' })
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Boardbreakers' })).toHaveFocus())
+    expect(window.location.hash).toBe('#meta?list=boardbreaker')
+    expect(unranked()).toBeNull()
+  })
+
+  it('las pestañas van arriba de todo, también en «La tuya»: lo del meta (fecha, región, filtros) se va sin moverlas', () => {
+    const view = renderTierLists('#meta')
+    const first = () => view.container.querySelector('article > :not(header)')
+
+    expect(first()).toContainElement(screen.getByRole('tablist', TABS))
+    fireEvent.click(screen.getByRole('tab', { name: 'La tuya' }))
+    expect(first()).toContainElement(screen.getByRole('tablist', TABS))
   })
 })
 

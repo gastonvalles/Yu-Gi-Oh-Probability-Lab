@@ -193,8 +193,8 @@ describe('Meta en inglés', () => {
     const view = renderInStore(<TierListsScreen />)
 
     expect(screen.getByRole('heading', { name: 'Tier lists' })).toBeInTheDocument()
-    expect(screen.getByRole('radiogroup', { name: 'Which tier list to show' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Hand traps' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('tablist', { name: 'Which tier list to show' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Hand traps' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('heading', { name: 'Hand trap tier list' })).toBeInTheDocument()
     // Tres decks son pocos para un tier list: la pantalla lo dice (y nombra la región y cuántos son).
     expect(screen.getByText('There are few TCG decks in this window (3): each one weighs several points, so tiers swing a lot. Try more weeks.')).toBeInTheDocument()
@@ -206,15 +206,16 @@ describe('Meta en inglés', () => {
     expect(screen.getByRole('radiogroup', { name: 'Where to count the card' })).toBeInTheDocument()
     // La fecha de la actualización es la del usuario: se mira el formato (mes en letras), no el día.
     expect(view.container.querySelector('[title="Date of the last deck update"]')).toHaveTextContent(/^Updated [A-Z][a-z]{2} \d{1,2}, 2026$/)
+    expect(screen.getByRole('combobox', { name: 'Region: TCG' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Boardbreakers' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Boardbreakers' }))
     expect(screen.getByRole('heading', { name: 'Boardbreaker tier list' })).toBeInTheDocument()
     expect(screen.getByText('No boardbreakers in this window')).toBeInTheDocument()
     expect(window.location.hash).toBe('#meta?list=boardbreaker')
 
-    // Ya no hay una lista de decks: sólo las dos de cartas.
-    expect(screen.queryByRole('radio', { name: 'Decks' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('radio', { name: /^(Hand traps|Boardbreakers)$/ })).toHaveLength(2)
+    // Ya no hay una lista de decks: sólo las dos de cartas, y la tuya.
+    expect(screen.queryByRole('tab', { name: 'Decks' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab', { name: /^(Hand traps|Boardbreakers|Yours)$/ })).toHaveLength(3)
   })
 
   it('con las tier lists abiertas, un link a otra lista la cambia; el hash de otra pantalla no toca nada', () => {
@@ -223,20 +224,20 @@ describe('Meta en inglés', () => {
     wideScreen()
     renderInStore(<TierListsScreen />)
 
-    const checked = () => screen.getAllByRole('radio', { checked: true }).map((radio) => radio.textContent)
+    const checked = () => screen.getByRole('tab', { selected: true })
     const goTo = (hash: string) => {
       window.history.replaceState(null, '', hash)
       fireEvent(window, new Event('hashchange'))
     }
 
-    expect(checked()).toContain('Hand traps')
+    expect(checked()).toHaveAccessibleName('Hand traps')
     goTo('#meta?list=boardbreaker')
-    expect(checked()).toContain('Boardbreakers')
+    expect(checked()).toHaveAccessibleName('Boardbreakers')
     // Al irse a otra pantalla el hash ya no es de las tier lists: la lista elegida no salta a la de hand traps mientras la pantalla se va.
     goTo('#tournaments')
-    expect(checked()).toContain('Boardbreakers')
+    expect(checked()).toHaveAccessibleName('Boardbreakers')
     goTo('#meta')
-    expect(checked()).toContain('Hand traps')
+    expect(checked()).toHaveAccessibleName('Hand traps')
   })
 
   it('los decks de torneo se dibujan en inglés: encabezado, búsqueda y la lista con su plural', () => {
@@ -256,29 +257,34 @@ describe('Meta en inglés', () => {
     expect(screen.getByRole('group', { name: 'Placement' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Winner 1' })).toBeInTheDocument()
     expect(view.container.querySelector('[title="Date of the last deck update"]')).toHaveTextContent(/^Updated [A-Z][a-z]{2} \d{1,2}, 2026$/)
+    expect(screen.getByRole('combobox', { name: 'Region: TCG' })).toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search decks' }), { target: { value: 'elfnote' } })
     expect(screen.getByText('1 TCG deck from the last 8 weeks, from newest to oldest. Tap it to see it in full.')).toBeInTheDocument()
   })
 
-  it('en el celular, las tier lists juntan qué lista y hoy o proyección en una fila de pastillas, y la tuya es la otra opción del selector', () => {
+  it('en el celular, las tier lists son tres pestañas arriba de todo y debajo una sola fila de filtro: hoy o proyección y «Ajustar»', () => {
     applyLocale('en')
     window.history.replaceState(null, '', '#meta')
     phoneScreen()
     renderInStore(<TierListsScreen />)
 
-    const lists = screen.getByRole('radiogroup', { name: 'Which tier list to show' })
+    const lists = screen.getByRole('tablist', { name: 'Which tier list to show' })
     const view = screen.getByRole('radiogroup', { name: /^Tier list for today/ })
+    const adjust = screen.getByRole('button', { name: 'Adjust the tier list' })
 
-    // Las dos en la misma fila deslizable, al lado del botón que abre el resto (zona y semanas).
-    expect(lists.parentElement).toBe(view.parentElement)
-    expect(screen.getByRole('button', { name: 'Adjust the tier list' })).toBeInTheDocument()
+    // Las listas son las pestañas, no pastillas de la fila de filtro: ahí quedan sólo hoy o proyección y el botón que abre el resto (zona y semanas).
+    expect(lists).not.toContainElement(view)
+    expect(adjust).toHaveTextContent('Adjust')
+    expect(adjust.parentElement).toContainElement(view)
+    expect(screen.queryByRole('radiogroup', { name: 'Which tier list to show' })).toBeNull()
     expect(screen.queryByRole('radiogroup', { name: 'Where to count the card' })).not.toBeInTheDocument()
-    // La tuya no es un enlace del encabezado: es la otra opción del selector de arriba de todo.
+    // La tuya no es un enlace del encabezado: es la tercera pestaña.
     expect(screen.queryByRole('link', { name: 'Make your own' })).not.toBeInTheDocument()
-    expect(within(screen.getByRole('radiogroup', { name: "The meta's or yours" })).getByRole('radio', { name: 'From the meta' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(lists).getByRole('tab', { name: 'Hand traps' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(lists).getByRole('tab', { name: 'Yours' })).toHaveAttribute('aria-selected', 'false')
 
-    fireEvent.click(within(lists).getByRole('radio', { name: 'Boardbreakers' }))
+    fireEvent.click(within(lists).getByRole('tab', { name: 'Boardbreakers' }))
     expect(screen.getByRole('heading', { name: 'Boardbreaker tier list' })).toBeInTheDocument()
   })
 

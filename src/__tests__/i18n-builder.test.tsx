@@ -230,8 +230,9 @@ describe('el armador en inglés', () => {
 
     expect(screen.getByRole('article', { name: 'Condition 1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'What it counts: Ash Blossom. Change' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Has' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: "Doesn't have" })).toBeInTheDocument()
+    const kind = screen.getByRole('combobox', { name: 'Whether the hand has it or not: Has' })
+    expect(kind).toHaveValue('include')
+    expect([...kind.querySelectorAll('option')].map((option) => option.textContent)).toEqual(['Has', "Doesn't have"])
     expect(screen.getByRole('radio', { name: 'Distinct names' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove condition 1' })).toBeInTheDocument()
   })

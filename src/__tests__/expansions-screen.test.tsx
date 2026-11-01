@@ -189,7 +189,11 @@ describe('la pantalla de expansiones', () => {
     expect(rowsText().map((text) => /MAZE-EN\d+/.exec(text)?.[0])).toEqual(['MAZE-EN001', 'MAZE-EN003'])
 
     fireEvent.click(within(screen.getByRole('group', { name: 'Rareza y arte' })).getByRole('button', { name: 'Todas' }))
-    fireEvent.click(screen.getByRole('radio', { name: 'Por precio' }))
+    // El orden es un botón con su valor al lado del buscador (no otra fila de pastillas): en escritorio, «Orden Por código».
+    const order = screen.getByRole('combobox', { name: 'Orden: Por código' })
+    expect(within(order.parentElement!).getByText('Orden')).toBeInTheDocument()
+    fireEvent.change(order, { target: { value: 'price' } })
+    expect(screen.getByRole('combobox', { name: 'Orden: Por precio' })).toHaveValue('price')
     expect(rowsText().map((text) => /MAZE-EN\d+/.exec(text)?.[0])).toEqual(['MAZE-EN003', 'MAZE-EN001', 'MAZE-EN001', 'MAZE-EN002'])
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por nombre o código' }), { target: { value: 'nada de nada' } })
@@ -216,6 +220,10 @@ describe('la pantalla de expansiones', () => {
 
     expect(await screen.findByRole('heading', { name: 'Maze of Millennia', level: 2 })).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Expansiones' })).not.toBeInTheDocument()
+    // En el celular el orden dice sólo su valor corto («Código»), sin «Orden»; el nombre accesible sigue completo.
+    const order = await screen.findByRole('combobox', { name: 'Orden: Por código' })
+    expect(within(order.parentElement!).getByText('Código')).toBeInTheDocument()
+    expect(within(order.parentElement!).queryByText('Orden')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Volver a las expansiones' }))
 

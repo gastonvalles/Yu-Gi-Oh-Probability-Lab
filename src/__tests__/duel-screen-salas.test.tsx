@@ -85,11 +85,21 @@ describe('la pantalla del duelo', () => {
     expect(screen.queryByRole('dialog', { name: 'Tu deck' })).not.toBeInTheDocument()
   })
 
-  it('al crear una sala se elige Single o Match (jugar solo es otra entrada del menú, no un tipo de sala)', () => {
-    const view = render(<DuelScreen {...screenProps()} />)
+  it('al crear una sala, lo que es sí o no va en interruptores que dicen qué pasa apagados (Match, el tiempo, sala pública) y el modo es la única pista: nunca dos grupos de opciones seguidos (jugar solo es otra entrada del menú, no un tipo de sala)', () => {
+    const view = render(<DuelScreen {...screenProps({ rooms: fakeRooms() })} />)
 
     openRules(view)
-    expect(within(within(rulesDialog()).getByRole('radiogroup', { name: 'Tipo' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label') ?? radio.textContent)).toEqual(['Single', 'Match · mejor de 3'])
+    const sheet = within(rulesDialog())
+    // La fila del interruptor: su nombre y su ayuda.
+    const row = (name: string) => sheet.getByRole('switch', { name }).parentElement
+    expect(sheet.getByRole('switch', { name: 'Match, al mejor de 3' })).not.toBeChecked()
+    expect(row('Match, al mejor de 3')).toHaveTextContent('Apagado, es un solo duelo.')
+    expect(sheet.getByRole('switch', { name: 'Tiempo por duelo: 50 min' })).toBeChecked()
+    expect(row('Tiempo por duelo: 50 min')).toHaveTextContent('Apagado, el duelo no tiene tope de tiempo.')
+    expect(sheet.getByRole('switch', { name: 'Sala pública' })).toBeChecked()
+    expect(row('Sala pública')).toHaveTextContent('Apagado, sólo entra quien tenga el enlace o el código.')
+    expect(sheet.getAllByRole('radiogroup').map((group) => group.getAttribute('aria-label'))).toEqual(['Modo del duelo'])
+    expect(sheet.queryByRole('radio', { name: /^(Single|Match|Pública|Privada|Sin tiempo)/ })).not.toBeInTheDocument()
     expect(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' })).toBeInTheDocument()
     expect(within(rulesDialog()).queryByRole('radio', { name: 'Solo' })).not.toBeInTheDocument()
     expect(within(rulesDialog()).queryByRole('button', { name: 'Jugar solo' })).not.toBeInTheDocument()
@@ -137,8 +147,8 @@ describe('la pantalla del duelo', () => {
 
     expect(within(view.container).getByRole('button', { name: 'Reglas del duelo' })).toHaveAccessibleDescription(expect.stringMatching(/^TCG · 50 min · Single/))
     openRules(view)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Tiempo por duelo: 50 min' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
 
     expect(within(view.container).getByRole('button', { name: 'Reglas del duelo' })).toHaveAccessibleDescription(expect.stringMatching(/^TCG · Sin tiempo · Match/))
@@ -155,11 +165,21 @@ describe('la pantalla del duelo', () => {
     expect(summary.getByText('Sin tiempo')).toBeInTheDocument()
   })
 
-  it('el tiempo tiene dos opciones, 50 minutos o sin tiempo, y el tope de puntos de Genesys sólo aparece con Genesys', () => {
+  it('el tiempo es 50 minutos o ninguno (un interruptor: apagado guarda 0 y prendido vuelve a 50), y el tope de puntos de Genesys sólo aparece con Genesys', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 
     openRules(view)
-    expect(within(rulesDialog()).getAllByRole('radio', { name: /min$|Sin tiempo/ }).map((radio) => radio.getAttribute('aria-label') ?? radio.textContent)).toEqual(['50 min', 'Sin tiempo'])
+    const time = within(rulesDialog()).getByRole('switch', { name: 'Tiempo por duelo: 50 min' })
+    expect(time).toBeChecked()
+    expect(within(rulesDialog()).queryByRole('radio', { name: /min$|Sin tiempo/ })).not.toBeInTheDocument()
+    fireEvent.click(time)
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
+    expect(JSON.parse(localStorage.getItem('ygo-lab:duel-prefs') ?? '{}')).toMatchObject({ limitMin: 0 })
+    openRules(view)
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Tiempo por duelo: 50 min' }))
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
+    expect(JSON.parse(localStorage.getItem('ygo-lab:duel-prefs') ?? '{}')).toMatchObject({ limitMin: 50 })
+    openRules(view)
     expect(within(rulesDialog()).queryByRole('group', { name: 'Puntos máximos' })).not.toBeInTheDocument()
 
     fireEvent.change(within(rulesDialog()).getByRole('combobox', { name: 'Formato' }), { target: { value: 'genesys' } })
@@ -289,7 +309,7 @@ describe('la pantalla del duelo', () => {
   it('el tiempo que elige el anfitrión llega al rival y cambia el reloj', () => {
     const host = render(<DuelScreen {...screenProps()} />)
 
-    createRoom(host, 'Sin tiempo')
+    createRoom(host, true)
     expect(within(within(host.container).getByTestId('room-summary')).getByText('Sin tiempo')).toBeInTheDocument()
   })
 
@@ -336,7 +356,7 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     window.history.replaceState(null, '', '#duel')
@@ -358,7 +378,7 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps(props)} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' }))
     fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
@@ -620,7 +640,7 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
-    expect(within(rulesDialog()).getByRole('radio', { name: 'Pública' })).toBeChecked()
+    expect(within(rulesDialog()).getByRole('switch', { name: 'Sala pública' })).toBeChecked()
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     const room = extractRoomCode(link)!
@@ -690,7 +710,7 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Privada' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sala pública' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
 
@@ -710,7 +730,7 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
 
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
 
     const summary = within(within(host.container).getByTestId('room-summary'))
@@ -730,7 +750,7 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
 
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Privada' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sala pública' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
 
     expect(within(host.container).getByTestId('duel-link')).toBeInTheDocument()
@@ -808,7 +828,7 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps(props)} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' }))
     fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''

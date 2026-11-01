@@ -10,6 +10,7 @@ import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
 import { CloseIcon, IconButton } from '../../ui/IconButton'
 import { Segmented } from '../../ui/Segmented'
+import { SelectChip } from '../../ui/SelectChip'
 import { Stepper } from '../../ui/Stepper'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { getConditionLabel, getConditionRgb } from './condition-labels'
@@ -39,7 +40,7 @@ interface ConditionBlockProps {
 }
 
 /**
- * Una condición se lee como una frase: [⋮⋮] [Tiene | No tiene] [− N +] [×] y debajo [● qué cuenta ×copias ›]. «No tiene» es «ninguna»: la cantidad sólo aparece
+ * Una condición se lee como una frase: [⋮⋮] [Tiene ▾] [− N +] [×] y debajo [● qué cuenta ×copias ›]. «No tiene» es «ninguna»: la cantidad sólo aparece
  * si ya pedía más de una. Sin qué cuenta, el botón es el paso que sigue y se ve como cualquier campo; con `showError` (se intentó guardar así), va en rojo y dice qué
  * falta. La cantidad no pasa de las copias que hay en el deck.
  */
@@ -94,7 +95,7 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
       aria-label={t('builder.condition.label', { index: index + 1 })}
       className={cx('grid gap-2 rounded-control transition-[background-color,box-shadow] duration-150', dragging && 'bg-tint/6 shadow-overlay')}
     >
-      {/* Por debajo de 380 px «Tiene / No tiene», la cantidad y la X no entran en una fila: la elección va arriba, entera, y debajo el resto (la X a la derecha). */}
+      {/* «Tiene ▾» es la palabra con la que empieza la frase (un selector, no otra pista debajo de «Todas · Alguna · Un mínimo»); la cantidad y la X, a la derecha. */}
       <div className="flex flex-wrap items-center gap-1.5">
         {count > 1 ? (
           <button
@@ -108,10 +109,9 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
             <Icon name="grip" size={16} />
           </button>
         ) : null}
-        <Segmented
-          fullWidth
-          dense
-          className="min-w-0 flex-1 max-[380px]:order-first max-[380px]:basis-full"
+        <SelectChip
+          variant="filled"
+          className="mr-auto"
           label={t('builder.condition.hasLabel')}
           value={condition.kind}
           options={[
@@ -130,7 +130,7 @@ export function ConditionBlock({ index, count, patternId, pattern, condition, de
             onChange={(quantity) => actions.setRequirementCount(patternId, condition.id, String(quantity))}
           />
         ) : null}
-        <IconButton tone="raised" size="lg" className="max-[380px]:ml-auto" aria-label={t('builder.condition.remove', { index: index + 1 })} onClick={onRemove}>
+        <IconButton tone="raised" size="lg" aria-label={t('builder.condition.remove', { index: index + 1 })} onClick={onRemove}>
           <CloseIcon />
         </IconButton>
       </div>

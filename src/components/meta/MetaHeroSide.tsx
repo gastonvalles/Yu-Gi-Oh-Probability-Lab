@@ -1,8 +1,12 @@
+import type { ReactNode } from 'react'
+
 import { META_DECKS, type MetaRegion } from '../../app/meta'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { setMetaRegion } from '../../app/use-meta-region'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { Badge } from '../ui/Badge'
-import { Segmented } from '../ui/Segmented'
+import { SelectChip } from '../ui/SelectChip'
 import { formatMetaDateFull } from './meta-format'
 
 const REGION_OPTIONS = [
@@ -12,29 +16,30 @@ const REGION_OPTIONS = [
 
 interface MetaHeroSideProps {
   region: MetaRegion
-  onRegionChange: (region: MetaRegion) => void
+  /** De cuándo son los datos; si no se dice, la de los decks del meta («Actualizado el …»). */
+  date?: ReactNode
+  /** Qué es esa fecha, al pasarle por encima. */
+  dateTitle?: string
 }
 
-/** Lo que va a la derecha del encabezado de los tier lists y de los decks de torneo: de cuándo son los datos y de qué región. */
-export function MetaHeroSide({ region, onRegionChange }: MetaHeroSideProps) {
+/**
+ * La fila de datos del encabezado de Tier lists, Decks de torneo y Banlists: de cuándo son los datos y «Región: TCG», la misma elección en las tres pantallas
+ * (`setMetaRegion`). En el celular, la fecha a la izquierda y la región a la derecha; en escritorio, las dos a la derecha del título.
+ */
+export function MetaHeroSide({ region, date, dateTitle }: MetaHeroSideProps) {
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+
   return (
-    // En celular, un solo renglón: la región ocupa lo que sobra y la fecha va compacta al lado. Desde 560 px (tableta) la región va a su ancho.
-    <div className="flex w-full items-center gap-2 min-[1101px]:w-auto">
-      <Badge icon="refresh" title={t('meta.screen.updatedTitle')} className="min-[1101px]:order-first">
-        {tRich(
-          'meta.updated',
-          { lead: (text) => <span className="sr-only min-[1101px]:not-sr-only">{text} </span> },
-          { date: formatMetaDateFull(META_DECKS.fetchedAt) },
-        )}
+    <div className="flex w-full flex-wrap items-center justify-between gap-2 min-[1101px]:w-auto min-[1101px]:justify-end">
+      <Badge icon="refresh" title={dateTitle ?? t('meta.screen.updatedTitle')}>
+        {date ??
+          tRich(
+            'meta.updated',
+            { lead: (text) => <span className="sr-only min-[1101px]:not-sr-only">{text} </span> },
+            { date: formatMetaDateFull(META_DECKS.fetchedAt) },
+          )}
       </Badge>
-      <Segmented
-        value={region}
-        onChange={onRegionChange}
-        options={REGION_OPTIONS}
-        label={t('meta.screen.regionLabel')}
-        size="sm"
-        className="min-w-0 max-[1101px]:order-first max-[560px]:flex-1"
-      />
+      <SelectChip value={region} onChange={setMetaRegion} options={REGION_OPTIONS} label={t('meta.screen.regionLabel')} showLabel size={isDesktop ? 'md' : 'sm'} />
     </div>
   )
 }

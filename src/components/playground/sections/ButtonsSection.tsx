@@ -15,6 +15,7 @@ import { CloseButton, IconButton, TileButton } from '../../ui/IconButton'
 import { OverflowMenu } from '../../ui/OverflowMenu'
 import { ScrollRow } from '../../ui/ScrollRow'
 import { Segmented } from '../../ui/Segmented'
+import { SelectChip } from '../../ui/SelectChip'
 import { ShineFrame } from '../../ui/ShineFrame'
 import { choiceChip, filterChip, listItemSelected, rowAddButton } from '../../ui/surfaces'
 import { Stepper } from '../../ui/Stepper'
@@ -41,6 +42,19 @@ const RARITIES = [
   { name: 'Secret Rare', count: 79 },
   { name: 'Starlight Rare', count: 0 },
 ]
+/** Las muestras de `SelectChip`: la región, el orden de una expansión (con su forma corta) y «Tiene» de una condición. */
+const REGIONS = [
+  { value: 'tcg', label: 'TCG' },
+  { value: 'ocg', label: 'OCG' },
+]
+const SORTS = [
+  { value: 'code', label: 'Por código', short: 'Código' },
+  { value: 'price', label: 'Por precio', short: 'Precio' },
+]
+const HAS = [
+  { value: 'include', label: 'Tiene' },
+  { value: 'exclude', label: 'No tiene' },
+]
 /** Las filas de muestra de «Fila elegida y + por fila»: la elegida, una cualquiera y la recién agregada. */
 const SEARCH_ROWS = [
   { name: 'Ash Blossom & Joyous Spring', note: 'Elegida: el aro ámbar', state: 'chosen' },
@@ -48,7 +62,7 @@ const SEARCH_ROWS = [
   { name: 'Nibiru, the Primal Being', note: 'Recién agregada: verde', state: 'added' },
 ] as const
 
-/** Los botones de la app y los controles que se tocan: todos salen de `src/components/ui/` (Button, IconButton, Segmented, FilterChips, Switch, Stepper, Badge, surfaces.ts). */
+/** Los botones de la app y los controles que se tocan: todos salen de `src/components/ui/` (Button, IconButton, Segmented, SelectChip, FilterChips, Switch, Stepper, Badge, surfaces.ts). */
 export function ButtonsSection() {
   const [track, setTrack] = useState('b')
   const [chips, setChips] = useState('b')
@@ -60,6 +74,9 @@ export function ButtonsSection() {
   const [rarity, setRarity] = useState<string | null>('Ultra Rare')
   const [fab, setFab] = useState(false)
   const [tried, setTried] = useState(false)
+  const [region, setRegion] = useState('tcg')
+  const [sort, setSort] = useState('code')
+  const [has, setHas] = useState('include')
   const options = [
     { value: 'a', label: 'Primero' },
     { value: 'b', label: 'Segundo' },
@@ -251,6 +268,23 @@ export function ButtonsSection() {
           {/* En lista: una opción por renglón con su frase («Volver atrás» de «Seguir en manual»). */}
           <div className="w-full max-w-sm">
             <Segmented label="Lista" variant="list" value={cards} onChange={setCards} options={options.map((option, at) => ({ ...option, detail: ['Invocación Normal: Ash Blossom', 'Invocación Especial: S:P Little Knight', 'Battle Phase'][at] }))} />
+          </div>
+        </Specimen>
+
+        <Specimen
+          title="SelectChip"
+          note={<>Un orden o una región: una elección de fondo que no recorta nada. Muestra su valor y abre el selector del sistema (un <Tag>select</Tag> nativo transparente encima), así que el teclado y el teléfono vienen gratis; se llama «Región: TCG». Pasá el mouse (tinte) o llegá con Tab (foco). Archivo: <Tag>ui/SelectChip.tsx</Tag></>}
+          layout="column"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <SelectChip label="Región" showLabel value={region} onChange={setRegion} options={REGIONS} />
+            <SelectChip label="Orden" icon="sort" value={sort} onChange={setSort} options={SORTS} />
+            <SelectChip label="Orden" showLabel icon="sort" value={sort} onChange={setSort} options={SORTS} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <SelectChip label="Región" showLabel size="sm" value={region} onChange={setRegion} options={REGIONS} />
+            <SelectChip label="Región" showLabel size="sm" disabled value={region} onChange={setRegion} options={REGIONS} />
+            <SelectChip label="Si la mano la tiene o no" variant="filled" value={has} onChange={setHas} options={HAS} />
           </div>
         </Specimen>
 
