@@ -1,6 +1,6 @@
-import { BRANDED_DECK, ELFNOTE_DECK, SKY_STRIKER_DECK, type BotDeckList } from '../../../bot-deck-lists'
+import { ANGELECHY_DECK, ELFNOTE_DECK, SKY_STRIKER_DECK, type BotDeckList } from '../../../bot-deck-lists'
 import type { Bot } from '../bot'
-import { brandedBot } from '../executors/branded'
+import { angelechyBot } from '../executors/angelechy'
 import { elfnoteBot } from '../executors/elfnote'
 import { skyStrikerBot } from '../executors/sky-striker'
 import type { CardFacts } from '../turn'
@@ -16,7 +16,7 @@ export interface BotDeck {
 
 const deck = (list: BotDeckList, bot: BotDeck['bot']): BotDeck => ({ id: list.id, name: list.name, ready: list.ready, list, bot })
 
-export const BOT_DECKS: readonly BotDeck[] = [deck(SKY_STRIKER_DECK, skyStrikerBot), deck(BRANDED_DECK, brandedBot), deck(ELFNOTE_DECK, elfnoteBot)]
+export const BOT_DECKS: readonly BotDeck[] = [deck(SKY_STRIKER_DECK, skyStrikerBot), deck(ANGELECHY_DECK, angelechyBot), deck(ELFNOTE_DECK, elfnoteBot)]
 
 /** El mazo listo con ese `id` (`HandtrapConfig.botDeck`); `null` si no hay (un id guardado que ya no existe): entonces juega el rival de siempre. */
 export const botDeckOf = (id: string | undefined): BotDeck | null => BOT_DECKS.find((deck) => deck.id === id && deck.ready) ?? null

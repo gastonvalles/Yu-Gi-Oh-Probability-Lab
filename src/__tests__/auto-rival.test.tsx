@@ -113,19 +113,19 @@ describe('el rival en Solo (una fila por rival)', () => {
     expect(readHandtrapConfig()).not.toHaveProperty('botDeck')
   })
 
-  it('los tres mazos listos (Sky Striker, Despia Branded y Elfnote), en su orden y cada uno con lo que es; elegir uno lo guarda', () => {
+  it('los tres mazos listos (Sky Striker, Angelechy y Elfnote), en su orden y cada uno con lo que es; elegir uno lo guarda', () => {
     solo()
     // Debajo de «Probá tu combo» (Handtraps y Pasivo).
     const bots = within(rivals()).getAllByRole('radio').slice(2, 5)
 
     expect(bots.map((radio) => radio.textContent)).toEqual([
       'Sky StrikerMagias Rápidas, Enlaces y mucha interacción.',
-      'Despia BrandedFusiones desde el Deck e interrupciones en tu turno.',
+      'AngelechySincronías sin materiales y Trampas que destierran.',
       'ElfnoteSincronías en el centro, también en tu turno.',
     ])
-    choose(/^Despia Branded/)
-    expect(readHandtrapConfig().botDeck).toBe('branded')
-    expect(within(rivals()).getByRole('radio', { name: /^Despia Branded/ })).toBeChecked()
+    choose(/^Angelechy/)
+    expect(readHandtrapConfig().botDeck).toBe('angelechy')
+    expect(within(rivals()).getByRole('radio', { name: /^Angelechy/ })).toBeChecked()
   })
 
   it('sin mazos listos no hay bots: sólo el pasivo y el de handtraps', () => {
