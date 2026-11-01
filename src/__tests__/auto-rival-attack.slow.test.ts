@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mirrorApply, openMirror } from '../app/mat-public'
 import { matReducer, type MatState } from '../app/practice-mat'
+import { rivalAttackInCourse } from '../app/attack-trail'
 import { rivalAttacks } from '../app/auto/adapter'
 import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
@@ -11,7 +12,8 @@ import { cardRows, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, s
 /**
  * El ataque del rival con el núcleo real (lento: `npm run test:auto`; se salta sin datos): el rival de relleno (40 Normales) juega al azar (`control: 'both'`), así invoca y
  * ataca. Cada ataque suyo (`rivalAttacks`) sale de un monstruo de su espejo y va a uno de tu mesa, los dos en el campo donde la mesa lo cuenta (`at`), y la tanda que lo trae
- * todavía tiene al atacante: la espada tiene de dónde salir.
+ * todavía tiene al atacante: la espada tiene de dónde salir. Mientras sigue en curso (`rivalAttackInCourse`: sin daño ni fase nueva), las preguntas de tu asiento son la ventana de responderle
+ * (su estela): el atacante y tu carta siguen en el campo, y cada vida que cambia después del ataque lo termina.
  */
 const DECKS = Number(process.env.RA_DECKS ?? 4)
 const TURNS = 9
@@ -44,7 +46,7 @@ describe.skipIf(!hasCoreData)('el ataque del rival con el núcleo real (npm run 
   const ids = Object.keys(lists).filter((id) => ok.has(id))
   const pool = Array.from({ length: Math.min(DECKS, ids.length) }, (_, i) => ids[Math.floor((i * ids.length) / Math.min(DECKS, ids.length))]!)
   const wasm = hasCoreData ? wasmBinary() : new ArrayBuffer(0)
-  const tally = { attacks: 0, direct: 0, attackerInBatch: 0 }
+  const tally = { attacks: 0, direct: 0, attackerInBatch: 0, windows: 0, windowTypes: [] as string[] }
 
   it.each(pool)('deck %s: cada ataque del rival tiene atacante y objetivo donde la mesa lo cuenta', async (id) => {
     const seed = Number(id) >>> 0
@@ -61,7 +63,21 @@ describe.skipIf(!hasCoreData)('el ataque del rival con el núcleo real (npm run 
     const firstSeen = new Map<number, boolean>()
     const seen = (s: AutoSnapshot) => {
       if (s.replaying) return
-      for (const attack of rivalAttacks(s.order, s.theirsActs)) if (!firstSeen.has(attack.index)) firstSeen.set(attack.index, onField(s.theirs, attack.attackerId))
+      const attacks = rivalAttacks(s.order, s.theirsActs)
+
+      for (const attack of attacks) if (!firstSeen.has(attack.index)) firstSeen.set(attack.index, onField(s.theirs, attack.attackerId))
+      // Una pregunta de tu asiento con un ataque del rival en curso: la ventana de responderle, con la estela entre dos cartas que están.
+      const course = s.status === 'ready' && s.ask?.seat === 0 ? rivalAttackInCourse(attacks, s.order, s.mineActions, s.theirsActs, s.lifeSteps) : null
+
+      if (course) {
+        const place = course.at + course.index
+
+        tally.windows += 1
+        if (!tally.windowTypes.includes(s.ask!.ask.type)) tally.windowTypes.push(s.ask!.ask.type)
+        expect(onField(s.theirs, course.attackerId), `atacante en la ventana ${course.attackerId}`).toBe(true)
+        if (course.targetId !== undefined) expect(onField(s.mine, course.targetId), `objetivo en la ventana ${course.targetId}`).toBe(true)
+        expect(s.lifeSteps.every((step) => step.at <= place)).toBe(true)
+      }
     }
     let snapshot = await settled(session, seen)
 
@@ -91,5 +107,7 @@ describe.skipIf(!hasCoreData)('el ataque del rival con el núcleo real (npm run 
     console.log(JSON.stringify(tally))
     expect(tally.attacks).toBeGreaterThan(tally.direct)
     expect(tally.direct).toBeGreaterThan(0)
+    // El núcleo te deja responder a sus ataques (la estela tiene ventana donde mostrarse).
+    expect(tally.windows).toBeGreaterThan(0)
   })
 })

@@ -28,6 +28,7 @@ export const practice = {
   'practice.card.targeted': '{name} (target)',
   'practice.card.targetMark': 'Target',
   'practice.card.canAttack': 'Puede atacar',
+  'practice.card.attacking': 'Ataca: elegí a qué',
 
   // Menú de una carta (lo que se puede hacer desde donde está).
   'practice.menu.target': 'Target',

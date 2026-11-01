@@ -1103,6 +1103,10 @@ describe('la pantalla del duelo', () => {
     expect(screen.getByRole('menu').parentElement).toHaveClass('pointer-events-none')
     const rivalCard = host.container.querySelector('[data-rival-card-id]')!
     expect(rivalCard).toHaveAttribute('data-attack-target', 'true')
+    // La mesa manual no lleva el aro rojo del que ataca ni la estela al objetivo bajo el mouse (son del duelo automático).
+    fireEvent.pointerOver(rivalCard, { pointerType: 'mouse' })
+    expect(document.querySelector('[data-glow-kind="aim"]')).toBeNull()
+    expect(document.querySelector('[data-fx="trail"]')).toBeNull()
 
     // Tocarlo en el campo ataca: se va el menú y deja de latir, y Beto ve el ataque a su carta.
     fireEvent.click(within(host.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))

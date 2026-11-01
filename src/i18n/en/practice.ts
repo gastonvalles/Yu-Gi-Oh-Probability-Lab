@@ -29,6 +29,7 @@ export const practice: Translated<typeof es> = {
   'practice.card.targeted': '{name} (targeted)',
   'practice.card.targetMark': 'Targeted',
   'practice.card.canAttack': 'Can attack',
+  'practice.card.attacking': 'Attacking: choose the target',
 
   'practice.menu.target': 'Target',
   'practice.menu.untarget': 'Remove target',

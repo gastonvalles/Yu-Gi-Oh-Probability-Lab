@@ -3,7 +3,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AttackFx, measureStrike, sacudir, type Strike } from '../components/probability/AttackFx'
+import { AttackFx, AttackTrail, ChevronTrail, measureStrike, sacudir, trailOf, type Strike } from '../components/probability/AttackFx'
 import { EASE_IN_OUT, EASE_OUT } from '../app/motion'
 
 /** jsdom no tiene layout (todo mide 0): cada elemento dice dónde está. */
@@ -328,5 +328,85 @@ describe('AttackFx', () => {
       expect(sacudir(target, 'strike', 300)).toBeNull()
       expect(target.animate).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('la estela del ataque', () => {
+  it('sale del borde del atacante (el 42 % de su alto) y entra un poco en el objetivo; sin camino, no hay estela', () => {
+    const attacker = document.createElement('div')
+    const target = document.createElement('div')
+
+    place(attacker, 0, 0, 48, 70)
+    place(target, 0, 0, 48, 70)
+    const trail = trailOf(strike({ ax: 24, ay: 335, bx: 24, by: 35, len: 300, ang: -Math.PI / 2, attacker, target }))!
+
+    expect(trail.x).toBeCloseTo(24)
+    expect(trail.y).toBeCloseTo(335 - 29.4)
+    expect(trail.len).toBeCloseTo(300 - 38.5)
+    expect(trail.ang).toBeCloseTo(-Math.PI / 2)
+    expect(trailOf(strike({ len: 40, attacker, target }))).toBeNull()
+
+    // A las vidas (un directo) llega hasta su borde: no tapa el número.
+    const lives = document.createElement('div')
+    lives.setAttribute('data-lp', 'mine')
+    place(lives, 0, 0, 80, 40)
+    expect(trailOf(strike({ ax: 24, ay: 335, bx: 24, by: 35, len: 300, ang: -Math.PI / 2, attacker, target: lives }))!.len).toBeCloseTo(300 - 29.4 - 20)
+  })
+
+  it('es un renglón de chevrones (un solo fondo) girado hacia el objetivo, que sólo anima `translate` y queda quieto con el movimiento reducido o `still`', () => {
+    const { container, rerender } = render(<ChevronTrail x={10} y={20} len={150} ang={0.5} />)
+    const box = container.querySelector('[data-fx="trail"]') as HTMLElement
+
+    expect(box).toHaveAttribute('aria-hidden', 'true')
+    expect(box).toHaveClass('pointer-events-none', 'overflow-hidden', 'origin-left')
+    expect(box.style.left).toBe('10px')
+    expect(box.style.top).toBe('20px')
+    expect(box.style.width).toBe('150px')
+    expect(box.style.transform).toBe('rotate(0.5rad)')
+    // Dos nodos, mida lo que mida: el renglón es el fondo de uno.
+    expect(box.querySelectorAll('*')).toHaveLength(1)
+    const run = box.firstElementChild as HTMLElement
+    expect(run).toHaveClass('animate-chevrons', 'motion-reduce:animate-none')
+    expect(run.style.backgroundImage).toContain('data:image/svg+xml')
+    // El rojo del ataque, el mismo del rayo.
+    expect(decodeURIComponent(run.style.backgroundImage)).toContain('rgb(255 74 94)')
+
+    rerender(<ChevronTrail x={10} y={20} len={150} ang={0.5} still />)
+    expect(container.querySelector('[data-fx="trail"] > span')).toHaveClass('animate-none')
+    expect(container.querySelector('[data-fx="trail"] > span')).not.toHaveClass('animate-chevrons')
+  })
+
+  it('`AttackTrail` la mide en la mesa y la dibuja en su capa, debajo de la pregunta del medio; si falta el objetivo, nada; se vuelve a medir si la ventana cambia de tamaño', async () => {
+    const mesa = table()
+    const boundsRef = { current: mesa }
+    const trailTo = (to: string) => <AttackTrail from='[data-card-id="card-1-1"]' to={to} boundsRef={boundsRef} />
+    const { container, rerender } = render(trailTo('[data-rival-card-id="c7"]'))
+
+    // Casi encimados: no hay camino.
+    expect(document.body.querySelector('[data-fx="trail"]')).toBeNull()
+
+    // La mesa cambia y el objetivo queda lejos, abajo: la estela aparece al volver a medir, girada hacia él.
+    place(mesa.querySelector('[data-rival-card-id="c7"]')!, 0, 400, 100, 100)
+    await act(async () => {
+      window.dispatchEvent(new Event('resize'))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+    const trail = document.body.querySelector('[data-fx="trail"]') as HTMLElement
+
+    expect(trail).not.toBeNull()
+    // En la capa de la mesa (no en un portal): la pregunta del medio (`z-[130]`) le queda encima.
+    expect(container.contains(trail)).toBe(true)
+    expect(trail.parentElement).toHaveClass('pointer-events-none', 'absolute', 'inset-0', 'z-[125]')
+    expect(trail.style.transform).toBe(`rotate(${Math.PI / 2}rad)`)
+    // Medida desde la capa: si la capa empieza más abajo, la estela sube lo mismo.
+    const top = parseFloat(trail.style.top)
+    place(trail.parentElement!, 0, 40, 400, 600)
+    await act(async () => {
+      window.dispatchEvent(new Event('resize'))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+    expect(parseFloat((document.body.querySelector('[data-fx="trail"]') as HTMLElement).style.top)).toBeCloseTo(top - 40)
+    rerender(trailTo('[data-rival-card-id="nadie"]'))
+    expect(document.body.querySelector('[data-fx="trail"]')).toBeNull()
   })
 })

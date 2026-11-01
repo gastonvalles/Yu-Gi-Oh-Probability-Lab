@@ -1,8 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '../../app/motion'
+import { cx } from '../ui/cx'
 import { fxVars } from './MatFx'
+import { FX_RGB } from './practice-styles'
 
 /**
  * El ataque en la mesa: una espada y un rayo rojo cruzan del monstruo que ataca a su objetivo (una carta o la barra de vida) y, al llegar, estalla el
@@ -85,6 +87,102 @@ export function measureStrike({ from, to, direct = 'theirs', bounds }: StrikeSpe
   }
 
   return { key: Date.now(), ax: a.x, ay: a.y, bx: b.x, by: b.y, len: Math.hypot(b.x - a.x, b.y - a.y), ang: Math.atan2(b.y - a.y, b.x - a.x), attacker, target }
+}
+
+/**
+ * El dibujo de la estela, de 30 × 18 px: dos chevrones rojos (`FX_RGB.red`, el del rayo) con borde blanco y su halo, el segundo más tenue. Va de fondo de un solo elemento: el halo se dibuja
+ * una vez (sin `filter` en lo que se mueve) y la estela entera son dos nodos, mida lo que mida.
+ */
+const chevronAt = (x: number, alpha: number) =>
+  `<path d="M${x} 1.5 L${x + 7} 9 L${x} 16.5 L${x + 4} 16.5 L${x + 11} 9 L${x + 4} 1.5 Z" fill="rgb(${FX_RGB.red})" fill-opacity="${alpha}" stroke="#fff" stroke-opacity="${alpha}" stroke-width="1.1" stroke-linejoin="round" filter="url(#g)"/>`
+const CHEVRONS = `url("data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="18"><filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="0" stdDeviation="1.6" flood-color="rgb(${FX_RGB.red})"/></filter>${chevronAt(2, 1)}${chevronAt(17, 0.55)}</svg>`,
+)}")`
+
+/** Dónde va la estela, en px de su capa: de dónde sale (`x`, `y`), cuánto mide y hacia dónde va (radianes). */
+export interface TrailGeometry {
+  x: number
+  y: number
+  len: number
+  ang: number
+}
+
+/**
+ * La estela de un ataque (Gastón aprobó la referencia de Master Duel: «quién ataca a quién», a la vista mientras se apunta y mientras se responde): un renglón de chevrones rojos que avanza del atacante
+ * a su objetivo, en una caja girada hacia él y con las puntas desvanecidas. Sólo se anima `translate` (`animate-chevrons`); con el movimiento reducido (o `still`), quieta. Decorativa: quién ataca
+ * a quién lo dicen el cartel del rival y la pregunta.
+ */
+export function ChevronTrail({ x, y, len, ang, still = false }: TrailGeometry & { still?: boolean }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-fx="trail"
+      className="pointer-events-none absolute -mt-[9px] h-[18px] origin-left overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_14px,#000_calc(100%-10px),transparent)]"
+      style={{ left: x, top: y, width: len, transform: `rotate(${ang}rad)` }}
+    >
+      <span className={cx('absolute inset-y-0 -left-[30px] right-0 bg-repeat-x', still ? 'animate-none' : 'animate-chevrons motion-reduce:animate-none')} style={{ backgroundImage: CHEVRONS }} />
+    </div>
+  )
+}
+
+/**
+ * Sale del borde del atacante (el 42 % de su alto, desde el centro) y entra un poco en la carta atacada, como la maqueta aprobada; a las vidas (un directo) llega hasta su borde, sin tapar el número.
+ * Null si no queda camino.
+ */
+export function trailOf(strike: Strike): TrailGeometry | null {
+  const own = strike.attacker.getBoundingClientRect().height
+  const box = strike.target?.getBoundingClientRect()
+  const start = own * 0.42
+  const lives = strike.target?.hasAttribute('data-lp') && box
+  // Del centro de las vidas a su borde, en la dirección de la estela.
+  const edge = lives ? Math.min(box.width / 2 / Math.abs(Math.cos(strike.ang) || 1e-6), box.height / 2 / Math.abs(Math.sin(strike.ang) || 1e-6)) : 0
+  const len = lives ? strike.len - start - edge : strike.len - Math.min(own, box?.height ?? own) * 0.55
+
+  return len < 12 ? null : { x: strike.ax + Math.cos(strike.ang) * start, y: strike.ay + Math.sin(strike.ang) * start, len, ang: strike.ang }
+}
+
+/**
+ * La estela entre dos cartas de la mesa (`measureStrike`), en una capa de la mesa que va sobre el campo y la mano y **debajo** de la pregunta del medio (`z-[125]`, la pregunta es `z-[130]`): nunca
+ * tapa el texto de «¿Activás algo ahora?» (en el celular la pregunta tapa el campo del rival; plegada, se ve entera). Se queda mientras esté montada: se vuelve a medir cuando la mesa cambia de tamaño,
+ * se desplaza la página o cambia lo que se pide (otro objetivo bajo el mouse); si el atacante o el objetivo no están, no se dibuja.
+ */
+export function AttackTrail({ from, to, direct, boundsRef }: Omit<StrikeSpec, 'bounds'> & { boundsRef: { readonly current: Element | null } }) {
+  const [trail, setTrail] = useState<TrailGeometry | null>(null)
+  const layerRef = useRef<HTMLDivElement | null>(null)
+
+  useLayoutEffect(() => {
+    let frame = 0
+    const measure = () => {
+      const strike = measureStrike({ from, ...(to === undefined ? {} : { to }), ...(direct ? { direct } : {}), bounds: boundsRef.current })
+      const found = strike && trailOf(strike)
+      const origin = layerRef.current?.getBoundingClientRect()
+
+      setTrail(found && origin ? { ...found, x: found.x - origin.left, y: found.y - origin.top } : found)
+    }
+    const later = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(measure)
+    }
+    const observer = typeof ResizeObserver === 'function' && boundsRef.current ? new ResizeObserver(later) : null
+
+    measure()
+    if (boundsRef.current) observer?.observe(boundsRef.current)
+    window.addEventListener('resize', later)
+    window.addEventListener('scroll', later, { capture: true, passive: true })
+
+    return () => {
+      cancelAnimationFrame(frame)
+      observer?.disconnect()
+      window.removeEventListener('resize', later)
+      window.removeEventListener('scroll', later, { capture: true })
+    }
+  }, [from, to, direct, boundsRef])
+
+  return (
+    <div ref={layerRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[125]">
+      {trail ? <ChevronTrail {...trail} /> : null}
+    </div>
+  )
 }
 
 /** Lo que tarda la espada en llegar (el impacto empieza ahí), lo que dura la sacudida y cuándo se va todo (la onda del impacto es lo último en apagarse). */
