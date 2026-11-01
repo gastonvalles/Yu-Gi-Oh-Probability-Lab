@@ -112,7 +112,12 @@ describe('la pantalla de banlists', () => {
   it('la lista completa trae las prohibidas, limitadas y semi-limitadas de esa lista, sin las liberadas', () => {
     render(<BanlistsScreen />)
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+    // «Cambios · Lista completa» son pestañas en la cabeza de la tarjeta, y lo de abajo es su panel.
+    expect(screen.getByRole('tablist', { name: 'Qué mostrar' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Cambios' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(screen.getByRole('tab', { name: 'Lista completa' }))
+    expect(screen.getByRole('tab', { name: 'Lista completa' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Lista completa' })).toContainElement(screen.getByRole('searchbox', { name: 'Buscar una carta en esta lista' }))
 
     const [current] = banlistsOf('tcg')
 
@@ -217,7 +222,7 @@ describe('las listas que se anuncian en partes', () => {
 describe('las cartas de la lista completa no se vuelven a dibujar de más', () => {
   it('escribir en el buscador no dibuja de nuevo las que siguen a la vista', () => {
     render(<BanlistsScreen />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Lista completa' }))
 
     const all = screen.getAllByRole('listitem').length
 
@@ -230,7 +235,7 @@ describe('las cartas de la lista completa no se vuelven a dibujar de más', () =
 
   it('abrir una carta sólo dibuja la del detalle (con su imagen chica mientras llega la completa)', () => {
     render(<BanlistsScreen />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Lista completa' }))
     drawnArt.length = 0
     fireEvent.click(screen.getByRole('button', { name: 'Ver el detalle de Archlord Kristya' }))
 

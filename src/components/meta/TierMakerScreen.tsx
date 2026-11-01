@@ -46,7 +46,7 @@ const IMAGE_QUALITY = 0.95
 interface TierMakerScreenProps {
   /** El encabezado de afuera; en escritorio recibe «Descargar imagen» para su costado (en el celular el botón queda en la fila de acciones). */
   header?: (download: ReactNode) => ReactNode
-  /** El selector «Del meta · La tuya»: encabeza la fila de acciones, con «Volver todo a…» a la derecha. */
+  /** Las pestañas de Tier lists (Hand traps · Boardbreakers · La tuya): van en su renglón, arriba de la fila de acciones. */
   switcher?: ReactNode
   /** Cada cambio guardado: cuántas cartas tiene la lista (la cuenta de «La tuya»). */
   onCountChange?: (count: number) => void
@@ -139,10 +139,11 @@ export function TierMakerScreen({ header, switcher, onCountChange }: TierMakerSc
     <>
       {header?.(downloadInHeader ? downloadButton : null)}
 
-      {/* `justify-between` y no `ml-auto`: si en el celular no entran juntos, quedan alineados a la izquierda, uno abajo del otro (con `ml-auto`, «Descargar imagen» bajaba sola a la derecha).
-          El selector va primero; en el celular ocupa su renglón entero. */}
+      {/* Las pestañas, en su renglón y en el mismo lugar que en las listas del meta. */}
+      {switcher}
+
+      {/* `justify-between` y no `ml-auto`: si en el celular no entran juntos, quedan alineados a la izquierda, uno abajo del otro (con `ml-auto`, «Descargar imagen» bajaba sola a la derecha). */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {switcher}
         {/* `max-w-full`: en 320 px y en inglés no entra en un renglón y se parte adentro, en vez de salirse. */}
         <Button variant="tertiary" size="sm" className="max-w-full" disabled={ranked === 0} onClick={() => update(resetPlacements)}>
           {t('meta.maker.resetTiers')}

@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { StepHero } from '../components/StepHero'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../components/deck-mode/deck-workflow-navigation'
 import { SidebarNav } from '../components/shell/SidebarNav'
+import { Tabs } from '../components/ui/Tabs'
 
 // jsdom no calcula el layout: lo que se mide a mano en el navegador (que todo quede en el mismo píxel al pasar de una pestaña a
 // otra) se cuida acá con las reglas que lo hacen posible. Ver "Reglas para sumar pantallas", punto 7, en docs/design-system.md.
@@ -30,6 +31,18 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
       expect(reserve).toHaveAttribute('aria-hidden', 'true')
       expect(reserve).toHaveClass('invisible', 'font-semibold')
       expect(shown).toHaveClass(item.key === 'probability-lab' ? 'font-semibold' : 'font-medium')
+    }
+  })
+
+  it('las pestañas (`Tabs`) también reservan el ancho de la negrita: al elegir una, ninguna se corre', () => {
+    render(<Tabs label="Vista" value="a" onChange={() => {}} options={[{ value: 'a', label: 'Cambios' }, { value: 'b', label: 'Lista completa' }]} />)
+
+    for (const [name, selected] of [['Cambios', true], ['Lista completa', false]] as const) {
+      const [reserve, shown] = within(screen.getByRole('tab', { name })).getAllByText(name)
+
+      expect(reserve).toHaveAttribute('aria-hidden', 'true')
+      expect(reserve).toHaveClass('invisible', 'font-semibold')
+      expect(shown).toHaveClass(selected ? 'font-semibold' : 'font-medium')
     }
   })
 
