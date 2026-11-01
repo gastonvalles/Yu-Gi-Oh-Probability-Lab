@@ -13,7 +13,8 @@ import type { Seat } from '../../app/auto/protocol'
 import type { BotNote } from '../../app/auto/auto-session'
 import { seatOf, setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
-import { autoRival, BOT_DECK_MENU, dealRival, poolCount, readHandtrapConfig, rivalCardOf, rivalKindOf, withRival, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
+import { autoRival, BOT_DECK_MENU, dealRival, isBotModified, poolCount, readHandtrapConfig, rivalCardOf, rivalKindOf, withRival, writeHandtrapConfig, type AutoRival, type HandtrapConfig } from '../../app/handtraps'
+import { botDeckList } from '../../app/bot-deck-lists'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { LifeHold } from '../../app/life-effects'
 import { randomSeed, type MatState, type RivalHand } from '../../app/practice-mat'
@@ -322,6 +323,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   // Repasando un combo (o tus jugadas) la mesa es la del repaso: el turno de la barra es el del paso que se mira, y la portada (el fin, un error), la mano del rival y lo que activa
   // esperan a «Volver al duelo».
   const reviewing = asks.review.active
+  const botName = BOT_DECK_MENU.find((deck) => deck.id === handtraps.botDeck)?.name ?? ''
   // Lo que se ajusta: en «Más opciones» de la barra (celular) y en la botonera (escritorio).
   const options = useMemo<AutoOptions>(
     () => ({
@@ -337,7 +339,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
         kind,
         summary:
           kind === 'bot'
-            ? t('auto.rival.botSummary', { deck: BOT_DECK_MENU.find((deck) => deck.id === handtraps.botDeck)?.name ?? '' })
+            ? t('auto.rival.botSummary', { deck: isBotModified(handtraps, botDeckList(handtraps.botDeck)) ? t('solo.deck.modified', { name: botName }) : botName })
             : kind === 'handtraps'
               ? t('auto.bar.handtrapsOn', { cards: namesList(handtraps.picks.flatMap((pick) => Array<string>(pick.copies).fill(pick.name))), hand: Math.min(handtraps.hand, poolCount(handtraps.picks)) })
               : t('auto.rival.kind.passive'),
@@ -346,7 +348,7 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
       blind: facedown,
       onBlind: (on) => (kind === 'bot' ? setAutoPref('botHand', !on) : setAutoPref('blind', on)),
     }),
-    [prefs.chain, prefs.place, restart, openSave, openLog, openManual, kind, facedown, handtraps],
+    [prefs.chain, prefs.place, restart, openSave, openLog, openManual, kind, facedown, handtraps, botName],
   )
   const turn = reviewing ? asks.state.turn : asks.turn
   const canUndo = asks.undoable && status !== 'thinking' && !snap.replaying

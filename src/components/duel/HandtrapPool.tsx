@@ -79,13 +79,15 @@ interface HandtrapPoolCardProps {
   onChange: (copies: number) => void
   /** Una línea chica debajo del nombre (en el duelo automático, que el rival todavía no la usa solo). */
   note?: string
+  /** El tope del contador (sin él, `MAX_COPIES`): «Cambiar cartas» de un bot lo baja a lo que entra. */
+  max?: number
 }
 
 /**
  * Una carta de la hoja: su arte, su nombre y, debajo, cuántas copias tiene el rival en su deck (de 0 a `MAX_COPIES`). Con una o más lleva el aro ámbar de lo elegido; con 0, apagada.
  * La carta se elige subiendo su contador (la fila no es un botón).
  */
-export function HandtrapPoolCard({ card, copies, onChange, note }: HandtrapPoolCardProps) {
+export function HandtrapPoolCard({ card, copies, onChange, note, max = MAX_COPIES }: HandtrapPoolCardProps) {
   const chosen = copies > 0
 
   return (
@@ -102,7 +104,7 @@ export function HandtrapPoolCard({ card, copies, onChange, note }: HandtrapPoolC
       <span className="grid min-w-0 flex-1 justify-items-start gap-1">
         <span className={cx('max-w-full truncate text-body font-semibold', chosen ? 'text-foreground' : 'text-muted')}>{card.name}</span>
         {note ? <span className="text-micro text-soft">{note}</span> : null}
-        <Stepper size="lg" label={t('handtraps.picker.copies', { name: card.name })} value={copies} min={0} max={MAX_COPIES} onChange={onChange} />
+        <Stepper size="lg" label={t('handtraps.picker.copies', { name: card.name })} value={copies} min={0} max={max} onChange={onChange} />
       </span>
     </li>
   )

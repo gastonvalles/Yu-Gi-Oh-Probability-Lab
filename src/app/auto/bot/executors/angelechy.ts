@@ -2,6 +2,7 @@ import { freePlaces } from '../../policies'
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotReason, BotView } from '../bot'
 import { ANGELECHY as A, ANGELECHY_DECK } from '../../../bot-deck-lists'
+import { withSwapCards } from '../../../handtraps'
 import { mayInterrupt } from '../interrupt'
 import { turnBot, type CardFacts } from '../turn'
 import { atPlace, attackPlan, atkOf, cardsOf, executorBot, firstOf, isMine, LOC, monstersOf, PHASE, ranked, threatOf, type DeckDecision, type DeckExecutor, type Play, type Scene } from './executor'
@@ -25,9 +26,10 @@ import { atPlace, attackPlan, atkOf, cardsOf, executorBot, firstOf, isMine, LOC,
  * de Bifrost).
  */
 
-const OWN = new Set<number>([...ANGELECHY_DECK.main, ...ANGELECHY_DECK.extra].map(([code]) => code))
-/** Sus handtraps, en ese orden de preferencia: Dominus Impulse al final (desde la mano le prohíbe los efectos de sus Angelechy, que son LUZ). */
-const HANDTRAPS: number[] = [A.ash, A.ogre, A.droll, A.fuwalos, A.purge, A.spark, A.impulse]
+const DOMINUS: number[] = [A.purge, A.spark, A.impulse]
+/** Sus handtraps, en ese orden de preferencia (con las que se le pueden poner, «Cambiar cartas»): las Dominus al final e Impulse la última (desde la mano le prohíbe los efectos de sus Angelechy, que son LUZ). */
+const HANDTRAPS: number[] = [...withSwapCards([A.ash, A.ogre, A.droll, A.fuwalos]).filter((code) => !DOMINUS.includes(code)), ...DOMINUS]
+const OWN = new Set<number>([...ANGELECHY_DECK.main, ...ANGELECHY_DECK.extra].map(([code]) => code).concat(HANDTRAPS))
 /** Lo que niega tu eslabón desde su campo (cuenta para `mayInterrupt`). */
 const RESPONDERS = new Set<number>([A.verdict])
 /** Las Angelechy del Extra Deck. */

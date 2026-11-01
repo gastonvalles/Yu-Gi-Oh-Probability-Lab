@@ -1,6 +1,7 @@
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
 import { SKY, SKY_STRIKER_DECK } from '../../../bot-deck-lists'
+import { withSwapCards } from '../../../handtraps'
 import { mayInterrupt } from '../interrupt'
 import { turnBot, type CardFacts } from '../turn'
 import {
@@ -55,9 +56,9 @@ const QUICK = [SKY.widow, SKY.crown, SKY.fallen, SKY.called, SKY.hornet, SKY.lin
 /** Lo que descarta primero (Radiant Typhoon Vision): lo que menos le sirve. */
 const DISCARD: number[] = [SKY.vision, SKY.mst, SKY.lemnisgate, SKY.shark, SKY.linkage, SKY.talent, SKY.hornet, SKY.called, SKY.crown, SKY.fallen, SKY.widow]
 const LINKS = new Set<number>([SKY.kagari, SKY.shizuku, SKY.hayate, SKY.zero, SKY.zeke, SKY.camellia, SKY.azalea, SKY.amatsu, SKY.engageZero])
-const OWN = new Set<number>([...SKY_STRIKER_DECK.main, ...SKY_STRIKER_DECK.extra].map(([code]) => code).concat(SKY.token))
-/** Sus handtraps (Ash Blossom, Ghost Ogre, Ghost Belle, Droll & Lock Bird), en ese orden de preferencia: las usa como el rival de handtraps. */
-const HANDTRAPS = [14558127, 59438930, 73642296, 94145021]
+/** Sus handtraps (Ash Blossom, Ghost Ogre, Ghost Belle, Droll & Lock Bird), en ese orden de preferencia, y las que se le pueden poner («Cambiar cartas»): las usa como el rival de handtraps. */
+const HANDTRAPS = withSwapCards([14558127, 59438930, 73642296, 94145021])
+const OWN = new Set<number>([...SKY_STRIKER_DECK.main, ...SKY_STRIKER_DECK.extra].map(([code]) => code).concat(SKY.token, HANDTRAPS))
 /** Lo que niega tu eslabón desde su campo (cuenta para `mayInterrupt`). */
 const RESPONDERS = new Set<number>([SKY.widow, SKY.crown, SKY.shark])
 

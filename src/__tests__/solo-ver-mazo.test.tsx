@@ -115,6 +115,50 @@ describe('Ver mazo', () => {
     expect(fetchCardsByIds).toHaveBeenCalledTimes(3)
   })
 
+  it('«Cambiar cartas»: una por otra, «Guardar» con las ranuras llenas, «modificado» en la fila y la lista; «Restaurar original» vuelve', async () => {
+    solo('sky-striker')
+    let sheet = openDeck('Sky Striker')
+
+    await within(sheet).findByRole('list', { name: 'Main · 40' })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Cambiar cartas' }))
+    let editor = screen.getByRole('dialog', { name: 'Cambiar cartas' })
+    const stepper = (name: string) => within(editor).getByRole('group', { name: `Copias de ${name} en el deck del rival` })
+    const save = () => within(editor).getByRole('button', { name: 'Guardar' })
+
+    expect(editor).toHaveTextContent('Ranuras libres · 11')
+    expect(editor).toHaveTextContent('Las 11 ranuras están llenas.')
+    // El motor no aparece; lo prohibido lo dice y no sube.
+    expect(within(editor).queryByRole('group', { name: /Sky Striker Ace - Raye/ })).toBeNull()
+    expect(stepper('Maxx "C"')).toBeInTheDocument()
+    expect(within(stepper('Maxx "C"')).getByRole('button', { name: 'Uno más' })).toBeDisabled()
+    // Sin ranuras libres, Effect Veiler no sube.
+    expect(within(stepper('Effect Veiler')).getByRole('button', { name: 'Uno más' })).toBeDisabled()
+
+    fireEvent.click(within(stepper('Ash Blossom & Joyous Spring')).getByRole('button', { name: 'Uno menos' }))
+    expect(editor).toHaveTextContent('Te falta llenar 1 ranura.')
+    expect(save()).toBeDisabled()
+    fireEvent.click(within(stepper('Effect Veiler')).getByRole('button', { name: 'Uno más' }))
+    expect(save()).toBeEnabled()
+    fireEvent.click(save())
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Cambiar cartas' })).toBeNull())
+
+    sheet = screen.getByRole('dialog', { name: 'Mazo de Sky Striker · modificado' })
+    const main = await within(sheet).findByRole('list', { name: 'Main · 40' })
+    expect(within(main).getByRole('button', { name: 'Carta 97268402' })).toBeInTheDocument()
+    expect(within(main).getByRole('button', { name: 'Carta 14558127, 2 copias' })).toBeInTheDocument()
+    expect(fetchCardsByIds).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('radio', { name: /Sky Striker · modificado/ })).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('ygo-lab:rival-handtraps:v2')!).botFlex['sky-striker']).toContainEqual([97268402, 1])
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Cambiar cartas' }))
+    editor = screen.getByRole('dialog', { name: 'Cambiar cartas' })
+    fireEvent.click(within(editor).getByRole('button', { name: 'Restaurar original' }))
+    expect(within(editor).queryByRole('button', { name: 'Restaurar original' })).toBeNull()
+    fireEvent.click(save())
+    expect(await screen.findByRole('dialog', { name: 'Mazo de Sky Striker' })).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('ygo-lab:rival-handtraps:v2')!).botFlex).toBeUndefined()
+  })
+
   it('Pasivo y Handtraps no tienen lista: sin «Ver mazo»', () => {
     solo(null)
     expect(screen.getByRole('region', { name: 'Handtraps' })).toBeInTheDocument()

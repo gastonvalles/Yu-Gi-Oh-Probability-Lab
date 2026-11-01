@@ -9,7 +9,7 @@ import { skyStrikerBot } from '../app/auto/bot/executors/sky-striker'
 import { localTransport } from '../app/auto/core-host'
 import { passivePolicy } from '../app/auto/policies'
 import type { CoreAnswer, CoreAsk } from '../app/auto/protocol'
-import { autoRival } from '../app/handtraps'
+import { autoRival, originalFlex } from '../app/handtraps'
 import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
@@ -30,6 +30,13 @@ const GOLDFISH = Number(process.env.SKY_GOLDFISH ?? 50)
  * - `damage`: con tu campo vacío, cualquier Enlace ataca directo en su turno 3.
  */
 const THRESHOLDS = { link: 0.85, set: 0.85, damage: 0.9 }
+/**
+ * «Cambiar cartas»: una Ash Blossom y una Droll & Lock Bird cambiadas por Effect Veiler y Nibiru, que el bot no traía (handtrap por handtrap: cambiar sus Mágicas por handtraps
+ * baja `set`, que cuenta lo que coloca).
+ */
+const VEILER = 97268402
+const NIBIRU = 27204311
+const FLEX: [number, number][] = [...originalFlex(SKY_STRIKER_DECK).map(([code, copies]): [number, number] => [code, code === 14558127 || code === 94145021 ? copies - 1 : copies]), [VEILER, 1], [NIBIRU, 1]]
 
 const settled = (session: AutoSession) =>
   new Promise<AutoSnapshot>((resolve) => {
@@ -118,7 +125,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
   })
 
   /** Una mano del goldfish: el bot empieza (vos vas segundo, pasivo, con 40 Normales); hasta tu turno 4. */
-  async function goldfish(seed: number) {
+  async function goldfish(seed: number, flex?: [number, number][]) {
     const { filler } = await source.manifest()
     const faults: string[] = []
     const session = createAutoSession({
@@ -128,7 +135,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
       botSeed: seed,
       seat: 1,
       transport: localTransport({ wasmBinary: wasm }),
-      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'sky-striker' }),
+      rival: autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'sky-striker', ...(flex ? { botFlex: { 'sky-striker': flex } } : {}) }),
       onEvent: (event) => {
         if (event.t === 'fault') faults.push(`${event.kind}: ${event.message.slice(0, 160)}`)
       },
@@ -155,17 +162,19 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
     return { seed, status: snapshot.status, turn: snapshot.overlay.turn, afterOne, lp, faults, reasons }
   }
 
-  it(`goldfish: ${GOLDFISH} manos contra el pasivo, sobre los umbrales y sin respuestas rechazadas`, { timeout: 30 * 60 * 1000 }, async () => {
+  it.each([['su lista', undefined], ['cartas cambiadas', FLEX]] as const)(`goldfish con %s: ${GOLDFISH} manos contra el pasivo, sobre los umbrales y sin respuestas rechazadas`, { timeout: 30 * 60 * 1000 }, async (label, flex) => {
     const hands: Awaited<ReturnType<typeof goldfish>>[] = []
 
-    for (let seed = 1; seed <= GOLDFISH; seed += 1) hands.push(await goldfish(seed))
+    // Las cartas cambiadas llegan a la sesión (un cambio que no sirve jugaría el original sin avisar).
+    expect(autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'sky-striker', ...(flex ? { botFlex: { 'sky-striker': [...flex] } } : {}) })!.main.length > 0).toBe(flex !== undefined)
+    for (let seed = 1; seed <= GOLDFISH; seed += 1) hands.push(await goldfish(seed, flex ? [...flex] : undefined))
     const share = (test: (hand: (typeof hands)[number]) => boolean) => Math.round((hands.filter(test).length / hands.length) * 100) / 100
     const measured = { link: share((hand) => (hand.afterOne?.links ?? 0) > 0), set: share((hand) => (hand.afterOne?.set ?? 0) >= 2), damage: share((hand) => hand.lp < 8000) }
     const reasons: Record<string, number> = {}
 
     hands.forEach((hand) => hand.reasons.forEach((key) => (reasons[key] = (reasons[key] ?? 0) + 1)))
-    report.goldfish = { hands: hands.length, measured, thresholds: THRESHOLDS, reasons, misses: hands.filter((hand) => !hand.afterOne?.links || hand.lp >= 8000).map(({ seed, afterOne, lp }) => ({ seed, afterOne, lp })) }
-    console.log(JSON.stringify(report.goldfish))
+    report[`goldfish ${label}`] = { hands: hands.length, measured, thresholds: THRESHOLDS, reasons, misses: hands.filter((hand) => !hand.afterOne?.links || hand.lp >= 8000).map(({ seed, afterOne, lp }) => ({ seed, afterOne, lp })) }
+    console.log(JSON.stringify(report[`goldfish ${label}`]))
 
     expect(hands.flatMap((hand) => hand.faults.filter((fault) => !fault.startsWith('script')))).toEqual([])
     expect(hands.filter((hand) => hand.status !== 'ready' || hand.turn < 4).map((hand) => hand.seed)).toEqual([])
@@ -175,7 +184,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
   })
 
   /** Un duelo con la mano del bot fija (arriba de su deck): `seat` es el tuyo. Cada pregunta al bot con su respuesta, en orden. */
-  async function scenario(options: { botHand: number[]; seat: 0 | 1; myHand: number[]; steps: Step[]; turns: number; without?: number[]; myDeck?: number[] }) {
+  async function scenario(options: { botHand: number[]; seat: 0 | 1; myHand: number[]; steps: Step[]; turns: number; without?: number[]; myDeck?: number[]; flex?: [number, number][] }) {
     const { filler } = await source.manifest()
     const facts = (code: number) => cards.get(code)
     const inner = skyStrikerBot(facts, (code) => cards.get(code)?.alias ?? 0, (code) => cards.get(code)?.attribute ?? 0)
@@ -198,7 +207,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
       seat: options.seat,
       transport: localTransport({ wasmBinary: wasm }),
       // `without`: esas cartas del mazo del bot cambiadas por Normales (para mirar una decisión sin que otra regla se cruce).
-      rival: { main: SKY_STRIKER_DECK.main.map(([code, copies]) => (options.without?.includes(code) ? ([filler[code % filler.length]!, copies] as const) : ([code, copies] as const))), extra: SKY_STRIKER_DECK.extra, hand: () => options.botHand },
+      rival: { main: (options.flex ? autoRival({ enabled: false, picks: [], hand: 3, botDeck: 'sky-striker', botFlex: { 'sky-striker': options.flex } })!.main : SKY_STRIKER_DECK.main).map(([code, copies]) => (options.without?.includes(code) ? ([filler[code % filler.length]!, copies] as const) : ([code, copies] as const))), extra: SKY_STRIKER_DECK.extra, hand: () => options.botHand },
       bot,
     })
     const me = player(options.steps, new Set(own))
@@ -268,6 +277,17 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
     expect(run.rules).toContain(`set-${SKY.widow}`)
     expect(respond).toMatchObject({ ask: 'select_chain', chosen: [name(SKY.widow)] })
     expect(target).toMatchObject({ ask: 'select_card', chosen: [name(STRATOS)], reason: 'auto.bot.reason.target.negate' })
+  })
+
+  it('con cartas cambiadas, usa la handtrap que se le puso: Effect Veiler contra el efecto de tu monstruo', { timeout: 120_000 }, async () => {
+    const STRATOS = 40044918
+    // Empezás vos: su campo vacío, Veiler es su única interrupción (con Widow Anchor colocada, respondería con ella).
+    const run = await scenario({ botHand: [VEILER, SKY.raye, SKY.engage, SKY.hornet, SKY.linkage], seat: 0, myHand: [STRATOS], myDeck: [21844576], steps: [{ do: 'summon', code: STRATOS }], turns: 1, flex: FLEX })
+    const used = run.log.find((item) => item.decision.rule === 'handtrap.use.monster')
+
+    report.flexVeiler = { rules: run.rules.filter((rule) => rule.startsWith('handtrap')), used: used ? offer(run, 'handtrap.use.monster') : null }
+    expect(run.fault).toBeNull()
+    expect(offer(run, 'handtrap.use.monster')).toMatchObject({ ask: 'select_chain', chosen: [name(VEILER)] })
   })
 
   it('en tu turno, The Fallen & The Virtuous colocada destruye al monstruo que te declara un ataque', { timeout: 120_000 }, async () => {

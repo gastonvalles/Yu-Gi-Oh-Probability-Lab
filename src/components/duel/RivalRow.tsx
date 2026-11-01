@@ -1,7 +1,8 @@
 import { useState } from 'react'
 
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
-import { BOT_DECK_MENU, poolCount, rivalKindOf, withRival, type BotDeckInfo, type HandtrapConfig, type RivalKind } from '../../app/handtraps'
+import { botDeckList } from '../../app/bot-deck-lists'
+import { BOT_DECK_MENU, isBotModified, poolCount, rivalKindOf, withRival, type BotDeckInfo, type HandtrapConfig, type RivalKind } from '../../app/handtraps'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -62,7 +63,7 @@ export function RivalChoice({ value, onChange, config, onChooseHandtraps, decks,
         <div className="grid gap-3">
           <div className="flex items-center justify-between gap-3">
             <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-semibold text-foreground">{deck.name}</span>
+              <span className="text-body font-semibold text-foreground">{isBotModified(config, botDeckList(deck.id)) ? t('solo.deck.modified', { name: deck.name }) : deck.name}</span>
               <span className="text-micro text-soft">{t(deck.line)}</span>
             </span>
             {decks.length > 1 ? (
