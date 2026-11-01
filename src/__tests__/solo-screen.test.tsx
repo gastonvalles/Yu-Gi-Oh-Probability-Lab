@@ -81,7 +81,7 @@ describe('Solo, de punta a punta', () => {
     expect(await radio(/^Elfnote/)).toHaveAttribute('aria-checked', 'true')
     expect(readHandtrapConfig().botDeck).toBe('elfnote')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Jugar contra Elfnote' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Jugar contra Elfnote Ars Magna Power Patron' }))
     expect(await screen.findByText('mesa automática')).toBeInTheDocument()
     expect(screen.getByTestId('bot')).toHaveTextContent('elfnote')
     expect(window.location.hash).toBe('#practice')
@@ -184,7 +184,7 @@ describe('los estados de Solo', () => {
     const list = screen.getByRole('radiogroup', { name: 'Contra quién jugás' })
 
     expect(within(list).getAllByRole('heading').map((heading) => heading.textContent)).toEqual(['Probá tu combo', 'Bots · cada uno con su mazo'])
-    expect(within(list).getAllByRole('radio').map((radio) => radio.getAttribute('title'))).toEqual(['Handtraps', 'Pasivo', 'Sky Striker', 'Angelechy', 'Elfnote'])
+    expect(within(list).getAllByRole('radio').map((radio) => radio.getAttribute('title'))).toEqual(['Handtraps', 'Pasivo', 'Sky Striker', 'Angelechy', 'Elfnote Ars Magna Power Patron'])
     expect(screen.queryByText('Sin bot')).toBeNull()
   })
 
@@ -315,13 +315,13 @@ describe('los estados de Solo', () => {
     writeHandtrapConfig({ ...DEFAULT_HANDTRAP_CONFIG, botDeck: 'elfnote' })
     const onPlay = vi.fn()
     solo({ onPlay })
-    const ficha = screen.getByRole('region', { name: 'Elfnote' })
+    const ficha = screen.getByRole('region', { name: 'Elfnote Ars Magna Power Patron' })
 
-    expect(within(ficha).getByRole('heading', { name: 'Elfnote' })).toBeInTheDocument()
-    expect(ficha).toHaveTextContent('Main 42 · Extra 15')
+    expect(within(ficha).getByRole('heading', { name: 'Elfnote Ars Magna Power Patron' })).toBeInTheDocument()
+    expect(ficha).toHaveTextContent('Main 45 · Extra 15')
     expect(within(ficha).getByText('Mi deck · 40')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Ficha y ajustes/ })).toBeNull()
-    fireEvent.click(within(ficha).getByRole('button', { name: 'Jugar contra Elfnote' }))
+    fireEvent.click(within(ficha).getByRole('button', { name: 'Jugar contra Elfnote Ars Magna Power Patron' }))
     expect(onPlay).toHaveBeenCalledWith('auto')
   })
 })

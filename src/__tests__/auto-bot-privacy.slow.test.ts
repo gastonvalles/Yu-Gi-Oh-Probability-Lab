@@ -77,7 +77,7 @@ const RIVAL_SKY: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck:
 /** El ejecutor de Angelechy: igual (Sincronías sin materiales, Continuas que buscan y sus Trampas en tu turno). */
 const RIVAL_ANGELECHY: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'angelechy' }
 /**
- * El ejecutor de Elfnote: igual (Sincronías en el centro, Lars, Lucina y Fortuna en tu turno), pero empieza él (`seat: 1` es el tuyo): yendo segundo te gana en su primer turno con
+ * El ejecutor de Elfnote: igual (Sincronías en el centro; Power Patron, Lucina y Fortuna en tu turno), pero empieza él (`seat: 1` es el tuyo): yendo segundo te gana en su primer turno con
  * casi cualquier mano y la línea no llega a jugarse. Así la jugás en tus turnos 2 y 4 contra su campo; si te gana en su turno 3, se compara hasta ahí.
  */
 const RIVAL_ELFNOTE: HandtrapConfig = { enabled: false, picks: [], hand: 3, botDeck: 'elfnote' }

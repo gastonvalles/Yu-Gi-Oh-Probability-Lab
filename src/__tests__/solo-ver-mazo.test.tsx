@@ -49,7 +49,7 @@ describe('Ver mazo', () => {
     const sheet = openDeck(deck.name)
     const zones = within(sheet).getByRole('radiogroup', { name: 'Parte del mazo' })
 
-    // Los conteos salen de la lista fija (Sky Striker 40, Angelechy 40, Elfnote 42; Extra 15) y son los mismos del chip de la ficha.
+    // Los conteos salen de la lista fija (Sky Striker 40, Angelechy 40, Elfnote 45; Extra 15) y son los mismos del chip de la ficha.
     const mainLabel = `Main · ${total(deck.main)}`
     expect(total(deck.extra)).toBe(15)
     expect(screen.getByRole('region', { name: deck.name })).toHaveTextContent(`Main ${total(deck.main)} · Extra 15`)
@@ -68,14 +68,14 @@ describe('Ver mazo', () => {
   it('el selector pasa al Extra (y lo dice), tocar una carta la abre en grande y al cerrarla se vuelve a la hoja; volver a abrirla no pide de nuevo', async () => {
     const elfnote = BOT_DECK_LISTS.find((deck) => deck.id === 'elfnote')!
     solo('elfnote')
-    let sheet = openDeck('Elfnote')
+    let sheet = openDeck(elfnote.name)
 
-    await within(sheet).findByRole('list', { name: 'Main · 42' })
+    await within(sheet).findByRole('list', { name: 'Main · 45' })
     fireEvent.click(within(sheet).getByRole('radio', { name: 'Extra · 15' }))
     const extra = within(sheet).getByRole('list', { name: 'Extra · 15' })
 
     expect(within(extra).getAllByRole('button')).toHaveLength(15)
-    expect(within(sheet).queryByRole('list', { name: 'Main · 42' })).toBeNull()
+    expect(within(sheet).queryByRole('list', { name: 'Main · 45' })).toBeNull()
     expect(sheet).toHaveTextContent('Extra: 15 cartas')
 
     const [first] = elfnote.extra[0]!
@@ -83,13 +83,13 @@ describe('Ver mazo', () => {
     expect(screen.getByRole('dialog', { name: new RegExp(`Carta ${first}`) })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog', { name: new RegExp(`Carta ${first}`) })).toBeNull())
-    expect(screen.getByRole('dialog', { name: 'Mazo de Elfnote' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: `Mazo de ${elfnote.name}` })).toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: 'Escape' })
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mazo de Elfnote' })).toBeNull())
-    sheet = openDeck('Elfnote')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: `Mazo de ${elfnote.name}` })).toBeNull())
+    sheet = openDeck(elfnote.name)
     // Vuelve a abrir en el Main, con las cartas que ya habían llegado.
-    expect(within(sheet).getByRole('list', { name: 'Main · 42' })).toBeInTheDocument()
+    expect(within(sheet).getByRole('list', { name: 'Main · 45' })).toBeInTheDocument()
     expect(fetchCardsByIds).toHaveBeenCalledTimes(1)
   })
 
