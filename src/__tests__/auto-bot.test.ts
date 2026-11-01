@@ -187,7 +187,9 @@ describe('cuándo gasta el bot con mazo una interrupción contra tu eslabón (ma
   const SEARCH = 1
   const STRATOS = 40044918
   const LINK = 2
-  const FACTS: Record<number, CardFacts> = { [SEARCH]: { type: 0x2, attack: 0, defense: 0, level: 0 }, [STRATOS]: { type: 0x21, attack: 1800, defense: 300, level: 4 }, [LINK]: { type: 0x4000021, attack: 2300, defense: 0, level: 2 } }
+  // Una carta que busca (la categoría «Search» del `.cdb`).
+  const SEARCHER = 4
+  const FACTS: Record<number, CardFacts> = { [SEARCH]: { type: 0x2, attack: 0, defense: 0, level: 0 }, [STRATOS]: { type: 0x21, attack: 1800, defense: 300, level: 4 }, [LINK]: { type: 0x4000021, attack: 2300, defense: 0, level: 2 }, [SEARCHER]: { type: 0x21, attack: 1800, defense: 300, level: 4, category: 0x222 } }
   const facts = (code: number) => FACTS[code]
   const card = (code: number, i: number, location: number): BotCard => ({ ref: { side: 'mine', id: `${location}-${i}` }, code, place: { controller: 1, location, sequence: i } })
   /** Tu turno (el bot en el asiento 1): tus eslabones del turno en orden (el último, arriba de la cadena), su mano, su campo y lo que ya activó. */
@@ -216,9 +218,10 @@ describe('cuándo gasta el bot con mazo una interrupción contra tu eslabón (ma
   }
   const may = (v: BotView) => mayInterrupt(v, facts, new Set([RESPONDER]))
 
-  it('con la última: tu primer eslabón sólo si sale del Extra Deck; desde el segundo, salvo que repitas una carta; desde el 4.º o fuera de tu Main Phase 1, cualquiera (el tope)', () => {
+  it('con la última: tu primer eslabón sólo si busca en el Deck o sale del Extra Deck; desde el segundo, salvo que repitas una carta; desde el 4.º o fuera de tu Main Phase 1, cualquiera (el tope)', () => {
     expect(may(view([STRATOS], [ASH]))).toBe(false)
     expect(may(view([LINK], [ASH]))).toBe(true)
+    expect(may(view([SEARCHER], [ASH]))).toBe(true)
     expect(may(view([SEARCH, STRATOS], [ASH]))).toBe(true)
     expect(may(view([SEARCH, SEARCH], [ASH]))).toBe(false)
     expect(may(view([SEARCH, SEARCH, SEARCH], [ASH]))).toBe(false)

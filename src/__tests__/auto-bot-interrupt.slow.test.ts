@@ -12,10 +12,10 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStor
 
 /**
  * Cuándo gastan sus interrupciones los bots con mazo, con el núcleo real (lento: `npm run test:auto`). Vas primero con una línea guionada de dos eslabones que Ash puede negar: el
- * primero menor (Upstart Goblin, Terraforming, Foolish Burial, Reinforcement of the Army) y el segundo, Stratos al Invocarse (un cuerpo y una búsqueda). El bot tiene en la mano
- * una Ash, dos copias (una vez por turno: es la última igual) o Ash y Ghost Ogre, y nada más que responda. Mide contra qué eslabón las usa, en los tres mazos (`mayInterrupt`); aparte,
- * la línea de un solo eslabón (lo que cuesta guardarla). Antes de `mayInterrupt` se medía 0 de 12 contra Stratos, 12 de 12 contra el primero y 3 de 3 con un solo eslabón. Informe en
- * CORE_DATA_DIR.
+ * primero menor (Upstart Goblin, Foolish Burial) o que busca (Terraforming, Reinforcement of the Army: el arranque) y el segundo, Stratos al Invocarse (un cuerpo y una búsqueda).
+ * El bot tiene en la mano una Ash, dos copias (una vez por turno: es la última igual) o Ash y Ghost Ogre, y nada más que responda. Mide contra qué eslabón las usa, en los tres mazos
+ * (`mayInterrupt`, con las categorías del `.cdb`), y la línea de un solo eslabón (Stratos y terminás). Antes de `mayInterrupt`, con la última: 6 de 12 contra el que importa, 6 de 6
+ * gastadas en el menor. Informe en CORE_DATA_DIR.
  */
 
 const ASH = 14558127
@@ -36,7 +36,7 @@ interface Line {
   hand: number[]
   deck: number[]
   steps: { do: 'summon' | 'activate'; code: number }[]
-  /** El eslabón que importa (el código de tu carta). */
+  /** El eslabón que importa (el código de tu carta): el que busca primero (Terraforming, Reinforcement: el arranque) o, si el primero es menor, Stratos. */
   key: number
   /** Lo que buscás primero (si no, lo primero tuyo que te ofrece). */
   pick?: number[]
@@ -44,9 +44,9 @@ interface Line {
 
 const LINES: Line[] = [
   { name: 'Upstart Goblin y Stratos', hand: [UPSTART, STRATOS], deck: [AVIAN, AVIAN], steps: [{ do: 'activate', code: UPSTART }, { do: 'summon', code: STRATOS }], key: STRATOS },
-  { name: 'Terraforming y Stratos', hand: [TERRAFORMING, STRATOS], deck: [SOGEN, AVIAN], steps: [{ do: 'activate', code: TERRAFORMING }, { do: 'summon', code: STRATOS }], key: STRATOS },
+  { name: 'Terraforming y Stratos', hand: [TERRAFORMING, STRATOS], deck: [SOGEN, AVIAN], steps: [{ do: 'activate', code: TERRAFORMING }, { do: 'summon', code: STRATOS }], key: TERRAFORMING },
   { name: 'Foolish Burial y Stratos', hand: [FOOLISH, STRATOS], deck: [AVIAN, AVIAN], steps: [{ do: 'activate', code: FOOLISH }, { do: 'summon', code: STRATOS }], key: STRATOS },
-  { name: 'Reinforcement of the Army y Stratos', hand: [ROTA], deck: [STRATOS, AVIAN], steps: [{ do: 'activate', code: ROTA }, { do: 'summon', code: STRATOS }], key: STRATOS, pick: [STRATOS] },
+  { name: 'Reinforcement of the Army y Stratos', hand: [ROTA], deck: [STRATOS, AVIAN], steps: [{ do: 'activate', code: ROTA }, { do: 'summon', code: STRATOS }], key: ROTA, pick: [STRATOS] },
 ]
 const SINGLE: Line = { name: 'sólo Stratos', hand: [STRATOS], deck: [AVIAN], steps: [{ do: 'summon', code: STRATOS }], key: STRATOS }
 
@@ -154,7 +154,7 @@ describe.skipIf(!hasCoreData)('cuándo interrumpe el bot con mazo (npm run test:
     return { hit, fault: snapshot.fault }
   }
 
-  it('con la última (una Ash, o dos copias: es una vez por turno) la guarda para el segundo eslabón; con Ash y Ghost Ogre niega los dos; con un solo eslabón, lo deja pasar', { timeout: 15 * 60 * 1000 }, async () => {
+  it('con la última (una Ash, o dos copias: es una vez por turno) niega lo que busca y guarda contra lo menor; con Ash y Ghost Ogre niega los dos; Stratos solo, negado',{ timeout: 15 * 60 * 1000 }, async () => {
     const hands = { one: [ASH], copies: [ASH, ASH], two: [ASH, OGRE] }
     const runs: Record<string, Record<string, number[][]>> = { one: {}, copies: {}, two: {} }
     const single: Record<string, number[]> = {}
@@ -175,7 +175,8 @@ describe.skipIf(!hasCoreData)('cuándo interrumpe el bot con mazo (npm run test:
     const measured = {
       lines: LINES.length * DECKS.length,
       key: { one: count('one', (hit, line) => hit.includes(line.key)), copies: count('copies', (hit, line) => hit.includes(line.key)) },
-      first: { one: count('one', (hit, line) => hit.includes(line.steps[0]!.code)), copies: count('copies', (hit, line) => hit.includes(line.steps[0]!.code)) },
+      // La última gastada en un primer eslabón menor (Upstart Goblin, Foolish Burial).
+      minor: { one: count('one', (hit, line) => line.key !== line.steps[0]!.code && hit.includes(line.steps[0]!.code)), copies: count('copies', (hit, line) => line.key !== line.steps[0]!.code && hit.includes(line.steps[0]!.code)) },
       // Con otra de reserva, la primera va contra tu primer eslabón, como antes (con Reinforcement negada, Stratos no llega).
       spare: { first: count('two', (hit, line) => hit[0] === line.steps[0]!.code), both: count('two', (hit) => hit.length === 2) },
       single: Object.values(single).filter((hit) => hit.length > 0).length,
@@ -183,6 +184,6 @@ describe.skipIf(!hasCoreData)('cuándo interrumpe el bot con mazo (npm run test:
 
     report.measured = { ...measured, runs, single }
     console.log(JSON.stringify(measured))
-    expect(measured).toEqual({ lines: 12, key: { one: 12, copies: 12 }, first: { one: 0, copies: 0 }, spare: { first: 12, both: 9 }, single: 0 })
+    expect(measured).toEqual({ lines: 12, key: { one: 12, copies: 12 }, minor: { one: 0, copies: 0 }, spare: { first: 12, both: 9 }, single: 3 })
   })
 })

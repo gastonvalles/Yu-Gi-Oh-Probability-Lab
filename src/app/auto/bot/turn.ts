@@ -20,12 +20,13 @@ import { handtrapBot } from './rivals'
  * un turno eterno; el núcleo rechaza lo ilegal y la sesión contesta entonces con la de reserva.
  */
 
-/** Lo impreso de una carta (`.cdb`): `type` con los bits del núcleo (`TYPE_MONSTER` 0x1). */
+/** Lo impreso de una carta (`.cdb`): `type` con los bits del núcleo (`TYPE_MONSTER` 0x1); `category`, sus categorías de búsqueda (`CardRow.category`). */
 export interface CardFacts {
   type: number
   attack: number
   defense: number
   level: number
+  category?: number
 }
 
 const HAND = 0x02

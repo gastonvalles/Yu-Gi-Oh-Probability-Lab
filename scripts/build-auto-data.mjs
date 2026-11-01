@@ -32,8 +32,8 @@ const USER_AGENT = 'YGO Probability Lab build (+https://github.com/gastonvalles/
 /** Las bajadas tardan un par de segundos; un GitHub colgado no puede dejar el build esperando. */
 const DOWNLOAD_TIMEOUT_MS = 60_000
 
-/** Las columnas de una carta: las de `datas` y, de `texts`, el nombre y los rótulos de los efectos (`str1`…`str16`: lo que `aux.Stringid` nombra en un menú). */
-const COLUMNS = ['d.id', 'd.alias', 'd.setcode', 'd.type', 'd.atk', 'd.def', 'd.level', 'd.race', 'd.attribute', 't.name', ...Array.from({ length: 16 }, (_, i) => `t.str${i + 1}`)].join(', ')
+/** Las columnas de una carta: las de `datas` (con `category`, las categorías de búsqueda del `.cdb`, sólo si no es 0: el bot ve si tu carta busca) y, de `texts`, el nombre y los rótulos de los efectos (`str1`…`str16`: lo que `aux.Stringid` nombra en un menú). */
+const COLUMNS = ['d.id', 'd.alias', 'd.setcode', 'd.type', 'd.atk', 'd.def', 'd.level', 'd.race', 'd.attribute', 'd.category', 't.name', ...Array.from({ length: 16 }, (_, i) => `t.str${i + 1}`)].join(', ')
 const u64 = (value) => BigInt.asUintN(64, BigInt(value)).toString()
 const select = (db, sql, ...params) => {
   const query = db.prepare(sql)
@@ -48,7 +48,7 @@ function cardRowOf(row) {
 
   while (strs.length > 0 && strs[strs.length - 1] === '') strs.pop()
 
-  return { id: Number(row.id), alias: Number(row.alias), setcode: u64(row.setcode), type: Number(row.type), atk: Number(row.atk), def: Number(row.def), level: Number(row.level), race: u64(row.race), attribute: Number(row.attribute), ...(typeof row.name === 'string' ? { name: row.name } : {}), ...(strs.length > 0 ? { strs } : {}) }
+  return { id: Number(row.id), alias: Number(row.alias), setcode: u64(row.setcode), type: Number(row.type), atk: Number(row.atk), def: Number(row.def), level: Number(row.level), race: u64(row.race), attribute: Number(row.attribute), ...(Number(row.category) ? { category: Number(row.category) } : {}), ...(typeof row.name === 'string' ? { name: row.name } : {}), ...(strs.length > 0 ? { strs } : {}) }
 }
 
 /** Las filas de esos códigos, por código (cada una una vez; las que no existen, no vienen): lo que contesta `/auto-data/cards` en desarrollo. */

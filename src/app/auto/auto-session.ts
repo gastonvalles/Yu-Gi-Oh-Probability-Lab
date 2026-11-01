@@ -623,7 +623,7 @@ export function createAutoSession(options: SessionOptions): AutoSession {
     for (const card of data.cards) {
       if (card.alias) aliases.set(card.code, card.alias)
       attributes.set(card.code, card.attribute)
-      facts.set(card.code, { type: card.type, attack: card.attack, defense: card.defense, level: card.level })
+      facts.set(card.code, { type: card.type, attack: card.attack, defense: card.defense, level: card.level, category: data.categories?.[card.code] ?? 0 })
     }
     build = (seed) => {
       // Con handtraps, el rival roba al empezar justo su mano (la del simulador con esa semilla), que va arriba de su deck.
