@@ -2301,6 +2301,8 @@ function PracticeMatBody({
   }, [session.replay, session.initial, session.actions])
   // En automático lo que falta elegir lo dice la pregunta del núcleo (una casilla, cartas); «Listo» y «Cancelar» son los suyos.
   const autoPick = duel?.auto?.cardPick ?? null
+  // «Cancelar» del cartel: el de las cartas que se eligen o, en una casilla, el de la jugada (`AutoLink.cancel`: vuelve a antes de ella).
+  const pickCancel = (duel?.auto?.zonePick ? duel.auto.cancel : autoPick?.cancel) ?? null
   const pickingText =
     duel?.auto?.zonePick?.label ?? autoPick?.label ??
     (picking?.kind === 'tributes'
@@ -2606,7 +2608,7 @@ function PracticeMatBody({
       {pickingText ? (
         <>
           <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-tight text-accent">{pickingText}</span>
-          {duel?.auto ? (autoPick?.cancel ? <Button variant="tertiary" size="sm" className="px-3" onClick={autoPick.cancel}>{t('common.cancel')}</Button> : null) : (
+          {duel?.auto ? (pickCancel ? <Button variant="tertiary" size="sm" className="px-3" onClick={pickCancel}>{t('common.cancel')}</Button> : null) : (
           <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="px-3" onClick={() => { setPicking(null); setCounterMode(null) }}>
             {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
           </Button>

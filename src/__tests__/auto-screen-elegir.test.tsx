@@ -119,6 +119,29 @@ describe('auto-screen · elegir', () => {
     expect(dispatches).toBe(0)
   })
 
+  it('place de una jugada tuya (activar desde la mano): «Cancelar» vuelve a antes de la jugada, sin contestar; sin jugada a la que volver o con un efecto resolviéndose, no hay', () => {
+    const fake = renderAuto()
+    const play = { seat: 0 as const, answer: { type: 'select_idlecmd' as const, action: 5, index: 0 } }
+    const link = { card: null, code: 900, description: '0' }
+
+    // Sin una jugada tuya en lo hecho (la casilla de otra cosa): ninguno.
+    core(() => fake.ask(PLACE))
+    expect(within(status()).queryByRole('button', { name: 'Cancelar' })).toBeNull()
+    // Con la jugada, un eslabón sin resolver (respondiendo en una cadena): se puede.
+    core(() => fake.set({ answers: [play], overlay: { ...fake.getSnapshot().overlay, chain: [{ ...link, state: 'chained' }] } }))
+    fireEvent.click(within(status()).getByRole('button', { name: 'Cancelar' }))
+    expect(fake.undos).toBe(1)
+    expect(fake.answers).toEqual([])
+    // Un efecto que se resuelve: la casilla es de la resolución, no de una jugada tuya.
+    core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, chain: [{ ...link, state: 'solving' }] } }))
+    core(() => fake.ask(PLACE))
+    expect(within(status()).queryByRole('button', { name: 'Cancelar' })).toBeNull()
+    // Inutilizar casillas (`select_disfield`) tampoco: es de un efecto.
+    core(() => fake.set({ overlay: { ...fake.getSnapshot().overlay, chain: [] } }))
+    core(() => fake.ask({ type: 'select_disfield', player: 0, count: 1, field_mask: ~0b110 >>> 0 }))
+    expect(within(status()).queryByRole('button', { name: 'Cancelar' })).toBeNull()
+  })
+
   it("place con todas las casillas del rival (dar el control con Shien's Spy, la máscara literal del núcleo): el estado dice que son del rival y tocar una contesta con su lado", () => {
     const fake = renderAuto()
 
