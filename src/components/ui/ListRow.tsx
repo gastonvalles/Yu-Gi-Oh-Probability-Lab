@@ -18,7 +18,8 @@ import { TONE, type Tone } from './tone'
  *   interruptor) o `value` + la flecha (que sale sola si la fila abre algo) · qué es: `href` (un enlace), `onClick` (un botón) o nada (una fila quieta) ·
  *   `selected` (`aria-current`, el aro ámbar de `listItemSelected`) · `disabled` · `wrap` (un registro: el título es una frase entera, en varios renglones y sin negrita, como
  *   «Qué hizo el bot y por qué») · `choice` (una opción de una elección única, adentro de un `role="radiogroup"`: la fila es un `radio` con `selected` de `aria-checked`, sin flecha
- *   —elegir no abre nada— y apagada con `aria-disabled`, enfocable y con el porqué en el apoyo; los rivales de Solo).
+ *   —elegir no abre nada— y apagada con `aria-disabled`, enfocable y con el porqué en el apoyo; los rivales de Solo) · `below` (algo debajo de la fila, fuera de su botón —no se anida un
+ *   botón en otro— y dentro del mismo aro de `selected`, alineado con el título: las cartas y «Elegir…» de Handtraps en Solo).
  * - **`ListGroup`:** `label` (el nombre de la lista para el lector) · `loading` (3 filas de esqueleto y `aria-busy`) · `empty` (lo que se ve sin filas: un `EmptyState`
  *   adentro de la misma tarjeta).
  * - **Estados:** reposo · al pasar el mouse o apretar, el velo `bg-tint/7` de `listItem` · foco `shadow-focus` · elegida · apagada al 40 % · vacía · cargando.
@@ -38,14 +39,16 @@ const LEAD_TINT: Record<Tone, string> = {
 }
 
 const rowStyle = variants({
-  base: '-mx-2 flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-control px-2 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+  base: 'flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-control px-2 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
   variants: {
     kind: {
       action: 'cursor-pointer hover:bg-tint/7 active:bg-tint/7 aria-disabled:pointer-events-none disabled:pointer-events-none disabled:opacity-40 aria-disabled:opacity-40',
       still: '',
     },
+    // Con `below`, el que se corre al borde (y lleva el aro) es el envoltorio de los dos.
+    place: { alone: '-mx-2', stacked: '' },
   },
-  defaults: { kind: 'still' },
+  defaults: { kind: 'still', place: 'alone' },
 })
 
 interface ListRowProps {
@@ -64,9 +67,10 @@ interface ListRowProps {
   disabled?: boolean
   wrap?: boolean
   choice?: boolean
+  below?: ReactNode
 }
 
-export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutral', value, end, toggle, href, onClick, selected = false, disabled = false, wrap = false, choice = false }: ListRowProps) {
+export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutral', value, end, toggle, href, onClick, selected = false, disabled = false, wrap = false, choice = false, below }: ListRowProps) {
   const subtitleId = useId()
   const opens = !toggle && !end && !choice && Boolean(href ?? onClick)
   const Tag: ElementType = toggle || (onClick && !href) ? 'button' : href ? 'a' : 'div'
@@ -87,14 +91,13 @@ export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutra
       ? { href: disabled ? undefined : href, onClick, 'aria-disabled': disabled || undefined }
       : {}
 
-  return (
-    <li className="flex min-w-0">
+  const row = (
       <Tag
         {...props}
         title={title}
         aria-current={(selected && !choice) || undefined}
         aria-describedby={toggle && subtitle ? subtitleId : undefined}
-        className={rowStyle({ kind: interactive ? 'action' : 'still' }, selected && listItemSelected)}
+        className={rowStyle({ kind: interactive ? 'action' : 'still', place: below ? 'stacked' : 'alone' }, selected && !below && listItemSelected)}
       >
         {lead ? <span className="flex shrink-0">{lead}</span> : null}
         <span className="grid min-w-0 flex-1 gap-0.5">
@@ -110,6 +113,19 @@ export function ListRow({ title, subtitle, icon, initials, media, tone = 'neutra
           </span>
         ) : null}
       </Tag>
+  )
+
+  return (
+    <li className="flex min-w-0">
+      {below ? (
+        <div className={cx('-mx-2 grid min-w-0 flex-1 rounded-control', selected && listItemSelected)}>
+          {row}
+          {/* Alineado con el título: el inicio (40 px) más el espacio (12) más el borde de la fila (8). */}
+          <div className={cx('min-w-0 pb-3 pr-2', lead ? 'pl-15' : 'pl-2')}>{below}</div>
+        </div>
+      ) : (
+        row
+      )}
     </li>
   )
 }

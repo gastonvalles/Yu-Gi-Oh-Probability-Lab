@@ -47,7 +47,7 @@ export const shell = {
   'shell.pill.builds': { one: '{count} build', other: '{count} builds' },
   'shell.pill.exportFormats': 'Imagen · PDF · YDK',
   'shell.solo.title': 'Solo',
-  'shell.blurb.solo': 'Contra un bot con su mazo, o tu mesa sin bot',
+  'shell.blurb.solo': 'Tu combo contra handtraps, o un duelo contra un bot',
   'shell.online.title': 'Online',
   'shell.blurb.online': 'Salas, retar a un amigo y duelos en vivo',
   'shell.blurb.watch': 'Pegá el enlace para mirar',

@@ -5,7 +5,8 @@ import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setAutoPref } from '../app/auto-prefs'
-import { readHandtrapConfig, writeHandtrapConfig, DEFAULT_HANDTRAP_CONFIG } from '../app/handtraps'
+import { readHandtrapConfig, writeHandtrapConfig, DEFAULT_HANDTRAP_CONFIG, HANDTRAP_CONFIG_KEY } from '../app/handtraps'
+import { buildInitials } from '../app/utils'
 import { DeckModeScreen } from '../components/deck-mode/DeckModeScreen'
 import { SoloScreen } from '../components/duel/SoloScreen'
 import { deckState, fortyCardMain, storeWith } from './support/deck-fixtures'
@@ -175,6 +176,136 @@ describe('los estados de Solo', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Elegí tu deck' }))
     expect(onOpenBuilder).toHaveBeenCalledTimes(1)
     expect(onPlay).not.toHaveBeenCalled()
+  })
+
+  it('«Probá tu combo» va arriba (Handtraps y Pasivo) y los bots debajo; ya no hay «Sin bot»', () => {
+    withWorker()
+    solo()
+    const list = screen.getByRole('radiogroup', { name: 'Contra quién jugás' })
+
+    expect(within(list).getAllByRole('heading').map((heading) => heading.textContent)).toEqual(['Probá tu combo', 'Bots · cada uno con su mazo'])
+    expect(within(list).getAllByRole('radio').map((radio) => radio.getAttribute('title'))).toEqual(['Handtraps', 'Pasivo', 'Sky Striker', 'Despia Branded', 'Elfnote'])
+    expect(screen.queryByText('Sin bot')).toBeNull()
+  })
+
+  it('la primera vez (nada guardado) queda elegido Handtraps; jugar lo guarda; lo de #practice (lo de siempre) sigue apagado; con algo guardado, manda lo guardado', () => {
+    withWorker()
+    const onPlay = vi.fn()
+    solo({ onPlay })
+    const radio = (name: RegExp) => within(screen.getByRole('radiogroup', { name: 'Contra quién jugás' })).getByRole('radio', { name })
+
+    expect(radio(/^Handtraps/)).toHaveAttribute('aria-checked', 'true')
+    expect(localStorage.getItem(HANDTRAP_CONFIG_KEY)).toBeNull()
+    // La mesa manual (`#practice`) lee lo de siempre: el simulador apagado.
+    expect(DEFAULT_HANDTRAP_CONFIG.enabled).toBe(false)
+    expect(readHandtrapConfig().enabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Jugar contra las handtraps' }))
+    expect(onPlay).toHaveBeenCalledTimes(1)
+    expect(readHandtrapConfig()).toMatchObject({ enabled: true })
+    expect(readHandtrapConfig()).not.toHaveProperty('botDeck')
+
+    cleanup()
+    writeHandtrapConfig({ ...DEFAULT_HANDTRAP_CONFIG, botDeck: 'elfnote' })
+    solo()
+    expect(radio(/^Elfnote/)).toHaveAttribute('aria-checked', 'true')
+    cleanup()
+    writeHandtrapConfig(DEFAULT_HANDTRAP_CONFIG)
+    solo()
+    expect(radio(/^Pasivo/)).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('en el celular, con Handtraps elegido, debajo de la fila: sus cartas con las copias, la mano y «Elegir…», que abre el selector sin la ficha; con otro rival se pliega', () => {
+    withWorker()
+    writeHandtrapConfig({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true, picks: [{ id: 14558127, name: 'Ash Blossom & Joyous Spring', copies: 3 }, { id: 97268402, name: 'Effect Veiler', copies: 1 }] })
+    solo()
+    const list = screen.getByRole('radiogroup', { name: 'Contra quién jugás' })
+    const cards = within(list).getByRole('list', { name: 'Las del rival' })
+
+    expect(within(cards).getAllByRole('img').map((image) => image.getAttribute('alt'))).toEqual(['Ash Blossom & Joyous Spring', 'Effect Veiler'])
+    expect(within(cards).getAllByLabelText(/copias/).map((badge) => badge.textContent)).toEqual(['×3'])
+    expect(within(list).getByText('3 en mano · de 4 cartas')).toBeInTheDocument()
+    // La tira va fuera del botón de la fila (no se anida un botón en otro).
+    expect(within(list).getByRole('radio', { name: /^Handtraps/ })).not.toContainElement(cards)
+
+    fireEvent.click(within(list).getByRole('button', { name: 'Elegir… las handtraps del rival' }))
+    expect(screen.getAllByRole('dialog').map((dialog) => dialog.getAttribute('aria-labelledby') && document.getElementById(dialog.getAttribute('aria-labelledby')!)?.textContent)).toEqual(['Handtraps del rival'])
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    fireEvent.click(within(list).getByRole('radio', { name: /^Elfnote/ }))
+    expect(within(list).queryByRole('list', { name: 'Las del rival' })).toBeNull()
+    expect(within(list).queryByRole('button', { name: 'Elegir… las handtraps del rival' })).toBeNull()
+  })
+
+  it('en escritorio no hay tira debajo de la fila: las cartas y «Elegir…» están en la ficha de al lado', () => {
+    withWorker()
+    media(true)
+    solo()
+    const list = screen.getByRole('radiogroup', { name: 'Contra quién jugás' })
+    const ficha = screen.getByRole('region', { name: 'Handtraps' })
+
+    expect(within(list).queryByRole('list', { name: 'Las del rival' })).toBeNull()
+    expect(within(list).queryByRole('button', { name: /^Elegir/ })).toBeNull()
+    expect(within(ficha).getByRole('list', { name: 'Las del rival' })).toBeInTheDocument()
+    expect(within(ficha).getByRole('button', { name: 'Elegir… las handtraps del rival' })).toBeInTheDocument()
+  })
+
+  it('el arte de la fila Handtraps: hasta 3 cartas, la de más copias adelante, por el proxy (sin pedirle nada a la API); mientras carga, el esqueleto; si no carga, las iniciales', () => {
+    withWorker()
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const picks = [
+      { id: 10045474, name: 'Infinite Impermanence', copies: 1 },
+      { id: 14558127, name: 'Ash Blossom & Joyous Spring', copies: 3 },
+      { id: 97268402, name: 'Effect Veiler', copies: 2 },
+      { id: 23434538, name: 'Maxx "C"', copies: 1 },
+    ]
+    writeHandtrapConfig({ ...DEFAULT_HANDTRAP_CONFIG, enabled: true, picks })
+    solo()
+    const fan = within(screen.getByRole('radiogroup', { name: 'Contra quién jugás' })).getByTestId('handtrap-fan')
+    const images = () => [...fan.querySelectorAll('img')]
+
+    expect(fan).toHaveAttribute('aria-hidden', 'true')
+    expect(images().map((image) => image.alt)).toEqual(['Infinite Impermanence', 'Effect Veiler', 'Ash Blossom & Joyous Spring'])
+    expect(images()[2].getAttribute('src')).toContain('14558127')
+    expect(images().every((image) => image.classList.contains('opacity-0'))).toBe(true)
+    fireEvent.load(images()[2])
+    expect(images()[2]).toHaveClass('opacity-100')
+    // Falla el proxy y falla la directa: quedan las iniciales.
+    fireEvent.error(images()[0])
+    fireEvent.error(images()[0])
+    expect(images().map((image) => image.alt)).toEqual(['Effect Veiler', 'Ash Blossom & Joyous Spring'])
+    expect(fan).toHaveTextContent(buildInitials('Infinite Impermanence'))
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('la ficha de Handtraps: las del rival primero y una línea explica el interruptor; prendido, el chip y la barra dicen «Juega su turno»', () => {
+    withWorker()
+    setAutoPref('duel', true)
+    solo()
+    fireEvent.click(screen.getByRole('button', { name: /Ficha y ajustes/ }))
+    const ficha = screen.getByRole('dialog', { name: 'Handtraps' })
+    const own = within(ficha).getByRole('switch', { name: 'El rival juega su turno' })
+
+    expect(ficha).toHaveTextContent('Probá tu combo')
+    expect(ficha).toHaveTextContent('Te interrumpe con las handtraps que elijas, cuando las reglas lo dejan.')
+    expect(ficha).toHaveTextContent('Apagado, sólo reacciona. Prendido, además invoca, coloca y ataca: tu combo puede terminar con daño.')
+    expect(within(ficha).getByRole('list', { name: 'Las del rival' })).toBeInTheDocument()
+    expect(ficha).not.toHaveTextContent('Juega su turno')
+    // El orden de los ajustes: las del rival, su turno, Automático, Quién empieza (un solo segmentado).
+    // (Cada uno se busca después del anterior: «Automático» también es un chip de arriba.)
+    ;['Las del rival', 'El rival juega su turno', 'Automático', 'Quién empieza'].reduce((from, text) => {
+      const at = ficha.textContent!.indexOf(text, from)
+      expect(at, text).toBeGreaterThan(from)
+      return at
+    }, ficha.textContent!.indexOf('cuando las reglas lo dejan.'))
+    expect(within(ficha).getAllByRole('radiogroup')).toHaveLength(1)
+
+    fireEvent.click(own)
+    expect(within(ficha).getByText('Juega su turno')).toBeInTheDocument()
+    expect(readHandtrapConfig()).toMatchObject({ enabled: true, ownTurn: true })
+    fireEvent.click(within(ficha).getByRole('button', { name: 'Cerrar' }))
+    expect(screen.getByRole('button', { name: /Ficha y ajustes/ })).toHaveTextContent('Handtraps · Juega su turno')
+    act(() => setAutoPref('duel', false))
   })
 
   it('en escritorio la ficha es el panel de la derecha, con tu deck y «Jugar contra X» abajo; sin barra ni hoja', () => {

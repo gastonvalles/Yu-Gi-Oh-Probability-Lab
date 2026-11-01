@@ -70,7 +70,8 @@ describe('el rival en Solo (una fila por rival)', () => {
 
     choose(/^Handtraps/)
     expect(readHandtrapConfig()).toEqual({ enabled: true, ...rest })
-    expect(within(rivals()).getByRole('radio', { name: /^Handtraps/ })).toHaveTextContent('2 en mano · de 3 cartas')
+    // En el celular, la mano y las cartas van debajo de la fila (fuera de su botón).
+    expect(within(rivals()).getByRole('radio', { name: /^Handtraps/ }).closest('li')).toHaveTextContent('2 en mano · de 3 cartas')
 
     choose(/^Sky Striker/)
     expect(readHandtrapConfig()).toEqual({ enabled: true, ...rest, botDeck: 'sky-striker' })
@@ -114,7 +115,8 @@ describe('el rival en Solo (una fila por rival)', () => {
 
   it('los tres mazos listos (Sky Striker, Despia Branded y Elfnote), en su orden y cada uno con lo que es; elegir uno lo guarda', () => {
     solo()
-    const bots = within(rivals()).getAllByRole('radio').slice(0, 3)
+    // Debajo de «Probá tu combo» (Handtraps y Pasivo).
+    const bots = within(rivals()).getAllByRole('radio').slice(2, 5)
 
     expect(bots.map((radio) => radio.textContent)).toEqual([
       'Sky StrikerMagias Rápidas, Enlaces y mucha interacción.',
@@ -129,7 +131,7 @@ describe('el rival en Solo (una fila por rival)', () => {
   it('sin mazos listos no hay bots: sólo el pasivo y el de handtraps', () => {
     solo([])
 
-    expect(within(rivals()).getAllByRole('radio').map((radio) => radio.getAttribute('title'))).toEqual(['Pasivo', 'Handtraps'])
+    expect(within(rivals()).getAllByRole('radio').map((radio) => radio.getAttribute('title'))).toEqual(['Handtraps', 'Pasivo'])
   })
 })
 

@@ -355,6 +355,15 @@ export function readHandtrapConfig(storage: () => Storage = () => localStorage):
   return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra), ...(stored.ownTurn === true ? { ownTurn: true } : {}), ...botDeck }
 }
 
+/** Si hay algo guardado (aunque no se entienda): sin nada, es la primera vez y Solo arranca con Handtraps elegido; `DEFAULT_HANDTRAP_CONFIG` (lo de `#practice`) no cambia. */
+export function hasHandtrapConfig(storage: () => Storage = () => localStorage): boolean {
+  try {
+    return storage().getItem(HANDTRAP_CONFIG_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
 export function writeHandtrapConfig(config: HandtrapConfig, storage: () => Storage = () => localStorage): void {
   try {
     const ownTurn = config.ownTurn ? { ownTurn: true } : {}

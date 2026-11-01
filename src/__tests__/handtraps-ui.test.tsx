@@ -226,7 +226,7 @@ describe('la hoja de las handtraps del rival', () => {
     const own = screen.getByRole('switch', { name: 'El rival juega su turno' })
 
     expect(own).toHaveAttribute('aria-checked', 'false')
-    expect(own).toHaveAccessibleDescription('Invoca, coloca, activa sus cartas y ataca: tus combos pueden terminar con daño.')
+    expect(own).toHaveAccessibleDescription('Apagado, sólo reacciona. Prendido, además invoca, coloca y ataca: tu combo puede terminar con daño.')
     expect(screen.getByText('La usa sólo si juega su turno')).toBeInTheDocument()
     fireEvent.click(own)
     expect(own).toHaveAttribute('aria-checked', 'true')
@@ -354,16 +354,23 @@ describe('el Extra Deck del rival en la hoja', () => {
 describe('Handtraps en Solo (la fila y su ficha)', () => {
   const solo = () => render(<SoloScreen deckName="Mi deck" deckSize={40} minDeck={5} onOpenBuilder={() => {}} onPlay={() => {}} />)
   const row = () => within(screen.getByRole('radiogroup', { name: 'Contra quién jugás' })).getByRole('radio', { name: /^Handtraps/ })
+  /** Lo de debajo de la fila (en el celular, con Handtraps elegido): fuera de su botón, en el mismo renglón de la lista. */
+  const below = () => row().closest('li')!
   const ficha = () => {
     fireEvent.click(screen.getByRole('button', { name: /Ficha y ajustes/ }))
 
     return screen.getByRole('dialog')
   }
 
-  it('dice cuántas tiene el rival en la mano y entre cuántas cartas; elegirla enciende el simulador y se recuerda', () => {
+  it('la primera vez queda elegida y dice qué hace; debajo, cuántas tiene el rival en la mano y entre cuántas cartas; elegirla enciende el simulador y se recuerda', () => {
     solo()
 
-    expect(row()).toHaveTextContent('3 en mano · de 3 cartas')
+    expect(row()).toHaveTextContent('Te interrumpen las que elijas: ¿tu combo aguanta?')
+    expect(below()).toHaveTextContent('3 en mano · de 3 cartas')
+    expect(row()).toHaveAttribute('aria-checked', 'true')
+    // Elegida de entrada, todavía no se guardó nada.
+    expect(localStorage.getItem(HANDTRAP_CONFIG_KEY)).toBeNull()
+    fireEvent.click(within(screen.getByRole('radiogroup')).getByRole('radio', { name: /^Pasivo/ }))
     expect(row()).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(row())
     expect(row()).toHaveAttribute('aria-checked', 'true')
@@ -375,7 +382,7 @@ describe('Handtraps en Solo (la fila y su ficha)', () => {
     localStorage.setItem(HANDTRAP_CONFIG_KEY, JSON.stringify({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 1 }], hand: 5 }))
     solo()
 
-    expect(row()).toHaveTextContent('2 en mano · de 2 cartas')
+    expect(below()).toHaveTextContent('2 en mano · de 2 cartas')
   })
 
   it('elegir las handtraps desde la ficha las guarda con la mano', () => {
@@ -388,7 +395,7 @@ describe('Handtraps en Solo (la fila y su ficha)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Usar estas handtraps' }))
 
     expect(readHandtrapConfig()).toEqual({ enabled: true, picks: [{ ...ASH, copies: 1 }, { ...VEILER, copies: 3 }, { ...IMPERM, copies: 1 }], hand: 4, extra: DEFAULT_RIVAL_EXTRA })
-    expect(row()).toHaveTextContent('4 en mano · de 5 cartas')
+    expect(below()).toHaveTextContent('4 en mano · de 5 cartas')
   })
 })
 

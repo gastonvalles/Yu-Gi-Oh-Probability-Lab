@@ -238,8 +238,8 @@ interface AppNavTools {
 }
 
 /**
- * El menú de la app, en cuatro grupos, uno por lo que se viene a hacer: **Tu deck** (el recorrido del Lab: armarlo, clasificar sus cartas, medirlo, comparar builds y exportarlo), **Jugar** (Solo —contra
- * un bot con su mazo o tu mesa sin bot—, Online —sólo con relay— y la calculadora de LP), **Descubrir** (lo que gana en los torneos: tier lists, decks y replays) y **Cartas** (la referencia:
+ * El menú de la app, en cuatro grupos, uno por lo que se viene a hacer: **Tu deck** (el recorrido del Lab: armarlo, clasificar sus cartas, medirlo, comparar builds y exportarlo), **Jugar** (Solo —tu combo
+ * contra handtraps o un duelo contra un bot—, Online —sólo con relay— y la calculadora de LP), **Descubrir** (lo que gana en los torneos: tier lists, decks y replays) y **Cartas** (la referencia:
  * expansiones y banlists). Las mascotas no son un destino sino una preferencia: van abajo, con el idioma, y abren su panel.
  * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; Jugar, Descubrir y Cartas
  * con una línea que explica cada una. En Jugar, con relay, Solo y Online van arriba en dos tarjetas grandes (el SOLO/ONLINE de Master Duel) y debajo mirar un duelo, entrar con un enlace y la

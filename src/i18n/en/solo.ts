@@ -2,14 +2,18 @@ import type { solo as es } from '../es/solo'
 import type { Translated } from '../types'
 
 export const solo: Translated<typeof es> = {
-  'solo.subtitle': 'Pick who you play against: a bot with its deck, or your table with no bot.',
+  'solo.subtitle': 'Test your combo against hand traps or play a duel against a bot.',
   'solo.rival': 'Who you play against',
   'solo.group.bots': 'Bots · each with its deck',
-  'solo.group.noBot': 'No bot',
+  'solo.group.combo': 'Test your combo',
   'solo.last': 'Last played',
   'solo.botNeedsAuto': 'Needs automatic mode',
   'solo.noAuto': "This browser can't run automatic mode: bots don't play here. Passive and Handtraps go manual.",
-  'solo.passive': "Doesn't play: only takes hits.",
+  'solo.passive': "Doesn't interrupt you: practice the whole line.",
+  'solo.handtraps': 'The ones you pick interrupt you: does your combo hold?',
+  'solo.handtrapsLine': 'It interrupts you with the hand traps you pick, when the rules allow it.',
+  'solo.rivalCards': "The opponent's cards",
+  'solo.ownTurnOn': 'Plays its turn',
   'solo.passiveManual': 'Your table, no opponent: you move everything.',
   'solo.lp': '{lp} LP',
   'solo.deckSize': 'Main {main} · Extra {extra}',

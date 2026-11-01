@@ -32,7 +32,7 @@ export const handtraps = {
   'handtraps.picker.notAuto': 'Todavía no la usa solo',
   // «El rival juega su turno»: Invoca, coloca, activa sus cartas (las de `TURN_RULES`) y ataca.
   'handtraps.picker.ownTurn': 'El rival juega su turno',
-  'handtraps.picker.ownTurnHint': 'Invoca, coloca, activa sus cartas y ataca: tus combos pueden terminar con daño.',
+  'handtraps.picker.ownTurnHint': 'Apagado, sólo reacciona. Prendido, además invoca, coloca y ataca: tu combo puede terminar con daño.',
   'handtraps.picker.turnCard': 'La juega en su turno',
   'handtraps.picker.turnOnly': 'La usa sólo si juega su turno',
   'handtraps.picker.filler': 'Sin regla: si es un monstruo, lo Invoca',
