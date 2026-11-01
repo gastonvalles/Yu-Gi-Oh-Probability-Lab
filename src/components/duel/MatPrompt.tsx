@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
+import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -33,12 +34,23 @@ interface MatPromptProps {
  * Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲») en ese mismo lugar: minimizado, todo lo de abajo se toca (la carta
  * que brilla sigue contestando) y la pregunta sigue pendiente; la flecha del asa («Mostrar la pregunta») lo reabre. Siempre abre entero: sólo lo minimiza la persona. Minimizado es
  * de esta decisión (quien lo usa le da una `key` por decisión: las repreguntas de la misma lo actualizan en el lugar y una nueva abre entera).
- * Lleva `data-minimized` minimizado. Contestado, se achica y se funde (va dentro de un `Presence`). El asa es `PromptHandle` (la misma de las hojas minimizadas de la mesa).
+ * Lleva `data-minimized` minimizado. Contestado, se achica y se funde (va dentro de un `Presence`). El asa es `PromptHandle` (la misma de las hojas minimizadas de la mesa). Con el dedo, arrastrar la
+ * fila de arriba hacia abajo lo minimiza y arrastrar el asa hacia arriba lo abre (`useSwipeFold`).
  */
 export function MatPrompt({ label, head, children, kind, row = false, role = 'status', labelledBy, focus, escape = false, className }: MatPromptProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
   const [minimized, setFold] = useState(false)
+  // Arrastrar la fila de arriba hacia abajo también lo minimiza; el cartel sigue al dedo corriendo su `translate`, sin redibujar.
+  const swipe = useSwipeFold({
+    dir: 'down',
+    onFold: () => setFold(true),
+    follow: (dy) => {
+      const style = ref.current?.style
+
+      if (style) style.translate = dy === null ? '' : `0 ${dy}px`
+    },
+  })
 
   useEscapeKey(() => setFold(true), escape && !minimized && !leaving)
   useEffect(() => {
@@ -53,7 +65,7 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
       <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} />
     ) : (
       <div ref={ref} role={role} aria-labelledby={labelledBy} data-prompt={kind} {...(row ? { 'data-prompt-row': '' } : {})} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
-        <div className="flex items-center gap-2">
+        <div {...swipe} className="flex touch-none select-none items-center gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-3">{head}</div>
           <IconButton size="lg" className="-my-2 -mr-2 self-start" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setFold(true)}>
             <Icon name="chevron-down" />

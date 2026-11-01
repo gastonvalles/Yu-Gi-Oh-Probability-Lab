@@ -383,7 +383,7 @@ export function DialogsSection() {
         title="Hoja de la mesa"
         note={
           <>
-            Todo cartel del duelo sale en el mismo lugar (<Tag>anchor="mat"</Tag>, <Tag>matSpot</Tag>). La pregunta del medio (<Tag>MatPrompt</Tag>) apoya su borde de abajo sobre la fila de las Zonas Extra y crece hacia el campo del rival: tu campo y la fila Extra se ven siempre; si no entra, su cuerpo se desplaza y la pila de la cadena se acorta. Las hojas (elegir cartas, opciones, ordenar, contadores, pasar a manual, «Más», las partidas y las confirmaciones) van al centro de esa fila en todos los anchos (en el celular ya no salen de abajo), del alto que entra sin tapar la barra y hasta el 70 % de la mesa. Con el teclado del celular abierto van al centro de lo que queda a la vista. Las que piden ver el campo (<Tag>lowerable</Tag>) se minimizan con la flecha a la misma asa de la pregunta (<Tag>PromptHandle</Tag>): los toques pasan a la mesa y la pregunta sigue pendiente. Acá no hay mesa: va al centro de la pantalla y el asa, abajo.
+            Todo cartel del duelo sale en el mismo lugar (<Tag>anchor="mat"</Tag>, <Tag>matSpot</Tag>). La pregunta del medio (<Tag>MatPrompt</Tag>) apoya su borde de abajo sobre la fila de las Zonas Extra y crece hacia el campo del rival: tu campo y la fila Extra se ven siempre; si no entra, su cuerpo se desplaza y la pila de la cadena se acorta. Las hojas (elegir cartas, opciones, ordenar, contadores, pasar a manual, «Más», las partidas y las confirmaciones) van al centro de esa fila en todos los anchos (en el celular ya no salen de abajo), del alto que entra sin tapar la barra y hasta el 70 % de la mesa. Con el teclado del celular abierto van al centro de lo que queda a la vista. Las que piden ver el campo (<Tag>lowerable</Tag>) se minimizan con la flecha o, con el dedo, arrastrando su encabezado hacia abajo (sigue al dedo; <Tag>use-swipe-fold.ts</Tag>) a la misma asa de la pregunta (<Tag>PromptHandle</Tag>), que se abre con su flecha o arrastrándola hacia arriba: los toques pasan a la mesa y la pregunta sigue pendiente. Lo mismo vale para la pregunta del medio. Acá no hay mesa: va al centro de la pantalla y el asa, abajo.
           </>
         }
       >
@@ -391,7 +391,7 @@ export function DialogsSection() {
           Abrir la hoja de la mesa
         </Button>
         <Modal isOpen={matSheet} onClose={() => setMatSheet(false)} size="keypad" anchor="mat" lowerable veil={false} kicker={t('practice.mat.name')} title="Elegí la posición" footer={<Button onClick={() => setMatSheet(false)}>Elegir</Button>}>
-          <p className="m-0 text-body text-muted">Minimizala con la flecha de arriba: queda el asa y la pregunta sigue pendiente.</p>
+          <p className="m-0 text-body text-muted">Minimizala con la flecha de arriba o arrastrá el encabezado hacia abajo: queda el asa y la pregunta sigue pendiente. Arrastrá el asa hacia arriba para abrirla.</p>
         </Modal>
       </Specimen>
 
