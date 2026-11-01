@@ -277,9 +277,6 @@ const BOT_DECK_ID = /^[a-z0-9-]{1,40}$/
  */
 export const BOT_SWAP_CARDS: readonly HandtrapCard[] = HANDTRAP_CATALOG.filter((card) => AUTO_RULES[card.id] && card.id !== 10045474)
 
-/** Las handtraps de un ejecutor (`base`, en su orden de preferencia) y después las de `BOT_SWAP_CARDS` que no tiene: si se las ponen, también las usa. */
-export const withSwapCards = (base: readonly number[]): number[] => [...base, ...BOT_SWAP_CARDS.map((card) => card.id).filter((id) => !base.includes(id))]
-
 /** El nombre de una carta cambiable de ese bot (las copias se cuentan por nombre: Droll & Lock Bird tiene dos passcodes); el motor, por su passcode. */
 export const flexNameOf = (list: BotDeckList, code: number): string => list.flex[code] ?? BOT_SWAP_CARDS.find((card) => card.id === code)?.name ?? String(code)
 

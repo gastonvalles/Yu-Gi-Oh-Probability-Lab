@@ -1,7 +1,7 @@
+import { withSwapCards } from '../../policies'
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
 import { SKY, SKY_STRIKER_DECK } from '../../../bot-deck-lists'
-import { withSwapCards } from '../../../handtraps'
 import { mayInterrupt } from '../interrupt'
 import { turnBot, type CardFacts } from '../turn'
 import {
