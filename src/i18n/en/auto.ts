@@ -63,6 +63,7 @@ export const auto: Translated<typeof es> = {
   'auto.bot.reason.hold.attack': "I had {card} and didn't use it on {to}: I'm saving it for when you attack.",
   'auto.bot.reason.hold.noRule': "I had {card} and didn't use it on {to}: I don't know yet when it's worth it.",
   'auto.bot.reason.hold.other': "I had {card} and didn't use it on {to}.",
+  'auto.bot.reason.hold.later': "I had {card} and didn't use it on {to}: it's my last one, so I'm saving it for something bigger.",
   'auto.bot.reason.end.noPlays': "I ended my turn: I don't play cards to the field, I only use hand traps.",
   'auto.bot.reason.play.ra': 'I Tributed {card} to Summon {to} with 4000 ATK and DEF.',
   'auto.bot.reason.play.sweep': { one: 'I activated {card}: it takes out your card.', other: 'I activated {card}: it takes out {count} of your cards.' },

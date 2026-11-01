@@ -130,7 +130,7 @@ describe('los datos de un duelo automático', () => {
     const { storage } = memoryCaches()
     const old = Object.fromEntries([100, 500, 601, 900].map((code) => [code, rows.get(code)]))
 
-    await (await storage.open('auto-data-v1')).put('https://auto-data.cache/cards/all2', new Response(JSON.stringify({ value: old })))
+    await (await storage.open('auto-data-v1')).put('https://auto-data.cache/cards/all3', new Response(JSON.stringify({ value: old })))
     const data = await createDataLoader(source, storage).load([{ main: [[100, 1], [500, 1], [601, 1]] }])
 
     expect(calls).toEqual([[600, 800, 700]])

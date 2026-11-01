@@ -32,7 +32,7 @@ export function wasmBinary(): ArrayBuffer {
 export function cardRows(file = path.join(CORE_DATA_DIR, 'cards.cdb')): (CardRow & { ot: number })[] {
   const db = new DatabaseSync(file, { readOnly: true })
   const strs = Array.from({ length: 16 }, (_, i) => `str${i + 1}`)
-  const rows = db.prepare(`select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, d.ot, t.name, ${strs.map((str) => `t.${str}`).join(', ')} from datas d left join texts t on t.id = d.id`)
+  const rows = db.prepare(`select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, d.category, d.ot, t.name, ${strs.map((str) => `t.${str}`).join(', ')} from datas d left join texts t on t.id = d.id`)
 
   rows.setReadBigInts(true)
   const out = (rows.all() as Record<string, bigint | string | null>[]).map((row) => {
@@ -51,6 +51,7 @@ export function cardRows(file = path.join(CORE_DATA_DIR, 'cards.cdb')): (CardRow
       level: Number(row.level),
       race: BigInt.asUintN(64, row.race as bigint).toString(),
       attribute: Number(row.attribute),
+      ...(Number(row.category) ? { category: Number(row.category) } : {}),
       ot: Number(row.ot),
       ...(typeof row.name === 'string' ? { name: row.name } : {}),
       ...(labels.length > 0 ? { strs: labels } : {}),
@@ -61,11 +62,11 @@ export function cardRows(file = path.join(CORE_DATA_DIR, 'cards.cdb')): (CardRow
   return out
 }
 
-/** El `.cdb` entero: los datos que pide `cardReader` (con el decodificador del navegador, `cardData`) y los nombres. */
-export function loadCards(file = path.join(CORE_DATA_DIR, 'cards.cdb')): { cards: Map<number, OcgCardData>; names: Map<number, string> } {
+/** El `.cdb` entero: los datos que pide `cardReader` (con el decodificador del navegador, `cardData`, más `category` como la lee el bot en la sesión) y los nombres. */
+export function loadCards(file = path.join(CORE_DATA_DIR, 'cards.cdb')): { cards: Map<number, OcgCardData & { category: number }>; names: Map<number, string> } {
   const rows = cardRows(file)
 
-  return { cards: new Map(rows.map((row) => [row.id, cardData(row)])), names: new Map(rows.flatMap((row) => (row.name ? [[row.id, row.name] as const] : []))) }
+  return { cards: new Map(rows.map((row) => [row.id, { ...cardData(row), category: row.category ?? 0 }])), names: new Map(rows.flatMap((row) => (row.name ? [[row.id, row.name] as const] : []))) }
 }
 
 /**

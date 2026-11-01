@@ -186,6 +186,8 @@ const LIGHT_DARK = 0x10 | 0x20
 const HAND_ONLY = new Set<AutoRule>(['offered', 'attack'])
 /** Las que eligen de objetivo la carta de tu eslabón. */
 const AIMS = new Set<AutoRule | undefined>(['monster', 'graveyard', 'bystial'])
+/** Las que contestan a un eslabón (las demás tienen su momento: tu Draw Phase, tu ataque, lo que ofrece el núcleo). */
+export const LINK_RULES = new Set<AutoRule | undefined>(['respond', ...AIMS])
 
 /**
  * La regla de una handtrap (`AUTO_RULES`) por su código o, si no tiene, por el de su original (el `alias` del `.cdb`, que da quien tiene los datos: la sesión): un arte alternativo
@@ -207,13 +209,13 @@ export function turnRuleOf(code: number, aliasOf: (code: number) => number = () 
 /**
  * Por qué contestó así el rival de handtraps (el motivo para la persona lo arma `bot/rivals.ts`): `use` activó una (`to`, el código de tu eslabón, si respondió a uno), `aim` eligió
  * de objetivo la carta de tu eslabón, `extra` eligió de su Extra Deck por el orden de la hoja y `hold` tenía una que el núcleo le ofreció contra tu eslabón y su regla dijo que no
- * (`rule` undefined: no tiene regla).
+ * (`rule` undefined: no tiene regla) o se la guardó para algo que valga más (`later`).
  */
 export type HandtrapWhy =
   | { kind: 'use'; code: number; rule: AutoRule; to: number | null; drawPhase: boolean }
   | { kind: 'aim'; code: number; target: number }
   | { kind: 'extra'; picked: number[] }
-  | { kind: 'hold'; code: number; rule: AutoRule | undefined; to: number }
+  | { kind: 'hold'; code: number; rule: AutoRule | undefined; to: number; later?: true }
 
 /**
  * El rival con handtraps: contesta como el pasivo salvo dos cosas. Ante una cadena, activa la primera de `priority` (los passcodes, en el
@@ -241,7 +243,8 @@ export function handtrapDecide(priority: readonly number[], extra: readonly numb
     return rules.get(code)
   }
 
-  return (ask: CoreAsk, view: RivalView, fallback: Policy): { answer: CoreAnswer; why?: HandtrapWhy } => {
+  /** `spend`: si puede gastar ahora una de las que contestan a tu eslabón (`respond`, `monster`, `graveyard`, `bystial`); sin él, siempre (el bot con mazo lo decide con `mayInterrupt`). */
+  return (ask: CoreAsk, view: RivalView, fallback: Policy, spend?: () => boolean): { answer: CoreAnswer; why?: HandtrapWhy } => {
     const chain = view.overlay.chain
     const top = chain.at(-1)
     const opponent = (1 - ask.player) as Seat
@@ -268,16 +271,19 @@ export function handtrapDecide(priority: readonly number[], extra: readonly numb
         evenly: false,
       }
 
+      let saved: number | undefined
+
       for (const code of priority) {
         const used = rule(code)
         const index = used && wants[used] ? ask.selects.findIndex((card) => card.code === code && (!HAND_ONLY.has(used) || card.location === LOCATION.HAND)) : -1
 
-        if (index >= 0) return { answer: { type: ask.type, index }, why: { kind: 'use', code, rule: used!, to: yours(top) ? top.code : null, drawPhase } }
+        if (index >= 0 && spend && LINK_RULES.has(used) && !spend()) saved ??= code
+        else if (index >= 0) return { answer: { type: ask.type, index }, why: { kind: 'use', code, rule: used!, to: yours(top) ? top.code : null, drawPhase } }
       }
-      // Contra tu eslabón tenía una y no la usó: la primera que el núcleo le ofreció.
-      const held = yours(top) ? ask.selects[0] : undefined
+      // Contra tu eslabón tenía una y no la usó: la que se guardó para algo que valga más o, si no, la primera que el núcleo le ofreció.
+      const held = saved ?? (yours(top) ? ask.selects[0]?.code : undefined)
 
-      if (held && yours(top)) return { answer: fallback(ask), why: { kind: 'hold', code: held.code, rule: rule(held.code), to: top.code } }
+      if (held !== undefined && yours(top)) return { answer: fallback(ask), why: { kind: 'hold', code: held, rule: rule(held), to: top.code, ...(saved !== undefined ? { later: true } : {}) } }
     }
 
     /** El lugar de una carta en la preferencia: las de su Extra Deck en el orden de la hoja; lo demás, después y en el orden dado. */

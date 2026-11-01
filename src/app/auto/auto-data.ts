@@ -23,6 +23,8 @@ export interface CardRow {
   level: number
   race: string
   attribute: number
+  /** Las categorías de búsqueda del `.cdb` (`0x200`: busca en el Deck); sin dato, 0. */
+  category?: number
   name?: string
   /** Los rótulos de los efectos (`str1`…`str16` de `texts`: lo que `aux.Stringid(id, n)` nombra en un menú), sin los vacíos del final. */
   strs?: string[]
@@ -56,6 +58,8 @@ export interface DuelData {
   names: Record<number, string>
   /** Los rótulos de los efectos por código (`strs`): el `desc` de una pregunta nombra la carta y cuál (`splitDesc`). */
   texts?: Record<number, string[]>
+  /** Las categorías de búsqueda por código (`CardRow.category`, las que no son 0): lo impreso que lee el bot. */
+  categories?: Record<number, number>
   version: string
 }
 
@@ -251,13 +255,13 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
       // juntas, en una sola entrada: una consulta por carta (las fichas son ~240) es una tarea larga del hilo principal en un celular.
       const codes = [...new Set([...lists.flatMap((list) => [...list.main, ...(list.extra ?? [])].map(([code]) => code)), ...manifest.tokens])]
 
-      // `all2`: desde que las filas llevan `strs`, las guardadas antes (sin ellos) no sirven.
-      if (rows.size === 0) for (const [code, row] of Object.entries(((await recall('cards', 'all2')) ?? {}) as Record<string, CardRow | null>)) rows.set(Number(code), row)
+      // `all3`: desde que las filas llevan `strs` y `category`, las guardadas antes (sin ellos) no sirven.
+      if (rows.size === 0) for (const [code, row] of Object.entries(((await recall('cards', 'all3')) ?? {}) as Record<string, CardRow | null>)) rows.set(Number(code), row)
       const fetchRows = async (wanted: number[]) => {
         const got = new Map((await source.cards(wanted)).map((row) => [row.id, row]))
 
         for (const code of wanted) rows.set(code, got.get(code) ?? null)
-        keep('cards', 'all2', Object.fromEntries(rows))
+        keep('cards', 'all3', Object.fromEntries(rows))
       }
       const wanted = codes.filter((code) => !rows.has(code))
 
@@ -319,6 +323,7 @@ export function createDataLoader(source: DataSource, storage: CacheStorage | nul
         scripts: texts,
         names: Object.fromEntries([...data.keys()].flatMap((code) => (rowOf(code)?.name ? [[code, rowOf(code)!.name!]] : []))),
         texts: Object.fromEntries([...data.keys()].flatMap((code) => (rowOf(code)?.strs?.length ? [[code, rowOf(code)!.strs!]] : []))),
+        categories: Object.fromEntries([...data.keys()].flatMap((code) => (rowOf(code)?.category ? [[code, rowOf(code)!.category!]] : []))),
         version: manifest.version,
       }
     },
