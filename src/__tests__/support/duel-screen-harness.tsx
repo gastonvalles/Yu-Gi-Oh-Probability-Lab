@@ -185,16 +185,12 @@ export function createDuelHarness(sala: () => { memory: MemoryRoom; connect: Due
   /** La hoja «Reglas del duelo» (está en un portal, fuera de la pantalla): se abre desde el renglón de las reglas del inicio de Jugar. */
   const openRules = (view: RenderResult) => click(view, /^Reglas del duelo/)
 
-  /** Abrir un duelo 1 vs 1 como se hace: abrir las reglas y «Abrir duelo» (con las reglas que vienen elegidas, o las que se pidan: el tiempo, o también pública o privada). */
-  const createRoom = (view: RenderResult, minutes?: string, visibility?: 'Pública' | 'Privada') => {
+  /** Abrir un duelo 1 vs 1 como se hace: abrir las reglas y «Abrir duelo» (con las reglas que vienen elegidas o, con `untimed`, apagando el tiempo por duelo). */
+  const createRoom = (view: RenderResult, untimed = false) => {
     openRules(view)
 
-    if (minutes) {
-      fireEvent.click(within(rulesDialog()).getByRole('radio', { name: minutes }))
-    }
-
-    if (visibility) {
-      fireEvent.click(within(rulesDialog()).getByRole('radio', { name: visibility }))
+    if (untimed) {
+      fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Tiempo por duelo: 50 min' }))
     }
 
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
@@ -280,7 +276,7 @@ export function createDuelHarness(sala: () => { memory: MemoryRoom; connect: Due
     const host = render(<DuelScreen {...screenProps(props)} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' }))
     fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''

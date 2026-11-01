@@ -85,7 +85,7 @@ describe('una sala con reglas automáticas', () => {
 
     expect(sheet.getByRole('radio', { name: 'Manual' })).toBeChecked()
     expect(sheet.getByText(/^Movés las cartas vos/)).toBeInTheDocument()
-    fireEvent.click(sheet.getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(sheet.getByRole('switch', { name: 'Match, al mejor de 3' }))
     fireEvent.click(toggle)
 
     // Es la misma preferencia que la de Solo: prende el modo automático entero.
@@ -93,16 +93,16 @@ describe('una sala con reglas automáticas', () => {
     expect(autoPrefs().duel).toBe(true)
     expect(sheet.getByText('El núcleo aplica las reglas por los dos. Sin espectadores todavía.')).toBeInTheDocument()
     // Match, su siding y el reloj de turnos se siguen eligiendo (jugar solo ya no es un tipo de sala: es Solo, en el menú).
-    expect(sheet.getByRole('radio', { name: 'Match · mejor de 3' })).toBeChecked()
+    expect(sheet.getByRole('switch', { name: 'Match, al mejor de 3' })).toBeChecked()
     expect(sheet.getByRole('switch', { name: 'Sidedeck' })).toBeEnabled()
     expect(sheet.queryByRole('radio', { name: 'Solo' })).toBeNull()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeEnabled()
     expect(sheet.getByRole('switch', { name: 'Límite de tiempo por turno' })).toBeChecked()
     // Quién entra se elige como siempre.
-    expect(sheet.getByRole('radio', { name: 'Pública' })).toBeChecked()
-    expect(sheet.getByRole('radio', { name: 'Privada' })).toBeEnabled()
+    expect(sheet.getByRole('switch', { name: 'Sala pública' })).toBeChecked()
+    expect(sheet.getByRole('switch', { name: 'Sala pública' })).toBeEnabled()
 
-    fireEvent.click(sheet.getByRole('radio', { name: 'Privada' }))
+    fireEvent.click(sheet.getByRole('switch', { name: 'Sala pública' }))
     fireEvent.click(sheet.getByRole('button', { name: 'Abrir duelo' }))
     const room = extractRoomCode(window.location.hash)!
 
@@ -245,12 +245,12 @@ describe('una sala con reglas automáticas', () => {
     const view = render(<DuelScreen {...screenProps({ autoDuel: FakeAutoDuel })} />)
 
     openRules(view)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Tiempo por duelo: 50 min' }))
     fireEvent.change(within(rulesDialog()).getByLabelText('Formato'), { target: { value: 'ocg' } })
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
     openRules(view)
 
-    expect(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' })).toBeChecked()
+    expect(within(rulesDialog()).getByRole('switch', { name: 'Tiempo por duelo: 50 min' })).not.toBeChecked()
     expect(within(rulesDialog()).getByLabelText('Formato')).toHaveValue('ocg')
     expect(within(rulesDialog()).getByRole('radio', { name: AUTO })).toBeChecked()
   })
@@ -264,7 +264,7 @@ describe('una sala con reglas automáticas', () => {
     expect(within(rulesDialog()).getByRole('radio', { name: AUTO })).toBeDisabled()
     expect(within(rulesDialog()).getByRole('radio', { name: AUTO })).not.toBeChecked()
     expect(within(rulesDialog()).getByText('Tu navegador no puede correr las reglas automáticas.')).toBeInTheDocument()
-    expect(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' })).toBeEnabled()
+    expect(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' })).toBeEnabled()
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     expect(optionsOf(extractRoomCode(window.location.hash)!)).not.toHaveProperty('auto')
     old.unmount()
@@ -308,7 +308,7 @@ describe('una sala con reglas automáticas', () => {
     const host = render(<DuelScreen {...screenProps({ ...props, onImmersiveChange: immersive })} />)
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Match, al mejor de 3' }))
     fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const room = extractRoomCode(window.location.hash)!

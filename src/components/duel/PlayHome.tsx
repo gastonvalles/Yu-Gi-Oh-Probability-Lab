@@ -15,7 +15,6 @@ import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
-import { Segmented } from '../ui/Segmented'
 import { ShineFrame } from '../ui/ShineFrame'
 import { ShortcutGrid, ShortcutTile } from '../ui/ShortcutGrid'
 import { Stepper } from '../ui/Stepper'
@@ -327,24 +326,29 @@ interface RulesSheetProps {
   onOpen: (prefs: DuelPrefs, isPublic: boolean) => void
 }
 
-/** Los dos tipos de una sala: un solo duelo o un Match (jugar solo es otra entrada del menú: Solo). */
-type RoomMode = 'single' | 'match'
+/** El tiempo por duelo es éste o ninguno (0): un interruptor. */
+const TIMED_MIN = Math.max(...DUEL_LIMIT_CHOICES)
 
-/** Un campo de la hoja: su nombre en mayúsculas chicas arriba y el control abajo (con una línea que aclara, sólo si hace falta). */
-function RuleField({ label, hint, className, children }: { label: string; hint?: string | null; className?: string; children: ReactNode }) {
+/** Un ajuste de la hoja en su fila (como `SettingRow` de Solo): el nombre y su ayuda a la izquierda, el control a la derecha y, debajo, lo que depende de él. */
+function RuleRow({ label, hint, below, children }: { label: string; hint?: string; below?: ReactNode; children: ReactNode }) {
   return (
-    <div className={cx('grid content-start gap-1.5', className)}>
-      <span className="text-micro font-semibold uppercase text-soft">{label}</span>
-      {children}
-      {hint ? <p className="m-0 text-micro text-soft">{hint}</p> : null}
+    <div className="grid gap-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="grid min-w-0 gap-0.5">
+          <span className="text-body font-semibold text-foreground">{label}</span>
+          {hint ? <span className="text-micro text-soft">{hint}</span> : null}
+        </span>
+        {children}
+      </div>
+      {below}
     </div>
   )
 }
 
 /**
- * Las reglas del duelo en una hoja (no en una pantalla de formulario): se guardan para «Jugar ahora», o se abre un duelo ya con ellas, público o con enlace. Los campos van de a dos
- * (tipo y tiempo, formato y quién entra) donde hay lugar y en una columna en el celular; cada uno con una sola línea de ayuda, y sólo cuando aclara algo. El tiempo es de 50 minutos o ninguno;
- * en Genesys aparece el tope de puntos del deck.
+ * Las reglas del duelo en una hoja (no en una pantalla de formulario): se guardan para «Jugar ahora», o se abre un duelo ya con ellas, público o con enlace. Arriba, la única pista (el modo,
+ * dos opciones que se comparan); debajo, un ajuste por fila: lo que es sí o no, un interruptor que dice en su ayuda qué pasa apagado (Match, el tiempo de 50 minutos o ninguno, sala
+ * pública), y el formato con el selector del teléfono. En Genesys aparece el tope de puntos del deck.
  */
 function RulesSheet({ isOpen, prefs, canPublish, canOpen, autoRooms, onClose, onSave, onOpen }: RulesSheetProps) {
   const [draft, setDraft] = useState<DuelPrefs>(prefs)
@@ -361,7 +365,6 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, autoRooms, onClose, on
   const genesys = draft.format === 'genesys'
   const match = draft.match
   const turnOn = draft.turnLimit
-  const mode: RoomMode = match ? 'match' : 'single'
 
   return (
     <Modal
@@ -380,68 +383,48 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, autoRooms, onClose, on
         </div>
       }
     >
-      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
-        <RuleField label={t('duel.create.type')} hint={match ? t('duel.create.matchHint') : null} className="sm:col-span-2">
-          <Segmented<RoomMode>
-            label={t('duel.create.type')}
-            fullWidth
-            value={mode}
-            onChange={(value) => set({ match: value === 'match', siding: value === 'match' && draft.siding })}
-            options={[
-              { value: 'single', label: t('duel.create.single') },
-              { value: 'match', label: t('duel.create.match') },
-            ]}
-          />
-        </RuleField>
-
+      <div className="grid gap-3">
         {/* Automático o manual: la sala que se abre (la misma preferencia que la mesa de Solo). */}
-        <DuelModeRow rooms={autoRooms} className="sm:col-span-2" />
+        <DuelModeRow rooms={autoRooms} />
 
-        <RuleField label={t('duel.create.time')} className="sm:col-span-2">
-          <Segmented<string>
-            label={t('duel.create.time')}
-            fullWidth
-            value={String(draft.limitMin)}
-            onChange={(value) => set({ limitMin: Number(value) })}
-            options={DUEL_LIMIT_CHOICES.map((min) => ({ value: String(min), label: min === 0 ? t('duel.play.timeNone') : t('duel.play.timeMin', { min }) }))}
-          />
-        </RuleField>
+        <div className="grid divide-y divide-border-subtle">
+          <RuleRow label={t('duel.create.match')} hint={t('duel.create.matchHint')}>
+            <Switch checked={match} onChange={(on) => set({ match: on, siding: on && draft.siding })} label={t('duel.create.match')} />
+          </RuleRow>
 
-        <div className="grid gap-3 sm:col-span-2">
-          <div className="flex items-center justify-between gap-3">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-semibold text-foreground">{t('duel.create.turn')}</span>
-              <span className="text-micro text-soft">{t('duel.create.turnHint')}</span>
-            </span>
-            <Switch checked={turnOn} onChange={(turnLimit) => set({ turnLimit })} label={t('duel.create.turn')} />
-          </div>
-          {turnOn ? (
-            <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-body text-muted">{t('duel.create.turnBank')}</span>
-                <Stepper label={t('duel.create.turnBank')} value={draft.turnMin} min={TURN_MIN_RANGE.min} max={TURN_MIN_RANGE.max} step={1} onChange={(value) => set({ turnMin: value })} />
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-body text-muted">{t('duel.create.turnBonus')}</span>
-                <Stepper label={t('duel.create.turnBonus')} value={draft.turnBonusMin} min={TURN_BONUS_RANGE.min} max={TURN_BONUS_RANGE.max} step={1} onChange={(value) => set({ turnBonusMin: value })} />
-              </div>
-            </div>
+          {match ? (
+            <RuleRow label={t('duel.create.siding')} hint={t('duel.create.sidingHint')}>
+              <Switch checked={draft.siding} onChange={(siding) => set({ siding })} label={t('duel.create.siding')} />
+            </RuleRow>
           ) : null}
-        </div>
 
-      {match ? (
-        <div className="flex items-center justify-between gap-3 sm:col-span-2">
-          <span className="grid min-w-0 gap-0.5">
-            <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
-            <span className="text-micro text-soft">{t('duel.create.sidingHint')}</span>
-          </span>
-          <Switch checked={draft.siding} onChange={(siding) => set({ siding })} label={t('duel.create.siding')} />
-        </div>
-      ) : null}
+          <RuleRow label={t('duel.create.time', { min: TIMED_MIN })} hint={t('duel.create.timeHint')}>
+            <Switch checked={draft.limitMin > 0} onChange={(on) => set({ limitMin: on ? TIMED_MIN : 0 })} label={t('duel.create.time', { min: TIMED_MIN })} />
+          </RuleRow>
 
-        <>
-          <RuleField label={t('duel.create.format')}>
-            <FieldBox>
+          <RuleRow
+            label={t('duel.create.turn')}
+            hint={t('duel.create.turnHint')}
+            below={
+              turnOn ? (
+                <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-body text-muted">{t('duel.create.turnBank')}</span>
+                    <Stepper label={t('duel.create.turnBank')} value={draft.turnMin} min={TURN_MIN_RANGE.min} max={TURN_MIN_RANGE.max} step={1} onChange={(value) => set({ turnMin: value })} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-body text-muted">{t('duel.create.turnBonus')}</span>
+                    <Stepper label={t('duel.create.turnBonus')} value={draft.turnBonusMin} min={TURN_BONUS_RANGE.min} max={TURN_BONUS_RANGE.max} step={1} onChange={(value) => set({ turnBonusMin: value })} />
+                  </div>
+                </div>
+              ) : null
+            }
+          >
+            <Switch checked={turnOn} onChange={(turnLimit) => set({ turnLimit })} label={t('duel.create.turn')} />
+          </RuleRow>
+
+          <RuleRow label={t('duel.create.format')}>
+            <FieldBox className="w-40 shrink-0">
               <select aria-label={t('duel.create.format')} value={draft.format} onChange={(event) => set({ format: event.target.value as DeckFormat })} className={fieldInline}>
                 {DUEL_FORMATS.map((value) => (
                   <option key={value} value={value}>
@@ -450,43 +433,23 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, autoRooms, onClose, on
                 ))}
               </select>
             </FieldBox>
-          </RuleField>
-
-          {canPublish ? (
-            <RuleField label={t('duel.create.visibility')} hint={isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
-              <Segmented<'public' | 'private'>
-                label={t('duel.create.visibility')}
-                fullWidth
-                value={isPublic ? 'public' : 'private'}
-                onChange={(value) => setIsPublic(value === 'public')}
-                options={[
-                  { value: 'public', label: t('duel.create.public') },
-                  { value: 'private', label: t('duel.create.private') },
-                ]}
-              />
-            </RuleField>
-          ) : null}
+          </RuleRow>
 
           {genesys ? (
-            <div className="flex items-center justify-between gap-3 sm:col-span-2">
-              <span className="grid min-w-0 gap-0.5">
-                <span className="text-body font-semibold text-foreground">{t('duel.create.genesysCap')}</span>
-                <span className="text-micro text-soft">{t('duel.create.genesysCapHint')}</span>
-              </span>
-              <Stepper
-                label={t('duel.create.genesysCap')}
-                value={draft.genesysCap}
-                min={GENESYS_CAP_RANGE.min}
-                max={GENESYS_CAP_RANGE.max}
-                step={10}
-                onChange={(value) => set({ genesysCap: value })}
-              />
-            </div>
+            <RuleRow label={t('duel.create.genesysCap')} hint={t('duel.create.genesysCapHint')}>
+              <Stepper label={t('duel.create.genesysCap')} value={draft.genesysCap} min={GENESYS_CAP_RANGE.min} max={GENESYS_CAP_RANGE.max} step={10} onChange={(value) => set({ genesysCap: value })} />
+            </RuleRow>
           ) : null}
-        </>
-    </div>
 
-      <p className="m-0 mt-4 text-micro text-soft">{draft.format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>
+          {canPublish ? (
+            <RuleRow label={t('duel.create.publicRoom')} hint={t('duel.create.publicHint')}>
+              <Switch checked={isPublic} onChange={setIsPublic} label={t('duel.create.publicRoom')} />
+            </RuleRow>
+          ) : null}
+        </div>
+      </div>
+
+      <p className="m-0 mt-1 text-micro text-soft">{draft.format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>
     </Modal>
   )
 }
