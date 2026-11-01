@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { chainFeed, type ChainStep } from '../app/auto/chain-feed'
 import { LOCATION } from '../app/auto/protocol'
 import { FROM_HAND, actingOf, glowOf, linksOf, pileGlowOf, pileLinksOf } from '../app/card-glow'
+import { glowFrame } from '../components/probability/practice-styles'
 
 const sets = { can: new Set(['a', 'b']), act: new Set(['b', 'c']) }
 
@@ -9,6 +10,16 @@ describe('el brillo de una carta en un duelo', () => {
   it('celeste lo que podés hacer, ámbar lo que se activa (gana), nada lo demás', () => {
     expect(['a', 'b', 'c', 'd'].map((id) => glowOf(id, sets))).toEqual(['can', 'act', 'act', null])
     expect(glowOf('a', {})).toBeNull()
+  })
+
+  it('el marco de adentro: celeste quieto y ámbar con la luz que gira, finos sólo en el duelo (los del Lab no cambian)', () => {
+    expect((['can', 'act', 'opening', 'problem'] as const).map(glowFrame)).toEqual([
+      { tone: 'playable', orbit: false, fine: true },
+      { tone: 'gold', orbit: true, fine: true },
+      { tone: 'green', orbit: false, fine: false },
+      { tone: 'red', orbit: false, fine: false },
+    ])
+    expect(glowFrame(null)).toBeNull()
   })
 
   it('una pila brilla como la carta de adentro que más dice', () => {

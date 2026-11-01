@@ -283,6 +283,20 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(attack(CARDS.filter((card) => card.id !== 'c1'))[0]).toMatchObject({ label: t('practice.menu.attackDirectly'), answer: { type: 'select_battlecmd', action: 1, index: 0 } })
   })
 
+  it('puede atacar: lo tuyo que ofrece `select_battlecmd.attacks` brilla en celeste y lleva la espada; nada del rival, y fuera de la batalla nada lleva la espada', () => {
+    const battle = ASKS[0] as Extract<CoreAsk, { type: 'select_battlecmd' }>
+    // Tu 200 puede atacar y tu escala (960) sólo activarse; un monstruo del rival en la lista (una oferta que no debería llegar) no se enciende nunca.
+    const view = askView(open({ ...battle, chains: [act(960, L.SZONE, 0)], attacks: [{ ...loc(200, L.MZONE, 0), can_direct: false }, { ...loc(700, L.MZONE, 0, 1), can_direct: false }] }, ctx(MESA)))
+
+    expect(view.attack).toEqual([mine('card-200-1')])
+    expect(view.respond).toEqual([mine('card-200-1'), mine('card-960-1')])
+    expect(view.respond.some((ref) => ref.side === 'theirs')).toBe(false)
+    // Sin nada que pueda atacar (ya atacaron todos), nada lleva la espada.
+    expect(askView(open({ ...battle, attacks: [] }, ctx(MESA))).attack).toEqual([])
+    // En las jugadas del turno o en una cadena, la espada no va, aunque el monstruo esté en ataque.
+    for (const ask of [ASKS[1]!, ASKS[6]!]) expect(askView(open(ask, ctx(MESA))).attack).toEqual([])
+  })
+
   it('un ítem que no es de la pregunta no contesta; uno que sí, contesta tal cual', () => {
     const state = open(ASKS[1]!, ctx(MESA))
 

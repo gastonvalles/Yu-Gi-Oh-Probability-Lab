@@ -74,6 +74,9 @@ describe('auto-screen · las jugadas', () => {
     expect(document.querySelector('button[data-drop="extra"]')).toHaveAttribute('data-glow-kind', 'can')
     expect(handCard('Ash Blossom')).toHaveAttribute('data-glow', 'false')
     expect(screen.getByRole('button', { name: 'Maxx C' })).toHaveAttribute('data-glow', 'false')
+    // Fuera de la Battle Phase, el monstruo en ataque no lleva la espada.
+    expect(document.querySelector('[data-attack-mark]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Maxx C' })).not.toHaveAttribute('aria-description')
     tap(handCard('Ash Blossom'))
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar'])
   })
@@ -126,9 +129,13 @@ describe('auto-screen · las jugadas', () => {
     expect(screen.getByRole('menuitem', { name: 'Ir a Main Phase 2' })).not.toHaveAttribute('aria-disabled')
     expect(screen.getByRole('menuitem', { name: /^Draw Phase/ })).toHaveAttribute('aria-disabled', 'true')
     fireEvent.keyDown(window, { key: 'Escape' })
-    // Lo que sólo puede atacar no brilla.
-    expect(screen.getByRole('button', { name: 'Maxx C' })).toHaveAttribute('data-glow', 'false')
-    tap(screen.getByRole('button', { name: 'Maxx C' }))
+    // Lo que puede atacar brilla en celeste y lleva la espada arriba; el lector la dice como descripción («Puede atacar»), no en el nombre.
+    const attacker = screen.getByRole('button', { name: 'Maxx C' })
+
+    expect(attacker).toHaveAttribute('data-glow-kind', 'can')
+    expect(attacker).toHaveAccessibleDescription('Puede atacar')
+    expect(attacker.parentElement!.querySelector('[data-attack-mark]')).toHaveAttribute('aria-hidden', 'true')
+    tap(attacker)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Atacar' }))
     expect(fake.answers).toEqual([{ type: 'select_battlecmd', action: 1, index: 0 }])
     expect(dispatches).toBe(0)

@@ -98,7 +98,7 @@ import { PhaseRow } from './PhaseRow'
 import { MAT_BAR_ROW, MatBarActions, MatExitButton, MatReplayContext, MatRulesContext, MatSaveContext, MatStepsContext, MatUndoContext } from './MatBarActions'
 import { RulesPill, type RulesSummary } from './RulesPill'
 import { ShellMenuButton } from '../shell/ShellMenu'
-import { CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
+import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, SharedComboBar } from './PracticeMatPanel'
@@ -192,8 +192,10 @@ export interface DuelMatLink {
   rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean; /** La carta que el rival sumó a su mano sin robar (su id real): el detalle de la izquierda se queda en ella hasta que se toque otra. */ peekId?: string; /** El efecto que activó, si eligió uno entre varios: cuándo se activa («Efecto 2 · When…») y qué hace, **textual**, para que quien tiene que decidir si responde lo lea. */ detail?: { lead: string; text: string } }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
-  /** Mis cartas con las que podés hacer algo ahora (activar, invocar de forma especial, responder, elegir): brillan en celeste (`can` de `app/card-glow.ts`), y la pila que tenga una adentro, también. */
+  /** Mis cartas con las que podés hacer algo ahora (activar, invocar de forma especial, atacar, responder, elegir): brillan en celeste (`can` de `app/card-glow.ts`), y la pila que tenga una adentro, también. */
   respond?: ReadonlySet<string>
+  /** Mis monstruos que pueden atacar ahora (también en `respond`): llevan la espada (`AttackMark`). */
+  attack?: ReadonlySet<string>
   /** Mis cartas cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar (`act`), y la pila que tenga una adentro, también. */
   act?: ReadonlySet<string>
   /** Mis cartas que están en la cadena a la vista, con sus eslabones (`linksOf` de `app/card-glow.ts`): llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
@@ -2144,6 +2146,7 @@ function PracticeMatBody({
             dragging={drag?.source.id === shown.id}
             flash={flash?.id === shown.id ? flash : null}
             glow={glowKindOf(shown.id)}
+            canAttack={duel?.attack?.has(shown.id) ?? false}
             dim={dimUnlit && !highlighted.has(shown.id)}
             chosen={chosen ? chosenLabel : null}
             stat={fieldStats.get(shown.id) ?? null}
@@ -3266,6 +3269,8 @@ interface PlacedCardProps {
   /** El destaque en curso (activar, mostrar, declarar o marcar como objetivo), con su clave; null = quieta. */
   flash: { key: number; kind: SpotlightKind } | null
   glow: GlowKind | null
+  /** Puede atacar ahora (duelo automático, tu Battle Phase): la espada sobre el borde de arriba y «Puede atacar» en su descripción. */
+  canAttack: boolean
   dim: boolean
   /** Elegida como Sacrificio o como material (la etiqueta que lleva), o null. */
   chosen: string | null
@@ -3294,7 +3299,7 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; los contadores y el objetivo como etiquetas, y los materiales de un Xyz detrás de ella con su cantidad en el medio (`MaterialStack`). Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, stat, pickStat, targeted, link, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim, chosen, stat, pickStat, targeted, link, selected, pending, hold, still, bind, onOpen }: PlacedCardProps) {
   // Sólo un Xyz muestra sus materiales (otra carta con `materials` no dibuja nada).
   const materials = cardKindOf(card.apiCard).xyz ? placed.materials.length : 0
   // El nombre y lo que lo acompaña (boca abajo o en defensa, sus materiales, su ATK/DEF al elegir, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -3340,6 +3345,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, st
         tabIndex={pending ? undefined : 0}
         aria-hidden={pending || undefined}
         aria-label={pending ? undefined : label}
+        aria-description={canAttack ? t('practice.card.canAttack') : undefined}
         title={pending ? undefined : label}
         // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
         // Parada, la carta ocupa el alto de la casilla y queda centrada (en la zona de campo, de la forma de una carta, es la casilla entera); acostada gira sobre su centro y entra justo.
@@ -3369,11 +3375,12 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, dim, chosen, st
         <MaterialCount count={materials} sideways={sideways} />
         {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-primary py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-white">{chosen}</span> : null}
         {framed ? <FxFrame tone="cyan" /> : null}
-        {frame ? <FxFrame tone={frame.tone} orbit={frame.orbit} /> : null}
+        {frame ? <FxFrame {...frame} /> : null}
         {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
         {targeted ? <TargetMark /> : null}
       </div>
       {link && !dragging ? <ChainBadge link={link} className={chainBadgeAt(spot, sideways)} /> : null}
+      {canAttack && !dragging ? <AttackMark /> : null}
       {/* Parada, la carta llega al pie de la casilla: la etiqueta de elegida va ahí, y el ATK/DEF, encima. */}
       {spot === 'mz' || spot === 'emz' ? <StatTag stat={dragging ? null : (pickStat ?? stat)} sideways={sideways} className={cx(chosen && !sideways && 'bottom-4.5')} /> : null}
     </>

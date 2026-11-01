@@ -22,7 +22,7 @@ Antes de escribir clases sueltas, buscá el componente en `src/components/ui/` y
 | `info` (ámbar) | lo elegido y el énfasis, la navegación, el rival, la build B y los hipervínculos (`textLink`) |
 | `neutral` | sin énfasis: un número o una etiqueta de adorno |
 
-**Quién lleva qué color.** El violeta es el primario y el ámbar, el secundario (lo elegido, el hover y el foco de lo que se toca); el verde y el rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en ámbar y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`) y lo que se activa o resuelve, ámbar (`card-glow.ts`).
+**Quién lleva qué color.** El violeta es el primario y el ámbar, el secundario (lo elegido, el hover y el foco de lo que se toca); el verde y el rojo son respuestas y estadísticas (al soltar una carta, la zona válida va en ámbar y la que no, en rojo). En la mesa, lo que podés hacer brilla celeste (`--playable-rgb`), lo que puede atacar suma la espada (`AttackMark`) y lo que se activa o resuelve, ámbar con la luz que gira (`card-glow.ts`); todo quieto, sin brillo en la mesa manual ni los replays.
 
 **Sobre un relleno de color, el texto es blanco** (`color-variety.test.ts`): por eso el verde lleno es `success-solid` y el verde claro queda para texto, anillos y puntos; lo elegido y lo del rival van en violeta (sobre el ámbar el blanco no se lee). Excepción: «Qué es» de una regla, lleno de verde (Salida) o rojo (Problema), como su `KindBadge`. Una tarjeta elegida (`Segmented cards` y `lens`) se enmarca en ámbar (regla G.1 de `docs/ux-ui-guidelines.md`). Un aviso o un dato (`Callout`, los pills de «ojo») es un tinte, nunca un relleno.
 

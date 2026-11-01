@@ -10,6 +10,7 @@ import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { PLAYER_COLOR } from '../duel/player-color'
 import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
 import { CARD_BACK, FX_RGB, type FxTone } from './practice-styles'
 
 /**
@@ -31,14 +32,30 @@ export const LANDING_TONE: Record<LandingTone, FxTone> = { normal: 'gold', speci
 export const STAGE_TONE: Record<SpotlightKind | ShowcaseKind, FxTone> = { ...SPOTLIGHT_TONE, ...LANDING_TONE, hand: 'cyan', gy: 'violet', banish: 'amber', extra: 'cyan', deck: 'cyan', attach: 'indigo' }
 
 /**
- * El brillo de una carta en un duelo (`app/card-glow.ts`), por fuera y quieto, con el peso del de una salida o un problema del Lab (aro de 3 px y un resplandor grande, un poco más para el celeste, que es claro): lo que podés hacer ahora, en celeste
- * casi blanco (`--playable-rgb`); lo que se activa o se resuelve, en ámbar. Dos atributos en cada selector: le ganan al aro de una regla del Lab (`data-glow`) y al de la carta con el menú abierto. Lo
- * llevan las cartas (en `FX_CARD`) y la casilla del Deck.
+ * El brillo de una carta en un duelo (`app/card-glow.ts`), por fuera y quieto: una línea clara de 1 px pegada al borde, el aro de color de 3 px y un halo de 24 px (corto: a 390 px no se come las
+ * casillas vecinas). Lo que podés hacer ahora, en celeste casi blanco (`--playable-rgb`); lo que se activa o se resuelve, en ámbar. Dos atributos en cada selector: le ganan al aro de una regla del Lab
+ * (`data-glow`) y al de la carta con el menú abierto. Lo llevan las cartas (en `FX_CARD`) y la casilla del Deck; el marco de adentro es el fino de `FxFrame`.
  */
 export const DUEL_GLOW = [
-  'data-[glow=true]:data-[glow-kind=can]:[box-shadow:var(--card-shadow),0_0_0_3px_rgb(var(--playable-rgb)),0_0_32px_8px_rgb(var(--playable-rgb)/0.8)]',
-  'data-[glow=true]:data-[glow-kind=act]:[box-shadow:var(--card-shadow),0_0_0_3px_rgb(var(--warning-rgb)),0_0_32px_8px_rgb(var(--warning-rgb)/0.8)]',
+  'data-[glow=true]:data-[glow-kind=can]:[box-shadow:var(--card-shadow),0_0_0_1px_rgb(255_255_255/0.95),0_0_0_3px_rgb(var(--playable-rgb)),0_0_24px_6px_rgb(var(--playable-rgb)/0.75)]',
+  'data-[glow=true]:data-[glow-kind=act]:[box-shadow:var(--card-shadow),0_0_0_1px_rgb(255_255_255/0.95),0_0_0_3px_rgb(var(--warning-rgb)),0_0_24px_6px_rgb(var(--warning-rgb)/0.75)]',
 ].join(' ')
+
+/**
+ * «Puede atacar»: la ficha celeste con la espada, montada sobre el borde de arriba de un monstruo tuyo que puede atacar en tu Battle Phase (además de su brillo `can`). Va al lado de la carta (la carta
+ * recorta lo que se sale) y mide el 38 % de su ancho (18 px a 390 px). Decorativa: lo dice la descripción de la carta (`practice.card.canAttack`). Quieta, como el brillo.
+ */
+export function AttackMark() {
+  return (
+    <span
+      aria-hidden="true"
+      data-attack-mark=""
+      className="pointer-events-none absolute left-1/2 top-0 z-11 grid aspect-square w-[26%] min-w-4 -translate-x-1/2 -translate-y-[55%] animate-fx-frame-in place-items-center rounded-[3px] bg-[rgb(var(--playable-rgb))] text-background shadow-[0_0_0_1.5px_var(--background),0_2px_6px_rgb(0_0_0/0.5)] motion-reduce:animate-none"
+    >
+      <Icon name="sword" strokeWidth={2.4} className="size-[72%]" />
+    </span>
+  )
+}
 
 /**
  * Estados de una carta destacada (la de la mano y la del campo los comparten): el aro de afuera es el `box-shadow` de la carta y, lo que late o se
@@ -92,12 +109,21 @@ interface FxFrameProps {
   orbit?: boolean
   /** Un reflejo que cruza la carta una vez. */
   shine?: boolean
+  /** El marco fino del brillo de un duelo (`DUEL_GLOW` ya dibuja la línea clara por fuera). */
+  fine?: boolean
 }
 
 /** Marco de color adentro de una carta: borde parejo, brillo hacia adentro y, si se pide, la luz que gira y el reflejo. */
-export function FxFrame({ tone, orbit = true, shine = false }: FxFrameProps) {
+export function FxFrame({ tone, orbit = true, shine = false, fine = false }: FxFrameProps) {
   return (
-    <span aria-hidden="true" data-fx="frame" data-orbit={orbit ? undefined : 'false'} data-shine={shine ? 'true' : undefined} className="fx-frame animate-fx-frame-in motion-reduce:animate-none" style={fxVars(tone)}>
+    <span
+      aria-hidden="true"
+      data-fx="frame"
+      data-orbit={orbit ? undefined : 'false'}
+      data-shine={shine ? 'true' : undefined}
+      className={cx('fx-frame animate-fx-frame-in motion-reduce:animate-none', fine && '[box-shadow:inset_0_0_0_1.5px_rgb(var(--fx-rgb)/0.9),inset_0_0_12px_1px_rgb(var(--fx-rgb)/0.45)]!')}
+      style={fxVars(tone)}
+    >
       {/* La luz que gira va en su propio elemento (el aro quieto, el degradé que gira adentro con `rotate`): así la anima el compositor y la mesa no recalcula estilos en cada cuadro. */}
       {orbit ? <span data-fx="orbit" /> : null}
     </span>

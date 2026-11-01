@@ -2,7 +2,9 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
-import { FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from '../../probability/MatFx'
+import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, fxVars } from '../../probability/MatFx'
+import { glowFrame } from '../../probability/practice-styles'
+import { t } from '../../../i18n'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
 import { RivalHandStrip, type RivalHandCard } from '../../probability/RivalHandStrip'
@@ -85,6 +87,7 @@ export function DuelSection() {
       <HoldSample />
       <ShuffleSamples />
       <RingsSample />
+      <GlowsSample />
       <ResizeHandleSample />
 
       <ArenaSamples />
@@ -350,6 +353,57 @@ function RingsSample() {
             <span className="text-micro text-muted">{label}</span>
           </div>
         ))}
+      </div>
+    </Specimen>
+  )
+}
+
+/** Los brillos del duelo automático (`app/card-glow.ts`), quietos: lo que podés hacer, lo que puede atacar (el mismo celeste y la espada) y lo que se activa (ámbar con la luz que gira). */
+const GLOWS: Array<{ key: string; label: string; kind: 'can' | 'act' | null; back?: true; attack?: true }> = [
+  { key: 'can', label: 'Podés (seteada)', kind: 'can', back: true },
+  { key: 'attack', label: 'Puede atacar', kind: 'can', attack: true },
+  { key: 'act', label: 'Se activa', kind: 'act' },
+  { key: 'none', label: 'Sin brillo', kind: null },
+]
+const CL1: ChainBadgeData = { numbers: [1], mine: false, fromHand: false }
+
+function GlowsSample() {
+  return (
+    <Specimen
+      title="Brillos del duelo · podés, atacar y se activa"
+      layout="column"
+      note={
+        <>
+          Un color por pregunta y una forma por verbo, todo quieto salvo la luz que gira. Celeste: podés hacer algo con esa carta (activarla, invocarla, elegirla); con la <b>espada</b> arriba, ese monstruo puede atacar
+          (sólo tus monstruos, en tu Battle Phase, los que ofrece el núcleo). Ámbar con la luz que gira y la insignia CL: se está activando. Afuera, la línea clara de 1 px, el aro de 3 px y el halo de 24 px;
+          adentro, el marco fino. Sin brillo en la mesa manual, los replays y lo oculto del rival. Archivos: <Tag>probability/MatFx.tsx</Tag> (<Tag>DUEL_GLOW</Tag>, <Tag>AttackMark</Tag>) y <Tag>app/card-glow.ts</Tag>.
+        </>
+      }
+    >
+      <div className="grid grid-cols-4 gap-4">
+        {GLOWS.map(({ key, label, kind, back, attack }) => {
+          const frame = glowFrame(kind)
+
+          return (
+            <div key={key} className="grid justify-items-center gap-2">
+              <div role="group" aria-label={label} className={cx(CELL_MONSTER, 'w-full')}>
+                <ZoneLines kind="monster" />
+                <div
+                  data-glow={kind ? 'true' : 'false'}
+                  data-glow-kind={kind ?? undefined}
+                  aria-description={attack ? t('practice.card.canAttack') : undefined}
+                  className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] w-[68.57%] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', FX_CARD)}
+                >
+                  {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />}
+                  {frame ? <FxFrame {...frame} /> : null}
+                </div>
+                {kind === 'act' ? <ChainBadge link={CL1} className={chainBadgeAt('mz', false)} /> : null}
+                {attack ? <AttackMark /> : null}
+              </div>
+              <span className="text-micro text-muted">{label}</span>
+            </div>
+          )
+        })}
       </div>
     </Specimen>
   )

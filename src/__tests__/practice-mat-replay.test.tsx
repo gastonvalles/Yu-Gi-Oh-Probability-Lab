@@ -938,6 +938,9 @@ describe('la mesa de práctica', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
 
     goToPhase('Battle Phase')
+    // La mesa manual no sabe qué es legal (quién ya atacó, quién no puede): el monstruo en ataque no brilla ni lleva la espada.
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toHaveAttribute('data-glow', 'false')
+    expect(document.querySelector('[data-attack-mark]')).toBeNull()
     tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
     // Sin rival (la práctica) no hay a quién elegir: sólo el directo, y primero.
     expect(screen.queryByRole('menuitem', { name: 'Atacar' })).not.toBeInTheDocument()
