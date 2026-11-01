@@ -12,7 +12,7 @@ Este programa es software libre: podés redistribuirlo y modificarlo bajo los t�
 
 La licencia es del **código**. No da permiso para usar el nombre «YGOUltraLab», su logo ni sus mascotas como marca propia, y no toca lo que es de otros:
 
-- Yu-Gi-Oh!, los nombres, los textos, las ilustraciones y las imágenes de las cartas (y los personajes que se usan de mascota) son marcas y obras de Konami Digital Entertainment. Este proyecto no es oficial ni está afiliado a Konami.
+- Yu-Gi-Oh!, los nombres, los textos, las ilustraciones y las imágenes de las cartas (y los personajes que se usan de mascota) son marcas y obras de Konami Digital Entertainment.
 - Los datos de las cartas y los decks de torneo son de [YGOPRODeck](https://ygoprodeck.com/api-guide/), los precios de [TCGCSV](https://tcgcsv.com/) y las listas de prohibidas, de las listas públicas de la comunidad; cada fuente conserva sus términos.
 
 ## Componentes de terceros que se entregan con la app

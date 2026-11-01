@@ -46,7 +46,7 @@ Referencia competitiva: YGOPocket (se adoptan decisiones de UX, nunca se clona s
 - Probabilidad exacta por enumeración, en workers del navegador.
 - Mesa: un reductor puro y determinista; cada jugada es una acción serializable (lo mismo alimenta la práctica, el duelo, los espectadores y los replays). La mesa manual no arbitra reglas: anima y comunica; el modo automático las aplica con el núcleo y la mesa es su proyección.
 - **Terminología:** Main / Extra / Side; roles `starter`, `extender`, `enabler`, `searcher`, `draw`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `brick`, `garnet`; origen `engine` / `non_engine`; aperturas y problemas; "manos buenas de cada 100"; "Yendo 1º / 2º"; build A / B; sala; Jugar solo; Mirar (espectador).
-- **Legales:** sitio no oficial; Yu-Gi-Oh! es marca de Konami; nada de pirámides, ojos ni otra iconografía de Konami en la marca; imágenes de cartas sólo por el proxy; el código es abierto (AGPL-3.0-or-later, `NOTICE.md`) y no incluye la marca ni lo de Konami.
+- **Legales:** Yu-Gi-Oh! es marca de Konami; nada de pirámides, ojos ni otra iconografía de Konami en la marca; imágenes de cartas sólo por el proxy; el código es abierto (AGPL-3.0-or-later, `NOTICE.md`) y no incluye la marca ni lo de Konami.
 - **Sin decidir:** un **nivel pago** (sincronizar mazos o una cuenta) si hay uso: el diseño tiene que dejar lugar a cuenta, planes y sincronización sin que hoy existan.
 
 ## Brand Commitments
