@@ -92,6 +92,9 @@ export function statusIn(list: Banlist | null, cardId: number): BanlistStatus {
   return 'unlimited'
 }
 
+/** Cuántas copias por nombre deja un estado (sin estado, ilimitada: 3). La regla del deck del jugador (`deck-format.ts`) y la de los mazos del bot (`handtraps.ts`). */
+export const copyLimitOf = (status: BanlistStatus | null): number => ({ forbidden: 0, limited: 1, 'semi-limited': 2, unlimited: 3 })[status ?? 'unlimited']
+
 const STATUS_KEY = {
   forbidden: 'catalog.banlists.status.forbidden',
   limited: 'catalog.banlists.status.limited',

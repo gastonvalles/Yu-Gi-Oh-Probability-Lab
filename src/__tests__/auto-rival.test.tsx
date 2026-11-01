@@ -161,7 +161,7 @@ describe('«Cambiar rival» en el duelo', () => {
 
   it('el bot con cartas cambiadas dice «modificado» y aplicar no las pierde', () => {
     // Sky Striker con un Effect Veiler en lugar de una Ash Blossom.
-    const botFlex = { 'sky-striker': [[14558127, 2], [59438930, 2], [73642296, 1], [94145021, 2], [5318639, 1], [25311006, 1], [24224830, 1], [97268402, 1]] as [number, number][] }
+    const botFlex = { 'sky-striker': [[14558127, 2], [59438930, 3], [73642296, 1], [94145021, 1], [27204311, 1], [5318639, 1], [97268402, 1]] as [number, number][] }
     const { dialog, onApply } = sheet({ ...SAVED, botDeck: 'sky-striker', botFlex })
 
     expect(dialog).toHaveTextContent('Sky Striker · modificado')

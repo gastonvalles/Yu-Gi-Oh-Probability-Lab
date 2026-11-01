@@ -1,7 +1,7 @@
 import { t } from '../i18n'
 import type { ApiCardReference, BanlistStatus, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
-import { currentStatus, upcomingChange } from './banlists'
+import { copyLimitOf, currentStatus, upcomingChange } from './banlists'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from './genesys-format'
 import { EDISON_FORMAT_LABEL, getEdisonCardCopyLimit, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
 import type { DeckBuilderState, DeckZone } from './model'
@@ -23,7 +23,7 @@ export function getCardCopyLimit(card: ApiCardReference | ApiCardSearchResult, f
     return getEdisonCardCopyLimit(card)
   }
 
-  return mapBanlistStatusToCopyLimit(statusOf(card, format))
+  return copyLimitOf(statusOf(card, format))
 }
 
 /**
@@ -202,7 +202,7 @@ export function buildUpcomingLimitNotes(deckBuilder: DeckBuilderState, format: D
 
       seen.add(key)
 
-      if (change && mapBanlistStatusToCopyLimit(change.to) < mapBanlistStatusToCopyLimit(change.from)) {
+      if (change && copyLimitOf(change.to) < copyLimitOf(change.from)) {
         date = change.date
         notes.push({ name: card.name, from: change.from, to: change.to })
       }
@@ -210,22 +210,6 @@ export function buildUpcomingLimitNotes(deckBuilder: DeckBuilderState, format: D
   }
 
   return notes.length > 0 ? { date, notes } : null
-}
-
-function mapBanlistStatusToCopyLimit(status: BanlistStatus | null): number {
-  if (status === 'forbidden') {
-    return 0
-  }
-
-  if (status === 'limited') {
-    return 1
-  }
-
-  if (status === 'semi-limited') {
-    return 2
-  }
-
-  return MAX_COPIES_PER_CARD
 }
 
 function normalizeCardName(cardName: string): string {

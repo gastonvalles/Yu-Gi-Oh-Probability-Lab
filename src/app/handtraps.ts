@@ -1,3 +1,4 @@
+import { banlistCardName, copyLimitOf, currentStatus, type BanlistRegion } from './banlists'
 import { BOT_DECK_LISTS, type BotDeckList } from './bot-deck-lists'
 import { isRecord } from './utils'
 import { shuffleWithSeed, type RivalHand } from './practice-mat'
@@ -277,8 +278,31 @@ const BOT_DECK_ID = /^[a-z0-9-]{1,40}$/
  */
 export const BOT_SWAP_CARDS: readonly HandtrapCard[] = HANDTRAP_CATALOG.filter((card) => AUTO_RULES[card.id] && card.id !== 10045474)
 
-/** El nombre de una carta cambiable de ese bot (las copias se cuentan por nombre: Droll & Lock Bird tiene dos passcodes); el motor, por su passcode. */
-export const flexNameOf = (list: BotDeckList, code: number): string => list.flex[code] ?? BOT_SWAP_CARDS.find((card) => card.id === code)?.name ?? String(code)
+/** El nombre de una carta de ese bot (las copias se cuentan por nombre: Droll & Lock Bird tiene dos passcodes); el motor, el de las banlists o su passcode. */
+export const flexNameOf = (list: BotDeckList, code: number): string => list.flex[code] ?? BOT_SWAP_CARDS.find((card) => card.id === code)?.name ?? banlistCardName(code)
+
+/**
+ * La lista que rige a los bots: la del TCG, la del formato por defecto del jugador (`DEFAULT_PREFS.format`). Sus listas son de torneos TCG; con otro formato (OCG, GOAT…) siguen
+ * igual, porque no hay listas de bot para esos formatos.
+ */
+export const BOT_BANLIST: BanlistRegion = 'tcg'
+
+/** Hasta cuántas copias por nombre deja la lista que rige (`now`) a una carta del bot, con la regla del deck del jugador: lo más estricto entre los passcodes de ese nombre. */
+export function botCopyLimit(list: BotDeckList, code: number, now?: string): number {
+  const name = flexNameOf(list, code)
+  const codes = [code, ...[...list.main, ...list.extra].map(([one]) => one), ...Object.keys(list.flex).map(Number), ...BOT_SWAP_CARDS.map((card) => card.id)]
+
+  return Math.min(...codes.filter((one) => flexNameOf(list, one) === name).map((one) => copyLimitOf(currentStatus(BOT_BANLIST, one, now))))
+}
+
+/** Lo que pasa el banlist (o las 3 copias) en el Main o el Extra de un bot, por nombre: cuántas lleva y cuántas deja. Vacío: es legal. */
+export function botBanlistIssues(list: BotDeckList, cards: BotDeckList['main'], now?: string): { name: string; count: number; limit: number }[] {
+  return [...copiesByName(list, cards)].flatMap(([name, count]) => {
+    const limit = botCopyLimit(list, cards.find(([code]) => flexNameOf(list, code) === name)![0], now)
+
+    return count > limit ? [{ name, count, limit }] : []
+  })
+}
 
 /** Las copias por nombre de un Main. */
 export function copiesByName(list: BotDeckList, main: BotDeckList['main']): Map<string, number> {
@@ -300,7 +324,7 @@ export const sameFlex = (a: readonly (readonly [number, number])[], b: readonly 
 
 /**
  * El Main de un bot con su parte cambiable reemplazada por `flex`: el motor como está y, después, lo cambiable. Si `flex` no sirve (otro total de copias, una carta que no es suya
- * ni de `BOT_SWAP_CARDS`, más de `MAX_COPIES` por nombre) o es la original, el original tal cual (el mismo arreglo). El banlist no se mira acá: lo que se guardó, se juega.
+ * ni de `BOT_SWAP_CARDS`, un Main que no pasa el banlist de hoy: `botBanlistIssues`) o es la original, el original tal cual (el mismo arreglo).
  */
 export function botDeckMain(list: BotDeckList, flex: readonly (readonly [number, number])[] | undefined): BotDeckList['main'] {
   if (!flex || sameFlex(flex, originalFlex(list))) return list.main
@@ -311,7 +335,7 @@ export function botDeckMain(list: BotDeckList, flex: readonly (readonly [number,
     flex.every(([code, copies]) => allowed(code) && Number.isInteger(copies) && copies >= 1) &&
     new Set(flex.map(([code]) => code)).size === flex.length &&
     total(flex) === total(originalFlex(list)) &&
-    [...copiesByName(list, main).values()].every((copies) => copies <= MAX_COPIES)
+    botBanlistIssues(list, main).length === 0
 
   return ok ? main : list.main
 }
