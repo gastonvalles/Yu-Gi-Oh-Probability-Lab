@@ -88,7 +88,8 @@ export function RuleBuilder({ actions, derivedMainCards, pattern, onPickConditio
       </RuleStep>
 
       <RuleStep title={t('builder.field.conditions')}>
-        <div className="grid gap-3">
+        {/* 16 px entre cómo se combinan y la primera condición (G.2): son dos grupos, no una pista pegada a otra. */}
+        <div className="grid gap-4">
           {conditionCount > 1 ? (
             <LogicSelector
               patternId={pattern.id}

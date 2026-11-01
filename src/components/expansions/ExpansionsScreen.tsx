@@ -24,7 +24,7 @@ import { Icon } from '../ui/Icon'
 import { ListGroup, ListRow } from '../ui/ListRow'
 import { SearchField } from '../ui/SearchField'
 import { SectionHeader } from '../ui/SectionHeader'
-import { Segmented } from '../ui/Segmented'
+import { SelectChip } from '../ui/SelectChip'
 import { Skeleton } from '../ui/Skeleton'
 import { StepPage } from '../ui/StepPage'
 import { surface } from '../ui/surfaces'
@@ -316,6 +316,7 @@ const PrintTile = memo(function PrintTile({ card, highlighted, liRef, onOpen }: 
 /** Una expansión: su encabezado y sus impresiones (con filtros por nombre o código, por rareza y por arte, y orden por código o precio). */
 function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion: Expansion; updated: string; highlight: number | null; onBack: (() => void) | null }) {
   const state = useExpansionCards(expansion.id)
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [query, setQuery] = useState('')
   const [rarity, setRarity] = useState<string | null>(null)
   const [variant, setVariant] = useState<string | null>(null)
@@ -381,7 +382,7 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
         </div>
       </header>
 
-      <div className="@container grid gap-3 px-4 pb-4">
+      <div className="grid gap-3 px-4 pb-4">
         {state.status === 'error' ? (
           <Callout tone="warning">{t('catalog.sets.cardsError')}</Callout>
         ) : state.status !== 'ready' ? (
@@ -392,29 +393,31 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
           </div>
         ) : (
           <>
-            {/* El buscador y el orden comparten fila según el ancho del detalle, no el de la pantalla (con el menú abierto, el detalle es angosto y el buscador no entraría al lado). */}
-            <div className="grid gap-2 @lg:grid-cols-[minmax(0,1fr)_auto] @lg:items-center">
+            {/* Ordenar no recorta y casi no se toca: va como un botón con su valor al lado del buscador, y debajo queda una sola fila de pastillas (las rarezas). */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
               <SearchField
                 label={t('catalog.sets.cardSearch')}
                 placeholder={t('catalog.sets.cardSearch')}
+                inputClassName="h-10 pointer-coarse:h-11"
                 value={query}
                 onChange={(value) => {
                   setQuery(value)
                   filtersChanged()
                 }}
               />
-              <Segmented
+              <SelectChip
                 value={sort}
                 onChange={(value) => {
                   setSort(value)
                   filtersChanged()
                 }}
                 options={[
-                  { value: 'code', label: t('catalog.sets.sortCode') },
-                  { value: 'price', label: t('catalog.sets.sortPrice') },
+                  { value: 'code', label: t('catalog.sets.sortCode'), short: t('catalog.sets.sortCodeShort') },
+                  { value: 'price', label: t('catalog.sets.sortPrice'), short: t('catalog.sets.sortPriceShort') },
                 ]}
                 label={t('catalog.sets.sortLabel')}
-                size="sm"
+                showLabel={isDesktop}
+                icon="sort"
               />
             </div>
 
