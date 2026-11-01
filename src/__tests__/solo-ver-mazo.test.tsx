@@ -125,8 +125,8 @@ describe('Ver mazo', () => {
     const stepper = (name: string) => within(editor).getByRole('group', { name: `Copias de ${name} en el deck del rival` })
     const save = () => within(editor).getByRole('button', { name: 'Guardar' })
 
-    expect(editor).toHaveTextContent('Ranuras libres · 11')
-    expect(editor).toHaveTextContent('Las 11 ranuras están llenas.')
+    expect(editor).toHaveTextContent('Ranuras libres · 10')
+    expect(editor).toHaveTextContent('Las 10 ranuras están llenas.')
     // El motor no aparece; lo prohibido lo dice y no sube.
     expect(within(editor).queryByRole('group', { name: /Sky Striker Ace - Raye/ })).toBeNull()
     expect(stepper('Maxx "C"')).toBeInTheDocument()
@@ -137,6 +137,8 @@ describe('Ver mazo', () => {
     fireEvent.click(within(stepper('Ash Blossom & Joyous Spring')).getByRole('button', { name: 'Uno menos' }))
     expect(editor).toHaveTextContent('Te falta llenar 1 ranura.')
     expect(save()).toBeDisabled()
+    // Con una ranura libre, Droll & Lock Bird (limitada, ya trae 1) tampoco sube: el banlist mira el Main entero.
+    expect(within(stepper('Droll & Lock Bird')).getByRole('button', { name: 'Uno más' })).toBeDisabled()
     fireEvent.click(within(stepper('Effect Veiler')).getByRole('button', { name: 'Uno más' }))
     expect(save()).toBeEnabled()
     fireEvent.click(save())

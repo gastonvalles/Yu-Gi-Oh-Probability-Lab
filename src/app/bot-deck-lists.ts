@@ -50,8 +50,10 @@ export const SKY = {
 } as const
 
 /**
- * Sky Striker (`executors/sky-striker.ts`): la lista que ganó el WCQ Regional de Pittsboro (2026-09-13, 189 jugadores), la ganadora más reciente de la familia en
- * `src/data/meta-decks.json` (la de Buenos Aires, 2026-09-26, es R.B. con un solo Sky Striker).
+ * Sky Striker (`executors/sky-striker.ts`): la lista que ganó el WCQ Regional de Pittsboro (2026-09-13, 189 jugadores), llevada a la banlist TCG del 2026-10-19 con lo mínimo y
+ * como el segundo puesto del German Open (2026-10-24, la mejor Sky Striker posterior): sin Triple Tactics Talent ni Called by the Grave (prohibidas), una Engage! y una Droll
+ * menos (semi-limitada y limitada); entran la 3.ª The Fallen & The Virtuous, el 3.er Ghost Ogre, Nibiru y la 3.ª Roze (el mismo número de arranques). En el Extra, Albion
+ * (prohibido) deja su lugar a The Dragon that Devours the Dogma, el otro Fusión que The Fallen & The Virtuous manda al cementerio.
  */
 export const SKY_STRIKER_DECK: BotDeckList = {
   id: 'sky-striker',
@@ -60,12 +62,13 @@ export const SKY_STRIKER_DECK: BotDeckList = {
   ready: true,
   main: [
     [SKY.raye, 3],
-    [SKY.roze, 2],
+    [SKY.roze, 3],
     [14558127, 3], // Ash Blossom & Joyous Spring
-    [59438930, 2], // Ghost Ogre & Snow Rabbit
+    [59438930, 3], // Ghost Ogre & Snow Rabbit
     [73642296, 1], // Ghost Belle & Haunted Mansion
-    [94145021, 2], // Droll & Lock Bird
-    [SKY.engage, 3],
+    [94145021, 1], // Droll & Lock Bird
+    [27204311, 1], // Nibiru, the Primal Being
+    [SKY.engage, 2],
     [SKY.linkage, 3],
     [SKY.hornet, 1],
     [SKY.lemnisgate, 2],
@@ -73,11 +76,9 @@ export const SKY_STRIKER_DECK: BotDeckList = {
     [SKY.widow, 3],
     [SKY.vision, 3],
     [SKY.mst, 1],
-    [SKY.fallen, 2],
+    [SKY.fallen, 3],
     [SKY.crown, 2],
     [SKY.desires, 3],
-    [SKY.talent, 1],
-    [SKY.called, 1],
     [SKY.rota, 1],
   ],
   extra: [
@@ -90,7 +91,7 @@ export const SKY_STRIKER_DECK: BotDeckList = {
     [SKY.zeke, 1],
     [SKY.camellia, 1],
     [SKY.azalea, 1],
-    [87746184, 1], // Albion the Branded Dragon
+    [76666602, 1], // The Dragon that Devours the Dogma
     [78397661, 1], // Ecclesia and the Dark Dragon
   ],
   testedWith: 'bc5d82d66842f3c62d20747c530b164ce98004f3',
@@ -99,9 +100,8 @@ export const SKY_STRIKER_DECK: BotDeckList = {
     59438930: 'Ghost Ogre & Snow Rabbit',
     73642296: 'Ghost Belle & Haunted Mansion',
     94145021: 'Droll & Lock Bird',
+    27204311: 'Nibiru, the Primal Being',
     [SKY.mst]: 'Mystical Space Typhoon',
-    [SKY.talent]: 'Triple Tactics Talent',
-    [SKY.called]: 'Called by the Grave',
   },
 }
 

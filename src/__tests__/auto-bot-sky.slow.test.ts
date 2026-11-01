@@ -24,19 +24,19 @@ import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, nodeSource, scriptStor
 
 const GOLDFISH = Number(process.env.SKY_GOLDFISH ?? 50)
 /**
- * Los umbrales del goldfish (con 50 manos al escribirlo se midió 0,94 · 0,94 · 0,98): un poco por debajo de lo medido, para que una regla rota se note y el azar de 50 manos no.
- * - `link`: con 3 Raye, 2 Roze, 3 Engage! y Reinforcement of the Army (y Pot of Desires y Vision para robar), casi toda mano llega a un Sky Striker Ace; la que no, no tiene con qué.
+ * Los umbrales del goldfish (con 50 manos y la lista legal del 2026-10-19 se midió 0,98 · 0,94 · 1): un poco por debajo de lo medido, para que una regla rota se note y el azar de 50 manos no.
+ * - `link`: con 3 Raye, 3 Roze, 2 Engage! y Reinforcement of the Army (y Pot of Desires y Vision para robar), casi toda mano llega a un Sky Striker Ace; la que no, no tiene con qué.
  * - `set`: las Mágicas Rápidas (13 en el mazo) se colocan para tu turno: con 2 o más, el bot interactúa.
  * - `damage`: con tu campo vacío, cualquier Enlace ataca directo en su turno 3.
  */
 const THRESHOLDS = { link: 0.85, set: 0.85, damage: 0.9 }
 /**
- * «Cambiar cartas»: una Ash Blossom y una Droll & Lock Bird cambiadas por Effect Veiler y Nibiru, que el bot no traía (handtrap por handtrap: cambiar sus Mágicas por handtraps
+ * «Cambiar cartas»: una Ash Blossom y un Ghost Ogre cambiados por Effect Veiler, que el bot no traía, y otra Nibiru (handtrap por handtrap: cambiar sus Mágicas por handtraps
  * baja `set`, que cuenta lo que coloca).
  */
 const VEILER = 97268402
 const NIBIRU = 27204311
-const FLEX: [number, number][] = [...originalFlex(SKY_STRIKER_DECK).map(([code, copies]): [number, number] => [code, code === 14558127 || code === 94145021 ? copies - 1 : copies]), [VEILER, 1], [NIBIRU, 1]]
+const FLEX: [number, number][] = [...originalFlex(SKY_STRIKER_DECK).map(([code, copies]): [number, number] => [code, code === 14558127 || code === 59438930 ? copies - 1 : code === NIBIRU ? copies + 1 : copies]), [VEILER, 1]]
 
 const settled = (session: AutoSession) =>
   new Promise<AutoSnapshot>((resolve) => {

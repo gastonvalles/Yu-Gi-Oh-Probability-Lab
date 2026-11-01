@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
-import { activeBanlist, banlistStatusLabel, statusIn, type Banlist } from '../../app/banlists'
+import { banlistStatusLabel } from '../../app/banlists'
 import { capOf, flexOptions, flexPairs, freeSlots, isValidFlex } from '../../app/bot-deck-edit'
 import type { BotDeckList } from '../../app/bot-deck-lists'
-import { botDeckMain, originalFlex, sameFlex } from '../../app/handtraps'
+import { botCopyLimit, botDeckMain, originalFlex, sameFlex } from '../../app/handtraps'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -24,16 +24,17 @@ interface BotDeckEditorProps {
   onClose: () => void
   /** Lo elegido (la parte cambiable entera) o `null`: volvió al original. */
   onSave: (flex: [number, number][] | null) => void
-  /** El banlist que frena lo que se agrega; las pruebas y el `/playground` pasan uno fijo. */
-  banlist?: Banlist | null
 }
+
+/** El estado que se anota debajo de una carta, por lo que deja el banlist (3: ninguno). */
+const STATUS_BY_LIMIT = ['forbidden', 'limited', 'semi-limited'] as const
 
 /**
  * «Cambiar cartas» de un bot: sus ranuras libres (las copias de sus handtraps y staples, `BotDeckList.flex`) y las cartas que se pueden poner, cada una con su contador; el motor
  * no aparece (no se toca). Se cambia una por otra: bajar una deja una ranura libre y subir otra la ocupa, así el Main no cambia de tamaño; «Guardar» pide todas las ranuras llenas.
- * El contador de cada carta llega hasta lo que entra (`capOf`: 3 por nombre y el banlist sólo para lo que se agrega). «Restaurar original» vuelve la hoja al mazo de la lista.
+ * El contador de cada carta llega hasta lo que entra (`capOf`: el banlist de hoy por nombre, el del jugador). «Restaurar original» vuelve la hoja al mazo de la lista.
  */
-export function BotDeckEditor({ isOpen, list, flex, onClose, onSave, banlist = activeBanlist('tcg') }: BotDeckEditorProps) {
+export function BotDeckEditor({ isOpen, list, flex, onClose, onSave }: BotDeckEditorProps) {
   const saved = () => copiesOf(botDeckMain(list, flex) === list.main ? originalFlex(list) : flex!)
   const [draft, setDraft] = useState<Copies>(saved)
   const [wasOpen, setWasOpen] = useState(isOpen)
@@ -48,7 +49,7 @@ export function BotDeckEditor({ isOpen, list, flex, onClose, onSave, banlist = a
   const free = freeSlots(list, draft)
   const pairs = flexPairs(draft)
   const original = sameFlex(pairs, originalFlex(list))
-  const ready = free === 0 && isValidFlex(list, pairs, banlist)
+  const ready = free === 0 && isValidFlex(list, pairs)
 
   return (
     <Modal
@@ -87,16 +88,16 @@ export function BotDeckEditor({ isOpen, list, flex, onClose, onSave, banlist = a
         </div>
         <ul aria-label={t('solo.edit.list')} className="m-0 grid list-none gap-1 p-0 sm:grid-cols-2">
           {flexOptions(list).map((card) => {
-            const status = statusIn(banlist, card.id)
+            const status = STATUS_BY_LIMIT[botCopyLimit(list, card.id)]
 
             return (
               <HandtrapPoolCard
                 key={card.id}
                 card={card}
                 copies={draft[card.id] ?? 0}
-                max={capOf(list, draft, card.id, banlist)}
+                max={capOf(list, draft, card.id)}
                 onChange={(count) => setDraft((current) => ({ ...current, [card.id]: count }))}
-                {...(status === 'unlimited' ? {} : { note: t('solo.edit.banned', { status: banlistStatusLabel(status) }) })}
+                {...(status ? { note: t('solo.edit.banned', { status: banlistStatusLabel(status) }) } : {})}
               />
             )
           })}
