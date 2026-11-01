@@ -39,6 +39,8 @@ export const STAGE_TONE: Record<SpotlightKind | ShowcaseKind, FxTone> = { ...SPO
 export const DUEL_GLOW = [
   'data-[glow=true]:data-[glow-kind=can]:[box-shadow:var(--card-shadow),0_0_0_1px_rgb(255_255_255/0.95),0_0_0_3px_rgb(var(--playable-rgb)),0_0_24px_6px_rgb(var(--playable-rgb)/0.75)]',
   'data-[glow=true]:data-[glow-kind=act]:[box-shadow:var(--card-shadow),0_0_0_1px_rgb(255_255_255/0.95),0_0_0_3px_rgb(var(--warning-rgb)),0_0_24px_6px_rgb(var(--warning-rgb)/0.75)]',
+  // El tuyo que ataca mientras elegís a quién (`aim`): el rojo del ataque, que la carta ya tiene en `--fx-rgb` (`fxVars('red')`).
+  'data-[glow=true]:data-[glow-kind=aim]:[box-shadow:var(--card-shadow),0_0_0_1px_rgb(255_255_255/0.95),0_0_0_3px_rgb(var(--fx-rgb)),0_0_20px_5px_rgb(var(--fx-rgb)/0.65)]',
 ].join(' ')
 
 /**

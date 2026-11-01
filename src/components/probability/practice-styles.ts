@@ -22,13 +22,13 @@ export type FxTone = keyof typeof FX_RGB
 
 /**
  * El marco de adentro de una carta que brilla: una salida en verde, un problema en rojo y, en un duelo, lo que podés hacer en celeste casi blanco, quieto, y lo que se activa o se resuelve en dorado,
- * con la luz que gira (lo que puede atacar es celeste y suma la espada: `AttackMark`). Los del duelo, con el marco fino: la línea clara de afuera (`DUEL_GLOW`) ya hace de borde.
+ * con la luz que gira (lo que puede atacar es celeste y suma la espada: `AttackMark`); el tuyo que ataca mientras elegís a quién, en el rojo del ataque. Los del duelo, con el marco fino: la línea clara de afuera (`DUEL_GLOW`) ya hace de borde.
  */
-export const GLOW_TONE = { opening: 'green', problem: 'red', can: 'playable', act: 'gold' } as const satisfies Record<GlowKind, FxTone>
+export const GLOW_TONE = { opening: 'green', problem: 'red', can: 'playable', act: 'gold', aim: 'red' } as const satisfies Record<GlowKind, FxTone>
 
 /** El marco de adentro de una carta que brilla (`GLOW_TONE`), o nada. */
 export const glowFrame = (kind: GlowKind | null): { tone: FxTone; orbit: boolean; fine: boolean } | null =>
-  kind === null ? null : { tone: GLOW_TONE[kind], orbit: kind === 'act', fine: kind === 'can' || kind === 'act' }
+  kind === null ? null : { tone: GLOW_TONE[kind], orbit: kind === 'act', fine: kind !== 'opening' && kind !== 'problem' }
 
 /** Color de una salida (verde) o de un problema (rojo): lo heredan los botones y la explicación. */
 export const RULE_COLOR = {

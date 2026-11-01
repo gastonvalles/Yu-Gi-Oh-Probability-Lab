@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
-import { askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../../app/auto/chain-feed'
+import { rivalAttackInCourse } from '../../app/attack-trail'
 import { actingOf, linksOf } from '../../app/card-glow'
 import type { PhaseView } from '../../app/auto/online'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
@@ -643,6 +644,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
    * rearman y el aviso se va). Otra jugada tuya lo saca: Deshacer volvería a antes de ésa, no de la activación.
    */
   const [lastPlay, setLastPlay] = useState<(UndoPlay & { initial: AutoSnapshot['initial'] }) | null>(null)
+  /** Tu monstruo que declaraste para atacar (`select_battlecmd`, «Atacar»): el núcleo pregunta después a quién sin decir quién ataca, y la mesa le pone el aro rojo mientras elegís. */
+  const [attacker, setAttacker] = useState<string | null>(null)
 
   /** Los toques, en orden; el que completa la pregunta la contesta y los demás se descartan. */
   const gesture = useCallback(
@@ -668,6 +671,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           const { initial } = session.getSnapshot()
           const code = activatedCode(current.ask, next.answer)
 
+          if (current.ask.type === 'select_battlecmd' && next.answer.type === 'select_battlecmd' && next.answer.action === 1) {
+            const card = next.answer.index === null ? undefined : current.ask.attacks[next.answer.index]
+
+            setAttacker(card ? (session.adapter?.idAt(card) ?? null) : null)
+          }
           if (session.answer(next.answer) && canUndo && (code !== null || undoPoint({ seat, answer: next.answer }))) setLastPlay(code === null ? null : { key: Date.now(), art: artOfCode(code), initial })
           return
         }
@@ -1142,6 +1150,10 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // eslint-disable-next-line react-hooks/exhaustive-deps -- un objeto por ataque: un nombre que llega después no vuelve a dibujar la espada
   const announcement = useMemo(() => strikeShown && { ...strikeShown, caption: strikeShown.targetId === undefined ? t('duel.announce.attackDirect', { name: rivalName }) : t('duel.announce.attack', { name: rivalName, target: nameOf({ side: 'mine', id: strikeShown.targetId }) }) }, [strikeShown])
 
+  // El ataque, a la vista mientras se decide: tu monstruo que ataca lleva el aro rojo mientras elegís a quién, y el ataque del rival deja su estela mientras le podés responder (se va con el daño).
+  const aim = shown?.cardPick && shown.title === ATTACK_TARGET_HINT ? attacker : null
+  const rivalAim = useMemo(() => (shown ? rivalAttackInCourse(attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps) : null), [shown, attacks, snap.order, snap.mineActions, snap.theirsActs, snap.lifeSteps])
+
   const dockHighlight = highlight ?? linkHighlight
   const detail = useMemo(() => (wide ? <DuelCardDock peek={peeked} highlight={dockHighlight} stats={reviewing ? null : dockStats} /> : undefined), [wide, peeked, dockHighlight, reviewing, dockStats])
   const limits = useMemo(() => (reviewing ? null : <LimitsChip texts={limitTexts} />), [reviewing, limitTexts])
@@ -1161,6 +1173,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
     respond,
     attack,
+    ...(aim ? { aim } : {}),
+    ...(rivalAim ? { rivalAim } : {}),
     act: acting.mine,
     links: links.mine,
     prompt: prompt ? (

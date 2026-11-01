@@ -12,10 +12,16 @@ describe('el brillo de una carta en un duelo', () => {
     expect(glowOf('a', {})).toBeNull()
   })
 
+  it('el tuyo que ataca mientras elegís a quién va en rojo (le gana a «podés»; lo que se activa le gana a él)', () => {
+    expect(['a', 'b', 'd'].map((id) => glowOf(id, { ...sets, aim: id }))).toEqual(['aim', 'act', 'aim'])
+    expect(glowOf('a', { ...sets, aim: 'z' })).toBe('can')
+  })
+
   it('el marco de adentro: celeste quieto y ámbar con la luz que gira, finos sólo en el duelo (los del Lab no cambian)', () => {
-    expect((['can', 'act', 'opening', 'problem'] as const).map(glowFrame)).toEqual([
+    expect((['can', 'act', 'aim', 'opening', 'problem'] as const).map(glowFrame)).toEqual([
       { tone: 'playable', orbit: false, fine: true },
       { tone: 'gold', orbit: true, fine: true },
+      { tone: 'red', orbit: false, fine: true },
       { tone: 'green', orbit: false, fine: false },
       { tone: 'red', orbit: false, fine: false },
     ])

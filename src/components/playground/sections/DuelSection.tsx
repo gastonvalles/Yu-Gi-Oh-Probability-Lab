@@ -4,6 +4,7 @@ import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
 import { MatPlate, MatScene, PickMarks } from '../../probability/MatArena'
 import { AttackMark, ChainBadge, FX_CARD, FxFrame, HOLD_PRESS, SPOTLIGHT_TONE, Spotlight, TargetMark, chainBadgeAt, fxVars } from '../../probability/MatFx'
 import { glowFrame } from '../../probability/practice-styles'
+import { ChevronTrail } from '../../probability/AttackFx'
 import { t } from '../../../i18n'
 import { MaterialCount, MaterialStack } from '../../probability/MaterialStack'
 import { CELL, CELL_MONSTER, ZoneLines } from '../../probability/PracticeMat'
@@ -88,6 +89,7 @@ export function DuelSection() {
       <ShuffleSamples />
       <RingsSample />
       <GlowsSample />
+      <TrailSample />
       <ResizeHandleSample />
 
       <ArenaSamples />
@@ -359,9 +361,10 @@ function RingsSample() {
 }
 
 /** Los brillos del duelo automático (`app/card-glow.ts`), quietos: lo que podés hacer, lo que puede atacar (el mismo celeste y la espada) y lo que se activa (ámbar con la luz que gira). */
-const GLOWS: Array<{ key: string; label: string; kind: 'can' | 'act' | null; back?: true; attack?: true }> = [
+const GLOWS: Array<{ key: string; label: string; kind: 'can' | 'act' | 'aim' | null; back?: true; attack?: true }> = [
   { key: 'can', label: 'Podés (seteada)', kind: 'can', back: true },
   { key: 'attack', label: 'Puede atacar', kind: 'can', attack: true },
+  { key: 'aim', label: 'Ataca', kind: 'aim' },
   { key: 'act', label: 'Se activa', kind: 'act' },
   { key: 'none', label: 'Sin brillo', kind: null },
 ]
@@ -375,12 +378,12 @@ function GlowsSample() {
       note={
         <>
           Un color por pregunta y una forma por verbo, todo quieto salvo la luz que gira. Celeste: podés hacer algo con esa carta (activarla, invocarla, elegirla); con la <b>espada</b> arriba, ese monstruo puede atacar
-          (sólo tus monstruos, en tu Battle Phase, los que ofrece el núcleo). Ámbar con la luz que gira y la insignia CL: se está activando. Afuera, la línea clara de 1 px, el aro de 3 px y el halo de 24 px;
+          (sólo tus monstruos, en tu Battle Phase, los que ofrece el núcleo). <b>Rojo</b>, el del ataque: el tuyo que ataca, mientras elegís a quién. Ámbar con la luz que gira y la insignia CL: se está activando. Afuera, la línea clara de 1 px, el aro de 3 px y el halo de 24 px;
           adentro, el marco fino. Sin brillo en la mesa manual, los replays y lo oculto del rival. Archivos: <Tag>probability/MatFx.tsx</Tag> (<Tag>DUEL_GLOW</Tag>, <Tag>AttackMark</Tag>) y <Tag>app/card-glow.ts</Tag>.
         </>
       }
     >
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-3">
         {GLOWS.map(({ key, label, kind, back, attack }) => {
           const frame = glowFrame(kind)
 
@@ -391,7 +394,8 @@ function GlowsSample() {
                 <div
                   data-glow={kind ? 'true' : 'false'}
                   data-glow-kind={kind ?? undefined}
-                  aria-description={attack ? t('practice.card.canAttack') : undefined}
+                  aria-description={attack ? t('practice.card.canAttack') : kind === 'aim' ? t('practice.card.attacking') : undefined}
+                  style={fxVars('red')}
                   className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] w-[68.57%] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]', FX_CARD)}
                 >
                   {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />}
@@ -404,6 +408,49 @@ function GlowsSample() {
             </div>
           )
         })}
+      </div>
+    </Specimen>
+  )
+}
+
+/** La muestra de la estela: una caja de 160 × 176 px, el atacante (48 × 70) abajo a la izquierda y el objetivo arriba a la derecha; la estela sale de su borde y entra un poco en el otro, como `trailOf`. */
+const TRAIL_FROM = { x: 32, y: 141 }
+const TRAIL_TO = { x: 128, y: 35 }
+const TRAIL_ANG = Math.atan2(TRAIL_TO.y - TRAIL_FROM.y, TRAIL_TO.x - TRAIL_FROM.x)
+const TRAIL = { x: TRAIL_FROM.x + Math.cos(TRAIL_ANG) * 29.4, y: TRAIL_FROM.y + Math.sin(TRAIL_ANG) * 29.4, len: Math.hypot(TRAIL_TO.x - TRAIL_FROM.x, TRAIL_TO.y - TRAIL_FROM.y) - 38.5, ang: TRAIL_ANG }
+const TRAIL_CARD = 'absolute aspect-[421/614] w-12 overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)] [box-shadow:var(--card-shadow)]'
+
+/** La estela del ataque (`ChevronTrail`; en la mesa la mide y la sigue `AttackTrail`), en movimiento y como queda con el movimiento reducido. */
+function TrailSample() {
+  return (
+    <Specimen
+      title="Estela del ataque · quién ataca a quién"
+      layout="column"
+      note={
+        <>
+          Mientras elegís a quién atacar, tu monstruo lleva el aro rojo quieto y, con el mouse sobre un objetivo, la estela va hasta él (en el celular, sólo el aro). Cuando ataca el rival, la estela queda de su
+          monstruo a tu carta o a tus vidas mientras le podés responder y se va con el daño. Es un solo renglón de chevrones con su halo de fondo (dos nodos) y sólo se anima <Tag>translate</Tag>
+          (<Tag>animate-chevrons</Tag>); con el movimiento reducido queda quieta. Sin estela en la mesa manual, los replays ni el video. Archivos: <Tag>probability/AttackFx.tsx</Tag> (<Tag>ChevronTrail</Tag>,{' '}
+          <Tag>AttackTrail</Tag>) y <Tag>app/attack-trail.ts</Tag>.
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 gap-4">
+        {[false, true].map((still) => (
+          <div key={String(still)} className="grid justify-items-center gap-2">
+            <div className="relative h-44 w-40">
+              <div data-glow="true" data-glow-kind="aim" style={fxVars('red')} className={cx(TRAIL_CARD, 'bottom-0 left-2', FX_CARD)}>
+                <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full object-cover" />
+                <FxFrame {...glowFrame('aim')!} />
+              </div>
+              <div className={cx(TRAIL_CARD, 'right-2 top-0')}>
+                <CardArt remoteUrl={UTOPIA_ART} name="Number 39: Utopia" className="block h-full w-full rotate-180 object-cover" />
+              </div>
+              <ChevronTrail {...TRAIL} still={still} />
+            </div>
+            <span className="text-micro text-muted">{still ? 'Movimiento reducido: quieta' : 'En movimiento'}</span>
+          </div>
+        ))}
       </div>
     </Specimen>
   )

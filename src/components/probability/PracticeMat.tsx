@@ -86,7 +86,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { ResizeHandle } from '../ui/ResizeHandle'
-import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
+import { AttackFx, AttackTrail, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
 import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
@@ -196,6 +196,10 @@ export interface DuelMatLink {
   respond?: ReadonlySet<string>
   /** Mis monstruos que pueden atacar ahora (también en `respond`): llevan la espada (`AttackMark`). */
   attack?: ReadonlySet<string>
+  /** Mi monstruo que ataca mientras elijo a quién (duelo automático): el aro rojo (`aim`) y, con el mouse sobre un objetivo, la estela hasta él (`AttackTrail`). */
+  aim?: string
+  /** El ataque del rival mientras le puedo responder (duelo automático): la estela de su monstruo (`attackerId`, su id) a mi carta (`targetId`) o, sin ella, a mis vidas. */
+  rivalAim?: { attackerId: string; targetId?: string }
   /** Mis cartas cuyo efecto se está activando o resolviendo (los eslabones de la cadena, paso a paso): brillan en ámbar (`act`), y la pila que tenga una adentro, también. */
   act?: ReadonlySet<string>
   /** Mis cartas que están en la cadena a la vista, con sus eslabones (`linksOf` de `app/card-glow.ts`): llevan la insignia «CL1», «CL2»… en la carta o en la pila donde estén ahora. */
@@ -1348,6 +1352,33 @@ function PracticeMatBody({
     }
   }, [attackerId, attackTargets, play])
 
+  // Eligiendo a quién atacar en el duelo automático (`duel.aim`), con el mouse: la estela va de tu monstruo al del rival que está debajo del puntero (los que se pueden atacar llevan
+  // `data-attack-target`). Con el dedo no hay estela, sólo el aro: apuntar a todos a la vez sería ruido. Se guarda con su atacante: otro ataque empieza sin objetivo.
+  const aim = duel?.aim ?? null
+  const [aimAt, setAimAt] = useState<{ aim: string; target: string } | null>(null)
+  const aimTarget = aim !== null && aimAt?.aim === aim ? aimAt.target : null
+
+  useEffect(() => {
+    const section = sectionRef.current
+
+    if (aim === null || !section) return
+    const over = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return
+      const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-attack-target="true"][data-rival-card-id]')?.dataset.rivalCardId : undefined
+
+      setAimAt(target ? { aim, target } : null)
+    }
+    const leave = () => setAimAt(null)
+
+    section.addEventListener('pointerover', over)
+    section.addEventListener('pointerleave', leave)
+
+    return () => {
+      section.removeEventListener('pointerover', over)
+      section.removeEventListener('pointerleave', leave)
+    }
+  }, [aim])
+
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
   const choose = useCallback(
     (item: MatMenuItem, dropped?: MatTarget) => {
@@ -2090,8 +2121,8 @@ function PracticeMatBody({
   // Las cartas con la mira: las que marqué yo y las que marcó el rival (de las pilas enteras y de la mano, también se marca lo de adentro).
   const rivalMarks = duel?.marksOnMine
   // Las cartas que brillan: en un duelo, lo que podés hacer (celeste) y lo que se activa (ámbar); si no hay nada de eso, las de la salida o el problema del Lab (que oscurecen al resto).
-  const glowSets = useMemo(() => ({ can: duel?.respond, act: duel?.act }), [duel?.respond, duel?.act])
-  const duelLit = Boolean(glowSets.can?.size || glowSets.act?.size)
+  const glowSets = useMemo(() => ({ can: duel?.respond, act: duel?.act, aim: duel?.aim }), [duel?.respond, duel?.act, duel?.aim])
+  const duelLit = Boolean(glowSets.can?.size || glowSets.act?.size || glowSets.aim)
   const glowKindOf = useCallback((id: string): GlowKind | null => (duelLit ? glowOf(id, glowSets) : highlighted.has(id) ? (highlightKind ?? 'opening') : null), [duelLit, glowSets, highlighted, highlightKind])
   const dimUnlit = !duelLit && highlighted.size > 0
   const deckGlow = pileGlowOf(state.deck, glowSets)
@@ -3166,6 +3197,12 @@ function PracticeMatBody({
 
       {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
+      {/* La estela del ataque mientras se decide (duelo automático): la tuya al objetivo bajo el mouse; la del rival a tu carta o a tus vidas mientras le podés responder, cuando se va su cartel
+          («X ataca a Y», sobre la fila del medio, por donde pasa la estela): dicen lo mismo, de a uno. */}
+      {aim !== null && aimTarget !== null ? <AttackTrail from={`[data-card-id="${aim}"]`} to={`[data-rival-card-id="${aimTarget}"]`} boundsRef={sectionRef} /> : null}
+      {duel?.rivalAim && !announcement ? (
+        <AttackTrail from={`[data-rival-card-id="${duel.rivalAim.attackerId}"]`} {...(duel.rivalAim.targetId === undefined ? {} : { to: `[data-card-id="${duel.rivalAim.targetId}"]` })} direct="mine" boundsRef={sectionRef} />
+      ) : null}
 
       {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
       {duel?.chain ? (
@@ -3345,7 +3382,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, canAttack, dim,
         tabIndex={pending ? undefined : 0}
         aria-hidden={pending || undefined}
         aria-label={pending ? undefined : label}
-        aria-description={canAttack ? t('practice.card.canAttack') : undefined}
+        aria-description={glow === 'aim' ? t('practice.card.attacking') : canAttack ? t('practice.card.canAttack') : undefined}
         title={pending ? undefined : label}
         // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
         // Parada, la carta ocupa el alto de la casilla y queda centrada (en la zona de campo, de la forma de una carta, es la casilla entera); acostada gira sobre su centro y entra justo.

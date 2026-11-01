@@ -52,6 +52,13 @@ describe('los aros de la mesa, en capas', () => {
     expect(FX_CARD.split(' ')).toContain('fx-ring')
   })
 
+  it('el aro del que ataca es quieto (sin animación propia) y la estela anima sólo `translate`, en bucle, con su token', () => {
+    expect(FX_CARD).toMatch(/data-\[glow-kind=aim\]:\[box-shadow:[^\]]*rgb\(var\(--fx-rgb\)\)/)
+    expect(FX_CARD).not.toMatch(/glow-kind=aim\][^ ]*animate/)
+    expect([...animated(keyframes('chevrons')!)]).toEqual(['translate'])
+    expect(CSS).toMatch(/--animate-chevrons: chevrons \d+ms linear infinite;/)
+  })
+
   it('las cartas no transicionan la sombra y la mira se recorta sola', () => {
     expect(CARD_TRANSITION).not.toMatch(/box-shadow/)
     expect(FX_CARD).not.toMatch(/animate-fx-(halo|target-glow)/)

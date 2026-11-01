@@ -145,6 +145,8 @@
   /* Un ataque (AttackFx.tsx): el rayo y la espada salen del atacante hacia el objetivo (la distancia, `--len`, la pone el componente) y el impacto, con las ondas y chispas de arriba, empieza cuando llegan. */
   --animate-fx-beam: fx-beam 900ms var(--ease-out) both;
   --animate-fx-blade: fx-blade 900ms var(--ease-out) both;
+  /* La estela de un ataque (`ChevronTrail`): el renglón de chevrones avanza un dibujo (30 px, dos chevrones) por vuelta, en bucle; sólo `translate`. */
+  --animate-chevrons: chevrons 700ms linear infinite;
   --animate-fx-banner: fx-banner 1100ms var(--ease-out) both;
   --animate-fx-banner-text: fx-banner-text 1100ms var(--ease-out) both;
   --animate-fx-stage: fx-stage 950ms var(--ease-out) both;
@@ -678,6 +680,12 @@
     100% {
       opacity: 0;
       transform: translateX(var(--len)) scale(1.9);
+    }
+  }
+
+  @keyframes chevrons {
+    to {
+      translate: 30px 0;
     }
   }
 
