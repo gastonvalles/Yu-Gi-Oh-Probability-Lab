@@ -41,7 +41,6 @@ export const catalog: Translated<typeof es> = {
   'catalog.banlists.help': "These are the complete historical lists, from {tcg} in the TCG and from {ocg} in the OCG. Pick one (or step through them with the arrows) to see what changed from the previous one (what gets forbidden, limited, semi-limited and released, as in Konami's announcements) or the full list. Tap a card for its details.",
   'catalog.banlists.updated': 'Data as of {date}',
   'catalog.banlists.updatedTitle': 'When the lists were downloaded',
-  'catalog.banlists.regionLabel': 'Region',
   'catalog.banlists.older': 'Previous list',
   'catalog.banlists.newer': 'Next list',
   'catalog.banlists.pickLabel': 'Pick the list',

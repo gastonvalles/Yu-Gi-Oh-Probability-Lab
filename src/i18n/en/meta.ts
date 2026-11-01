@@ -33,7 +33,7 @@ export const meta: Translated<typeof es> = {
   // Pantalla de los tier lists
   'meta.screen.title': 'Tier lists',
   'meta.screen.subtitle': "Which hand traps and boardbreakers rule tournaments, and where they're heading.",
-  'meta.screen.regionLabel': 'Tournament region',
+  'meta.screen.regionLabel': 'Region',
   'meta.screen.updatedTitle': 'Date of the last deck update',
   'meta.screen.listLabel': 'Which tier list to show',
   'meta.view.mine': 'Yours',

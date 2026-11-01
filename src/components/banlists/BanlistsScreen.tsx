@@ -14,7 +14,7 @@ import {
 import { buildCardNavigation, neighborsAt } from '../../app/card-neighbors'
 import { cardSmallImageUrl } from '../../app/card-prices'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
-import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
+import { useMetaRegion } from '../../app/use-meta-region'
 import { formatInteger, normalizeSearchText } from '../../app/utils'
 import { formatDay, t } from '../../i18n'
 import { useAppSelector } from '../../app/store-hooks'
@@ -28,8 +28,8 @@ import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
+import { MetaHeroSide } from '../meta/MetaHeroSide'
 import { SearchField } from '../ui/SearchField'
-import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
 import { Tabs, tabId } from '../ui/Tabs'
 import type { Tone } from '../ui/tone'
@@ -39,11 +39,6 @@ type View = 'changes' | 'full'
 
 /** El panel que cambian «Cambios · Lista completa» (una sola Banlists por pantalla). */
 const BANLIST_PANEL = 'banlist-panel'
-
-const REGIONS = [
-  { value: 'tcg', label: 'TCG' },
-  { value: 'ocg', label: 'OCG' },
-] as const satisfies ReadonlyArray<{ value: BanlistRegion; label: string }>
 
 /** El orden de las secciones, como en los anuncios de Konami: de lo más duro a lo que se libera. */
 const STATUSES: readonly BanlistStatus[] = ['forbidden', 'limited', 'semi-limited', 'unlimited']
@@ -139,13 +134,11 @@ export function BanlistsScreen() {
         subtitle={t('catalog.banlists.subtitle')}
         help={<p className="m-0">{t('catalog.banlists.help', { tcg: formatBanlistDate(banlistsOf('tcg').at(-1)!.date), ocg: formatBanlistDate(banlistsOf('ocg').at(-1)!.date) })}</p>}
         side={
-          // `flex-wrap` y TCG / OCG sin `min-w-0`: en 320 px y en inglés la fecha no les deja lugar y baja a su renglón, en vez de apretarlos hasta cortar «OCG».
-          <div className="flex w-full flex-wrap items-center gap-2 min-[1101px]:w-auto">
-            <Badge icon="refresh" title={t('catalog.banlists.updatedTitle')} className="min-[1101px]:order-first">
-              {t('catalog.banlists.updated', { date: formatDay(new Date(`${BANLISTS_FETCHED_AT}T00:00:00Z`), 'UTC') })}
-            </Badge>
-            <Segmented value={region} onChange={setMetaRegion} options={REGIONS} label={t('catalog.banlists.regionLabel')} size="sm" className="max-[1101px]:order-first max-[560px]:flex-1" />
-          </div>
+          <MetaHeroSide
+            region={region}
+            date={t('catalog.banlists.updated', { date: formatDay(new Date(`${BANLISTS_FETCHED_AT}T00:00:00Z`), 'UTC') })}
+            dateTitle={t('catalog.banlists.updatedTitle')}
+          />
         }
       />
 

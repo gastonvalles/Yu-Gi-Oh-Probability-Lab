@@ -64,12 +64,13 @@ describe('Tier lists: las del meta y la tuya', () => {
     expect(within(tabs).getAllByRole('tab')).toEqual(['Hand traps', 'Boardbreakers', 'La tuya'].map((name) => within(tabs).getByRole('tab', { name })))
     expect(within(tabs).getByRole('tab', { name: 'Boardbreakers' })).toHaveAttribute('aria-selected', 'true')
     expect(metaFilters()).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Región: TCG' })).toBeInTheDocument()
     expect(unranked()).toBeNull()
 
     fireEvent.click(within(tabs).getByRole('tab', { name: 'La tuya' }))
     expect(unranked()).toBeInTheDocument()
     expect(metaFilters()).toBeNull()
-    expect(screen.queryByRole('radiogroup', { name: 'Región de los torneos' })).toBeNull()
+    expect(screen.queryByRole('combobox', { name: 'Región: TCG' })).toBeNull()
     // La lista elegida del meta no se pierde: vuelve al cambiar de nuevo.
     expect(window.location.hash).toBe('#meta?list=boardbreaker&vista=tuya')
 
@@ -148,6 +149,17 @@ describe('Tier lists: una sola vista y una sola fila de filtro', () => {
 
     expect(stackedGroups(view.container)).toEqual([])
     fireEvent.click(screen.getByRole('tab', { name: 'La tuya, con 3 cartas' }))
+    expect(stackedGroups(view.container)).toEqual([])
+  })
+
+  it('en escritorio la región ya no es un grupo de pastillas pegado a las pestañas: es «Región: TCG», un selector al lado de la fecha', () => {
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const view = renderTierLists('#meta')
+    const header = view.container.querySelector('header')!
+
+    expect(within(header).getByRole('combobox', { name: 'Región: TCG' })).toBeInTheDocument()
+    expect(within(header).getByText(/^Actualizado el/)).toBeInTheDocument()
+    expect(within(header).queryByRole('radiogroup')).toBeNull()
     expect(stackedGroups(view.container)).toEqual([])
   })
 

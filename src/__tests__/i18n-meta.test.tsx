@@ -206,6 +206,7 @@ describe('Meta en inglés', () => {
     expect(screen.getByRole('radiogroup', { name: 'Where to count the card' })).toBeInTheDocument()
     // La fecha de la actualización es la del usuario: se mira el formato (mes en letras), no el día.
     expect(view.container.querySelector('[title="Date of the last deck update"]')).toHaveTextContent(/^Updated [A-Z][a-z]{2} \d{1,2}, 2026$/)
+    expect(screen.getByRole('combobox', { name: 'Region: TCG' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Boardbreakers' }))
     expect(screen.getByRole('heading', { name: 'Boardbreaker tier list' })).toBeInTheDocument()
@@ -256,6 +257,7 @@ describe('Meta en inglés', () => {
     expect(screen.getByRole('group', { name: 'Placement' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Winner 1' })).toBeInTheDocument()
     expect(view.container.querySelector('[title="Date of the last deck update"]')).toHaveTextContent(/^Updated [A-Z][a-z]{2} \d{1,2}, 2026$/)
+    expect(screen.getByRole('combobox', { name: 'Region: TCG' })).toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search decks' }), { target: { value: 'elfnote' } })
     expect(screen.getByText('1 TCG deck from the last 8 weeks, from newest to oldest. Tap it to see it in full.')).toBeInTheDocument()

@@ -151,9 +151,7 @@ export function TournamentDecksScreen() {
             </ul>
           </div>
         }
-        side={
-          <MetaHeroSide region={region} onRegionChange={setMetaRegion} />
-        }
+        side={<MetaHeroSide region={region} />}
       />
 
       <section aria-labelledby="tournaments-list-title" className="grid gap-4">

@@ -39,7 +39,6 @@ export const catalog = {
   'catalog.banlists.help': 'Son las listas históricas completas, desde {tcg} en el TCG y desde {ocg} en el OCG. Elegí una (o pasá de una a otra con las flechas) para ver qué cambió respecto de la anterior (lo que se prohíbe, se limita, se semi-limita y se libera, como en los anuncios de Konami) o la lista completa. Tocá una carta para ver su detalle.',
   'catalog.banlists.updated': 'Datos al {date}',
   'catalog.banlists.updatedTitle': 'Cuándo se bajaron las listas',
-  'catalog.banlists.regionLabel': 'Región',
   'catalog.banlists.older': 'Lista anterior',
   'catalog.banlists.newer': 'Lista siguiente',
   'catalog.banlists.pickLabel': 'Elegir la lista',

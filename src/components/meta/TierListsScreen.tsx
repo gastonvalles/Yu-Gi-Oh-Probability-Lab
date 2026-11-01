@@ -19,7 +19,7 @@ import {
 } from '../../app/meta'
 import { useAppSelector } from '../../app/store-hooks'
 import { savedCardCount } from '../../app/tierlist-maker'
-import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
+import { useMetaRegion } from '../../app/use-meta-region'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
@@ -156,9 +156,9 @@ export function TierListsScreen() {
   return (
     <StepPage as="article" wide>
       {/* En el celular el título va en la barra de arriba: las pestañas quedan primero y la fecha y la región debajo, en su renglón (en «La tuya» se van sin mover las pestañas). */}
-      {hero(isDesktop ? <MetaHeroSide region={region} onRegionChange={setMetaRegion} /> : null)}
+      {hero(isDesktop ? <MetaHeroSide region={region} /> : null)}
       {switcher}
-      {isDesktop ? null : <MetaHeroSide region={region} onRegionChange={setMetaRegion} />}
+      {isDesktop ? null : <MetaHeroSide region={region} />}
 
       <section className="min-w-0">
         {/* En celular la descripción baja a todo el ancho, debajo del título de la lista. */}

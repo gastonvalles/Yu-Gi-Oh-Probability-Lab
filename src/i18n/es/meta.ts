@@ -31,7 +31,7 @@ export const meta = {
   // Pantalla de los tier lists
   'meta.screen.title': 'Tier lists',
   'meta.screen.subtitle': 'Qué hand traps y boardbreakers mandan en los torneos, y hacia dónde van.',
-  'meta.screen.regionLabel': 'Región de los torneos',
+  'meta.screen.regionLabel': 'Región',
   'meta.screen.updatedTitle': 'Fecha de la última actualización de los decks',
   'meta.screen.listLabel': 'Qué tier list ver',
   'meta.view.mine': 'La tuya',
