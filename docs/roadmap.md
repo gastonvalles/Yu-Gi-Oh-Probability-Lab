@@ -38,7 +38,7 @@ En orden de valor sobre costo.
 8. **Sala del duelo en un celular bajo** (~700 px) se desplaza en la tirada del dado (S): plegar las reglas y el deck en una fila.
 9. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
 10. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
-    hojas de 28 px, chips «Salidas» de 32 px, «Match · mejor de 3» en tres renglones a 320 px, las barras de arriba y abajo comen
+    hojas de 28 px, chips «Salidas» de 32 px, las barras de arriba y abajo comen
     120 de 360 px con el celular acostado, y `ReplayBar`, `LabChangeCard` y las muestras del duelo de `/playground` a 320 px.
 11. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
 12. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
@@ -46,6 +46,7 @@ En orden de valor sobre costo.
 13. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
     la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
 14. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax.
+15. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
 
 ## Espera a Gastón
 
@@ -61,7 +62,7 @@ En orden de valor sobre costo.
 - **Decisiones:** la dependencia `motion` (hoy no está instalada); las filas del creador de tier lists entre 390 y 413 px (tres
   cartas por renglón: ¿achicar la carta o ir de borde a borde?); qué secciones faltan en Descubrir y en qué orden; qué más suma
   «Preguntarle al rival si responde» (hoy 🤔, 👍 y el chat); qué mostraría el botón «Info» y el «+» de la mesa (fichas,
-  contadores, moneda, dado); si «Descargar video» de la barra del combo compartido lleva texto en escritorio (hoy es ícono).
+  contadores, moneda, dado); si «Descargar video» de la barra del combo compartido lleva texto en escritorio (hoy es ícono); el brillo de atacar y de las magias seteadas (hay propuesta con imágenes) y qué toma de la captura del ataque.
 
 ## En pausa o descartado
 
