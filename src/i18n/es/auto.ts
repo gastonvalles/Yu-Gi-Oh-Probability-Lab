@@ -67,6 +67,7 @@ export const auto = {
   'auto.bot.reason.hold.attack': 'Tenía {card} y no la usé contra {to}: la guardo para cuando ataques.',
   'auto.bot.reason.hold.noRule': 'Tenía {card} y no la usé contra {to}: todavía no sé cuándo conviene.',
   'auto.bot.reason.hold.other': 'Tenía {card} y no la usé contra {to}.',
+  'auto.bot.reason.hold.later': 'Tenía {card} y no la usé contra {to}: es la última y la guardo para algo que valga más.',
   'auto.bot.reason.end.noPlays': 'Terminé el turno: no juego cartas al campo, sólo uso handtraps.',
   // «El rival juega su turno» (beta): lo que hace en su Main Phase y su Battle Phase.
   'auto.bot.reason.play.ra': 'Tributé {card} para Invocar a {to} con 4000 de ATK y DEF.',

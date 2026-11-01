@@ -2,6 +2,7 @@ import { freePlaces } from '../../policies'
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotReason, BotView } from '../bot'
 import { ANGELECHY as A, ANGELECHY_DECK } from '../../../bot-deck-lists'
+import { mayInterrupt } from '../interrupt'
 import { turnBot, type CardFacts } from '../turn'
 import { atPlace, attackPlan, atkOf, cardsOf, executorBot, firstOf, isMine, LOC, monstersOf, PHASE, ranked, threatOf, type DeckDecision, type DeckExecutor, type Play, type Scene } from './executor'
 
@@ -27,6 +28,8 @@ import { atPlace, attackPlan, atkOf, cardsOf, executorBot, firstOf, isMine, LOC,
 const OWN = new Set<number>([...ANGELECHY_DECK.main, ...ANGELECHY_DECK.extra].map(([code]) => code))
 /** Sus handtraps, en ese orden de preferencia: Dominus Impulse al final (desde la mano le prohíbe los efectos de sus Angelechy, que son LUZ). */
 const HANDTRAPS: number[] = [A.ash, A.ogre, A.droll, A.fuwalos, A.purge, A.spark, A.impulse]
+/** Lo que niega tu eslabón desde su campo (cuenta para `mayInterrupt`). */
+const RESPONDERS = new Set<number>([A.verdict])
 /** Las Angelechy del Extra Deck. */
 const MONSTERS = new Set<number>([A.shatranga, A.enlisted, A.castellan, A.seneschal, A.bastion, A.destrier])
 /** Qué pone como Continua, en orden: Bastion (pone además a Shatranga), Destrier (busca una Mágica), Shatranga (busca una Trampa), Castellan (manda una Angelechy al cementerio). */
@@ -115,7 +118,8 @@ function chain(ask: AskOf<'select_chain'>, s: Scene): DeckDecision | null {
   if (theirs && top.code === A.enlisted && s.done.has(`banish-${A.enlisted}`)) return { answer: { type: ask.type, index: null }, rule: 'angelechy.pass.enlisted' }
   if (view.turnPlayer === 'me') return null
 
-  // En tu turno: Opening to e4 apenas puede (Invoca y pone otra Continua); Verdict contra tu carta que activa un efecto en el campo o, con 5 Angelechy, contra todo.
+  // En tu turno: Opening to e4 apenas puede (Invoca y pone otra Continua); Verdict contra tu carta que activa un efecto en el campo (si vale gastarla: `mayInterrupt`) o, con 5
+  // Angelechy, contra todo.
   const e4 = pick(A.e4)
 
   if (e4 >= 0 && !s.done.has('quick.e4')) return activate(e4, 'quick.e4', reasonOf('play.starter', A.e4))
@@ -125,7 +129,9 @@ function chain(ask: AskOf<'select_chain'>, s: Scene): DeckDecision | null {
     if (angelechyOnField(view) >= 5 && yours(view) > 1) return activate(verdict, 'quick.verdict')
     const place = theirs ? top.card?.place : null
 
-    if (place && (place.location === LOC.MZONE || place.location === LOC.SZONE) && atPlace(view, place)?.pos !== 'set') return activate(verdict, 'quick.verdict', reasonOf('handtrap.respond', A.verdict, top!.code))
+    if (place && (place.location === LOC.MZONE || place.location === LOC.SZONE) && atPlace(view, place)?.pos !== 'set' && mayInterrupt(view, s.facts, RESPONDERS)) {
+      return activate(verdict, 'quick.verdict', reasonOf('handtrap.respond', A.verdict, top!.code))
+    }
   }
   return null
 }
@@ -281,7 +287,7 @@ export const ANGELECHY_EXECUTOR: DeckExecutor = { plays: PLAYS, chain, choose }
 
 /** El bot de Angelechy: el ejecutor y, para lo que no decide, sus handtraps como el rival que juega su turno (`turnBot`). */
 export function angelechyBot(facts: (code: number) => CardFacts | undefined, aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number): Bot {
-  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts)
+  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
   // Sus Mágicas y Trampas tienen regla (`chain`): si no la usó, no era el momento, y no se cuenta como «no sé cuándo conviene».
   const fallback: Bot = (ask, view, context) => {
     const decision = reacts(ask, view, context)

@@ -1,6 +1,7 @@
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
 import { SKY, SKY_STRIKER_DECK } from '../../../bot-deck-lists'
+import { mayInterrupt } from '../interrupt'
 import { turnBot, type CardFacts } from '../turn'
 import {
   ATTACK_TIMING,
@@ -57,6 +58,8 @@ const LINKS = new Set<number>([SKY.kagari, SKY.shizuku, SKY.hayate, SKY.zero, SK
 const OWN = new Set<number>([...SKY_STRIKER_DECK.main, ...SKY_STRIKER_DECK.extra].map(([code]) => code).concat(SKY.token))
 /** Sus handtraps (Ash Blossom, Ghost Ogre, Ghost Belle, Droll & Lock Bird), en ese orden de preferencia: las usa como el rival de handtraps. */
 const HANDTRAPS = [14558127, 59438930, 73642296, 94145021]
+/** Lo que niega tu eslabón desde su campo (cuenta para `mayInterrupt`). */
+const RESPONDERS = new Set<number>([SKY.widow, SKY.crown, SKY.shark])
 
 const handCodes = (view: BotView) => view.me.hand.map((card) => card.code)
 const inHand = (view: BotView, code: number) => handCodes(view).includes(code)
@@ -199,17 +202,19 @@ function chain(ask: AskOf<'select_chain'>, s: Scene): DeckDecision | null {
   }
   if (ask.forced) return null
 
-  // Contra tu eslabón: el efecto de tu monstruo en el campo (Widow Anchor, Forbidden Crown), el de tu cementerio (Shark Cannon, si no está Called by the Grave).
+  // Contra tu eslabón, si vale gastarla (`mayInterrupt`): el efecto de tu monstruo en el campo (Widow Anchor, Forbidden Crown), el de tu cementerio (Shark Cannon, si no está Called by
+  // the Grave).
   if (yours && top.card) {
     const place = top.card.place
-    const yourMonster = place?.location === LOC.MZONE && isType(s, top.code, TYPE.EFFECT) && atPlace(view, place)?.pos !== 'set'
+    const spend = mayInterrupt(view, s.facts, RESPONDERS)
+    const yourMonster = spend && place?.location === LOC.MZONE && isType(s, top.code, TYPE.EFFECT) && atPlace(view, place)?.pos !== 'set'
 
     for (const code of yourMonster ? [SKY.widow, SKY.crown] : []) {
       const index = pick(code)
 
       if (index >= 0 && !s.done.has(`respond.${code}`)) return activate(index, `respond.${code}`)
     }
-    if (place?.location === LOC.GRAVE && isType(s, top.code, TYPE.MONSTER) && pick(SKY.called) < 0) {
+    if (spend && place?.location === LOC.GRAVE && isType(s, top.code, TYPE.MONSTER) && pick(SKY.called) < 0) {
       const index = pick(SKY.shark)
 
       if (index >= 0 && !s.done.has('respond.shark')) return activate(index, 'respond.shark')
@@ -434,7 +439,7 @@ export const SKY_STRIKER_EXECUTOR: DeckExecutor = { plays: PLAYS, chain, choose,
 
 /** El bot de Sky Striker: el ejecutor y, para lo que no decide, sus handtraps y Called by the Grave como el rival que juega su turno (`turnBot`). */
 export function skyStrikerBot(facts: (code: number) => CardFacts | undefined, aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number): Bot {
-  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts)
+  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
   // «Tenía X y no la usé: todavía no sé cuándo conviene» es de las handtraps sin regla; sus Mágicas tienen regla (`chain`): si no la usó, no era el momento, y no se cuenta.
   const fallback: Bot = (ask, view, context) => {
     const decision = reacts(ask, view, context)

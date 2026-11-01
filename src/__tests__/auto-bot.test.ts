@@ -1,6 +1,8 @@
 import { createAdapter, type CardRef, type ChainLink, type CorePlace } from '../app/auto/adapter'
-import { botViewOf, publicEventsOf, type BotContext, type BotSide, type BotView, type PublicEvent } from '../app/auto/bot/bot'
+import { botViewOf, publicEventsOf, type BotCard, type BotContext, type BotSide, type BotView, type PublicEvent } from '../app/auto/bot/bot'
+import { mayInterrupt } from '../app/auto/bot/interrupt'
 import { handtrapBot, passiveBot } from '../app/auto/bot/rivals'
+import type { CardFacts } from '../app/auto/bot/turn'
 import { handtrapPolicy, passivePolicy, type RivalView } from '../app/auto/policies'
 import { LOCATION as L, POSITION as P, type AskOf, type AutoEvent, type CoreAsk, type Seat, type WireEvent } from '../app/auto/protocol'
 
@@ -173,5 +175,75 @@ describe('los rivales como Bot: lo mismo que contestaban, y por qué', () => {
     expect(passiveBot()(idle, view, context())).toEqual({ answer: passivePolicy()(idle) })
     expect(passiveBot()(rps, view, { random: () => 0.99, level: 'normal' })).toEqual({ answer: { type: 'rock_paper_scissors', value: 3 } })
     expect(passiveBot()(rps, view, { random: () => 0, level: 'normal' })).toEqual({ answer: { type: 'rock_paper_scissors', value: 1 } })
+  })
+})
+
+describe('cuándo gasta el bot con mazo una interrupción contra tu eslabón (mayInterrupt)', () => {
+  const ASH = 14558127
+  const VEILER = 97268402
+  const MAXX = 23434538
+  // Una respuesta del mazo (como Widow Anchor): cuenta colocada, no en la mano.
+  const RESPONDER = 3
+  const SEARCH = 1
+  const STRATOS = 40044918
+  const LINK = 2
+  const FACTS: Record<number, CardFacts> = { [SEARCH]: { type: 0x2, attack: 0, defense: 0, level: 0 }, [STRATOS]: { type: 0x21, attack: 1800, defense: 300, level: 4 }, [LINK]: { type: 0x4000021, attack: 2300, defense: 0, level: 2 } }
+  const facts = (code: number) => FACTS[code]
+  const card = (code: number, i: number, location: number): BotCard => ({ ref: { side: 'mine', id: `${location}-${i}` }, code, place: { controller: 1, location, sequence: i } })
+  /** Tu turno (el bot en el asiento 1): tus eslabones del turno en orden (el último, arriba de la cadena), su mano, su campo y lo que ya activó. */
+  function view(yours: number[], hand: number[], options: { set?: number[]; used?: number[]; phase?: number; turnPlayer?: 'me' | 'them' } = {}): BotView {
+    const side = (): BotSide => ({ hand: [], monsters: [null, null, null, null, null, null, null], spells: [null, null, null, null, null, null], grave: [], banished: [], extraFaceUp: [], extraFaceDown: 0, deckCount: 30 })
+    const me = { ...side(), hand: hand.map((code, i) => card(code, i, L.HAND)), spells: [...(options.set ?? []).map((code, i) => ({ ...card(code, i, L.SZONE), pos: 'set' as const })), null, null, null, null, null, null].slice(0, 6) }
+    const top = yours.at(-1)!
+    const history: PublicEvent[] = [
+      { kind: 'phase', side: 'them', phase: 'draw' },
+      ...(options.used ?? []).map((code, i): PublicEvent => ({ kind: 'activate', side: 'me', code, link: i + 2 })),
+      ...yours.map((code): PublicEvent => ({ kind: 'activate', side: 'them', code, link: 1 })),
+    ]
+
+    return {
+      seat: 1,
+      me,
+      them: side(),
+      lp: { me: 8000, them: 8000 },
+      turn: 2,
+      turnPlayer: options.turnPlayer ?? 'them',
+      phase: options.phase ?? 4,
+      chain: [{ code: top, card: { ref: { side: 'theirs', id: 'top' }, code: top, place: { controller: 0, location: L.MZONE, sequence: 2 } }, description: '0', state: 'chained' }],
+      limits: { me: [], them: [] },
+      history,
+    }
+  }
+  const may = (v: BotView) => mayInterrupt(v, facts, new Set([RESPONDER]))
+
+  it('con la última: tu primer eslabón sólo si sale del Extra Deck; desde el segundo, salvo que repitas una carta; desde el 4.º o fuera de tu Main Phase 1, cualquiera (el tope)', () => {
+    expect(may(view([STRATOS], [ASH]))).toBe(false)
+    expect(may(view([LINK], [ASH]))).toBe(true)
+    expect(may(view([SEARCH, STRATOS], [ASH]))).toBe(true)
+    expect(may(view([SEARCH, SEARCH], [ASH]))).toBe(false)
+    expect(may(view([SEARCH, SEARCH, SEARCH], [ASH]))).toBe(false)
+    expect(may(view([SEARCH, SEARCH, SEARCH, SEARCH], [ASH]))).toBe(true)
+    expect(may(view([STRATOS], [ASH], { phase: 0x08 }))).toBe(true)
+    expect(may(view([STRATOS], [ASH], { phase: 0x200 }))).toBe(true)
+  })
+
+  it('con otra de reserva la usa: dos distintas (de la mano o colocadas), no dos copias ni una que ya usó este turno; en su turno, siempre', () => {
+    expect(may(view([STRATOS], [ASH, VEILER]))).toBe(true)
+    expect(may(view([STRATOS], [ASH], { set: [RESPONDER] }))).toBe(true)
+    expect(may(view([STRATOS], [ASH, ASH]))).toBe(false)
+    expect(may(view([STRATOS], [ASH, MAXX]))).toBe(false)
+    expect(may(view([STRATOS], [ASH, RESPONDER]))).toBe(false)
+    expect(may(view([STRATOS], [ASH, VEILER], { used: [VEILER] }))).toBe(false)
+    expect(may(view([STRATOS], [ASH], { turnPlayer: 'me' }))).toBe(true)
+  })
+
+  it('handtrapBot con `spend`: la guarda y dice por qué; lo que no contesta a un eslabón (Maxx "C") no se guarda', () => {
+    const context: BotContext = { random: () => 0.5, level: 'normal' }
+    const ask = (codes: number[]): CoreAsk => ({ type: 'select_chain', player: 1, spe_count: 0, forced: false, hint_timing: 0, hint_timing_other: 0, selects: codes.map((code, sequence) => ({ code, controller: 1 as const, location: L.HAND, sequence, position: 10, description: '0', client_mode: 0 })) })
+    const bot = handtrapBot([ASH, MAXX], [], undefined, undefined, may)
+
+    expect(bot(ask([ASH]), view([STRATOS], [ASH]), context)).toEqual({ answer: { type: 'select_chain', index: null }, reason: { key: 'auto.bot.reason.hold.later', cards: [ASH, STRATOS] }, rule: 'handtrap.hold.later' })
+    expect(bot(ask([ASH]), view([SEARCH, STRATOS], [ASH]), context).rule).toBe('handtrap.use.respond')
+    expect(bot(ask([ASH, MAXX]), view([STRATOS], [ASH, MAXX]), context)).toMatchObject({ answer: { index: 1 }, rule: 'handtrap.use.draw' })
   })
 })

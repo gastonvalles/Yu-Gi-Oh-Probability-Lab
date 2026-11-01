@@ -57,8 +57,9 @@ type IdleAsk = AskOf<'select_idlecmd'>
 
 const NO_FACTS = () => undefined
 
-export function turnBot(priority: readonly number[], extra: readonly number[] = [], aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number, factsOf: (code: number) => CardFacts | undefined = NO_FACTS): Bot {
-  const reacts = handtrapBot(priority, extra, aliasOf, attributeOf)
+/** `spend`: cuándo gasta una handtrap contra tu eslabón (`handtrapBot`); el bot con mazo pasa `mayInterrupt`. */
+export function turnBot(priority: readonly number[], extra: readonly number[] = [], aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number, factsOf: (code: number) => CardFacts | undefined = NO_FACTS, spend?: (view: BotView) => boolean): Bot {
+  const reacts = handtrapBot(priority, extra, aliasOf, attributeOf, spend)
   const turnRule = (code: number) => turnRuleOf(code, aliasOf)
   /** Lo que no conviene gastar como Tributo ni Invocar de relleno: lo que el bot usa con una regla. */
   const keeps = (code: number) => ruleOf(code, aliasOf) !== undefined || turnRule(code) !== undefined

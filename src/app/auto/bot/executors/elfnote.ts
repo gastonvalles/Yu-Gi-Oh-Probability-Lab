@@ -1,6 +1,7 @@
 import type { AskOf, CardLoc, CoreAsk } from '../../protocol'
 import type { Bot, BotCard, BotReason, BotView } from '../bot'
 import { ELFNOTE as E, ELFNOTE_DECK } from '../../../bot-deck-lists'
+import { mayInterrupt } from '../interrupt'
 import { turnBot, type CardFacts } from '../turn'
 import {
   ATTACK_TIMING,
@@ -45,6 +46,8 @@ import {
 const OWN = new Set<number>([...ELFNOTE_DECK.main, ...ELFNOTE_DECK.extra].map(([code]) => code))
 /** Sus handtraps, en ese orden de preferencia: las usa como el rival de handtraps. */
 const HANDTRAPS: number[] = [E.ash, E.veiler, E.ogre, E.nibiru, E.droll, E.fuwalos]
+/** Lo que niega tu eslabón desde su campo (cuenta para `mayInterrupt`). */
+const RESPONDERS = new Set<number>([E.n90, E.impasto, E.diactorus, E.rhapsodia])
 /** Los Elfnote de Nivel 6 (Lanzadores de Conjuros: June Pride pide uno de material): los que van al centro. */
 const SIX = new Set<number>([E.lucina, E.regina, E.fortuna])
 /** Lo que manda o descarta primero (costos): lo que menos le sirve. */
@@ -234,8 +237,8 @@ function chain(ask: AskOf<'select_chain'>, s: Scene): DeckDecision | null {
   const main = (view.phase & (PHASE.MAIN1 | PHASE.MAIN2)) !== 0
 
   // Contra tu eslabón: Number 90 (tu efecto de monstruo), Impasto (lo niega y lo destruye; Non-Finito vuelve en la End Phase), Diactorus (niega tu carta del campo), Rhapsodia (niega tu
-  // carta boca arriba).
-  if (yours && top.card) {
+  // carta boca arriba). Si vale gastarla (`mayInterrupt`).
+  if (yours && top.card && mayInterrupt(view, s.facts, RESPONDERS)) {
     const place = top.card.place
     const source = place ? atPlace(view, place) : null
     const monster = place?.location === LOC.MZONE || ((s.facts(top.code)?.type ?? 0) & 0x1) !== 0
@@ -489,7 +492,7 @@ export const ELFNOTE_EXECUTOR: DeckExecutor = { plays: PLAYS, chain, choose }
 
 /** El bot de Elfnote: el ejecutor y, para lo que no decide, sus handtraps como el rival que juega su turno (`turnBot`). */
 export function elfnoteBot(facts: (code: number) => CardFacts | undefined, aliasOf: (code: number) => number = () => 0, attributeOf?: (code: number) => number): Bot {
-  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts)
+  const reacts = turnBot(HANDTRAPS, [], aliasOf, attributeOf, facts, (view) => mayInterrupt(view, facts, RESPONDERS, aliasOf))
   // Sus cartas con regla (`chain`): si no la usó, no era el momento, y no se cuenta como «no sé cuándo conviene».
   const fallback: Bot = (ask, view, context) => {
     const decision = reacts(ask, view, context)

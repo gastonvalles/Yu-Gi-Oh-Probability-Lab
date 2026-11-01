@@ -44,7 +44,7 @@ function reasonOf(why: HandtrapWhy): { reason: BotReason; rule: string } {
     case 'extra':
       return { reason: { key: 'auto.bot.reason.cost.extra', cards: why.picked }, rule: 'handtrap.extra' }
     case 'hold': {
-      const key = why.rule ? HOLD[why.rule] : 'noRule'
+      const key = why.later ? 'later' : why.rule ? HOLD[why.rule] : 'noRule'
 
       return { reason: { key: `auto.bot.reason.hold.${key}`, cards: [why.code, why.to] }, rule: `handtrap.hold.${key}` }
     }
@@ -61,8 +61,11 @@ function rivalViewOf(view: BotView): RivalView {
   }
 }
 
-/** El rival de handtraps (`handtrapPolicy`: `priority` y `extra` en el orden de la hoja; `aliasOf`, el original de un arte alternativo; `attributeOf`, el Atributo de una carta) con sus motivos. */
-export function handtrapBot(priority: readonly number[], extra: readonly number[] = [], aliasOf?: (code: number) => number, attributeOf?: (code: number) => number): Bot {
+/**
+ * El rival de handtraps (`handtrapPolicy`: `priority` y `extra` en el orden de la hoja; `aliasOf`, el original de un arte alternativo; `attributeOf`, el Atributo de una carta) con sus
+ * motivos. `spend`: si puede gastar ahora una interrupción contra tu eslabón (el bot con mazo, `mayInterrupt`); sin él, la usa a la primera.
+ */
+export function handtrapBot(priority: readonly number[], extra: readonly number[] = [], aliasOf?: (code: number) => number, attributeOf?: (code: number) => number, spend?: (view: BotView) => boolean): Bot {
   const decide = handtrapDecide(priority, extra, aliasOf, attributeOf)
 
   return (ask, view, { random }) => {
@@ -71,7 +74,7 @@ export function handtrapBot(priority: readonly number[], extra: readonly number[
     if (even && even.count >= 2) {
       return { answer: { type: 'select_chain', index: even.index }, reason: { key: 'auto.bot.reason.handtrap.evenly', cards: [even.code], params: { count: even.count } }, rule: 'handtrap.use.evenly' }
     }
-    const { answer, why } = decide(ask, rivalViewOf(view), (next) => passiveAnswer(next, random))
+    const { answer, why } = decide(ask, rivalViewOf(view), (next) => passiveAnswer(next, random), spend && (() => spend(view)))
 
     if (why) return { answer, ...reasonOf(why) }
     if (even) return { answer, reason: { key: 'auto.bot.reason.hold.evenly', cards: [even.code] }, rule: 'handtrap.hold.evenly' }
