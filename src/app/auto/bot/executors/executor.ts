@@ -6,17 +6,17 @@ import { MAX_IDLE, type CardFacts } from '../turn'
 /**
  * El marco de un ejecutor por mazo (etapa 2 del bot, «un ejecutor por mazo»): el mazo da sus reglas como datos (`DeckExecutor`) y el marco las corre como un `Bot` puro.
  * - **Main Phase** (`select_idlecmd` en su turno): gana la primera `Play` cuya carta está en la lista que ofrece el núcleo (que ya filtra lo legal) y cuyo `when` da verdadero. Si
- *   ninguna gana: la Battle Phase si hay un ataque que conviene (`attackPlan`); si no, terminar el turno.
+ *   ninguna gana: la Battle Phase si hay un ataque que conviene (`attackPlan`); si no, terminar el turno. Antes, las posiciones de sus monstruos (`executor.position.*`).
  * - **Lo que sigue** (costos, objetivos, búsquedas, materiales, sí/no, opciones, casillas): `choose` del mazo con `Scene.current`, el efecto que se está jugando (el eslabón suyo que
  *   se resuelve o, al activarlo, la jugada que acaba de elegir). Las casillas de lo que sale del Extra Deck van a la Zona de Monstruos Extra.
  * - **Cadenas** (`select_chain`): `chain` del mazo; lo que no decide, el de reserva (`fallback`: las handtraps y Called by the Grave de `turnBot`).
- * - **Battle Phase**: el ataque directo si puede, o contra tu monstruo boca arriba que destruye sin perder el suyo; después, a la Main Phase 2 (ahí coloca sus Mágicas Rápidas).
+ * - **Battle Phase**: los ataques de `attackPlan` (directo, seguro, a ciegas contra lo boca abajo, el empate que conviene); después, a la Main Phase 2 (ahí coloca sus Mágicas Rápidas).
  * Invariantes: un tope de `MAX_IDLE` jugadas por turno; una jugada que se repite con la mesa igual queda afuera ese turno (sin bucles); toda respuesta pasa por `legal` y, si no
  * pasa, contesta el de reserva (el núcleo rechaza lo ilegal con `RETRY`). Decide sólo con su vista y lo impreso de las cartas (`facts`, del `.cdb`, público).
  */
 
 export const LOC = { DECK: 0x01, HAND: 0x02, MZONE: 0x04, SZONE: 0x08, GRAVE: 0x10, REMOVED: 0x20, EXTRA: 0x40 } as const
-export const TYPE = { MONSTER: 0x1, SPELL: 0x2, TRAP: 0x4, EFFECT: 0x20, TOKEN: 0x4000, QUICKPLAY: 0x10000, LINK: 0x4000000 } as const
+export const TYPE = { MONSTER: 0x1, SPELL: 0x2, TRAP: 0x4, EFFECT: 0x20, FUSION: 0x40, SYNCHRO: 0x2000, TOKEN: 0x4000, QUICKPLAY: 0x10000, XYZ: 0x800000, LINK: 0x4000000 } as const
 /** `PHASE_*` del núcleo. */
 export const PHASE = { DRAW: 0x1, STANDBY: 0x2, MAIN1: 0x4, BATTLE: 0x08 | 0x10 | 0x20 | 0x40 | 0x80, MAIN2: 0x100, END: 0x200 } as const
 /** `TIMING_ATTACK`: en `hint_timing_other`, la ventana que abre una declaración de ataque. */
@@ -134,28 +134,57 @@ export function lastAttack(view: BotView) {
   return last?.kind === 'attack' && last.side === 'them' ? last : null
 }
 
-/** El mejor ataque: directo (sin monstruos tuyos, o con uno que puede atacar directo), o contra tu monstruo boca arriba que destruye sin perder el suyo (el de más ATK). */
-export function attackPlan(s: Scene, attackers: readonly { atk: number; direct: boolean }[]): { i: number; target: number | null } | null {
+export interface Attacker {
+  /** Para saber si salió del Extra Deck (el empate que conviene); sin esto, cuenta como del Main Deck. */
+  code?: number
+  atk: number
+  direct: boolean
+}
+export type AttackKind = 'direct' | 'safe' | 'blind' | 'trade'
+/** A un monstruo boca abajo se lo ataca a ciegas desde este ATK: con menos, lo probable es comerse el rebote de su DEF. ponytail: umbral fijo; afinarlo si se mide el DEF típico. */
+export const BLIND_MIN = 1000
+const EXTRA_TYPES = TYPE.FUSION | TYPE.SYNCHRO | TYPE.XYZ | TYPE.LINK
+/** Algún monstruo tuyo boca arriba tiene más ATK que eso (aunque esté en defensa: en tu turno lo podés cambiar). */
+export const outclassed = (s: Scene, atk: number) => monstersOf(s.view.them).some((card) => card.code !== 0 && card.pos !== 'set' && atkOf(s, card) > atk)
+
+/**
+ * El mejor ataque, en este orden:
+ * - **Directo** (sin monstruos tuyos, o con uno que puede atacar directo): el más fuerte.
+ * - **Seguro**: tu monstruo boca arriba de más ATK que destruye sin perder el suyo, con el más débil que alcanza (los fuertes quedan para lo que sigue: si te vacía el campo, atacan directo).
+ * - **A ciegas**: tu monstruo boca abajo, con el más fuerte (desde `BLIND_MIN`): en defensa no destruye al suyo y, si sobrevive, queda boca arriba y se sabe qué es.
+ * - **Empate** de ATK (se destruyen los dos): si tu monstruo vale más (salió del Extra Deck y el suyo no) o si es el último que tenés y los demás suman tus vidas (letal).
+ */
+export function attackPlan(s: Scene, attackers: readonly Attacker[]): { i: number; target: number | null; kind: AttackKind } | null {
   const yours = monstersOf(s.view.them)
-  let best: { i: number; target: number | null; value: number } | null = null
+  const strongest = ranked(attackers, (attacker) => attacker.atk)
+  const weakest = [...strongest].reverse()
+  const direct = strongest.find((i) => yours.length === 0 || attackers[i]!.direct)
 
-  attackers.forEach((attacker, i) => {
-    if (yours.length === 0 || attacker.direct) {
-      const value = 100_000 + attacker.atk
+  if (direct !== undefined) return { i: direct, target: null, kind: 'direct' }
+  const seen = s.view.them.monsters.flatMap((card, sequence) => (card && card.code !== 0 && card.pos !== 'set' && card.stats ? [{ card, stats: card.stats, sequence }] : []))
 
-      if (attacker.direct && (!best || value > best.value)) best = { i, target: null, value }
-      if (yours.length === 0) return
-    }
-    s.view.them.monsters.forEach((card, sequence) => {
-      if (!card || card.code === 0 || card.pos === 'set' || !card.stats) return
-      const safe = card.pos === 'atk' ? card.stats.attack < attacker.atk : card.stats.defense < attacker.atk
-      const value = card.stats.attack + (card.pos === 'atk' ? attacker.atk - card.stats.attack : 0)
+  for (const { card, stats, sequence } of [...seen].sort((a, b) => b.stats.attack - a.stats.attack)) {
+    const guard = card.pos === 'atk' ? stats.attack : stats.defense
+    const i = weakest.find((index) => attackers[index]!.atk > guard)
 
-      if (safe && (!best || (best.target !== null && value > best.value))) best = { i, target: sequence, value }
-    })
-  })
+    if (i !== undefined) return { i, target: sequence, kind: 'safe' }
+  }
+  const hidden = s.view.them.monsters.findIndex((card) => card !== null && (card.code === 0 || card.pos === 'set'))
+  const top = strongest[0]
 
-  return best ? { i: (best as { i: number }).i, target: (best as { target: number | null }).target } : null
+  if (hidden >= 0 && top !== undefined && attackers[top]!.atk >= BLIND_MIN) return { i: top, target: hidden, kind: 'blind' }
+  for (const { card, stats, sequence } of seen) {
+    const i = card.pos === 'atk' && stats.attack > 0 ? weakest.find((index) => attackers[index]!.atk === stats.attack) : undefined
+
+    if (i === undefined) continue
+    const rest = attackers.reduce((sum, attacker, index) => (index === i ? sum : sum + attacker.atk), 0)
+    const lethal = yours.length === 1 && rest >= s.view.lp.them
+    const worthMore = isType(s, card.code, EXTRA_TYPES) && !isType(s, attackers[i]!.code ?? 0, EXTRA_TYPES)
+
+    if (lethal || worthMore) return { i, target: sequence, kind: 'trade' }
+  }
+
+  return null
 }
 
 /** Que la respuesta sea una que el núcleo acepta (índices en rango, cantidades entre `min` y `max`): si no, contesta el de reserva. */
@@ -232,7 +261,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
   /** La mesa (por códigos) la última vez que eligió cada jugada: la misma jugada con la misma mesa no vuelve este turno. */
   let seen = new Map<string, string>()
   let blocked = new Set<string>()
-  let attackTarget: { attacker: number; target: number } | null = null
+  let attackTarget: { attacker: number; target: number; kind: AttackKind } | null = null
 
   const boardKey = (view: BotView) =>
     JSON.stringify([view.me.hand.map((card) => card.code), cardsOf(view.me).map((card) => [card.code, card.pos]), view.me.grave.length, view.me.banished.length, cardsOf(view.them).length, view.lp, view.chain.length])
@@ -276,9 +305,25 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     }
 
     const empty = monstersOf(s.view.them).length === 0
-    const plan = ask.to_bp ? attackPlan(s, monstersOf(s.view.me).filter((card) => card.pos === 'atk').map((card) => ({ atk: atkOf(s, card), direct: empty || (deck.direct?.includes(card.code) ?? false) }))) : null
+    const attackerOf = (card: BotCard): Attacker => ({ code: card.code, atk: atkOf(s, card), direct: empty || (deck.direct?.includes(card.code) ?? false) })
+    // Las posiciones, sólo con lo que ofrece el núcleo (no lo Invocado este turno, ni lo que ya atacó o cambió): antes de la Battle Phase, a ataque lo que tiene en defensa y ahora
+    // tiene un ataque que conviene; al terminar, a defensa lo que quedó en ataque y es más débil que un monstruo tuyo (no te deja daño de combate).
+    const reposition = (test: (card: BotCard) => boolean) =>
+      ask.pos_changes.findIndex((loc) => {
+        const card = atPlace(s.view, loc)
+
+        return card !== null && card.code !== 0 && test(card)
+      })
+    // A ciegas no cuenta: ataca sólo el más fuerte y este quedaría en ataque sin atacar.
+    const up = ask.to_bp ? reposition((card) => card.pos === 'def' && !outclassed(s, atkOf(s, card)) && (attackPlan(s, [attackerOf(card)])?.kind ?? 'blind') !== 'blind') : -1
+
+    if (up >= 0) return { answer: { type: ask.type, action: 2, index: up }, reason: { key: 'auto.bot.reason.position.attack', cards: [atPlace(s.view, ask.pos_changes[up]!)?.code ?? 0] }, rule: 'executor.position.attack' }
+    const plan = ask.to_bp ? attackPlan(s, monstersOf(s.view.me).filter((card) => card.pos === 'atk').map(attackerOf)) : null
 
     if (plan) return { answer: { type: ask.type, action: 6, index: null }, rule: 'executor.battle' }
+    const down = reposition((card) => card.pos === 'atk' && outclassed(s, atkOf(s, card)))
+
+    if (down >= 0) return { answer: { type: ask.type, action: 2, index: down }, reason: { key: 'auto.bot.reason.position.defense', cards: [atPlace(s.view, ask.pos_changes[down]!)?.code ?? 0] }, rule: 'executor.position.defense' }
 
     return end(endReason(s), 'executor.end')
   }
@@ -303,7 +348,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     intent = null
     const plan = attackPlan(
       s,
-      ask.attacks.map((card) => ({ atk: atkOf(s, atPlace(s.view, card)), direct: card.can_direct })),
+      ask.attacks.map((card) => ({ code: card.code, atk: atkOf(s, atPlace(s.view, card)), direct: card.can_direct })),
     )
 
     if (plan) {
@@ -314,7 +359,7 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
         return { answer: { type: ask.type, action: 1, index: plan.i }, reason, rule: 'executor.attack.direct' }
       }
-      attackTarget = { attacker: attacker.code, target: plan.target }
+      attackTarget = { attacker: attacker.code, target: plan.target, kind: plan.kind }
       return { answer: { type: ask.type, action: 1, index: plan.i }, rule: 'executor.attack' }
     }
 
@@ -324,11 +369,15 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
   /** El objetivo del ataque que eligió: tu monstruo en esa casilla. */
   function attackTargetOf(ask: AskOf<'select_card'>, s: Scene): DeckDecision | null {
     if (!attackTarget) return null
-    const { attacker, target } = attackTarget
+    const { attacker, target, kind } = attackTarget
     const index = ask.selects.findIndex((card) => !isMine(s.view, card) && card.location === LOC.MZONE && card.sequence === target)
 
     attackTarget = null
-    return index >= 0 ? { answer: { type: ask.type, indices: [index] }, reason: { key: 'auto.bot.reason.battle.safe', cards: [attacker, s.view.them.monsters[target]?.code ?? 0] }, rule: 'executor.attack.safe' } : null
+    if (index < 0) return null
+    const to = s.view.them.monsters[target]?.code ?? 0
+    const reason: BotReason = kind === 'blind' ? { key: 'auto.bot.reason.battle.blind', cards: [attacker] } : { key: `auto.bot.reason.battle.${kind === 'trade' ? 'trade' : 'safe'}`, cards: [attacker, to] }
+
+    return { answer: { type: ask.type, indices: [index] }, reason, rule: `executor.attack.${kind}` }
   }
 
   return (ask, view, context) => {

@@ -47,7 +47,7 @@ const settled = (session: AutoSession) =>
   })
 
 const IDLE = ['summons', 'special_summons', 'pos_changes', 'monster_sets', 'spell_sets', 'activates'] as const
-const ACTION = { summon: 0, activate: 5 } as const
+const ACTION = { summon: 0, mset: 3, activate: 5 } as const
 type Step = { do: keyof typeof ACTION; code: number } | { do: 'attack'; code: number } | { do: 'end' }
 
 /** Vos: tus jugadas en orden en cada `select_idlecmd` (lo que no se puede espera), tus efectos opcionales (también en una ventana de cadena) sí, atacar con esa carta; lo demás, como el pasivo. */
@@ -299,5 +299,16 @@ describe.skipIf(!hasCoreData)('el ejecutor de Sky Striker con el núcleo real (n
     expect(holds.rules).not.toContain('executor.attack.safe')
     expect(holds.rules).not.toContain('executor.battle')
     expect(holds.log.find((item) => item.decision.rule === 'executor.end' && item.turn === 2)?.decision.reason?.key).toBe('auto.bot.reason.end.noSafeAttack')
+  })
+
+  it('colocar un monstruo boca abajo no le frena los ataques: lo ataca a ciegas con el más fuerte', { timeout: 120_000 }, async () => {
+    const { filler } = await source.manifest()
+    const wall = filler.find((code) => (cards.get(code)?.defense ?? 9999) <= 1000 && (cards.get(code)?.level ?? 9) <= 4)!
+    const without = [SKY.fallen, SKY.crown, SKY.widow, SKY.mst, SKY.talent, SKY.called, SKY.shark, SKY.lemnisgate]
+    const run = await scenario({ botHand: [SKY.engage, SKY.raye, SKY.hornet, SKY.linkage, 14558127], seat: 0, myHand: [wall], steps: [{ do: 'mset', code: wall }, { do: 'end' }], turns: 2, without })
+
+    report.blind = { rules: run.rules.filter((rule) => rule.startsWith('executor')), lp: run.lp }
+    expect(run.fault).toBeNull()
+    expect(run.rules).toContain('executor.attack.blind')
   })
 })
