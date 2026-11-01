@@ -74,9 +74,27 @@ export function ListsSection() {
           </ListGroup>
         </Specimen>
 
-        <Specimen title="ListGroup + ListRow choice (una elección)" layout="column" note={<>Los rivales de Solo: adentro de un <Tag>role="radiogroup"</Tag>, cada fila es un <Tag>radio</Tag> (sin flecha: elegir no abre nada) y la elegida lleva el aro ámbar. Apagada, con <Tag>aria-disabled</Tag>: se enfoca y dice por qué. Archivos: <Tag>ui/ListRow.tsx</Tag> <Tag>duel/SoloScreen.tsx</Tag></>}>
+        <Specimen title="ListGroup + ListRow choice (una elección)" layout="column" note={<>Los rivales de Solo: adentro de un <Tag>role="radiogroup"</Tag>, cada fila es un <Tag>radio</Tag> (sin flecha: elegir no abre nada) y la elegida lleva el aro ámbar. Apagada, con <Tag>aria-disabled</Tag>: se enfoca y dice por qué. Con <Tag>below</Tag>, algo debajo de la fila (fuera de su botón y dentro del aro): elegí Handtraps. Archivos: <Tag>ui/ListRow.tsx</Tag> <Tag>duel/SoloScreen.tsx</Tag></>}>
           <div role="radiogroup" aria-label="Rival de muestra">
             <ListGroup>
+              <ListRow
+                choice
+                media={<CardStub />}
+                title="Handtraps"
+                subtitle="Te interrumpen las que elijas: ¿tu combo aguanta?"
+                selected={rival === 'handtraps'}
+                below={
+                  rival === 'handtraps' ? (
+                    <div className="flex items-center gap-3">
+                      <span className="min-w-0 flex-1 text-micro text-muted">3 en mano · de 9 cartas</span>
+                      <Button variant="secondary" onClick={() => setSaid('Elegir…')}>
+                        Elegir…
+                      </Button>
+                    </div>
+                  ) : undefined
+                }
+                onClick={() => setRival('handtraps')}
+              />
               <ListRow choice media={<CardStub />} title="Elfnote" subtitle="Sincronías en el centro, también en tu turno." selected={rival === 'elfnote'} end={<Badge>Último</Badge>} onClick={() => setRival('elfnote')} />
               <ListRow choice icon="target" title="Pasivo" subtitle="No juega: sólo recibe." selected={rival === 'passive'} onClick={() => setRival('passive')} />
               <ListRow choice media={<CardStub />} title="Ryzeal" subtitle="Necesita el modo automático" disabled onClick={() => setRival('ryzeal')} />
