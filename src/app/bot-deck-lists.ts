@@ -94,99 +94,85 @@ export const SKY_STRIKER_DECK: BotDeckList = {
   testedWith: 'bc5d82d66842f3c62d20747c530b164ce98004f3',
 }
 
-/** Los passcodes del mazo de Despia Branded que nombran las reglas (verificados contra el `.cdb` del núcleo, con su script). */
-export const BRANDED = {
-  aluber: 62962630,
-  albion: 25451383,
-  whiteDragon: 73819701,
-  albaz: 68468459,
-  cartesia: 95515789,
-  quem: 45883110,
-  incredible: 55273560,
-  dogmatika: 60303688,
-  kitt: 19304410,
-  mercourier: 19096726,
-  cocatorium: 94395649,
-  saronir: 60242223,
+/**
+ * Los passcodes del mazo de Angelechy que nombran las reglas (verificados contra el `.cdb` del núcleo, con su script; Strategy Score, Opposition, Endgame Problem, Verdict,
+ * Castellan y Seneschal cargan el script de preestreno por el mapa `released` de `auto-data.lock.json`).
+ */
+export const ANGELECHY = {
+  problem: 17782288,
+  score: 13068112,
+  opposition: 86457955,
+  endgame: 12845564,
+  bifrost: 32236916,
+  desires: 35261759,
+  burial: 35726888,
+  terraforming: 73628505,
+  purge: 97045737,
+  impulse: 40366667,
+  spark: 6325660,
+  e4: 80565021,
+  disturbance: 54171327,
+  verdict: 48340269,
   fuwalos: 42141493,
   ash: 14558127,
   ogre: 59438930,
   droll: 94145021,
-  fusion: 44362883,
-  spirits: 29948294,
-  opening: 36637374,
-  nadir: 1984618,
-  virtuous: 30271097,
-  superPoly: 48130397,
-  sarcophagus: 75500286,
-  retribution: 17751597,
-  champions: 74405783,
-  darkDragon: 78397661,
-  mirrorjade: 44146295,
-  lubellion: 70534340,
-  granguignol: 24915933,
-  titaniklad: 41373230,
-  rindbrumm: 51409648,
-  dogma: 76666602,
-  quaeritis: 72272462,
-  mixousia: 80843006,
-  wingman: 87758525,
-  aeon: 33166263,
-  secreterion: 89851827,
+  shatranga: 42410161,
+  enlisted: 81797573,
+  castellan: 50284408,
+  seneschal: 86673403,
+  bastion: 28904860,
+  destrier: 55393975,
+  chaosAngel: 22850702,
+  legatia: 15982593,
+  hyperion: 63101468,
+  kusanagi: 31114334,
+  assaultDragon: 73218989,
 } as const
 
-const B = BRANDED
+const A = ANGELECHY
 
 /**
- * Despia Branded (`executors/branded.ts`): la lista que salió segunda en el WCQ Regional de Richmond (2026-10-24, 123 jugadores), la mejor ubicada de las Despia Branded «puras»
- * (sin el Ritual de Luz y Oscuridad) más recientes de `src/data/meta-decklists.json`; las del 2026-10-25 son Top 8 y la ganadora de Río (2026-09-27) lleva el Ritual. Tiene 41
- * cartas en el Main, como se jugó.
+ * Angelechy (`executors/angelechy.ts`): la lista que salió segunda en el Dutch Open de Ede (2026-10-31, 188 jugadores), la Angelechy «pura» mejor ubicada de
+ * `src/data/meta-decklists.json`: sin Elfnote, Branded, el Ritual ni Tenpai. Un Main de Mágicas y Trampas (sin monstruos, salvo las handtraps) y un Extra de Sincronías.
  */
-export const BRANDED_DECK: BotDeckList = {
-  id: 'branded',
-  name: 'Despia Branded',
-  line: 'auto.rival.deck.branded',
+export const ANGELECHY_DECK: BotDeckList = {
+  id: 'angelechy',
+  name: 'Angelechy',
+  line: 'auto.rival.deck.angelechy',
   ready: true,
   main: [
-    [B.aluber, 3],
-    [B.albion, 1],
-    [B.whiteDragon, 2],
-    [B.albaz, 1],
-    [B.cartesia, 2],
-    [B.quem, 1],
-    [B.incredible, 2],
-    [B.dogmatika, 1],
-    [B.kitt, 1],
-    [B.mercourier, 1],
-    [B.cocatorium, 1],
-    [B.saronir, 1],
-    [B.fuwalos, 3],
-    [B.ash, 3],
-    [B.ogre, 3],
-    [B.droll, 1],
-    [B.fusion, 1],
-    [B.spirits, 1],
-    [B.opening, 1],
-    [B.nadir, 3],
-    [B.virtuous, 3],
-    [B.superPoly, 3],
-    [B.sarcophagus, 1],
-    [B.retribution, 1],
+    [A.fuwalos, 3],
+    [A.ash, 3],
+    [A.ogre, 3],
+    [A.droll, 1],
+    [A.problem, 3],
+    [A.score, 3],
+    [A.opposition, 3],
+    [A.endgame, 1],
+    [A.bifrost, 1],
+    [A.desires, 1],
+    [A.burial, 3],
+    [A.terraforming, 1],
+    [A.purge, 3],
+    [A.impulse, 3],
+    [A.spark, 2],
+    [A.e4, 3],
+    [A.disturbance, 1],
+    [A.verdict, 2],
   ],
   extra: [
-    [B.champions, 1],
-    [B.darkDragon, 1],
-    [B.mirrorjade, 1],
-    [B.lubellion, 1],
-    [B.granguignol, 2],
-    [B.titaniklad, 1],
-    [B.rindbrumm, 1],
-    [B.dogma, 2],
-    [B.quaeritis, 1],
-    [B.mixousia, 1],
-    [B.wingman, 1],
-    [B.aeon, 1],
-    [B.secreterion, 1],
+    [A.shatranga, 2],
+    [A.enlisted, 2],
+    [A.castellan, 1],
+    [A.seneschal, 1],
+    [A.bastion, 2],
+    [A.destrier, 2],
+    [A.chaosAngel, 1],
+    [A.legatia, 1],
+    [A.hyperion, 1],
+    [A.kusanagi, 1],
+    [A.assaultDragon, 1],
   ],
   testedWith: 'bc5d82d66842f3c62d20747c530b164ce98004f3',
 }
@@ -291,7 +277,7 @@ export const ELFNOTE_DECK: BotDeckList = {
 }
 
 /** Todos, en el orden en que se ofrecen. */
-export const BOT_DECK_LISTS: readonly BotDeckList[] = [SKY_STRIKER_DECK, BRANDED_DECK, ELFNOTE_DECK]
+export const BOT_DECK_LISTS: readonly BotDeckList[] = [SKY_STRIKER_DECK, ANGELECHY_DECK, ELFNOTE_DECK]
 
 /** La lista con ese `id` (para «Ver mazo»); `null` si no hay. */
 export const botDeckList = (id: string | undefined): BotDeckList | null => BOT_DECK_LISTS.find((deck) => deck.id === id) ?? null

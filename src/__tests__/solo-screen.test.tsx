@@ -93,11 +93,11 @@ describe('Solo, de punta a punta', () => {
 
   it('el último bot queda elegido, con «Último», al volver', async () => {
     withWorker()
-    writeHandtrapConfig({ ...DEFAULT_HANDTRAP_CONFIG, botDeck: 'branded' })
+    writeHandtrapConfig({ ...DEFAULT_HANDTRAP_CONFIG, botDeck: 'angelechy' })
     app('#solo')
 
-    expect(await radio(/^Despia Branded/)).toHaveAttribute('aria-checked', 'true')
-    expect(await radio(/^Despia Branded/)).toHaveTextContent('Último')
+    expect(await radio(/^Angelechy/)).toHaveAttribute('aria-checked', 'true')
+    expect(await radio(/^Angelechy/)).toHaveTextContent('Último')
     expect(await radio(/^Sky Striker/)).not.toHaveTextContent('Último')
   })
 
@@ -184,7 +184,7 @@ describe('los estados de Solo', () => {
     const list = screen.getByRole('radiogroup', { name: 'Contra quién jugás' })
 
     expect(within(list).getAllByRole('heading').map((heading) => heading.textContent)).toEqual(['Probá tu combo', 'Bots · cada uno con su mazo'])
-    expect(within(list).getAllByRole('radio').map((radio) => radio.getAttribute('title'))).toEqual(['Handtraps', 'Pasivo', 'Sky Striker', 'Despia Branded', 'Elfnote'])
+    expect(within(list).getAllByRole('radio').map((radio) => radio.getAttribute('title'))).toEqual(['Handtraps', 'Pasivo', 'Sky Striker', 'Angelechy', 'Elfnote'])
     expect(screen.queryByText('Sin bot')).toBeNull()
   })
 

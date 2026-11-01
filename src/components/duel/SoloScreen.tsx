@@ -202,7 +202,7 @@ export function SoloScreen({ deckName, deckSize, minDeck, onOpenBuilder, onPlay,
     </div>
   )
 
-  // A todo el ancho (la hoja del celular) va en `md`: con `lg`, «Jugar contra Despia Branded» se parte en dos renglones a 390 px.
+  // A todo el ancho (la hoja del celular) va en `md`: con `lg`, «Jugar contra …» con un nombre de mazo largo se parte en dos renglones a 390 px.
   const playButton = (fullWidth: boolean) => (
     <ShineFrame className={fullWidth ? 'w-full' : 'ml-auto'} active={deckReady}>
       <Button variant="primary" color="success" size={fullWidth ? 'md' : 'lg'} icon={deckReady ? 'play' : 'cards'} fullWidth={fullWidth} onClick={play}>

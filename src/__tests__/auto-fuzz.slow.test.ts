@@ -19,7 +19,7 @@ import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, runDuel, 
  * los eventos y un duelo con semilla fija se repite igual. Lo mismo con el rival de handtraps en el asiento 1 (`Rival`). Escribe el
  * informe por carta y el de lentitud en CORE_DATA_DIR (nunca en el repo). Parámetros: FUZZ_DECKS (20), FUZZ_DUELS por deck (4),
  * FUZZ_HANDTRAP_DUELS por deck contra el rival de handtraps (2), FUZZ_TURN_DUELS por deck contra el que además juega su turno (2), FUZZ_BOT_DUELS por deck contra cada
- * ejecutor (Sky Striker y Despia Branded: 1, con tu lado al azar y otra vez con tu lado pasivo), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S
+ * ejecutor (Sky Striker, Angelechy y Elfnote: 1, con tu lado al azar y otra vez con tu lado pasivo), FUZZ_SEED (1), FUZZ_CAP preguntas por duelo (2000), FUZZ_DUEL_S
  * segundos por duelo (120: un duelo más largo se corta y queda en el informe de lentitud, no cuenta como cuelgue). El avance va a
  * fuzz-progress.log (y fuzz-progress-handtraps.log, fuzz-progress-turn.log).
  */
@@ -171,11 +171,11 @@ const normalized = (events: AutoEvent[]) => events.filter((event) => event.t ===
  * Contra quién juega el asiento 1: otro bot al azar con un deck del meta, o el rival de handtraps de la pantalla (`handtrapPolicy`, con lo que ve
  * su adaptador): las 15 del catálogo, una copia de cada una, 5 en la mano repartidas con la semilla del duelo y el relleno de Normales. O el que además juega su
  * turno (`turnBot`, con su `BotView` como en la sesión): cinco handtraps, dos copias de cada carta de `TURN_RULES` (y de Ra, para Sphere Mode) y el relleno. O un ejecutor de
- * `BOT_DECKS` con su lista fija (`sky`, `branded`, `elfnote`; con `-passive`, tu lado contesta como el pasivo en vez de al azar).
+ * `BOT_DECKS` con su lista fija (`sky`, `angelechy`, `elfnote`; con `-passive`, tu lado contesta como el pasivo en vez de al azar).
  */
-type Executor = 'sky' | 'branded' | 'elfnote'
+type Executor = 'sky' | 'angelechy' | 'elfnote'
 type Rival = 'random' | 'handtraps' | 'turn' | Executor | `${Executor}-passive`
-const EXECUTORS: Record<Executor, string> = { sky: 'sky-striker', branded: 'branded', elfnote: 'elfnote' }
+const EXECUTORS: Record<Executor, string> = { sky: 'sky-striker', angelechy: 'angelechy', elfnote: 'elfnote' }
 /** Las handtraps del rival que juega su turno: Ash, Maxx "C", Veiler, Impermanence y Droll & Lock Bird. */
 const TURN_HANDTRAPS = [14558127, 23434538, 97268402, 10045474, 94145022]
 
@@ -185,8 +185,8 @@ describe.skipIf(!hasCoreData)('fuzz del núcleo (npm run test:auto)', () => {
   it(`${DECKS} decks × ${TURN_DUELS} duelos contra el rival que juega su turno`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('turn', TURN_DUELS))
   it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Sky Striker (tu lado al azar)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('sky', BOT_DUELS))
   it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Sky Striker (tu lado pasivo)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('sky-passive', BOT_DUELS))
-  it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Despia Branded (tu lado al azar)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('branded', BOT_DUELS))
-  it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Despia Branded (tu lado pasivo)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('branded-passive', BOT_DUELS))
+  it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Angelechy (tu lado al azar)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('angelechy', BOT_DUELS))
+  it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Angelechy (tu lado pasivo)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('angelechy-passive', BOT_DUELS))
   it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Elfnote (tu lado al azar)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('elfnote', BOT_DUELS))
   it(`${DECKS} decks × ${BOT_DUELS} duelos contra el ejecutor de Elfnote (tu lado pasivo)`, { timeout: 6 * 60 * 60 * 1000 }, () => fuzz('elfnote-passive', BOT_DUELS))
 

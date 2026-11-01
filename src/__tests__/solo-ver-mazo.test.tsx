@@ -49,7 +49,7 @@ describe('Ver mazo', () => {
     const sheet = openDeck(deck.name)
     const zones = within(sheet).getByRole('radiogroup', { name: 'Parte del mazo' })
 
-    // Los conteos salen de la lista fija (Sky Striker 40, Branded 41, Elfnote 42; Extra 15) y son los mismos del chip de la ficha.
+    // Los conteos salen de la lista fija (Sky Striker 40, Angelechy 40, Elfnote 42; Extra 15) y son los mismos del chip de la ficha.
     const mainLabel = `Main · ${total(deck.main)}`
     expect(total(deck.extra)).toBe(15)
     expect(screen.getByRole('region', { name: deck.name })).toHaveTextContent(`Main ${total(deck.main)} · Extra 15`)
@@ -126,13 +126,13 @@ describe('Ver mazo', () => {
   it('en el celular: desde la hoja de la ficha, y «Jugar contra X» sigue abajo de la del mazo', async () => {
     media(false)
     const onPlay = vi.fn()
-    solo('branded', onPlay)
+    solo('angelechy', onPlay)
     fireEvent.click(screen.getByRole('button', { name: /Ficha y ajustes/ }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Despia Branded' })).getByRole('button', { name: 'Ver mazo' }))
-    const sheet = screen.getByRole('dialog', { name: 'Mazo de Despia Branded' })
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Angelechy' })).getByRole('button', { name: 'Ver mazo' }))
+    const sheet = screen.getByRole('dialog', { name: 'Mazo de Angelechy' })
 
-    await within(sheet).findByRole('list', { name: 'Main · 41' })
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Jugar contra Despia Branded' }))
+    await within(sheet).findByRole('list', { name: 'Main · 40' })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Jugar contra Angelechy' }))
     expect(onPlay).toHaveBeenCalledWith('auto')
   })
 })

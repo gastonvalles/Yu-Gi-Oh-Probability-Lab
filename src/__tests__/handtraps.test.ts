@@ -185,6 +185,11 @@ describe('lo que se recuerda del simulador', () => {
     expect(read(JSON.stringify({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH] }))).toEqual({ enabled: true, picks: [{ ...VEILER, copies: 2 }, ASH], hand: 3, extra: DEFAULT_RIVAL_EXTRA })
   })
 
+  it('el bot de Despia Branded guardado pasa a ser el de Angelechy, que lo reemplazó; los otros quedan como estaban', () => {
+    expect(read(JSON.stringify({ enabled: false, picks: [ASH], botDeck: 'branded' })).botDeck).toBe('angelechy')
+    expect(read(JSON.stringify({ enabled: false, picks: [ASH], botDeck: 'elfnote' })).botDeck).toBe('elfnote')
+  })
+
   it('«El rival juega su turno»: lo guardado antes (sin el campo) y lo que no es `true`, apagado; encendido vuelve igual y no cambia la mano que se reparte', () => {
     const own = memory()
     const stored = () => own

@@ -350,7 +350,8 @@ export function readHandtrapConfig(storage: () => Storage = () => localStorage):
 
   const picks = Array.isArray(stored.picks) ? parsePicks(stored.picks) : []
 
-  const botDeck = typeof stored.botDeck === 'string' && BOT_DECK_ID.test(stored.botDeck) ? { botDeck: stored.botDeck } : {}
+  // Despia Branded se reemplazó por Angelechy: quien lo había elegido sigue con el bot.
+  const botDeck = typeof stored.botDeck === 'string' && BOT_DECK_ID.test(stored.botDeck) ? { botDeck: stored.botDeck === 'branded' ? 'angelechy' : stored.botDeck } : {}
 
   return { enabled: stored.enabled === true, picks: picks.length > 0 ? picks : defaultConfig().picks, hand: clampHand(stored.hand), extra: parseExtra(stored.extra), ...(stored.ownTurn === true ? { ownTurn: true } : {}), ...botDeck }
 }
