@@ -32,7 +32,7 @@ export const handtraps: Translated<typeof es> = {
   'handtraps.picker.restarts': 'Applying restarts the duel.',
   'handtraps.picker.notAuto': "It doesn't use it on its own yet",
   'handtraps.picker.ownTurn': 'The opponent plays its turn',
-  'handtraps.picker.ownTurnHint': 'It Summons, Sets, activates its cards and attacks: your combos may end with damage.',
+  'handtraps.picker.ownTurnHint': 'Off, it only reacts. On, it also Summons, Sets and attacks: your combo may end with damage.',
   'handtraps.picker.turnCard': 'It plays it on its turn',
   'handtraps.picker.turnOnly': 'It only uses it if it plays its turn',
   'handtraps.picker.filler': "No rule: if it's a monster, it Summons it",

@@ -152,7 +152,7 @@ export function AutoSection() {
       <BotLogSample />
       <RivalSample />
       <BotDeckSample />
-      <Specimen title="Solo · la lista de rivales, la ficha y la barra" layout="column" note={<>La pantalla Solo de verdad (lo que se toca se guarda como en la app): en escritorio, la lista (430 px) y la ficha lado a lado con «Jugar contra X»; en el celular (achicá la ventana), la lista y la barra pegada sobre la de navegación, con lo elegido a la izquierda (abre la ficha en una hoja) y «Jugar». Cada ajuste va en su fila: un solo segmentado (Quién empieza) y el resto interruptores. Archivo: <Tag>duel/SoloScreen.tsx</Tag></>}>
+      <Specimen title="Solo · la lista de rivales, la ficha y la barra" layout="column" note={<>La pantalla Solo de verdad (lo que se toca se guarda como en la app): arriba «Probá tu combo» (Handtraps, con sus cartas como arte y, en el celular y elegido, sus cartas y «Elegir…» debajo, y Pasivo) y los bots debajo; en escritorio, la lista (430 px) y la ficha lado a lado con «Jugar contra X»; en el celular (achicá la ventana), la lista y la barra pegada sobre la de navegación, con lo elegido a la izquierda (abre la ficha en una hoja) y «Jugar». Cada ajuste va en su fila: un solo segmentado (Quién empieza) y el resto interruptores. Archivo: <Tag>duel/SoloScreen.tsx</Tag></>}>
         <div className="overflow-hidden rounded-card border border-border-subtle">
           <SoloScreen deckName="Mi deck" deckSize={40} minDeck={5} onOpenBuilder={() => {}} onPlay={() => {}} />
         </div>

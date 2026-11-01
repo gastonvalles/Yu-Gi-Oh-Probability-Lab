@@ -454,7 +454,7 @@ describe('las hojas del celular, como en el lienzo', () => {
     // Las tarjetas no son filas de la lista: van antes, una al lado de la otra.
     expect(solo.closest('li')).toBeNull()
     expect(solo.parentElement).toHaveClass('grid-cols-2')
-    expect(solo).toHaveTextContent('SoloContra un bot con su mazo, o tu mesa sin bot')
+    expect(solo).toHaveTextContent('SoloTu combo contra handtraps, o un duelo contra un bot')
     expect(online).toHaveTextContent('OnlineSalas, retar a un amigo y duelos en vivo')
     expect(solo).toHaveAttribute('aria-current', 'page')
     expect(solo).toHaveClass('border-nav-active')
@@ -494,7 +494,7 @@ describe('las hojas del celular, como en el lienzo', () => {
     const solo = sheet(buildAppNavGroups(STEPS, {}), 'duel', 'practice')
 
     expect(within(solo.dialog).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'SoloContra un bot con su mazo, o tu mesa sin bot',
+      'SoloTu combo contra handtraps, o un duelo contra un bot',
       'Calculadora de LPVidas, reloj de ronda, moneda y dado',
     ])
     expect(within(solo.dialog).queryByRole('button', { name: /^Online/ })).toBeNull()

@@ -49,7 +49,7 @@ export const shell: Translated<typeof es> = {
   'shell.pill.builds': { one: '{count} build', other: '{count} builds' },
   'shell.pill.exportFormats': 'Image · PDF · YDK',
   'shell.solo.title': 'Solo',
-  'shell.blurb.solo': 'Against a bot with its deck, or your table with no bot',
+  'shell.blurb.solo': 'Your combo against hand traps, or a duel against a bot',
   'shell.online.title': 'Online',
   'shell.blurb.online': 'Rooms, challenge a friend and live duels',
   'shell.blurb.watch': 'Paste the link to watch',

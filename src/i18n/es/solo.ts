@@ -1,13 +1,17 @@
-/** Solo: la lista de rivales (un bot por mazo y, sin bot, el pasivo y el de handtraps), su ficha y la barra de abajo del celular. */
+/** Solo: la lista de rivales («Probá tu combo»: el de handtraps y el pasivo; después, un bot por mazo), su ficha y la barra de abajo del celular. */
 export const solo = {
-  'solo.subtitle': 'Elegí contra quién jugás: un bot con su mazo, o tu mesa sin bot.',
+  'solo.subtitle': 'Probá tu combo contra handtraps o jugá un duelo contra un bot.',
   'solo.rival': 'Contra quién jugás',
   'solo.group.bots': 'Bots · cada uno con su mazo',
-  'solo.group.noBot': 'Sin bot',
+  'solo.group.combo': 'Probá tu combo',
   'solo.last': 'Último',
   'solo.botNeedsAuto': 'Necesita el modo automático',
   'solo.noAuto': 'Este navegador no puede correr el modo automático: los bots no juegan acá. Pasivo y Handtraps van en manual.',
-  'solo.passive': 'No juega: sólo recibe.',
+  'solo.passive': 'No te interrumpe: practicá la línea entera.',
+  'solo.handtraps': 'Te interrumpen las que elijas: ¿tu combo aguanta?',
+  'solo.handtrapsLine': 'Te interrumpe con las handtraps que elijas, cuando las reglas lo dejan.',
+  'solo.rivalCards': 'Las del rival',
+  'solo.ownTurnOn': 'Juega su turno',
   'solo.passiveManual': 'Tu mesa sin rival: movés vos.',
   'solo.lp': '{lp} vidas',
   'solo.deckSize': 'Main {main} · Extra {extra}',
