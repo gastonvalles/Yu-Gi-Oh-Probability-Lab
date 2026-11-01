@@ -91,7 +91,7 @@ describe('las posiciones en la Main Phase del ejecutor', () => {
     expect(bot()(idle([mine(0, 1)], true), scene([card('theirs', 3, 'set')], [card('mine', 1, 'def')]).view, context)).toMatchObject({ answer: { action: 7 } })
   })
 
-  it('en la Battle Phase ataca a ciegas lo boca abajo y elige esa casilla, sin decir que lo destruye seguro', () => {
+  it('en la Battle Phase ataca a ciegas lo boca abajo y elige esa casilla, con su propio motivo (no el de «destruyo sin perder»)', () => {
     const b = bot()
     const view = scene([null, card('theirs', 3, 'set')], [card('mine', 1)]).view
     const battle: CoreAsk = { type: 'select_battlecmd', player: 1, chains: [], attacks: [{ ...mine(0, 1), can_direct: false }], to_m2: true, to_ep: true }
@@ -100,7 +100,6 @@ describe('las posiciones en la Main Phase del ejecutor', () => {
     const target: CoreAsk = { type: 'select_card', player: 1, can_cancel: false, min: 1, max: 1, selects: [{ code: 0, controller: 0, location: L.MZONE, sequence: 1, position: 8 }] }
     const decision = b(target, view, context)
 
-    expect(decision).toMatchObject({ answer: { indices: [0] }, rule: 'executor.attack.blind' })
-    expect(decision.reason).toBeUndefined()
+    expect(decision).toMatchObject({ answer: { indices: [0] }, rule: 'executor.attack.blind', reason: { key: 'auto.bot.reason.battle.blind', cards: [1] } })
   })
 })

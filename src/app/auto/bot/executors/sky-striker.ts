@@ -77,7 +77,7 @@ const battleAhead = (s: Scene) =>
     s,
     monstersOf(s.view.me)
       .filter((card) => card.pos === 'atk')
-      .map((card) => ({ atk: atkOf(s, card), direct: monstersOf(s.view.them).length === 0 || card.code === SKY.hayate })),
+      .map((card) => ({ code: card.code, atk: atkOf(s, card), direct: monstersOf(s.view.them).length === 0 || card.code === SKY.hayate })),
   ) !== null
 
 /** Qué busca con Engage! (cualquier Sky Striker): Raye si no tiene a quién Invocar; si no, la Mágica que le falta. */

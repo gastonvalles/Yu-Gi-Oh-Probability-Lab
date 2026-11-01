@@ -317,13 +317,13 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
     // A ciegas no cuenta: ataca sólo el más fuerte y este quedaría en ataque sin atacar.
     const up = ask.to_bp ? reposition((card) => card.pos === 'def' && !outclassed(s, atkOf(s, card)) && (attackPlan(s, [attackerOf(card)])?.kind ?? 'blind') !== 'blind') : -1
 
-    if (up >= 0) return { answer: { type: ask.type, action: 2, index: up }, rule: 'executor.position.attack' }
+    if (up >= 0) return { answer: { type: ask.type, action: 2, index: up }, reason: { key: 'auto.bot.reason.position.attack', cards: [atPlace(s.view, ask.pos_changes[up]!)?.code ?? 0] }, rule: 'executor.position.attack' }
     const plan = ask.to_bp ? attackPlan(s, monstersOf(s.view.me).filter((card) => card.pos === 'atk').map(attackerOf)) : null
 
     if (plan) return { answer: { type: ask.type, action: 6, index: null }, rule: 'executor.battle' }
     const down = reposition((card) => card.pos === 'atk' && outclassed(s, atkOf(s, card)))
 
-    if (down >= 0) return { answer: { type: ask.type, action: 2, index: down }, rule: 'executor.position.defense' }
+    if (down >= 0) return { answer: { type: ask.type, action: 2, index: down }, reason: { key: 'auto.bot.reason.position.defense', cards: [atPlace(s.view, ask.pos_changes[down]!)?.code ?? 0] }, rule: 'executor.position.defense' }
 
     return end(endReason(s), 'executor.end')
   }
@@ -374,8 +374,10 @@ export function executorBot(deck: DeckExecutor, facts: (code: number) => CardFac
 
     attackTarget = null
     if (index < 0) return null
-    // A ciegas o el empate no tienen motivo propio todavía (el de `battle.safe` diría que no pierde el suyo).
-    return { answer: { type: ask.type, indices: [index] }, ...(kind === 'safe' ? { reason: { key: 'auto.bot.reason.battle.safe', cards: [attacker, s.view.them.monsters[target]?.code ?? 0] } } : {}), rule: `executor.attack.${kind}` }
+    const to = s.view.them.monsters[target]?.code ?? 0
+    const reason: BotReason = kind === 'blind' ? { key: 'auto.bot.reason.battle.blind', cards: [attacker] } : { key: `auto.bot.reason.battle.${kind === 'trade' ? 'trade' : 'safe'}`, cards: [attacker, to] }
+
+    return { answer: { type: ask.type, indices: [index] }, reason, rule: `executor.attack.${kind}` }
   }
 
   return (ask, view, context) => {
