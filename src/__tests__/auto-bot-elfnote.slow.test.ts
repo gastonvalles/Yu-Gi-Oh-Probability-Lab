@@ -25,19 +25,21 @@ const GOLDFISH = Number(process.env.ELFNOTE_GOLDFISH ?? 50)
 /** `ELFNOTE_LOG=<semilla>`: escribe cada pregunta del bot de esa mano, con lo que ofrece el núcleo y lo que contestó (para mirar una mano antes de culpar a la política). */
 const LOG_SEED = Number(process.env.ELFNOTE_LOG ?? 0)
 /**
- * Los umbrales del goldfish (con 50 manos al escribirlo se midió 0,98 · 0,78 · 1), un poco por debajo de lo medido, para que una regla rota se note y el azar de 50 manos no.
- * - `synchro`: termina su turno 1 con una Sincronía o una Xyz en el campo. Casi todas las manos llegan: Lucina, Regina, Medius, Pendulum Treasure, Vidolium, las Ars Magna y
- *   Theorealize terminan en Power Patron; sin nada de eso (sólo handtraps y Vidolium), no.
- * - `interrupt`: termina su turno 1 con algo que te frena en el tuyo: Lars, Number 90, Zalen, Diabell o Archethys; Rhapsodia con una Sincronía; Lucina o Fortuna fuera del centro
- *   con un monstruo ahí; o Power Patron con un Nivel 6 en el centro. Los campos de Strelitzia, Regina y Psychic End Punisher (o Shooting Riser) no cuentan: unas 11 de cada 50.
- * - `damage`: con tu campo vacío, te hace daño en su turno 3.
+ * Los umbrales del goldfish (con 50 manos al escribirlo se midió 0,96 · 0,74 · 1), un poco por debajo de lo medido, para que una regla rota se note y el azar de 50 manos no.
+ * - `synchro`: termina su turno 1 con un monstruo del Extra Deck en el campo (Junora, Strelitzia, Non-Finito, Nerva, Psychic End Punisher…) o con Power Patron y un Nivel 6 en el
+ *   centro (Invoca a June Pride en tu Main Phase: guarda a Power Patron en vez de gastarlo en Strelitzia). Sólo con lo del Extra Deck, unas 34 de cada 50 (`extraOnly`).
+ * - `interrupt`: termina su turno 1 con algo que te frena en el tuyo: Number 90 o Diactorus; Rhapsodia con una Sincronía; Lucina o Fortuna fuera del centro con un monstruo ahí;
+ *   Power Patron con un Nivel 6 en el centro; Non-Finito con lo que colocó (Impasto) o con Nerva. Los campos de Junora y Medius no cuentan: unas 13 de cada 50.
+ * - `damage`: con tu campo vacío, te hace daño en su turno 3 (`wins`, sin umbral: las que te gana ahí).
  */
 const THRESHOLDS = { synchro: 0.9, interrupt: 0.68, damage: 0.9 }
-/** El tope del núcleo por turno del bot en escritorio (se midió un máximo de 0,18 s; se juega en un celular: un turno de varios segundos se nota). */
+/** El tope del núcleo por turno del bot en escritorio (se midió un máximo de 0,24 s; se juega en un celular: un turno de varios segundos se nota). */
 const CORE_TURN_MS = 1500
-/** Lo que interrumpe tu turno desde el campo: Lars, Number 90, Zalen y Diabell (responden a lo que activás), Archethys (destruye). */
-const INTERRUPTERS = new Set<number>([E.lars, E.n90, E.zalen, E.archethys, E.diabell])
+/** Lo que interrumpe tu turno desde el campo: Number 90 (niega tu efecto de monstruo) y Diactorus (niega tu carta del campo). */
+const INTERRUPTERS = new Set<number>([E.n90, E.diactorus])
 const SYNCHRO_TYPE = 0x2000
+/** Lo que sale del Extra Deck: Fusión, Sincronía, Xyz y Enlace. */
+const EXTRA_TYPES = 0x40 | SYNCHRO_TYPE | 0x800000 | 0x4000000
 
 const settled = (session: AutoSession) =>
   new Promise<AutoSnapshot>((resolve) => {
@@ -115,13 +117,13 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
     if (hasCoreData) writeFileSync(path.join(CORE_DATA_DIR, 'bot-elfnote-report.json'), JSON.stringify(report, null, 1))
   })
 
-  it('la lista fija existe en el núcleo con sus scripts, tiene 42 + 15 (como se jugó) y BOT_DECKS la ofrece', () => {
+  it('la lista fija existe en el núcleo con sus scripts, tiene 45 + 15 (como se jugó) y BOT_DECKS la ofrece', () => {
     const missing = [...ELFNOTE_DECK.main, ...ELFNOTE_DECK.extra].filter(([code]) => !cards.has(code) || !store.has(`c${code}.lua`)).map(([code]) => code)
     const count = (list: readonly (readonly [number, number])[]) => list.reduce((sum, [, copies]) => sum + copies, 0)
 
     expect(missing).toEqual([])
-    expect([count(ELFNOTE_DECK.main), count(ELFNOTE_DECK.extra)]).toEqual([42, 15])
-    expect(BOT_DECKS.find((deck) => deck.id === 'elfnote')).toMatchObject({ name: 'Elfnote', ready: true })
+    expect([count(ELFNOTE_DECK.main), count(ELFNOTE_DECK.extra)]).toEqual([45, 15])
+    expect(BOT_DECKS.find((deck) => deck.id === 'elfnote')).toMatchObject({ name: 'Elfnote Ars Magna Power Patron', ready: true })
   })
 
   /** Lo que se ofrecía en una pregunta, por nombre (para el registro y los escenarios). */
@@ -181,7 +183,7 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
       for (; counted < timings.length; counted += 1) coreMs[turn] = (coreMs[turn] ?? 0) + timings[counted]!
     }
     let snapshot = await settled(session)
-    let afterOne: { extra: number; interrupts: number; field: string[] } | null = null
+    let afterOne: { extra: number; patron: boolean; interrupts: number; field: string[] } | null = null
 
     tally(snapshot.overlay.turn)
     for (let n = 0; n < 800 && snapshot.status === 'ready' && !(snapshot.overlay.turn >= 4 && snapshot.ask?.ask.type === 'select_idlecmd'); n += 1) {
@@ -193,16 +195,21 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
         const center = theirs.mz[2] ? code(theirs.mz[2].id) : 0
         const synchro = monsters.some((card) => ((cards.get(card)?.type ?? 0) & SYNCHRO_TYPE) !== 0)
         // Además: Rhapsodia con una Sincronía (niega), Lucina o Fortuna fuera del centro con un monstruo ahí (te devuelven una carta), Power Patron con un Nivel 6 en el centro (June
-        // Pride en tu Main Phase).
+        // Pride en tu Main Phase), Non-Finito con una carta colocada (la que colocó: Impasto se activa ese turno) y Nerva con Non-Finito (su Fusión en tu turno destruye lo tuyo).
         const lucinas = theirs.mz.filter((slot, i) => slot !== null && i !== 2 && [E.lucina, E.fortuna].includes(code(slot.id) as never)).length
+        const set = theirs.st.some((slot) => slot !== null && slot.pos === 'set')
+        const patron = monsters.includes(E.patron) && [E.lucina, E.regina, E.fortuna].includes(center as never)
 
         afterOne = {
-          extra: monsters.filter((card) => ((cards.get(card)?.type ?? 0) & (SYNCHRO_TYPE | 0x800000)) !== 0).length,
+          extra: monsters.filter((card) => ((cards.get(card)?.type ?? 0) & EXTRA_TYPES) !== 0).length,
+          patron,
           interrupts:
             monsters.filter((card) => INTERRUPTERS.has(card)).length +
             (field.includes(E.rhapsodia) && synchro ? 1 : 0) +
             (center !== 0 ? lucinas : 0) +
-            (monsters.includes(E.patron) && [E.lucina, E.regina, E.fortuna].includes(center as never) ? 1 : 0),
+            (patron ? 1 : 0) +
+            (monsters.includes(E.nonFinito) && set ? 1 : 0) +
+            (monsters.includes(E.nonFinito) && monsters.includes(E.nerva) ? 1 : 0),
           field: field.map(name),
         }
       }
@@ -224,7 +231,14 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
 
     for (let seed = 1; seed <= GOLDFISH; seed += 1) hands.push(await goldfish(seed))
     const share = (test: (hand: (typeof hands)[number]) => boolean) => Math.round((hands.filter(test).length / hands.length) * 100) / 100
-    const measured = { synchro: share((hand) => (hand.afterOne?.extra ?? 0) > 0), interrupt: share((hand) => (hand.afterOne?.interrupts ?? 0) > 0), damage: share((hand) => hand.lp < 8000) }
+    const measured = {
+      synchro: share((hand) => (hand.afterOne?.extra ?? 0) > 0 || (hand.afterOne?.patron ?? false)),
+      interrupt: share((hand) => (hand.afterOne?.interrupts ?? 0) > 0),
+      damage: share((hand) => hand.lp < 8000),
+    }
+    // Sin umbral, para comparar: sólo con un monstruo del Extra Deck en el campo, y las manos en que te gana en su turno 3.
+    const extraOnly = share((hand) => (hand.afterOne?.extra ?? 0) > 0)
+    const wins = share((hand) => hand.lp === 0)
     const reasons: Record<string, number> = {}
     const times = hands.flatMap((hand) => hand.times).sort((x, y) => x - y)
     const turns = hands.flatMap((hand) => Object.values(hand.perTurn)).sort((x, y) => x - y)
@@ -236,6 +250,8 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
     report.goldfish = {
       hands: hands.length,
       measured,
+      extraOnly,
+      wins,
       thresholds: THRESHOLDS,
       msPerDecision: { decisions: times.length, median: at(times, 0.5), p99: at(times, 0.99), max: at(times, 1) },
       asksPerOwnTurn: { median: at(turns, 0.5), p99: at(turns, 0.99), max: at(turns, 1) },
@@ -336,18 +352,15 @@ describe.skipIf(!hasCoreData)('el ejecutor de Elfnote con el núcleo real (npm r
     expect(target).toMatchObject({ chosen: [name(VORSE)], reason: 'auto.bot.reason.target.bounce' })
   })
 
-  it('en tu turno, Evolzar Lars niega el efecto de tu monstruo al Invocarse', { timeout: 180_000 }, async () => {
-    // Elemental HERO Stratos: al Invocarse busca un HÉROE (Avian, en tu Deck).
-    const STRATOS = 40044918
-    const AVIAN = 21844576
-    const run = await scenario({ botHand: [E.lucina, E.lucina, E.ash, E.ogre, E.veiler], seat: 1, myHand: [STRATOS], myDeck: [AVIAN], steps: [{ do: 'summon', code: STRATOS }, { do: 'end' }], turns: 2 })
-    const respond = offer(run, 'elfnote.respond.lars')
-    const target = offer(run, `elfnote.target.${E.lars}`)
+  it('sin un Nivel 6: Pendulum Treasure manda a Nervedo al Extra Deck, Nervedo Invoca a Junoldo y Junoldo, a Junora', { timeout: 180_000 }, async () => {
+    const run = await scenario({ botHand: [E.treasure, E.ash, E.ogre, E.veiler, E.fuwalos], seat: 1, myHand: [], steps: [], turns: 1 })
+    const treasure = offer(run, 'elfnote.treasure')
+    const nervedo = offer(run, 'elfnote.summon.nervedo')
 
-    report.lars = { respond, target, rules: run.rules }
+    report.junora = { treasure, nervedo, rules: run.rules }
     expect(run.fault).toBeNull()
-    expect(run.rules).toContain('xyz-lars')
-    expect(respond).toMatchObject({ ask: 'select_chain', chosen: [name(E.lars)], reason: 'auto.bot.reason.handtrap.respond' })
-    expect(target).toMatchObject({ chosen: [name(STRATOS)], reason: 'auto.bot.reason.target.negate' })
+    expect(treasure).toMatchObject({ ask: 'select_card', chosen: [name(E.nervedo)] })
+    expect(nervedo).toMatchObject({ ask: 'select_card', chosen: [name(E.junoldo)], reason: 'auto.bot.reason.play.extraTo' })
+    expect(run.rules.indexOf('junoldo-junora')).toBeGreaterThan(run.rules.indexOf('elfnote.summon.nervedo'))
   })
 })

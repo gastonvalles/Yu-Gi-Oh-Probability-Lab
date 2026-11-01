@@ -121,7 +121,7 @@ describe('el rival en Solo (una fila por rival)', () => {
     expect(bots.map((radio) => radio.textContent)).toEqual([
       'Sky StrikerMagias Rápidas, Enlaces y mucha interacción.',
       'AngelechySincronías sin materiales y Trampas que destierran.',
-      'ElfnoteSincronías en el centro, también en tu turno.',
+      'Elfnote Ars Magna Power PatronPower Patron y Sincronías en el centro, también en tu turno.',
     ])
     choose(/^Angelechy/)
     expect(readHandtrapConfig().botDeck).toBe('angelechy')
