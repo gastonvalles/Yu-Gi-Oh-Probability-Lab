@@ -133,7 +133,7 @@
 ["SP13-EN033","Starfoil Rare","Unlimited",0.24,77559,6430659,"Infected Mail"],
 ["SP13-EN034","Common","1st Edition",0.11,77510,73178098,"Ego Boost"],
 ["SP13-EN034","Common","Unlimited",0.09,77510,73178098,"Ego Boost"],
-["SP13-EN034","Starfoil Rare","1st Edition",0.36,77560,73178098,"Ego Boost"],
+["SP13-EN034","Starfoil Rare","1st Edition",null,77560,73178098,"Ego Boost"],
 ["SP13-EN034","Starfoil Rare","Unlimited",0.31,77560,73178098,"Ego Boost"],
 ["SP13-EN035","Common","1st Edition",0.1,77511,9576193,"Monster Slots"],
 ["SP13-EN035","Common","Unlimited",0.09,77511,9576193,"Monster Slots"],
@@ -198,5 +198,5 @@
 ["SP13-EN050","Common","1st Edition",0.72,77526,2295440,"One for One"],
 ["SP13-EN050","Common","Unlimited",0.89,77526,2295440,"One for One"],
 ["SP13-EN050","Starfoil Rare","1st Edition",5.1,77576,2295440,"One for One"],
-["SP13-EN050","Starfoil Rare","Unlimited",1.82,77576,2295440,"One for One"]
+["SP13-EN050","Starfoil Rare","Unlimited",1.58,77576,2295440,"One for One"]
 ]
