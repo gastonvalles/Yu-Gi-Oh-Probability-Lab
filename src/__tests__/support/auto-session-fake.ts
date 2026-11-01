@@ -74,6 +74,8 @@ function statesOf(cards: readonly Spot[]): Record<Side, MatState> {
 export interface FakeSession extends AutoSession {
   /** Las respuestas que mandó la pantalla, en orden (ya revisadas con `parseAnswer`). */
   answers: CoreAnswer[]
+  /** Las cartas del rival en su mano que son de conocimiento público (su id → su código): cambiarlas y llamar a `set({})` lo avisa. */
+  publicHand: Map<string, number>
   undos: number
   cancels: number
   restarts: number
@@ -112,6 +114,8 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
       return spot ? { controller: (spot.side === 'mine' ? 0 : 1) as Seat, location: spot.location, sequence: spot.sequence } : null
     },
     codeOf: (ref: CardRef) => cards.find((spot) => spot.side === ref.side && spot.id === ref.id)?.code ?? 0,
+    // Del rival, sólo lo que la prueba marcó como público (`publicHand`).
+    publicInHand: (ref: CardRef) => (ref.side === 'theirs' ? (fake.publicHand.get(ref.id) ?? 0) : 0),
   }
   let snapshot: AutoSnapshot = {
     status: 'ready',
@@ -148,6 +152,7 @@ export function fakeSession(cards: readonly Spot[] = SPOTS): FakeSession {
 
   const fake: FakeSession = {
     answers: [],
+    publicHand: new Map(),
     undos: 0,
     cancels: 0,
     restarts: 0,

@@ -157,6 +157,11 @@ export interface Adapter {
   locationOf(ref: CardRef): CorePlace | null
   /** El código de una carta de una mesa (0 = este asiento no lo sabe). */
   codeOf(ref: CardRef): number
+  /**
+   * Una carta del rival que está en su mano y es de conocimiento público (se mostró, o vino a la mano de una zona a la vista), con su código; 0 si no (de dorso). Barajar su mano lo borra:
+   * `codeOf` sigue dando el código de una carta suelta (la bolsa lo necesita para elegir cuál sale), pero ya no es público.
+   */
+  publicInHand(ref: CardRef): number
 }
 
 interface Card {
@@ -1041,6 +1046,11 @@ export function createAdapter(options: AdapterOptions): Adapter {
       const card = find(target)
 
       return card && !card.unsure ? card.code : 0
+    },
+    publicInHand(target) {
+      const card = find(target)
+
+      return card && card.owner === rival && !card.unsure && !card.loose && places[rival].hand.includes(card) ? card.code : 0
     },
   }
 

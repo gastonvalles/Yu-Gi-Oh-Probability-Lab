@@ -361,4 +361,31 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(out.unmapped).toEqual(['unsupported: code changed in place (777 to 778)'])
     expect(adapter.codeOf({ side: 'theirs', id })).toBe(778)
   })
+
+  it('la mano del rival: lo que se mostró o vino de una zona a la vista es público; barajar su mano lo borra; lo oculto nunca', () => {
+    const adapter = make()
+
+    adapter.apply(events(0, { type: 'draw', player: 1, drawn: hidden(3) }))
+    const ids = adapter.theirs.state.hand
+    const known = () => ids.map((id) => adapter.publicInHand({ side: 'theirs', id }))
+
+    expect(known()).toEqual([0, 0, 0])
+    // Se muestra la del lugar 1 (revelarla): es pública; las otras siguen siendo de dorso.
+    adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 777, controller: 1, location: L.HAND, sequence: 1 }] }))
+    expect(known()).toEqual([0, 777, 0])
+    // Barajar su mano la vuelve bolsa: ya no es pública (el adaptador la sigue sabiendo, como antes), y volver a mostrarla la hace pública otra vez.
+    adapter.apply(events(0, { type: 'shuffle_hand', player: 1, cards: [0, 0, 0] }))
+    expect(known()).toEqual([0, 0, 0])
+    expect(Math.max(...ids.map((id) => adapter.codeOf({ side: 'theirs', id })))).toBe(777)
+    adapter.apply(events(0, { type: 'confirm_cards', player: 0, cards: [{ code: 777, controller: 1, location: L.HAND, sequence: 2 }] }))
+    expect(known().filter(Boolean)).toEqual([777])
+    // Una carta del rival a la vista en su campo que vuelve a su mano (el núcleo no manda su código hacia una mano ajena) sigue siendo pública; una colocada boca abajo, no.
+    adapter.apply(events(0, move(888, at(1, L.HAND, 0, 10), at(1, L.MZONE, 2)), played('summoning', 888, at(1, L.MZONE, 2))))
+    adapter.apply(events(0, move(0, at(1, L.MZONE, 2), at(1, L.HAND, 0, 10))))
+    expect(known().filter(Boolean).sort()).toEqual([777, 888])
+    // Lo mío no cuenta, y la que sale de su mano (la 888, al campo boca abajo) deja de estar en ella.
+    expect(adapter.publicInHand({ side: 'mine', id: adapter.mine.deck[0]! })).toBe(0)
+    adapter.apply(events(0, move(0, at(1, L.HAND, 0, 10), at(1, L.SZONE, 0, P.FACEDOWN_DEFENSE))))
+    expect(adapter.theirs.state.hand.map((id) => adapter.publicInHand({ side: 'theirs', id })).filter(Boolean)).toEqual([777])
+  })
 })

@@ -11,6 +11,8 @@ export const duel = {
   'duel.hand.theirs': 'Mano del rival: {count}',
   // Boca arriba: la del rival de handtraps del duelo automático.
   'duel.hand.theirsShown': 'Mano del rival: {cards}',
+  // De dorso salvo lo que es de conocimiento público (se mostró o vino de una zona a la vista).
+  'duel.hand.theirsPublic': 'Mano del rival: {count}, a la vista: {cards}',
   'duel.phase.current': 'Fase actual: {phase}',
   // El aviso cuando el rival ataca.
   'duel.announce.attack': '{name} ataca a {target}',

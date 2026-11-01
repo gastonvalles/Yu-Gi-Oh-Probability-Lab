@@ -18,6 +18,7 @@ import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
+import { TheirHand } from '../../duel/DuelTable'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
@@ -145,6 +146,7 @@ export function AutoSection() {
       <ForcedSample onAnswer={setAnswer} />
       <UnselectSample onAnswer={setAnswer} />
       <RespondSample onAnswer={setAnswer} />
+      <PublicHandSample />
       <LongTextSample />
       <UndoSample onAnswer={setAnswer} />
 
@@ -544,6 +546,32 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
       <Button variant="secondary" size="sm" className="w-fit" icon="refresh" disabled={shown} onClick={() => setShown(true)}>
         Volver a preguntar
       </Button>
+    </Specimen>
+  )
+}
+
+/** La mano del rival de dorso con lo público a la vista: dos de cinco boca arriba, con el aro ámbar que late; barajar su mano las da vuelta. */
+function PublicHandSample() {
+  const [shuffled, setShuffled] = useState(false)
+  const [read, setRead] = useState<string | null>(null)
+  const cards = [null, { ...ASH, public: true }, null, { name: 'Effect Veiler', art: art(97268402), public: true }, null].map((card) => (shuffled ? null : card))
+
+  return (
+    <Specimen
+      title="TheirHand · su mano, de dorso salvo lo público"
+      layout="column"
+      note={<>La mano del rival no se ve, salvo lo que es de conocimiento público: lo que se mostró (revelar, agregar a la mano mostrándola) o vino a su mano de una zona a la vista. Esas cartas van boca arriba, en su lugar y con un aro ámbar que late (el color del rival; <Tag>motion-reduce</Tag>: quieto), y se tocan para ver su detalle; las demás siguen de dorso, sin nombre en ningún lado (ni en el lector de pantalla). Cuando el rival baraja su mano, se pierde lo que se sabía. Con la mano entera a la vista (el rival de handtraps) no hay aro. Archivos: <Tag>duel/DuelTable.tsx</Tag>, <Tag>auto/use-auto-asks.tsx</Tag></>}
+    >
+      <div className="relative isolate flex h-40 items-start justify-center overflow-hidden rounded-card border border-border-subtle pt-2">
+        <MatScene className="absolute inset-0 -z-10" />
+        <TheirHand count={5} cards={cards.some(Boolean) ? cards : undefined} onCard={(index) => setRead(cards[index]?.name ?? null)} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" size="sm" icon="refresh" onClick={() => setShuffled((value) => !value)}>
+          {shuffled ? 'Volver a mostrar' : 'El rival baraja su mano'}
+        </Button>
+        {read ? <Tag>{`Tocaste: ${read}`}</Tag> : null}
+      </div>
     </Specimen>
   )
 }
