@@ -4,7 +4,7 @@ import { buildDerivedDeckGroupMap } from '../../../app/deck-groups'
 import { createMatcherPattern, createPattern } from '../../../app/pattern-factory'
 import { buildRuleExample, type RuleExampleId } from '../../../app/rule-edits'
 import { t } from '../../../i18n'
-import type { CardEntry, HandPattern } from '../../../types'
+import type { CardEntry, HandPattern, PatternProbability } from '../../../types'
 import { Button } from '../../ui/Button'
 import { DraftImpactSummary } from '../../probability/DraftImpactSummary'
 import { KindBadge } from '../../probability/KindBadge'
@@ -46,6 +46,9 @@ const entry = (overrides: Partial<RuleEntry>): RuleEntry => ({
   missingCards: false,
   ...overrides,
 })
+
+/** Lo que daban antes del cambio a prueba (sólo se leen el id y el número): la salida sube 4 (verde), el problema baja 5 (verde) y la otra salida baja 3 (rojo). */
+const BEFORE = ([['u1', 0.77], ['g1', 0.83], ['g3', 0.05]] as const).map(([patternId, probability]) => ({ patternId, probability }) as PatternProbability)
 
 const GROUPS: RuleEntryGroups = {
   universal: [
@@ -122,6 +125,30 @@ export function RulesSection() {
           onDeleteRule={(id) => setDeleted(id)}
         />
         {deleted ? <p className="m-0 text-micro text-soft">Pediste borrar «{deleted}» (en la app, primero se confirma y queda «Deshacer»).</p> : null}
+      </Specimen>
+
+      <Specimen
+        title="Tarjeta de reglas con un cambio a prueba"
+        layout="column"
+        note={
+          <>
+            <Tag>before</Tag> Con «Probar el cambio», cada fila que se movió suma su ▲ / ▼ (<Tag>LabDelta</Tag>) debajo del nombre: verde si le conviene a quien lee (una salida que sube, un
+            problema que baja), rojo si no. El lector lo oye como la descripción del botón («4 más»).
+          </>
+        }
+      >
+        <LabRuleList
+          groups={GROUPS}
+          before={BEFORE}
+          className=""
+          onEditRule={noop}
+          onToggleGenericRule={noop}
+          onEditGenericRule={noop}
+          onRenameSystemRule={noop}
+          onCreate={noop}
+          onDuplicateRule={noop}
+          onDeleteRule={noop}
+        />
       </Specimen>
 
       <Specimen

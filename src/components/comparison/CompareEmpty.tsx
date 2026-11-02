@@ -1,6 +1,14 @@
+import { useMemo } from 'react'
+
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import type { Outcome } from '../../app/lab-suggestion'
 import type { LabViewResult } from '../../app/probability-lab'
+import { useAppSelector } from '../../app/store-hooks'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
+import type { TurnView } from '../../types'
+import { LabSuggestion } from '../probability/LabSuggestion'
+import { useProbabilityLab } from '../probability/use-probability-lab'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
@@ -91,4 +99,22 @@ export function SameDeckCard({ result, computing, cards, onGoToBuilder, onTryLab
       </div>
     </Card>
   )
+}
+
+/**
+ * La sugerencia del Lab en los vacíos de Comparar (sin B, o B igual a A): «Lo que más te frena» de tu deck, la misma tarjeta y la misma cuenta que en el Lab (el
+ * caché es por contenido: si venís del Lab sale al instante). «Probar el cambio» lo pone a prueba y lleva al Lab, donde se compara o se aplica.
+ */
+export function CompareLabSuggestion({ view, onTry }: { view: TurnView; onTry: (outcome: Outcome) => void }) {
+  const deck = useAppSelector((state) => state.deckBuilder)
+  const { patterns, disabledGenericRuleIds, systemRuleNames } = useAppSelector((state) => state.patterns)
+  const handSize = useAppSelector((state) => state.settings.handSize)
+  const deckFormat = useAppSelector((state) => state.settings.deckFormat)
+  const cards = useMemo(() => deriveMainDeckCardsFromZone(deck.main), [deck.main])
+  const lab = useProbabilityLab(cards, patterns, disabledGenericRuleIds, handSize, false, systemRuleNames)
+  const results = lab.computation?.status === 'ok' ? lab.computation.results : null
+
+  return results ? (
+    <LabSuggestion deckFormat={deckFormat} deck={deck} cards={cards} checks={lab.allChecks} handSize={handSize} view={view} result={results[view]} first={results.first} second={results.second} onTry={onTry} />
+  ) : null
 }

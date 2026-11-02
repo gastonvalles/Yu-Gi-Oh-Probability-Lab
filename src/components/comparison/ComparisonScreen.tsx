@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { buildComparisonInputs, compareBuilds, isCardPendingClassification } from '../../app/build-comparison'
-import type { BuildDraft } from '../../app/build-draft'
+import { draftFromChanges, type BuildDraft } from '../../app/build-draft'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { whatMovesMeasure, type MeasureKey } from '../../app/change-effects'
 import { pairChanges, type MainChange } from '../../app/change-pairs'
 import { CURRENT_SOURCE, type BuildSource } from '../../app/comparison-selection'
 import { adoptBuild, undoDeckChange, type DeckChangeToken } from '../../app/deck-change-actions'
+import type { Outcome } from '../../app/lab-suggestion'
 import type { DeckBuilderState, DeckCardInstance } from '../../app/model'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { useChangeEffects } from '../../app/use-change-effects'
@@ -33,7 +34,7 @@ import { BuildBCardEditor } from './BuildBCardEditor'
 import { BuildPair, SourceSheet } from './BuildPicker'
 import { joinList, sourceOptions, type SourceOption } from './build-sources'
 import { ChangeList } from './ChangeList'
-import { FirstTimeCard, SameDeckCard } from './CompareEmpty'
+import { CompareLabSuggestion, FirstTimeCard, SameDeckCard } from './CompareEmpty'
 import { deltaPoints, mirrorGroups, type Side } from './comparison-rows'
 import { MirrorRowsCard, type MoversInfo } from './MirrorRow'
 import { TwoLists } from './TwoLists'
@@ -184,6 +185,14 @@ export function ComparisonScreen() {
     showToast(message, 'success', { action: { label: t('meta.compare.undo'), onAction: () => undo(token, fromDraft) } })
   }
 
+  // «Probar el cambio» de la sugerencia del Lab (en los vacíos): queda a prueba y se sigue en el Lab, como si se hubiera tocado allá.
+  const tryInLab = (outcome: Outcome) => {
+    const next = draftFromChanges(outcome.changes)
+
+    if (next) draft.start(next)
+    goTo('probability-lab')
+  }
+
   const saveCurrent = () => {
     setPicker(null)
 
@@ -263,9 +272,15 @@ export function ComparisonScreen() {
       {isDesktop ? null : pair}
 
       {!optionB || !changes || !comparison ? (
-        <FirstTimeCard onTryLab={() => goTo('probability-lab')} onImport={openImport} />
+        <>
+          <FirstTimeCard onTryLab={() => goTo('probability-lab')} onImport={openImport} />
+          <CompareLabSuggestion view={view} onTry={tryInLab} />
+        </>
       ) : changes.identical ? (
-        <SameDeckCard result={comparison.a.results?.average ?? null} computing={computing} cards={zonesA.main.length + zonesA.extra.length + zonesA.side.length} onGoToBuilder={() => goTo('deck-builder')} onTryLab={() => goTo('probability-lab')} />
+        <>
+          <SameDeckCard result={comparison.a.results?.average ?? null} computing={computing} cards={zonesA.main.length + zonesA.extra.length + zonesA.side.length} onGoToBuilder={() => goTo('deck-builder')} onTryLab={() => goTo('probability-lab')} />
+          <CompareLabSuggestion view={view} onTry={tryInLab} />
+        </>
       ) : (
         // Dos columnas en escritorio: el veredicto y sus filas a la izquierda, «Qué cambiaste» a la derecha, pegado arriba mientras se leen las filas (por eso `items-start`).
         <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1101px]:items-start min-[1101px]:gap-5">
