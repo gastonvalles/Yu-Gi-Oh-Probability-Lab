@@ -2586,7 +2586,8 @@ function PracticeMatBody({
       }
       if (!chain || !notice) return
       if (lift > 0 && promptTop !== null) chain.style.translate = `0 ${-lift}px`
-      if (list && listBox && promptTop !== null) {
+      // Si la persona corrió la pila o la pregunta (escritorio, `useDraggableOffset`), ya no comparten franja: la pila no se acorta.
+      if (list && listBox && promptTop !== null && !chain.querySelector('[data-moved]') && !box?.querySelector('[data-moved]')) {
         const room = promptTop - 8 - (listBox.top - lift)
 
         if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
@@ -2604,11 +2605,13 @@ function PracticeMatBody({
     for (const element of [section, column, field, promptRef.current, chainRef.current]) if (element) observer?.observe(element)
     window.addEventListener('resize', later)
     column.addEventListener('scroll', later, { passive: true })
+    section.addEventListener('cardmove', later)
 
     return () => {
       observer?.disconnect()
       window.removeEventListener('resize', later)
       column.removeEventListener('scroll', later)
+      section.removeEventListener('cardmove', later)
       cancelAnimationFrame(frame)
       unband()
       for (const name of vars) page.removeProperty(name)

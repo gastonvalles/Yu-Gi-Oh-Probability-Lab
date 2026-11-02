@@ -44,6 +44,8 @@ export const duel = {
   'duel.undo.waiting': 'Esperando respuesta…',
   // El cartel de una pregunta en la mesa, minimizado a un asa (`MatPrompt`).
   'duel.prompt.minimize': 'Minimizar',
+  // En escritorio, la pregunta y la cadena se llevan a otro lado (la ayuda de su fila de arriba).
+  'duel.prompt.move': 'Arrastralo de arriba para moverlo (o Alt + flechas) · Doble clic: vuelve a su lugar',
   'duel.prompt.show': 'Mostrar la pregunta',
   // Arriba de la pregunta, chico: en qué fase y de quién es el turno.
   'duel.prompt.turnMine': '{phase} · Tu turno',

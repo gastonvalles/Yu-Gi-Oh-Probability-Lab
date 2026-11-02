@@ -5,6 +5,7 @@ import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
+import { matCardPositionKey, touchOr, useDraggableOffset } from '../../app/use-draggable-offset'
 import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import { BottomSheet, useSheetHost } from '../ui/BottomSheet'
@@ -51,6 +52,7 @@ interface MatPromptProps {
  * - **Desde 1101 px, un cartel** en la ranura de la pregunta (`duel.prompt`), sin velo y sin mover nada, siempre en el mismo lugar: apoyado sobre la fila de las Zonas Extra, crece hacia el campo del rival
  *   (si no entra, su cuerpo se desplaza). Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲», `PromptHandle`) en ese mismo lugar: minimizado, todo
  *   lo de abajo se toca y la pregunta sigue pendiente; la flecha del asa lo reabre. Con el dedo, arrastrar la fila de arriba hacia abajo lo minimiza y arrastrar el asa hacia arriba lo abre (`useSwipeFold`).
+ *   Con el mouse, la fila de arriba (o el asa) lo lleva a cualquier lado y ahí queda para las preguntas que siguen; doble clic, a su lugar (`useDraggableOffset`).
  * - **En el celular, la hoja de abajo estándar** (`BottomSheet`, Gastón 2026-11-02: «no aparece como debería sino como un cartel en el medio de la pantalla»): la fila de arriba es su título y lo que se
  *   decide va en su pie, siempre a la vista; bajada (arrastrándola, tocando su asa o con Escape) queda la tira con la pregunta corta y los botones. Con la hoja de la cadena abierta va en su pie
  *   (`SheetHost`): una sola hoja.
@@ -66,16 +68,10 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
   const slot = host?.slot ?? null
   const [minimized, setFold] = useState(false)
-  // Arrastrar la fila de arriba hacia abajo también lo minimiza; el cartel sigue al dedo corriendo su `translate`, sin redibujar.
-  const swipe = useSwipeFold({
-    dir: 'down',
-    onFold: () => setFold(true),
-    follow: (dy) => {
-      const style = ref.current?.style
-
-      if (style) style.translate = dy === null ? '' : `0 ${dy}px`
-    },
-  })
+  // Con el mouse o el lápiz, la cabeza lo lleva a otro lado (también el asa): una posición para todas las preguntas.
+  const move = useDraggableOffset(matCardPositionKey('prompt'), ref, desktop)
+  // Con el dedo, arrastrar la fila de arriba hacia abajo lo minimiza; el cartel sigue al dedo corriendo su `translate`, sin redibujar.
+  const swipe = touchOr(useSwipeFold({ dir: 'down', onFold: () => setFold(true), follow: move.nudge }), move.head)
 
   useEscapeKey(() => setFold(true), desktop && escape && !minimized && !leaving)
   useEffect(() => {
@@ -98,10 +94,10 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
   )
   const view = desktop ? (
     minimized ? (
-      <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} />
+      <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} move={move.head} {...move.root} />
     ) : (
-      <div ref={ref} {...attrs} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
-        <div {...swipe} className="flex touch-none select-none items-center gap-2">
+      <div ref={ref} {...attrs} {...move.root} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
+        <div {...swipe} title={t('duel.prompt.move')} className="flex cursor-grab touch-none select-none items-center gap-2 active:cursor-grabbing">
           {top}
           <IconButton size="lg" className="-my-2 -mr-2 self-start" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setFold(true)}>
             <Icon name="chevron-down" />
