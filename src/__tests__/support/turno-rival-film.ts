@@ -99,6 +99,8 @@ export function filmSession(film: RivalTurnFilm): AutoSession & { answers: CoreA
     idAt: (place: CorePlace) => film.places.find(([side, , , where]) => where && side === (place.controller === 0 ? 'mine' : 'theirs') && where.location === place.location && where.sequence === place.sequence)?.[1] ?? null,
     locationOf: (ref: CardRef) => placeOf(ref)?.[3] ?? null,
     codeOf: (ref: CardRef) => placeOf(ref)?.[2] ?? 0,
+    // El grabado no guarda qué de su mano era público: de dorso, como antes.
+    publicInHand: () => 0,
   } as unknown as Adapter
   const session = {
     answers: [] as CoreAnswer[],

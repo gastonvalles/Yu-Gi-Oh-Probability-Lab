@@ -16,7 +16,7 @@ import { CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, runDuel, scriptStore,
  * (`duelQueryLocation`: códigos, orden, posiciones, contadores, materiales); (b) el espejo del rival: cuántas por lugar, lo público con su
  * código real, lo oculto sin un código equivocado; (c) el overlay (vidas, ATK/DEF, cadena, turno y fase); (d) ningún `reveal` lleva un
  * código que el asiento no recibió. La primera diferencia de cada mesa en un duelo se anota (con los mensajes de esa tanda) y esa mesa deja
- * de compararse en ese duelo, así no se cuenta una cascada. Parámetros: AD_DECKS (20), AD_DUELS por deck (3), AD_SEED (1), AD_CAP (1000).
+ * de compararse en ese duelo, así no se cuenta una cascada; (e) la mano del rival que el adaptador da por pública (`publicInHand`) está en su mano real con ese código: nunca una carta oculta con nombre. Parámetros: AD_DECKS (20), AD_DUELS por deck (3), AD_SEED (1), AD_CAP (1000).
  */
 const DECKS = Number(process.env.AD_DECKS ?? 20)
 const DUELS = Number(process.env.AD_DUELS ?? 3)
@@ -31,7 +31,7 @@ const PLAYERS = [
 const UNSUPPORTED = /unsupported|other side|Extra Monster Zone|Field Zone|leaves the duel|from nowhere/
 
 describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks × ${DUELS} duelos (npm run test:auto)`, () => {
-  const tally = { duels: 0, tandas: 0, transit: 0, checks: 0, diffs: {} as Record<string, number>, whitelist: {} as Record<string, number>, unmapped: {} as Record<string, number>, hiddenRevealed: 0, ends: {} as Record<string, number> }
+  const tally = { duels: 0, tandas: 0, transit: 0, checks: 0, diffs: {} as Record<string, number>, whitelist: {} as Record<string, number>, unmapped: {} as Record<string, number>, hiddenRevealed: 0, publicHand: 0, publicWrong: 0, ends: {} as Record<string, number> }
   const pick = (record: Record<string, number>, test: (key: string) => boolean) => Object.fromEntries(Object.entries(record).filter(([key]) => test(key)))
 
   beforeAll(async () => {
@@ -126,6 +126,24 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
             ['theirs', rival, readMat(adapter.theirs.state, (id) => adapter.codeOf({ side: 'theirs', id })), false],
           ] as const
 
+          // (e) La mano pública del rival: cada carta que se da por pública está, con ese código, en su mano real (no se compara el orden: una mano barajada es una bolsa y ahí no hay ninguna pública).
+          if (!stopped.has(`${seat}:theirs`)) {
+            const left = readReal(lib, handle, rival).piles[L.HAND]!.map((card) => card.code)
+
+            for (const id of adapter.theirs.state.hand) {
+              const code = adapter.publicInHand({ side: 'theirs', id })
+
+              if (code === 0) continue
+              tally.publicHand += 1
+              const at = left.indexOf(code)
+
+              if (at >= 0) left.splice(at, 1)
+              else {
+                tally.publicWrong += 1
+                if (samples.length < 60) samples.push({ duel: d, seat, side: 'theirs', kind: 'public-hand', detail: `${id} = ${code} no está en su mano real`, tanda: [...new Set(types[seat])], deck: `${a.id}-${b.id}` })
+              }
+            }
+          }
           // Lo que el espejo muestra con su `known` y el adaptador ya corrigió (una identidad perdida al barajar): lista blanca, contada.
           for (const id of Object.keys(known)) {
             const now = adapter.codeOf({ side: 'theirs', id })
@@ -196,6 +214,11 @@ describe.skipIf(!hasCoreData)(`el adaptador contra el núcleo, ${DECKS} decks ×
 
   it('(d) ningún `reveal` dice un código que el asiento no recibió', () => {
     expect(tally.hiddenRevealed).toBe(0)
+  })
+
+  it('(e) la mano pública del rival existe y nunca nombra una carta que no tiene', () => {
+    expect(tally.publicHand).toBeGreaterThan(0)
+    expect(tally.publicWrong).toBe(0)
   })
 
   it('todo mensaje del núcleo se proyecta o está en la lista blanca', () => {

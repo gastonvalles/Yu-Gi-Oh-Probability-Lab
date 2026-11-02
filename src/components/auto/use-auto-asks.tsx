@@ -943,21 +943,31 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
     return theirs.hand.map((id) => codeIn(snap.theirs.hand, rivalHand, id) ?? codeIn(openHand.ids, openHand.codes, id) ?? codeOf({ side: 'theirs', id }))
   }, [rivalHand, theirs, snap.theirs, handKnown, openHand, codeOf])
-  const rivalHandNode = useMemo(
-    () => (
+  // Con su mano de dorso, lo que es de conocimiento público (`publicInHand`: se mostró o vino de una zona a la vista; barajar su mano lo borra) va boca arriba. El adaptador sabe lo de ahora y la
+  // mesa va un poco atrás: una carta mostrada se da vuelta al llegar el núcleo a ese punto.
+  const publicHand = useMemo(() => {
+    if (shownHand) return null
+    const codes = theirs.hand.map((id) => session.adapter?.publicInHand({ side: 'theirs', id }) ?? 0)
+
+    return codes.some(Boolean) ? codes : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- el adaptador cambia en el lugar: `snap` es lo que avisa que llegó algo
+  }, [shownHand, theirs.hand, session, snap])
+  const rivalHandNode = useMemo(() => {
+    const open = shownHand ?? publicHand
+
+    return (
       <TheirHand
         count={rivalHandCount}
-        {...(shownHand
+        {...(open
           ? {
-              cards: shownHand.map((code) => ({ name: nameOf(null, code), art: artOf(null, code) })),
-              onCard: (index: number, rect: DOMRect) => showRival({ drawId: drawIdOf(shownHand[index]!) }, rect),
-              onCardHover: (index: number) => hoverDock({ drawId: drawIdOf(shownHand[index]!) }),
+              cards: open.map((code) => (code !== 0 || shownHand ? { name: nameOf(null, code), art: artOf(null, code), ...(shownHand ? {} : { public: true }) } : null)),
+              onCard: (index: number, rect: DOMRect) => showRival({ drawId: drawIdOf(open[index]!) }, rect),
+              onCardHover: (index: number) => hoverDock({ drawId: drawIdOf(open[index]!) }),
             }
           : {})}
       />
-    ),
-    [rivalHandCount, shownHand, nameOf, artOf, showRival, hoverDock],
-  )
+    )
+  }, [rivalHandCount, shownHand, publicHand, nameOf, artOf, showRival, hoverDock])
   const onRivalHover = useCallback((id: string) => hoverDock(rivalPeekOf(id)), [hoverDock, rivalPeekOf])
   // Abrir una pila tuya cierra la del rival: van en el mismo lugar.
   const onActivity = useCallback((activity: Activity | null) => {

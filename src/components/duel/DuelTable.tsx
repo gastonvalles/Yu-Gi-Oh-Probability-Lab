@@ -167,6 +167,8 @@ const THEIR_HAND_BACK_MOTION = '[transition:transform_var(--motion-duration)_var
 /**
  * La mano del rival: sólo se ve cuántas cartas tiene, de dorso, en abanico y encimadas como las nuestras (ascendente: el centro más alto y los extremos más cerca del campo). `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
  * como la mano reserva su alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos. Con `cards` (el rival de handtraps del duelo automático) va boca arriba, en el mismo lugar y del mismo tamaño.
+ * Con `null` en un lugar de `cards`, esa carta sigue de dorso: las que son de conocimiento público (se mostraron, o vinieron a la mano de una zona a la vista: `public`) van boca arriba con un aro ámbar que late (el color del rival) y se abren al
+ * tocarlas, y las demás no se ven ni por el lector de pantalla.
  */
 export function TheirHand({
   count,
@@ -182,7 +184,7 @@ export function TheirHand({
   /** Cómo la pone su lugar: centrada (encima del campo de la mesa) o arrimada a la izquierda (en una grilla: `DuelTable`, la vista del espectador). */
   align?: 'center' | 'start'
   /** Boca arriba, en su orden (sin esto, de dorso). */
-  cards?: ReadonlyArray<{ name: string; art: string | null }>
+  cards?: ReadonlyArray<{ name: string; art: string | null; public?: boolean } | null>
   /** El otro jugador la marcó como objetivo. */
   marked?: boolean
   /** Se la está señalando ahora (late un rato). */
@@ -251,7 +253,7 @@ export function TheirHand({
     <div ref={boxRef} data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} className="pointer-events-none relative isolate shrink-0" style={{ width, height: room }}>
       {/* Debajo de las cartas, como la caja de antes: el aro de lo que se señala (que la sube a z 6: las cartas van en z 7). */}
       <div data-pointed={pointed ? 'true' : undefined} className="pointer-events-auto absolute inset-y-0" style={fanBox} />
-      <div role={open ? 'group' : 'img'} aria-label={cards ? t('duel.hand.theirsShown', { cards: cards.map((card) => card.name).join(', ') }) : t('duel.hand.theirs', { count })} className="absolute inset-0 z-7">
+      <div role={open ? 'group' : 'img'} aria-label={cards ? (cards.includes(null) ? (cards.some(Boolean) ? t('duel.hand.theirsPublic', { count: cards.length, cards: cards.flatMap((card) => (card ? [card.name] : [])).join(', ') }) : t('duel.hand.theirs', { count })) : t('duel.hand.theirsShown', { cards: cards.map((card) => card!.name).join(', ') })) : t('duel.hand.theirs', { count })} className="absolute inset-0 z-7">
         {Array.from({ length: shown }, (_, index) => {
           // Ascendente, como la nuestra: el centro es lo más alto (lo más lejos del campo) y los extremos bajan hacia él.
           const raise = (((shown - 1) / 2) ** 2 - Math.abs(index - (shown - 1) / 2) ** 2) * THEIR_FAN_RISE
@@ -266,6 +268,7 @@ export function TheirHand({
               style={{ width: layout.cardWidth, transform: `translate(${offset + index * layout.step}px, ${-raise}px) rotate(${fanAngle(index, shown, 2.2)}deg)` }}
             >
               {card ? <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />}
+              {card?.public ? <i aria-hidden="true" data-public="" className="pointer-events-none absolute inset-0 border-2 border-warning motion-safe:animate-pulse" /> : null}
               {card && open ? (
                 <button
                   type="button"
