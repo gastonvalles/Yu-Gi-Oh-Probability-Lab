@@ -21,8 +21,8 @@ En orden de valor sobre costo.
 1. **Enlace del replay de un duelo, sin los nombres de las cartas** (M): ya va en la forma compacta (v2, ~22 % más corto que v1),
    pero los nombres siguen viajando; sin ellos el ahorro sube a ~39 %. Como el combo, pedirlos por passcode al abrir toca
    `ReplaysScreen` y el video (leen `replay.cards`) y sin red se vería «Carta»; el formato ya acepta la lista de nombres vacía.
-2. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
-   desplazar o girar el campo para cartas más grandes (L, idea abierta; el techo hoy es `compact-field.ts`).
+2. **Campo del celular en vertical** (L, idea abierta): acercar, desplazar o girar el campo para cartas más grandes; el techo hoy
+   es `compact-field.ts` (a 320×568 las pilas miden unos 28 px de ancho y a 360×640, unos 41). Se propone antes de construir.
 3. **Sala del duelo en un celular bajo** (~700 px) se desplaza en la tirada del dado (S): plegar las reglas y el deck en una fila.
 4. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
 5. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
