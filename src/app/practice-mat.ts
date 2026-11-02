@@ -130,11 +130,12 @@ export type MatAction =
   /**
    * Control de una carta (duelo): `give` la saca de mi mesa —del campo (los materiales van a mi cementerio) o de una pila— para que la tenga el rival, o la devuelve si era de él (su id lleva `f.`);
    * `take` pone en mi campo una carta de él (con su id `f.…`), venga de su campo, de su cementerio o de su destierro; `regain` me devuelve una carta mía que el rival tenía (al campo o a una pila). Lo que hace uno, el otro lo
-   * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). Ver `mat-control.ts`.
+   * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). `materials` (un Xyz que cambia de manos con sus materiales, sólo si los dos lados lo saben hacer): en `give`, los que se
+   * van con la carta (los demás míos, a mi cementerio); en `take` y `regain`, los que quedan debajo (`regain` a una pila: al cementerio). Sin `materials`, como siempre. Ver `mat-control.ts`.
    */
-  | { type: 'give'; id: string; auto?: true }
-  | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; auto?: true }
-  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; faceUp?: boolean; auto?: true }
+  | { type: 'give'; id: string; materials?: string[]; auto?: true }
+  | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; materials?: string[]; auto?: true }
+  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; faceUp?: boolean; materials?: string[]; auto?: true }
   /**
    * Varias cartas en una sola jugada (elegidas juntas en el Main, el Extra, el cementerio o el destierro): las partes van en orden, de un mismo tipo y destino, con un `shuffle` al principio
    * (salen mirando el Main: el resto se baraja) o al final («Al azar»: entran al deck y se baraja todo). Es una jugada: un paso, una línea, un Deshacer y, en el duelo, un mensaje. Un lote
@@ -323,10 +324,15 @@ function carriedMaterials(placed: Placed | null): string[] {
   return placed?.materials.filter((id) => !isToken(id) && !isForeignId(id)) ?? []
 }
 
-/** Al dejar el campo, los materiales Xyz van al cementerio (las fichas desaparecen). */
-function dropMaterials(state: MatState, placed: Placed | null): MatState {
-  const materials = carriedMaterials(placed)
+/** Al dejar el campo, los materiales Xyz van al cementerio (las fichas desaparecen); `keep`, los que se van con la carta (un Xyz que cambia de manos). */
+function dropMaterials(state: MatState, placed: Placed | null, keep: readonly string[] = []): MatState {
+  const materials = carriedMaterials(placed).filter((id) => !keep.includes(id))
   return materials.length === 0 ? state : { ...state, gy: [...state.gy, ...materials] }
+}
+
+/** Los materiales que llegan con una carta que cambia de manos: sin fichas, sin repetir y sólo los que no están ya en la mesa (ni la carta misma). */
+function arriving(state: MatState, id: string, materials: readonly string[] | undefined): string[] {
+  return (materials ?? []).filter((card, at, all) => card !== id && !isToken(card) && all.indexOf(card) === at && !locateCard(state, card))
 }
 
 function pileLength(state: MatState, count: number): number {
@@ -548,7 +554,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
       const removed = removeEverywhere(state, action.id)
 
-      return dropMaterials(removed.state, removed.placed)
+      return dropMaterials(removed.state, removed.placed, action.materials)
     }
 
     case 'take': {
@@ -556,7 +562,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
         return state
       }
 
-      return withPlaced(state, action.zone, action.index, { id: action.id, pos: action.pos, counters: 0, materials: [] })
+      return withPlaced(state, action.zone, action.index, { id: action.id, pos: action.pos, counters: 0, materials: arriving(state, action.id, action.materials) })
     }
 
     case 'regain': {
@@ -572,18 +578,22 @@ export function matReducer(state: MatState, action: MatAction): MatState {
           return state
         }
 
-        return withPlaced(state, action.to, index, { id: action.id, pos: action.pos ?? 'atk', counters: 0, materials: [] })
+        return withPlaced(state, action.to, index, { id: action.id, pos: action.pos ?? 'atk', counters: 0, materials: arriving(state, action.id, action.materials) })
       }
 
+      // A una pila: los materiales que traía (los míos: uno ajeno no entra a mis pilas) van a mi cementerio, como al dejar el campo.
+      const dropped = arriving(state, action.id, action.materials).filter((card) => !isForeignId(card))
+      const base = dropped.length === 0 ? state : { ...state, gy: [...state.gy, ...dropped] }
+
       if (action.to === 'deck') {
-        return { ...state, deck: [action.id, ...state.deck] }
+        return { ...base, deck: [action.id, ...base.deck] }
       }
 
       const pile = action.to === 'deck-bottom' ? 'deck' : action.to
-      const facedown = action.to === 'banished' && action.faceDown ? [...state.facedown, action.id] : state.facedown
-      const extraUp = action.to === 'extra' && action.faceUp ? [...state.extraUp, action.id] : state.extraUp
+      const facedown = action.to === 'banished' && action.faceDown ? [...base.facedown, action.id] : base.facedown
+      const extraUp = action.to === 'extra' && action.faceUp ? [...base.extraUp, action.id] : base.extraUp
 
-      return { ...state, [pile]: [...state[pile], action.id], facedown, extraUp }
+      return { ...base, [pile]: [...base[pile], action.id], facedown, extraUp }
     }
 
     case 'phase': {
