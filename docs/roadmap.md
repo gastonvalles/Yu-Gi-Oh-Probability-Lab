@@ -18,8 +18,9 @@ Shiina, Token Collector y Gnomaterial; Sphere Mode no juega con 3 monstruos prop
 
 En orden de valor sobre costo.
 
-1. **Enlace del replay de un duelo más corto** (M): `duel-replay-share.ts` sigue en el sobre v1; con la forma compacta del combo
-   (`combo-share.ts`, v2) bajaría un 30–40 % y entrarían duelos más largos en un enlace.
+1. **Enlace del replay de un duelo, sin los nombres de las cartas** (M): ya va en la forma compacta (v2, ~22 % más corto que v1),
+   pero los nombres siguen viajando; sin ellos el ahorro sube a ~39 %. Como el combo, pedirlos por passcode al abrir toca
+   `ReplaysScreen` y el video (leen `replay.cards`) y sin red se vería «Carta»; el formato ya acepta la lista de nombres vacía.
 2. **Péndulo** (M). Hoy se invoca de a una carta y el rango no se muestra ni se valida. Plan: elegir varias de la mano y del Extra
    boca arriba con el rango resaltado y después validar; un deck guardado sin `scale` queda «sin rango», nunca un número inventado.
 3. **Control de un Xyz con material y de una ficha** (M): el espejo del rival ya sigue al núcleo (`swap`, cambio de código,
