@@ -147,6 +147,28 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
     expect(grip()).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('bajada y sin nada que decidir, mientras se elige en la mesa se reduce a su asa (un costo de la mano se paga con la cadena abierta); subida o con algo que decidir, no', () => {
+    const box = () => screen.getByTestId('chain-notice').parentElement!
+    const shrunk = () => box().className.includes('[body:has([data-mat-choosing])_&]:[clip-path:inset(0_0_calc(56px')
+    const { rerender } = pill([PONIX])
+
+    // Reducida: la cinta baja sus 56 px y se recorta debajo del asa, que sigue a la vista y se alcanza con el teclado; los chips recortados, no.
+    expect(shrunk()).toBe(true)
+    expect(box()).toHaveClass('[body:has([data-mat-choosing])_&]:translate-y-[calc(56px-3.25rem-env(safe-area-inset-bottom,0px))]')
+    expect(strip().parentElement).toHaveClass('[body:has([data-mat-choosing])_&]:invisible')
+    expect(grip()).toHaveAttribute('aria-expanded', 'false')
+    // Subirla (con el asa) la muestra entera, sobre la línea de estado.
+    fireEvent.click(grip())
+    expect(shrunk()).toBe(false)
+    expect(box()).toHaveClass('[body:has([data-mat-choosing])_&]:-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]')
+    fireEvent.click(grip())
+    expect(shrunk()).toBe(true)
+    // Con una decisión de responder no: ahí se elige en la hoja.
+    rerender([PONIX], { key: 1, link: 2, cards: [{ key: 'mine:a', name: 'Called by the Grave', art: null }], chosen: null, onToggle: () => {}, onChain: () => {}, onPass: () => {} })
+    expect(shrunk()).toBe(false)
+    expect(strip().parentElement).not.toHaveClass('[body:has([data-mat-choosing])_&]:invisible')
+  })
+
   it('subida, tocar un eslabón de la pila lo muestra', () => {
     const picked: number[] = []
 

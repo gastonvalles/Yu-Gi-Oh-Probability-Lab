@@ -84,11 +84,16 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
   const sheet = (
     // La caja va de borde a borde y apoyada abajo (como toda hoja) y recorta lo que la hoja deja abajo de su borde (bajada, la hoja se corre hacia abajo). `overflow-clip` y no `hidden`: una caja
     // `hidden` se deja desplazar, y el `scrollIntoView` del chip (que corre mientras la hoja entra desde abajo) la subía y dejaba asomar la pila. Mientras se elige algo en la mesa (`data-mat-choosing`),
-    // sube sobre la línea de estado (`data-mat-float`: 44 px a 8 del borde): «Cancelar» y «Listo» quedan a la vista.
+    // sube sobre la línea de estado (`data-mat-float`: 44 px a 8 del borde): «Cancelar» y «Listo» quedan a la vista. Y, bajada y sin nada que decidir en ella, se reduce a su asa: un costo de la
+    // mano se paga con la cadena ya abierta (One for One, Monster Reincarnation) y la cinta tapaba la mano. Baja la cinta (56 px) y recorta lo que queda debajo del asa; subirla la muestra entera.
     <div
       className={cx(
         'pointer-events-none inset-x-0 bottom-0 z-[135] flex items-end justify-center overflow-clip',
-        inline ? 'absolute h-full' : 'fixed h-[min(70dvh,34rem)] [body:has([data-mat-choosing])_&]:-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]',
+        inline
+          ? 'absolute h-full'
+          : drag.lowered && !respond
+            ? 'fixed h-[min(70dvh,34rem)] [body:has([data-mat-choosing])_&]:translate-y-[calc(56px-3.25rem-env(safe-area-inset-bottom,0px))] [body:has([data-mat-choosing])_&]:[clip-path:inset(0_0_calc(56px+env(safe-area-inset-bottom,0px))_0)]'
+            : 'fixed h-[min(70dvh,34rem)] [body:has([data-mat-choosing])_&]:-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]',
       )}
     >
       <div
@@ -124,7 +129,8 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
             <span>{stateLabel(row)}</span>
           </p>
           {/* Bajada, la cinta de chips; subida, el título de la pila (los chips son las filas de abajo). */}
-          <div hidden={!drag.lowered} inert={!drag.lowered} className="touch-pan-x" style={{ height: CHIPS_PX }}>
+          {/* Reducida a su asa (eligiendo en la mesa), la cinta recortada tampoco se alcanza con el teclado. */}
+          <div hidden={!drag.lowered} inert={!drag.lowered} className={cx('touch-pan-x', !respond && !inline && '[body:has([data-mat-choosing])_&]:invisible')} style={{ height: CHIPS_PX }}>
             <ol ref={listRef} aria-label={t('auto.chain.strip')} className="m-0 flex h-full list-none items-center gap-1.5 overflow-x-auto overscroll-contain px-3 [scrollbar-width:none]">
               {rows.map((link, index) => {
                 const color = colorOf(link.mine)
