@@ -5,7 +5,7 @@
 ["SD8-EN002","Common","Unlimited",0.1,25458,40384720,"Sonic Shooter"],
 ["SD8-EN003","Common","1st Edition",0.34,25459,84696266,"Sonic Duck"],
 ["SD8-EN003","Common","Unlimited",0.25,25459,84696266,"Sonic Duck"],
-["SD8-EN004","Common","1st Edition",0.88,25460,34100324,"Harpie Girl"],
+["SD8-EN004","Common","1st Edition",0.9,25460,34100324,"Harpie Girl"],
 ["SD8-EN004","Common","Unlimited",null,25460,34100324,"Harpie Girl"],
 ["SD8-EN005","Common","1st Edition",0.66,25461,78636495,"Slate Warrior"],
 ["SD8-EN005","Common","Unlimited",0.4,25461,78636495,"Slate Warrior"],
@@ -61,7 +61,7 @@
 ["SD8-EN030","Common","Unlimited",0.82,25486,97077563,"Call of the Haunted"],
 ["SD8-EN031","Common","1st Edition",0.32,25487,77414722,"Magic Jammer"],
 ["SD8-EN031","Common","Unlimited",0.2,25487,77414722,"Magic Jammer"],
-["SD8-EN032","Common","1st Edition",0.49,25488,1804528,"Dark Coffin"],
+["SD8-EN032","Common","1st Edition",0.51,25488,1804528,"Dark Coffin"],
 ["SD8-EN032","Common","Unlimited",0.25,25488,1804528,"Dark Coffin"],
 ["SD8-EN033","Common","1st Edition",0.5,25489,37576645,"Reckless Greed"],
 ["SD8-EN033","Common","Unlimited",0.49,25489,37576645,"Reckless Greed"],
@@ -69,6 +69,6 @@
 ["SD8-EN034","Common","Unlimited",0.28,25490,56120475,"Sakuretsu Armor"],
 ["SD8-EN035","Common","1st Edition",0.2,25491,70861343,"Ninjitsu Art of Transformation"],
 ["SD8-EN035","Common","Unlimited",null,25491,70861343,"Ninjitsu Art of Transformation"],
-["SD8-EN036","Common","1st Edition",0.57,25492,53567095,"Icarus Attack"],
+["SD8-EN036","Common","1st Edition",0.56,25492,53567095,"Icarus Attack"],
 ["SD8-EN036","Common","Unlimited",0.7,25492,53567095,"Icarus Attack"]
 ]
