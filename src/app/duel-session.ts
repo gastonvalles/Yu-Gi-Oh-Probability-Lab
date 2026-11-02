@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, type Activity, PROTOCOL_VERSION,
 import { duelTurnNumber, whoseTurn } from './duel-turn'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { isEmojiSignal } from './duel-signals'
-import { CONTROL_ACTIONS, controlReactions } from './mat-control'
+import { CONTROL_ACTIONS, carryMaterials, controlReactions, XYZ_MATERIALS_CAP } from './mat-control'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender, type WireAct } from './mat-public'
 import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatCardKind, type MatPhase, type MatPile, type MatState } from './practice-mat'
 
@@ -266,6 +266,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   /** Quien está en el lugar del rival ya se anunció con su saludo (sin eso, terminado el duelo, todavía no se sabe si es el rival que volvió o un tercero). */
   let peerGreeted = false
   let incompatible = false
+  /** Lo que el rival anunció que sabe hacer en su saludo (`caps`). */
+  let peerCaps: readonly string[] = []
 
   // Mi lado.
   let initial: MatState | null = null
@@ -466,7 +468,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     if (!stranger) transport.send(encodeMessage(message))
   }
 
-  const sendHello = () => send({ t: 'hello', v: PROTOCOL_VERSION, sid, role, name, ...(role === 'host' ? { settings } : {}) })
+  const sendHello = () => send({ t: 'hello', v: PROTOCOL_VERSION, sid, role, name, ...(role === 'host' ? { settings } : {}), caps: [XYZ_MATERIALS_CAP] })
 
   /**
    * Dónde está una carta del rival (su casilla o su pila) o qué tiene una de sus pilas, para saber si lo marcado sigue como estaba. Una marca es de ESA carta
@@ -1011,6 +1013,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
         incompatible = false
         peerGreeted = true
+        // Lo que sabe hacer el rival se renueva con cada saludo (al recargar vuelve a decirlo; una página de antes, nada).
+        peerCaps = message.caps ?? []
 
         if (peerSid !== message.sid) {
           forgetPeer()
@@ -1454,7 +1458,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       dropUndoAsk(true)
       dropPhaseAsk(true)
 
-      commit(action)
+      // Un Xyz que cambia de manos se lleva sus materiales sólo si el rival también lo sabe hacer (si no, van a mi cementerio, como siempre).
+      commit(peerCaps.includes(XYZ_MATERIALS_CAP) ? carryMaterials(action, { mine, theirs: theirs?.state ?? null, ownIds }) : action)
       emit()
     },
 

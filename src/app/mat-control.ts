@@ -1,4 +1,4 @@
-import { allMatIds, FOREIGN_PREFIX, isForeignId, isFreeTakeZone, locateCard, type MatAction, type MatCardKind, type MatPos, type MatState, type MatTakeZone, type Placed } from './practice-mat'
+import { allMatIds, FOREIGN_PREFIX, isForeignId, isFreeTakeZone, isTakeZone, isToken, locateCard, type MatAction, type MatCardKind, type MatPos, type MatState, type MatTakeZone, type Placed } from './practice-mat'
 
 /**
  * El control de una carta en un duelo (Cambio de Corazón, Control Mental, Resurrección de Monstruos en el cementerio del rival…): cada jugador lleva SU mesa, así que cambiar de manos una carta son dos
@@ -12,6 +12,11 @@ import { allMatIds, FOREIGN_PREFIX, isForeignId, isFreeTakeZone, locateCard, typ
  *   se eligió (o al cementerio, si salió como sacrificio o material) o, si se devolvió con `give`, a su campo. Un Monstruo de Péndulo que iba del campo al cementerio vuelve, por regla, al Extra Deck de su
  *   dueño boca arriba (la clase la sabe sólo el dueño: `kindOf`).
  * - Un dueño que recupera su carta (`regain` al campo) hace que el otro la suelte con `give`.
+ *
+ * Un Xyz con materiales: si los dos lados lo saben hacer (`XYZ_MATERIALS_CAP` en el `hello`), quien empieza el cambio (`give`, `take` o `regain` al campo) le pone a su jugada los materiales que viajan
+ * (`carryMaterials`) y cada respuesta copia esa lista con los ids de su mesa: el Xyz llega con ellos debajo. Viajan todos, salvo cuando vuelve a su dueño: ahí sólo los del dueño (los del otro van a su
+ * cementerio), para que ninguna carta quede en una mesa que no la puede devolver (si el dueño no tiene lugar, el Xyz y sus materiales van a su cementerio). Lo decide la jugada, no la sesión: el espejo, el
+ * espectador y un replay la aplican igual. Sin la lista (un lado de antes, o un Xyz sin material), los materiales van al cementerio de quien da, como siempre; un material ajeno que sale del campo vuelve a su dueño.
  *
  * Las jugadas de respuesta llevan `auto`: no provocan otra respuesta (si no, dos mesas se contestarían para siempre). Todo es puro; la sesión (`duel-session.ts`) las juega.
  */
@@ -120,6 +125,43 @@ function pendulumLeftField(before: MatState, id: string, real: string, kindOf: C
   return where?.kind === 'spot' && isPendulum(real, kindOf) && (where.spot === 'mz' || where.spot === 'emz' || (where.spot === 'st' && (where.index === 0 || where.index === 4)))
 }
 
+/** La capacidad que anuncia el `hello` de quien sabe pasar un Xyz con sus materiales (ver la cabecera). */
+export const XYZ_MATERIALS_CAP = 'xyz-materials'
+
+/** Un id como lo dice el rival (su carta, o una mía con `f.`), con el id de mi mesa: la suya con `f.`, la mía con su id real (o nada, si no la conozco). */
+function inMine(ids: readonly string[], ownIds: ControlContext['ownIds']): string[] {
+  return ids.flatMap((id) => (isForeignId(id) ? (ownIds[opaqueOfForeign(id)] ?? []) : [foreignOf(id)]))
+}
+
+/** La lista de materiales de una respuesta: sólo si la jugada del rival trajo la suya (sin ella, como siempre). */
+const withList = (materials: string[] | undefined) => (materials === undefined ? {} : { materials })
+
+/**
+ * Mi jugada de control (`give`, `take` o `regain` al campo) con los materiales que viajan con la carta, cuando el rival también lo sabe hacer: los de la carta en mi mesa (al dar) o en su espejo (al
+ * tomar o recuperar), con los ids de mi mesa. Al devolver una carta a su dueño, sólo los del dueño. Sin materiales, la jugada no cambia.
+ */
+export function carryMaterials(action: MatAction, { mine, theirs, ownIds }: { mine: MatState; theirs: MatState | null; ownIds: ControlContext['ownIds'] }): MatAction {
+  const under = (state: MatState, id: string) => fieldCard(state, id)?.placed.materials.filter((card) => !isToken(card)) ?? []
+  // Sólo se llama con `give`, `take` o `regain`, que llevan `materials`.
+  const add = (materials: string[]) => (materials.length > 0 ? ({ ...action, materials } as MatAction) : action)
+
+  if (action.type === 'give') {
+    return add(isForeignId(action.id) ? under(mine, action.id).filter(isForeignId) : under(mine, action.id))
+  }
+
+  if (action.type === 'take' && theirs) {
+    return add(inMine(under(theirs, opaqueOfForeign(action.id)), ownIds))
+  }
+
+  if (action.type === 'regain' && theirs && isTakeZone(action.to)) {
+    const opaque = Object.keys(ownIds).find((key) => ownIds[key] === action.id)
+
+    return opaque === undefined ? action : add(inMine(under(theirs, foreignOf(opaque)), ownIds).filter((id) => !isForeignId(id)))
+  }
+
+  return action
+}
+
 /** Mis jugadas de respuesta a la jugada del rival, para que mi mesa y la suya cuenten lo mismo (vacío si no hace falta ninguna). */
 export function controlReactions({ mine, ownIds, before, after, action, kindOf }: ControlContext): MatAction[] {
   // Una respuesta del rival a una mía no se contesta.
@@ -128,34 +170,46 @@ export function controlReactions({ mine, ownIds, before, after, action, kindOf }
   }
 
   const reactions: MatAction[] = []
+  // Los materiales que viajan con la carta (con los ids del rival): no vuelven sueltos a mí.
+  let traveling: readonly string[] = []
 
-  // El rival me da una carta suya: la tomo en la primera zona libre de su tipo; sin lugar, se la devuelvo (ella vuelve a su cementerio).
+  // El rival me da una carta suya: la tomo en la primera zona libre de su tipo, con sus materiales; sin lugar, se la devuelvo (ella vuelve a su cementerio y lo mío que tenía debajo, al mío).
   if (action.type === 'give' && !isForeignId(action.id)) {
     const given = fieldCard(before, action.id)
 
     if (given && !fieldCard(after, action.id)) {
       const index = firstFreeZone(mine, given.zone)
+      const materials = action.materials && inMine(action.materials, ownIds)
 
-      reactions.push(index === null ? { type: 'give', id: foreignOf(action.id) } : { type: 'take', id: foreignOf(action.id), zone: given.zone, index, pos: given.placed.pos, auto: true })
+      if (index === null) {
+        reactions.push({ type: 'give', id: foreignOf(action.id), ...withList(materials?.filter(isForeignId)) })
+      } else {
+        reactions.push({ type: 'take', id: foreignOf(action.id), zone: given.zone, index, pos: given.placed.pos, ...withList(materials), auto: true })
+        traveling = action.materials ?? []
+      }
     }
   }
 
-  // El rival toma una carta mía (del campo, del cementerio o del destierro): la suelto.
+  // El rival toma una carta mía (del campo, del cementerio o del destierro): la suelto, y con ella los materiales míos que se lleva.
   if (action.type === 'take' && isForeignId(action.id)) {
     const real = ownIds[opaqueOfForeign(action.id)]
 
     if (real !== undefined && isTakeable(mine, real)) {
-      reactions.push({ type: 'give', id: real, auto: true })
+      reactions.push({ type: 'give', id: real, ...withList(action.materials && inMine(action.materials, ownIds).filter((id) => !isForeignId(id))), auto: true })
     }
   }
 
-  // El rival recupera una carta suya que yo tenía: la suelto.
+  // El rival recupera una carta suya que yo tenía: la suelto (con los materiales suyos que se lleva).
   if (action.type === 'regain' && locateCard(mine, foreignOf(action.id))) {
-    reactions.push({ type: 'give', id: foreignOf(action.id), auto: true })
+    reactions.push({ type: 'give', id: foreignOf(action.id), ...withList(action.materials && inMine(action.materials, ownIds).filter(isForeignId)), auto: true })
   }
 
   // Una carta mía que el rival tenía y ya no tiene (la mandó a una pila, la devolvió, la usó de material): vuelve a mí.
-  const gone = allMatIds(before).filter((id) => isForeignId(id) && !allMatIds(after).includes(id))
+  if (action.type === 'give' && isForeignId(action.id)) {
+    traveling = action.materials ?? []
+  }
+
+  const gone = allMatIds(before).filter((id) => isForeignId(id) && !allMatIds(after).includes(id) && !traveling.includes(id))
 
   if (action.type === 'give' && isForeignId(action.id) && !gone.includes(action.id)) {
     gone.push(action.id)
@@ -171,14 +225,16 @@ export function controlReactions({ mine, ownIds, before, after, action, kindOf }
       continue
     }
 
-    if (action.type === 'give') {
+    if (action.type === 'give' && id === action.id) {
       const returned = fieldCard(before, id)
       const zone = returned?.zone ?? 'mz'
+      // Los materiales míos que vuelven con ella (si la jugada los trae).
+      const materials = withList(action.materials && inMine(action.materials, ownIds).filter((card) => !isForeignId(card)))
 
       // Devuelta con `give`: vuelve a mi campo, a la zona de su tipo (o a mi cementerio, si no tengo lugar).
       const index = slots[zone].shift()
 
-      reactions.push(index === undefined ? { type: 'regain', id: real, to: 'gy', auto: true } : { type: 'regain', id: real, to: zone, index, pos: returned?.placed.pos ?? 'atk', auto: true })
+      reactions.push(index === undefined ? { type: 'regain', id: real, to: 'gy', ...materials, auto: true } : { type: 'regain', id: real, to: zone, index, pos: returned?.placed.pos ?? 'atk', ...materials, auto: true })
     } else if (action.type === 'move' && action.id === id && action.to !== 'gy') {
       // Un Monstruo de Péndulo que va al Extra Deck va siempre boca arriba (como `extraToward`).
       const faceUp = action.faceUp || (action.to === 'extra' && isPendulum(real, kindOf)) || undefined

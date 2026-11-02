@@ -228,6 +228,8 @@ function action(value: unknown, nested = false): MatAction {
   const v = rec(value)
   const index = () => int(v.index, 0, 4)
   const shuffle = () => opt(v.shuffle, (seed) => int(seed, -SEED, SEED))
+  // Los materiales de un Xyz que cambia de manos en un duelo (`mat-control.ts`).
+  const materials = () => opt(v.materials, (list) => ids(list, 20))
   const flags = () => ({ faceDown: opt(v.faceDown, (f) => (typeof f === 'boolean' ? f : fail())), faceUp: opt(v.faceUp, (f) => (typeof f === 'boolean' ? f : fail())) })
 
   switch (v.type) {
@@ -265,11 +267,11 @@ function action(value: unknown, nested = false): MatAction {
     case 'phase':
       return clean({ type: 'phase', phase: oneOf(v.phase, PHASE_IDS), skipDraw: opt(v.skipDraw, yes) })
     case 'give':
-      return clean({ type: 'give', id: id(v.id), auto: opt(v.auto, yes) })
+      return clean({ type: 'give', id: id(v.id), materials: materials(), auto: opt(v.auto, yes) })
     case 'take':
-      return clean({ type: 'take', id: id(v.id), zone: oneOf(v.zone, ['mz', 'st', 'field'] as const), index: index(), pos: oneOf(v.pos, POS), auto: opt(v.auto, yes) })
+      return clean({ type: 'take', id: id(v.id), zone: oneOf(v.zone, ['mz', 'st', 'field'] as const), index: index(), pos: oneOf(v.pos, POS), materials: materials(), auto: opt(v.auto, yes) })
     case 'regain':
-      return clean({ type: 'regain', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom', 'mz', 'st', 'field'] as const), index: opt(v.index, (i) => int(i, 0, 4)), pos: opt(v.pos, (pos) => oneOf(pos, POS)), ...flags(), auto: opt(v.auto, yes) })
+      return clean({ type: 'regain', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom', 'mz', 'st', 'field'] as const), index: opt(v.index, (i) => int(i, 0, 4)), pos: opt(v.pos, (pos) => oneOf(pos, POS)), ...flags(), materials: materials(), auto: opt(v.auto, yes) })
     case 'batch':
       // Un lote dentro de otro no hace nada en la mesa: no se acepta.
       return nested ? fail() : { type: 'batch', actions: Array.isArray(v.actions) && v.actions.length <= MAX_BATCH ? v.actions.map((part) => action(part, true)) : fail() }
@@ -330,9 +332,9 @@ const FIELDS: Record<MatAction['type'], readonly string[]> = {
   rivalUse: ['#id'],
   attack: ['#id', '#target'],
   phase: ['@phase', 'skipDraw'],
-  give: ['#id', 'auto'],
-  take: ['#id', '@zone', 'index', '@pos', 'auto'],
-  regain: ['#id', '@to', 'index', '@pos', 'faceDown', 'faceUp', 'auto'],
+  give: ['#id', 'auto', '*materials'],
+  take: ['#id', '@zone', 'index', '@pos', 'auto', '*materials'],
+  regain: ['#id', '@to', 'index', '@pos', 'faceDown', 'faceUp', 'auto', '*materials'],
   batch: ['actions'],
 }
 const TYPES = Object.keys(FIELDS) as Array<MatAction['type']>
@@ -432,8 +434,10 @@ export function compactReader(rawTable: unknown) {
     return { id: ref(cardId), pos: at(ENUMS, pos), counters, materials: refs(materials) }
   }
   const unpack = (raw: unknown, nested = false): Record<string, unknown> => {
-    const [type, ...values] = list(raw, 8)
+    const [type, ...values] = list(raw, 9)
     const kind = at(TYPES, type)
+    // Una jugada no trae más valores que sus campos.
+    if (values.length > FIELDS[kind].length) fail()
     const action: Record<string, unknown> = { type: kind }
     FIELDS[kind].forEach((field, n) => {
       const v = values[n]

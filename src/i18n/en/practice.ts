@@ -175,6 +175,7 @@ export const practice: Translated<typeof es> = {
   'practice.step.receive': 'You receive control of {card}',
   'practice.step.regainControl': 'You regain control of {card}',
   'practice.step.regain': '{card} comes back to you',
+  'practice.step.withMaterials': { one: ', with its material', other: ', with its {count} materials' },
   'practice.step.turnFaceDown': 'You turn {card} face-down',
   'practice.step.flipSummon': 'You Flip Summon {card}',
   'practice.step.turnFaceUp': 'You turn {card} face-up',

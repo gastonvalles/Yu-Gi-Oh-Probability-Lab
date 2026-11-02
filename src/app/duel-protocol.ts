@@ -92,7 +92,8 @@ interface ClockWire {
 }
 
 /**
- * - `hello`: quién soy (`sid` cambia si recargo la página: el otro lado empieza de cero con mis números). Sólo el anfitrión manda los ajustes.
+ * - `hello`: quién soy (`sid` cambia si recargo la página: el otro lado empieza de cero con mis números). Sólo el anfitrión manda los ajustes. `caps`: lo que sé hacer de más (un cliente de antes no
+ *   lo manda y no lo lee): una conducta nueva se usa sólo si el otro la anunció, sin subir `PROTOCOL_VERSION`.
  * - `sync`: mi mesa de ahora (enmascarada, si ya la empecé), todo lo que ya sabés de ella, mis puntos de vida y, si soy el anfitrión, el reloj; sirve para arrancar, reconectar y reparar.
  * - `act` / `undo`: una jugada mía o el "volver atrás". `n` es la cantidad de jugadas que tengo después de ella.
  * - `undoAsk` / `undoPull` / `undoAnswer` / `undoCancel`: Deshacer vuelve atrás la última jugada de la mesa, sea de quien sea, y antes se le pide permiso al otro (`id` cuenta mis pedidos).
@@ -112,7 +113,7 @@ interface ClockWire {
  * - `resync`: me perdí algo, mandame un `sync`.
  */
 export type DuelMessage =
-  | { t: 'hello'; v: number; sid: string; role: 'host' | 'guest'; name: string; settings?: DuelSettings }
+  | { t: 'hello'; v: number; sid: string; role: 'host' | 'guest'; name: string; settings?: DuelSettings; caps?: string[] }
   /** `ready`, `order` (quién empieza, si ya se eligió) y `opening` (cómo va la tirada que lo define) hacen que quien vuelve a entrar, o perdió un mensaje, sepa en qué punto va el otro. */
   | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire; /** Lo que le queda a cada uno en el reloj de turnos (0 = anfitrión, 1 = invitado), como lo ve quien manda el `sync`. */ turnBanks?: readonly [number, number]; ready?: boolean; order?: 0 | 1; opening?: OpeningWire; series?: Series }
   | { t: 'act'; n: number; wire: WireAct }
@@ -145,6 +146,8 @@ export const MAX_NAME_LENGTH = 20
 const MAX_CARDS = 200
 const MAX_COUNT = 1_000_000
 const MAX_CLOCK_MS = 1_000_000_000
+const MAX_CAPS = 16
+const CAP = /^[a-z0-9-]{1,32}$/
 
 /** El nombre sin caracteres de control ni de los que esconden o dan vuelta el texto, sin espacios de más y con un largo razonable. */
 export const cleanName = (name: string) => stripHidden(name).trim().slice(0, MAX_NAME_LENGTH)
@@ -175,6 +178,8 @@ const REAL_ID = /^card-[0-9]{1,12}-[0-9]{1,3}$/
 const isCardId = (value: unknown): value is string => typeof value === 'string' && CARD_ID.test(value)
 const isRealId = (value: unknown): value is string => typeof value === 'string' && REAL_ID.test(value)
 const isCardIds = (value: unknown, max = MAX_CARDS): value is string[] => Array.isArray(value) && value.length <= max && value.every(isCardId)
+/** Los materiales de un Xyz que cambia de manos (los mismos topes que la mesa guardada). */
+const isMaterials = (value: unknown) => isCardIds(value, 20)
 const isSeed = (value: unknown): value is number => isInt(value, 0, 2 ** 32 - 1)
 const oneOf =
   <T extends string>(values: readonly T[]) =>
@@ -212,10 +217,17 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   target: (a) => isCardId(a.id),
   attack: (a) => isCardId(a.id) && optional(a.target, isCardId),
   phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true),
-  give: (a) => isCardId(a.id) && optional(a.auto, (v) => v === true),
-  take: (a) => isCardId(a.id) && isTakeZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.auto, (v) => v === true),
+  give: (a) => isCardId(a.id) && optional(a.materials, isMaterials) && optional(a.auto, (v) => v === true),
+  take: (a) => isCardId(a.id) && isTakeZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.materials, isMaterials) && optional(a.auto, (v) => v === true),
   regain: (a) =>
-    isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || isTakeZone(a.to)) && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.faceUp, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
+    isCardId(a.id) &&
+    (isPile(a.to) || a.to === 'deck-bottom' || isTakeZone(a.to)) &&
+    optional(a.index, (v) => isInt(v, 0, 4)) &&
+    optional(a.pos, isPos) &&
+    optional(a.faceDown, (v) => typeof v === 'boolean') &&
+    optional(a.faceUp, (v) => typeof v === 'boolean') &&
+    optional(a.materials, isMaterials) &&
+    optional(a.auto, (v) => v === true),
   batch: (a) => Array.isArray(a.actions) && a.actions.length > 0 && a.actions.length <= MAX_CARDS && a.actions.every((part) => isPlain(part) && isBatchPart(part.type) && actionChecks[part.type](part)),
   // El simulador de handtraps es de «Jugar solo»: la jugada nunca viaja en un duelo, y si llega se descarta.
   rivalUse: () => false,
@@ -432,7 +444,9 @@ export function parseMessage(text: unknown): DuelMessage | null {
         return null
       }
 
-      const hello = { t: 'hello', v: raw.v, sid: raw.sid, role: raw.role, name } as const
+      // Lo que sabe hacer (un cliente de antes no lo manda): sólo nombres razonables, y si no es una lista, nada.
+      const caps = Array.isArray(raw.caps) ? raw.caps.filter((cap): cap is string => typeof cap === 'string' && CAP.test(cap)).slice(0, MAX_CAPS) : []
+      const hello = { t: 'hello', v: raw.v, sid: raw.sid, role: raw.role, name, ...(caps.length > 0 ? { caps } : {}) } as const
       return settings ? { ...hello, settings } : hello
     }
 

@@ -21,11 +21,11 @@ En orden de valor sobre costo.
 1. **Enlace del replay de un duelo, sin los nombres de las cartas** (M): ya va en la forma compacta (v2, ~22 % más corto que v1),
    pero los nombres siguen viajando; sin ellos el ahorro sube a ~39 %. Como el combo, pedirlos por passcode al abrir toca
    `ReplaysScreen` y el video (leen `replay.cards`) y sin red se vería «Carta»; el formato ya acepta la lista de nombres vacía.
-2. **Control de un Xyz con material y de una ficha** (M): el espejo del rival ya sigue al núcleo (`swap`, cambio de código,
-   bolsas y materiales Xyz en `MatState.held`), pero al pasar el control de un Xyz con material `give` manda los materiales al
-   cementerio, y `give` y `regain` rechazan fichas (`mat-control.test.ts` lo exige en la mesa manual). Es cambiar la mesa manual y
-   su protocolo (`mat-control.ts` completa del otro lado esas jugadas), sin romper a quien no recargó: un campo opcional más una
-   bandera de capacidad en `hello` (sin subir `PROTOCOL_VERSION`, como dice `docs/duelo.md`), también para espectadores y replays.
+2. **Control de una ficha** (S/M): `give` y `regain` rechazan fichas (`mat-control.test.ts` lo exige en la mesa manual) porque
+   cada mesa cuenta las suyas (`token-N`, sin id opaco). Plan: `give token-N` y la otra mesa responde con `token` en su primera
+   zona libre (reacción nueva en `controlReactions`; al volver, igual); habilitar `give` de fichas en el reductor y el menú, meter
+   la reacción en `CONTROL_ACTIONS` (no se deshace) y anunciar otra capacidad en `hello.caps` como `xyz-materials`. Los contadores
+   se pierden al pasar el control.
 3. **Handtraps en tableta** (M): por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`, alto fijo) aunque el
    campo sea ancho; escalarla entre 640 y 1100 px.
 4. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
