@@ -616,7 +616,7 @@ describe('la mesa de práctica', () => {
         ['Al cementerio', undefined],
         ['Desterrar', undefined],
         ['A la mano', 'No va con X1'],
-        ['Dar vuelta boca abajo', 'No va con X1'],
+        // Un Péndulo boca arriba en el Extra no se da vuelta boca abajo: siempre queda boca arriba.
         ['Al deck', 'No va con X1'],
       ])
     })

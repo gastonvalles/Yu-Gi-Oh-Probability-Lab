@@ -287,6 +287,8 @@ export const auto: Translated<typeof es> = {
   'auto.chain.show': 'Show the chain',
   'auto.chain.hide': 'Hide the chain',
   'auto.chain.list': 'Chain links, in resolution order',
+  'auto.chain.strip': 'Chain links, first to last',
+  'auto.chain.fresh': 'New',
   'auto.chain.state.chained': 'Waiting',
   'auto.chain.state.solving': 'Resolving',
   'auto.chain.state.solved': 'Resolved',

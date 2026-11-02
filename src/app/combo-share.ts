@@ -228,6 +228,8 @@ function action(value: unknown, nested = false): MatAction {
   const v = rec(value)
   const index = () => int(v.index, 0, 4)
   const shuffle = () => opt(v.shuffle, (seed) => int(seed, -SEED, SEED))
+  // Los materiales de un Xyz que cambia de manos en un duelo (`mat-control.ts`).
+  const materials = () => opt(v.materials, (list) => ids(list, 20))
   const flags = () => ({ faceDown: opt(v.faceDown, (f) => (typeof f === 'boolean' ? f : fail())), faceUp: opt(v.faceUp, (f) => (typeof f === 'boolean' ? f : fail())) })
 
   switch (v.type) {
@@ -252,7 +254,7 @@ function action(value: unknown, nested = false): MatAction {
     case 'counter':
       return { type: 'counter', id: id(v.id), delta: int(v.delta, -999, 999) }
     case 'token':
-      return clean({ type: 'token', zone: oneOf(v.zone, ZONE), index: index(), pos: opt(v.pos, (pos) => oneOf(pos, ['atk', 'def'] as const)) })
+      return clean({ type: 'token', zone: oneOf(v.zone, ZONE), index: index(), pos: opt(v.pos, (pos) => oneOf(pos, ['atk', 'def'] as const)), auto: opt(v.auto, yes) })
     case 'activate':
       return clean({ type: 'activate', id: id(v.id), cost: opt(v.cost, (cost) => oneOf(cost, ['discard', 'banish'] as const)), effect: opt(v.effect, (effect) => int(effect, 0, 50)) })
     case 'reveal':
@@ -265,11 +267,11 @@ function action(value: unknown, nested = false): MatAction {
     case 'phase':
       return clean({ type: 'phase', phase: oneOf(v.phase, PHASE_IDS), skipDraw: opt(v.skipDraw, yes) })
     case 'give':
-      return clean({ type: 'give', id: id(v.id), auto: opt(v.auto, yes) })
+      return clean({ type: 'give', id: id(v.id), materials: materials(), auto: opt(v.auto, yes) })
     case 'take':
-      return clean({ type: 'take', id: id(v.id), zone: oneOf(v.zone, ['mz', 'st', 'field'] as const), index: index(), pos: oneOf(v.pos, POS), auto: opt(v.auto, yes) })
+      return clean({ type: 'take', id: id(v.id), zone: oneOf(v.zone, ['mz', 'st', 'field'] as const), index: index(), pos: oneOf(v.pos, POS), materials: materials(), auto: opt(v.auto, yes) })
     case 'regain':
-      return clean({ type: 'regain', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom', 'mz', 'st', 'field'] as const), index: opt(v.index, (i) => int(i, 0, 4)), pos: opt(v.pos, (pos) => oneOf(pos, POS)), ...flags(), auto: opt(v.auto, yes) })
+      return clean({ type: 'regain', id: id(v.id), to: oneOf(v.to, [...PILE, 'deck-bottom', 'mz', 'st', 'field'] as const), index: opt(v.index, (i) => int(i, 0, 4)), pos: opt(v.pos, (pos) => oneOf(pos, POS)), ...flags(), materials: materials(), auto: opt(v.auto, yes) })
     case 'batch':
       // Un lote dentro de otro no hace nada en la mesa: no se acepta.
       return nested ? fail() : { type: 'batch', actions: Array.isArray(v.actions) && v.actions.length <= MAX_BATCH ? v.actions.map((part) => action(part, true)) : fail() }
@@ -322,7 +324,7 @@ const FIELDS: Record<MatAction['type'], readonly string[]> = {
   attach: ['#id', '#to'],
   position: ['#id', '@pos'],
   counter: ['#id', 'delta'],
-  token: ['@zone', 'index', '@pos'],
+  token: ['@zone', 'index', '@pos', 'auto'],
   activate: ['#id', '@cost', 'effect'],
   reveal: ['#id'],
   declare: ['#id'],
@@ -330,9 +332,9 @@ const FIELDS: Record<MatAction['type'], readonly string[]> = {
   rivalUse: ['#id'],
   attack: ['#id', '#target'],
   phase: ['@phase', 'skipDraw'],
-  give: ['#id', 'auto'],
-  take: ['#id', '@zone', 'index', '@pos', 'auto'],
-  regain: ['#id', '@to', 'index', '@pos', 'faceDown', 'faceUp', 'auto'],
+  give: ['#id', 'auto', '*materials'],
+  take: ['#id', '@zone', 'index', '@pos', 'auto', '*materials'],
+  regain: ['#id', '@to', 'index', '@pos', 'faceDown', 'faceUp', 'auto', '*materials'],
   batch: ['actions'],
 }
 const TYPES = Object.keys(FIELDS) as Array<MatAction['type']>
@@ -341,8 +343,11 @@ const FRESH_MAT: readonly unknown[] = [[], [], [null, null, null, null, null], [
 const keyOf = (field: string) => field.replace(/^[#*@]/, '')
 const CARD_COPY = /^card-(\d{1,12})-(\d{1,2})$/
 
-/** El sobre v2, listo para JSON. */
-export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto }: SavedCombo | SharedCombo) {
+/**
+ * La tabla de ids de lo que va a viajar (`values`, que se recorre entero) y cómo se empacan con ella una mesa y una jugada: la usan el combo y el replay de un duelo
+ * (`duel-replay-share.ts`). `codes`: los passcodes de la tabla, en su orden.
+ */
+export function compactWriter(values: unknown) {
   // La tabla: los passcodes en el orden en que aparecen, con su copia más alta; lo que no es `card-<passcode>-<n>` tal cual, como texto.
   const seen = new Set<string>()
   const collect = (value: unknown): void => {
@@ -350,7 +355,7 @@ export function compactEnvelope({ name, deckName, savedAt, initial, actions, aut
       if (ID.test(value)) seen.add(value)
     } else if (value && typeof value === 'object') Object.values(value).forEach(collect)
   }
-  collect([initial, actions])
+  collect(values)
   const copies = new Map<number, number>()
   const others: string[] = []
   for (const cardId of seen) {
@@ -364,50 +369,63 @@ export function compactEnvelope({ name, deckName, savedAt, initial, actions, aut
   const ref = (cardId: string) => index.get(cardId)!
   const refs = (list: readonly string[]) => list.map(ref)
   const place = (card: Placed | null) => card && [ref(card.id), ENUMS.indexOf(card.pos), card.counters, refs(card.materials)]
-  const pack = (action: MatAction): unknown[] => {
-    const values = FIELDS[action.type].map((field) => {
-      const value = (action as unknown as Record<string, unknown>)[keyOf(field)]
+  const action = (item: MatAction): unknown[] => {
+    const values = FIELDS[item.type].map((field) => {
+      const value = (item as unknown as Record<string, unknown>)[keyOf(field)]
       if (value === undefined) return null
       if (field[0] === '#') return ref(value as string)
       if (field[0] === '*') return refs(value as string[])
       if (field[0] === '@') return ENUMS.indexOf(value as (typeof ENUMS)[number])
-      return field === 'actions' ? (value as MatAction[]).map(pack) : value
+      return field === 'actions' ? (value as MatAction[]).map(action) : value
     })
     while (values.length > 0 && values.at(-1) === null) values.pop()
-    return [TYPES.indexOf(action.type), ...values]
+    return [TYPES.indexOf(item.type), ...values]
   }
-  const s = initial
-  const rest = [refs(s.gy), refs(s.banished), s.mz.map(place), s.emz.map(place), s.st.map(place), place(s.field), s.tokens, ENUMS.indexOf(s.phase), s.turn, refs(s.facedown), refs(s.extraUp), refs(s.targeted)]
-  // Lo que está como en una mesa recién repartida, del final para atrás, no viaja: el lector lo completa.
-  while (rest.length > 0 && JSON.stringify(rest.at(-1)) === JSON.stringify(FRESH_MAT[rest.length - 1])) rest.pop()
-  const mat = [refs(s.deck), refs(s.extra), refs(s.hand), s.rival ? [refs(s.rival.hand), refs(s.rival.used)] : null, ...rest]
+  const mat = (s: MatState) => {
+    const rest = [refs(s.gy), refs(s.banished), s.mz.map(place), s.emz.map(place), s.st.map(place), place(s.field), s.tokens, ENUMS.indexOf(s.phase), s.turn, refs(s.facedown), refs(s.extraUp), refs(s.targeted)]
+    // Lo que está como en una mesa recién repartida, del final para atrás, no viaja: el lector lo completa.
+    while (rest.length > 0 && JSON.stringify(rest.at(-1)) === JSON.stringify(FRESH_MAT[rest.length - 1])) rest.pop()
+    return [refs(s.deck), refs(s.extra), refs(s.hand), s.rival ? [refs(s.rival.hand), refs(s.rival.used)] : null, ...rest]
+  }
+  return { table: [[...copies].map(([code, count]) => (count === 1 ? code : [code, count])), others], codes: [...copies.keys()], ref, refs, mat, action }
+}
+
+/** `savedAt` en ms si vuelve igual; si no, el texto. */
+export function compactTime(savedAt: string): number | string {
   const ms = Date.parse(savedAt)
-  const when = ms >= 0 && new Date(ms).toISOString() === savedAt ? ms : savedAt
-  return { app: APP, kind: 'combo', v: COMPACT_VERSION, c: [name, deckName, when, [[...copies].map(([code, count]) => (count === 1 ? code : [code, count])), others], mat, actions.map(pack), ...(auto ? [true] : [])] }
+  return ms >= 0 && new Date(ms).toISOString() === savedAt ? ms : savedAt
+}
+export const readCompactTime = (value: unknown): unknown => (typeof value === 'number' ? new Date(int(value, 0, 8.64e15)).toISOString() : value)
+
+/** El sobre v2, listo para JSON. */
+export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto }: SavedCombo | SharedCombo) {
+  const pack = compactWriter([initial, actions])
+  return { app: APP, kind: 'combo', v: COMPACT_VERSION, c: [name, deckName, compactTime(savedAt), pack.table, pack.mat(initial), actions.map(pack.action), ...(auto ? [true] : [])] }
 }
 
 const list = (value: unknown, max: number): unknown[] => (Array.isArray(value) && value.length <= max ? value : fail())
 const at = <T>(items: readonly T[], value: unknown): T => items[int(value, 0, items.length - 1)]!
 
-/** La tabla de ids, con su tope (un `[passcode, 99]` repetido no la infla). */
-function readTable(value: unknown): string[] {
+/** La tabla de ids, con su tope (un `[passcode, 99]` repetido no la infla), y sus passcodes en orden. */
+function readTable(value: unknown): { table: string[]; codes: number[] } {
   const [cards, others] = list(value, 2)
   const table: string[] = []
+  const codes: number[] = []
   for (const entry of list(cards, MAX_TABLE)) {
     const [code, count = 1] = typeof entry === 'number' ? [entry] : list(entry, 2)
     const copies = int(count, 1, MAX_COPIES)
     if (table.length + copies > MAX_TABLE) fail()
     const passcode = int(code, 0, 999_999_999_999)
+    codes.push(passcode)
     for (let n = 1; n <= copies; n++) table.push(`card-${passcode}-${n}`)
   }
   table.push(...list(others, MAX_TABLE - table.length).map(id))
-  return table
+  return { table, codes }
 }
 
-/** La forma v1 de un combo v2 (lanza si no se puede armar); `readCombo` la valida entera. */
-function expandCompact(value: unknown): unknown {
-  const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto] = list(value, 7)
-  const table = readTable(rawTable)
+/** Lo inverso de `compactWriter`: con la tabla, una mesa y una jugada vuelven a la forma de v1 (lanza si no se puede), que quien llama valida con su lector de siempre. */
+export function compactReader(rawTable: unknown) {
+  const { table, codes } = readTable(rawTable)
   const ref = (n: unknown) => at(table, n)
   const refs = (items: unknown) => list(items, MAX_PILE).map(ref)
   const place = (card: unknown) => {
@@ -416,8 +434,10 @@ function expandCompact(value: unknown): unknown {
     return { id: ref(cardId), pos: at(ENUMS, pos), counters, materials: refs(materials) }
   }
   const unpack = (raw: unknown, nested = false): Record<string, unknown> => {
-    const [type, ...values] = list(raw, 8)
+    const [type, ...values] = list(raw, 9)
     const kind = at(TYPES, type)
+    // Una jugada no trae más valores que sus campos.
+    if (values.length > FIELDS[kind].length) fail()
     const action: Record<string, unknown> = { type: kind }
     FIELDS[kind].forEach((field, n) => {
       const v = values[n]
@@ -427,28 +447,37 @@ function expandCompact(value: unknown): unknown {
     })
     return action
   }
-  const [deck, extra, hand, rival, ...rest] = list(rawMat, 16)
-  const [gy, banished, mz, emz, st, field, tokens, phase, turn, facedown, extraUp, targeted] = FRESH_MAT.map((fresh, n) => (rest[n] === undefined ? fresh : rest[n]))
-  const [rivalHand, rivalUsed] = rival === null ? [] : list(rival, 2)
-  const initial = {
-    deck: refs(deck),
-    extra: refs(extra),
-    hand: refs(hand),
-    gy: refs(gy),
-    banished: refs(banished),
-    mz: list(mz, 5).map(place),
-    emz: list(emz, 2).map(place),
-    st: list(st, 5).map(place),
-    field: place(field),
-    tokens,
-    phase: at(ENUMS, phase),
-    turn,
-    facedown: refs(facedown),
-    extraUp: refs(extraUp),
-    targeted: refs(targeted),
-    ...(rival === null ? {} : { rival: { hand: refs(rivalHand), used: refs(rivalUsed) } }),
+  const mat = (rawMat: unknown) => {
+    const [deck, extra, hand, rival, ...rest] = list(rawMat, 16)
+    const [gy, banished, mz, emz, st, field, tokens, phase, turn, facedown, extraUp, targeted] = FRESH_MAT.map((fresh, n) => (rest[n] === undefined ? fresh : rest[n]))
+    const [rivalHand, rivalUsed] = rival === null ? [] : list(rival, 2)
+    return {
+      deck: refs(deck),
+      extra: refs(extra),
+      hand: refs(hand),
+      gy: refs(gy),
+      banished: refs(banished),
+      mz: list(mz, 5).map(place),
+      emz: list(emz, 2).map(place),
+      st: list(st, 5).map(place),
+      field: place(field),
+      tokens,
+      phase: at(ENUMS, phase),
+      turn,
+      facedown: refs(facedown),
+      extraUp: refs(extraUp),
+      targeted: refs(targeted),
+      ...(rival === null ? {} : { rival: { hand: refs(rivalHand), used: refs(rivalUsed) } }),
+    }
   }
-  return { name, deckName, savedAt: typeof savedAt === 'number' ? new Date(int(savedAt, 0, 8.64e15)).toISOString() : savedAt, initial, names: {}, actions: list(rawActions, MAX_ACTIONS).map((raw) => unpack(raw)), auto }
+  return { codes, ref, refs, mat, action: (raw: unknown) => unpack(raw) }
+}
+
+/** La forma v1 de un combo v2 (lanza si no se puede armar); `readCombo` la valida entera. */
+function expandCompact(value: unknown): unknown {
+  const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto] = list(value, 7)
+  const read = compactReader(rawTable)
+  return { name, deckName, savedAt: readCompactTime(savedAt), initial: read.mat(rawMat), names: {}, actions: list(rawActions, MAX_ACTIONS).map(read.action), auto }
 }
 
 function readCompact(value: unknown): SharedCombo | null {

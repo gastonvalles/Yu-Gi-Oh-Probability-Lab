@@ -299,6 +299,9 @@ export const auto = {
   'auto.chain.show': 'Ver la cadena',
   'auto.chain.hide': 'Ocultar la cadena',
   'auto.chain.list': 'Eslabones de la cadena, en el orden en que se resuelven',
+  // La cinta del celular: del primero al último (el que se resuelve lleva el aro); «Nuevo» un momento en el eslabón que se suma.
+  'auto.chain.strip': 'Eslabones de la cadena, del primero al último',
+  'auto.chain.fresh': 'Nuevo',
   'auto.chain.state.chained': 'En espera',
   'auto.chain.state.solving': 'Resolviendo',
   'auto.chain.state.solved': 'Resuelta',

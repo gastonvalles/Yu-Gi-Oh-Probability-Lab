@@ -149,9 +149,9 @@ describe('auto-screen · las jugadas', () => {
     expect(lane()).toBeNull()
     const band = within(screen.getByRole('group', { name: '¿Activás algo ahora?' }))
 
-    expect(band.getByRole('option', { name: 'Called by the Grave, Mano' })).toHaveAttribute('aria-selected', 'true')
+    expect(band.getByRole('option', { name: 'Called by the Grave, en tu mano' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('group', { name: '¿Activás algo ahora?' })).not.toHaveTextContent('Tu respuesta')
-    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'No responder', 'Activar como CL1'])
+    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder', 'Activar como CL1', ''])
     fireEvent.click(band.getByRole('button', { name: 'No responder' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
   })
@@ -170,7 +170,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('sin lugar libre (todo choca), la banda de responder abre entera igual y la pila de la cadena sigue a la vista y desplegada: nada se minimiza ni se esconde solo', () => {
+  it('con una cadena a la vista, responder va en la hoja de la cadena (la banda del medio no sale): bajada, con los chips y «No responder» y la principal; la única candidata ya viene elegida', () => {
     const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, top: 0, left: 0, bottom: 800, right: 400, width: 400, height: 800, toJSON: () => ({}) })
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
@@ -181,10 +181,13 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask(CHAIN))
     const notice = screen.getByTestId('chain-notice')
 
-    expect(screen.getByRole('group', { name: 'Responder a la cadena' })).not.toHaveAttribute('data-minimized')
-    expect(screen.getByTestId('duel-prompt-layer').querySelector('[data-minimized]')).toBeNull()
-    expect(within(notice).getByRole('list', { name: /Eslabones/ })).toBeInTheDocument()
-    expect(screen.getByTestId('duel-chain-layer').style.visibility).toBe('')
+    expect(screen.queryByRole('group', { name: 'Responder a la cadena' })).toBeNull()
+    expect(screen.queryByTestId('duel-prompt-layer')).toBeNull()
+    expect(within(notice).getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).toBeInTheDocument()
+    expect(within(notice).getByRole('button', { name: 'Subir la hoja: Cadena' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(notice).getByRole('button', { name: 'Encadenar como CL2' })).toBeEnabled()
+    fireEvent.click(within(notice).getByRole('button', { name: 'Encadenar como CL2' }))
+    expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
     spy.mockRestore()
   })
 
@@ -204,7 +207,7 @@ describe('auto-screen · las jugadas', () => {
 
     core(() => fake.ask(CHAIN))
     expect(screen.getByTestId('duel-prompt-layer').querySelector('[data-minimized]')).toBeNull()
-    expect(screen.getByRole('option', { name: 'Called by the Grave, Mano' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Called by the Grave, en tu mano' })).toBeInTheDocument()
   })
 
   it('cadena con dos candidatas: ninguna elegida y la principal apagada; tocar una la elige y la principal la activa; una con dos efectos abre su lista', () => {
@@ -217,10 +220,10 @@ describe('auto-screen · las jugadas', () => {
 
     expect(band.getByRole('button', { name: 'Activar como CL1' })).toBeDisabled()
     expect(band.queryByText(/Elegí con qué/)).toBeNull()
-    fireEvent.click(band.getByRole('option', { name: 'Nibiru, Cementerio' }))
+    fireEvent.click(band.getByRole('option', { name: 'Nibiru, en tu Cementerio' }))
     expect(screen.getByRole('dialog', { name: 'Activar efecto' })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
-    fireEvent.click(band.getByRole('option', { name: 'Called by the Grave, Mano' }))
+    fireEvent.click(band.getByRole('option', { name: 'Called by the Grave, en tu mano' }))
     fireEvent.click(band.getByRole('button', { name: 'Activar como CL1' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })

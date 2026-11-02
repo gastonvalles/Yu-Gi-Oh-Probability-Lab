@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { toast } from 'react-hot-toast'
 
 import { useToastBox } from '../../app/toast-box'
@@ -51,13 +51,21 @@ interface AppToastProps {
   action?: ToastAction
 }
 
-/** Aviso único de la app: con color según el tipo y se descarta con un toque o deslizándolo hacia un costado. */
+/** Aviso único de la app (también el de las pantallas: no se arma otro cartel): con color según el tipo, una acción opcional al final («Deshacer») y se descarta con un toque o deslizándolo hacia un costado. */
 export function AppToast({ id, visible, message, tone, rival, action }: AppToastProps) {
   const [offset, setOffset] = useState(0)
   const [dismissed, setDismissed] = useState(false)
   const startRef = useRef<number | null>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
   // En el lateral del duelo el aviso ocupa el ancho de la columna (no pasa de ahí).
   const inRail = useToastBox() !== null
+
+  // Si el foco se perdió con lo que se tocó (el botón que hizo el cambio se fue, como «Aplicar al deck»), pasa a la acción: el teclado no queda en el aire.
+  useEffect(() => {
+    if (action && (document.activeElement === null || document.activeElement === document.body)) {
+      boxRef.current?.querySelector('button')?.focus()
+    }
+  }, [action])
 
   const handleDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     startRef.current = event.clientX
@@ -95,6 +103,7 @@ export function AppToast({ id, visible, message, tone, rival, action }: AppToast
 
   return (
     <div
+      ref={boxRef}
       role={tone === 'error' ? 'alert' : 'status'}
       className={cx(rival === undefined ? TOAST_BASE : onlyEmoji(message) ? TOAST_REACTION : TOAST_RIVAL, inRail && 'max-w-full!')}
       data-visible={visible && !dismissed ? 'true' : 'false'}

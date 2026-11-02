@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
-import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, placeLabel, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../../app/auto/chain-feed'
 import { rivalAttackInCourse } from '../../app/attack-trail'
@@ -44,11 +44,12 @@ import { FLIGHT_MS } from '../../app/use-card-flights'
 import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
-import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard } from './CardPicker'
+import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard, type PickFrom } from './CardPicker'
 import { ChainNotice } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
 import { RespondBand } from './RespondBand'
+import type { ChainRespond } from './ChainSheet'
 import { SortSheet } from './SortSheet'
 
 /**
@@ -1052,36 +1053,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       const card = row.mine ? ((row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null) : null
 
       setLinkRead({ code: row.code, card, ...(row.description ? { description: row.description } : {}) })
-      setChainTouch({ key: feed.key, open: true })
+      // Desde 1101 px leer un eslabón retiene la pila (queda hasta plegarla); la cinta del celular no se pliega, así que no retiene nada: se va sola al terminar.
+      if (desktop) setChainTouch({ key: feed.key, open: true })
       if (wide && card) lockDock({ name: nameOf(row.card, row.code), card })
       else showRival(row.code ? { drawId: drawIdOf(row.code) } : { faceDown: true }, rect)
     },
-    [feed, cardsById, byCode, wide, lockDock, nameOf, showRival],
+    [feed, cardsById, byCode, wide, desktop, lockDock, nameOf, showRival],
   )
-  const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
-  // El visor de pilas de una búsqueda flota sobre el centro de la mesa (escritorio): mientras se elige ahí, la cadena va plegada a su píldora para no pisarlo (después vuelve a como estaba).
-  const viewerOpen = desktop && pick !== null && list === null && pick.surface === 'pile'
-  const chainNotice = useMemo(
-    () =>
-      chainShown && feed ? (
-        <ChainNotice
-          rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}) }))}
-          focus={feed.focus}
-          resolving={feed.resolving}
-          open={chainOpen && !viewerOpen}
-          compact={!desktop}
-          onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
-          onPick={readLink}
-        />
-      ) : null,
-    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, viewerOpen, desktop, readLink],
-  )
-  const linkText = linkRead?.card ?? linkRivalCard
-  const linkHighlight = useMemo<CardTextHighlight | null>(() => {
-    const range = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
-
-    return range && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...range } : null
-  }, [chainNotice, linkRead, linkText])
   // La cadena que se puede pasar, en la banda de responder: a qué eslabón y con qué cartas (con su lugar). Con una sola de un solo efecto, ya viene elegida; una con varios efectos
   // abre su lista (como su menú en la mesa).
   const offer = shown && lane === null ? respondOffer(shown, chain) : null
@@ -1097,6 +1075,54 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     else setSub({ label: t('practice.menu.activateEffect'), children: candidate.items.flatMap((item) => item.children ?? [item]) })
   }
 
+  const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
+  // El visor de pilas de una búsqueda flota sobre el centro de la mesa (escritorio): mientras se elige ahí, la cadena va plegada a su píldora para no pisarlo (después vuelve a como estaba).
+  const viewerOpen = desktop && pick !== null && list === null && pick.surface === 'pile'
+  // En el celular, con una cadena a la vista, responder o pasar va en la hoja de la cadena (`ChainSheet`) y no en la banda del medio; sin cadena todavía, la banda de siempre (`RespondBand`).
+  const respondCards =
+    offer?.candidates.map(({ ref, key, at }): PickCard => {
+      // El lugar con su ícono (la mano, el Cementerio, el campo…): en las columnas angostas del celular, sólo el ícono, y el nombre accesible lo dice entero.
+      const from: PickFrom | null = at === null ? null : at === 'mz' || at === 'emz' || at === 'st' ? 'field' : at
+
+      return { key, name: nameOf(ref), art: artOf(ref), ...(from ? pickPlace(from, ref.side === 'theirs') : {}) }
+    }) ?? []
+  const sheetRespond: ChainRespond | undefined =
+    !desktop && offer?.to && chainShown
+      ? {
+          key: askId ?? 0,
+          link: offer.link,
+          cards: respondCards,
+          chosen: offered?.key ?? null,
+          onToggle: pickOffer,
+          onChain: () => {
+            if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
+          },
+          onPass: () => gesture({ kind: 'cancel' }),
+        }
+      : undefined
+  const chainNotice = useMemo(
+    () =>
+      chainShown && feed ? (
+        <ChainNotice
+          rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}) }))}
+          focus={feed.focus}
+          resolving={feed.resolving}
+          open={chainOpen && !viewerOpen}
+          compact={!desktop}
+          onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
+          onPick={readLink}
+          respond={sheetRespond}
+        />
+      ) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sheetRespond` se arma en cada dibujo (lleva funciones); lo que decide qué dice está en sus partes
+    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, viewerOpen, desktop, readLink, offer, offered?.key, askId],
+  )
+  const linkText = linkRead?.card ?? linkRivalCard
+  const linkHighlight = useMemo<CardTextHighlight | null>(() => {
+    const range = chainNotice && linkRead && linkText?.description ? linkPhrase(linkText.description, linkRead.code, linkRead.description) : null
+
+    return range && linkText ? { ygoprodeckId: linkText.ygoprodeckId, ...range } : null
+  }, [chainNotice, linkRead, linkText])
   // ── ATK/DEF de ahora de la carta del detalle (sólo las del campo los tienen): se busca por código entre las del campo de ese lado. ──
   const peeked = dock.shown
   const dockStats = useMemo(() => {
@@ -1192,18 +1218,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
       />
-    ) : offer ? (
+    ) : offer && !sheetRespond ? (
       <RespondBand
         key={askId ?? 0}
         // A qué eslabón respondés (su número, su dueño, su carta y su estado) ya lo dice la pila de la cadena, arriba y desplegada: la banda dice sólo qué se decide.
         title={offer.to ? t('auto.respond.title') : t('auto.respond.now')}
         link={offer.link}
-        cards={offer.candidates.map(({ ref, key, at }): PickCard => {
-          const place = placeLabel(at)
-          const where = place && ref.side === 'theirs' ? t('duel.zone.theirs', { zone: place }) : place
-
-          return { key, name: nameOf(ref), art: artOf(ref), ...(where ? { place: where } : {}) }
-        })}
+        cards={respondCards}
         chosen={offered?.key ?? null}
         onToggle={pickOffer}
         onChain={() => {

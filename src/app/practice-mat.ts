@@ -104,8 +104,11 @@ export type MatAction =
   | { type: 'attach'; id: string; to: string; held?: true }
   | { type: 'position'; id: string; pos: MatPos }
   | { type: 'counter'; id: string; delta: number }
-  /** Una ficha en una zona de monstruo, en ataque o en defensa (las fichas guardadas antes de elegir la posición no tienen `pos` y salen en ataque). */
-  | { type: 'token'; zone: MatZone; index: number; pos?: Exclude<MatPos, 'set'> }
+  /**
+   * Una ficha en una zona de monstruo, en ataque o en defensa (las fichas guardadas antes de elegir la posición no tienen `pos` y salen en ataque). `auto` (duelo): la ficha cuyo control me dio el rival
+   * (la respuesta a su `give token-N`, `mat-control.ts`): no se deshace ni provoca otra respuesta.
+   */
+  | { type: 'token'; zone: MatZone; index: number; pos?: Exclude<MatPos, 'set'>; auto?: true }
   /**
    * Activar el efecto de una carta (queda anotado); con costo, la carta se descarta o se destierra. `effect` dice cuál efecto, por su lugar entre los efectos del texto (el orden de `getCardEffectMap`): sólo cuando la carta tiene
    * varios que la mesa sabe contar uno por uno (`countableEffects` en `mat-assistant.ts`); sin él, la activación no dice cuál efecto es.
@@ -130,11 +133,13 @@ export type MatAction =
   /**
    * Control de una carta (duelo): `give` la saca de mi mesa —del campo (los materiales van a mi cementerio) o de una pila— para que la tenga el rival, o la devuelve si era de él (su id lleva `f.`);
    * `take` pone en mi campo una carta de él (con su id `f.…`), venga de su campo, de su cementerio o de su destierro; `regain` me devuelve una carta mía que el rival tenía (al campo o a una pila). Lo que hace uno, el otro lo
-   * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). Ver `mat-control.ts`.
+   * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). `materials` (un Xyz que cambia de manos con sus materiales, sólo si los dos lados lo saben hacer): en `give`, los que se
+   * van con la carta (los demás míos, a mi cementerio); en `take` y `regain`, los que quedan debajo (`regain` a una pila: al cementerio). Sin `materials`, como siempre. Una ficha se da con `give token-N`
+   * (sólo del campo, y pierde sus contadores) y el rival la recibe con una jugada `token` suya: nunca hay `take` ni `regain` de una ficha. Ver `mat-control.ts`.
    */
-  | { type: 'give'; id: string; auto?: true }
-  | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; auto?: true }
-  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; faceUp?: boolean; auto?: true }
+  | { type: 'give'; id: string; materials?: string[]; auto?: true }
+  | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; materials?: string[]; auto?: true }
+  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | MatTakeZone; index?: number; pos?: MatPos; faceDown?: boolean; faceUp?: boolean; materials?: string[]; auto?: true }
   /**
    * Varias cartas en una sola jugada (elegidas juntas en el Main, el Extra, el cementerio o el destierro): las partes van en orden, de un mismo tipo y destino, con un `shuffle` al principio
    * (salen mirando el Main: el resto se baraja) o al final («Al azar»: entran al deck y se baraja todo). Es una jugada: un paso, una línea, un Deshacer y, en el duelo, un mensaje. Un lote
@@ -323,10 +328,15 @@ function carriedMaterials(placed: Placed | null): string[] {
   return placed?.materials.filter((id) => !isToken(id) && !isForeignId(id)) ?? []
 }
 
-/** Al dejar el campo, los materiales Xyz van al cementerio (las fichas desaparecen). */
-function dropMaterials(state: MatState, placed: Placed | null): MatState {
-  const materials = carriedMaterials(placed)
+/** Al dejar el campo, los materiales Xyz van al cementerio (las fichas desaparecen); `keep`, los que se van con la carta (un Xyz que cambia de manos). */
+function dropMaterials(state: MatState, placed: Placed | null, keep: readonly string[] = []): MatState {
+  const materials = carriedMaterials(placed).filter((id) => !keep.includes(id))
   return materials.length === 0 ? state : { ...state, gy: [...state.gy, ...materials] }
+}
+
+/** Los materiales que llegan con una carta que cambia de manos: sin fichas, sin repetir y sólo los que no están ya en la mesa (ni la carta misma). */
+function arriving(state: MatState, id: string, materials: readonly string[] | undefined): string[] {
+  return (materials ?? []).filter((card, at, all) => card !== id && !isToken(card) && all.indexOf(card) === at && !locateCard(state, card))
 }
 
 function pileLength(state: MatState, count: number): number {
@@ -541,14 +551,14 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
       // Se da (o se le suelta al rival) una carta del campo o de una pila: el menú sólo lo ofrece en el campo, y el rival la toma de su cementerio o su
       // destierro; en un duelo automático el núcleo también la manda de la mano o del deck al campo del rival (un Kaiju de la mano, Allure Palace del deck).
-      // Un material o una ficha no.
-      if ((where?.kind !== 'spot' && where?.kind !== 'pile') || isToken(action.id)) {
+      // Un material no. Una ficha (siempre en el campo) sí: el rival pone una suya (`mat-control.ts`).
+      if (where?.kind !== 'spot' && where?.kind !== 'pile') {
         return state
       }
 
       const removed = removeEverywhere(state, action.id)
 
-      return dropMaterials(removed.state, removed.placed)
+      return dropMaterials(removed.state, removed.placed, action.materials)
     }
 
     case 'take': {
@@ -556,7 +566,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
         return state
       }
 
-      return withPlaced(state, action.zone, action.index, { id: action.id, pos: action.pos, counters: 0, materials: [] })
+      return withPlaced(state, action.zone, action.index, { id: action.id, pos: action.pos, counters: 0, materials: arriving(state, action.id, action.materials) })
     }
 
     case 'regain': {
@@ -572,18 +582,22 @@ export function matReducer(state: MatState, action: MatAction): MatState {
           return state
         }
 
-        return withPlaced(state, action.to, index, { id: action.id, pos: action.pos ?? 'atk', counters: 0, materials: [] })
+        return withPlaced(state, action.to, index, { id: action.id, pos: action.pos ?? 'atk', counters: 0, materials: arriving(state, action.id, action.materials) })
       }
 
+      // A una pila: los materiales que traía (los míos: uno ajeno no entra a mis pilas) van a mi cementerio, como al dejar el campo.
+      const dropped = arriving(state, action.id, action.materials).filter((card) => !isForeignId(card))
+      const base = dropped.length === 0 ? state : { ...state, gy: [...state.gy, ...dropped] }
+
       if (action.to === 'deck') {
-        return { ...state, deck: [action.id, ...state.deck] }
+        return { ...base, deck: [action.id, ...base.deck] }
       }
 
       const pile = action.to === 'deck-bottom' ? 'deck' : action.to
-      const facedown = action.to === 'banished' && action.faceDown ? [...state.facedown, action.id] : state.facedown
-      const extraUp = action.to === 'extra' && action.faceUp ? [...state.extraUp, action.id] : state.extraUp
+      const facedown = action.to === 'banished' && action.faceDown ? [...base.facedown, action.id] : base.facedown
+      const extraUp = action.to === 'extra' && action.faceUp ? [...base.extraUp, action.id] : base.extraUp
 
-      return { ...state, [pile]: [...state[pile], action.id], facedown, extraUp }
+      return { ...base, [pile]: [...base[pile], action.id], facedown, extraUp }
     }
 
     case 'phase': {
@@ -621,6 +635,9 @@ const PILE_PHRASE_KEY = { extra: 'practice.step.pile.extra', banished: 'practice
 
 /** La posición dicha en una jugada: boca abajo se cuenta como defensa. */
 const positionName = (pos: MatPos) => t(pos === 'atk' ? 'practice.step.position.atk' : 'practice.step.position.def')
+
+/** Un cambio de control que se lleva los materiales del Xyz lo dice («…, con sus 2 materiales»). */
+const withMaterials = (text: string, materials: readonly string[] | undefined) => (materials?.length ? `${text}${t('practice.step.withMaterials', { count: materials.length })}` : text)
 
 /** Qué hace la jugada, en una línea: `before` es el estado previo (para saber de dónde viene la carta). */
 export function describeMatAction(before: MatState, action: MatAction, nameOf: (id: string) => string): string {
@@ -797,13 +814,13 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
     }
 
     case 'give':
-      return t(isForeignId(action.id) ? 'practice.step.giveBack' : action.auto ? 'practice.step.taken' : 'practice.step.give', { card: name(action.id) })
+      return withMaterials(t(isForeignId(action.id) ? 'practice.step.giveBack' : action.auto ? 'practice.step.taken' : 'practice.step.give', { card: name(action.id) }), action.materials)
 
     case 'take':
-      return t(action.auto ? 'practice.step.receive' : 'practice.step.take', { card: name(action.id) })
+      return withMaterials(t(action.auto ? 'practice.step.receive' : 'practice.step.take', { card: name(action.id) }), action.materials)
 
     case 'regain':
-      return t(isTakeZone(action.to) && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) })
+      return withMaterials(t(isTakeZone(action.to) && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) }), action.materials)
 
     case 'rivalUse':
       return t('handtraps.step.used', { card: name(action.id) })
@@ -815,6 +832,8 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
     }
 
     case 'token': {
+      if (action.auto) return t('practice.step.receive', { card: t('practice.token.the') })
+
       const zone = t(action.zone === 'emz' ? 'practice.step.tokenExtraZone' : 'practice.step.tokenZone', { n: action.index + 1 })
 
       return t('practice.step.tokenSummon', { position: positionName(action.pos === 'def' ? 'def' : 'atk'), zone })
@@ -922,6 +941,8 @@ export interface AttackTarget {
 export interface ControlOffer {
   rival: string
   rivalHasRoom: boolean
+  /** El rival sabe recibir una ficha (`TOKEN_CONTROL_CAP`): sin esto, una ficha no ofrece «Dar el control» (un cliente de antes no la pondría y se perdería). */
+  tokens?: boolean
 }
 
 export interface MatMenuItem {
@@ -1016,7 +1037,7 @@ export function pendulumOnField(state: MatState, id: string, kindOf: (id: string
 
 /**
  * Las escalas de péndulo activas: un Monstruo de Péndulo **boca arriba** en la zona 0 o en la 4 de Mágicas y Trampas (`MatState.st`). Boca abajo, o en otra zona, no son escalas.
- * Con dos se ofrece la Invocación de Péndulo desde la mano. El rango de nivel no se valida: el que practica manda.
+ * Con dos se ofrece la Invocación de Péndulo desde la mano. El rango (`pendulum-range.ts`) se avisa, no se valida: el que practica manda.
  */
 export function activeScales(state: MatState, kindOf: (id: string) => MatCardKind): { index: number; id: string }[] {
   return [0, 4].flatMap((index): { index: number; id: string }[] => {
@@ -1032,14 +1053,21 @@ export function activeScales(state: MatState, kindOf: (id: string) => MatCardKin
 
 /**
  * La jugada de mandar una carta a una pila. Un Monstruo de Péndulo que **sale del campo al cementerio** (destruido, mandado, usado como Sacrificio) va, por regla, al Extra Deck boca arriba, y un monstruo del Extra Deck
- * que iba a la mano o al deck vuelve al Extra Deck boca abajo: es la misma jugada con ese destino (la arma quien juega, así las dos mesas de un duelo la aplican igual). Lo demás va adonde se dijo.
+ * que iba a la mano o al deck vuelve al Extra Deck: es la misma jugada con ese destino (la arma quien juega, así las dos mesas de un duelo la aplican igual). Lo demás va adonde se dijo.
+ * **Un Monstruo de Péndulo que va al Extra Deck va siempre boca arriba** (`extraToward`), también soltado sobre el Extra; lo demás, boca abajo.
  */
 export function pileAction(state: MatState, id: string, to: MatPile, kindOf: (id: string) => MatCardKind): MatAction {
-  if (to === 'gy' && pendulumOnField(state, id, kindOf)) return { type: 'move', id, to: 'extra', faceUp: true }
-  // Un monstruo del Extra Deck que iba a la mano o al deck vuelve, por regla, al Extra Deck (boca abajo).
-  if ((to === 'hand' || to === 'deck') && kindOf(id).extra) return { type: 'move', id, to: 'extra' }
+  if (to === 'gy' && pendulumOnField(state, id, kindOf)) return extraToward(id, kindOf)
+  // Un monstruo del Extra Deck que iba a la mano o al deck vuelve, por regla, al Extra Deck.
+  if ((to === 'hand' || to === 'deck') && kindOf(id).extra) return extraToward(id, kindOf)
+  if (to === 'extra') return extraToward(id, kindOf)
 
   return { type: 'move', id, to }
+}
+
+/** Mandar una carta al Extra Deck: un Monstruo de Péndulo propio, boca arriba (siempre: es de donde sale la Invocación de Péndulo); lo demás (y una carta del rival), boca abajo. */
+export function extraToward(id: string, kindOf: (id: string) => MatCardKind): MatAction {
+  return kindOf(id).pendulum && !isToken(id) && !isForeignId(id) ? { type: 'move', id, to: 'extra', faceUp: true } : { type: 'move', id, to: 'extra' }
 }
 
 /**
@@ -1142,14 +1170,16 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
     target()
 
+    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre; sin lugar, dar el de uno mío se ve apagado y dice por qué.
+    // Una Mágica o Trampa del rival que tomé se devuelve siempre (sin lugar, vuelve a su cementerio). Una ficha, sólo si el rival sabe recibirla.
+    const monster = spot === 'mz' || spot === 'emz'
+
     if (isToken(id)) {
+      if (control?.tokens) items.push({ label: t('practice.menu.giveControl', { name: control.rival }), action: { type: 'give', id }, ...(control.rivalHasRoom ? {} : { disabled: t('practice.menu.giveControlNoRoom', { name: control.rival }) }) })
       add(t('practice.menu.removeToken'), { type: 'move', id, to: 'gy' })
       return items
     }
 
-    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre; sin lugar, dar el de uno mío se ve apagado y dice por qué.
-    // Una Mágica o Trampa del rival que tomé se devuelve siempre (sin lugar, vuelve a su cementerio).
-    const monster = spot === 'mz' || spot === 'emz'
     if (control && (monster ? control.rivalHasRoom : isForeignId(id))) {
       add(t(isForeignId(id) ? 'practice.menu.returnControl' : 'practice.menu.giveControl', { name: control.rival }), { type: 'give', id })
     } else if (control && monster && !isForeignId(id)) {
@@ -1164,7 +1194,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     add(t('practice.menu.detachToGy'), { type: 'move', id, to: 'gy' })
     banish()
     toHand()
-    if (kind.extra) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
+    // Un Xyz o un Fusión de Péndulo que era material vuelve al Extra (el de Péndulo, boca arriba).
+    if (kind.extra) addUtility(t(kind.pendulum ? 'practice.menu.toExtraFaceUp' : 'practice.menu.toExtra'), extraToward(id, kindOf))
     return items
   }
 
@@ -1276,10 +1307,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
   if (pile !== 'extra') {
     // Un Monstruo de Péndulo va al Extra Deck boca arriba (de cualquier lado por un efecto; del campo, el cementerio ya lo manda ahí): ahí se ve y se puede volver a invocar por Péndulo.
-    if (kind.pendulum && !leavesToExtra) add(t('practice.menu.toExtraFaceUp'), { type: 'move', id, to: 'extra', faceUp: true })
-    if (kind.extra) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
-  } else if (faceUpExtra) {
-    addUtility(t('practice.menu.extraFaceDown'), { type: 'move', id, to: 'extra' })
+    // Uno de Péndulo nunca va boca abajo al Extra (tampoco un Fusión de Péndulo, ni se da vuelta uno que ya está boca arriba).
+    if (kind.pendulum && !leavesToExtra) add(t('practice.menu.toExtraFaceUp'), extraToward(id, kindOf))
+    if (kind.extra && !kind.pendulum) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
   }
 
   // Arriba/abajo del deck desde cualquier lado (mano, campo, cementerio, destierro): los mismos nombres en todos los menús.
