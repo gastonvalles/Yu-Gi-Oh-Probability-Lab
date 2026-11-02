@@ -257,9 +257,7 @@ export const auto = {
   'auto.bar.never': 'Nunca',
   'auto.bar.always': 'Siempre',
   'auto.bar.turnMine': 'Tu turno · {turn}',
-  'auto.bar.whenItMatters': 'Cuando importa',
-  'auto.bar.chainAlwaysHint': 'Te pregunta cada vez que podrías responder, aunque no cambie nada.',
-  'auto.bar.chainAskHint': 'Te pregunta sólo si algo tuyo responde de verdad a este momento.',
+  'auto.bar.chainAskHint': 'Te pregunta cada vez que tenés un efecto rápido o uno con su condición cumplida.',
   'auto.bar.chainNeverHint': 'No te pregunta; las obligatorias, igual.',
   'auto.bar.auto': 'Automática',
   // «Nueva mano» (la barra) arma otro duelo; éste repite el mismo.

@@ -30,9 +30,10 @@ describe('las preferencias del duelo automático', () => {
     storage.setItem(AUTO_KEYS.botHand, 'on')
     storage.setItem(AUTO_KEYS.first, 'rival')
     expect(readAutoPrefs(() => storage)).toEqual({ duel: true, chain: 'never', place: 'auto', blind: true, botHand: true, first: 'rival' })
+    // El «Siempre» de antes (`always`) es el de ahora: se lee como `ask`.
     storage.setItem(AUTO_KEYS.chain, 'always')
     storage.setItem(AUTO_KEYS.first, 'random')
-    expect(readAutoPrefs(() => storage)).toMatchObject({ chain: 'always', first: 'random' })
+    expect(readAutoPrefs(() => storage)).toMatchObject({ chain: 'ask', first: 'random' })
     storage.setItem(AUTO_KEYS.duel, 'si')
     storage.setItem(AUTO_KEYS.blind, 'si')
     storage.setItem(AUTO_KEYS.botHand, 'si')

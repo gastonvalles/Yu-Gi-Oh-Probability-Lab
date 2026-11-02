@@ -1,7 +1,7 @@
 import { t, type MessageKey } from '../../i18n'
 import { nowStat, type PickStat } from '../field-stats'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
-import { spotOf, type Adapter, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
+import { spotOf, type Adapter, type AutoOverlay, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
 import type { AskWhyView } from './ask-why'
 import { passivePolicy } from './policies'
 import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, type CoreAnswer, type CoreAsk, type Seat } from './protocol'
@@ -20,11 +20,13 @@ import { LOCATION as L, POSITION as P, parseAnswer, type AskOf, type AskType, ty
 export interface AskQueries extends Pick<Adapter, 'idAt' | 'codeOf'> {
   readonly mine: MatState
   readonly theirs: { readonly state: MatState }
+  /** De quién es el turno y la fase del núcleo: una cadena vacía en tu Main Phase no pregunta (el menú de la mesa ofrece lo mismo). Sin él, pregunta. */
+  readonly overlay?: Pick<AutoOverlay, 'turnPlayer' | 'phase'>
 }
 
 export interface AskContext {
   queries: AskQueries
-  /** «Respuestas»: preguntar siempre que se pueda responder, sólo si algo responde de verdad a este momento (`spe_count`), o nunca. «Casilla»: preguntar, o la primera libre. */
+  /** «Respuestas»: preguntar siempre que tengas algo que activar, o nunca. «Casilla»: preguntar, o la primera libre. */
   prefs: { chainMode: ChainMode; placeMode: 'ask' | 'auto' }
   /** La fase de ahora (la del overlay): marca la actual en `phaseItems`. */
   phase?: MatPhase | null
@@ -36,8 +38,8 @@ export interface AskContext {
   prefer?: ZoneTarget
 }
 
-/** Cuándo pregunta una cadena que se puede pasar: `always`, siempre que algo se pueda activar; `ask`, sólo si algo responde de verdad a este momento; `never`, nunca (las obligatorias, igual). */
-export type ChainMode = 'always' | 'ask' | 'never'
+/** Cuándo pregunta una cadena que se puede pasar: `ask` («Siempre»), siempre que tengas algo que activar; `never`, nunca (las obligatorias, igual). */
+export type ChainMode = 'ask' | 'never'
 
 /** La clase de casilla a la que una jugada saca una carta de la mano: una de monstruo o una de Mágicas y Trampas (la de campo y las escalas las distingue la mesa). */
 export type Into = 'monster' | 'spell'
@@ -579,6 +581,10 @@ const PHASE_WINDOWS = [
   [0x2, 'standby'],
   [0x20, 'end'],
 ] as const
+/** `PHASE_MAIN1 | PHASE_MAIN2` (la fase del núcleo), `TIMING_MAIN_END` y `TIMING_DRAW | TIMING_TOHAND` (el robo de la Draw Phase, solo). */
+const MAIN_PHASES = 0x4 | 0x100
+const MAIN_END = 0x4
+const POST_DRAW = 0x210000
 
 /** Las seis fases, como el botón de fase de la mesa: las ofrecidas pasan a ella (con su respuesta, o `null` si no contesta nada); la de ahora se marca; las demás, apagadas. */
 function phaseItemsOf(offered: Partial<Record<MatPhase, CoreAnswer | null>>, phase: MatPhase | null | undefined): AskItem[] {
@@ -696,13 +702,15 @@ export function openAsk(input: { askId: number; ask: CoreAsk; title?: string }, 
     }
     case 'select_chain': {
       Object.assign(base, itemsOf(ask, resolve, ctx))
-      // «Preguntar» pregunta como EDOPro sin «Always chain»: sólo si algo responde de verdad a este momento (`spe_count` del núcleo: los disparos opcionales y los
-      // efectos rápidos con el timing de ahora). Una carta que sólo «podría» activarse (una Trampa colocada, en cada paso del propio turno) no pregunta. Forzada, siempre.
-      // Salvo en tus fases (la Draw, la Standby y la End Phase de tu turno: `hint_timing`) con algo que activar: ahí se juega como en la mesa manual (brilla lo que se
-      // activa y el botón de fases pasa). El post-robo (`0x210000`) no: serían dos paradas por fase. Con «Nunca», tampoco. «Siempre» (el «Always chain» de EDOPro) pregunta
-      // aunque nada responda de verdad.
+      // «Siempre» (Gastón, 2026-11-02: todo efecto rápido o con su condición cumplida pregunta) pregunta en cada ventana con algo tuyo que activar: una Trampa colocada en
+      // la Standby, el fin de la Main, la Battle o la End Phase del rival. Sin nada que responda de verdad (`spe_count` 0), dos ventanas no: el post-robo (la de la Draw
+      // Phase viene enseguida: serían dos paradas) y una cadena vacía en tu Main Phase (salvo su fin), donde el menú de la mesa ofrece lo mismo. En tus fases (la Draw, la
+      // Standby y la End Phase de tu turno: `hint_timing`) se juega como en la mesa manual: brilla lo que se activa y el botón de fases pasa. «Nunca», no. Forzada, siempre.
       const own = !ask.forced && ask.selects.length > 0 ? (PHASE_WINDOWS.find(([bit]) => (ask.hint_timing & bit) !== 0)?.[1] ?? null) : null
-      const quiet = ctx.prefs.chainMode === 'never' || (ctx.prefs.chainMode === 'ask' && ask.spe_count === 0 && !ask.forced && !own)
+      const turn = ctx.queries.overlay
+      const ownMain = turn?.turnPlayer === ask.player && (turn.phase & MAIN_PHASES) !== 0 && (ask.hint_timing & MAIN_END) === 0
+      const redundant = ask.spe_count === 0 && !ask.forced && !own && (ownMain || (ask.hint_timing | ask.hint_timing_other) === POST_DRAW)
+      const quiet = ctx.prefs.chainMode === 'never' || redundant
 
       // Forzada sin ninguna carta que la mesa ubique (el espejo del rival no la tiene donde dice la pregunta): la primera, que siempre vale, antes que una pregunta sin nada que tocar.
       const unseen = ask.forced && base.items.size === 0 && base.theirs.size === 0

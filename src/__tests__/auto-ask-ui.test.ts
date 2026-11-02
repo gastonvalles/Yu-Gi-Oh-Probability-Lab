@@ -324,14 +324,23 @@ describe('ask-ui: las 21 preguntas del núcleo en la mesa de siempre', () => {
     expect(askView(open({ ...chain, forced: true }, never)).auto).toEqual({ answer: { type: 'select_chain', index: 0 }, why: 'setting' })
     // Contestada sola, ningún toque hace nada.
     expect(gesturesOf(askView(open(chain, never)))).toEqual([])
-    // Sin nada que responda de verdad a este momento (`spe_count` 0: una Trampa colocada en cada paso del propio turno) «Preguntar» no pregunta; forzada, sí.
-    expect(askView(open({ ...chain, spe_count: 0 }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_chain', index: null }, why: 'setting' })
-    expect(askView(open({ ...chain, spe_count: 0, forced: true }, ctx(MESA))).auto).toBeNull()
-    // «Siempre» pregunta igual (el «Always chain» de EDOPro); sin nada que activar, se contesta sola.
-    const always = ctx(MESA, { prefs: { chainMode: 'always', placeMode: 'ask' } })
+    // «Siempre» pregunta aunque nada responda de verdad a este momento (`spe_count` 0): Opening to e4 colocada en la Battle Phase del rival; sin nada que activar, se contesta sola.
+    const at = (turnPlayer: Seat, phase: number) => ctx({ ...MESA, overlay: { turnPlayer, phase } })
+    const quiet = { answer: { type: 'select_chain', index: null }, why: 'setting' }
 
-    expect(askView(open({ ...chain, spe_count: 0 }, always)).auto).toBeNull()
-    expect(askView(open({ ...chain, spe_count: 0, selects: [] }, always)).auto).toEqual({ answer: { type: 'select_chain', index: null }, why: 'forced' })
+    expect(askView(open({ ...chain, spe_count: 0, hint_timing_other: 0x8 }, at(1, 0x8))).auto).toBeNull()
+    expect(askView(open({ ...chain, spe_count: 0 }, ctx(MESA))).auto).toBeNull()
+    expect(askView(open({ ...chain, spe_count: 0, selects: [] }, ctx(MESA))).auto).toEqual({ answer: { type: 'select_chain', index: null }, why: 'forced' })
+    // Una cadena vacía en tu Main Phase (el menú de la mesa ofrece lo mismo) no, salvo su fin (`TIMING_MAIN_END`); en la del rival, sí. Forzada, siempre.
+    expect(askView(open({ ...chain, spe_count: 0, hint_timing: 0x400 }, at(0, 0x4))).auto).toEqual(quiet)
+    expect(askView(open({ ...chain, spe_count: 0, hint_timing: 0x400 }, at(0, 0x100))).auto).toEqual(quiet)
+    expect(askView(open({ ...chain, spe_count: 0, hint_timing: 0x4 }, at(0, 0x4))).auto).toBeNull()
+    expect(askView(open({ ...chain, spe_count: 0, hint_timing_other: 0x40 }, at(1, 0x4))).auto).toBeNull()
+    expect(askView(open({ ...chain, spe_count: 0, forced: true }, at(0, 0x4))).auto).toBeNull()
+    // El post-robo (`0x210000`) tampoco: la ventana de la Draw Phase viene enseguida. Si algo responde al robo, sí.
+    expect(askView(open({ ...chain, spe_count: 0, hint_timing_other: 0x210000 }, at(1, 0x1))).auto).toEqual(quiet)
+    expect(askView(open({ ...chain, spe_count: 0, hint_timing: 0x210000 }, at(0, 0x1))).auto).toEqual(quiet)
+    expect(askView(open({ ...chain, hint_timing_other: 0x210000 }, at(1, 0x1))).auto).toBeNull()
   })
 
   it('la banda de responder (`respondOffer`): a qué eslabón, el número de tu respuesta y las candidatas con su lugar; una con varios efectos no contesta de un toque', () => {

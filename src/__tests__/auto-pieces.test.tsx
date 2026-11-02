@@ -324,9 +324,9 @@ describe('RespondBand', () => {
     const title = within(group).getByText('Responder a la cadena')
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
     expect(title.parentElement).toBe(modes.parentElement?.parentElement)
-    expect(within(modes).getByRole('radio', { name: 'Cuando importa' })).toHaveAttribute('aria-checked', 'true')
-    fireEvent.click(within(modes).getByRole('radio', { name: 'Siempre' }))
-    expect(onMode).toHaveBeenCalledWith('always')
+    expect(within(modes).getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(within(modes).getByRole('radio', { name: 'Nunca' }))
+    expect(onMode).toHaveBeenCalledWith('never')
     cleanup()
 
     // Sin cadena todavía, tu respuesta la abre.
@@ -593,11 +593,9 @@ describe('AutoBar', () => {
     const dialog = screen.getByRole('dialog', { name: 'Más opciones del duelo' })
 
     expect(within(dialog).queryByRole('switch')).toBeNull()
-    // Tres modos, y la línea chica dice qué hace el elegido.
-    expect(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Cuando importa', 'Nunca'])
-    expect(dialog).toHaveTextContent('Te pregunta sólo si algo tuyo responde de verdad a este momento.')
-    fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getByRole('radio', { name: 'Siempre' }))
-    expect(onChain).toHaveBeenCalledWith('always')
+    // Dos modos, y la línea chica dice qué hace el elegido.
+    expect(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Nunca'])
+    expect(dialog).toHaveTextContent('Te pregunta cada vez que tenés un efecto rápido o uno con su condición cumplida.')
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Respuestas' })).getByRole('radio', { name: 'Nunca' }))
     fireEvent.click(within(within(dialog).getByRole('radiogroup', { name: 'Casilla' })).getByRole('radio', { name: 'Automática' }))
     expect(onChain).toHaveBeenCalledWith('never')
