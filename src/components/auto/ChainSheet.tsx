@@ -44,7 +44,7 @@ interface ChainSheetProps {
 }
 
 /**
- * La cadena en el celular: una hoja de abajo (sobre la fila de abajo de la mesa, encima de tu mano) con dos alturas que se arrastran: bajada es una cinta con un chip por eslabón y, si hay algo que decidir,
+ * La cadena en el celular: una hoja de abajo (de borde a borde y apoyada abajo, encima de tu mano) con dos alturas que se arrastran: bajada es una cinta con un chip por eslabón y, si hay algo que decidir,
  * «No responder» y la principal; subida muestra la pila entera (la lista en el orden en que se resuelve, con nombres y estados) y las candidatas (`PickGrid`). La arrastra el dedo (`useSheetDrag`: sigue al dedo,
  * decide un tirón o 64 px) o la toca su asa. Arranca bajada, no tapa el campo, y se sube sola sólo cuando hay que elegir entre varias cartas para responder.
  * Cada chip lleva su número en el color de su dueño, su arte y cómo va: el que se resuelve, el aro ámbar y crece un poco; el resuelto, un tilde; el negado o sin efecto, una cruz roja con el eslabón que lo
@@ -90,13 +90,20 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
   ) : null
 
   const sheet = (
-    // La caja recorta lo que la hoja deja abajo de su borde (bajada, la hoja se corre hacia abajo): la fila de abajo de la mesa (la línea de estado, «Cancelar») queda libre.
-    <div className={cx('pointer-events-none inset-x-0 z-[135] flex items-end justify-center overflow-hidden px-2', inline ? 'absolute bottom-0 h-full' : 'fixed bottom-11 h-[min(70dvh,34rem)]')}>
+    // La caja va de borde a borde y apoyada abajo (como toda hoja) y recorta lo que la hoja deja abajo de su borde (bajada, la hoja se corre hacia abajo). `overflow-clip` y no `hidden`: una caja
+    // `hidden` se deja desplazar, y el `scrollIntoView` del chip (que corre mientras la hoja entra desde abajo) la subía y dejaba asomar la pila. Mientras se elige algo en la mesa (`data-mat-choosing`),
+    // sube sobre la línea de estado (`data-mat-float`: 44 px a 8 del borde): «Cancelar» y «Listo» quedan a la vista.
+    <div
+      className={cx(
+        'pointer-events-none inset-x-0 bottom-0 z-[135] flex items-end justify-center overflow-clip',
+        inline ? 'absolute h-full' : 'fixed h-[min(70dvh,34rem)] [body:has([data-mat-choosing])_&]:-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]',
+      )}
+    >
       <div
         ref={panelRef}
         data-testid="chain-notice"
         style={drag.style}
-        className="pointer-events-auto flex max-h-full w-full max-w-[34rem] flex-col rounded-t-panel border border-b-0 border-border bg-card-background shadow-overlay motion-safe:animate-sheet-up"
+        className="pointer-events-auto flex max-h-full w-full flex-col rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay motion-safe:animate-sheet-up"
       >
         <div
           {...drag.handlers}
