@@ -11,10 +11,10 @@ import { EASE_SNAP, prefersReducedMotion } from './motion'
  * Se corre con `translate`, no con `transform`: la entrada de las hojas (`sheet-in`, `sheet-up`) anima `transform` y se queda en su último cuadro, que pisaría uno en línea.
  */
 
-/** Dónde queda bajada: se ve la tira del asa (`h-11`, 44 px) sobre lo que tapa el sistema abajo. La mano de la mesa deja ese lugar libre debajo: la tira entra ahí y no la tapa. */
-const LOWERED = 'calc(100% - 2.75rem - env(safe-area-inset-bottom, 0px))'
-/** El alto de esa tira en px, para medir el recorrido al soltar. */
+/** El alto de la tira que queda a la vista bajada (el asa, `h-11`: 44 px; la hoja de la cadena deja más: su cinta y sus acciones), en px. */
 const STRIP_PX = 44
+/** Dónde queda bajada: se ve la tira (`strip` px) sobre lo que tapa el sistema abajo. La mano de la mesa deja ese lugar libre debajo: la tira entra ahí y no la tapa. */
+const loweredAt = (strip: number) => `calc(100% - ${strip}px - env(safe-area-inset-bottom, 0px))`
 /** Lo que hay que arrastrar antes de que cuente como gesto (y no como un toque): px. */
 const START_PX = 8
 /** Soltada a esta distancia (px) de donde estaba, cambia de lugar. */
@@ -26,7 +26,7 @@ const SAMPLE_MS = 100
 const SHEET_DRAG_MS = 200
 
 /** Dónde va la hoja mientras se arrastra `offset` px: sigue al dedo, entre arriba del todo y bajada. */
-const dragged = (lowered: boolean, offset: number) => `0 clamp(0px, calc(${lowered ? LOWERED : '0px'} + ${offset}px), ${LOWERED})`
+const dragged = (lowered: boolean, offset: number, strip: number) => `0 clamp(0px, calc(${lowered ? loweredAt(strip) : '0px'} + ${offset}px), ${loweredAt(strip)})`
 
 /** Si la hoja termina bajada después de un arrastre de `dy` px (positivo, hacia abajo) que se soltó a `velocity` px/ms; `travel` es su recorrido (0 si no se sabe). */
 export function settleLowered(wasLowered: boolean, dy: number, velocity: number, travel: number): boolean {
@@ -46,11 +46,11 @@ interface Drag {
 }
 
 /**
- * El arrastre de una hoja de abajo (`panelRef`: la hoja que se corre). Devuelve si está bajada (y cómo cambiarlo), lo que va en su franja de arriba (`handlers`, que pone `SheetHandle`), el `style` de la
+ * El arrastre de una hoja de abajo (`panelRef`: la hoja que se corre; `strip`, lo que queda a la vista bajada y `startLowered`, si arranca bajada). Devuelve si está bajada (y cómo cambiarlo), lo que va en su franja de arriba (`handlers`, que pone `SheetHandle`), el `style` de la
  * hoja y la ref del asa: al bajarla, si el foco estaba en lo que queda tapado (que pasa a ser inerte), va al asa, que sigue a la vista (y el teclado del celular se cierra).
  */
-export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
-  const [lowered, setLowered] = useState(false)
+export function useSheetDrag(panelRef: RefObject<HTMLElement | null>, strip = STRIP_PX, startLowered = false) {
+  const [lowered, setLowered] = useState(startLowered)
   // Lo arrastrado (px) mientras dura el arrastre; `null`, quieta.
   const [offset, setOffset] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
@@ -109,7 +109,7 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
       frame.current = requestAnimationFrame(() => {
         const panel = panelRef.current
 
-        if (panel) panel.style.translate = dragged(lowered, dy)
+        if (panel) panel.style.translate = dragged(lowered, dy, strip)
       })
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
@@ -127,7 +127,7 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
       const [t1, y1] = current.samples[current.samples.length - 1]!
       const velocity = t1 > t0 ? (y1 - y0) / (t1 - t0) : 0
 
-      setLowered(settleLowered(lowered, event.clientY - current.y, velocity, (panelRef.current?.offsetHeight ?? 0) - STRIP_PX))
+      setLowered(settleLowered(lowered, event.clientY - current.y, velocity, (panelRef.current?.offsetHeight ?? 0) - strip))
       setOffset(null)
     },
     onPointerCancel: () => {
@@ -147,7 +147,7 @@ export function useSheetDrag(panelRef: RefObject<HTMLElement | null>) {
 
   const style: CSSProperties = {
     // Mientras se arrastra sigue al dedo, entre arriba del todo y bajada; quieta, en su lugar.
-    translate: offset !== null ? dragged(lowered, offset) : lowered ? `0 ${LOWERED}` : undefined,
+    translate: offset !== null ? dragged(lowered, offset, strip) : lowered ? `0 ${loweredAt(strip)}` : undefined,
     transition: offset !== null || prefersReducedMotion() ? 'none' : `translate ${SHEET_DRAG_MS}ms ${EASE_SNAP}`,
   }
 

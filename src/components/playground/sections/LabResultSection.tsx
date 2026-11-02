@@ -4,14 +4,16 @@ import type { DraftLine } from '../../../app/build-draft'
 import { createMatcherPattern } from '../../../app/pattern-factory'
 import { computeLabResults } from '../../../app/probability-lab'
 import { buildRoleDistributions } from '../../../app/role-distribution'
+import { showToastMessage } from '../../../app/use-toast-message'
+import { t } from '../../../i18n'
 import type { ApiCardReference, CardEntry, CardRole, TurnView } from '../../../types'
-import { LabAppliedCallout } from '../../probability/LabAppliedNotice'
 import { LabChangeActions, LabChangeCard, LabChangeStale } from '../../probability/LabChangeCard'
 import { LabPendingClassification } from '../../probability/LabPendingClassification'
 import { LabRoleDistribution } from '../../probability/LabRoleDistribution'
 import { LabScoreCard } from '../../probability/LabScoreCard'
 import { LabSuggestion } from '../../probability/LabSuggestion'
 import { TurnViewToggle } from '../../probability/TurnViewToggle'
+import { Button } from '../../ui/Button'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 /** Una carta de muestra con su arte de YGOPRODeck. */
@@ -170,13 +172,13 @@ export function LabResultSection() {
       </Specimen>
 
       <Specimen
-        title="Aplicaste el cambio (LabAppliedNotice)"
+        title="Aplicaste el cambio"
         layout="column"
-        note={<>Después de «Aplicar al deck»: abajo y centrado (en el celular, donde estaba la barra), «Deshacer» sin caja; se va solo a los 10 s o al tocar otra cosa, con la salida de una hoja (<Tag>usePresence</Tag>), y la región <Tag>role=&quot;status&quot;</Tag> lo anuncia. Deshacer vuelve tu deck y el borrador. Pieza del Lab hasta que el aviso de la app lleve acciones.</>}
+        note={<>Después de «Aplicar al deck», el aviso de la app (<Tag>AppToast</Tag>) con «Deshacer»: dura 8 s y, si el foco se perdió con el botón que lo aplicó, pasa a «Deshacer». Deshacer vuelve tu deck y el borrador.</>}
       >
-        <div className="rounded-control bg-background shadow-overlay">
-          <LabAppliedCallout onUndo={noop} />
-        </div>
+        <Button size="sm" className="justify-self-start" onClick={() => showToastMessage(t('lab.change.applied'), 'success', { action: { label: t('lab.change.undo'), onAction: noop } })}>
+          {t('lab.change.applied')}
+        </Button>
       </Specimen>
 
       <Specimen

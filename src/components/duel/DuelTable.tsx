@@ -299,7 +299,8 @@ function PhaseTag({ short, name, active }: { short: string; name: string; active
       aria-label={active ? t('duel.phase.current', { phase: name }) : name}
       className={cx(
         'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none min-[1101px]:text-micro',
-        active ? 'border-accent bg-primary text-white' : 'border-tint/25 text-soft',
+        // La de ahora, en ámbar como la caja de la fase en la mesa que se juega: el violeta lleno queda para la acción con texto.
+        active ? 'border-info text-info' : 'border-tint/25 text-soft',
       )}
     >
       {short}

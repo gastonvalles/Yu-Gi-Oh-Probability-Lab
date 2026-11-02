@@ -30,7 +30,7 @@ describe('auto-screen · la cadena negada', () => {
     expect(grayed()).toEqual([])
 
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · 2Resuelve CL2Sin efecto · por CL2')
+    expect(within(screen.getByTestId('chain-notice')).getByRole('status')).toHaveTextContent('Cadena · Resuelve CL2Sin efecto · por CL2')
     // Sobre la carta: la insignia tachada y el arte gris y latiendo (sólo sin movimiento reducido), sin franja encima; el nombre lo dice.
     expect(cell().querySelector('[data-chain-link]')).toHaveClass('line-through')
     expect(cell().querySelector('[data-chain-link]')).toHaveAttribute('data-chain-void', '2')
@@ -42,8 +42,8 @@ describe('auto-screen · la cadena negada', () => {
     expect(cell()).not.toHaveTextContent('Sin efecto')
     expect(screen.getByRole('button', { name: 'Maxx C, eslabón 1 de la cadena. Sin efecto · por CL2' })).toBeInTheDocument()
     expect(cell().getBoundingClientRect()).toEqual(before)
-    // La pila (abre desplegada): la fila de la carta negada.
-    expect(screen.getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })).toBeInTheDocument()
+    // La cinta: el chip de la carta negada.
+    expect(within(screen.getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })).toBeInTheDocument()
   })
 
   it('negada desde la mano o en el Cementerio: el arte de esa carta, gris (sin `by`, el nombre dice sólo «Negada»); se va con el aviso', () => {

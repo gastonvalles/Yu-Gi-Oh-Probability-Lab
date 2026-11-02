@@ -22,7 +22,7 @@ import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
-import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
+import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, TOKEN_CONTROL_CAP, type TakenKind } from '../../app/mat-control'
 import type { ManualGame } from '../../app/auto/manual-handover'
 import { cardKindOf, createMatState, isForeignId, isToken, randomSeed, replayMat, shuffleWithSeed, type MatPile, type MatState } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
@@ -78,7 +78,7 @@ import { TurnOrderBanner } from './DuelBanner'
 import { InviteButtons, InviteLink } from './RoomInvite'
 import { RoomDeck } from './RoomDeck'
 import { STAGE_CARD, STAGE_INNER } from './room-stage'
-import { RoomRules } from './RoomRules'
+import { RoomFold, RoomRules, rulesSummary } from './RoomRules'
 import { PlayHome } from './PlayHome'
 import { formatName } from './room-chips'
 import { DuelSiding } from './DuelSiding'
@@ -281,7 +281,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true } : {}) }),
     [handSize, options],
   )
-  const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
+  const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect, kindOf: (id) => cardKindOf(deck.cardsById.get(id)?.apiCard ?? null) })
   const deckReady = deck.mainIds.length >= handSize
 
   // Cuando ya se eligió quién va primero, cada uno reparte su mano solo (hace falta el deck y, del invitado, los ajustes del anfitrión).
@@ -1143,34 +1143,37 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
           </div>
 
           {/* La columna de la izquierda: las reglas, tu deck (el del builder o el que pegaste: quien llega por un enlace no pasó por el lobby; se cambia en la hoja «Tu deck» mientras no estés listo y, si no cumple, lo que falta
-              se dice acá) y, para el anfitrión con el rival adentro, los botones para invitar a quien quiera mirar. Una sola caja, con líneas finas entre una cosa y otra; en escritorio, si no entra en el alto del panel, scrollea por dentro. */}
+              se dice acá) y, para el anfitrión con el rival adentro, los botones para invitar a quien quiera mirar. Una sola caja, con líneas finas entre una cosa y otra; en escritorio, si no entra en el alto del panel, scrollea por dentro.
+              En un celular bajo, ya listo, se pliega en una fila (`RoomFold`): así la tirada del dado entra sin desplazar la pantalla. */}
           <div className={cx('flex min-h-0 flex-col gap-3 rounded-card border p-3 [grid-area:info] @[46rem]:gap-4 @[46rem]:p-4 min-[1101px]:overflow-y-auto', TONE.neutral.wash)}>
-            <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} bare />
+            <RoomFold folded={snapshot.ready.mine && !auto?.notice} summary={deckReady ? `${rulesSummary(settings)} · ${roomDeck.name}` : rulesSummary(settings)}>
+              <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} bare />
 
-            <div className="mt-auto border-t border-border-subtle pt-3 @[46rem]:pt-4">
-              <RoomDeck deck={deckReady ? { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length } : null} locked={snapshot.ready.mine} onOpenBuilder={deckInfo.onOpenBuilder}>
-                {!snapshot.ready.mine && issues.length > 0 ? (
-                  <Callout tone="warning" icon="alert">
-                    <span className="grid gap-1">
-                      <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
-                      {issues.map((issue) => (
-                        <span key={issue}>{issue}</span>
-                      ))}
-                    </span>
-                  </Callout>
-                ) : null}
-                {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
-                {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
-                {auto?.notice ? <AutoNotice notice={auto.notice} /> : null}
-              </RoomDeck>
-            </div>
-
-            {host && peerPresent ? (
-              <div className="border-t border-border-subtle pt-3 @[46rem]:pt-4">
-                <InviteLink link={link} room={room} peerPresent />
-                <InviteButtons peerPresent stacked canShare={canShare} watchable={watchable} onShare={share} onCopy={(watch) => void copy(watch)} />
+              <div className="mt-auto border-t border-border-subtle pt-3 @[46rem]:pt-4">
+                <RoomDeck deck={deckReady ? { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length } : null} locked={snapshot.ready.mine} onOpenBuilder={deckInfo.onOpenBuilder}>
+                  {!snapshot.ready.mine && issues.length > 0 ? (
+                    <Callout tone="warning" icon="alert">
+                      <span className="grid gap-1">
+                        <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
+                        {issues.map((issue) => (
+                          <span key={issue}>{issue}</span>
+                        ))}
+                      </span>
+                    </Callout>
+                  ) : null}
+                  {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
+                  {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
+                  {auto?.notice ? <AutoNotice notice={auto.notice} /> : null}
+                </RoomDeck>
               </div>
-            ) : null}
+
+              {host && peerPresent ? (
+                <div className="border-t border-border-subtle pt-3 @[46rem]:pt-4">
+                  <InviteLink link={link} room={room} peerPresent />
+                  <InviteButtons peerPresent stacked canShare={canShare} watchable={watchable} onShare={share} onCopy={(watch) => void copy(watch)} />
+                </div>
+              ) : null}
+            </RoomFold>
           </div>
 
           {docked ? (
@@ -1862,7 +1865,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       undoPending: snapshot.undo.asking,
       undoAvailable: snapshot.undo.available,
       undoBlocked: snapshot.undo.blocked,
-      control: { rival: rivalName, rivalHasRoom: firstFreeMonsterZone(theirs!.state) !== null },
+      control: { rival: rivalName, rivalHasRoom: firstFreeMonsterZone(theirs!.state) !== null, tokens: snapshot.peerCaps.includes(TOKEN_CONTROL_CAP) },
       turnNumber: duelTurnNumber(mine, theirs!.state),
       rivalEmz: theirs!.state.emz.map(Boolean),
       foreignKnown: theirs!.known,

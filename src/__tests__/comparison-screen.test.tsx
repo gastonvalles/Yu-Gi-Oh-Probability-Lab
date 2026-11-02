@@ -7,11 +7,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { BUILD_DRAFT_KEY } from '../app/build-draft'
 import { COMPARISON_SELECTION_KEY } from '../app/comparison-selection'
-import type { DeckCardInstance } from '../app/model'
+import type { DeckBuilderState, DeckCardInstance } from '../app/model'
 import { readSavedBuilds, SAVED_BUILDS_KEY, type SavedBuild } from '../app/saved-builds'
 import { ComparisonScreen } from '../components/comparison/ComparisonScreen'
 import { AppToaster } from '../components/ui/AppToaster'
-import { copies, deckState, fortyCardMain, storeWith } from './support/deck-fixtures'
+import { copies, deckState, fireKingDeck, fortyCardMain, storeWith } from './support/deck-fixtures'
 
 /** Lo que tarda el motor en jsdom (sin workers, en el hilo principal): un deck de 40 por build y uno por cambio. */
 const SLOW = { timeout: 20000 }
@@ -30,14 +30,14 @@ function oneMoreStarter(): DeckCardInstance[] {
   return [...main.slice(0, brick), ...main.slice(brick + 1), { ...main[0]!, instanceId: 'starter-3' }]
 }
 
-function setup({ builds = [], selectB, desktop = false, draft }: { builds?: SavedBuild[]; selectB?: string; desktop?: boolean; draft?: object } = {}) {
+function setup({ builds = [], selectB, desktop = false, draft, deck = deckState({ main: fortyCardMain() }, 'Mi deck') }: { builds?: SavedBuild[]; selectB?: string; desktop?: boolean; draft?: object; deck?: DeckBuilderState } = {}) {
   localStorage.setItem(SAVED_BUILDS_KEY, JSON.stringify(builds))
   if (selectB) localStorage.setItem(COMPARISON_SELECTION_KEY, JSON.stringify({ a: 'current', b: selectB, pickedAt: '2099-01-01T00:00:00.000Z' }))
   if (draft) sessionStorage.setItem(BUILD_DRAFT_KEY, JSON.stringify({ v: 1, draft }))
   // El escritorio es desde 1101 px; los avisos (react-hot-toast) también preguntan por el movimiento reducido.
   window.matchMedia = ((query: string) => ({ matches: desktop && query.includes('1101'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 
-  const store = storeWith(deckState({ main: fortyCardMain() }, 'Mi deck'))
+  const store = storeWith(deck)
 
   render(
     <Provider store={store}>
@@ -88,6 +88,20 @@ describe('Comparar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Probar un cambio en el Lab' }))
     expect(window.location.hash).toBe('#probability-lab')
   })
+
+  it('sin B, debajo va la sugerencia del Lab para tu deck: «Probar el cambio» lo deja a prueba y lleva al Lab', async () => {
+    setup({ deck: fireKingDeck() })
+
+    const suggestion = await screen.findByRole('region', { name: 'Qué mejorar primero' }, SLOW)
+    expect(await within(suggestion).findByText('Fire King Island', undefined, SLOW)).toBeInTheDocument()
+    // Un solo violeta por pantalla: con la sugerencia abajo, «Probar un cambio en el Lab» del vacío pasa a secundario.
+    expect(within(suggestion).getByRole('button', { name: 'Probar el cambio' })).toHaveClass('bg-primary')
+    expect(screen.getByRole('button', { name: 'Probar un cambio en el Lab' })).not.toHaveClass('bg-primary')
+
+    fireEvent.click(within(suggestion).getByRole('button', { name: 'Probar el cambio' }))
+    expect(sessionStorage.getItem(BUILD_DRAFT_KEY)).not.toBeNull()
+    expect(window.location.hash).toBe('#probability-lab')
+  }, 30000)
 
   it('el veredicto: quién abre mejor, los dos anillos de reparto y sin salida / con problema en espejo; la lente cambia los números sin mover nada', async () => {
     setup({ builds: [build('b-1', 'Con un starter más', oneMoreStarter())] })

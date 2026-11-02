@@ -2,10 +2,11 @@ import { deflateRawSync } from 'node:zlib'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { encodeComboPayload, buildComboLink } from '../app/combo-share'
+import { encodeComboPayload, buildComboLink, packPayload, unpackPayload } from '../app/combo-share'
 import { buildDuelReplay, duelReplayAt, walkReplay, type DuelReplay, type ReplayInput } from '../app/duel-replay'
 import {
   buildReplayLink,
+  compactReplayEnvelope,
   decodeReplayPayload,
   encodeReplayPayload,
   MAX_SAVED_REPLAYS,
@@ -118,7 +119,9 @@ describe('el replay de un duelo', () => {
       ['null', 'notReplay'],
       [JSON.stringify({ app: 'otra', kind: 'duel', v: 1, replay }), 'notReplay'],
       [text(replay, { kind: 'combo' }), 'notReplay'],
-      [text(replay, { v: 2 }), 'newer'],
+      [text(replay, { v: 3 }), 'newer'],
+      // Un v2 trae `d`, no `replay`.
+      [text(replay, { v: 2 }), 'broken'],
       [text(replay, { v: 0 }), 'broken'],
       [text({ ...plain, steps: Array.from({ length: 6001 }, () => [0, { type: 'draw', count: 1 }]) }), 'broken'],
       [text({ ...plain, steps: [[2, { type: 'draw', count: 1 }]] }), 'broken'],
@@ -154,6 +157,76 @@ describe('el replay de un duelo', () => {
     const result = parseReplayText(text(withExtras))
     expect(result.ok && JSON.stringify(result.replay).includes('evil')).toBe(false)
     expect(result.ok && result.replay.hidden).toBeUndefined()
+  })
+})
+
+/** Un enlace v1 de verdad: el duelo de arriba, escrito con el código de antes de v2. Tiene que abrir siempre igual. */
+const V1_LINK =
+  'https://ygoultralab.app/#replay=z3VVNj9owEP0r1Tubyk4JC75t-xfaS1EOs4l3sTB2FDtQFuW_V-MAC5TuSj328qTxfLzxm3FyALUtNPYvoXepI0dPEFhb30Cj6Y2DwBZaCXSmdbSHPiDS1jSPCRqFLGYTJSfF4rsqtJRays9Syp8Q2ITGQCMGFybUp8B1rNlBo-2fnK0hwPVMF6GXePQEga8mBVQCMVGXTActBaJtDIccYL1Nlhx30Jh6zWm1gkBdMHxhmDKUDDOGB4Y5w4JByYw5R-UklbNUTlMlU5tfqaOx9IztFbESbOZiKldTuVyRyxWKw1720MtK4Im8jSvTjNbmFXrpe-fEHWCy64B88_cznq1xDXQ-Qgpr42NWqV1RZLmbjnYQSH3n89CeqTZN2Pmxn3y5H-1oJOpeTBpbHXi8W5PFHQZxX-t_klRkIcVf9LsQ_Erru1P932TOfZiWl3spxQFp33LtkeONa0PWKwyVuApyVHOQ5Wc6avsafA5_5WPfmF9jxyFCg9IaAqvAz8-HbkMOPGVO1KipayZqWpZzVTxMPqKav1HFdIcqmnRbgepkt5QuiiyO9IsL-pm8S78J26tEngc0b8J7gbNTXN6pTDa75FLMVfxx1RvpDedWYqneQo6Tr0PvE7S68V5rNbs_leKjqZw7LUs1nZZFcVTlgohSonp9fd28aMd1GKpKwNlnMy7XXMoRuIoUD8XJrERmivzQTysAjW_UJfp0PhA4zefSNx6MPnXrU6PvdIOz73yQ30LsXWLqnfWev_f5N0MxeGi4FsMw_AY'
+
+/** El mismo duelo con todo lo que el de arriba no usa: «mi mano» (`hidden`), lo que ya se veía del rival, otro modo y un apodo con comillas. */
+const rich = buildDuelReplay({ ...input, view: 'mine', mode: 'link', players: ['Ana', 'Beto «el rival»'], theirs: { ...input.theirs, reveal: { c20: 'card-77-1' } } })
+
+/**
+ * Un enlace v2 de verdad: `rich`, escrito con el código del primer v2. El orden de `d` (y `ENUMS` y `FIELDS` del combo) es el formato: cambiarlo en vez de agregar al final
+ * rompe esta prueba antes que los enlaces ya compartidos. **No se regenera para que pase**: con un formato nuevo (v3) se suma otra constante y ésta se queda como está.
+ */
+const V2_LINK =
+  'https://ygoultralab.app/#replay=zfVJBjtswDPxKwPMcNJRk2bm1fYagg7sJimBVbxAkCxRFX9Qn9LYvK0jHQNJDfRiPac6QEvlT5vNZ9vLj29utXy9zn78K5PW0HGQvh9uxC-Rd9go5yL6yTFFL1mAPpJ-WV4F8Py1HQZVPyyyQz8fr2-7j97HvLqf3uX_8kYaAWksBU84j1ckQjFRjNKYNOTOlrOp505an1NJQ5YUCeVGDaJAMssFgUAxGg8mAwdE1dBFdRZfRdXQhXUmX0rXqWqW0hlrriAkMIEEFI5jADA5gAUdwggYoodpQNRokaIYOsHONDcutd7P6rxga8SBsqA1Pte8-ZmQ1CoLzYFaaG2pAMoeIgADGLZKREex-qxvp4CxaGYY7Z8S0JqwdV5qFv5P9jNDNk9699erlaSUt0w2tSra_yZtnRL43OdrGGJhFQNHt02b7Zb5c512xSax025THgG_MU4CPgW17njymfyW2TeKnkH6WdVa0Oxq8fZtYhI4o6yHar78'
+
+describe('el enlace v2 (la forma compacta del combo)', () => {
+  it('los enlaces ya compartidos abren siempre igual: v1 y v2', async () => {
+    expect(await readShared(V1_LINK)).toEqual({ ok: true, kind: 'duel', replay })
+    expect(await readShared(V2_LINK)).toEqual({ ok: true, kind: 'duel', replay: rich })
+  })
+
+  it('el enlace nuevo es v2, más corto que v1, y va y vuelve igual', async () => {
+    for (const item of [replay, rich]) {
+      const payload = await encodeReplayPayload(item)
+      expect(JSON.parse((await unpackPayload(payload, 1e6) as { text: string }).text)).toMatchObject({ app: 'ygoultralab', kind: 'duel', v: 2 })
+      expect(payload.length).toBeLessThan((await packPayload(replayEnvelope(item))).length)
+      expect(await decodeReplayPayload(payload)).toEqual({ ok: true, replay: item })
+    }
+  })
+
+  it('no lleva más que v1: en la vista pública, ni el passcode de lo que no se mostró; «mi mano» sólo con la casilla', () => {
+    const shown = new Set([replay.sides, rich.sides].flat().flatMap((side) => Object.values(side.reveal)).concat(replay.steps.flatMap((step) => Object.values(step[2] ?? {}))))
+    const codes = (item: DuelReplay) => (compactReplayEnvelope(item).d[5] as [Array<number | [number, number]>, string[]])[0].map((entry) => (Array.isArray(entry) ? entry[0] : entry))
+    const passcode = (id: string) => Number(id.split('-')[1])
+
+    expect(codes(replay).every((code) => [...shown].some((id) => passcode(id) === code))).toBe(true)
+    expect(codes(replay)).not.toContain(passcode(h1))
+    // Con la casilla, lo propio oculto viaja (y sólo así).
+    expect(codes(rich)).toContain(passcode(h1))
+    expect(compactReplayEnvelope(replay).d).toHaveLength(13)
+    // Un `hidden` pegado a un replay público no se lee.
+    const forged = compactReplayEnvelope({ ...rich, view: 'public' })
+    expect(parseReplayText(JSON.stringify(forged))).toMatchObject({ ok: true, replay: { view: 'public' } })
+    expect((parseReplayText(JSON.stringify(forged)) as { replay: DuelReplay }).replay.hidden).toBeUndefined()
+  })
+
+  it('las entradas hostiles en v2 no rompen ni lanzan', () => {
+    const good = compactReplayEnvelope(rich)
+    const withD = (change: (d: unknown[]) => unknown[]) => JSON.stringify({ ...good, d: change([...good.d]) })
+    const table = good.d[5] as [unknown[], string[]]
+    const hostile = [
+      JSON.stringify({ ...good, d: undefined }),
+      withD((d) => [...d, 'extra']),
+      withD((d) => d.slice(0, 5)),
+      withD((d) => d.with(5, [table[0], ['__proto__']])),
+      withD((d) => d.with(5, [Array.from({ length: 20 }, () => [1, 99])])),
+      withD((d) => d.with(7, [[0], []])),
+      withD((d) => d.with(7, [[0, 9999], []])),
+      withD((d) => d.with(8, [[2, 0, 1]])),
+      withD((d) => d.with(8, [[0, 99]])),
+      withD((d) => d.with(9, [[999, 0, 1]])),
+      withD((d) => d.with(9, [[0, 0, 1], [0, 0, 1]])),
+      withD((d) => d.with(11, [7])),
+      withD((d) => d.with(12, [1, 'nuke'])),
+      withD((d) => d.with(0, -1)),
+    ]
+
+    for (const value of hostile) expect(parseReplayText(value), value.slice(0, 120)).toEqual({ ok: false, error: 'broken' })
   })
 })
 

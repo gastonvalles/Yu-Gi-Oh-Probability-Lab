@@ -94,6 +94,8 @@ function statsOf(card: ApiCardReference, now: CardStatsNow | null): Array<{ key:
 
   if (card.linkValue !== null) stats.push({ key: 'link', label: t('duel.dock.link'), value: String(card.linkValue) })
   else if (card.level !== null) stats.push({ key: 'level', label: t(/xyz/i.test(card.cardType) ? 'duel.dock.rank' : 'duel.dock.level'), value: String(card.level) })
+  // La escala de un Péndulo, sólo si se sabe (un deck guardado sin ella no la trae; la 0 vale).
+  if (card.scale != null) stats.push({ key: 'scale', label: t('duel.dock.scale'), value: String(card.scale) })
 
   if (card.atk) stats.push({ key: 'atk', label: t('duel.dock.atk'), value: formatStat(card.atk), ...changed(card.atk, now?.attack ?? 0) })
   if (card.def && card.linkValue === null) stats.push({ key: 'def', label: t('duel.dock.def'), value: formatStat(card.def), ...changed(card.def, now?.defense ?? 0) })
