@@ -57,8 +57,7 @@ En orden de valor sobre costo.
 - **Decisiones:** la dependencia `motion` (hoy no está instalada); las filas del creador de tier lists entre 390 y 413 px (tres
   cartas por renglón: ¿achicar la carta o ir de borde a borde?); qué secciones faltan en Descubrir y en qué orden; qué más suma
   «Preguntarle al rival si responde» (hoy 🤔, 👍 y el chat); qué mostraría el botón «Info» y el «+» de la mesa (fichas,
-  contadores, moneda, dado); si «Descargar video» de la barra del combo compartido lleva texto en escritorio (hoy es ícono); si «Probar un cambio en el Lab» del vacío de
-  Comparar pasa a secundario cuando sale la sugerencia (hoy son dos botones violetas en una pantalla).
+  contadores, moneda, dado); si «Descargar video» de la barra del combo compartido lleva texto en escritorio (hoy es ícono).
 
 ## En pausa o descartado
 
