@@ -170,7 +170,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('con una cadena a la vista, responder va en la hoja de la cadena (la banda del medio no sale): bajada, con los chips y «No responder» y la principal; la única candidata ya viene elegida', () => {
+  it('con una cadena a la vista, responder va en el pie de la hoja de la cadena (una sola hoja, abierta entera con la pila), con «No responder» y la principal; la única candidata ya viene elegida', () => {
     const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, top: 0, left: 0, bottom: 800, right: 400, width: 400, height: 800, toJSON: () => ({}) })
     const fake = renderAuto()
     const overlay = fake.getSnapshot().overlay
@@ -181,32 +181,31 @@ describe('auto-screen · las jugadas', () => {
     core(() => fake.ask(CHAIN))
     const notice = screen.getByTestId('chain-notice')
 
-    expect(screen.queryByRole('group', { name: 'Responder a la cadena' })).toBeNull()
-    expect(screen.queryByTestId('duel-prompt-layer')).toBeNull()
-    expect(within(notice).getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).toBeInTheDocument()
-    expect(within(notice).getByRole('button', { name: 'Subir la hoja: Cadena' })).toHaveAttribute('aria-expanded', 'false')
+    expect(notice).toContainElement(screen.getByRole('group', { name: 'Responder a la cadena' }))
+    expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
+    expect(within(notice).getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).toBeInTheDocument()
+    expect(within(notice).getByRole('button', { name: 'Bajar la hoja' })).toHaveAttribute('aria-expanded', 'true')
     expect(within(notice).getByRole('button', { name: 'Encadenar como CL2' })).toBeEnabled()
     fireEvent.click(within(notice).getByRole('button', { name: 'Encadenar como CL2' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
     spy.mockRestore()
   })
 
-  it('minimizada, la banda de responder es un asa de una línea: la carta que brilla sigue respondiendo y la pregunta siguiente vuelve a abrirse sola', () => {
+  it('bajada, la banda de responder es la tira con la pregunta y sus candidatas a la vista: la carta que brilla sigue respondiendo y la pregunta siguiente vuelve a abrirse entera', () => {
     const fake = renderAuto()
+    const lowered = () => document.querySelector('[data-prompt][data-lowered]')
 
     core(() => fake.ask(CHAIN))
-    fireEvent.click(within(screen.getByRole('group', { name: '¿Activás algo ahora?' })).getByRole('button', { name: 'Minimizar' }))
-    const handle = screen.getByTestId('duel-prompt-layer').querySelector('[data-minimized]')
+    fireEvent.click(within(screen.getByRole('group', { name: '¿Activás algo ahora?' })).getByRole('button', { name: 'Bajar la hoja' }))
 
-    expect(handle).toHaveTextContent(/^¿Activás algo ahora\?$/)
-    expect(screen.queryByRole('option')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Mostrar la pregunta' })).toHaveFocus()
+    expect(lowered()).not.toBeNull()
+    expect(screen.getByRole('option', { name: 'Called by the Grave, en tu mano' }).closest('[inert], [hidden]')).toBeNull()
     tap(handCard('Called by the Grave'))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
 
     core(() => fake.ask(CHAIN))
-    expect(screen.getByTestId('duel-prompt-layer').querySelector('[data-minimized]')).toBeNull()
+    expect(lowered()).toBeNull()
     expect(screen.getByRole('option', { name: 'Called by the Grave, en tu mano' })).toBeInTheDocument()
   })
 

@@ -50,7 +50,6 @@ import { ChainNotice } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
 import { RespondBand } from './RespondBand'
-import type { ChainRespond } from './ChainSheet'
 import { SortSheet } from './SortSheet'
 
 /**
@@ -1097,7 +1096,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
   // El visor de pilas de una búsqueda flota sobre el centro de la mesa (escritorio): mientras se elige ahí, la cadena va plegada a su píldora para no pisarlo (después vuelve a como estaba).
   const viewerOpen = desktop && pick !== null && list === null && pick.surface === 'pile'
-  // En el celular, con una cadena a la vista, responder o pasar va en la hoja de la cadena (`ChainSheet`) y no en la banda del medio; sin cadena todavía, la banda de siempre (`RespondBand`).
+  // Las candidatas de la banda de responder (`RespondBand`). En el celular la banda va en la hoja de abajo y, con la cadena abierta, en el pie de su hoja (`SheetHost`): una sola hoja.
   const respondCards =
     offer?.candidates.map(({ ref, key, at }): PickCard => {
       // El lugar con su ícono (la mano, el Cementerio, el campo…): en las columnas angostas del celular, sólo el ícono, y el nombre accesible lo dice entero.
@@ -1105,20 +1104,6 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
       return { key, name: nameOf(ref), art: artOf(ref), ...(from ? pickPlace(from, ref.side === 'theirs') : {}) }
     }) ?? []
-  const sheetRespond: ChainRespond | undefined =
-    !desktop && offer?.to && chainShown
-      ? {
-          key: askId ?? 0,
-          link: offer.link,
-          cards: respondCards,
-          chosen: offered?.key ?? null,
-          onToggle: pickOffer,
-          onChain: () => {
-            if (offered?.answer) gesture({ kind: 'item', answer: offered.answer })
-          },
-          onPass: () => gesture({ kind: 'cancel' }),
-        }
-      : undefined
   const chainNotice = useMemo(
     () =>
       chainShown && feed ? (
@@ -1130,11 +1115,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           compact={!desktop}
           onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
           onPick={readLink}
-          respond={sheetRespond}
         />
       ) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sheetRespond` se arma en cada dibujo (lleva funciones); lo que decide qué dice está en sus partes
-    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, viewerOpen, desktop, readLink, offer, offered?.key, askId],
+    [chainShown, feed, rivalName, nameOf, artOf, chainOpen, viewerOpen, desktop, readLink],
   )
   const linkText = linkRead?.card ?? linkRivalCard
   const linkHighlight = useMemo<CardTextHighlight | null>(() => {
@@ -1238,7 +1221,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
       />
-    ) : offer && !sheetRespond ? (
+    ) : offer ? (
       <RespondBand
         key={askId ?? 0}
         // A qué eslabón respondés (su número, su dueño, su carta y su estado) ya lo dice la pila de la cadena, arriba y desplegada: la banda dice sólo qué se decide.

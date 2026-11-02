@@ -8,7 +8,7 @@ export const common = {
   'common.carousel.goTo': 'Ver la {index} de {count}',
   'common.cancel': 'Cancelar',
   'common.close': 'Cerrar',
-  // El asa de una hoja de abajo del celular (`SheetHandle`): la baja sin cerrarla y la vuelve a subir.
+  // El asa de una hoja de abajo del celular (`BottomSheet`): la baja sin cerrarla y la vuelve a subir.
   'common.sheet.lower': 'Bajar la hoja',
   'common.sheet.raise': 'Subir la hoja: {title}',
   'common.delete': 'Borrar',

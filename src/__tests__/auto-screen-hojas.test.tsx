@@ -126,21 +126,21 @@ describe('auto-screen · las hojas', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(YESNO))
-    const prompt = screen.getByTestId('duel-prompt-layer')
+    const prompt = document.querySelector<HTMLElement>('[data-prompt]')!
 
     expect(prompt).toHaveTextContent('¿Lo hacés?')
     fireEvent.click(within(prompt).getByRole('button', { name: 'Hacerlo' }))
     expect(fake.answers).toEqual([{ type: 'select_yesno', yes: true }])
     expect(dispatches).toBe(0)
     core(() => fake.ask({ ...YESNO, description: stringId(400, 1) }))
-    expect(screen.getByTestId('duel-prompt-layer')).toHaveTextContent('Summon a Token')
+    expect(document.querySelector<HTMLElement>('[data-prompt]')!).toHaveTextContent('Summon a Token')
   })
 
   it('effectyn: la pregunta, sin el nombre de la carta, con su lugar en la pestaña, la carta brilla en su pila y «No activar» contesta que no', () => {
     const fake = renderAuto()
 
     core(() => fake.ask(EFFECTYN))
-    const prompt = screen.getByTestId('duel-prompt-layer')
+    const prompt = document.querySelector<HTMLElement>('[data-prompt]')!
 
     expect(prompt).toHaveTextContent('¿Activás el efecto?')
     expect(prompt).not.toHaveTextContent('Nibiru')
@@ -157,7 +157,7 @@ describe('auto-screen · las hojas', () => {
       fake.set({ overlay: { ...fake.getSnapshot().overlay, cause: { kind: 'normal', codes: [700] } } })
       fake.ask({ ...EFFECTYN, description: '221' })
     })
-    const prompt = screen.getByTestId('duel-prompt-layer')
+    const prompt = document.querySelector<HTMLElement>('[data-prompt]')!
 
     expect(prompt).toHaveTextContent('Tras la Invocación Normal')
     expect(prompt).not.toHaveTextContent(/Blue-Eyes|Nibiru/)
@@ -169,7 +169,7 @@ describe('auto-screen · las hojas', () => {
 
     core(() => fake.ask(MIXED, '503'))
     expect(screen.queryByRole('dialog')).toBeNull()
-    const band = within(screen.getByTestId('duel-prompt-layer')).getByRole('group', { name: 'Elegí de 1 a 2 cartas para desterrar · 0/2' })
+    const band = screen.getByRole('group', { name: 'Elegí de 1 a 2 cartas para desterrar · 0/2' })
     const options = within(band).getAllByRole('option').map((option) => option.getAttribute('aria-label'))
 
     expect(band).toHaveAttribute('data-prompt-row')
@@ -208,8 +208,8 @@ describe('auto-screen · las hojas', () => {
 
     expect(band).toHaveTextContent('El Cementerio del rival · 2')
     expect(within(band).getAllByRole('option').every((option) => !option.getAttribute('aria-label')!.includes(','))).toBe(true)
-    // Una sola, sin poder cancelar: sin pie (sólo la flecha de minimizar); el toque contesta.
-    expect(within(band).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Minimizar'])
+    // Una sola, sin poder cancelar: sin pie (sólo el asa de la hoja de abajo, en el celular); el toque contesta.
+    expect(within(band).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Bajar la hoja'])
     fireEvent.click(within(band).getAllByRole('option')[1]!)
     expect(fake.answers).toEqual([{ type: 'select_card', indices: [1] }])
   })

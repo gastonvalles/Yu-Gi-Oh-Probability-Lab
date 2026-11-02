@@ -585,13 +585,13 @@ describe('la pantalla del duelo', () => {
     expect(() => moreButton(host, 'Ventana grande')).toThrow()
   })
 
-  it('pasar de fase le pregunta al rival si no va a hacer nada más: él ve la pregunta en el medio de la pantalla y deja pasar o juega antes, y quien pasa espera con la fase sin cambiar', () => {
+  it('pasar de fase le pregunta al rival si no va a hacer nada más: él ve la pregunta (en el celular, la hoja de abajo) y deja pasar o juega antes, y quien pasa espera con la fase sin cambiar', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel()
     openTable(host, guest)
     const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
-    /** La pregunta del rival de pasar de fase: va en el medio de la mesa, no con los avisos de arriba. */
-    const prompt = (view: RenderResult) => view.container.querySelector<HTMLElement>('[data-prompt="passAsked"]')
+    /** La pregunta del rival de pasar de fase: en el celular es la hoja de abajo (en un portal: la de quien la recibe es la única), no con los avisos de arriba. */
+    const prompt = (view: RenderResult) => (view === guest ? document.querySelector<HTMLElement>('[data-prompt="passAsked"]') : view.container.querySelector<HTMLElement>('[data-prompt="passAsked"]'))
     const chip = (view: RenderResult) => within(view.container).getByRole('button', { name: /^Fases:/ })
 
     // Ana toca la Battle Phase: la fase no cambia hasta que Beto conteste; él ve la pregunta (sin diálogo que tape la mesa).
@@ -601,8 +601,9 @@ describe('la pantalla del duelo', () => {
     expect(chip(host)).toHaveAccessibleName(/Main Phase 1|Draw Phase|Standby Phase/)
     expect(lane(host, 'passAsking')).toHaveTextContent('Le preguntás a Beto si no hace nada más…')
     expect(prompt(guest)).toHaveTextContent('Ana quiere pasar a la Battle Phase. ¿Hacés algo antes?')
-    // En el lugar fijo de la mesa (apoyada sobre la fila de las Zonas Extra), no sobre la línea del registro de arriba; ni Ana la ve.
-    expect(prompt(guest)!.closest('[data-testid="duel-prompt-layer"]')).toHaveAttribute('data-spot', 'extra')
+    // Abajo, de borde a borde (la hoja estándar), no sobre la línea del registro de arriba; una sola, y Ana no la ve.
+    expect(prompt(guest)).toHaveClass('fixed', 'inset-x-0', 'bottom-0')
+    expect(document.querySelectorAll('[data-prompt="passAsked"]')).toHaveLength(1)
     expect(lane(guest, 'passAsked')).toBeNull()
     expect(prompt(host)).toBeNull()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -639,7 +640,8 @@ describe('la pantalla del duelo', () => {
       const quick = new Map([...monsters].map(([id, entry]) => [id, { ...entry, apiCard: quickMonster }]))
       const { host, guest } = startDuel({ cardsById: quick })
       openTable(host, guest)
-      const prompt = (view: RenderResult) => view.container.querySelector<HTMLElement>('[data-prompt="passAsked"]')
+      // En el celular la pregunta es la hoja de abajo (en un portal): sólo la recibe Beto.
+      const prompt = (view: RenderResult) => (view === guest ? document.querySelector<HTMLElement>('[data-prompt="passAsked"]') : view.container.querySelector<HTMLElement>('[data-prompt="passAsked"]'))
       const glowing = (view: RenderResult) => view.container.querySelectorAll('[data-glow-kind="can"]').length
 
       expect(glowing(guest)).toBe(0)

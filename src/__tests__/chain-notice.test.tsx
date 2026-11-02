@@ -2,29 +2,33 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import type { ReactNode } from 'react'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { AskPrompt } from '../components/auto/AskPrompt'
 import type { PickCard } from '../components/auto/CardPicker'
 import { ChainNotice, type ChainNoticeRow } from '../components/auto/ChainNotice'
-import type { ChainRespond } from '../components/auto/ChainSheet'
+import { RespondBand } from '../components/auto/RespondBand'
 import { PLAYER_COLOR } from '../components/duel/player-color'
+import { SheetHost, type SheetYield } from '../components/ui/BottomSheet'
 
-// La cadena: en el celular, una cinta con un chip por eslabón (sin nombres de cartas: el nombre va en su nombre accesible); desde 1101 px, la pila (la píldora es su título). Cada dato, una vez.
+// La cadena: en el celular, la hoja de abajo estándar (subida, la pila; bajada, una cinta con un chip por eslabón, sin nombres de cartas: el nombre va en su nombre accesible), con las preguntas de la
+// mesa en su pie; desde 1101 px, la pila (la píldora es su título). Cada dato, una vez.
 
 const PONIX: ChainNoticeRow = { number: 1, who: 'Vos', mine: true, name: 'Ponix', art: null, state: 'chained' }
 const ASH: ChainNoticeRow = { number: 2, who: 'Rival', mine: false, name: 'Ash Blossom', art: null, state: 'chained' }
 // El arte de la pila lee el formato del store.
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
-const pill = (rows: ChainNoticeRow[], props: { focus?: number; resolving?: boolean; compact?: boolean; open?: boolean; onPick?: (index: number) => void; respond?: ChainRespond } = {}) => {
-  const ui = (next: ChainNoticeRow[], respond = props.respond) => (
+const pill = (rows: ChainNoticeRow[], props: { focus?: number; resolving?: boolean; compact?: boolean; open?: boolean; onPick?: (index: number) => void } = {}) => {
+  const ui = (next: ChainNoticeRow[]) => (
     <Provider store={store}>
-      <ChainNotice rows={next} focus={props.focus ?? next.length - 1} resolving={props.resolving ?? false} open={props.open ?? false} compact={props.compact ?? true} onOpenChange={() => {}} onPick={(index) => props.onPick?.(index)} respond={respond} />
+      <ChainNotice rows={next} focus={props.focus ?? next.length - 1} resolving={props.resolving ?? false} open={props.open ?? false} compact={props.compact ?? true} onOpenChange={() => {}} onPick={(index) => props.onPick?.(index)} />
     </Provider>
   )
   const view = render(ui(rows))
 
-  return { status: screen.getByRole('status'), rerender: (next: ChainNoticeRow[], respond?: ChainRespond) => view.rerender(ui(next, respond ?? props.respond)) }
+  return { status: screen.getByRole('status'), rerender: (next: ChainNoticeRow[]) => view.rerender(ui(next)) }
 }
 
 /** Arrastra en vertical con el dedo (`dy` px, positivo hacia abajo) y suelta a los `elapsed` ms: lento, decide la distancia; después llega el clic, como en el navegador. */
@@ -58,13 +62,20 @@ afterEach(() => {
 
 describe('ChainNotice en el celular: la hoja de la cadena', () => {
   const strip = () => screen.getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })
+  const body = () => screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })
   const grip = () => screen.getByRole('button', { name: /la hoja/ })
+  const panel = () => grip().closest<HTMLElement>('[style]')!
+  /** Baja la hoja con un toque en su asa (abre subida). */
+  const lower = () => {
+    fireEvent.click(grip())
+    expect(grip()).toHaveAttribute('aria-expanded', 'false')
+  }
 
   it('bajada, un chip por eslabón y del primero al último, sin el nombre a la vista: número en el color de su dueño y el aro del que se resuelve', () => {
     pill([{ ...PONIX, state: 'solved' }, { ...ASH, state: 'solving' }, { ...PONIX, number: 3 }], { focus: 1, resolving: true })
+    lower()
     const chips = within(strip()).getAllByRole('listitem')
 
-    expect(grip()).toHaveAttribute('aria-expanded', 'false')
     expect(chips).toHaveLength(3)
     expect(chips.map((chip) => within(chip).getByText(/^CL[0-9]$/).textContent)).toEqual(['CL1', 'CL2', 'CL3'])
     expect(within(chips[1]!).getByText('CL2')).toHaveClass(PLAYER_COLOR.theirs.bubble, PLAYER_COLOR.theirs.border)
@@ -80,6 +91,7 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
 
   it('el resuelto lleva un tilde; el negado o sin efecto, una cruz con el eslabón que lo negó (si se sabe)', () => {
     pill([{ ...PONIX, state: 'solved' }, { ...ASH, state: 'negated', by: 3 }, { ...PONIX, number: 3, state: 'disabled' }], { focus: 0, resolving: true })
+    lower()
     const [done, negated, disabled] = within(strip()).getAllByRole('button')
 
     expect(done!.querySelector('svg')).not.toBeNull()
@@ -93,6 +105,7 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
     const picked: number[] = []
 
     pill([PONIX, ASH], { onPick: (index) => picked.push(index) })
+    lower()
     fireEvent.click(within(strip()).getByRole('button', { name: /^Eslabón 1:/ }))
     fireEvent.click(within(strip()).getByRole('button', { name: /^Eslabón 2:/ }))
     expect(picked).toEqual([0, 1])
@@ -101,11 +114,13 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
   it('un eslabón que se suma entra y dice «Nuevo» un momento; al resolverse ya no', () => {
     const { rerender } = pill([PONIX])
 
+    lower()
     expect(screen.getByText('Nuevo')).toBeInTheDocument()
     act(() => void vi.advanceTimersByTime(1600))
     expect(screen.queryByText('Nuevo')).toBeNull()
-    // Otro eslabón: el nuevo es el último, y se va solo.
+    // Otro eslabón (la vuelve a subir): el nuevo es el último, y se va solo.
     rerender([PONIX, ASH])
+    lower()
     expect(within(within(strip()).getByRole('button', { name: /^Eslabón 2:/ })).getByText('Nuevo')).toBeInTheDocument()
     expect(within(within(strip()).getByRole('button', { name: /^Eslabón 1:/ })).queryByText('Nuevo')).toBeNull()
     expect(within(strip()).getByRole('button', { name: /^Eslabón 2:/ }).closest('li')).toHaveClass('motion-safe:animate-chain-link-in')
@@ -113,135 +128,147 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
     expect(screen.queryByText('Nuevo')).toBeNull()
   })
 
-  it('el texto de siempre va para el lector de pantalla: «Cadena · N · Resuelve CLn» y qué pasa', () => {
+  it('el texto de siempre va para el lector de pantalla, subida o bajada: «Cadena · N · Resuelve CLn» y qué pasa', () => {
     expect(pill([{ ...PONIX, state: 'disabled', by: 2 }, { ...ASH, state: 'solving' }, { ...PONIX, number: 3 }], { focus: 0, resolving: true }).status).toHaveTextContent(/^Cadena · 3 · Resuelve CL2Sin efecto · por CL2$/)
+    lower()
+    expect(screen.getByRole('status')).toHaveTextContent(/^Cadena · 3 · Resuelve CL2Sin efecto · por CL2$/)
   })
 
   it('mientras se arma: el último y de quién, y su estado; la cuenta no se repite (es el número del último)', () => {
     expect(pill([PONIX]).status).toHaveTextContent(/^Cadena · CL1 · VosEn espera$/)
   })
 
-  it('se arrastra: bajada deja la cinta a la vista (y la pila inerte); subida muestra la pila entera, en el orden en que se resuelve, y esconde los chips', () => {
-    pill([PONIX, { ...ASH, state: 'solving' }], { resolving: true })
-    const panel = screen.getByTestId('chain-notice')
-    const body = () => screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })
+  it('cada eslabón que se suma la abre entera (maximizada), aunque la hayas bajado; al resolverse no se sube sola', () => {
+    const { rerender } = pill([PONIX])
 
-    // Bajada: sólo asoma la cinta (el asa de 24 y los chips de 56) y lo de adentro no se toca.
-    expect(panel.style.translate).toContain('calc(100% - 80px')
-    expect(body().closest('[inert]')).not.toBeNull()
-    expect(screen.getByRole('status')).toHaveClass('sr-only')
-
-    // Un arrastre corto no la sube; uno largo, sí (sigue al dedo y al soltar queda subida).
-    drag(grip(), -30)
-    expect(grip()).toHaveAttribute('aria-expanded', 'false')
-    drag(grip(), -120)
     expect(grip()).toHaveAttribute('aria-expanded', 'true')
-    expect(panel.style.translate).toBe('')
-    expect(body().closest('[inert]')).toBeNull()
-    expect(within(body()).getAllByRole('listitem').map((item) => within(item).getByRole('button').getAttribute('aria-label'))).toEqual(['Eslabón 2: Ash Blossom, del rival. Resolviendo', 'Eslabón 1: Ponix, tuyo. En espera'])
-    expect(screen.getByRole('list', { name: 'Eslabones de la cadena, del primero al último', hidden: true }).closest('[hidden]')).not.toBeNull()
-    expect(screen.getByText('Cadena · 2')).toBeInTheDocument()
-
-    // Tocar su asa la baja.
-    fireEvent.click(grip())
+    expect(within(body()).getAllByRole('listitem')).toHaveLength(1)
+    lower()
+    rerender([PONIX, ASH])
+    expect(grip()).toHaveAttribute('aria-expanded', 'true')
+    expect(within(body()).getAllByRole('listitem')).toHaveLength(2)
+    lower()
+    rerender([PONIX, { ...ASH, state: 'solving' }])
     expect(grip()).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('bajada y sin nada que decidir, mientras se elige en la mesa se reduce a su asa (un costo de la mano se paga con la cadena abierta); subida o con algo que decidir, no', () => {
-    const box = () => screen.getByTestId('chain-notice').parentElement!
-    const shrunk = () => box().className.includes('[body:has([data-mat-choosing])_&]:[clip-path:inset(0_0_calc(56px')
-    const { rerender } = pill([PONIX])
+  it('se arrastra: subida, la pila entera en el orden en que se resuelve; bajada deja la cinta (asa 28 + cinta 56) y la pila inerte', () => {
+    pill([PONIX, { ...ASH, state: 'solving' }], { resolving: true })
 
-    // Reducida: la cinta baja sus 56 px y se recorta debajo del asa, que sigue a la vista y se alcanza con el teclado; los chips recortados, no.
-    expect(shrunk()).toBe(true)
-    expect(box()).toHaveClass('[body:has([data-mat-choosing])_&]:translate-y-[calc(56px-3.25rem-env(safe-area-inset-bottom,0px))]')
-    expect(strip().parentElement).toHaveClass('[body:has([data-mat-choosing])_&]:invisible')
+    expect(panel().style.translate).toBe('')
+    expect(body().closest('[inert]')).toBeNull()
+    expect(within(body()).getAllByRole('listitem').map((item) => within(item).getByRole('button').getAttribute('aria-label'))).toEqual(['Eslabón 2: Ash Blossom, del rival. Resolviendo', 'Eslabón 1: Ponix, tuyo. En espera'])
+    expect(screen.queryByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).toBeNull()
+    expect(screen.getByText('Cadena · 2')).toBeInTheDocument()
+
+    // Un arrastre corto no la baja; uno largo, sí (sigue al dedo y al soltar queda bajada).
+    drag(grip(), 30)
+    expect(grip()).toHaveAttribute('aria-expanded', 'true')
+    drag(grip(), 120)
     expect(grip()).toHaveAttribute('aria-expanded', 'false')
-    // Subirla (con el asa) la muestra entera, sobre la línea de estado.
-    fireEvent.click(grip())
-    expect(shrunk()).toBe(false)
-    expect(box()).toHaveClass('[body:has([data-mat-choosing])_&]:-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]')
-    fireEvent.click(grip())
-    expect(shrunk()).toBe(true)
-    // Con una decisión de responder no: ahí se elige en la hoja.
-    rerender([PONIX], { key: 1, link: 2, cards: [{ key: 'mine:a', name: 'Called by the Grave', art: null }], chosen: null, onToggle: () => {}, onChain: () => {}, onPass: () => {} })
-    expect(shrunk()).toBe(false)
-    expect(strip().parentElement).not.toHaveClass('[body:has([data-mat-choosing])_&]:invisible')
+    expect(panel().style.translate).toBe('0 calc(100% - 84px)')
+    expect(body().closest('[inert]')).not.toBeNull()
+    expect(strip()).toBeInTheDocument()
+
+    // Arrastrarla para arriba la sube.
+    drag(grip(), -120)
+    expect(grip()).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('subida, tocar un eslabón de la pila lo muestra', () => {
     const picked: number[] = []
 
     pill([PONIX, ASH], { onPick: (index) => picked.push(index) })
-    drag(grip(), -120)
-    fireEvent.click(within(screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getByRole('button', { name: /^Eslabón 1:/ }))
+    fireEvent.click(within(body()).getByRole('button', { name: /^Eslabón 1:/ }))
     expect(picked).toEqual([0])
   })
 
-  it('cada eslabón se dice una sola vez: bajada, la cinta (la pila, inerte y transparente); subida, la pila sin la cinta y sin «Vos» / «Rival» escrito (el color lo dice; el nombre accesible, entero)', () => {
+  it('cada eslabón se dice una sola vez: subida, la pila sin la cinta y sin «Vos» / «Rival» escrito; bajada, la cinta (la pila, inerte y transparente)', () => {
     pill([PONIX, { ...ASH, state: 'solving' }, { ...PONIX, number: 3, name: 'Nibiru' }], { focus: 1, resolving: true })
-    // Subida, la cinta queda `hidden` (fuera del árbol accesible): se la busca igual para ver que no se cuenta.
-    const chips = () => screen.getByRole('list', { name: 'Eslabones de la cadena, del primero al último', hidden: true })
-    const body = () => screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })
-    const shown = (number: number) => [chips(), body()].filter((list) => !list.closest('[hidden], [inert], .opacity-0')).flatMap((list) => within(list).queryAllByText(`CL${number}`))
+    const chips = () => screen.queryByRole('list', { name: 'Eslabones de la cadena, del primero al último' })
+    const shown = (number: number) => [chips(), body()].filter((list): list is HTMLElement => list !== null && !list.closest('[hidden], [inert], .opacity-0')).flatMap((list) => within(list).queryAllByText(`CL${number}`))
 
-    expect(body().closest('[inert]')).toHaveClass('opacity-0')
-    expect([1, 2, 3].map((number) => shown(number).length)).toEqual([1, 1, 1])
-    fireEvent.click(grip())
-    expect(chips().closest('[hidden]')).not.toBeNull()
-    expect(body().parentElement).not.toHaveClass('opacity-0')
+    expect(chips()).toBeNull()
     expect([1, 2, 3].map((number) => shown(number).length)).toEqual([1, 1, 1])
     expect(within(body()).getAllByText('Nibiru')).toHaveLength(1)
     expect(within(body()).queryByText('Rival')).toBeNull()
     expect(within(body()).queryByText('Vos')).toBeNull()
     expect(within(body()).getByRole('button', { name: 'Eslabón 2: Ash Blossom, del rival. Resolviendo' })).toBeInTheDocument()
+    lower()
+    expect(body().closest('[inert]')).toHaveClass('opacity-0')
+    expect([1, 2, 3].map((number) => shown(number).length)).toEqual([1, 1, 1])
   })
 
-  describe('responder o pasar desde la hoja', () => {
+  describe('una sola hoja: la mesa (`SheetHost`)', () => {
     const card = (key: string, name: string): PickCard => ({ key, name, art: null })
-    const respond = (over: Partial<ChainRespond> = {}): ChainRespond => ({ key: 1, link: 2, cards: [card('mine:a', 'Called by the Grave')], chosen: 'mine:a', onToggle: () => {}, onChain: () => {}, onPass: () => {}, ...over })
-
-    // Qué se encadena se ve siempre: las candidatas van en la parte que queda a la vista bajada (no inerte), antes que las acciones.
-    const options = () => screen.getByRole('listbox', { name: 'Podés responder con' })
     const before = (first: Element, second: Element) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING)
+    const mat = (rows: ChainNoticeRow[], prompt: ReactNode, yieldTo: SheetYield = null) => (
+      <Provider store={store}>
+        <SheetHost yieldTo={yieldTo}>
+          {rows.length > 0 ? <ChainNotice rows={rows} focus={rows.length - 1} resolving={false} open={false} compact onOpenChange={() => {}} onPick={() => {}} /> : null}
+          {prompt}
+        </SheetHost>
+      </Provider>
+    )
+    const respond = (calls: string[] = []) => <RespondBand title="Responder a la cadena" link={2} cards={[card('mine:a', 'Called by the Grave'), card('mine:b', 'Nibiru')]} chosen="mine:a" onToggle={() => {}} onChain={() => calls.push('chain')} onPass={() => calls.push('pass')} />
 
-    it('con una sola carta, bajada muestra la cinta, la candidata ya elegida y, debajo, «No responder» y la principal (asa 24 + cinta 56 + candidatas 124 + acciones 56)', () => {
+    it('responder va en el pie de la hoja de la cadena: debajo de la pila, a la vista en las dos alturas, con «No responder» y la principal debajo de las candidatas; una sola asa', () => {
       const calls: string[] = []
 
-      pill([PONIX], { respond: respond({ onChain: () => calls.push('chain'), onPass: () => calls.push('pass') }) })
-      expect(grip()).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.getByTestId('chain-notice').style.translate).toContain('calc(100% - 260px')
-      const option = within(options()).getByRole('option', { name: 'Called by the Grave' })
+      render(mat([PONIX], respond(calls)))
+      const sheet = screen.getByTestId('chain-notice')
+      const options = screen.getByRole('listbox', { name: 'Podés responder con' })
 
-      expect(option).toHaveAttribute('aria-selected', 'true')
-      expect(options().closest('[inert], [hidden]')).toBeNull()
-      expect(before(strip(), options())).toBe(true)
-      expect(before(options(), screen.getByRole('button', { name: 'No responder' }))).toBe(true)
+      expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
+      expect(sheet).toContainElement(options)
+      expect(before(body(), options)).toBe(true)
+      expect(before(options, screen.getByRole('button', { name: 'No responder' }))).toBe(true)
       expect(before(screen.getByRole('button', { name: 'No responder' }), screen.getByRole('button', { name: 'Encadenar como CL2' }))).toBe(true)
+      lower()
+      expect(options.closest('[inert], [hidden]')).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Encadenar como CL2' }))
       fireEvent.click(screen.getByRole('button', { name: 'No responder' }))
       expect(calls).toEqual(['chain', 'pass'])
     })
 
-    it('con varias, todas a la vista y la hoja bajada (no se sube sola); la principal, apagada hasta elegir una; tocar una la elige sin mover la hoja', () => {
-      const toggled: string[] = []
-      const cards = [card('mine:a', 'Called by the Grave'), card('mine:b', 'Nibiru'), card('mine:c', 'Ash Blossom')]
-      const view = pill([PONIX], { respond: respond({ cards, chosen: null, onToggle: (key) => toggled.push(key) }) })
+    it('«¿Activás el efecto?» también: en el pie de la cadena; sin cadena, es su propia hoja de abajo (no un cartel en el medio)', () => {
+      const ask = <AskPrompt text="¿Activás el efecto?" card={{ name: 'Ponix', art: null }} yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
+      const view = render(mat([PONIX], ask))
 
+      expect(screen.getByTestId('chain-notice')).toContainElement(screen.getByRole('button', { name: 'Activar efecto' }))
+      expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
+      view.rerender(mat([], ask))
+      const sheet = document.querySelector<HTMLElement>('[data-prompt="ask"]')!
+
+      expect(sheet).toHaveClass('fixed', 'bottom-0', 'inset-x-0')
+      expect(sheet).toContainElement(screen.getByRole('button', { name: 'Activar efecto' }))
+      // Bajada: la tira con la pregunta y los botones, a la vista.
+      fireEvent.click(grip())
+      expect(sheet).toHaveAttribute('data-lowered')
+      expect(grip()).toHaveAccessibleName('Subir la hoja: ¿Activás el efecto?')
+      expect(screen.getByRole('button', { name: 'Activar efecto' }).closest('[inert], [hidden]')).toBeNull()
+    })
+
+    it('mientras se elige en la mesa o la mano (un costo), subida o bajada se reduce a su asa sobre la línea de estado y sin pie; al terminar, vuelve como estaba', () => {
+      const view = render(mat([PONIX], null))
+      const sheet = screen.getByTestId('chain-notice')
+
+      expect(grip()).toHaveAttribute('aria-expanded', 'true')
+      view.rerender(mat([PONIX], null, 'grip'))
       expect(grip()).toHaveAttribute('aria-expanded', 'false')
-      expect(within(options()).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Called by the Grave', 'Nibiru', 'Ash Blossom'])
-      expect(within(options()).getAllByRole('option').every((option) => option.getAttribute('aria-selected') === 'false')).toBe(true)
-      expect(screen.getByRole('button', { name: 'Encadenar como CL2' })).toBeDisabled()
-      fireEvent.click(within(options()).getByRole('option', { name: 'Nibiru' }))
-      expect(toggled).toEqual(['mine:b'])
-      expect(grip()).toHaveAttribute('aria-expanded', 'false')
-      view.rerender([PONIX], respond({ cards, chosen: 'mine:b', onToggle: (key) => toggled.push(key) }))
-      expect(within(options()).getByRole('option', { name: 'Nibiru' })).toHaveAttribute('aria-selected', 'true')
-      expect(screen.getByRole('button', { name: 'Encadenar como CL2' })).toBeEnabled()
-      // Subida, las mismas candidatas y las acciones debajo (y la pila entera, más abajo).
+      expect(grip()).toHaveClass('h-11')
+      expect(panel().style.translate).toBe('0 calc(100% - 44px)')
+      expect(sheet).toHaveClass('-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]')
+      expect(sheet.lastElementChild).toHaveAttribute('hidden')
+      // Un toque en el asa la muestra igual.
       fireEvent.click(grip())
       expect(grip()).toHaveAttribute('aria-expanded', 'true')
-      expect(before(options(), screen.getByRole('button', { name: 'Encadenar como CL2' }))).toBe(true)
+      view.rerender(mat([PONIX], null, null))
+      expect(grip()).toHaveAttribute('aria-expanded', 'true')
+      expect(sheet).not.toHaveClass('-translate-y-[calc(3.25rem+env(safe-area-inset-bottom,0px))]')
+      // Con el visor de una pila (otra hoja), se esconde.
+      view.rerender(mat([PONIX], null, 'hide'))
+      expect(sheet).toHaveAttribute('hidden')
     })
   })
 })

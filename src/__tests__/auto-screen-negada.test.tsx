@@ -42,8 +42,8 @@ describe('auto-screen · la cadena negada', () => {
     expect(cell()).not.toHaveTextContent('Sin efecto')
     expect(screen.getByRole('button', { name: 'Maxx C, eslabón 1 de la cadena. Sin efecto · por CL2' })).toBeInTheDocument()
     expect(cell().getBoundingClientRect()).toEqual(before)
-    // La cinta: el chip de la carta negada.
-    expect(within(screen.getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })).toBeInTheDocument()
+    // La pila (la hoja abre entera): la fila de la carta negada.
+    expect(within(screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })).toBeInTheDocument()
   })
 
   it('negada desde la mano o en el Cementerio: el arte de esa carta, gris (sin `by`, el nombre dice sólo «Negada»); se va con el aviso', () => {

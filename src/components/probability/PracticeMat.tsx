@@ -83,6 +83,7 @@ import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
 import { DuelMascot } from '../mascot/Mascot'
 import { Button } from '../ui/Button'
 import { ConfirmDialog } from './ConfirmDialog'
+import { SheetHost } from '../ui/BottomSheet'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
@@ -3326,6 +3327,9 @@ function PracticeMatBody({
         <AttackTrail from={`[data-rival-card-id="${duel.rivalAim.attackerId}"]`} {...(duel.rivalAim.targetId === undefined ? {} : { to: `[data-card-id="${duel.rivalAim.targetId}"]` })} direct="mine" boundsRef={sectionRef} />
       ) : null}
 
+      {/* En el celular la cadena y las preguntas son la hoja de abajo (`BottomSheet`): una sola (la cadena presta su pie a la pregunta); mientras se elige en la mesa o la mano se reduce a su asa y,
+          con el visor de una pila abierto (otra hoja), se esconde. */}
+      <SheetHost yieldTo={pileSheet ? 'hide' : choosing ? 'grip' : null}>
       {/* La cadena (duelo automático): arriba de la columna de la mesa; sólo la píldora y su lista reciben toques. */}
       {duel?.chain ? (
         <div ref={chainRef} data-testid="duel-chain-layer" className={cx('group/chain pointer-events-none absolute left-0 right-0 top-0 z-[125] flex justify-center px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
@@ -3346,6 +3350,7 @@ function PracticeMatBody({
           </div>
         ) : null}
       </Presence>
+      </SheetHost>
 
       {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
       {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>{duel.cover}</div> : null}

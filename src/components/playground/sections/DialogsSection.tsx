@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ComponentProps } from 'react'
+import { useMemo, useState, type ComponentProps } from 'react'
 
 import { SUPPORT_PLACE, inMenuBlocks, type MenuPlace } from '../../../app/mat-menu-order'
 import type { LabResults, LabViewResult } from '../../../app/probability-lab'
@@ -7,7 +7,6 @@ import type { MatPile } from '../../../app/practice-mat'
 import type { ArtChoice } from '../../../app/use-card-art-options'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../../app/use-media-query'
 import { Presence } from '../../../app/use-presence'
-import { useSheetDrag } from '../../../app/use-sheet-drag'
 import { showToastMessage, type ToastTone } from '../../../app/use-toast-message'
 import { formatDay, t } from '../../../i18n'
 import type { ApiCardReference } from '../../../types'
@@ -15,12 +14,12 @@ import { foilKindOf, type FoilFrame, type FoilKind } from '../../../app/card-foi
 import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../../card-detail/card-tilt'
 import { CardZoom } from '../../card-detail/CardZoom'
 import { RarityFoil } from '../../card-detail/RarityFoil'
+import { BottomSheet, SheetHost, type SheetYield } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
 import { Heading } from '../../ui/Heading'
 import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Modal } from '../../ui/Modal'
-import { SheetHandle } from '../../ui/SheetHandle'
 import { overline } from '../../ui/typography'
 import { CardSheet } from '../../probability/CardSheet'
 import { ConfirmDialog } from '../../probability/ConfirmDialog'
@@ -187,26 +186,55 @@ const ashMenuRows = (ask: (label: string) => void, play: (label: string) => () =
   ]
 }
 
-/** El asa de una hoja de abajo (la de verdad, con su arrastre) en un marco del tamaño de una mesa: la hoja se baja y se sube adentro del marco, no en la pantalla. */
+/** La hoja de abajo estándar (la de verdad, con su arrastre) en un marco del tamaño de un celular (`SheetHost phone`): se baja, se sube y cede el lugar adentro del marco, no en la pantalla. */
 function LowerSample() {
-  const panelRef = useRef<HTMLElement | null>(null)
-  const drag = useSheetDrag(panelRef)
+  const [yieldTo, setYieldTo] = useState<SheetYield>(null)
+  const [footer, setFooter] = useState(true)
   const title = `${PILE_TITLES.gy} · 6`
 
   return (
-    <div className="relative h-80 w-full overflow-hidden rounded-card border border-border-subtle bg-background">
-      <p className="m-0 p-3 text-micro text-soft">El campo y la mano van acá atrás: no se mueven.</p>
-      <section ref={panelRef} aria-label={title} style={drag.style} className="absolute inset-x-0 bottom-0 flex h-56 flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background shadow-overlay">
-        <SheetHandle drag={drag} label={title} className="bg-surface-raised">
-          <header className="border-b border-border-subtle bg-surface-raised pb-2.5 pl-3 pr-2">
-            <p className={cx('m-0', overline)}>{t('practice.mat.name')}</p>
-            <Heading level="section">{title}</Heading>
-          </header>
-        </SheetHandle>
-        <p inert={drag.lowered} className="m-0 p-3 text-body text-muted">
-          Lo de adentro (lo buscado, lo elegido, el scroll, la pregunta que espera) queda como estaba mientras está bajada.
-        </p>
-      </section>
+    <div className="grid gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="tertiary" size="sm" aria-pressed={footer} onClick={() => setFooter((value) => !value)}>
+          Con algo que decidir
+        </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={yieldTo === 'grip'} onClick={() => setYieldTo((value) => (value === 'grip' ? null : 'grip'))}>
+          Elegir en la mano
+        </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={yieldTo === 'hide'} onClick={() => setYieldTo((value) => (value === 'hide' ? null : 'hide'))}>
+          Otra hoja ocupa el lugar
+        </Button>
+      </div>
+      <SheetHost phone yieldTo={yieldTo}>
+        <div className="relative h-[28rem] w-full max-w-[24.375rem] overflow-hidden rounded-card border border-border-subtle bg-background">
+          <p className="m-0 p-3 text-micro text-soft">El campo y la mano van acá atrás: no se mueven.</p>
+          {yieldTo === 'grip' ? <p className="absolute inset-x-1.5 bottom-2 m-0 flex h-11 items-center rounded-control bg-surface-raised px-2 text-micro text-muted">La línea de estado: «Elegí 1 carta para descartar»</p> : null}
+          <BottomSheet
+            label={title}
+            yields
+            head={
+              <header className="border-b border-border-subtle bg-surface-raised pb-2.5 pl-3 pr-2">
+                <p className={cx('m-0', overline)}>{t('practice.mat.name')}</p>
+                <Heading level="section">{title}</Heading>
+              </header>
+            }
+            footer={
+              footer ? (
+                <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-4 py-3">
+                  <Button variant="tertiary" size="sm">
+                    {t('common.cancel')}
+                  </Button>
+                  <Button variant="primary" size="sm">
+                    {t('practice.many.choosePlay')}
+                  </Button>
+                </div>
+              ) : null
+            }
+          >
+            <p className="m-0 p-3 text-body text-muted">Lo de adentro (lo buscado, lo elegido, el scroll, la pregunta que espera) queda como estaba mientras está bajada.</p>
+          </BottomSheet>
+        </div>
+      </SheetHost>
     </div>
   )
 }
@@ -396,10 +424,10 @@ export function DialogsSection() {
       </Specimen>
 
       <Specimen
-        title="Hoja que se baja"
+        title="Hoja de abajo"
         note={
           <>
-            En el celular, el visor de una pila lleva un asa arriba (<Tag>ui/SheetHandle.tsx</Tag>, <Tag>app/use-sheet-drag.ts</Tag>). Toda la franja de arriba es el asa: arrastrala para abajo (o tocala) y la hoja queda como una tira con su título, sin cerrarse, para ver la mano; arrastrala para arriba (o tocá la tira) y vuelve como estaba. Bajada, los toques pasan a la mesa y lo de adentro queda inerte.
+            La única hoja de abajo del celular (<Tag>ui/BottomSheet.tsx</Tag>, <Tag>app/use-sheet-drag.ts</Tag>): el visor de una pila, la cadena y las preguntas de la mesa (<Tag>MatPrompt</Tag> hasta 1101 px). Toda la franja de arriba es el asa (un botón con <Tag>aria-expanded</Tag>): arrastrala para abajo (o tocala) y queda la tira con su título (o, en la cadena, su cinta), sin cerrarse, para ver la mano; arrastrala para arriba (o tocá la tira) y vuelve como estaba. Lo que se decide va en su pie, a la vista en las dos alturas. De borde a borde y apoyada abajo, sin huecos: el borde del sistema va en el pie. Una sola a la vez (<Tag>SheetHost</Tag>): mientras se elige en la mano queda su asa sobre la línea de estado y vuelve al terminar; con otra hoja (el visor de una pila), se esconde.
           </>
         }
       >
@@ -432,6 +460,8 @@ export function DialogsSection() {
       {/* Siempre montado, como en la mesa: al cerrarse sale, y cada muestra que se abre arranca con lo suyo (`start`). No es un modal: en escritorio llena la caja donde va (en la mesa, la que mide la ventana); acá, una abajo al medio,
           de hasta 56 rem y del alto que le deja la mesa a 1440 × 900. En el celular, la hoja de abajo. */}
       <div className={cx('pointer-events-none fixed bottom-4 z-180 grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]', 'inset-x-[max(1rem,calc(50%-28rem))] h-[min(28rem,calc(100dvh-2rem))]')}>
+        {/* El visor es la hoja de abajo de verdad (sobre la página, no en un marco): `SheetHost` sin `phone`. */}
+        <SheetHost>
         <PileStripContext.Provider value>
           <PileViewer
             pile={pileShown?.pile ?? null}
@@ -452,6 +482,7 @@ export function DialogsSection() {
             onClose={() => setPileSample(null)}
           />
         </PileStripContext.Provider>
+        </SheetHost>
       </div>
       <Presence>{pileMenu && !isDesktop ? <CardSheet name={pileMenu.title} kicker={pileMenu.kicker} plain={pileMenu.card === undefined} art={pileMenu.card ? artOf(pileMenu.card) : null} items={pileMenu.items} onClose={() => setPileMenu(null)} /> : null}</Presence>
       <CardMenu anchor={isDesktop ? (pileMenu?.rect ?? null) : null} kicker={pileMenu?.kicker ?? ''} title={pileMenu?.title ?? ''} items={pileMenu?.items ?? []} onClose={() => setPileMenu(null)} />
