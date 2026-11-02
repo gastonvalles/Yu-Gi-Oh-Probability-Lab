@@ -1,11 +1,11 @@
 import { PHASES, type MatAction, type MatPhase, type MatState, type Placed } from './practice-mat'
-import { uniqueComboName, type SavedCombo } from './saved-combos'
+import { isNoteKey, MAX_NOTE, normalizeNote, uniqueComboName, type SavedCombo } from './saved-combos'
 import { createId, isRecord } from './utils'
 
 /**
  * Un combo que viaja dentro de un enlace (`#combo=<datos>`, sin servidor ni cuenta), con un sobre versionado
- * (`{ app, kind: 'combo', v: 1, combo }`, sin el id local; el enlace se escribe en `v: 2`, la forma compacta de más abajo); lo que se escribió con `v: 1` o `v: 2` se lee para
- * siempre, y `kind` deja lugar para otras cosas (un duelo entero).
+ * (`{ app, kind: 'combo', v: 1, combo }`, sin el id local; el enlace se escribe en `v: 2`, la forma compacta de más abajo, o en `v: 3` si lleva notas); lo que se escribió con
+ * `v: 1`, `v: 2` o `v: 3` se lee para siempre, y `kind` deja lugar para otras cosas (un duelo entero).
  *
  * Lo que llega es de otra persona: **entrada no confiable**. Antes de decodificar se topa el largo, la descompresión se corta a `MAX_JSON_BYTES` (una bomba de
  * deflate no pasa) y del JSON se copian sólo los campos conocidos, con sus tipos, rangos y largos, y los ids de carta con su patrón (ni `__proto__` ni un host: el arte
@@ -152,9 +152,9 @@ export function parseComboText(text: string): ShareResult {
   }
   if (isRecord(value) && value.app === APP && value.kind === 'duel') return { ok: false, error: 'duel' }
   if (!isRecord(value) || value.app !== APP || value.kind !== 'combo' || typeof value.v !== 'number') return { ok: false, error: 'notCombo' }
-  if (value.v > COMPACT_VERSION) return { ok: false, error: 'newer' }
-  if (value.v !== COMBO_SHARE_VERSION && value.v !== COMPACT_VERSION) return { ok: false, error: 'broken' }
-  const combo = value.v === COMPACT_VERSION ? readCompact(value.c) : readCombo(value.combo)
+  if (value.v > NOTES_VERSION) return { ok: false, error: 'newer' }
+  if (value.v !== COMBO_SHARE_VERSION && value.v !== COMPACT_VERSION && value.v !== NOTES_VERSION) return { ok: false, error: 'broken' }
+  const combo = value.v === COMBO_SHARE_VERSION ? readCombo(value.combo) : readCompact(value.c, value.v === NOTES_VERSION)
   return combo ? { ok: true, combo } : { ok: false, error: 'broken' }
 }
 
@@ -287,13 +287,25 @@ function names(value: unknown): Record<string, string> {
   return Object.fromEntries(entries.map(([key, name]) => [id(key), str(name)]))
 }
 
+/**
+ * Las notas de los pasos (texto de otra persona): la clave, una jugada que existe; el texto, una línea de hasta `MAX_NOTE` tal como la escribe la app (normalizada: un salto, un
+ * doble espacio o un borde es un enlace armado a mano, y no se acepta). Ninguna, no hay notas. Se muestran como texto: nada de adentro se interpreta.
+ */
+function notes(value: unknown, actions: number): Record<string, string> | undefined {
+  const entries = Object.entries(rec(value))
+  if (entries.length > actions) fail()
+  const read = entries.map(([key, text]) => [isNoteKey(key, actions) ? key : fail(), str(text, MAX_NOTE)] as const)
+  if (read.some(([, text]) => !text || normalizeNote(text) !== text)) fail()
+  return read.length > 0 ? Object.fromEntries(read) : undefined
+}
+
 function readCombo(value: unknown): SharedCombo | null {
   try {
     const v = rec(value)
     const savedAt = str(v.savedAt, 40)
     if (Number.isNaN(Date.parse(savedAt))) fail()
     const actions = Array.isArray(v.actions) && v.actions.length <= MAX_ACTIONS ? v.actions.map((entry) => action(entry)) : fail()
-    return clean({ name: str(v.name).trim(), deckName: str(v.deckName), savedAt, initial: state(v.initial), names: names(v.names), actions, auto: opt(v.auto, yes) })
+    return clean({ name: str(v.name).trim(), deckName: str(v.deckName), savedAt, initial: state(v.initial), names: names(v.names), actions, auto: opt(v.auto, yes), notes: opt(v.notes, (n) => notes(n, actions.length)) })
   } catch {
     return null
   }
@@ -307,8 +319,12 @@ function readCombo(value: unknown): SharedCombo | null {
  * `card-<passcode>-1…n`; detrás, como texto, los ids de otra forma (fichas, el rival, el duelo). La mesa y cada jugada son tuplas en el orden de `FIELDS`, y los valores fijos,
  * su lugar en `ENUMS`. **`ENUMS` y `FIELDS` son el formato: sólo se agrega al final.** Leer v2 es armar la forma de v1 y pasarla por el mismo `readCombo` (la validación es una).
  * `savedAt` va en ms si vuelve igual; si no, el texto.
+ *
+ * v3 es v2 con las notas de los pasos al final: `c: [..., jugadas, auto | null, notas]` (`{ "<jugada>": "texto" }`). Se escribe **sólo si hay alguna nota**: un combo sin notas
+ * sigue en v2, byte a byte, y lo lee cualquier versión de la app; una que no conoce v3 dice `newer`.
  */
 const COMPACT_VERSION = 2
+const NOTES_VERSION = 3
 const MAX_TABLE = 1000
 const MAX_COPIES = 99
 const ENUMS = ['atk', 'def', 'set', 'mz', 'emz', 'st', 'field', 'deck', 'extra', 'hand', 'gy', 'banished', 'deck-bottom', 'normal', 'special', 'pendulum', 'scale', 'fusion', 'synchro', 'xyz', 'link', 'discard', 'banish', ...PHASE_IDS] as const
@@ -398,9 +414,11 @@ export function compactTime(savedAt: string): number | string {
 export const readCompactTime = (value: unknown): unknown => (typeof value === 'number' ? new Date(int(value, 0, 8.64e15)).toISOString() : value)
 
 /** El sobre v2, listo para JSON. */
-export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto }: SavedCombo | SharedCombo) {
+export function compactEnvelope({ name, deckName, savedAt, initial, actions, auto, notes }: SavedCombo | SharedCombo) {
   const pack = compactWriter([initial, actions])
-  return { app: APP, kind: 'combo', v: COMPACT_VERSION, c: [name, deckName, compactTime(savedAt), pack.table, pack.mat(initial), actions.map(pack.action), ...(auto ? [true] : [])] }
+  const c = [name, deckName, compactTime(savedAt), pack.table, pack.mat(initial), actions.map(pack.action)]
+  if (notes && Object.keys(notes).length > 0) return { app: APP, kind: 'combo', v: NOTES_VERSION, c: [...c, auto ? true : null, notes] }
+  return { app: APP, kind: 'combo', v: COMPACT_VERSION, c: [...c, ...(auto ? [true] : [])] }
 }
 
 const list = (value: unknown, max: number): unknown[] => (Array.isArray(value) && value.length <= max ? value : fail())
@@ -473,16 +491,17 @@ export function compactReader(rawTable: unknown) {
   return { codes, ref, refs, mat, action: (raw: unknown) => unpack(raw) }
 }
 
-/** La forma v1 de un combo v2 (lanza si no se puede armar); `readCombo` la valida entera. */
-function expandCompact(value: unknown): unknown {
-  const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto] = list(value, 7)
+/** La forma v1 de un combo v2 o v3 (lanza si no se puede armar); `readCombo` la valida entera. v3 trae las notas (y `auto`, `true` o `null`); v2, a lo sumo `auto`. */
+function expandCompact(value: unknown, withNotes: boolean): unknown {
+  const [name, deckName, savedAt, rawTable, rawMat, rawActions, auto, notes] = list(value, withNotes ? 8 : 7)
+  if (withNotes && notes === undefined) fail()
   const read = compactReader(rawTable)
-  return { name, deckName, savedAt: readCompactTime(savedAt), initial: read.mat(rawMat), names: {}, actions: list(rawActions, MAX_ACTIONS).map(read.action), auto }
+  return { name, deckName, savedAt: readCompactTime(savedAt), initial: read.mat(rawMat), names: {}, actions: list(rawActions, MAX_ACTIONS).map(read.action), auto: withNotes && auto === null ? undefined : auto, notes }
 }
 
-function readCompact(value: unknown): SharedCombo | null {
+function readCompact(value: unknown, withNotes: boolean): SharedCombo | null {
   try {
-    return readCombo(expandCompact(value))
+    return readCombo(expandCompact(value, withNotes))
   } catch {
     return null
   }

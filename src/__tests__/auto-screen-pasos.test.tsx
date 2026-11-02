@@ -45,8 +45,9 @@ const goTo = (name: string) => {
 }
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 const panel = () => screen.getByRole('region', { name: 'Pasos y combos' })
-/** La lista de pasos (la última jugada arriba y la mano inicial al final), como la lee quien mira: el número y la frase. */
-const steps = () => within(within(panel()).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').map((button) => button.textContent)
+/** La lista de pasos (la última jugada arriba y la mano inicial al final), como la lee quien mira: el número y la frase (sin el botón de la nota de un combo guardado). */
+const stepButtons = (list: HTMLElement) => within(list).getAllByRole('button').filter((button) => button.hasAttribute('data-divider'))
+const steps = () => stepButtons(within(panel()).getByRole('list', { name: 'Jugadas' })).map((button) => button.textContent)
 
 describe('auto-screen · los pasos de la práctica', () => {
   it('la mano de apertura es el paso 0 («Mano inicial») y la lista crece con lo que la mesa cuenta, no antes: las fases que pedís y lo que juega el núcleo', () => {
@@ -215,7 +216,7 @@ describe('auto-screen · guardar combos', () => {
     fireEvent.click(within(aside).getByRole('radio', { name: /Combos/ }))
     fireEvent.click(within(aside).getByRole('button', { name: 'Cargar Combo 1' }))
     fireEvent.click(within(aside).getByRole('radio', { name: /Pasos/ }))
-    expect(within(within(aside).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').map((button) => button.textContent)).toEqual([
+    expect(stepButtons(within(aside).getByRole('list', { name: 'Jugadas' })).map((button) => button.textContent)).toEqual([
       '3Invocación Normal de Ash Blossom',
       '2Pasás a la Main Phase 1',
       '1Pasás a la Standby Phase',

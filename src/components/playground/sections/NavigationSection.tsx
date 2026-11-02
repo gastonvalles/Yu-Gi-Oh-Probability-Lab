@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { buildDuelReplay, type DuelReplay } from '../../../app/duel-replay'
 import type { SavedReplay } from '../../../app/duel-replay-share'
@@ -7,7 +7,7 @@ import { createMatState, describeMatSteps } from '../../../app/practice-mat'
 import { DuelReplayScreen } from '../../replays/DuelReplayScreen'
 import { videoStage } from '../../replays/ReplayVideo'
 import { YourDuels } from '../../replays/YourDuels'
-import { createSavedCombo, type SavedCombo } from '../../../app/saved-combos'
+import { createSavedCombo, normalizeNote, type SavedCombo } from '../../../app/saved-combos'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
 import { MatSnapshot } from '../../probability/MatSnapshot'
 import { panelStepsOf } from '../../probability/panel-steps'
@@ -202,6 +202,21 @@ function StepListSamples() {
   const steps = useMemo(() => panelStepsOf(combo.initial, combo.actions, describeMatSteps(combo.initial, combo.actions, combo.nameOf), combo.nameOf, combo.artOf), [combo])
   const [cursor, setCursor] = useState(9)
   const [width, setWidth] = useState<StepListWidth>('column')
+  // Las notas de muestra: una corta y una de 140 caracteres (baja de renglón sin cortarse). Se escriben como en un combo guardado.
+  const [notes, setNotes] = useState<Record<string, string>>(() => ({
+    0: 'Abre con el Normal: busca la pieza que falta.',
+    8: normalizeNote('Barajá antes de cortar: si el rival tiene el Maxx «C», esto le deja la línea más corta y te guarda la Ignición para el turno siguiente, sí.'),
+  }))
+  const [editable, setEditable] = useState(true)
+  const noteStep = useCallback(
+    (index: number, note: string) =>
+      setNotes((current) => {
+        const next: Record<string, string> = { ...current, [index]: normalizeNote(note) }
+        if (!next[index]) delete next[index]
+        return next
+      }),
+    [],
+  )
   const snapshot = steps[cursor - 1]
 
   return (
@@ -211,7 +226,7 @@ function StepListSamples() {
         layout="column"
         note={
           <>
-            Una línea de tiempo, con la última jugada arriba: un círculo por paso (el actual en ámbar, como su pastilla del reproductor), los cambios de fase y de turno como cabeceras y, por paso, una ficha con un solo borde: las miniaturas, el chip de la jugada con el color de su destello y el de dónde sale la carta, la frase y el tablero chico. El paso actual se abre con el turno, la fase y <Tag>Qué se mueve</Tag>. El interruptor <Tag>Detalles</Tag> (se recuerda en el navegador) la vuelve la lista compacta. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag>, <Tag>probability/panel-steps.ts</Tag> y <Tag>app/mat-step-info.ts</Tag>
+            Una línea de tiempo, con la última jugada arriba: un círculo por paso (el actual en ámbar, como su pastilla del reproductor), los cambios de fase y de turno como cabeceras y, por paso, una ficha con un solo borde: las miniaturas, el chip de la jugada con el color de su destello y el de dónde sale la carta, la frase y el tablero chico. El paso actual se abre con el turno, la fase y <Tag>Qué se mueve</Tag>. El interruptor <Tag>Detalles</Tag> (se recuerda en el navegador) la vuelve la lista compacta. Debajo de la jugada, la nota del paso («por qué este paso», una línea de hasta 140, texto chico y sin caja; un paso sin nota no gasta lugar) y, en un combo guardado, el botón <Tag>Agregar nota</Tag> / <Tag>Editar nota</Tag> (44 px con el dedo) que abre un diálogo con un solo campo y su contador; vacío y guardado, la borra. En uno compartido sin guardar, las notas se ven y no se editan (<Tag>Sólo lectura</Tag>). Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag>, <Tag>probability/panel-steps.ts</Tag>, <Tag>app/mat-step-info.ts</Tag> y <Tag>app/saved-combos.ts</Tag>
           </>
         }
       >
@@ -228,8 +243,9 @@ function StepListSamples() {
         </div>
         {/* Una sola lista (un combo largo dibuja muchas fichas): el ancho se elige. */}
         <Segmented label="Ancho de la muestra" variant="chips" size="sm" value={width} onChange={setWidth} options={(Object.keys(STEP_LIST_WIDTHS) as StepListWidth[]).map((key) => ({ value: key, label: STEP_LIST_WIDTHS[key].label }))} />
+        <Segmented label="Notas" variant="chips" size="sm" value={editable ? 'saved' : 'shared'} onChange={(value) => setEditable(value === 'saved')} options={[{ value: 'saved', label: 'Combo guardado' }, { value: 'shared', label: 'Sólo lectura' }]} />
         <div className={cx('h-[44rem] max-w-full overflow-y-auto overflow-x-hidden rounded-card border border-border-subtle bg-background p-3', STEP_LIST_WIDTHS[width].className)}>
-          <PracticeMatPanel steps={steps} initial={combo.initial} cursor={cursor} onSeek={setCursor} nameOf={combo.nameOf} artOf={combo.artOf} combos={NO_COMBOS} deckName="" onLoad={noop} onRename={noop} onDelete={noop} showCombos={false} className="h-full" />
+          <PracticeMatPanel steps={steps} initial={combo.initial} cursor={cursor} onSeek={setCursor} nameOf={combo.nameOf} artOf={combo.artOf} combos={NO_COMBOS} deckName="" onLoad={noop} onRename={noop} onDelete={noop} showCombos={false} notes={notes} onNote={editable ? noteStep : undefined} className="h-full" />
         </div>
       </Specimen>
 
@@ -238,7 +254,7 @@ function StepListSamples() {
         layout="column"
         note={
           <>
-            Cada ficha: el nombre y sus datos con todo el ancho, el resumen (<Tag>Arranca con</Tag> las cartas de la mano que usa y <Tag>Termina con</Tag> las del campo final, hasta 4 y 5 y «y N más») y, abajo, <Tag>Cargar</Tag> (la de siempre), renombrar, borrar y el ⋯ con <Tag>Compartir enlace</Tag> (la hoja del sistema en el celular; si no, copiado) y <Tag>Descargar archivo</Tag>: con el panel al mínimo (16 rem) y 44 px por botón, dos íconos más no entran. Arriba, <Tag>Pegar enlace</Tag> e <Tag>Importar combo</Tag> (sin campo de texto: no abre el teclado). Un enlace de combo abre la práctica con el aviso de abajo: el nombre y sus datos en un renglón cada uno, la X lo cierra y el video es un ícono, para que en el celular quepa en dos renglones con la principal entera. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>app/combo-share.ts</Tag>
+            Cada ficha: el nombre y sus datos con todo el ancho, el resumen (<Tag>Arranca con</Tag> las cartas de la mano que usa y <Tag>Termina con</Tag> las del campo final, hasta 4 y 5 y «y N más») y, abajo, <Tag>Cargar</Tag> (la de siempre), renombrar, borrar y el ⋯ con <Tag>Compartir enlace</Tag> (la hoja del sistema en el celular; si no, copiado) y <Tag>Descargar archivo</Tag>: con el panel al mínimo (16 rem) y 44 px por botón, dos íconos más no entran. Arriba, <Tag>Pegar enlace</Tag> e <Tag>Importar combo</Tag> (sin campo de texto: no abre el teclado). Un enlace de combo abre la práctica con el aviso de abajo: el nombre y sus datos en un renglón cada uno, la X lo cierra y el video es un ícono, para que en el celular quepa en dos renglones con la principal entera. Las notas de los pasos viajan con el combo (en el enlace y al guardarlo); un combo sin notas comparte el mismo enlace de siempre. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>app/combo-share.ts</Tag>
           </>
         }
       >

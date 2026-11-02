@@ -321,6 +321,13 @@ export const practice: Translated<typeof es> = {
   'practice.panel.deleteTitle': 'Delete “{name}”?',
   'practice.panel.deleteBody': 'The combo is deleted from this device. This can’t be undone.',
   'practice.panel.details': 'Details',
+  'practice.note.add': 'Add note to step {step}',
+  'practice.note.edit': 'Edit note on step {step}',
+  'practice.note.title': 'Step {step} note',
+  'practice.note.field': 'Why this step (optional)',
+  'practice.note.hint': 'Clear it and save to delete it.',
+  'practice.note.saved': 'Note saved',
+  'practice.note.deleted': 'Note deleted',
 
   'practice.kind.draw': 'Draw',
   'practice.kind.mill': 'To GY',

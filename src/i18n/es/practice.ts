@@ -339,6 +339,14 @@ export const practice = {
   'practice.panel.deleteTitle': '¿Borrar “{name}”?',
   'practice.panel.deleteBody': 'El combo se borra de este dispositivo. No se puede deshacer.',
   'practice.panel.details': 'Detalles',
+  // Notas por paso: una línea de «por qué este paso» en un combo guardado.
+  'practice.note.add': 'Agregar nota al paso {step}',
+  'practice.note.edit': 'Editar nota del paso {step}',
+  'practice.note.title': 'Nota del paso {step}',
+  'practice.note.field': 'Por qué este paso (opcional)',
+  'practice.note.hint': 'Vaciala y guardá para borrarla.',
+  'practice.note.saved': 'Nota guardada',
+  'practice.note.deleted': 'Nota borrada',
 
   // Lista de pasos: la clase de cada jugada (el chip, con las palabras del menú de la carta), de dónde sale la carta, lo que se mueve y el tablero chico.
   'practice.kind.draw': 'Robar',
