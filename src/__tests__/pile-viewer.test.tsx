@@ -384,3 +384,15 @@ describe('en la mesa del duelo de escritorio es una tira: renglones de cartas qu
     expect(screen.getByRole('dialog', { name: 'Main · 2' })).toHaveClass('w-max')
   })
 })
+
+describe('el nombre de cada carta se lee una sola vez (el arte lleva el mismo nombre en su alt)', () => {
+  it('con imagen, el botón de la carta dice su nombre una vez, no «Maxx C Maxx C»', () => {
+    render(
+      <Provider store={store}>
+        <PileViewer pile="gy" ids={['a', 'b']} info={(id) => ({ name: NAMES[id] ?? id, art: `https://images.example/${id}.jpg` })} targeted={new Set()} onPick={() => {}} onClose={() => {}} />
+      </Provider>,
+    )
+
+    expect(screen.getByRole('button', { name: 'Maxx C' })).toHaveAccessibleName('Maxx C')
+  })
+})
