@@ -59,13 +59,14 @@ export const replayEnvelope = (replay: DuelReplay) => ({ app: SHARE_APP, kind: '
  * result | null, hidden?] }`. La tabla, las mesas y las jugadas, como el combo v2 (`compactWriter`: cada id es su lugar en la tabla; una jugada es `[lado, ...la del combo]`);
  * lo revelado (id opaco → id real), en pares planos de lugares, y el de cada jugada, aparte (`[jugada, ...pares]`: pocas muestran algo); los nombres, en el orden de los
  * passcodes de la tabla (`null`, uno sin nombre). **Este orden es el formato: sólo se agrega al final.** Leer v2 es armar la forma de v1 y pasarla por el mismo `readReplay`.
+ * El enlace va sin nombres (`names: false`, la lista vacía) y quien lo abre los pide por passcode (`resolveReplayNames`, como el combo); lo guardado acá los lleva.
  */
-export function compactReplayEnvelope(replay: DuelReplay) {
+export function compactReplayEnvelope(replay: DuelReplay, { names: withNames = true } = {}) {
   const pairs = (map: Record<string, string> | undefined) => Object.entries(map ?? {})
   // Los nombres van por passcode: el de cada uno entra a la tabla aunque nadie lo nombre (no pasa en un replay armado acá).
-  const pack = compactWriter([replay.sides.map((side) => [side.initial, pairs(side.reveal)]), replay.steps.map(([, action, shown]) => [action, pairs(shown)]), pairs(replay.hidden), Object.keys(replay.cards).map((code) => `card-${code}-1`)])
+  const pack = compactWriter([...tableSources(replay), withNames ? Object.keys(replay.cards).map((code) => `card-${code}-1`) : []])
   const flat = (map: Record<string, string> | undefined) => pairs(map).flatMap(([opaque, real]) => [pack.ref(opaque), pack.ref(real)])
-  const names = pack.codes.map((code) => replay.cards[String(code)] ?? null)
+  const names = withNames ? pack.codes.map((code) => replay.cards[String(code)] ?? null) : []
   while (names.length > 0 && names.at(-1) === null) names.pop()
 
   return {
@@ -91,7 +92,39 @@ export function compactReplayEnvelope(replay: DuelReplay) {
   }
 }
 
+/** De dónde salen los ids de la tabla: las mesas, las jugadas, lo revelado y lo propio oculto (los ids reales están sólo ahí). */
+function tableSources(replay: DuelReplay): unknown[] {
+  const pairs = (map: Record<string, string> | undefined) => Object.entries(map ?? {})
+  return [replay.sides.map((side) => [side.initial, pairs(side.reveal)]), replay.steps.map(([, action, shown]) => [action, pairs(shown)]), pairs(replay.hidden)]
+}
+
+/** Los datos que se guardan en este navegador (con los nombres). */
 export const encodeReplayPayload = (replay: DuelReplay) => packPayload(compactReplayEnvelope(replay))
+/** Los datos del enlace: sin los nombres; quien lo abre los pide (`resolveReplayNames`). */
+export const encodeReplayLinkPayload = (replay: DuelReplay) => packPayload(compactReplayEnvelope(replay, { names: false }))
+
+/** Los passcodes de las cartas que el replay deja ver (los de la tabla del enlace): sus nombres y sus artes. */
+export const replayCodes = (replay: DuelReplay): number[] => compactWriter(tableSources(replay)).codes
+
+/**
+ * El replay con los nombres que le faltan (un enlace no los trae), pedidos por passcode en una sola consulta, como el combo (`resolveComboNames`). Sin red, o si no llega
+ * ninguno, el mismo replay (lo que no tiene nombre se ve «Carta»). No lanza.
+ */
+export async function resolveReplayNames(replay: DuelReplay, fetchNames: (codes: number[]) => Promise<ReadonlyMap<number, string>>): Promise<DuelReplay> {
+  const missing = replayCodes(replay).filter((code) => !replay.cards[String(code)])
+  if (missing.length === 0) return replay
+  try {
+    const found = await fetchNames(missing)
+    const filled = missing.flatMap((code) => {
+      const text = found.get(code)
+      // Lo que no es un nombre (vacío, otro tipo, kilométrico) no entra: esa carta sigue «Carta».
+      return typeof text === 'string' && text.length > 0 && text.length <= 200 ? [[String(code), text] as const] : []
+    })
+    return filled.length === 0 ? replay : { ...replay, cards: { ...replay.cards, ...Object.fromEntries(filled) } }
+  } catch {
+    return replay
+  }
+}
 export const buildReplayLink = (origin: string, pathname: string, payload: string) => `${origin}${pathname}#${REPLAY_HASH}=${payload}`
 
 /** Los datos de un enlace de replay (entero o sólo el hash), o null si no lo es. */
@@ -282,6 +315,8 @@ export const MAX_SAVED_REPLAYS = 20
 /** Uno guardado: lo que muestra la lista y los datos ya comprimidos (el texto del enlace), que se decodifican y validan al abrirlo. */
 export interface SavedReplay {
   id: string
+  /** El largo de los datos de su enlace (sin nombres), para ofrecerlo sólo si entra; uno guardado antes no lo tiene y se mide con `payload` (más largo: lleva los nombres). */
+  linkChars?: number
   savedAt: string
   players: [string, string]
   steps: number
@@ -296,7 +331,7 @@ const savedOf = (value: unknown): SavedReplay | null => {
     const v = readRecord(value)
     const [first, second] = list(v.players, 2, name)
     const payload = readText(v.payload, MAX_PAYLOAD_CHARS)
-    return withoutUndefined({ id: readText(v.id, 80), savedAt: readText(v.savedAt, 40), players: [first ?? invalid(), second ?? invalid()] as [string, string], steps: readInt(v.steps, 0, MAX_STEPS), view: v.view === 'mine' ? ('mine' as const) : undefined, result: v.result === undefined ? undefined : result(v.result), payload: /^[zj][A-Za-z0-9_-]+$/.test(payload) ? payload : invalid() })
+    return withoutUndefined({ id: readText(v.id, 80), savedAt: readText(v.savedAt, 40), players: [first ?? invalid(), second ?? invalid()] as [string, string], steps: readInt(v.steps, 0, MAX_STEPS), linkChars: v.linkChars === undefined ? undefined : readInt(v.linkChars, 1, MAX_PAYLOAD_CHARS), view: v.view === 'mine' ? ('mine' as const) : undefined, result: v.result === undefined ? undefined : result(v.result), payload: /^[zj][A-Za-z0-9_-]+$/.test(payload) ? payload : invalid() })
   } catch {
     return null
   }
@@ -323,7 +358,7 @@ function writeSavedReplays(list: readonly SavedReplay[]): boolean {
 
 /** Guarda uno arriba de la lista. `dropped`: la lista estaba llena y se fue el más viejo; `failed`: el navegador no dejó guardar. */
 export async function saveReplay(replay: DuelReplay): Promise<{ saved: SavedReplay | null; dropped: boolean }> {
-  const saved: SavedReplay = withoutUndefined({ id: createId('replay'), savedAt: replay.savedAt, players: replay.players, steps: replay.steps.length, view: replay.view === 'mine' ? 'mine' : undefined, result: replay.result, payload: await encodeReplayPayload(replay) })
+  const saved: SavedReplay = withoutUndefined({ id: createId('replay'), savedAt: replay.savedAt, players: replay.players, steps: replay.steps.length, linkChars: (await encodeReplayLinkPayload(replay)).length, view: replay.view === 'mine' ? 'mine' : undefined, result: replay.result, payload: await encodeReplayPayload(replay) })
   const before = readSavedReplays()
   const next = [saved, ...before].slice(0, MAX_SAVED_REPLAYS)
 
@@ -338,10 +373,10 @@ export function deleteSavedReplay(id: string): SavedReplay[] {
 
 // ── En el navegador: compartir ──
 
-/** Comparte el enlace (en el celular con la hoja del sistema; si no, lo copia). Un duelo que no entra en un enlace: `tooLong` (quien llama ofrece el video). */
+/** Comparte el enlace (en el celular con la hoja del sistema; si no, lo copia). Un duelo que no entra en un enlace: `tooLong` (quien llama ofrece el video). `payload`: los datos del enlace, si ya están. */
 export async function shareReplayLink(replay: DuelReplay, title: string, payload?: string): Promise<ShareOutcome> {
-  return shareLink(buildReplayLink(location.origin, location.pathname, payload ?? (await encodeReplayPayload(replay))), title)
+  return shareLink(buildReplayLink(location.origin, location.pathname, payload ?? (await encodeReplayLinkPayload(replay))), title)
 }
 
-/** Si el enlace de unos datos entra bajo el tope (para no ofrecerlo cuando no). */
-export const linkFits = (payload: string, max: number) => buildReplayLink(location.origin, location.pathname, payload).length <= max
+/** Si el enlace con datos de este largo entra bajo el tope (para no ofrecerlo cuando no). */
+export const linkFits = (payloadChars: number, max: number) => buildReplayLink(location.origin, location.pathname, '').length + payloadChars <= max
