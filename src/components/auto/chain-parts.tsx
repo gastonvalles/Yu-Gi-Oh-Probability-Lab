@@ -36,7 +36,7 @@ export function ChainListRows({ rows, onPick, who = true }: { rows: readonly Cha
     const label = t(link.mine ? 'auto.chain.linkMine' : 'auto.chain.linkTheirs', { number: link.number, card: link.name, state: stateLabel(link) })
 
     return (
-      <li key={link.number} aria-current={link.state === 'solving' ? 'step' : undefined}>
+      <li key={link.number} aria-current={link.state === 'solving' ? 'step' : undefined} className="snap-start">
         <button
           type="button"
           aria-label={label}

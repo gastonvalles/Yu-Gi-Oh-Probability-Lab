@@ -160,14 +160,16 @@ export function PickGrid({ label, cards: given, chosen, onToggle, multi, eligibl
             <span className="min-w-0 truncate">{card.place}</span>
           </Badge>
         ) : null}
-        {/* La elegida lleva el marco celeste con la luz que gira de la carta elegida en la mano y en la mesa (`FxFrame`); al pasar el mouse, el aro fino de las cartas de la mesa. */}
-        <span className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}>
+        {/* La elegida lleva el marco celeste con la luz que gira de la carta elegida en la mano y en la mesa (`FxFrame`); al pasar el mouse, el aro fino de las cartas de la mesa.
+            En el cartel de la mesa, a lo sumo del alto que deja su lugar (`--prompt-art`, lo escribe `PracticeMat`): la carta se achica entera, nunca se corta. */}
+        <span data-pick-art="" className={cx('relative block aspect-[421/614] w-full max-w-[calc(var(--prompt-art,100dvh)*421/614)] overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]', order < 0 && 'group-hover:outline-1 group-hover:outline-white/60')}>
           {card.art === undefined || !arts ? <Skeleton still radius="none" className="absolute inset-0" /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
           {order >= 0 ? <FxFrame tone="cyan" /> : null}
           {order >= 0 && multi ? <span aria-hidden="true" className={PICK_ORDER}>{order + 1}</span> : null}
         </span>
-        <span aria-hidden="true" data-pick-name="" className="grid min-w-0">
-          <span className="truncate text-micro text-foreground min-[1101px]:line-clamp-2 min-[1101px]:whitespace-normal">{card.name}</span>
+        {/* En la hoja, en dos renglones desde 1101 px; en la banda del cartel, en uno (el alto es de la carta) y entero al pasar el mouse. */}
+        <span aria-hidden="true" data-pick-name="" title={grouped ? undefined : card.name} className="grid min-w-0">
+          <span className={cx('truncate text-micro text-foreground', grouped && 'min-[1101px]:line-clamp-2 min-[1101px]:whitespace-normal')}>{card.name}</span>
           {card.place && !tabs && !card.from ? <span className="truncate text-micro text-soft">{card.place}</span> : null}
         </span>
       </div>
