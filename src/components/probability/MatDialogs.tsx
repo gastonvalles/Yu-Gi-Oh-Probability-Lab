@@ -5,13 +5,13 @@ import { opensKeyboard, useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
-import { useSheetDrag } from '../../app/use-sheet-drag'
 import { normalizeSearchText } from '../../app/utils'
 import type { DuelGlow } from '../../app/card-glow'
 import type { MatPile } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { CardArt } from '../CardArt'
+import { BottomSheet } from '../ui/BottomSheet'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
@@ -19,7 +19,6 @@ import { Icon, type IconName } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
-import { SheetHandle } from '../ui/SheetHandle'
 import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { FX_CARD, FxFrame, PICK_ORDER, TargetMark, fxVars } from './MatFx'
@@ -572,7 +571,7 @@ export const PileStripContext = createContext(false)
  * acceder a la info»): no es un modal ni lleva velo. En escritorio es un panel que llena el lugar que le da quien lo monta (una caja `grid` posicionada: la ventana que flota sobre la mesa hasta la fila de las Zonas Extra, ver `PracticeMat`)
  * y el campo sigue vivo: se tocan sus cartas y sus casillas con el visor abierto, y la carta que se toca o se apunta en el visor se lee en el detalle (`onPeek`, `onHover`).
  * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera;
- * con su asa se baja sin cerrarse, para ver la mano (`SheetHandle`).
+ * con su asa se baja sin cerrarse, para ver la mano (`BottomSheet`).
  */
 export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker, note }: PileViewerProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
@@ -586,13 +585,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   const gridRef = useRef<HTMLUListElement | null>(null)
   const footRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLElement | null>(null)
-  const backdropRef = useRef<HTMLDivElement | null>(null)
   // Lo que tenía el foco al abrirse (la casilla de la pila): ahí vuelve al cerrarse.
   const openerRef = useRef<HTMLElement | null>(null)
-  // El fondo de la hoja cierra sólo si el toque empezó ahí (como el del `Modal`): el click que sigue a un toque que la abrió no la cierra.
-  const pressedBackdropRef = useRef(false)
-  // En el celular, bajada con el asa (sin cerrarse) para ver la mano.
-  const drag = useSheetDrag(panelRef)
   const statusId = useId()
   const titleId = useId()
   const open = pile !== null && !hidden
@@ -618,7 +612,6 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
       setChoosing(many?.start !== undefined)
       setPicked([...(many?.start ?? [])])
       setLast(null)
-      drag.setLowered(false)
     }
   }
 
@@ -851,35 +844,27 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
         {content}
       </section>
     ) : (
-      // Celular: la hoja de abajo, por encima de la mesa y debajo del menú de una carta (`CardSheet`), con un fondo sin velo que la cierra al tocar afuera. Con su asa se baja sin cerrarse
-      // (`useSheetDrag`): queda la tira del asa, el fondo deja de atajar toques (se toca la mano y el campo) y lo de adentro queda como estaba, inerte, hasta que se sube.
-      // Siempre de borde a borde, como toda hoja de abajo (Gastón, 2026-10-29); las cartas van al medio de la hoja: no quedan dos cartas a la izquierda y una franja vacía a la derecha.
-      createPortal(
-        <>
-          <div
-            ref={backdropRef}
-            aria-hidden="true"
-            className={cx('fixed inset-0 z-180', drag.lowered && 'pointer-events-none')}
-            onPointerDown={(event) => {
-              pressedBackdropRef.current = event.target === event.currentTarget
-            }}
-            onClick={(event) => {
-              if (pressedBackdropRef.current && event.target === event.currentTarget) onClose()
-            }}
-          />
-          <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} style={drag.style} className={cx('fixed inset-x-0 bottom-0 z-180 flex max-h-[55dvh] flex-col overflow-hidden rounded-t-panel border border-b-0 border-border bg-card-background pb-[env(safe-area-inset-bottom,0px)] shadow-overlay outline-none animate-sheet-in motion-reduce:animate-none')}>
-            <SheetHandle drag={drag} label={title} className="bg-surface-raised">
-              {header}
-            </SheetHandle>
-            <div inert={drag.lowered} className="contents">
-              {content}
-            </div>
-          </section>
-        </>,
-        document.body,
-      )
+      // Celular: la hoja de abajo estándar (`BottomSheet`), por encima de la mesa y debajo del menú de una carta (`CardSheet`), hasta 55 dvh (el campo se ve arriba), con un fondo sin velo que la cierra
+      // al tocar afuera. Se baja sin cerrarse: queda la tira del asa con su título, el fondo deja de atajar toques (se toca la mano y el campo) y lo de adentro queda como estaba, inerte, hasta que se sube.
+      // Mientras está, las hojas de la mesa (la cadena, las preguntas) se esconden: una sola hoja. Las cartas van al medio de la hoja: no quedan dos a la izquierda y una franja vacía a la derecha.
+      <BottomSheet
+        ref={(node) => {
+          panelRef.current = node
+        }}
+        role="dialog"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        label={title}
+        over
+        raiseKey={pile}
+        onDismiss={onClose}
+        className="outline-none"
+        head={header}
+      >
+        {content}
+      </BottomSheet>
     ),
-    () => [backdropRef.current, panelRef.current],
+    () => [panelRef.current],
   )
 }
 

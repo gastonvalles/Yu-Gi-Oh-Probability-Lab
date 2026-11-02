@@ -104,7 +104,7 @@ describe('el visor de una pila en el celular se baja con su asa, sin cerrarse', 
     expect(grip).not.toHaveClass('h-7')
     expect(grip).toHaveFocus()
     expect(search.closest('[inert]')).not.toBeNull()
-    expect(dialog.getByRole('button', { name: 'Cerrar' }).closest('[inert]')).not.toBeNull()
+    expect(dialog.getByRole('button', { name: 'Cerrar', hidden: true }).closest('[inert]')).not.toBeNull()
     expect(grip.closest('[inert]')).toBeNull()
     // Los toques pasan a la mesa (y un toque afuera ya no la cierra).
     expect(backdrop).toHaveClass('pointer-events-none')

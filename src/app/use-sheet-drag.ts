@@ -4,17 +4,17 @@ import { EASE_SNAP, prefersReducedMotion } from './motion'
 
 /**
  * Bajar una hoja de abajo sin cerrarla (Gastón, 2026-10-24: ver la mano mientras se busca en el deck, el cementerio o el destierro algo que va a la mano). Se arrastra desde su franja de
- * arriba (el asa y el encabezado: `SheetHandle`) y la hoja sigue al dedo; bajada, queda sólo el asa como una tira sobre el borde de abajo (con el título) y se sube igual, o tocándola.
+ * arriba (el asa y el encabezado: `BottomSheet`) y la hoja sigue al dedo; bajada, queda sólo el asa como una tira sobre el borde de abajo (con el título) y se sube igual, o tocándola.
  * Bajarla no cambia nada de lo de adentro (lo buscado, lo elegido, el scroll, la pregunta que espera): sólo se corre. La hoja es `fixed` y flota encima: la mesa no se mueve.
  * Al soltar decide un tirón (más de `FLICK_SPEED` px/ms en los últimos `SAMPLE_MS`, hacia donde fue) o, si no, la posición: `MOVE_PX` desde donde estaba (o la mitad del recorrido, si es más
  * corto). Un toque sigue siendo un toque (después de un arrastre se descarta el clic). Con movimiento reducido cambia sin deslizarse.
  * Se corre con `translate`, no con `transform`: la entrada de las hojas (`sheet-in`, `sheet-up`) anima `transform` y se queda en su último cuadro, que pisaría uno en línea.
  */
 
-/** El alto de la tira que queda a la vista bajada (el asa, `h-11`: 44 px; la hoja de la cadena deja más: su cinta y sus acciones), en px. */
+/** El alto de la tira que queda a la vista bajada (el asa, `h-11`: 44 px; la hoja de la cadena deja más: su cinta), en px. */
 const STRIP_PX = 44
-/** Dónde queda bajada: se ve la tira (`strip` px) sobre lo que tapa el sistema abajo. La mano de la mesa deja ese lugar libre debajo: la tira entra ahí y no la tapa. */
-const loweredAt = (strip: number) => `calc(100% - ${strip}px - env(safe-area-inset-bottom, 0px))`
+/** Dónde queda bajada: se ve la tira (`strip` px). El borde del sistema (`safe-area`) va en el pie de la hoja (`BottomSheet`), que no se corre. */
+const loweredAt = (strip: number) => `calc(100% - ${strip}px)`
 /** Lo que hay que arrastrar antes de que cuente como gesto (y no como un toque): px. */
 const START_PX = 8
 /** Soltada a esta distancia (px) de donde estaba, cambia de lugar. */
@@ -46,7 +46,7 @@ interface Drag {
 }
 
 /**
- * El arrastre de una hoja de abajo (`panelRef`: la hoja que se corre; `strip`, lo que queda a la vista bajada y `startLowered`, si arranca bajada). Devuelve si está bajada (y cómo cambiarlo), lo que va en su franja de arriba (`handlers`, que pone `SheetHandle`), el `style` de la
+ * El arrastre de una hoja de abajo (`panelRef`: la hoja que se corre; `strip`, lo que queda a la vista bajada y `startLowered`, si arranca bajada). Devuelve si está bajada (y cómo cambiarlo), lo que va en su franja de arriba (`handlers`, que pone `BottomSheet`), el `style` de la
  * hoja y la ref del asa: al bajarla, si el foco estaba en lo que queda tapado (que pasa a ser inerte), va al asa, que sigue a la vista (y el teclado del celular se cierra).
  */
 export function useSheetDrag(panelRef: RefObject<HTMLElement | null>, strip = STRIP_PX, startLowered = false) {

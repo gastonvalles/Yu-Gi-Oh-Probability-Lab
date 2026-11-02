@@ -32,8 +32,8 @@ beforeEach(() => {
     return 1
   }
   window.cancelAnimationFrame = () => {}
-  // jsdom no carga index.css: las dos entradas del `Modal` y la del visor de una pila (`sheet-in`), como en la app.
-  const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter } .animate-sheet-in { animation-name: sheet-in }' })
+  // jsdom no carga index.css: las dos entradas del `Modal`, la del visor de una pila en escritorio (`sheet-in`) y la de la hoja de abajo del celular (`sheet-up`), como en la app.
+  const style = Object.assign(document.createElement('style'), { textContent: '.animate-nav-scrim { animation-name: nav-scrim } .animate-dialog-enter { animation-name: dialog-enter } .animate-sheet-in { animation-name: sheet-in } .motion-safe\\:animate-sheet-up { animation-name: sheet-up }' })
   style.dataset.test = ''
   document.head.append(style)
 })
@@ -82,9 +82,9 @@ describe('el visor de una pila sale al cerrarse: la mesa ya no le cambia la `key
     expect(dialog.inert).toBe(true)
     expect(dialog).toHaveAttribute('data-leaving')
     expect(dialog.style.pointerEvents).toBe('none')
-    // Sin velo que fundir (no tapa el campo): la hoja hace su entrada, `sheet-in`, al revés.
+    // Sin velo que fundir (no tapa el campo): la hoja de abajo hace su entrada, `sheet-up`, al revés.
     const exits = calls.filter(({ element }) => dialog.contains(element))
-    expect(exits.map(({ keyframes }) => keyframes)).toEqual([[{ opacity: 0, transform: 'translateY(10px)' }]])
+    expect(exits.map(({ keyframes }) => keyframes)).toEqual([[{ transform: 'translateY(100%)' }]])
     expect(document.activeElement).toBe(gy)
 
     fireEvent.click(gy)
