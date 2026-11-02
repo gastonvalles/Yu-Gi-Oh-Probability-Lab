@@ -142,39 +142,38 @@ describe('auto-screen · el rival de handtraps', () => {
     // Tu Maxx C (en tu campo) y el rival responde: después de su eslabón, el núcleo te pregunta (la mesa la ve abierta).
     act(() => fake.set({ overlay: { ...overlay, chain: [mine] }, chainSteps: two.slice(0, 1) }))
     act(() => vi.advanceTimersByTime(0))
-    // La pila abre desplegada: la píldora es su título y lo del eslabón queda en su fila (el resumen, para el lector de pantalla).
-    expect(pill()).toHaveTextContent('Cadena · 1CL1 · VosEn espera')
-    expect(pill().firstElementChild).toHaveTextContent(/^Cadena · 1$/)
+    // La cinta: un chip por eslabón; el resumen («Cadena · CL1 · Vos», «En espera») es para el lector de pantalla.
+    const chips = () => within(within(notice()).getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
+
+    expect(pill()).toHaveTextContent('Cadena · CL1 · VosEn espera')
+    expect(pill().firstElementChild).toHaveTextContent(/^Cadena · CL1 · Vos$/)
     act(() => fake.set({ overlay: { ...overlay, chain: [mine, theirs] }, chainSteps: two }))
     expect(screen.getByText('Rival responde a Maxx C')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    expect(pill()).toHaveTextContent('Cadena · 2CL2 · RivalEn espera')
+    expect(pill()).toHaveTextContent('Cadena · CL2 · RivalEn espera')
+    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. En espera', `Eslabón 2: ${ASH.name}, del rival. En espera`])
 
     // Se resuelve de una en el núcleo; la pantalla lo cuenta de a un eslabón, del último al primero.
     const all = [...two, step('solving', 1), step('disabled', 0), step('solved', 1), step('solving', 0), step('solved', 0), step('end', -1)]
 
     act(() => fake.set({ overlay: { ...overlay, chain: [], negated: [{ ...mine, state: 'disabled' }] }, chainSteps: all }))
     act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-    expect(pill()).toHaveTextContent('Cadena · 2Resuelve CL2Resolviendo')
-    expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResolviendo`, 'CL1Maxx CVosEn espera'])
+    expect(pill()).toHaveTextContent('Cadena · Resuelve CL2Resolviendo')
+    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. En espera', `Eslabón 2: ${ASH.name}, del rival. Resolviendo`])
     // Mientras se resuelve, Ash deja tu Maxx C sin efecto; al llegarle el turno no se cuenta otra vez.
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    // En el celular, dos renglones: quién se resuelve y qué le pasa (sin `by` no se sabe quién lo negó: sólo su estado; el nombre está en la pila).
-    expect(pill()).toHaveTextContent('Cadena · 2Resuelve CL2Sin efecto')
-    expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResolviendo`, 'CL1Maxx CVosSin efecto'])
+    // Quién se resuelve y qué le pasa (sin `by` no se sabe quién lo negó: sólo su estado; el nombre va en el chip).
+    expect(pill()).toHaveTextContent('Cadena · Resuelve CL2Sin efecto')
+    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto', `Eslabón 2: ${ASH.name}, del rival. Resolviendo`])
     act(() => vi.advanceTimersByTime(CHAIN_SOLVE_MS))
-    expect(pill()).toHaveTextContent('Cadena · 2Resuelve CL1Sin efecto')
-    expect(within(notice()).getAllByRole('listitem').map((item) => item.textContent)).toEqual([`CL2${ASH.name}RivalResuelta`, 'CL1Maxx CVosSin efecto'])
+    expect(pill()).toHaveTextContent('Cadena · 2 · Resuelve CL1Sin efecto')
+    expect(chips()).toEqual(['Eslabón 1: Maxx C, tuyo. Sin efecto', `Eslabón 2: ${ASH.name}, del rival. Resuelta`])
     // Nada de la cadena en la línea.
     expect(document.querySelector('[data-lane]')).toBeNull()
 
-    // Desplegada a mano (la persona la está mirando), se queda; plegada, se va sola un rato después.
-    fireEvent.click(within(notice()).getByRole('button', { name: 'Ocultar la cadena' }))
-    fireEvent.click(within(notice()).getByRole('button', { name: 'Ver la cadena' }))
-    act(() => vi.advanceTimersByTime(RIVAL_READ_MS + CHAIN_LINGER_MS))
+    // Terminó: la cinta se queda un rato con cómo quedó cada eslabón y se va sola (tocar un chip, para leerlo, no la retiene).
+    act(() => vi.advanceTimersByTime(RIVAL_READ_MS + CHAIN_SOLVE_MS * 2 + CHAIN_LINGER_MS * 2))
     expect(screen.queryByText('Rival responde a Maxx C')).toBeNull()
-    fireEvent.click(within(notice()).getByRole('button', { name: 'Ocultar la cadena' }))
-    act(() => vi.advanceTimersByTime(CHAIN_LINGER_MS))
     expect(screen.queryByTestId('chain-notice')).toBeNull()
 
     // Al rearmarse la mesa (deshacer) con esa cadena abierta, no se cuenta otra vez.

@@ -138,5 +138,5 @@ export function linkPhrase(text: string, code: number, description: string | und
   return sentence ? { start: sentence.start, end: sentence.start + sentence.text.length } : null
 }
 
-/** Cuánto se queda el aviso plegado después de que la cadena terminó. */
-export const CHAIN_LINGER_MS = 1500
+/** Cuánto se queda el aviso después de que la cadena terminó (el celular lo usa para leer cómo quedó cada eslabón: ✓ o ✕). */
+export const CHAIN_LINGER_MS = 2500

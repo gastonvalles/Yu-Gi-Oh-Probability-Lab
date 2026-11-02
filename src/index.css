@@ -94,6 +94,8 @@
   --animate-side-drawer: side-drawer 200ms var(--ease-out) both;
   --animate-nav-scrim: nav-scrim 200ms var(--ease-out) both;
   --animate-pop: pop var(--motion-duration) var(--ease-snap) both;
+  /* Un eslabón nuevo en la cinta de la cadena: entra desde el borde por donde crece la cadena (sólo opacidad y transform). */
+  --animate-chain-link-in: chain-link-in 360ms var(--ease-snap) both;
   /* Lo pasajero (el −N de las vidas, el globo de una señal, el emoji del rival): entra como un pop, se queda y se funde al final. La duración la pone cada uso con `style` (animationDuration). */
   --animate-linger: linger 1600ms var(--ease-out) both;
   /* Una carta que se suma a una zona del deck: sube un poco y se asienta (sin relleno hacia adelante: no deja un contexto de apilado detrás). */
@@ -225,6 +227,18 @@
     from {
       opacity: 0;
       transform: translateY(6px) scale(0.9);
+    }
+  }
+
+  @keyframes chain-link-in {
+    from {
+      opacity: 0;
+      transform: translateX(1rem) scale(0.85);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 

@@ -1,5 +1,6 @@
 import { useId } from 'react'
 
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { MatPrompt } from '../duel/MatPrompt'
 import { Button } from '../ui/Button'
@@ -30,11 +31,23 @@ interface RespondBandProps {
 /**
  * Responder a una cadena (`select_chain` que se puede pasar) sin tapar la mesa: una banda en la ranura de la pregunta (`MatPrompt`: ancha, sin velo, minimizable), como `PickBand`.
  * Arriba, qué se decide (a qué eslabón lo dice la pila de la cadena, desplegada arriba: acá no se repite); las candidatas con la pestaña de dónde están (`PickGrid`: flechas, Espacio y Enter); y abajo «No responder» sin caja y la
- * principal al final («Encadenar como CL3»), que se enciende con una elegida. En escritorio, el modo debajo del título. Tocar la carta que brilla en la mesa sigue valiendo (su
+ * principal al final («Encadenar como CL3»), que se enciende con una elegida. En escritorio, el modo debajo del título. En el celular el título no se ve (la cinta de la cadena, arriba, ya dice a qué
+ * eslabón respondés; queda para el lector de pantalla) y las dos acciones suben a su fila, junto a la flecha de minimizar: la banda mide la fila de acciones y las cartas, sin título ni pie aparte. Tocar la carta que brilla en la mesa sigue valiendo (su
  * menú, como siempre). Al aparecer, el foco va a las cartas. Escape es «No responder» (lo da la mesa), así que no la minimiza.
  */
 export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onPass, mode }: RespondBandProps) {
   const titleId = useId()
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const pass = (
+    <Button variant="tertiary" size={desktop ? 'md' : 'sm'} onClick={onPass}>
+      {t('auto.lane.pass')}
+    </Button>
+  )
+  const chain = (
+    <Button variant="primary" size={desktop ? 'md' : 'sm'} disabled={chosen === null} onClick={onChain}>
+      {link === 1 ? t('auto.respond.start') : t('auto.respond.chain', { link })}
+    </Button>
+  )
 
   return (
     // En el celular, más apretada (sin los nombres debajo de las candidatas, que van en su nombre accesible), para caber arriba de tus monstruos con la píldora de la cadena a la vista.
@@ -50,9 +63,15 @@ export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onP
         <>
           {/* El título, solo en su fila (no se parte a mitad de palabra); debajo, el modo con su nombre al lado: así no le aprieta la columna (en el pie, con «No responder» y la principal, no entra). */}
           <div className="grid min-w-0 flex-1 gap-2">
-            <p id={titleId} className="m-0 font-semibold break-words">
+            <p id={titleId} className={cx('m-0 font-semibold break-words', !desktop && 'sr-only')}>
               {title}
             </p>
+            {desktop ? null : (
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                {pass}
+                {chain}
+              </div>
+            )}
             {mode ? (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 max-[1101px]:hidden">
                 <span className="text-micro text-muted">{t('auto.respond.mode')}</span>
@@ -64,14 +83,12 @@ export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onP
       }
     >
       <PickGrid label={t('auto.respond.cards')} cards={cards} chosen={chosen === null ? [] : [chosen]} onToggle={onToggle} multi={false} tabs className={cx(COLUMNS, 'max-[1101px]:[&_[data-pick-name]]:hidden')} />
-      <div className="flex justify-end gap-2">
-        <Button variant="tertiary" onClick={onPass}>
-          {t('auto.lane.pass')}
-        </Button>
-        <Button variant="primary" disabled={chosen === null} onClick={onChain}>
-          {link === 1 ? t('auto.respond.start') : t('auto.respond.chain', { link })}
-        </Button>
-      </div>
+      {desktop ? (
+        <div className="flex justify-end gap-2">
+          {pass}
+          {chain}
+        </div>
+      ) : null}
     </MatPrompt>
   )
 }
