@@ -1,4 +1,4 @@
-import { allMatIds, FOREIGN_PREFIX, isForeignId, isFreeTakeZone, locateCard, type MatAction, type MatPos, type MatState, type MatTakeZone, type Placed } from './practice-mat'
+import { allMatIds, FOREIGN_PREFIX, isForeignId, isFreeTakeZone, locateCard, type MatAction, type MatCardKind, type MatPos, type MatState, type MatTakeZone, type Placed } from './practice-mat'
 
 /**
  * El control de una carta en un duelo (Cambio de Corazón, Control Mental, Resurrección de Monstruos en el cementerio del rival…): cada jugador lleva SU mesa, así que cambiar de manos una carta son dos
@@ -9,7 +9,8 @@ import { allMatIds, FOREIGN_PREFIX, isForeignId, isFreeTakeZone, locateCard, typ
  *   por la red (`f.c12`), en la primera zona libre del mismo tipo y, si venía del campo, en la misma posición.
  * - Quien toma juega `take` con esa carta ajena. El dueño ve que su carta apareció del otro lado y juega `give` para sacarla de donde esté (del campo, del cementerio o del destierro).
  * - Una carta ajena que sale del campo (al cementerio, a la mano, como material, devuelta…) no entra a las pilas de quien la tenía: vuelve a su dueño (`regain`), a la pila que
- *   se eligió (o al cementerio, si salió como sacrificio o material) o, si se devolvió con `give`, a su campo.
+ *   se eligió (o al cementerio, si salió como sacrificio o material) o, si se devolvió con `give`, a su campo. Un Monstruo de Péndulo que iba del campo al cementerio vuelve, por regla, al Extra Deck de su
+ *   dueño boca arriba (la clase la sabe sólo el dueño: `kindOf`).
  * - Un dueño que recupera su carta (`regain` al campo) hace que el otro la suelte con `give`.
  *
  * Las jugadas de respuesta llevan `auto`: no provocan otra respuesta (si no, dos mesas se contestarían para siempre). Todo es puro; la sesión (`duel-session.ts`) las juega.
@@ -102,10 +103,25 @@ interface ControlContext {
   after: MatState
   /** La jugada del rival, tal como llegó por la red (mis cartas con su id opaco). */
   action: MatAction
+  /** De qué clase es una carta mía (por su id real): sin esto, un Monstruo de Péndulo que vuelve del campo del rival va al cementerio como cualquiera. */
+  kindOf?: (realId: string) => MatCardKind
+}
+
+const isPendulum = (real: string, kindOf: ControlContext['kindOf']) => {
+  const kind = kindOf?.(real)
+
+  return kind !== undefined && kind.monster && kind.pendulum
+}
+
+/** Si una carta mía (`real`) que el rival tenía (`id` en su espejo `before`) era un Monstruo de Péndulo en su campo: en una zona de monstruo o en una de Péndulo (como `pendulumOnField`). */
+function pendulumLeftField(before: MatState, id: string, real: string, kindOf: ControlContext['kindOf']): boolean {
+  const where = locateCard(before, id)
+
+  return where?.kind === 'spot' && isPendulum(real, kindOf) && (where.spot === 'mz' || where.spot === 'emz' || (where.spot === 'st' && (where.index === 0 || where.index === 4)))
 }
 
 /** Mis jugadas de respuesta a la jugada del rival, para que mi mesa y la suya cuenten lo mismo (vacío si no hace falta ninguna). */
-export function controlReactions({ mine, ownIds, before, after, action }: ControlContext): MatAction[] {
+export function controlReactions({ mine, ownIds, before, after, action, kindOf }: ControlContext): MatAction[] {
   // Una respuesta del rival a una mía no se contesta.
   if ((action.type === 'give' || action.type === 'take' || action.type === 'regain') && action.auto) {
     return []
@@ -163,11 +179,17 @@ export function controlReactions({ mine, ownIds, before, after, action }: Contro
       const index = slots[zone].shift()
 
       reactions.push(index === undefined ? { type: 'regain', id: real, to: 'gy', auto: true } : { type: 'regain', id: real, to: zone, index, pos: returned?.placed.pos ?? 'atk', auto: true })
-    } else if (action.type === 'move' && action.id === id) {
-      reactions.push({ type: 'regain', id: real, to: action.to, faceDown: action.faceDown, faceUp: action.faceUp, auto: true })
+    } else if (action.type === 'move' && action.id === id && action.to !== 'gy') {
+      // Un Monstruo de Péndulo que va al Extra Deck va siempre boca arriba (como `extraToward`).
+      const faceUp = action.faceUp || (action.to === 'extra' && isPendulum(real, kindOf)) || undefined
+
+      reactions.push({ type: 'regain', id: real, to: action.to, faceDown: action.faceDown, faceUp, auto: true })
     } else {
-      // Como sacrificio o material, o de cualquier otra forma: al cementerio de su dueño.
-      reactions.push({ type: 'regain', id: real, to: 'gy', auto: true })
+      // Al cementerio (mandada, como sacrificio o material, o de cualquier otra forma): al de su dueño; un Monstruo de Péndulo que estaba en el campo, por regla, a su Extra Deck boca arriba.
+      // Material Xyz: por regla queda debajo del Xyz y al desprenderse va al cementerio (la mesa no puede dejar debajo una carta ajena): al cementerio, no al Extra.
+      const xyzMaterial = action.type === 'summon' && action.how === 'xyz' && action.materials.includes(id)
+
+      reactions.push(!xyzMaterial && pendulumLeftField(before, id, real, kindOf) ? { type: 'regain', id: real, to: 'extra', faceUp: true, auto: true } : { type: 'regain', id: real, to: 'gy', auto: true })
     }
   }
 
