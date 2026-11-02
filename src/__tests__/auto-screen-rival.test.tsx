@@ -142,8 +142,8 @@ describe('auto-screen · el rival de handtraps', () => {
     // Tu Maxx C (en tu campo) y el rival responde: después de su eslabón, el núcleo te pregunta (la mesa la ve abierta).
     act(() => fake.set({ overlay: { ...overlay, chain: [mine] }, chainSteps: two.slice(0, 1) }))
     act(() => vi.advanceTimersByTime(0))
-    // La cinta: un chip por eslabón; el resumen («Cadena · CL1 · Vos», «En espera») es para el lector de pantalla.
-    const chips = () => within(within(notice()).getByRole('list', { name: 'Eslabones de la cadena, del primero al último' })).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
+    // La pila (la hoja abre entera con cada eslabón), del primero al último; el resumen («Cadena · CL1 · Vos», «En espera») es para el lector de pantalla.
+    const chips = () => within(within(notice()).getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getAllByRole('button').map((button) => button.getAttribute('aria-label')).reverse()
 
     expect(pill()).toHaveTextContent('Cadena · CL1 · VosEn espera')
     expect(pill().firstElementChild).toHaveTextContent(/^Cadena · CL1 · Vos$/)

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -120,18 +120,19 @@ describe('la pregunta del medio, en su lugar fijo', () => {
     expect(page().getPropertyValue('--mat-w')).toBe('374px')
   })
 
-  it('no se corre: minimizada, el asa queda en el mismo lugar, y otra pregunta (más alta) también', () => {
+  it('no se corre: en el celular la pregunta es la hoja de abajo; bajada, la capa queda en el mismo lugar, y otra pregunta (más alta) abre entera', () => {
     const fake = fakeSession()
+    const lowered = () => document.querySelector('[data-prompt][data-lowered]')
 
     renderAuto(fake)
     core(() => fake.ask(YESNO))
-    fireEvent.click(within(layer()!).getByRole('button', { name: 'Minimizar' }))
-    expect(layer()!.querySelector('[data-minimized]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Bajar la hoja' }))
+    expect(lowered()).not.toBeNull()
     expect(layer()!.style.bottom).toBe('464px')
 
     promptHeight = 300
     core(() => fake.ask({ ...YESNO, description: '32' }))
-    expect(layer()!.querySelector('[data-minimized]')).toBeNull()
+    expect(lowered()).toBeNull()
     expect(layer()!.style.top).toBe('60px')
     expect(layer()!.style.bottom).toBe('464px')
     expect(box()!.style.translate).toBe('')
@@ -166,8 +167,10 @@ describe('la pregunta con la hoja de la cadena (celular)', () => {
     expect(chain()!.dataset.squeezed).toBeUndefined()
     expect(layer()!.style.bottom).toBe('464px')
 
-    // Minimizada, nada cambia de lugar.
-    fireEvent.click(within(layer()!).getByRole('button', { name: 'Minimizar' }))
+    // Una sola hoja: la pregunta va en el pie de la de la cadena (no en la capa del medio). Bajada, nada cambia de lugar.
+    expect(screen.getByTestId('chain-notice')).toContainElement(document.querySelector('[data-prompt]') as HTMLElement)
+    expect(screen.getAllByRole('button', { name: /la hoja/ })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Bajar la hoja' }))
     window.dispatchEvent(new Event('resize'))
     act(() => vi.advanceTimersByTime(20))
     expect(chain()!.dataset.squeezed).toBeUndefined()

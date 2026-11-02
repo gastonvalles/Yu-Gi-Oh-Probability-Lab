@@ -32,6 +32,17 @@ afterEach(() => {
 })
 
 const escape = () => fireEvent.keyDown(window, { key: 'Escape' })
+/** Desde 1101 px las preguntas de la mesa son un cartel (`MatPrompt`); sin esto, jsdom es un celular y son la hoja de abajo. */
+const onDesktop = () => {
+  const original = window.matchMedia
+
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  })
+  afterEach(() => {
+    window.matchMedia = original
+  })
+}
 const names = (elements: HTMLElement[]) => elements.map((element) => element.getAttribute('aria-label') ?? element.textContent)
 
 const CARDS: PickCard[] = [
@@ -42,6 +53,8 @@ const CARDS: PickCard[] = [
 ]
 
 describe('AskPrompt', () => {
+  onDesktop()
+
   it('pregunta con el arte de la carta (su nombre, sólo en el nombre accesible), lleva el foco a la principal (al final); Escape no contesta: la minimiza', () => {
     const yes = vi.fn()
     const no = vi.fn()
@@ -110,6 +123,8 @@ describe('AskPrompt', () => {
 describe('MatPrompt: minimizar un cartel de la mesa', () => {
   const ask = (key: number) => <AskPrompt key={key} text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
 
+  onDesktop()
+
   it('la flecha lo reduce a un asa de una línea con la pregunta (el foco va a su flecha) y la del asa lo reabre; minimizado es de esa pregunta: una nueva abre sola', () => {
     const { rerender } = renderBare(<Provider store={store}>{ask(1)}</Provider>)
 
@@ -136,6 +151,48 @@ describe('MatPrompt: minimizar un cartel de la mesa', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }))
     rerender(ask(1))
     expect(screen.getByRole('status')).toHaveAttribute('data-minimized')
+  })
+})
+
+describe('MatPrompt en el celular: la hoja de abajo estándar (no un cartel en el medio)', () => {
+  const grip = () => screen.getByRole('button', { name: /la hoja/ })
+
+  it('«¿Activás el efecto?» es una hoja de abajo de borde a borde: el asa, la pregunta y, debajo, los botones; el foco va a la principal; Escape la baja sin contestar y queda la tira con la pregunta y los botones', () => {
+    const yes = vi.fn()
+    const no = vi.fn()
+    render(<AskPrompt kicker="Tras la Invocación Especial" place="Campo" text="¿Activás el efecto?" card={{ name: 'Angelechy Castellan', art: null }} yes={{ label: 'Activar efecto', onSelect: yes }} no={{ label: 'No activar', onSelect: no }} />)
+    const sheet = screen.getByRole('status')
+
+    expect(sheet).toHaveAttribute('data-prompt', 'ask')
+    expect(sheet).toHaveClass('fixed', 'inset-x-0', 'bottom-0')
+    expect(names(within(sheet).getAllByRole('button'))).toEqual(['Bajar la hoja', 'No activar', 'Activar efecto'])
+    expect(grip()).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Activar efecto' })).toHaveFocus()
+    expect(screen.queryByRole('button', { name: 'Minimizar' })).toBeNull()
+
+    escape()
+    expect(yes).not.toHaveBeenCalled()
+    expect(no).not.toHaveBeenCalled()
+    expect(sheet).toHaveAttribute('data-lowered')
+    expect(grip()).toHaveAccessibleName('Subir la hoja: ¿Activás el efecto?')
+    expect(within(sheet).getByText('Tras la Invocación Especial').closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Activar efecto' }).closest('[inert], [hidden]')).toBeNull()
+    fireEvent.click(grip())
+    expect(sheet).not.toHaveAttribute('data-lowered')
+    fireEvent.click(screen.getByRole('button', { name: 'Activar efecto' }))
+    expect(yes).toHaveBeenCalledTimes(1)
+  })
+
+  it('una banda de cartas también: las cartas y, debajo, «Cancelar» y la principal; con «Cancelar», Escape es de la mesa (no la baja)', () => {
+    const onCancel = vi.fn()
+    render(<PickBand title="Elegí 2 cartas para desterrar · 0/2" cards={CARDS.slice(0, 3)} chosen={[]} eligible={new Set(['a', 'b', 'c'])} multi done={false} onToggle={() => {}} onPick={() => {}} onCancel={onCancel} />)
+    const group = screen.getByRole('group', { name: 'Elegí 2 cartas para desterrar · 0/2' })
+
+    expect(group).toHaveClass('fixed', 'bottom-0')
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Bajar la hoja', 'Cancelar', 'Listo'])
+    expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'Cancelar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    escape()
+    expect(group).not.toHaveAttribute('data-lowered')
   })
 })
 
@@ -208,6 +265,7 @@ describe('AskOptions', () => {
 })
 
 describe('PickBand', () => {
+  onDesktop()
   const band = (props: Partial<Parameters<typeof PickBand>[0]> = {}) =>
     render(<PickBand title="Elegí 2 cartas para desterrar · 0/2" place="Cementerio · 3" cards={CARDS.slice(0, 3)} chosen={[]} eligible={new Set(['a', 'b', 'c'])} multi done={false} onToggle={() => {}} onPick={() => {}} {...props} />)
 
@@ -264,6 +322,7 @@ describe('PickBand', () => {
 })
 
 describe('RespondBand', () => {
+  onDesktop()
   const respond = (props: Partial<Parameters<typeof RespondBand>[0]> = {}) =>
     render(
       <RespondBand

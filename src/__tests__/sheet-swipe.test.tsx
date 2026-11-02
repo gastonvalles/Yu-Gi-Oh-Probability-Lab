@@ -105,7 +105,16 @@ describe('una hoja del duelo (Modal lowerable)', () => {
   })
 })
 
-describe('un cartel de la mesa (MatPrompt)', () => {
+describe('un cartel de la mesa (MatPrompt, desde 1101 px: en el celular es la hoja de abajo)', () => {
+  const original = window.matchMedia
+
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  })
+  afterEach(() => {
+    window.matchMedia = original
+  })
+
   const prompt = () =>
     render(
       <MatPrompt kind="ask" label="¿Activás el efecto?" head={<p className="m-0">¿Activás el efecto?</p>}>

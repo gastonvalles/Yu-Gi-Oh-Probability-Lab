@@ -5,7 +5,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { ChainListRows, colorOf, stateLabel, type ChainNoticeRow } from './chain-parts'
-import { ChainSheet, type ChainRespond } from './ChainSheet'
+import { ChainSheet } from './ChainSheet'
 
 export type { ChainNoticeRow }
 
@@ -22,10 +22,6 @@ interface ChainNoticeProps {
   onOpenChange: (open: boolean) => void
   /** Se tocó un eslabón (índice en `rows`, y dónde está la fila): quien la usa lo muestra en el detalle o, sin detalle, grande. */
   onPick: (index: number, rect: DOMRect) => void
-  /** Sólo en el celular: lo que se puede decidir en la cadena (responder o pasar); la hoja lo lleva. */
-  respond?: ChainRespond | undefined
-  /** Sólo en el celular, en el catálogo: la hoja dentro de su marco y no sobre la página. */
-  inline?: boolean
 }
 
 /**
@@ -45,13 +41,13 @@ interface ChainNoticeProps {
  * - Hacer: dejar pasar los toques fuera del cartel (la caja de la mesa va con `pointer-events-none`); tocarla no salta la mesa al final (`skipAhead` la saltea).
  *   No hacer: taparla con otra cosa, moverla de lugar ni ponerle velo.
  */
-export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onPick, respond, inline = false }: ChainNoticeProps) {
+export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onPick }: ChainNoticeProps) {
   const listId = useId()
   const row = rows[focus] ?? rows[rows.length - 1]
 
   if (!row) return null
   // El celular: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
-  if (compact) return <ChainSheet rows={rows} focus={focus} resolving={resolving} onPick={onPick} respond={respond} inline={inline} />
+  if (compact) return <ChainSheet rows={rows} focus={focus} resolving={resolving} onPick={onPick} />
   // El celular, al resolverse: el eslabón que se está resolviendo (el que niega a otro sigue «Resolviendo» mientras lo niega); entre uno y otro, el último que cambió.
   const solver = rows.find((link) => link.state === 'solving') ?? row
   const clOf = (number: number) => (

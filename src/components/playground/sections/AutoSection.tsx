@@ -15,7 +15,6 @@ import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlace
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
-import type { ChainRespond } from '../../auto/ChainSheet'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
@@ -34,6 +33,7 @@ import type { PracticeHandMatch } from '../../probability/practice'
 import { PracticeBoard } from '../../probability/PracticeBoard'
 import { RulesPill, type RulesSummary } from '../../probability/RulesPill'
 import { UNDO_CHIP_MS, UndoChip, useUndoPlay, type UndoPlay } from '../../probability/UndoChip'
+import { SheetHost, type SheetYield } from '../../ui/BottomSheet'
 import { Button } from '../../ui/Button'
 import { Segmented } from '../../ui/Segmented'
 import { cx } from '../../ui/cx'
@@ -669,7 +669,7 @@ function LongTextSample() {
       layout="column"
       note={<>A 22rem (un celular de 360 px): el título de <Tag>RespondBand</Tag> en una sola fila y el modo debajo; las pestañas de lugar no se parten (si no entran, «…» y el lugar entero en el nombre de la carta); el nombre de una candidata en dos renglones en escritorio; cada opción de <Tag>Segmented</Tag> mide al menos su texto; las vidas con la mano («▯ 12») no se cortan. Elegido, violeta con texto blanco (<Tag>primary</Tag>, 7,6:1).</>}
     >
-      <div className="grid w-[min(22rem,100%)] gap-3">
+      <div className="relative grid w-[min(22rem,100%)] gap-3 max-[1101px]:min-h-80 max-[1101px]:content-start">
         <RespondBand title="Respond to the chain" link={2} cards={cards} chosen={chosen} onToggle={setChosen} onChain={() => {}} onPass={() => {}} mode={{ value: mode, onChange: setMode }} />
         <Segmented label="Responses" value={mode} onChange={setMode} options={modes} fullWidth />
         <Segmented label={t('auto.respond.mode')} value={mode} onChange={setMode} options={chainModeOptions()} fullWidth />
@@ -1023,25 +1023,30 @@ function ChainSample() {
   const [picked, setPicked] = useState<number | null>(null)
   const [phone, setPhone] = useState(true)
   const [squeezed, setSqueezed] = useState(false)
-  const [decision, setDecision] = useState<'none' | 'one' | 'several'>('none')
+  const [decision, setDecision] = useState<'none' | 'one' | 'several' | 'effect'>('none')
   const [chosen, setChosen] = useState<string | null>(null)
+  const [yieldTo, setYieldTo] = useState<SheetYield>(null)
   const frame = CHAIN_FRAMES[count - 1]!
   const decisionCards: PickCard[] = [
     { key: 'veiler', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) },
     { key: 'albaz', name: 'Fallen of Albaz', art: art(68468459), ...pickPlace('gy', false) },
     { key: 'ponix', name: PONIX.name, art: PONIX.art, ...pickPlace('field', false) },
   ].slice(0, decision === 'one' ? 1 : 3)
-  const respond: ChainRespond | undefined =
-    decision === 'none'
-      ? undefined
-      : { key: decision === 'one' ? 1 : 2, link: frame.states.length + 1, cards: decisionCards, chosen: decision === 'one' ? 'veiler' : chosen, onToggle: setChosen, onChain: () => setDecision('none'), onPass: () => setDecision('none') }
+  const close = () => setDecision('none')
+  // Lo que pregunta la mesa con la cadena abierta: en el celular va en el pie de la hoja de la cadena (`SheetHost`), como en la mesa.
+  const ask =
+    decision === 'none' ? null : decision === 'effect' ? (
+      <AskPrompt key="effect" kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })} text={t('auto.ask.effect')} card={PONIX} place={t('practice.mat.field')} yes={{ label: t('practice.menu.activateEffect'), onSelect: close }} no={{ label: t('auto.ask.skipEffect'), onSelect: close }} />
+    ) : (
+      <RespondBand key={decision} title={t('auto.respond.title')} link={frame.states.length + 1} cards={decisionCards} chosen={decision === 'one' ? 'veiler' : chosen} onToggle={setChosen} onChain={close} onPass={close} />
+    )
 
   return (
     <Specimen
       title="ChainNotice · la pila de la cadena"
       layout="column"
       className="col-span-full"
-      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): cada cadena abre desplegada (sólo la pliega la persona), en un solo cartel: el título («Cadena · 3») y debajo, tras una línea fina, la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Plegada, la píldora resume el eslabón del que habla («Cadena · CL3 · Vos»; la cuenta, sólo si no es ese número) y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo el cartel recibe toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) es otra cosa, <Tag>ChainSheet</Tag>: una hoja de abajo con dos alturas que se arrastran (o se tocan por su asa). Bajada es una cinta con un chip por eslabón, del primero al último (su número en el color de su dueño, el arte y cómo va: el aro ámbar el que se resuelve, un tilde el resuelto, una cruz con «CL2» el negado; «Nuevo» un momento el que se suma, que entra desde la derecha). Subida, la pila entera en su lugar, en el orden en que se resuelve: cada dato se dice una sola vez (el dueño, por el color). Si hay algo que decidir, en las dos alturas van las candidatas (siempre a la vista: qué se encadena; una sola, ya elegida) y, siempre debajo, «No responder» y la principal; no se sube sola. Va de borde a borde, apoyada abajo; mientras elegís algo en la mesa sube sobre la línea de estado, así que «Cancelar» y «Listo» no quedan tapados. Probala con «Ver en el celular» y los botones de «Responder». Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
+      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): cada cadena abre desplegada (sólo la pliega la persona), en un solo cartel: el título («Cadena · 3») y debajo, tras una línea fina, la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Plegada, la píldora resume el eslabón del que habla («Cadena · CL3 · Vos»; la cuenta, sólo si no es ese número) y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo el cartel recibe toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) es otra cosa, <Tag>ChainSheet</Tag> en la hoja de abajo estándar (<Tag>ui/BottomSheet.tsx</Tag>): cada eslabón que se suma la abre entera, con la pila en el orden en que se resuelve (cada dato una vez; el dueño, por el color). Arrastrala o tocá su asa y queda bajada: una cinta con un chip por eslabón (su número en el color de su dueño, el arte y cómo va: el aro ámbar el que se resuelve, un tilde el resuelto, una cruz con «CL2» el negado; «Nuevo» un momento el que se suma). Lo que pregunta la mesa («Responder», «¿Activás el efecto?») va en su pie, debajo de la pila y a la vista en las dos alturas: una sola hoja, con una sola asa. «Elegir en la mano» es lo que pasa al pagar un costo: la hoja se reduce a su asa sobre la línea de estado (la mano queda libre) y, al terminar, vuelve como estaba. Probala con «Ver en el celular» y los botones. Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>
@@ -1063,10 +1068,20 @@ function ChainSample() {
         <Button variant="tertiary" size="sm" aria-pressed={decision === 'several'} onClick={() => (setChosen(null), setDecision((value) => (value === 'several' ? 'none' : 'several')))}>
           Responder con tres
         </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={decision === 'effect'} onClick={() => setDecision((value) => (value === 'effect' ? 'none' : 'effect'))}>
+          ¿Activás el efecto?
+        </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={yieldTo === 'grip'} onClick={() => setYieldTo((value) => (value === 'grip' ? null : 'grip'))}>
+          Elegir en la mano
+        </Button>
         {picked ? <Tag>{`Tocaste el CL${picked}: en la mesa se lee en el detalle`}</Tag> : null}
       </div>
-      <div {...(squeezed ? { 'data-squeezed': '' } : {})} className="group/chain relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
+      {/* El marco hace de celular (`SheetHost phone`): la hoja va adentro y, como en la mesa, la pregunta va en su pie. «Elegir en la mano» es lo que pide la mesa mientras se paga un costo (`yieldTo`). */}
+      <SheetHost phone={phone} yieldTo={yieldTo}>
+      <div {...(squeezed ? { 'data-squeezed': '' } : {})} className={cx('group/chain relative isolate flex justify-center overflow-hidden rounded-card border border-border-subtle p-3', phone ? 'h-[40rem] max-w-[24.375rem]' : 'min-h-80')}>
         <MatScene className="absolute inset-0 -z-10" />
+        {phone && yieldTo === 'grip' ? <p className="absolute inset-x-1.5 bottom-2 z-[136] m-0 flex h-11 items-center rounded-control bg-background px-2 text-micro text-muted">Elegí 1 carta para descartar · Costo de Angelechy Problem</p> : null}
+        {phone ? ask : null}
         <ChainNotice
           rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state, ...(state === 'negated' ? { by: 3 } : {}) }))}
           focus={frame.focus}
@@ -1075,10 +1090,9 @@ function ChainSample() {
           compact={phone}
           onOpenChange={setOpen}
           onPick={(index) => setPicked(index + 1)}
-          respond={phone ? respond : undefined}
-          inline
         />
       </div>
+      </SheetHost>
     </Specimen>
   )
 }

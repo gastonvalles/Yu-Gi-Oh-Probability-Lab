@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
 import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
+import { BottomSheet, useSheetHost } from '../ui/BottomSheet'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
@@ -29,17 +32,23 @@ interface MatPromptProps {
 }
 
 /**
- * Un cartel que la mesa pone en la ranura de la pregunta (`duel.prompt`: «¿Activás el efecto?», responder a una cadena, elegir de una lista, la pregunta del rival de pasar
- * de fase), sin velo y sin mover nada, siempre en el mismo lugar: apoyado sobre la fila de las Zonas Extra, crece hacia el campo del rival (si no entra, su cuerpo se desplaza).
- * Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲») en ese mismo lugar: minimizado, todo lo de abajo se toca (la carta
- * que brilla sigue contestando) y la pregunta sigue pendiente; la flecha del asa («Mostrar la pregunta») lo reabre. Siempre abre entero: sólo lo minimiza la persona. Minimizado es
- * de esta decisión (quien lo usa le da una `key` por decisión: las repreguntas de la misma lo actualizan en el lugar y una nueva abre entera).
- * Lleva `data-minimized` minimizado. Contestado, se achica y se funde (va dentro de un `Presence`). El asa es `PromptHandle` (la misma de las hojas minimizadas de la mesa). Con el dedo, arrastrar la
- * fila de arriba hacia abajo lo minimiza y arrastrar el asa hacia arriba lo abre (`useSwipeFold`).
+ * Una pregunta de la mesa («¿Activás el efecto?», responder a una cadena, elegir de una lista corta, la pregunta del rival de pasar de fase).
+ * - **Desde 1101 px, un cartel** en la ranura de la pregunta (`duel.prompt`), sin velo y sin mover nada, siempre en el mismo lugar: apoyado sobre la fila de las Zonas Extra, crece hacia el campo del rival
+ *   (si no entra, su cuerpo se desplaza). Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲», `PromptHandle`) en ese mismo lugar: minimizado, todo
+ *   lo de abajo se toca y la pregunta sigue pendiente; la flecha del asa lo reabre. Con el dedo, arrastrar la fila de arriba hacia abajo lo minimiza y arrastrar el asa hacia arriba lo abre (`useSwipeFold`).
+ * - **En el celular, la hoja de abajo estándar** (`BottomSheet`, Gastón 2026-11-02: «no aparece como debería sino como un cartel en el medio de la pantalla»): la fila de arriba es su título y lo que se
+ *   decide va en su pie, siempre a la vista; bajada (arrastrándola, tocando su asa o con Escape) queda la tira con la pregunta corta y los botones. Con la hoja de la cadena abierta va en su pie
+ *   (`SheetHost`): una sola hoja.
+ * Siempre abre entero: sólo lo minimiza la persona. Minimizado es de esta decisión (quien lo usa le da una `key` por decisión: las repreguntas de la misma lo actualizan en el lugar y una nueva abre entera).
+ * Lleva `data-minimized` minimizado (en el celular, `data-lowered`). Contestado, sale (va dentro de un `Presence`).
  */
 export function MatPrompt({ label, head, children, kind, row = false, role = 'status', labelledBy, focus, escape = false, className }: MatPromptProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
+  const host = useSheetHost()
+  // En un marco del catálogo (`SheetHost phone`), como en el celular en cualquier ancho.
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
+  const slot = host?.slot ?? null
   const [minimized, setFold] = useState(false)
   // Arrastrar la fila de arriba hacia abajo también lo minimiza; el cartel sigue al dedo corriendo su `translate`, sin redibujar.
   const swipe = useSwipeFold({
@@ -52,19 +61,19 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
     },
   })
 
-  useEscapeKey(() => setFold(true), escape && !minimized && !leaving)
+  useEscapeKey(() => setFold(true), desktop && escape && !minimized && !leaving)
   useEffect(() => {
-    const target = minimized ? '[data-prompt-show]' : focus
+    const target = minimized && desktop ? '[data-prompt-show]' : focus
 
     if (target) ref.current?.querySelector<HTMLElement>(target)?.focus({ preventScroll: true })
-  }, [minimized, focus])
+  }, [minimized, focus, desktop, slot])
 
-  return usePresence(
-    !leaving,
+  const attrs = { role, 'aria-labelledby': labelledBy, 'data-prompt': kind, ...(row ? { 'data-prompt-row': '' } : {}) }
+  const view = desktop ? (
     minimized ? (
       <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} />
     ) : (
-      <div ref={ref} role={role} aria-labelledby={labelledBy} data-prompt={kind} {...(row ? { 'data-prompt-row': '' } : {})} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
+      <div ref={ref} {...attrs} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
         <div {...swipe} className="flex touch-none select-none items-center gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-3">{head}</div>
           <IconButton size="lg" className="-my-2 -mr-2 self-start" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setFold(true)}>
@@ -75,7 +84,28 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
             se desplaza no corta el aro del foco ni una fila de botones que no entra en 360 px. La fila de acciones (lo último, si hay algo antes) queda siempre a la vista, abajo. */}
         <div className="-mx-4 -my-1 grid min-h-0 gap-[inherit] overflow-y-auto overscroll-contain px-4 py-1 [&>:last-child:not(:first-child)]:sticky [&>:last-child:not(:first-child)]:bottom-0 [&>:last-child:not(:first-child)]:bg-card-background">{children}</div>
       </div>
-    ),
-    () => [ref.current],
+    )
+  ) : slot ? (
+    // En el pie de la hoja de la cadena: debajo de la pila, tras una línea fina; lo que se explica arriba y lo que se decide abajo.
+    createPortal(
+      <div ref={ref} {...attrs} className="grid gap-3 border-t border-border-subtle px-4 pb-3 pt-3 text-body text-foreground motion-safe:animate-sheet-in">
+        <div className="flex min-w-0 items-center gap-3">{head}</div>
+        {children}
+      </div>,
+      slot,
+    )
+  ) : (
+    <BottomSheet
+      ref={ref}
+      {...attrs}
+      label={label}
+      yields
+      escape={escape && !leaving}
+      className="text-body text-foreground"
+      head={<div className="flex min-w-0 items-center gap-3 px-4 pb-3">{head}</div>}
+      footer={<div className="grid gap-3 px-4 pb-3">{children}</div>}
+    />
   )
+
+  return usePresence(!leaving, view, () => [ref.current])
 }

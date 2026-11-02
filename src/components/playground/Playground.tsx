@@ -1,6 +1,8 @@
 import { useEffect, type ComponentType } from 'react'
 
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { AppToaster } from '../ui/AppToaster'
+import { SheetHost } from '../ui/BottomSheet'
 import { Badge } from '../ui/Badge'
 import { Heading } from '../ui/Heading'
 import { Icon, type IconName } from '../ui/Icon'
@@ -54,6 +56,8 @@ const SECTIONS: PlaygroundSection[] = [
  * cambia acá y en toda la app a la vez: se prueba primero acá. No está linkeado desde la app ni lo indexan los buscadores.
  */
 export default function Playground() {
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+
   useEffect(() => {
     const previousTitle = document.title
     const meta = document.createElement('meta')
@@ -102,12 +106,15 @@ export default function Playground() {
           Cada muestra es el componente real, no una copia: lo que cambies en <code>src/components/</code> se ve acá y en toda la app a la vez. Probá primero
           acá, y recién después llevalo a las pantallas.
         </p>
-        {SECTIONS.map(({ id, title, icon, description, Component }) => (
-          <section key={id} id={id} aria-labelledby={`${id}-title`} className="grid min-w-0 scroll-mt-28 gap-4">
-            <SectionHeader as="h2" icon={icon} title={<span id={`${id}-title`}>{title}</span>} description={description} />
-            <Component />
-          </section>
-        ))}
+        {/* En el celular las preguntas de la mesa son la hoja de abajo: acá van dentro del marco de su muestra, no sobre la página. */}
+        <SheetHost phone={!desktop}>
+          {SECTIONS.map(({ id, title, icon, description, Component }) => (
+            <section key={id} id={id} aria-labelledby={`${id}-title`} className="grid min-w-0 scroll-mt-28 gap-4">
+              <SectionHeader as="h2" icon={icon} title={<span id={`${id}-title`}>{title}</span>} description={description} />
+              <Component />
+            </section>
+          ))}
+        </SheetHost>
       </main>
       <AppToaster />
     </div>

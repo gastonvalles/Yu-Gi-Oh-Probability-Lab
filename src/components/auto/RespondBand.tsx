@@ -50,7 +50,7 @@ export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onP
   )
 
   return (
-    // En el celular, más apretada (sin los nombres debajo de las candidatas, que van en su nombre accesible), para caber arriba de tus monstruos con la píldora de la cadena a la vista.
+    // En el celular, más apretada (sin los nombres debajo de las candidatas, que van en su nombre accesible): va en la hoja de abajo (`MatPrompt`), con la cadena en su pie.
     <MatPrompt
       kind="ask"
       row
@@ -58,7 +58,6 @@ export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onP
       labelledBy={titleId}
       label={title}
       focus='[role="option"][tabindex="0"]'
-      className="max-[1101px]:gap-2 max-[1101px]:p-3"
       head={
         <>
           {/* El título, solo en su fila (no se parte a mitad de palabra); debajo, el modo con su nombre al lado: así no le aprieta la columna (en el pie, con «No responder» y la principal, no entra). */}

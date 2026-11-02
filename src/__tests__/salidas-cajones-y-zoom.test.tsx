@@ -66,7 +66,7 @@ function fakeAnimate() {
   }
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
   const style = Object.assign(document.createElement('style'), {
-    textContent: ['dialog-enter', 'nav-scrim', 'side-drawer', 'drawer-enter', 'pop'].map((name) => `.animate-${name} { animation-name: ${name} }`).join(' ') + ' .motion-safe\\:animate-dialog-enter { animation-name: dialog-enter }',
+    textContent: ['dialog-enter', 'nav-scrim', 'side-drawer', 'drawer-enter', 'pop'].map((name) => `.animate-${name} { animation-name: ${name} }`).join(' ') + ' .motion-safe\\:animate-dialog-enter { animation-name: dialog-enter } .motion-safe\\:animate-sheet-up { animation-name: sheet-up }',
   })
   style.dataset.test = ''
   document.head.append(style)
@@ -327,7 +327,7 @@ describe('el deck de torneo', () => {
 describe('la pregunta de pasar de fase', () => {
   const prompt = (open: boolean) => <Presence>{open ? <PassPrompt name="Ana" phase="battle" endsTurn={false} responders={[]} onAllow={() => {}} onDeny={() => {}} /> : null}</Presence>
 
-  it('contestada, se achica y se funde (la inversa de su entrada) sin atajar toques; sin la Web Animations API se va enseguida', async () => {
+  it('contestada, sale con la inversa de su entrada sin atajar toques (en el celular, la hoja baja; desde 1101 px, el cartel se achica y se funde); sin la Web Animations API se va enseguida', async () => {
     const plain = render(prompt(true))
 
     plain.rerender(prompt(false))
@@ -341,7 +341,8 @@ describe('la pregunta de pasar de fase', () => {
     view.rerender(prompt(false))
     expect(box).toHaveTextContent('Ana quiere pasar a la Battle Phase')
     expect(leavingNow(box)).toEqual(LEAVING)
-    expect(exits(calls, box)).toEqual([['DIV', [{ opacity: 0, transform: 'scale(0.96)' }]]])
+    // En el celular (jsdom) es la hoja de abajo: baja entera.
+    expect(exits(calls, box)).toEqual([['DIV', [{ transform: 'translateY(100%)' }]]])
 
     await finish()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
