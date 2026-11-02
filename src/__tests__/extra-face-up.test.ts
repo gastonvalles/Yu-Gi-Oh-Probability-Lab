@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createDuel } from '../app/duel-session'
 import { parseMessage } from '../app/duel-protocol'
 import { mapMatIds, publicIds } from '../app/mat-public'
-import { activeScales, createMatState, describeMatAction, listCardActions, matReducer, pendulumOnField, pileAction, replayMat, TOKEN_KIND, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
+import { activeScales, createMatState, describeMatAction, listBatchActions, listCardActions, matReducer, pendulumOnField, pileAction, replayMat, TOKEN_KIND, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
 
 const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
@@ -127,21 +127,59 @@ describe('el menú de una carta con el Extra boca arriba', () => {
     expect(after.extraUp).toEqual(['p1'])
   })
 
-  it('uno del Extra Deck (Fusión de Péndulo) puede volver boca abajo o boca arriba; uno que no es de Péndulo, sólo boca abajo', () => {
+  it('un Péndulo nunca va boca abajo al Extra, de ningún lado ni por ninguna ruta (menú, material, arrastre, lote); uno que no es de Péndulo, boca abajo como siempre', () => {
     const fused = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk', how: 'special' }])
     const link = run([{ type: 'place', id: 'x2', zone: 'emz', index: 0, pos: 'atk', how: 'special' }])
+    const toExtraMoves = (state: MatState, id: string) =>
+      listCardActions(state, id, kindOf, nameOf)
+        .flatMap((item) => [item, ...(item.choices ?? [])])
+        .flatMap((item) => (item.action.type === 'move' && item.action.to === 'extra' ? [item.action] : []))
+    const material = run([
+      { type: 'place', id: 'x3', zone: 'emz', index: 0, pos: 'atk', how: 'special' },
+      { type: 'move', id: 'x1', to: 'gy' },
+      { type: 'attach', id: 'x1', to: 'x3' },
+    ])
+    const pendulumPlaces: [MatState, string][] = [
+      [fused, 'x1'],
+      [run([{ type: 'move', id: 'x1', to: 'gy' }]), 'x1'],
+      [run([{ type: 'move', id: 'x1', to: 'banished' }]), 'x1'],
+      [material, 'x1'],
+      [start(), 'p2'],
+      [onField('p1'), 'p1'],
+      [run([{ type: 'move', id: 'p2', to: 'gy' }]), 'p2'],
+    ]
 
-    // En el campo: volver boca abajo, o («Al cementerio») boca arriba por la regla de Péndulo.
-    expect(labels(fused, 'x1')).toEqual(expect.arrayContaining(['Al Extra Deck', 'Al cementerio (al Extra Deck)']))
+    // El Fusión de Péndulo del campo va al Extra sólo por «Al cementerio (al Extra Deck)», boca arriba.
+    expect(labels(fused, 'x1')).toContain('Al cementerio (al Extra Deck)')
+    expect(labels(fused, 'x1')).not.toContain('Al Extra Deck')
+    for (const [state, id] of pendulumPlaces) {
+      const moves = toExtraMoves(state, id)
+
+      expect(moves.length).toBeGreaterThan(0)
+      expect(moves.every((move) => move.type === 'move' && move.faceUp === true)).toBe(true)
+      // Arrastrado al Extra (o a la mano o al deck, siendo del Extra), también boca arriba.
+      expect(pileAction(state, id, 'extra', kindOf)).toEqual({ type: 'move', id, to: 'extra', faceUp: true })
+    }
+    expect(pileAction(fused, 'x1', 'hand', kindOf)).toEqual({ type: 'move', id: 'x1', to: 'extra', faceUp: true })
+    // Un lote «al Extra» de varios Péndulos desde un visor, boca arriba.
+    const both = run([{ type: 'move', id: 'p1', to: 'gy' }, { type: 'move', id: 'p2', to: 'gy' }])
+    const lot = listBatchActions(both, ['p1', 'p2'], kindOf, nameOf).find((item) => item.label === 'Al Extra Deck boca arriba')
+
+    expect(lot?.action).toEqual({ type: 'batch', actions: [{ type: 'move', id: 'p1', to: 'extra', faceUp: true }, { type: 'move', id: 'p2', to: 'extra', faceUp: true }] })
+
+    // Uno que no es de Péndulo, boca abajo como siempre.
     expect(labels(link, 'x2')).toContain('Al Extra Deck')
     expect(labels(link, 'x2')).not.toContain('Al Extra Deck boca arriba')
+    expect(toExtraMoves(link, 'x2').every((move) => move.type === 'move' && !move.faceUp)).toBe(true)
+    expect(pileAction(link, 'x2', 'extra', kindOf)).toEqual({ type: 'move', id: 'x2', to: 'extra' })
   })
 
-  it('una carta boca arriba en el Extra se invoca por Péndulo (sin materiales), vuelve a la mano y se puede dar vuelta; no se «revela»', () => {
+  it('una carta boca arriba en el Extra se invoca por Péndulo (sin materiales) y vuelve a la mano; no se «revela» ni se da vuelta boca abajo', () => {
     const up = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk', how: 'normal' }, { type: 'move', id: 'p1', to: 'extra', faceUp: true }])
     const menu = labels(up, 'p1')
 
-    expect(menu).toEqual(expect.arrayContaining(['Invocación de Péndulo', 'A la mano', 'Dar vuelta boca abajo']))
+    expect(menu).toEqual(expect.arrayContaining(['Invocación de Péndulo', 'A la mano']))
+    expect(menu).not.toContain('Dar vuelta boca abajo')
     expect(menu).not.toContain('Revelar')
     expect(menu).not.toContain('Invocación Especial')
 
@@ -207,22 +245,22 @@ describe('los monstruos del Extra Deck (Fusión, Sincronía, Xyz, Enlace): regla
     expect(labels(run([{ type: 'place', id: 'x1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'move', id: 'x1', to: 'extra', faceUp: true }]), 'x1')).not.toContain('A la mano')
   })
 
-  it('arrastrado a la mano o al deck (`pileAction`) vuelve al Extra Deck boca abajo; uno del Main, o a otra pila, va adonde se soltó', () => {
-    const fused = inMz('x1')
-    const toExtra = { type: 'move', id: 'x1', to: 'extra' }
+  it('arrastrado a la mano o al deck (`pileAction`) vuelve al Extra Deck boca abajo (uno de Péndulo, boca arriba); uno del Main, o a otra pila, va adonde se soltó', () => {
+    const fused = inMz('x3')
+    const toExtra = { type: 'move', id: 'x3', to: 'extra' }
 
-    expect(pileAction(fused, 'x1', 'hand', kindOf)).toEqual(toExtra)
-    expect(pileAction(fused, 'x1', 'deck', kindOf)).toEqual(toExtra)
+    expect(pileAction(fused, 'x3', 'hand', kindOf)).toEqual(toExtra)
+    expect(pileAction(fused, 'x3', 'deck', kindOf)).toEqual(toExtra)
     expect(pileAction(run([{ type: 'move', id: 'x2', to: 'gy' }]), 'x2', 'hand', kindOf)).toEqual({ type: 'move', id: 'x2', to: 'extra' })
-    expect(pileAction(fused, 'x1', 'banished', kindOf)).toEqual({ type: 'move', id: 'x1', to: 'banished' })
+    expect(pileAction(fused, 'x3', 'banished', kindOf)).toEqual({ type: 'move', id: 'x3', to: 'banished' })
     expect(pileAction(onField('p1'), 'p1', 'hand', kindOf)).toEqual({ type: 'move', id: 'p1', to: 'hand' })
 
-    const after = matReducer(fused, pileAction(fused, 'x1', 'hand', kindOf))
+    const after = matReducer(fused, pileAction(fused, 'x3', 'hand', kindOf))
 
-    expect(after.hand).not.toContain('x1')
-    expect(after.extra).toContain('x1')
+    expect(after.hand).not.toContain('x3')
+    expect(after.extra).toContain('x3')
     expect(after.extraUp).toEqual([])
-    expect(describeMatAction(fused, toExtra as MatAction, nameOf)).toBe('X1 vuelve al Extra Deck')
+    expect(describeMatAction(fused, toExtra as MatAction, nameOf)).toBe('X3 vuelve al Extra Deck')
   })
 
   it('uno del rival que controlo (`f.`) tampoco va a la mano: «Al Extra Deck» lo devuelve al Extra de su dueño', () => {

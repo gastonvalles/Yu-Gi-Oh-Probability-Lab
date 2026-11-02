@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { describeRange, matPendulumRange, pendulumCandidates, pendulumLevel, pendulumRange, rangeFit } from '../app/pendulum-range'
 import { createMatState, replayMat, TOKEN_KIND, type MatCardKind } from '../app/practice-mat'
+import { buildCardSummary } from '../components/card-detail/card-summary'
 
 const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
 const PENDULUM: MatCardKind = { ...MONSTER, pendulum: true }
@@ -58,6 +59,14 @@ describe('el rango de la Invocación de Péndulo', () => {
 
     expect(matPendulumRange(state, kindOf, (id) => ({ p1: 0, p2: 5 })[id])).toEqual({ low: 1, high: 4 })
     expect(matPendulumRange(state, kindOf, (id) => (id === 'p1' ? 2 : null))).toBeNull()
+  })
+
+  it('el resumen de la carta dice la escala sólo si se sabe (la 0 vale)', () => {
+    const base = { cardType: 'Pendulum Effect Monster', race: null, attribute: null, level: 4, linkValue: null, atk: '1000', def: '0' }
+
+    expect(buildCardSummary({ ...base, scale: 0 }).statLine).toBe('[★4] / [◆0] / 1000/0')
+    expect(buildCardSummary({ ...base, scale: null }).statLine).toBe('[★4] / 1000/0')
+    expect(buildCardSummary(base).statLine).toBe('[★4] / 1000/0')
   })
 
   it('se eligen los monstruos de la mano (no los del Extra Deck ni las Mágicas) y los boca arriba del Extra', () => {
