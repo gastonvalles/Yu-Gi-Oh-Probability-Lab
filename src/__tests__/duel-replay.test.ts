@@ -8,13 +8,16 @@ import {
   buildReplayLink,
   compactReplayEnvelope,
   decodeReplayPayload,
+  encodeReplayLinkPayload,
   encodeReplayPayload,
   MAX_SAVED_REPLAYS,
   parseReplayText,
   readSavedReplays,
   readShared,
+  replayCodes,
   replayEnvelope,
   replayPayloadOf,
+  resolveReplayNames,
   saveReplay,
 } from '../app/duel-replay-share'
 import { mapMatIds, openPublic, type WireAct } from '../app/mat-public'
@@ -174,10 +177,51 @@ const rich = buildDuelReplay({ ...input, view: 'mine', mode: 'link', players: ['
 const V2_LINK =
   'https://ygoultralab.app/#replay=zfVJBjtswDPxKwPMcNJRk2bm1fYagg7sJimBVbxAkCxRFX9Qn9LYvK0jHQNJDfRiPac6QEvlT5vNZ9vLj29utXy9zn78K5PW0HGQvh9uxC-Rd9go5yL6yTFFL1mAPpJ-WV4F8Py1HQZVPyyyQz8fr2-7j97HvLqf3uX_8kYaAWksBU84j1ckQjFRjNKYNOTOlrOp505an1NJQ5YUCeVGDaJAMssFgUAxGg8mAwdE1dBFdRZfRdXQhXUmX0rXqWqW0hlrriAkMIEEFI5jADA5gAUdwggYoodpQNRokaIYOsHONDcutd7P6rxga8SBsqA1Pte8-ZmQ1CoLzYFaaG2pAMoeIgADGLZKREex-qxvp4CxaGYY7Z8S0JqwdV5qFv5P9jNDNk9699erlaSUt0w2tSra_yZtnRL43OdrGGJhFQNHt02b7Zb5c512xSax025THgG_MU4CPgW17njymfyW2TeKnkH6WdVa0Oxq8fZtYhI4o6yHar78'
 
+/** El mismo `rich` en un enlace v2 sin nombres (la lista vacía), el que se comparte desde que el enlace no los lleva. **No se regenera para que pase**, como `V2_LINK`. */
+const V2_LINK_SIN_NOMBRES =
+  'https://ygoultralab.app/#replay=zfVJLTsMwFLwKeutZeJ7tOOkOrmF5EdoKVTWhQhQJIU7EEdhxMvReWgk2ZDEZx28-tvIu8-kkG3l7eDr3l-e5z_cCOR6WnWxkd953gbzKRiE72VSWKWrJGuyB9MNyFMjjYdkLqtwus0Du9i9PN9-f-37zfHid-_eXNATUWgqYch6pToZgpBqjMW3ImSllVZ-brnNKLQ1VthTIVg2iQTLIBoNBMRgNJgMGR9fQRXQVXUbX0YV0JV1K16prldIaaq0jJjCABBWMYAIzOIAFHMEJGqCEakPVaJCgGTrAzjU2LOfezepfMTTil7ChNvzJvviYkWUUBOfBrDQ31IBkDhEBAYzXLxkZwe63upEOzqLFMFw4I6Z1YG1caRb-TrYZoVdPenvr6vG0SJt0Q0vJtpu8PCPypeRof4yBWQQUvS7XgxLST7LeHa3z4HZ2gxE6oqym7eMH'
+
 describe('el enlace v2 (la forma compacta del combo)', () => {
-  it('los enlaces ya compartidos abren siempre igual: v1 y v2', async () => {
+  it('los enlaces ya compartidos abren siempre igual: v1 y v2 con sus nombres, v2 sin nombres sin ellos', async () => {
     expect(await readShared(V1_LINK)).toEqual({ ok: true, kind: 'duel', replay })
     expect(await readShared(V2_LINK)).toEqual({ ok: true, kind: 'duel', replay: rich })
+    expect(await readShared(V2_LINK_SIN_NOMBRES)).toEqual({ ok: true, kind: 'duel', replay: { ...rich, cards: {} } })
+  })
+
+  it('el enlace va sin nombres (v2, la lista vacía) y más corto; lo guardado los conserva', async () => {
+    for (const item of [replay, rich]) {
+      const link = await encodeReplayLinkPayload(item)
+      const json = (await unpackPayload(link, 1e6) as { text: string }).text
+      const envelope = JSON.parse(json) as { v: number; d: unknown[] }
+
+      expect(envelope.v).toBe(2)
+      expect(envelope.d[11]).toEqual([])
+      expect(json).not.toMatch(/Carta \d/)
+      expect(link.length).toBeLessThan((await encodeReplayPayload(item)).length)
+      expect(await decodeReplayPayload(link)).toEqual({ ok: true, replay: { ...item, cards: {} } })
+      // La tabla es la misma: sacar los nombres no cambia qué cartas se ven.
+      expect(replayCodes(item)).toEqual((compactReplayEnvelope(item, { names: false }).d[5] as [Array<number | [number, number]>])[0].map((entry) => (Array.isArray(entry) ? entry[0] : entry)))
+    }
+    expect(JSON.stringify(compactReplayEnvelope(replay, { names: false }))).toEqual(JSON.stringify(compactReplayEnvelope({ ...replay, cards: {} })))
+  })
+
+  it('al abrir, los nombres que faltan se piden por passcode, en una sola consulta; sin red o sin respuesta, el mismo replay', async () => {
+    const opened = { ...rich, cards: {} }
+    const fetchNames = vi.fn(async (codes: number[]) => new Map(codes.map((code) => [code, `Carta ${code}`])))
+
+    expect(await resolveReplayNames(opened, fetchNames)).toEqual(rich)
+    expect(fetchNames).toHaveBeenCalledTimes(1)
+    expect([...fetchNames.mock.calls[0]![0]].sort()).toEqual(Object.keys(rich.cards).map(Number).sort())
+    // Con todos los nombres no se pide nada.
+    expect(await resolveReplayNames(rich, fetchNames)).toBe(rich)
+    expect(fetchNames).toHaveBeenCalledTimes(1)
+    // Sin red, o si la API no conoce ninguna: el mismo replay («Carta» donde falte).
+    expect(await resolveReplayNames(opened, async () => Promise.reject(new Error('offline')))).toBe(opened)
+    expect(await resolveReplayNames(opened, async () => new Map())).toBe(opened)
+    // Lo que no es un nombre no entra; lo que sí, sí.
+    const [first, second, third] = replayCodes(opened)
+    const odd = new Map<number, unknown>([[first!, 7], [second!, 'x'.repeat(500)], [third!, 'Ash Blossom']]) as Map<number, string>
+    expect((await resolveReplayNames(opened, async () => odd)).cards).toEqual({ [String(third)]: 'Ash Blossom' })
   })
 
   it('el enlace nuevo es v2, más corto que v1, y va y vuelve igual', async () => {
@@ -251,6 +295,9 @@ describe('los replays guardados', () => {
     expect(list[0]).toMatchObject({ id: last.saved!.id, players: ['Ana', 'Beto'], steps: 10, result: { winner: 1, reason: 'lp' } })
     expect(list.some((item) => item.id === oldest)).toBe(false)
     expect(await decodeReplayPayload(list[0]!.payload)).toEqual({ ok: true, replay })
+    // Guardado con los nombres; anota el largo de su enlace, que va sin ellos.
+    expect(list[0]!.linkChars).toBe((await encodeReplayLinkPayload(replay)).length)
+    expect(list[0]!.linkChars).toBeLessThan(list[0]!.payload.length)
   })
 
   it('lo guardado roto se descarta, y sin almacenamiento no se rompe nada', async () => {
@@ -258,6 +305,9 @@ describe('los replays guardados', () => {
     expect(readSavedReplays()).toEqual([])
     localStorage.setItem('ygo-lab:duel-replays', '{')
     expect(readSavedReplays()).toEqual([])
+    const good = { id: 'r', savedAt: '2026-10-29T12:00:00.000Z', players: ['Ana', 'Beto'], steps: 1, payload: 'zAAAA' }
+    localStorage.setItem('ygo-lab:duel-replays', JSON.stringify([{ ...good, linkChars: 'mucho' }, good]))
+    expect(readSavedReplays()).toEqual([good])
 
     vi.stubGlobal('localStorage', { ...storage, setItem: () => { throw new Error('QuotaExceededError') } })
     expect(await saveReplay(replay)).toEqual({ saved: null, dropped: false })
