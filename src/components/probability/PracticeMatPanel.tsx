@@ -6,6 +6,7 @@ import { prefersReducedMotion } from '../../app/motion'
 import { PHASES, type MatState } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { readComboLink, type SharedCombo, type ShareResult } from '../../app/combo-share'
+import { comboSummary, type ComboSummary } from '../../app/combo-summary'
 import type { SavedCombo } from '../../app/saved-combos'
 import { formatDay, t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -181,6 +182,53 @@ function ComboImport({ onImport }: { onImport: (result: ShareResult) => void }) 
   )
 }
 
+/**
+ * El resumen se calcula una vez por combo: reproducir cientos de jugadas en cada render (o cada vez que se abre la pestaña) no tiene sentido. Por referencia: renombrar
+ * crea otro objeto y recalcula sólo ese; los que se borran se van solos.
+ */
+const SUMMARIES = new WeakMap<SavedCombo, ComboSummary>()
+
+function summaryOf(combo: SavedCombo): ComboSummary {
+  let summary = SUMMARIES.get(combo)
+
+  if (!summary) {
+    summary = comboSummary(combo)
+    SUMMARIES.set(combo, summary)
+  }
+
+  return summary
+}
+
+/** Hasta cuántas cartas se nombran al arrancar y al terminar; las demás, «y N más» (todas en el `title`). */
+const MAX_STARTS = 4
+const MAX_ENDS = 5
+
+/** «Arranca con» y «Termina con» debajo de los datos de la ficha: el rótulo más tenue y en negrita, las cartas como los datos. Una línea sin cartas no se muestra. */
+function ComboSummaryLines({ combo }: { combo: SavedCombo }) {
+  const { starts, ends } = summaryOf(combo)
+
+  return (
+    <>
+      <SummaryLine label={t('practice.panel.comboStarts')} names={starts} max={MAX_STARTS} />
+      <SummaryLine label={t('practice.panel.comboEnds')} names={ends} max={MAX_ENDS} />
+    </>
+  )
+}
+
+function SummaryLine({ label, names, max }: { label: string; names: string[]; max: number }) {
+  if (names.length === 0) return null
+
+  const rest = names.length - max
+
+  return (
+    // Sin `line-clamp`: con el panel al mínimo cuatro nombres largos («Ash Blossom & Joyous Spring») ocupan cuatro renglones y cortarlos escondía el «y N más». El tope de nombres es el que lo acota.
+    <p className="m-0 wrap-break-word text-micro text-muted" title={names.join(', ')}>
+      <span className="font-semibold text-soft">{label}</span> {names.slice(0, max).join(', ')}
+      {rest > 0 ? ` ${t('practice.panel.comboMore', { count: rest })}` : null}
+    </p>
+  )
+}
+
 /** Los combos guardados en este dispositivo: cargar uno lo reproduce en la mesa, el lápiz le cambia el nombre, borrar pide confirmación y el ⋯ lo comparte (enlace o video). */
 export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, onShare, onVideo, onImport }: SavedCombosListProps) {
   const [renaming, setRenaming] = useState<SavedCombo | null>(null)
@@ -217,6 +265,7 @@ export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, 
               <span className="wrap-break-word text-micro text-muted">
                 {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
               </span>
+              <ComboSummaryLines combo={combo} />
             </div>
             <div className="flex items-center justify-end gap-1">
               <Button variant="secondary" size="sm" icon="play" aria-label={t('practice.panel.loadNamed', { name: combo.name })} onClick={() => onLoad(combo)}>

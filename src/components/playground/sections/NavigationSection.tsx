@@ -238,7 +238,7 @@ function StepListSamples() {
         layout="column"
         note={
           <>
-            Cada ficha: el nombre y sus datos con todo el ancho y, abajo, <Tag>Cargar</Tag> (la de siempre), renombrar, borrar y el ⋯ con <Tag>Compartir enlace</Tag> (la hoja del sistema en el celular; si no, copiado) y <Tag>Descargar archivo</Tag>: con el panel al mínimo (16 rem) y 44 px por botón, dos íconos más no entran. Arriba, <Tag>Pegar enlace</Tag> e <Tag>Importar combo</Tag> (sin campo de texto: no abre el teclado). Un enlace de combo abre la práctica con el aviso de abajo: el nombre y sus datos en un renglón cada uno, la X lo cierra y el video es un ícono, para que en el celular quepa en dos renglones con la principal entera. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>app/combo-share.ts</Tag>
+            Cada ficha: el nombre y sus datos con todo el ancho, el resumen (<Tag>Arranca con</Tag> las cartas de la mano que usa y <Tag>Termina con</Tag> las del campo final, hasta 4 y 5 y «y N más») y, abajo, <Tag>Cargar</Tag> (la de siempre), renombrar, borrar y el ⋯ con <Tag>Compartir enlace</Tag> (la hoja del sistema en el celular; si no, copiado) y <Tag>Descargar archivo</Tag>: con el panel al mínimo (16 rem) y 44 px por botón, dos íconos más no entran. Arriba, <Tag>Pegar enlace</Tag> e <Tag>Importar combo</Tag> (sin campo de texto: no abre el teclado). Un enlace de combo abre la práctica con el aviso de abajo: el nombre y sus datos en un renglón cada uno, la X lo cierra y el video es un ícono, para que en el celular quepa en dos renglones con la principal entera. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>app/combo-share.ts</Tag>
           </>
         }
       >
