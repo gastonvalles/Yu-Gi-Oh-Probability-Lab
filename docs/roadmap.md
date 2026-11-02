@@ -23,18 +23,19 @@ En orden de valor sobre costo.
    `ReplaysScreen` y el video (leen `replay.cards`) y sin red se vería «Carta»; el formato ya acepta la lista de nombres vacía.
 2. **Campo del celular en vertical** (L, idea abierta): acercar, desplazar o girar el campo para cartas más grandes; el techo hoy
    es `compact-field.ts` (a 320×568 las pilas miden unos 28 px de ancho y a 360×640, unos 41). Se propone antes de construir.
-3. **Sala del duelo en un celular bajo** (~700 px) se desplaza en la tirada del dado (S): plegar las reglas y el deck en una fila.
-4. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
-5. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
+3. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
+4. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
    hojas de 28 px, chips «Salidas» de 32 px, las barras de arriba y abajo comen
    120 de 360 px con el celular acostado, y `ReplayBar`, `LabChangeCard` y las muestras del duelo de `/playground` a 320 px.
-6. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
-7. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
+5. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
+6. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
    sólo pasados 3 minutos, si en el celular pesa.
-8. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
+7. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
    la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
-9. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax.
-10. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
+8. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax;
+   en la sala, mientras gira, el dado de un jugador tapa su chip «Listo» (`DieSeat` en `toss-views.tsx`); en un celular bajo,
+   antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo).
+9. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
 
 ## Espera a Gastón
 
