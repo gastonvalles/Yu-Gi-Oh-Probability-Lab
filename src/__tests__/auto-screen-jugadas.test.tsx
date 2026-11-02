@@ -151,7 +151,7 @@ describe('auto-screen · las jugadas', () => {
 
     expect(band.getByRole('option', { name: 'Called by the Grave, en tu mano' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('group', { name: '¿Activás algo ahora?' })).not.toHaveTextContent('Tu respuesta')
-    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['No responder', 'Activar como CL1', ''])
+    expect(band.getAllByRole('button').map((button) => button.textContent)).toEqual(['', 'No responder', 'Activar como CL1'])
     fireEvent.click(band.getByRole('button', { name: 'No responder' }))
     expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
   })

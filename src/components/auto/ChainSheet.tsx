@@ -28,9 +28,10 @@ export interface ChainRespond {
 
 /** Cuánto dice «Nuevo» el eslabón que se suma. */
 const FRESH_MS = 1500
-/** El asa de arriba (con la raya), la cinta de chips y la fila de acciones: lo que queda a la vista con la hoja bajada (px). */
+/** El asa de arriba (con la raya), la cinta de chips y, con algo que decidir, las candidatas y la fila de acciones: lo que queda a la vista con la hoja bajada (px). */
 const GRIP_PX = 24
 const CHIPS_PX = 56
+const OPTIONS_PX = 124
 const ACTIONS_PX = 56
 
 interface ChainSheetProps {
@@ -44,9 +45,9 @@ interface ChainSheetProps {
 }
 
 /**
- * La cadena en el celular: una hoja de abajo (de borde a borde y apoyada abajo, encima de tu mano) con dos alturas que se arrastran: bajada es una cinta con un chip por eslabón y, si hay algo que decidir,
- * «No responder» y la principal; subida muestra la pila entera (la lista en el orden en que se resuelve, con nombres y estados) y las candidatas (`PickGrid`). La arrastra el dedo (`useSheetDrag`: sigue al dedo,
- * decide un tirón o 64 px) o la toca su asa. Arranca bajada, no tapa el campo, y se sube sola sólo cuando hay que elegir entre varias cartas para responder.
+ * La cadena en el celular: una hoja de abajo (de borde a borde y apoyada abajo, encima de tu mano) con dos alturas que se arrastran: bajada es una cinta con un chip por eslabón; subida, la pila entera en
+ * su lugar (la lista en el orden en que se resuelve, con nombres y estados): cada dato se dice una sola vez. Si hay algo que decidir, en las dos alturas van las candidatas (`PickGrid`, siempre a la vista: qué se
+ * encadena) y, siempre debajo, «No responder» y la principal. La arrastra el dedo (`useSheetDrag`: sigue al dedo, decide un tirón o 64 px) o la toca su asa. Arranca bajada y no se sube sola.
  * Cada chip lleva su número en el color de su dueño, su arte y cómo va: el que se resuelve, el aro ámbar y crece un poco; el resuelto, un tilde; el negado o sin efecto, una cruz roja con el eslabón que lo
  * negó. Un eslabón que se suma entra desde la derecha y dice «Nuevo» un momento; con más chips de los que entran, la cinta se desplaza y deja a la vista el del que se habla. Tocar un chip lo muestra para
  * leerlo. Sólo opacidad y transform. El texto de siempre («Cadena · 2 · Resuelve CL2 · Resolviendo») va para el lector de pantalla (`status`).
@@ -57,8 +58,7 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
   const counted = rows.length !== (resolving ? solver.number : row.number)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLOListElement | null>(null)
-  const drag = useSheetDrag(panelRef, GRIP_PX + CHIPS_PX + (respond ? ACTIONS_PX : 0), true)
-  const { setLowered } = drag
+  const drag = useSheetDrag(panelRef, GRIP_PX + CHIPS_PX + (respond ? OPTIONS_PX + ACTIONS_PX : 0), true)
   const [fresh, setFresh] = useState<number | null>(rows.length)
 
   // El eslabón que se suma (mientras la cadena se arma): «Nuevo» un momento.
@@ -75,14 +75,6 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
   useEffect(() => {
     listRef.current?.children[at]?.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   }, [at, rows.length, drag.lowered])
-  // Una decisión nueva: con varias cartas para elegir, la hoja sube (hay que verlas); con una (ya elegida) o ninguna, queda bajada.
-  const decision = respond?.key
-  const several = (respond?.cards.length ?? 0) > 1
-
-  useEffect(() => {
-    setLowered(!(decision !== undefined && several))
-  }, [decision, several, setLowered])
-
   const chain = respond ? (
     <Button variant="primary" size="sm" disabled={respond.chosen === null} onClick={respond.onChain}>
       {respond.link === 1 ? t('auto.respond.start') : t('auto.respond.chain', { link: respond.link })}
@@ -109,7 +101,7 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
           {...drag.handlers}
           className="flex-none select-none"
           onClick={(event) => {
-            const control = (event.target as Element).closest('a, button, input')
+            const control = (event.target as Element).closest('a, button, input, [role="listbox"]')
 
             if (control === null || control === drag.gripRef.current) drag.toggle()
           }}
@@ -177,6 +169,12 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
             </p>
           </div>
           {respond ? (
+            // Qué se encadena, siempre a la vista: las candidatas en una fila que se desplaza de costado (la mano con su ícono, el nombre en un renglón; una sola, ya elegida) y, debajo, las acciones.
+            <div className="touch-pan-x px-3 py-1" style={{ height: OPTIONS_PX }}>
+              <PickGrid label={t('auto.respond.cards')} cards={respond.cards} chosen={respond.chosen === null ? [] : [respond.chosen]} onToggle={respond.onToggle} multi={false} tabs className="h-full auto-cols-[3rem] grid-flow-col justify-start overflow-x-auto overscroll-contain [scrollbar-width:none]" />
+            </div>
+          ) : null}
+          {respond ? (
             <div className="flex items-center justify-between gap-2 px-3" style={{ height: ACTIONS_PX }}>
               <Button variant="tertiary" size="sm" onClick={respond.onPass}>
                 {t('auto.lane.pass')}
@@ -185,16 +183,12 @@ export function ChainSheet({ rows, focus, resolving, onPick, respond, inline = f
             </div>
           ) : null}
         </div>
-        {/* Lo de abajo, sólo con la hoja subida (bajada queda fuera de la pantalla e inerte): la pila entera y las candidatas. */}
-        <div inert={drag.lowered} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-border-subtle">
+        {/* Lo de abajo, sólo con la hoja subida: la pila entera, que reemplaza a la cinta. Bajada queda fuera de la pantalla, inerte y transparente: lo que asoma (el borde de abajo del celular) no repite los chips. */}
+        <div inert={drag.lowered} className={cx('min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-border-subtle motion-safe:transition-opacity', drag.lowered && 'opacity-0')}>
           <ol aria-label={t('auto.chain.list')} data-chain-list="" className="m-0 grid list-none content-start gap-1 p-1.5">
-            <ChainListRows rows={rows} onPick={onPick} />
+            {/* Sin «Vos» / «Rival» escrito: el dueño ya lo dice el color de su número (y el nombre accesible, entero). */}
+            <ChainListRows rows={rows} onPick={onPick} who={false} />
           </ol>
-          {respond ? (
-            <div className="border-t border-border-subtle p-3">
-              <PickGrid label={t('auto.respond.cards')} cards={respond.cards} chosen={respond.chosen === null ? [] : [respond.chosen]} onToggle={respond.onToggle} multi={false} tabs className="grid-cols-6 [&_[data-pick-name]]:hidden" />
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
