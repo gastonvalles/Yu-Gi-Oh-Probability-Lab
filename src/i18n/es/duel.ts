@@ -179,6 +179,7 @@ export const duel = {
   'duel.rules.watchingValue': '{count} de {max}',
   'duel.room.nameTaken': 'Tu rival ya se llama así: elegí otro nombre.',
   'duel.room.deckTitle': 'Tu deck',
+  'duel.room.foldLabel': 'Reglas y deck',
   'duel.room.deckChange': 'Cambiar deck',
   'duel.room.deckChoose': 'Elegir mi deck',
   'duel.room.needDeck': 'Para repartir la mano hacen falta {min} cartas en el Main y tu deck tiene {count}. Elegí un deck en el builder (ahí podés importar un enlace ydke:// o un archivo .ydk).',
