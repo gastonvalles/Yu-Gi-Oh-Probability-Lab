@@ -71,6 +71,11 @@ export interface AutoOverlay {
    * que se invocaron juntas, o el comienzo de una fase. Lo borra lo que abre otro momento (una activación, un ataque, el turno nuevo): lo que se dispara después ya no vino de ahí.
    */
   cause: TriggerCause | null
+  /**
+   * El último eslabón todavía se está activando: llegó su `chaining` y no su `chained`. El núcleo manda `chaining` **antes** del costo y de los objetivos (comprobado con el núcleo
+   * real en `auto-ask-why.slow.test.ts`), así que lo que se pregunta mientras tanto es de esa activación (`ask-why.ts`).
+   */
+  activating?: true
 }
 export type NormalPlay = 'summon' | 'set'
 export type TriggerCause = { kind: 'normal' | 'special' | 'flip'; codes: number[] } | { kind: 'phase'; phase: MatState['phase'] }
@@ -199,11 +204,11 @@ const PHASE: Record<number, MatState['phase']> = { 1: 'draw', 2: 'standby', 4: '
 /**
  * Mensajes que no cambian la mesa ni el overlay, cada uno con su porqué: las pistas y los textos son para la pantalla (`hint`, `card_hint`,
  * `show_hint`; `player_hint` sólo cuenta en `limits`); `spsummoning` y los `*ed` acompañan a un `move` que ya puso la carta (el adaptador los
- * mira de adelante para saber cómo llegó; `set` y `summoning` sólo cuentan en `normal`); `chained` repite el `chaining`; `card_selected`, `random_selected`, `missed_effect`, `battle`,
+ * mira de adelante para saber cómo llegó; `set` y `summoning` sólo cuentan en `normal`); `card_selected`, `random_selected`, `missed_effect`, `battle`,
  * `attack_disabled`, `damage_step_*`, las monedas y los dados son animaciones o avisos; `deck_top` dice que la de arriba está boca arriba (la
  * mesa no tiene esa marca); `match_kill` y `waiting`, del duelo y no de la mesa.
  */
-const QUIET = new Set<WireEvent['type']>(['hint', 'card_hint', 'show_hint', 'spsummoning', 'summoned', 'spsummoned', 'flipsummoned', 'chained', 'card_selected', 'random_selected', 'missed_effect', 'battle', 'attack_disabled', 'damage_step_start', 'damage_step_end', 'toss_coin', 'toss_dice', 'hand_res', 'deck_top', 'match_kill', 'waiting'])
+const QUIET = new Set<WireEvent['type']>(['hint', 'card_hint', 'show_hint', 'spsummoning', 'summoned', 'spsummoned', 'flipsummoned', 'card_selected', 'random_selected', 'missed_effect', 'battle', 'attack_disabled', 'damage_step_start', 'damage_step_end', 'toss_coin', 'toss_dice', 'hand_res', 'deck_top', 'match_kill', 'waiting'])
 
 /** Jugadas que no mueven cartas. */
 const STILL = new Set<MatAction['type']>(['reveal', 'target', 'activate', 'counter', 'attack', 'declare'])
@@ -848,12 +853,19 @@ export function createAdapter(options: AdapterOptions): Adapter {
         if (card) learn(card, event.code, isMaterial(event) || isPublic(event.location, event.position))
         const index = overlay.chain.length
 
-        overlay = { ...overlay, cause: null, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }], ...(index === 0 ? { negated: [] } : {}) }
+        overlay = { ...overlay, cause: null, activating: true, chain: [...overlay.chain, { card: card ? ref(card, event.controller) : null, code: event.code, description: event.description, state: 'chained' }], ...(index === 0 ? { negated: [] } : {}) }
         // Una Mágica o Trampa que esta tanda dio vuelta o puso boca arriba ya cuenta como activada (la jugada la anota y destella).
         if (card && !openedNow.has(card)) emit(event.controller, { type: 'activate', id: matId(card, event.controller) })
         // Después de su activación: la mesa la muestra y recién ahí se suma el eslabón.
         out.chain.push({ kind: 'chain', at: out.mine.length, seq: out.order.length, index, link: { card: card ? ref(card, event.controller) : null, code: event.code, mine: event.controller === seat, description: event.description, from: event.triggering_location } })
         if (!card) return note('chaining: nothing there')
+        return
+      }
+
+      case 'chained': {
+        const { activating: _done, ...rest } = overlay
+
+        overlay = rest
         return
       }
 
