@@ -68,7 +68,8 @@ export interface AutoOverlay {
   normal: [NormalPlay | null, NormalPlay | null]
   /**
    * Lo último que pasó y puede disparar un efecto, para contarlo en la pregunta «¿Activás el efecto…?» (el núcleo no lo dice): la Invocación Normal, Especial o por Volteo de las cartas
-   * que se invocaron juntas, o el comienzo de una fase. Lo borra lo que abre otro momento (una activación, un ataque, el turno nuevo): lo que se dispara después ya no vino de ahí.
+   * que se invocaron juntas, o el comienzo de una fase. Lo borra lo que abre otro momento (una activación, un ataque, el turno nuevo) y, a una Invocación, lo que pasa después y
+   * también dispara (`RETRIGGER`): lo que se dispara después ya no se sabe si vino de ahí.
    */
   cause: TriggerCause | null
   /**
@@ -208,6 +209,12 @@ const PHASE: Record<number, MatState['phase']> = { 1: 'draw', 2: 'standby', 4: '
  * `attack_disabled`, `damage_step_*`, las monedas y los dados son animaciones o avisos; `deck_top` dice que la de arriba está boca arriba (la
  * mesa no tiene esa marca); `match_kill` y `waiting`, del duelo y no de la mesa.
  */
+/**
+ * Lo que también puede disparar un efecto (una carta que se mueve, roba, cambia de posición o de controlador, vidas, contadores): si pasa después de una Invocación ya terminada, lo
+ * que se pregunta pudo venir de ahí y no de la Invocación (Angelechy Problem Invoca a Enlisted y pone a Castellan como Continua: se dispara Castellan, por el movimiento; comprobado
+ * con el núcleo real en `auto-cause.slow.test.ts`), así que la causa se borra.
+ */
+const RETRIGGER = new Set<WireEvent['type']>(['move', 'draw', 'pos_change', 'swap', 'equip', 'damage', 'recover', 'add_counter', 'remove_counter'])
 const QUIET = new Set<WireEvent['type']>(['hint', 'card_hint', 'show_hint', 'spsummoning', 'summoned', 'spsummoned', 'flipsummoned', 'card_selected', 'random_selected', 'missed_effect', 'battle', 'attack_disabled', 'damage_step_start', 'damage_step_end', 'toss_coin', 'toss_dice', 'hand_res', 'deck_top', 'match_kill', 'waiting'])
 
 /** Jugadas que no mueven cartas. */
@@ -726,6 +733,8 @@ export function createAdapter(options: AdapterOptions): Adapter {
   }
 
   function handle(event: WireEvent, rest: readonly WireEvent[]) {
+    // La fase sigue siendo la misma; una Invocación, no: lo que se dispara después pudo venir de otra cosa.
+    if (!summoning && overlay.cause && overlay.cause.kind !== 'phase' && RETRIGGER.has(event.type)) cause(null)
     switch (event.type) {
       case 'move':
         return move(event, rest)

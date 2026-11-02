@@ -261,14 +261,18 @@ describe('robar por id (la jugada nueva de los duelos automáticos)', () => {
     expect(adapter.overlay.normal).toEqual([null, null])
   })
 
-  it('lo que pudo disparar un efecto (`cause`): las que se invocan juntas, la fase que empieza; una activación, un ataque o el turno nuevo lo borran', () => {
+  it('lo que pudo disparar un efecto (`cause`): las que se invocan juntas, la fase que empieza; una activación, un ataque, el turno nuevo o lo que pasa después de la Invocación lo borran', () => {
     const adapter = make()
     const cause = (...list: WireEvent[]) => (adapter.apply(events(0, ...list)), adapter.overlay.cause)
 
     expect(cause({ type: 'new_turn', player: 0 })).toBeNull()
     expect(cause({ type: 'new_phase', phase: 0x200 })).toEqual({ kind: 'phase', phase: 'end' })
-    // Dos a la vez son una Invocación; la que sigue a su `spsummoned`, otra. Lo que viene después y no abre otro momento (un movimiento, el fin de la cadena) no la borra.
-    expect(cause(played('spsummoning', 222, at(0, L.MZONE, 1)), played('spsummoning', 333, at(0, L.MZONE, 2)), { type: 'spsummoned' }, { type: 'chain_end' })).toEqual({ kind: 'special', codes: [222, 333] })
+    // Dos a la vez son una Invocación (aunque se muevan en el medio); la que sigue a su `spsummoned`, otra. El fin de la cadena no la borra.
+    expect(cause(played('spsummoning', 222, at(0, L.MZONE, 1)), move(333, at(0, L.EXTRA, 0), at(0, L.MZONE, 2)), played('spsummoning', 333, at(0, L.MZONE, 2)), { type: 'spsummoned' }, { type: 'chain_end' })).toEqual({ kind: 'special', codes: [222, 333] })
+    // Una carta que se mueve después de la Invocación (Problem pone a Castellan como Continua tras Invocar a Enlisted): lo que se dispara ya no se sabe si vino de la Invocación.
+    expect(cause(played('spsummoning', 222, at(0, L.MZONE, 1)), { type: 'spsummoned' }, move(444, at(0, L.EXTRA, 0), at(0, L.SZONE, 0)), { type: 'chain_end' })).toBeNull()
+    // La fase no: sigue siendo la misma.
+    expect(cause({ type: 'new_phase', phase: 0x200 }, move(444, at(0, L.SZONE, 0), at(0, L.GRAVE, 0)))).toEqual({ kind: 'phase', phase: 'end' })
     expect(cause(played('summoning', 111, at(0, L.MZONE, 0)), { type: 'summoned' })).toEqual({ kind: 'normal', codes: [111] })
     expect(cause({ type: 'flipsummoning', code: 111, controller: 0, location: L.MZONE, sequence: 0, position: P.FACEUP_ATTACK })).toEqual({ kind: 'flip', codes: [111] })
     expect(cause({ type: 'chaining', code: 111, controller: 0, location: L.MZONE, sequence: 0, position: P.FACEUP_ATTACK, triggering_controller: 0, triggering_location: L.MZONE, triggering_sequence: 0, description: '0', chain_size: 1 })).toBeNull()
