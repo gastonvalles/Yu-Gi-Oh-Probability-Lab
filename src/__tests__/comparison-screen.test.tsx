@@ -94,6 +94,9 @@ describe('Comparar', () => {
 
     const suggestion = await screen.findByRole('region', { name: 'Qué mejorar primero' }, SLOW)
     expect(await within(suggestion).findByText('Fire King Island', undefined, SLOW)).toBeInTheDocument()
+    // Un solo violeta por pantalla: con la sugerencia abajo, «Probar un cambio en el Lab» del vacío pasa a secundario.
+    expect(within(suggestion).getByRole('button', { name: 'Probar el cambio' })).toHaveClass('bg-primary')
+    expect(screen.getByRole('button', { name: 'Probar un cambio en el Lab' })).not.toHaveClass('bg-primary')
 
     fireEvent.click(within(suggestion).getByRole('button', { name: 'Probar el cambio' }))
     expect(sessionStorage.getItem(BUILD_DRAFT_KEY)).not.toBeNull()

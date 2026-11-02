@@ -34,7 +34,7 @@ import { BuildBCardEditor } from './BuildBCardEditor'
 import { BuildPair, SourceSheet } from './BuildPicker'
 import { joinList, sourceOptions, type SourceOption } from './build-sources'
 import { ChangeList } from './ChangeList'
-import { CompareLabSuggestion, FirstTimeCard, SameDeckCard } from './CompareEmpty'
+import { FirstTimeCard, SameDeckCard, WithLabSuggestion } from './CompareEmpty'
 import { deltaPoints, mirrorGroups, type Side } from './comparison-rows'
 import { MirrorRowsCard, type MoversInfo } from './MirrorRow'
 import { TwoLists } from './TwoLists'
@@ -272,15 +272,15 @@ export function ComparisonScreen() {
       {isDesktop ? null : pair}
 
       {!optionB || !changes || !comparison ? (
-        <>
-          <FirstTimeCard onTryLab={() => goTo('probability-lab')} onImport={openImport} />
-          <CompareLabSuggestion view={view} onTry={tryInLab} />
-        </>
+        <WithLabSuggestion view={view} onTry={tryInLab}>
+          {(labPrimary) => <FirstTimeCard onTryLab={() => goTo('probability-lab')} onImport={openImport} labPrimary={labPrimary} />}
+        </WithLabSuggestion>
       ) : changes.identical ? (
-        <>
-          <SameDeckCard result={comparison.a.results?.average ?? null} computing={computing} cards={zonesA.main.length + zonesA.extra.length + zonesA.side.length} onGoToBuilder={() => goTo('deck-builder')} onTryLab={() => goTo('probability-lab')} />
-          <CompareLabSuggestion view={view} onTry={tryInLab} />
-        </>
+        <WithLabSuggestion view={view} onTry={tryInLab}>
+          {(labPrimary) => (
+            <SameDeckCard result={comparison.a.results?.average ?? null} computing={computing} cards={zonesA.main.length + zonesA.extra.length + zonesA.side.length} onGoToBuilder={() => goTo('deck-builder')} onTryLab={() => goTo('probability-lab')} labPrimary={labPrimary} />
+          )}
+        </WithLabSuggestion>
       ) : (
         // Dos columnas en escritorio: el veredicto y sus filas a la izquierda, «Qué cambiaste» a la derecha, pegado arriba mientras se leen las filas (por eso `items-start`).
         <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1101px]:items-start min-[1101px]:gap-5">
