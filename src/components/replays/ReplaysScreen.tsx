@@ -5,10 +5,11 @@ import type { DuelReplay } from '../../app/duel-replay'
 import {
   decodeReplayPayload,
   deleteSavedReplay,
-  encodeReplayPayload,
+  encodeReplayLinkPayload,
   linkFits,
   MAX_LINK_LENGTH,
   readSavedReplays,
+  resolveReplayNames,
   shareReplayLink,
   type ReplayError,
   type SavedReplay,
@@ -36,6 +37,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { formatInteger, normalizeSearchText } from '../../app/utils'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
+import { fetchCardNamesByIds } from '../../ygoprodeck'
 import { MetaDeckModal } from '../meta/MetaDeckModal'
 import { formatMetaDate, formatMetaDateFull } from '../meta/meta-format'
 import { StepHero } from '../StepHero'
@@ -98,8 +100,17 @@ function tellShared(outcome: Awaited<ReturnType<typeof shareReplayLink>>, video:
 /** «Tus duelos» y el replay abierto: la lista guardada, abrir uno (guardado o de un enlace) y lo que se hace con él (el video, en `ReplayVideoDialog`). */
 function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProps) {
   const [items, setItems] = useState<SavedReplay[]>(readSavedReplays)
-  const [opened, setOpened] = useState<{ replay: DuelReplay; payload: string; shared: boolean } | null>(null)
+  // `link`: los datos de su enlace (sin nombres), para copiarlo y saber si entra.
+  const [opened, setOpened] = useState<{ replay: DuelReplay; link: string; shared: boolean } | null>(null)
   const [filming, setFilming] = useState<DuelReplay | null>(null)
+
+  // Se abre de una; los nombres que falten (un enlace no los trae) se piden por passcode y entran cuando llegan, como en el combo. Sin red, «Carta».
+  const show = useCallback(async (replay: DuelReplay, shared: boolean) => {
+    const naming = resolveReplayNames(replay, fetchCardNamesByIds)
+    setOpened({ replay, link: await encodeReplayLinkPayload(replay), shared })
+    const named = await naming
+    if (named !== replay) setOpened((now) => (now?.replay === replay ? { ...now, replay: named } : now))
+  }, [])
 
   // El enlace con el que se abrió la app: es de otra persona (`duel-replay-share.ts` lo valida).
   useEffect(() => {
@@ -108,7 +119,7 @@ function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProp
     void decodeReplayPayload(shared).then((read) => {
       if (!live) return
       onSharedRead?.()
-      if (read.ok) setOpened({ replay: read.replay, payload: shared, shared: true })
+      if (read.ok) void show(read.replay, true)
       else fail(read.error)
     })
     return () => {
@@ -121,9 +132,9 @@ function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProp
     async (read: SharedRead) => {
       if (!read.ok) return fail(read.error)
       if (read.kind === 'combo') return onOpenCombo ? onOpenCombo(read.combo) : fail('notReplay')
-      setOpened({ replay: read.replay, payload: await encodeReplayPayload(read.replay), shared: true })
+      await show(read.replay, true)
     },
-    [onOpenCombo],
+    [onOpenCombo, show],
   )
   const withReplay = (item: SavedReplay, then: (replay: DuelReplay) => void) => void decodeReplayPayload(item.payload).then((read) => (read.ok ? then(read.replay) : fail(read.error)))
 
@@ -131,12 +142,12 @@ function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProp
     items,
     opened,
     close: () => setOpened(null),
-    open: (item: SavedReplay) => withReplay(item, (replay) => setOpened({ replay, payload: item.payload, shared: false })),
+    open: (item: SavedReplay) => withReplay(item, (replay) => void show(replay, false)),
     importShared: (read: SharedRead) => void importShared(read),
     filming,
     film: setFilming,
     stopFilming: () => setFilming(null),
-    copyLink: (item: SavedReplay) => withReplay(item, (replay) => void shareReplayLink(replay, titleOf(replay), item.payload).then((outcome) => tellShared(outcome, () => setFilming(replay)))),
+    copyLink: (item: SavedReplay) => withReplay(item, (replay) => void shareReplayLink(replay, titleOf(replay)).then((outcome) => tellShared(outcome, () => setFilming(replay)))),
     video: (item: SavedReplay) => withReplay(item, setFilming),
     remove: (item: SavedReplay) => {
       setItems(deleteSavedReplay(item.id))
@@ -147,7 +158,7 @@ function useDuelReplays({ shared, onSharedRead, onOpenCombo }: ReplaysScreenProp
       void keepReplay(opened.replay).then((ok) => {
         if (!ok) return
         setItems(readSavedReplays())
-        setOpened({ ...opened, shared: false })
+        setOpened((now) => now && { ...now, shared: false })
       })
     },
   }
@@ -208,19 +219,19 @@ export function ReplaysScreen(props: ReplaysScreenProps = {}) {
   }
 
   if (duels.opened) {
-    const { replay, payload } = duels.opened
+    const { replay, link } = duels.opened
     const title = titleOf(replay)
     const video = () => duels.film(replay)
 
     return (
       <>
         <DuelReplayScreen
-          key={payload}
+          key={link}
           replay={replay}
           onClose={duels.close}
           shared={duels.opened.shared ? { onSave: duels.saveOpened } : undefined}
           actions={[
-            ...(linkFits(payload, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, payload).then((outcome) => tellShared(outcome, video)) }] : []),
+            ...(linkFits(link.length, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => void shareReplayLink(replay, title, link).then((outcome) => tellShared(outcome, video)) }] : []),
             { label: t('meta.duels.video.download'), icon: 'download', onSelect: video },
           ]}
         />

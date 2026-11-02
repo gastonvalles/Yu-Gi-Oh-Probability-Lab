@@ -7,7 +7,7 @@ import { localTransport } from '../app/auto/core-host'
 import { randomLegalPolicy } from '../app/auto/policies'
 import { duelReplayAt, walkReplay } from '../app/duel-replay'
 import { packPayload } from '../app/combo-share'
-import { buildReplayLink, compactReplayEnvelope, decodeReplayPayload, encodeReplayPayload, MAX_LINK_LENGTH, parseReplayText, replayEnvelope } from '../app/duel-replay-share'
+import { buildReplayLink, compactReplayEnvelope, decodeReplayPayload, encodeReplayLinkPayload, encodeReplayPayload, MAX_LINK_LENGTH, parseReplayText, replayEnvelope } from '../app/duel-replay-share'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
@@ -92,7 +92,12 @@ describe.skipIf(!hasCoreData)('el replay de duelos automáticos reales (npm run 
 
       const link = buildReplayLink('https://ygoultralab.app', '/', payload).length
       const v1 = buildReplayLink('https://ygoultralab.app', '/', await packPayload(replayEnvelope(replay))).length
-      report.push(`seed ${seed}: ${replay.steps.length} jugadas, ${snap.overlay.turn} turnos, ${snap.status}; JSON ${(json.length / 1024).toFixed(1)} KB, comprimido ${(payload.length / 1024).toFixed(1)} KB, enlace ${link} (v1: ${v1}; ${link <= MAX_LINK_LENGTH ? 'entra' : 'no entra'}); recorrer ${walkMs.toFixed(1)} ms, saltar al final ${fullMs.toFixed(1)} ms, con fotos ${jumpMs.toFixed(2)} ms`)
+      // El enlace que se comparte va sin nombres: abre con `cards` vacío (los pide quien lo abre) y es más corto que el guardado.
+      const bare = await encodeReplayLinkPayload(replay)
+      expect(await decodeReplayPayload(bare)).toEqual({ ok: true, replay: { ...replay, cards: {} } })
+      const shared = buildReplayLink('https://ygoultralab.app', '/', bare).length
+      expect(shared).toBeLessThan(link)
+      report.push(`seed ${seed}: ${replay.steps.length} jugadas, ${snap.overlay.turn} turnos, ${snap.status}; JSON ${(json.length / 1024).toFixed(1)} KB, comprimido ${(payload.length / 1024).toFixed(1)} KB, enlace ${shared} sin nombres / ${link} con nombres (v1: ${v1}; ${shared <= MAX_LINK_LENGTH ? 'entra' : 'no entra'}); recorrer ${walkMs.toFixed(1)} ms, saltar al final ${fullMs.toFixed(1)} ms, con fotos ${jumpMs.toFixed(2)} ms`)
       session.destroy()
     }
     writeFileSync(path.join(CORE_DATA_DIR, 'replay-report.txt'), report.join('\n'))

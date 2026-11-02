@@ -7,7 +7,7 @@ import { createMatState, type MatAction } from '../app/practice-mat'
 import { muxMp4 } from '../components/replays/video/mp4-mux'
 import { lifeMs, lifeOf, overlaysOf } from '../components/replays/video/video-fx'
 import { placesOf, poseAt, transitionOf, type Motion } from '../components/replays/video/video-motion'
-import { handRects, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
+import { artUrls, handRects, replayScenes, sceneAt, videoLayout, VIDEO_HEIGHT_OF, type Rect, type Scene } from '../components/replays/video/video-scene'
 import { videoSupport } from '../components/replays/video/video-support'
 import { FPS, frameDurations, frameOf, INTRO_MS, OUTRO_MS, STEP_MS, videoDurationMs, videoFileName } from '../components/replays/video/video-timeline'
 import { fakeAssets } from './support/video-fakes'
@@ -124,6 +124,19 @@ describe('la escena de cada jugada', () => {
     // `layout` lleva una función (`cellAt`): se compara todo lo demás.
     const plain = ({ layout, ...rest }: Scene) => ({ ...rest, cell: layout.cell })
     expect(plain(sceneAt(replay, duelReplayAt(replay, at), at, before, 720))).toEqual(plain(scenes[at]!))
+  })
+
+  it('de un enlace sin nombres (si no llegaron): «Carta», nunca «undefined», y las mismas imágenes', () => {
+    const nameless = { ...replay, cards: {} }
+    const scenesOf = [...replayScenes(nameless, 720)]
+    const names = scenesOf.flatMap((scene) => scene.explain?.lines.map((line) => line.name) ?? [])
+
+    expect(scenesOf.at(-1)!.stepText).toBe('Beto: Atacás a Carta con Carta')
+    expect(scenesOf.map((scene) => scene.stepText).join(' ')).not.toMatch(/undefined|null/)
+    expect(names.length).toBeGreaterThan(0)
+    expect(names.every((name) => name === 'Carta')).toBe(true)
+    expect(artUrls(nameless)).toEqual(artUrls(replay))
+    expect(artUrls(nameless).length).toBeGreaterThan(1)
   })
 })
 

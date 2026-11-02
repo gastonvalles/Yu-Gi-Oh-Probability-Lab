@@ -85,7 +85,7 @@ export function YourDuels({ items, onOpen, onCopyLink, onVideo, onDelete, onImpo
                   label={t('meta.duels.more', { title })}
                   className="-mr-2 shrink-0"
                   items={[
-                    ...(linkFits(item.payload, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => onCopyLink(item) }] : []),
+                    ...(linkFits(item.linkChars ?? item.payload.length, MAX_LINK_LENGTH) ? [{ label: t('meta.duels.copyLink'), icon: 'link' as const, onSelect: () => onCopyLink(item) }] : []),
                     { label: t('meta.duels.video.download'), icon: 'download', onSelect: () => onVideo(item) },
                     { label: t('meta.duels.delete'), icon: 'trash', tone: 'danger', onSelect: () => setDeleting(item) },
                   ]}
