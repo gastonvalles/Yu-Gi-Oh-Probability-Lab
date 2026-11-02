@@ -2702,6 +2702,8 @@ function PracticeMatBody({
       )}
       role="status"
       aria-label={t('practice.mat.currentStep')}
+      // Eligiendo, la hoja de la cadena del celular (`ChainSheet`) sube sobre esta línea.
+      data-mat-choosing={choosing ? '' : undefined}
     >
       {pickingText ? (
         <>
