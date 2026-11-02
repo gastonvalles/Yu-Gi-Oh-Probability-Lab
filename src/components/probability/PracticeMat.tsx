@@ -149,6 +149,8 @@ const REVIEW_LIFT = '-translate-y-11'
 const CHAIN_BELOW_BAR_PX = 52
 /** Lo que mide un eslabón de la lista de la cadena (con el aire de la lista): con menos lugar que eso, la pila queda en su resumen mientras se pregunta. */
 const CHAIN_ROW_PX = 56
+/** Lo menos que mide de alto una carta del cartel de la pregunta (`--prompt-art`): antes que cortarla se achica hasta acá (con menos lugar que eso, recién ahí su cuerpo se desplaza). */
+const PROMPT_ART_MIN_PX = 32
 
 export interface DuelMatLink {
   /** Las áreas de la grilla con los dos campos. */
@@ -2566,7 +2568,15 @@ function PracticeMatBody({
       const listBox = list?.getBoundingClientRect()
       // Sube lo justo, nunca por encima de la barra (con la mesa más alta que la ventana, la píldora ya está arriba de todo).
       const lift = notice && !isDesktop && !rails && !section.querySelector('[data-lane]') ? Math.max(0, Math.min(CHAIN_BELOW_BAR_PX - 4, Math.floor(notice.getBoundingClientRect().top - bar))) : 0
-      const promptTop = spot && open && box ? Math.max(bar, spot.top - box.getBoundingClientRect().height) : null
+      const boxHeight = box?.getBoundingClientRect().height ?? 0
+      const promptTop = spot && open && box ? Math.max(bar, spot.top - boxHeight) : null
+      // Las cartas del cartel (escritorio): lo que mide todo lo demás (el cartel entero, con lo que se desplaza, menos una carta) y lo que queda para la carta, del alto de la capa.
+      const body = isDesktop && open ? box?.querySelector('[data-prompt-body]') : null
+      const art = body?.querySelector('[data-pick-art]')
+      const rest = body && art ? boxHeight + body.scrollHeight - body.clientHeight - art.getBoundingClientRect().height : null
+      // La lista de la cadena se acorta de a eslabones enteros: dónde empiezan los dos primeros (sin lo desplazado) y cuánto mide entera.
+      const rows = list ? [...list.children].slice(0, 2).map((row) => row.getBoundingClientRect().top + list.scrollTop - (listBox?.top ?? 0)) : []
+      const listFull = list?.scrollHeight ?? 0
 
       // Las escrituras, todas al final.
       if (!spot) {
@@ -2583,15 +2593,27 @@ function PracticeMatBody({
       if (layer) {
         set(layer.style, 'top', `${Math.round(bar - area.top)}px`)
         set(layer.style, 'bottom', `${Math.round(area.bottom - spot.top)}px`)
+        // Sin pregunta (o en el celular) no queda; minimizada o sin cartas, queda la última: la que viene después no sale un cuadro cortada.
+        if (!isDesktop || !box) layer.style.removeProperty('--prompt-art')
+        else if (rest !== null) set(layer.style, '--prompt-art', `${Math.max(PROMPT_ART_MIN_PX, Math.floor(spot.top - bar - rest))}px`)
       }
       if (!chain || !notice) return
       if (lift > 0 && promptTop !== null) chain.style.translate = `0 ${-lift}px`
       // Si la persona corrió la pila o la pregunta (escritorio, `useDraggableOffset`), ya no comparten franja: la pila no se acorta.
-      if (list && listBox && promptTop !== null && !chain.querySelector('[data-moved]') && !box?.querySelector('[data-moved]')) {
-        const room = promptTop - 8 - (listBox.top - lift)
+      if (!list || !listBox) return
+      const shared = promptTop !== null && !chain.querySelector('[data-moved]') && !box?.querySelector('[data-moved]')
+      const room = Math.min(listBox.height, shared ? promptTop - 8 - (listBox.top - lift) : Infinity)
+      const [edge, next] = rows
 
-        if (room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
-        else if (room < listBox.height) list.style.maxHeight = `${Math.floor(room)}px`
+      if (shared && room < CHAIN_ROW_PX) chain.dataset.squeezed = ''
+      // En el celular (la hoja de la cadena), lo que queda, como siempre.
+      else if (!isDesktop) {
+        if (shared && room < listBox.height) list.style.maxHeight = `${Math.floor(room)}px`
+      } else if (edge !== undefined && next !== undefined && next > edge && room < listFull) {
+        // Lo que entra, de a eslabones enteros (corta justo donde empieza el siguiente): ninguno asoma por el borde, y al desplazarse caen en su lugar (`snap`).
+        const fit = Math.max(1, Math.floor((room - edge) / (next - edge)))
+
+        list.style.maxHeight = `${Math.floor(edge + fit * (next - edge))}px`
       }
     }
     const later = () => {
@@ -3344,7 +3366,7 @@ function PracticeMatBody({
       ) : null}
 
       {/* La pregunta del medio (`duel.prompt`: del núcleo, la del rival de pasar de fase): en su lugar fijo, apoyada sobre la fila de las Zonas Extra y centrada en la columna de la mesa (sin el chat ni el detalle);
-          la capa va de la barra de arriba a esa fila (la ubica el efecto de `matSpot`) y la pregunta crece hacia arriba: si no entra, su cuerpo se desplaza. La capa deja pasar los toques; sólo la pregunta los recibe.
+          la capa va de la barra de arriba a esa fila (la ubica el efecto de `matSpot`) y la pregunta crece hacia arriba: si no entra, sus cartas se achican (`--prompt-art`, en la capa) y, sólo si ni así, su cuerpo se desplaza. La capa deja pasar los toques; sólo la pregunta los recibe.
           Contestada, sigue mientras sale (`Presence`) y mientras tanto su caja tampoco ataja toques (`data-leaving`). */}
       <Presence>
         {duel?.prompt ? (

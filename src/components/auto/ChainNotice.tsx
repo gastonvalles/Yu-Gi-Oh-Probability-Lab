@@ -93,7 +93,7 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
           </IconButton>
         </div>
         {open ? (
-          <ol id={listId} data-chain-list="" aria-label={t('auto.chain.list')} className="m-0 grid max-h-[min(18rem,40dvh)] list-none content-start gap-1 overflow-y-auto overscroll-contain border-t border-border-subtle p-1.5 group-data-squeezed/chain:hidden">
+          <ol id={listId} data-chain-list="" aria-label={t('auto.chain.list')} className="m-0 grid max-h-[min(18rem,40dvh)] snap-y snap-mandatory scroll-pt-1 list-none content-start gap-1 overflow-y-auto overscroll-contain border-t border-border-subtle p-1.5 group-data-squeezed/chain:hidden">
             <ChainListRows rows={rows} onPick={onPick} />
           </ol>
         ) : null}

@@ -227,7 +227,10 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('el modo de respuesta en la banda: «Siempre · Nunca»; con «Nunca» contesta «No responder» sola', () => {
+  it('el modo de respuesta en la banda (escritorio; en el celular va en «Más opciones»): «Siempre · Nunca»; con «Nunca» contesta «No responder» sola', () => {
+    const media = window.matchMedia
+
+    window.matchMedia = ((query: string) => ({ ...media(query), matches: query.includes('reduce') || query === '(min-width: 1101px)' })) as typeof window.matchMedia
     const fake = renderAuto()
 
     try {

@@ -437,12 +437,23 @@ describe('RespondBand', () => {
     expect(onChain).toHaveBeenCalledTimes(1)
     const modes = within(group).getByRole('radiogroup', { name: 'Preguntarme' })
 
-    // En el celular (< 1101 px) se esconde: queda en «Más opciones».
-    expect(modes.parentElement).toHaveClass('max-[1101px]:hidden')
-    // El título, solo en su fila y sin partirse a mitad de palabra («Respond / er»); el modo, debajo, en el mismo bloque (no le aprieta la columna).
+    // El título sin partirse a mitad de palabra («Respond / er»); el modo, en la fila de arriba: a su derecha (y de la fase), antes de minimizar, sin un renglón propio (el alto es de las cartas).
     const title = within(group).getByText('Responder a la cadena')
+    const minimize = within(group).getByRole('button', { name: 'Minimizar' })
     expect(title).not.toHaveClass('[overflow-wrap:anywhere]')
-    expect(title.parentElement).toBe(modes.parentElement?.parentElement)
+    expect(modes.parentElement?.parentElement).toBe(minimize.parentElement)
+    expect(minimize.parentElement).toContainElement(title)
+    expect(title.compareDocumentPosition(modes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(modes.compareDocumentPosition(minimize) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Las cartas y las acciones, en una sola fila que se parte si no entran: con pocas, las acciones a la derecha de las cartas (la carta se queda con el alto). Las columnas, las de 6.
+    const listbox = within(group).getByRole('listbox')
+    expect(listbox.parentElement).toHaveClass('@container', 'flex', 'flex-wrap', 'items-end')
+    expect(listbox).toHaveClass('grid-flow-col', 'auto-cols-[calc((100cqw-2.5rem)/6)]')
+    expect(listbox.parentElement).toContainElement(within(group).getByRole('button', { name: 'No responder' }))
+    // El nombre, en un renglón (entero al pasar el mouse): cada píxel de alto es de la carta.
+    const name = within(group).getByRole('option', { name: 'Aluber the Jester of Despia, Cementerio' }).querySelector('[data-pick-name]')!
+    expect(name).toHaveAttribute('title', 'Aluber the Jester of Despia')
+    expect(name.firstElementChild).not.toHaveClass('min-[1101px]:line-clamp-2')
     expect(within(modes).getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(within(modes).getByRole('radio', { name: 'Nunca' }))
     expect(onMode).toHaveBeenCalledWith('never')
@@ -454,6 +465,32 @@ describe('RespondBand', () => {
   })
 })
 
+describe('MatPrompt: el cartel de escritorio, apretado para la carta', () => {
+  onDesktop()
+
+  it('entre la cabeza y el cuerpo (y entre lo del cuerpo), 8 px: la escala de la guía (4 · 8 · 16 · 24), no 12', () => {
+    render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />)
+    const group = screen.getByRole('group', { name: 'Responder a la cadena' })
+
+    expect(group).toHaveClass('gap-2')
+    expect(group).not.toHaveClass('gap-3')
+    expect(group.querySelector('[data-prompt-body]')).toHaveClass('gap-[inherit]')
+  })
+})
+
+describe('RespondBand en el celular', () => {
+  it('sin el modo (queda en «Más opciones»), las cartas en 6 columnas sin sus nombres y las acciones debajo, como siempre', () => {
+    render(<RespondBand title="Responder a la cadena" link={2} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} mode={{ value: 'ask', onChange: () => {} }} />)
+    const group = screen.getByRole('group', { name: 'Responder a la cadena' })
+    const listbox = within(group).getByRole('listbox')
+
+    expect(within(group).queryByRole('radiogroup')).toBeNull()
+    expect(listbox).toHaveClass('grid-cols-6', '[&_[data-pick-name]]:hidden')
+    expect(listbox.parentElement).not.toHaveClass('flex-wrap')
+    expect(listbox.compareDocumentPosition(within(group).getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
 describe('CardPicker', () => {
   it('de 1 a 2: aro y número de orden, nunca más de dos, el pie dice cuántas y la principal se enciende con el mínimo', () => {
     const onPick = vi.fn()
@@ -461,6 +498,9 @@ describe('CardPicker', () => {
     render(<CardPicker title="Elegí qué agregar a tu mano" cards={CARDS} min={1} max={2} onPick={onPick} onCancel={onCancel} />)
     const list = screen.getByRole('listbox', { name: 'Cartas para elegir' })
     const option = (name: RegExp) => within(list).getByRole('option', { name })
+
+    // En la hoja hay lugar: el nombre, en dos renglones desde 1101 px (en la banda del cartel, en uno).
+    expect(within(list).getAllByRole('option')[0]!.querySelector('[data-pick-name] > span')).toHaveClass('min-[1101px]:line-clamp-2')
 
     expect(list).toHaveAttribute('aria-multiselectable', 'true')
     expect(screen.getByRole('button', { name: 'Listo' })).toBeDisabled()

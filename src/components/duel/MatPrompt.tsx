@@ -33,6 +33,8 @@ interface MatPromptProps {
   label: string
   /** La fila de arriba (lo que es y la pregunta); el botón de minimizar va a su derecha. */
   head: ReactNode
+  /** Sólo en escritorio: a la derecha de la cabeza (y de la fase), antes de minimizar; no suma un renglón (el modo de respuesta). */
+  aside?: ReactNode
   children: ReactNode
   /** `data-prompt`: qué pregunta es (la mesa y las pruebas la buscan por esto). */
   kind: string
@@ -50,7 +52,7 @@ interface MatPromptProps {
 /**
  * Una pregunta de la mesa («¿Activás el efecto?», responder a una cadena, elegir de una lista corta, la pregunta del rival de pasar de fase).
  * - **Desde 1101 px, un cartel** en la ranura de la pregunta (`duel.prompt`), sin velo y sin mover nada, siempre en el mismo lugar: apoyado sobre la fila de las Zonas Extra, crece hacia el campo del rival
- *   (si no entra, su cuerpo se desplaza). Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲», `PromptHandle`) en ese mismo lugar: minimizado, todo
+ *   (si no entra, sus cartas se achican a lo que hay, `--prompt-art` de la mesa, y si ni así, su cuerpo se desplaza). Arriba a la derecha, la flecha (44 px, «Minimizar») lo reduce a un asa de una línea («¿Activás el efecto? ▲», `PromptHandle`) en ese mismo lugar: minimizado, todo
  *   lo de abajo se toca y la pregunta sigue pendiente; la flecha del asa lo reabre. Con el dedo, arrastrar la fila de arriba hacia abajo lo minimiza y arrastrar el asa hacia arriba lo abre (`useSwipeFold`).
  *   Con el mouse, la fila de arriba (o el asa) lo lleva a cualquier lado y ahí queda para las preguntas que siguen; doble clic, a su lugar (`useDraggableOffset`).
  * - **En el celular, la hoja de abajo estándar** (`BottomSheet`, Gastón 2026-11-02: «no aparece como debería sino como un cartel en el medio de la pantalla»): la fila de arriba es su título y lo que se
@@ -59,7 +61,7 @@ interface MatPromptProps {
  * Siempre abre entero: sólo lo minimiza la persona. Minimizado es de esta decisión (quien lo usa le da una `key` por decisión: las repreguntas de la misma lo actualizan en el lugar y una nueva abre entera).
  * Lleva `data-minimized` minimizado (en el celular, `data-lowered`). Contestado, sale (va dentro de un `Presence`).
  */
-export function MatPrompt({ label, head, children, kind, row = false, role = 'status', labelledBy, focus, escape = false, className }: MatPromptProps) {
+export function MatPrompt({ label, head, aside, children, kind, row = false, role = 'status', labelledBy, focus, escape = false, className }: MatPromptProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
   const host = useSheetHost()
@@ -96,9 +98,11 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
     minimized ? (
       <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} move={move.head} {...move.root} />
     ) : (
-      <div ref={ref} {...attrs} {...move.root} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
+      // Entre grupos, 8 px (no 12): en una ventana baja cada píxel es de la carta.
+      <div ref={ref} {...attrs} {...move.root} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
         <div {...swipe} title={t('duel.prompt.move')} className="flex cursor-grab touch-none select-none items-center gap-2 active:cursor-grabbing">
           {top}
+          {aside}
           <IconButton size="lg" className="-my-2 -mr-2 self-start" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setFold(true)}>
             <Icon name="chevron-down" />
           </IconButton>

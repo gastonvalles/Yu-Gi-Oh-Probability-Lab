@@ -11,6 +11,8 @@ import { PickGrid, type PickCard } from './CardPicker'
 
 /** Una sola fila de cartas chicas (6 columnas): la banda tiene que caber arriba de tus monstruos en el celular y no tapar el campo en escritorio. */
 const COLUMNS = 'grid-cols-6'
+/** En escritorio, las columnas de esas 6 pero sólo las que hay (`@container` de afuera): con pocas, las acciones entran a su derecha y la carta se queda con el alto. */
+const DESKTOP_COLUMNS = 'grid-flow-col auto-cols-[calc((100cqw-2.5rem)/6)]'
 
 interface RespondBandProps {
   /** «Responder a la cadena» (a qué eslabón lo dice la pila de la cadena, arriba); sin cadena todavía, «¿Activás algo ahora?». */
@@ -31,8 +33,9 @@ interface RespondBandProps {
 /**
  * Responder a una cadena (`select_chain` que se puede pasar) sin tapar la mesa: una banda en la ranura de la pregunta (`MatPrompt`: ancha, sin velo, minimizable), como `PickBand`.
  * Arriba, qué se decide (a qué eslabón lo dice la pila de la cadena, desplegada arriba: acá no se repite); las candidatas con la pestaña de dónde están (`PickGrid`: flechas, Espacio y Enter); y abajo «No responder» sin caja y la
- * principal al final («Encadenar como CL3»), que se enciende con una elegida. En escritorio, el modo debajo del título. En el celular el título no se ve (la cinta de la cadena, arriba, ya dice a qué
- * eslabón respondés; queda para el lector de pantalla). Las dos acciones van siempre debajo de las cartas: primero se ve qué se encadena. Tocar la carta que brilla en la mesa sigue valiendo (su
+ * principal al final («Encadenar como CL3»), que se enciende con una elegida. En escritorio, el modo a la derecha del título. En el celular el título no se ve (la cinta de la cadena, arriba, ya dice a qué
+ * eslabón respondés; queda para el lector de pantalla). Las dos acciones van después de las cartas: primero se ve qué se encadena (en escritorio, a su derecha si entran, como en las
+ * tarjetas: lo que decide y su acción en la misma fila; si no, debajo). Tocar la carta que brilla en la mesa sigue valiendo (su
  * menú, como siempre). Al aparecer, el foco va a las cartas. Escape es «No responder» (lo da la mesa), así que no la minimiza.
  */
 export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onPass, mode }: RespondBandProps) {
@@ -59,28 +62,39 @@ export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onP
       label={title}
       focus='[role="option"][tabindex="0"]'
       head={
-        <>
-          {/* El título, solo en su fila (no se parte a mitad de palabra); debajo, el modo con su nombre al lado: así no le aprieta la columna (en el pie, con «No responder» y la principal, no entra). */}
-          <div className="grid min-w-0 flex-1 gap-2">
-            <p id={titleId} className={cx('m-0 font-semibold break-words', !desktop && 'sr-only')}>
-              {title}
-            </p>
-            {mode ? (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 max-[1101px]:hidden">
-                <span className="text-micro text-muted">{t('auto.respond.mode')}</span>
-                <Segmented size="sm" dense label={t('auto.respond.mode')} value={mode.value} onChange={mode.onChange} options={chainModeOptions()} />
-              </div>
-            ) : null}
+        <p id={titleId} className={cx('m-0 min-w-0 flex-1 font-semibold break-words', !desktop && 'sr-only')}>
+          {title}
+        </p>
+      }
+      // El modo con su nombre al lado, a la derecha del título y la fase (sin un renglón propio: el alto es de las cartas). En el pie, con «No responder» y la principal, no entra.
+      aside={
+        mode ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="text-micro text-muted">{t('auto.respond.mode')}</span>
+            <Segmented size="sm" dense label={t('auto.respond.mode')} value={mode.value} onChange={mode.onChange} options={chainModeOptions()} />
           </div>
-        </>
+        ) : undefined
       }
     >
-      <PickGrid label={t('auto.respond.cards')} cards={cards} chosen={chosen === null ? [] : [chosen]} onToggle={onToggle} multi={false} tabs className={cx(COLUMNS, 'max-[1101px]:[&_[data-pick-name]]:hidden')} />
-      {/* Siempre debajo de las candidatas (también en el celular): primero se ve qué se encadena. */}
-      <div className="flex items-center justify-between gap-2 min-[1101px]:justify-end">
-        {pass}
-        {chain}
-      </div>
+      {desktop ? (
+        // Una sola fila con las cartas y, abajo a la derecha, las acciones; con muchas cartas, las acciones bajan (`flex-wrap`).
+        <div className="@container flex flex-wrap items-end gap-2">
+          <PickGrid label={t('auto.respond.cards')} cards={cards} chosen={chosen === null ? [] : [chosen]} onToggle={onToggle} multi={false} tabs className={DESKTOP_COLUMNS} />
+          <div className="ml-auto flex items-center gap-2">
+            {pass}
+            {chain}
+          </div>
+        </div>
+      ) : (
+        <>
+          <PickGrid label={t('auto.respond.cards')} cards={cards} chosen={chosen === null ? [] : [chosen]} onToggle={onToggle} multi={false} tabs className={cx(COLUMNS, '[&_[data-pick-name]]:hidden')} />
+          {/* Debajo de las candidatas: primero se ve qué se encadena. */}
+          <div className="flex items-center justify-between gap-2">
+            {pass}
+            {chain}
+          </div>
+        </>
+      )}
     </MatPrompt>
   )
 }
