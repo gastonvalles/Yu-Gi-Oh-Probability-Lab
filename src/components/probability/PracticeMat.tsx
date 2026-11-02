@@ -47,7 +47,7 @@ import {
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
-import { comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { comboBranches, comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, stepBranchesOf, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
@@ -289,7 +289,8 @@ interface PracticeMatProps {
   onDispatch: (action: MatAction) => void
   onUndo: () => void
   onSeek: (step: number) => void
-  onLoadCombo: (combo: SavedCombo) => void
+  /** Cargar un combo guardado para repasarlo; `at`, parado en ese paso (el salto de una rama), si no, en la mano inicial. */
+  onLoadCombo: (combo: SavedCombo, at?: number) => void
   onNewHand: () => void
   /** Volver a la pantalla de antes (Jugar): sin esto la práctica no tiene salida más que el menú. Sólo en la práctica (el duelo trae la suya en su barra). */
   onExit?: () => void
@@ -2137,6 +2138,8 @@ function PracticeMatBody({
   // los conserva y una jugada nueva arma otra lista: ya no es ese combo); si un día la mesa los copia, la sesión tiene que llevar el id. Vale igual en el repaso de «Jugar solo
   // automático» (`use-auto-asks`, `review.load`, pasa las mismas listas); un duelo en vivo nunca es un combo guardado.
   const reviewed = useMemo(() => (session.replay ? (combos.find((combo) => combo.initial === session.initial && combo.actions === session.actions) ?? null) : null), [session.replay, session.initial, session.actions, combos])
+  // Las ramas del que se repasa (una variante con handtrap y su base): sólo en la práctica, donde se arman (el repaso del automático es de sólo mirar).
+  const stepBranches = useMemo(() => (reviewed && practice ? stepBranchesOf(comboBranches(combos), reviewed) : undefined), [reviewed, practice, combos])
   // Las notas que se ven: las del guardado o, en uno que llegó por enlace (que no se edita hasta guardarlo), las suyas.
   const stepNotes = reviewed ? reviewed.notes : shared?.combo.actions === session.actions ? shared.combo.notes : undefined
   const noteStep = useCallback(
@@ -2201,6 +2204,13 @@ function PracticeMatBody({
   }, [onSeek])
   const seekFromPanel = useCallback((step: number) => { setAutoplay(false); onSeekRef.current(step); setPanelOpen(false) }, [])
   const loadFromPanel = useCallback((combo: SavedCombo) => { onLoadCombo(combo); setAutoplay(true); setPanelOpen(false) }, [onLoadCombo])
+  // Saltar a la otra rama: parado en el paso donde se separan (el primero distinto, `fork + 1`), sin reproducir, así se ve la diferencia sin tocar «Siguiente».
+  // Por el último `onLoadCombo` (como `onSeek`): el botón de la ficha no cambia con cada dibujo.
+  const onLoadComboRef = useRef(onLoadCombo)
+  useLayoutEffect(() => {
+    onLoadComboRef.current = onLoadCombo
+  }, [onLoadCombo])
+  const branchFromPanel = useCallback((combo: SavedCombo, fork: number) => { onLoadComboRef.current(combo, fork + 1); setAutoplay(false); setPanelOpen(false) }, [])
   const panel = (
     <PracticeMatPanel
       steps={panelSteps}
@@ -2220,6 +2230,8 @@ function PracticeMatBody({
       showCombos={stepsPanel}
       notes={stepNotes}
       onNote={reviewed ? noteStep : undefined}
+      branches={stepBranches}
+      onBranch={stepBranches ? branchFromPanel : undefined}
       {...(duel?.auto ? { emptyHint: t('auto.steps.empty') } : {})}
       className="min-h-0 flex-1"
     />

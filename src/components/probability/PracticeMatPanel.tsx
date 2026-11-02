@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import type { StepInfo } from '../../app/mat-step-info'
 import { KIND_KEY, ORIGIN_KEY, routeOf } from '../../app/mat-step-text'
@@ -7,7 +7,7 @@ import { PHASES, type MatState } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { readComboLink, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { comboSummary, type ComboSummary } from '../../app/combo-summary'
-import { groupSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { comboBranches, groupSavedCombos, type ComboBranch, type SavedCombo, type StepBranch } from '../../app/saved-combos'
 import { formatDay, t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { Badge } from '../ui/Badge'
@@ -54,6 +54,9 @@ interface PracticeMatPanelProps {
   notes?: Record<string, string> | undefined
   /** Escribir la nota de una jugada (por su índice; vacía, la borra): sólo en un combo guardado. Sin esto, las notas se leen pero no se editan. */
   onNote?: ((index: number, note: string) => void) | undefined
+  /** Las ramas del combo que se repasa (`stepBranchesOf`: la clave es el índice de la jugada donde se separa) y abrir el otro combo parado en ese paso. */
+  branches?: Record<number, StepBranch[]> | undefined
+  onBranch?: ((combo: SavedCombo, fork: number) => void) | undefined
   className?: string
 }
 
@@ -79,7 +82,7 @@ function writeDetails(on: boolean) {
 const NO_CARDS: PanelStep['cards'] = []
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, onShare, onVideo, onImport, showCombos = true, emptyHint, notes, onNote, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, onShare, onVideo, onImport, showCombos = true, emptyHint, notes, onNote, branches, onBranch, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
   // El paso (su número en la lista) cuya nota se está escribiendo.
   const [noting, setNoting] = useState<number | null>(null)
@@ -140,6 +143,9 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
                     artOf={artOf}
                     note={notes?.[index]}
                     onNote={onNote ? openNote : undefined}
+                    // Sólo el paso donde se separa lleva la rama (y el botón): las demás fichas no cambian de props.
+                    branch={onBranch ? branches?.[index] : undefined}
+                    onBranch={onBranch && branches?.[index] ? onBranch : undefined}
                   />
                 ))
                 .reverse()}
@@ -249,12 +255,32 @@ function SummaryLine({ label, names, max }: { label: string; names: string[]; ma
   )
 }
 
+/** La rama de la ficha, como «Arranca con»: de una variante, su base y el paso donde se separa; de un base, cuántas variantes tiene. Sólo texto: la acción sigue siendo «Cargar». */
+function BranchLine({ branch, variants }: { branch: ComboBranch | undefined; variants: number }) {
+  if (branch) {
+    return (
+      <p className="m-0 wrap-break-word text-micro text-muted">
+        <span className="font-semibold text-soft">{t('practice.panel.variantOf')}</span> {t('practice.panel.variantFrom', { name: branch.base.name, step: branch.fork + 1 })}
+      </p>
+    )
+  }
+
+  return variants > 0 ? <p className="m-0 text-micro text-muted">{t('practice.panel.variants', { count: variants })}</p> : null
+}
+
 /** Los combos guardados en este dispositivo: cargar uno lo reproduce en la mesa, el lápiz le cambia el nombre, borrar pide confirmación y el ⋯ lo comparte (enlace o video). */
 export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, onShare, onVideo, onImport }: SavedCombosListProps) {
   const [renaming, setRenaming] = useState<SavedCombo | null>(null)
   const [deleting, setDeleting] = useState<SavedCombo | null>(null)
   const groupsId = useId()
   const groups = groupSavedCombos(combos, deckName)
+  // Las ramas, una vez por lista: de cada variante, su base; de cada base, cuántas variantes tiene.
+  const { variantOf, variants } = useMemo(() => {
+    const branches = comboBranches(combos)
+    const count = new Map<string, number>()
+    for (const { base } of branches) count.set(base.id, (count.get(base.id) ?? 0) + 1)
+    return { variantOf: new Map(branches.map((branch) => [branch.variant.id, branch])), variants: count }
+  }, [combos])
   const importer = onImport ? <ComboImport onImport={onImport} /> : null
 
   if (groups.length === 0) {
@@ -281,6 +307,7 @@ export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, 
             {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
           </span>
           <ComboSummaryLines combo={combo} />
+          <BranchLine branch={variantOf.get(combo.id)} variants={variants.get(combo.id) ?? 0} />
         </div>
         <div className="flex items-center justify-end gap-1">
           <Button variant="secondary" size="sm" icon="play" aria-label={t('practice.panel.loadNamed', { name: combo.name })} onClick={() => onLoad(combo)}>
@@ -432,6 +459,9 @@ interface StepTileProps {
   note?: string | undefined
   /** Abre el diálogo de la nota de este paso (por su número): sólo en un combo guardado. */
   onNote?: ((step: number) => void) | undefined
+  /** Las ramas que se separan en este paso (sólo el paso `fork + 1` las lleva) y abrir el otro combo ahí. */
+  branch?: StepBranch[] | undefined
+  onBranch?: ((combo: SavedCombo, fork: number) => void) | undefined
 }
 
 /**
@@ -443,7 +473,7 @@ interface StepTileProps {
  * El botón es sólo el número y la frase (lo que se lee y lo que dicen las pruebas); su `::after` cubre la ficha entera, así se toca en cualquier lado y el foco la rodea. Es `memo`
  * con props estables: al avanzar un combo sólo cambian `active` y `past` de dos fichas.
  */
-const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, arrows, tone, active, past, details, onSeek, nameOf, artOf, note, onNote }: StepTileProps) {
+const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, arrows, tone, active, past, details, onSeek, nameOf, artOf, note, onNote, branch, onBranch }: StepTileProps) {
   const ref = useRef<HTMLLIElement | null>(null)
   const originId = useId()
   const movesId = useId()
@@ -551,19 +581,44 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
       <span className="min-w-0 wrap-break-word">{note}</span>
     </p>
   ) : null
+  // La rama, debajo de la jugada como la nota: el otro combo y un botón (por encima del `::after` del paso) que lo abre parado acá. El margen negativo no agranda el renglón con el
+  // mouse; con el dedo, el botón mide sus 44 px y las filas no se pisan.
+  const branchLines =
+    branch && onBranch ? (
+      <div className={cx('grid gap-2', boxed && '-mt-1.5')}>
+        {branch.map(({ combo, fork, role }) => {
+          const open = t('practice.steps.openBranch', { name: combo.name, step: fork + 1 })
+          return (
+            <div key={combo.id} className="flex items-center gap-1 text-micro text-muted">
+              <Icon name="swap" size={12} aria-hidden="true" className="shrink-0" />
+              <span className="min-w-0 flex-1 wrap-break-word">{t(role === 'variant' ? 'practice.steps.branch' : 'practice.steps.forkOf', { name: combo.name })}</span>
+              <IconButton tone="ghost" size="sm" className="relative z-20 -my-1 shrink-0 pointer-coarse:my-0" aria-label={open} title={open} onClick={() => onBranch(combo, fork)}>
+                <Icon name="arrow-right" />
+              </IconButton>
+            </div>
+          )
+        })}
+      </div>
+    ) : null
+  const lines = (
+    <>
+      {noteLine}
+      {branchLines}
+    </>
+  )
   const noted =
     noteButton && !kind ? (
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1">
         <div className="grid min-w-0 gap-1">
           {heading}
-          {noteLine}
+          {lines}
         </div>
         {noteButton}
       </div>
     ) : (
       <>
         {heading}
-        {noteLine}
+        {lines}
       </>
     )
   const rail = cx('relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2', 'before:absolute before:left-[0.8125rem] before:top-0 before:-bottom-2 before:w-0.5 before:bg-border-subtle first:before:top-4 last:before:bottom-auto last:before:h-4')

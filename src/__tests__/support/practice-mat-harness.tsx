@@ -62,7 +62,10 @@ export function Harness({ initial = INITIAL, actions = NO_ACTIONS, cards = CARDS
         onDispatch={mat.dispatch}
         onUndo={mat.undo}
         onSeek={mat.seek}
-        onLoadCombo={(combo) => start(combo.initial, combo.actions, combo.names)}
+        onLoadCombo={(combo, at) => {
+          start(combo.initial, combo.actions, combo.names)
+          if (at) mat.seek(at)
+        }}
         onNewHand={() => start(INITIAL)}
         {...dock}
       />
