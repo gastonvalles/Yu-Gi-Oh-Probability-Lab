@@ -7,6 +7,8 @@ import { FLIGHT_MS, LANDING_AT } from '../app/use-card-flights'
 import { CARDS, Harness, INITIAL, WITH_ART, endTurn, goToPhase, hand, pointer, render, status, tap, zone } from './support/practice-mat-harness'
 import { tapMenu } from './support/mat-menu'
 import { ReplayBar, ReplayTimeline, ReplayTransport } from '../components/probability/ReplayBar'
+import { SavedCombosList } from '../components/probability/PracticeMatPanel'
+import { createSavedCombo } from '../app/saved-combos'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 
@@ -852,6 +854,8 @@ describe('la mesa de práctica', () => {
     const aside = screen.getByRole('region', { name: 'Pasos y combos' })
     fireEvent.click(within(aside).getByRole('radio', { name: 'Combos' }))
     expect(within(aside).getByText('Línea básica')).toBeInTheDocument()
+    // Su ficha resume con qué cartas de la mano arranca y en qué tablero termina (sale de las jugadas: no se guarda nada más).
+    expect(within(aside).getAllByTitle('Ash Blossom, Called by the Grave').map((line) => line.textContent)).toEqual(['Arranca con Ash Blossom, Called by the Grave', 'Termina con Ash Blossom, Called by the Grave'])
     fireEvent.click(within(aside).getByRole('button', { name: 'Cargar Línea básica' }))
 
     expect(within(status()).getByText('0/2')).toBeInTheDocument()
@@ -923,6 +927,16 @@ describe('la mesa de práctica', () => {
     const [saved] = JSON.parse(localStorage.getItem('ygo-lab:practice-combos') ?? '[]') as Array<{ name: string; actions: unknown[] }>
     expect(saved?.name).toBe('Apertura Ash')
     expect(saved?.actions).toHaveLength(1)
+  })
+
+  it('el resumen de la ficha nombra hasta 4 cartas al arrancar y 5 al terminar; las demás son «y N más» y todas se leen en el título', () => {
+    const ids = ['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1']
+    const actions: MatAction[] = ids.map((id, index) => (index < 5 ? { type: 'place', id, zone: 'mz', index, pos: 'atk' } : { type: 'place', id, zone: 'st', index: 0, pos: 'set' }))
+    const combo = createSavedCombo({ name: 'Todo al campo', deckName: 'Prueba', initial: createMatState(ids, [], 6), actions, nameOf: (id) => CARDS.get(id)?.name ?? id }, [])
+    render(<SavedCombosList combos={[combo]} deckName="Prueba" onLoad={() => {}} onRename={() => {}} onDelete={() => {}} />)
+
+    const all = 'Ash Blossom, Maxx C, Called by the Grave, Nibiru, Droll, Imperm'
+    expect(screen.getAllByTitle(all).map((line) => line.textContent)).toEqual(['Arranca con Ash Blossom, Maxx C, Called by the Grave, Nibiru y 2 más', 'Termina con Ash Blossom, Maxx C, Called by the Grave, Nibiru, Droll y 1 más'])
   })
 
   it('atacar: un monstruo en ataque ofrece "Ataque directo" sólo en la Battle Phase, y el ataque queda en la lista de pasos', () => {
