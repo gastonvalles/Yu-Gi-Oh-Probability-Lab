@@ -23,19 +23,18 @@ En orden de valor sobre costo.
    `ReplaysScreen` y el video (leen `replay.cards`) y sin red se vería «Carta»; el formato ya acepta la lista de nombres vacía.
 2. **Campo del celular en vertical** (L, idea abierta): acercar, desplazar o girar el campo para cartas más grandes; el techo hoy
    es `compact-field.ts` (a 320×568 las pilas miden unos 28 px de ancho y a 360×640, unos 41). Se propone antes de construir.
-3. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
-4. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
+3. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
    hojas de 28 px, chips «Salidas» de 32 px, las barras de arriba y abajo comen
    120 de 360 px con el celular acostado, y `ReplayBar`, `LabChangeCard` y las muestras del duelo de `/playground` a 320 px.
-5. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
-6. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
+4. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
+5. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
    sólo pasados 3 minutos, si en el celular pesa.
-7. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
+6. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
    la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
-8. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax;
+7. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax;
    en la sala, mientras gira, el dado de un jugador tapa su chip «Listo» (`DieSeat` en `toss-views.tsx`); en un celular bajo,
    antes de estar listo, la sala todavía se desplaza (320×568 sigue con algo de scroll aun ya listo).
-9. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
+8. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
 
 ## Espera a Gastón
 
@@ -65,6 +64,10 @@ No se vuelve a proponer sin un motivo nuevo.
 - **Acortador de enlaces con servidor:** se eligió un formato compacto sin servidor.
 - **El logo:** en pausa hasta que Gastón lo retome.
 - **Ver juntos los disparos con su número de eslabón:** el núcleo no dice cuántos quedan por preguntar.
+- **Violeta dudoso en Duelo y Jugar:** la pasada corrigió lo claro (la fase de ahora en ámbar al mirar) y lo demás se deja así: empate
+  y «vas segundo» en violeta (`DuelBanner`, `DuelMedal`), victoria del piedra-papel-tijera en lila (`DuelGames`), salas que esperan
+  (`ArenaPanel`), aro de la carta arrastrada (`PracticeHand`), tipo de carta (`CardSheet`), cambio de fase de Pasos
+  (`PracticeMatPanel`), luz y bisel de la carta grande (`DuelCardDock`), play y «enviar» con relleno (`ReplayBar`, `DuelChat`).
 - **Límites aceptados que viven en su doc:** pasar de manual a automático reinicia el turno y pierde equipos y contadores
   (`app/auto/resume.ts`); sin volver atrás tras un error en el enlace automático y el guardado que no cubre un cambio de
   `ocgcore-wasm` (`docs/duelo-automatico-enlace.md`); el reloj de turnos que hace rendirse desde el propio dispositivo
