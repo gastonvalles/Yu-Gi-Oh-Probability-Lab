@@ -78,7 +78,7 @@ import { TurnOrderBanner } from './DuelBanner'
 import { InviteButtons, InviteLink } from './RoomInvite'
 import { RoomDeck } from './RoomDeck'
 import { STAGE_CARD, STAGE_INNER } from './room-stage'
-import { RoomRules } from './RoomRules'
+import { RoomFold, RoomRules, rulesSummary } from './RoomRules'
 import { PlayHome } from './PlayHome'
 import { formatName } from './room-chips'
 import { DuelSiding } from './DuelSiding'
@@ -1143,34 +1143,37 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
           </div>
 
           {/* La columna de la izquierda: las reglas, tu deck (el del builder o el que pegaste: quien llega por un enlace no pasó por el lobby; se cambia en la hoja «Tu deck» mientras no estés listo y, si no cumple, lo que falta
-              se dice acá) y, para el anfitrión con el rival adentro, los botones para invitar a quien quiera mirar. Una sola caja, con líneas finas entre una cosa y otra; en escritorio, si no entra en el alto del panel, scrollea por dentro. */}
+              se dice acá) y, para el anfitrión con el rival adentro, los botones para invitar a quien quiera mirar. Una sola caja, con líneas finas entre una cosa y otra; en escritorio, si no entra en el alto del panel, scrollea por dentro.
+              En un celular bajo, ya listo, se pliega en una fila (`RoomFold`): así la tirada del dado entra sin desplazar la pantalla. */}
           <div className={cx('flex min-h-0 flex-col gap-3 rounded-card border p-3 [grid-area:info] @[46rem]:gap-4 @[46rem]:p-4 min-[1101px]:overflow-y-auto', TONE.neutral.wash)}>
-            <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} bare />
+            <RoomFold folded={snapshot.ready.mine && !auto?.notice} summary={deckReady ? `${rulesSummary(settings)} · ${roomDeck.name}` : rulesSummary(settings)}>
+              <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} bare />
 
-            <div className="mt-auto border-t border-border-subtle pt-3 @[46rem]:pt-4">
-              <RoomDeck deck={deckReady ? { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length } : null} locked={snapshot.ready.mine} onOpenBuilder={deckInfo.onOpenBuilder}>
-                {!snapshot.ready.mine && issues.length > 0 ? (
-                  <Callout tone="warning" icon="alert">
-                    <span className="grid gap-1">
-                      <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
-                      {issues.map((issue) => (
-                        <span key={issue}>{issue}</span>
-                      ))}
-                    </span>
-                  </Callout>
-                ) : null}
-                {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
-                {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
-                {auto?.notice ? <AutoNotice notice={auto.notice} /> : null}
-              </RoomDeck>
-            </div>
-
-            {host && peerPresent ? (
-              <div className="border-t border-border-subtle pt-3 @[46rem]:pt-4">
-                <InviteLink link={link} room={room} peerPresent />
-                <InviteButtons peerPresent stacked canShare={canShare} watchable={watchable} onShare={share} onCopy={(watch) => void copy(watch)} />
+              <div className="mt-auto border-t border-border-subtle pt-3 @[46rem]:pt-4">
+                <RoomDeck deck={deckReady ? { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length } : null} locked={snapshot.ready.mine} onOpenBuilder={deckInfo.onOpenBuilder}>
+                  {!snapshot.ready.mine && issues.length > 0 ? (
+                    <Callout tone="warning" icon="alert">
+                      <span className="grid gap-1">
+                        <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
+                        {issues.map((issue) => (
+                          <span key={issue}>{issue}</span>
+                        ))}
+                      </span>
+                    </Callout>
+                  ) : null}
+                  {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
+                  {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
+                  {auto?.notice ? <AutoNotice notice={auto.notice} /> : null}
+                </RoomDeck>
               </div>
-            ) : null}
+
+              {host && peerPresent ? (
+                <div className="border-t border-border-subtle pt-3 @[46rem]:pt-4">
+                  <InviteLink link={link} room={room} peerPresent />
+                  <InviteButtons peerPresent stacked canShare={canShare} watchable={watchable} onShare={share} onCopy={(watch) => void copy(watch)} />
+                </div>
+              ) : null}
+            </RoomFold>
           </div>
 
           {docked ? (
