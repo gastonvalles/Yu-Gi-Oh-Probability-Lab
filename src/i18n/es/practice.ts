@@ -181,6 +181,7 @@ export const practice = {
   'practice.step.receive': 'Recibís el control de {card}',
   'practice.step.regainControl': 'Recuperás el control de {card}',
   'practice.step.regain': '{card} vuelve a vos',
+  'practice.step.withMaterials': { one: ', con su material', other: ', con sus {count} materiales' },
   'practice.step.turnFaceDown': 'Ponés {card} boca abajo',
   'practice.step.flipSummon': 'Invocación por Volteo de {card}',
   'practice.step.turnFaceUp': 'Volteás {card} boca arriba',

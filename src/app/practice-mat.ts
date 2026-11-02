@@ -632,6 +632,9 @@ const PILE_PHRASE_KEY = { extra: 'practice.step.pile.extra', banished: 'practice
 /** La posición dicha en una jugada: boca abajo se cuenta como defensa. */
 const positionName = (pos: MatPos) => t(pos === 'atk' ? 'practice.step.position.atk' : 'practice.step.position.def')
 
+/** Un cambio de control que se lleva los materiales del Xyz lo dice («…, con sus 2 materiales»). */
+const withMaterials = (text: string, materials: readonly string[] | undefined) => (materials?.length ? `${text}${t('practice.step.withMaterials', { count: materials.length })}` : text)
+
 /** Qué hace la jugada, en una línea: `before` es el estado previo (para saber de dónde viene la carta). */
 export function describeMatAction(before: MatState, action: MatAction, nameOf: (id: string) => string): string {
   const name = (id: string) => (isToken(id) ? t('practice.token.the') : nameOf(id))
@@ -807,13 +810,13 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
     }
 
     case 'give':
-      return t(isForeignId(action.id) ? 'practice.step.giveBack' : action.auto ? 'practice.step.taken' : 'practice.step.give', { card: name(action.id) })
+      return withMaterials(t(isForeignId(action.id) ? 'practice.step.giveBack' : action.auto ? 'practice.step.taken' : 'practice.step.give', { card: name(action.id) }), action.materials)
 
     case 'take':
-      return t(action.auto ? 'practice.step.receive' : 'practice.step.take', { card: name(action.id) })
+      return withMaterials(t(action.auto ? 'practice.step.receive' : 'practice.step.take', { card: name(action.id) }), action.materials)
 
     case 'regain':
-      return t(isTakeZone(action.to) && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) })
+      return withMaterials(t(isTakeZone(action.to) && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) }), action.materials)
 
     case 'rivalUse':
       return t('handtraps.step.used', { card: name(action.id) })

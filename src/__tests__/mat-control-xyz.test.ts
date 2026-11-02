@@ -6,7 +6,7 @@ import { parseMessage } from '../app/duel-protocol'
 import { createDuel, type DuelTransport } from '../app/duel-session'
 import { createSpectator } from '../app/duel-spectator'
 import { carryMaterials, controlReactions, XYZ_MATERIALS_CAP } from '../app/mat-control'
-import { createMatState, isForeignId, matReducer, replayMat, type MatAction, type MatState } from '../app/practice-mat'
+import { createMatState, describeMatAction, isForeignId, matReducer, replayMat, type MatAction, type MatState } from '../app/practice-mat'
 import { createMemoryRoom, type MemoryRoom } from './support/memory-room'
 
 /** Un Xyz que cambia de manos con sus materiales (`mat-control.ts`): la mesa, las respuestas y dos jugadores de verdad, con y sin la capacidad. */
@@ -28,6 +28,10 @@ describe('la mesa: dar, tomar y recuperar con materiales', () => {
     expect(matReducer(base, { type: 'give', id: X, materials: MATS.slice(0, 2) })).toMatchObject({ gy: [], mz: [null, null, null, null, null] })
     expect(matReducer(base, { type: 'give', id: X }).gy).toEqual(MATS.slice(0, 2))
     expect(matReducer(base, { type: 'give', id: X, materials: [MATS[0]!] }).gy).toEqual([MATS[1]])
+    // La línea del registro lo dice.
+    expect(describeMatAction(base, { type: 'give', id: X, materials: MATS.slice(0, 2) }, () => 'Utopía')).toBe('Das el control de Utopía, con sus 2 materiales')
+    expect(describeMatAction(base, { type: 'take', id: 'f.c1', zone: 'mz', index: 0, pos: 'atk', materials: ['f.c2'], auto: true }, () => 'Utopía')).toBe('Recibís el control de Utopía, con su material')
+    expect(describeMatAction(base, { type: 'give', id: X }, () => 'Utopía')).toBe('Das el control de Utopía')
   })
 
   it('tomar y recuperar dejan los materiales debajo (sin fichas, sin repetir, sin lo que ya está en la mesa); recuperar a una pila los manda al cementerio', () => {
