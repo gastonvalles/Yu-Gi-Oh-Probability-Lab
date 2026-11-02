@@ -8,6 +8,7 @@ import { usePresence } from '../../app/use-presence'
 import { normalizeSearchText } from '../../app/utils'
 import type { DuelGlow } from '../../app/card-glow'
 import type { MatPile } from '../../app/practice-mat'
+import { MAX_NOTE } from '../../app/saved-combos'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { CardArt } from '../CardArt'
@@ -909,6 +910,73 @@ export function SaveComboDialog({ isOpen, defaultName, rename = false, onSave, o
           />
         </label>
         {rename ? null : <p className="m-0 text-micro text-soft">{t('practice.dialog.saveNote')}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="tertiary" size="sm" type="button" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="primary" size="sm" type="submit" icon="save">
+            {t('common.save')}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+interface StepNoteDialogProps {
+  /** El número del paso (el de la lista) cuya nota se escribe; `null`, cerrado. */
+  step: number | null
+  defaultNote: string
+  onSave: (note: string) => void
+  onClose: () => void
+}
+
+/** La nota de un paso: un solo campo de una línea con su contador; vacío y guardado, la borra. Queda montado y el foco lo maneja el diálogo, como en renombrar. */
+export function StepNoteDialog({ step, defaultNote, onSave, onClose }: StepNoteDialogProps) {
+  const isOpen = step !== null
+  const [note, setNote] = useState(defaultNote)
+  // El número se queda mientras el diálogo sale (al cerrarse `step` ya es null).
+  const [shownStep, setShownStep] = useState(step ?? 0)
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  const counterId = useId()
+  const title = t('practice.note.title', { step: shownStep })
+
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen)
+    if (isOpen) {
+      setNote(defaultNote)
+      setShownStep(step ?? 0)
+    }
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    onSave(note)
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} title={title} ariaLabel={title}>
+      <form className="grid gap-3" onSubmit={submit}>
+        <label className="grid gap-1">
+          <span className="flex items-baseline justify-between gap-2 text-body text-muted">
+            {t('practice.note.field')}
+            <span id={counterId} className="text-micro tabular-nums text-soft">
+              {note.length}/{MAX_NOTE}
+            </span>
+          </span>
+          <input
+            type="text"
+            value={note}
+            maxLength={MAX_NOTE}
+            autoComplete="off"
+            enterKeyHint="done"
+            aria-describedby={counterId}
+            data-initial-focus=""
+            className={cx(field, 'h-11 w-full px-3 text-body')}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </label>
+        {defaultNote ? <p className="m-0 text-micro text-soft">{t('practice.note.hint')}</p> : null}
         <div className="flex justify-end gap-2">
           <Button variant="tertiary" size="sm" type="button" onClick={onClose}>
             {t('common.cancel')}

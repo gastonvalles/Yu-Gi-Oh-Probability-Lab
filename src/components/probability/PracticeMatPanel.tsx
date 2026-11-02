@@ -20,7 +20,7 @@ import { OverflowMenu } from '../ui/OverflowMenu'
 import { Segmented } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
 import { ConfirmDialog } from './ConfirmDialog'
-import { SaveComboDialog } from './MatDialogs'
+import { SaveComboDialog, StepNoteDialog } from './MatDialogs'
 import { MatSnapshot } from './MatSnapshot'
 import type { PanelStep } from './panel-steps'
 import { FX_RGB, type FxTone } from './practice-styles'
@@ -50,6 +50,10 @@ interface PracticeMatPanelProps {
   showCombos?: boolean
   /** Lo que dice la lista vacía, si no es el de la práctica (en «Jugar solo automático» no se arrastra ni se mantiene). */
   emptyHint?: string
+  /** Las notas del combo que se repasa (`SavedCombo.notes`: la clave es el índice de la jugada, el paso N es la jugada N − 1). */
+  notes?: Record<string, string> | undefined
+  /** Escribir la nota de una jugada (por su índice; vacía, la borra): sólo en un combo guardado. Sin esto, las notas se leen pero no se editan. */
+  onNote?: ((index: number, note: string) => void) | undefined
   className?: string
 }
 
@@ -75,8 +79,11 @@ function writeDetails(on: boolean) {
 const NO_CARDS: PanelStep['cards'] = []
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, onShare, onVideo, onImport, showCombos = true, emptyHint, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial, cursor, onSeek, nameOf, artOf, combos, deckName, onLoad, onRename, onDelete, onShare, onVideo, onImport, showCombos = true, emptyHint, notes, onNote, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
+  // El paso (su número en la lista) cuya nota se está escribiendo.
+  const [noting, setNoting] = useState<number | null>(null)
+  const openNote = useCallback((step: number) => setNoting(step), [])
   // ponytail: cada panel (el lateral y el del celular) lee la preferencia al abrirse; si se cambia en uno, el otro —que está escondido— la toma recién al volver a montarse.
   const [details, setDetails] = useState(readDetails)
   const toggleDetails = useCallback((on: boolean) => {
@@ -131,11 +138,24 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, initial,
                     onSeek={onSeek}
                     nameOf={nameOf}
                     artOf={artOf}
+                    note={notes?.[index]}
+                    onNote={onNote ? openNote : undefined}
                   />
                 ))
                 .reverse()}
               <StepTile index={0} label={t('practice.mat.startingHand')} divider={false} cards={NO_CARDS} after={initial} info={null} tone={null} active={cursor === 0} past={cursor > 0} details={details} onSeek={onSeek} nameOf={nameOf} artOf={artOf} />
             </ol>
+            {onNote ? (
+              <StepNoteDialog
+                step={noting}
+                defaultNote={noting === null ? '' : (notes?.[noting - 1] ?? '')}
+                onSave={(note) => {
+                  if (noting !== null) onNote(noting - 1, note)
+                  setNoting(null)
+                }}
+                onClose={() => setNoting(null)}
+              />
+            ) : null}
           </>
         )
       ) : (
@@ -389,6 +409,10 @@ interface StepTileProps {
   onSeek: (step: number) => void
   nameOf: (id: string) => string
   artOf: (id: string) => string | null
+  /** «Por qué este paso» (texto de quien armó el combo, quizá de otra persona: se muestra como texto). */
+  note?: string | undefined
+  /** Abre el diálogo de la nota de este paso (por su número): sólo en un combo guardado. */
+  onNote?: ((step: number) => void) | undefined
 }
 
 /**
@@ -400,7 +424,7 @@ interface StepTileProps {
  * El botón es sólo el número y la frase (lo que se lee y lo que dicen las pruebas); su `::after` cubre la ficha entera, así se toca en cualquier lado y el foco la rodea. Es `memo`
  * con props estables: al avanzar un combo sólo cambian `active` y `past` de dos fichas.
  */
-const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, arrows, tone, active, past, details, onSeek, nameOf, artOf }: StepTileProps) {
+const StepTile = memo(function StepTile({ index, label, divider, cards, after, info, arrows, tone, active, past, details, onSeek, nameOf, artOf, note, onNote }: StepTileProps) {
   const ref = useRef<HTMLLIElement | null>(null)
   const originId = useId()
   const movesId = useId()
@@ -466,22 +490,34 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
     </button>
   )
 
+  // Escribir la nota (sólo en un combo guardado): por encima del `::after` del paso. En la ficha va al final de los chips (con margen negativo, no agranda el renglón ni le roba
+  // ancho a la frase con el panel al mínimo); en la lista compacta, a la derecha de la fila.
+  const noteLabel = t(note ? 'practice.note.edit' : 'practice.note.add', { step: index })
+  const noteButton = onNote ? (
+    <IconButton tone="ghost" size="sm" className={cx('relative z-20 shrink-0', kind && '-my-1.5 pointer-coarse:-my-3')} aria-label={noteLabel} title={noteLabel} onClick={() => onNote(index)}>
+      <Icon name={note ? 'pencil' : 'chat'} />
+    </IconButton>
+  ) : null
+
   // Las miniaturas a la izquierda y, a su lado, los chips arriba de la frase (en la lista compacta, sólo la frase).
   const heading =
     thumbs || kind ? (
       <div className={cx('grid items-center gap-x-2.5 gap-y-1.5', thumbs ? 'grid-cols-[auto_minmax(0,1fr)]' : 'grid-cols-[minmax(0,1fr)]')}>
         {thumbs}
         {kind ? (
-          // Los chips son lo que se ve de un vistazo: la clase de la jugada (la frase ya la dice: no se lee dos veces) y de dónde sale (eso sí: es la descripción del botón).
-          <span aria-hidden="true" className="flex min-w-0 flex-wrap gap-1">
-            <Badge size="sm" shape="tag" rgb={tone ? FX_RGB[tone] : undefined}>
-              {t(KIND_KEY[kind])}
-            </Badge>
-            {origin ? (
-              <Badge size="sm" shape="tag" id={originId}>
-                {t(ORIGIN_KEY[origin])}
+          <span className="flex min-w-0 items-center gap-1">
+            {/* Los chips son lo que se ve de un vistazo: la clase de la jugada (la frase ya la dice: no se lee dos veces) y de dónde sale (eso sí: es la descripción del botón). */}
+            <span aria-hidden="true" className="flex min-w-0 flex-1 flex-wrap gap-1">
+              <Badge size="sm" shape="tag" rgb={tone ? FX_RGB[tone] : undefined}>
+                {t(KIND_KEY[kind])}
               </Badge>
-            ) : null}
+              {origin ? (
+                <Badge size="sm" shape="tag" id={originId}>
+                  {t(ORIGIN_KEY[origin])}
+                </Badge>
+              ) : null}
+            </span>
+            {noteButton}
           </span>
         ) : null}
         {button}
@@ -489,13 +525,35 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
     ) : (
       button
     )
+  // La nota, debajo de la jugada y pegada a ella, chica y sin caja: texto de quien armó el combo (quizá de otra persona), nunca HTML. Un paso sin nota no gasta lugar.
+  const noteLine = note ? (
+    <p className={cx('m-0 flex gap-1 text-micro text-muted', boxed && '-mt-1.5')}>
+      <Icon name="chat" size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
+      <span className="min-w-0 wrap-break-word">{note}</span>
+    </p>
+  ) : null
+  const noted =
+    noteButton && !kind ? (
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1">
+        <div className="grid min-w-0 gap-1">
+          {heading}
+          {noteLine}
+        </div>
+        {noteButton}
+      </div>
+    ) : (
+      <>
+        {heading}
+        {noteLine}
+      </>
+    )
   const rail = cx('relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2', 'before:absolute before:left-[0.8125rem] before:top-0 before:-bottom-2 before:w-0.5 before:bg-border-subtle first:before:top-4 last:before:bottom-auto last:before:h-4')
 
   if (!boxed) {
     return (
       <li ref={ref} className={rail}>
         {/* 44 px de alto como mínimo (con o sin miniaturas, también las cabeceras): es un objetivo táctil y las filas quedan parejas, como la lista de siempre. */}
-        <div className={cx('relative col-start-2 grid min-h-11 min-w-0 items-center rounded-control px-2 py-1 transition-colors duration-150 motion-reduce:transition-none', active ? 'bg-tint/14' : 'hover:bg-tint/8')}>{heading}</div>
+        <div className={cx('relative col-start-2 grid min-h-11 min-w-0 items-center rounded-control px-2 py-1 transition-colors duration-150 motion-reduce:transition-none', active ? 'bg-tint/14' : 'hover:bg-tint/8')}>{noted}</div>
       </li>
     )
   }
@@ -507,7 +565,7 @@ const StepTile = memo(function StepTile({ index, label, divider, cards, after, i
         <div className="grid gap-2.5 @min-[30rem]:grid-cols-[minmax(0,1fr)_15rem] @min-[30rem]:items-start">
           <div className="grid min-w-0 content-start gap-2.5">
             {active ? <p className="m-0 animate-step-in text-micro font-semibold uppercase tracking-wide text-info-soft motion-reduce:animate-none">{t('practice.steps.context', { turn: after.turn, phase })}</p> : null}
-            {heading}
+            {noted}
             {moves.length > 0 ? (
               <div className="grid animate-step-in gap-2 border-t border-border-subtle pt-2.5 motion-reduce:animate-none">
                 <p id={movesId} className="m-0 text-micro font-semibold uppercase tracking-wide text-soft">

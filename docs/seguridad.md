@@ -21,7 +21,9 @@ Un sitio sin cuentas ni base de datos: lo del usuario vive en su navegador y el 
   (`#combo=`, `#replay=`; nunca al servidor) en un sobre versionado; se topa el largo antes de decodificar y la descompresión
   (una bomba se corta), y se copian sólo los campos conocidos, con tipos, rangos e ids con su patrón. El replay no lleva la
   clave del duelo, las respuestas del núcleo ni el chat, y lo propio oculto sólo va con «Incluir mi mano». Lo que no entra en
-  un enlace va como video; no se lee ningún archivo de combo ni de duelo.
+  un enlace va como video; no se lee ningún archivo de combo ni de duelo. Las notas de los pasos (v3, sólo si hay alguna: sin
+  ellas el enlace sigue en v2) también son de otra persona: la clave es una jugada que existe y el texto, una línea normalizada
+  de hasta 140; otra forma es un enlace roto. Se muestran como texto, sin interpretar.
 - **El proxy de imágenes** (`api/card-image.ts`): sólo rutas con la forma de una imagen de YGOPRODeck, host fijo, sin seguir
   redirecciones, sólo `path` y `w`, sólo JPEG, PNG o WebP con tope de bytes y de píxeles, y `same-origin` (nadie lo usa como
   su CDN).

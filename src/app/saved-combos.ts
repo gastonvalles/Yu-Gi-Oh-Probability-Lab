@@ -20,6 +20,35 @@ export interface SavedCombo {
   actions: MatAction[]
   /** Se grabó en «Jugar solo automático»: las jugadas las contó el núcleo de reglas. Se abre igual en las dos mesas (es la misma forma). */
   auto?: true
+  /** «Por qué este paso»: una línea por jugada, con el índice de la jugada como clave (el paso N de la lista es la jugada N − 1). Sin notas, no está. */
+  notes?: Record<string, string>
+}
+
+/** El largo de una nota (como un tuit corto: una línea que se lee de un vistazo). */
+export const MAX_NOTE = 140
+
+/** Una nota en una línea: los saltos y los espacios repetidos son un espacio, sin bordes y recortada a `MAX_NOTE`. Vacía, no hay nota. */
+export const normalizeNote = (text: string) => text.replace(/\s+/g, ' ').trim().slice(0, MAX_NOTE).trim()
+
+/** La clave de una nota: un índice de jugada que existe (`"3"`, nunca `"03"`, `"-1"` ni `__proto__`). */
+export const isNoteKey = (key: string, actions: number) => /^(?:0|[1-9]\d{0,3})$/.test(key) && Number(key) < actions
+
+/** Las notas de un combo leído del almacenamiento: se queda lo que se entiende (la clave de una jugada que existe y un texto) y lo raro se descarta sin romper el combo. */
+function storedNotes(value: unknown, actions: number): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined
+  const notes = Object.entries(value).flatMap(([key, text]) => (isNoteKey(key, actions) && typeof text === 'string' && normalizeNote(text) ? [[key, normalizeNote(text)] as const] : []))
+  return notes.length > 0 ? Object.fromEntries(notes) : undefined
+}
+
+/** Pone, cambia o (con un texto vacío) borra la nota de la jugada `index` de un combo. */
+export function setComboNote(combos: readonly SavedCombo[], id: string, index: number, text: string): SavedCombo[] {
+  return combos.map((combo) => {
+    if (combo.id !== id || !isNoteKey(String(index), combo.actions.length)) return combo
+    const { notes, ...rest } = combo
+    const next: Record<string, string> = { ...notes, [index]: normalizeNote(text) }
+    if (!next[index]) delete next[index]
+    return Object.keys(next).length > 0 ? { ...rest, notes: next } : rest
+  })
 }
 
 export function readSavedCombos(): SavedCombo[] {
@@ -31,11 +60,16 @@ export function readSavedCombos(): SavedCombo[] {
   }
 }
 
-/** Combos guardados antes de que la mesa tuviera fases y destierro boca abajo: arrancan en la Draw Phase del turno 1. Una mano del rival que no se entiende se descarta (el combo queda sin rival). */
-function migrateSavedCombo(combo: SavedCombo): SavedCombo {
+/**
+ * Combos guardados antes de que la mesa tuviera fases y destierro boca abajo: arrancan en la Draw Phase del turno 1. Una mano del rival que no se entiende se descarta (el combo queda sin rival),
+ * y una nota que no se entiende, también (las demás se quedan).
+ */
+export function migrateSavedCombo(combo: SavedCombo): SavedCombo {
+  const { notes: rawNotes, ...rest } = combo
   const { rival, ...table } = combo.initial
   const initial: MatState = { ...table, phase: table.phase ?? 'draw', turn: table.turn ?? 1, facedown: table.facedown ?? [], extraUp: table.extraUp ?? [], targeted: table.targeted ?? [], ...(isRivalHand(rival) ? { rival } : {}) }
-  return { ...combo, initial }
+  const notes = storedNotes(rawNotes, combo.actions.length)
+  return { ...rest, initial, ...(notes ? { notes } : {}) }
 }
 
 const isRivalHand = (value: unknown): value is RivalHand => isRecord(value) && isStringList(value.hand) && isStringList(value.used)

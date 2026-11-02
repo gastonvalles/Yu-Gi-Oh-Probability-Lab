@@ -869,7 +869,9 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('menuitemradio', { name: '2×' }))
     expect(screen.getByRole('button', { name: 'Velocidad: 2×' })).toBeInTheDocument()
     fireEvent.click(within(aside).getByRole('radio', { name: 'Pasos' }))
-    expect(within(within(aside).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').map((item) => item.textContent)).toEqual(['2Colocás Called by the Grave', '1Invocación Especial de Ash Blossom en defensa', '0Mano inicial'])
+    // Los pasos (sin el botón de la nota, que en un combo guardado lleva cada uno).
+    const stepRows = within(within(aside).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').filter((item) => item.hasAttribute('data-divider'))
+    expect(stepRows.map((item) => item.textContent)).toEqual(['2Colocás Called by the Grave', '1Invocación Especial de Ash Blossom en defensa', '0Mano inicial'])
 
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument()

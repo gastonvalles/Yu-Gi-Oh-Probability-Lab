@@ -124,7 +124,8 @@ describe('el enlace v2 de un combo (compacto)', () => {
     const payload = await encodeComboPayload(referenceCombo())
     expect(payload[0]).toBe('z')
     expect(await unpacked(payload)).toMatchObject({ app: 'ygoultralab', kind: 'combo', v: 2 })
-    expect(parseComboText(JSON.stringify({ ...compactEnvelope(referenceCombo()), v: 3 }))).toEqual({ ok: false, error: 'newer' })
+    // v3 (con notas) ya se lee: «más nuevo» es lo que venga después.
+    expect(parseComboText(JSON.stringify({ ...compactEnvelope(referenceCombo()), v: 4 }))).toEqual({ ok: false, error: 'newer' })
     expect(parseComboText(JSON.stringify({ ...compactEnvelope(referenceCombo()), v: 0 }))).toEqual({ ok: false, error: 'broken' })
   })
 

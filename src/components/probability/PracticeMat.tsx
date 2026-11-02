@@ -47,7 +47,7 @@ import {
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { animationsOf, cancelWhenDone, flying, ownTransform, supportsAdditiveAnimation } from '../../app/motion'
-import { comboCardIds, createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { comboCardIds, createSavedCombo, normalizeNote, readSavedCombos, renameSavedCombo, setComboNote, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { shareComboLink, toSavedCombo, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, matSpot, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
@@ -2133,6 +2133,23 @@ function PracticeMatBody({
     [combos],
   )
 
+  // El combo guardado que se repasa: el que tiene las jugadas de la mesa. ponytail: por referencia (cargarlo pasa su `initial` y sus `actions` tal cual, renombrarlo o anotarlo
+  // los conserva y una jugada nueva arma otra lista: ya no es ese combo); si un día la mesa los copia, la sesión tiene que llevar el id. Vale igual en el repaso de «Jugar solo
+  // automático» (`use-auto-asks`, `review.load`, pasa las mismas listas); un duelo en vivo nunca es un combo guardado.
+  const reviewed = useMemo(() => (session.replay ? (combos.find((combo) => combo.initial === session.initial && combo.actions === session.actions) ?? null) : null), [session.replay, session.initial, session.actions, combos])
+  // Las notas que se ven: las del guardado o, en uno que llegó por enlace (que no se edita hasta guardarlo), las suyas.
+  const stepNotes = reviewed ? reviewed.notes : shared?.combo.actions === session.actions ? shared.combo.notes : undefined
+  const noteStep = useCallback(
+    (index: number, note: string) => {
+      if (!reviewed) return
+      const next = setComboNote(combos, reviewed.id, index, note)
+      writeSavedCombos(next)
+      setCombos(next)
+      showToastMessage(t(normalizeNote(note) ? 'practice.note.saved' : 'practice.note.deleted'), 'success')
+    },
+    [combos, reviewed],
+  )
+
   const deleteCombo = useCallback(
     (combo: SavedCombo) => {
       const next = combos.filter((entry) => entry.id !== combo.id)
@@ -2201,6 +2218,8 @@ function PracticeMatBody({
       onVideo={setFilming}
       onImport={importCombo}
       showCombos={stepsPanel}
+      notes={stepNotes}
+      onNote={reviewed ? noteStep : undefined}
       {...(duel?.auto ? { emptyHint: t('auto.steps.empty') } : {})}
       className="min-h-0 flex-1"
     />
