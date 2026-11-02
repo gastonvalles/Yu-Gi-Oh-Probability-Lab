@@ -41,6 +41,7 @@ export const duel: Translated<typeof es> = {
   'duel.undo.expired': "{name} didn't answer: the play stays.",
   'duel.undo.waiting': 'Waiting for an answer…',
   'duel.prompt.minimize': 'Minimize',
+  'duel.prompt.move': 'Drag the top to move it (or Alt + arrows) · Double-click: back to its place',
   'duel.prompt.show': 'Show the question',
   'duel.prompt.turnMine': '{phase} · Your turn',
   'duel.prompt.turnTheirs': "{phase} · Opponent's turn",

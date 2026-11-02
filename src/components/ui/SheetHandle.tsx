@@ -1,5 +1,6 @@
 import type { HTMLAttributes, Ref } from 'react'
 
+import { touchOr, type MoveHead } from '../../app/use-draggable-offset'
 import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import { cx } from './cx'
@@ -11,6 +12,8 @@ interface PromptHandleProps extends HTMLAttributes<HTMLDivElement> {
   label: string
   /** La flecha (44 px, «Mostrar la pregunta», `data-prompt-show`): la reabre. */
   onShow: () => void
+  /** Con el mouse o el lápiz se lleva a otro lado, agarrándola por la pregunta (la cabeza de su cartel, `useDraggableOffset`); con el dedo, se abre arrastrándola. */
+  move?: MoveHead
   ref?: Ref<HTMLDivElement>
 }
 
@@ -19,11 +22,18 @@ interface PromptHandleProps extends HTMLAttributes<HTMLDivElement> {
  * es la hoja de abajo, `BottomSheet`). Va en el lugar fijo de la pregunta, apoyada sobre la fila
  * de las Zonas Extra: no tapa nada de tu campo ni la mano. Se abre con la flecha o arrastrándola hacia arriba (`useSwipeFold`). Muestra: «Hoja de la mesa» del catálogo.
  */
-export function PromptHandle({ label, onShow, ref, className, ...props }: PromptHandleProps) {
-  const swipe = useSwipeFold({ dir: 'up', onFold: onShow })
+export function PromptHandle({ label, onShow, move = {}, ref, className, ...props }: PromptHandleProps) {
+  const swipe = touchOr(useSwipeFold({ dir: 'up', onFold: onShow }), move)
+  const movable = Boolean(move.onPointerDown)
 
   return (
-    <div ref={ref} {...props} {...swipe} className={cx('flex max-w-full touch-none select-none items-center gap-1 rounded-full border border-info bg-card-background py-0 pl-4 pr-0 text-body text-foreground shadow-overlay', className)}>
+    <div
+      ref={ref}
+      {...props}
+      {...swipe}
+      title={movable ? t('duel.prompt.move') : undefined}
+      className={cx('flex max-w-full touch-none select-none items-center gap-1 rounded-full border border-info bg-card-background py-0 pl-4 pr-0 text-body text-foreground shadow-overlay', movable && 'cursor-grab active:cursor-grabbing', className)}
+    >
       <p className="m-0 min-w-0 truncate font-semibold">{label}</p>
       <IconButton size="lg" data-prompt-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} onClick={onShow}>
         <Icon name="chevron-up" />

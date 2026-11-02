@@ -1,5 +1,6 @@
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 
+import { matCardPositionKey, useDraggableOffset } from '../../app/use-draggable-offset'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -39,10 +40,13 @@ interface ChainNoticeProps {
  * - El ritmo, cuándo aparece y cuándo se va lo decide quien la usa (`use-auto-asks.tsx`); acá sólo se dibuja. Sin animar a propósito: es un cartel con temporizador.
  * - Accesibilidad: el texto de la píldora es un `status` (lo lee el lector de pantalla cuando cambia); la flecha dice qué hace y controla la lista.
  * - Hacer: dejar pasar los toques fuera del cartel (la caja de la mesa va con `pointer-events-none`); tocarla no salta la mesa al final (`skipAhead` la saltea).
- *   No hacer: taparla con otra cosa, moverla de lugar ni ponerle velo.
+ *   No hacer: taparla con otra cosa ni ponerle velo. La mueve sólo la persona (escritorio: su fila de arriba con el mouse, `useDraggableOffset`).
  */
 export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onPick }: ChainNoticeProps) {
   const listId = useId()
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  // En escritorio se lleva a otro lado agarrándola por su fila de arriba (`useDraggableOffset`, como la pregunta): una posición para todas las cadenas.
+  const move = useDraggableOffset(matCardPositionKey('chain'), cardRef, !compact)
   const row = rows[focus] ?? rows[rows.length - 1]
 
   if (!row) return null
@@ -60,8 +64,8 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
   return (
     <div data-testid="chain-notice" className="pointer-events-none w-[min(24rem,100%)]">
       {/* Un solo cartel: desplegada, la píldora pasa a ser la fila de título de la misma tarjeta y la pila va debajo, tras una línea fina. Plegada mide 56 px con el borde. */}
-      <div className={cx('pointer-events-auto border border-border-subtle bg-card-background shadow-overlay', open ? 'rounded-card' : 'rounded-full')}>
-        <div className={cx('flex items-center gap-2 py-1 pl-3 pr-1', open ? 'min-h-11' : 'min-h-13.5')}>
+      <div ref={cardRef} {...move.root} className={cx('pointer-events-auto border border-border-subtle bg-card-background shadow-overlay', open ? 'rounded-card' : 'rounded-full')}>
+        <div {...move.head} title={t('duel.prompt.move')} className={cx('flex cursor-grab select-none items-center gap-2 py-1 pl-3 pr-1 active:cursor-grabbing', open ? 'min-h-11' : 'min-h-13.5')}>
           <Icon name="link" size={18} className="shrink-0 text-info" aria-hidden="true" />
           {/* Desplegada, la píldora es el título de la lista («Cadena · 2»): lo del eslabón ya está en su fila (el resumen queda para el lector de pantalla, que avisa cuando cambia).
               Sin lugar para la lista (`data-squeezed` en la capa, `PracticeMat`), el resumen se ve y la lista no. */}
