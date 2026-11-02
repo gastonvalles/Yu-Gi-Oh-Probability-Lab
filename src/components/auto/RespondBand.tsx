@@ -32,7 +32,7 @@ interface RespondBandProps {
  * Responder a una cadena (`select_chain` que se puede pasar) sin tapar la mesa: una banda en la ranura de la pregunta (`MatPrompt`: ancha, sin velo, minimizable), como `PickBand`.
  * Arriba, qué se decide (a qué eslabón lo dice la pila de la cadena, desplegada arriba: acá no se repite); las candidatas con la pestaña de dónde están (`PickGrid`: flechas, Espacio y Enter); y abajo «No responder» sin caja y la
  * principal al final («Encadenar como CL3»), que se enciende con una elegida. En escritorio, el modo debajo del título. En el celular el título no se ve (la cinta de la cadena, arriba, ya dice a qué
- * eslabón respondés; queda para el lector de pantalla) y las dos acciones suben a su fila, junto a la flecha de minimizar: la banda mide la fila de acciones y las cartas, sin título ni pie aparte. Tocar la carta que brilla en la mesa sigue valiendo (su
+ * eslabón respondés; queda para el lector de pantalla). Las dos acciones van siempre debajo de las cartas: primero se ve qué se encadena. Tocar la carta que brilla en la mesa sigue valiendo (su
  * menú, como siempre). Al aparecer, el foco va a las cartas. Escape es «No responder» (lo da la mesa), así que no la minimiza.
  */
 export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onPass, mode }: RespondBandProps) {
@@ -66,12 +66,6 @@ export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onP
             <p id={titleId} className={cx('m-0 font-semibold break-words', !desktop && 'sr-only')}>
               {title}
             </p>
-            {desktop ? null : (
-              <div className="flex min-w-0 items-center justify-between gap-2">
-                {pass}
-                {chain}
-              </div>
-            )}
             {mode ? (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 max-[1101px]:hidden">
                 <span className="text-micro text-muted">{t('auto.respond.mode')}</span>
@@ -83,12 +77,11 @@ export function RespondBand({ title, link, cards, chosen, onToggle, onChain, onP
       }
     >
       <PickGrid label={t('auto.respond.cards')} cards={cards} chosen={chosen === null ? [] : [chosen]} onToggle={onToggle} multi={false} tabs className={cx(COLUMNS, 'max-[1101px]:[&_[data-pick-name]]:hidden')} />
-      {desktop ? (
-        <div className="flex justify-end gap-2">
-          {pass}
-          {chain}
-        </div>
-      ) : null}
+      {/* Siempre debajo de las candidatas (también en el celular): primero se ve qué se encadena. */}
+      <div className="flex items-center justify-between gap-2 min-[1101px]:justify-end">
+        {pass}
+        {chain}
+      </div>
     </MatPrompt>
   )
 }
