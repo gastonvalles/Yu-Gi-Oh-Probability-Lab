@@ -659,8 +659,7 @@ function LongTextSample() {
     { key: 'imperm', name: 'Infinite Impermanence', art: art(10045474), place: 'Banished' },
   ]
   const modes = [
-    { value: 'always' as const, label: 'Always' },
-    { value: 'ask' as const, label: 'When it matters' },
+    { value: 'ask' as const, label: 'Always' },
     { value: 'never' as const, label: 'Never' },
   ]
 

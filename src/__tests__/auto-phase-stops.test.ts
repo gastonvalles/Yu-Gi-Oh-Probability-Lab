@@ -96,14 +96,18 @@ describe('ask-ui: las ventanas de tus fases', () => {
     ])
   })
 
-  it('se contesta sola como antes: con «Nunca», sin candidatas, el post-robo, la ventana del rival y la de la batalla; forzada, se pregunta como siempre', () => {
+  it('se contesta sola con «Nunca», sin candidatas y en el post-robo; la ventana del rival y la de la batalla preguntan (no son de fase); forzada, se pregunta como siempre', () => {
     const auto = (ask: CoreAsk, chainMode: 'ask' | 'never' = 'ask') => askView(openAsk({ askId: 1, ask }, ctx(chainMode))).auto
 
     expect(auto(windowAt(0x1), 'never')).toEqual({ answer: PASS, why: 'setting' })
     expect(auto(windowAt(0x1, { selects: [] }))).toEqual({ answer: PASS, why: 'forced' })
     expect(auto(windowAt(0x210000))).toEqual({ answer: PASS, why: 'setting' })
-    expect(auto(windowAt(0, { hint_timing_other: 0x1 }))).toEqual({ answer: PASS, why: 'setting' })
-    expect(auto(windowAt(0x8))).toEqual({ answer: PASS, why: 'setting' })
+    for (const ask of [windowAt(0, { hint_timing_other: 0x1 }), windowAt(0x8)]) {
+      const view = askView(openAsk({ askId: 1, ask }, ctx()))
+
+      expect(view.auto).toBeNull()
+      expect(view.phaseWindow).toBeNull()
+    }
     const forced = askView(openAsk({ askId: 1, ask: windowAt(0x1, { forced: true }) }, ctx()))
 
     expect(forced.auto).toBeNull()

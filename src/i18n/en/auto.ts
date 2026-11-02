@@ -246,9 +246,7 @@ export const auto: Translated<typeof es> = {
   'auto.bar.never': 'Never',
   'auto.bar.always': 'Always',
   'auto.bar.turnMine': 'Your turn · {turn}',
-  'auto.bar.whenItMatters': 'When it matters',
-  'auto.bar.chainAlwaysHint': 'It asks you every time you could respond, even if nothing changes.',
-  'auto.bar.chainAskHint': 'It asks you only if something of yours really responds to this moment.',
+  'auto.bar.chainAskHint': 'It asks you every time you have a Quick Effect or one whose condition is met.',
   'auto.bar.chainNeverHint': "It doesn't ask you; mandatory ones still do.",
   'auto.bar.auto': 'Automatic',
   // «New hand» (the bar) sets up another duel; this one repeats the same.

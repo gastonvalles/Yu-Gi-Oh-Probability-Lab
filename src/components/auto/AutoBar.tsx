@@ -18,17 +18,16 @@ import { Modal } from '../ui/Modal'
 import { Segmented, type SegmentedOption } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
 
-/** Cuándo te pregunta si respondés a una cadena: siempre que se pueda (`always`), sólo si algo responde de verdad (`ask`) o nunca (`never`: contesta «No responder» solo). */
+/** Cuándo te pregunta si respondés a una cadena: siempre que tengas algo que activar (`ask`, «Siempre») o nunca (`never`: contesta «No responder» solo). */
 export type AutoChainMode = AutoPrefs['chain']
 
 const CHAIN_MODES = {
-  always: ['auto.bar.always', 'auto.bar.chainAlwaysHint'],
-  ask: ['auto.bar.whenItMatters', 'auto.bar.chainAskHint'],
+  ask: ['auto.bar.always', 'auto.bar.chainAskHint'],
   never: ['auto.bar.never', 'auto.bar.chainNeverHint'],
 } as const satisfies Record<AutoChainMode, readonly [MessageKey, MessageKey]>
 
-/** Los tres modos de respuesta, en el orden de la pista («Siempre · Cuando importa · Nunca»), cada uno con lo que hace para el lector de pantalla: en «Más opciones» y en la banda de responder. */
-export const chainModeOptions = (): SegmentedOption<AutoChainMode>[] => (['always', 'ask', 'never'] as const).map((value) => ({ value, label: t(CHAIN_MODES[value][0]), detailLabel: t(CHAIN_MODES[value][1]) }))
+/** Los dos modos de respuesta («Siempre · Nunca»), cada uno con lo que hace para el lector de pantalla: en «Más opciones» y en la banda de responder. */
+export const chainModeOptions = (): SegmentedOption<AutoChainMode>[] => (['ask', 'never'] as const).map((value) => ({ value, label: t(CHAIN_MODES[value][0]), detailLabel: t(CHAIN_MODES[value][1]) }))
 /** Lo que hace el modo elegido (la línea chica del ajuste). */
 export const chainModeHint = (mode: AutoChainMode) => t(CHAIN_MODES[mode][1])
 /** Si la casilla de cada carta la elegís vos (`ask`) o va a la primera libre (`auto`). */
@@ -206,7 +205,7 @@ function DockButton({ icon, ...props }: ButtonHTMLAttributes<HTMLButtonElement> 
 
 /**
  * La botonera redonda de «Jugar solo automático» en escritorio (abajo a la derecha de la mesa, lámina 07), con lo que se toca del duelo y no es una jugada; cada botón con su nombre debajo:
- * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; la vuelta es «Seguir en automático», del ⋯ de la práctica), «Cadena» (las respuestas: Siempre · Cuando importa · Nunca), «Pasos» (muestra u
+ * «Automático» (el modo de ahora, prendido: tocarlo abre «Seguir en modo manual»; la vuelta es «Seguir en automático», del ⋯ de la práctica), «Cadena» (las respuestas: Siempre · Nunca), «Pasos» (muestra u
  * oculta el panel de la derecha) y «Opciones» (el resto de «Más opciones», que sale de la barra de arriba). Lo que ya está en la barra (deshacer, la vista, los sonidos) no se repite.
  * Mide 56 px de alto y sube 12 sobre el borde de la mano (`-mt-3`, como las vidas): la fila de abajo no crece y el campo no se mueve.
  */

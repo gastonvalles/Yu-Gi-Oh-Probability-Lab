@@ -228,17 +228,17 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('el modo de respuesta en la banda: «Siempre» pregunta aunque nada responda de verdad (`spe_count` 0); «Cuando importa», no', () => {
+  it('el modo de respuesta en la banda: «Siempre · Nunca»; con «Nunca» contesta «No responder» sola', () => {
     const fake = renderAuto()
 
     try {
       core(() => fake.ask(CHAIN))
-      fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Preguntarme' })).getByRole('radio', { name: 'Siempre' }))
-      core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
-      expect(fake.answers).toEqual([])
-      expect(within(screen.getByRole('radiogroup', { name: 'Preguntarme' })).getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
-      fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Preguntarme' })).getByRole('radio', { name: 'Cuando importa' }))
-      core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
+      const modes = within(screen.getByRole('radiogroup', { name: 'Preguntarme' }))
+
+      expect(modes.getAllByRole('radio').map((radio) => radio.getAttribute('aria-label'))).toEqual(['Siempre', 'Nunca'])
+      expect(modes.getByRole('radio', { name: 'Siempre' })).toHaveAttribute('aria-checked', 'true')
+      fireEvent.click(modes.getByRole('radio', { name: 'Nunca' }))
+      core(() => fake.ask(CHAIN))
       expect(fake.answers).toEqual([{ type: 'select_chain', index: null }])
     } finally {
       setAutoPref('chain', 'ask')
@@ -256,7 +256,7 @@ describe('auto-screen · las jugadas', () => {
     expect(fake.answers).toEqual([{ type: 'select_chain', index: 0 }])
   })
 
-  it('cadena sin nada que responda de verdad a este momento (`spe_count` 0): «Preguntar» contesta «No responder» sola, sin mostrar nada', () => {
+  it('cadena vacía en tu Main Phase sin nada que responda de verdad (`spe_count` 0): el menú de la mesa ofrece lo mismo, así que contesta «No responder» sola, sin mostrar nada', () => {
     const fake = renderAuto()
 
     core(() => fake.ask({ ...CHAIN, spe_count: 0 }))
