@@ -6,7 +6,6 @@ import type { Outcome } from '../app/lab-suggestion'
 import { useAppSelector } from '../app/store-hooks'
 import type { DeckCardInstance } from '../app/model'
 import type { RoleDistribution } from '../app/role-distribution'
-import { deckCardsSignature } from '../app/saved-builds'
 import { useLabDraft } from '../app/use-lab-draft'
 import { useMediaQuery } from '../app/use-media-query'
 import { Presence } from '../app/use-presence'
@@ -26,7 +25,6 @@ import { Icon } from './ui/Icon'
 import { IconButton } from './ui/IconButton'
 import { Skeleton } from './ui/Skeleton'
 import { StepPage } from './ui/StepPage'
-import { LabAppliedNotice } from './probability/LabAppliedNotice'
 import { LabChangeBar, LabChangeCard, LabChangeStale } from './probability/LabChangeCard'
 import { LabDisclaimerDialog, useLabDisclaimer } from './probability/LabDisclaimerDialog'
 import { LabSuggestion } from './probability/LabSuggestion'
@@ -92,9 +90,6 @@ export function ProbabilityPanel({
   const shownComputation = drafting ? (trialSettled ? trial.computation : null) : lab.computation
   const deckBuilder = useAppSelector((state) => state.deckBuilder)
   const isPhone = useMediaQuery(PHONE_MEDIA_QUERY)
-  // «Aplicaste el cambio · Deshacer»: vive mientras el deck siga como quedó (si lo editás, deshacer ya no corresponde).
-  const [applied, setApplied] = useState<DeckChangeToken | null>(null)
-  const undoable = useMemo(() => applied !== null && deckCardsSignature(deckBuilder) === applied.resultSignature, [applied, deckBuilder])
   // El botón que se tocó («Probar el cambio», «Deshacer») se va con lo que cambia: el foco pasa a la tarjeta del cambio en vez de perderse.
   const [focusChange, setFocusChange] = useState(false)
   const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
@@ -144,7 +139,6 @@ export function ProbabilityPanel({
     const next = draftFromChanges(outcome.changes)
 
     if (next) {
-      setApplied(null)
       setFocusChange(true)
       labDraft.start(next)
     }
@@ -166,19 +160,21 @@ export function ProbabilityPanel({
     const result = labDraft.apply()
 
     if (result?.ok) {
+      const { token } = result
+
       setFocusChange(false)
-      setApplied(result.token)
+      showToast(t('lab.change.applied'), 'success', { action: { label: t('lab.change.undo'), onAction: () => undoApply(token) } })
     } else if (result?.reason === 'not-allowed') {
       showToast(result.issue, 'error')
     }
   }
-  // «Deshacer»: vuelve tu deck y el borrador (el Lab vuelve a mostrar el cambio).
-  const undoApply = () => {
-    if (applied && labDraft.undo(applied)) {
+  // «Deshacer» del aviso: vuelve tu deck y el borrador (el Lab vuelve a mostrar el cambio). Si editaste el deck después, ya no corresponde y lo dice.
+  const undoApply = (token: DeckChangeToken) => {
+    if (labDraft.undo(token)) {
       setFocusChange(true)
+    } else {
+      showToast(t('meta.compare.undoBlocked'), 'warning')
     }
-
-    setApplied(null)
   }
 
   return (
@@ -290,6 +286,7 @@ export function ProbabilityPanel({
             disabledGenericRuleIds={disabledGenericRuleIds}
             handSize={handSize}
             results={results}
+            before={drafting ? realResults?.[activeTurnView].patternResults : undefined}
             patternActions={patternActions}
             patternEditorDefaults={patternEditorDefaults}
             onToggleGenericRule={onSetGenericRuleEnabled}
@@ -305,8 +302,6 @@ export function ProbabilityPanel({
       )}
 
       <LabDisclaimerDialog isOpen={disclaimer.isOpen} onClose={disclaimer.close} />
-
-      <LabAppliedNotice open={undoable} onUndo={undoApply} onClose={() => setApplied(null)} />
 
       <QuickCalculator
         isOpen={quickCalculator}

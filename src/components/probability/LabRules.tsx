@@ -9,7 +9,7 @@ import { useToastMessage } from '../../app/use-toast-message'
 import type { PatternEditorDefaults } from '../../app/use-pattern-editor-actions'
 import { createId } from '../../app/utils'
 import { t } from '../../i18n'
-import type { CardEntry, HandPattern, PatternKind } from '../../types'
+import type { CardEntry, HandPattern, PatternKind, PatternProbability } from '../../types'
 import { cx } from '../ui/cx'
 import { formatPer100 } from '../ui/ring-shared'
 import { textLink } from '../ui/typography'
@@ -39,6 +39,8 @@ interface LabRulesProps {
   handSize: number
   /** El resultado del Lab de hoy: el «antes» del número en vivo y de borrar. */
   results: LabResults | null
+  /** Con un cambio a prueba: cuántas manos daba cada regla con tu deck de verdad (el ▲ / ▼ de cada fila). */
+  before?: PatternProbability[]
   patternActions: PatternEditorActions
   patternEditorDefaults: PatternEditorDefaults
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
@@ -78,6 +80,7 @@ export function LabRules({
   disabledGenericRuleIds,
   handSize,
   results,
+  before,
   patternActions,
   patternEditorDefaults,
   onToggleGenericRule,
@@ -288,6 +291,7 @@ export function LabRules({
     <>
       <LabRuleList
         groups={groups}
+        before={before}
         className={className}
         onEditRule={openEdit}
         onToggleGenericRule={onToggleGenericRule}
