@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
+import { useSwipeFold } from '../../app/use-swipe-fold'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
 import { t } from '../../i18n'
@@ -143,6 +144,18 @@ export function Modal({
   const [minimized, setMinimized] = useState(false)
   const [wasOpen, setWasOpen] = useState(isOpen)
   const lowered = minimizable && minimized
+  // Arrastrar el encabezado hacia abajo también la minimiza (como la flecha). El panel de la mesa sigue al dedo corriendo la variable de Tailwind que ya lo centra (`--tw-translate-y`), sin redibujar.
+  const swipe = useSwipeFold({
+    dir: 'down',
+    onFold: () => setMinimized(true),
+    follow: (dy) => {
+      const style = panelRef.current?.style
+
+      if (!mat || !style) return
+      if (dy === null) style.removeProperty('--tw-translate-y')
+      else style.setProperty('--tw-translate-y', `calc(-50% + ${dy}px)`)
+    },
+  })
 
   useBodyScrollLock(isOpen)
   useEscapeKey(onClose, isOpen && dismissible)
@@ -190,7 +203,7 @@ export function Modal({
 
   const header = hasHeader ? (
     // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios).
-    <header className="flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5">
+    <header {...(minimizable ? swipe : {})} className={cx('flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5', minimizable && 'touch-none select-none')}>
       <div className="flex min-w-0 items-start gap-3">
         {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', tone ? TONE[tone].text : 'text-foreground')} /> : null}
         <div className="grid min-w-0 gap-0.5">
