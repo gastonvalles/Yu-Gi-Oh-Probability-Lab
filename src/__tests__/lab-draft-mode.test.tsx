@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { useMemo } from 'react'
+import { toast } from 'react-hot-toast'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -13,9 +14,9 @@ import { buildActiveRuleSet } from '../app/pattern-presets'
 import { computeLabResults } from '../app/probability-lab'
 import { useAppSelector } from '../app/store-hooks'
 import { ProbabilityPanel } from '../components/ProbabilityPanel'
-import { APPLIED_NOTICE_MS } from '../components/probability/LabAppliedNotice'
 import { LabScoreCard } from '../components/probability/LabScoreCard'
 import type { PatternEditorActions } from '../components/probability/pattern-editor-actions'
+import { AppToaster } from '../components/ui/AppToaster'
 import { fireKingDeck, storeWith } from './support/deck-fixtures'
 
 /**
@@ -59,6 +60,7 @@ function mount({ handSize }: { handSize?: number } = {}) {
   render(
     <Provider store={store}>
       <Lab handSize={handSize} />
+      <AppToaster />
     </Provider>,
   )
 
@@ -97,6 +99,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  toast.remove()
   cleanup()
   vi.unstubAllGlobals()
   vi.useRealTimers()
@@ -157,10 +160,9 @@ describe('«Probar el cambio» en el Lab', () => {
     expect(count(store.getState().deckBuilder.main, 'Fire King Island')).toBe(3)
     expect(count(store.getState().deckBuilder.main, 'Ash Blossom & Joyous Spring')).toBe(2)
     expect(sessionStorage.getItem(BUILD_DRAFT_KEY)).toBeNull()
-    // El aviso entra en una región `status` que ya estaba (así el lector lo anuncia).
+    // El aviso es el de la app (un toast con «Deshacer»), y el foco, que se perdió con el botón, pasa a «Deshacer».
     const notice = noticeOf('Aplicaste el cambio')
-    expect(notice.parentElement).toBe(document.body)
-    // El Lab vuelve a su modo normal, con el deck ya cambiado (85, sin el chip), y el foco pasa a «Deshacer».
+    // El Lab vuelve a su modo normal, con el deck ya cambiado (85, sin el chip).
     expect(within(verdict()).queryByText('Con el cambio')).not.toBeInTheDocument()
     expect(within(verdict()).getByText('85')).toBeInTheDocument()
     expect(document.activeElement).toBe(within(notice).getByRole('button', { name: 'Deshacer' }))
@@ -170,32 +172,20 @@ describe('«Probar el cambio» en el Lab', () => {
     expect(count(store.getState().deckBuilder.main, 'Fire King Island')).toBe(2)
     expect(count(store.getState().deckBuilder.main, 'Ash Blossom & Joyous Spring')).toBe(3)
     expect(await within(verdict()).findByText('Con el cambio')).toBeInTheDocument()
-    expect(within(notice).queryByText('Aplicaste el cambio')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Aplicaste el cambio')).not.toBeInTheDocument())
   })
 
-  it('el aviso se va solo a los 10 s, o al tocar otra cosa', async () => {
-    mount()
-    await startTrying()
-    vi.useFakeTimers()
-
-    fireEvent.click(within(changeCard()).getByRole('button', { name: 'Aplicar al deck' }))
-    expect(screen.getByText('Aplicaste el cambio')).toBeInTheDocument()
-
-    act(() => vi.advanceTimersByTime(APPLIED_NOTICE_MS - 100))
-    expect(screen.getByText('Aplicaste el cambio')).toBeInTheDocument()
-    act(() => vi.advanceTimersByTime(200))
-    expect(screen.queryByText('Aplicaste el cambio')).not.toBeInTheDocument()
-  })
-
-  it('el aviso también se va al hacer otra cosa en la pantalla', async () => {
+  it('con el cambio a prueba, cada regla que se movió lleva su ▲ / ▼ como descripción', async () => {
     mount()
     await startTrying()
 
-    fireEvent.click(within(changeCard()).getByRole('button', { name: 'Aplicar al deck' }))
-    expect(screen.getByText('Aplicaste el cambio')).toBeInTheDocument()
+    const moved = screen.getAllByRole('button', { name: /^(Editar|Renombrar) regla / }).filter((row) => row.hasAttribute('aria-describedby'))
+    expect(moved.length).toBeGreaterThan(0)
+    for (const row of moved) expect(row).toHaveAccessibleDescription(/^\d+ (más|menos)$/)
 
-    fireEvent.click(screen.getByRole('radio', { name: /^Yendo 1º/ }))
-    expect(screen.queryByText('Aplicaste el cambio')).not.toBeInTheDocument()
+    // Sin el cambio, ninguna fila lleva el ▲ / ▼.
+    fireEvent.click(within(changeCard()).getByRole('button', { name: 'Descartar' }))
+    expect(screen.getAllByRole('button', { name: /^(Editar|Renombrar) regla / }).filter((row) => row.hasAttribute('aria-describedby'))).toEqual([])
   })
 
   it('«Descartar» vuelve a tu deck de verdad y a la sugerencia', async () => {

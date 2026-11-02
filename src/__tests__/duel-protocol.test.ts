@@ -186,6 +186,24 @@ describe('contra un rival malicioso', () => {
   const message = (value: unknown) => parseMessage(JSON.stringify(value))
   const wire = (action: unknown, reveal: unknown = {}) => ({ t: 'act', n: 1, wire: { action, reveal } })
 
+  it('el Xyz que cambia de manos: los materiales son ids de la red (hasta 20) y la capacidad del saludo, nombres razonables (si no, no hay)', () => {
+    for (const type of ['give', 'take', 'regain']) {
+      const action = { type, id: 'c1', zone: 'mz', to: 'mz', index: 0, pos: 'atk' }
+
+      expect(message(wire({ ...action, materials: ['f.c2', 'c3'] })), type).toMatchObject({ wire: { action: { materials: ['f.c2', 'c3'] } } })
+      expect(message(wire({ ...action, materials: ['card-1-1'] })), type).toBeNull()
+      expect(message(wire({ ...action, materials: 'c2' })), type).toBeNull()
+      expect(message(wire({ ...action, materials: Array.from({ length: 21 }, (_, n) => `c${n + 2}`) })), type).toBeNull()
+    }
+
+    const hello = { t: 'hello', v: 1, sid: 'abc123', role: 'guest', name: 'Beto' }
+
+    expect(message({ ...hello, caps: ['xyz-materials', 'tokens'] })).toEqual({ ...hello, caps: ['xyz-materials', 'tokens'] })
+    expect(message(hello)).toEqual(hello)
+    expect(message({ ...hello, caps: ['__proto__', 7, 'Mayúsculas', 'x'.repeat(33), 'ok'] })).toEqual({ ...hello, caps: ['ok'] })
+    expect(message({ ...hello, caps: 'xyz-materials' })).toEqual(hello)
+  })
+
   it('el tiempo del reloj de los ajustes: sin él vale el de siempre, y fuera de rango o mal escrito se rechaza', () => {
     const hello = (settings: unknown) => ({ t: 'hello', v: 1, sid: 'abc123', role: 'host', name: 'Ana', settings })
 

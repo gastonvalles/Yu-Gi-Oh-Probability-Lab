@@ -792,7 +792,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
           {visible.map((card) => {
             // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
             const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.faceUp ? t('practice.dialog.cardFaceUp', { name: card.name }) : card.name
-            const named = targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : anonymous ? label : undefined
+            // El nombre accesible lo da el botón, una sola vez: el arte lleva el mismo nombre en su `alt` y, sin esto, el lector lo diría dos veces («Maxx C Maxx C»).
+            const named = targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : label
             const order = choosing ? picked.indexOf(card.id) : -1
             const lit = glow?.(card.id) ?? null
 
@@ -801,7 +802,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
                 <button
                   type="button"
                   aria-pressed={choosing ? order >= 0 : undefined}
-                  aria-label={order >= 0 ? t('practice.many.order', { name: named ?? label, n: order + 1 }) : named}
+                  aria-label={order >= 0 ? t('practice.many.order', { name: named, n: order + 1 }) : named}
                   title={choosing ? t('practice.many.range') : undefined}
                   className="group grid w-full gap-1 rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
                   onClick={(event) => {

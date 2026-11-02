@@ -40,8 +40,8 @@ function mountChain() {
   // Los eslabones se muestran de a uno, con su ritmo.
   act(() => vi.advanceTimersByTime(0))
   act(() => vi.advanceTimersByTime(CHAIN_LINK_MS))
-  // La pila abre desplegada.
-  expect(within(screen.getByTestId('chain-notice')).getByRole('button', { name: 'Ocultar la cadena' })).toHaveAttribute('aria-expanded', 'true')
+  // La cinta, con un chip por eslabón.
+  expect(within(within(screen.getByTestId('chain-notice')).getByRole('list', { name: /Eslabones de la cadena/ })).getAllByRole('listitem')).toHaveLength(2)
 
   return fake
 }
