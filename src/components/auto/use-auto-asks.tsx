@@ -1202,6 +1202,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     phase: turnMine ? state.phase : (rival?.phase ?? theirs.phase),
     // Cambiás de fase en tus jugadas del turno, en una parada de tu DP o tu SP y en la ventana de una fase tuya.
     myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
+    // De quién es el turno, para que las preguntas digan la fase: sólo si el núcleo ya empezó uno (antes, no se dice).
+    ...(snap.overlay.turnPlayer !== null && turnNumber > 0 ? { turnMine } : {}),
     respond,
     attack,
     ...(aim ? { aim } : {}),

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { PHASES, type MatPhase } from '../../app/practice-mat'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving, usePresence } from '../../app/use-presence'
@@ -11,6 +12,20 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { PromptHandle } from '../ui/SheetHandle'
+
+/** En qué fase está el duelo (la de quien tiene el turno) y si el turno es tuyo. */
+export interface PromptTurn {
+  phase: MatPhase
+  mine: boolean
+}
+
+/**
+ * La fase y el turno que dicen todas las preguntas de la mesa, en una línea chica arriba de su cabeza («Draw Phase · Turno del rival»): así se entiende por qué se pregunta. Lo da la mesa
+ * (`PracticeMat`, sólo cuando el duelo automático ya sabe de quién es el turno); sin él (la práctica manual, el duelo por enlace, cuya pregunta ya nombra la fase), no hay línea.
+ */
+export const PromptTurnContext = createContext<PromptTurn | null>(null)
+
+export const promptTurnText = ({ phase, mine }: PromptTurn) => t(mine ? 'duel.prompt.turnMine' : 'duel.prompt.turnTheirs', { phase: PHASES.find((entry) => entry.id === phase)?.name ?? phase })
 
 interface MatPromptProps {
   /** Lo que dice el asa minimizada: la pregunta, corta («¿Activás el efecto?»). */
@@ -46,6 +61,7 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
   const ref = useRef<HTMLDivElement | null>(null)
   const leaving = useLeaving()
   const host = useSheetHost()
+  const turn = useContext(PromptTurnContext)
   // En un marco del catálogo (`SheetHost phone`), como en el celular en cualquier ancho.
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY) && host?.phone !== true
   const slot = host?.slot ?? null
@@ -69,27 +85,44 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
   }, [minimized, focus, desktop, slot])
 
   const attrs = { role, 'aria-labelledby': labelledBy, 'data-prompt': kind, ...(row ? { 'data-prompt-row': '' } : {}) }
+  // La cabeza: arriba, chica, la fase y de quién es el turno (si la mesa lo sabe); debajo, lo que es y la pregunta. Bajada en el celular no se repite: queda la tira con la pregunta corta.
+  const top = (
+    <div className="grid min-w-0 flex-1 gap-1">
+      {turn ? (
+        <p data-prompt-turn="" className="m-0 text-micro text-muted">
+          {promptTurnText(turn)}
+        </p>
+      ) : null}
+      <div className="flex min-w-0 items-center gap-3">{head}</div>
+    </div>
+  )
   const view = desktop ? (
     minimized ? (
       <PromptHandle ref={ref} role={role} aria-label={label} data-prompt={kind} data-minimized="" label={label} onShow={() => setFold(false)} />
     ) : (
       <div ref={ref} {...attrs} className={cx('grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-card border border-info bg-card-background p-4 text-body text-foreground shadow-overlay motion-safe:animate-dialog-enter', className)}>
         <div {...swipe} className="flex touch-none select-none items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-3">{head}</div>
+          {top}
           <IconButton size="lg" className="-my-2 -mr-2 self-start" aria-label={t('duel.prompt.minimize')} title={t('duel.prompt.minimize')} onClick={() => setFold(true)}>
             <Icon name="chevron-down" />
           </IconButton>
         </div>
         {/* Más alto que lo que hay arriba de la fila Extra, el cuerpo se desplaza (la fila de arriba, con minimizar, queda a la vista). Llega hasta el borde del cartel (`-mx-4`, y 4 px arriba y abajo): lo que
-            se desplaza no corta el aro del foco ni una fila de botones que no entra en 360 px. La fila de acciones (lo último, si hay algo antes) queda siempre a la vista, abajo. */}
-        <div className="-mx-4 -my-1 grid min-h-0 gap-[inherit] overflow-y-auto overscroll-contain px-4 py-1 [&>:last-child:not(:first-child)]:sticky [&>:last-child:not(:first-child)]:bottom-0 [&>:last-child:not(:first-child)]:bg-card-background">{children}</div>
+            se desplaza no corta el aro del foco ni una fila de botones que no entra en 360 px. La fila de acciones (lo último, si hay algo antes) queda siempre a la vista, abajo, y opaca de borde a borde:
+            pegada al borde del relleno (`-bottom-1` con `py-1`, regla 11) y con el ancho entero (`-mx-4 px-4`), así nada de lo que se desplaza asoma debajo ni a los costados. */}
+        <div
+          data-prompt-body=""
+          className="-mx-4 -my-1 grid min-h-0 gap-[inherit] overflow-y-auto overscroll-contain px-4 py-1 [&>:last-child:not(:first-child)]:sticky [&>:last-child:not(:first-child)]:-bottom-1 [&>:last-child:not(:first-child)]:z-10 [&>:last-child:not(:first-child)]:-mx-4 [&>:last-child:not(:first-child)]:bg-card-background [&>:last-child:not(:first-child)]:px-4"
+        >
+          {children}
+        </div>
       </div>
     )
   ) : slot ? (
     // En el pie de la hoja de la cadena: debajo de la pila, tras una línea fina; lo que se explica arriba y lo que se decide abajo.
     createPortal(
       <div ref={ref} {...attrs} className="grid gap-3 border-t border-border-subtle px-4 pb-3 pt-3 text-body text-foreground motion-safe:animate-sheet-in">
-        <div className="flex min-w-0 items-center gap-3">{head}</div>
+        {top}
         {children}
       </div>,
       slot,
@@ -102,7 +135,7 @@ export function MatPrompt({ label, head, children, kind, row = false, role = 'st
       yields
       escape={escape && !leaving}
       className="text-body text-foreground"
-      head={<div className="flex min-w-0 items-center gap-3 px-4 pb-3">{head}</div>}
+      head={<div className="px-4 pb-3">{top}</div>}
       footer={<div className="grid gap-3 px-4 pb-3">{children}</div>}
     />
   )

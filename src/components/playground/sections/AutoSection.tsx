@@ -21,6 +21,7 @@ import { SortSheet } from '../../auto/SortSheet'
 import { AskWhy } from '../../duel/AskWhy'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
 import { TheirHand } from '../../duel/DuelTable'
+import { PromptTurnContext } from '../../duel/MatPrompt'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
 import { BotDeckEditor } from '../../duel/BotDeckEditor'
 import { BotDeckSheet } from '../../duel/BotDeckSheet'
@@ -328,21 +329,24 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
         <Presence>
           {shown ? (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-              <div className={PROMPT_BOX}>
-                {kind === 'context' ? (
-                  <AskPrompt
-                    kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })}
-                    text={t('auto.ask.effect')}
-                    card={PONIX}
-                    place={t('practice.mat.field')}
-                    manual={{ label: manual, onSelect: () => reply(manual) }}
-                    yes={{ label: yes, onSelect: () => reply(yes) }}
-                    no={{ label: no, onSelect: () => reply(no) }}
-                  />
-                ) : (
-                  <AskPrompt text={withCard ? t('auto.ask.effect') : '¿Pagás 1000 LP?'} card={withCard ? ASH : undefined} why={withCard ? null : { text: 'Al activar Skill Drain', name: 'Skill Drain', art: art(82732705), mine: true }} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
-                )}
-              </div>
+              {/* La fase y el turno, como los da la mesa del duelo automático (`PromptTurnContext`): la línea chica de arriba. */}
+              <PromptTurnContext value={{ phase: kind === 'context' ? 'main1' : 'battle', mine: kind === 'context' }}>
+                <div className={PROMPT_BOX}>
+                  {kind === 'context' ? (
+                    <AskPrompt
+                      kicker={t('auto.ask.afterEvent', { event: t('auto.ask.event.special') })}
+                      text={t('auto.ask.effect')}
+                      card={PONIX}
+                      place={t('practice.mat.field')}
+                      manual={{ label: manual, onSelect: () => reply(manual) }}
+                      yes={{ label: yes, onSelect: () => reply(yes) }}
+                      no={{ label: no, onSelect: () => reply(no) }}
+                    />
+                  ) : (
+                    <AskPrompt text={withCard ? t('auto.ask.effect') : '¿Pagás 1000 LP?'} card={withCard ? ASH : undefined} why={withCard ? null : { text: 'Al activar Skill Drain', name: 'Skill Drain', art: art(82732705), mine: true }} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
+                  )}
+                </div>
+              </PromptTurnContext>
             </div>
           ) : null}
         </Presence>
@@ -625,19 +629,22 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
         </div>
         <Presence>
           {shown ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 grid place-items-center px-4">
-              <div className={PROMPT_BOX}>
-                <RespondBand
-                  title={t('auto.respond.title')}
-                  link={2}
-                  cards={cards}
-                  chosen={chosen}
-                  onToggle={setChosen}
-                  onChain={() => reply(picked?.name ?? '')}
-                  onPass={() => reply(t('auto.lane.pass'))}
-                  mode={{ value: mode, onChange: setMode }}
-                />
-              </div>
+            // Todo el marco (en el celular la pregunta es la hoja de abajo, adentro de él: sin alto, su pie se salía por abajo); en escritorio el cartel, abajo al medio.
+            <div className="pointer-events-none absolute inset-0 grid content-end justify-items-center px-4 pb-3">
+              <PromptTurnContext value={{ phase: 'draw', mine: false }}>
+                <div className={PROMPT_BOX}>
+                  <RespondBand
+                    title={t('auto.respond.title')}
+                    link={2}
+                    cards={cards}
+                    chosen={chosen}
+                    onToggle={setChosen}
+                    onChain={() => reply(picked?.name ?? '')}
+                    onPass={() => reply(t('auto.lane.pass'))}
+                    mode={{ value: mode, onChange: setMode }}
+                  />
+                </div>
+              </PromptTurnContext>
             </div>
           ) : null}
         </Presence>
@@ -1081,7 +1088,7 @@ function ChainSample() {
       <div {...(squeezed ? { 'data-squeezed': '' } : {})} className={cx('group/chain relative isolate flex justify-center overflow-hidden rounded-card border border-border-subtle p-3', phone ? 'h-[40rem] max-w-[24.375rem]' : 'min-h-80')}>
         <MatScene className="absolute inset-0 -z-10" />
         {phone && yieldTo === 'grip' ? <p className="absolute inset-x-1.5 bottom-2 z-[136] m-0 flex h-11 items-center rounded-control bg-background px-2 text-micro text-muted">Elegí 1 carta para descartar · Costo de Angelechy Problem</p> : null}
-        {phone ? ask : null}
+        {phone ? <PromptTurnContext value={{ phase: 'main1', mine: false }}>{ask}</PromptTurnContext> : null}
         <ChainNotice
           rows={frame.states.map((state, index) => ({ number: index + 1, who: CHAIN_CARDS[index]!.mine ? t('duel.bar.you') : t('duel.bar.rival'), mine: CHAIN_CARDS[index]!.mine, name: CHAIN_CARDS[index]!.name, art: CHAIN_CARDS[index]!.art, state, ...(state === 'negated' ? { by: 3 } : {}) }))}
           focus={frame.focus}

@@ -150,6 +150,20 @@ describe('auto-screen · las hojas', () => {
     expect(fake.answers).toEqual([{ type: 'select_effectyn', yes: false }])
   })
 
+  it('la pregunta dice la fase y de quién es el turno, la misma que la mesa; antes de que el núcleo empiece un turno, no', () => {
+    const fake = renderAuto()
+    const line = () => document.querySelector('[data-prompt] [data-prompt-turn]')
+
+    core(() => fake.ask(EFFECTYN))
+    expect(line()?.textContent).toMatch(/^(Draw|Standby|Main|Battle|End) .*Phase.* · Tu turno$/)
+    core(() => {
+      fake.set({ overlay: { ...fake.getSnapshot().overlay, turn: 0, turnPlayer: null } })
+      fake.ask(EFFECTYN)
+    })
+    expect(document.querySelector('[data-prompt]')).not.toBeNull()
+    expect(line()).toBeNull()
+  })
+
   it('un efecto que se dispara: qué pasó justo antes, sin nombres, y, a la izquierda, «Seguir en modo manual»', () => {
     const fake = renderAuto()
 

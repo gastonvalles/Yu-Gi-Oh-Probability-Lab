@@ -45,6 +45,9 @@ export const duel = {
   // El cartel de una pregunta en la mesa, minimizado a un asa (`MatPrompt`).
   'duel.prompt.minimize': 'Minimizar',
   'duel.prompt.show': 'Mostrar la pregunta',
+  // Arriba de la pregunta, chico: en qué fase y de quién es el turno.
+  'duel.prompt.turnMine': '{phase} · Tu turno',
+  'duel.prompt.turnTheirs': '{phase} · Turno del rival',
   'duel.pass.ask': '{name} quiere pasar a la {phase}. ¿Hacés algo antes?',
   'duel.pass.askEnd': '{name} quiere terminar su turno. ¿Hacés algo antes?',
   'duel.pass.askWith': '{name} quiere pasar a la {phase}. Podés responder con {cards}.',
