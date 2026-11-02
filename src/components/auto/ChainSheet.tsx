@@ -44,7 +44,15 @@ export function ChainSheet({ rows, focus, resolving, onPick }: ChainSheetProps) 
   }, [rows.length, resolving])
   // Del que se habla (el último que se sumó o el que se resuelve), a la vista en la cinta: al cambiar y al bajar la hoja (la cinta se monta).
   const at = resolving ? rows.indexOf(solver) : focus
-  const stripRef = useCallback((list: HTMLOListElement | null) => list?.children[at]?.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }), [at])
+  // Se desplaza sólo la cinta (es la `offsetParent` de sus chips: `relative`): un `scrollIntoView` corría también lo de afuera que se deja desplazar (la página, el marco del catálogo) y dejaba ver el fondo por un costado.
+  const stripRef = useCallback(
+    (list: HTMLOListElement | null) => {
+      const chip = list?.children[at] as HTMLElement | undefined
+
+      if (list && chip) list.scrollTo?.({ left: chip.offsetLeft - (list.clientWidth - chip.offsetWidth) / 2, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+    },
+    [at],
+  )
 
   return (
     <BottomSheet
@@ -73,7 +81,7 @@ export function ChainSheet({ rows, focus, resolving, onPick }: ChainSheetProps) 
         </p>
       }
       peek={
-        <ol ref={stripRef} aria-label={t('auto.chain.strip')} className="m-0 flex h-full touch-pan-x list-none items-center gap-1.5 overflow-x-auto overscroll-contain px-3 [scrollbar-width:none]">
+        <ol ref={stripRef} aria-label={t('auto.chain.strip')} className="relative m-0 flex h-full touch-pan-x list-none items-center gap-1.5 overflow-x-auto overscroll-contain px-3 [scrollbar-width:none]">
           {rows.map((link, index) => {
             const color = colorOf(link.mine)
             const done = link.state === 'solved'

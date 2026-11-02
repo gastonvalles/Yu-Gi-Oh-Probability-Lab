@@ -80,6 +80,7 @@ import type { ApiCardReference, GlowKind, PatternKind } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
+import { PromptTurnContext } from '../duel/MatPrompt'
 import { DuelMascot } from '../mascot/Mascot'
 import { Button } from '../ui/Button'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -185,6 +186,8 @@ export interface DuelMatLink {
   /** La fase del duelo, igual para los dos (la de quien tiene el turno), y si el turno es tuyo: sólo quien tiene el turno cambia de fase. */
   phase: MatPhase
   myTurn: boolean
+  /** De quién es el turno (el duelo automático, ya empezado): con `phase`, lo dicen las preguntas de la mesa («Draw Phase · Turno del rival», `MatPrompt`). Sin él, no lo dicen. */
+  turnMine?: boolean
   /**
    * Lo que el rival acaba de hacer y se avisa (su ataque): un cartel arriba con `caption` y la espada de su monstruo (`attackerId`, el id que él le dio) a tu carta
    * (`targetId`, tu id real) o, sin `targetId`, a tu barra de vida; cambiar `key` lo vuelve a mostrar.
@@ -3345,7 +3348,7 @@ function PracticeMatBody({
           <div ref={promptLayerRef} data-testid="duel-prompt-layer" data-spot="extra" className={cx('pointer-events-none absolute inset-y-0 left-0 right-0 z-[130] flex flex-col items-center justify-end px-4', sidePanel && 'min-[1101px]:right-[var(--mat-right,20rem)]', Boolean(detail) && 'min-[1440px]:left-[var(--mat-left,20rem)]')}>
             {/* Minimizada, la caja es la del asa (sólo ella ataja toques). */}
             <div ref={promptRef} className="pointer-events-auto flex min-h-0 w-[min(24rem,100%)] max-w-full flex-col has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]">
-              {duel.prompt}
+              <PromptTurnContext value={duel.turnMine === undefined ? null : { phase: duel.phase, mine: duel.turnMine }}>{duel.prompt}</PromptTurnContext>
             </div>
           </div>
         ) : null}

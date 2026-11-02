@@ -14,6 +14,8 @@ import { CardPicker, PickBand, pickPlace, type PickCard } from '../components/au
 import { RespondBand } from '../components/auto/RespondBand'
 import { SortSheet } from '../components/auto/SortSheet'
 import { THINKING_CANCEL_MS, type LaneNotice } from '../components/duel/DuelBar'
+import { PromptTurnContext, promptTurnText } from '../components/duel/MatPrompt'
+import { PassPrompt } from '../components/duel/PassPrompt'
 import { applyLocale } from '../i18n'
 import { menuRow, tapMenu } from './support/mat-menu'
 
@@ -193,6 +195,64 @@ describe('MatPrompt en el celular: la hoja de abajo estándar (no un cartel en e
     expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'Cancelar' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     escape()
     expect(group).not.toHaveAttribute('data-lowered')
+  })
+})
+
+describe('MatPrompt: la fase y el turno arriba de la pregunta', () => {
+  const respond = <RespondBand title="¿Activás algo ahora?" link={1} cards={CARDS.slice(0, 2)} chosen={null} onToggle={() => {}} onChain={() => {}} onPass={() => {}} />
+  const turnLine = () => document.querySelector('[data-prompt-turn]')
+
+  afterEach(() => applyLocale('es'))
+
+  describe('en escritorio', () => {
+    onDesktop()
+
+    it('con la fase que da la mesa, una línea chica y apagada arriba de la cabeza; sin ella (catálogo, práctica manual), nada', () => {
+      const { unmount } = render(<PromptTurnContext value={{ phase: 'draw', mine: false }}>{respond}</PromptTurnContext>)
+
+      expect(turnLine()).toHaveTextContent(/^Draw Phase · Turno del rival$/)
+      expect(turnLine()).toHaveClass('text-micro', 'text-muted')
+      expect(turnLine()!.compareDocumentPosition(screen.getByText('¿Activás algo ahora?')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      unmount()
+
+      render(respond)
+      expect(turnLine()).toBeNull()
+    })
+
+    it('la fila de acciones pegada abajo es opaca de borde a borde: llega al borde del relleno del cuerpo (regla 11) y a su ancho entero', () => {
+      render(respond)
+      const body = document.querySelector('[data-prompt-body]')!
+
+      expect(body).toHaveClass('px-4', 'py-1', '[&>:last-child:not(:first-child)]:sticky', '[&>:last-child:not(:first-child)]:-bottom-1', '[&>:last-child:not(:first-child)]:-mx-4', '[&>:last-child:not(:first-child)]:px-4', '[&>:last-child:not(:first-child)]:bg-card-background')
+      expect(body).not.toHaveClass('[&>:last-child:not(:first-child)]:bottom-0')
+    })
+
+    it('en inglés, y la pregunta del rival de pasar de fase no la repite (ya la nombra)', () => {
+      applyLocale('en')
+      const { unmount } = render(<PromptTurnContext value={{ phase: 'main1', mine: true }}>{respond}</PromptTurnContext>)
+
+      expect(turnLine()).toHaveTextContent(/^Main Phase 1 · Your turn$/)
+      expect(promptTurnText({ phase: 'battle', mine: false })).toBe("Battle Phase · Opponent's turn")
+      unmount()
+      applyLocale('es')
+
+      render(<PassPrompt name="Ana" phase="battle" endsTurn={false} responders={[]} onAllow={() => {}} onDeny={() => {}} />)
+      expect(screen.getByRole('status')).toHaveTextContent('Ana quiere pasar a la Battle Phase')
+      expect(turnLine()).toBeNull()
+    })
+  })
+
+  it('en el celular va en la cabeza de la hoja; bajada no se repite (queda la tira con la pregunta corta)', () => {
+    render(
+      <PromptTurnContext value={{ phase: 'main1', mine: true }}>
+        <AskPrompt text="¿Activás el efecto?" yes={{ label: 'Activar efecto', onSelect: () => {} }} no={{ label: 'No activar', onSelect: () => {} }} />
+      </PromptTurnContext>,
+    )
+
+    expect(turnLine()).toHaveTextContent('Main Phase 1 · Tu turno')
+    escape()
+    expect(screen.getByRole('status')).toHaveAttribute('data-lowered')
+    expect(turnLine()!.closest('[hidden]')).not.toBeNull()
   })
 })
 

@@ -42,6 +42,8 @@ export const duel: Translated<typeof es> = {
   'duel.undo.waiting': 'Waiting for an answer…',
   'duel.prompt.minimize': 'Minimize',
   'duel.prompt.show': 'Show the question',
+  'duel.prompt.turnMine': '{phase} · Your turn',
+  'duel.prompt.turnTheirs': "{phase} · Opponent's turn",
   'duel.pass.ask': '{name} wants to move to the {phase}. Anything to do first?',
   'duel.pass.askEnd': '{name} wants to end their turn. Anything to do first?',
   'duel.pass.askWith': '{name} wants to move to the {phase}. You can respond with {cards}.',
