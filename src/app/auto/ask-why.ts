@@ -43,4 +43,13 @@ export function askWhy(type: AskType, overlay: Pick<AutoOverlay, 'chain' | 'acti
 }
 
 /** La línea: «Costo de Ash Blossom & Joyous Spring» (la pantalla la corta con «…» si no entra; el nombre entero queda para el lector de pantalla). */
-export const askWhyText = (role: AskRole, name: string) => t(`auto.why.${role}`, { name })
+export const askWhyText = (role: AskRole, name: string) => t(`auto.askWhy.${role}`, { name })
+
+/** Lo que dibuja la línea (`AskWhy`), ya con palabras: el texto, el arte de la carta, su eslabón (sólo con dos o más) y de quién es (si se sabe). */
+export interface AskWhyView {
+  text: string
+  name: string
+  art: string | null
+  link?: number
+  mine?: boolean
+}

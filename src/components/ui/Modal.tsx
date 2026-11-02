@@ -77,6 +77,8 @@ interface ModalProps {
   above?: boolean
   role?: 'dialog' | 'alertdialog'
   ariaLabel?: string
+  /** Lo que describe el diálogo además del título (el `id` de la línea de por qué se pregunta, `AskWhy`). */
+  ariaDescribedBy?: string
   /** Botón de cerrar flotante (sin encabezado): `flat` es el blanco y grande de la práctica. */
   closeTone?: 'close' | 'flat'
   closeSize?: 'sm' | 'md'
@@ -122,6 +124,7 @@ export function Modal({
   above = false,
   role = 'dialog',
   ariaLabel,
+  ariaDescribedBy,
   closeTone = 'close',
   closeSize = 'md',
   closeClassName,
@@ -263,6 +266,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
+        aria-describedby={ariaDescribedBy}
         data-minimized={lowered ? '' : undefined}
         className={cx(
           'flex min-h-0 flex-col p-0 outline-none motion-reduce:animate-none',

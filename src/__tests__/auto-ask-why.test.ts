@@ -36,6 +36,6 @@ describe('askWhy: de qué carta es lo que se pregunta (sólo lo que se sabe)', (
   it('la línea, en los dos idiomas', () => {
     expect(askWhyText('cost', 'Ash Blossom')).toBe('Costo de Ash Blossom')
     expect(askWhyText('effect', 'Ash Blossom')).toBe('Efecto de Ash Blossom')
-    expect(formatMessage(en['auto.why.activation'], { name: 'Ash Blossom' }, 'en')).toBe('Activating Ash Blossom')
+    expect(formatMessage(en['auto.askWhy.activation'], { name: 'Ash Blossom' }, 'en')).toBe('Activating Ash Blossom')
   })
 })

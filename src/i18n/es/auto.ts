@@ -231,9 +231,9 @@ export const auto = {
   'auto.pick.why.link': 'como Material de Enlace',
   'auto.pick.why.target': 'como objetivo del efecto',
   // De qué carta es lo que se pregunta y por qué (`ask-why.ts`): sólo lo que el núcleo deja saber.
-  'auto.why.cost': 'Costo de {name}',
-  'auto.why.activation': 'Al activar {name}',
-  'auto.why.effect': 'Efecto de {name}',
+  'auto.askWhy.cost': 'Costo de {name}',
+  'auto.askWhy.activation': 'Al activar {name}',
+  'auto.askWhy.effect': 'Efecto de {name}',
   // La banda de una lista corta (hasta 6 cartas), en el medio de la mesa: de dónde salen y cómo se elige.
   'auto.band.from': '{place} · {count}',
   'auto.band.hint': 'Tocá una carta para elegirla; otra vez, para soltarla.',
