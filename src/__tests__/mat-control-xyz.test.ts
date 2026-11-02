@@ -281,7 +281,7 @@ describe('dos jugadores: el Xyz viaja con sus materiales sólo si los dos lo sab
     room.flush()
 
     expect(reloaded.getSnapshot().mine).toEqual(before.mine)
-    expect(room.sent.map((text) => parseMessage(text)).find((message) => message?.t === 'hello' && message.sid === 'guest-2')).toMatchObject({ caps: [XYZ_MATERIALS_CAP] })
+    expect(room.sent.map((text) => parseMessage(text)).find((message) => message?.t === 'hello' && message.sid === 'guest-2')).toMatchObject({ caps: expect.arrayContaining([XYZ_MATERIALS_CAP]) })
 
     // Y sigue: Beto se lo devuelve y llega con sus materiales.
     reloaded.play({ type: 'give', id: foreignSpot(reloaded.getSnapshot().mine!)!.id })

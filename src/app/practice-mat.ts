@@ -104,8 +104,11 @@ export type MatAction =
   | { type: 'attach'; id: string; to: string; held?: true }
   | { type: 'position'; id: string; pos: MatPos }
   | { type: 'counter'; id: string; delta: number }
-  /** Una ficha en una zona de monstruo, en ataque o en defensa (las fichas guardadas antes de elegir la posición no tienen `pos` y salen en ataque). */
-  | { type: 'token'; zone: MatZone; index: number; pos?: Exclude<MatPos, 'set'> }
+  /**
+   * Una ficha en una zona de monstruo, en ataque o en defensa (las fichas guardadas antes de elegir la posición no tienen `pos` y salen en ataque). `auto` (duelo): la ficha cuyo control me dio el rival
+   * (la respuesta a su `give token-N`, `mat-control.ts`): no se deshace ni provoca otra respuesta.
+   */
+  | { type: 'token'; zone: MatZone; index: number; pos?: Exclude<MatPos, 'set'>; auto?: true }
   /**
    * Activar el efecto de una carta (queda anotado); con costo, la carta se descarta o se destierra. `effect` dice cuál efecto, por su lugar entre los efectos del texto (el orden de `getCardEffectMap`): sólo cuando la carta tiene
    * varios que la mesa sabe contar uno por uno (`countableEffects` en `mat-assistant.ts`); sin él, la activación no dice cuál efecto es.
@@ -131,7 +134,8 @@ export type MatAction =
    * Control de una carta (duelo): `give` la saca de mi mesa —del campo (los materiales van a mi cementerio) o de una pila— para que la tenga el rival, o la devuelve si era de él (su id lleva `f.`);
    * `take` pone en mi campo una carta de él (con su id `f.…`), venga de su campo, de su cementerio o de su destierro; `regain` me devuelve una carta mía que el rival tenía (al campo o a una pila). Lo que hace uno, el otro lo
    * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). `materials` (un Xyz que cambia de manos con sus materiales, sólo si los dos lados lo saben hacer): en `give`, los que se
-   * van con la carta (los demás míos, a mi cementerio); en `take` y `regain`, los que quedan debajo (`regain` a una pila: al cementerio). Sin `materials`, como siempre. Ver `mat-control.ts`.
+   * van con la carta (los demás míos, a mi cementerio); en `take` y `regain`, los que quedan debajo (`regain` a una pila: al cementerio). Sin `materials`, como siempre. Una ficha se da con `give token-N`
+   * (sólo del campo, y pierde sus contadores) y el rival la recibe con una jugada `token` suya: nunca hay `take` ni `regain` de una ficha. Ver `mat-control.ts`.
    */
   | { type: 'give'; id: string; materials?: string[]; auto?: true }
   | { type: 'take'; id: string; zone: MatTakeZone; index: number; pos: MatPos; materials?: string[]; auto?: true }
@@ -547,8 +551,8 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
       // Se da (o se le suelta al rival) una carta del campo o de una pila: el menú sólo lo ofrece en el campo, y el rival la toma de su cementerio o su
       // destierro; en un duelo automático el núcleo también la manda de la mano o del deck al campo del rival (un Kaiju de la mano, Allure Palace del deck).
-      // Un material o una ficha no.
-      if ((where?.kind !== 'spot' && where?.kind !== 'pile') || isToken(action.id)) {
+      // Un material no. Una ficha (siempre en el campo) sí: el rival pone una suya (`mat-control.ts`).
+      if (where?.kind !== 'spot' && where?.kind !== 'pile') {
         return state
       }
 
@@ -828,6 +832,8 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
     }
 
     case 'token': {
+      if (action.auto) return t('practice.step.receive', { card: t('practice.token.the') })
+
       const zone = t(action.zone === 'emz' ? 'practice.step.tokenExtraZone' : 'practice.step.tokenZone', { n: action.index + 1 })
 
       return t('practice.step.tokenSummon', { position: positionName(action.pos === 'def' ? 'def' : 'atk'), zone })
@@ -935,6 +941,8 @@ export interface AttackTarget {
 export interface ControlOffer {
   rival: string
   rivalHasRoom: boolean
+  /** El rival sabe recibir una ficha (`TOKEN_CONTROL_CAP`): sin esto, una ficha no ofrece «Dar el control» (un cliente de antes no la pondría y se perdería). */
+  tokens?: boolean
 }
 
 export interface MatMenuItem {
@@ -1162,14 +1170,16 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
     target()
 
+    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre; sin lugar, dar el de uno mío se ve apagado y dice por qué.
+    // Una Mágica o Trampa del rival que tomé se devuelve siempre (sin lugar, vuelve a su cementerio). Una ficha, sólo si el rival sabe recibirla.
+    const monster = spot === 'mz' || spot === 'emz'
+
     if (isToken(id)) {
+      if (control?.tokens) items.push({ label: t('practice.menu.giveControl', { name: control.rival }), action: { type: 'give', id }, ...(control.rivalHasRoom ? {} : { disabled: t('practice.menu.giveControlNoRoom', { name: control.rival }) }) })
       add(t('practice.menu.removeToken'), { type: 'move', id, to: 'gy' })
       return items
     }
 
-    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre; sin lugar, dar el de uno mío se ve apagado y dice por qué.
-    // Una Mágica o Trampa del rival que tomé se devuelve siempre (sin lugar, vuelve a su cementerio).
-    const monster = spot === 'mz' || spot === 'emz'
     if (control && (monster ? control.rivalHasRoom : isForeignId(id))) {
       add(t(isForeignId(id) ? 'practice.menu.returnControl' : 'practice.menu.giveControl', { name: control.rival }), { type: 'give', id })
     } else if (control && monster && !isForeignId(id)) {

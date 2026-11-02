@@ -15,7 +15,7 @@ const play = (state: MatState, ...actions: MatAction[]) => actions.reduce(matRed
 const summoned = (state: MatState, id: string, index = 0) => play(state, { type: 'place', id, zone: 'mz', index, pos: 'atk' })
 
 describe('las jugadas de control en una mesa', () => {
-  it('dar saca la carta de la mesa: del campo (y manda sus materiales al cementerio) o de una pila; no un material ni una ficha', () => {
+  it('dar saca la carta de la mesa: del campo (y manda sus materiales al cementerio) o de una pila; no un material', () => {
     const base = play(hostTable, { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'attach', id: 'card-1001-1', to: 'card-1000-1' })
     const given = matReducer(base, { type: 'give', id: 'card-1000-1' })
 
@@ -25,7 +25,8 @@ describe('las jugadas de control en una mesa', () => {
     expect(matReducer(base, { type: 'give', id: 'card-1001-1' })).toBe(base)
     const token = play(hostTable, { type: 'token', zone: 'mz', index: 1 })
 
-    expect(matReducer(token, { type: 'give', id: 'token-1' })).toBe(token)
+    // Una ficha sí (sólo del campo): sale de la mesa y el rival pone una suya (`mat-control-token.test.ts`).
+    expect(matReducer(token, { type: 'give', id: 'token-1' })).toMatchObject({ mz: [null, null, null, null, null], tokens: 1 })
     // De la mano o del deck también: en un duelo automático el núcleo manda un Kaiju de la mano (o Allure Palace del deck) al campo del rival.
     expect(matReducer(hostTable, { type: 'give', id: hostTable.hand[0]! }).hand).toEqual(hostTable.hand.slice(1))
     expect(matReducer(hostTable, { type: 'give', id: hostTable.deck[0]! }).deck).toEqual(hostTable.deck.slice(1))

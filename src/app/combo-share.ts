@@ -254,7 +254,7 @@ function action(value: unknown, nested = false): MatAction {
     case 'counter':
       return { type: 'counter', id: id(v.id), delta: int(v.delta, -999, 999) }
     case 'token':
-      return clean({ type: 'token', zone: oneOf(v.zone, ZONE), index: index(), pos: opt(v.pos, (pos) => oneOf(pos, ['atk', 'def'] as const)) })
+      return clean({ type: 'token', zone: oneOf(v.zone, ZONE), index: index(), pos: opt(v.pos, (pos) => oneOf(pos, ['atk', 'def'] as const)), auto: opt(v.auto, yes) })
     case 'activate':
       return clean({ type: 'activate', id: id(v.id), cost: opt(v.cost, (cost) => oneOf(cost, ['discard', 'banish'] as const)), effect: opt(v.effect, (effect) => int(effect, 0, 50)) })
     case 'reveal':
@@ -324,7 +324,7 @@ const FIELDS: Record<MatAction['type'], readonly string[]> = {
   attach: ['#id', '#to'],
   position: ['#id', '@pos'],
   counter: ['#id', 'delta'],
-  token: ['@zone', 'index', '@pos'],
+  token: ['@zone', 'index', '@pos', 'auto'],
   activate: ['#id', '@cost', 'effect'],
   reveal: ['#id'],
   declare: ['#id'],
