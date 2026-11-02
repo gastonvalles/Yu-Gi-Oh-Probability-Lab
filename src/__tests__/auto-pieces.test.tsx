@@ -289,7 +289,9 @@ describe('RespondBand', () => {
     expect(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' }).querySelectorAll('.text-soft')).toHaveLength(0)
     expect(within(within(group).getByRole('option', { name: 'Fallen of Albaz, Mano' })).getByText('Mano').parentElement).toHaveClass('rounded-tag', 'whitespace-nowrap')
     expect(document.activeElement).toBe(within(group).getAllByRole('option')[0])
-    expect(names(within(group).getAllByRole('button'))).toEqual(['No responder', 'Encadenar como CL3', 'Minimizar'])
+    // Las acciones, debajo de las candidatas (también en el celular): primero se ve qué se encadena.
+    expect(names(within(group).getAllByRole('button'))).toEqual(['Minimizar', 'No responder', 'Encadenar como CL3'])
+    expect(within(group).getByRole('listbox').compareDocumentPosition(within(group).getByRole('button', { name: 'No responder' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(within(group).getByRole('button', { name: 'Encadenar como CL3' })).toBeDisabled()
     // Sin `mode`, sin el selector.
     expect(within(group).queryByRole('radiogroup')).toBeNull()

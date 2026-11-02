@@ -1,4 +1,5 @@
 import type { DuelReplay } from '../../../app/duel-replay'
+import { resolveReplayNames } from '../../../app/duel-replay-share'
 import { t } from '../../../i18n'
 import { fetchCardNamesByIds } from '../../../ygoprodeck'
 import { playerName, replayResultText, titleOf } from '../duel-replay-text'
@@ -67,7 +68,16 @@ interface Plan {
   outro: { title: string; subtitle: string } | null
 }
 
-function duelPlan(replay: DuelReplay): Plan {
+/** Lo más que se esperan los nombres antes de dibujar: un pedido colgado no frena el video (lo que no llegó dice «Carta»). */
+const NAMES_WAIT_MS = 4000
+
+/** Los nombres por passcode, o un rechazo si tardan más de `NAMES_WAIT_MS`. */
+const namesSoon = (codes: number[]) =>
+  Promise.race([fetchCardNamesByIds(codes), new Promise<never>((_, reject) => setTimeout(() => reject(new Error('replay-video: names timeout')), NAMES_WAIT_MS))])
+
+/** Un duelo abierto por enlace no trae los nombres: se piden antes de dibujar (si la pantalla ya los tenía, no se pide nada); sin red o tarde, «Carta» donde falten. */
+async function duelPlan(original: DuelReplay): Promise<Plan> {
+  const replay = await resolveReplayNames(original, namesSoon)
   const title = titleOf(replay)
   return {
     scenes: replayScenes(replay, VIDEO_WIDTH),
@@ -114,7 +124,7 @@ export async function makeReplayVideo(subject: VideoSubject, options: VideoOptio
   const support = await videoSupport()
   if (!support.ok) throw new Error(`replay-video: ${support.reason}`)
 
-  const plan = subject.kind === 'duel' ? duelPlan(subject.replay) : await comboPlan(subject.combo)
+  const plan = subject.kind === 'duel' ? await duelPlan(subject.replay) : await comboPlan(subject.combo)
   signal?.throwIfAborted()
   const assets = await loadVideoAssets(plan.arts, signal)
   signal?.throwIfAborted()

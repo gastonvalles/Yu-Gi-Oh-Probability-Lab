@@ -156,36 +156,70 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
     expect(picked).toEqual([0])
   })
 
+  it('cada eslabón se dice una sola vez: bajada, la cinta (la pila, inerte y transparente); subida, la pila sin la cinta y sin «Vos» / «Rival» escrito (el color lo dice; el nombre accesible, entero)', () => {
+    pill([PONIX, { ...ASH, state: 'solving' }, { ...PONIX, number: 3, name: 'Nibiru' }], { focus: 1, resolving: true })
+    // Subida, la cinta queda `hidden` (fuera del árbol accesible): se la busca igual para ver que no se cuenta.
+    const chips = () => screen.getByRole('list', { name: 'Eslabones de la cadena, del primero al último', hidden: true })
+    const body = () => screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })
+    const shown = (number: number) => [chips(), body()].filter((list) => !list.closest('[hidden], [inert], .opacity-0')).flatMap((list) => within(list).queryAllByText(`CL${number}`))
+
+    expect(body().closest('[inert]')).toHaveClass('opacity-0')
+    expect([1, 2, 3].map((number) => shown(number).length)).toEqual([1, 1, 1])
+    fireEvent.click(grip())
+    expect(chips().closest('[hidden]')).not.toBeNull()
+    expect(body().parentElement).not.toHaveClass('opacity-0')
+    expect([1, 2, 3].map((number) => shown(number).length)).toEqual([1, 1, 1])
+    expect(within(body()).getAllByText('Nibiru')).toHaveLength(1)
+    expect(within(body()).queryByText('Rival')).toBeNull()
+    expect(within(body()).queryByText('Vos')).toBeNull()
+    expect(within(body()).getByRole('button', { name: 'Eslabón 2: Ash Blossom, del rival. Resolviendo' })).toBeInTheDocument()
+  })
+
   describe('responder o pasar desde la hoja', () => {
     const card = (key: string, name: string): PickCard => ({ key, name, art: null })
     const respond = (over: Partial<ChainRespond> = {}): ChainRespond => ({ key: 1, link: 2, cards: [card('mine:a', 'Called by the Grave')], chosen: 'mine:a', onToggle: () => {}, onChain: () => {}, onPass: () => {}, ...over })
 
-    it('con una sola carta (ya elegida) la hoja queda bajada con «No responder» y la principal a la vista: son 56 px más', () => {
+    // Qué se encadena se ve siempre: las candidatas van en la parte que queda a la vista bajada (no inerte), antes que las acciones.
+    const options = () => screen.getByRole('listbox', { name: 'Podés responder con' })
+    const before = (first: Element, second: Element) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+    it('con una sola carta, bajada muestra la cinta, la candidata ya elegida y, debajo, «No responder» y la principal (asa 24 + cinta 56 + candidatas 124 + acciones 56)', () => {
       const calls: string[] = []
 
       pill([PONIX], { respond: respond({ onChain: () => calls.push('chain'), onPass: () => calls.push('pass') }) })
       expect(grip()).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.getByTestId('chain-notice').style.translate).toContain('calc(100% - 136px')
+      expect(screen.getByTestId('chain-notice').style.translate).toContain('calc(100% - 260px')
+      const option = within(options()).getByRole('option', { name: 'Called by the Grave' })
+
+      expect(option).toHaveAttribute('aria-selected', 'true')
+      expect(options().closest('[inert], [hidden]')).toBeNull()
+      expect(before(strip(), options())).toBe(true)
+      expect(before(options(), screen.getByRole('button', { name: 'No responder' }))).toBe(true)
+      expect(before(screen.getByRole('button', { name: 'No responder' }), screen.getByRole('button', { name: 'Encadenar como CL2' }))).toBe(true)
       fireEvent.click(screen.getByRole('button', { name: 'Encadenar como CL2' }))
       fireEvent.click(screen.getByRole('button', { name: 'No responder' }))
       expect(calls).toEqual(['chain', 'pass'])
     })
 
-    it('con varias y ninguna elegida sube sola (hay que verlas) y la principal está apagada; elegir una la enciende y la hoja se queda donde está', () => {
+    it('con varias, todas a la vista y la hoja bajada (no se sube sola); la principal, apagada hasta elegir una; tocar una la elige sin mover la hoja', () => {
       const toggled: string[] = []
-      const cards = [card('mine:a', 'Called by the Grave'), card('mine:b', 'Nibiru')]
+      const cards = [card('mine:a', 'Called by the Grave'), card('mine:b', 'Nibiru'), card('mine:c', 'Ash Blossom')]
       const view = pill([PONIX], { respond: respond({ cards, chosen: null, onToggle: (key) => toggled.push(key) }) })
 
-      expect(grip()).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByRole('button', { name: 'Encadenar como CL2' })).toBeDisabled()
-      fireEvent.click(screen.getByRole('option', { name: 'Nibiru' }))
-      expect(toggled).toEqual(['mine:b'])
-      view.rerender([PONIX], respond({ cards, chosen: 'mine:b', onToggle: (key) => toggled.push(key) }))
-      expect(screen.getByRole('button', { name: 'Encadenar como CL2' })).toBeEnabled()
-      expect(grip()).toHaveAttribute('aria-expanded', 'true')
-      // Otra decisión con una sola carta: vuelve a quedar bajada.
-      view.rerender([PONIX], respond({ key: 2 }))
       expect(grip()).toHaveAttribute('aria-expanded', 'false')
+      expect(within(options()).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['Called by the Grave', 'Nibiru', 'Ash Blossom'])
+      expect(within(options()).getAllByRole('option').every((option) => option.getAttribute('aria-selected') === 'false')).toBe(true)
+      expect(screen.getByRole('button', { name: 'Encadenar como CL2' })).toBeDisabled()
+      fireEvent.click(within(options()).getByRole('option', { name: 'Nibiru' }))
+      expect(toggled).toEqual(['mine:b'])
+      expect(grip()).toHaveAttribute('aria-expanded', 'false')
+      view.rerender([PONIX], respond({ cards, chosen: 'mine:b', onToggle: (key) => toggled.push(key) }))
+      expect(within(options()).getByRole('option', { name: 'Nibiru' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('button', { name: 'Encadenar como CL2' })).toBeEnabled()
+      // Subida, las mismas candidatas y las acciones debajo (y la pila entera, más abajo).
+      fireEvent.click(grip())
+      expect(grip()).toHaveAttribute('aria-expanded', 'true')
+      expect(before(options(), screen.getByRole('button', { name: 'Encadenar como CL2' }))).toBe(true)
     })
   })
 })

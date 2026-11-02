@@ -28,9 +28,9 @@ export const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
 
 /**
  * Las filas de la pila de la cadena, en el orden en que se resuelven (el último eslabón arriba): número en el color de su dueño, arte, nombre, de quién y su estado. Cada una es un botón de 44 px o más con su
- * nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»); el que se resuelve lleva el aro ámbar. La usan la pila de escritorio (`ChainNotice`) y el detalle de la hoja del celular (`ChainSheet`).
+ * nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»); el que se resuelve lleva el aro ámbar. Sin `who`, el dueño sólo por el color de su número (la hoja del celular: nada dicho dos veces). La usan la pila de escritorio (`ChainNotice`) y el detalle de la hoja del celular (`ChainSheet`).
  */
-export function ChainListRows({ rows, onPick }: { rows: readonly ChainNoticeRow[]; onPick: (index: number, rect: DOMRect) => void }) {
+export function ChainListRows({ rows, onPick, who = true }: { rows: readonly ChainNoticeRow[]; onPick: (index: number, rect: DOMRect) => void; who?: boolean }) {
   return [...rows].reverse().map((link, at) => {
     const color = colorOf(link.mine)
     const label = t(link.mine ? 'auto.chain.linkMine' : 'auto.chain.linkTheirs', { number: link.number, card: link.name, state: stateLabel(link) })
@@ -49,7 +49,7 @@ export function ChainListRows({ rows, onPick }: { rows: readonly ChainNoticeRow[
           </span>
           <span className="grid min-w-0 flex-1 leading-tight">
             <span className={cx('truncate text-body font-semibold', link.state === 'solving' ? 'text-info' : 'text-foreground', link.state === 'negated' && 'line-through')}>{link.name}</span>
-            <span className={cx('truncate text-micro font-semibold', color.text)}>{link.who}</span>
+            {who ? <span className={cx('truncate text-micro font-semibold', color.text)}>{link.who}</span> : null}
           </span>
           <Badge tone={STATE_TONE[link.state]} size="sm" className="shrink-0">
             {stateLabel(link)}
