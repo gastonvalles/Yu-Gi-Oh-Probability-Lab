@@ -176,7 +176,10 @@ export function DuelReplayScreen({ replay, onClose, shared, actions }: DuelRepla
         <div className="sticky bottom-0 z-10 -mx-2 grid gap-2 bg-background px-2 pb-2 pt-1 min-[1101px]:-mx-4 min-[1101px]:px-4">
           <p data-testid="replay-step" className="m-0 min-h-11 px-1 text-body text-foreground" aria-live={playing ? 'off' : 'polite'}>
             <span className="block truncate text-micro font-semibold text-muted tabular-nums">{cursor === 0 ? t('meta.duels.start') : result ? `${t('meta.duels.step', { n: cursor, total })} · ${result}` : t('meta.duels.step', { n: cursor, total })}</span>
-            {cursor > 0 ? <span className="line-clamp-2">{describe(cursor)}</span> : null}
+            {/* Siempre dos renglones de alto: ni los nombres que llegan después de abrir un enlace ni una jugada más larga mueven los botones. */}
+            <span data-testid="replay-step-text" className="line-clamp-2 min-h-[2lh]">
+              {cursor > 0 ? describe(cursor) : null}
+            </span>
           </p>
           <ReplayTransport
             total={total}

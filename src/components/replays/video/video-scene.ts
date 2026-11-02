@@ -1,5 +1,6 @@
 import { duelReplayAt, walkReplay, type DuelReplay, type ReplayFrame, type ReplaySide } from '../../../app/duel-replay'
 import { cardImageSrc } from '../../../app/card-image-source'
+import { replayCodes } from '../../../app/duel-replay-share'
 import { matEffects, type MatEffects, type ShowcaseKind, type SpotlightKind } from '../../../app/mat-effects'
 import { describeStep } from '../../../app/mat-step-info'
 import { KIND_KEY, ORIGIN_KEY, routeOf } from '../../../app/mat-step-text'
@@ -405,9 +406,9 @@ export function sceneAt(replay: DuelReplay, frame: ReplayFrame, cursor: number, 
 
 export const VIDEO_FOOTER = () => 'YGOUltraLab'
 
-/** Las imágenes que puede pedir el video: el arte de cada carta que aparece (por su passcode) y el de la ficha. Se cargan antes de dibujar el primer cuadro. */
-export const artUrls = (replay: Pick<DuelReplay, 'cards'>) =>
-  [...Object.keys(replay.cards).map((code) => `card-${code}-1`), 'token-0'].flatMap((id) => {
+/** Las imágenes que puede pedir el video: el arte de cada carta que aparece (por su passcode: un enlace no trae los nombres) y el de la ficha. Se cargan antes del primer cuadro. */
+export const artUrls = (replay: DuelReplay) =>
+  [...replayCodes(replay).map((code) => `card-${code}-1`), 'token-0'].flatMap((id) => {
     const url = artOfDrawId(id)
     return url ? [cardImageSrc(url, 128)] : []
   })
