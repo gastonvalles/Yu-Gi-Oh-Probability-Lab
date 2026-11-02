@@ -1,30 +1,13 @@
 import { useId } from 'react'
 
-import type { ChainRowState } from '../../app/auto/chain-feed'
 import { t } from '../../i18n'
-import { CardArt } from '../CardArt'
-import { PLAYER_COLOR } from '../duel/player-color'
-import { Badge } from '../ui/Badge'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
-import { listItem, listItemSelected } from '../ui/surfaces'
-import type { Tone } from '../ui/tone'
+import { ChainListRows, colorOf, stateLabel, type ChainNoticeRow } from './chain-parts'
+import { ChainSheet, type ChainRespond } from './ChainSheet'
 
-/** Un eslabón como lo muestra la pila: su número, de quién es y la carta. */
-export interface ChainNoticeRow {
-  /** 1 = CL1. */
-  number: number
-  /** «Vos» o el nombre del rival. */
-  who: string
-  /** Es tuyo: da el color del dueño (el de sus vidas, `PLAYER_COLOR`). */
-  mine: boolean
-  name: string
-  art: string | null
-  state: ChainRowState
-  /** Negado o sin efecto: el eslabón que lo hizo (1 = CL1), si se sabe; el estado lo dice («Sin efecto · por CL2»). */
-  by?: number
-}
+export type { ChainNoticeRow }
 
 interface ChainNoticeProps {
   /** Del CL1 en adelante (la lista los muestra al revés: en el orden en que se resuelven). */
@@ -34,16 +17,16 @@ interface ChainNoticeProps {
   /** Ya empezó a resolverse: en el celular, la píldora dice cuál resuelve («Resuelve CL2»). */
   resolving: boolean
   open: boolean
-  /** El celular (menos de 1101 px): «Cadena · 2 · Resuelve CL2» arriba (ver abajo). */
+  /** El celular (menos de 1101 px): la hoja de abajo, `ChainSheet`. */
   compact?: boolean
   onOpenChange: (open: boolean) => void
   /** Se tocó un eslabón (índice en `rows`, y dónde está la fila): quien la usa lo muestra en el detalle o, sin detalle, grande. */
   onPick: (index: number, rect: DOMRect) => void
+  /** Sólo en el celular: lo que se puede decidir en la cadena (responder o pasar); la hoja lo lleva. */
+  respond?: ChainRespond | undefined
+  /** Sólo en el celular, en el catálogo: la hoja dentro de su marco y no sobre la página. */
+  inline?: boolean
 }
-
-const STATE_TONE: Record<ChainRowState, Tone> = { chained: 'neutral', solving: 'info', solved: 'success', negated: 'danger', disabled: 'warning' }
-const stateLabel = ({ state, by }: Pick<ChainNoticeRow, 'state' | 'by'>) => (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
-const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
 
 /**
  * La pila de la cadena (duelo automático: «Jugar solo» y el duelo por enlace). La pone la mesa en `duel.chain`, centrada arriba de su columna, debajo de la barra.
@@ -53,7 +36,7 @@ const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
  *   píldora (`data-squeezed` en la capa, `group/chain`) hasta que se conteste.
  * - **Plegada** (la píldora): «Cadena · CL2 · Rival» (el eslabón del que habla y su dueño, en su color; la cuenta, sólo si no es ese número) y debajo, en ámbar, qué le pasa,
  *   corto y sin nombres («En espera», «Sin efecto · por CL2»: la carta la marca su insignia en la mesa), y la flecha que la despliega (44 px, `aria-expanded`).
- * - **En el celular** (`compact`), plegada: «Cadena · 2 · Resuelve CL2» arriba mientras se resuelve (el eslabón en el color de su dueño).
+ * - **En el celular** (`compact`) no es nada de esto: es `ChainSheet`, una hoja de abajo que se arrastra (una cinta de chips y, subida, la pila); la píldora y la pila desplegada son de escritorio.
  * - **El color del dueño** (violeta claro lo tuyo, ámbar lo del rival: el de las vidas, `PLAYER_COLOR`) va en la etiqueta del número, rellena, y en el «de quién». No se confunde
  *   con el ámbar de lo que se resuelve, que es un **aro** alrededor de toda la fila (`listItemSelected`, como el brillo de las cartas): forma distinta, mismo significado de siempre.
  * - **Tocar un eslabón** (`onPick`) lo muestra para leerlo: cada fila es un botón de 44 px o más con su nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»).
@@ -62,11 +45,13 @@ const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
  * - Hacer: dejar pasar los toques fuera del cartel (la caja de la mesa va con `pointer-events-none`); tocarla no salta la mesa al final (`skipAhead` la saltea).
  *   No hacer: taparla con otra cosa, moverla de lugar ni ponerle velo.
  */
-export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onPick }: ChainNoticeProps) {
+export function ChainNotice({ rows, focus, resolving, open, compact = false, onOpenChange, onPick, respond, inline = false }: ChainNoticeProps) {
   const listId = useId()
   const row = rows[focus] ?? rows[rows.length - 1]
 
   if (!row) return null
+  // El celular: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
+  if (compact) return <ChainSheet rows={rows} focus={focus} resolving={resolving} onPick={onPick} respond={respond} inline={inline} />
   // El celular, al resolverse: el eslabón que se está resolviendo (el que niega a otro sigue «Resolviendo» mientras lo niega); entre uno y otro, el último que cambió.
   const solver = rows.find((link) => link.state === 'solving') ?? row
   const clOf = (number: number) => (
@@ -109,33 +94,7 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
         </div>
         {open ? (
           <ol id={listId} data-chain-list="" aria-label={t('auto.chain.list')} className="m-0 grid max-h-[min(18rem,40dvh)] list-none content-start gap-1 overflow-y-auto overscroll-contain border-t border-border-subtle p-1.5 group-data-squeezed/chain:hidden">
-            {[...rows].reverse().map((link, at) => {
-              const color = colorOf(link.mine)
-              const label = t(link.mine ? 'auto.chain.linkMine' : 'auto.chain.linkTheirs', { number: link.number, card: link.name, state: stateLabel(link) })
-
-              return (
-                <li key={link.number} aria-current={link.state === 'solving' ? 'step' : undefined}>
-                  <button
-                    type="button"
-                    aria-label={label}
-                    className={cx(listItem, 'flex min-h-11 w-full items-center gap-2.5 p-1.5 text-left focus-visible:outline-none focus-visible:shadow-focus', link.state === 'solving' && listItemSelected)}
-                    onClick={(event) => onPick(rows.length - 1 - at, event.currentTarget.getBoundingClientRect())}
-                  >
-                    <span className={cx('w-9 shrink-0 rounded-tag border py-0.5 text-center text-micro font-bold tabular-nums text-white', color.border, color.bubble)}>{`CL${link.number}`}</span>
-                    <span className="relative block aspect-[421/614] w-8 shrink-0 overflow-hidden bg-input">
-                      <CardArt remoteUrl={link.art} name={link.name} className={cx('block h-full w-full object-cover', (link.state === 'solved' || link.state === 'negated') && 'opacity-60')} />
-                    </span>
-                    <span className="grid min-w-0 flex-1 leading-tight">
-                      <span className={cx('truncate text-body font-semibold', link.state === 'solving' ? 'text-info' : 'text-foreground', link.state === 'negated' && 'line-through')}>{link.name}</span>
-                      <span className={cx('truncate text-micro font-semibold', color.text)}>{link.who}</span>
-                    </span>
-                    <Badge tone={STATE_TONE[link.state]} size="sm" className="shrink-0">
-                      {stateLabel(link)}
-                    </Badge>
-                  </button>
-                </li>
-              )
-            })}
+            <ChainListRows rows={rows} onPick={onPick} />
           </ol>
         ) : null}
       </div>

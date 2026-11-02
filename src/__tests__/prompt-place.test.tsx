@@ -138,8 +138,8 @@ describe('la pregunta del medio, en su lugar fijo', () => {
   })
 })
 
-describe('la pregunta con la pila de la cadena (celular)', () => {
-  it('la pila sube y su lista se acorta a lo que queda arriba de la pregunta; con una pregunta más alta queda en su resumen; nunca se achica la pregunta; un solo recálculo de la mesa', () => {
+describe('la pregunta con la hoja de la cadena (celular)', () => {
+  it('la hoja de la cadena va abajo y no mueve nada de la mesa: la capa de arriba queda vacía, la pregunta sigue entera en su lugar y no hace falta recalcular más de una vez', () => {
     const fake = fakeSession()
 
     renderAuto(fake)
@@ -149,22 +149,24 @@ describe('la pregunta con la pila de la cadena (celular)', () => {
     layouts = 0
     core(() => fake.ask(YESNO))
 
-    // La pregunta de 100 empieza en 280; la pila sube 48 y su lista de 400 se acorta a 280 − 8 − (212 − 48).
-    expect(chain()!.style.translate).toBe('0 -48px')
-    expect(list()!.style.maxHeight).toBe('108px')
+    // La hoja va en su propio portal, abajo: la capa de arriba no lleva nada que subir ni que acortar.
+    expect(screen.getByTestId('chain-notice')).not.toBeNull()
+    expect(chain()!.contains(screen.getByTestId('chain-notice'))).toBe(false)
+    expect(chain()!.style.translate).toBe('')
+    expect(list()).toBeNull()
     expect(chain()!.dataset.squeezed).toBeUndefined()
     expect(layer()!.style.bottom).toBe('464px')
-    // Un solo recálculo: lo que dejó la vez anterior en la pila se borra junto antes de medir.
+    // Un solo recálculo: lo que dejó la vez anterior en la cinta se borra junto antes de medir.
     expect(layouts).toBeLessThanOrEqual(1)
 
-    // Una pregunta de 250 empieza en 130: no entra ni un eslabón y la pila queda en su resumen; la pregunta sigue entera, en su lugar.
+    // Una pregunta más alta: la hoja sigue a la vista y la pregunta, entera, en su lugar.
     promptHeight = 250
     window.dispatchEvent(new Event('resize'))
     act(() => vi.advanceTimersByTime(20))
-    expect(chain()!.dataset.squeezed).toBe('')
+    expect(chain()!.dataset.squeezed).toBeUndefined()
     expect(layer()!.style.bottom).toBe('464px')
 
-    // Minimizada, la pila vuelve a estar entera en su lugar.
+    // Minimizada, nada cambia de lugar.
     fireEvent.click(within(layer()!).getByRole('button', { name: 'Minimizar' }))
     window.dispatchEvent(new Event('resize'))
     act(() => vi.advanceTimersByTime(20))

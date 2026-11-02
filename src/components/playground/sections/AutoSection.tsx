@@ -14,6 +14,7 @@ import { AutoBar, AutoDock, chainModeOptions, type AutoChainMode, type AutoPlace
 import { BotLog, BotLogSheet, botTurns } from '../../auto/BotLog'
 import { CardPicker, PickBand, pickPlace, type PickCard } from '../../auto/CardPicker'
 import { ChainNotice } from '../../auto/ChainNotice'
+import type { ChainRespond } from '../../auto/ChainSheet'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
@@ -551,9 +552,9 @@ function ForcedSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
 /** Responder a una cadena (lámina 13) debajo de la pila de la cadena, como en la mesa (`use-auto-asks.tsx`): las candidatas con su lugar y el modo de respuesta (en escritorio). */
 function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
   const cards: PickCard[] = [
-    { key: 'ponix', name: PONIX.name, art: PONIX.art, place: t('practice.mat.field') },
-    { key: 'albaz', name: 'Fallen of Albaz', art: art(68468459), place: t('practice.place.gy') },
-    { key: 'veiler', name: 'Effect Veiler', art: art(97268402), place: t('practice.place.hand') },
+    { key: 'ponix', name: PONIX.name, art: PONIX.art, ...pickPlace('field', false) },
+    { key: 'albaz', name: 'Fallen of Albaz', art: art(68468459), ...pickPlace('gy', false) },
+    { key: 'veiler', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) },
   ]
   const [shown, setShown] = useState(true)
   const [chosen, setChosen] = useState<string | null>(null)
@@ -570,7 +571,7 @@ function RespondSample({ onAnswer }: { onAnswer: (answer: string) => void }) {
     <Specimen
       title="Responder a una cadena"
       layout="column"
-      note={<>Una cadena que se puede pasar. La pila de la cadena, arriba, abre desplegada y dice a qué eslabón respondés (número, dueño, carta y estado); la banda, debajo, abre entera y dice sólo qué se decide («Responder a la cadena»): cada dato una vez. Las candidatas con la pestaña de dónde están (tocar una la elige, con el marco celeste; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL2» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). Nada se minimiza ni se esconde solo: la flecha de la banda la reduce a un asa («Responder a la cadena ▲», Escape es «No responder») y la de la pila, a su píldora. Tocar la carta que brilla en la mesa sigue valiendo. Archivos: <Tag>auto/RespondBand.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>}
+      note={<>Una cadena que se puede pasar. La pila de la cadena, arriba, abre desplegada y dice a qué eslabón respondés (número, dueño, carta y estado); la banda, debajo, abre entera y dice sólo qué se decide («Responder a la cadena»): cada dato una vez. Las candidatas con la pestaña de dónde están (tocar una la elige, con el marco celeste; con una sola, ya viene elegida); «No responder» sin caja y «Encadenar como CL2» al final. En escritorio, el modo de respuesta arriba a la derecha (en el celular, en «Más opciones»). Nada se minimiza ni se esconde solo: la flecha de la banda la reduce a un asa («Responder a la cadena ▲», Escape es «No responder») y la de la pila, a su píldora. Tocar la carta que brilla en la mesa sigue valiendo. En el celular (menos de 1101 px) el título no se ve (queda para el lector de pantalla: la cinta de la cadena, arriba, ya dice a qué eslabón respondés) y «No responder» y la principal suben a la fila de arriba, junto a la flecha; abajo quedan sólo las cartas, cada una con el ícono de dónde está. Archivos: <Tag>auto/RespondBand.tsx</Tag>, <Tag>duel/MatPrompt.tsx</Tag></>}
     >
       <div className="relative isolate h-128 overflow-hidden rounded-card border border-border-subtle">
         <MatScene className="absolute inset-0 -z-10" />
@@ -978,14 +979,25 @@ function ChainSample() {
   const [picked, setPicked] = useState<number | null>(null)
   const [phone, setPhone] = useState(true)
   const [squeezed, setSqueezed] = useState(false)
+  const [decision, setDecision] = useState<'none' | 'one' | 'several'>('none')
+  const [chosen, setChosen] = useState<string | null>(null)
   const frame = CHAIN_FRAMES[count - 1]!
+  const decisionCards: PickCard[] = [
+    { key: 'veiler', name: 'Effect Veiler', art: art(97268402), ...pickPlace('hand', false) },
+    { key: 'albaz', name: 'Fallen of Albaz', art: art(68468459), ...pickPlace('gy', false) },
+    { key: 'ponix', name: PONIX.name, art: PONIX.art, ...pickPlace('field', false) },
+  ].slice(0, decision === 'one' ? 1 : 3)
+  const respond: ChainRespond | undefined =
+    decision === 'none'
+      ? undefined
+      : { key: decision === 'one' ? 1 : 2, link: frame.states.length + 1, cards: decisionCards, chosen: decision === 'one' ? 'veiler' : chosen, onToggle: setChosen, onChain: () => setDecision('none'), onPass: () => setDecision('none') }
 
   return (
     <Specimen
       title="ChainNotice · la pila de la cadena"
       layout="column"
       className="col-span-full"
-      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): cada cadena abre desplegada (sólo la pliega la persona), en un solo cartel: el título («Cadena · 3») y debajo, tras una línea fina, la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Plegada, la píldora resume el eslabón del que habla («Cadena · CL3 · Vos»; la cuenta, sólo si no es ese número) y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo el cartel recibe toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) plegada dice «Cadena · 3 · Resuelve CL2» mientras se resuelve; con una pregunta abierta debajo, la mesa acorta la lista a lo que queda (<Tag>data-chain-list</Tag>, se desplaza) y, sin lugar ni para un eslabón, queda el resumen de la píldora mientras se pregunta (<Tag>data-squeezed</Tag>): la píldora no se esconde. Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
+      note={<>Arriba de la mesa, centrado debajo de la barra (<Tag>duel.chain</Tag>): cada cadena abre desplegada (sólo la pliega la persona), en un solo cartel: el título («Cadena · 3») y debajo, tras una línea fina, la pila en el orden en que se resuelve (el último primero), con su estado; el que se resuelve lleva el aro ámbar. Plegada, la píldora resume el eslabón del que habla («Cadena · CL3 · Vos»; la cuenta, sólo si no es ese número) y, debajo en ámbar, qué le pasa, corto y sin nombres («En espera», «Negada · por CL3»): la carta la marca su insignia en la mesa. Cada eslabón lleva el color de su dueño (el de las vidas: violeta claro vos, ámbar el rival) en su número relleno y en «de quién», y se toca para leerlo (negado, dice por cuál: «Negada · por CL3», cuando el núcleo deja saberlo): en la mesa, su carta va al detalle fijo con la frase de su efecto resaltada (sin detalle, grande). Sólo el cartel recibe toques. En el celular (<Tag>compact</Tag>, menos de 1101 px) es otra cosa, <Tag>ChainSheet</Tag>: una hoja de abajo con dos alturas que se arrastran (o se tocan por su asa). Bajada es una cinta con un chip por eslabón, del primero al último (su número en el color de su dueño, el arte y cómo va: el aro ámbar el que se resuelve, un tilde el resuelto, una cruz con «CL2» el negado; «Nuevo» un momento el que se suma, que entra desde la derecha) y, si hay algo que decidir, «No responder» y la principal; no tapa el campo. Subida muestra la pila entera, en el orden en que se resuelve, y las candidatas: se sube sola sólo si hay que elegir entre varias. Va sobre la línea de estado de la mesa, así que «Cancelar» y «Listo» no quedan tapados. Probala con «Ver en el celular» y los botones de «Responder». Archivo: <Tag>auto/ChainNotice.tsx</Tag></>}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" disabled={count >= CHAIN_FRAMES.length} onClick={() => setCount((value) => Math.min(CHAIN_FRAMES.length, value + 1))}>
@@ -1001,6 +1013,12 @@ function ChainSample() {
         <Button variant="tertiary" size="sm" aria-pressed={squeezed} onClick={() => setSqueezed((value) => !value)}>
           Simular una pregunta sin lugar
         </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={decision === 'one'} onClick={() => setDecision((value) => (value === 'one' ? 'none' : 'one'))}>
+          Responder con una carta
+        </Button>
+        <Button variant="tertiary" size="sm" aria-pressed={decision === 'several'} onClick={() => (setChosen(null), setDecision((value) => (value === 'several' ? 'none' : 'several')))}>
+          Responder con tres
+        </Button>
         {picked ? <Tag>{`Tocaste el CL${picked}: en la mesa se lee en el detalle`}</Tag> : null}
       </div>
       <div {...(squeezed ? { 'data-squeezed': '' } : {})} className="group/chain relative isolate flex min-h-80 justify-center overflow-hidden rounded-card border border-border-subtle p-3">
@@ -1013,6 +1031,8 @@ function ChainSample() {
           compact={phone}
           onOpenChange={setOpen}
           onPick={(index) => setPicked(index + 1)}
+          respond={phone ? respond : undefined}
+          inline
         />
       </div>
     </Specimen>
