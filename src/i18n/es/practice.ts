@@ -325,6 +325,8 @@ export const practice = {
   'practice.panel.noCombos': 'No hay combos guardados',
   'practice.panel.noCombosHint': 'Jugá una línea en la mesa y tocá “Guardar combo”: después la reproducís paso a paso desde acá.',
   'practice.panel.saved': 'Combos guardados',
+  'practice.panel.groupBase': 'Línea base',
+  'practice.panel.groupHandtrap': 'Con handtrap',
   'practice.panel.comboPlays': { one: '{count} jugada', other: '{count} jugadas' },
   'practice.panel.comboMeta': '{deck} · {plays} · {date}',
   'practice.panel.comboStarts': 'Arranca con',

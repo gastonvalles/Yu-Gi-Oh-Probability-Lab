@@ -307,6 +307,8 @@ export const practice: Translated<typeof es> = {
   'practice.panel.noCombos': 'No saved combos',
   'practice.panel.noCombosHint': 'Play a line on the mat and tap “Save combo”: then replay it step by step from here.',
   'practice.panel.saved': 'Saved combos',
+  'practice.panel.groupBase': 'Baseline',
+  'practice.panel.groupHandtrap': 'With handtrap',
   'practice.panel.comboPlays': { one: '{count} play', other: '{count} plays' },
   'practice.panel.comboMeta': '{deck} · {plays} · {date}',
   'practice.panel.comboStarts': 'Starts with',
