@@ -18,6 +18,10 @@ import { allMatIds, FOREIGN_PREFIX, isForeignId, isFreeTakeZone, isTakeZone, isT
  * cementerio), para que ninguna carta quede en una mesa que no la puede devolver (si el dueño no tiene lugar, el Xyz y sus materiales van a su cementerio). Lo decide la jugada, no la sesión: el espejo, el
  * espectador y un replay la aplican igual. Sin la lista (un lado de antes, o un Xyz sin material), los materiales van al cementerio de quien da, como siempre; un material ajeno que sale del campo vuelve a su dueño.
  *
+ * Una ficha no tiene id que viaje (cada mesa cuenta las suyas, `token-N`), y es indistinguible: quien la da juega `give token-N` (sale de su campo, sin contadores) y el otro pone una ficha suya
+ * (`token` con `auto`) en su primera zona de monstruo libre, en la misma posición; devolverla es lo mismo al revés. Sólo se da si el rival lo sabe hacer (`TOKEN_CONTROL_CAP`): un lado de antes no la
+ * pondría. Si igual llega sin lugar, la ficha deja de existir (como al salir del campo).
+ *
  * Las jugadas de respuesta llevan `auto`: no provocan otra respuesta (si no, dos mesas se contestarían para siempre). Todo es puro; la sesión (`duel-session.ts`) las juega.
  */
 
@@ -44,6 +48,9 @@ export const firstFreeMonsterZone = (state: MatState) => firstFreeZone(state, 'm
 
 /** Las jugadas que cambian de manos una carta: no se pueden deshacer (la otra mesa ya las completó). */
 export const CONTROL_ACTIONS: ReadonlySet<MatAction['type']> = new Set(['give', 'take', 'regain'])
+
+/** Una jugada de control: las de `CONTROL_ACTIONS` y la ficha que aparece porque el rival me dio la suya (`token` con `auto`). */
+export const isControlAction = (action: MatAction) => CONTROL_ACTIONS.has(action.type) || (action.type === 'token' && action.auto === true)
 
 /** Una carta en el campo con la zona en la que la tomaría el otro (la Extra Monster Zone cuenta como zona de monstruo), o null. */
 function fieldCard(state: MatState, id: string): { zone: MatTakeZone; placed: Placed } | null {
@@ -128,6 +135,9 @@ function pendulumLeftField(before: MatState, id: string, real: string, kindOf: C
 /** La capacidad que anuncia el `hello` de quien sabe pasar un Xyz con sus materiales (ver la cabecera). */
 export const XYZ_MATERIALS_CAP = 'xyz-materials'
 
+/** La capacidad que anuncia el `hello` de quien sabe recibir una ficha (ver la cabecera). */
+export const TOKEN_CONTROL_CAP = 'token-control'
+
 /** Un id como lo dice el rival (su carta, o una mía con `f.`), con el id de mi mesa: la suya con `f.`, la mía con su id real (o nada, si no la conozco). */
 function inMine(ids: readonly string[], ownIds: ControlContext['ownIds']): string[] {
   return ids.flatMap((id) => (isForeignId(id) ? (ownIds[opaqueOfForeign(id)] ?? []) : [foreignOf(id)]))
@@ -173,8 +183,16 @@ export function controlReactions({ mine, ownIds, before, after, action, kindOf }
   // Los materiales que viajan con la carta (con los ids del rival): no vuelven sueltos a mí.
   let traveling: readonly string[] = []
 
-  // El rival me da una carta suya: la tomo en la primera zona libre de su tipo, con sus materiales; sin lugar, se la devuelvo (ella vuelve a su cementerio y lo mío que tenía debajo, al mío).
-  if (action.type === 'give' && !isForeignId(action.id)) {
+  // El rival me da una ficha (suya o la que le di): pongo una mía en mi primera zona de monstruo libre, en su posición. Sin lugar, la ficha deja de existir (no hay a quién devolverla).
+  if (action.type === 'give' && isToken(action.id)) {
+    const given = fieldCard(before, action.id)
+    const index = firstFreeMonsterZone(mine)
+
+    if (given && !fieldCard(after, action.id) && index !== null) {
+      reactions.push({ type: 'token', zone: 'mz', index, pos: given.placed.pos === 'def' ? 'def' : 'atk', auto: true })
+    }
+  } else if (action.type === 'give' && !isForeignId(action.id)) {
+    // El rival me da una carta suya: la tomo en la primera zona libre de su tipo, con sus materiales; sin lugar, se la devuelvo (ella vuelve a su cementerio y lo mío que tenía debajo, al mío).
     const given = fieldCard(before, action.id)
 
     if (given && !fieldCard(after, action.id)) {

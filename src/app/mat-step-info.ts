@@ -141,7 +141,7 @@ function kindByAction(action: MatAction): StepKind | null {
     case 'shuffle':
       return 'shuffle'
     case 'token':
-      return 'token'
+      return action.auto ? 'control' : 'token'
     case 'counter':
       return 'counter'
     case 'give':

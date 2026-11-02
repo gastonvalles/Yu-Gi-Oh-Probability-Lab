@@ -6,9 +6,9 @@ import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, type Activity, PROTOCOL_VERSION,
 import { duelTurnNumber, whoseTurn } from './duel-turn'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { isEmojiSignal } from './duel-signals'
-import { CONTROL_ACTIONS, carryMaterials, controlReactions, XYZ_MATERIALS_CAP } from './mat-control'
+import { carryMaterials, controlReactions, isControlAction, TOKEN_CONTROL_CAP, XYZ_MATERIALS_CAP } from './mat-control'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender, type WireAct } from './mat-public'
-import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatCardKind, type MatPhase, type MatPile, type MatState } from './practice-mat'
+import { allMatIds, isToken, locateCard, matReducer, replayMat, type MatAction, type MatCardKind, type MatPhase, type MatPile, type MatState } from './practice-mat'
 
 /**
  * Un duelo por enlace, del lado de uno de los dos jugadores: mi mesa (la real), la del rival (un espejo
@@ -92,6 +92,8 @@ export interface DuelSnapshot {
   emoteReadyAt: number
   /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
   watchers: number
+  /** Lo que el rival anunció en su saludo que sabe hacer (`hello.caps`; vacío con una página de antes): la mesa ofrece dar una ficha sólo con `TOKEN_CONTROL_CAP`. */
+  peerCaps: readonly string[]
   /**
    * Deshacer vuelve atrás la última jugada de la mesa, sea de quien sea, y antes se le pide permiso al rival: `asking`, pedí deshacerla y espero la respuesta; `asked`, el rival pide deshacerla y tengo que contestar;
    * `result`, cómo terminó mi último pedido si no se permitió (`n` cuenta los resultados, para avisar una sola vez cada uno); `available`, hay una jugada que deshacer (la última de los dos).
@@ -364,7 +366,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing, order: playOrder(), record })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, peerCaps, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing, order: playOrder(), record })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -468,7 +470,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     if (!stranger) transport.send(encodeMessage(message))
   }
 
-  const sendHello = () => send({ t: 'hello', v: PROTOCOL_VERSION, sid, role, name, ...(role === 'host' ? { settings } : {}), caps: [XYZ_MATERIALS_CAP] })
+  const sendHello = () => send({ t: 'hello', v: PROTOCOL_VERSION, sid, role, name, ...(role === 'host' ? { settings } : {}), caps: [XYZ_MATERIALS_CAP, TOKEN_CONTROL_CAP] })
 
   /**
    * Dónde está una carta del rival (su casilla o su pila) o qué tiene una de sus pilas, para saber si lo marcado sigue como estaba. Una marca es de ESA carta
@@ -829,7 +831,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const lastIsControl = (who: Mover = 'me') => {
     const last = who === 'me' ? actions.at(-1) : theirs?.acts.at(-1)
 
-    return last !== undefined && CONTROL_ACTIONS.has(last.type)
+    return last !== undefined && isControlAction(last)
   }
 
   /** De quién es la última jugada de la mesa y se puede pedir deshacer; null si no hay ninguna (o la del rival, con él fuera de la sala: no hay a quién pedírsela). */
@@ -1450,7 +1452,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     },
 
     play(action) {
-      if (!mine || !sender) {
+      // Una ficha se da sólo si el rival sabe recibirla (si no, se perdería: el menú tampoco lo ofrece).
+      if (!mine || !sender || (action.type === 'give' && isToken(action.id) && !peerCaps.includes(TOKEN_CONTROL_CAP))) {
         return
       }
 

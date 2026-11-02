@@ -22,7 +22,7 @@ import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { matEffects, type SpotlightKind } from '../../app/mat-effects'
-import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, type TakenKind } from '../../app/mat-control'
+import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, TOKEN_CONTROL_CAP, type TakenKind } from '../../app/mat-control'
 import type { ManualGame } from '../../app/auto/manual-handover'
 import { cardKindOf, createMatState, isForeignId, isToken, randomSeed, replayMat, shuffleWithSeed, type MatPile, type MatState } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
@@ -1862,7 +1862,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       undoPending: snapshot.undo.asking,
       undoAvailable: snapshot.undo.available,
       undoBlocked: snapshot.undo.blocked,
-      control: { rival: rivalName, rivalHasRoom: firstFreeMonsterZone(theirs!.state) !== null },
+      control: { rival: rivalName, rivalHasRoom: firstFreeMonsterZone(theirs!.state) !== null, tokens: snapshot.peerCaps.includes(TOKEN_CONTROL_CAP) },
       turnNumber: duelTurnNumber(mine, theirs!.state),
       rivalEmz: theirs!.state.emz.map(Boolean),
       foreignKnown: theirs!.known,
