@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
+import type { AskWhyView } from '../../app/auto/ask-why'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { AskWhy } from '../duel/AskWhy'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
@@ -18,6 +20,8 @@ interface CounterSheetProps {
   need: number
   /** Cuántos se sacan de cada carta, en el orden de `cards`. */
   onPick: (counts: number[]) => void
+  /** De qué carta es y si es su costo o su efecto (`AskWhy`), arriba del título. */
+  why?: AskWhyView | null
 }
 
 /**
@@ -25,8 +29,9 @@ interface CounterSheetProps {
  * sacar (lo que tiene, y nunca más del total). La fila con alguno lleva el aro de lo elegido. «Sacar contadores» se enciende con el total justo. Hay que contestar: no se cierra con Escape ni tocando
  * afuera (se minimiza sin contestar). Va dentro de un `Presence` (así sale al contestarse).
  */
-export function CounterSheet({ cards, need, onPick }: CounterSheetProps) {
+export function CounterSheet({ cards, need, onPick, why }: CounterSheetProps) {
   const leaving = useLeaving()
+  const whyId = useId()
   const [counts, setCounts] = useState(() => cards.map(() => 0))
   const total = counts.reduce((sum, count) => sum + count, 0)
   const title = t('auto.counter.title', { count: need })
@@ -42,6 +47,7 @@ export function CounterSheet({ cards, need, onPick }: CounterSheetProps) {
       lowerable
       anchor="mat"
       veil={false}
+      {...(why ? { kicker: <AskWhy id={whyId} why={why} />, ariaDescribedBy: whyId } : {})}
       title={title}
       subtitle={t('auto.counter.hint')}
       footer={

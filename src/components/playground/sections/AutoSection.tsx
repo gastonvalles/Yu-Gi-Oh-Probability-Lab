@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 
+import type { AskWhyView } from '../../../app/auto/ask-why'
 import type { ChainRowState } from '../../../app/auto/chain-feed'
 import { ELFNOTE, ELFNOTE_DECK, SKY_STRIKER_DECK } from '../../../app/bot-deck-lists'
 import { DuelRailsContext } from '../../../app/duel-rails'
@@ -18,6 +19,7 @@ import type { ChainRespond } from '../../auto/ChainSheet'
 import { CounterSheet } from '../../auto/CounterSheet'
 import { RespondBand } from '../../auto/RespondBand'
 import { SortSheet } from '../../auto/SortSheet'
+import { AskWhy } from '../../duel/AskWhy'
 import { DuelLogTicker, LifeTile, type LaneNotice } from '../../duel/DuelBar'
 import { TheirHand } from '../../duel/DuelTable'
 import { RivalChoice, RivalSheet, type RivalDraft } from '../../duel/RivalRow'
@@ -43,6 +45,12 @@ const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${
 const PROMPT_BOX = 'pointer-events-auto w-[min(24rem,100%)] max-w-full has-data-leaving:pointer-events-none has-data-minimized:w-auto has-data-prompt-row:w-[min(34rem,100%)]'
 const ASH = { name: 'Ash Blossom & Joyous Spring', art: art(14558127) }
 const PONIX = { name: 'Legendary Fire King Ponix', art: art(90681088) }
+/** Por qué se pregunta (`AskWhy`): el costo de una activación, lo que se elige al activar (un objetivo) y el efecto de un eslabón del rival, con su número. */
+const WHY: Record<'cost' | 'activation' | 'effect', AskWhyView> = {
+  cost: { text: 'Costo de Trade-In', name: 'Trade-In', art: art(38120068), mine: true },
+  activation: { text: 'Al activar Monster Reincarnation', name: 'Monster Reincarnation', art: art(74848038), mine: true },
+  effect: { text: 'Efecto de Ash Blossom & Joyous Spring', name: ASH.name, art: ASH.art, link: 2, mine: false },
+}
 
 /**
  * Cartas de muestra de lugares distintos (lo que no entra en una sola pila), con dos Ponix iguales, una en el Deck y otra en la mano (la hoja las agrupa: la mano primero); la de Aluber,
@@ -77,13 +85,14 @@ const ATTACK_COSTS: PickCard[] = [
 const TYPES = ['Aqua', 'Beast', 'Beast-Warrior', 'Creator God', 'Cyberse', 'Dinosaur', 'Divine-Beast', 'Dragon', 'Fairy', 'Fiend', 'Fish', 'Illusion', 'Insect', 'Machine', 'Plant', 'Psychic', 'Pyro', 'Reptile', 'Rock', 'Sea Serpent', 'Spellcaster', 'Thunder', 'Warrior', 'Winged Beast', 'Wyrm', 'Zombie']
 
 /** Las cuatro hojas de `AskOptions` de la muestra, con su forma de contestar. */
-const OPTION_SAMPLES: Array<{ id: string; title: string; note: string; open: string; kicker?: string; mode: 'one' | { count: number }; options: () => AskOption[] }> = [
+const OPTION_SAMPLES: Array<{ id: string; title: string; note: string; open: string; kicker?: string; why?: AskWhyView; mode: 'one' | { count: number }; options: () => AskOption[] }> = [
   {
     id: 'option',
     title: 'Opciones · una opción',
     note: 'select_option: un botón por opción, de a dos por fila (los de la hoja de una carta); un texto largo va solo en su fila. Un toque contesta. La que no se puede elegir se ve apagada, se enfoca y se lee.',
     open: 'Abrir «Elegí una opción»',
     kicker: 'Branded Fusion',
+    why: { text: 'Al activar Branded Fusion', name: 'Branded Fusion', art: art(44362883), mine: true },
     mode: 'one',
     options: () => [
       { id: '0', label: 'Fusion Summon 1 Fusion Monster from your Extra Deck' },
@@ -132,6 +141,13 @@ export function AutoSection() {
       <PromptSample kind="card" onAnswer={setAnswer} />
       <PromptSample kind="context" onAnswer={setAnswer} />
       <PromptSample kind="plain" onAnswer={setAnswer} />
+      <Specimen title="Por qué se pregunta · costo, al activar, efecto" layout="column" note={<>La línea de arriba (o de abajo, en el estado de la mesa) de todo cartel de una pregunta del núcleo: la miniatura de la carta, su eslabón con dos o más (del color de quien lo activó) y si es su costo, lo que se elige al activarla (un objetivo, una opción) o su efecto. Sólo lo que el núcleo deja saber (<Tag>ask-why.ts</Tag>); sin dato, no va. Nunca el texto del efecto: el nombre se corta con «…» y queda entero para el lector de pantalla. Archivo: <Tag>duel/AskWhy.tsx</Tag></>}>
+        <div className="grid max-w-xs gap-2 rounded-card border border-border-subtle bg-card-background p-4">
+          <AskWhy why={WHY.cost} />
+          <AskWhy why={WHY.activation} />
+          <AskWhy why={WHY.effect} />
+        </div>
+      </Specimen>
 
       {OPTION_SAMPLES.map((sample) => (
         <OptionsSample key={sample.id} sample={sample} onAnswer={setAnswer} />
@@ -303,7 +319,7 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
         ) : kind === 'context' ? (
           <>select_effectyn con desc 221: <Tag>kicker</Tag> con qué pasó, sin nombres (<Tag>effectAskText</Tag> de <Tag>ask-ui.ts</Tag>), la pestaña <Tag>place</Tag> sobre el arte y el atajo <Tag>manual</Tag> a la izquierda (con él, la mesa le da más ancho).</>
         ) : (
-          <>select_yesno: sólo el texto. Los botones dicen qué hacen («Hacerlo», o lo que diga el núcleo: «Pagar 1000 LP»), nunca «Sí» ni «No».</>
+          <>select_yesno: el texto y, si llega mientras se activa o se resuelve una carta, de cuál es (<Tag>AskWhy</Tag>). Los botones dicen qué hacen («Hacerlo», o lo que diga el núcleo: «Pagar 1000 LP»), nunca «Sí» ni «No».</>
         )
       }
     >
@@ -324,7 +340,7 @@ function PromptSample({ kind, onAnswer }: { kind: 'card' | 'context' | 'plain'; 
                     no={{ label: no, onSelect: () => reply(no) }}
                   />
                 ) : (
-                  <AskPrompt text={withCard ? t('auto.ask.effect') : '¿Pagás 1000 LP para activar Skill Drain?'} card={withCard ? ASH : undefined} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
+                  <AskPrompt text={withCard ? t('auto.ask.effect') : '¿Pagás 1000 LP?'} card={withCard ? ASH : undefined} why={withCard ? null : { text: 'Al activar Skill Drain', name: 'Skill Drain', art: art(82732705), mine: true }} yes={{ label: yes, onSelect: () => reply(yes) }} no={{ label: no, onSelect: () => reply(no) }} />
                 )}
               </div>
             </div>
@@ -352,6 +368,7 @@ function OptionsSample({ sample, onAnswer }: { sample: (typeof OPTION_SAMPLES)[n
           <AskOptions
             title={title}
             kicker={sample.kicker}
+            why={sample.why ?? null}
             options={sample.options()}
             mode={sample.mode}
             onPick={(ids) => {
@@ -491,7 +508,7 @@ function BandSample({ max, onAnswer }: { max: 1 | 2; onAnswer: (answer: string) 
                   done={chosen.length === max}
                   onToggle={toggle}
                   onPick={() => reply(chosen.join(', '))}
-                  {...(max > 1 ? { onCancel: () => reply('cancelada') } : {})}
+                  {...(max > 1 ? { onCancel: () => reply('cancelada') } : { why: { text: 'Efecto de Monster Reborn', name: 'Monster Reborn', art: art(83764718), mine: true } })}
                 />
               </div>
             </div>

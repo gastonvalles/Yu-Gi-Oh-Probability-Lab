@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
+import type { AskWhyView } from '../../app/auto/ask-why'
 import { t } from '../../i18n'
+import { AskWhy } from '../duel/AskWhy'
 import { Options } from '../probability/CardSheet'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -24,6 +26,8 @@ interface AskOptionsProps {
   title: string
   /** Arriba del título: la carta que pregunta. */
   kicker?: string
+  /** De qué carta es y si es su costo o su efecto (`AskWhy`): va en lugar de `kicker`. */
+  why?: AskWhyView | null
   options: readonly AskOption[]
   /** `'one'`: un toque contesta (una opción, la posición, un número). `{ count }`: se eligen `count` (Tipos, Atributos) y «Declarar» contesta. */
   mode: 'one' | { count: number }
@@ -44,8 +48,9 @@ const LONG_LABEL = 22
  * Tipos a la vez (`FilterChips` exige una cuenta por chip y en el celular es una sola fila que se desliza): con `count` 1 elegir otra cambia la elegida; con más, al llegar al tope las demás se apagan.
  * Va dentro de un `Presence` (así sale al contestarse).
  */
-export function AskOptions({ title, kicker, options, mode, onPick, onCancel, stacked }: AskOptionsProps) {
+export function AskOptions({ title, kicker, why, options, mode, onPick, onCancel, stacked }: AskOptionsProps) {
   const leaving = useLeaving()
+  const whyId = useId()
   const [chosen, setChosen] = useState<string[]>([])
   const count = mode === 'one' ? 0 : mode.count
   const full = count > 0 && chosen.length >= count
@@ -64,7 +69,8 @@ export function AskOptions({ title, kicker, options, mode, onPick, onCancel, sta
       lowerable
       anchor="mat"
       veil={false}
-      kicker={kicker}
+      kicker={why ? <AskWhy id={whyId} why={why} /> : kicker}
+      {...(why ? { ariaDescribedBy: whyId } : {})}
       title={title}
       ariaLabel={title}
       footer={

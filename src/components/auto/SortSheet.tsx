@@ -1,6 +1,10 @@
+import { useId } from 'react'
+
+import type { AskWhyView } from '../../app/auto/ask-why'
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
+import { AskWhy } from '../duel/AskWhy'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { PickGrid, usePicked, type PickCard } from './CardPicker'
@@ -12,6 +16,8 @@ interface SortSheetProps {
   hint?: string
   /** Arriba del título: la carta que hace ordenar. */
   kicker?: string
+  /** De qué carta es y si es su costo o su efecto (`AskWhy`): va en lugar de `kicker`. */
+  why?: AskWhyView | null
   /** La principal: «Ordenar así», o lo que hace el orden («Pagar así»). */
   done?: string
   /** En el orden de ahora (la primera, arriba). */
@@ -28,8 +34,9 @@ const SORT_COLUMNS: Record<number, string> = { 2: 'grid-cols-2', 3: 'grid-cols-3
  * sin contestar).
  * Va dentro de un `Presence` (así sale al contestarse).
  */
-export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hint'), kicker, done = t('auto.sort.done'), cards, onSort }: SortSheetProps) {
+export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hint'), kicker, why, done = t('auto.sort.done'), cards, onSort }: SortSheetProps) {
   const leaving = useLeaving()
+  const whyId = useId()
   const [order, toggle] = usePicked(cards, cards.length)
 
   useEscapeKey(() => {}, !leaving)
@@ -43,7 +50,8 @@ export function SortSheet({ title = t('auto.sort.title'), hint = t('auto.sort.hi
       lowerable
       anchor="mat"
       veil={false}
-      kicker={kicker}
+      kicker={why ? <AskWhy id={whyId} why={why} /> : kicker}
+      {...(why ? { ariaDescribedBy: whyId } : {})}
       title={title}
       subtitle={hint}
       footer={

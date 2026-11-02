@@ -1,4 +1,8 @@
+import { useId } from 'react'
+
+import type { AskWhyView } from '../../app/auto/ask-why'
 import { CardArt } from '../CardArt'
+import { AskWhy } from '../duel/AskWhy'
 import { MatPrompt } from '../duel/MatPrompt'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -24,6 +28,8 @@ interface AskPromptProps {
   place?: string
   /** El atajo a la mesa manual («Seguir en modo manual»), sin caja y a la izquierda, lejos de la principal. Sólo en escritorio: en el celular está en «Más opciones». */
   manual?: AskChoice
+  /** De qué carta es y si es su costo o su efecto (`AskWhy`): un sí o no a secas (`select_yesno`) que llega mientras se activa o se resuelve una carta. */
+  why?: AskWhyView | null
 }
 
 /**
@@ -31,7 +37,9 @@ interface AskPromptProps {
  * qué pasó (`kicker`, sin nombres), la carta por su arte con la pestaña de su lugar y «¿Activás el efecto?»; lo que hace la carta está en su detalle. Hay que contestarla: Escape
  * la minimiza y, al aparecer, el foco va a la principal (sin desplazar la página). Una cadena que se puede pasar no va acá: va en `RespondBand`. Los dos botones dicen qué hacen.
  */
-export function AskPrompt({ text, card, yes, no, kicker, place, manual }: AskPromptProps) {
+export function AskPrompt({ text, card, yes, no, kicker, place, manual, why }: AskPromptProps) {
+  const textId = useId()
+  const whyId = useId()
   const art = card ? (
     <span className="relative block aspect-[421/614] w-11 shrink-0 overflow-hidden bg-input">
       <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
@@ -44,6 +52,7 @@ export function AskPrompt({ text, card, yes, no, kicker, place, manual }: AskPro
       // Con el atajo a la manual, más ancho: los tres botones en una fila.
       row={Boolean(manual)}
       label={text}
+      {...(why ? { labelledBy: `${textId} ${whyId}` } : {})}
       focus="[data-ask-primary]"
       escape
       head={
@@ -60,7 +69,10 @@ export function AskPrompt({ text, card, yes, no, kicker, place, manual }: AskPro
           )}
           <div className="grid min-w-0 gap-1">
             {kicker ? <p className="m-0 text-micro font-semibold text-muted">{kicker}</p> : null}
-            <p className="m-0 font-semibold">{text}</p>
+            {why ? <AskWhy id={whyId} why={why} /> : null}
+            <p id={textId} className="m-0 font-semibold">
+              {text}
+            </p>
           </div>
         </>
       }

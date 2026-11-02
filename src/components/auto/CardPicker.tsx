@@ -3,10 +3,12 @@ import { useDeferredValue, useId, useState, type CSSProperties, type KeyboardEve
 import { useEscapeKey } from '../../app/use-overlay'
 import { useLeaving } from '../../app/use-presence'
 import { t } from '../../i18n'
+import type { AskWhyView } from '../../app/auto/ask-why'
 import type { MatPile } from '../../app/practice-mat'
 import { CardArt } from '../CardArt'
 import { PILE_SHORT } from '../probability/MatDialogs'
 import { FxFrame, PICK_ORDER } from '../probability/MatFx'
+import { AskWhy } from '../duel/AskWhy'
 import { MatPrompt } from '../duel/MatPrompt'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -253,6 +255,8 @@ interface PickBandProps {
   action?: string
   /** La nota del pie, a la izquierda («Sin “No responder”: son obligatorias»); sin esto, eligiendo varias, cómo se elige. */
   note?: string
+  /** De qué carta es y si es su costo o su efecto (`AskWhy`), arriba del título. */
+  why?: AskWhyView | null
 }
 
 /**
@@ -261,8 +265,9 @@ interface PickBandProps {
  * Con una sola para elegir, el toque contesta y la principal sólo aparece si se puede terminar sin elegir («Listo»). Al aparecer, el foco va a la primera carta.
  * Varias obligatorias (`use-auto-asks`): una sola, ya elegida la primera (`done`); el toque cambia cuál y la principal (`action`) la activa. Sin «Cancelar», Escape la minimiza.
  */
-export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note }: PickBandProps) {
+export function PickBand({ title, place, cards, chosen, eligible, multi, done, onToggle, onPick, onCancel, action, note, why }: PickBandProps) {
   const titleId = useId()
+  const whyId = useId()
   const primary = multi || done
 
   return (
@@ -270,7 +275,7 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
       kind="ask"
       row
       role="group"
-      labelledBy={titleId}
+      labelledBy={why ? `${titleId} ${whyId}` : titleId}
       label={title}
       focus='[role="option"][tabindex="0"]'
       escape={!onCancel}
@@ -281,9 +286,12 @@ export function PickBand({ title, place, cards, chosen, eligible, multi, done, o
               {place}
             </Badge>
           ) : null}
-          <p id={titleId} className="m-0 font-semibold">
-            {title}
-          </p>
+          <div className="grid min-w-0 gap-1">
+            {why ? <AskWhy id={whyId} why={why} /> : null}
+            <p id={titleId} className="m-0 font-semibold">
+              {title}
+            </p>
+          </div>
         </div>
       }
     >
@@ -317,6 +325,8 @@ interface CardPickerProps {
   title: string
   /** Arriba del título: la carta que pide elegir. */
   kicker?: string
+  /** De qué carta es y si es su costo o su efecto (`AskWhy`): va en lugar de `kicker`. */
+  why?: AskWhyView | null
   cards: readonly PickCard[]
   min: number
   max: number
@@ -341,8 +351,9 @@ interface CardPickerProps {
  * o «Listo» si se puede no elegir ninguna) se enciende con `min` (o con `done`) y el pie dice cuántas van. Con `SEARCH_FROM` cartas o más, un buscador por nombre arriba (filtra lo
  * que se ve; lo elegido queda). Va dentro de un `Presence` (así sale al contestarse).
  */
-export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done }: CardPickerProps) {
+export function CardPicker({ title, kicker, why, cards, min, max, onPick, onCancel, chosen: picked, onToggle, eligible, done }: CardPickerProps) {
   const leaving = useLeaving()
+  const whyId = useId()
   // El tramo de Mayús, en el orden que se ve (por lugar).
   const [own, toggleOwn] = usePicked(groupsOf(cards).flat(), max)
   const chosen = picked ?? own
@@ -370,7 +381,8 @@ export function CardPicker({ title, kicker, cards, min, max, onPick, onCancel, c
       lowerable
       anchor="mat"
       veil={false}
-      kicker={kicker}
+      kicker={why ? <AskWhy id={whyId} why={why} /> : kicker}
+      {...(why ? { ariaDescribedBy: whyId } : {})}
       title={title}
       subtitle={min === max ? t('auto.pick.cards', { count: max }) : t('auto.pick.range', { min, max })}
       footer={

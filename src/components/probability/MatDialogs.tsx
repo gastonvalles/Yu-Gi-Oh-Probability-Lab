@@ -551,6 +551,8 @@ interface PileViewerProps {
   anonymous?: boolean
   /** Lo de arriba del título (sin esto, «Mesa»): el deck del duelo automático dice que va por nombre, no en su orden. */
   kicker?: string
+  /** Debajo del título: lo que pide una búsqueda del duelo automático y por qué («Elegí 1 carta para Invocar de forma Especial» y `AskWhy`). */
+  note?: ReactNode
 }
 
 /**
@@ -572,7 +574,7 @@ export const PileStripContext = createContext(false)
  * El foco entra al panel (al buscador o a la primera carta) y vuelve a lo que lo abrió, sin trampa (Tab sale a la mesa). En el celular es la hoja de abajo de siempre, hasta 55 dvh (el campo se ve arriba), y se cierra al tocar afuera;
  * con su asa se baja sin cerrarse, para ver la mano (`SheetHandle`).
  */
-export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker }: PileViewerProps) {
+export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, onPick, onPeek, onHover, many, onClose, anonymous = false, kicker, note }: PileViewerProps) {
   const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const strip = useContext(PileStripContext) && desktop
   const [query, setQuery] = useState('')
@@ -759,6 +761,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
         <Heading level="section" id={titleId}>
           {title}
         </Heading>
+        {note}
       </div>
       {strip ? search : null}
       <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} />

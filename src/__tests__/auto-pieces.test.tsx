@@ -230,6 +230,16 @@ describe('PickBand', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('por qué se pregunta (`AskWhy`): arriba del título, con el eslabón, y el grupo lo dice entero; sin dato, no va', () => {
+    band({ why: { text: 'Costo de Ash Blossom & Joyous Spring', name: 'Ash Blossom & Joyous Spring', art: null, link: 2, mine: false } })
+    const group = screen.getByRole('group', { name: 'Elegí 2 cartas para desterrar · 0/2 CL2 Costo de Ash Blossom & Joyous Spring' })
+
+    expect(group.querySelector('[data-ask-why]')).toHaveTextContent('CL2 Costo de Ash Blossom & Joyous Spring')
+    cleanup()
+    band()
+    expect(document.querySelector('[data-ask-why]')).toBeNull()
+  })
+
   it('las elegidas, con su estado, el marco que gira y su número (blanco); completa, la principal dice cuántas y contesta; con una sola y sin cancelar, sin pie', () => {
     const onPick = vi.fn()
     const onToggle = vi.fn()

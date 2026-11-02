@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
+import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
 import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../../app/auto/chain-feed'
@@ -731,6 +732,13 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const pickLabel = pick ? pickTitle(pick, shown?.title) : ''
   // Una lista aparte (de varios lugares, por código, lo del rival): hasta `BAND_MAX` cartas, una banda en el medio de la mesa (`PickBand`); con más, la hoja (`CardPicker`).
   const list = pick && decision.listed ? pick : null
+  // De qué carta es lo que se pregunta y si es su costo, su activación o su efecto (`ask-why.ts`: sólo lo que se sabe), para la línea `AskWhy` de cada cartel. Por valor: la mesa no se vuelve a dibujar por él.
+  const asked = shown ? askWhy(shown.type, snap.overlay, shown.cardPick?.cards ?? shown.counters?.cards) : null
+  const askedName = asked ? nameOf(asked.ref, asked.code) : ''
+  const askedLink = asked && snap.overlay.chain.length > 1 ? asked.link : 0
+  const askedKey = asked ? `${asked.role}|${asked.code}|${asked.ref?.side ?? ''}|${asked.ref?.id ?? ''}|${askedLink}|${askedName}` : ''
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- por valor (`askedKey`)
+  const why = useMemo<AskWhyView | null>(() => (asked ? { text: askWhyText(asked.role, askedName), name: askedName, art: artOf(asked.ref, asked.code), ...(askedLink ? { link: askedLink } : {}), ...(asked.ref ? { mine: asked.ref.side === 'mine' } : {}) } : null), [askedKey])
   const band = list !== null && decision.listed!.band
   const myStats = snap.overlay.stats.mine
   // La etiqueta de ATK/DEF de siempre de cada lado (`fieldStatsOf`), estable por valor: un mapa nuevo con los mismos números sería un dibujo de la mesa de más. Los de ahora llegan con
@@ -804,6 +812,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           }
         : null,
       cardPick,
+      why,
       stats: fieldStats.mine,
       viewer:
         pick && !list && pick.surface === 'pile' && pick.pile
@@ -836,7 +845,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           },
       manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine, vanilla, codeOf, placeBack, session])
+  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
@@ -1224,6 +1233,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
         {...(promptCard ? { card: { name: nameOf(promptCard.ref, promptCard.code), art: artOf(promptCard.ref, promptCard.code) } } : {})}
         {...(effectAsk?.kicker ? { kicker: effectAsk.kicker } : {})}
         {...(effectAsk?.place ? { place: effectAsk.place } : {})}
+        why={why}
         {...(promptCard && onManual ? { manual: { label: t('auto.bar.manual'), onSelect: onManual } } : {})}
         yes={{ label: promptCard ? t('practice.menu.activateEffect') : t('auto.ask.yes'), onSelect: () => gesture({ kind: 'item', answer: prompt.yes }) }}
         no={{ label: promptCard ? t('auto.ask.skipEffect') : t('auto.ask.no'), onSelect: () => gesture({ kind: 'item', answer: prompt.no }) }}
@@ -1269,6 +1279,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       <PickBand
         key={decision.of ?? 0}
         title={pickLabel}
+        why={why}
         {...(bandPlace ? { place: t('auto.band.from', { place: bandPlace, count: listCards.length }) } : {})}
         cards={bandCards}
         multi={list.type !== 'select_unselect_card' && list.max > 1}
@@ -1300,6 +1311,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             key={`options-${askId}`}
             title={optionsTitle}
             {...(askingCode ? { kicker: nameOf(null, askingCode) } : {})}
+            why={why}
             options={options.options.map((option): AskOption => ({ id: String(option.value), label: optionLabel(option) }))}
             mode={options.count > 1 || options.of === 'race' || options.of === 'attribute' ? { count: options.count } : 'one'}
             onPick={(ids) => gesture(...ids.map((id) => ({ kind: 'option' as const, value: Number(id) })))}
@@ -1331,6 +1343,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           <SortSheet
             key={`sort-${askId}`}
             {...(shown.type === 'sort_chain' ? { title: t('auto.sort.chain'), hint: t('auto.sort.chainHint'), done: t('auto.sort.chainDone') } : {})}
+            why={why}
             cards={shown.sort.cards.map((card, index) => pickCardOf(card, String(index)))}
             onSort={(keys) => (keys === null ? gesture({ kind: 'cancel' }) : gesture(...keys.map((key) => ({ kind: 'pick' as const, index: Number(key) })), { kind: 'done' }))}
           />
@@ -1343,6 +1356,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
             key={`counters-${askId}`}
             cards={shown.counters.cards.map((card, index) => ({ ...pickCardOf(card, String(index)), has: card.value ?? 0 }))}
             need={shown.counters.need}
+            why={why}
             onPick={(counts) => gesture(...counts.flatMap((count, index) => Array.from({ length: count }, () => ({ kind: 'pick' as const, index }))), { kind: 'done' })}
           />
         ) : null}
@@ -1353,6 +1367,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           <CardPicker
             key={`picker-${decision.of}`}
             title={pickLabel}
+            why={why}
             cards={listCards}
             min={list.min}
             max={list.type === 'select_unselect_card' ? 1 : list.max}

@@ -90,6 +90,7 @@ import { Modal } from '../ui/Modal'
 import { ResizeHandle } from '../ui/ResizeHandle'
 import { AttackFx, AttackTrail, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardSheet } from './CardSheet'
+import { AskWhy } from '../duel/AskWhy'
 import { artOfDrawId } from '../duel/duel-art'
 import { THEIR_HAND } from '../duel/their-hand'
 import { COMPACT_FIELD_MEDIA_QUERY, SHORT_SCREEN_MEDIA_QUERY, compactDuelFieldStyle, mediumDuelFieldStyle } from './compact-field'
@@ -2412,6 +2413,8 @@ function PracticeMatBody({
           : counterMode !== null
             ? t(counterMode > 0 ? 'practice.mat.pickCounterAdd' : 'practice.mat.pickCounterRemove')
             : null)
+  // De qué carta es lo que se elige y si es su costo o su efecto (`AskWhy`): debajo de lo que se pide, en el estado y en el visor.
+  const pickWhy = pickingText !== null ? (duel?.auto?.why ?? null) : null
   // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
   const choosing = picking !== null || counterMode !== null || pickingText !== null
 
@@ -2707,7 +2710,15 @@ function PracticeMatBody({
     >
       {pickingText ? (
         <>
-          <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-tight text-accent">{pickingText}</span>
+          {pickWhy ? (
+            // Pegado abajo: la hoja de la cadena del celular se apoya sobre el borde de arriba del estado.
+            <span className="grid min-w-0 flex-1 self-end pb-1">
+              <span className="truncate font-semibold leading-tight text-accent">{pickingText}</span>
+              <AskWhy why={pickWhy} />
+            </span>
+          ) : (
+            <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-tight text-accent">{pickingText}</span>
+          )}
           {duel?.auto ? (pickCancel ? <Button variant="tertiary" size="sm" className="px-3" onClick={pickCancel}>{t('common.cancel')}</Button> : null) : (
           <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="px-3" onClick={() => { setPicking(null); setCounterMode(null) }}>
             {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
@@ -3217,6 +3228,13 @@ function PracticeMatBody({
           hidden={covered || stripHidden}
           ids={viewerList}
           kicker={byName ? t('practice.dialog.byName') : undefined}
+          // Una búsqueda del núcleo dice qué pide y por qué en el celular, donde el visor tapa el estado de abajo (en escritorio queda a la vista).
+          note={autoViewer && pickingText && !isDesktop ? (
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-micro font-semibold text-accent">{pickingText}</span>
+              {pickWhy ? <AskWhy why={pickWhy} /> : null}
+            </span>
+          ) : undefined}
           info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id), faceUp: state.extraUp.includes(id) })}
           targeted={targetedIds}
           // Eligiendo en el visor (una búsqueda del núcleo), las candidatas no se iluminan: el brillo es de la que ya elegiste, no de todas las que se pueden elegir.
