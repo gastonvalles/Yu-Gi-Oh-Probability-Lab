@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildDuelReplay, type DuelReplay } from '../../../app/duel-replay'
 import type { SavedReplay } from '../../../app/duel-replay-share'
 import type { WireAct } from '../../../app/mat-public'
+import { rivalCardOf } from '../../../app/handtraps'
 import { createMatState, describeMatSteps } from '../../../app/practice-mat'
 import { DuelReplayScreen } from '../../replays/DuelReplayScreen'
 import { videoStage } from '../../replays/ReplayVideo'
@@ -195,10 +196,20 @@ function DuelReplaySamples() {
  */
 function StepListSamples() {
   const combo = useMemo(sampleCombo, [])
-  const sharedSamples = useMemo(
-    () => [createSavedCombo({ name: 'Snake-Eye de una carta, con Fire King y un nombre bien largo', deckName: 'Snake-Eye Fire King', initial: combo.initial, actions: combo.actions, nameOf: combo.nameOf }, [], new Date('2026-10-29T12:00:00Z'))],
-    [combo],
-  )
+  const sharedSamples = useMemo(() => {
+    // El segundo juega contra la Ash del rival simulado (`rivalUse`): cae en «Con handtrap».
+    const ash = 'rival.card-14558127-1'
+    const nameOf = (id: string) => combo.nameOf(rivalCardOf(id))
+    return [
+      createSavedCombo({ name: 'Snake-Eye de una carta, con Fire King y un nombre bien largo', deckName: 'Snake-Eye Fire King', initial: combo.initial, actions: combo.actions, nameOf: combo.nameOf }, [], new Date('2026-10-29T12:00:00Z')),
+      createSavedCombo(
+        { name: 'Snake-Eye contra Ash Blossom', deckName: 'Snake-Eye Fire King', initial: { ...combo.initial, rival: { hand: [ash], used: [] } }, actions: [...combo.actions.slice(0, 2), { type: 'rivalUse', id: ash }, ...combo.actions.slice(2)], nameOf },
+        [],
+        new Date('2026-10-30T12:00:00Z'),
+      ),
+    ]
+  }, [combo])
+  const [grouped, setGrouped] = useState(true)
   const steps = useMemo(() => panelStepsOf(combo.initial, combo.actions, describeMatSteps(combo.initial, combo.actions, combo.nameOf), combo.nameOf, combo.artOf), [combo])
   const [cursor, setCursor] = useState(9)
   const [width, setWidth] = useState<StepListWidth>('column')
@@ -254,10 +265,11 @@ function StepListSamples() {
         layout="column"
         note={
           <>
-            Cada ficha: el nombre y sus datos con todo el ancho, el resumen (<Tag>Arranca con</Tag> las cartas de la mano que usa y <Tag>Termina con</Tag> las del campo final, hasta 4 y 5 y «y N más») y, abajo, <Tag>Cargar</Tag> (la de siempre), renombrar, borrar y el ⋯ con <Tag>Compartir enlace</Tag> (la hoja del sistema en el celular; si no, copiado) y <Tag>Descargar archivo</Tag>: con el panel al mínimo (16 rem) y 44 px por botón, dos íconos más no entran. Arriba, <Tag>Pegar enlace</Tag> e <Tag>Importar combo</Tag> (sin campo de texto: no abre el teclado). Un enlace de combo abre la práctica con el aviso de abajo: el nombre y sus datos en un renglón cada uno, la X lo cierra y el video es un ícono, para que en el celular quepa en dos renglones con la principal entera. Las notas de los pasos viajan con el combo (en el enlace y al guardarlo); un combo sin notas comparte el mismo enlace de siempre. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>app/combo-share.ts</Tag>
+            Cada ficha: el nombre y sus datos con todo el ancho, el resumen (<Tag>Arranca con</Tag> las cartas de la mano que usa y <Tag>Termina con</Tag> las del campo final, hasta 4 y 5 y «y N más») y, abajo, <Tag>Cargar</Tag> (la de siempre), renombrar, borrar y el ⋯ con <Tag>Compartir enlace</Tag> (la hoja del sistema en el celular; si no, copiado) y <Tag>Descargar archivo</Tag>: con el panel al mínimo (16 rem) y 44 px por botón, dos íconos más no entran. Arriba, <Tag>Pegar enlace</Tag> e <Tag>Importar combo</Tag> (sin campo de texto: no abre el teclado). Un enlace de combo abre la práctica con el aviso de abajo: el nombre y sus datos en un renglón cada uno, la X lo cierra y el video es un ícono, para que en el celular quepa en dos renglones con la principal entera. Las notas de los pasos viajan con el combo (en el enlace y al guardarlo); un combo sin notas comparte el mismo enlace de siempre. Con combos de las dos clases la lista va en grupos con su título y su cantidad: <Tag>Línea base</Tag> y <Tag>Con handtrap</Tag> (el rival simulado usó una y el combo sigue desde ahí); no se guarda, se deduce de las jugadas. Con una sola clase, ningún título. Archivos: <Tag>probability/PracticeMatPanel.tsx</Tag> y <Tag>app/combo-share.ts</Tag>
           </>
         }
       >
+        <Segmented label="Grupos" variant="chips" size="sm" value={grouped ? 'both' : 'one'} onChange={(value) => setGrouped(value === 'both')} options={[{ value: 'both', label: 'Las dos clases' }, { value: 'one', label: 'Una sola' }]} />
         <div className="flex flex-wrap items-start gap-4">
           {[
             { label: 'Panel al mínimo · 16 rem', className: 'w-[16rem]' },
@@ -266,7 +278,7 @@ function StepListSamples() {
             <div key={sample.label} className={cx('grid gap-2', sample.className)}>
               <Tag>{sample.label}</Tag>
               <div className="grid gap-3 rounded-card border border-border-subtle bg-background p-3">
-                <SavedCombosList combos={sharedSamples} deckName="Snake-Eye" onLoad={noop} onRename={noop} onDelete={noop} onShare={noop} onVideo={noop} onImport={noop} />
+                <SavedCombosList combos={grouped ? sharedSamples : sharedSamples.slice(0, 1)} deckName="Snake-Eye" onLoad={noop} onRename={noop} onDelete={noop} onShare={noop} onVideo={noop} onImport={noop} />
               </div>
             </div>
           ))}

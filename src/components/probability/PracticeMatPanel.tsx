@@ -7,7 +7,7 @@ import { PHASES, type MatState } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { readComboLink, type SharedCombo, type ShareResult } from '../../app/combo-share'
 import { comboSummary, type ComboSummary } from '../../app/combo-summary'
-import type { SavedCombo } from '../../app/saved-combos'
+import { groupSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { formatDay, t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { Badge } from '../ui/Badge'
@@ -253,12 +253,11 @@ function SummaryLine({ label, names, max }: { label: string; names: string[]; ma
 export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, onShare, onVideo, onImport }: SavedCombosListProps) {
   const [renaming, setRenaming] = useState<SavedCombo | null>(null)
   const [deleting, setDeleting] = useState<SavedCombo | null>(null)
-  const ordered = [...combos].sort(
-    (a, b) => Number(b.deckName === deckName) - Number(a.deckName === deckName) || a.deckName.localeCompare(b.deckName, 'es') || b.savedAt.localeCompare(a.savedAt),
-  )
+  const groupsId = useId()
+  const groups = groupSavedCombos(combos, deckName)
   const importer = onImport ? <ComboImport onImport={onImport} /> : null
 
-  if (ordered.length === 0) {
+  if (groups.length === 0) {
     return (
       <>
         {importer}
@@ -269,48 +268,68 @@ export function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete, 
     )
   }
 
+  const tiles = (list: SavedCombo[]) =>
+    list.map((combo) => (
+      <li key={combo.id} className="grid gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
+        {/* El nombre y los datos arriba, con todo el ancho (con tres botones al lado el nombre quedaba en unas quince letras); las acciones, abajo. */}
+        <div className="grid min-w-0 gap-0.5">
+          {/* Con el panel angosto (se arrastra su borde) el nombre baja a un segundo renglón y los datos, a los que hagan falta: nada se corta a mitad de la fecha. */}
+          <strong className="line-clamp-2 wrap-break-word text-body font-semibold text-foreground" title={combo.name}>
+            {combo.name}
+          </strong>
+          <span className="wrap-break-word text-micro text-muted">
+            {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
+          </span>
+          <ComboSummaryLines combo={combo} />
+        </div>
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="secondary" size="sm" icon="play" aria-label={t('practice.panel.loadNamed', { name: combo.name })} onClick={() => onLoad(combo)}>
+            {t('practice.panel.load')}
+          </Button>
+          <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.renameNamed', { name: combo.name })} title={t('practice.panel.rename')} onClick={() => setRenaming(combo)}>
+            <Icon name="pencil" />
+          </IconButton>
+          <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.deleteNamed', { name: combo.name })} title={t('common.delete')} onClick={() => setDeleting(combo)}>
+            <Icon name="trash" />
+          </IconButton>
+          {/* Compartir y bajar van al ⋯: con el panel al mínimo (16 rem) y los objetivos de 44 px del dedo, dos íconos más no entran en la fila. */}
+          {onShare && onVideo ? (
+            <OverflowMenu
+              label={t('practice.share.more', { name: combo.name })}
+              items={[
+                { label: t('practice.share.link'), icon: 'link', onSelect: () => onShare(combo) },
+                { label: t('practice.share.video'), icon: 'download', onSelect: () => onVideo(combo) },
+              ]}
+            />
+          ) : null}
+        </div>
+      </li>
+    ))
+
   return (
     <>
       {importer}
       {/* Un solo scroll por panel: en el celular lo lleva el diálogo; en escritorio, que acota el alto, la lista (si no, el ⋯ de la última ficha quedaba adentro de un scroll metido en otro). */}
-      <ul className="m-0 grid list-none content-start gap-2 p-0 min-[1101px]:overflow-y-auto" aria-label={t('practice.panel.saved')}>
-        {ordered.map((combo) => (
-          <li key={combo.id} className="grid gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
-            {/* El nombre y los datos arriba, con todo el ancho (con tres botones al lado el nombre quedaba en unas quince letras); las acciones, abajo. */}
-            <div className="grid min-w-0 gap-0.5">
-              {/* Con el panel angosto (se arrastra su borde) el nombre baja a un segundo renglón y los datos, a los que hagan falta: nada se corta a mitad de la fecha. */}
-              <strong className="line-clamp-2 wrap-break-word text-body font-semibold text-foreground" title={combo.name}>
-                {combo.name}
-              </strong>
-              <span className="wrap-break-word text-micro text-muted">
-                {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
-              </span>
-              <ComboSummaryLines combo={combo} />
+      {groups.length === 1 ? (
+        // Con una sola clase de combos, ningún título: un encabezado solitario no separa nada.
+        <ul className="m-0 grid list-none content-start gap-2 p-0 min-[1101px]:overflow-y-auto" aria-label={t('practice.panel.saved')}>
+          {tiles(groups[0]!.combos)}
+        </ul>
+      ) : (
+        // Los grupos: poco aire entre el título y sus fichas y más entre grupos (4 · 8 · 16), sin caja: la ficha sigue siendo el único borde.
+        <div role="group" aria-label={t('practice.panel.saved')} className="grid min-h-0 content-start gap-4 min-[1101px]:overflow-y-auto">
+          {groups.map(({ group, combos: list }) => (
+            <div key={group} className="grid gap-1">
+              <p id={`${groupsId}-${group}`} className="m-0 text-micro font-semibold uppercase tracking-wide text-soft">
+                {t(group === 'base' ? 'practice.panel.groupBase' : 'practice.panel.groupHandtrap')} · <span className="tabular-nums">{list.length}</span>
+              </p>
+              <ul aria-labelledby={`${groupsId}-${group}`} className="m-0 grid list-none gap-2 p-0">
+                {tiles(list)}
+              </ul>
             </div>
-            <div className="flex items-center justify-end gap-1">
-              <Button variant="secondary" size="sm" icon="play" aria-label={t('practice.panel.loadNamed', { name: combo.name })} onClick={() => onLoad(combo)}>
-                {t('practice.panel.load')}
-              </Button>
-              <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.renameNamed', { name: combo.name })} title={t('practice.panel.rename')} onClick={() => setRenaming(combo)}>
-                <Icon name="pencil" />
-              </IconButton>
-              <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.deleteNamed', { name: combo.name })} title={t('common.delete')} onClick={() => setDeleting(combo)}>
-                <Icon name="trash" />
-              </IconButton>
-              {/* Compartir y bajar van al ⋯: con el panel al mínimo (16 rem) y los objetivos de 44 px del dedo, dos íconos más no entran en la fila. */}
-              {onShare && onVideo ? (
-                <OverflowMenu
-                  label={t('practice.share.more', { name: combo.name })}
-                  items={[
-                    { label: t('practice.share.link'), icon: 'link', onSelect: () => onShare(combo) },
-                    { label: t('practice.share.video'), icon: 'download', onSelect: () => onVideo(combo) },
-                  ]}
-                />
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      )}
 
       {/* El campo arranca con el nombre del combo que se toca (lo pone al abrirse; al cerrarse sale como estaba). */}
       <SaveComboDialog

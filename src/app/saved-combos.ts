@@ -120,6 +120,28 @@ export function uniqueComboName(name: string, combos: readonly SavedCombo[]): st
   return `${base} (${index})`
 }
 
+/**
+ * El grupo de un combo en la lista (como «Core» y «Through hand traps» de otros sitios): no se guarda, se deduce. «Con handtrap» si el rival simulado de «Jugar solo» usó una
+ * handtrap (`rivalUse`, también dentro de un lote) y el combo sigue desde ahí; lo demás es la línea base.
+ */
+export type ComboGroup = 'base' | 'handtrap'
+
+const usesHandtrap = (actions: readonly MatAction[]): boolean => actions.some((action) => action.type === 'rivalUse' || (action.type === 'batch' && usesHandtrap(action.actions)))
+
+export const comboGroupOf = (combo: SavedCombo): ComboGroup => (usesHandtrap(combo.actions) ? 'handtrap' : 'base')
+
+/**
+ * La lista agrupada: la línea base primero y después los de handtrap, sin grupos vacíos. Adentro, el orden de siempre: los del deck actual primero, después por nombre de deck y el
+ * más nuevo primero.
+ */
+export function groupSavedCombos(combos: readonly SavedCombo[], deckName: string): { group: ComboGroup; combos: SavedCombo[] }[] {
+  const ordered = [...combos].sort(
+    (a, b) => Number(b.deckName === deckName) - Number(a.deckName === deckName) || a.deckName.localeCompare(b.deckName, 'es') || b.savedAt.localeCompare(a.savedAt),
+  )
+
+  return (['base', 'handtrap'] as const).map((group) => ({ group, combos: ordered.filter((combo) => comboGroupOf(combo) === group) })).filter((entry) => entry.combos.length > 0)
+}
+
 /** Renombra un combo: el nombre nuevo no puede repetir el de otro (con el suyo sí) y uno vacío deja el que tenía. */
 export function renameSavedCombo(combos: readonly SavedCombo[], id: string, name: string): SavedCombo[] {
   if (!name.trim()) {

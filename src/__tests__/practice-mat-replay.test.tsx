@@ -941,6 +941,26 @@ describe('la mesa de práctica', () => {
     expect(screen.getAllByTitle(all).map((line) => line.textContent)).toEqual(['Arranca con Ash Blossom, Maxx C, Called by the Grave, Nibiru y 2 más', 'Termina con Ash Blossom, Maxx C, Called by the Grave, Nibiru, Droll y 1 más'])
   })
 
+  it('la lista va en grupos con su título y su cantidad sólo si hay combos de las dos clases (línea base y con handtrap)', () => {
+    const make = (name: string, actions: MatAction[]) => createSavedCombo({ name, deckName: 'Prueba', initial: createMatState(['card-1-1'], [], 1), actions, nameOf: (id) => id }, [])
+    const place: MatAction = { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'atk' }
+    const base = [make('Línea A', [place]), make('Línea B', [])]
+    const handtrap = make('Contra Ash', [place, { type: 'rivalUse', id: 'rival.card-14558127-1' }])
+    const { unmount } = render(<SavedCombosList combos={[handtrap, ...base]} deckName="Prueba" onLoad={() => {}} onRename={() => {}} onDelete={() => {}} />)
+
+    expect(screen.queryByRole('list', { name: 'Combos guardados' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Combos guardados' })).toBeInTheDocument()
+    const names = (list: HTMLElement) => within(list).getAllByRole('listitem').map((item) => item.querySelector('strong')?.textContent)
+    expect(names(screen.getByRole('list', { name: 'Línea base · 2' })).sort()).toEqual(['Línea A', 'Línea B'])
+    expect(names(screen.getByRole('list', { name: 'Con handtrap · 1' }))).toEqual(['Contra Ash'])
+    unmount()
+
+    // Una sola clase: la lista de siempre, sin títulos.
+    render(<SavedCombosList combos={base} deckName="Prueba" onLoad={() => {}} onRename={() => {}} onDelete={() => {}} />)
+    expect(within(screen.getByRole('list', { name: 'Combos guardados' })).getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.queryByText(/Línea base/)).not.toBeInTheDocument()
+  })
+
   it('atacar: un monstruo en ataque ofrece "Ataque directo" sólo en la Battle Phase, y el ataque queda en la lista de pasos', () => {
     render(<Harness />)
 
