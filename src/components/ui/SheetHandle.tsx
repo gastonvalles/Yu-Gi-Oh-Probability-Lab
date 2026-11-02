@@ -1,6 +1,7 @@
 import type { HTMLAttributes, ReactNode, Ref } from 'react'
 
 import type { SheetDrag } from '../../app/use-sheet-drag'
+import { useSwipeFold } from '../../app/use-swipe-fold'
 import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon } from './Icon'
@@ -19,7 +20,8 @@ interface SheetHandleProps {
 /**
  * La franja de arriba de una hoja de abajo del celular que se baja sin cerrarse (`useSheetDrag`): el asa (un botón con `aria-expanded`; Enter o Espacio la bajan y la suben) y el encabezado.
  * Toda la franja es el asa: se arrastra (`touch-action: none`: lo de abajo, que scrollea, no la mueve) o se toca, y la sube o la baja; sus otros botones (la X) hacen lo suyo. Bajada, la tira
- * dice el título con una flecha para arriba. La llevan el visor de una pila (`PileViewer`) y las hojas del duelo automático (`Modal lowerable`). Muestra: «Hoja que se baja» del catálogo.
+ * dice el título con una flecha para arriba. La lleva el visor de una pila (`PileViewer`); las hojas del duelo (`Modal lowerable`) y los carteles de la mesa se minimizan a un `PromptHandle`
+ * (la flecha o arrastrar su encabezado hacia abajo: `useSwipeFold`). Muestra: «Hoja que se baja» del catálogo.
  */
 export function SheetHandle({ drag, label, children, className }: SheetHandleProps) {
   return (
@@ -69,11 +71,13 @@ interface PromptHandleProps extends HTMLAttributes<HTMLDivElement> {
 
 /**
  * El asa de una línea de un cartel minimizado de la mesa: la pregunta del medio (`MatPrompt`) y las hojas del duelo (`Modal lowerable`). Va en el lugar fijo de la pregunta, apoyada sobre la fila
- * de las Zonas Extra: no tapa nada de tu campo ni la mano. Muestra: «Hoja de la mesa» del catálogo.
+ * de las Zonas Extra: no tapa nada de tu campo ni la mano. Se abre con la flecha o arrastrándola hacia arriba (`useSwipeFold`). Muestra: «Hoja de la mesa» del catálogo.
  */
 export function PromptHandle({ label, onShow, ref, className, ...props }: PromptHandleProps) {
+  const swipe = useSwipeFold({ dir: 'up', onFold: onShow })
+
   return (
-    <div ref={ref} {...props} className={cx('flex max-w-full items-center gap-1 rounded-full border border-info bg-card-background py-0 pl-4 pr-0 text-body text-foreground shadow-overlay', className)}>
+    <div ref={ref} {...props} {...swipe} className={cx('flex max-w-full touch-none select-none items-center gap-1 rounded-full border border-info bg-card-background py-0 pl-4 pr-0 text-body text-foreground shadow-overlay', className)}>
       <p className="m-0 min-w-0 truncate font-semibold">{label}</p>
       <IconButton size="lg" data-prompt-show="" aria-label={t('duel.prompt.show')} title={t('duel.prompt.show')} onClick={onShow}>
         <Icon name="chevron-up" />
