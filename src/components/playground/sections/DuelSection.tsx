@@ -628,7 +628,7 @@ function HandtrapSamples() {
         layout="column"
         note={
           <>
-            Arriba del campo, sólo en «Jugar solo» con el simulador encendido y sin rótulo: hasta 5 cartas boca arriba (en el celular, de unos 46 px; en escritorio, una mano de verdad que se lleva el alto que el campo no usa, hasta el ancho de las cartas de tu mano: <Tag>--rival-card</Tag>, que acá se achica para entrar en la muestra); tocar una abre el menú de la mesa (<Tag>Usar ahora</Tag>, <Tag>Ver carta</Tag>). La usada se queda en su lugar, apagada y con la tilde y el paso en que se usó (en escritorio, también «Usada»). Archivo: <Tag>probability/RivalHandStrip.tsx</Tag>
+            Arriba del campo, sólo en «Jugar solo» con el simulador encendido y sin rótulo: hasta 5 cartas boca arriba (en el celular, de unos 46 px; en una tableta crecen con el campo, de 46 a 82 px, y la franja con ellas; en escritorio, una mano de verdad que se lleva el alto que el campo no usa, hasta el ancho de las cartas de tu mano: <Tag>--rival-card</Tag>, que acá se achica para entrar en la muestra); tocar una abre el menú de la mesa (<Tag>Usar ahora</Tag>, <Tag>Ver carta</Tag>). La usada se queda en su lugar, apagada y con la tilde y el paso en que se usó (en escritorio, también «Usada»). Archivo: <Tag>probability/RivalHandStrip.tsx</Tag>
           </>
         }
       >

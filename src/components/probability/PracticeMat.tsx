@@ -387,16 +387,18 @@ export const ZoneLines = memo(function ZoneLines({ kind }: { kind: 'monster' | '
  * reparte entre 3,2 + 1,094 casillas; la casilla más chica baja de 8 a 5 rem (en una notebook de 720 px de alto con el menú abierto, con el piso de 8 rem la mano quedaba debajo del
  * borde). Las cartas (`--rival-card`) se llevan el alto que el campo no usa: 3/4 de la casilla cuando manda el alto, y más cuando la columna es angosta (el menú abierto y el detalle a
  * la izquierda dejan el campo chico a lo ancho), hasta el ancho de las cartas de tu mano (7,75 rem), con las cinco dentro de la columna y nunca menos de 3 rem.
+ * En una tableta (640 a 1100 px) las cartas miden 3/4 de la casilla del campo (alto 0,75 casillas), entre las del celular (4,25 rem de alto) y 7,5 rem: la casilla es la de
+ * `RIVAL_STRIP_FIELD`, la más chica entre lo que da el ancho, el alto con la franja del celular y el alto con la franja de 0,75 casillas.
  */
-const RIVAL_STRIP_GROUP = 'min-[1101px]:[--cell:max(5rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-21.25rem)/4.294),15rem))] min-[1101px]:[--rival-card:max(3rem,min(7.75rem,calc((100cqw-3rem)/5),calc((100dvh-21.25rem-3.2*min(var(--cell),calc((100cqw-3rem)/6.3714)))*0.6857)))]'
+const RIVAL_STRIP_GROUP = 'sm:max-[1101px]:[--rival-card:max(2.914rem,min(5.143rem,calc(0.5143*min(calc((100cqw-1.5rem)/6.3714),calc((100dvh-25rem)/3),calc((100dvh-20.75rem)/3.75)))))] min-[1101px]:[--cell:max(5rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-21.25rem)/4.294),15rem))] min-[1101px]:[--rival-card:max(3rem,min(7.75rem,calc((100cqw-3rem)/5),calc((100dvh-21.25rem-3.2*min(var(--cell),calc((100cqw-3rem)/6.3714)))*0.6857)))]'
 
 /**
  * El campo de la práctica con la mano del rival en el celular (la franja, 4,75 rem, y su aire, 0,75 rem): el campo se estira a lo ancho, así que lleva un tope de ancho que sale del alto
  * que le queda (24,5 rem de lo demás) para que tu mano siga entera a la vista: cinco columnas y cuatro filas en un celular en vertical, siete columnas (6,3714 casillas) y tres filas desde
- * 640 px. Con mucho alto el tope no llega al ancho y no cambia nada. En escritorio la casilla sale de `RIVAL_STRIP_GROUP` y el campo mide lo que sus casillas: cuando manda el alto, la
- * placa no queda más ancha que la grilla y la vista 3D, al agrandarla hasta el ancho, no la saca de la columna. Sin el simulador la mesa no lleva nada de esto.
+ * 640 px (y ahí la franja crece con la casilla: con 0,75 casillas de franja, el alto se reparte entre 3,75 casillas y 20,75 rem). Con mucho alto el tope no llega al ancho y no cambia
+ * nada. En escritorio la casilla sale de `RIVAL_STRIP_GROUP` y el campo mide lo que sus casillas: cuando manda el alto, la placa no queda más ancha que la grilla y la vista 3D, al agrandarla hasta el ancho, no la saca de la columna. Sin el simulador la mesa no lleva nada de esto.
  */
-const RIVAL_STRIP_FIELD = 'mx-auto max-[1101px]:w-full min-[1101px]:w-fit max-sm:max-w-[calc((100dvh-25.25rem)*1.25+1rem)] sm:max-[1101px]:max-w-[calc((100dvh-25rem)*2.1238+1.5rem)]'
+const RIVAL_STRIP_FIELD = 'mx-auto max-[1101px]:w-full min-[1101px]:w-fit max-sm:max-w-[calc((100dvh-25.25rem)*1.25+1rem)] sm:max-[1101px]:max-w-[min(calc((100dvh-25rem)*2.1238+1.5rem),calc((100dvh-20.75rem)*1.699+1.5rem))]'
 
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614

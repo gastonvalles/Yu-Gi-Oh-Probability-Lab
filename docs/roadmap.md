@@ -21,22 +21,20 @@ En orden de valor sobre costo.
 1. **Enlace del replay de un duelo, sin los nombres de las cartas** (M): ya va en la forma compacta (v2, ~22 % más corto que v1),
    pero los nombres siguen viajando; sin ellos el ahorro sube a ~39 %. Como el combo, pedirlos por passcode al abrir toca
    `ReplaysScreen` y el video (leen `replay.cards`) y sin red se vería «Carta»; el formato ya acepta la lista de nombres vacía.
-2. **Handtraps en tableta** (M): por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`, alto fijo) aunque el
-   campo sea ancho; escalarla entre 640 y 1100 px.
-3. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
+2. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
    desplazar o girar el campo para cartas más grandes (L, idea abierta; el techo hoy es `compact-field.ts`).
-4. **Sala del duelo en un celular bajo** (~700 px) se desplaza en la tirada del dado (S): plegar las reglas y el deck en una fila.
-5. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
-6. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
+3. **Sala del duelo en un celular bajo** (~700 px) se desplaza en la tirada del dado (S): plegar las reglas y el deck en una fila.
+4. **El violeta en Duelo y Jugar** (M): la pasada de la auditoría del violeta por esas pantallas (regla en `docs/design-system.md`).
+5. **Detalles de responsive** (S cada uno): miniaturas de artes 36×53 y puntos del carrusel 24×44 (menos de 44 px), asa de las
    hojas de 28 px, chips «Salidas» de 32 px, las barras de arriba y abajo comen
    120 de 360 px con el celular acostado, y `ReplayBar`, `LabChangeCard` y las muestras del duelo de `/playground` a 320 px.
-7. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
-8. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
+6. **Rarezas** (M): el nombre de la lámina con la forma de las letras y el brillo de los marcos de otros tipos (Xyz, Link…).
+7. **Video de replays** (S): con 30 cuadros constantes, armar un duelo largo tarda ~3,5 veces más; palanca: 15 cuadros por segundo
    sólo pasados 3 minutos, si en el celular pesa.
-9. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
+8. **Rendimiento en el celular** (L): el primer cálculo de estilos del Deck, el layout del buscador de la app (`FeatureSearch`) y
    la sala por enlace (`AutoDuelScreen`) sin piezas estables. Se mide con el build de producción (`docs/movimiento.md`).
-10. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax.
-11. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
+9. **Chicos** (S): el buscador de la app no tiene enlaces por fecha a Banlists; `/playground` no tiene muestra del parallax.
+10. **`Field` y más `Tabs`** (M): una fila «rótulo + control» en vez de 6 maneras distintas; `Tabs` en Importar deck y Pasos · Combos.
 
 ## Espera a Gastón
 
