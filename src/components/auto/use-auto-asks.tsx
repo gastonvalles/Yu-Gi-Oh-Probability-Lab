@@ -761,6 +761,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       stats: pickStatsOf(state, ids([...pick.eligible, ...pick.chosen]), myStats),
     }
   }, [pick, list, pickLabel, shown, gesture, state, myStats])
+  // La casilla de una jugada que todavía no entró a la cadena (activar o invocar desde tu mano): `select_place` no trae `can_cancel`, así que «Cancelar» vuelve a antes de la jugada con el mismo
+  // `undo` de la barra. Con un efecto resolviéndose (un eslabón `solving`) no: esa casilla es de una resolución, no de una jugada tuya.
+  const placeBack = canUndo && shown?.type === 'select_place' && !reviewing && !snap.overlay.chain.some((link) => link.state === 'solving') && snap.answers.some((item) => item.seat === seat && undoPoint(item))
   const auto = useMemo<AutoLink>(() => {
     const mineIds = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'mine' ? [pick!.cards[i]!.ref!.id] : []))
     const viewerIds = pick && !list && pick.surface === 'pile' ? mineIds([...pick.chosen, ...pick.eligible.filter((i) => !pick.chosen.includes(i))]) : []
@@ -813,7 +816,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           : null,
       asking: shown !== null,
       // Como «No responder» de la línea: en la ventana de una fase tuya (`phaseWindow`) pasar es cambiar de fase, y eso va por el botón de fases.
-      cancel: shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick || band) ? () => gesture({ kind: 'cancel' }) : null,
+      cancel: placeBack ? () => void session.undo() : shown?.cancelable && ((shown.type === 'select_chain' && !shown.phaseWindow) || cardPick || band) ? () => gesture({ kind: 'cancel' }) : null,
       // La carta soltada es del duelo vivo: repasando, no se dibuja sobre la mesa del repaso.
       dropped: reviewing ? null : held,
       holdFor: (id) => {
@@ -833,7 +836,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           },
       manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine, vanilla, codeOf])
+  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, fieldStats.mine, vanilla, codeOf, placeBack, session])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
