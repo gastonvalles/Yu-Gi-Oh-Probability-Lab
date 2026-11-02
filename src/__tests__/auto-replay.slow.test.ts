@@ -6,7 +6,8 @@ import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/a
 import { localTransport } from '../app/auto/core-host'
 import { randomLegalPolicy } from '../app/auto/policies'
 import { duelReplayAt, walkReplay } from '../app/duel-replay'
-import { buildReplayLink, decodeReplayPayload, encodeReplayPayload, MAX_LINK_LENGTH, parseReplayText, replayEnvelope } from '../app/duel-replay-share'
+import { packPayload } from '../app/combo-share'
+import { buildReplayLink, compactReplayEnvelope, decodeReplayPayload, encodeReplayPayload, MAX_LINK_LENGTH, parseReplayText, replayEnvelope } from '../app/duel-replay-share'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { cardRows, CORE_DATA_DIR, hasCoreData, loadCards, metaDecks, nodeSource, scriptStore, slowDecklists, wasmBinary } from './support/core-data'
 
@@ -79,6 +80,10 @@ describe.skipIf(!hasCoreData)('el replay de duelos automáticos reales (npm run 
       const shown = new Set([...Object.values(replay.sides[0].reveal), ...Object.values(replay.sides[1].reveal), ...replay.steps.flatMap((step) => Object.values(step[2] ?? {}))])
       const reals = new Set(json.match(/card-\d+-\d+/g) ?? [])
       expect([...reals].filter((id) => !shown.has(id))).toEqual([])
+      // En v2 (el enlace), la tabla lleva sólo passcodes de lo mostrado.
+      const codes = new Set([...shown].map((id) => Number(id.split('-')[1])))
+      const table = (compactReplayEnvelope(replay).d[5] as [Array<number | [number, number]>, string[]])[0].map((entry) => (Array.isArray(entry) ? entry[0] : entry))
+      expect(table.filter((code) => !codes.has(code))).toEqual([])
 
       // Ida y vuelta.
       const payload = await encodeReplayPayload(replay)
@@ -86,7 +91,8 @@ describe.skipIf(!hasCoreData)('el replay de duelos automáticos reales (npm run 
       expect(parseReplayText(json)).toEqual({ ok: true, replay })
 
       const link = buildReplayLink('https://ygoultralab.app', '/', payload).length
-      report.push(`seed ${seed}: ${replay.steps.length} jugadas, ${snap.overlay.turn} turnos, ${snap.status}; JSON ${(json.length / 1024).toFixed(1)} KB, comprimido ${(payload.length / 1024).toFixed(1)} KB, enlace ${link} (${link <= MAX_LINK_LENGTH ? 'entra' : 'no entra'}); recorrer ${walkMs.toFixed(1)} ms, saltar al final ${fullMs.toFixed(1)} ms, con fotos ${jumpMs.toFixed(2)} ms`)
+      const v1 = buildReplayLink('https://ygoultralab.app', '/', await packPayload(replayEnvelope(replay))).length
+      report.push(`seed ${seed}: ${replay.steps.length} jugadas, ${snap.overlay.turn} turnos, ${snap.status}; JSON ${(json.length / 1024).toFixed(1)} KB, comprimido ${(payload.length / 1024).toFixed(1)} KB, enlace ${link} (v1: ${v1}; ${link <= MAX_LINK_LENGTH ? 'entra' : 'no entra'}); recorrer ${walkMs.toFixed(1)} ms, saltar al final ${fullMs.toFixed(1)} ms, con fotos ${jumpMs.toFixed(2)} ms`)
       session.destroy()
     }
     writeFileSync(path.join(CORE_DATA_DIR, 'replay-report.txt'), report.join('\n'))
