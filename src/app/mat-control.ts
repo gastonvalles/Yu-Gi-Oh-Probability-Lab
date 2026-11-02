@@ -189,7 +189,7 @@ export function controlReactions({ mine, ownIds, before, after, action, kindOf }
       // Material Xyz: por regla queda debajo del Xyz y al desprenderse va al cementerio (la mesa no puede dejar debajo una carta ajena): al cementerio, no al Extra.
       const xyzMaterial = action.type === 'summon' && action.how === 'xyz' && action.materials.includes(id)
 
-      reactions.push(!xyzMaterial && pendulumLeftField(before, id, real, kindOf) ?{ type: 'regain', id: real, to: 'extra', faceUp: true, auto: true } : { type: 'regain', id: real, to: 'gy', auto: true })
+      reactions.push(!xyzMaterial && pendulumLeftField(before, id, real, kindOf) ? { type: 'regain', id: real, to: 'extra', faceUp: true, auto: true } : { type: 'regain', id: real, to: 'gy', auto: true })
     }
   }
 

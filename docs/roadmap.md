@@ -24,9 +24,8 @@ En orden de valor sobre costo.
 2. **Control de un Xyz con material y de una ficha** (M): el espejo del rival ya sigue al núcleo (`swap`, cambio de código,
    bolsas y materiales Xyz en `MatState.held`), pero al pasar el control de un Xyz con material `give` manda los materiales al
    cementerio, y `give` y `regain` rechazan fichas (`mat-control.test.ts` lo exige en la mesa manual). Es cambiar la mesa manual y
-   su protocolo (`mat-control.ts` completa del otro lado esas jugadas). Mismo lugar: un Péndulo mío que el rival controla y manda
-   al cementerio vuelve a mi cementerio y no a mi Extra boca arriba (`regain`); `controlReactions` necesita la clase de la carta
-   y `duel-session.ts` sólo tiene ids.
+   su protocolo (`mat-control.ts` completa del otro lado esas jugadas), sin romper a quien no recargó: un campo opcional más una
+   bandera de capacidad en `hello` (sin subir `PROTOCOL_VERSION`, como dice `docs/duelo.md`), también para espectadores y replays.
 3. **Handtraps en tableta** (M): por debajo de 1101 px va la franja chica del celular (`RivalHandStrip`, alto fijo) aunque el
    campo sea ancho; escalarla entre 640 y 1100 px.
 4. **Campo del celular en vertical** (S/L): a 360×640 los chips de salida tapaban la fila de pilas (S, sin arreglar). Acercar,
