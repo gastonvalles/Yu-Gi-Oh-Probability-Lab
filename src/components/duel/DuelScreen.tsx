@@ -281,7 +281,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, turnMin: options.turnLimit ? options.turnMin : 0, turnBonusMin: options.turnLimit ? options.turnBonusMin : 0, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding, ...(options.auto ? { auto: true } : {}) }),
     [handSize, options],
   )
-  const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
+  const { duel, snapshot, status, transport } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect, kindOf: (id) => cardKindOf(deck.cardsById.get(id)?.apiCard ?? null) })
   const deckReady = deck.mainIds.length >= handSize
 
   // Cuando ya se eligió quién va primero, cada uno reparte su mano solo (hace falta el deck y, del invitado, los ajustes del anfitrión).

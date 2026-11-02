@@ -8,7 +8,7 @@ import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeStat
 import { isEmojiSignal } from './duel-signals'
 import { CONTROL_ACTIONS, controlReactions } from './mat-control'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender, type WireAct } from './mat-public'
-import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatPile, type MatState } from './practice-mat'
+import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatCardKind, type MatPhase, type MatPile, type MatState } from './practice-mat'
 
 /**
  * Un duelo por enlace, del lado de uno de los dos jugadores: mi mesa (la real), la del rival (un espejo
@@ -217,6 +217,8 @@ interface DuelOptions {
   restore?: DuelSave
   /** Una sala con reglas automáticas cuyo duelo terminó rindiéndose (`AutoEndSave`): sigue terminado al recargar, antes de la revancha. */
   ended?: { conceded: Duelist; timeUp: boolean }
+  /** De qué clase es una carta mía (por su id real): un Monstruo de Péndulo mío que el rival manda del campo al cementerio vuelve a mi Extra Deck boca arriba (`controlReactions`). */
+  kindOf?: (realId: string) => MatCardKind
 }
 
 /** Lo que la mesa del núcleo le dice al reloj de turnos (ver `setAutoClock`). */
@@ -1104,7 +1106,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
           // Si cambió de manos un monstruo, mi mesa lo completa sola (tomarlo, soltarlo o recibirlo de vuelta).
           if (mine && sender) {
-            for (const reaction of controlReactions({ mine, ownIds, before: previous, after: theirs.state, action: message.wire.action })) {
+            for (const reaction of controlReactions({ mine, ownIds, before: previous, after: theirs.state, action: message.wire.action, kindOf: options.kindOf })) {
               commit(reaction)
             }
           }
