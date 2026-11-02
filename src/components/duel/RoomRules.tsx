@@ -2,7 +2,10 @@ import { getDeckFormatLabel } from '../../app/deck-format'
 import type { DuelSettings } from '../../app/duel-protocol'
 import { MAX_SPECTATORS } from '../../app/duel-relay-rules'
 import { GENESYS_POINT_CAP } from '../../app/genesys-format'
+import { useId, useState, type ReactNode } from 'react'
+
 import { t } from '../../i18n'
+import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { TONE } from '../ui/tone'
@@ -15,6 +18,34 @@ interface RoomRulesProps {
   watchers?: number
   /** Dentro de otra tarjeta (la columna de la sala, arriba del deck): sin caja propia y con el título sólo para el lector de pantalla. */
   bare?: boolean
+}
+
+/** Las reglas en una línea (formato, tipo y tiempo): lo que dice la fila plegada de la sala. */
+export const rulesSummary = (settings: DuelSettings) =>
+  [getDeckFormatLabel(settings.format), settings.match ? t('duel.rooms.match') : t('duel.rooms.single'), settings.limitMin > 0 ? t('duel.rooms.limit', { min: settings.limitMin }) : t('duel.rooms.noLimit')].join(' · ')
+
+/**
+ * La columna de la sala plegada en una fila: sólo en un celular bajo (hasta 760 px de alto, sin el menú lateral) y con `folded` (el deck ya fijo), para que la tirada del dado entre sin desplazar
+ * la pantalla. La fila dice las reglas y el deck en una línea y abre el detalle a un toque (`aria-expanded`); en una pantalla más alta la fila no se ve y el detalle va siempre, como si no estuviera.
+ */
+export function RoomFold({ folded, summary, children }: { folded: boolean; summary: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+
+  if (!folded) return children
+
+  return (
+    <>
+      <div className="hidden max-[1101px]:[@media(max-height:760px)]:grid">
+        <Button variant="tertiary" size="sm" fullWidth iconEnd={open ? 'chevron-up' : 'chevron-down'} aria-expanded={open} aria-controls={id} aria-label={`${t('duel.room.foldLabel')}: ${summary}`} className="px-1" onClick={() => setOpen(!open)}>
+          <span className="min-w-0 flex-1 truncate text-left">{summary}</span>
+        </Button>
+      </div>
+      <div id={id} className={cx('contents', !open && 'max-[1101px]:[@media(max-height:760px)]:hidden')}>
+        {children}
+      </div>
+    </>
+  )
 }
 
 /**

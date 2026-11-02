@@ -4,7 +4,7 @@ import { createDuel } from '../app/duel-session'
 import { parseMessage } from '../app/duel-protocol'
 import { CONTROL_ACTIONS, controlReactions, firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer } from '../app/mat-control'
 import { mapActionIds, mapMatIds } from '../app/mat-public'
-import { createMatState, describeMatAction, isForeignId, matReducer, type MatAction, type MatState } from '../app/practice-mat'
+import { createMatState, describeMatAction, isForeignId, matReducer, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
 
 const deck = (base: number) => Array.from({ length: 12 }, (_, index) => `card-${base + index}-1`)
@@ -15,7 +15,7 @@ const play = (state: MatState, ...actions: MatAction[]) => actions.reduce(matRed
 const summoned = (state: MatState, id: string, index = 0) => play(state, { type: 'place', id, zone: 'mz', index, pos: 'atk' })
 
 describe('las jugadas de control en una mesa', () => {
-  it('dar saca la carta de la mesa: del campo (y manda sus materiales al cementerio) o de una pila; no un material ni una ficha', () => {
+  it('dar saca la carta de la mesa: del campo (y manda sus materiales al cementerio) o de una pila; no un material', () => {
     const base = play(hostTable, { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'attach', id: 'card-1001-1', to: 'card-1000-1' })
     const given = matReducer(base, { type: 'give', id: 'card-1000-1' })
 
@@ -25,7 +25,8 @@ describe('las jugadas de control en una mesa', () => {
     expect(matReducer(base, { type: 'give', id: 'card-1001-1' })).toBe(base)
     const token = play(hostTable, { type: 'token', zone: 'mz', index: 1 })
 
-    expect(matReducer(token, { type: 'give', id: 'token-1' })).toBe(token)
+    // Una ficha sí (sólo del campo): sale de la mesa y el rival pone una suya (`mat-control-token.test.ts`).
+    expect(matReducer(token, { type: 'give', id: 'token-1' })).toMatchObject({ mz: [null, null, null, null, null], tokens: 1 })
     // De la mano o del deck también: en un duelo automático el núcleo manda un Kaiju de la mano (o Allure Palace del deck) al campo del rival.
     expect(matReducer(hostTable, { type: 'give', id: hostTable.hand[0]! }).hand).toEqual(hostTable.hand.slice(1))
     expect(matReducer(hostTable, { type: 'give', id: hostTable.deck[0]! }).deck).toEqual(hostTable.deck.slice(1))
@@ -263,10 +264,63 @@ describe('cómo responde una mesa cuando le toman una carta del cementerio o del
   })
 })
 
-/** Dos jugadores con la mesa repartida. */
-function started() {
+const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
+/** `card-1000-1` es un Monstruo de Péndulo de Ana; lo demás, monstruos comunes. */
+const kindOf = (id: string): MatCardKind => (id === 'card-1000-1' ? { ...MONSTER, pendulum: true } : MONSTER)
+
+describe('un Monstruo de Péndulo mío que el rival tenía en el campo', () => {
+  const ownIds = { c1: 'card-1000-1', c2: 'card-1001-1' }
+  const away = play(hostTable, { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'give', id: 'card-1000-1' })
+  const held = (id = 'f.c1', zone: 'mz' | 'st' = 'mz', index = 0) => play(guestTable, { type: 'take', id, zone, index, pos: 'atk' })
+  const react = (before: MatState, action: MatAction, kinds: typeof kindOf | null = kindOf) => controlReactions({ mine: away, ownIds, before, after: matReducer(before, action), action, ...(kinds ? { kindOf: kinds } : {}) })
+  const toExtra = [{ type: 'regain', id: 'card-1000-1', to: 'extra', faceUp: true, auto: true }]
+  const toGy = [{ type: 'regain', id: 'card-1000-1', to: 'gy', auto: true }]
+
+  it('al cementerio (mandado, como Sacrificio o como material) vuelve a mi Extra Deck boca arriba, también desde una zona de Péndulo', () => {
+    expect(react(held(), { type: 'move', id: 'f.c1', to: 'gy' })).toEqual(toExtra)
+    expect(react(held('f.c1', 'st', 4), { type: 'move', id: 'f.c1', to: 'gy' })).toEqual(toExtra)
+    expect(react(held(), { type: 'tribute', id: guestTable.hand[0]!, tributes: ['f.c1'], zone: 'mz', index: 1, pos: 'atk' })).toEqual(toExtra)
+    expect(react(held(), { type: 'summon', id: 'card-5900-1', how: 'synchro', materials: ['f.c1'], zone: 'mz', index: 1, pos: 'atk' })).toEqual(toExtra)
+  })
+
+  it('uno que no es de Péndulo, sin saber la clase, en una zona de Mágicas común o como material de una Invocación Xyz, va al cementerio como siempre', () => {
+    const normal = play(guestTable, { type: 'take', id: 'f.c2', zone: 'mz', index: 0, pos: 'atk' })
+    const awayNormal = play(hostTable, { type: 'place', id: 'card-1001-1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'give', id: 'card-1001-1' })
+
+    expect(controlReactions({ mine: awayNormal, ownIds, before: normal, after: matReducer(normal, { type: 'move', id: 'f.c2', to: 'gy' }), action: { type: 'move', id: 'f.c2', to: 'gy' }, kindOf })).toEqual([{ type: 'regain', id: 'card-1001-1', to: 'gy', auto: true }])
+    expect(react(held(), { type: 'move', id: 'f.c1', to: 'gy' }, null)).toEqual(toGy)
+    expect(react(held('f.c1', 'st', 2), { type: 'move', id: 'f.c1', to: 'gy' })).toEqual(toGy)
+    // Material Xyz: por regla queda debajo del Xyz y al desprenderse va al cementerio.
+    expect(react(held(), { type: 'summon', id: 'card-5900-1', how: 'xyz', materials: ['f.c1'], zone: 'mz', index: 1, pos: 'atk' })).toEqual(toGy)
+  })
+
+  it('a la mano, al deck o al destierro va adonde se dijo; al Extra Deck, siempre boca arriba', () => {
+    expect(react(held(), { type: 'move', id: 'f.c1', to: 'hand' })).toEqual([{ type: 'regain', id: 'card-1000-1', to: 'hand', auto: true }])
+    expect(react(held(), { type: 'move', id: 'f.c1', to: 'deck' })).toEqual([{ type: 'regain', id: 'card-1000-1', to: 'deck', auto: true }])
+    expect(react(held(), { type: 'move', id: 'f.c1', to: 'banished', faceDown: true })).toEqual([{ type: 'regain', id: 'card-1000-1', to: 'banished', faceDown: true, auto: true }])
+    expect(react(held(), { type: 'move', id: 'f.c1', to: 'extra' })).toEqual(toExtra)
+  })
+
+  it('entre dos jugadores: Beto manda al cementerio el Péndulo de Ana y vuelve al Extra Deck de Ana boca arriba', () => {
+    const { room, host, guest } = started(kindOf)
+
+    host.play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
+    host.play({ type: 'give', id: 'card-1000-1' })
+    room.flush()
+    guest.play({ type: 'move', id: foreignIn(guest.getSnapshot().mine!)[0]!, to: 'gy' })
+    room.flush()
+
+    expect(host.getSnapshot().mine!.gy).toEqual([])
+    expect(host.getSnapshot().mine!.extra).toContain('card-1000-1')
+    expect(host.getSnapshot().mine!.extraUp).toEqual(['card-1000-1'])
+    expect(guest.getSnapshot().mine!.gy.filter(isForeignId)).toEqual([])
+  })
+})
+
+/** Dos jugadores con la mesa repartida (`kindOf`: la clase de las cartas de Ana). */
+function started(hostKindOf?: (id: string) => MatCardKind) {
   const room = createMemoryRoom()
-  const host = createDuel(room.join(), { role: 'host', name: 'Ana', sid: 'host-1', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false } })
+  const host = createDuel(room.join(), { role: 'host', name: 'Ana', sid: 'host-1', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false }, ...(hostKindOf ? { kindOf: hostKindOf } : {}) })
   const guest = createDuel(room.join(), { role: 'guest', name: 'Beto', sid: 'guest-1' })
 
   room.flush()

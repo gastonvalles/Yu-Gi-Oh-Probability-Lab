@@ -1,6 +1,14 @@
+import { useMemo, type ReactNode } from 'react'
+
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import type { Outcome } from '../../app/lab-suggestion'
 import type { LabViewResult } from '../../app/probability-lab'
+import { useAppSelector } from '../../app/store-hooks'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
+import type { TurnView } from '../../types'
+import { LabSuggestion } from '../probability/LabSuggestion'
+import { useProbabilityLab } from '../probability/use-probability-lab'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
@@ -13,7 +21,7 @@ import { RING_ARC } from '../ui/tone'
 import { per100Exact } from './comparison-rows'
 
 /** Todavía no hay B (primera vez): en el lugar del veredicto, las dos puertas para tener una. */
-export function FirstTimeCard({ onTryLab, onImport }: { onTryLab: () => void; onImport: () => void }) {
+export function FirstTimeCard({ onTryLab, onImport, labPrimary = true }: { onTryLab: () => void; onImport: () => void; labPrimary?: boolean }) {
   return (
     <Card level="hero">
       <EmptyState
@@ -25,7 +33,7 @@ export function FirstTimeCard({ onTryLab, onImport }: { onTryLab: () => void; on
             <Button variant="secondary" icon="upload" className="max-w-full" onClick={onImport}>
               {t('meta.compare.import')}
             </Button>
-            <Button variant="primary" icon="flask" className="max-w-full" onClick={onTryLab}>
+            <Button variant={labPrimary ? 'primary' : 'secondary'} icon="flask" className="max-w-full" onClick={onTryLab}>
               {t('meta.compare.empty.lab')}
             </Button>
           </>
@@ -44,10 +52,12 @@ interface SameDeckCardProps {
   cards: number
   onGoToBuilder: () => void
   onTryLab: () => void
+  /** Falso cuando la sugerencia del Lab ya está abajo: su «Probar el cambio» es el único violeta de la pantalla. */
+  labPrimary?: boolean
 }
 
 /** A y B tienen las mismas cartas en las tres zonas: un solo anillo (el de las dos) y lo que sigue, cambiar cartas o probar un cambio del Lab. */
-export function SameDeckCard({ result, computing, cards, onGoToBuilder, onTryLab }: SameDeckCardProps) {
+export function SameDeckCard({ result, computing, cards, onGoToBuilder, onTryLab, labPrimary = true }: SameDeckCardProps) {
   return (
     <Card level="hero" className="@container grid content-start gap-4" aria-busy={computing}>
       <header className="flex items-center gap-2.5">
@@ -84,11 +94,33 @@ export function SameDeckCard({ result, computing, cards, onGoToBuilder, onTryLab
           <Button variant="secondary" icon="cards" className="max-w-full" onClick={onGoToBuilder}>
             {t('meta.compare.goToBuilder')}
           </Button>
-          <Button variant="primary" icon="flask" className="max-w-full" onClick={onTryLab}>
+          <Button variant={labPrimary ? 'primary' : 'secondary'} icon="flask" className="max-w-full" onClick={onTryLab}>
             {t('meta.compare.empty.lab')}
           </Button>
         </div>
       </div>
     </Card>
+  )
+}
+
+/**
+ * La sugerencia del Lab en los vacíos de Comparar (sin B, o B igual a A): «Lo que más te frena» de tu deck, la misma tarjeta y la misma cuenta que en el Lab (el
+ * caché es por contenido: si venís del Lab sale al instante). «Probar el cambio» lo pone a prueba y lleva al Lab, donde se compara o se aplica. La tarjeta de arriba
+ * (`children`) sabe si ella lleva el violeta: sólo mientras la sugerencia no está, porque con ella abajo el único botón principal es el suyo.
+ */
+export function WithLabSuggestion({ view, onTry, children }: { view: TurnView; onTry: (outcome: Outcome) => void; children: (labPrimary: boolean) => ReactNode }) {
+  const deck = useAppSelector((state) => state.deckBuilder)
+  const { patterns, disabledGenericRuleIds, systemRuleNames } = useAppSelector((state) => state.patterns)
+  const handSize = useAppSelector((state) => state.settings.handSize)
+  const deckFormat = useAppSelector((state) => state.settings.deckFormat)
+  const cards = useMemo(() => deriveMainDeckCardsFromZone(deck.main), [deck.main])
+  const lab = useProbabilityLab(cards, patterns, disabledGenericRuleIds, handSize, false, systemRuleNames)
+  const results = lab.computation?.status === 'ok' ? lab.computation.results : null
+
+  return (
+    <>
+      {children(!results)}
+      {results ? <LabSuggestion deckFormat={deckFormat} deck={deck} cards={cards} checks={lab.allChecks} handSize={handSize} view={view} result={results[view]} first={results.first} second={results.second} onTry={onTry} /> : null}
+    </>
   )
 }

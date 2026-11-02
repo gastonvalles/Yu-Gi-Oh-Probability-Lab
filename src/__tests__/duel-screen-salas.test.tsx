@@ -371,6 +371,33 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByTestId('duel-series')).toHaveTextContent('Duelo 1 · 0–0')
   })
 
+  it('ya listo, la columna de la sala se pliega en una fila (sólo la muestra un celular bajo) que abre las reglas y el deck a un toque', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    createRoom(host)
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    joinByLink(guest, link)
+    flush()
+    const fold = () => within(host.container).queryByRole('button', { name: /^Reglas y deck: .+ · Mi deck$/ })
+
+    // Sin estar listo no se pliega: el deck y lo que le falta, a la vista.
+    expect(fold()).toBeNull()
+    click(host, 'Estoy listo')
+    flush()
+
+    const row = fold()!
+    const detail = document.getElementById(row.getAttribute('aria-controls')!)!
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    expect(within(detail).getByTestId('room-summary')).toBeInTheDocument()
+    expect(within(detail).getByRole('region', { name: 'Tu deck' })).toBeInTheDocument()
+    fireEvent.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    expect(document.activeElement?.tagName).not.toBe('INPUT')
+    click(host, 'Ya no estoy listo')
+    expect(fold()).toBeNull()
+  })
+
   it('un Match con siding: entre duelo y duelo cada uno cambia cartas de su Side y, con los dos listos, sigue el duelo', () => {
     const sideIds = ['card-777-1']
     const withSide = new Map([...monsters, ['card-777-1', { name: 'Carta del Side', apiCard: effectMonster }]])

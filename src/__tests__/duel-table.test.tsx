@@ -300,7 +300,9 @@ describe('la mesa del duelo', () => {
     const theirs = play({ type: 'phase', phase: 'main2' })
     const { rerender } = render(<DuelTable mine={side(mine)} theirs={side(theirs)} turn="mine" />)
 
-    expect(screen.getByLabelText('Fase actual: Battle Phase')).toBeInTheDocument()
+    // Lo de ahora, en ámbar (como la caja de la fase en la mesa), no un relleno violeta.
+    expect(screen.getByLabelText('Fase actual: Battle Phase')).toHaveClass('border-info', 'text-info')
+    expect(screen.getByLabelText('Fase actual: Battle Phase')).not.toHaveClass('bg-primary')
 
     rerender(<DuelTable mine={side(mine)} theirs={side(theirs)} turn="theirs" />)
     expect(screen.getByLabelText('Fase actual: Main Phase 2')).toBeInTheDocument()

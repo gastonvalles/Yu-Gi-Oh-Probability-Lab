@@ -1,4 +1,7 @@
 import {
+  compactReader,
+  compactTime,
+  compactWriter,
   invalid,
   MAX_PAYLOAD_CHARS,
   packPayload,
@@ -9,6 +12,7 @@ import {
   readMatAction,
   readMatState,
   readOneOf,
+  readCompactTime,
   readRecord,
   readText,
   SHARE_APP,
@@ -24,12 +28,13 @@ import { createId, isRecord } from './utils'
 
 /**
  * El replay de un duelo que viaja (enlace `#replay=<datos>`; como archivo viaja el video, `components/replays/video/`) y los que se guardan en este navegador. El mismo sobre que el combo
- * (`{ app, kind: 'duel', v: 1, replay }`, `combo-share.ts`), el mismo códec (deflate-raw + base64url) y la misma desconfianza: es **entrada no confiable**. Se topa el
- * largo antes de decodificar, la descompresión se corta a `MAX_REPLAY_JSON`, del JSON se copian sólo los campos conocidos (las mesas y las jugadas con los lectores del
- * combo), los ids con su patrón, los nombres pasan por `cleanName` y se dibujan como texto, y nada lanza.
+ * (`{ app, kind: 'duel', v: 1, replay }`, `combo-share.ts`; el enlace se escribe en `v: 2`, la forma compacta del combo, y los dos se leen para siempre), el mismo códec
+ * (deflate-raw + base64url) y la misma desconfianza: es **entrada no confiable**. Se topa el largo antes de decodificar, la descompresión se corta a `MAX_REPLAY_JSON`, del JSON
+ * se copian sólo los campos conocidos (las mesas y las jugadas con los lectores del combo), los ids con su patrón, los nombres pasan por `cleanName` y se dibujan como texto, y
+ * nada lanza.
  */
 
-export const DUEL_REPLAY_VERSION = 1
+export const DUEL_REPLAY_VERSION = 2
 export const REPLAY_HASH = 'replay'
 /** El JSON de un duelo largo pasa los 100 KB: el tope es más alto que el del combo. */
 export const MAX_REPLAY_JSON = 2 * 1024 * 1024
@@ -46,8 +51,47 @@ export type ReplayRead = { ok: true; replay: DuelReplay } | { ok: false; error: 
 /** Lo que trae un enlace pegado: un duelo, un combo (va a la mesa) o por qué no se pudo leer. */
 export type SharedRead = { ok: true; kind: 'duel'; replay: DuelReplay } | { ok: true; kind: 'combo'; combo: SharedCombo } | { ok: false; error: ReplayError }
 
-export const replayEnvelope = (replay: DuelReplay) => ({ app: SHARE_APP, kind: 'duel', v: DUEL_REPLAY_VERSION, replay })
-export const encodeReplayPayload = (replay: DuelReplay) => packPayload(replayEnvelope(replay))
+/** El sobre v1 (el JSON tal cual), el de los enlaces de antes. */
+export const replayEnvelope = (replay: DuelReplay) => ({ app: SHARE_APP, kind: 'duel', v: 1, replay })
+
+/**
+ * El sobre v2, el del enlace: `{ app, kind: 'duel', v: 2, d: [savedAt, mode, view, players, starter, tabla, mesas, reveladas, jugadas, reveladas por jugada, vidas, nombres,
+ * result | null, hidden?] }`. La tabla, las mesas y las jugadas, como el combo v2 (`compactWriter`: cada id es su lugar en la tabla; una jugada es `[lado, ...la del combo]`);
+ * lo revelado (id opaco → id real), en pares planos de lugares, y el de cada jugada, aparte (`[jugada, ...pares]`: pocas muestran algo); los nombres, en el orden de los
+ * passcodes de la tabla (`null`, uno sin nombre). **Este orden es el formato: sólo se agrega al final.** Leer v2 es armar la forma de v1 y pasarla por el mismo `readReplay`.
+ */
+export function compactReplayEnvelope(replay: DuelReplay) {
+  const pairs = (map: Record<string, string> | undefined) => Object.entries(map ?? {})
+  // Los nombres van por passcode: el de cada uno entra a la tabla aunque nadie lo nombre (no pasa en un replay armado acá).
+  const pack = compactWriter([replay.sides.map((side) => [side.initial, pairs(side.reveal)]), replay.steps.map(([, action, shown]) => [action, pairs(shown)]), pairs(replay.hidden), Object.keys(replay.cards).map((code) => `card-${code}-1`)])
+  const flat = (map: Record<string, string> | undefined) => pairs(map).flatMap(([opaque, real]) => [pack.ref(opaque), pack.ref(real)])
+  const names = pack.codes.map((code) => replay.cards[String(code)] ?? null)
+  while (names.length > 0 && names.at(-1) === null) names.pop()
+
+  return {
+    app: SHARE_APP,
+    kind: 'duel',
+    v: DUEL_REPLAY_VERSION,
+    d: [
+      compactTime(replay.savedAt),
+      replay.mode,
+      replay.view,
+      replay.players,
+      replay.starter,
+      pack.table,
+      replay.sides.map((side) => pack.mat(side.initial)),
+      replay.sides.map((side) => flat(side.reveal)),
+      replay.steps.map(([side, action]) => [side, ...pack.action(action)]),
+      replay.steps.flatMap(([, , shown], n) => (shown ? [[n, ...flat(shown)]] : [])),
+      replay.life,
+      names,
+      replay.result ? [replay.result.winner, replay.result.reason] : null,
+      ...(replay.hidden ? [flat(replay.hidden)] : []),
+    ],
+  }
+}
+
+export const encodeReplayPayload = (replay: DuelReplay) => packPayload(compactReplayEnvelope(replay))
 export const buildReplayLink = (origin: string, pathname: string, payload: string) => `${origin}${pathname}#${REPLAY_HASH}=${payload}`
 
 /** Los datos de un enlace de replay (entero o sólo el hash), o null si no lo es. */
@@ -77,8 +121,8 @@ export function parseReplayText(text: string): ReplayRead {
   const value = envelopeOf(text)
   if (!value || value.kind !== 'duel' || typeof value.v !== 'number') return { ok: false, error: 'notReplay' }
   if (value.v > DUEL_REPLAY_VERSION) return { ok: false, error: 'newer' }
-  if (value.v !== DUEL_REPLAY_VERSION) return { ok: false, error: 'broken' }
-  const replay = readReplay(value.replay)
+  if (value.v !== 1 && value.v !== DUEL_REPLAY_VERSION) return { ok: false, error: 'broken' }
+  const replay = value.v === 1 ? readReplay(value.replay) : readCompactReplay(value.d)
   return replay ? { ok: true, replay } : { ok: false, error: 'broken' }
 }
 
@@ -174,6 +218,56 @@ function readReplay(value: unknown): DuelReplay | null {
       hidden: view === 'mine' && v.hidden !== undefined ? reveal(v.hidden, MAX_HIDDEN, (id) => (typeof id === 'string' && OPAQUE.test(id) ? id : invalid())) : undefined,
       result: v.result === undefined ? undefined : result(v.result),
     })
+  } catch {
+    return null
+  }
+}
+
+/** La forma v1 de un replay v2 (lanza si no se puede armar); `readReplay` la valida entera. */
+function expandCompactReplay(value: unknown): unknown {
+  const raw = (item: unknown) => item
+  const [savedAt, mode, view, players, starter, rawTable, mats, shown, rawSteps, rawReveals, life, names, rawResult, hidden, ...rest] = list(value, 14, raw)
+  if (rest.length > 0) invalid()
+  const read = compactReader(rawTable)
+  const pairs = (flat: unknown, max: number) => {
+    const items = list(flat, max * 2, read.ref)
+    return items.length % 2 === 0 ? Object.fromEntries(items.flatMap((item, n) => (n % 2 === 0 ? [[item, items[n + 1]!]] : []))) : invalid()
+  }
+  const [mat0, mat1, ...moreMats] = list(mats, 2, read.mat)
+  const [shown0, shown1, ...moreShown] = list(shown, 2, (flat) => pairs(flat, 400))
+  if (!mat0 || !mat1 || !shown0 || !shown1 || moreMats.length > 0 || moreShown.length > 0) invalid()
+  const steps: unknown[][] = list(rawSteps, MAX_STEPS, (item) => {
+    const [side, ...action] = list(item, 9, raw)
+    return [side, read.action(action)]
+  })
+  for (const item of list(rawReveals, MAX_STEPS, raw)) {
+    const [at, ...flat] = list(item, MAX_REVEAL * 2 + 1, raw)
+    steps[readInt(at, 0, steps.length - 1)]!.push(pairs(flat, MAX_REVEAL))
+  }
+  const cardNames = list(names, MAX_CARDS, raw)
+  const [winner, reason] = rawResult === null ? [] : list(rawResult, 2, raw)
+
+  return {
+    savedAt: readCompactTime(savedAt),
+    mode,
+    view,
+    players,
+    starter,
+    sides: [
+      { initial: mat0, reveal: shown0 },
+      { initial: mat1, reveal: shown1 },
+    ],
+    steps,
+    life,
+    cards: Object.fromEntries(read.codes.flatMap((code, n) => (cardNames[n] === null || cardNames[n] === undefined ? [] : [[String(code), cardNames[n]]]))),
+    hidden: hidden === undefined ? undefined : pairs(hidden, MAX_HIDDEN),
+    result: rawResult === null ? undefined : { winner, reason },
+  }
+}
+
+function readCompactReplay(value: unknown): DuelReplay | null {
+  try {
+    return readReplay(expandCompactReplay(value))
   } catch {
     return null
   }

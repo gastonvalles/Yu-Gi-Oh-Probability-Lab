@@ -5,6 +5,7 @@ import { createParticipantId } from './duel-relay-rules'
 import { readAutoEndSave, readDuelSave, writeDuelRecord, writeDuelSave } from './duel-save'
 import { createDuel, type Duel, type DuelRole, type DuelSnapshot } from './duel-session'
 import { createSpectator, type Spectator, type SpectatorSnapshot } from './duel-spectator'
+import { cardKindOf, type MatCardKind } from './practice-mat'
 import { createSocketTransport, type SocketStatus, type SocketTransport, type SpectatorSocket } from './duel-socket'
 
 /** Cómo se conecta a una sala: por el relay en la app, por una sala en memoria en las pruebas. */
@@ -35,6 +36,8 @@ interface UseDuelInput {
   name: string
   settings?: DuelSettings
   connect: DuelConnect
+  /** De qué clase es una carta mía (por su id real): se lee siempre el último (el deck cambia al hacer siding). */
+  kindOf?: (realId: string) => MatCardKind
 }
 
 const noSubscribe = () => () => {}
@@ -46,10 +49,12 @@ const noSnapshot = () => null
  * Lo propio del duelo (mi mesa, mis vidas, el reloj) se guarda en la pestaña a cada cambio y, al volver a entrar a la misma sala con el mismo rol (una recarga), se sigue desde ahí.
  * `transport` es la conexión (null junto con `duel`): por ella viaja también el duelo automático de una sala con reglas automáticas.
  */
-export function useDuel({ room, role, name, settings, connect }: UseDuelInput): { duel: Duel | null; snapshot: DuelSnapshot | null; status: SocketStatus; transport: SocketTransport | null } {
+export function useDuel({ room, role, name, settings, connect, kindOf }: UseDuelInput): { duel: Duel | null; snapshot: DuelSnapshot | null; status: SocketStatus; transport: SocketTransport | null } {
   const [live, setLive] = useState<{ duel: Duel; transport: SocketTransport } | null>(null)
   const latest = useRef({ name, settings })
   latest.current = { name, settings }
+  const latestKindOf = useRef(kindOf)
+  latestKindOf.current = kindOf
 
   useEffect(() => {
     if (room === null) {
@@ -58,7 +63,7 @@ export function useDuel({ room, role, name, settings, connect }: UseDuelInput): 
 
     const transport = connect(room, createParticipantId())
     const ended = readAutoEndSave(room, role)
-    const duel = createDuel(transport, { role, ...latest.current, restore: readDuelSave(room, role) ?? undefined, ...(ended ? { ended } : {}) })
+    const duel = createDuel(transport, { role, ...latest.current, kindOf: (id) => latestKindOf.current?.(id) ?? cardKindOf(null), restore: readDuelSave(room, role) ?? undefined, ...(ended ? { ended } : {}) })
     let saved = duel.getSnapshot()
     const stopSaving = duel.subscribe(() => {
       // Sólo cuando algo de lo guardado cambió (las jugadas, las vidas o el reloj, la mesa de arranque): el chat y los avisos no pasan por acá.
