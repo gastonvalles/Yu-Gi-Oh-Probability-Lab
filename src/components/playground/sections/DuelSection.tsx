@@ -32,6 +32,8 @@ import { cx } from '../../ui/cx'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleDuel } from './duel-sample'
 import { ShuffleSamples } from './ShuffleSamples'
+import { Presence } from '../../../app/use-presence'
+import { PendulumPicker, type PendulumPickCard } from '../../probability/PendulumPicker'
 
 /**
  * El duelo por enlace: cómo se ven los dos campos. Las tres variantes son las que se ofrecen para el celular; en una
@@ -91,6 +93,8 @@ export function DuelSection() {
       <GlowsSample />
       <TrailSample />
       <ResizeHandleSample />
+      <PendulumPickerSample range="Niveles 2 a 7" title="Péndulo · varias, con rango" note="Invocar varias por Péndulo en la mesa manual: la mano y el Extra boca arriba en una hoja, con el rango arriba. La que no entra (Nivel 8) va apagada y lo dice, pero se elige: al confirmar, la mesa avisa y sigue." />
+      <PendulumPickerSample range="Sin rango (una escala sin dato)" title="Péndulo · sin rango" note="Una escala sin dato (un deck guardado antes de que se guardara la escala): no se marca ninguna ni se valida." />
 
       <ArenaSamples />
 
@@ -105,6 +109,26 @@ export function DuelSection() {
 
       <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+/** La hoja de «Invocar varias por Péndulo» (`PendulumPicker`), abierta con un botón, con o sin rango. */
+function PendulumPickerSample({ range, title, note }: { range: string; title: string; note: string }) {
+  const [open, setOpen] = useState(false)
+  const known = !range.startsWith('Sin')
+  const cards: PendulumPickCard[] = [
+    { id: 'a', name: 'Dinomist Rex', art: null, from: 'hand', level: 6, fit: known ? 'in' : 'unknown' },
+    { id: 'b', name: 'Odd-Eyes Dragon', art: null, from: 'hand', level: 8, fit: known ? 'out' : 'unknown' },
+    { id: 'c', name: 'Performapal Hip Hippo', art: null, from: 'extra', level: 3, fit: known ? 'in' : 'unknown' },
+  ]
+
+  return (
+    <Specimen title={title} note={<>{note} Archivo: <Tag>probability/PendulumPicker.tsx</Tag></>}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+        Abrir la hoja
+      </Button>
+      <Presence>{open ? <PendulumPicker cards={cards} range={range} initial={['a']} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} /> : null}</Presence>
+    </Specimen>
   )
 }
 

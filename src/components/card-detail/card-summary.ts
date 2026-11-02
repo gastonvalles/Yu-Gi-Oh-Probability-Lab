@@ -3,7 +3,7 @@ import type { ApiCardReference } from '../../types'
 type CardSummarySource = Pick<
   ApiCardReference,
   'cardType' | 'race' | 'attribute' | 'level' | 'linkValue' | 'atk' | 'def'
->
+> & Partial<Pick<ApiCardReference, 'scale'>>
 
 /** Resumen corto de una carta: "[Monstruo de Efecto] Bestia/Luz" y "[★4] / 1000/0". */
 export function buildCardSummary(card: CardSummarySource): {
@@ -23,6 +23,11 @@ export function buildCardSummary(card: CardSummarySource): {
     statParts.push(`[Link-${card.linkValue}]`)
   } else if (card.level !== null) {
     statParts.push(`[★${card.level}]`)
+  }
+
+  // La escala de un Péndulo, sólo si se sabe (la 0 vale): «[★4] / [◆8]».
+  if (card.scale != null) {
+    statParts.push(`[◆${card.scale}]`)
   }
 
   if (card.linkValue !== null) {

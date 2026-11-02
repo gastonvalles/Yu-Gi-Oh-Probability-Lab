@@ -27,6 +27,7 @@ export const duel = {
   'duel.dock.zoom': 'Ver la carta en grande',
   'duel.dock.level': 'Nivel',
   'duel.dock.rank': 'Rango',
+  'duel.dock.scale': 'Escala',
   'duel.dock.link': 'Link',
   'duel.dock.atk': 'ATK',
   'duel.dock.def': 'DEF',

@@ -1016,7 +1016,7 @@ export function pendulumOnField(state: MatState, id: string, kindOf: (id: string
 
 /**
  * Las escalas de péndulo activas: un Monstruo de Péndulo **boca arriba** en la zona 0 o en la 4 de Mágicas y Trampas (`MatState.st`). Boca abajo, o en otra zona, no son escalas.
- * Con dos se ofrece la Invocación de Péndulo desde la mano. El rango de nivel no se valida: el que practica manda.
+ * Con dos se ofrece la Invocación de Péndulo desde la mano. El rango (`pendulum-range.ts`) se avisa, no se valida: el que practica manda.
  */
 export function activeScales(state: MatState, kindOf: (id: string) => MatCardKind): { index: number; id: string }[] {
   return [0, 4].flatMap((index): { index: number; id: string }[] => {
@@ -1032,14 +1032,21 @@ export function activeScales(state: MatState, kindOf: (id: string) => MatCardKin
 
 /**
  * La jugada de mandar una carta a una pila. Un Monstruo de Péndulo que **sale del campo al cementerio** (destruido, mandado, usado como Sacrificio) va, por regla, al Extra Deck boca arriba, y un monstruo del Extra Deck
- * que iba a la mano o al deck vuelve al Extra Deck boca abajo: es la misma jugada con ese destino (la arma quien juega, así las dos mesas de un duelo la aplican igual). Lo demás va adonde se dijo.
+ * que iba a la mano o al deck vuelve al Extra Deck: es la misma jugada con ese destino (la arma quien juega, así las dos mesas de un duelo la aplican igual). Lo demás va adonde se dijo.
+ * **Un Monstruo de Péndulo que va al Extra Deck va siempre boca arriba** (`extraToward`), también soltado sobre el Extra; lo demás, boca abajo.
  */
 export function pileAction(state: MatState, id: string, to: MatPile, kindOf: (id: string) => MatCardKind): MatAction {
-  if (to === 'gy' && pendulumOnField(state, id, kindOf)) return { type: 'move', id, to: 'extra', faceUp: true }
-  // Un monstruo del Extra Deck que iba a la mano o al deck vuelve, por regla, al Extra Deck (boca abajo).
-  if ((to === 'hand' || to === 'deck') && kindOf(id).extra) return { type: 'move', id, to: 'extra' }
+  if (to === 'gy' && pendulumOnField(state, id, kindOf)) return extraToward(id, kindOf)
+  // Un monstruo del Extra Deck que iba a la mano o al deck vuelve, por regla, al Extra Deck.
+  if ((to === 'hand' || to === 'deck') && kindOf(id).extra) return extraToward(id, kindOf)
+  if (to === 'extra') return extraToward(id, kindOf)
 
   return { type: 'move', id, to }
+}
+
+/** Mandar una carta al Extra Deck: un Monstruo de Péndulo propio, boca arriba (siempre: es de donde sale la Invocación de Péndulo); lo demás (y una carta del rival), boca abajo. */
+export function extraToward(id: string, kindOf: (id: string) => MatCardKind): MatAction {
+  return kindOf(id).pendulum && !isToken(id) && !isForeignId(id) ? { type: 'move', id, to: 'extra', faceUp: true } : { type: 'move', id, to: 'extra' }
 }
 
 /**
@@ -1164,7 +1171,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     add(t('practice.menu.detachToGy'), { type: 'move', id, to: 'gy' })
     banish()
     toHand()
-    if (kind.extra) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
+    // Un Xyz o un Fusión de Péndulo que era material vuelve al Extra (el de Péndulo, boca arriba).
+    if (kind.extra) addUtility(t(kind.pendulum ? 'practice.menu.toExtraFaceUp' : 'practice.menu.toExtra'), extraToward(id, kindOf))
     return items
   }
 
@@ -1276,10 +1284,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
   if (pile !== 'extra') {
     // Un Monstruo de Péndulo va al Extra Deck boca arriba (de cualquier lado por un efecto; del campo, el cementerio ya lo manda ahí): ahí se ve y se puede volver a invocar por Péndulo.
-    if (kind.pendulum && !leavesToExtra) add(t('practice.menu.toExtraFaceUp'), { type: 'move', id, to: 'extra', faceUp: true })
-    if (kind.extra) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
-  } else if (faceUpExtra) {
-    addUtility(t('practice.menu.extraFaceDown'), { type: 'move', id, to: 'extra' })
+    // Uno de Péndulo nunca va boca abajo al Extra (tampoco un Fusión de Péndulo, ni se da vuelta uno que ya está boca arriba).
+    if (kind.pendulum && !leavesToExtra) add(t('practice.menu.toExtraFaceUp'), extraToward(id, kindOf))
+    if (kind.extra && !kind.pendulum) addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
   }
 
   // Arriba/abajo del deck desde cualquier lado (mano, campo, cementerio, destierro): los mismos nombres en todos los menús.

@@ -9,6 +9,7 @@ import { PLAY_PLACE, SUPPORT_PLACE, asksHow, inMenuBlocks, menuPlaceOf, type Men
 import { isOpaqueId } from '../../app/mat-public'
 import { EASE_IN_OUT } from '../../app/motion'
 import {
+  activeScales,
   allMatIds,
   type AttackTarget,
   banishItem,
@@ -69,6 +70,7 @@ import type { CardTextHighlight } from '../../app/card-text'
 import { cardEffectMapLoaded, getCardEffectFacts, loadCardEffectMap, loadCardEffects } from '../../app/card-effect-data'
 import { LIMIT_FACTS, activationFacts, cardEffects, countableEffects, effectChoices, effectKey, limitKey, spellTrapActivation, type Activation } from '../../app/mat-assistant'
 import { repeatedTurnRule } from '../../app/turn-rules'
+import { describeRange, matPendulumRange, pendulumCandidates, pendulumLevel, rangeFit } from '../../app/pendulum-range'
 import { usePracticeSounds } from '../../app/use-practice-sounds'
 import { useWakeLock } from '../../app/use-wake-lock'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
@@ -101,6 +103,7 @@ import { ShellMenuButton } from '../shell/ShellMenu'
 import { AttackMark, CARD_HOVER, CARD_TRANSITION, ChainBadge, DUEL_GLOW, FX_CARD, FxFrame, HOLD_PRESS, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, StatTag, TargetMark, VOIDED_ART, chainBadgeAt, chainLinkLabel, fxVars, pickStatLabel, statLabel } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
+import { PendulumPicker, type PendulumPickCard } from './PendulumPicker'
 import { PracticeMatPanel, SharedComboBar } from './PracticeMatPanel'
 import { ReplayVideoDialog } from '../replays/ReplayVideo'
 import { createPanelSteps } from './panel-steps'
@@ -795,6 +798,10 @@ function PracticeMatBody({
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
   const [picking, setPicking] = useState<Picking | null>(null)
+  // Invocar varias por Péndulo: la hoja abierta (con la carta desde la que se abrió ya elegida) y, al confirmar, las que faltan colocar, de a una con el flujo de siempre (posición y zona):
+  // `total` es para el «1 de 3» y `open`, que la de adelante ya tiene su menú abierto (si se cierra sin colocarla, se cancela el resto).
+  const [pendulumPick, setPendulumPick] = useState<string[] | null>(null)
+  const [pendulumQueue, setPendulumQueue] = useState<{ ids: string[]; total: number; open: boolean } | null>(null)
   // Lo que se hace y el rival ve: mirar una pila (el visor abierto) o elegir cómo jugar una carta (materiales, Sacrificios, zona).
   const activity: Activity | null = viewer !== null && viewer !== 'hand' ? viewer : picking !== null ? 'choosing' : null
   const onActivity = duel?.onActivity
@@ -1019,6 +1026,8 @@ function PracticeMatBody({
     setShuffleKey((key) => key + 1)
     setPicking(null)
     setCounterMode(null)
+    setPendulumPick(null)
+    setPendulumQueue(null)
     playSfx('shuffle')
   }, [session.initial])
 
@@ -1819,6 +1828,70 @@ function PracticeMatBody({
     }
   }, [])
 
+  // La Invocación de Péndulo de la mesa manual: las dos escalas activas, el rango (o «sin rango», si una carta no trae su escala: un deck guardado antes) y lo que se puede elegir.
+  const scaleOf = useCallback((id: string) => cardOf(id).apiCard?.scale, [cardOf])
+  const pendulum = useMemo(() => {
+    const range = matPendulumRange(state, kindOf, scaleOf)
+
+    return { scales: activeScales(state, kindOf), range, text: describeRange(range), candidates: pendulumCandidates(state, kindOf) }
+  }, [state, kindOf, scaleOf])
+  const pendulumFit = useCallback((id: string) => rangeFit(pendulum.range, pendulumLevel(kindOf(id))), [pendulum.range, kindOf])
+  const pendulumCards = useMemo<PendulumPickCard[]>(
+    () =>
+      pendulumPick === null
+        ? []
+        : pendulum.candidates.map(({ id, from }) => {
+            const card = cardOf(id)
+
+            return { id, from, name: card.name, art: artOf(card), level: pendulumLevel(kindOf(id)), fit: pendulumFit(id) }
+          }),
+    [pendulumPick, pendulum.candidates, cardOf, kindOf, pendulumFit],
+  )
+
+  /** Confirmar las elegidas: si alguna no entra en el rango, lo dice (cuáles y cuál era el rango) y sigue; después se coloca cada una, en orden. */
+  const confirmPendulum = (ids: string[]) => {
+    const out = ids.filter((id) => pendulumFit(id) === 'out')
+
+    setPendulumPick(null)
+    if (out.length > 0) showToastMessage(t('practice.pendulum.warn', { range: pendulum.text, cards: out.map(nameOf).join(', ') }), 'warning')
+    setPendulumQueue({ ids, total: ids.length, open: false })
+  }
+
+  // Colocar las elegidas de a una: la de adelante abre su «Invocación de Péndulo · 1 de 3» (posición y, si hay varias libres, la zona: una jugada `place` por carta, que se deshace sola y el turno
+  // cuenta como una sola Invocación de Péndulo). Colocada, sigue la próxima; si se cierra su menú (o la zona) sin colocarla, el resto se cancela.
+  useEffect(() => {
+    if (!pendulumQueue || menu || picking) return
+
+    const [head, ...rest] = pendulumQueue.ids
+
+    if (pendulumQueue.open) {
+      setPendulumQueue(head !== undefined && locateCard(state, head)?.kind === 'spot' ? { ...pendulumQueue, ids: rest, open: false } : null)
+      return
+    }
+
+    if (head === undefined) {
+      setPendulumQueue(null)
+      return
+    }
+
+    const isPendulum = (item: MatMenuItem) => (item.choices ?? [item]).some((choice) => choice.action.type === 'place' && choice.action.how === 'pendulum')
+    const item = listCardActions(state, head, kindOf, nameOf, [], duel?.rivalEmz).find(isPendulum)
+
+    if (!item) {
+      if (freeTargets(state, monsterZones(state.extra.includes(head)), duel?.rivalEmz).length === 0) showToastMessage(t('practice.pendulum.noZone', { card: nameOf(head) }), 'warning')
+      setPendulumQueue(null)
+      return
+    }
+
+    const label = t('practice.pendulum.queue', { label: item.label, n: pendulumQueue.total - pendulumQueue.ids.length + 1, total: pendulumQueue.total })
+    const anchor = sectionRef.current?.querySelector(`[data-card-id="${CSS.escape(head)}"]`) ?? sectionRef.current?.querySelector('[data-drop="extra"]') ?? sectionRef.current
+    const rect = anchor?.getBoundingClientRect() ?? new DOMRect()
+
+    setPendulumQueue({ ...pendulumQueue, open: true })
+    if (item.choices) setMenu({ kind: 'card', id: head, rect, ask: { ...item, label } })
+    else choose({ ...item, label })
+  }, [pendulumQueue, menu, picking, state, kindOf, nameOf, duel?.rivalEmz, choose])
+
   const menuItems: MenuItem[] = useMemo(() => {
     if (!menu) return []
 
@@ -1949,10 +2022,25 @@ function PracticeMatBody({
     const past = activationsRef.current.filter((activation) => live.has(activation.action))
     const items = !api || !effects ? listed : listed.map((item) => (item.action.type === 'activate' && !item.choices ? { ...item, choices: effectChoices(menu.id, api.ygoprodeckId, effects, past, turnNumber, listing!.verified) } : item))
 
-    const rows: { entry: MenuItem; place: MenuPlace }[] = items.map((item) => ({
-      entry: { label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility, children: childrenOf(item), ...(item.disabled === undefined ? {} : { disabled: true, hint: item.disabled }) },
-      place: menuPlaceOf(item, [menu.id]),
-    }))
+    const id = menu.id
+    const rows: { entry: MenuItem; place: MenuPlace }[] = items.flatMap((item) => {
+      const place = menuPlaceOf(item, [id])
+      const row = { entry: { label: item.label, onSelect: () => choose(item, menu.drop), utility: item.utility, children: childrenOf(item), ...(item.disabled === undefined ? {} : { disabled: true, hint: item.disabled }) }, place }
+      const pendulumSummon = (item.choices ?? [item]).some((choice) => choice.action.type === 'place' && choice.action.how === 'pendulum')
+
+      if (!pendulumSummon || pendulum.scales.length !== 2) return [row]
+
+      // Con las dos escalas, la Invocación de Péndulo dice el rango (o «Fuera de rango: …» si esta carta no entra: avisa, no frena) y, con otra carta que se pueda elegir, suma «Invocar varias por Péndulo».
+      const hinted = { ...row, entry: { ...row.entry, hint: pendulumFit(id) === 'out' ? t('practice.pendulum.outOf', { range: pendulum.text }) : pendulum.text } }
+      const several = !menu.drop && pendulum.candidates.length >= 2 && pendulum.candidates.some((candidate) => candidate.id === id)
+      const open = () => {
+        setMenu(null)
+        if (viewer) closeViewer()
+        setPendulumPick([id])
+      }
+
+      return several ? [hinted, { entry: { label: t('practice.pendulum.many'), onSelect: open }, place }] : [hinted]
+    })
     const point = duel?.point
 
     // Una carta mía a la vista en el campo se puede señalar: un aro que late un rato en las dos pantallas. Comunica, no es una jugada (no cambia la mesa ni queda en los pasos), y va junto a Target.
@@ -1964,7 +2052,7 @@ function PracticeMatBody({
     }
 
     return blocked(rows)
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight, rivalUsedAt, viewer])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop, cardOf, session.actions, turnNumber, effectsReady, onHighlight, rivalUsedAt, viewer, pendulum, pendulumFit, closeViewer])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   // En la lista de efectos de «Activar efecto» cada uno lleva sus rasgos: los de la carta entera no se repiten arriba (cada dato se dice una sola vez).
@@ -2142,6 +2230,8 @@ function PracticeMatBody({
     const drop = dropIdOf(spot, index)
     const label = zoneLabelOf(spot, index)
     const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
+    // Una escala activa muestra su número abajo, con su gema (sin dato, «?»: nunca un número inventado). Va encima de la carta y no corre nada.
+    const scaleHere = gem && placed && pendulum.scales.some((scale) => scale.index === index && scale.id === placed.id) ? (scaleOf(placed.id) ?? null) : undefined
     const pickableZone = (picking?.kind === 'zone' && picking.targets.some((target) => target.zone === spot && target.index === index)) || materialZones.some((target) => target.zone === spot && target.index === index) || (duel?.auto?.zonePick?.targets.some((target) => target.zone === spot && target.index === index) ?? false)
     const pickableTribute = choosingOnField && placed !== null && tributeCandidates.includes(placed.id)
     const chosen = placed !== null && (((picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.chosen.includes(placed.id)) || leaving.includes(placed.id) || (duel?.auto?.cardPick?.chosen.includes(placed.id) ?? false))
@@ -2151,7 +2241,7 @@ function PracticeMatBody({
         key={drop}
         role={pickableZone ? 'button' : 'group'}
         tabIndex={pickableZone ? 0 : undefined}
-        aria-label={pickableZone ? t('practice.zone.pick', { zone: label }) : label}
+        aria-label={pickableZone ? t('practice.zone.pick', { zone: label }) : typeof scaleHere === 'number' ? `${label}, ${t('duel.dock.scale')} ${scaleHere}` : label}
         data-drop={drop}
         data-over="false"
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
@@ -2190,6 +2280,12 @@ function PracticeMatBody({
             bind={bind}
             onOpen={(rect) => openCard(shown.id, rect)}
           />
+        ) : null}
+        {scaleHere !== undefined ? (
+          <span aria-hidden="true" data-scale={scaleHere ?? ''} className="pointer-events-none absolute bottom-0.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-tag bg-background/85 px-1 text-micro font-bold leading-tight tabular-nums text-white">
+            <span className={cx('size-1.5 rotate-45', gem)} />
+            {scaleHere ?? '?'}
+          </span>
         ) : null}
         {!shown && spot === 'emz' && duel ? duel.sharedZone(index) : null}
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
@@ -3156,6 +3252,8 @@ function PracticeMatBody({
         {rivalViewer}
         </PileStripContext.Provider>
       </div>
+
+      <Presence>{pendulumPick && !covered ? <PendulumPicker key="pendulum" cards={pendulumCards} range={pendulum.text} initial={pendulumPick} onConfirm={confirmPendulum} onCancel={() => setPendulumPick(null)} /> : null}</Presence>
 
       <SaveComboDialog isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
 

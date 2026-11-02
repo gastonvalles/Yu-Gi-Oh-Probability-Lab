@@ -26,6 +26,7 @@ export const duel: Translated<typeof es> = {
   'duel.dock.zoom': 'View card larger',
   'duel.dock.level': 'Level',
   'duel.dock.rank': 'Rank',
+  'duel.dock.scale': 'Scale',
   'duel.dock.link': 'Link',
   'duel.dock.atk': 'ATK',
   'duel.dock.def': 'DEF',
