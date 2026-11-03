@@ -24,4 +24,5 @@ Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin
 
 - Lo que entra en tanda va con `stagger`; un `fixed` adentro de eso se corre (el `transform` lo vuelve su bloque contenedor): va por portal.
 - **Lo que se cierra también sale** (`app/use-presence.ts`). Trampas: `<Presence>` sola no anima (el hijo llama a `usePresence`, o pasa por `Modal` / `SideDrawer` con `isOpen={!useLeaving()}` y ata Escape, el scroll y el foco a `!leaving`); una `key` que cambia al cerrar, un `return null` antes del `Modal` o una entrada sin su fotograma en `EXITS` matan la salida (para esconder sin cerrar, `hidden`).
+- **La pila de la cadena** (`ChainListRows`) anima sólo el eslabón que cambió desde el dibujo anterior (por su número): montada ya armada, como al abrir la hoja, no anima.
 - **Sin animar, a propósito:** las cubiertas del duelo, los carteles con temporizador (el turno, la moneda y el dado, los avisos), lo que despliega en el flujo (`InfoTip`, `MultiSelect`, `<details>`) y lo que se cierra navegando.

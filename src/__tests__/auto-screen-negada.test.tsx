@@ -13,7 +13,8 @@ import { core, handCard, lane, renderAuto } from './support/auto-screen-harness'
 
 const link = (index: number, card: CardRef, from: number = L.MZONE): ChainStep => ({ kind: 'chain', at: 0, index, link: { card, code: 1, mine: card.side === 'mine', from } })
 const step = (kind: ChainStep['kind'], index: number, by?: number): ChainStep => ({ kind, at: 0, index, ...(by ? { by } : {}) })
-const grayed = () => [...document.querySelectorAll('.grayscale')]
+/** Lo gris en la mesa (la pila de la cadena, `chain-notice`, se mira aparte). */
+const grayed = () => [...document.querySelectorAll('.grayscale')].filter((element) => !element.closest('[data-testid="chain-notice"]'))
 
 describe('auto-screen · la cadena negada', () => {
   it('Maxx C (CL1) queda sin efecto por el CL2 del rival: la píldora, la pila y el nombre dicen «Sin efecto · por CL2», la carta se ve gris y latiendo, sin moverla, y se va con el aviso', () => {
@@ -43,7 +44,11 @@ describe('auto-screen · la cadena negada', () => {
     expect(screen.getByRole('button', { name: 'Maxx C, eslabón 1 de la cadena. Sin efecto · por CL2' })).toBeInTheDocument()
     expect(cell().getBoundingClientRect()).toEqual(before)
     // La pila (la hoja abre entera): la fila de la carta negada.
-    expect(within(screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })).toBeInTheDocument()
+    const row = within(screen.getByRole('list', { name: 'Eslabones de la cadena, en el orden en que se resuelven' })).getByRole('button', { name: 'Eslabón 1: Carta, tuyo. Sin efecto · por CL2' })
+
+    // Su arte, gris y latiendo como en la mesa; sin efecto no tacha el nombre (sólo el negado).
+    expect(row.querySelector('.grayscale')).toHaveClass('motion-safe:animate-fx-void')
+    expect(within(row).getByText('Carta')).not.toHaveClass('line-through')
   })
 
   it('negada desde la mano o en el Cementerio: el arte de esa carta, gris (sin `by`, el nombre dice sólo «Negada»); se va con el aviso', () => {
