@@ -895,14 +895,14 @@ function LifePlateSample() {
 
 /**
  * El marcador de «Jugar solo automático» hasta 1100 px (`LifeScore` en `AutoBar`): tus vidas, el turno una sola vez y las del rival, planos; debajo, el tamaño de escritorio (`size="lg"`), cada una en su esquina.
- * «Recibir 1000» baja las del rival de verdad (el conteo, el destello rojo, la diferencia y la sacudida); el otro botón cambia el turno y su color.
+ * «Recibir 1000» baja las del rival de verdad (el conteo y el golpe: la sacudida, el número que se infla, el fogonazo y el «−N» que sube); el otro botón cambia el turno y su color.
  */
 function LifeScoreSample() {
   const [theirs, setTheirs] = useState(8000)
   const [mineTurn, setMineTurn] = useState(true)
 
   return (
-    <Specimen title="LifeScore · el marcador y las esquinas" layout="column" className="col-span-full" note={<>Plano, sin caja, chapa ni barra (Gastón, 2026-10-27: las placas «no le gustan»): el nombre chico en el color del dueño (<Tag>PLAYER_COLOR</Tag>: lavanda vos, ámbar el rival) y el número blanco, lo que decide: 24 px en el marcador de la barra (hasta 1100 px) y 33 en escritorio (<Tag>size="lg"</Tag>, cada una en su esquina del campo o en su lateral). Cuenta hasta el valor nuevo, destella en verde o rojo, la diferencia flota debajo y en 0 queda rojo. El turno va una vez (en el medio del marcador o debajo de los íconos), en el color de quién es; la fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
+    <Specimen title="LifeScore · el marcador y las esquinas" layout="column" className="col-span-full" note={<>Plano, sin caja, chapa ni barra (Gastón, 2026-10-27: las placas «no le gustan»): el nombre chico en el color del dueño (<Tag>PLAYER_COLOR</Tag>: lavanda vos, ámbar el rival) y el número blanco, lo que decide: 24 px en el marcador de la barra (hasta 1100 px) y 33 en escritorio (<Tag>size="lg"</Tag>, cada una en su esquina del campo o en su lateral). Cuenta hasta el valor nuevo; al bajar, el golpe (se sacude, el número se infla, un fogonazo rojo y el «−N» sube) y al subir, un fogonazo verde; en 2000 o menos queda rojo y late, y en 0, rojo. El turno va una vez (en el medio del marcador o debajo de los íconos), en el color de quién es; la fase la dice el botón del campo. Archivo: <Tag>duel/LifeScore.tsx</Tag></>}>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => setTheirs((life) => Math.max(0, life - 1000))}>
           Recibir 1000

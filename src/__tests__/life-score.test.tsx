@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LifeHold } from '../app/life-effects'
 import { LifeScore } from '../components/duel/LifeScore'
@@ -51,7 +51,7 @@ describe('las vidas del marcador', () => {
     expect(rival).toHaveClass('justify-items-end')
   })
 
-  it('al bajar cuenta hasta el valor nuevo, se tiñe de rojo y muestra la diferencia debajo; en 0, el número queda rojo', () => {
+  it('al bajar cuenta hasta el valor nuevo y muestra la diferencia debajo, sin transicionar el color; en 0, el número queda rojo', () => {
     vi.useFakeTimers()
     const { rerender } = render(<LifeScore name="Rival" label="Rival" life={8000} />)
 
@@ -59,13 +59,62 @@ describe('las vidas del marcador', () => {
     const score = screen.getByRole('group')
 
     expect(score).toHaveTextContent('−1000')
-    expect(score.querySelector('.text-title')).toHaveClass('text-danger')
+    expect(score.querySelector('.text-title')).toHaveClass('text-foreground')
+    expect(score.innerHTML).not.toMatch(/transition-colors|animate-linger/)
     rerender(<LifeScore name="Rival" label="Rival" life={0} />)
     act(() => {
       vi.advanceTimersByTime(5000)
     })
     expect(score.querySelector('.text-title')).toHaveTextContent('0')
     expect(score.querySelector('.text-title')).toHaveClass('text-danger-soft')
+  })
+
+  it('crítico en 2000 y no en 2001: el número rojo y su resplandor (quieto, con movimiento reducido)', () => {
+    const view = render(<LifeScore name="Rival" life={2001} />)
+    const number = () => screen.getByRole('group').querySelector('.text-title')
+
+    expect(number()).toHaveClass('text-foreground')
+    view.rerender(<LifeScore name="Rival" life={2000} />)
+    expect(number()).toHaveClass('text-danger-soft')
+    expect(screen.getByRole('group').querySelector('.motion-reduce\\:opacity-60')).not.toBeNull()
+  })
+
+  describe('el golpe', () => {
+    const proto = Element.prototype as unknown as Record<string, unknown>
+    let animated: Element[] = []
+
+    beforeEach(() => {
+      animated = []
+      proto.animate = function (this: Element) {
+        animated.push(this)
+        return { cancel() {}, addEventListener() {} } as unknown as Animation
+      }
+      proto.getAnimations = () => []
+    })
+
+    afterEach(() => {
+      delete proto.animate
+      delete proto.getAnimations
+    })
+
+    it('al bajar sacude la casilla, infla el número, enciende el fogonazo y sube el «−N»; al subir, sin golpe; con `LifeHold` retenido, nada hasta que se suelta', () => {
+      const score = (life: number, held = false) => <LifeHold value={held}><LifeScore name="Rival" life={life} /></LifeHold>
+      const view = render(score(8000))
+      const box = screen.getByRole('group')
+
+      view.rerender(score(7000))
+      expect(animated).toContain(box)
+      expect(animated).toHaveLength(4)
+      animated = []
+      view.rerender(score(7500))
+      expect(animated).not.toContain(box)
+      expect(animated).toHaveLength(2)
+      animated = []
+      view.rerender(score(6000, true))
+      expect(animated).toHaveLength(0)
+      view.rerender(score(6000))
+      expect(animated).toContain(box)
+    })
   })
 
   // El duelo por enlace manual: las vidas del marcador (y de las esquinas) siguen abriendo la calculadora (Gastón, 2026-10-27).
