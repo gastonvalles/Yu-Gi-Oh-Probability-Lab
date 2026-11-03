@@ -268,6 +268,10 @@ export const practice = {
   // El ATK/DEF de un monstruo boca arriba del campo (la etiqueta de abajo de la carta), en su nombre.
   'practice.mat.cardStat': '{name}, ATK {atk}, DEF {def}',
   'practice.mat.cardStatLink': '{name}, ATK {atk}',
+  // Con su ficha de arriba: el Nivel, el Rango (un Xyz) o el LINK.
+  'practice.mat.cardStatLevel': '{name}, nivel {level}, ATK {atk}, DEF {def}',
+  'practice.mat.cardStatRank': '{name}, rango {rank}, ATK {atk}, DEF {def}',
+  'practice.mat.cardStatRating': '{name}, LINK {link}, ATK {atk}',
   'practice.mat.cardChosen': '{label} ({chosen})',
   // Los materiales de un Xyz en el campo: el aro de la cantidad y lo que se suma al nombre de la carta.
   'practice.mat.materialCount': { one: '{count} material', other: '{count} materiales' },

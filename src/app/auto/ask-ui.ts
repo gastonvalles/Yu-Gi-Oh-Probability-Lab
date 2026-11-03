@@ -1,4 +1,5 @@
 import { t, type MessageKey } from '../../i18n'
+import type { ApiCardReference } from '../../types'
 import { nowStat, type PickStat } from '../field-stats'
 import { PHASES, type MatPhase, type MatPile, type MatPos, type MatSpot, type MatState, type MatTarget } from '../practice-mat'
 import { spotOf, type Adapter, type AutoOverlay, type CardRef, type ChainLink, type Side, type TriggerCause } from './adapter'
@@ -100,14 +101,14 @@ export type { PickStat }
 /**
  * La etiqueta de ATK/DEF de elegir en el campo: de las cartas de `ids` (las elegibles y las elegidas de un lado), las que son un monstruo en una zona de monstruos de `mat` y tienen
  * lo que consultó el anfitrión (`overlay.stats`: el ATK/DEF de ahora, nunca el impreso; una carta colocada del rival no lo trae; `nowStat`). También las tuyas boca abajo, que la
- * etiqueta de siempre (`fieldStatsOf`) no lleva.
+ * etiqueta de siempre (`fieldStatsOf`) no lleva. `cardOf`, la carta del catálogo de cada una si se la conoce: su Nivel, Rango o LINK (`nowStat`).
  */
-export function pickStatsOf(mat: MatState, ids: Iterable<string>, stats: Readonly<Record<string, { attack: number; defense: number; level: number }>>): ReadonlyMap<string, PickStat> {
+export function pickStatsOf(mat: MatState, ids: Iterable<string>, stats: Readonly<Record<string, { attack: number; defense: number; level: number }>>, cardOf?: (id: string) => ApiCardReference | null | undefined): ReadonlyMap<string, PickStat> {
   const monsters = new Set([...mat.mz, ...mat.emz].flatMap((placed) => (placed ? [placed.id] : [])))
   const out = new Map<string, PickStat>()
 
   for (const id of ids) {
-    const stat = monsters.has(id) ? nowStat(stats[id]) : null
+    const stat = monsters.has(id) ? nowStat(stats[id], cardOf?.(id)) : null
 
     if (stat) out.set(id, stat)
   }

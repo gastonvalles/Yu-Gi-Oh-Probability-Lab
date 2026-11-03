@@ -49,5 +49,36 @@ describe('la mesa manual · ATK/DEF de los monstruos', () => {
     // Una sola etiqueta por casilla, dentro de ella.
     expect(zone('Zona de monstruo 1').querySelectorAll('[data-pick-stat]')).toHaveLength(1)
     expect(zone('Zona de monstruo 3').querySelector('[data-pick-stat]')).toBeNull()
+    // Sin Nivel en el catálogo, sin ficha.
+    expect(document.querySelector('[data-stat-badge]')).toBeNull()
+  })
+
+  it('la ficha de arriba: ★ Nivel, R Rango (Xyz) y LINK, con su nombre; un Pendulum, sin ficha', () => {
+    const cards: ReadonlyMap<string, MatCard> = new Map([
+      ['card-1-1', { name: 'Ponix', apiCard: { ...monster(1, { atk: '1900', def: '1000' }), level: 4 } }],
+      ['card-2-1', { name: 'Zeus', apiCard: { ...monster(2, { atk: '2800', def: '2400' }), frameType: 'xyz', level: 4 } }],
+      ['card-3-1', { name: 'Apollousa', apiCard: { ...monster(3, { atk: '?', def: null, linkValue: 4 }), frameType: 'link' } }],
+      ['card-4-1', { name: 'Odd-Eyes', apiCard: { ...monster(4, { atk: '2500', def: '2000' }), frameType: 'effect_pendulum', level: 7 } }],
+    ])
+    const plays: MatAction[] = [
+      { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'atk' },
+      { type: 'place', id: 'card-2-1', zone: 'mz', index: 1, pos: 'def' },
+      { type: 'place', id: 'card-3-1', zone: 'emz', index: 0, pos: 'atk' },
+      { type: 'place', id: 'card-4-1', zone: 'mz', index: 2, pos: 'atk' },
+    ]
+    render(<Harness initial={replayMat(INITIAL, plays)} cards={cards} />)
+
+    const badge = (name: string) => zone(name).querySelector('[data-stat-badge]')?.textContent?.replace(/\s/g, ' ')
+    expect(badge('Zona de monstruo 1')).toBe('★ 4')
+    expect(badge('Zona de monstruo 2')).toBe('R 4')
+    expect(badge('Zona de monstruo 3')).toBeUndefined()
+    expect(document.querySelectorAll('[data-stat-badge="link"]')).toHaveLength(1)
+    expect(document.querySelector('[data-stat-badge="link"]')?.textContent?.replace(/\s/g, ' ')).toBe('LINK 4')
+    expect(screen.getByRole('button', { name: 'Ponix, nivel 4, ATK 1900, DEF 1000' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Zeus, en defensa, rango 4, ATK 2800, DEF 2400' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Apollousa, LINK 4, ATK ?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Odd-Eyes, ATK 2500, DEF 2000' })).toBeInTheDocument()
+    // Decorativas: la ficha y su caja no se leen.
+    expect(document.querySelector('[data-stat-badge]')!.closest('[aria-hidden="true"]')).not.toBeNull()
   })
 })

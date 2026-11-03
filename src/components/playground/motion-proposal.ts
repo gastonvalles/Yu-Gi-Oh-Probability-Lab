@@ -149,26 +149,3 @@ export function playToday(card: HTMLElement, from: FlightStart, reduced: boolean
 
 /** La carta que salió de la mano no se ve mientras vuela y vuelve a su lugar al final (la muestra se repite). */
 export const leaveFrames: Keyframe[] = [{ opacity: 0 }, { opacity: 0, offset: 0.8 }, { opacity: 1 }]
-
-/** Las fichas de una invocación: el nivel baja desde arriba y el ATK sube desde abajo, con un rebote corto. */
-export const chipFrames = (from: 'top' | 'bottom'): Keyframe[] => {
-  const y = from === 'top' ? -10 : 10
-
-  return [
-    { opacity: 0, translate: `0 ${y}px`, scale: '0.6' },
-    { opacity: 1, translate: `0 ${-y * 0.1}px`, scale: '1.1', offset: 0.55 },
-    { opacity: 1, translate: '0 0', scale: '1' },
-  ]
-}
-
-/** Entre ficha y ficha (la escalera de lo que entra en tanda, como `FLIGHT_STAGGER_MS`). */
-export const CHIP_STAGGER_MS = 70
-
-/** Las fichas entran cuando la carta toca su casilla (`TOUCH_MS`, lo mismo que espera `StatTag`), escalonadas; con movimiento reducido, un fundido corto. */
-export function playChips(chips: readonly { element: HTMLElement; from: 'top' | 'bottom' }[], reduced: boolean): Animation[] {
-  return chips.map(({ element, from }, index) => {
-    const timing = { delay: TOUCH_MS + index * CHIP_STAGGER_MS, fill: 'backwards' as const }
-
-    return cancelWhenDone(reduced ? element.animate([{ opacity: 0 }, { opacity: 1 }], { ...timing, duration: 150, easing: EASE_OUT }) : element.animate(chipFrames(from), { ...timing, duration: 380, easing: EASE_SNAP }))
-  })
-}
