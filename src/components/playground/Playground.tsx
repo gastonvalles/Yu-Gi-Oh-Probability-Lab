@@ -18,6 +18,7 @@ import { DuelSection } from './sections/DuelSection'
 import { IconsSection } from './sections/IconsSection'
 import { LabResultSection } from './sections/LabResultSection'
 import { ListsSection } from './sections/ListsSection'
+import { MotionSection } from './sections/MotionSection'
 import { NavigationSection } from './sections/NavigationSection'
 import { RulesSection } from './sections/RulesSection'
 import { SurfacesSection } from './sections/SurfacesSection'
@@ -46,6 +47,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'comparar', title: 'Comparar', icon: 'columns', description: 'El par A/B, «Mis builds», la tarjeta del veredicto, las filas espejo, «Qué cambiaste», las dos listas y la barra de abajo.', Component: CompareSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
   { id: 'automatico', title: 'Duelo automático (beta)', icon: 'play', description: 'Las piezas del modo automático, fuera del campo: la pregunta del núcleo, sus opciones, elegir y ordenar cartas, y la barra de arriba.', Component: AutoSection },
+  { id: 'movimiento', title: 'Movimiento', icon: 'play', description: 'Propuesta, todavía en ninguna pantalla: «Hoy» contra «Propuesta» en movimiento. El vuelo de una carta en 3D, las fichas al invocar y el golpe de vidas.', Component: MotionSection },
   { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
   { id: 'assets', title: 'Assets', icon: 'image', description: 'Los archivos de public/, la marca, las fuentes y las imágenes de cartas.', Component: AssetsSection },
   { id: 'tokens', title: 'Tokens del diseño', icon: 'sliders', description: 'Colores, radios, sombras y tipografías, leídos de index.css.', Component: TokensSection },
