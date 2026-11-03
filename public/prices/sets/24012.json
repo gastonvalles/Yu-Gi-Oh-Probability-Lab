@@ -6,7 +6,7 @@
 ["SDLI-EN005","Common","Unlimited",0.17,607770,21785144,"Gragonith, Lightsworn Dragon"],
 ["SDLI-EN006","Common","Unlimited",0.42,607771,94381039,"Celestia, Lightsworn Angel"],
 ["SDLI-EN007","Common","Unlimited",0.12,607772,96235275,"Jain, Lightsworn Paladin"],
-["SDLI-EN008","Common","Unlimited",0.31,607773,22624373,"Lyla, Lightsworn Sorceress"],
+["SDLI-EN008","Common","Unlimited",0.3,607773,22624373,"Lyla, Lightsworn Sorceress"],
 ["SDLI-EN009","Common","Unlimited",0.17,607774,59019082,"Garoth, Lightsworn Warrior"],
 ["SDLI-EN010","Common","Unlimited",1.51,607776,58996430,"Wulf, Lightsworn Beast"],
 ["SDLI-EN011","Common","Unlimited",0.64,607777,44178886,"Ehren, Lightsworn Monk"],
@@ -33,6 +33,6 @@
 ["SDLI-EN032","Common","Unlimited",0.09,607797,32233746,"Vanquishing Light"],
 ["SDLI-EN033","Common","Unlimited",0.18,607798,16255442,"Beckoning Light"],
 ["SDLI-EN034","Common","Unlimited",0.12,607799,73729209,"Skill Successor"],
-["SDLI-EN035","Common","Unlimited",0.37,607800,78474168,"Breakthrough Skill"],
+["SDLI-EN035","Common","Unlimited",0.35,607800,78474168,"Breakthrough Skill"],
 ["SDLI-EN036","Ultra Rare","Unlimited",0.94,607801,4779823,"Michael, the Arch-Lightsworn"]
 ]

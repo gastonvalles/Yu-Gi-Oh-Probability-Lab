@@ -1,5 +1,5 @@
 [
-["SDBE-EN001","Ultra Rare","1st Edition",1.76,71226,89631139,"Blue-Eyes White Dragon"],
+["SDBE-EN001","Ultra Rare","1st Edition",1.9,71226,89631139,"Blue-Eyes White Dragon"],
 ["SDBE-EN001","Ultra Rare","Unlimited",0.74,71226,89631139,"Blue-Eyes White Dragon"],
 ["SDBE-EN002","Common","1st Edition",0.17,71227,95788410,"Rabidragon"],
 ["SDBE-EN002","Common","Unlimited",0.11,71227,95788410,"Rabidragon"],
@@ -10,7 +10,7 @@
 ["SDBE-EN005","Common","1st Edition",0.26,71230,21615956,"Flamvell Guard"],
 ["SDBE-EN005","Common","Unlimited",0.21,71230,21615956,"Flamvell Guard"],
 ["SDBE-EN006","Super Rare","1st Edition",0.67,71231,88241506,"Maiden with Eyes of Blue"],
-["SDBE-EN006","Super Rare","Unlimited",0.27,71231,88241506,"Maiden with Eyes of Blue"],
+["SDBE-EN006","Super Rare","Unlimited",0.26,71231,88241506,"Maiden with Eyes of Blue"],
 ["SDBE-EN007","Common","1st Edition",0.07,71232,14235211,"Rider of the Storm Winds"],
 ["SDBE-EN007","Common","Unlimited",0.05,71232,14235211,"Rider of the Storm Winds"],
 ["SDBE-EN008","Common","1st Edition",0.16,71233,57662975,"Darkstorm Dragon"],
@@ -18,7 +18,7 @@
 ["SDBE-EN009","Common","1st Edition",0.34,71234,52824910,"Kaiser Glider"],
 ["SDBE-EN009","Common","Unlimited",0.1,71234,52824910,"Kaiser Glider"],
 ["SDBE-EN010","Common","1st Edition",0.14,71235,77901552,"Hieratic Dragon of Tefnuit"],
-["SDBE-EN010","Common","Unlimited",0.1,71235,77901552,"Hieratic Dragon of Tefnuit"],
+["SDBE-EN010","Common","Unlimited",0.11,71235,77901552,"Hieratic Dragon of Tefnuit"],
 ["SDBE-EN011","Common","1st Edition",0.36,71236,15960641,"Mirage Dragon"],
 ["SDBE-EN011","Common","Unlimited",0.23,71236,15960641,"Mirage Dragon"],
 ["SDBE-EN012","Common","1st Edition",0.2,71237,20277376,"Divine Dragon Apocralyph"],
@@ -77,6 +77,6 @@
 ["SDBE-EN038","Common","Unlimited",0.14,71263,94192409,"Compulsory Evacuation Device"],
 ["SDBE-EN039","Common","1st Edition",0.5,71264,82382815,"Champion's Vigilance"],
 ["SDBE-EN039","Common","Unlimited",0.12,71264,82382815,"Champion's Vigilance"],
-["SDBE-EN040","Ultra Rare","1st Edition",0.45,71265,40908371,"Azure-Eyes Silver Dragon"],
+["SDBE-EN040","Ultra Rare","1st Edition",0.46,71265,40908371,"Azure-Eyes Silver Dragon"],
 ["SDBE-EN040","Ultra Rare","Unlimited",0.26,71265,40908371,"Azure-Eyes Silver Dragon"]
 ]

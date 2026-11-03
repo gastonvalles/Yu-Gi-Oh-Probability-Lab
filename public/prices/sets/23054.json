@@ -33,12 +33,12 @@
 ["PSV-EN031","Common","Unlimited",0.25,486668,62867251,"Light of Intervention"],
 ["PSV-EN032","Common","Unlimited",0.19,486669,8951260,"Respect Play"],
 ["PSV-EN033","Super Rare","Unlimited",4.17,486671,81210420,"Magical Hats"],
-["PSV-EN034","Super Rare","Unlimited",8.33,486674,71044499,"Nobleman of Crossout"],
+["PSV-EN034","Super Rare","Unlimited",9.18,486674,71044499,"Nobleman of Crossout"],
 ["PSV-EN035","Rare","Unlimited",1.1,486676,17449108,"Nobleman of Extermination"],
 ["PSV-EN036","Rare","Unlimited",0.51,486677,43434803,"The Shallow Grave"],
 ["PSV-EN037","Ultra Rare","Unlimited",19.23,486678,70828912,"Premature Burial"],
 ["PSV-EN038","Common","Unlimited",0.16,486679,16227556,"Inspection"],
-["PSV-EN039","Rare","Unlimited",2.79,486680,43711255,"Prohibition"],
+["PSV-EN039","Rare","Unlimited",2.76,486680,43711255,"Prohibition"],
 ["PSV-EN040","Rare","Unlimited",0.35,486681,79106360,"Morphing Jar #2"],
 ["PSV-EN041","Common","Unlimited",0.24,486682,42599677,"Flame Champion"],
 ["PSV-EN042","Common","Unlimited",0.14,486684,78984772,"Twin-Headed Fire Dragon"],
@@ -83,7 +83,7 @@
 ["PSV-EN081","Common","Unlimited",0.24,486762,87511987,"Spikebot"],
 ["PSV-EN082","Common","Unlimited",0.16,486764,52675689,"Invitation to a Dark Sleep"],
 ["PSV-EN083","Common","Unlimited",0.35,486768,27125110,"Thousand-Eyes Idol"],
-["PSV-EN084","Ultra Rare","Unlimited",16.71,486769,63519819,"Thousand-Eyes Restrict"],
+["PSV-EN084","Ultra Rare","Unlimited",16.54,486769,63519819,"Thousand-Eyes Restrict"],
 ["PSV-EN085","Common","Unlimited",0.13,486770,84620194,"Girochin Kuwagata"],
 ["PSV-EN086","Rare","Unlimited",0.24,486771,21015833,"Hayabusa Knight"],
 ["PSV-EN087","Common","Unlimited",0.13,486772,57409948,"Bombardment Beetle"],
@@ -103,5 +103,5 @@
 ["PSV-EN101","Super Rare","Unlimited",2.17,486787,423705,"Gearfried the Iron Knight"],
 ["PSV-EN102","Common","Unlimited",0.18,486789,23615409,"Insect Barrier"],
 ["PSV-EN103","Ultra Rare","Unlimited",5.96,486791,11761845,"Beast of Talwar"],
-["PSV-EN104","Secret Rare","Unlimited",1.29,486792,61740673,"Imperial Order"]
+["PSV-EN104","Secret Rare","Unlimited",1.28,486792,61740673,"Imperial Order"]
 ]

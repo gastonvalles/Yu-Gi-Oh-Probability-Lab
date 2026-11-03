@@ -8,7 +8,7 @@
 ["LOB-EN006","Ultra Rare","Unlimited",12.01,476171,6368038,"Gaia The Fierce Knight"],
 ["LOB-EN007","Super Rare","Unlimited",2.92,476173,91152256,"Celtic Guardian"],
 ["LOB-EN008","Common","Unlimited",0.09,476174,89091579,"Basic Insect"],
-["LOB-EN009","Common","Unlimited",0.16,476176,40374923,"Mammoth Graveyard"],
+["LOB-EN009","Common","Unlimited",0.35,476176,40374923,"Mammoth Graveyard"],
 ["LOB-EN010","Common","Unlimited",0.59,476177,90357090,"Silver Fang"],
 ["LOB-EN011","Common","Unlimited",0.6,476179,9159938,"Dark Gray"],
 ["LOB-EN012","Common","Unlimited",1.17,476180,77827521,"Trial of Nightmare"],
@@ -29,7 +29,7 @@
 ["LOB-EN027","Rare","Unlimited",0.79,476203,85639257,"Aqua Madoor"],
 ["LOB-EN028","Common","Unlimited",0.66,476204,15401633,"Kagemusha of the Blue Flame"],
 ["LOB-EN029","Rare","Unlimited",2.52,476205,58528964,"Flame Ghost"],
-["LOB-EN030","Common","Unlimited",0.25,476206,57305373,"Two-Mouth Darkruler"],
+["LOB-EN030","Common","Unlimited",0.11,476206,57305373,"Two-Mouth Darkruler"],
 ["LOB-EN031","Common","Unlimited",0.24,476207,40826495,"Dissolverock"],
 ["LOB-EN032","Common","Unlimited",0.4,476208,39004808,"Root Water"],
 ["LOB-EN033","Common","Unlimited",0.26,476209,18710707,"The Furious Sea King"],
@@ -59,7 +59,7 @@
 ["LOB-EN057","Rare","Unlimited",1.24,476246,66788016,"Fissure"],
 ["LOB-EN058","Super Rare","Unlimited",2.51,476247,4206964,"Trap Hole"],
 ["LOB-EN059","Super Rare","Unlimited",1.77,476325,24094653,"Polymerization"],
-["LOB-EN060","Common","Unlimited",0.26,476333,51482758,"Remove Trap"],
+["LOB-EN060","Common","Unlimited",0.1,476333,51482758,"Remove Trap"],
 ["LOB-EN061","Rare","Unlimited",null,476335,83887306,"Two-Pronged Attack"],
 ["LOB-EN062","Super Rare","Unlimited",6,476339,15025844,"Mystical Elf"],
 ["LOB-EN063","Common","Unlimited",0.4,476341,72842870,"Tyhone"],
@@ -124,5 +124,5 @@
 ["LOB-EN122","Ultra Rare","Unlimited",23.54,476448,70903634,"Right Arm of the Forbidden One"],
 ["LOB-EN123","Ultra Rare","Unlimited",14.86,476449,7902349,"Left Arm of the Forbidden One"],
 ["LOB-EN124","Ultra Rare","Unlimited",24.83,476450,33396948,"Exodia the Forbidden One"],
-["LOB-EN125","Secret Rare","Unlimited",12.99,476445,66889139,"Gaia the Dragon Champion"]
+["LOB-EN125","Secret Rare","Unlimited",12.93,476445,66889139,"Gaia the Dragon Champion"]
 ]
