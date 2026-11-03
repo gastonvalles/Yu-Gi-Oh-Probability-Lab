@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import type { ChainRowState } from '../../../app/auto/chain-feed'
 import { t } from '../../../i18n'
-import { ChainOrderCompare, type ChainOrderScenario } from '../../auto/ChainOrderCompare'
+import { ChainLessonBody } from '../../auto/ChainLesson'
 import { CHIP_ICON, ChainListRows, STATE_TONE, stateLabel, type ChainNoticeRow } from '../../auto/chain-parts'
 import { Badge } from '../../ui/Badge'
 import { Button } from '../../ui/Button'
@@ -11,7 +11,7 @@ import { Segmented } from '../../ui/Segmented'
 import type { Tone } from '../../ui/tone'
 import { Specimen, Tag } from '../Specimen'
 
-/** La cadena: la pila real animada paso a paso (`ChainListRows`) y lo que sigue en propuesta, sin cablear (los chips de consecuencia y «Dos órdenes»). */
+/** La cadena: la pila real animada paso a paso (`ChainListRows`), los chips de consecuencia (en propuesta, sin cablear) y la hoja «Cómo se resuelve» (`ChainLesson`). */
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
 
@@ -165,60 +165,34 @@ function ConsequenceSample() {
   )
 }
 
-/** Effect Veiler (de verdad) contra un monstruo con un Efecto Rápido (de ejemplo): el orden decide. */
-const VEILER = { name: 'Effect Veiler', art: art(97268402), effect: 'Niega los efectos de 1 monstruo del rival boca arriba, hasta el final del turno' }
-const RIVAL = { name: 'Monstruo del rival (ejemplo)', art: null, effect: 'Efecto Rápido: añade 1 carta del Deck a su mano' }
-
-const ORDER_SAMPLE = (): ChainOrderScenario[] => [
-  {
-    letter: 'A',
-    title: 'Esperá',
-    good: true,
-    note: 'Dejá que active su efecto y respondé: tu Veiler resuelve primero.',
-    links: [
-      { number: 1, who: t('duel.bar.rival'), mine: false, ...RIVAL, state: 'disabled', by: 2 },
-      { number: 2, who: t('duel.bar.you'), mine: true, ...VEILER, state: 'solved' },
-    ],
-  },
-  {
-    letter: 'B',
-    title: 'No dispares primero',
-    good: false,
-    note: 'Si activás Veiler antes, su Efecto Rápido le responde y resuelve primero.',
-    links: [
-      { number: 1, who: t('duel.bar.you'), mine: true, ...VEILER, state: 'solved', outcome: { label: 'Llega tarde', tone: 'warning' }, idle: true },
-      { number: 2, who: t('duel.bar.rival'), mine: false, ...RIVAL, state: 'solved', outcome: { label: 'Añade 1 carta', tone: 'success' } },
-    ],
-  },
-]
-
-function OrderSample() {
+function LessonSample() {
   return (
     <Specimen
-      title="PROPUESTA · Dos órdenes de la cadena"
+      title="ChainLesson · Cómo se resuelve"
       layout="column"
       className="col-span-full"
       note={
         <>
-          Un componente real sin usar (<Tag>auto/ChainOrderCompare.tsx</Tag>): dos escenarios de la misma cadena, lado a lado si entran (en el celular, uno debajo del otro). Cada uno con su veredicto
-          escrito, su ícono y el borde de toda la tarjeta; la pila en el orden en que se resuelve (el último arriba), con la línea del efecto (sólo acá: en el duelo y el registro no va) y el chip de lo
-          que pasó; el que no hizo nada, apagado. Entra armándose de abajo hacia arriba, de a 70 ms; «Repetir» lo vuelve a armar. Ejemplo: Effect Veiler contra un monstruo con un Efecto Rápido
-          inventado. Los chips «Resuelta» y «Sin efecto» los da el núcleo; «por CL2», «Añade 1 carta» y «Llega tarde» son de muestra.
+          La hoja que abre el ⓘ de la cadena (en <Tag>ChainNotice</Tag> y en <Tag>ChainSheet</Tag>; probalo en «ChainNotice · la pila de la cadena»), acá abierta: la línea clave, dos pares de
+          órdenes con cartas reales (<Tag>ChainOrderCompare</Tag>: veredicto escrito, ícono y borde de toda la tarjeta; la pila en el orden en que se resuelve, con la línea del efecto; lado a lado si
+          entran, uno debajo del otro en el celular) y el cierre. Cada par enseña otra cosa: responder al efecto y no adelantarse (Effect Veiler y Mirrorjade), y responder en la misma cadena y no
+          después (Called by the Grave y Maxx "C"). En la mesa es un diálogo sin velo (<Tag>Modal anchor="mat"</Tag>): el duelo sigue a su ritmo y la cadena no se va mientras se lee. Archivo:{' '}
+          <Tag>auto/ChainLesson.tsx</Tag>
         </>
       }
     >
-      <ChainOrderCompare scenarios={ORDER_SAMPLE()} />
+      <ChainLessonBody />
     </Specimen>
   )
 }
 
-/** Las tres piezas de la propuesta de la cadena, para que Gastón juzgue y elija. */
+/** La cadena animada, la propuesta de los chips de consecuencia y la hoja «Cómo se resuelve». */
 export function ChainProposalSamples() {
   return (
     <>
       <ChainMotionSample />
       <ConsequenceSample />
-      <OrderSample />
+      <LessonSample />
     </>
   )
 }

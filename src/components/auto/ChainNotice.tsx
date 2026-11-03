@@ -6,6 +6,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { ChainListRows, colorOf, stateLabel, type ChainNoticeRow } from './chain-parts'
+import { ChainLesson, ChainLessonReading } from './ChainLesson'
 import { ChainSheet } from './ChainSheet'
 
 export type { ChainNoticeRow }
@@ -38,6 +39,7 @@ interface ChainNoticeProps {
  *   con el ámbar de lo que se resuelve, que es un **aro** alrededor de toda la fila (`listItemSelected`, como el brillo de las cartas): forma distinta, mismo significado de siempre.
  * - **Tocar un eslabón** (`onPick`) lo muestra para leerlo: cada fila es un botón de 44 px o más con su nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»).
  * - El ritmo, cuándo aparece y cuándo se va lo decide quien la usa (`use-auto-asks.tsx`); acá sólo se dibuja. El cartel no entra ni sale animado (tiene temporizador); sus filas sí, al cambiar un eslabón (`ChainListRows`).
+ * - **El ⓘ** de la cabeza (antes de la flecha, plegada o desplegada; en el celular, en la cabeza de la hoja) abre «Cómo se resuelve» (`ChainLesson`): la letra chica de la cadena, a un toque.
  * - Accesibilidad: el texto de la píldora es un `status` (lo lee el lector de pantalla cuando cambia); la flecha dice qué hace y controla la lista.
  * - Hacer: dejar pasar los toques fuera del cartel (la caja de la mesa va con `pointer-events-none`); tocarla no salta la mesa al final (`skipAhead` la saltea).
  *   No hacer: taparla con otra cosa ni ponerle velo. La mueve sólo la persona (escritorio: su fila de arriba con el mouse, `useDraggableOffset`).
@@ -48,10 +50,17 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
   // En escritorio se lleva a otro lado agarrándola por su fila de arriba (`useDraggableOffset`, como la pregunta): una posición para todas las cadenas.
   const move = useDraggableOffset(matCardPositionKey('chain'), cardRef, !compact)
   const row = rows[focus] ?? rows[rows.length - 1]
+  // Leer «Cómo se resuelve» retiene la cadena (como leer un eslabón: no se va sola al terminar). En escritorio queda desplegada hasta plegarla; en el celular, que no se pliega, se suelta al cerrar la hoja.
+  const reading = (on: boolean) => (compact ? onOpenChange(on) : on && onOpenChange(true))
 
   if (!row) return null
   // El celular: la hoja de abajo (`ChainSheet`); la pila desplegada y su píldora, desde 1101 px.
-  if (compact) return <ChainSheet rows={rows} focus={focus} resolving={resolving} onPick={onPick} />
+  if (compact)
+    return (
+      <ChainLessonReading value={reading}>
+        <ChainSheet rows={rows} focus={focus} resolving={resolving} onPick={onPick} />
+      </ChainLessonReading>
+    )
   // El celular, al resolverse: el eslabón que se está resolviendo (el que niega a otro sigue «Resolviendo» mientras lo niega); entre uno y otro, el último que cambió.
   const solver = rows.find((link) => link.state === 'solving') ?? row
   const clOf = (number: number) => (
@@ -88,6 +97,9 @@ export function ChainNotice({ rows, focus, resolving, open, compact = false, onO
             {/* Qué le pasa al eslabón, corto y sin nombres («Sin efecto · por CL2»): la carta la marca su insignia CLn en la mesa y su nombre está en la pila. */}
             <span className={cx('truncate text-body font-semibold text-info', open && 'sr-only group-data-squeezed/chain:not-sr-only')}>{stateLabel(row)}</span>
           </p>
+          <ChainLessonReading value={reading}>
+            <ChainLesson />
+          </ChainLessonReading>
           <IconButton size="lg" aria-expanded={open} aria-controls={listId} aria-label={open ? t('auto.chain.hide') : t('auto.chain.show')} title={open ? t('auto.chain.hide') : t('auto.chain.show')} onClick={() => onOpenChange(!open)}>
             <Icon name={open ? 'chevron-up' : 'chevron-down'} />
           </IconButton>

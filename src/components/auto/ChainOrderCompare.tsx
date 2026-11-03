@@ -41,7 +41,7 @@ const STAGGER_MS = 70
  * Dos órdenes de una misma cadena, comparados: cada escenario en su tarjeta (un solo borde, del color del veredicto) con el veredicto escrito arriba («A · Esperá · Sale bien») y la pila en el orden
  * en que se resuelve (el último eslabón arriba): número en el color del dueño, arte, nombre, de quién, la línea del efecto y el chip de su consecuencia; el que no hizo nada, apagado (negado: gris
  * latiendo, `VOIDED_ART`). Lado a lado si el contenedor alcanza (`@container`), apilados en el celular. Al montarse y con «Repetir», cada pila se arma de abajo hacia arriba (CL1 primero, de a
- * 70 ms y desde abajo: `opacity` y `transform`); con movimiento reducido, quieta. Es la única pieza de la cadena con el «qué hace» de cada eslabón.
+ * 70 ms y desde abajo: `opacity` y `transform`); con movimiento reducido, quieta. Es la única pieza de la cadena con el «qué hace» de cada eslabón. La usa la hoja «Cómo se resuelve» (`ChainLesson`).
  */
 export function ChainOrderCompare({ scenarios }: { scenarios: readonly ChainOrderScenario[] }) {
   const [round, setRound] = useState(0)
