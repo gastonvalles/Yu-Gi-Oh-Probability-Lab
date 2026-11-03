@@ -101,6 +101,21 @@ describe('ChainNotice en el celular: la hoja de la cadena', () => {
     expect(disabled!.querySelector('svg')).not.toBeNull()
   })
 
+  it('cada estado lleva su ícono y su color en la cinta (el color nunca va solo): en espera, resolviendo, resuelta, negada y sin efecto', () => {
+    const only = (number: number, state: ChainNoticeRow['state']): ChainNoticeRow => ({ ...PONIX, number, state })
+
+    pill([only(1, 'chained'), only(2, 'solving'), only(3, 'solved'), only(4, 'negated'), only(5, 'disabled')], { focus: 0, resolving: true })
+    lower()
+    const icons = within(strip())
+      .getAllByRole('button')
+      .map((chip) => chip.querySelector('svg')!)
+
+    expect(icons).toHaveLength(5)
+    expect(icons.map((icon) => icon.parentElement!.className.match(/text-(?:muted|info-soft|success-soft|danger-soft|warning-soft)/)?.[0])).toEqual(['text-muted', 'text-info-soft', 'text-success-soft', 'text-danger-soft', 'text-warning-soft'])
+    expect(new Set(icons.map((icon) => icon.innerHTML)).size).toBe(5)
+    icons.forEach((icon) => expect(icon.parentElement).toHaveAttribute('aria-hidden', 'true'))
+  })
+
   it('tocar un chip lo muestra (su lugar en la cadena)', () => {
     const picked: number[] = []
 
