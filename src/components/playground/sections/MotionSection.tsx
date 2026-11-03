@@ -1,22 +1,20 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
-import { useLifeNumber, useLpDelta } from '../../../app/life-effects'
 import { EASE_OUT, animationsOf, cancelWhenDone, prefersReducedMotion } from '../../../app/motion'
 import type { PickStat } from '../../../app/field-stats'
 import { CardArt } from '../../CardArt'
 import { LifeScore } from '../../duel/LifeScore'
-import { PLAYER_COLOR } from '../../duel/player-color'
 import { LandingBurst, StatTag } from '../../probability/MatFx'
 import { Button } from '../../ui/Button'
 import { IconButton } from '../../ui/IconButton'
 import { Icon } from '../../ui/Icon'
-import { cx } from '../../ui/cx'
 import { Specimen, Tag } from '../Specimen'
-import { CRITICAL_LP, DUST, LIFT_FLIGHT_MS, playChips, playCritical, playHit, playLift, playToday, leaveFrames, type FlightStart } from '../motion-proposal'
+import { DUST, LIFT_FLIGHT_MS, playChips, playLift, playToday, leaveFrames, type FlightStart } from '../motion-proposal'
 
 /**
  * La propuesta de movimiento: cada muestra pone lo de hoy al lado de lo propuesto, para juzgarlo en movimiento antes de llevar nada a la mesa. Va en su sección (y no dentro del duelo) porque
- * toca el duelo por enlace, «Jugar solo» y el automático a la vez, y porque se borra entera cuando Gastón elija. Los cuadros están en `motion-proposal.ts`.
+ * toca el duelo por enlace, «Jugar solo» y el automático a la vez, y porque se borra entera cuando Gastón elija. Los cuadros están en `motion-proposal.ts`. El golpe de vidas ya pasó a la
+ * mesa: su muestra es la de producción, sola.
  */
 export function MotionSection() {
   return (
@@ -231,94 +229,28 @@ function ChipsRow({ run, mode }: { run: number; mode: 'today' | 'proposal' }) {
 const LIFE_STEPS = [8000, 6500, 5000, 3500, 2000, 500, 0]
 
 /**
- * El golpe de vidas.
- * - Para qué: que una pérdida de vidas se sienta como un golpe y que las vidas bajas se noten sin leer el número.
- * - Hoy: `LifeScore` (el componente real): cuenta, se tiñe de rojo un instante, el «−1500» se queda abajo y se funde, y la casilla se sacude (`sacudir`).
- * - Propuesta: la casilla se sacude, el número se infla y vuelve, se enciende un fogonazo rojo detrás (capa ya dibujada) y el «−1500» sube desde el número y se funde. En 2000 o menos
- *   el número queda rojo y detrás late un resplandor (dos golpes cada 1,1 s, sólo `opacity`).
- * - Variantes: tus vidas o las del rival (su color en el nombre); una ganancia no se muestra en esta muestra.
- * - Estados: quieto, golpe, crítico (latiendo), en cero, y con movimiento reducido (sólo el «−1500», fundido y quieto; crítico, el resplandor quieto).
- * - Accesibilidad: el número se lee entero en el nombre del grupo («Puntos de vida de Rival: 2000»); el fogonazo, el latido y el «−N» son decorativos.
- * - Hacer: que el número cuente escribiendo su texto (`useLifeNumber`), sin redibujar la casilla. No hacer: transicionar su color ni animar una sombra o un `filter`.
+ * El golpe de vidas, ya en la mesa: es el `LifeScore` real (el golpe y el crítico están en su comentario y en `app/life-hit.ts`). Cada «Repetir» le saca 1500 al rival; la vuelta de 0 a 8000
+ * (la revancha) no golpea.
  */
 function LifeSample() {
+  const [run, setRun] = useState(0)
+
   return (
     <Specimen
       title="Golpe de vidas"
       layout="column"
       note={
         <>
-          Cada «Repetir» le saca 1500 al rival. La propuesta pega más fuerte (el número se infla, un fogonazo y el «−1500» sube) y en 2000 o menos el número queda rojo y late. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>app/life-effects.ts</Tag> <Tag>playground/motion-proposal.ts</Tag>
+          Cada «Repetir» le saca 1500 al rival: el número se infla, un fogonazo rojo y el «−1500» sube; en 2000 o menos el número queda rojo y late. Archivos: <Tag>duel/LifeScore.tsx</Tag> <Tag>app/life-hit.ts</Tag>
         </>
       }
     >
-      <Compare
-        today={(run) => (
-          <LifeStage mode="today">
-            <LifeScore name="Rival" life={LIFE_STEPS[run % LIFE_STEPS.length]!} size="lg" />
-          </LifeStage>
-        )}
-        proposal={(run) => (
-          <LifeStage mode="proposal">
-            <LifeHit name="Rival" life={LIFE_STEPS[run % LIFE_STEPS.length]!} />
-          </LifeStage>
-        )}
-      />
+      <Button size="sm" variant="secondary" icon="refresh" className="justify-self-start" onClick={() => setRun((current) => current + 1)}>
+        Repetir
+      </Button>
+      <div data-motion-stage="life" className="grid min-h-32 min-w-0 place-items-center rounded-card border border-border-subtle bg-background/60 px-3 py-6">
+        <LifeScore name="Rival" life={LIFE_STEPS[run % LIFE_STEPS.length]!} size="lg" />
+      </div>
     </Specimen>
-  )
-}
-
-function LifeStage({ mode, children }: { mode: 'today' | 'proposal'; children: ReactNode }) {
-  return (
-    <div data-motion-stage={mode} className="grid min-h-32 min-w-0 place-items-center rounded-card border border-border-subtle bg-background/60 px-3 py-6">
-      {children}
-    </div>
-  )
-}
-
-/** Las vidas de la propuesta: el mismo marcador plano que `LifeScore` (el nombre en su color y el número grande), con el golpe y el estado crítico de `motion-proposal.ts`. */
-function LifeHit({ name, life }: { name: string; life: number }) {
-  const box = useRef<HTMLDivElement | null>(null)
-  const punch = useRef<HTMLSpanElement | null>(null)
-  const number = useRef<HTMLSpanElement | null>(null)
-  const flash = useRef<HTMLSpanElement | null>(null)
-  const glow = useRef<HTMLSpanElement | null>(null)
-  const floater = useRef<HTMLSpanElement | null>(null)
-  const shown = useLifeNumber(life, number)
-  const change = useLpDelta(life)
-  const critical = life > 0 && life <= CRITICAL_LP
-
-  useLayoutEffect(() => {
-    if (!change || change.delta >= 0 || !box.current || !punch.current || !flash.current || !floater.current) return
-
-    const hit = playHit({ box: box.current, number: punch.current, flash: flash.current, floater: floater.current }, prefersReducedMotion())
-
-    return () => hit.forEach((animation) => animation.cancel())
-  }, [change])
-
-  useEffect(() => {
-    if (!critical || !glow.current || prefersReducedMotion()) return
-
-    const beat = playCritical(glow.current)
-
-    return () => beat.cancel()
-  }, [critical])
-
-  return (
-    <div ref={box} role="group" aria-label={`Puntos de vida de ${name}: ${life}`} className="relative grid justify-items-start gap-1">
-      <span aria-hidden="true" className={cx('text-micro font-bold uppercase leading-none tracking-wider', PLAYER_COLOR.theirs.text)}>
-        {name}
-      </span>
-      <span ref={punch} aria-hidden="true" className="relative">
-        <span ref={glow} className={cx('pointer-events-none absolute -inset-x-6 -inset-y-4 bg-radial from-danger/55 to-transparent to-70% opacity-0', critical && 'motion-reduce:opacity-60')} />
-        <span ref={flash} className="pointer-events-none absolute -inset-x-8 -inset-y-5 bg-radial from-danger-soft/70 to-transparent to-70% opacity-0" />
-        <span ref={number} className={cx('relative text-stat font-bold leading-none tabular-nums', critical || life === 0 ? 'text-danger-soft' : 'text-foreground')}>
-          {shown}
-        </span>
-      </span>
-      <span ref={floater} aria-hidden="true" className="pointer-events-none absolute left-0 top-full mt-1 text-lead font-extrabold leading-none tabular-nums text-danger-soft opacity-0">
-        {change && change.delta < 0 ? `−${Math.abs(change.delta)}` : ''}
-      </span>
-    </div>
   )
 }
