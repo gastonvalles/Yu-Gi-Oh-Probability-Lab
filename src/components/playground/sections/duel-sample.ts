@@ -25,14 +25,14 @@ const artOfCard = (drawId: string | undefined) => {
   return passcode === null ? null : `https://images.ygoprodeck.com/images/cards_small/${passcode}.jpg`
 }
 
-/** El ATK/DEF impreso de los monstruos del duelo de muestra, para su etiqueta (`fieldStatsOf`, como en la mesa manual): Accesscode Talker y Apollousa son Links (sin DEF) y el de Apollousa es «?». */
+/** El ATK/DEF y la ficha (Nivel, Rango o LINK) impresos de los monstruos del duelo de muestra, para su etiqueta (`fieldStatsOf`, como en la mesa manual): Accesscode Talker y Apollousa son Links (sin DEF, LINK 4) y el de Apollousa es «?»; Utopia es Rango 4. */
 const PRINTED: Record<number, PickStat> = {
-  14558127: { attack: 0, defense: 1800 },
-  59438930: { attack: 0, defense: 1800 },
-  27204311: { attack: 3000, defense: 600 },
-  86066372: { attack: 2300, defense: null },
-  4280258: { attack: '?', defense: null },
-  [XYZ]: { attack: 2500, defense: 2000 },
+  14558127: { attack: 0, defense: 1800, badge: { kind: 'level', value: 3 } },
+  59438930: { attack: 0, defense: 1800, badge: { kind: 'level', value: 3 } },
+  27204311: { attack: 3000, defense: 600, badge: { kind: 'level', value: 11 } },
+  86066372: { attack: 2300, defense: null, badge: { kind: 'link', value: 4 } },
+  4280258: { attack: '?', defense: null, badge: { kind: 'link', value: 4 } },
+  [XYZ]: { attack: 2500, defense: 2000, badge: { kind: 'rank', value: 4 } },
 }
 const statsOf = (state: MatState, drawIdOf: (id: string) => string | undefined) =>
   fieldStatsOf(state, (id) => {

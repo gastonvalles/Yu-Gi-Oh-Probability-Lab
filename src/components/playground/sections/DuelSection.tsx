@@ -32,6 +32,7 @@ import { cx } from '../../ui/cx'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 import { sampleDuel } from './duel-sample'
 import { ShuffleSamples } from './ShuffleSamples'
+import { FlightSample } from './FlightSample'
 import { Presence } from '../../../app/use-presence'
 import { PendulumPicker, type PendulumPickCard } from '../../probability/PendulumPicker'
 
@@ -89,6 +90,7 @@ export function DuelSection() {
       <MaterialSamples />
       <HoldSample />
       <ShuffleSamples />
+      <FlightSample />
       <RingsSample />
       <GlowsSample />
       <TrailSample />
@@ -188,7 +190,7 @@ function StatTagSample({ duel }: { duel: { mine: DuelSideView; theirs: DuelSideV
       className="col-span-full"
       note={
         <>
-          Cada monstruo boca arriba lleva su ATK/DEF abajo de su casilla, siempre y de los dos lados: en el duelo automático el de ahora (con lo que le cambiaron los efectos), en la mesa manual el impreso. El ATK en blanco y la DEF apagada; un Link, sólo el ATK; un valor «?» se ve «?»; boca abajo, nada. En una casilla angosta va sólo el de su posición (ATK parada, DEF acostada). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
+          Cada monstruo boca arriba lleva su ATK/DEF abajo de su casilla y, arriba, su Nivel (★), Rango (R) o LINK si se sabe con certeza (baja con la carta que llega y el ATK/DEF sube 70 ms después), siempre y de los dos lados: en el duelo automático el de ahora (con lo que le cambiaron los efectos), en la mesa manual el impreso. El ATK en blanco y la DEF apagada; un Link, sólo el ATK; un valor «?» se ve «?»; boca abajo, nada. En una casilla angosta va sólo el de su posición (ATK parada, DEF acostada). Va en el nombre de la carta («Ponix, ATK 1900, DEF 1000»; eligiendo, «…, elegible»), llega con la carta que viene volando y no mueve nada. Archivo: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>), <Tag>app/field-stats.ts</Tag>
         </>
       }
     >

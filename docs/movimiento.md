@@ -16,6 +16,7 @@ Nada va en `linear`, salvo el reloj, un anillo que se barre, lo que gira sin fin
 
 - Sólo se anima `transform`/`translate`/`scale`/`rotate` y `opacity`, en `replace`: `composite: 'add'` no se compone (sólo sobre una carta que ya vuela, `flying`). Dos movimientos van en dos elementos (el de afuera vuela, el de adentro gira).
 - Un aro, sombra o destello es una capa ya dibujada que anima `opacity`/`scale` (`fx-ring`); nunca `box-shadow` en un keyframe (`motion-rings.test.ts`, `motion-compositor.test.ts`), y ninguna carta ni casilla transiciona `box-shadow`, `filter` ni el color del borde.
+- La jugada de una sola carta a la vista que cruza la mesa vuela en 3D (`app/card-lift.ts`): afuera el camino y la subida, adentro la inclinación, y brillo, sombra y polvo como capas; dura y toca como siempre. Derechos: reparto, barajado, mano, lotes, cartas ocultas y la que llega con dos en el aire. Con movimiento reducido, un fundido corto.
 - Ningún vuelo se corta: una jugada con cartas en el aire las retoma. Una animación que termina se cancela (`cancelWhenDone`): si no, la GPU deja sin componer las transiciones de `transform` siguientes de esa carta.
 - Lo que se mueve sin parar anima `transform` o `rotate` en su propio elemento, nunca una `@property` ni una variable (recalcula estilos y repinta en cada cuadro). La estela de un ataque (`ChevronTrail`) es un solo fondo, el dibujo con su halo, que corre con `translate` (`animate-chevrons`): sin `filter` en lo que se mueve.
 
