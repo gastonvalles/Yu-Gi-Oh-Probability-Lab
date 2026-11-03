@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatState, matReducer, type MatAction, type MatState } from '../app/practice-mat'
 import { DuelTable } from '../components/duel/DuelTable'
 import { EASE_IN_OUT, easeInOut } from '../app/motion'
+import { DUST_MS, LIFT_FADE_MS, LIFT_PX, liftAt, liftPathFrames, liftTiltFrames } from '../app/card-lift'
 import { FLIGHT_MS, FLIGHT_STAGGER_MS, LANDING_AT, cardPose, flightMs, poseIn, tiltedOffset, useCardFlights, type Plane } from '../app/use-card-flights'
 
 interface Box {
@@ -935,5 +936,199 @@ describe('las cartas que van de una pila a otra vuelan (no tienen elemento propi
     rerender(<RivalPiles state={play(start, { type: 'move', id: 'a', to: 'hand' })} />)
 
     expect(ghosts().map((ghost) => ghost.to)).toEqual(['translate(380px, 17px) scale(0.75) rotate(180deg)'])
+  })
+})
+
+describe('la jugada de una sola carta a la vista que cruza la mesa vuela en 3D (`card-lift.ts`)', () => {
+  const offsets = { width: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth'), height: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight') }
+  const COMPOSITOR = new Set(['offset', 'transform', 'translate', 'scale', 'rotate', 'opacity'])
+
+  beforeEach(() => {
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get(this: HTMLElement) { return boxes.get(keyOf(this))?.width ?? 0 } })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return boxes.get(keyOf(this))?.height ?? 0 } })
+    boxes.set('mine-deck', at(700, 500))
+    boxes.set('mine-extra', at(20, 500))
+    boxes.set('mine-gy', at(700, 350))
+    boxes.set('mine-banished', at(100, 100))
+  })
+
+  afterEach(() => {
+    for (const [name, descriptor] of [['offsetWidth', offsets.width], ['offsetHeight', offsets.height]] as const) {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor)
+      else Reflect.deleteProperty(HTMLElement.prototype, name)
+    }
+  })
+
+  const lifted = () => [...document.querySelectorAll<HTMLElement>('[data-flight-lift]')]
+  const dustOf = () => [...document.querySelectorAll<HTMLElement>('[data-flight-dust]')]
+  /** Lo que anima un elemento (su camino, su inclinación, su capa), sin su transparencia mientras vuela la copia. */
+  const callOf = (element: Element | null | undefined) => calls.find((call) => call.element === element && (call.keyframes[0]?.transform !== undefined || call.keyframes[0]?.translate !== undefined))
+  const hiddenOf = (element: Element) => calls.find((call) => call.element === element && call.keyframes[0]?.opacity === 0)
+
+  /** De la mano de cuatro (a, b, c, d), la c a la zona 3 de Mágicas y Trampas: de (260, 658) a (540, 408). */
+  function summon(pos: 'atk' | 'set' = 'atk', before?: (root: HTMLElement) => void) {
+    const start = createMatState(['a', 'b', 'c', 'd'], [], 4)
+    ;['a', 'b', 'c', 'd'].forEach((id, index) => boxes.set(id, at(100 + index * 60, 600)))
+    const view = render(<Mat state={start} />)
+    const placed = matReducer(start, { type: 'place', id: 'c', zone: 'st', index: 2, pos })
+
+    before?.(view.container.firstElementChild as HTMLElement)
+    boxes.set('c', at(500, 350))
+    view.rerender(<Mat state={placed} />)
+
+    return { view, placed, card: view.container.querySelector<HTMLElement>('[data-card-id="c"]')! }
+  }
+
+  it('de la mano a una zona, boca arriba: la copia hace el camino que sube y se aplasta, se inclina con su brillo y su sombra, y al tocar sale el polvo; la carta hace el mismo camino', () => {
+    const { card } = summon()
+    const holder = document.querySelector<HTMLElement>('[data-flight-ghost="c"]')!
+    const path = holder.firstElementChild as HTMLElement
+    const [shadow, copy] = [...path.children] as HTMLElement[]
+    const gloss = copy!.lastElementChild as HTMLElement
+
+    expect(lifted()).toEqual([holder])
+    // Lo de afuera ocupa el lugar de la carta y hace el camino desde la mano; la carta, transparente, el mismo (con su transformación detrás) y con el mismo reloj.
+    expect([path.style.left, path.style.top, path.style.width, path.style.height]).toEqual(['500px', '350px', '80px', '116px'])
+    expect(callOf(path)!.keyframes).toEqual(liftPathFrames({ x: -280, y: 250, scale: 1 }))
+    expect(callOf(path)!.options).toEqual({ id: 'mat-flight', duration: FLIGHT_MS })
+    expect(callOf(card)!.keyframes.map(({ offset }) => offset)).toEqual(callOf(path)!.keyframes.map(({ offset }) => offset))
+    expect(String(callOf(card)!.keyframes[0]!.transform)).toMatch(/^translate\(-280px, 250px\) scale\(1\)/)
+    expect(callOf(card)!.options).toBe(callOf(path)!.options)
+    // La copia se inclina (adentro, sola), el brillo la cruza recortado por ella y la sombra va debajo.
+    expect([copy!.style.left, copy!.style.top, copy!.style.transform]).toEqual(['0px', '0px', 'none'])
+    expect(callOf(copy)!.keyframes).toEqual(liftTiltFrames(true, ''))
+    expect(gloss.className).toContain('rotate-12')
+    expect(callOf(gloss)!.options).toBe(callOf(path)!.options)
+    expect(callOf(shadow)!.options).toBe(callOf(path)!.options)
+    // El polvo, del pie de la carta, cuando toca su casilla.
+    const [puffs] = dustOf()
+    expect(puffs!.style.transform).toBe('translate(540px, 466px)')
+    expect([...puffs!.children].map((dot) => callOf(dot)!.options)).toEqual(Array.from({ length: 5 }, () => ({ duration: DUST_MS, delay: Math.round(FLIGHT_MS * LANDING_AT), easing: expect.any(String) })))
+    // Nueve nodos más que hoy (lo que hace el camino, la sombra, el brillo y el polvo con sus cinco partículas), todo en el compositor y sin sumarse.
+    expect(holder.querySelectorAll('*').length - card.querySelectorAll('*').length - 1 + puffs!.querySelectorAll('*').length + 1).toBe(9)
+    for (const { keyframes, options } of calls) {
+      expect(keyframes.flatMap((frame) => Object.keys(frame)).filter((key) => !COMPOSITOR.has(key))).toEqual([])
+      expect(options.composite).toBeUndefined()
+    }
+    // Cuando toca su zona, la copia se va y la carta queda a la vista; el polvo sigue.
+    ;(hiddenOf(card)!.animation.onfinish as () => void)()
+    expect(lifted()).toEqual([])
+    expect(dustOf()).toHaveLength(1)
+  })
+
+  it('en la vista 3D la copia no se inclina hacia atrás (el campo ya lo está): sólo gira de costado y en el plano', () => {
+    vi.stubGlobal('DOMMatrixReadOnly', class {
+      transformPoint({ x = 0, y = 0 }: DOMPointInit = {}) {
+        return { x: x / 2, y: y / 2, z: 0, w: 1 }
+      }
+    })
+    const tilt = { transform: 'scale(0.5)', transformOrigin: '300px 400px' }
+    const start = createMatState(['a', 'b', 'c', 'd'], [], 4)
+    ;['a', 'b', 'c', 'd'].forEach((id, index) => boxes.set(id, at(100 + index * 60, 800)))
+    boxes.set('campo', { left: 250, top: 500, width: 300, height: 200 })
+    const view = render(<Mat state={start} tilt={tilt} />)
+
+    boxes.set('c', { left: 330, top: 571, width: 40, height: 58 })
+    view.rerender(<Mat state={matReducer(start, { type: 'place', id: 'c', zone: 'st', index: 2, pos: 'atk' })} tilt={tilt} />)
+
+    const holder = document.querySelector<HTMLElement>('[data-flight-ghost="c"]')!
+    const copy = holder.firstElementChild!.lastElementChild
+    expect(holder.style.transform).toBe('translate(100px, 300px) scale(0.5)')
+    expect(lifted()).toEqual([holder])
+    expect(callOf(copy)!.keyframes).toEqual(liftTiltFrames(false, ''))
+  })
+
+  it('una sola carta de cara del cementerio al destierro, cruzando la mesa: el fantasma vuela en 3D con el mismo reloj, y la pila da su golpe y se pone al día cuando la toca', () => {
+    const milled = play(fresh(), { type: 'mill', count: 1 })
+    const { rerender } = render(<PileMat state={milled} />)
+
+    rerender(<PileMat state={play(milled, { type: 'move', id: '103', to: 'banished' })} />)
+
+    const [ghost] = ghosts()
+    const duration = flightMs(Math.hypot(600, 250))
+    const touch = Math.round(duration * LANDING_AT)
+    expect(ghost!.element.hasAttribute('data-flight-lift')).toBe(true)
+    expect(callOf(ghost!.element)!.keyframes).toEqual(liftPathFrames({ x: 700, y: 350, scale: 1 }, { x: 100, y: 100, scale: 1 }, LIFT_PX, ''))
+    expect(callOf(ghost!.element)!.options).toEqual({ duration, delay: 0, fill: 'both' })
+    expect(callOf(ghost!.element.querySelector('.bg-input'))!.keyframes).toEqual(liftTiltFrames(true, ''))
+    expect(dustOf()[0]!.style.transform).toBe('translate(140px, 216px)')
+    expect(impacts(document.querySelector('[data-drop="banished"]')!)[0]!.options.delay).toBe(touch)
+  })
+
+  it('no vuelan en 3D: colocar boca abajo, el salto a la casilla vecina, la que sale de dorso del deck, un lote, ni la que llega con dos en el aire', () => {
+    // Boca abajo: la copia de siempre, sin subir.
+    summon('set').view.unmount()
+    expect(lifted()).toEqual([])
+    expect(dustOf()).toEqual([])
+
+    // A la casilla de al lado (130 px, menos de 1,5 cartas).
+    const placed = matReducer(createMatState(['a', 'b', 'c', 'd'], [], 4), { type: 'place', id: 'c', zone: 'st', index: 0, pos: 'atk' })
+    boxes.set('c', at(400, 350))
+    const hop = render(<Mat state={placed} />)
+    boxes.set('c', at(530, 350))
+    hop.rerender(<Mat state={matReducer(placed, { type: 'place', id: 'c', zone: 'st', index: 1, pos: 'atk' })} />)
+    expect(lifted()).toEqual([])
+    hop.unmount()
+
+    // Del deck, de dorso; y dos de cara del cementerio al destierro en una jugada.
+    const start = play(fresh(), { type: 'mill', count: 2 })
+    const piles = render(<PileMat state={start} />)
+    piles.rerender(<PileMat state={play(start, { type: 'mill', count: 1 })} />)
+    expect(lifted()).toEqual([])
+    piles.rerender(<PileMat state={play(start, { type: 'mill', count: 1 }, { type: 'batch', actions: ['103', '104'].map((id): MatAction => ({ type: 'move', id, to: 'banished' })) })} />)
+    expect(ghosts().length).toBeGreaterThanOrEqual(3)
+    expect(lifted()).toEqual([])
+    piles.unmount()
+
+    // Con dos en el aire, la tercera vuela derecha.
+    const crowd = (root: HTMLElement) => {
+      for (let index = 0; index < 2; index += 1) {
+        const marker = document.createElement('div')
+        marker.dataset.flightLift = ''
+        root.append(marker)
+      }
+    }
+    summon('atk', crowd)
+    expect(lifted()).toHaveLength(2)
+    expect(document.querySelector('[data-flight-ghost="c"]')?.hasAttribute('data-flight-lift')).toBe(false)
+  })
+
+  it('retomar: con el vuelo en 3D a medias, otra jugada que no la mueve lo retoma igual; si se la lleva, sale de donde se veía (más arriba) y su copia y su polvo se van', () => {
+    inAir = true
+    const { view, placed, card } = summon()
+    const first = callOf(card)!
+    const { startTime } = first.animation
+
+    boxes.set('a', at(400, 350))
+    const next = matReducer(placed, { type: 'place', id: 'a', zone: 'st', index: 0, pos: 'set' })
+    view.rerender(<Mat state={next} />)
+    const again = calls.filter((call) => call.element === card && call.keyframes[0]?.transform !== undefined)
+    expect(again).toHaveLength(2)
+    expect(again[1]!.keyframes).toBe(first.keyframes)
+    expect(again[1]!.animation.startTime).toBe(startTime)
+    expect(document.querySelector('[data-flight-ghost="c"]')?.hasAttribute('data-flight-lift')).toBe(true)
+
+    view.rerender(<Mat state={matReducer(next, { type: 'move', id: 'c', to: 'gy' })} />)
+
+    // A la mitad del reloj, con los números de sus cuadros: entre la mano (220, 600) y la zona (500, 350), `LIFT_PX` por la parábola más arriba.
+    const { done, lift } = liftAt(0.5)
+    const [x, y] = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(ghosts().at(-1)!.from)!.slice(1).map(Number)
+    expect(x).toBeCloseTo(220 + 280 * done, 6)
+    expect(y).toBeCloseTo(600 - 250 * done - LIFT_PX * lift, 6)
+    expect(document.querySelector('[data-flight-lift]')).toBeNull()
+    expect(dustOf()).toEqual([])
+  })
+
+  it('con movimiento reducido no vuela nada: la carta que hubiera volado en 3D aparece con un fundido corto; boca abajo, de una', () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    const { view, card } = summon()
+
+    expect(calls.map(({ element, keyframes, options }) => [element, keyframes, options.duration])).toEqual([[card, [{ opacity: 0 }, { opacity: 1 }], LIFT_FADE_MS]])
+    expect(document.querySelector('[data-flight-ghost]')).toBeNull()
+    view.unmount()
+
+    calls = []
+    summon('set')
+    expect(calls).toHaveLength(0)
   })
 })
