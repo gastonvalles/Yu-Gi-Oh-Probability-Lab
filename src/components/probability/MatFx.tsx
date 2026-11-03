@@ -202,43 +202,70 @@ export function ChainBadge({ link, className }: { link: ChainBadgeData; classNam
   )
 }
 
-/** El nombre de una carta con su ATK/DEF de ahora mientras se elige («Ponix, ATK 1900, DEF 1000, elegible»): la etiqueta es decorativa y esto es lo que se lee. */
-export const pickStatLabel = (name: string, stat: PickStat) =>
-  stat.defense === null ? t('auto.pick.statLink', { name, atk: stat.attack }) : t('auto.pick.stat', { name, atk: stat.attack, def: stat.defense })
+/** El nombre de una carta con su ATK/DEF de ahora mientras se elige («Ponix, nivel 4, ATK 1900, DEF 1000, elegible»): la etiqueta es decorativa y esto es lo que se lee. */
+export function pickStatLabel(name: string, { attack: atk, defense: def, badge }: PickStat) {
+  if (badge?.kind === 'link') return t('auto.pick.statRating', { name, atk, link: badge.value })
+  if (def === null) return t('auto.pick.statLink', { name, atk })
+  if (badge?.kind === 'level') return t('auto.pick.statLevel', { name, atk, def, level: badge.value })
+  if (badge?.kind === 'rank') return t('auto.pick.statRank', { name, atk, def, rank: badge.value })
+  return t('auto.pick.stat', { name, atk, def })
+}
 
-/** El nombre de un monstruo del campo con su ATK/DEF de siempre («Ponix, ATK 1900, DEF 1000»); eligiéndolo, `pickStatLabel`. */
-export const statLabel = (name: string, stat: PickStat) =>
-  stat.defense === null ? t('practice.mat.cardStatLink', { name, atk: stat.attack }) : t('practice.mat.cardStat', { name, atk: stat.attack, def: stat.defense })
+/** El nombre de un monstruo del campo con su ficha y su ATK/DEF de siempre («Ponix, nivel 4, ATK 1900, DEF 1000»; «…, rango 4, …»; «…, LINK 2, ATK 2300»); eligiéndolo, `pickStatLabel`. */
+export function statLabel(name: string, { attack: atk, defense: def, badge }: PickStat) {
+  if (badge?.kind === 'link') return t('practice.mat.cardStatRating', { name, atk, link: badge.value })
+  if (def === null) return t('practice.mat.cardStatLink', { name, atk })
+  if (badge?.kind === 'level') return t('practice.mat.cardStatLevel', { name, atk, def, level: badge.value })
+  if (badge?.kind === 'rank') return t('practice.mat.cardStatRank', { name, atk, def, rank: badge.value })
+  return t('practice.mat.cardStat', { name, atk, def })
+}
 
-/** Lo que tarda la etiqueta en aparecer con su carta: lo que tarda la carta que viene volando en tocar su casilla (`LANDING_AT`). */
-const STAT_ARRIVAL: CSSProperties = { animationDelay: `${Math.round(FLIGHT_MS * LANDING_AT)}ms` }
+/** La marca de cada ficha, igual en los dos idiomas (como en la carta). */
+const BADGE_MARK = { level: '★', rank: 'R', link: 'LINK' } as const
+
+/** Lo que tarda la ficha de arriba en aparecer con su carta: lo que tarda la carta que viene volando en tocar su casilla (`LANDING_AT`); el ATK/DEF, 70 ms después. */
+const STAT_ARRIVAL_MS = Math.round(FLIGHT_MS * LANDING_AT)
+const BADGE_ARRIVAL: CSSProperties = { animationDelay: `${STAT_ARRIVAL_MS}ms` }
+const STAT_ARRIVAL: CSSProperties = { animationDelay: `${STAT_ARRIVAL_MS + 70}ms` }
 
 /**
  * El ATK/DEF de un monstruo boca arriba del campo (`fieldStatsOf`: el de ahora en el duelo automático, el impreso en la mesa manual; eligiéndolo, `pickStatsOf`), abajo y al centro de su
- * casilla, sobre el pie de la carta (donde la impresa lleva los suyos): no cambia la caja de la carta ni la de la casilla, y no se sale de ella. El ATK en blanco y la DEF apagada, como en la
- * carta; sin DEF, un Link. Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla no llega a los dos números de cuatro cifras
+ * casilla, sobre el pie de la carta (donde la impresa lleva los suyos), y su ficha (`badge`: ★ Nivel, R Rango o LINK) arriba y al centro, sobre la fila de estrellas de la carta y debajo de la
+ * espada de atacar: no cambian la caja de la carta ni la de la casilla, y no se salen de ella. El ATK en blanco y la DEF apagada, como en la carta; sin DEF, un Link; sin `badge`, sin ficha
+ * (no se sabe con certeza). Sólo se mira (`aria-hidden`): lo que se lee va en el nombre de la carta (`statLabel`, `pickStatLabel`). Si la casilla no llega a los dos números de cuatro cifras
  * (`@container`: el celular, de 56 a 65 px, y la mesa de escritorio angosta, de 63 a 73), va sólo el de su posición, el ATK parada y la DEF acostada (`sideways`), como se lee la carta; el
- * nombre lleva los dos. Se monta con la carta (también sin `stat`) y aparece cuando la carta llega volando a su casilla: lo que llega después (los números del núcleo), al toque si ya llegó.
+ * nombre lleva los dos. Se monta con la carta (también sin `stat`) y entra cuando la carta llega volando a su casilla: la ficha baja desde arriba (`animate-chip-drop`) y, 70 ms después, el
+ * ATK/DEF sube desde abajo (`animate-chip-rise`), con un pop corto; lo que llega después (los números del núcleo), al toque si ya llegó. Con movimiento reducido, quietas.
  */
 export function StatTag({ stat, sideways = false, className }: { stat: PickStat | null; sideways?: boolean; className?: string }) {
   const def = stat !== null && stat.defense !== null && sideways
+  const badge = stat?.badge
 
   return (
-    <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container animate-fx-frame-in motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
-      {stat ? (
-        <span data-pick-stat="" className="mx-auto block w-fit max-w-full whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle">
-          <span className={cx(def && '@max-[5rem]:hidden')}>{stat.attack}</span>
-          {stat.defense === null ? null : (
-            <span className={cx('font-semibold text-muted', def ? '@max-[5rem]:font-extrabold @max-[5rem]:text-foreground' : '@max-[5rem]:hidden')}>
-              <span className={cx(def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
-              {stat.defense}
-            </span>
-          )}
-        </span>
-      ) : null}
-    </span>
+    <>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[16%] z-11 animate-chip-drop motion-reduce:animate-none" style={BADGE_ARRIVAL}>
+        {badge ? (
+          <span data-stat-badge={badge.kind} className={STAT_CHIP}>{`${BADGE_MARK[badge.kind]}\u2009${badge.value}`}</span>
+        ) : null}
+      </span>
+      <span aria-hidden="true" className={cx('pointer-events-none absolute inset-x-0 bottom-0 z-11 @container animate-chip-rise motion-reduce:animate-none', className)} style={STAT_ARRIVAL}>
+        {stat ? (
+          <span data-pick-stat="" className={STAT_CHIP}>
+            <span className={cx(def && '@max-[5rem]:hidden')}>{stat.attack}</span>
+            {stat.defense === null ? null : (
+              <span className={cx('font-semibold text-muted', def ? '@max-[5rem]:font-extrabold @max-[5rem]:text-foreground' : '@max-[5rem]:hidden')}>
+                <span className={cx(def && '@max-[5rem]:hidden')}>{STAT_SEPARATOR}</span>
+                {stat.defense}
+              </span>
+            )}
+          </span>
+        ) : null}
+      </span>
+    </>
   )
 }
+
+const STAT_CHIP = 'mx-auto block w-fit max-w-full whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-foreground ring-1 ring-border-subtle'
 
 /**
  * La barra entre el ATK y la DEF, con espacios finos: «2500 / 2000» mide 80 px y entra justo en la casilla de 1440 px (80–81). El corte (`@max-[5rem]`) es el de cuatro cifras y

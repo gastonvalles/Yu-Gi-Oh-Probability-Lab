@@ -133,6 +133,9 @@
   --animate-hold-press: hold-press 330ms var(--ease-out) 120ms both;
   /* Efectos de la mesa de práctica (MatFx.tsx): marcos de colores con una luz que les da la vuelta, mira de objetivo, destello de invocación, cartel de fase y zonas que se ofrecen. `--fx-rgb` (r g b) es el color de cada uno. */
   --animate-fx-frame-in: fx-frame-in 200ms var(--ease-out) both;
+  /* Las fichas de un monstruo que llega a su casilla (`StatTag`): el Nivel, Rango o LINK baja desde arriba y el ATK/DEF sube desde abajo, con un pop corto (la espera la pone cada uso). */
+  --animate-chip-drop: chip-drop 380ms var(--ease-snap) backwards;
+  --animate-chip-rise: chip-rise 380ms var(--ease-snap) backwards;
   --animate-fx-orbit: fx-orbit 1.2s linear infinite;
   --animate-fx-shine: fx-shine 850ms var(--ease-out) 100ms both;
   --animate-fx-lock: fx-lock 480ms var(--ease-snap) both;
@@ -557,6 +560,30 @@
   @keyframes fx-frame-in {
     from {
       opacity: 0;
+    }
+  }
+
+  @keyframes chip-drop {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.6);
+    }
+
+    55% {
+      opacity: 1;
+      transform: translateY(1px) scale(1.1);
+    }
+  }
+
+  @keyframes chip-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(10px) scale(0.6);
+    }
+
+    55% {
+      opacity: 1;
+      transform: translateY(-1px) scale(1.1);
     }
   }
 

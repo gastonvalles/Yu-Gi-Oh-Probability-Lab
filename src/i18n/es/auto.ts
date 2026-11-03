@@ -241,6 +241,9 @@ export const auto = {
   'auto.pick.chosen': 'Elegida',
   'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, elegible',
   'auto.pick.statLink': '{name}, ATK {atk}, elegible',
+  'auto.pick.statLevel': '{name}, nivel {level}, ATK {atk}, DEF {def}, elegible',
+  'auto.pick.statRank': '{name}, rango {rank}, ATK {atk}, DEF {def}, elegible',
+  'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, elegible',
   'auto.phase.notYet': 'Todavía no',
 
   // La insignia del eslabón sobre la carta («CL1»): se ve la sigla; el nombre de la carta lo dice con palabras.

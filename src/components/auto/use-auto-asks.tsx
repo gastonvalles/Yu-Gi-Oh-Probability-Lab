@@ -744,9 +744,12 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // la tanda, antes de que la mesa la cuente: mientras la cuenta, tu monstruo que ya estaba sigue con los suyos (no cambia antes del paso que lo cambia) y se ponen al día al terminar.
   // Repasando, nada: la mesa es otra.
   const [shownStats, setShownStats] = useState(() => ({ mine: NO_FIELD_STATS, theirs: NO_FIELD_STATS }))
+  // La carta del catálogo de cada monstruo, para su Nivel, Rango o LINK (`nowStat`): las tuyas por su copia; las del rival, si tenés la misma carta (si no, va sin ficha).
+  const myCard = useCallback((id: string) => cardsById.get(id)?.apiCard, [cardsById])
+  const theirCard = useCallback((id: string) => byCode.get(codeOf({ side: 'theirs', id }))?.apiCard, [byCode, codeOf])
   const fieldStats = {
-    mine: reviewing ? NO_FIELD_STATS : fieldStatsOf(state, (id) => (!settled && shownStats.mine.get(id)) || nowStat(myStats[id]), shownStats.mine),
-    theirs: reviewing ? NO_FIELD_STATS : fieldStatsOf(theirsState, (id) => nowStat(snap.overlay.stats.theirs[id]), shownStats.theirs),
+    mine: reviewing ? NO_FIELD_STATS : fieldStatsOf(state, (id) => (!settled && shownStats.mine.get(id)) || nowStat(myStats[id], myCard(id)), shownStats.mine),
+    theirs: reviewing ? NO_FIELD_STATS : fieldStatsOf(theirsState, (id) => nowStat(snap.overlay.stats.theirs[id], theirCard(id)), shownStats.theirs),
   }
   if (fieldStats.mine !== shownStats.mine || fieldStats.theirs !== shownStats.theirs) setShownStats(fieldStats)
   const myInitial = snap.initial
@@ -765,9 +768,9 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       onToggle: (id) => gesture({ kind: 'card', ref: { side: 'mine', id } }),
       done: pick.done ? { label: t('auto.pick.done'), onSelect: () => gesture({ kind: 'done' }) } : null,
       cancel: shown?.cancelable ? () => gesture({ kind: 'cancel' }) : null,
-      stats: pickStatsOf(state, ids([...pick.eligible, ...pick.chosen]), myStats),
+      stats: pickStatsOf(state, ids([...pick.eligible, ...pick.chosen]), myStats, myCard),
     }
-  }, [pick, list, pickLabel, shown, gesture, state, myStats])
+  }, [pick, list, pickLabel, shown, gesture, state, myStats, myCard])
   // La casilla de una jugada que todavía no entró a la cadena (activar o invocar desde tu mano): `select_place` no trae `can_cancel`, así que «Cancelar» vuelve a antes de la jugada con el mismo
   // `undo` de la barra. Con un efecto resolviéndose (un eslabón `solving`) no: esa casilla es de una resolución, no de una jugada tuya.
   const placeBack = canUndo && shown?.type === 'select_place' && !reviewing && !snap.overlay.chain.some((link) => link.state === 'solving') && snap.answers.some((item) => item.seat === seat && undoPoint(item))
@@ -887,11 +890,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     const refs = (indices: readonly number[]) => indices.flatMap((i) => (pick!.cards[i]!.ref?.side === 'theirs' ? [pick!.cards[i]!.ref!.id] : []))
 
     return pick
-      ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen), stats: pickStatsOf(theirs, refs([...pick.eligible, ...pick.chosen]), snap.overlay.stats.theirs) }
+      ? { eligible: new Set(refs(pick.eligible)), chosen: refs(pick.chosen), stats: pickStatsOf(theirs, refs([...pick.eligible, ...pick.chosen]), snap.overlay.stats.theirs, theirCard) }
       : rivalPlays?.size
         ? { eligible: new Set(rivalPlays.keys()), chosen: [], stats: null }
         : null
-  }, [pick, rivalPlays, theirs, snap.overlay.stats])
+  }, [pick, rivalPlays, theirs, snap.overlay.stats, theirCard])
   // Las casillas del rival que la pregunta deja elegir (donde va un Kaiju, las que se inutilizan): se encienden en su campo y se tocan. Sus Zonas Extra, en las tuyas (`zonePick`).
   const rivalZones = useMemo(() => {
     const targets = shown?.zonePick?.targets.flatMap(({ side, zone, index }) => (side === 'theirs' && zone !== 'emz' ? [{ zone, index }] : [])) ?? []

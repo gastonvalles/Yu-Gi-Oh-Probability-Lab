@@ -9,12 +9,12 @@ import { Button } from '../../ui/Button'
 import { IconButton } from '../../ui/IconButton'
 import { Icon } from '../../ui/Icon'
 import { Specimen, Tag } from '../Specimen'
-import { DUST, LIFT_FLIGHT_MS, playChips, playLift, playToday, leaveFrames, type FlightStart } from '../motion-proposal'
+import { DUST, LIFT_FLIGHT_MS, playLift, playToday, leaveFrames, type FlightStart } from '../motion-proposal'
 
 /**
  * La propuesta de movimiento: cada muestra pone lo de hoy al lado de lo propuesto, para juzgarlo en movimiento antes de llevar nada a la mesa. Va en su sección (y no dentro del duelo) porque
- * toca el duelo por enlace, «Jugar solo» y el automático a la vez, y porque se borra entera cuando Gastón elija. Los cuadros están en `motion-proposal.ts`. El golpe de vidas ya pasó a la
- * mesa: su muestra es la de producción, sola.
+ * toca el duelo por enlace, «Jugar solo» y el automático a la vez, y porque se borra entera cuando Gastón elija. Los cuadros están en `motion-proposal.ts`. El golpe de vidas y las fichas al
+ * invocar ya pasaron a la mesa: sus muestras son las de producción, solas.
  */
 export function MotionSection() {
   return (
@@ -153,75 +153,46 @@ function FlightStage({ run, mode }: { run: number; mode: 'today' | 'proposal' })
   )
 }
 
-/** Tres monstruos de muestra: uno con Nivel, un Xyz con Rango y un Link (sin DEF). */
-const SUMMONED: ReadonlyArray<{ name: string; art: string; badge: string; stat: PickStat }> = [
-  { name: 'Ponix', art: ART(14558127), badge: '★ 4', stat: { attack: 1900, defense: 1000 } },
-  { name: 'Xyz de Rango 4', art: ART(84013237), badge: 'R 4', stat: { attack: 2500, defense: 2000 } },
-  { name: 'Link-2', art: ART(97268402), badge: 'LINK 2', stat: { attack: 1500, defense: null } },
+/** Monstruos de muestra: uno con Nivel, un Xyz con Rango, un Link (sin DEF) y uno sin ficha (lo que no se sabe con certeza, como un Pendulum: se calla). */
+const SUMMONED: ReadonlyArray<{ name: string; art: string; stat: PickStat }> = [
+  { name: 'Ponix', art: ART(14558127), stat: { attack: 1900, defense: 1000, badge: { kind: 'level', value: 4 } } },
+  { name: 'Xyz de Rango 4', art: ART(84013237), stat: { attack: 2500, defense: 2000, badge: { kind: 'rank', value: 4 } } },
+  { name: 'Link-2', art: ART(97268402), stat: { attack: 1500, defense: null, badge: { kind: 'link', value: 2 } } },
+  { name: 'Sin ficha', art: ART(14558127), stat: { attack: 1800, defense: 1200 } },
 ]
 
 /**
- * Las fichas de un monstruo que se invoca: su Nivel (o Rango, o LINK) arriba y su ATK/DEF abajo.
- * - Para qué: que al caer la carta se lea de un vistazo qué es y cuánto pega, sin abrirla.
- * - Hoy: sólo el ATK/DEF (`StatTag`, el componente real), que se funde cuando la carta toca su casilla. El Nivel no se ve en el campo.
- * - Propuesta: el ATK/DEF (la misma etiqueta) sube desde abajo y una ficha nueva con el Nivel, el Rango o el LINK baja desde arriba, cada una con un rebote corto (`EASE_SNAP`),
- *   escalonadas 70 ms, cuando la carta toca su casilla.
- * - Variantes: Nivel (★), Rango (R) y LINK; boca abajo, ninguna.
- * - Estados: entrando, quietas, y con movimiento reducido (un fundido de 150 ms).
- * - Accesibilidad: decorativas (`aria-hidden`): el Nivel tendría que sumarse al nombre de la carta, como el ATK/DEF (`statLabel`).
- * - Hacer: que no cambien la caja de la carta ni de la casilla. No hacer: tapar el arte entero ni animar su fondo o su borde.
+ * Las fichas de un monstruo que llega a su casilla: el `StatTag` real, con su Nivel (★), Rango (R) o LINK arriba y su ATK/DEF abajo. Lo de la animación, la posición y lo que se calla está
+ * en el comentario de `StatTag`; «Repetir» vuelve a montar las cartas.
  */
 function ChipsSample() {
+  const [run, setRun] = useState(0)
+
   return (
     <Specimen
       title="Fichas al invocar"
       layout="column"
       note={
         <>
-          La carta entra y, cuando toca su casilla, sus fichas. Hoy el ATK/DEF se funde; la propuesta suma el Nivel, el Rango o el LINK arriba, y las dos fichas entran con un rebote corto, una tras otra. Archivos: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>) <Tag>playground/motion-proposal.ts</Tag>
+          Cuando la carta toca su casilla, el Nivel, el Rango o el LINK baja desde arriba y, 70 ms después, el ATK/DEF sube desde abajo, con un pop corto. Sin dato seguro, sin ficha. Con «Reducir movimiento», quietas. Archivos: <Tag>probability/MatFx.tsx</Tag> (<Tag>StatTag</Tag>) <Tag>app/field-stats.ts</Tag>
         </>
       }
     >
-      <Compare today={(run) => <ChipsRow run={run} mode="today" />} proposal={(run) => <ChipsRow run={run} mode="proposal" />} />
-    </Specimen>
-  )
-}
-
-function ChipsRow({ run, mode }: { run: number; mode: 'today' | 'proposal' }) {
-  const row = useRef<HTMLDivElement | null>(null)
-
-  useLayoutEffect(() => {
-    if (!run || mode !== 'proposal' || !row.current) return
-
-    playChips(
-      [...row.current.querySelectorAll<HTMLElement>('[data-chip]')].map((element) => ({ element, from: element.dataset.chip === 'top' ? 'top' : 'bottom' })),
-      prefersReducedMotion(),
-    )
-  }, [run, mode])
-
-  return (
-    <div ref={row} data-motion-stage={mode} className="flex min-w-0 flex-wrap justify-center gap-3 rounded-card border border-border-subtle bg-background/60 px-3 py-5">
-      {SUMMONED.map((monster) => (
-        <div key={monster.name} className="relative aspect-[421/614] w-16 bg-input">
-          {/* La carta entra con el `card-in` de siempre; sus fichas, cuando toca la casilla. */}
-          <div key={run} className="absolute inset-0 overflow-hidden motion-safe:animate-card-in">
-            <CardArt remoteUrl={monster.art} name={monster.name} className="block h-full w-full object-cover" />
+      <Button size="sm" variant="secondary" icon="refresh" className="justify-self-start" onClick={() => setRun((current) => current + 1)}>
+        Repetir
+      </Button>
+      <div data-motion-stage="chips" className="flex min-w-0 flex-wrap justify-center gap-3 rounded-card border border-border-subtle bg-background/60 px-3 py-5">
+        {SUMMONED.map((monster) => (
+          // La carta entra con el `card-in` de siempre; sus fichas, cuando toca la casilla.
+          <div key={`${monster.name}-${run}`} className="relative aspect-[421/614] w-16 bg-input">
+            <div className="absolute inset-0 overflow-hidden motion-safe:animate-card-in">
+              <CardArt remoteUrl={monster.art} name={monster.name} className="block h-full w-full object-cover" />
+            </div>
+            <StatTag stat={monster.stat} />
           </div>
-          {mode === 'today' ? (
-            <StatTag key={`stat-${run}`} stat={monster.stat} />
-          ) : (
-            <>
-              <span aria-hidden="true" data-chip="top" className="pointer-events-none absolute inset-x-0 top-0.5 z-11 mx-auto block w-fit whitespace-nowrap rounded-tag bg-background/85 px-1 text-micro font-extrabold tabular-nums text-info ring-1 ring-border-subtle">
-                {monster.badge}
-              </span>
-              <span aria-hidden="true" data-chip="bottom" className="pointer-events-none absolute inset-x-0 bottom-0 z-11 h-5">
-                <StatTag stat={monster.stat} />
-              </span>
-            </>
-          )}
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </Specimen>
   )
 }
 

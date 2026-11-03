@@ -1,15 +1,50 @@
 import type { MatState } from './practice-mat'
 import type { ApiCardReference } from '../types'
 
-/** El ATK y la DEF de un monstruo del campo, para su etiqueta (`StatTag`) y su nombre. Sin `defense`, un Link; `'?'`, un valor que la carta no tiene impreso. */
+/** El Nivel (★), el Rango (R) o el LINK de un monstruo del campo: su ficha de arriba (`StatTag`) y su nombre. */
+export interface StatBadge {
+  kind: 'level' | 'rank' | 'link'
+  value: number
+}
+
+/**
+ * El ATK y la DEF de un monstruo del campo, para su etiqueta (`StatTag`) y su nombre. Sin `defense`, un Link; `'?'`, un valor que la carta no tiene impreso. `badge`, su Nivel, Rango o
+ * LINK, sólo si se sabe con certeza (`printedBadge`): si no, no va.
+ */
 export interface PickStat {
   attack: number | '?'
   defense: number | '?' | null
+  badge?: StatBadge
 }
 
-/** Lo que el núcleo cuenta de un monstruo (`overlay.stats`): el ATK/DEF de ahora. No da el tipo: nivel 0 y DEF 0 es un Link (o un Xyz de DEF 0) y va sin DEF, que es callar un dato y no decir uno falso. */
-export const nowStat = (stat: { attack: number; defense: number; level: number } | undefined): PickStat | null =>
-  stat ? { attack: known(stat.attack), defense: stat.level === 0 && stat.defense === 0 ? null : known(stat.defense) } : null
+/** Los marcos que llevan Nivel (los de YGOPRODeck). Los Pendulum, las fichas y lo que no se reconoce no llevan ficha: callar antes que decir un dato falso. */
+const LEVELED = new Set(['normal', 'effect', 'ritual', 'fusion', 'synchro'])
+const whole = (value: number | null | undefined): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0
+
+/** El Nivel, el Rango o el LINK impreso de una carta del catálogo (`level` es el Rango de un Xyz; `linkValue`, el LINK), o null si no se sabe con certeza. */
+export function printedBadge(card: ApiCardReference | null | undefined): StatBadge | null {
+  if (!card) return null
+  const frame = card.frameType.toLowerCase()
+
+  if (frame === 'link') return whole(card.linkValue) ? { kind: 'link', value: card.linkValue } : null
+  if (card.linkValue !== null) return null
+  if (frame === 'xyz') return whole(card.level) ? { kind: 'rank', value: card.level } : null
+  return LEVELED.has(frame) && whole(card.level) ? { kind: 'level', value: card.level } : null
+}
+
+/**
+ * Lo que el núcleo cuenta de un monstruo (`overlay.stats`): el ATK/DEF de ahora. El núcleo no da el tipo (su nivel es 0 en un Xyz y en un Link), así que la ficha sale de la carta del catálogo
+ * (`card`), si se la conoce: el Nivel, el de ahora (el núcleo, si coincide en que tiene); el Rango y el LINK, los impresos (si el núcleo coincide en nivel 0). Sin carta, sin ficha, y nivel 0 y DEF 0
+ * es un Link (o un Xyz de DEF 0) y va sin DEF: callar un dato y no decir uno falso.
+ */
+export function nowStat(stat: { attack: number; defense: number; level: number } | undefined, card?: ApiCardReference | null): PickStat | null {
+  if (!stat) return null
+  const print = printedBadge(card)
+  const badge = !print ? null : print.kind === 'level' ? (stat.level > 0 ? { kind: 'level' as const, value: stat.level } : null) : stat.level === 0 ? print : null
+  const defense = badge ? (badge.kind === 'link' ? null : known(stat.defense)) : stat.level === 0 && stat.defense === 0 ? null : known(stat.defense)
+
+  return { attack: known(stat.attack), defense, ...(badge ? { badge } : {}) }
+}
 
 /** Un valor negativo es el «?» de la carta (el núcleo lo guarda como -2; un catálogo, como -1). */
 const known = (value: number): number | '?' => (value >= 0 ? value : '?')
@@ -18,10 +53,14 @@ const printed = (value: string | null): number | '?' => (value !== null && value
 /** Los números impresos de una carta (la mesa manual, sin núcleo): sin ATK ni DEF no es un monstruo (o no se sabe) y no lleva; el que falta o es «?», «?»; un Link, sin DEF. */
 export function printedStat(card: ApiCardReference | null | undefined): PickStat | null {
   if (!card || (card.atk === null && card.def === null && card.linkValue === null)) return null
-  return { attack: printed(card.atk), defense: card.linkValue !== null ? null : printed(card.def) }
+  const badge = printedBadge(card)
+
+  return { attack: printed(card.atk), defense: card.linkValue !== null ? null : printed(card.def), ...(badge ? { badge } : {}) }
 }
 
-const sameStat = (a: PickStat | undefined, b: PickStat) => a !== undefined && a.attack === b.attack && a.defense === b.defense
+/** Dos etiquetas iguales por valor (la ficha también). */
+const sameStat = (a: PickStat | undefined, b: PickStat) =>
+  a !== undefined && a.attack === b.attack && a.defense === b.defense && a.badge?.kind === b.badge?.kind && a.badge?.value === b.badge?.value
 
 /**
  * La etiqueta de ATK/DEF de siempre, de la mesa automática y de la manual: de los monstruos boca arriba de la fila de monstruos y de las Zonas Extra de `mat`, los que `statOf` conoce

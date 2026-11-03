@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { LANDING_AT } from '../app/use-card-flights'
-import { chipFrames, dustFrames, DUST, leaveFrames, liftGlossFrames, liftLabelFrames, liftPathFrames, liftShadowFrames, liftTiltFrames } from '../components/playground/motion-proposal'
+import { dustFrames, DUST, leaveFrames, liftGlossFrames, liftLabelFrames, liftPathFrames, liftShadowFrames, liftTiltFrames } from '../components/playground/motion-proposal'
 
 // La propuesta de movimiento del playground va entera en el compositor: sus cuadros sólo animan `transform`/`translate`/`scale`/`opacity` (nada de sombra, `filter`, color ni variables).
 const COMPOSITOR = new Set(['offset', 'transform', 'translate', 'scale', 'rotate', 'opacity'])
 const from = { x: -240, y: 120, scale: 0.875 }
-const all = [liftPathFrames(from), liftTiltFrames(), liftGlossFrames(), liftShadowFrames(), liftLabelFrames(), leaveFrames, chipFrames('top'), chipFrames('bottom'), ...DUST.map(dustFrames)]
+const all = [liftPathFrames(from), liftTiltFrames(), liftGlossFrames(), liftShadowFrames(), liftLabelFrames(), leaveFrames, ...DUST.map(dustFrames)]
 
 describe('la propuesta de movimiento', () => {
   it('sólo anima propiedades del compositor', () => {

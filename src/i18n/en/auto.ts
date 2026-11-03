@@ -230,6 +230,9 @@ export const auto: Translated<typeof es> = {
   'auto.pick.chosen': 'Chosen',
   'auto.pick.stat': '{name}, ATK {atk}, DEF {def}, selectable',
   'auto.pick.statLink': '{name}, ATK {atk}, selectable',
+  'auto.pick.statLevel': '{name}, Level {level}, ATK {atk}, DEF {def}, selectable',
+  'auto.pick.statRank': '{name}, Rank {rank}, ATK {atk}, DEF {def}, selectable',
+  'auto.pick.statRating': '{name}, LINK {link}, ATK {atk}, selectable',
   'auto.phase.notYet': 'Not yet',
 
   // The chain link badge on a card («CL1»): the short form is shown; the card's name says it in words.
