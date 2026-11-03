@@ -8,9 +8,8 @@ import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
-import type { IconName } from '../ui/Icon'
 import type { Tone } from '../ui/tone'
-import { colorOf, STATE_TONE, stateLabel, type ChainNoticeRow } from './chain-parts'
+import { CHIP_ICON, colorOf, STATE_TONE, stateLabel, type ChainNoticeRow } from './chain-parts'
 
 /** Un eslabón de un escenario: el de la pila de la cadena, más la línea de su efecto y, si se sabe más que el estado, su consecuencia. */
 export interface ChainOrderLink extends ChainNoticeRow {
@@ -34,9 +33,6 @@ export interface ChainOrderScenario {
   /** Del CL1 en adelante (se muestran en el orden en que se resuelven: el último arriba). */
   links: readonly ChainOrderLink[]
 }
-
-/** El ícono del chip según su tono: el chip se lee por el texto; el ícono y el color lo refuerzan. */
-export const CHIP_ICON: Record<Tone, IconName> = { neutral: 'timer', brand: 'link', info: 'play', success: 'check', warning: 'ban', danger: 'x' }
 
 /** Lo que tarda en entrar cada eslabón después del anterior (el `--stagger-step` del catálogo). */
 const STAGGER_MS = 70

@@ -7,7 +7,8 @@ import { BottomSheet } from '../ui/BottomSheet'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { listItem, listItemSelected } from '../ui/surfaces'
-import { ChainListRows, colorOf, stateLabel, type ChainNoticeRow } from './chain-parts'
+import { TONE } from '../ui/tone'
+import { CHIP_ICON, ChainListRows, colorOf, STATE_TONE, stateLabel, type ChainNoticeRow } from './chain-parts'
 
 /** Cuánto dice «Nuevo» el eslabón que se suma. */
 const FRESH_MS = 1500
@@ -24,8 +25,8 @@ interface ChainSheetProps {
  * dato se dice una sola vez. **Cada eslabón que se suma la abre entera** (Gastón, 2026-11-02: «el desplegable debe estar maximizado al activar un eslabón»); bajarla es de la persona y nunca se baja sola,
  * salvo mientras se elige algo en la mesa o la mano (un costo, un objetivo): ahí cede el lugar y queda su asa, y al terminar vuelve como estaba. Lo que se decide (las preguntas de la mesa: responder,
  * «¿Activás el efecto?») va en su pie, siempre a la vista y debajo de la pila: una sola hoja, con una sola asa.
- * Cada chip lleva su número en el color de su dueño, su arte y cómo va: el que se resuelve, el aro ámbar y crece un poco; el resuelto, un tilde; el negado o sin efecto, una cruz roja con el eslabón que lo
- * negó. Un eslabón que se suma entra desde la derecha y dice «Nuevo» un momento; con más chips de los que entran, la cinta se desplaza y deja a la vista el del que se habla. Tocar un chip lo muestra para
+ * Cada chip lleva su número en el color de su dueño, su arte y el ícono de cómo va (`CHIP_ICON`, el mismo tono que el chip de la pila): en espera, un reloj; el que se resuelve, ▶ con el aro ámbar, y crece un
+ * poco; el resuelto, un tilde; el negado, una cruz roja; el sin efecto, un «prohibido» ámbar (los dos últimos, con el eslabón que los negó). Un eslabón que se suma entra desde la derecha y dice «Nuevo» un momento; con más chips de los que entran, la cinta se desplaza y deja a la vista el del que se habla. Tocar un chip lo muestra para
  * leerlo. El texto de siempre («Cadena · 2 · Resuelve CL2 · Resolviendo») va para el lector de pantalla (`status`).
  */
 export function ChainSheet({ rows, focus, resolving, onPick }: ChainSheetProps) {
@@ -104,14 +105,12 @@ export function ChainSheet({ rows, focus, resolving, onPick }: ChainSheetProps) 
                     <span aria-hidden="true" className="rounded-tag bg-primary px-1 text-micro font-bold text-white">
                       {t('auto.chain.fresh')}
                     </span>
-                  ) : done ? (
-                    <Icon name="check" size={16} className="shrink-0 text-success" aria-hidden="true" />
-                  ) : voided ? (
-                    <span aria-hidden="true" className="flex items-center gap-0.5 text-micro font-bold text-danger">
-                      <Icon name="x" size={16} className="shrink-0" />
-                      {link.by ? `CL${link.by}` : null}
+                  ) : (
+                    <span aria-hidden="true" className={cx('flex items-center gap-0.5 text-micro font-bold', TONE[STATE_TONE[link.state]].text)}>
+                      <Icon name={CHIP_ICON[STATE_TONE[link.state]]} size={16} className="shrink-0" />
+                      {voided && link.by ? `CL${link.by}` : null}
                     </span>
-                  ) : null}
+                  )}
                 </button>
               </li>
             )

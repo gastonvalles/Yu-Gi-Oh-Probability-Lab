@@ -8,7 +8,7 @@ import { PLAYER_COLOR } from '../duel/player-color'
 import { VOIDED_ART } from '../probability/MatFx'
 import { Badge } from '../ui/Badge'
 import { cx } from '../ui/cx'
-import { Icon } from '../ui/Icon'
+import { Icon, type IconName } from '../ui/Icon'
 import { listItem } from '../ui/surfaces'
 import type { Tone } from '../ui/tone'
 
@@ -28,6 +28,8 @@ export interface ChainNoticeRow {
 }
 
 export const STATE_TONE: Record<ChainRowState, Tone> = { chained: 'neutral', solving: 'info', solved: 'success', negated: 'danger', disabled: 'warning' }
+/** El ícono de cada tono de estado: el chip se lee por el texto (en la cinta, por su nombre accesible); el ícono y el color lo refuerzan, y el color nunca va solo. */
+export const CHIP_ICON: Record<Tone, IconName> = { neutral: 'timer', brand: 'link', info: 'play', success: 'check', warning: 'ban', danger: 'x' }
 export const stateLabel = ({ state, by }: Pick<ChainNoticeRow, 'state' | 'by'>) => (by ? t('auto.chain.by', { state: t(`auto.chain.state.${state}`), by }) : t(`auto.chain.state.${state}`))
 export const colorOf = (mine: boolean) => PLAYER_COLOR[mine ? 'mine' : 'theirs']
 
