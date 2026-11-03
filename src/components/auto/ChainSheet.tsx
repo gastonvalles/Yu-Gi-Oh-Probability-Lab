@@ -9,6 +9,7 @@ import { Icon } from '../ui/Icon'
 import { listItem, listItemSelected } from '../ui/surfaces'
 import { TONE } from '../ui/tone'
 import { CHIP_ICON, ChainListRows, colorOf, STATE_TONE, stateLabel, type ChainNoticeRow } from './chain-parts'
+import { ChainLesson } from './ChainLesson'
 
 /** Cuánto dice «Nuevo» el eslabón que se suma. */
 const FRESH_MS = 1500
@@ -27,7 +28,7 @@ interface ChainSheetProps {
  * «¿Activás el efecto?») va en su pie, siempre a la vista y debajo de la pila: una sola hoja, con una sola asa.
  * Cada chip lleva su número en el color de su dueño, su arte y el ícono de cómo va (`CHIP_ICON`, el mismo tono que el chip de la pila): en espera, un reloj; el que se resuelve, ▶ con el aro ámbar, y crece un
  * poco; el resuelto, un tilde; el negado, una cruz roja; el sin efecto, un «prohibido» ámbar (los dos últimos, con el eslabón que los negó). Un eslabón que se suma entra desde la derecha y dice «Nuevo» un momento; con más chips de los que entran, la cinta se desplaza y deja a la vista el del que se habla. Tocar un chip lo muestra para
- * leerlo. El texto de siempre («Cadena · 2 · Resuelve CL2 · Resolviendo») va para el lector de pantalla (`status`).
+ * leerlo. Subida, el ⓘ de su cabeza abre «Cómo se resuelve» (`ChainLesson`). El texto de siempre («Cadena · 2 · Resuelve CL2 · Resolviendo») va para el lector de pantalla (`status`).
  */
 export function ChainSheet({ rows, focus, resolving, onPick }: ChainSheetProps) {
   const row = rows[focus] ?? rows[rows.length - 1]!
@@ -65,11 +66,14 @@ export function ChainSheet({ rows, focus, resolving, onPick }: ChainSheetProps) 
       tall
       hostsFooter
       head={
-        <div className="flex h-14 items-center gap-2 px-3">
+        // El ⓘ a la derecha de la cabeza: del lado del pulgar, lejos del pie de las preguntas y sola acción de la fila. Tocarlo no sube ni baja la hoja (`BottomSheet` deja pasar los botones) y
+        // arrastrar desde él sigue arrastrando la hoja.
+        <div className="flex h-14 items-center gap-2 pl-3 pr-1">
           <Icon name="link" size={18} className="shrink-0 text-info" aria-hidden="true" />
           <p aria-hidden="true" className="m-0 min-w-0 flex-1 truncate text-body font-semibold">
             {t('auto.chain.count', { count: rows.length })}
           </p>
+          <ChainLesson />
         </div>
       }
       status={
