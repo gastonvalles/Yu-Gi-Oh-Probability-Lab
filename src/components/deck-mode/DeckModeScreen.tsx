@@ -631,7 +631,12 @@ function usePracticeSession({
     setSharedCombo(null)
     start(rival ? { ...table, rival: rival.rival } : table, [], rival?.names)
   }, [start, mainIds, extraIds, handSize])
-  const loadCombo = useCallback((combo: SavedCombo) => { setSharedCombo(null); start(combo.initial, combo.actions, combo.names) }, [start])
+  // `at`: parado en ese paso (el salto de una rama); `seek` es funcional, así que vale en el mismo tick que `start`.
+  const loadCombo = useCallback((combo: SavedCombo, at = 0) => {
+    setSharedCombo(null)
+    start(combo.initial, combo.actions, combo.names)
+    if (at) seek(at)
+  }, [start, seek])
   // La partida del automático («Seguir en manual»): en vivo, con todo su historial (Deshacer y los Pasos siguen), y sin repartir otra mano al entrar.
   const resume = useCallback(
     (game: ManualGame) => {

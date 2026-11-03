@@ -142,6 +142,79 @@ export function groupSavedCombos(combos: readonly SavedCombo[], deckName: string
   return (['base', 'handtrap'] as const).map((group) => ({ group, combos: ordered.filter((combo) => comboGroupOf(combo) === group) })).filter((entry) => entry.combos.length > 0)
 }
 
+/** Una variante ligada a su combo base: las dos hacen lo mismo hasta la jugada `fork` (su índice: el paso `fork + 1` es el primero distinto). */
+export interface ComboBranch {
+  base: SavedCombo
+  variant: SavedCombo
+  fork: number
+}
+
+/** Un valor en un texto con las claves ordenadas: el mismo combo armado por el reducer o leído de un enlace (`combo-share.ts` lo arma en otro orden) da el mismo texto. */
+const canon = (value: unknown) =>
+  JSON.stringify(value, (_key, entry: unknown) => (isRecord(entry) && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : entry))
+
+/** La mesa (sin el rival: la variante puede cambiar sus handtraps) y cada jugada, en texto canónico. Por referencia, como los resúmenes: renombrar o anotar recalcula sólo ese. */
+const KEYS = new WeakMap<SavedCombo, { table: string; plays: string[] }>()
+
+function keyOf(combo: SavedCombo) {
+  let key = KEYS.get(combo)
+
+  if (!key) {
+    const { rival: _rival, ...table } = combo.initial
+    key = { table: canon(table), plays: combo.actions.map(canon) }
+    KEYS.set(combo, key)
+  }
+
+  return key
+}
+
+/**
+ * Las ramas de la lista (como «si el rival interrumpe con X en el paso N» de otros sitios): no se guardan, se deducen. Una variante («Con handtrap») es de un combo de la línea base
+ * si arrancan con la misma mesa y hacen lo mismo al menos una jugada antes de separarse, y el base sigue después (si el base es un prefijo, la variante lo continúa: no es una rama).
+ * Con dos bases gana el que comparte más, después el del mismo deck y después el más viejo. Borrar el base deja la variante suelta; importar los dos por enlace los vuelve a ligar.
+ */
+export function comboBranches(combos: readonly SavedCombo[]): ComboBranch[] {
+  const bases = new Map<string, SavedCombo[]>()
+
+  for (const combo of combos) {
+    if (comboGroupOf(combo) !== 'base') continue
+    const { table } = keyOf(combo)
+    bases.set(table, [...(bases.get(table) ?? []), combo])
+  }
+
+  return combos.flatMap((variant) => {
+    if (comboGroupOf(variant) !== 'handtrap') return []
+    const { table, plays } = keyOf(variant)
+    const candidates = (bases.get(table) ?? []).flatMap((base) => {
+      const other = keyOf(base).plays
+      let fork = 0
+      while (fork < plays.length && fork < other.length && plays[fork] === other[fork]) fork += 1
+      return fork >= 1 && fork < other.length ? [{ base, variant, fork }] : []
+    })
+    candidates.sort((a, b) => b.fork - a.fork || Number(b.base.deckName === variant.deckName) - Number(a.base.deckName === variant.deckName) || a.base.savedAt.localeCompare(b.base.savedAt))
+    return candidates.slice(0, 1)
+  })
+}
+
+/** El otro combo de una rama, visto desde la lista de pasos de uno: `role` dice qué es el otro (sus variantes, en el base; su base, en una variante). */
+export interface StepBranch {
+  combo: SavedCombo
+  fork: number
+  role: 'variant' | 'base'
+}
+
+/** Las ramas de un combo por la jugada donde se separa (la clave es su índice, como en las notas: el paso `fork + 1`). Sin ramas, nada. */
+export function stepBranchesOf(branches: readonly ComboBranch[], combo: SavedCombo): Record<number, StepBranch[]> | undefined {
+  const steps: Record<number, StepBranch[]> = {}
+
+  for (const { base, variant, fork } of branches) {
+    const other = base === combo ? { combo: variant, role: 'variant' as const } : variant === combo ? { combo: base, role: 'base' as const } : null
+    if (other) (steps[fork] ??= []).push({ ...other, fork })
+  }
+
+  return Object.keys(steps).length > 0 ? steps : undefined
+}
+
 /** Renombra un combo: el nombre nuevo no puede repetir el de otro (con el suyo sí) y uno vacío deja el que tenía. */
 export function renameSavedCombo(combos: readonly SavedCombo[], id: string, name: string): SavedCombo[] {
   if (!name.trim()) {

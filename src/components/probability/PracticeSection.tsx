@@ -30,7 +30,7 @@ interface PracticeSectionProps {
   onDispatch: (action: MatAction) => void
   onUndo: () => void
   onSeek: (step: number) => void
-  onLoadCombo: (combo: SavedCombo) => void
+  onLoadCombo: (combo: SavedCombo, at?: number) => void
   onNewHand: () => void
   /** «Seguir en automático» (`PracticeMat`): sólo con la beta del duelo automático encendida. */
   onAuto?: (state: MatState) => void

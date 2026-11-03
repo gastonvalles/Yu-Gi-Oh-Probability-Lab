@@ -332,6 +332,9 @@ export const practice = {
   'practice.panel.comboStarts': 'Arranca con',
   'practice.panel.comboEnds': 'Termina con',
   'practice.panel.comboMore': 'y {count} más',
+  'practice.panel.variantOf': 'Variante de',
+  'practice.panel.variantFrom': '“{name}” · desde el paso {step}',
+  'practice.panel.variants': { one: '{count} variante con handtrap', other: '{count} variantes con handtrap' },
   'practice.panel.load': 'Cargar',
   'practice.panel.loadNamed': 'Cargar {name}',
   'practice.panel.rename': 'Renombrar',
@@ -399,6 +402,9 @@ export const practice = {
   'practice.moves.leaves': 'Desaparece de {from}',
   'practice.moves.more': { one: 'y {count} carta más', other: 'y {count} cartas más' },
   'practice.steps.context': 'Turno {turn} · {phase}',
+  'practice.steps.branch': 'Rama: “{name}”',
+  'practice.steps.forkOf': 'Se separa de “{name}”',
+  'practice.steps.openBranch': 'Ver “{name}” desde el paso {step}',
   'practice.snapshot.hand': 'Mano {count}',
 
   // Salidas y problemas de la mano.
