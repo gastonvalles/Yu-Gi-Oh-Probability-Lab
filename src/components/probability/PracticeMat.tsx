@@ -3197,7 +3197,7 @@ function PracticeMatBody({
             {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           </section>
 
-          <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" veil={false} kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
+          <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" veil={false} movable kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
             {panel}
           </Modal>
         </>

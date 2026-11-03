@@ -1,7 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { matCardPositionKey, touchOr, useDraggableOffset } from '../../app/use-draggable-offset'
 import { useFocusTrap } from '../../app/use-focus-trap'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSwipeFold } from '../../app/use-swipe-fold'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { usePresence } from '../../app/use-presence'
@@ -96,6 +98,11 @@ interface ModalProps {
    */
   anchor?: 'mat'
   /**
+   * En escritorio se lleva a otro lado por su encabezado (o su asa), como la pregunta del medio (`useDraggableOffset`), y ahí queda para el próximo: los que se minimizan, en el lugar de la
+   * pregunta; los demás, en uno para todos los diálogos de la mesa. Por omisión, los de la mesa (`anchor="mat"`); `true`, otro de la mesa que sale al centro de la pantalla (guardar un combo).
+   */
+  movable?: boolean
+  /**
    * false = sin velo: el fondo no se oscurece (los menús de la mesa: con uno abierto el campo se sigue viendo, como con el visor de una pila). Lo demás queda igual (el foco, Escape,
    * tocar afuera); el panel despega del fondo con un borde más marcado (`surface.floating`).
    */
@@ -130,6 +137,7 @@ export function Modal({
   closeClassName,
   lowerable = false,
   anchor,
+  movable,
   veil = true,
   children,
 }: ModalProps) {
@@ -156,9 +164,14 @@ export function Modal({
 
       if (!mat || !style) return
       if (dy === null) style.removeProperty('--tw-translate-y')
-      else style.setProperty('--tw-translate-y', `calc(-50% + ${dy}px)`)
+      else style.setProperty('--tw-translate-y', `calc(var(--drag-y, 0px) - 50% + ${dy}px)`)
     },
   })
+  // En escritorio, se lleva por el encabezado (`movable`). El de la mesa suma el corrimiento a su centrado (`--drag-x`, `--drag-y`); el de la pantalla, con su `translate`.
+  const draggable = (movable ?? mat) && Boolean(hasHeader)
+  const desktop = useMediaQuery(draggable ? DESKTOP_DECK_BUILDER_MEDIA_QUERY : null)
+  const move = useDraggableOffset(matCardPositionKey(lowerable ? 'prompt' : 'dialog'), panelRef, draggable && desktop, mat)
+  const grabbable = Boolean(move.head.onPointerDown)
 
   useBodyScrollLock(isOpen)
   useEscapeKey(onClose, isOpen && dismissible)
@@ -206,7 +219,11 @@ export function Modal({
 
   const header = hasHeader ? (
     // La franja de arriba, un tono más clara que el panel (es parte del mismo panel: sin borde ni radio propios).
-    <header {...(minimizable ? swipe : {})} className={cx('flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5', minimizable && 'touch-none select-none')}>
+    <header
+      {...(minimizable ? touchOr(swipe, move.head) : move.head)}
+      title={grabbable ? t('duel.prompt.move') : undefined}
+      className={cx('flex items-start justify-between gap-3 border-b border-border-subtle bg-surface-raised px-5 py-4 min-[1101px]:px-6 min-[1101px]:py-5', minimizable && 'touch-none select-none', grabbable && 'cursor-grab select-none active:cursor-grabbing')}
+    >
       <div className="flex min-w-0 items-start gap-3">
         {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', tone ? TONE[tone].text : 'text-foreground')} /> : null}
         <div className="grid min-w-0 gap-0.5">
@@ -268,18 +285,22 @@ export function Modal({
         aria-label={hasHeader && title ? undefined : ariaLabel}
         aria-describedby={ariaDescribedBy}
         data-minimized={lowered ? '' : undefined}
+        {...move.root}
         className={cx(
           'flex min-h-0 flex-col p-0 outline-none motion-reduce:animate-none',
           mat
-            ? // En el centro de la fila Extra (con el teclado, en el de lo visible) o, minimizada, el asa apoyada sobre esa fila.
-              cx('absolute left-[var(--mat-x,50%)] -translate-x-1/2', lowered ? 'top-[var(--mat-extra,calc(100%-1rem))] -translate-y-full' : cx('top-[var(--mat-y,50%)] -translate-y-1/2', size !== 'fit' && 'max-h-[var(--mat-room,calc(100dvh-1rem))]'))
+            ? // En el centro de la fila Extra (con el teclado, en el de lo visible) o, minimizada, el asa apoyada sobre esa fila; más lo que la persona lo corrió (`--drag-*`).
+              cx(
+                'absolute left-[var(--mat-x,50%)] translate-x-[calc(var(--drag-x,0px)-50%)]',
+                lowered ? 'top-[var(--mat-extra,calc(100%-1rem))] translate-y-[calc(var(--drag-y,0px)-100%)]' : cx('top-[var(--mat-y,50%)] translate-y-[calc(var(--drag-y,0px)-50%)]', size !== 'fit' && 'max-h-[var(--mat-room,calc(100dvh-1rem))]'),
+              )
             : cx('relative max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)]', sheet ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter'),
           // Minimizada, el fondo deja pasar los toques; el asa, no.
           lowered ? 'pointer-events-auto max-w-[calc(100vw-2rem)]' : cx('overflow-hidden', mat && 'animate-dialog-enter', veil ? surface.panel : surface.floating, mat ? MAT_SIZE_CLASS[size] : SIZE_CLASS[size]),
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        {lowered ? <PromptHandle label={typeof title === 'string' ? title : (ariaLabel ?? '')} onShow={() => setMinimized(false)} /> : null}
+        {lowered ? <PromptHandle label={typeof title === 'string' ? title : (ariaLabel ?? '')} onShow={() => setMinimized(false)} move={move.head} /> : null}
         {hasHeader ? (
           <div inert={lowered} hidden={lowered} className="contents">
             {header}

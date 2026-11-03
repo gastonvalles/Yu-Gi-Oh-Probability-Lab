@@ -60,10 +60,10 @@ describe('una hoja del duelo (Modal lowerable)', () => {
     picker(onCancel)
     fireEvent.pointerDown(title(), { pointerId: 7, pointerType: 'touch', button: 0, buttons: 1, clientX: 120, clientY: 300 })
     fireEvent.pointerMove(title(), { pointerId: 7, pointerType: 'touch', buttons: 1, clientX: 120, clientY: 340 })
-    expect(dialog().style.getPropertyValue('--tw-translate-y')).toBe('calc(-50% + 40px)')
+    expect(dialog().style.getPropertyValue('--tw-translate-y')).toBe('calc(var(--drag-y, 0px) - 50% + 40px)')
     // Hacia arriba no la sube más allá de su lugar.
     fireEvent.pointerMove(title(), { pointerId: 7, pointerType: 'touch', buttons: 1, clientX: 120, clientY: 250 })
-    expect(dialog().style.getPropertyValue('--tw-translate-y')).toBe('calc(-50% + 0px)')
+    expect(dialog().style.getPropertyValue('--tw-translate-y')).toBe('calc(var(--drag-y, 0px) - 50% + 0px)')
     fireEvent.pointerCancel(title(), { pointerId: 7 })
     expect(dialog().style.getPropertyValue('--tw-translate-y')).toBe('')
 

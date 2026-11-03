@@ -4,18 +4,19 @@ import { t } from '../i18n'
 import { isFabDrag, type FabPosition } from './fab-position'
 
 /**
- * Los carteles de la mesa que se leen o se contestan (la pregunta del medio, `MatPrompt`, y su asa; la pila de la cadena, `ChainNotice`) se llevan a cualquier lugar de la pantalla
- * desde 1101 px, como las mascotas (Gastón, 2026-11-02: «los carteles se deben poder mover en desktop como las mascotas»). Salen en su lugar fijo de siempre y se corren con un
+ * Los carteles de la mesa (la pregunta del medio, `MatPrompt`, y su asa; la pila de la cadena, `ChainNotice`; sus diálogos, `Modal anchor="mat"`; el visor de una pila, `PileViewer`) se llevan
+ * a cualquier lugar de la pantalla desde 1101 px, como las mascotas (Gastón, 2026-11-02: «los carteles se deben poder mover en desktop como las mascotas»). Salen en su lugar fijo de siempre y se corren con un
  * `translate` sobre ese lugar (`offset`): no mueven nada de la mesa ni cambian el tamaño de su ranura.
  * - Se agarran por la cabeza (no por sus botones) con el mouse o el lápiz; con el dedo sigue lo de siempre (`useSwipeFold`: `touchOr`). Mientras se llevan se escribe el `translate`
  *   directo, sin redibujar React; se guarda al soltar. Un toque sin arrastrar sigue siendo un clic.
  * - Siempre enteros a la vista (`visibleArea`: nunca debajo del menú de al lado; si no entran, la cabeza): se vuelven a acotar al cambiar el tamaño de la ventana o del cartel, sin
  *   olvidar dónde los dejó la persona.
- * - Una posición por lugar (`storageKey`, no por pregunta), recordada entre visitas. Doble clic en la cabeza, a su lugar. Con el foco adentro, Alt + flechas.
+ * - Una posición por lugar (`storageKey`, no por pregunta), recordada entre visitas y releída cada vez que el cartel aparece (otro del mismo lugar pudo moverse mientras no estaba). Doble clic en la cabeza, a su lugar. Con el foco adentro, Alt + flechas.
  * - Movido lleva `data-moved` y avisa `cardmove` (sube): la mesa deja de acortar la pila de la cadena contra la pregunta, que ya no comparten franja.
  */
 
-export const matCardPositionKey = (place: 'prompt' | 'chain') => `ygo-lab:mat-card-position:${place}`
+/** `prompt`: la pregunta, su asa y las hojas que se minimizan (`lowerable`); `chain`: la pila de la cadena; `dialog`: los demás diálogos de la mesa y el visor de una pila. */
+export const matCardPositionKey = (place: 'prompt' | 'chain' | 'dialog') => `ygo-lab:mat-card-position:${place}`
 
 export const MOVE_SHORTCUTS = 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight'
 const KEY_STEP = 16
@@ -44,8 +45,8 @@ export function clampOffset(offset: FabPosition, box: Box, area: Area): FabPosit
 }
 
 /**
- * Dónde se ve el cartel: el primer contenedor que lo recorta (en la app, el del armazón: la ventana menos el menú de al lado; en el catálogo, el marco de la muestra) o, sin ninguno, la ventana.
- * Llevarlo más allá lo cortaría.
+ * Dónde se ve el cartel: el primer contenedor que lo recorta (en la app, el del armazón: la ventana menos el menú de al lado; en el catálogo, el marco de la muestra). Sin ninguno (un portal en
+ * `<body>`, como el `Modal`), el recuadro del armazón (el que contiene a `#contenido`: tampoco va debajo del menú) o, sin armazón, la ventana. Llevarlo más allá lo cortaría.
  */
 function visibleArea(element: HTMLElement): Area {
   for (let parent = element.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
@@ -53,7 +54,7 @@ function visibleArea(element: HTMLElement): Area {
 
     if (style.overflowX !== 'visible' || style.overflowY !== 'visible') return parent.getBoundingClientRect()
   }
-  return { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
+  return document.getElementById('contenido')?.parentElement?.getBoundingClientRect() ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
 }
 
 export function readOffset(key: string): FabPosition {
@@ -91,14 +92,18 @@ interface Drag {
   moved: boolean
 }
 
-/** `ref`: el cartel entero (lo que se corre). Sin `enabled` (el celular, la hoja de abajo) no hace nada. */
-export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean) {
+/**
+ * `ref`: el cartel entero (lo que se corre). Sin `enabled` (el celular, la hoja de abajo) no hace nada. `vars`: el que ya se centra con un `translate` de Tailwind (el `Modal` de la mesa) no se
+ * pisa: se escriben `--drag-x` y `--drag-y`, que sus clases le suman (`translate-x-[calc(var(--drag-x,0px)-50%)]`).
+ */
+export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElement | null>, enabled: boolean, vars = false) {
   const stored = useRef<FabPosition | null>(null)
   // Lo que tiene puesto el cartel ahora (y en cuál: al minimizarse, el asa es otro elemento).
   const applied = useRef<{ element: HTMLElement | null; offset: FabPosition }>({ element: null, offset: ZERO })
   const drag = useRef<Drag | null>(null)
   const observed = useRef<HTMLElement | null>(null)
   const observer = useRef<ResizeObserver | null>(null)
+  const seen = useRef<HTMLElement | null>(null)
 
   stored.current ??= readOffset(storageKey)
 
@@ -117,7 +122,13 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
 
     if (!element) return
     applied.current = { element, offset }
-    element.style.translate = offset.x || offset.y + extraY ? `${px(offset.x)} ${px(offset.y + extraY)}` : ''
+    if (vars) {
+      // En su lugar, sin variable (vale la de las clases, `0px`: un `0` sin unidad rompería el `calc`).
+      for (const [name, value] of [['--drag-x', offset.x], ['--drag-y', offset.y + extraY]] as const) {
+        if (value) element.style.setProperty(name, `${Math.round(value)}px`)
+        else element.style.removeProperty(name)
+      }
+    } else element.style.translate = offset.x || offset.y + extraY ? `${px(offset.x)} ${px(offset.y + extraY)}` : ''
     if (stored.current!.x || stored.current!.y) element.dataset.moved = ''
     else delete element.dataset.moved
   }
@@ -130,7 +141,17 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
   const reclamp = () => {
     const element = ref.current
 
-    if (!enabled || !element || drag.current) return
+    if (!element || drag.current) return
+    // Pasó al celular con el cartel abierto (el mismo elemento): sin lo corrido y sin `data-moved`.
+    if (!enabled) {
+      if (applied.current.element !== element) return
+      applied.current = { element: null, offset: ZERO }
+      element.style.translate = ''
+      element.style.removeProperty('--drag-x')
+      element.style.removeProperty('--drag-y')
+      delete element.dataset.moved
+      return
+    }
     const { x, y } = stored.current!
 
     // En su lugar no hay nada que acotar (ni que medir: sin una lectura de más por cada vez que se dibuja).
@@ -139,6 +160,9 @@ export function useDraggableOffset(storageKey: string, ref: RefObject<HTMLElemen
 
   // Cada vez que se dibuja (otra pregunta, minimizado/abierto): el cartel en su lugar recordado, acotado; y su tamaño, vigilado.
   useLayoutEffect(() => {
+    // Al aparecer, lo último guardado de su lugar.
+    if (ref.current && !seen.current) stored.current = readOffset(storageKey)
+    seen.current = ref.current
     reclamp()
     const element = enabled ? ref.current : null
 

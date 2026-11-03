@@ -1,6 +1,7 @@
 import { Fragment, createContext, type CSSProperties, type ReactNode, useContext, useDeferredValue, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 
+import { matCardPositionKey, useDraggableOffset } from '../../app/use-draggable-offset'
 import { opensKeyboard, useFocusTrap } from '../../app/use-focus-trap'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -586,6 +587,8 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
   const gridRef = useRef<HTMLUListElement | null>(null)
   const footRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLElement | null>(null)
+  // En escritorio se lleva a otro lado por su título, como los diálogos de la mesa (y en el mismo lugar que ellos).
+  const move = useDraggableOffset(matCardPositionKey('dialog'), panelRef, desktop)
   // Lo que tenía el foco al abrirse (la casilla de la pila): ahí vuelve al cerrarse.
   const openerRef = useRef<HTMLElement | null>(null)
   const statusId = useId()
@@ -749,7 +752,11 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
 
   // El encabezado del `Modal`, más angosto: dónde y cuántas, y la X. En el celular va debajo del asa (que ya deja el aire de arriba).
   const header = (
-    <header className={cx('flex flex-none justify-between gap-2 border-b border-border-subtle bg-surface-raised pl-3 pr-2', strip ? 'items-center py-2' : cx('items-start', desktop ? 'py-2.5' : 'pb-2.5'))}>
+    <header
+      {...move.head}
+      title={desktop ? t('duel.prompt.move') : undefined}
+      className={cx('flex flex-none justify-between gap-2 border-b border-border-subtle bg-surface-raised pl-3 pr-2', strip ? 'items-center py-2' : cx('items-start', desktop ? 'py-2.5' : 'pb-2.5'), desktop && 'cursor-grab select-none active:cursor-grabbing')}
+    >
       <div className="grid min-w-0 gap-0.5">
         <p className={cx('m-0', overline)}>{kicker ?? t('practice.mat.name')}</p>
         <Heading level="section" id={titleId}>
@@ -840,7 +847,7 @@ export function PileViewer({ pile, hidden = false, ids, info, targeted, glow, on
     !open || typeof document === 'undefined' ? null : desktop ? (
       // Escritorio: llena la caja que le da quien lo monta, sin velo; con otro visor que sale mientras éste entra, los dos van en la misma celda (no se reparten el alto). La tira va abajo de su
       // caja y al medio, y no pasa de ella (de alto, lo que sobra se desliza); de ancho, el de sus cartas en fila o, con buscador, toda la caja: así no se achica ni corre mientras se escribe.
-      <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className={cx(surface.panel, 'pointer-events-auto col-start-1 row-start-1 flex min-h-0 flex-col overflow-hidden outline-none animate-sheet-in motion-reduce:animate-none', strip && cx('max-h-full max-w-full self-end justify-self-center', search ? 'w-full' : 'w-max'))}>
+      <section ref={panelRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} {...move.root} className={cx(surface.panel, 'pointer-events-auto col-start-1 row-start-1 flex min-h-0 flex-col overflow-hidden outline-none animate-sheet-in motion-reduce:animate-none', strip && cx('max-h-full max-w-full self-end justify-self-center', search ? 'w-full' : 'w-max'))}>
         {header}
         {content}
       </section>
@@ -895,7 +902,7 @@ export function SaveComboDialog({ isOpen, defaultName, rename = false, onSave, o
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} movable kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
       <form className="grid gap-3" onSubmit={submit}>
         <label className="grid gap-1">
           <span className="text-body text-muted">{t('practice.dialog.name')}</span>
@@ -955,7 +962,7 @@ export function StepNoteDialog({ step, defaultNote, onSave, onClose }: StepNoteD
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} title={title} ariaLabel={title}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" veil={false} movable title={title} ariaLabel={title}>
       <form className="grid gap-3" onSubmit={submit}>
         <label className="grid gap-1">
           <span className="flex items-baseline justify-between gap-2 text-body text-muted">
