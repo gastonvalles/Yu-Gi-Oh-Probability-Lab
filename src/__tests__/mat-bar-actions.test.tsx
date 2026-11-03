@@ -209,7 +209,7 @@ describe('la barra de la mesa es una sola', () => {
     // Plana: el nombre y el número grande (33 px), sin placa, barra de 8000 ni cartas en la mano.
     expect(rival).toHaveTextContent(/^Rival8000$/)
     expect(mine).toHaveTextContent(/^Vos8000$/)
-    expect(mine.lastElementChild).toHaveClass('text-stat')
+    expect(mine.querySelector('.text-stat')).toHaveTextContent('8000')
     expect(document.querySelector('.life-plate, [role="meter"]')).toBeNull()
     expect(after(rival)).toBe(false)
     expect(after(mine)).toBe(true)

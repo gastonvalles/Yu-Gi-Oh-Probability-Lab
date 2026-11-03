@@ -739,7 +739,7 @@ describe('AutoBar', () => {
 
     expect(rival.parentElement).toHaveClass('col-start-1', 'row-start-1')
     expect(screen.getByRole('group', { name: 'Puntos de vida de Vos: 8000' }).parentElement).toHaveClass('col-start-1', 'row-start-3')
-    expect(rival.lastElementChild).toHaveClass('text-stat')
+    expect(rival.querySelector('.text-stat')).toHaveTextContent('7000')
     expect(container.querySelector('.life-plate, [role="meter"]')).toBeNull()
   })
 
