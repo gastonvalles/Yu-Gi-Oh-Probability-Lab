@@ -306,6 +306,11 @@ export const auto: Translated<typeof es> = {
   // Each link is tapped to read it in the detail: what the screen reader says.
   'auto.chain.linkMine': 'Chain Link {number}: {card}, yours. {state}',
   'auto.chain.linkTheirs': 'Chain Link {number}: {card}, your opponent’s. {state}',
+  // Two orders of the same chain, side by side (`ChainOrderCompare`): each verdict, in words as well as color.
+  'auto.chainOrder.good': 'Works',
+  'auto.chainOrder.bad': 'Backfires',
+  'auto.chainOrder.scenario': '{letter} · {title}. {verdict}',
+  'auto.chainOrder.replay': 'Replay',
 
   // Steps and combos (the practice panel): the empty list (no dragging or holding here) and reviewing a combo or your plays on the same mat, with the way back.
   'auto.steps.empty': 'Tap a card or the phase button to see what you can do. Every play is noted here.',

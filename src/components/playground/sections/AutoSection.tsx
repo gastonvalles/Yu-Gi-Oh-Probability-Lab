@@ -40,6 +40,7 @@ import { Segmented } from '../../ui/Segmented'
 import { cx } from '../../ui/cx'
 import { LanguageSwitcher } from '../../ui/LanguageSwitcher'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
+import { ChainProposalSamples } from './ChainProposal'
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
 /** La caja de la ranura de la pregunta, como en la mesa (`PracticeMat`): más ancha con una banda, del ancho del asa minimizada. */
@@ -185,6 +186,7 @@ export function AutoSection() {
       </Specimen>
 
       <ChainSample />
+      <ChainProposalSamples />
       <BarActionsSample />
       <RulesPillSample />
       <LifePlateSample />
