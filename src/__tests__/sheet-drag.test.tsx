@@ -221,7 +221,7 @@ describe('las hojas del duelo automático se minimizan sin contestar la pregunta
     const show = within(dialog).getByRole('button', { name: 'Mostrar la pregunta' })
 
     expect(dialog).toHaveAttribute('data-minimized')
-    expect(dialog).toHaveClass('top-[var(--mat-extra,calc(100%-1rem))]', '-translate-y-full')
+    expect(dialog).toHaveClass('top-[var(--mat-extra,calc(100%-1rem))]', 'translate-y-[calc(var(--drag-y,0px)-100%)]')
     expect(show.parentElement).toHaveTextContent(/^Elegí qué agregar a tu mano$/)
     expect(show).toHaveFocus()
     expect(root).toHaveClass('pointer-events-none')
