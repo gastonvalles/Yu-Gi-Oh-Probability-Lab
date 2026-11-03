@@ -37,7 +37,7 @@ interface ChainNoticeProps {
  * - **El color del dueño** (violeta claro lo tuyo, ámbar lo del rival: el de las vidas, `PLAYER_COLOR`) va en la etiqueta del número, rellena, y en el «de quién». No se confunde
  *   con el ámbar de lo que se resuelve, que es un **aro** alrededor de toda la fila (`listItemSelected`, como el brillo de las cartas): forma distinta, mismo significado de siempre.
  * - **Tocar un eslabón** (`onPick`) lo muestra para leerlo: cada fila es un botón de 44 px o más con su nombre entero («Eslabón 2: Ash Blossom, del rival. Resolviendo»).
- * - El ritmo, cuándo aparece y cuándo se va lo decide quien la usa (`use-auto-asks.tsx`); acá sólo se dibuja. Sin animar a propósito: es un cartel con temporizador.
+ * - El ritmo, cuándo aparece y cuándo se va lo decide quien la usa (`use-auto-asks.tsx`); acá sólo se dibuja. El cartel no entra ni sale animado (tiene temporizador); sus filas sí, al cambiar un eslabón (`ChainListRows`).
  * - Accesibilidad: el texto de la píldora es un `status` (lo lee el lector de pantalla cuando cambia); la flecha dice qué hace y controla la lista.
  * - Hacer: dejar pasar los toques fuera del cartel (la caja de la mesa va con `pointer-events-none`); tocarla no salta la mesa al final (`skipAhead` la saltea).
  *   No hacer: taparla con otra cosa ni ponerle velo. La mueve sólo la persona (escritorio: su fila de arriba con el mouse, `useDraggableOffset`).

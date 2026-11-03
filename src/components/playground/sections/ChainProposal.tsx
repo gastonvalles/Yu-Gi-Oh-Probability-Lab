@@ -1,25 +1,17 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { ChainRowState } from '../../../app/auto/chain-feed'
-import { cancelWhenDone, EASE_IN_OUT, EASE_OUT, EASE_SNAP, prefersReducedMotion } from '../../../app/motion'
 import { t } from '../../../i18n'
-import { CardArt } from '../../CardArt'
 import { ChainOrderCompare, CHIP_ICON, type ChainOrderScenario } from '../../auto/ChainOrderCompare'
-import { ChainListRows, colorOf, STATE_TONE, stateLabel, type ChainNoticeRow } from '../../auto/chain-parts'
-import { VOIDED_ART } from '../../probability/MatFx'
+import { ChainListRows, STATE_TONE, stateLabel, type ChainNoticeRow } from '../../auto/chain-parts'
 import { Badge } from '../../ui/Badge'
 import { Button } from '../../ui/Button'
-import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
 import { Segmented } from '../../ui/Segmented'
-import { listItem } from '../../ui/surfaces'
 import type { Tone } from '../../ui/tone'
 import { Specimen, Tag } from '../Specimen'
 
-/**
- * PROPUESTA (sin cablear): la cadena animada, los chips de consecuencia y «Dos órdenes». Las animaciones de la propuesta viven acá, en Web Animations desde TS (nada nuevo en `index.css`
- * hasta que Gastón elija): sólo `opacity` y `transform`, en `replace`, con las curvas de `app/motion.ts`, `cancelWhenDone` y nada con movimiento reducido (el cambio queda seco, como hoy).
- */
+/** La cadena: la pila real animada paso a paso (`ChainListRows`) y lo que sigue en propuesta, sin cablear (los chips de consecuencia y «Dos órdenes»). */
 
 const art = (id: number) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`
 
@@ -60,138 +52,11 @@ const rowsOf = (step: number, variant: Variant): ChainNoticeRow[] =>
 
 const voidedState = (state: ChainRowState) => state === 'negated' || state === 'disabled'
 
-/**
- * Las animaciones de la propuesta, una por cambio de estado, todas de compositor y cortas: se leen todas las medidas primero y después se anima (una fase de lectura y una de escritura).
- * - Se suma un eslabón: entra arriba de la pila desde arriba (280 ms, `EASE_SNAP`) y los de abajo bajan su lugar (FLIP de `transform`, 280 ms, `EASE_OUT`).
- * - Resuelve: la fila hace un pop (320 ms) y su aro ámbar (una capa ya dibujada) se enciende con `opacity`; la marca de resolución viaja desde la fila de arriba (300 ms, `EASE_IN_OUT`): se ve que
- *   se resuelve de arriba hacia abajo.
- * - Resuelta: el tilde entra girando sobre el arte (260 ms), el arte se apaga (`opacity` 1 → 0,6) y el aro se va.
- * - Negada o sin efecto: la cruz cae como un sello (260 ms) y la fila se sacude (300 ms); el arte queda gris latiendo (`VOIDED_ART`, como en la mesa).
- * - El chip cambia: el nuevo sube y aparece (200 ms).
- */
-function useChainMotion(listRef: RefObject<HTMLOListElement | null>, rows: readonly ChainNoticeRow[], still: boolean) {
-  const before = useRef<readonly ChainNoticeRow[]>(rows)
-  const signature = rows.map((row) => `${row.state}${row.by ?? ''}`).join('|')
-
-  useLayoutEffect(() => {
-    const list = listRef.current
-    const prev = before.current
-
-    before.current = rows
-    if (!list || still || prefersReducedMotion() || typeof list.animate !== 'function' || rows.length < prev.length) return
-
-    const row = (number: number) => list.querySelector<HTMLElement>(`[data-link="${number}"]`)
-    const part = (number: number, name: string) => row(number)?.querySelector<HTMLElement>(`[data-part="${name}"]`) ?? null
-    const jobs: Array<() => Animation | undefined> = []
-
-    // Lectura: dónde está cada cosa.
-    const added = rows.filter((link) => !prev.some((old) => old.number === link.number))
-    const fresh = added.length === 1 ? row(added[0]!.number) : null
-    const shift = fresh ? fresh.offsetHeight + parseFloat(getComputedStyle(list).rowGap || '0') : 0
-    const wasSolving = prev.find((link) => link.state === 'solving')?.number
-    const solving = rows.find((link) => link.state === 'solving')?.number
-    const from = solving && solving !== wasSolving && wasSolving ? (row(wasSolving)?.offsetTop ?? null) : null
-    const to = solving ? (row(solving)?.offsetTop ?? 0) : 0
-
-    // Escritura.
-    if (fresh) {
-      jobs.push(() => fresh.animate([{ opacity: 0, transform: 'translateY(-0.75rem) scale(0.96)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: EASE_SNAP }))
-      for (const link of rows) if (link.number !== added[0]!.number) jobs.push(() => row(link.number)?.animate([{ transform: `translateY(${-shift}px)` }, { transform: 'none' }], { duration: 280, easing: EASE_OUT }))
-    }
-    for (const link of rows) {
-      const old = prev.find((item) => item.number === link.number)
-
-      if (!old || (old.state === link.state && old.by === link.by)) continue
-      const n = link.number
-
-      jobs.push(() => part(n, 'chip')?.animate([{ opacity: 0, transform: 'translateY(0.25rem)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: EASE_OUT }))
-      if (link.state === 'solving') {
-        jobs.push(() => part(n, 'body')?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.03)', offset: 0.4 }, { transform: 'scale(1)' }], { duration: 320, easing: EASE_SNAP }))
-        jobs.push(() => part(n, 'ring')?.animate([{ opacity: 0, transform: 'scale(1.04)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE_SNAP }))
-      }
-      if (old.state === 'solving') jobs.push(() => part(n, 'ring')?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: EASE_OUT }))
-      if (link.state === 'solved') {
-        jobs.push(() => part(n, 'mark')?.animate([{ opacity: 0, transform: 'scale(0.4) rotate(-25deg)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: EASE_SNAP }))
-        jobs.push(() => part(n, 'art')?.animate([{ opacity: 1 }, { opacity: 0.6 }], { duration: 240, easing: EASE_OUT }))
-      }
-      if (voidedState(link.state) && !voidedState(old.state)) {
-        jobs.push(() => part(n, 'mark')?.animate([{ opacity: 0, transform: 'scale(1.8)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: EASE_SNAP }))
-        jobs.push(() => part(n, 'body')?.animate([{ transform: 'none' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(-2px)' }, { transform: 'none' }], { duration: 300, easing: EASE_OUT }))
-      }
-    }
-    if (solving && solving !== wasSolving) {
-      jobs.push(() =>
-        part(solving, 'cursor')?.animate(from === null ? [{ opacity: 0, transform: 'translateY(-0.5rem)' }, { opacity: 1, transform: 'none' }] : [{ transform: `translateY(${from - to}px)` }, { transform: 'none' }], { duration: from === null ? 240 : 300, easing: from === null ? EASE_OUT : EASE_IN_OUT }),
-      )
-    }
-
-    const animations = jobs.flatMap((job) => {
-      const animation = job()
-
-      return animation ? [cancelWhenDone(animation)] : []
-    })
-
-    // Un paso que llega antes de que termine el anterior lo deja en su lugar (seco) y anima el nuevo.
-    return () => animations.forEach((animation) => animation.cancel())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, rows.length, still])
-}
-
-/** La pila de la cadena, propuesta: la misma fila que hoy (`ChainListRows`), con las capas que se animan (el aro, la marca de resolución, el tilde o la cruz sobre el arte) y el chip con su ícono. */
-function ProposalRows({ rows, still }: { rows: readonly ChainNoticeRow[]; still: boolean }) {
-  const listRef = useRef<HTMLOListElement | null>(null)
-
-  useChainMotion(listRef, rows, still)
-
-  return (
-    <ol ref={listRef} aria-label={t('auto.chain.list')} className="m-0 grid list-none content-start gap-1 p-1.5">
-      {[...rows].reverse().map((link) => {
-        const color = colorOf(link.mine)
-        const solving = link.state === 'solving'
-        const voided = voidedState(link.state)
-        const label = t(link.mine ? 'auto.chain.linkMine' : 'auto.chain.linkTheirs', { number: link.number, card: link.name, state: stateLabel(link) })
-
-        return (
-          <li key={link.number} data-link={link.number} aria-current={solving ? 'step' : undefined} className="relative">
-            {/* La marca de resolución: una sola a la vez, en la fila que se resuelve; viaja desde la anterior. */}
-            {solving ? <span data-part="cursor" aria-hidden="true" className="absolute inset-y-1.5 -left-1.5 w-1 bg-info" /> : null}
-            <button type="button" aria-label={label} data-part="body" className={cx(listItem, 'relative flex min-h-11 w-full items-center gap-2.5 p-1.5 text-left focus-visible:outline-none focus-visible:shadow-focus')}>
-              {/* El aro ámbar y el velo ya dibujados: se anima su opacidad, nunca la sombra ni el fondo (hoy el velo de la fila transiciona `background-color`). */}
-              <span data-part="ring" aria-hidden="true" className={cx('pointer-events-none absolute inset-0 rounded-card bg-tint/10 inset-ring-2 inset-ring-info/80', solving ? 'opacity-100' : 'opacity-0')} />
-              <span className={cx('w-9 shrink-0 rounded-tag border py-0.5 text-center text-micro font-bold tabular-nums text-white', color.border, color.bubble)}>{`CL${link.number}`}</span>
-              <span className="relative block aspect-[421/614] w-8 shrink-0 overflow-hidden bg-input">
-                <span data-part="art" className={cx('block h-full w-full', link.state === 'solved' && 'opacity-60')}>
-                  <CardArt remoteUrl={link.art} name={link.name} className={cx('block h-full w-full object-cover', voided && VOIDED_ART)} />
-                </span>
-                {link.state === 'solved' || voided ? (
-                  <span data-part="mark" className="absolute inset-0 grid place-items-center">
-                    <span className="grid size-5 place-items-center rounded-tag bg-background/85">
-                      <Icon name={voided ? 'x' : 'check'} size={14} strokeWidth={2.6} className={voided ? 'text-danger-soft' : 'text-success-soft'} />
-                    </span>
-                  </span>
-                ) : null}
-              </span>
-              <span className="grid min-w-0 flex-1 leading-tight">
-                <span className={cx('truncate text-body font-semibold', solving ? 'text-info' : voided ? 'text-muted' : 'text-foreground', voided && 'line-through')}>{link.name}</span>
-                <span className={cx('truncate text-micro font-semibold', color.text)}>{link.who}</span>
-              </span>
-              {/* Sin ícono en la pila: el tilde o la cruz ya van sobre el arte (a 390 px el nombre necesita ese lugar). */}
-              <Badge data-part="chip" tone={STATE_TONE[link.state]} size="sm" className="shrink-0">
-                {stateLabel(link)}
-              </Badge>
-            </button>
-          </li>
-        )
-      })}
-    </ol>
-  )
-}
-
 // El ritmo de la mesa (`CHAIN_LINK_MS` y `CHAIN_SOLVE_MS` de `app/auto/chain-feed.ts`): el catálogo no importa valores de `src/app/auto/` (`auto-isolation.test.ts`).
 const LINK_MS = 700
 const SOLVE_MS = 1200
 
-/** Hoy contra la propuesta, con el mismo guion: «Paso» de a uno o «Repetir» con el ritmo de la mesa (`LINK_MS` al sumarse, `SOLVE_MS` al resolverse). */
+/** La pila real con el guion: «Paso» de a uno o «Repetir» con el ritmo de la mesa (`LINK_MS` al sumarse, `SOLVE_MS` al resolverse). */
 function ChainMotionSample() {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -213,12 +78,12 @@ function ChainMotionSample() {
 
   return (
     <Specimen
-      title="PROPUESTA · La cadena animada: Hoy y Propuesta"
+      title="ChainListRows · la cadena animada"
       layout="column"
       className="col-span-full"
       note={
         <>
-          El mismo guion en las dos: CL1, CL2 y CL3 entran; CL3 resuelve y para a CL2; CL3 queda resuelta; CL1 resuelve y queda resuelta. <b>Hoy</b> es la pila real (<Tag>ChainListRows</Tag>): cada cambio es seco. <b>Propuesta</b>: el eslabón que se suma entra arriba y empuja la pila; el que resuelve hace un pop, se le enciende el aro ámbar y la marca de la izquierda baja desde el que resolvió antes (se lee que se resuelve de arriba hacia abajo); el resuelto recibe un tilde que entra girando y su arte se apaga; el negado o sin efecto, una cruz como un sello, una sacudida corta y el arte gris latiendo (como en la mesa). Todo entre 200 y 320 ms, sólo <Tag>opacity</Tag> y <Tag>transform</Tag>. «Sin movimiento» muestra lo que ve quien pidió reducirlo (lo mismo que hoy: seco). Sin cablear: vive en <Tag>sections/ChainProposal.tsx</Tag>.
+          La pila real de la cadena (la de <Tag>ChainNotice</Tag> y <Tag>ChainSheet</Tag>) con un guion: CL1, CL2 y CL3 entran; CL3 resuelve y para a CL2; CL3 queda resuelta; CL1 resuelve y queda resuelta. El eslabón que se suma entra arriba y empuja la pila; el que resuelve hace un pop, se le enciende el aro ámbar y la marca de la izquierda baja desde el que resolvió antes (se lee que se resuelve de arriba hacia abajo); el resuelto recibe un tilde que entra girando y su arte se apaga; el negado o sin efecto, una cruz como un sello, una sacudida corta y el arte gris latiendo (como en la mesa); sólo el negado tacha su nombre. Todo entre 200 y 320 ms, sólo <Tag>opacity</Tag> y <Tag>transform</Tag>, y sólo cuando un eslabón cambia: una pila que se abre ya armada no anima. «Sin movimiento» muestra los cambios secos, como los ve quien pidió reducir el movimiento (el latido del gris lo apaga esa preferencia del sistema). Archivo: <Tag>auto/chain-parts.tsx</Tag>
         </>
       }
     >
@@ -243,35 +108,15 @@ function ChainMotionSample() {
         />
         <Tag>{`Paso ${step + 1} de ${SCRIPT.length} · ${SCRIPT[step]!.caption}`}</Tag>
       </div>
-      <div className="@container">
-        <div className="grid grid-cols-1 gap-3 @2xl:grid-cols-2">
-          {(['Hoy', 'Propuesta'] as const).map((side) => (
-            <div key={side} className="grid grid-cols-1 content-start gap-1.5">
-              <p className="m-0 text-micro font-bold text-soft">{side}</p>
-              <div className="rounded-card border border-border-subtle bg-card-background">
-                <p className="m-0 flex h-10 items-center gap-2 px-3 text-body font-semibold">
-                  <Icon name="link" size={16} className="shrink-0 text-info" aria-hidden="true" />
-                  <span className="shrink-0 whitespace-nowrap">{t('auto.chain.count', { count: rows.length })}</span>
-                  {side === 'Propuesta' && rows.some((link) => link.state !== 'chained') ? (
-                    <span className="ml-auto flex min-w-0 items-center gap-1 text-micro font-semibold text-soft">
-                      <Icon name="chevron-down" size={14} className="shrink-0" aria-hidden="true" />
-                      <span className="truncate">Se resuelve de arriba hacia abajo</span>
-                    </span>
-                  ) : null}
-                </p>
-                <div className="border-t border-border-subtle">
-                  {side === 'Hoy' ? (
-                    <ol aria-label={t('auto.chain.list')} className="m-0 grid list-none content-start gap-1 p-1.5">
-                      <ChainListRows rows={rows} onPick={() => {}} />
-                    </ol>
-                  ) : (
-                    <ProposalRows rows={rows} still={still} />
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="w-full max-w-96 rounded-card border border-border-subtle bg-card-background">
+        <p className="m-0 flex h-11 items-center gap-2 px-3 text-body font-semibold">
+          <Icon name="link" size={18} className="shrink-0 text-info" aria-hidden="true" />
+          {t('auto.chain.count', { count: rows.length })}
+        </p>
+        {/* Sin movimiento, cada paso monta una pila nueva: lo que se monta ya armado no anima (el mismo cambio seco que con la preferencia del sistema). */}
+        <ol key={still ? `${variant}-${step}` : variant} aria-label={t('auto.chain.list')} className="m-0 grid list-none content-start gap-1 border-t border-border-subtle p-1.5">
+          <ChainListRows rows={rows} onPick={() => {}} />
+        </ol>
       </div>
     </Specimen>
   )
