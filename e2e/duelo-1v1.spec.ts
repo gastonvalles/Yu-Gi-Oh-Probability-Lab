@@ -73,13 +73,17 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
 
   await test.step('Ana pone su nombre y reta a un amigo', async () => {
     await ana.goto('/#duel')
+    // El nombre viaja al salir del campo o con Enter: Enter lo deja guardado sin depender de cuándo pierde el foco.
     await ana.getByRole('textbox', { name: 'Tu nombre' }).fill('Ana')
+    await ana.getByRole('textbox', { name: 'Tu nombre' }).press('Enter')
     // El modo de entrada es el automático (fuera de esta prueba): el duelo por enlace manual se elige en las reglas.
     await ana.getByRole('button', { name: /^Reglas del duelo/ }).click()
     const rules = ana.getByRole('dialog', { name: 'Reglas del duelo' })
     await rules.getByRole('radio', { name: 'Manual' }).click()
     await rules.getByRole('button', { name: 'Guardar reglas' }).click()
     await expect(rules).toBeHidden()
+    // Guardar las reglas no le borra el nombre (si no, Beto vería «Duelista» en vez de «Ana te invitó»).
+    await expect(ana.getByRole('textbox', { name: 'Tu nombre' }), 'el nombre de Ana tras guardar las reglas').toHaveValue('Ana')
     await ana.getByRole('button', { name: /^Retar a un amigo/ }).click()
     // Una sala manual se puede mirar (la automática todavía no) y no lleva el renglón «Reglas: Automáticas».
     await expect(ana.getByRole('button', { name: 'Copiar enlace para mirar' })).toBeVisible()
@@ -329,12 +333,7 @@ async function letPass(page: Page) {
   await page.getByRole('button', { name: 'Dejar pasar' }).click()
 }
 
-const finding = (text: string) => {
-  test.info().annotations.push({ type: 'hallazgo', description: text })
-  console.log(`HALLAZGO: ${text}`)
-}
-
-const hand = (page: Page) => page.getByRole('list', { name: 'Mano', exact: true }).getByRole('listitem')
+const hand =(page: Page) => page.getByRole('list', { name: 'Mano', exact: true }).getByRole('listitem')
 const rivalHand = (page: Page) => page.getByRole('img', { name: /^Mano del rival/ })
 const phaseChip = (page: Page) => page.getByRole('button', { name: /^Fases:/ })
 
