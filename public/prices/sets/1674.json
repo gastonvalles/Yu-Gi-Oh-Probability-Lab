@@ -19,7 +19,7 @@
 ["SDMP-EN018","Common","1st Edition",0.2,108817,62953041,"Inari Fire"],
 ["SDMP-EN019","Common","1st Edition",0.22,108818,60666820,"Nefarious Archfiend Eater of Nefariousness"],
 ["SDMP-EN020","Common","1st Edition",0.14,108819,40894584,"Jigabyte"],
-["SDMP-EN021","Common","1st Edition",0.29,108820,25259669,"Goblindbergh"],
+["SDMP-EN021","Common","1st Edition",0.3,108820,25259669,"Goblindbergh"],
 ["SDMP-EN022","Common","1st Edition",0.73,108821,90508760,"X-Saber Airbellum"],
 ["SDMP-EN023","Common","1st Edition",0.44,108822,36750412,"Magna Drago"],
 ["SDMP-EN024","Common","1st Edition",0.09,108823,58695102,"Re-Cover"],
@@ -28,12 +28,12 @@
 ["SDMP-EN027","Common","1st Edition",0.1,108826,69982329,"Pendulum Shift"],
 ["SDMP-EN028","Common","1st Edition",0.28,108827,74926274,"Pendulum Rising"],
 ["SDMP-EN029","Common","1st Edition",0.46,108828,45725480,"Sacred Sword of Seven Stars"],
-["SDMP-EN030","Common","1st Edition",0.46,108829,79816536,"Summoner's Art"],
+["SDMP-EN030","Common","1st Edition",0.45,108829,79816536,"Summoner's Art"],
 ["SDMP-EN031","Common","1st Edition",0.32,108830,5318639,"Mystical Space Typhoon"],
 ["SDMP-EN032","Common","1st Edition",0.21,108831,73915051,"Scapegoat"],
 ["SDMP-EN033","Common","1st Edition",0.18,108832,96864811,"Forbidden Dress"],
-["SDMP-EN034","Common","1st Edition",0.25,108833,24094653,"Polymerization"],
-["SDMP-EN035","Common","1st Edition",0.2,108834,73628505,"Terraforming"],
+["SDMP-EN034","Common","1st Edition",0.26,108833,24094653,"Polymerization"],
+["SDMP-EN035","Common","1st Edition",0.21,108834,73628505,"Terraforming"],
 ["SDMP-EN036","Common","1st Edition",0.2,108835,76660409,"Pendulum Back"],
 ["SDMP-EN037","Common","1st Edition",0.13,108836,84298614,"Powerful Rebirth"],
 ["SDMP-EN038","Common","1st Edition",0.28,108837,29616929,"Traptrix Trap Hole Nightmare"],
@@ -41,5 +41,5 @@
 ["SDMP-EN040","Common","1st Edition",0.34,108839,54974237,"Eradicator Epidemic Virus"],
 ["SDMP-EN041","Ultra Rare","1st Edition",0.66,108840,80696379,"Odd-Eyes Meteorburst Dragon"],
 ["SDMP-EN042","Ultra Rare","1st Edition",0.57,108841,16691074,"Odd-Eyes Absolute Dragon"],
-["SDMP-EN043","Common","1st Edition",0.4,108842,1516510,"Rune-Eyes Pendulum Dragon"]
+["SDMP-EN043","Common","1st Edition",0.41,108842,1516510,"Rune-Eyes Pendulum Dragon"]
 ]

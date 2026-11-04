@@ -137,8 +137,8 @@
 ["MRD-EN135","Rare","Unlimited",1.99,476788,88279736,"Robbin' Goblin"],
 ["MRD-EN136","Common","Unlimited",0.1,476789,24668830,"Germ Infection"],
 ["MRD-EN137","Common","Unlimited",0.24,476790,50152549,"Paralyzing Potion"],
-["MRD-EN139","Common","Unlimited",0.79,476792,20436034,"Ring of Magnetism"],
-["MRD-EN140","Common","Unlimited",0.29,476793,56830749,"Share the Pain"],
+["MRD-EN139","Common","Unlimited",0.24,476792,20436034,"Ring of Magnetism"],
+["MRD-EN140","Common","Unlimited",null,476793,56830749,"Share the Pain"],
 ["MRD-EN141","Common","Unlimited",null,476794,83225447,"Stim-Pack"],
 ["MRD-EN142","Super Rare","Unlimited",10.91,476795,19613556,"Heavy Storm"],
 ["MRD-EN143","Secret Rare","Unlimited",65,476796,41462083,"Thousand Dragon"]
