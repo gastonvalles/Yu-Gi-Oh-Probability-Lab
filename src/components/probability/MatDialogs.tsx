@@ -91,6 +91,8 @@ interface CardMenuProps {
   wide?: boolean
   /** El menú no tapa la mesa: el fondo deja pasar los toques (se elige tocando una carta del campo, p. ej. a quién atacar) y no se lleva el foco. Se cierra con Escape, la jugada o al tocar otra carta. */
   passThrough?: boolean
+  /** Una pista chica bajo el título: cómo se elige (con `passThrough`, «Tocá al monstruo del rival en la mesa»: las opciones de abajo sólo muestran a quiénes). */
+  note?: string
   /** Arranca con el submenú de la opción que se llama así ya abierto (así el catálogo lo muestra). */
   startExpanded?: string
   /** Lo que dice sin jugadas (por defecto, «No hay nada para hacer desde acá»; en el duelo automático, `NoPlays`). */
@@ -171,7 +173,7 @@ export const GHOST_CLICK_MS = 350
  * Las opciones van al medio; una con `children` (›) abre al costado un submenú con sus respuestas, sin mover el menú: al pasar el mouse (con una espera, y sin cerrarse al ir en diagonal
  * hacia él), con un clic, Enter o →; se cierra al irse el mouse, con ← o con Escape (el primero cierra sólo el submenú y vuelve a su fila). ↑ ↓ Inicio y Fin recorren las opciones.
  */
-export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false, passThrough = false, startExpanded, empty, onClose }: CardMenuProps) {
+export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false, passThrough = false, note, startExpanded, empty, onClose }: CardMenuProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const ref = useRef<HTMLDivElement | null>(null)
   const subRef = useRef<HTMLDivElement | null>(null)
@@ -402,6 +404,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, wide = false
               {title}
             </p>
           ) : null}
+          {note ? <p className="m-0 text-micro text-soft">{note}</p> : null}
         </div>
         {items.map((item, index) => (
           <Fragment key={`${index}|${item.label}`}>

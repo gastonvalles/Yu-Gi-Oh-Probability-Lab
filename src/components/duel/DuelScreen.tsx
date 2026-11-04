@@ -17,6 +17,7 @@ import { validGenesysCap, validTurnBonusMin, validTurnMin, type RoomOptions } fr
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelFinished, duelResult } from '../../app/duel-games'
+import { presenceNotice } from '../../app/duel-presence'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
@@ -559,8 +560,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     duel?.endRoom()
     leave()
   }, [duel, leave])
-  // Sólo cuenta si la conexión de uno anda: si la que se cayó es la propia, no se puede decir que el rival se fue.
-  const closingIn = useRoomClosing(rivalLeft && status === 'open', closeRoom)
+  // Sólo cuenta si la conexión de uno anda: si la que se cayó es la propia, no se puede decir que el rival se fue. Es el aviso `left` de la mesa: la barra no dice además que se desconectó.
+  const closingIn = useRoomClosing(snapshot !== null && presenceNotice(snapshot, status) === 'left', closeRoom)
 
   // El duelo en pausa de este navegador (si salió de uno), para volver desde el inicio del duelo.
   const [paused, setPaused] = useState<PausedDuel | null>(findPausedDuel)

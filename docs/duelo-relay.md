@@ -21,7 +21,9 @@ El detalle, en los comentarios de cabecera de `duel-relay/src/index.ts` y `duel-
 - Sus avisos son binarios y un jugador no puede mandar binarios: nadie se hace pasar por el relay. Un espectador no manda nada
   salvo `resync`, con topes por sala: un enlace de espectador usado en bucle no hace trabajar a nadie.
 - **Al reconectar**, el relay cierra la conexión colgada de ese jugador, pero el cierre puede no llegarle al cliente viejo: la app
-  no depende de recibirlo.
+  no depende de recibirlo. El jugador es su `pid`, uno por pantalla montada (`useDuel`): con otro, la segunda conexión de
+  StrictMode encontraba la sala «completa». El reemplazo no le avisa al otro jugador: por eso el primer `hello` que llega desde
+  que el rival está se contesta con el propio.
 - **Cerrar la sala** (`CLOSE_ROOM_OVER`, lo manda un jugador cuando el duelo terminó y el rival se fue): corta a todos y a quien
   llegue después, para que el que se queda no pueda dejar la sala abierta a que un tercero vea su mesa.
 - No registra códigos ni direcciones (sin el registro de cada petición en `wrangler.jsonc`); sólo cuenta `room_opened`,

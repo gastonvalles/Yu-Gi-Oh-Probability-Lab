@@ -66,6 +66,26 @@ describe('el apretón de manos', () => {
     expect(host.getSnapshot().life.lp).toEqual([4000, 4000])
   })
 
+  it('el relay le cambia la conexión al invitado sin avisarle al anfitrión que se fue (el mismo pid, como la que StrictMode abre y cierra): igual le llega el saludo del anfitrión', () => {
+    const room = createMemoryRoom()
+    const host = createDuel(room.join(), { role: 'host', name: 'Ana', settings: { lp: 4000, hand: 6, limitMin: 50, format: 'unlimited', match: false, siding: false }, sid: 'host-1' })
+    // La primera conexión del invitado entra y su página la cierra antes de abrirse: lo que el anfitrión le manda se pierde.
+    const lost = room.join()
+    room.flush()
+    expect(host.getSnapshot().peerPresent).toBe(true)
+
+    // La segunda la reemplaza: para el anfitrión el rival nunca se fue (no hay aviso), sólo el invitado se entera de que está.
+    room.ends.splice(room.ends.indexOf(lost), 1)
+    const end = room.join()
+    room.queue.splice(0)
+    room.queue.push({ to: end, present: true })
+    const guest = createDuel(end, { role: 'guest', name: 'Beto', sid: 'guest-1' })
+    room.flush()
+
+    expect(guest.getSnapshot()).toMatchObject({ peerName: 'Ana', settings: { lp: 4000, hand: 6 } })
+    expect(host.getSnapshot().peerName).toBe('Beto')
+  })
+
   it('los ajustes del duelo son del anfitrión: un saludo de invitado que los traiga no los cambia', () => {
     const game = setup({ lp: 4000, hand: 6, limitMin: 50, format: 'unlimited', match: false, siding: false })
 

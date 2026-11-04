@@ -1,6 +1,7 @@
 import { memo, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
+import { presenceNotice } from '../../app/duel-presence'
 import { useDuelRails } from '../../app/duel-rails'
 import type { Activity } from '../../app/duel-protocol'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
@@ -401,10 +402,12 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
       ) : null}
     </>
   )
+  // Un solo aviso de presencia (`presenceNotice`): con el duelo terminado y el rival afuera lo da la cuenta de la sala que se cierra, no «se desconectó».
+  const notice = presenceNotice(snapshot, status)
   const alert =
     status !== 'open' ? (
       <Callout className={ALERT_OVERLAY} tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
-    ) : !peerPresent ? (
+    ) : notice === 'away' ? (
       <Callout className={ALERT_OVERLAY} tone="info">{t('duel.peer.absent')}</Callout>
     ) : null
 
@@ -429,7 +432,7 @@ export function DuelBar({ snapshot, status, turn, myName, onToggleClock, onRemat
           {lane ? <LaneBanner lane={lane} rivalName={rivalName} rail /> : null}
           {status !== 'open' ? (
             <Callout tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
-          ) : !peerPresent ? (
+          ) : notice === 'away' ? (
             <Callout tone="info">{t('duel.peer.absent')}</Callout>
           ) : null}
         </div>

@@ -1014,6 +1014,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         }
 
         incompatible = false
+        // El primer saludo desde que el rival está se contesta con el mío: el relay puede cambiarle la conexión sin avisarme que se fue (el mismo `pid` reemplaza a la vieja,
+        // p. ej. la que StrictMode abre y cierra enseguida) y mi saludo de cuando llegó se perdió con ella. El suyo, ya saludado, no se contesta: no hay ida y vuelta sin fin.
+        const answer = !peerGreeted
         peerGreeted = true
         // Lo que sabe hacer el rival se renueva con cada saludo (al recargar vuelve a decirlo; una página de antes, nada).
         peerCaps = message.caps ?? []
@@ -1035,6 +1038,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
           }
         }
 
+        if (answer) sendHello()
         sendSync()
         return
       }

@@ -95,15 +95,9 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     const invited = beto.getByText('Ana te invitó a un duelo')
     const full = beto.getByRole('heading', { name: 'La sala ya está completa' })
 
-    // Hallazgo: en desarrollo (StrictMode) la sala se abre dos veces, con dos `pid` distintos; si el relay atiende la segunda antes de cerrar la primera, la sala está «completa».
-    for (let attempt = 1; ; attempt++) {
-      await expect(invited.or(full)).toBeVisible()
-      if (await invited.isVisible()) break
-      finding(`Beto entró por el enlace y vio «La sala ya está completa» (intento ${attempt}); recarga.`)
-      await shot(beto, `02-beto-sala-completa-${attempt}`)
-      expect(attempt).toBeLessThan(3)
-      await beto.reload()
-    }
+    // En desarrollo StrictMode abre la sala dos veces: las dos conexiones llevan el mismo `pid` y la segunda reemplaza a la primera, nunca «completa».
+    await expect(invited.or(full)).toBeVisible()
+    await expect(full, 'Beto entró por el enlace y vio «La sala ya está completa»').toBeHidden()
 
     await beto.getByRole('textbox', { name: 'Tu nombre' }).fill('Beto')
     // El nombre viaja al salir del campo o con Enter, no en cada letra.
@@ -169,6 +163,7 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await phase(beto, ana, 'Battle Phase')
     await field(beto, 'mine').first().click()
     await beto.getByRole('menuitem', { name: 'Atacar', exact: true }).click()
+    await expect(beto.getByRole('menu').getByText('Tocá al monstruo del rival en la mesa.')).toBeVisible()
     // El objetivo (el monstruo boca arriba de Ana) se toca en la mesa, no en el menú: con «Atacar» el menú deja pasar el puntero a propósito
     // (`passThrough`: src/components/probability/PracticeMat.tsx:1331 y :3265, `pointer-events-none` en MatDialogs.tsx:382) y lo que se puede atacar lleva `data-attack-target`.
     await shot(beto, '06-beto-objetivo')
@@ -266,6 +261,9 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await shot(beto, '11-beto-gano')
     await leave(ana)
     await expect(beto.getByText(/^Ana se fue: la sala desaparece en/)).toBeVisible()
+    // Un solo aviso: ni «se desconectó, cuando vuelva…» ni «no está en la sala».
+    await expect(beto.getByText(/^Tu rival se desconectó/)).toHaveCount(0)
+    await expect(beto.getByText('Tu rival no está en la sala.')).toHaveCount(0)
     await shot(beto, '12-beto-ana-se-fue')
     await leave(beto)
   })

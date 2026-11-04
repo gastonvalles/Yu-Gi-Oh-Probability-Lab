@@ -35,6 +35,7 @@ export const practice: Translated<typeof es> = {
   'practice.menu.untarget': 'Remove target',
   'practice.menu.battleAttack': 'Attack',
   'practice.menu.attackDirectly': 'Direct attack',
+  'practice.menu.attackPick': "Tap your rival's monster on the field.",
   'practice.attack.target': '{zone}: {name}',
   'practice.attack.faceDown': 'Face-down',
   'practice.attack.rivalMonster': "an opponent's monster",
