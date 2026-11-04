@@ -59,7 +59,7 @@ export interface AskItem {
   /** En las fases: la de ahora, y las que el núcleo no ofrece. */
   current?: boolean
   disabled?: boolean
-  /** En las fases: a cuál pasa (sin `answer`, en una parada de `phase-stops.ts`: la mesa sigue contando). */
+  /** En las fases: a cuál pasa (`phase-stops.ts` lo anota). */
   to?: MatPhase
 }
 
@@ -587,19 +587,16 @@ const MAIN_PHASES = 0x4 | 0x100
 const MAIN_END = 0x4
 const POST_DRAW = 0x210000
 
-/** Las seis fases, como el botón de fase de la mesa: las ofrecidas pasan a ella (con su respuesta, o `null` si no contesta nada); la de ahora se marca; las demás, apagadas. */
-function phaseItemsOf(offered: Partial<Record<MatPhase, CoreAnswer | null>>, phase: MatPhase | null | undefined): AskItem[] {
+/** Las seis fases, como el botón de fase de la mesa: las que el núcleo ofrece pasan a ella con su respuesta; la de ahora se marca; las demás (una saltada), apagadas. */
+function phaseItemsOf(offered: Partial<Record<MatPhase, CoreAnswer>>, phase: MatPhase | null | undefined): AskItem[] {
   return PHASES.map(({ id, name }) => {
     const answer = offered[id]
 
     if (id === phase) return { label: name, current: true }
 
-    return answer === undefined ? { label: name, disabled: true } : { label: name, to: id, ...(answer ? { answer } : {}) }
+    return answer === undefined ? { label: name, disabled: true } : { label: name, to: id, answer }
   })
 }
-
-/** Las fases en una parada de tu DP o tu SP (`phase-stops.ts`): desde la DP, la SP o la M1; desde la SP, la M1 (el núcleo pide pasar por la M1 antes de la batalla). */
-export const stopPhaseItems = (phase: MatPhase): AskItem[] => phaseItemsOf(phase === 'draw' ? { standby: null, main1: null } : { main1: null }, phase)
 
 // ── Abrir una pregunta ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

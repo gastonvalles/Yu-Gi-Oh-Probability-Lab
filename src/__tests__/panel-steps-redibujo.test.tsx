@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -9,7 +9,7 @@ import { STEP_MS } from '../components/auto/AutoSoloScreen'
 import { PracticeMatPanel } from '../components/probability/PracticeMatPanel'
 import { createPanelSteps, panelStepsOf } from '../components/probability/panel-steps'
 import { fakeSession, loc, SPOTS } from './support/auto-session-fake'
-import { core, phaseButton, renderAuto } from './support/auto-screen-harness'
+import { core, renderAuto } from './support/auto-screen-harness'
 import { render } from './support/practice-mat-harness'
 import { random, randomAction } from './support/random-mat'
 
@@ -79,9 +79,6 @@ describe('«Jugar solo automático» · la lista de pasos y los avisos del núcl
     renderAuto(fake)
     core(() => fake.set({ initial: { ...fake.getSnapshot().initial }, mineActions: START, status: 'ready', replaying: false }))
     core(() => fake.ask(IDLE))
-    fireEvent.click(phaseButton())
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ir a Main Phase 1' }))
-    step()
     core(() => fake.events([SUMMON]))
     step()
     // Tres pasos: la Standby y la Main Phase 1 (cabeceras, sin tablero) y la Invocación Normal.

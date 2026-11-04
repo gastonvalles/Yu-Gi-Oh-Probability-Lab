@@ -82,8 +82,8 @@ export type AutoMessage =
   /** Invitado → anfitrión: mi deck (al ver `settings.auto`, cada vez que cambia, y al volver) y, con nombre, mis cartas sin datos en ninguna base (`missing`: las revisé yo). */
   | { t: 'autoDeck'; v: number; main: [number, number][]; extra: [number, number][]; missing?: MissingCard[]; /** Este invitado sabe deshacer (`autoUndo`). */ undo?: true; /** Y avisa su fase (`autoPhase`). */ phase?: true; /** Y lleva el reloj de turnos. */ turnClock?: true }
   /**
-   * Los dos, sin número (no es del flujo del núcleo): la fase que se ve en mi mesa en el turno `turn` del núcleo (la mesa de quien tiene el turno frena en su DP y su SP aunque el
-   * núcleo ya esté en la M1: `phase-stops.ts`) y si estoy contestando una pregunta del núcleo que no es mi turno libre (`busy`). Sólo viaja entre dos que lo anuncian (`phase` en
+   * Los dos, sin número (no es del flujo del núcleo): la fase que se ve en mi mesa en el turno `turn` del núcleo (la mesa cuenta a su ritmo y puede ir atrás del núcleo)
+   * y si estoy contestando una pregunta del núcleo que no es mi turno libre (`busy`). Sólo viaja entre dos que lo anuncian (`phase` en
    * `autoDeck` y `autoCheck`): a uno de antes no le llega.
    */
   | { t: 'autoPhase'; turn: number; phase: MatPhase; busy?: true }

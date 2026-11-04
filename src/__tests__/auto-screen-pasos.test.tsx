@@ -39,10 +39,6 @@ function rearm(fake: FakeSession, actions: MatAction[], ask: CoreAsk | null) {
   core(() => fake.set({ initial: { ...fake.getSnapshot().initial }, mineActions: actions, status: 'ready', replaying: false }))
   if (ask) core(() => fake.ask(ask))
 }
-const goTo = (name: string) => {
-  fireEvent.click(phaseButton())
-  fireEvent.click(screen.getByRole('menuitem', { name: `Ir a ${name}` }))
-}
 const step = () => act(() => vi.advanceTimersByTime(STEP_MS + 5))
 const panel = () => screen.getByRole('region', { name: 'Pasos y combos' })
 /** La lista de pasos (la última jugada arriba y la mano inicial al final), como la lee quien mira: el número y la frase (sin el botón de la nota de un combo guardado). */
@@ -50,11 +46,11 @@ const stepButtons = (list: HTMLElement) => within(list).getAllByRole('button').f
 const steps = () => stepButtons(within(panel()).getByRole('list', { name: 'Jugadas' })).map((button) => button.textContent)
 
 describe('auto-screen · los pasos de la práctica', () => {
-  it('la mano de apertura es el paso 0 («Mano inicial») y la lista crece con lo que la mesa cuenta, no antes: las fases que pedís y lo que juega el núcleo', () => {
+  it('la mano de apertura es el paso 0 («Mano inicial») y la lista crece con lo que la mesa cuenta, no antes: la SP y la M1 que pasan solas y lo que juega el núcleo', () => {
     const fake = renderAuto(openingSession())
 
-    rearm(fake, START, IDLE)
-    // La mesa frena en la Draw Phase con la mano ya repartida; el núcleo ya contó la SP y la M1, pero la lista no se adelanta.
+    rearm(fake, [OPENING], null)
+    // La mesa en la Draw Phase con la mano ya repartida.
     expect(handCard('Ash Blossom')).toBeInTheDocument()
     expect(handCard('Called by the Grave')).toBeInTheDocument()
     expect(within(panel()).getByText('Todavía no hay jugadas')).toBeInTheDocument()
@@ -62,9 +58,12 @@ describe('auto-screen · los pasos de la práctica', () => {
     expect(within(panel()).getByText('Tocá una carta o el botón de fases para ver qué podés hacer. Cada jugada queda anotada acá.')).toBeInTheDocument()
     expect(within(panel()).getByRole('radio', { name: /Pasos/ })).toBeChecked()
 
-    goTo('Standby Phase')
+    // El núcleo cuenta la SP y la M1 de una; la lista no se adelanta: crece con la mesa, que las pasa sola.
+    core(() => fake.events([to('standby'), to('main1')]))
+    core(() => fake.ask(IDLE))
+    expect(within(panel()).getByText('Todavía no hay jugadas')).toBeInTheDocument()
+    step()
     expect(steps()).toEqual(['1Pasás a la Standby Phase', '0Mano inicial'])
-    goTo('Main Phase 1')
     step()
     expect(steps()).toEqual(['2Pasás a la Main Phase 1', '1Pasás a la Standby Phase', '0Mano inicial'])
 
@@ -83,8 +82,6 @@ describe('auto-screen · los pasos de la práctica', () => {
     const fake = renderAuto(openingSession())
 
     rearm(fake, START, IDLE)
-    goTo('Main Phase 1')
-    step()
     // No es un botón suelto (ni arriba ni abajo): va en el ⋯.
     expect(screen.queryByRole('button', { name: 'Pasos y combos' })).toBeNull()
     fireEvent.click(menuRow(/^Pasos y combos$/))
@@ -105,7 +102,7 @@ describe('auto-screen · los pasos de la práctica', () => {
   }
   const mainIds = [...CARDS.keys()].filter((id) => id !== 'card-500-1')
 
-  it('las salidas de tu mano de apertura (los chips del Lab) están como en la práctica: tocar una ilumina sus cartas y con la primera jugada se van', () => {
+  it('las salidas de tu mano de apertura (los chips del Lab) están como en la práctica: siguen en la Main Phase 1 (la SP y la M1 pasan solas), tocar una ilumina sus cartas y con la primera jugada se van', () => {
     const fake = openingSession()
 
     render(<AutoSoloScreen mainIds={mainIds} extraIds={['card-500-1']} cardsById={CARDS} deckName="Test" onExit={() => {}} lab={lab} connect={() => fake} />)
@@ -116,7 +113,8 @@ describe('auto-screen · los pasos de la práctica', () => {
 
     fireEvent.click(chip)
     expect(handCard('Ash Blossom')).toHaveAttribute('data-glow', 'true')
-    goTo('Standby Phase')
+    core(() => fake.events([{ type: 'place', id: 'card-900-1', zone: 'st', index: 0, pos: 'set' }]))
+    step()
     expect(screen.queryByRole('list', { name: 'Salidas' })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Salidas y problemas de tu mano:/ })).toBeNull()
     expect(handCard('Ash Blossom')).not.toHaveAttribute('data-glow', 'true')
@@ -142,8 +140,6 @@ function played(): FakeSession {
   const fake = renderAuto(openingSession())
 
   rearm(fake, START, IDLE)
-  goTo('Main Phase 1')
-  step()
   core(() => fake.events([SUMMON]))
   step()
   return fake
@@ -153,12 +149,11 @@ describe('auto-screen · guardar combos', () => {
   it('«Guardar combo» va arriba con los íconos de la práctica, apagado sin jugadas: guarda lo que se ve, con la mano inicial y «Combo 1», sin despachar ni contestarle nada al núcleo', () => {
     const fake = renderAuto(openingSession())
 
-    rearm(fake, START, IDLE)
+    rearm(fake, [OPENING], null)
     expect(saveButton()).toBeDisabled()
-    goTo('Main Phase 1')
-    step()
-    core(() => fake.events([SUMMON]))
-    step()
+    core(() => fake.events([to('standby'), to('main1'), SUMMON]))
+    core(() => fake.ask(IDLE))
+    for (let n = 0; n < 3; n += 1) step()
     expect(saveButton()).toBeEnabled()
     fireEvent.click(saveButton())
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })

@@ -233,7 +233,14 @@ function AutoDuel({ session, seat, redeal, cardsById, deckName, onExit, onManual
   const asks = useAutoAsks({ session, snap, cardsById, seat, canCancel: true, canUndo: true, waitingText: null, rivalName, rivalPhases: true, ...(rivalOn && !facedown ? { rivalHand: snap.rivalHand } : {}), ...(openManual ? { onManual: openManual } : {}) })
   const { nameOf, artOf } = asks
   // Las salidas y problemas de tu mano de apertura, como en la práctica (con la primera jugada se van; repasando, las de la mano del combo). Con la mesa de la práctica rearmada (`resumed`) la mano ya no es de apertura: sin chips.
-  const chips = usePracticeChips(lab, asks.matSession)
+  // Tu SP y tu M1, que la mesa pasa sola, no son una jugada: las salidas siguen a la vista en la Main Phase 1 hasta la primera de verdad.
+  const chipSession = useMemo(() => {
+    const { actions: all, cursor } = asks.matSession
+    const actions = all.slice(0, cursor).filter((action) => action.type !== 'phase' || (action.phase !== 'standby' && action.phase !== 'main1'))
+
+    return { ...asks.matSession, actions, cursor: actions.length }
+  }, [asks.matSession])
+  const chips = usePracticeChips(lab, chipSession)
   // La hoja del rival («Cambiar rival») y, desde ella, la de sus handtraps.
   const [choosing, setChoosing] = useState<'rival' | 'handtraps' | null>(null)
   // «Guardar replay» (el final y «Más opciones»): el duelo como está al tocar guardar, desde tu lado (sin nombres: «Jugar solo» no los tiene).

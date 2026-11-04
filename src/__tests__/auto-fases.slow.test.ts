@@ -3,14 +3,13 @@ import { createDataLoader } from '../app/auto/auto-data'
 import { createAutoSession, type AutoSession, type AutoSnapshot } from '../app/auto/auto-session'
 import { localTransport } from '../app/auto/core-host'
 import type { DeckList } from '../app/auto/deck-map'
-import { stopAt, trailingStops } from '../app/auto/phase-stops'
 import { replayMat } from '../app/practice-mat'
 import { cardRows, hasCoreData, nodeSource, scriptStore, wasmBinary } from './support/core-data'
 
 /**
- * Las fases manuales con el núcleo real (lento: `npm run test:auto`; se salta sin datos). Con Scapegoat (una Mágica de Juego Rápido) en la mano, el núcleo
- * abre la ventana de tu Draw y tu Standby Phase del turno 1 y la mesa las muestra (`ask-ui`), con el botón de fases que pasa; sin nada que activar, el núcleo ya
- * espera en la Main Phase 1 y la mesa frena en la DP y la SP (`phase-stops`); activar en la DP deja la mesa en la DP hasta que pidas pasar.
+ * Las fases con el núcleo real (lento: `npm run test:auto`; se salta sin datos). Con Scapegoat (una Mágica de Juego Rápido) en la mano, el núcleo abre la ventana
+ * de tu Draw y tu Standby Phase del turno 1 y la mesa las muestra (`ask-ui`), con el botón de fases que pasa; sin nada que activar, el núcleo ya espera en la Main
+ * Phase 1 con la DP y la SP contadas (la mesa las pasa solas); activar en la DP sigue solo hasta la M1.
  */
 const SCAPEGOAT = 73915051
 const PASS = { type: 'select_chain', index: null }
@@ -30,7 +29,7 @@ const settled = (session: AutoSession) =>
     check()
   })
 
-describe.skipIf(!hasCoreData)('fases manuales con el núcleo real', () => {
+describe.skipIf(!hasCoreData)('las fases con el núcleo real', () => {
   const store = scriptStore()
   const rows = hasCoreData ? cardRows() : []
   const types = new Map(rows.map((row) => [row.id, row.type]))
@@ -67,9 +66,8 @@ describe.skipIf(!hasCoreData)('fases manuales con el núcleo real', () => {
     expect(dp.auto).toBeNull()
     expect(dp.phaseWindow).toBe('draw')
     expect(dp.respond).toHaveLength(1)
-    // El núcleo todavía no pasó a la SP: la mesa está en la DP del turno 1, sin paradas.
+    // El núcleo todavía no pasó a la SP: la mesa está en la DP del turno 1.
     expect(snap.mine.phase).toBe('draw')
-    expect(stopAt(snap.initial.mine, snap.mineActions, 0, null)).toBe(snap.mineActions.length)
     const toStandby = step(open(snap, session), { kind: 'item', answer: dp.phaseItems.find((item) => item.to === 'standby')!.answer! })
 
     expect(toStandby.answer).toEqual(PASS)
@@ -79,36 +77,30 @@ describe.skipIf(!hasCoreData)('fases manuales con el núcleo real', () => {
     const sp = askView(open(snap, session))
 
     expect(sp.phaseWindow).toBe('standby')
-    // La parada de la SP la cubre lo que pediste («Standby Phase»); sin pedirlo, la mesa frenaría en la DP.
-    expect(stopAt(snap.initial.mine, snap.mineActions, 0, { turn: 1, phase: 'standby' })).toBe(snap.mineActions.length)
-    expect(stopAt(snap.initial.mine, snap.mineActions, 0, null)).toBe(snap.mineActions.length - 1)
     session.answer(sp.phaseItems.find((item) => item.to === 'main1')!.answer!)
     snap = await settled(session)
     expect(snap.ask?.ask.type).toBe('select_idlecmd')
     expect(snap.mine.phase).toBe('main1')
-    expect(stopAt(snap.initial.mine, snap.mineActions, 0, { turn: 1, phase: 'main1' })).toBe(snap.mineActions.length)
     session.destroy()
   }, 120_000)
 
-  it('sin nada que activar el núcleo ya espera en la Main Phase 1 y la mesa frena en la DP y en la SP', async () => {
+  it('sin nada que activar (vas primero, sin robo) el núcleo ya espera en la Main Phase 1: la mesa cuenta la DP, la SP y la M1 sin pregunta en el medio', async () => {
     const session = start(filler.slice(0, 5))
     const snap = await settled(session)
     const { mine } = snap.initial
-    const at = trailingStops(mine, snap.mineActions)
 
     expect(snap.ask?.ask.type).toBe('select_idlecmd')
-    expect(snap.mineActions.slice(at)).toEqual([
+    expect(mine).toMatchObject({ phase: 'draw', turn: 1 })
+    expect(snap.mineActions.slice(-2)).toEqual([
       { type: 'phase', phase: 'standby' },
       { type: 'phase', phase: 'main1' },
     ])
-    expect(stopAt(mine, snap.mineActions, at, null)).toBe(at)
-    expect(replayMat(mine, snap.mineActions, at)).toMatchObject({ phase: 'draw', turn: 1 })
-    expect(stopAt(mine, snap.mineActions, at, { turn: 1, phase: 'standby' })).toBe(at + 1)
-    expect(stopAt(mine, snap.mineActions, at, { turn: 1, phase: 'main1' })).toBe(snap.mineActions.length)
+    expect(snap.mineActions.filter((action) => action.type === 'draw')).toHaveLength(1)
+    expect(replayMat(mine, snap.mineActions)).toMatchObject({ phase: 'main1', turn: 1 })
     session.destroy()
   }, 120_000)
 
-  it('activar Scapegoat en la DP: después de la cadena la mesa sigue en la DP (con las fichas) hasta que pidas pasar', async () => {
+  it('activar Scapegoat en la DP: después de la cadena el turno sigue solo hasta la M1 (con las fichas)', async () => {
     const session = start([SCAPEGOAT, ...filler.slice(0, 4)])
     let snap = await settled(session)
     const [activate] = [...askView(open(snap, session)).items.values()][0]!
@@ -117,10 +109,7 @@ describe.skipIf(!hasCoreData)('fases manuales con el núcleo real', () => {
     session.answer(activate!.answer!)
     snap = await shownNext(session)
     expect(snap.ask?.ask.type).toBe('select_idlecmd')
-    const stop = stopAt(snap.initial.mine, snap.mineActions, 0, null)
-
-    expect(snap.mineActions[stop]).toEqual({ type: 'phase', phase: 'standby' })
-    expect(replayMat(snap.initial.mine, snap.mineActions, stop)).toMatchObject({ phase: 'draw', mz: [expect.anything(), expect.anything(), expect.anything(), expect.anything(), null] })
+    expect(replayMat(snap.initial.mine, snap.mineActions)).toMatchObject({ phase: 'main1', mz: [expect.anything(), expect.anything(), expect.anything(), expect.anything(), null] })
     session.destroy()
   }, 120_000)
 })

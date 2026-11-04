@@ -156,7 +156,8 @@ describe('auto-screen · el turno del rival, en orden (grabado del núcleo real)
     const rivalTurn = when(line, (now) => now.banner === 'Turno de Rival')
     const back = when(line, (now) => now.banner === 'Tu turno')
 
-    expect(line.map((item) => item.banner).filter((banner, i, all) => banner !== '' && banner !== all[i - 1])).toEqual(['End Phase', 'Turno de Rival', 'RivalStandby Phase', 'RivalMain Phase 1', 'RivalEnd Phase', 'Tu turno'])
+    // Después de «Tu turno», tu SP y tu M1 pasan solas, cada una con su cartel (no encima de «Tu turno»).
+    expect(line.map((item) => item.banner).filter((banner, i, all) => banner !== '' && banner !== all[i - 1])).toEqual(['End Phase', 'Turno de Rival', 'RivalStandby Phase', 'RivalMain Phase 1', 'RivalEnd Phase', 'Tu turno', 'Standby Phase', 'Main Phase 1'])
     expect(new Set(line.filter((item) => item.ms >= rivalTurn && item.ms < back).map((item) => item.turn))).toEqual(new Set(['Turno de Rival · 2']))
     expect(cards(back).turn).toBe('Tu turno · 3')
     expect(back - rivalTurn).toBeLessThanOrEqual(5_000)

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { rivalAttacks, type CardRef, type RivalAttack, type Side } from '../../app/auto/adapter'
 import { NO_FIELD_STATS, fieldStatsOf, nowStat } from '../../app/field-stats'
 import { askWhy, askWhyText, type AskWhyView } from '../../app/auto/ask-why'
-import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, respondOffer, step, stopPhaseItems, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
+import { ATTACK_TARGET_HINT, askView, effectAskText, itemsInto, listOrder, openAsk, pickStatsOf, pickTitle, respondOffer, step, type AskCard, type AskGesture, type AskItem, type AskState, type AutoLink, type AutoMenuItem } from '../../app/auto/ask-ui'
 import { activatedCode, undoPoint, type AutoSession, type AutoSnapshot } from '../../app/auto/auto-session'
 import { CHAIN_LINGER_MS, chainDwell, chainFeed, linkPhrase, stepsUpTo, type ChainStep } from '../../app/auto/chain-feed'
 import { rivalAttackInCourse } from '../../app/attack-trail'
@@ -12,7 +12,7 @@ import type { PhaseView } from '../../app/auto/online'
 import type { AutoCardInfo } from '../../app/auto/online-protocol'
 import { turnReasons } from '../../app/auto/no-plays'
 import { foldOpeningHand } from '../../app/auto/opening-hand'
-import { allowTo, leaves, stopAt, trailingStops, type Allowed } from '../../app/auto/phase-stops'
+import { allowTo, leaves, type Allowed } from '../../app/auto/phase-stops'
 import { splitDesc, type Seat } from '../../app/auto/protocol'
 import { setAutoPref, useAutoPrefs } from '../../app/auto-prefs'
 import { useHeldValue } from '../../app/life-effects'
@@ -275,8 +275,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const [highlight, setHighlight] = useState<CardTextHighlight | null>(null)
 
   // ── El ritmo: las jugadas de una tanda se agregan de una vez y el cursor avanza de a una; al rearmarse la mesa se salta al final (un solo commit: se ajusta en el render).
-  // Las fases las cambiás vos, como en la mesa manual (`phase-stops.ts`): la mesa frena en tu Draw y tu Standby Phase hasta que pidas dejarlas con el botón de fases (`allowed`);
-  // al rearmarse frena sólo si las jugadas terminan en esas paradas (el duelo nuevo, el turno recién llegado), no a mitad de un turno. ──
+  // Tu Draw y tu Standby Phase pasan solas (Gastón, 2026-11-04): la mesa las cuenta a su ritmo hasta la Main Phase 1 y frena sólo en una pregunta del núcleo. ──
   // Con `rivalPhases` lo del rival también se cuenta de a una, en su lugar de `order` (`theirs`: cuántas se muestran): la jugada que sigue es la tuya o la suya, y cada una espera a las
   // de antes, así cartel, mesa, vidas y marcador no se desfasan. Sin eso (el duelo por enlace), su espejo es el del núcleo.
   const steps = snap.chainSteps
@@ -293,9 +292,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     return later < 0 ? count : Math.min(count, later)
   }
   const [allowed, setAllowed] = useState<Allowed | null>(null)
-  const rearmAt = (initial: MatState, actions: readonly MatAction[], upTo: Allowed | null) => stopAt(initial, actions, trailingStops(initial, actions), upTo)
   const [paced, setPaced] = useState<Paced>(() => {
-    const cursor = rearmAt(snap.initial.mine, snap.mineActions, null)
+    const cursor = snap.mineActions.length
 
     return { initial: snap.initial.mine, actions: snap.mineActions, cursor, theirs: theirsUpTo(cursor, snap.mineActions) }
   })
@@ -312,7 +310,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const chainShownAt = useRef(0)
   /**
    * El repaso («Jugar solo»): un combo guardado (`name`), o tus jugadas hasta un paso, en la misma mesa y con la lista de siempre. El duelo vivo espera donde estaba: ni el ritmo, ni
-   * tocar la mesa, ni las paradas de fase lo mueven y no se muestra ninguna pregunta; la cinta (`paced`) se sigue rehaciendo sólo del núcleo. El lado del rival queda vacío.
+   * tocar la mesa lo mueven y no se muestra ninguna pregunta; la cinta (`paced`) se sigue rehaciendo sólo del núcleo. El lado del rival queda vacío.
    */
   const [review, setReview] = useState<{ name?: string; session: MatSession } | null>(null)
   const reviewing = review !== null
@@ -324,7 +322,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     if (seen !== snap.initial) {
       const initial = sameStart(paced.initial, snap.initial.mine) ? paced.initial : snap.initial.mine
 
-      const cursor = rearmAt(initial, snap.mineActions, allowed)
+      const cursor = snap.mineActions.length
       const theirs = theirsUpTo(cursor, snap.mineActions)
       const count = stepsDue(cursor, theirs)
 
@@ -339,8 +337,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   /** Lo del rival que se muestra: con `rivalPhases`, hasta su cursor; si no, todo. */
   const theirsShown = rivalPhases ? Math.min(paced.theirs, snap.theirsActs.length) : snap.theirsActs.length
 
-  // Hasta dónde puede contar la mesa: la próxima parada que no pediste dejar, o el final.
-  const limit = useMemo(() => stopAt(paced.initial, paced.actions, paced.cursor, allowed), [paced, allowed])
+  // Hasta dónde puede contar la mesa: el final.
+  const limit = paced.actions.length
 
   // La mesa no pasa del próximo mensaje de la cadena que falta mostrar.
   const chainNext = steps[chainSeen]?.at ?? Infinity
@@ -359,6 +357,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   // (tu robo, tus fases, lo que podés hacer) empieza después de «Tu turno». Lo que ya había al empezar o al rearmarse el núcleo, y lo que se salta tocando la mesa, se da por visto.
   const [notice, setNotice] = useState<DuelMatLink['notice']>(undefined)
   const theirsNext = rivalPhases && theirsShown < snap.theirsActs.length && theirsShown < theirsUpTo(paced.cursor, paced.actions)
+  // Tus fases que pasan solas (la SP, la M1) no salen encima de «Tu turno»: esperan a que se vaya (tu robo, no). Un booleano y no `notice`: que un cartel se vaya no reinicia el ritmo.
+  const phaseUnderNotice = notice !== undefined && paced.actions[paced.cursor]?.type === 'phase'
 
   // Se va solo (con menos movimiento queda quieto ese rato); sólo el que se ve: el siguiente pudo salir en el mismo instante.
   useEffect(() => {
@@ -386,10 +386,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       return () => window.clearTimeout(timer)
     }
     if (paced.cursor >= Math.min(limit, chainNext)) return
+    if (phaseUnderNotice) return
     const timer = window.setTimeout(() => setPaced((current) => (current.cursor < current.actions.length ? { ...current, cursor: current.cursor + 1 } : current)), Math.max(STEP_MS, impactAt - Date.now()))
 
     return () => window.clearTimeout(timer)
-  }, [paced, limit, reviewing, chainNext, chainDue, impactAt, theirsNext, theirsShown, theirsAt, snap.theirsActs, snap.order, snap.replaying, rivalName])
+  }, [paced, limit, reviewing, chainNext, chainDue, impactAt, theirsNext, theirsShown, theirsAt, snap.theirsActs, snap.order, snap.replaying, rivalName, phaseUnderNotice])
   // El próximo mensaje de la cadena, cuando la mesa llegó hasta él y el anterior se vio su rato (contado desde que se mostró: una tanda nueva no lo reinicia).
   useEffect(() => {
     if (reviewing || snap.replaying || !chainDue) return
@@ -408,17 +409,17 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `stepsDue` lee `steps` y `order`, que ya están
   }, [steps, chainSeen, chainDue, paced.cursor, theirsShown, reviewing, snap.replaying])
 
-  // Tocar la mesa salta hasta la próxima parada (no la cruza); repasando, no. Lo del rival de antes de ahí, también (sin carteles en ráfaga).
+  // Tocar la mesa salta hasta el final; repasando, no. Lo del rival, también (sin carteles en ráfaga).
   const skipAhead = useCallback((event?: { target: EventTarget | null }) => {
     if (reviewing || (event?.target instanceof Element && event.target.closest('[data-testid="chain-notice"]'))) return
-    const to = stopAt(paced.initial, paced.actions, paced.cursor, allowed)
+    const to = paced.actions.length
     const theirs = rivalPhases ? Math.max(paced.theirs, theirsUpTo(to, paced.actions)) : paced.theirs
 
     setPaced((current) => (to > current.cursor || theirs > current.theirs ? { ...current, cursor: Math.max(to, current.cursor), theirs: Math.max(theirs, current.theirs) } : current))
-    // La cadena, hasta ahí también (lo que llegó después de la parada espera).
+    // La cadena, hasta ahí también.
     setChainSeen((count) => Math.max(count, stepsDue(to, theirs)))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `theirsUpTo` y `stepsDue` leen `order` y `steps`
-  }, [allowed, reviewing, steps, paced, theirsBefore, rivalPhases])
+  }, [reviewing, steps, paced, theirsBefore, rivalPhases])
   const settled = paced.cursor === paced.actions.length && theirsShown === snap.theirsActs.length && chainSeen >= steps.length && !snap.replaying
   const lifeHeld = useStrikeHold(paced.actions, paced.cursor, limit, !reviewing && !snap.replaying) || rivalStrike.held
   // Lo que se ve del rival, las vidas y el turno, hasta donde contó la mesa (`rivalPhases`): su espejo de a una (como un replay), las vidas de `lifeSteps` y el turno sin los pases que
@@ -439,24 +440,14 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const openingKey = first?.type === 'draw' ? `${first.count}:${first.ids?.join() ?? ''}` : ''
   // eslint-disable-next-line react-hooks/exhaustive-deps -- por contenido (`openingKey`), no por objeto
   const opening = useMemo(() => foldOpeningHand(paced.initial, first ? [first] : []), [paced.initial, openingKey])
-  // Las jugadas, hasta la que ya se contó: lo que el núcleo decidió y la mesa todavía no muestra (el ritmo, una parada de fase) no se adelanta en la lista de pasos.
+  // Las jugadas, hasta la que ya se contó: lo que el núcleo decidió y la mesa todavía no muestra (el ritmo) no se adelanta en la lista de pasos.
   const played = useMemo(() => paced.actions.slice(opening.skip, Math.max(opening.skip, paced.cursor)), [paced.actions, paced.cursor, opening.skip])
   const replayed = useMemo(() => replayMat(opening.initial, played, played.length), [opening.initial, played])
   // Los materiales que una Invocación Xyz ya juntó debajo de la carta del Extra (`held`, mientras el núcleo pregunta zona y posición): se ven al final de la cinta, sin ser un paso.
   const extraHeld = paced.cursor === paced.actions.length ? snap.mine.held : undefined
   const state = useMemo(() => (extraHeld ? Object.entries(extraHeld).flatMap(([to, ids]) => ids.map((id): MatAction => ({ type: 'attach', id, to, held: true }))).reduce(matReducer, replayed) : replayed), [extraHeld, replayed])
-  /** La mesa espera en tu DP o tu SP (una parada): el botón de fases la pasa. */
-  const stopped = !reviewing && !frozen && !snap.replaying && paced.cursor === limit && limit < paced.actions.length
-  /** Pedir pasar a una fase: la parada que deja se cruza ya (lo que sigue, a su ritmo). */
-  const allow = useCallback(
-    (to: MatPhase) => {
-      const next = allowTo(allowed, state.turn, to)
-
-      setAllowed(next)
-      setPaced((current) => (stopAt(current.initial, current.actions, current.cursor, next) > current.cursor ? { ...current, cursor: current.cursor + 1 } : current))
-    },
-    [allowed, state.turn],
-  )
+  /** Pedir pasar a una fase: las ventanas de las que deja se pasan solas (`passing`). */
+  const allow = useCallback((to: MatPhase) => setAllowed(allowTo(allowed, state.turn, to)), [allowed, state.turn])
   // Los nombres del `.cdb` (las cartas del rival, que no están en `cardsById`): la mesa los lee por el id de su primera copia.
   const names = useMemo(() => Object.fromEntries(Object.entries(snap.names).map(([code, name]) => [drawIdOf(Number(code)), name])), [snap.names])
   const matSession = useMemo<MatSession>(() => ({ initial: opening.initial, actions: played, cursor: played.length, names, replay: false }), [opening.initial, played, names])
@@ -802,7 +793,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
 
         return itemsInto(items, drop.zone === 'mz' || drop.zone === 'emz' ? 'monster' : 'spell').map((item) => keep(menuItem(item)))
       },
-      phaseItems: (stopped ? stopPhaseItems(state.phase) : (shown?.phaseItems ?? [])).map(menuItem),
+      phaseItems: (shown?.phaseItems ?? []).map(menuItem),
       endTurn: shown?.endTurn ? () => gesture({ kind: 'item', answer: shown.endTurn! }) : null,
       // Las casillas tuyas, en tu mesa (las del rival, en su campo: `rivalZones`). Una Zona Extra del rival es, vista desde acá, la tuya de enfrente (`1 - index`): se toca ahí.
       // Si todas son del rival (dar el control: Shien's Spy, Creature Swap), el texto lo dice: si no, parece trabado a quien no mira su campo.
@@ -850,7 +841,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           },
       manual: onManual ?? null,
     }
-  }, [pick, list, band, shown, menuItem, gesture, stopped, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session])
+  }, [pick, list, band, shown, menuItem, gesture, state, held, reviewing, frozen, ended, myInitial, myNormal, cardsById, turnMine, limitTexts, canUndo, onManual, cardPick, why, fieldStats.mine, vanilla, codeOf, placeBack, session])
   const respond = useMemo(() => new Set(shown?.respond.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const attack = useMemo(() => new Set(shown?.attack.flatMap((ref) => (ref.side === 'mine' ? [ref.id] : [])) ?? []), [shown])
   const feed = useMemo(() => (snap.replaying ? null : chainFeed(steps, chainSeen)), [steps, chainSeen, snap.replaying])
@@ -1213,8 +1204,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     foreignKnown,
     // La fase de quien tiene el turno (como en el duelo manual): la tuya, en tu mesa; la del rival, la que él ve (`rival`) o, si no la avisa, la del espejo de la suya.
     phase: turnMine ? state.phase : (rival?.phase ?? theirs.phase),
-    // Cambiás de fase en tus jugadas del turno, en una parada de tu DP o tu SP y en la ventana de una fase tuya.
-    myTurn: stopped || shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
+    // Cambiás de fase en tus jugadas del turno y en la ventana de una fase tuya.
+    myTurn: shown?.type === 'select_idlecmd' || shown?.type === 'select_battlecmd' || !!shown?.phaseWindow,
     // De quién es el turno, para que las preguntas digan la fase: sólo si el núcleo ya empezó uno (antes, no se dice).
     ...(snap.overlay.turnPlayer !== null && turnNumber > 0 ? { turnMine } : {}),
     respond,
@@ -1426,7 +1417,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     lp,
     shownAt,
     review: { active: reviewing, load, seek, back },
-    // Tu turno libre (tus jugadas, una parada o la ventana de una fase tuya) no es «estar eligiendo».
+    // Tu turno libre (tus jugadas o la ventana de una fase tuya) no es «estar eligiendo».
     told:
       snap.status === 'loading' || snap.replaying
         ? null
