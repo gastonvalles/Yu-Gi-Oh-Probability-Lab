@@ -306,6 +306,8 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   const [chainGone, setChainGone] = useState(() => chainFeed(snap.chainSteps, stepsDue(paced.cursor, paced.theirs))?.key ?? -1)
   /** Lo que la persona hizo con la pila de esta cadena (`key`): la plegó o la desplegó, o tocó un eslabón. Cada cadena abre desplegada. */
   const [chainTouch, setChainTouch] = useState<{ key: number; open: boolean } | null>(null)
+  /** Se está leyendo «Cómo se resuelve» (el ⓘ de la cadena): mientras tanto la pila no se esconde. */
+  const [chainReading, setChainReading] = useState(false)
   const chainShownAt = useRef(0)
   /**
    * El repaso («Jugar solo»): un combo guardado (`name`), o tus jugadas hasta un paso, en la misma mesa y con la lista de siempre. El duelo vivo espera donde estaba: ni el ritmo, ni
@@ -1051,17 +1053,18 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   )
   // La cadena que se puede pasar, al medio de la mesa (como «¿Activás el efecto?»): se responde tocando la carta que brilla; sin nada más urgente en la línea (trabada, esperando, pensando).
   // El aviso de la cadena: la última que empezó, como se ve con lo que ya se mostró (`feed`, más arriba). Abre desplegada y sólo la pliega la persona; terminada, se va a los
-  // `CHAIN_LINGER_MS` salvo que la estés mirando (la desplegaste o tocaste un eslabón: queda hasta plegarla).
+  // `CHAIN_LINGER_MS` (Gastón, 2026-11-03: «si ya se resolvió, ¿por qué queda flotando?»): tocar un eslabón o desplegarla le da otro rato desde ese toque, pero nunca la deja para
+  // siempre. Sólo «Cómo se resuelve» abierto la retiene (`chainReading`).
   const touched = feed !== null && chainTouch?.key === feed.key
   const chainOpen = touched ? chainTouch.open : true
-  const chainKept = touched && chainOpen
 
   useEffect(() => {
-    if (!feed?.done || chainKept) return
+    if (!feed?.done || chainReading) return
     const timer = window.setTimeout(() => setChainGone(feed.key), CHAIN_LINGER_MS)
 
     return () => window.clearTimeout(timer)
-  }, [feed, chainKept])
+    // `chainTouch`: cada toque (otro objeto) vuelve a contar el rato.
+  }, [feed, chainReading, chainTouch])
   // Tocar un eslabón de la pila lo muestra para leerlo: en el detalle fijo (la tuya, con tu carta; la del rival, por su número: un eslabón está a la vista) o, sin detalle, grande
   // como una carta del rival. Con la frase de su efecto resaltada en el detalle cuando no hay duda de cuál es (`linkPhrase`); se resalta mientras la pila está a la vista.
   const [linkRead, setLinkRead] = useState<{ code: number; description?: string; card: ApiCardReference | null } | null>(null)
@@ -1074,7 +1077,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
       const card = row.mine ? ((row.card?.side === 'mine' ? cardsById.get(row.card.id)?.apiCard : undefined) ?? byCode.get(row.code)?.apiCard ?? null) : null
 
       setLinkRead({ code: row.code, card, ...(row.description ? { description: row.description } : {}) })
-      // Desde 1101 px leer un eslabón retiene la pila (queda hasta plegarla); la cinta del celular no se pliega, así que no retiene nada: se va sola al terminar.
+      // Desde 1101 px leer un eslabón le da a la pila otro rato desde el toque (cuenta de nuevo `CHAIN_LINGER_MS` si ya terminó); la cinta del celular no, y se va sola al terminar.
       if (desktop) setChainTouch({ key: feed.key, open: true })
       if (wide && card) lockDock({ name: nameOf(row.card, row.code), card })
       else showRival(row.code ? { drawId: drawIdOf(row.code) } : { faceDown: true }, rect)
@@ -1097,6 +1100,11 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
   }
 
   const chainShown = feed !== null && !reviewing && !(feed.done && chainGone === feed.key)
+
+  // Sin cartel (otro duelo, el repaso) no se lee nada: que `chainReading` no se quede puesto.
+  useEffect(() => {
+    if (!chainShown) setChainReading(false)
+  }, [chainShown])
   // El visor de pilas de una búsqueda flota sobre el centro de la mesa (escritorio): mientras se elige ahí, la cadena va plegada a su píldora para no pisarlo (después vuelve a como estaba).
   const viewerOpen = desktop && pick !== null && list === null && pick.surface === 'pile'
   // Las candidatas de la banda de responder (`RespondBand`). En el celular la banda va en la hoja de abajo y, con la cadena abierta, en el pie de su hoja (`SheetHost`): una sola hoja.
@@ -1117,6 +1125,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
           open={chainOpen && !viewerOpen}
           compact={!desktop}
           onOpenChange={(open) => setChainTouch({ key: feed.key, open })}
+          onReading={setChainReading}
           onPick={readLink}
         />
       ) : null,

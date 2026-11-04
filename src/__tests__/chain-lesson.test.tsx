@@ -13,15 +13,17 @@ const PONIX: ChainNoticeRow = { number: 1, who: 'Vos', mine: true, name: 'Ponix'
 const ASH: ChainNoticeRow = { number: 2, who: 'Rival', mine: false, name: 'Ash Blossom', art: null, state: 'chained' }
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 
-const notice = (rows: ChainNoticeRow[], compact: boolean, onOpenChange = vi.fn()) => {
+const notice = (rows: ChainNoticeRow[], compact: boolean) => {
+  const onOpenChange = vi.fn()
+  const onReading = vi.fn()
   const ui = (next: ChainNoticeRow[]) => (
     <Provider store={store}>
-      <ChainNotice rows={next} focus={next.length - 1} resolving={false} open compact={compact} onOpenChange={onOpenChange} onPick={() => {}} />
+      <ChainNotice rows={next} focus={next.length - 1} resolving={false} open compact={compact} onOpenChange={onOpenChange} onReading={onReading} onPick={() => {}} />
     </Provider>
   )
   const view = render(ui(rows))
 
-  return { onOpenChange, rerender: (next: ChainNoticeRow[]) => view.rerender(ui(next)) }
+  return { onOpenChange, onReading, rerender: (next: ChainNoticeRow[]) => view.rerender(ui(next)) }
 }
 
 const info = () => screen.getByRole('button', { name: 'Cómo se resuelve una cadena' })
@@ -50,7 +52,7 @@ function expectLesson() {
 
 describe('ChainLesson: «Cómo se resuelve» desde la cadena', () => {
   it('escritorio: el ⓘ va en la cabeza del cartel, abre la hoja, retiene la pila y Escape la cierra con el foco de vuelta en el ⓘ', async () => {
-    const { onOpenChange, rerender } = notice([PONIX, ASH], false)
+    const { onOpenChange, onReading, rerender } = notice([PONIX, ASH], false)
     const button = info()
 
     expect(button).toHaveAttribute('aria-haspopup', 'dialog')
@@ -58,7 +60,7 @@ describe('ChainLesson: «Cómo se resuelve» desde la cadena', () => {
     button.focus()
     fireEvent.click(button)
     expectLesson()
-    expect(onOpenChange).toHaveBeenCalledWith(true)
+    expect(onReading).toHaveBeenLastCalledWith(true)
 
     // La cadena sigue a su ritmo mientras se lee: un eslabón nuevo entra en la pila y la hoja sigue abierta.
     rerender([PONIX, ASH, { ...PONIX, number: 3 }])
@@ -68,22 +70,24 @@ describe('ChainLesson: «Cómo se resuelve» desde la cadena', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(info()).toHaveFocus()
-    // Cerrarla en escritorio no pliega la pila.
-    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    // Cerrarla suelta la pila; leerla (abrirla o cerrarla) nunca la pliega.
+    expect(onReading).toHaveBeenLastCalledWith(false)
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it('celular: el ⓘ va en la cabeza de la hoja; tocarlo no la baja, abre la lección y al cerrarla suelta la cadena', async () => {
-    const { onOpenChange } = notice([PONIX, ASH], true)
+    const { onOpenChange, onReading } = notice([PONIX, ASH], true)
     const grip = screen.getByRole('button', { name: 'Bajar la hoja' })
 
     fireEvent.click(info())
     expect(grip).toHaveAttribute('aria-expanded', 'true')
     expectLesson()
-    expect(onOpenChange).toHaveBeenLastCalledWith(true)
+    expect(onReading).toHaveBeenLastCalledWith(true)
 
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cerrar' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(onOpenChange).toHaveBeenLastCalledWith(false)
+    expect(onReading).toHaveBeenLastCalledWith(false)
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it('celular: arrastrar desde el ⓘ sigue bajando la hoja y no abre la lección', () => {
