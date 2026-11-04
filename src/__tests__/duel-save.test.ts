@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { SAVE_TTL_MS, clearDuelSave, findPausedDuel, parseSave, readDuelSave, readSidingSave, saveOf, savedRole, writeDuelSave, writeSidingSave } from '../app/duel-save'
+import { SAVE_TTL_MS, clearDuelSave, findPausedDuel, parseSave, readDuelLog, readDuelSave, readSidingSave, saveOf, savedRole, writeDuelLog, writeDuelSave, writeSidingSave } from '../app/duel-save'
 import { createDuel } from '../app/duel-session'
 import { createMatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
@@ -192,5 +192,54 @@ describe('lo guardado para volver al siding', () => {
     // Un guardado de antes (sin estos datos) se sigue entendiendo.
     expect(parseSave(JSON.stringify({ ...save, conceded: undefined, rematch: undefined }), 'host', NOW)).not.toBeNull()
     expect(parseSave(JSON.stringify({ ...save, conceded: 7 }), 'host', NOW)).toBeNull()
+  })
+})
+
+describe('el chat y el registro guardados', () => {
+  it('el chat de los dos se guarda y vuelve al recargar; lo que se escribe después sigue la cuenta', () => {
+    const room = createMemoryRoom()
+    const host = createDuel(room.join(), { role: 'host', name: 'Ana', sid: 'host-1' })
+    const guest = createDuel(room.join(), { role: 'guest', name: 'Beto', sid: 'guest-1' })
+
+    room.flush()
+    host.start(table)
+    guest.sendChat('hola')
+    room.flush()
+    host.sendChat('¿arrancamos?')
+
+    const save = saveOf(host.getSnapshot(), NOW)!
+    const back = createMemoryRoom()
+    const again = createDuel(back.join(), { role: 'host', name: 'Ana', sid: 'host-2', restore: save })
+
+    expect(again.getSnapshot().chat.map(({ from, text }) => [from, text])).toEqual([
+      [1, 'hola'],
+      [0, '¿arrancamos?'],
+    ])
+    createDuel(back.join(), { role: 'guest', name: 'Beto', sid: 'guest-1' })
+    back.flush()
+    again.sendChat('sigo')
+    expect(new Set(again.getSnapshot().chat.map((line) => line.id)).size).toBe(3)
+    // Un guardado de antes (sin chat) se sigue entendiendo; uno con un chat roto, no.
+    expect(parseSave(JSON.stringify({ ...save, chat: undefined }), 'host', NOW)).not.toBeNull()
+    expect(parseSave(JSON.stringify({ ...save, chat: [{ id: 1, from: 2, text: 'x' }] }), 'host', NOW)).toBeNull()
+  })
+
+  it('el registro va en su clave: se borra al salir, con la revancha (sin mesa) y si su duelo guardado venció', () => {
+    const host = playing()
+
+    writeDuelSave('ROOM1234', host.getSnapshot(), NOW)
+    writeDuelLog('ROOM1234', 'host', [{ id: 'e0', kind: 'turn', text: 'Turno 1 · Ana' }])
+    expect(readDuelLog('ROOM1234', 'host')).toHaveLength(1)
+    clearDuelSave('ROOM1234')
+    expect(readDuelLog('ROOM1234', 'host')).toBeNull()
+
+    writeDuelLog('ROOM1234', 'host', [])
+    writeDuelSave('ROOM1234', createDuel(createMemoryRoom().join(), { role: 'host', name: 'Ana' }).getSnapshot(), NOW)
+    expect(readDuelLog('ROOM1234', 'host')).toBeNull()
+
+    writeDuelSave('ROOM1234', host.getSnapshot(), NOW - SAVE_TTL_MS - 1)
+    writeDuelLog('ROOM1234', 'host', [])
+    findPausedDuel(NOW)
+    expect(readDuelLog('ROOM1234', 'host')).toBeNull()
   })
 })

@@ -90,6 +90,15 @@ export const duel = {
   'duel.announce.named.reveal': '{name} revela {card}',
   'duel.announce.named.hand': '{name} lleva {card} a su mano',
   'duel.announce.named.declare': '{name} declara {card}',
+  // Las invocaciones del rival con la carta, que está boca arriba (lo boca abajo es «coloca», sin nombre).
+  'duel.announce.named.normal': '{name} hace una Invocación Normal de {card}',
+  'duel.announce.named.special': '{name} hace una Invocación Especial de {card}',
+  'duel.announce.named.fusion': '{name} hace una Invocación por Fusión de {card}',
+  'duel.announce.named.synchro': '{name} hace una Invocación por Sincronía de {card}',
+  'duel.announce.named.xyz': '{name} hace una Invocación Xyz de {card}',
+  'duel.announce.named.link': '{name} hace una Invocación por Enlace de {card}',
+  'duel.announce.set': '{name} coloca una carta',
+  'duel.announce.setMonster': '{name} coloca un monstruo',
 
   // Antes de entrar a una sala.
   'duel.play.subtitle': 'Entrá a un duelo en segundos.',
@@ -400,6 +409,11 @@ export const duel = {
   // El chat entre los dos.
   'duel.chat.open': 'Chat',
   'duel.log.turn': 'Turno {turn} · {name}',
+  // Los cambios de vidas, de los dos: cuánto y con cuántas queda.
+  'duel.log.mineLost': 'Perdés {amount} LP ({lp})',
+  'duel.log.mineGained': 'Ganás {amount} LP ({lp})',
+  'duel.log.rivalLost': '{name} pierde {amount} LP ({lp})',
+  'duel.log.rivalGained': '{name} gana {amount} LP ({lp})',
   'duel.log.open': 'Abrir el registro de jugadas',
   'duel.log.dismiss': 'Deslizá de costado para sacar el aviso',
   'duel.chat.title': 'Chat con {name}',

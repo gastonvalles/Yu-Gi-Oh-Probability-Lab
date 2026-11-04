@@ -21,10 +21,11 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, DUEL_DETAIL_DOCK_MEDIA_QUERY, useMedi
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
-import { matEffects, type SpotlightKind } from '../../app/mat-effects'
+import { matEffects, type LandingTone, type SpotlightKind } from '../../app/mat-effects'
+import { publicIds } from '../../app/mat-public'
 import { firstFreeMonsterZone, foreignOf, opaqueOfForeign, takeOffer, TOKEN_CONTROL_CAP, type TakenKind } from '../../app/mat-control'
 import type { ManualGame } from '../../app/auto/manual-handover'
-import { cardKindOf, createMatState, isForeignId, isToken, randomSeed, replayMat, shuffleWithSeed, type MatPile, type MatState } from '../../app/practice-mat'
+import { cardKindOf, createMatState, isForeignId, isToken, locateCard, randomSeed, replayMat, shuffleWithSeed, type MatAction, type MatPile, type MatSpot, type MatState } from '../../app/practice-mat'
 import { getCardEffectMap, loadCardEffectMap } from '../../app/card-effect-data'
 import { cardEffects, effectDetail } from '../../app/mat-assistant'
 import type { CardTextHighlight } from '../../app/card-text'
@@ -64,7 +65,7 @@ import { useDockPeek } from './use-dock-peek'
 import { RivalEmoji, useAutoStartClock, useClockPause, useGameToasts, useRivalNotice, useSignals } from './use-duel-table'
 import { DuelGames } from './DuelGames'
 import { isEmojiSignal } from '../../app/duel-signals'
-import { useDuelFeed } from './use-duel-feed'
+import { rivalCardName, useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
 import { PassPrompt } from './PassPrompt'
 import { DuelChatPanel } from './DuelChat'
@@ -724,7 +725,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   return (
     <>
-      <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onRematch={rematch} onLeave={leave} onAbandon={abandon} {...(resumeLink && resume ? { resume: { snapshot: resume, want: (yes: boolean) => resumeLink.want(yes) } } : {})} />
+      <DuelTableScreen duel={duel} snapshot={snapshot} room={intent.room} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onRematch={rematch} onLeave={leave} onAbandon={abandon} {...(resumeLink && resume ? { resume: { snapshot: resume, want: (yes: boolean) => resumeLink.want(yes) } } : {})} />
       {closingIn === null ? null : <RoomClosing name={snapshot.peerName ?? t('duel.bar.rival')} seconds={closingIn} />}
     </>
   )
@@ -1472,11 +1473,15 @@ function useRivalFieldStats(state: MatState, drawIdOf: (id: string) => string | 
  * cambios de fase tienen lo suyo (la espada, el cartel de la fase) y las cartas que sólo llegan a la mano no se muestran. Cuenta sólo una jugada nueva a la vez: lo que
  * llega de golpe (la mesa repuesta al reconectar) o se deshace no se repite.
  */
-function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEffect']; flash: DuelSideView['flash']; shuffles: number } {
+function useRivalEffect(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): { effect: DuelMatLink['rivalEffect']; flash: DuelSideView['flash']; shuffles: number; captions: ReadonlyArray<{ key: number; caption: string } | undefined> } {
   const { theirs, peerName } = snapshot
   const acts = theirs?.acts
   const seen = useRef(acts?.length ?? 0)
-  const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string; /** El número de YGOPRODeck de la carta, si es pública: sirve para ponerle el nombre. */ passcode?: number; /** El lugar del efecto que eligió entre los de la carta (la jugada lo lleva): sirve para decir cuál es. */ effectIndex?: number } | undefined>(undefined)
+  const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string; /** El número de YGOPRODeck de la carta, si es pública: sirve para ponerle el nombre. */ passcode?: number; /** El lugar del efecto que eligió entre los de la carta (la jugada lo lleva): sirve para decir cuál es. */ effectIndex?: number; /** Ya tiene el nombre (no se vuelve a buscar). */ named?: true } | undefined>(undefined)
+  // El efecto se ve un rato (`gone`: el que ya se fue de la mesa), pero su cartel sigue para el registro: el nombre de la carta puede llegar después de que se vaya.
+  const [gone, setGone] = useState<number | null>(null)
+  // Lo que el rival coloca boca abajo no se anima (no hay nada que mostrar): sólo va al registro, sin la carta.
+  const [placed, setPlaced] = useState<{ key: number; caption: string } | undefined>(undefined)
   // Las veces que el rival tocó su deck o sumó una carta a su mano (se baraja a la vista).
   const [shuffles, setShuffles] = useState(0)
 
@@ -1490,8 +1495,9 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     }
 
     const action = acts[acts.length - 1]!
+    const table = replayMat(theirs.initial, acts, acts.length - 1)
     // Su mano es la que no ves: sumar una carta a ella baraja a la vista (`hiddenHand`), así no se adivina cuál es la nueva.
-    const { spotlight, showcase, quiet, shuffle } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action, true)
+    const { spotlight, showcase, quiet, shuffle } = matEffects(table, action, true)
 
     if (shuffle) {
       setShuffles((count) => count + 1)
@@ -1503,8 +1509,11 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     const rival = peerName ?? t('duel.bar.rival')
     const artOf = (id: string) => artOfDrawId(isToken(id) ? id : theirs.known[id]) ?? null
     const key = Date.now()
+    const setIn = setZoneOf(table, action)
 
-    if (spotlight && spotlight.kind !== 'attack') {
+    if (setIn) {
+      setPlaced({ key, caption: t(setIn === 'mz' || setIn === 'emz' ? 'duel.announce.setMonster' : 'duel.announce.set', { name: rival }) })
+    } else if (spotlight && spotlight.kind !== 'attack') {
       // Un lote destaca varias cartas (`ids`): se muestran todas y el nombre se pide sólo cuando es una.
       const ids = spotlight.ids ?? [spotlight.id]
       const cards = ids.map((id) => ({ id, art: artOf(id) }))
@@ -1523,34 +1532,42 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
       const cards = showcase.ids.map((id) => ({ id, art: artOf(id) }))
       // Una carta que el rival suma a su mano y es pública (la buscó, la devolvió, la trajo del cementerio; robar no llega hasta acá) se ve entera: se queda para leerla, con su nombre, y queda fija en el detalle.
       const added = showcase.kind === 'hand' && showcase.ids.length === 1 && cards[0]!.art !== null && !isToken(showcase.ids[0]!) ? theirs.known[showcase.ids[0]!] : undefined
-      const passcode = added ? passcodeOfDrawId(added) : null
+      // Una invocación nombra su carta si quedó boca arriba (pública, como la ve en la mesa): por mi catálogo si es de las de mi deck; si no, se busca por su número.
+      const only = showcase.ids.length === 1 ? showcase.ids[0]! : undefined
+      const summoned = isSummonKind(showcase.kind) && only !== undefined && !isToken(only) && publicIds(theirs.state).has(only) ? theirs.known[only] : undefined
+      const local = rivalCardName(cardsById, summoned)
+      const lookup = added ?? (local === undefined ? summoned : undefined)
+      const passcode = lookup ? passcodeOfDrawId(lookup) : null
+      const caption = local !== undefined && isSummonKind(showcase.kind) ? t(`duel.announce.named.${showcase.kind}`, { name: rival, card: local }) : t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length })
 
       setShown({
-        effect: { key, kind: showcase.kind, cards, ...(showcase.flip ? { flip: true } : {}), caption: t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length }), ...(added ? { linger: true, peekId: added } : {}) },
+        effect: { key, kind: showcase.kind, cards, ...(showcase.flip ? { flip: true } : {}), caption, ...(added ? { linger: true, peekId: added } : {}) },
         ...(passcode === null ? {} : { passcode }),
+        ...(local === undefined ? {} : { named: true }),
       })
     } else if (quiet) {
       // Al cementerio o al destierro no se muestra grande: el efecto no se dibuja (`quiet`), pero su línea entra al registro como las demás.
       setShown({ effect: { key, kind: quiet.kind, quiet: true, cards: quiet.ids.map((id) => ({ id, art: artOf(id) })), caption: t(`duel.announce.show.${quiet.kind}`, { name: rival, count: quiet.ids.length }) } })
     }
-  }, [acts, theirs, peerName])
+  }, [acts, theirs, peerName, cardsById])
 
   useEffect(() => {
     if (!shown) return
 
-    const id = setTimeout(() => setShown(undefined), shown.effect.detail ? RIVAL_DETAIL_MS : shown.effect.linger ? RIVAL_READ_MS : RIVAL_FX_MS)
+    const { key } = shown.effect
+    const id = setTimeout(() => setGone(key), shown.effect.detail ? RIVAL_DETAIL_MS : shown.effect.linger ? RIVAL_READ_MS : RIVAL_FX_MS)
     return () => clearTimeout(id)
   }, [shown])
 
-  // El nombre de lo que se activó (público): se busca por su número y, cuando llega, entra en el cartel y en el registro sin reiniciar la animación.
+  // El nombre de lo que se activó o se invocó (público): se busca por su número y, cuando llega, entra en el cartel y en el registro sin reiniciar la animación.
   const rivalLabel = peerName ?? t('duel.bar.rival')
 
   useEffect(() => {
-    if (shown?.passcode === undefined || shown.effect.cards[0]?.name) return
+    if (shown?.passcode === undefined || shown.named) return
 
     const { key } = shown.effect
-    // Sólo se lee lo que se activa, se revela o se declara (ver `READABLE_KINDS`) y lo que se suma a la mano.
-    const kind = shown.effect.kind as 'activate' | 'reveal' | 'declare' | 'hand'
+    // Sólo se lee lo que se activa, se revela o se declara (ver `READABLE_KINDS`), lo que se suma a la mano y lo que se invoca boca arriba (ésta, sólo en el cartel: la carta grande ya pasó).
+    const kind = shown.effect.kind as 'activate' | 'reveal' | 'declare' | 'hand' | LandingTone
     let alive = true
 
     fetchCardsByIds([shown.passcode])
@@ -1567,7 +1584,7 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
 
         setShown((current) =>
           current && current.effect.key === key
-            ? { ...current, effect: { ...current.effect, cards: current.effect.cards.map((card) => ({ ...card, name })), caption, ...(detail ? { detail: { lead: detail.lead, text: detail.what } } : {}) } }
+            ? { ...current, named: true, effect: { ...current.effect, ...(isSummonKind(kind) ? {} : { cards: current.effect.cards.map((card) => ({ ...card, name })) }), caption, ...(detail ? { detail: { lead: detail.lead, text: detail.what } } : {}) } }
             : current,
         )
       })
@@ -1578,9 +1595,23 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     }
   }, [shown, rivalLabel])
 
-  const flash = useMemo(() => (shown?.flashId ? { id: shown.flashId, key: shown.effect.key, kind: shown.effect.kind as SpotlightKind } : undefined), [shown])
+  const visible = shown && shown.effect.key !== gone ? shown : undefined
+  const flash = useMemo(() => (visible?.flashId ? { id: visible.flashId, key: visible.effect.key, kind: visible.effect.kind as SpotlightKind } : undefined), [visible])
+  const logged = useMemo(() => shown && { key: shown.effect.key, caption: shown.effect.caption }, [shown])
+  const captions = useMemo(() => [logged, placed], [logged, placed])
 
-  return { effect: shown?.effect, flash, shuffles }
+  return { effect: visible?.effect, flash, shuffles, captions }
+}
+
+/** Las invocaciones (cómo llega un monstruo al campo): su cartel puede nombrar la carta. */
+const SUMMON_KINDS: ReadonlySet<string> = new Set<LandingTone>(['normal', 'special', 'fusion', 'synchro', 'xyz', 'link'])
+const isSummonKind = (kind: string): kind is LandingTone => SUMMON_KINDS.has(kind)
+
+/** Dónde coloca el rival una carta boca abajo desde fuera del campo (Colocar, también por Sacrificio), o null si la jugada no es eso: va al registro sin decir cuál. */
+function setZoneOf(before: MatState, action: MatAction): MatSpot | null {
+  if (action.type === 'tribute') return action.pos === 'set' ? action.zone : null
+
+  return action.type === 'place' && action.pos === 'set' && locateCard(before, action.id)?.kind !== 'spot' ? action.zone : null
 }
 
 /** Cuánto se queda, sobre la línea del registro, cómo terminó tu pedido de volver atrás (no lo permitió, o no contestó). */
@@ -1691,7 +1722,7 @@ function useMarkNotice(snapshot: DuelSnapshot) {
 }
 
 /** La mesa de práctica con el campo del rival arriba: tus jugadas van al relay y las suyas llegan solas. */
-function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onRematch, onLeave, onAbandon, resume }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void; onAbandon: () => void; /** Una sala con reglas automáticas que pasó a manual: pedir seguir en automático (`ResumeAuto`). */ resume?: ResumeAuto }) {
+function DuelTableScreen({ duel, snapshot, room, status, myName, cardsById, deckName, onRematch, onLeave, onAbandon, resume }: { duel: Duel; snapshot: DuelSnapshot; /** La sala: el registro se guarda con ella (recargar no lo borra). */ room: string; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void; onAbandon: () => void; /** Una sala con reglas automáticas que pasó a manual: pedir seguir en automático (`ResumeAuto`). */ resume?: ResumeAuto }) {
   const { mine, initial, actions, theirs } = snapshot
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const wide = useMediaQuery(DUEL_DETAIL_DOCK_MEDIA_QUERY)
@@ -1717,7 +1748,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
 
   // La mesa espera una "sesión" con la mano inicial y las jugadas; acá no hay combos ni repetición, así que el cursor está siempre al final.
   const session = useMemo<MatSession>(() => ({ initial: initial!, actions: [...actions], cursor: actions.length, names: {}, replay: false }), [initial, actions])
-  const { effect: rivalEffect, flash: rivalFlash, shuffles: rivalShuffle } = useRivalEffect(snapshot)
+  const { effect: rivalEffect, flash: rivalFlash, shuffles: rivalShuffle, captions: effectCaptions } = useRivalEffect(snapshot, cardsById)
   // Lo que el rival suma a su mano sin robar (Gastón, 2026-10-20: «la carta añadida debe aparecer en el detalle hasta que se haga click en otra carta»): queda fija en el detalle de la izquierda, como una carta tocada.
   const addedToHand = rivalEffect?.peekId
   const addedKey = rivalEffect?.key
@@ -1779,8 +1810,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const [gamesOpen, setGamesOpen] = useState(false)
   // La calculadora de vidas (sincronizada con el duelo): se abre al tocar las vidas de cualquiera de los dos; con la pausa o el resultado encima se cierra.
   const [lifeOpen, setLifeOpen] = useState(false)
-  const rivalCaptions = useMemo(() => [rivalEffect, announcement], [rivalEffect, announcement])
-  const feed = useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber: duelTurnNumber(mine, theirs!.state), rivalName: snapshot.peerName ?? t('duel.bar.rival'), myName })
+  const rivalCaptions = useMemo(() => [...effectCaptions, announcement], [effectCaptions, announcement])
+  const feed = useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber: duelTurnNumber(mine, theirs!.state), rivalName: snapshot.peerName ?? t('duel.bar.rival'), myName, save: { room, role: snapshot.role } })
   const signals = useSignals(snapshot)
   // La señal del rival junto a sus vidas; sus emojis, en escritorio, grandes en el medio (`RivalEmoji`).
   const rivalSignal = signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs

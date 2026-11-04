@@ -143,10 +143,14 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     summonedByAna = await playFromHand(ana, 'Invocación Normal', 'Zona de monstruo 1')
     await expect(field(beto, 'rival')).toHaveCount(1)
     await expect(rivalHand(beto)).toHaveAccessibleName('Mano del rival: 4')
-    await playFromHand(ana, 'Colocar', 'Zona de monstruo 2')
+    const setByAna = await playFromHand(ana, 'Colocar', 'Zona de monstruo 2')
     await expect(field(beto, 'rival')).toHaveCount(2)
     await expect(field(ana, 'mine')).toHaveCount(2)
     await expect(beto.getByRole('img', { name: /^Rival, Zona de monstruo 1, nivel \d, ATK/ })).toBeVisible()
+    // El registro de Beto cuenta lo de Ana como el de ella: la invocación con su carta (está boca arriba) y que coloca, sin decir cuál.
+    await expect.poll(() => logLines(beto)).toEqual(expect.arrayContaining([`Ana hace una Invocación Normal de ${summonedByAna}`, 'Ana coloca un monstruo']))
+    await expect.poll(() => logLines(ana)).toEqual(expect.arrayContaining([`Invocación Normal de ${summonedByAna}`, `Colocás ${setByAna} boca abajo`]))
+    if (setByAna !== summonedByAna) expect((await logLines(beto)).join(' ')).not.toContain(setByAna)
     await shot(ana, '04-ana-turno1')
     await shot(beto, '04-beto-ve-turno1')
   })
@@ -180,6 +184,8 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
   await test.step('Ana resuelve el combate en su mesa: pierde vidas y manda su monstruo al cementerio', async () => {
     await changeLife(ana, ['1', '0', '0'])
     await expect(lifeOf(beto, 'Ana')).toHaveAccessibleName(/^Puntos de vida de Ana: 7900\./)
+    await expect.poll(() => logLines(beto)).toContain('Ana pierde 100 LP (7900)')
+    await expect.poll(() => logLines(ana)).toContain('Perdés 100 LP (7900)')
     await ana.getByRole('group', { name: 'Zona de monstruo 1', exact: true }).getByRole('button').first().click()
     await ana.getByRole('menuitem', { name: 'Al cementerio', exact: true }).click()
     await expect(beto.getByRole('group', { name: 'GY: 1' })).toBeVisible()
@@ -206,7 +212,7 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
     await expect(field(ana, 'rival')).toHaveCount(1)
     await expect(hand(beto)).toHaveCount(5)
     await expect(rivalHand(ana)).toHaveAccessibleName('Mano del rival: 5')
-    lostLines(logBeforeUndo, await logLines(ana), 'Ana, cuando Beto deshace (con su permiso)', 1)
+    expect(lostLines(logBeforeUndo, await logLines(ana), 1), 'el registro de Ana, cuando Beto deshace (con su permiso)').toEqual([])
   })
 
   await test.step('Beto pasa el turno y Ana roba', async () => {
@@ -222,11 +228,17 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
   await test.step('Beto recarga la página en pleno duelo y la mesa vuelve igual', async () => {
     const before = { beto: await table(beto), ana: await table(ana) }
     const anaLog = await logLines(ana)
+    const betoLog = await logLines(beto)
+    // Lo que se escribieron los dos (Beto en la sala, Ana durante el duelo) está en el registro de Beto antes de recargar.
+    expect(betoLog.join(' ')).toContain('Hola Ana, ¿arrancamos?')
+    expect(betoLog.join(' ')).toContain('Me dolió')
     await beto.reload()
     await expect(hand(beto)).toHaveCount(before.beto.hand.length)
     await expect.poll(() => table(beto)).toEqual(before.beto)
     await expect.poll(() => table(ana)).toEqual(before.ana)
-    lostLines(anaLog, await logLines(ana), 'Ana, cuando Beto recarga')
+    // Ninguno pierde nada: Ana conserva lo que hizo Beto, y Beto vuelve con su registro y el chat entero.
+    expect(lostLines(anaLog, await logLines(ana)), 'el registro de Ana, cuando Beto recarga').toEqual([])
+    await expect.poll(() => logLines(beto)).toEqual(betoLog)
     await shot(beto, '09-beto-tras-recargar')
   })
 
@@ -274,11 +286,8 @@ test('duelo 1 vs 1 por enlace, de la sala al resultado', async ({ browser }) => 
 /** Las líneas del registro y el chat (el panel de la derecha en escritorio). */
 const logLines = (page: Page) => page.getByRole('log', { name: /^Chat con / }).getByRole('listitem').allInnerTexts()
 
-/** Lo que estaba en el registro de `who` y ya no está (salvo las `undone` últimas: una jugada deshecha). */
-function lostLines(before: string[], after: string[], who: string, undone = 0) {
-  const lost = before.slice(0, before.length - undone).filter((line) => !after.includes(line))
-  if (lost.length) finding(`El registro de ${who} perdió líneas: ${lost.map((line) => `«${line.replace(/\s+/g, ' ')}»`).join(', ')}.`)
-}
+/** Lo que estaba en un registro y ya no está (salvo las `undone` últimas: una jugada deshecha). */
+const lostLines = (before: string[], after: string[], undone = 0) => before.slice(0, before.length - undone).filter((line) => !after.includes(line))
 
 const turnText = (page: Page) => page.getByText(/^(Tu turno|Turno de \S+) · \d+$/)
 

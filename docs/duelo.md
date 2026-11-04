@@ -47,7 +47,7 @@ Usa las zonas y el arrastre del builder, pero es una pantalla propia (`DuelSidin
 
 - Mientras falta uno, el duelo queda en pausa: la mesa se tapa y el reloj de la ronda se detiene.
 - **Reconectar** (el ⋯ de la barra y el cartel de pausa) tira la conexión y abre otra: el relay vuelve a decir quién está y destraba una pausa por un aviso que no llegó. Safari en iOS suspende los WebSockets al bloquear la pantalla: el cliente reintenta solo y pide un `sync` al volver.
-- Lo propio se guarda por sala y rol (`duel-save.ts`, con `order` para que Deshacer tras recargar siga el orden real); lo del rival lo repite él al saludar, y el marcador del Match viene de su `sync` (uno viejo no pisa a uno nuevo). El relay no reserva el asiento: sólo recupera su mesa quien tiene lo guardado (límite aceptado: `docs/seguridad.md`).
+- Lo propio se guarda por sala y rol (`duel-save.ts`), con el chat, el registro y `order` (Deshacer tras recargar sigue el orden real); lo del rival lo repite él al saludar, y el marcador del Match viene de su `sync` (uno viejo no pisa a uno nuevo). El relay no reserva el asiento: sólo recupera su mesa quien tiene lo guardado (límite aceptado: `docs/seguridad.md`).
 - **La sala muere al terminar el duelo** (uno suelto o un Match ganado): si el rival se va, a los `ROOM_CLOSE_S` la sala se cierra para todos (`duel.endRoom()`; el porqué, en `docs/duelo-relay.md`). Hasta entonces otra identidad no recibe nada (`stranger`), y quien ocupa el lugar del rival no cuenta como presente hasta saludar (`peerGreeted`): un tercero no reinicia la cuenta. La sala pública no vuelve a la lista de espera.
 
 ## Cómo está armado
@@ -71,7 +71,7 @@ duel-relay/                  el Worker + Durable Object de Cloudflare
 
 ## Probarlo
 
-Con tres pestañas (dos jugadores y un espectador): un relay local o el publicado (`docs/duelo-relay.md`), la app con `VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm run dev`, cada jugador con un deck en el builder (cada puerto es un origen nuevo y no comparte lo guardado) y el espectador con el enlace. Editar un archivo del repo (también un `.md`) recarga las pestañas, y el duelo se rearma de lo guardado, sin el registro.
+Con tres pestañas (dos jugadores y un espectador): un relay local o el publicado (`docs/duelo-relay.md`), la app con `VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm run dev`, cada jugador con un deck en el builder (cada puerto es un origen nuevo y no comparte lo guardado) y el espectador con el enlace. Editar un archivo del repo (también un `.md`) recarga las pestañas: el duelo se rearma de lo guardado.
 
 Los tests de la pantalla (`duel-screen-*.test.tsx`, arnés en `support/`) juegan duelos enteros en memoria; el de punta a punta contra el relay, en `docs/duelo-relay.md`.
 

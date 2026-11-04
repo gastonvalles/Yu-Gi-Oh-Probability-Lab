@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import type { DuelSettings } from './duel-protocol'
 import { createParticipantId } from './duel-relay-rules'
-import { readAutoEndSave, readDuelSave, writeDuelRecord, writeDuelSave } from './duel-save'
+import { readAutoEndSave, readDuelSave, writeDuelLog, writeDuelRecord, writeDuelSave } from './duel-save'
 import { createDuel, type Duel, type DuelRole, type DuelSnapshot } from './duel-session'
 import { createSpectator, type Spectator, type SpectatorSnapshot } from './duel-spectator'
 import { cardKindOf, type MatCardKind } from './practice-mat'
@@ -63,16 +63,21 @@ export function useDuel({ room, role, name, settings, connect, kindOf }: UseDuel
 
     const transport = connect(room, createParticipantId())
     const ended = readAutoEndSave(room, role)
-    const duel = createDuel(transport, { role, ...latest.current, kindOf: (id) => latestKindOf.current?.(id) ?? cardKindOf(null), restore: readDuelSave(room, role) ?? undefined, ...(ended ? { ended } : {}) })
+    const restore = readDuelSave(room, role) ?? undefined
+
+    // Sin mesa que retomar (vencida, rota o de otro duelo), tampoco hay registro que reponer.
+    if (!restore) writeDuelLog(room, role, null)
+
+    const duel = createDuel(transport, { role, ...latest.current, kindOf: (id) => latestKindOf.current?.(id) ?? cardKindOf(null), restore, ...(ended ? { ended } : {}) })
     let saved = duel.getSnapshot()
     const stopSaving = duel.subscribe(() => {
-      // Sólo cuando algo de lo guardado cambió (las jugadas, las vidas o el reloj, la mesa de arranque): el chat y los avisos no pasan por acá.
+      // Sólo cuando algo de lo guardado cambió (las jugadas, las vidas o el reloj, la mesa de arranque, el chat): los avisos no pasan por acá.
       const now = duel.getSnapshot()
 
       // El registro del replay va aparte: cambia con cada jugada del rival, y lo mío no se reescribe por eso.
       if (now.record !== saved.record) writeDuelRecord(room, now)
 
-      if (now.actions !== saved.actions || now.life !== saved.life || now.initial !== saved.initial || now.conceded !== saved.conceded || now.rematch.mine !== saved.rematch.mine) {
+      if (now.actions !== saved.actions || now.life !== saved.life || now.initial !== saved.initial || now.conceded !== saved.conceded || now.rematch.mine !== saved.rematch.mine || now.chat !== saved.chat) {
         writeDuelSave(room, now)
       }
 
