@@ -15,8 +15,6 @@ import { CHIP_ICON, colorOf, STATE_TONE, stateLabel, type ChainNoticeRow } from 
 export interface ChainOrderLink extends ChainNoticeRow {
   /** Qué hace, en una frase corta. Sólo acá: en el duelo en vivo y en el registro no va (Gastón, 2026-10-26). */
   effect: string
-  /** Lo que pasó, si dice más que el estado («Añade 1 carta»); sin esto, el estado («Resuelta», «Sin efecto · por CL2»). */
-  outcome?: { label: string; tone: Tone }
   /** No hizo nada (apagado). Por defecto, el negado o sin efecto. */
   idle?: boolean
 }
@@ -108,7 +106,7 @@ function LinkRow({ link }: { link: ChainOrderLink }) {
   const color = colorOf(link.mine)
   const voided = link.state === 'negated' || link.state === 'disabled'
   const idle = link.idle ?? voided
-  const chip = link.outcome ?? { label: stateLabel(link), tone: STATE_TONE[link.state] }
+  const chip = { label: stateLabel(link), tone: link.outcome?.tone ?? STATE_TONE[link.state] }
 
   return (
     <li data-link={link.number} className="flex items-start gap-2.5 px-3 py-2">

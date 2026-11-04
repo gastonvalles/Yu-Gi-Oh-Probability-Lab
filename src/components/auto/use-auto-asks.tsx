@@ -46,6 +46,7 @@ import { useUndoPlay, type UndoPlay } from '../probability/UndoChip'
 import { AskOptions, type AskOption } from './AskOptions'
 import { AskPrompt } from './AskPrompt'
 import { BAND_MAX, CardPicker, PickBand, pickPlace, type PickCard, type PickFrom } from './CardPicker'
+import { outcomeChip } from './chain-parts'
 import { ChainNotice } from './ChainNotice'
 import { CounterSheet } from './CounterSheet'
 import { LimitsChip } from './LimitsChip'
@@ -1119,7 +1120,7 @@ export function useAutoAsks({ session, snap, cardsById, cards, seat = 0, canCanc
     () =>
       chainShown && feed ? (
         <ChainNotice
-          rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}) }))}
+          rows={feed.rows.map((row) => ({ number: row.number, who: row.mine ? t('duel.bar.you') : rivalName, mine: row.mine, name: row.code ? nameOf(null, row.code) : nameOf(row.card), art: artOf(row.card, row.code), state: row.state, ...(row.by ? { by: row.by } : {}), ...(row.outcome ? { outcome: outcomeChip(row.outcome) } : {}) }))}
           focus={feed.focus}
           resolving={feed.resolving}
           open={chainOpen && !viewerOpen}

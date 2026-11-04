@@ -88,6 +88,8 @@ describe.skipIf(!hasCoreData)('el aviso de la cadena contra el núcleo real (npm
     expect(chain.every((step, i) => step.at <= snapshot.mineActions.length && (i === 0 || step.at >= chain[i - 1]!.at))).toBe(true)
     expect(['place', 'activate']).toContain(snapshot.mineActions[chain[0]!.at - 1]?.type)
     expect(chainFeed(steps, start + chain.length)).toMatchObject({ done: true, rows: [{ number: 1, code: TERRAFORMING, state: 'disabled' }, { number: 2, code: ASH, state: 'solved' }] })
+    // Ninguna dice qué hizo: Terraforming quedó sin efecto y Ash sólo niega (no mueve cartas al resolverse: su descarte es costo).
+    expect(chainFeed(steps, start + chain.length)?.rows.map((row) => row.outcome)).toEqual([undefined, undefined])
     // Desde dónde se activó cada una (`triggering_location`): Terraforming ya en su casilla de Mágicas y Trampas; Ash, desde la mano del rival (el rótulo «desde la mano» de su insignia).
     expect(chain.flatMap((step) => (step.link ? [step.link.from] : []))).toEqual([LOCATION.SZONE, LOCATION.HAND])
     // La insignia se busca por id en la mesa de ahora: terminada la cadena, las dos cartas están en su Cementerio y sus insignias con ellas.
@@ -113,6 +115,8 @@ describe.skipIf(!hasCoreData)('el aviso de la cadena contra el núcleo real (npm
       links: chain.filter((step) => step.kind === 'chain').map((step) => step.link?.code),
       negations: chain.filter((step) => step.kind === 'negated' || step.kind === 'disabled').map((step) => [step.kind, step.index + 1, step.by]),
       rows: chainFeed(steps, start + chain.length)?.rows.map((row) => [row.number, row.state, row.by]),
+      // Lo que hizo cada eslabón resuelto (`outcome`), si el núcleo lo dice sin duda.
+      outcomes: chainFeed(steps, start + chain.length)?.rows.map((row) => row.outcome ?? null),
     }
   }
 
@@ -121,6 +125,8 @@ describe.skipIf(!hasCoreData)('el aviso de la cadena contra el núcleo real (npm
       links: [TERRAFORMING, ASH, GAMMA],
       negations: [['negated', 2, 3]],
       rows: [[1, 'solved', undefined], [2, 'negated', 3], [3, 'solved', undefined]],
+      // Terraforming busca; Gamma, al resolverse (no es costo), se Invoca de Modo Especial con Psy-Frame Driver: 2; Ash, negada, nada.
+      outcomes: [{ kind: 'add', count: 1 }, null, { kind: 'summon', count: 2 }],
     })
   }, 60_000)
 
@@ -129,6 +135,8 @@ describe.skipIf(!hasCoreData)('el aviso de la cadena contra el núcleo real (npm
       links: [TERRAFORMING, ASH, CALLED_BY],
       negations: [['disabled', 2, undefined]],
       rows: [[1, 'solved', undefined], [2, 'disabled', undefined], [3, 'solved', undefined]],
+      // Called by the Grave destierra a Ash del Cementerio del rival (la descartó como costo).
+      outcomes: [{ kind: 'add', count: 1 }, null, { kind: 'banish', count: 1 }],
     })
   }, 60_000)
 
