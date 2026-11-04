@@ -7,8 +7,9 @@
 // Al terminar Playwright cierra los dos servidores con su árbol de procesos (en Windows, `taskkill /T`): no quedan `workerd` ni Vite.
 import { defineConfig, devices } from '@playwright/test'
 
-const RELAY_PORT = 8795
-const APP_PORT = 5189
+// Los puertos se pueden cambiar (`E2E_RELAY_PORT`, `E2E_APP_PORT`) para correr dos e2e a la vez sin pisarse; cada relay guarda en su propia carpeta.
+const RELAY_PORT = Number(process.env.E2E_RELAY_PORT ?? 8795)
+const APP_PORT = Number(process.env.E2E_APP_PORT ?? 5189)
 const APP = `http://127.0.0.1:${APP_PORT}`
 
 export default defineConfig({
@@ -32,7 +33,7 @@ export default defineConfig({
   webServer: [
     {
       // La ruta de `--persist-to` tiene que ser corta en Windows o falla `SQLITE_CANTOPEN`.
-      command: `npx --yes wrangler@4 dev --local --port ${RELAY_PORT} --ip 127.0.0.1 --persist-to C:/tmp/relay-e2e --var "ALLOWED_ORIGINS:${APP},http://localhost:${APP_PORT}"`,
+      command: `npx --yes wrangler@4 dev --local --port ${RELAY_PORT} --ip 127.0.0.1 --persist-to C:/tmp/relay-e2e-${RELAY_PORT} --var "ALLOWED_ORIGINS:${APP},http://localhost:${APP_PORT}"`,
       cwd: 'duel-relay',
       url: `http://127.0.0.1:${RELAY_PORT}/rooms`,
       reuseExistingServer: false,
