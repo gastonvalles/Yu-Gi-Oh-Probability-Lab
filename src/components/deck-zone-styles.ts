@@ -8,7 +8,7 @@ import { cx } from './ui/cx'
 
 /** Marco punteado "hormigas": aparece al pasar el mouse (sólo con puntero fino). */
 const MARCHING_ANTS = [
-  'after:pointer-events-none after:absolute after:inset-0 after:z-1 after:opacity-0 after:transition-opacity after:duration-120',
+  'after:pointer-events-none after:absolute after:inset-0 after:z-1 after:opacity-0 after:transition-opacity after:duration-120 after:motion-reduce:transition-none',
   'after:[background-image:linear-gradient(90deg,#000_50%,#fff_50%),linear-gradient(90deg,#000_50%,#fff_50%),linear-gradient(0deg,#000_50%,#fff_50%),linear-gradient(0deg,#000_50%,#fff_50%)]',
   'after:[background-repeat:repeat-x,repeat-x,repeat-y,repeat-y] after:[background-size:9px_2px,9px_2px,2px_9px,2px_9px] after:[background-position:0_0,0_100%,0_0,100%_0]',
   '[@media(hover:hover)_and_(pointer:fine)]:hover:after:animate-marching-ants [@media(hover:hover)_and_(pointer:fine)]:hover:after:opacity-100 motion-reduce:hover:after:animate-none',

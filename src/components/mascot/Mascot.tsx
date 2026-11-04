@@ -221,7 +221,7 @@ function ActiveMascot({ id, slot }: { id: MascotId; slot: number }) {
           type="button"
           aria-label={t('shell.mascot.hide', { name: mascot.name })}
           title={t('shell.mascot.hide', { name: mascot.name })}
-          className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-lavender text-foreground opacity-0 shadow-card transition-opacity duration-150 hover:bg-lavender-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus group-hover:opacity-100 max-[1101px]:hidden"
+          className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-lavender text-foreground opacity-0 shadow-card transition-opacity duration-150 motion-reduce:transition-none hover:bg-lavender-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus group-hover:opacity-100 max-[1101px]:hidden"
           onClick={rest}
         >
           <Icon name="x" size={12} strokeWidth={2.2} />

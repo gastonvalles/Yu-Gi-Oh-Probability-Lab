@@ -61,7 +61,7 @@ export function LabScoreCard({ results, view, onViewChange, isRecalculating, han
       padding="lg"
       aria-label={t('lab.score.label')}
       aria-busy={isRecalculating || measuring}
-      className={cx('grid content-start gap-4 transition-opacity duration-150 aria-busy:opacity-75', className)}
+      className={cx('grid content-start gap-4 transition-opacity duration-150 motion-reduce:transition-none aria-busy:opacity-75', className)}
     >
       <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 md:gap-7">
         {/* 140 px en el celular y 184 en escritorio: el anillo crece con su caja (`fluid`). */}
