@@ -134,7 +134,7 @@ export function ArenaPanel({ rooms, busy, deckReady, onJoin }: ArenaPanelProps) 
         </div>
       ) : (
         // Al actualizar a mano la lista se queda donde está y se atenúa hasta que llega lo nuevo (con movimiento reducido, es lo único que avisa).
-        <div aria-busy={refreshing} className="grid gap-3 transition-opacity duration-150 aria-busy:opacity-60">
+        <div aria-busy={refreshing} className="grid gap-3 transition-opacity duration-150 motion-reduce:transition-none aria-busy:opacity-60">
           {waiting.length === 0 && live.length === 0 ? (
             <ListGroup empty={<p className="m-0 text-body text-muted">{t('duel.arena.empty')}</p>} />
           ) : (

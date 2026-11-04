@@ -83,7 +83,7 @@ export const CardArt = memo(function CardArt({
         <img
           ref={imageRef}
           className={[
-            instant ? 'rounded-none!' : 'rounded-none! transition-opacity duration-150',
+            instant ? 'rounded-none!' : 'rounded-none! transition-opacity duration-150 motion-reduce:transition-none',
             isImageLoaded ? 'opacity-100' : 'opacity-0',
             className,
           ].join(' ').trim()}

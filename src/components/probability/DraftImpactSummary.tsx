@@ -57,11 +57,11 @@ export function DraftImpactSummary({ kind, complete, impact, pending }: DraftImp
 
   return (
     <div className={BLOCK} aria-live="polite" aria-busy={pending}>
-      <span className={cx('transition-opacity duration-150', pending && 'opacity-60')}>
+      <span className={cx('transition-opacity duration-150 motion-reduce:transition-none', pending && 'opacity-60')}>
         <ProgressRing value={main} tone={judgeTone(kind === 'opening')} size={56} label={`${share} (${formatShortPercent(main)})`} />
       </span>
       <span className="grid min-w-0 gap-0.5">
-        <strong className={cx('font-semibold text-foreground transition-opacity duration-150', pending && 'opacity-60')}>{share}</strong>
+        <strong className={cx('font-semibold text-foreground transition-opacity duration-150 motion-reduce:transition-none', pending && 'opacity-60')}>{share}</strong>
         {pending ? (
           <span className="text-muted">{t('builder.impact.calculating')}</span>
         ) : kind === 'opening' && main === 0 ? (

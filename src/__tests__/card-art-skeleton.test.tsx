@@ -33,6 +33,19 @@ describe('esqueleto de carga', () => {
     expect(container.querySelector('[aria-hidden="true"]')?.className.split(' ')).toContain('absolute!')
   })
 
+  // El fundido al cargar la imagen es de `opacity` (compositor), pero con el movimiento reducido no corre (`docs/movimiento.md`: todo con `motion-reduce:`).
+  it('el fundido de la imagen al cargar se saltea con el movimiento reducido', () => {
+    const { container } = render(
+      <Provider store={store}>
+        <CardArt remoteUrl="https://images.ygoprodeck.com/images/cards_small/46986414.jpg" name="Dark Magician" />
+      </Provider>,
+    )
+    const image = container.querySelector('img[data-card-art]')?.className.split(' ')
+
+    expect(image).toContain('transition-opacity')
+    expect(image).toContain('motion-reduce:transition-none')
+  })
+
   it('el de siempre sí lo lleva', () => {
     const { container } = render(<Skeleton />)
 
