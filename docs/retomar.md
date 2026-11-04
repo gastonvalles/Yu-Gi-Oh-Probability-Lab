@@ -45,6 +45,8 @@ npm run dev   # http://localhost:5173; también sirve /api/card-image, /api/live
   del adaptador y sin investigar.
 - **Un duelo en local** necesita `VITE_DUEL_RELAY_URL` en `.env.local`, que git ignora: un worktree nuevo no lo trae (copialo
   del checkout principal). Con el relay publicado o con uno local: `docs/duelo-relay.md`.
+- **De punta a punta** (`npm run test:e2e`, Playwright, fuera de `npm test` y del CI): levanta solo un relay local (8795) y
+  Vite (5189) y juega en `e2e/` un duelo por enlace con dos navegadores. Por qué la versión fija: `playwright.config.ts`.
 - **Windows:** `npm` desde Windows, no desde WSL (`node_modules` es de Windows y en WSL rolldown no encuentra su binario).
 
 ## 3. Qué leer primero
